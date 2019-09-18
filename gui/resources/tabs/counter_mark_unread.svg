@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="16" height="16" viewBox="0 0 16 16">
+  <defs>
+    <path id="bg" d="M8,15 C11.8659932,15 15,11.8659932 15,8 C15,4.13400675 11.8659932,1 8,1 C4.13400675,1 1,4.13400675 1,8 C1,11.8659932 4.13400675,15 8,15 Z"/>
+  </defs>
+  <g fill="none" fill-rule="evenodd">
+    <path id="border" fill="#FFF" d="M8,16 C3.581722,16 0,12.418278 0,8 C0,3.581722 3.581722,0 8,0 C12.418278,0 16,3.581722 16,8 C16,12.418278 12.418278,16 8,16 Z"/>
+    <mask id="counter_mark_unread-b" fill="#fff">
+      <use xlink:href="#bg"/>
+    </mask>
+    <use fill="#EF4B4B" xlink:href="#bg"/>
+<g id="bg-z" fill="#EF4B4B" fill-rule="nonzero" mask="url(#counter_mark_unread-b)">
+</g>
+<polygon id="star" fill="#FFF" points="6.976 8.205 4.2 7.404 4.701 5.866 7.449 6.931 7.312 3.8 8.941 3.8 8.805 6.985 11.508 5.939 11.999 7.504 9.178 8.305 10.998 10.725 9.678 11.69 8.04 9.069 6.42 11.608 5.092 10.68" mask="url(#counter_mark_unread-b)" />
+  </g>
+</svg>

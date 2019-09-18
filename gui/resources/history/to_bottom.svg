@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="24px" height="24px" viewBox="0 0 24 24" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: sketchtool 52.1 (67048) - http://www.bohemiancoding.com/sketch -->
+    <title>EFF55145-488E-4894-A8BC-7D236203291E</title>
+    <desc>Created with sketchtool.</desc>
+    <defs>
+        <path d="M7.81951988,6.88370403 C7.39349337,6.45278068 7.39349337,5.75411587 7.81951988,5.32319252 C8.24554638,4.89226916 8.93627181,4.89226916 9.36229831,5.32319252 L16.1804801,12.2197442 C16.6065066,12.6506676 16.6065066,13.3493324 16.1804801,13.7802558 L9.36229831,20.6768075 C8.93627181,21.1077308 8.24554638,21.1077308 7.81951988,20.6768075 C7.39349337,20.2458841 7.39349337,19.5472193 7.81951988,19.116296 L13.8663125,13 L7.81951988,6.88370403 Z" id="path-1"></path>
+    </defs>
+    <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="today_and_scroll_bottom_IMDESKTOP-8675" transform="translate(-983.000000, -1148.000000)">
+            <g id="Group-7-Copy" transform="translate(983.000000, 1148.000000)">
+                <rect id="Rectangle" fill-rule="nonzero" x="0" y="0" width="24" height="24"></rect>
+                <mask id="mask-2" fill="white">
+                    <use xlink:href="#path-1"></use>
+                </mask>
+                <use id="next-copy" fill="#8B8B8B" fill-rule="nonzero" transform="translate(12.000000, 13.000000) rotate(90.000000) translate(-12.000000, -13.000000) " xlink:href="#path-1"></use>
+            </g>
+        </g>
+    </g>
+</svg>

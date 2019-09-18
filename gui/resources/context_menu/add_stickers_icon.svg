@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="20px" height="20px" viewBox="0 0 20 20" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 48.2 (47327) - http://www.bohemiancoding.com/sketch -->
+    <title>add_stikers_icon</title>
+    <desc>Created with Sketch.</desc>
+    <defs></defs>
+    <g id="kit_icons_context_menu" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd" transform="translate(-21.000000, -175.000000)">
+        <g id="add_stikers_100" transform="translate(21.000000, 175.000000)">
+            <rect id="Rectangle" opacity="0.301347373" x="0" y="0" width="20" height="20"></rect>
+            <g id="Group-10" transform="translate(2.000000, 2.000000)">
+                <circle id="Oval" stroke="#454545" stroke-width="2" cx="8" cy="8" r="7"></circle>
+                <rect id="Rectangle-8" fill="#454545" x="7" y="4" width="2" height="8" rx="1"></rect>
+                <rect id="Rectangle-8" fill="#454545" transform="translate(8.000000, 8.000000) rotate(-90.000000) translate(-8.000000, -8.000000) " x="7" y="4" width="2" height="8" rx="1"></rect>
+            </g>
+        </g>
+    </g>
+</svg>

@@ -1,0 +1,347 @@
+QWidget#VoipPanelHeader
+{
+    min-height: 100dip;
+    max-height: 100dip;
+    background: rgba(38, 38, 38, 100%);
+}
+
+QWidget[VoipPanelHeaderText_Name="true"]
+{
+    font-size: 16dip;
+    text-align: center;
+}
+
+QWidget[VoipPanelHeaderText_Status="true"]
+{
+    text-align: center;
+}
+
+QWidget[VoipPanelHeaderText_Has_Video="true"]
+{
+      color: #ffffff;
+}
+
+QWidget[VoipPanelHeaderText_Has_Video="false"]
+{
+      color: #000000;
+}
+
+QWidget[VideoPanelMain="true"]
+{
+    min-height: 53dip;
+    max-height: 53dip;
+    background: transparent;
+}
+
+
+QWidget[VideoPanel="true"]
+{
+    min-height: 53dip;
+    max-height: 53dip;
+    background: rgba(38, 38, 38, 100%);
+}
+
+QWidget[VideoPanelHeader="true"]
+{
+    min-height: 36dip;
+    max-height: 36dip;
+    background: rgba(38, 38, 38, 100%);
+}
+
+QWidget[VideoPanelHeaderMac="true"]
+{
+    min-height: 28dip;
+    max-height: 28dip;
+    background: rgba(255, 255, 255, 70%);
+    border-top-left-radius: 5dip;
+    border-top-right-radius: 5dip;
+}
+
+QWidget[VideoPanelHeaderText="true"]
+{
+    font-size: 15dip;
+    text-align: left;
+}
+
+QPushButton[StopCallButton="true"]
+{
+    min-height: 40dip;
+    max-height: 40dip;
+    min-width: 40dip;
+    max-width: 40dip;
+    outline: none;
+    border-image: url(:/voip/endcall2_100);
+}
+QPushButton[StopCallButton="true"]:hover
+{
+    border-image: url(:/voip/endcall2_100_hover);
+}
+
+
+QPushButton[CallSoundOn="true"]
+{
+    min-width: 24dip;
+    max-width: 24dip;
+    min-height: 24dip;
+    max-height: 24dip;
+    outline: none;
+    border-image: url(:/voip/volume_100);
+}
+QPushButton[CallSoundOn="true"]:hover
+{
+    border-image: url(:/voip/volume_100_hover);
+}
+
+
+QPushButton[CallSoundOff="true"]
+{
+    min-width: 24dip;
+    max-width: 24dip;
+    min-height: 24dip;
+    max-height: 24dip;
+    outline: none;
+    border-image: url(:/voip/volume_off_100);
+}
+QPushButton[CallSoundOff="true"]:hover
+{
+    border-image: url(:/voip/volume_off_100_hover);
+}
+
+
+QPushButton[CallSettings="true"]
+{
+    min-width: 24dip;
+    max-width: 24dip;
+    min-height: 24dip;
+    max-height: 24dip;
+    outline: none;
+    border-image: url(:/voip/settings_100);
+}
+QPushButton[CallSettings="true"]:hover
+{
+    border-image: url(:/voip/settings_100_hover);
+}
+
+
+QPushButton[CallGoChat="true"]
+{
+    min-width: 24dip;
+    max-width: 24dip;
+    min-height: 24dip;
+    max-height: 24dip;
+    outline: none;
+    border-image: url(:/voip/chat_100);
+}
+QPushButton[CallGoChat="true"]:hover
+{
+    border-image: url(:/voip/chat_100_hover);
+}
+
+
+QPushButton[CallFSOn="true"]
+{
+    min-width: 24dip;
+    max-width: 24dip;
+    min-height: 24dip;
+    max-height: 24dip;
+    outline: none;
+    border-image: url(:/voip/fullscreen_100);
+}
+QPushButton[CallFSOn="true"]:hover
+{
+    border-image: url(:/voip/fullscreen_100_hover);
+}
+
+
+QPushButton[CallFSOff="true"]
+{
+    min-width: 24dip;
+    max-width: 24dip;
+    min-height: 24dip;
+    max-height: 24dip;
+    outline: none;
+    border-image: url(:/voip/fullscreen_exit_100);
+}
+QPushButton[CallFSOff="true"]:hover
+{
+    border-image: url(:/voip/fullscreen_exit_100_hover);
+}
+
+QPushButton
+{
+    background-color: transparent;
+    background-repeat: no-repeat;
+    background-position: center;
+    outline: none;
+}
+
+QPushButton[BigButton="true"]
+{
+    min-width:  40dip;
+    max-width:  40dip;
+    min-height: 40dip;
+    max-height: 40dip;
+    outline: none;
+}
+
+QPushButton[CallEnableCam="true"]
+{
+    min-width: 40dip;
+    max-width: 40dip;
+    min-height: 40dip;
+    max-height: 40dip;
+    outline: none;
+    border-image: url(:/voip/camera2_100);
+}
+QPushButton[CallEnableCam="true"]:hover
+{
+    border-image: url(:/voip/camera2_100_hover);
+}
+
+
+QPushButton[CallDisableCam="true"]
+{
+    min-width: 40dip;
+    max-width: 40dip;
+    min-height: 40dip;
+    max-height: 40dip;
+    outline: none;
+    border-image: url(:/voip/camera2_off_100);
+}
+QPushButton[CallDisableCam="true"]:hover
+{
+    border-image: url(:/voip/camera2_off_100_hover);
+}
+
+
+QPushButton[CallEnableMic="true"]
+{
+    border-image: url(:/voip/microphone2_100);
+    min-width:  40dip;
+    max-width:  40dip;
+    min-height: 40dip;
+    max-height: 40dip;
+    background-color: transparent;
+    background-repeat: no-repeat;
+    background-position: center;
+    outline: none;
+}
+QPushButton[CallEnableMic="true"]:hover
+{
+    border-image: url(:/voip/microphone2_100_hover);
+}
+
+
+QPushButton[CallDisableMic="true"]
+{
+    min-width: 40dip;
+    max-width: 40dip;
+    min-height: 40dip;
+    max-height: 40dip;
+    outline: none;
+    border-image: url(:/voip/microphone2_off_100);
+}
+QPushButton[CallDisableMic="true"]:hover
+{
+    border-image: url(:/voip/microphone2_off_100_hover);
+}
+
+
+QPushButton[ConferenceAllTheSame="true"]
+{
+    min-width: 24dip;
+    max-width: 24dip;
+    min-height: 24dip;
+    max-height: 24dip;
+    outline: none;
+    border-image: url(:/voip/group1_100);
+}
+QPushButton[ConferenceAllTheSame="true"]:hover
+{
+    border-image: url(:/voip/group1_100_hover);
+}
+
+
+QPushButton[ConferenceOneIsBig="true"]
+{
+    min-width: 24dip;
+    max-width: 24dip;
+    min-height: 24dip;
+    max-height: 24dip;
+    outline: none;
+    border-image: url(:/voip/group2_100);
+}
+QPushButton[ConferenceOneIsBig="true"]:hover
+{
+    border-image: url(:/voip/group2_100_hover);
+}
+
+
+QPushButton[AddUser="true"]
+{
+    min-width: 24dip;
+    max-width: 24dip;
+    min-height: 24dip;
+    max-height: 24dip;
+    outline: none;
+    border-image: url(:/voip/add_100);
+}
+QPushButton[AddUser="true"]:hover
+{
+    border-image: url(:/voip/add_100_hover);
+}
+
+
+QPushButton[ShareScreenButtonDisable="true"]
+{
+    min-width: 40dip;
+    max-width: 40dip;
+    min-height: 40dip;
+    max-height: 40dip;
+    outline: none;
+    border-image: url(:/voip/screen2_off_100);
+}
+QPushButton[ShareScreenButtonDisable="true"]:hover
+{
+    border-image: url(:/voip/screen2_off_100_hover);
+}
+
+
+QPushButton[ShareScreenButtonEnable="true"]
+{
+    min-width: 40dip;
+    max-width: 40dip;
+    min-height: 40dip;
+    max-height: 40dip;
+    outline: none;
+    border-image: url(:/voip/screen2_100);
+}
+QPushButton[ShareScreenButtonEnable="true"]:hover
+{
+    border-image: url(:/voip/screen2_100_hover);
+}
+
+
+QPushButton[SecurityButton="true"]
+{
+    min-width: 24dip;
+    max-width: 24dip;
+    min-height: 24dip;
+    max-height: 24dip;
+    outline: none;
+    border-image: url(:/voip/secure_100);
+}
+QPushButton[SecurityButton="true"]:hover
+{
+    border-image: url(:/voip/secure_100_hover);
+}
+
+QPushButton[OpenMasks="true"]
+{
+    min-width:  40dip;
+    max-width:  40dip;
+    min-height: 40dip;
+    max-height: 40dip;
+    outline: none;
+}
+

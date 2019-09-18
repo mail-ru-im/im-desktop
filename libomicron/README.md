@@ -1,0 +1,1 @@
+omicron-desktop library

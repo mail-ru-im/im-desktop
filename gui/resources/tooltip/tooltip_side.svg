@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1" height="16" viewBox="0 0 1 16">
+    <g fill="none" fill-rule="nonzero">
+        <path d="M0 0h2v16H0z"/>
+        <path id="borderbg" fill="#2B2C34" d="M0 7h2v9H0z"/>
+        <path id="border" fill="#1E1E24" d="M0 7h2v9H0z"/>
+        <path id="bg" fill="#2B2C34" d="M0 8h2v8H0z"/>
+    </g>
+</svg>

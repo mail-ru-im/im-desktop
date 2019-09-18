@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1" height="24" viewBox="0 0 1 24">
+  <defs>
+    <linearGradient id="overlay-a" x1="50%" x2="50%" y1="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFF" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#FFF"/>
+    </linearGradient>
+  </defs>
+  <rect width="1" height="24" x="994" y="704" fill="url(#overlay-a)" fill-rule="evenodd" transform="translate(-994 -704)"/>
+</svg>

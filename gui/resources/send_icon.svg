@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="32px" height="32px" viewBox="0 0 32 32" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 53.2 (72643) - https://sketchapp.com -->
+    <title>send_icon</title>
+    <desc>Created with Sketch.</desc>
+    <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="send_icon" transform="translate(-0.000000, -0.000000)" fill-rule="nonzero">
+            <rect id="Rectangle" fill="#C4C4C4" opacity="0" x="0" y="0" width="32" height="32"></rect>
+            <path d="M7.32578,17.6529 L14.5568,16.9738 C14.9673,16.9037 15.2889,16.5789 15.3583,16.1644 C15.4483,15.6265 15.0895,15.1167 14.5568,15.0258 L7.32578,14.3467 C6.45947,14.2653 5.75617,13.6115 5.61189,12.7534 L4.52792,6.30628 C4.34706,5.23059 5.06395,4.21052 6.12913,4.02788 C6.53567,3.95817 6.95363,4.01998 7.32331,4.20446 L27.41,14.2287 C28.3786,14.7121 28.7758,15.8969 28.2971,16.875 C28.1068,17.2639 27.7951,17.5787 27.41,17.7709 L7.32331,27.7951 C6.3547,28.2785 5.18144,27.8774 4.70278,26.8992 C4.52009,26.5259 4.45889,26.1038 4.52792,25.6933 L5.61189,19.2461 C5.75617,18.388 6.45947,17.7343 7.32578,17.6529 Z" id="Path" fill="#57B359"></path>
+        </g>
+    </g>
+</svg>

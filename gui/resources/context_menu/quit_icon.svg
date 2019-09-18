@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="20px" height="20px" viewBox="0 0 20 20" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 48.2 (47327) - http://www.bohemiancoding.com/sketch -->
+    <title>quit_icon</title>
+    <desc>Created with Sketch.</desc>
+    <defs></defs>
+    <g id="kit_icons_context_menu" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd" transform="translate(-144.000000, -455.000000)">
+        <g id="quit_100" transform="translate(144.000000, 455.000000)">
+            <rect id="Rectangle-55" x="0" y="0" width="20" height="20"></rect>
+            <rect id="Rectangle-9" stroke="#454545" stroke-width="2" x="2" y="2" width="16" height="16" rx="2"></rect>
+            <g id="Group-8" transform="translate(6.000000, 6.000000)" stroke="#454545" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
+                <path d="M0.604486561,0.529032176 L7.98172007,7.90626568" id="Path-2"></path>
+                <path d="M0.604486561,7.90626568 L7.98172007,0.529032176" id="Path-2"></path>
+            </g>
+        </g>
+    </g>
+</svg>

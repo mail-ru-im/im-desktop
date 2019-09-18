@@ -1,0 +1,15 @@
+*.svg binary
+*.png binary
+*.gif binary
+*.ico binary
+*.ttf binary
+*.wav binary
+*.exe binary
+*.7z binary
+*.lib binary
+*.a binary
+*.dll binary
+*.so binary
+*.dylib binary
+*.nib binary
+*.icns binary

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="20px" height="20px" viewBox="0 0 20 20" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 53 (72520) - https://sketchapp.com -->
+    <title>unlock_icon</title>
+    <desc>Created with Sketch.</desc>
+    <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="unlock_icon">
+            <polygon id="Path" points="0 0 20 0 20 20 0 20"></polygon>
+            <path d="M6.648,9 L14,9 C15.1045695,9 16,9.8954305 16,11 L16,17 C16,18.1045695 15.1045695,19 14,19 L6,19 C4.8954305,19 4,18.1045695 4,17 L4,11 C3.9996492,10.1390505 4.55030965,9.37449047 5.367,9.102 C5.35569744,9.0534782 5.34999355,9.00382081 5.35,8.954 L5.35,5.6 C5.35,3.237 7.446,1.35 10,1.35 C12.554,1.35 14.65,3.237 14.65,5.6 L14.65,6.4 C14.65,6.75898509 14.3589851,7.05 14,7.05 C13.6410149,7.05 13.35,6.75898509 13.35,6.4 L13.35,5.6 C13.35,3.987 11.865,2.65 10,2.65 C8.135,2.65 6.65,3.987 6.65,5.6 L6.65,8.954 C6.65,8.97 6.65,8.984 6.648,9 Z" id="a-path" fill="#979797" fill-rule="nonzero"></path>
+        </g>
+    </g>
+</svg>

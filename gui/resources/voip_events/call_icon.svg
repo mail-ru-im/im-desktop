@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="20px" height="20px" viewBox="0 0 20 20" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: sketchtool 51.2 (57519) - http://www.bohemiancoding.com/sketch -->
+    <title>19F89E7B-2F44-4886-831E-5C7D90D0F6F4</title>
+    <desc>Created with sketchtool.</desc>
+    <defs></defs>
+    <g id="Text" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="icons-/-call_button" transform="translate(-12.000000, -12.000000)">
+            <g id="icons-/-play_audio">
+                <g id="Group" transform="translate(12.000000, 12.000000)">
+                    <g id="icons-/-{call}">
+                        <rect id="Rectangle" x="0" y="0" width="20" height="20"></rect>
+                        <path d="M6.83564057,14.0282539 C6.45527524,12.3415164 1.81467917,12.5729189 0.965248065,13.4183908 C0.115816962,14.2638628 0.834254939,18.2267079 1.48868893,18.8801374 C2.76594206,20.1554299 9.48137335,18.983929 14.1954293,14.2924798 C18.9088235,9.6001524 20.171731,2.83159788 18.8936925,1.55552105 C18.2461921,0.909014534 14.3942629,0.0536085712 13.4074955,1.03495638 C12.4207281,2.01630418 12.321864,6.5096716 14.0197728,6.87757029 C15.1225346,7.11651401 14.1480352,10.6792622 12.4016882,12.4176979 C10.6553412,14.1559141 7.08354369,15.1275852 6.83564057,14.0282539 Z" id="Phone" fill="#FFFFFF" transform="translate(9.970044, 9.975530) rotate(-270.000000) translate(-9.970044, -9.975530) "></path>
+                    </g>
+                </g>
+            </g>
+        </g>
+    </g>
+</svg>

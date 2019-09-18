@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+  <Type Name="core::coll_helper">
+    <Expand>
+      <ExpandedItem>collection_.p_</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="core::coll_array">
+    <DisplayString>{{ size={vec_.size()} }}</DisplayString>
+    <Expand>
+      <ExpandedItem>vec_</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="core::collection">
+    <Expand>
+      <ExpandedItem>values_</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="core::collection_value">
+    <DisplayString Condition="type_ == vt_empty">empty value</DisplayString>
+    <DisplayString Condition="type_ == vt_int">{{ int = {data__.int_value_} }}</DisplayString>
+    <DisplayString Condition="type_ == vt_double">{{ double = {data__.double_value_} }}</DisplayString>
+    <DisplayString Condition="type_ == vt_string">{{ string = {data__.string_value_,s8} }}</DisplayString>
+    <DisplayString Condition="type_ == vt_bool">{{ bool = {data__.bool_value_} }}</DisplayString>
+    <DisplayString Condition="type_ == vt_collection">{{ collection = {data__.collection_value_}}}</DisplayString>
+    <DisplayString Condition="type_ == vt_stream">{{ stream = {data__.istream_value_}}}</DisplayString>
+    <DisplayString Condition="type_ == vt_array">{{ array = {data__.array_value_}}}</DisplayString>
+    <DisplayString Condition="type_ == vt_int64">{{ int64 = {data__.int64_value_} }}</DisplayString>
+    <DisplayString Condition="type_ == vt_hheaders">{{ hheaders = {data__.ihheaders_value_} }}</DisplayString>
+    <DisplayString Condition="type_ == vt_uint">{{ uint32_t = {data__.uint_value_} }}</DisplayString>
+    <Expand>
+      <ExpandedItem Condition="type_ == vt_collection">data__.collection_value_</ExpandedItem>
+      <ExpandedItem Condition="type_ == vt_array">data__.array_value_</ExpandedItem>
+      <ExpandedItem Condition="type_ == vt_stream">data__.istream_value_</ExpandedItem>
+      <ExpandedItem Condition="type_ == vt_hheaders">data__.ihheaders_value_</ExpandedItem>
+    </Expand>
+  </Type>
+
+  <Type Name="Utils::SChar">
+    <DisplayString>{{ Main = {(char)Main_}, Ext = {(char)Ext_}}}</DisplayString>
+  </Type>
+
+  <Type Name="Ui::TextRendering::TextWord">
+    <DisplayString>{{ text="{text_}" trimmedText="{trimmedText_}" type={type_} }}</DisplayString>
+  </Type>
+
+  <Type Name="std::unique_ptr&lt;*&gt;">
+    <SmartPointer Usage="Minimal">_Mypair._Myval2</SmartPointer>
+    <DisplayString Condition="_Mypair._Myval2 == 0">empty</DisplayString>
+    <DisplayString Condition="_Mypair._Myval2 != 0">{_Mypair._Myval2}</DisplayString>
+  </Type>
+
+  <Type Name="std::shared_ptr&lt;*&gt;">
+    <SmartPointer Usage="Minimal">_Ptr</SmartPointer>
+    <DisplayString Condition="_Ptr == 0">empty</DisplayString>
+    <DisplayString Condition="_Ptr != 0">{_Ptr}</DisplayString>
+  </Type>
+
+  <!-- rapidjson::GenericValue - basic support -->
+  <Type Name="rapidjson::GenericValue&lt;*,*&gt;">
+    <DisplayString Condition="(data_.f.flags &amp; kTypeMask) == kNullType">null</DisplayString>
+    <DisplayString Condition="data_.f.flags == kTrueFlag">true</DisplayString>
+    <DisplayString Condition="data_.f.flags == kFalseFlag">false</DisplayString>
+    <DisplayString Condition="data_.f.flags == kShortStringFlag">{data_.ss.str}</DisplayString>
+    <DisplayString Condition="(data_.f.flags &amp; kTypeMask) == kStringType">{(const char*)((size_t)data_.s.str &amp; 0x0000FFFFFFFFFFFF)}</DisplayString>
+    <DisplayString Condition="(data_.f.flags &amp; kNumberIntFlag) == kNumberIntFlag">{data_.n.i.i}</DisplayString>
+    <DisplayString Condition="(data_.f.flags &amp; kNumberUintFlag) == kNumberUintFlag">{data_.n.u.u}</DisplayString>
+    <DisplayString Condition="(data_.f.flags &amp; kNumberInt64Flag) == kNumberInt64Flag">{data_.n.i64}</DisplayString>
+    <DisplayString Condition="(data_.f.flags &amp; kNumberUint64Flag) == kNumberUint64Flag">{data_.n.u64}</DisplayString>
+    <DisplayString Condition="(data_.f.flags &amp; kNumberDoubleFlag) == kNumberDoubleFlag">{data_.n.d}</DisplayString>
+    <DisplayString Condition="data_.f.flags == kObjectType">Object members={data_.o.size}</DisplayString>
+    <DisplayString Condition="data_.f.flags == kArrayType">Array members={data_.a.size}</DisplayString>
+    <Expand>
+      <Item Condition="data_.f.flags == kObjectType" Name="[size]">data_.o.size</Item>
+      <Item Condition="data_.f.flags == kObjectType" Name="[capacity]">data_.o.capacity</Item>
+      <ArrayItems Condition="data_.f.flags == kObjectType">
+        <Size>data_.o.size</Size>
+        <!-- NOTE: Rapidjson stores some extra data in the high bits of pointers, which is why the mask -->
+        <ValuePointer>(rapidjson::GenericMember&lt;$T1,$T2&gt;*)(((size_t)data_.o.members) &amp; 0x0000FFFFFFFFFFFF)</ValuePointer>
+      </ArrayItems>
+
+      <Item Condition="data_.f.flags == kArrayType" Name="[size]">data_.a.size</Item>
+      <Item Condition="data_.f.flags == kArrayType" Name="[capacity]">data_.a.capacity</Item>
+      <ArrayItems Condition="data_.f.flags == kArrayType">
+        <Size>data_.a.size</Size>
+        <!-- NOTE: Rapidjson stores some extra data in the high bits of pointers, which is why the mask -->
+        <ValuePointer>(rapidjson::GenericValue&lt;$T1,$T2&gt;*)(((size_t)data_.a.elements) &amp; 0x0000FFFFFFFFFFFF)</ValuePointer>
+      </ArrayItems>
+
+    </Expand>
+  </Type>
+
+</AutoVisualizer>

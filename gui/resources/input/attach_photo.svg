@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="20px" height="20px" viewBox="0 0 20 20" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 54.1 (76490) - https://sketchapp.com -->
+    <title>photo_big_icon</title>
+    <desc>Created with Sketch.</desc>
+    <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="path-1-+-Shape-path-+-Shape-path-+-Shape-path-Mask">
+            <rect id="Mask" x="0" y="0" width="20" height="20" rx="10"></rect>
+            <path d="M2,6.5208 C2,4.024 4.0264,2 6.5208,2 L13.4792,2 C15.976,2 18,4.0264 18,6.5208 L18,13.4792 C18,15.976 15.9736,18 13.4792,18 L6.5208,18 C4.024,18 2,15.9736 2,13.4792 L2,6.5208 Z M5.9229,14 L14.3895,14 C14.7325,14 14.9327,13.7308 14.8497,13.3987 L13.2217,6.8867 C13.1019,6.4077 12.7901,6.3498 12.5312,6.7812 L10.1613,10.7312 C10.0742,10.8764 9.8663,10.9554 9.7014,10.9005 L7.5784,10.1928 C7.2558,10.0853 6.8792,10.2415 6.7303,10.5395 L5.4144,13.1712 C5.1846,13.6309 5.4132,14 5.9229,14 Z M7.5,8 C8.3284,8 9,7.3284 9,6.5 C9,5.6716 8.3284,5 7.5,5 C6.6716,5 6,5.6716 6,6.5 C6,7.3284 6.6716,8 7.5,8 Z" id="path-1" fill="#FFFFFF" transform="translate(10.000000, 10.000000) scale(-1, 1) translate(-10.000000, -10.000000) "></path>
+        </g>
+    </g>
+</svg>

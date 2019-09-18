@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="20px" height="20px" viewBox="0 0 20 20" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 53.1 (72631) - https://sketchapp.com -->
+    <title>icons / user copy</title>
+    <desc>Created with Sketch.</desc>
+    <defs>
+        <path d="M10.0004006,10 C7.78988483,10 6,8.21007637 6,6 C6,3.78992363 7.78988483,2 10.0004006,2 C12.2101152,2 14,3.78992363 14,6 C14,8.21007637 12.2101152,10 10.0004006,10 Z M3,16 C3,12.8780488 5.99502275,11 10,11 C14.0049772,11 17,12.8780488 17,16 C17,17.1045695 16.1045695,18 15,18 L5,18 C3.8954305,18 3,17.1045695 3,16 Z" id="path-1"></path>
+    </defs>
+    <g id="Icons" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <rect id="Rectangle" x="0" y="0" width="20" height="20"></rect>
+        <g id="icons-/-user-copy">
+            <mask id="mask-2" fill="white">
+                <use xlink:href="#path-1"></use>
+            </mask>
+            <use id="Combined-Shape" fill="#4A4A4A" xlink:href="#path-1"></use>
+        </g>
+    </g>
+</svg>

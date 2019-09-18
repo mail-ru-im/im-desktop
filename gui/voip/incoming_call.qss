@@ -1,0 +1,53 @@
+QWidget#incomingCallControls
+{
+    min-height: 96dip;
+    max-height: 96dip;
+    background: transparent;
+}
+
+QPushButton#incomingCall_hangup
+{
+    min-width: 36dip;
+    max-width: 36dip;
+    min-height: 36dip;
+    max-height: 36dip;
+
+    border-image: url(:/voip/endcall_100);
+}
+QPushButton#incomingCall_hangup:hover
+{
+    border-image: url(:/voip/endcall_100_hover);
+}
+
+QPushButton#incomingCall_video
+{
+    min-width: 36dip;
+    max-width: 36dip;
+    min-height: 36dip;
+    max-height: 36dip;
+
+    border-image: url(:/voip/videocall_100);
+}
+QPushButton#incomingCall_video:hover
+{
+    border-image: url(:/voip/videocall_100_hover);
+}
+
+QPushButton#incomingCall_audio
+{
+    min-width: 36dip;
+    max-width: 36dip;
+    min-height: 36dip;
+    max-height: 36dip;
+
+    border-image: url(:/voip/call_100);
+}
+QPushButton#incomingCall_audio:hover
+{
+    border-image: url(:/voip/call_100_hover);
+}
+
+QWidget#voipPanelLabel
+{
+	color: #ffffff;
+}

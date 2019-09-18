@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="20" height="20" viewBox="0 0 20 20">
+  <defs>
+    <rect id="{checkbox_fill}-a" width="20" height="20" rx="2"/>
+  </defs>
+  <g fill="none" fill-rule="evenodd">
+    <mask id="{checkbox_fill}-b" fill="#fff">
+      <use xlink:href="#{checkbox_fill}-a"/>
+    </mask>
+    <use id="bg" fill="#57B359" xlink:href="#{checkbox_fill}-a"/>
+	
+	<rect id="border" width="19" height="19" x=".5" y=".5" fill="none" fill-rule="evenodd" stroke="#CCCFD8" rx="2"/>
+	
+    <path id="tick" fill="#FFF" fill-rule="nonzero" d="M14.2928932,6.29289322 C14.6834175,5.90236893 15.3165825,5.90236893 15.7071068,6.29289322 C16.0976311,6.68341751 16.0976311,7.31658249 15.7071068,7.70710678 L8.70710678,14.7071068 C8.31658249,15.0976311 7.68341751,15.0976311 7.29289322,14.7071068 L4.29289322,11.7071068 C3.90236893,11.3165825 3.90236893,10.6834175 4.29289322,10.2928932 C4.68341751,9.90236893 5.31658249,9.90236893 5.70710678,10.2928932 L8,12.5857864 L14.2928932,6.29289322 Z" mask="url(#{checkbox_fill}-b)"/>
+  </g>
+</svg>

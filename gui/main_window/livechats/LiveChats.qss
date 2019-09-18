@@ -1,0 +1,6 @@
+Ui--LiveChatProfile
+{
+    background-color: #ffffff;
+    padding: 0;
+    margin: 0;
+}

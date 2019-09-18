@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="10" height="132" viewBox="0 0 10 132">
+  <defs>
+    <linearGradient id="gradient_line-a" x1="50%" x2="50%" y1="30.584%" y2="100%">
+      <stop offset="0%" stop-color="#111"/>
+      <stop offset="100%" stop-opacity=".849"/>
+    </linearGradient>
+  </defs>
+  <rect width="10" height="132" fill="url(#gradient_line-a)" fill-rule="evenodd" transform="matrix(10 0 0 -1 0 132)"/>
+</svg>

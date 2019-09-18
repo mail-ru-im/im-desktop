@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="20px" height="20px" viewBox="0 0 20 20" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 48.2 (47327) - http://www.bohemiancoding.com/sketch -->
+    <title>plus_icon</title>
+    <desc>Created with Sketch.</desc>
+    <defs></defs>
+    <g id="Icon_pack_reсents" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd" transform="translate(-32.000000, -259.000000)">
+        <g id="i_plus" transform="translate(32.000000, 259.000000)">
+            <rect id="Rectangle-2" x="0" y="0" width="20" height="20"></rect>
+            <path d="M10,20 C15.5228475,20 20,15.5228475 20,10 C20,4.4771525 15.5228475,0 10,0 C4.4771525,0 0,4.4771525 0,10 C0,15.5228475 4.4771525,20 10,20 Z M11,9 L14.4903505,9 C14.7718221,9 15,9.21403503 15,9.50468445 L15,10.4953156 C15,10.7740451 14.7723472,11 14.4903505,11 L11,11 L11,14.4903505 C11,14.7718221 10.785965,15 10.4953156,15 L9.50468445,15 C9.22595492,15 9,14.7723472 9,14.4903505 L9,11 L5.50964952,11 C5.22817786,11 5,10.785965 5,10.4953156 L5,9.50468445 C5,9.22595492 5.22765279,9 5.50964952,9 L9,9 L9,5.50964952 C9,5.22817786 9.21403503,5 9.50468445,5 L10.4953156,5 C10.7740451,5 11,5.22765279 11,5.50964952 L11,9 Z" id="Oval" fill="#57B359"></path>
+        </g>
+    </g>
+</svg>

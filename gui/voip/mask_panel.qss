@@ -1,0 +1,141 @@
+QWidget#MaskPanel
+{
+    min-height: 74dip;
+    max-height: 74dip;
+    margin: 0;
+    padding: 0;
+}
+
+QWidget#MaskListScroll
+{
+    background-color: transparent;
+    border: none;
+    margin: 0;
+    padding: 0;
+}
+
+QWidget#MaskList
+{
+    background-color: transparent;
+    border: none;
+    margin: 0;
+    padding: 0;
+    min-height: 37dip;
+    max-height: 37dip;
+}
+
+QWidget#MaskPanelRoot
+{
+    background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1.0,
+                                     stop: 0 rgba(0, 0, 0, 0%), stop: 1.0 rgba(0, 0, 0, 20%));
+}
+
+QWidget[orintation="vertical"]
+{
+    min-width: 48dip;
+    max-width: 48dip;
+    margin: 0;
+    padding: 0;
+}
+
+QWidget[orintation="horizontal"]
+{
+    min-height: 48dip;
+    max-height: 48dip;
+    margin: 0;
+    padding: 0;
+}
+
+
+QPushButton[MaskArrow="left"]
+{
+    min-width:  36dip;
+    max-width:  36dip;
+    min-height: 36dip;
+    max-height: 36dip;
+
+    border-image: url(:/voip/mask_left_100);
+}
+QPushButton[MaskArrow="left"]:hover
+{
+    border-image: url(:/voip/mask_left_100_hover);
+}
+QPushButton[MaskArrow="left"]:hover:pressed
+{
+    border-image: url(:/voip/mask_left_100_hover);
+}
+QPushButton[MaskArrow="left"]:disabled
+{
+    border-image: url(:/voip/mask_left_100_disable);
+}
+
+QPushButton[MaskArrow="right"]
+{
+    min-width:  36dip;
+    max-width:  36dip;
+    min-height: 36dip;
+    max-height: 36dip;
+
+    border-image: url(:/voip/mask_right_100);
+}
+QPushButton[MaskArrow="right"]:hover
+{
+    border-image: url(:/voip/mask_right_100_hover);
+}
+QPushButton[MaskArrow="right"]:hover:pressed
+{
+    border-image: url(:/voip/mask_right_100_hover);
+}
+QPushButton[MaskArrow="right"]:disabled
+{
+    border-image: url(:/voip/mask_right_100_disable);
+}
+
+
+QPushButton[MaskArrow="down"]
+{
+    border-image: url(:/voip/mask_down_100);
+}
+QPushButton[MaskArrow="down"]:hover
+{
+    border-image: url(:/voip/mask_down_100_hover);
+}
+QPushButton[MaskArrow="down"]:hover:pressed
+{
+    border-image: url(:/voip/mask_down_100_active);
+}
+QPushButton[MaskArrow="down"]:disabled
+{
+    border-image: url(:/voip/mask_down_100_disable);
+}
+
+QPushButton[MaskArrow="up"]
+{
+    border-image: url(:/voip/mask_up_100);
+}
+QPushButton[MaskArrow="up"]:hover
+{
+    border-image: url(:/voip/mask_up_100_hover);
+}
+QPushButton[MaskArrow="up"]:hover:pressed
+{
+    border-image: url(:/voip/mask_up_100_active);
+}
+QPushButton[MaskArrow="up"]:disabled
+{
+    border-image: url(:/voip/mask_up_100_disable);
+}
+
+
+QPushButton[CloseMaskArror="true"]
+{
+    min-width: 32dip;
+    max-width: 32dip;
+    min-height: 32dip;
+    max-height: 32dip;
+    border-image: url(:/voip/close_mask_arrow_100);
+}
+QPushButton[CloseMaskArror="true"]:hover
+{
+    border-image: url(:/voip/close_mask_arrow_100_hover);
+}

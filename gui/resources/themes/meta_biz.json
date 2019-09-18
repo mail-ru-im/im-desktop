@@ -1,0 +1,883 @@
+{
+  "style": {
+  	"base_light": "#F7FAFD",
+    "base_primary": "#838690",
+    "base_primary_hover": "#7A7E8B",
+    "base_primary_active": "#707482",
+    "base_secondary": "#b7bcc9",
+    "base_secondary_hover": "#8e94a2",
+    "base_secondary_active": "#6f747e",
+    "base_tertiary": "#cccfd8",
+    "base_bright": "#eceef3",
+    "base_bright_active": "#dee1eb",
+    "base_bright_hover": "#e4e7ef",
+    "base_ultrabright": "#fbfcfd",
+    "base_ultrabright_hover": "#f3f5f8",
+    "base_bright_inverse": "#f3f5f8",
+    "base_bright_inverse_hover": "#e4e7ef",
+    "text_solid": "#111111",
+    "text_solid_permanent": "#ffffff",
+    "text_solid_permanent_hover": "#c0ffffff",
+    "text_solid_permanent_active": "#80ffffff",
+    "text_primary": "#17C97E",
+    "text_primary_hover": "#15BD76",
+    "text_primary_active": "#10AC6B",
+    "secondary_attention": "#F83E33",
+    "secondary_attention_hover": "#E12B21",
+    "secondary_attention_active": "#D81409",
+    "secondary_rainbow_warning": "#FEF7AC",
+    "secondary_rainbow_mint": "#40D295",
+    "secondary_rainbow_cold": "#0EB4FF",
+    "secondary_rainbow_orange": "#FE9A3F",
+    "secondary_rainbow_aqua": "#23C7DE",
+    "secondary_rainbow_purple": "#A164F7",
+	"secondary_rainbow_pink": "#FF4797",
+	"secondary_rainbow_blue": "#4B9FFF",
+	"secondary_rainbow_green": "#68D166",
+    "secondary_rainbow_mail": "#005FF9",
+    "base_globalwhite": "#ffffff",
+    "primary": "#18D893",
+    "primary_hover": "#1AD08E",
+    "primary_selected": "#2BD095",
+    "primary_active": "#1CC88A",
+    "primary_pastel": "#61CEBA",
+    "primary_inverse": "#18D893",
+    "primary_bright": "#C6F5D9",
+    "primary_bright_hover": "#B4EBCB",
+    "primary_bright_active": "#AAE5C3",
+    "chat_secondary": "#E1FFED",
+    "secondary_info": "#FCF6EC",
+    "chat_primary": "#ffffff",
+    "chat_primary_hover": "#f9f9f9",
+    "chat_primary_active": "#f4f4f4",
+    "chat_environment": "#F0F3F5",
+    "ghost_primary": "#8c000000",
+	"ghost_primary_inverse": "#8c000000",
+	"ghost_primary_inverse_hover": "#9e000000",
+	"ghost_primary_inverse_active": "#ab000000",
+    "ghost_secondary": "#4c000000",
+    "ghost_tertiary": "#33000000",
+    "ghost_ultralight": "#0c000000",
+    "ghost_ultralight_inverse": "#0d000000",
+    "ghost_accent": "#1418D893",
+    "ghost_accent_hover": "#2618D893",
+    "ghost_accent_active": "#3318D893",
+    "ghost_overlay": "#00000000",
+    "app_primary": "#f4f4f4",
+    "ghost_light": "#ccffffff",
+    "ghost_secondary_inverse": "#4d000000",
+    "ghost_secondary_inverse_hover": "#59000000",
+    "ghost_light_inverse": "#0f000000",
+    "ghost_quaternary": "#19000000"
+  },
+    "themes": [
+        {
+            "id": "default",
+            "name": "Default",
+            "defaultWallpaper": 1001,
+            "style": {}
+        },
+        {
+            "id": "black",
+            "name": "Night",
+            "defaultWallpaper": 1002,
+            "underline": true,
+            "style": {
+                "base_light": "#23242D",
+                "base_primary": "#7e848f",
+                "base_primary_hover": "#8C939E",
+                "base_primary_active": "#9BA2AD",
+                "base_secondary": "#7e848f",
+                "base_secondary_hover": "#8c8d9c",
+                "base_secondary_active": "#9ea0b2",
+                "base_tertiary": "#5e5f6c",
+                "base_bright": "#3c3d47",
+                "base_bright_hover": "#444551",
+                "base_bright_active": "#3f404d",
+                "base_ultrabright": "#fbfcfd",
+                "base_ultrabright_hover": "#fbfcfd",
+                "base_bright_inverse": "#3c3d48",
+                "base_bright_inverse_hover": "#3c3d48",
+                "text_solid": "#ffffff",
+                "text_solid_permanent": "#ffffff",
+                "text_primary": "#2f92ff",
+                "text_primary_hover": "#479dff",
+                "text_primary_active": "#47a0ff",
+                "secondary_attention": "#f75d5d",
+                "secondary_attention_hover": "#e65151",
+                "secondary_attention_active": "#ce4343",
+                "secondary_rainbow_warning": "#fff480",
+                "base_globalwhite": "#2b2c34",
+                "primary": "#2e91ff",
+                "primary_hover": "#479dff",
+                "primary_selected": "#44648f",
+                "primary_active": "#3b96ff",
+                "primary_pastel": "#73a5dc",
+                "primary_inverse": "#ffffff",
+                "primary_bright": "#5479a8",
+                "primary_bright_hover": "#6187b8",
+                "primary_bright_active": "#6187b8",
+                "chat_secondary": "#43638e",
+                "secondary_info": "#3c3d48",
+                "chat_primary": "#2b2c34",
+                "chat_primary_hover": "#282931",
+                "chat_primary_active": "#26272F",
+                "chat_environment": "#21222A",
+                "ghost_primary": "#8c000000",
+                "ghost_primary_inverse": "#8cffffff",
+                "ghost_primary_inverse_hover": "#b2ffffff",
+                "ghost_primary_inverse_active": "#d9ffffff",
+                "ghost_secondary": "#4c000000",
+                "ghost_tertiary": "#26000000",
+                "ghost_ultralight": "#0c000000",
+                "ghost_ultralight_inverse": "#0dffffff",
+                "ghost_accent": "#070672eb",
+                "ghost_accent_hover": "#0f0672eb",
+                "ghost_accent_active": "#140672eb",
+                "ghost_overlay": "#0c000000",
+                "app_primary": "#272832",
+                "ghost_light": "#ccffffff",
+                "ghost_secondary_inverse": "#57ffffff",
+                "ghost_secondary_inverse_hover": "#66ffffff",
+                "ghost_light_inverse": "#00ffffff",
+                "ghost_quaternary": "#26000000"
+                }
+            }
+    ],
+    "wallpapers": [
+        {
+            "id": 96,
+            "themes": [
+                "*"
+            ],
+            "color": "#ecf3fd",
+            "tile": false,
+            "need_border": false,
+            "preview": "iPad_96_thumb@2x.jpg",
+            "image": "wallpaper_96_ipad@2x.jpg",
+            "style": {
+                "typing_text": "#ff000000",
+                "typing_animation": "#ff000000",
+                "chatevent_text": "#ffffffff",
+                "chatevent_background": "#19000000",
+                "newplate_text": "#ffffffff",
+                "newplate_background": "#19000000"
+            }
+        },
+        {
+            "id": 91,
+            "themes": [
+                "*"
+            ],
+            "color": "#b7e2ce",
+            "tile": false,
+            "need_border": false,
+            "preview": "iPad_91_thumb@2x.jpg",
+            "image": "wallpaper_91_ipad@2x.jpg",
+            "style": {
+                "typing_text": "#ff000000",
+                "typing_animation": "#ff000000",
+                "chatevent_text": "#ffffffff",
+                "chatevent_background": "#19000000",
+                "newplate_text": "#ffffffff",
+                "newplate_background": "#19000000"
+            }
+        },
+        {
+            "id": 10,
+            "themes": [
+                "*"
+            ],
+            "color": "#e5d6d3",
+            "tile": false,
+            "tint": "#73e7e0d2",
+            "need_border": false,
+            "preview": "iPad_10_thumb@2x.jpg",
+            "image": "wallpaper_10_ipad@2x.jpg",
+            "style": {
+                "typing_text": "#ff000000",
+                "typing_animation": "#ff000000",
+                "chatevent_text": "#ffffffff",
+                "chatevent_background": "#19000000",
+                "newplate_text": "#ffffffff",
+                "newplate_background": "#19000000"
+            }
+        },
+        {
+            "id": 25,
+            "themes": [
+                "*"
+            ],
+            "color": "#673363",
+            "tile": false,
+            "need_border": false,
+            "preview": "iPad_25_thumb@2x.jpg",
+            "image": "wallpaper_25_ipad@2x.jpg",
+            "style": {
+                "typing_text": "#ffffffff",
+                "typing_animation": "#ffffffff",
+                "chatevent_text": "#ffffffff",
+                "chatevent_background": "#19000000",
+                "newplate_text": "#ffffffff",
+                "newplate_background": "#19000000"
+            }
+        },
+        {
+            "id": 46,
+            "themes": [
+                "*"
+            ],
+            "color": "#e5d6d3",
+            "tile": true,
+            "tint": "#4cfaeac8",
+            "need_border": false,
+            "preview": "iPad_46_thumb@2x.jpg",
+            "image": "wallpaper_46_ipad@2x.jpg",
+            "style": {
+                "typing_text": "#ffffffff",
+                "typing_animation": "#ffffffff",
+                "chatevent_text": "#ffffffff",
+                "chatevent_background": "#19000000",
+                "newplate_text": "#ffffffff",
+                "newplate_background": "#19000000"
+            }
+        },
+        {
+            "id": 88,
+            "themes": [
+                "*"
+            ],
+            "color": "#caa175",
+            "tile": false,
+            "tint": "#7f5a563a",
+            "need_border": false,
+            "preview": "iPad_88_thumb@2x.jpg",
+            "image": "wallpaper_88_ipad@2x.jpg",
+            "style": {
+                "typing_text": "#ffffffff",
+                "typing_animation": "#ffffffff",
+                "chatevent_text": "#ffffffff",
+                "chatevent_background": "#19000000",
+                "newplate_text": "#ffffffff",
+                "newplate_background": "#19000000"
+            }
+        },
+        {
+            "id": 61,
+            "themes": [
+                "*"
+            ],
+            "color": "#067d85",
+            "tile": false,
+            "tint": "#66015068",
+            "need_border": false,
+            "preview": "iPad_61_thumb@2x.jpg",
+            "image": "wallpaper_61_ipad@2x.jpg",
+            "style": {
+                "typing_text": "#ff000000",
+                "typing_animation": "#ff000000",
+                "chatevent_text": "#ffffffff",
+                "chatevent_background": "#19000000",
+                "newplate_text": "#ffffffff",
+                "newplate_background": "#19000000"
+            }
+        },
+        {
+            "id": 17,
+            "themes": [
+                "*"
+            ],
+            "color": "#0a80a6",
+            "tile": false,
+            "tint": "#59018faf",
+            "need_border": false,
+            "preview": "iPad_17_thumb@2x.jpg",
+            "image": "wallpaper_17_ipad@2x.jpg",
+            "style": {
+                "typing_text": "#ffffffff",
+                "typing_animation": "#ffffffff",
+                "chatevent_text": "#ffffffff",
+                "chatevent_background": "#19000000",
+                "newplate_text": "#ffffffff",
+                "newplate_background": "#19000000"
+            }
+        },
+        {
+            "id": 53,
+            "themes": [
+                "*"
+            ],
+            "color": "#efc0ee",
+            "tile": false,
+            "tint": "#66debdea",
+            "need_border": false,
+            "preview": "iPad_53_thumb@2x.jpg",
+            "image": "wallpaper_53_ipad@2x.jpg",
+            "style": {
+                "typing_text": "#ff000000",
+                "typing_animation": "#ff000000",
+                "chatevent_text": "#ffffffff",
+                "chatevent_background": "#19000000",
+                "newplate_text": "#ffffffff",
+                "newplate_background": "#19000000"
+            }
+        },
+        {
+            "id": 101,
+            "themes": [
+                "*"
+            ],
+            "color": "#e0e7ef",
+            "tile": false,
+            "tint": "#4cd4e2ed",
+            "need_border": false,
+            "preview": "iPad_101_thumb@2x.jpg",
+            "image": "wallpaper_101_ipad@2x.jpg",
+            "style": {
+                "typing_text": "#ff000000",
+                "typing_animation": "#ff000000",
+                "chatevent_text": "#ffffffff",
+                "chatevent_background": "#19000000",
+                "newplate_text": "#ffffffff",
+                "newplate_background": "#19000000"
+            }
+        },
+        {
+            "id": 27,
+            "themes": [
+                "*"
+            ],
+            "color": "#d1b399",
+            "tile": false,
+            "tint": "#4cf7d5a7",
+            "need_border": false,
+            "preview": "iPad_27_thumb@2x.jpg",
+            "image": "wallpaper_27_ipad@2x.jpg",
+            "style": {
+                "typing_text": "#ff000000",
+                "typing_animation": "#ff000000",
+                "chatevent_text": "#ffffffff",
+                "chatevent_background": "#19000000",
+                "newplate_text": "#ffffffff",
+                "newplate_background": "#19000000"
+            }
+        },
+        {
+            "id": 82,
+            "themes": [
+                "*"
+            ],
+            "color": "#3b5a91",
+            "tile": false,
+            "tint": "#4c001738",
+            "need_border": false,
+            "preview": "iPad_82_thumb@2x.jpg",
+            "image": "wallpaper_82_ipad@2x.jpg",
+            "style": {
+                "typing_text": "#ffffffff",
+                "typing_animation": "#ffffffff",
+                "chatevent_text": "#ffffffff",
+                "chatevent_background": "#19000000",
+                "newplate_text": "#ffffffff",
+                "newplate_background": "#19000000"
+            }
+        },
+        {
+            "id": 108,
+            "themes": [
+                "*"
+            ],
+            "color": "#3c3c3c",
+            "tile": false,
+            "need_border": false,
+            "preview": "iPad_108_thumb@2x.jpg",
+            "image": "wallpaper_108_ipad@2x.jpg",
+            "style": {
+                "typing_text": "#ffffffff",
+                "typing_animation": "#ffffffff",
+                "chatevent_text": "#ffffffff",
+                "chatevent_background": "#19000000",
+                "newplate_text": "#ffffffff",
+                "newplate_background": "#19000000"
+            }
+        },
+        {
+            "id": 107,
+            "themes": [
+                "*"
+            ],
+            "color": "#1b1b1b",
+            "tile": false,
+            "need_border": false,
+            "preview": "iPad_107_thumb@2x.jpg",
+            "image": "wallpaper_107_ipad@2x.jpg",
+            "style": {
+                "typing_text": "#ffffffff",
+                "typing_animation": "#ffffffff",
+                "chatevent_text": "#ffffffff",
+                "chatevent_background": "#19000000",
+                "newplate_text": "#ffffffff",
+                "newplate_background": "#19000000"
+            }
+        },
+        {
+            "id": 89,
+            "themes": [
+                "*"
+            ],
+            "color": "#010437",
+            "tile": false,
+            "tint": "#73151f23",
+            "need_border": false,
+            "preview": "iPad_89_thumb@2x.jpg",
+            "image": "wallpaper_89_ipad@2x.jpg",
+            "style": {
+                "typing_text": "#ffffffff",
+                "typing_animation": "#ffffffff",
+                "chatevent_text": "#ffffffff",
+                "chatevent_background": "#19000000",
+                "newplate_text": "#ffffffff",
+                "newplate_background": "#19000000"
+            }
+        },
+        {
+            "id": 59,
+            "themes": [
+                "*"
+            ],
+            "color": "#fcecca",
+            "tile": false,
+            "need_border": false,
+            "preview": "iPad_59_thumb@2x.jpg",
+            "image": "wallpaper_59_ipad@2x.jpg",
+            "style": {
+                "typing_text": "#ffffffff",
+                "typing_animation": "#ffffffff",
+                "chatevent_text": "#ffffffff",
+                "chatevent_background": "#19000000",
+                "newplate_text": "#ffffffff",
+                "newplate_background": "#19000000"
+            }
+        },
+        {
+            "id": 15,
+            "themes": [
+                "*"
+            ],
+            "color": "#c5dce4",
+            "tile": false,
+            "tint": "#40c8dbe2",
+            "need_border": false,
+            "preview": "iPad_15_thumb@2x.jpg",
+            "image": "wallpaper_15_ipad@2x.jpg",
+            "style": {
+                "typing_text": "#ff000000",
+                "typing_animation": "#ff000000",
+                "chatevent_text": "#ffffffff",
+                "chatevent_background": "#19000000",
+                "newplate_text": "#ffffffff",
+                "newplate_background": "#19000000"
+            }
+        },
+        {
+            "id": 100,
+            "themes": [
+                "*"
+            ],
+            "color": "#cc286d",
+            "tile": false,
+            "tint": "#66c02164",
+            "need_border": false,
+            "preview": "iPad_100_thumb@2x.jpg",
+            "image": "wallpaper_100_ipad@2x.jpg",
+            "style": {
+                "typing_text": "#ffffffff",
+                "typing_animation": "#ffffffff",
+                "chatevent_text": "#ffffffff",
+                "chatevent_background": "#19000000",
+                "newplate_text": "#ffffffff",
+                "newplate_background": "#19000000"
+            }
+        },
+        {
+            "id": 114,
+            "themes": [
+                "*"
+            ],
+            "color": "#bac9b4",
+            "tile": false,
+            "tint": "#7f555f61",
+            "need_border": false,
+            "preview": "iPad_114_thumb@2x.jpg",
+            "image": "wallpaper_114_ipad@2x.jpg",
+            "style": {
+                "typing_text": "#ffffffff",
+                "typing_animation": "#ffffffff",
+                "chatevent_text": "#ffffffff",
+                "chatevent_background": "#19000000",
+                "newplate_text": "#ffffffff",
+                "newplate_background": "#19000000"
+            }
+        },
+        {
+            "id": 93,
+            "themes": [
+                "*"
+            ],
+            "color": "#f3f3f3",
+            "tile": false,
+            "tint": "#66d5d6d2",
+            "need_border": false,
+            "preview": "iPad_93_thumb@2x.jpg",
+            "image": "wallpaper_93_ipad@2x.jpg",
+            "style": {
+                "typing_text": "#ff542b13",
+                "typing_animation": "#ff542b13",
+                "chatevent_text": "#ffffffff",
+                "chatevent_background": "#19000000",
+                "newplate_text": "#ffffffff",
+                "newplate_background": "#19000000"
+            }
+        },
+        {
+            "id": 92,
+            "themes": [
+                "*"
+            ],
+            "color": "#deecf7",
+            "tile": false,
+            "tint": "#66e0edf6",
+            "need_border": false,
+            "preview": "iPad_92_thumb@2x.jpg",
+            "image": "wallpaper_92_ipad@2x.jpg",
+            "style": {
+                "typing_text": "#ff000000",
+                "typing_animation": "#ff000000",
+                "chatevent_text": "#ffffffff",
+                "chatevent_background": "#19000000",
+                "newplate_text": "#ffffffff",
+                "newplate_background": "#19000000"
+            }
+        },
+        {
+            "id": 2,
+            "themes": [
+                "*"
+            ],
+            "color": "#f6d497",
+            "tile": false,
+            "tint": "#73e0e0e0",
+            "need_border": false,
+            "preview": "iPad_02_thumb@2x.jpg",
+            "image": "wallpaper_02_ipad@2x.jpg",
+            "style": {
+                "typing_text": "#ff000000",
+                "typing_animation": "#ff000000",
+                "chatevent_text": "#ffffffff",
+                "chatevent_background": "#19000000",
+                "newplate_text": "#ffffffff",
+                "newplate_background": "#19000000"
+            }
+        },
+        {
+            "id": 6,
+            "themes": [
+                "*"
+            ],
+            "color": "#9ec5b2",
+            "tile": false,
+            "tint": "#73e7edd9",
+            "need_border": false,
+            "preview": "iPad_06_thumb@2x.jpg",
+            "image": "wallpaper_06_ipad@2x.jpg",
+            "style": {
+                "typing_text": "#ff000000",
+                "typing_animation": "#ff000000",
+                "chatevent_text": "#ffffffff",
+                "chatevent_background": "#19000000",
+                "newplate_text": "#ffffffff",
+                "newplate_background": "#19000000"
+            }
+        },
+        {
+            "id": 7,
+            "themes": [
+                "*"
+            ],
+            "color": "#195cab",
+            "tile": false,
+            "tint": "#4c234793",
+            "need_border": false,
+            "preview": "iPad_07_thumb@2x.jpg",
+            "image": "wallpaper_07_ipad@2x.jpg",
+            "style": {
+                "typing_text": "#ffffffff",
+                "typing_animation": "#ffffffff",
+                "chatevent_text": "#ffffffff",
+                "chatevent_background": "#19000000",
+                "newplate_text": "#ffffffff",
+                "newplate_background": "#19000000"
+            }
+        },
+        {
+            "id": 72,
+            "themes": [
+                "*"
+            ],
+            "color": "#334b4b",
+            "tile": false,
+            "tint": "#66273f2f",
+            "need_border": false,
+            "preview": "iPad_72_thumb@2x.jpg",
+            "image": "wallpaper_72_ipad@2x.jpg",
+            "style": {
+                "typing_text": "#ffffffff",
+                "typing_animation": "#ffffffff",
+                "chatevent_text": "#ffffffff",
+                "chatevent_background": "#19000000",
+                "newplate_text": "#ffffffff",
+                "newplate_background": "#19000000"
+            }
+        },
+        {
+            "id": 116,
+            "themes": [
+                "*"
+            ],
+            "color": "#dd3a04",
+            "tile": false,
+            "tint": "#4c561803",
+            "need_border": false,
+            "preview": "iPad_116_thumb@2x.jpg",
+            "image": "wallpaper_116_ipad@2x.jpg",
+            "style": {
+                "typing_text": "#ffffffff",
+                "typing_animation": "#ffffffff",
+                "chatevent_text": "#ffffffff",
+                "chatevent_background": "#19000000",
+                "newplate_text": "#ffffffff",
+                "newplate_background": "#19000000"
+            }
+        },
+        {
+            "id": 76,
+            "themes": [
+                "*"
+            ],
+            "color": "#d7eccb",
+            "tile": false,
+            "need_border": false,
+            "style": {
+                "typing_text": "#ff000000",
+                "typing_animation": "#ff000000",
+                "chatevent_text": "#ffffffff",
+                "chatevent_background": "#28000000",
+                "newplate_text": "#ffffffff",
+                "newplate_background": "#19000000"
+            }
+        },
+        {
+            "id": 94,
+            "themes": [
+              "*"
+            ],
+            "color": "#84bea6",
+            "tile": false,
+            "tint": "#1998ccb5",
+            "need_border": false,
+            "preview": "iPad_94_thumb@2x.jpg",
+            "image": "wallpaper_94_ipad@2x.jpg",
+            "style": {
+                "typing_text": "#ff000000",
+                "typing_animation": "#ff000000",
+                "chatevent_text": "#ffffffff",
+                "chatevent_background": "#19000000",
+                "newplate_text": "#ffffffff",
+                "newplate_background": "#19000000"
+            }
+        },
+        {
+            "id": 60,
+            "themes": [
+                "*"
+            ],
+            "color": "#cfe9dc",
+            "tile": false,
+            "need_border": false,
+            "preview": "iPad_60_thumb@2x.jpg",
+            "image": "wallpaper_60_ipad@2x.jpg",
+            "style": {
+                "typing_text": "#ff000000",
+                "typing_animation": "#ff000000",
+                "chatevent_text": "#ffffffff",
+                "chatevent_background": "#19000000",
+                "newplate_text": "#ffffffff",
+                "newplate_background": "#19000000"
+            }
+        },
+        {
+            "id": 35,
+            "themes": [
+                "*"
+            ],
+            "color": "#2c477c",
+            "tile": false,
+            "tint": "#4c142f65",
+            "need_border": false,
+            "preview": "iPad_35_thumb@2x.jpg",
+            "image": "wallpaper_35_ipad@2x.jpg",
+            "style": {
+                "typing_text": "#ffffffff",
+                "typing_animation": "#ffffffff",
+                "chatevent_text": "#ffffffff",
+                "chatevent_background": "#19000000",
+                "newplate_text": "#ffffffff",
+                "newplate_background": "#19000000"
+            }
+        },
+        {
+            "id": 5,
+            "themes": [
+                "*"
+            ],
+            "color": "#05b8ce",
+            "tile": false,
+            "tint": "#590095ac",
+            "need_border": false,
+            "preview": "iPad_05_thumb@2x.jpg",
+            "image": "wallpaper_05_ipad@2x.jpg",
+            "style": {
+                "typing_text": "#ffffffff",
+                "typing_animation": "#ffffffff",
+                "chatevent_text": "#ffffffff",
+                "chatevent_background": "#19000000",
+                "newplate_text": "#ffffffff",
+                "newplate_background": "#19000000"
+            }
+        },
+        {
+            "id": 77,
+            "themes": [
+                "*"
+            ],
+            "color": "#ffc8c9",
+            "tile": false,
+            "need_border": false,
+            "style": {
+                "typing_text": "#ff000000",
+                "typing_animation": "#ff000000",
+                "chatevent_text": "#ffffffff",
+                "chatevent_background": "#19000000",
+                "newplate_text": "#ffffffff",
+                "newplate_background": "#19000000"
+            }
+        },
+        {
+            "id": 8,
+            "themes": [
+                "*"
+            ],
+            "color": "#d5cfd1",
+            "tile": false,
+            "need_border": false,
+            "preview": "iPad_08_thumb@2x.jpg",
+            "image": "wallpaper_08_ipad@2x.jpg",
+            "style": {
+                "typing_text": "#ff000000",
+                "typing_animation": "#ff000000",
+                "chatevent_text": "#ffffffff",
+                "chatevent_background": "#19000000",
+                "newplate_text": "#ffffffff",
+                "newplate_background": "#19000000"
+            }
+        },
+        {
+            "id": 1000,
+            "themes": [
+                "*"
+            ],
+            "color": "#ffffff",
+            "tile": false,
+            "need_border": false,
+            "style": {
+                "typing_text": "#ff767676",
+                "typing_animation": "#ff767676",
+                "chatevent_text": "#ff999ba6",
+                "chatevent_background": "#0f000000",
+                "newplate_text": "#ff999ba6",
+                "newplate_background": "#0f000000"
+            }
+        },
+        {
+            "id": 1001,
+            "themes": [
+                "*"
+            ],
+            "color": "#F0F3F5",
+            "tile": false,
+            "need_border": false,
+            "style": {
+                "typing_text": "#838690",
+                "typing_animation": "#838690",
+                "chatevent_text": "#838690",
+                "chatevent_background": "#0d000000",
+                "newplate_text": "#838690",
+                "newplate_background": "#0d000000"
+            }
+        },
+        {
+            "id": 1002,
+            "themes": [
+                "*"
+            ],
+            "color": "#21222a",
+            "tile": false,
+            "need_border": false,
+            "style": {
+                "typing_text": "#7e848f",
+                "typing_animation": "#7e848f",
+                "chatevent_text": "#7e848f",
+                "chatevent_background": "#0d000000",
+                "newplate_text": "#7e848f",
+                "newplate_background": "#3c3d48"
+            }
+        },
+        {
+            "id": 1003,
+            "themes": [
+                "*"
+            ],
+            "color": "#ffffff",
+            "tile": true,
+            "need_border": false,
+            "preview": "iPad_1003_thumb@2x.jpg",
+            "image": "wallpaper_1003_ipad@2x.jpg",
+            "style": {
+                "typing_text": "#ff767676",
+                "typing_animation": "#ff767676",
+                "chatevent_text": "#ff999ba6",
+                "chatevent_background": "#0f000000",
+                "newplate_text": "#ff999ba6",
+                "newplate_background": "#0f000000"
+            }
+        },
+		{
+            "id": 1004,
+            "themes": [
+                "*"
+            ],
+            "color": "#f0f3f5",
+            "tile": false,
+            "need_border": false,
+            "style": {
+                "typing_text": "#838690",
+                "typing_animation": "#838690",
+                "chatevent_text": "#838690",
+                "chatevent_background": "#0d000000",
+                "newplate_text": "#838690",
+                "newplate_background": "#0d000000"
+            }
+        }
+    ],
+    "base_url": "https://c.icq.com/images/wallpapers/"
+}

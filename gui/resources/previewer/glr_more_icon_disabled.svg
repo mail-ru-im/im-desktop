@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="40" height="40" viewBox="0 0 40 40">
+  <defs>
+    <path id="glr_more_icon_disabled-a" d="M17,4.4 C15.840202,4.4 14.9,3.459798 14.9,2.3 C14.9,1.140202 15.840202,0.2 17,0.2 C18.159798,0.2 19.1,1.140202 19.1,2.3 C19.1,3.459798 18.159798,4.4 17,4.4 Z M3,4.4 C1.84020203,4.4 0.9,3.459798 0.9,2.3 C0.9,1.140202 1.84020203,0.2 3,0.2 C4.15979797,0.2 5.1,1.140202 5.1,2.3 C5.1,3.459798 4.15979797,4.4 3,4.4 Z M10,4.4 C8.840202,4.4 7.9,3.459798 7.9,2.3 C7.9,1.140202 8.840202,0.2 10,0.2 C11.159798,0.2 12.1,1.140202 12.1,2.3 C12.1,3.459798 11.159798,4.4 10,4.4 Z"/>
+  </defs>
+  <g fill="none" fill-rule="evenodd">
+    <circle cx="20" cy="20" r="20" fill="#FFF" fill-opacity=".054" fill-rule="nonzero"/>
+    <g transform="translate(10 17)">
+      <use fill="#FFF" fill-opacity=".253" xlink:href="#glr_more_icon_disabled-a"/>
+    </g>
+  </g>
+</svg>

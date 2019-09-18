@@ -1,0 +1,536 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{36624E0B-2BA0-4817-802F-33C22F6D3EEA}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <RootNamespace>core</RootNamespace>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v110</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v110</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v110_xp</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v110_xp</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <IntDir>release\</IntDir>
+    <OutDir>..\lib\</OutDir>
+    <IncludePath>..\external\windows\boost\include;..\external\zlib\include;$(IncludePath)</IncludePath>
+    <LibraryPath>$(LibraryPath)</LibraryPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <IncludePath>%BOOST_INCLUDE%;$(IncludePath)</IncludePath>
+    <LibraryPath>$(LibraryPath)</LibraryPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <OutDir>..\lib\</OutDir>
+    <IntDir>debug\</IntDir>
+    <TargetName>$(ProjectName)d</TargetName>
+    <IncludePath>..\external\windows\boost\include;..\external\zlib\include;$(IncludePath)</IncludePath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <TargetName>$(ProjectName)d</TargetName>
+    <IncludePath>%BOOST_INCLUDE%;$(IncludePath)</IncludePath>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_LIB;CURL_STATICLIB;RAPIDJSON_HAS_STDSTRING=1;_VARIADIC_MAX=6;_SCL_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <SDLCheck>true</SDLCheck>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <AdditionalIncludeDirectories>../external/openssl;../external/rapidjson-master/include</AdditionalIncludeDirectories>
+      <AdditionalOptions>-Zm512 %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_LIB;CURL_STATICLIB;RAPIDJSON_HAS_STDSTRING=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <SDLCheck>true</SDLCheck>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <AdditionalIncludeDirectories>../external/openssl;../external/rapidjson-master/include</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_LIB;CURL_STATICLIB;RAPIDJSON_HAS_STDSTRING=1;_VARIADIC_MAX=6;_SCL_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <SDLCheck>true</SDLCheck>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <AdditionalIncludeDirectories>../external/openssl;../external/rapidjson-master/include;../external/zlib/include;</AdditionalIncludeDirectories>
+      <AdditionalOptions>-Zm512 %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalDependencies>..\external\curl\lib\libcurl.lib;..\external\libjson\lib\libjson.lib;..\external\openssl\libeay32.lib;..\external\openssl\ssleay32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+    <Lib>
+      <AdditionalLibraryDirectories>
+      </AdditionalLibraryDirectories>
+    </Lib>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <Optimization>Disabled</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_LIB;CURL_STATICLIB;RAPIDJSON_HAS_STDSTRING=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <SDLCheck>true</SDLCheck>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <AdditionalIncludeDirectories>../external/openssl;../external/rapidjson-master/include</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalDependencies>..\external\curl\lib\libcurl.lib;..\external\libjson\lib\libjson.lib;..\external\openssl\libeay32.lib;..\external\openssl\ssleay32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+    <Lib>
+      <AdditionalLibraryDirectories>
+      </AdditionalLibraryDirectories>
+    </Lib>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <Text Include="ReadMe.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\common.shared\common_defs.h" />
+    <ClInclude Include="..\common.shared\crash_handler.h" />
+    <ClInclude Include="..\common.shared\common_crash_sender.h" />
+    <ClInclude Include="..\common.shared\keys.h" />
+    <ClInclude Include="archive\image_cache.h" />
+    <ClInclude Include="archive\opened_dialog.h" />
+    <ClInclude Include="configuration\app_config.h" />
+    <ClInclude Include="connections\wim\active_dialogs.h" />
+    <ClInclude Include="archive\errors.h" />
+    <ClInclude Include="archive\message_flags.h" />
+    <ClInclude Include="archive\options.h" />
+    <ClInclude Include="connections\wim\auth_parameters.h" />
+    <ClInclude Include="connections\wim\avatar_loader.h" />
+    <ClInclude Include="async_task.h" />
+    <ClInclude Include="connections\base_im.h" />
+    <ClInclude Include="connections\wim\chat_info.h" />
+    <ClInclude Include="connections\wim\events\fetch_event.h" />
+    <ClInclude Include="connections\wim\events\fetch_event_buddy_list.h" />
+    <ClInclude Include="connections\wim\events\fetch_event_diff.h" />
+    <ClInclude Include="connections\wim\events\fetch_event_dlg_state.h" />
+    <ClInclude Include="connections\wim\events\fetch_event_hidden_chat.h" />
+    <ClInclude Include="connections\wim\events\fetch_event_imstate.h" />
+    <ClInclude Include="connections\wim\events\fetch_event_my_info.h" />
+    <ClInclude Include="connections\wim\events\fetch_event_permit.h" />
+    <ClInclude Include="connections\wim\events\fetch_event_presence.h" />
+    <ClInclude Include="connections\wim\events\fetch_event_typing.h" />
+    <ClInclude Include="connections\wim\events\fetch_event_user_added_to_buddy_list.h" />
+    <ClInclude Include="connections\wim\events\webrtc.h" />
+    <ClInclude Include="connections\wim\dialog_holes.h" />
+    <ClInclude Include="connections\wim\favorites.h" />
+    <ClInclude Include="disk_cache\cache_entity.h" />
+    <ClInclude Include="disk_cache\disk_cache.h" />
+    <ClInclude Include="disk_cache\cache_filename.h" />
+    <ClInclude Include="disk_cache\dir_cache.h" />
+    <ClInclude Include="disk_cache\cache_entity_type.h" />
+    <ClInclude Include="disk_cache\cache_garbage_collector.h" />
+    <ClInclude Include="connections\wim\loader\generic_loader_task.h" />
+    <ClInclude Include="connections\wim\loader\image_download_task.h" />
+    <ClInclude Include="connections\wim\loader\image_preview_download_task.h" />
+    <ClInclude Include="connections\wim\loader\loader_errors.h" />
+    <ClInclude Include="connections\wim\loader\loader_handlers.h" />
+    <ClInclude Include="connections\wim\loader\loader_helpers.h" />
+    <ClInclude Include="connections\wim\loader\loader_task.h" />
+    <ClInclude Include="connections\wim\loader\link_metainfo_download_task.h" />
+    <ClInclude Include="connections\wim\loader\preview_proxy.h" />
+    <ClInclude Include="connections\wim\loader\snap_metainfo.h" />
+    <ClInclude Include="connections\wim\loader\snap_metainfo_download_task.h" />
+    <ClInclude Include="connections\wim\my_info.h" />
+    <ClInclude Include="connections\wim\packets\add_buddy.h" />
+    <ClInclude Include="connections\wim\packets\add_chat.h" />
+    <ClInclude Include="connections\wim\packets\add_members.h" />
+    <ClInclude Include="connections\wim\packets\block_chat_member.h" />
+    <ClInclude Include="connections\wim\packets\del_history.h" />
+    <ClInclude Include="connections\wim\packets\del_message.h" />
+    <ClInclude Include="connections\wim\packets\attach_phone.h" />
+    <ClInclude Include="connections\wim\packets\attach_uin.h" />
+    <ClInclude Include="connections\wim\packets\end_session.h" />
+    <ClInclude Include="connections\wim\packets\get_chat_blocked.h" />
+    <ClInclude Include="connections\wim\packets\get_chat_home.h" />
+    <ClInclude Include="connections\wim\packets\get_chat_pending.h" />
+    <ClInclude Include="connections\wim\packets\get_flags.h" />
+    <ClInclude Include="connections\wim\packets\get_permit_deny.h" />
+    <ClInclude Include="connections\wim\packets\get_themes_index.h" />
+    <ClInclude Include="connections\wim\packets\join_chat_alpha.h" />
+    <ClInclude Include="connections\wim\packets\mod_chat_alpha.h" />
+    <ClInclude Include="connections\wim\packets\mod_chat_member_alpha.h" />
+    <ClInclude Include="connections\wim\packets\mute_buddy.h" />
+    <ClInclude Include="connections\wim\packets\phoneinfo.h" />
+    <ClInclude Include="connections\wim\packets\remove_members.h" />
+    <ClInclude Include="connections\wim\packets\client_login.h" />
+    <ClInclude Include="connections\wim\packets\fetch.h" />
+    <ClInclude Include="connections\wim\packets\gen_robusto_token.h" />
+    <ClInclude Include="connections\wim\packets\get_chat_info.h" />
+    <ClInclude Include="connections\wim\packets\get_file_meta_info.h" />
+    <ClInclude Include="connections\wim\packets\get_gateway.h" />
+    <ClInclude Include="connections\wim\packets\get_history.h" />
+    <ClInclude Include="connections\wim\packets\get_sms_code.h" />
+    <ClInclude Include="connections\wim\packets\get_stickers_index.h" />
+    <ClInclude Include="connections\wim\packets\hide_chat.h" />
+    <ClInclude Include="connections\wim\packets\load_file.h" />
+    <ClInclude Include="connections\wim\packets\login_by_phone.h" />
+    <ClInclude Include="connections\wim\packets\remove_buddy.h" />
+    <ClInclude Include="connections\wim\packets\modify_chat.h" />
+    <ClInclude Include="connections\wim\packets\request_avatar.h" />
+    <ClInclude Include="connections\wim\packets\resolve_pending.h" />
+    <ClInclude Include="connections\wim\packets\robusto_add_client.h" />
+    <ClInclude Include="connections\wim\packets\search_contacts.h" />
+    <ClInclude Include="connections\wim\packets\search_contacts2.h" />
+    <ClInclude Include="connections\wim\packets\send_feedback.h" />
+    <ClInclude Include="connections\wim\packets\send_file.h" />
+    <ClInclude Include="connections\wim\packets\send_imstat.h" />
+    <ClInclude Include="connections\wim\packets\send_message.h" />
+    <ClInclude Include="connections\wim\packets\send_message_typing.h" />
+    <ClInclude Include="connections\wim\packets\set_avatar.h" />
+    <ClInclude Include="connections\wim\packets\set_buddy_attribute.h" />
+    <ClInclude Include="connections\wim\packets\set_dlg_state.h" />
+    <ClInclude Include="connections\wim\packets\set_permit_deny.h" />
+    <ClInclude Include="connections\wim\packets\set_state.h" />
+    <ClInclude Include="connections\wim\packets\set_timezone.h" />
+    <ClInclude Include="connections\wim\packets\snap_viewed.h" />
+    <ClInclude Include="connections\wim\packets\spam_report.h" />
+    <ClInclude Include="connections\wim\packets\speech_to_text.h" />
+    <ClInclude Include="connections\wim\packets\start_session.h" />
+    <ClInclude Include="archive\history_patch.h" />
+    <ClInclude Include="connections\wim\packets\update_profile.h" />
+    <ClInclude Include="connections\wim\packets\wim_webrtc.h" />
+    <ClInclude Include="connections\wim\permit_info.h" />
+    <ClInclude Include="connections\wim\robusto_packet.h" />
+    <ClInclude Include="connections\wim\search_contacts_response.h" />
+    <ClInclude Include="connections\wim\wim_contactlist_cache.h" />
+    <ClInclude Include="connections\wim\wim_packet.h" />
+    <ClInclude Include="archive\contact_archive.h" />
+    <ClInclude Include="archive\archive_index.h" />
+    <ClInclude Include="archive\messages_data.h" />
+    <ClInclude Include="connections\contact_profile.h" />
+    <ClInclude Include="core.h" />
+    <ClInclude Include="connections\im_container.h" />
+    <ClInclude Include="connections\login_info.h" />
+    <ClInclude Include="core_settings.h" />
+    <ClInclude Include="archive\local_history.h" />
+    <ClInclude Include="archive\history_message.h" />
+    <ClInclude Include="archive\dlg_state.h" />
+    <ClInclude Include="connections\wim\loader\fs_loader_task.h" />
+    <ClInclude Include="connections\wim\loader\download_task.h" />
+    <ClInclude Include="connections\search_contacts_params.h" />
+    <ClInclude Include="connections\wim\stat\imstat.h" />
+    <ClInclude Include="connections\im_login.h" />
+    <ClInclude Include="masks\masks.h" />
+    <ClInclude Include="connections\wim\imstate.h" />
+    <ClInclude Include="namespaces.h" />
+    <ClInclude Include="network_log.h" />
+    <ClInclude Include="proxy_settings.h" />
+    <ClInclude Include="stickers\stickers.h" />
+    <ClInclude Include="tools\binary_stream.h" />
+    <ClInclude Include="tools\binary_stream_reader.h" />
+    <ClInclude Include="tools\coretime.h" />
+    <ClInclude Include="crash_sender.h" />
+    <ClInclude Include="tools\file_sharing.h" />
+    <ClInclude Include="tools\md5.h" />
+    <ClInclude Include="tools\fast_binary_stream.h" />
+    <ClInclude Include="gui_settings.h" />
+    <ClInclude Include="connections\wim\loader\loader.h" />
+    <ClInclude Include="log\log.h" />
+    <ClInclude Include="main_thread.h" />
+    <ClInclude Include="archive\not_sent_messages.h" />
+    <ClInclude Include="profiling\profiler.h" />
+    <ClInclude Include="scheduler.h" />
+    <ClInclude Include="archive\storage.h" />
+    <ClInclude Include="tools\scope.h" />
+    <ClInclude Include="tools\settings.h" />
+    <ClInclude Include="tools\strings.h" />
+    <ClInclude Include="statistics.h" />
+    <ClInclude Include="tools\system.h" />
+    <ClInclude Include="tools\time.h" />
+    <ClInclude Include="tools\hmac_sha_base64.h" />
+    <ClInclude Include="http_request.h" />
+    <ClInclude Include="tools\threadpool.h" />
+    <ClInclude Include="tools\semaphore.h" />
+    <ClInclude Include="themes\theme_settings.h" />
+    <ClInclude Include="themes\themes.h" />
+    <ClInclude Include="stdafx.h" />
+    <ClInclude Include="targetver.h" />
+    <ClInclude Include="connections\wim\wim_im.h" />
+    <ClInclude Include="connections\wim\loader\upload_task.h" />
+    <ClInclude Include="tools\tlv.h" />
+    <ClInclude Include="tools\url_parser.h" />
+    <ClInclude Include="tools\win32\dll.h" />
+    <ClInclude Include="updater\updater.h" />
+    <ClInclude Include="utils.h" />
+    <ClInclude Include="connections\wim\packets\normalize_phone.h" />
+    <ClInclude Include="Voip\call_busy.h" />
+    <ClInclude Include="Voip\call_connected.h" />
+    <ClInclude Include="Voip\call_dial.h" />
+    <ClInclude Include="Voip\call_end.h" />
+    <ClInclude Include="Voip\call_hold.h" />
+    <ClInclude Include="Voip\call_incoming.h" />
+    <ClInclude Include="Voip\call_start.h" />
+    <ClInclude Include="Voip\VoipManager.h" />
+    <ClInclude Include="Voip\VoipManagerDefines.h" />
+    <ClInclude Include="Voip\VoipProtocol.h" />
+    <ClInclude Include="Voip\VoipSerialization.h" />
+    <ClInclude Include="connections\wim\wim_history.h" />
+    <ClInclude Include="connections\wim\loader\web_file_info.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\common.shared\common_defs.cpp" />
+    <ClCompile Include="..\common.shared\crash_handler.cpp" />
+    <ClCompile Include="..\common.shared\crash_sender_utils.cpp" />
+    <ClCompile Include="archive\image_cache.cpp" />
+    <ClCompile Include="configuration\app_config.cpp" />
+    <ClCompile Include="connections\wim\active_dialogs.cpp" />
+    <ClCompile Include="connections\wim\events\fetch_event_imstate.cpp" />
+    <ClCompile Include="connections\wim\favorites.cpp" />
+    <ClCompile Include="connections\wim\auth_parameters.cpp" />
+    <ClCompile Include="connections\wim\chat_info.cpp" />
+    <ClCompile Include="connections\wim\avatar_loader.cpp" />
+    <ClCompile Include="async_task.cpp" />
+    <ClCompile Include="connections\base_im.cpp" />
+    <ClCompile Include="connections\wim\events\fetch_event_buddy_list.cpp" />
+    <ClCompile Include="connections\wim\events\fetch_event_dlg_state.cpp" />
+    <ClCompile Include="connections\wim\events\fetch_event_hidden_chat.cpp" />
+    <ClCompile Include="connections\wim\events\fetch_event_permit.cpp" />
+    <ClCompile Include="connections\wim\events\fetch_event_presence.cpp" />
+    <ClCompile Include="connections\wim\events\fetch_event_diff.cpp" />
+    <ClCompile Include="connections\wim\events\fetch_event_my_info.cpp" />
+    <ClCompile Include="connections\wim\events\fetch_event_typing.cpp" />
+    <ClCompile Include="connections\wim\events\fetch_event_user_added_to_buddy_list.cpp" />
+    <ClCompile Include="connections\wim\events\webrtc.cpp" />
+    <ClInclude Include="connections\wim\loader\tasks_runner_slot.h">
+      <FileType>CppCode</FileType>
+    </ClInclude>
+    <ClCompile Include="connections\wim\loader\tasks_runner_slot.cpp" />
+    <ClCompile Include="disk_cache\cache_entity.cpp" />
+    <ClCompile Include="disk_cache\disk_cache.cpp" />
+    <ClCompile Include="disk_cache\dir_cache.cpp" />
+    <ClCompile Include="disk_cache\cache_entity_type.cpp" />
+    <ClCompile Include="disk_cache\cache_garbage_collector.cpp" />
+    <ClCompile Include="connections\wim\loader\generic_loader_task.cpp" />
+    <ClCompile Include="connections\wim\loader\image_download_task.cpp" />
+    <ClCompile Include="connections\wim\loader\image_preview_download_task.cpp" />
+    <ClCompile Include="connections\wim\loader\loader_handlers.cpp" />
+    <ClCompile Include="connections\wim\loader\loader_helpers.cpp" />
+    <ClCompile Include="connections\wim\loader\link_metainfo_download_task.cpp" />
+    <ClCompile Include="connections\wim\loader\loader_task.cpp" />
+    <ClCompile Include="connections\wim\loader\preview_proxy.cpp" />
+    <ClCompile Include="connections\wim\loader\snap_metainfo.cpp" />
+    <ClCompile Include="connections\wim\loader\snap_metainfo_download_task.cpp" />
+    <ClCompile Include="connections\wim\packets\add_buddy.cpp" />
+    <ClCompile Include="connections\wim\packets\add_chat.cpp" />
+    <ClCompile Include="connections\wim\packets\add_members.cpp" />
+    <ClCompile Include="connections\wim\packets\block_chat_member.cpp" />
+    <ClCompile Include="connections\wim\packets\del_history.cpp" />
+    <ClCompile Include="connections\wim\packets\del_message.cpp" />
+    <ClCompile Include="connections\wim\packets\attach_phone.cpp" />
+    <ClCompile Include="connections\wim\packets\attach_uin.cpp" />
+    <ClCompile Include="connections\wim\packets\end_session.cpp" />
+    <ClCompile Include="connections\wim\packets\get_chat_blocked.cpp" />
+    <ClCompile Include="connections\wim\packets\get_chat_home.cpp" />
+    <ClCompile Include="connections\wim\packets\get_chat_pending.cpp" />
+    <ClCompile Include="connections\wim\packets\get_flags.cpp" />
+    <ClCompile Include="connections\wim\packets\get_themes_index.cpp" />
+    <ClCompile Include="connections\wim\packets\get_permit_deny.cpp" />
+    <ClCompile Include="connections\wim\packets\join_chat_alpha.cpp" />
+    <ClCompile Include="archive\history_patch.cpp" />
+    <ClCompile Include="connections\wim\packets\mod_chat_alpha.cpp" />
+    <ClCompile Include="connections\wim\packets\mod_chat_member_alpha.cpp" />
+    <ClCompile Include="connections\wim\packets\phoneinfo.cpp" />
+    <ClCompile Include="connections\wim\packets\remove_members.cpp" />
+    <ClCompile Include="connections\wim\packets\client_login.cpp" />
+    <ClCompile Include="connections\wim\packets\fetch.cpp" />
+    <ClCompile Include="connections\wim\packets\gen_robusto_token.cpp" />
+    <ClCompile Include="connections\wim\packets\get_file_meta_info.cpp" />
+    <ClCompile Include="connections\wim\packets\get_gateway.cpp" />
+    <ClCompile Include="connections\wim\packets\get_history.cpp" />
+    <ClCompile Include="connections\wim\packets\get_sms_code.cpp" />
+    <ClCompile Include="connections\wim\packets\get_chat_info.cpp" />
+    <ClCompile Include="connections\wim\packets\get_stickers_index.cpp" />
+    <ClCompile Include="connections\wim\packets\hide_chat.cpp" />
+    <ClCompile Include="connections\wim\packets\load_file.cpp" />
+    <ClCompile Include="connections\wim\packets\login_by_phone.cpp" />
+    <ClCompile Include="connections\wim\packets\remove_buddy.cpp" />
+    <ClCompile Include="connections\wim\packets\mute_buddy.cpp" />
+    <ClCompile Include="connections\wim\packets\modify_chat.cpp" />
+    <ClCompile Include="connections\wim\packets\request_avatar.cpp" />
+    <ClCompile Include="connections\wim\packets\resolve_pending.cpp" />
+    <ClCompile Include="connections\wim\packets\robusto_add_client.cpp" />
+    <ClCompile Include="connections\wim\packets\search_contacts.cpp" />
+    <ClCompile Include="connections\wim\packets\search_contacts2.cpp" />
+    <ClCompile Include="connections\wim\packets\send_feedback.cpp" />
+    <ClCompile Include="connections\wim\packets\send_file.cpp" />
+    <ClCompile Include="connections\wim\packets\send_imstat.cpp" />
+    <ClCompile Include="connections\wim\packets\send_message.cpp" />
+    <ClCompile Include="connections\wim\packets\send_message_typing.cpp" />
+    <ClCompile Include="connections\wim\packets\set_avatar.cpp" />
+    <ClCompile Include="connections\wim\packets\set_buddy_attribute.cpp" />
+    <ClCompile Include="connections\wim\packets\set_dlg_state.cpp" />
+    <ClCompile Include="connections\wim\packets\set_permit_deny.cpp" />
+    <ClCompile Include="connections\wim\packets\set_state.cpp" />
+    <ClCompile Include="connections\wim\packets\set_timezone.cpp" />
+    <ClCompile Include="connections\wim\packets\snap_viewed.cpp" />
+    <ClCompile Include="connections\wim\packets\spam_report.cpp" />
+    <ClCompile Include="connections\wim\packets\speech_to_text.cpp" />
+    <ClCompile Include="connections\wim\packets\start_session.cpp" />
+    <ClCompile Include="connections\wim\packets\update_profile.cpp" />
+    <ClCompile Include="connections\wim\packets\wim_webrtc.cpp" />
+    <ClCompile Include="connections\wim\permit_info.cpp" />
+    <ClCompile Include="connections\wim\robusto_packet.cpp" />
+    <ClCompile Include="connections\wim\search_contacts_response.cpp" />
+    <ClCompile Include="connections\wim\wim_contactlist_cache.cpp" />
+    <ClCompile Include="connections\wim\wim_packet.cpp" />
+    <ClCompile Include="connections\wim\my_info.cpp" />
+    <ClCompile Include="archive\contact_archive.cpp" />
+    <ClCompile Include="archive\archive_index.cpp" />
+    <ClCompile Include="archive\messages_data.cpp" />
+    <ClCompile Include="archive\opened_dialog.cpp" />
+    <ClCompile Include="connections\contact_profile.cpp" />
+    <ClCompile Include="core.cpp" />
+    <ClCompile Include="connections\im_container.cpp" />
+    <ClCompile Include="connections\login_info.cpp" />
+    <ClCompile Include="core_settings.cpp" />
+    <ClCompile Include="archive\dlg_state.cpp" />
+    <ClCompile Include="connections\wim\loader\fs_loader_task.cpp" />
+    <ClCompile Include="connections\wim\loader\download_task.cpp" />
+    <ClCompile Include="connections\search_contacts_params.cpp" />
+    <ClCompile Include="connections\wim\stat\imstat.cpp" />
+    <ClCompile Include="connections\im_login.cpp" />
+    <ClCompile Include="masks\masks.cpp" />
+    <ClCompile Include="connections\wim\imstate.cpp" />
+    <ClCompile Include="network_log.cpp" />
+    <ClCompile Include="proxy_settings.cpp" />
+    <ClCompile Include="stickers\stickers.cpp" />
+    <ClCompile Include="tools\binary_stream.cpp" />
+    <ClCompile Include="tools\binary_stream_reader.cpp" />
+    <ClCompile Include="tools\coretime.cpp" />
+    <ClCompile Include="crash_sender.cpp" />
+    <ClCompile Include="tools\file_sharing.cpp" />
+    <ClCompile Include="tools\md5.cpp" />
+    <ClCompile Include="tools\fast_binary_stream.cpp" />
+    <ClCompile Include="gui_settings.cpp" />
+    <ClCompile Include="archive\local_history.cpp" />
+    <ClCompile Include="archive\history_message.cpp" />
+    <ClCompile Include="connections\wim\loader\loader.cpp" />
+    <ClCompile Include="log\log.cpp" />
+    <ClCompile Include="main_thread.cpp" />
+    <ClCompile Include="archive\not_sent_messages.cpp" />
+    <ClCompile Include="profiling\profiler.cpp" />
+    <ClCompile Include="scheduler.cpp" />
+    <ClCompile Include="archive\storage.cpp" />
+    <ClCompile Include="tools\settings.cpp" />
+    <ClCompile Include="tools\strings.cpp" />
+    <ClCompile Include="statistics.cpp" />
+    <ClCompile Include="tools\system.win32.cpp" />
+    <ClCompile Include="tools\hmac_sha_base64.cpp" />
+    <ClCompile Include="http_request.cpp" />
+    <ClCompile Include="tools\system_common.cpp" />
+    <ClCompile Include="tools\threadpool.cpp" />
+    <ClCompile Include="tools\semaphore.cpp" />
+    <ClCompile Include="themes\theme_settings.cpp" />
+    <ClCompile Include="themes\themes.cpp" />
+    <ClCompile Include="stdafx.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="connections\wim\wim_im.cpp" />
+    <ClCompile Include="connections\wim\loader\upload_task.cpp" />
+    <ClCompile Include="tools\tlv.cpp" />
+    <ClCompile Include="tools\url_parser.cpp" />
+    <ClCompile Include="tools\win32\dll.cpp" />
+    <ClCompile Include="updater\updater.cpp" />
+    <ClCompile Include="utils.cpp" />
+    <ClCompile Include="connections\wim\packets\normalize_phone.cpp" />
+    <ClCompile Include="Voip\VoipManager.cpp" />
+    <ClCompile Include="connections\wim\wim_history.cpp" />
+    <ClCompile Include="connections\wim\loader\web_file_info.cpp" />
+    <ClCompile Include="Voip\VoipProtocol.cpp" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

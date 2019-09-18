@@ -1,0 +1,5 @@
+LIBRARY "corelib.dll"
+
+EXPORTS
+	get_core_instance
+	init_crash_handlers

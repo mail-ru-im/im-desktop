@@ -1,0 +1,396 @@
+Ui--DialogPlayer
+{
+    background-color: #000000;
+    border: none;
+}
+
+QWidget#control_panel_gradient[mode="dialog"]
+{
+    border-bottom-right-radius: 8dip;
+    border-bottom-left-radius: 8dip;
+    border-image: url(:/videoplayer/gradient_a_100);
+}
+
+QWidget#control_panel_gradient[mode="window"]
+{
+    border-image: url(:/videoplayer/gradient_a_100);
+    border-radius: 0;
+}
+
+
+QWidget#control_panel_gradient[mode="full_screen"]
+{
+    border-image: url(:/videoplayer/gradient_b_100);
+    border-radius: 0;
+}
+
+
+Ui--VideoPlayerControlPanel
+{
+}
+
+Ui--VideoPlayerControlPanel[mode="common"]
+{
+}
+
+Ui--VideoPlayerControlPanel[mode="window"]
+{
+}
+
+Ui--VideoPlayerControlPanel[mode="dialog"]
+{
+    border-radius: 8dip;
+}
+
+Ui--VideoPlayerControlPanel[mode="full_screen"]
+{
+}
+
+QWidget#VideoTimeProgress[mode="dialog"]
+{
+    color: #ffffff;
+    font-size: 14dip;
+    font-family: "%FONT_FAMILY_MEDIUM%";
+    font-weight: %FONT_FAMILY_MEDIUM%;
+}
+
+QWidget#VideoTimeProgress[mode="window"]
+{
+    color: #ffffff;
+    font-size: 14dip;
+    font-family: "%FONT_FAMILY_MEDIUM%";
+    font-weight: %FONT_FAMILY_MEDIUM%;
+}
+
+
+QWidget#VideoTimeProgress[mode="full_screen"]
+{
+    color: #ffffff;
+    font-size: 18dip;
+    font-family: "%FONT_FAMILY_MEDIUM%";
+    font-weight: %FONT_FAMILY_MEDIUM%;
+}
+
+QSlider#VideoProgressSlider::groove:horizontal[mode="dialog"]
+{
+    background: transparent;
+    height: 4dip;
+}
+
+QSlider#VideoProgressSlider::groove:horizontal[mode="window"]
+{
+    background: transparent;
+    height: 4dip;
+}
+
+
+QSlider#VideoProgressSlider::groove:horizontal[mode="full_screen"]
+{
+    background: transparent;
+    height: 8dip;
+}
+
+QSlider#VideoProgressSlider::sub-page:horizontal[mode="dialog"]
+{
+    border: none;
+    height: 4dip;
+    background: rgba(87,158,28,100%);
+    border-radius: 2dip;
+}
+
+QSlider#VideoProgressSlider::sub-page:horizontal[mode="window"]
+{
+    border: none;
+    height: 4dip;
+    background: rgba(87,158,28,100%);
+    border-radius: 2dip;
+}
+
+
+QSlider#VideoProgressSlider::sub-page:horizontal[mode="full_screen"]
+{
+    border: none;
+    height: 8dip;
+    background: rgba(87,158,28,100%);
+    border-radius: 4dip;
+}
+
+QSlider#VideoProgressSlider::add-page:horizontal[mode="dialog"]
+{
+    border: none;
+    height: 8dip;
+    background: rgba(255,255,255,40%);
+    border-radius: 2dip;
+}
+
+QSlider#VideoProgressSlider::add-page:horizontal[mode="window"]
+{
+    border: none;
+    height: 8dip;
+    background: rgba(255,255,255,40%);
+    border-radius: 2dip;
+}
+
+
+QSlider#VideoProgressSlider::add-page:horizontal[mode="full_screen"]
+{
+    border: none;
+    height: 8dip;
+    background: rgba(255,255,255,40%);
+    border-radius: 4dip;
+}
+
+QSlider#VideoProgressSlider::handle:horizontal[mode="dialog"]
+{
+    image: url(:/videoplayer/slider_100);
+    width: 12dip;
+    height: 12dip;
+    margin-top: -6dip;
+    margin-bottom: -6dip;
+}
+
+QSlider#VideoProgressSlider::handle:horizontal[mode="window"]
+{
+    image: url(:/videoplayer/slider_100);
+    width: 12dip;
+    height: 12dip;
+    margin-top: -6dip;
+    margin-bottom: -6dip;
+}
+
+
+QSlider#VideoProgressSlider::handle:horizontal[mode="full_screen"]
+{
+    image: url(:/videoplayer/slider_big_100);
+    width: 24dip;
+    height: 24dip;
+    margin-top: -12dip;
+    margin-bottom: -12dip;
+}
+
+QSlider#VideoProgressSlider::handle:horizontal:hover[mode="dialog"]
+{
+}
+
+QSlider#VideoProgressSlider::handle:horizontal:hover[mode="window"]
+{
+}
+
+QSlider#VideoProgressSlider::handle:horizontal:hover[mode="full_screen"]
+{
+}
+
+QSlider#VideoProgressSlider::handle:horizontal:pressed[mode="dialog"]
+{
+}
+
+QSlider#VideoProgressSlider::handle:horizontal:pressed[mode="window"]
+{
+}
+
+
+QSlider#VideoProgressSlider::handle:horizontal:pressed[mode="full_screen"]
+{
+}
+
+QSlider#VideoVolumeSlider::groove:vertical[mode="dialog"]
+{
+    background: transparent;
+    width: 4dip;
+}
+
+
+QSlider#VideoVolumeSlider::groove:vertical[mode="window"]
+{
+    background: transparent;
+    width: 4dip;
+}
+
+
+QSlider#VideoVolumeSlider::groove:vertical[mode="full_screen"]
+{
+    background: transparent;
+    width: 8dip;
+}
+
+QSlider#VideoVolumeSlider::add-page:vertical[mode="dialog"]
+{
+    background: rgba(87,158,28,100%);
+    border: none;
+    width: 4dip;
+    border-radius: 2dip;
+}
+
+QSlider#VideoVolumeSlider::add-page:vertical[mode="window"]
+{
+    background: rgba(87,158,28,100%);
+    border: none;
+    width: 4dip;
+    border-radius: 2dip;
+}
+
+
+QSlider#VideoVolumeSlider::add-page:vertical[mode="full_screen"]
+{
+    background: rgba(87,158,28,100%);
+    border: none;
+    width: 8dip;
+    border-radius: 4dip;
+}
+
+QSlider#VideoVolumeSlider::sub-page:vertical[mode="dialog"]
+{
+    background: rgba(255,255,255,40%);
+    border: none;
+    width: 4dip;
+    border-radius: 2dip;
+}
+
+
+QSlider#VideoVolumeSlider::sub-page:vertical[mode="window"]
+{
+    background: rgba(255,255,255,40%);
+    border: none;
+    width: 4dip;
+    border-radius: 2dip;
+}
+
+
+QSlider#VideoVolumeSlider::sub-page:vertical[mode="full_screen"]
+{
+    background: rgba(255,255,255,40%);
+    border: none;
+    width: 8dip;
+    border-radius: 4dip;
+}
+
+QSlider#VideoVolumeSlider::handle:vertical[mode="dialog"]
+{
+    image: url(:/videoplayer/slider_100);
+    width: 12dip;
+    height: 12dip;
+    margin-left: -6dip;
+    margin-right: -6dip;
+}
+
+QSlider#VideoVolumeSlider::handle:vertical[mode="window"]
+{
+    image: url(:/videoplayer/slider_100);
+    width: 12dip;
+    height: 12dip;
+    margin-left: -6dip;
+    margin-right: -6dip;
+}
+
+
+QSlider#VideoVolumeSlider::handle:vertical[mode="full_screen"]
+{
+    image: url(:/videoplayer/slider_big_100);
+    width: 24dip;
+    height: 24dip;
+    margin-left: -12dip;
+    margin-right: -12dip;
+}
+
+QSlider#VideoVolumeSlider::handle:vertical:hover[mode="dialog"]
+{
+}
+
+QSlider#VideoVolumeSlider::handle:vertical:hover[mode="window"]
+{
+}
+
+QSlider#VideoVolumeSlider::handle:vertical:hover[mode="full_screen"]
+{
+}
+
+QSlider#VideoVolumeSlider::handle:vertical:pressed[mode="dialog"]
+{
+}
+
+QSlider#VideoVolumeSlider::handle:vertical:pressed[mode="window"]
+{
+}
+
+
+QSlider#VideoVolumeSlider::handle:vertical:pressed[mode="full_screen"]
+{
+}
+
+QPushButton
+{
+	outline: none;
+}
+
+QPushButton#VideoPlayerPlayButton
+{
+    border-image: url(:/videoplayer/pause_100);
+}
+QPushButton#VideoPlayerPlayButton:hover
+{
+    border-image: url(:/videoplayer/pause_100_hover);
+}
+QPushButton#VideoPlayerPlayButton:checked:hover
+{
+    border-image: url(:/videoplayer/play_100_hover);
+}
+QPushButton#VideoPlayerPlayButton:checked
+{
+    border-image: url(:/videoplayer/play_100);
+}
+
+QPushButton
+{
+    outline: none;
+}
+
+QPushButton#VideoPlayerSoundButton[mode="0"]
+{
+    border-image: url(:/videoplayer/sound_off_100);
+}
+
+QPushButton#VideoPlayerSoundButton[mode="0"]:hover
+{
+    border-image: url(:/videoplayer/sound_off_100_hover);
+}
+
+QPushButton#VideoPlayerSoundButton[mode="1"]
+{
+    border-image: url(:/videoplayer/sound_q_100);
+}
+
+QPushButton#VideoPlayerSoundButton[mode="1"]:hover
+{
+    border-image: url(:/videoplayer/sound_q_100_hover);
+}
+
+QPushButton#VideoPlayerSoundButton[mode="2"]
+{
+    border-image: url(:/videoplayer/sound_100);
+}
+
+QPushButton#VideoPlayerSoundButton[mode="2"]:hover
+{
+    border-image: url(:/videoplayer/sound_100_hover);
+}
+
+QPushButton#VideoPlayerFullscreenButton
+{
+    border-image: url(:/videoplayer/fullscreen_100);
+}
+
+QPushButton#VideoPlayerFullscreenButton:hover
+{
+    border-image: url(:/videoplayer/fullscreen_100_hover);
+}
+
+
+QPushButton#VideoPlayerNormalscreenButton
+{
+    border-image: url(:/videoplayer/fullscreen_big_100);
+}
+
+QPushButton#VideoPlayerNormalscreenButton:hover
+{
+    border-image: url(:/videoplayer/fullscreen_big_100_hover);
+}

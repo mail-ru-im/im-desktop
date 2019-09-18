@@ -1,0 +1,4 @@
+resources/resource.cpp
+resources/*.7z
+[Rr]elease/*
+[Dd]ebug/*

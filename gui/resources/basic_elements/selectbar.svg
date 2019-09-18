@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="8" height="24" viewBox="0 0 8 24">
+  <defs>
+    <rect id="{xxx_counter}-a" width="8" height="24" rx="6"/>
+  </defs>
+  <g fill="none" fill-rule="evenodd">
+    <use fill="#57B359" xlink:href="#{xxx_counter}-a"/>
+  </g>
+</svg>

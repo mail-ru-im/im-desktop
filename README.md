@@ -16,14 +16,14 @@ cd build
 ####  You can build project with Visual Studio 2017 or with NMake:
 **Visual Studio 2017**:
 ```sh
-# (also you can set Release instead Debug)
+# (also you can set Release instead of Debug)
 cmake .. -G "Visual Studio 15 2017" -T "v141_xp" -DCMAKE_BUILD_TYPE=Debug
 ```
 Open `build\icq.sln` and build it.
 
 **NMake**:
 ```sh
-# (also you can set Release instead Debug)
+# (also you can set Release instead of Debug)
 cmake .. -G "NMake Makefiles" -T "v141_xp" -DCMAKE_BUILD_TYPE=Debug
 nmake
 ```
@@ -38,14 +38,14 @@ cd build
 #### You can build project with Xcode or with make:
 **Xcode**:
 ```sh
-# (also you can set Release instead Debug)
+# (also you can set Release instead of Debug)
 cmake .. -G Xcode -DCMAKE_BUILD_TYPE=Debug
 ```
 Open `build\icq.xcodeproj` and build it.
 
 **make**:
 ```sh
-# (also you can set Release instead Debug)
+# (also you can set Release instead of Debug)
 cmake .. -DCMAKE_BUILD_TYPE=Debug
 make
 ```

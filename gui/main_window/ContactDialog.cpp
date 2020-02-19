@@ -7,6 +7,7 @@
 
 #include "contact_list/ContactListModel.h"
 #include "history_control/HistoryControl.h"
+#include "history_control/HistoryControlPage.h"
 #include "history_control/MessageStyle.h"
 #include "input_widget/InputWidget.h"
 #include "sidebar/Sidebar.h"
@@ -17,7 +18,8 @@
 
 #include "utils/gui_coll_helper.h"
 #include "utils/InterConnector.h"
-#include "controls/TextRendering.h"
+#include "utils/features.h"
+#include "controls/textrendering/TextRenderingUtils.h"
 #include "controls/TooltipWidget.h"
 #include "styles/ThemeParameters.h"
 
@@ -37,6 +39,7 @@ namespace Ui
         , topWidget_(nullptr)
         , suggestsWidget_(nullptr)
         , frameCountMode_(FrameCountMode::_1)
+        , suggestWidgetShown_(false)
     {
         setFrameCountMode(frameCountMode_);
         setPalette(Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE));
@@ -48,6 +51,7 @@ namespace Ui
         layout->addWidget(historyControlWidget_);
 
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::dialogClosed, this, &ContactDialog::removeTopWidget);
+        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::currentPageChanged, this, &ContactDialog::hideSuggest);
         connect(this, &ContactDialog::contactSelected, historyControlWidget_, &HistoryControl::contactSelected);
         connect(historyControlWidget_, &HistoryControl::setTopWidget, this, &ContactDialog::insertTopWidget);
         connect(historyControlWidget_, &HistoryControl::clicked, this, &ContactDialog::historyControlClicked, Qt::QueuedConnection);
@@ -66,7 +70,11 @@ namespace Ui
 
         connect(Utils::InterConnector::instance().getMainWindow(), &MainWindow::mousePressed, this, [this]()
         {
-            if (const auto buttons = qApp->mouseButtons(); buttons != Qt::MouseButtons(Qt::LeftButton))
+            if (isPttRecordingHoldByKeyboard())
+            {
+                emit Utils::InterConnector::instance().stopPttRecord();
+            }
+            else if (const auto buttons = qApp->mouseButtons(); buttons != Qt::MouseButtons(Qt::LeftButton))
             {
                 if (!historyControlWidget_->hasMessageUnderCursor())
                     emit Utils::InterConnector::instance().stopPttRecord();
@@ -76,16 +84,20 @@ namespace Ui
 
     ContactDialog::~ContactDialog() = default;
 
-    void ContactDialog::onContactSelected(const QString& _aimId, qint64 _messageId, qint64 _quoteId)
+    void ContactDialog::onContactSelected(const QString& _aimId, qint64 _messageId, const highlightsV& _highlights)
     {
         initInputWidget();
-        emit contactSelected(_aimId, _messageId, _quoteId);
+        emit contactSelected(_aimId, _messageId, _highlights);
+
+        setFocusOnInputWidget();
     }
 
     void ContactDialog::onContactSelectedToLastMessage(const QString& _aimId, qint64 _messageId)
     {
         initInputWidget();
         emit contactSelectedToLastMessage(_aimId, _messageId);
+
+        setFocusOnInputWidget();
     }
 
     void ContactDialog::initTopWidget()
@@ -269,6 +281,8 @@ namespace Ui
             topWidget_->addWidget(_widget);
         }
 
+        assert(_widget == topWidgetsCache_[_aimId]);
+
         topWidget_->setCurrentWidget(topWidgetsCache_[_aimId]);
         topWidget_->show();
     }
@@ -278,9 +292,10 @@ namespace Ui
         if (!topWidget_)
             return;
 
-        if (topWidgetsCache_.contains(_aimId))
+        if (auto it = std::as_const(topWidgetsCache_).find(_aimId); it != std::as_const(topWidgetsCache_).end())
         {
-            topWidget_->removeWidget(topWidgetsCache_[_aimId]);
+            topWidget_->removeWidget(it.value());
+            it.value()->deleteLater();
             topWidgetsCache_.remove(_aimId);
         }
 
@@ -406,7 +421,7 @@ namespace Ui
         historyControlWidget_->inputTyped();
     }
 
-    void ContactDialog::suggestedStickerSelected(qint32 _setId, const QString& _stickerId)
+    void ContactDialog::suggestedStickerSelected(const QString& _stickerId)
     {
         assert(inputWidget_);
         assert(smilesMenu_);
@@ -417,45 +432,75 @@ namespace Ui
             suggestsWidget_->hide();
 
         if (smilesMenu_)
-            smilesMenu_->addStickerToRecents(_setId, _stickerId);
+            smilesMenu_->addStickerToRecents(-1, _stickerId);
 
-        inputWidget_->sendSticker(_setId, _stickerId);
+        inputWidget_->sendSticker(_stickerId);
+
+        sendSuggestedStickerStats(_stickerId);
+
         inputWidget_->clearInputText();
-
-        const QString inputText = inputWidget_->getInputText();
-        const bool isEmoji = TextRendering::isEmoji(QStringRef(&inputText));
-
-        GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::stickers_suggested_sticker_sent, {
-            { "searchlength", isEmoji ? std::string("1") : std::to_string(inputText.length()) },
-            { "searchstring", inputText.toStdString() } });
     }
 
-    void ContactDialog::onSuggestShow(const QString _text, const QPoint _pos)
+    void ContactDialog::onSuggestShow(const QString& _text, const QPoint& _pos)
     {
         if (!suggestsWidget_)
         {
             suggestsWidget_ = new Stickers::StickersSuggest(this);
+            suggestsWidget_->setArrowVisible(true);
             connect(suggestsWidget_, &Stickers::StickersSuggest::stickerSelected, this, &ContactDialog::suggestedStickerSelected);
+            connect(suggestsWidget_, &Stickers::StickersSuggest::scrolledToLastItem, inputWidget_, &InputWidget::requestSuggests);
         }
         const auto fromInput = inputWidget_ && QRect(inputWidget_->mapToGlobal(inputWidget_->rect().topLeft()), inputWidget_->size()).contains(_pos);
         const auto maxSize = QSize(!fromInput ? width() : std::min(width(), Tooltip::getMaxMentionTooltipWidth()), height());
 
-        auto areaRect = fromInput ? rect() : QRect();
+        const auto pt = mapFromGlobal(_pos);
+        suggestsWidget_->setNeedScrollToTop(!inputWidget_->hasServerSuggests());
+
+        auto areaRect = rect();
         if (areaRect.width() > MessageStyle::getHistoryWidgetMaxWidth())
         {
             const auto center = areaRect.center();
             areaRect.setWidth(MessageStyle::getHistoryWidgetMaxWidth());
-            areaRect.moveCenter(center);
-        }
-        const auto pt = mapFromGlobal(_pos);
-        suggestsWidget_->showAnimated(_text, pt, maxSize, areaRect);
 
-        GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::stickers_suggests_appear_in_input);
+            if (fromInput)
+            {
+                areaRect.moveCenter(center);
+            }
+            else
+            {
+                if (pt.x() < width() / 3)
+                    areaRect.moveLeft(0);
+                else if (pt.x() >= (width() * 2) / 3)
+                    areaRect.moveRight(width());
+                else
+                    areaRect.moveCenter(center);
+            }
+        }
+
+        if (!suggestWidgetShown_)
+        {
+            suggestsWidget_->showAnimated(_text, pt, maxSize, areaRect);
+            suggestWidgetShown_ = !suggestsWidget_->getStickers().empty();
+        }
+        else
+        {
+            suggestsWidget_->updateStickers(_text, pt, maxSize, areaRect);
+        }
+
+        core::stats::event_props_type props;
+        const bool isEmoji = TextRendering::isEmoji(QStringRef(&_text));
+
+        props.push_back({ "type", isEmoji ? "emoji" : "word"});
+        props.push_back({ "cont_server_suggest", inputWidget_->hasServerSuggests() ? "yes" : "no" });
+        GetDispatcher()->post_im_stats_to_core(core::stats::im_stat_event_names::stickers_suggests_appear_in_input, props);
+        GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::stickers_suggests_appear_in_input, props);
     }
 
     void ContactDialog::onSuggestHide()
     {
         hideSuggest();
+        inputWidget_->clearLastSuggests();
+        suggestWidgetShown_ = false;
     }
 
     bool ContactDialog::isSuggestVisible() const
@@ -488,9 +533,29 @@ namespace Ui
         return inputWidget_ && inputWidget_->isPttHold();
     }
 
+    bool ContactDialog::isPttRecordingHoldByKeyboard() const
+    {
+        return inputWidget_ && inputWidget_->isPttHoldByKeyboard();
+    }
+
+    bool ContactDialog::isPttRecordingHoldByMouse() const
+    {
+        return inputWidget_ && inputWidget_->isPttHoldByMouse();
+    }
+
+    bool ContactDialog::tryPlayPttRecord()
+    {
+        return inputWidget_ && inputWidget_->tryPlayPttRecord();
+    }
+
+    bool ContactDialog::tryPausePttRecord()
+    {
+        return inputWidget_ && inputWidget_->tryPausePttRecord();
+    }
+
     void ContactDialog::closePttRecording()
     {
-        if (inputWidget_ && !isPttRecordingHold())
+        if (inputWidget_ && !isPttRecordingHoldByMouse())
             inputWidget_->closePttPanel();
     }
 
@@ -510,12 +575,6 @@ namespace Ui
     {
         if (inputWidget_ && !isPttRecordingHold())
             inputWidget_->startPttRecordingLock();
-    }
-
-    void ContactDialog::startPttRecordingHold()
-    {
-        if (inputWidget_)
-            inputWidget_->startPttRecordingHold();
     }
 
     void ContactDialog::dropReply()
@@ -554,5 +613,26 @@ namespace Ui
     const QString& ContactDialog::currentAimId() const
     {
         return historyControlWidget_->currentAimId();
+    }
+
+    void ContactDialog::sendSuggestedStickerStats(const QString& _stickerId)
+    {
+        const QString inputText = inputWidget_->getInputText();
+        const bool isEmoji = TextRendering::isEmoji(QStringRef(&inputText));
+        const bool isServerSuggest = inputWidget_->isServerSuggest(_stickerId);
+        const auto& currentStickers = getStickersSuggests()->getStickers();
+        const auto stickerPos = std::find(currentStickers.begin(), currentStickers.end(), _stickerId);
+        const auto posInStickers = stickerPos != currentStickers.end() ? std::distance(currentStickers.begin(), stickerPos) + 1 : -1;
+
+        core::stats::event_props_type props;
+        props.push_back({ "stickerId", _stickerId.toStdString() });
+        props.push_back({ "number", std::to_string(posInStickers) });
+        props.push_back({ "type", isEmoji ? "emoji" : "word" });
+        props.push_back({ "suggest_type", isServerSuggest ? "server" : "client" });
+        GetDispatcher()->post_im_stats_to_core(core::stats::im_stat_event_names::stickers_suggested_sticker_sent, props);
+        GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::stickers_suggested_sticker_sent, props);
+
+        if (isServerSuggest)
+            GetDispatcher()->post_im_stats_to_core(core::stats::im_stat_event_names::text_sticker_used);
     }
 }

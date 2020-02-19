@@ -37,7 +37,7 @@ int32_t get_stickers_store_packet::init_request(std::shared_ptr<core::http_reque
 
     params["client"] = core::utils::get_client_string();
 
-    params["lang"] = g_core->get_locale();
+    params["lang"] = params_.locale_;
 
     params["platform"] = utils::get_protocol_platform_string();
 

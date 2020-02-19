@@ -1,8 +1,5 @@
 #pragma once
 
-#include <vector>
-#include <list>
-#include "stdafx.h"
 #include "namespaces.h"
 #include "../corelib/iserializable.h"
 #include "MemoryStatsCommon.h"

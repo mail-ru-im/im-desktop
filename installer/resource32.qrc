@@ -1,5 +1,5 @@
 <RCC>
   <qresource prefix="/">
-    <file>../bin/Release32/%APP_TYPE%</file>
+    <file>../bin/Release32/%APP_PROJECT_NAME%</file>
   </qresource>
 </RCC>

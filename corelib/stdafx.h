@@ -35,15 +35,13 @@
 #include <mutex>
 #include <thread>
 #include <string.h>
+#include <iostream>
 
 #include "../common.shared/common.h"
 
-#ifndef _WIN32
-#ifdef __APPLE__
-#   define assert(e) { if (!(e)) puts("ASSERT: " #e); }
-#else
-#   define assert(e) { }
-#endif //__APPLE__
-#endif // _WIN32
+#if !defined(_WIN32) && !defined(ABORT_ON_ASSERT) && defined(DEBUG)
+#define assert(condition) \
+do { if(!(condition)){ std::cerr << "ASSERT FAILED: " << #condition << " " << __FILE__ << ":" << __LINE__ << std::endl; } } while (0)
+#endif
 
 // TODO: reference additional headers your program requires here

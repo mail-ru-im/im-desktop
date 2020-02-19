@@ -140,12 +140,12 @@ namespace
 
     QString getProfileDomain()
     {
-        return qsl("https://") % Features::getProfileDomain() % ql1c('/');
+        return ql1s("https://") % Features::getProfileDomain() % ql1c('/');
     }
 
     QString getProfileDomainAgent()
     {
-        return qsl("https://") % Features::getProfileDomainAgent() % ql1c('/');
+        return ql1s("https://") % Features::getProfileDomainAgent() % ql1c('/');
     }
 
     const auto getToastVerOffset() noexcept
@@ -348,7 +348,9 @@ namespace Ui
         }
         else
         {
-            auto form = new EditNicknameWidget(this);
+            EditNicknameWidget::FormData data;
+            data.fixedSize_ = true;
+            auto form = new EditNicknameWidget(this, data);
             form->setStatFrom("settings_scr");
 
             connect(form, &EditNicknameWidget::changed, this, [this, form]()
@@ -389,18 +391,18 @@ namespace Ui
 
         const QString link = (isEmailProfile() ? getProfileDomainAgent() : getProfileDomain()) % getNickname();
 
-        if (command == qsl("copy_link"))
+        if (command == ql1s("copy_link"))
         {
             QApplication::clipboard()->setText(link);
             Utils::showToastOverMainWindow(link % QChar::LineFeed % QT_TRANSLATE_NOOP("toast", "Link copied"), getToastVerOffset());
             Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::settingsscr_nick_action, { {"do", "copy_url"} });
         }
-        else if (command == qsl("share_link"))
+        else if (command == ql1s("share_link"))
         {
             forwardMessage(link, QString(), QString(), false);
             Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::settingsscr_nick_action, { {"do", "in_share"} });
         }
-        else if (command == qsl("copy_nick"))
+        else if (command == ql1s("copy_nick"))
         {
             copyNickToClipboard();
         }
@@ -505,7 +507,7 @@ namespace Ui
 
     bool ProfileSettingsRow::isEmailProfile() const
     {
-        return MyInfo()->aimId().contains(ql1c('@'));
+        return MyInfo()->isEmailProfile();
     }
 
     void ProfileSettingsRow::updateNickVisibility()

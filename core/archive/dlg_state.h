@@ -37,6 +37,7 @@ namespace core
             bool suspicious_;
             bool attention_;
             bool stranger_;
+            bool no_recents_update_;
 
             std::unique_ptr<history_message> last_message_;
             std::unique_ptr<history_message> pinned_message_;
@@ -105,6 +106,9 @@ namespace core
 
             void set_stranger(bool _stranger) { stranger_ = _stranger; }
             bool get_stranger() const { return stranger_; }
+
+            void set_no_recents_update(bool _no_recents_update) { no_recents_update_ = _no_recents_update; }
+            bool get_no_recents_update() const { return no_recents_update_; }
 
             const history_message& get_last_message() const;
             void set_last_message(const history_message& _message);

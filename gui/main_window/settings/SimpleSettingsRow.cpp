@@ -45,14 +45,14 @@ namespace
         return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT);
     }
 
-    QColor normalIconColor()
+    QColor normalIconColor(const Styling::StyleVariable _var)
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT);
+        return Styling::getParameters().getColor(_var);
     }
 
     QColor activeIconColor()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_SELECTED);
+        return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT);
     }
 
     QColor activeBackgroundColor()
@@ -77,7 +77,7 @@ namespace Ui
         : SimpleListItem(_parent)
         , isSelected_(false)
         , isCompactMode_(false)
-        , normalIcon_(Utils::renderSvg(_icon, { pixmapWidth(), pixmapWidth() }, normalIconColor()))
+        , normalIcon_(Utils::renderSvg(_icon, { pixmapWidth(), pixmapWidth() }, normalIconColor(_bg)))
         , selectedIcon_(Utils::renderSvg(_icon, { pixmapWidth(), pixmapWidth() }, activeIconColor()))
         , name_(_name)
         , iconBg_(_bg)
@@ -136,7 +136,9 @@ namespace Ui
         const auto iconY = (height() - iconW) / 2;
 
         p.setPen(Qt::NoPen);
-        p.setBrush(Styling::getParameters().getColor(isSelected() ? Styling::StyleVariable::TEXT_SOLID_PERMANENT : iconBg_));
+        auto bgColor = Styling::getParameters().getColor(isSelected() ? Styling::StyleVariable::PRIMARY_INVERSE : iconBg_);
+        bgColor.setAlpha(255 * 0.05);
+        p.setBrush(bgColor);
         p.drawEllipse(iconX, iconY, iconW, iconW);
 
         const auto pmX = iconX + (iconW - pixmapWidth()) / 2;

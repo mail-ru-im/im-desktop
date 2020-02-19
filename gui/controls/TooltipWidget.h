@@ -5,6 +5,8 @@
 namespace Ui
 {
     class TextTooltip;
+    class CustomButton;
+    class GradientWidget;
 }
 
 namespace Tooltip
@@ -49,24 +51,6 @@ namespace Tooltip
 
 namespace Ui
 {
-    class CustomButton;
-
-    class GradientWidget : public QWidget
-    {
-        Q_OBJECT
-
-    public:
-        GradientWidget(QWidget* _parent, const QColor& _left, const QColor& _right);
-        void updateColors(const QColor& _left, const QColor& _right);
-
-    protected:
-        void paintEvent(QPaintEvent* _event) override;
-
-    private:
-        QColor left_;
-        QColor right_;
-    };
-
     class TooltipWidget : public QWidget
     {
         Q_OBJECT
@@ -84,6 +68,7 @@ namespace Ui
         void scrollToTop();
         void ensureVisible(const int _x, const int _y, const int _xmargin, const int _ymargin);
         void setArrowVisible(const bool _visible);
+        QRect updateTooltip(const QPoint _pos, const QSize& _maxSize, const QRect& _rect = QRect(), Tooltip::ArrowDirection _direction = Tooltip::ArrowDirection::Auto);
 
     protected:
         void paintEvent(QPaintEvent* _e) override;
@@ -92,6 +77,8 @@ namespace Ui
         void enterEvent(QEvent* _e) override;
         void leaveEvent(QEvent* _e) override;
 
+    Q_SIGNALS:
+        void scrolledToLastItem();
     private Q_SLOTS:
         void closeButtonClicked(bool);
         void onScroll(int _value);
@@ -130,6 +117,9 @@ namespace Ui
     {
         Q_OBJECT
 
+    Q_SIGNALS:
+        void linkActivated(const QString& _link, QPrivateSignal) const;
+
     public:
 
         template <typename... Args>
@@ -138,6 +128,7 @@ namespace Ui
             , maxWidth_(0)
             , opacity_(1.0)
         {
+            setMouseTracking(true);
             text_ = TextRendering::MakeTextUnit(std::forward<Args>(args)...);
         }
 
@@ -150,16 +141,30 @@ namespace Ui
             update();
         }
 
+        void applyLinks(const std::map<QString, QString>& _links)
+        {
+            text_->applyLinks(_links);
+        }
+
+        void setLineSpacing(int _v)
+        {
+            text_->setLineSpacing(_v);
+        }
+
         void setMaxWidth(int _width);
         void setMaxWidthAndResize(int _width);
 
         void setText(const QString& _text, const QColor& _color = QColor());
         void setOpacity(qreal _opacity);
+        void setColor(const QColor& _color);
+        void setAlignment(const TextRendering::HorAligment _align);
 
         QString getText() const;
 
     protected:
         void paintEvent(QPaintEvent* _e) override;
+        void mouseMoveEvent(QMouseEvent* _e) override;
+        void mouseReleaseEvent(QMouseEvent* _e) override;
 
     private:
         TextRendering::TextUnitPtr text_;

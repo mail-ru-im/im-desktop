@@ -30,7 +30,7 @@ namespace
         case Ui::SoundsManager::Sound::IncomingMail:
             return qsl(":/sounds/mail");
         case Ui::SoundsManager::Sound::IncomingMessage:
-            return build::is_icq() ? qsl(":/sounds/incoming") : qsl(":/sounds/incoming_agent");
+            return qsl(":/sounds/incoming");
         case Ui::SoundsManager::Sound::OutgoingMessage:
             return qsl(":/sounds/outgoing");
         case Ui::SoundsManager::Sound::StartPtt:
@@ -196,7 +196,7 @@ namespace Ui
 
         connect(this, &SoundsManager::deviceListChangedInternal, this, &SoundsManager::onDeviceListChanged);
 
-        deviceMonitoring_ = device::DeviceMonitoringModule::CreateDeviceMonitoring(false);
+        deviceMonitoring_ = device::DeviceMonitoringModule::CreateDeviceMonitoring();
         if (deviceMonitoring_)
         {
             deviceMonitoring_->RegisterCaptureDeviceInfoObserver(*this);

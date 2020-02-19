@@ -139,7 +139,6 @@ void voip_masks::MaskManager::onExistentMasksLoaded(const std::vector<Data::Mask
         if (mask)
             mask->setJsonPath(m.json_path_);
     }
-
     existentListLoaded_ = true;
 }
 

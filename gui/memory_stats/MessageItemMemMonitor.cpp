@@ -3,7 +3,6 @@
 #include "../main_window/history_control/complex_message/ComplexMessageItem.h"
 
 #include "../main_window/history_control/complex_message/FileSharingBlock.h"
-#include "../main_window/history_control/complex_message/ImagePreviewBlock.h"
 #include "../main_window/history_control/complex_message/LinkPreviewBlock.h"
 #include "../main_window/history_control/complex_message/PttBlock.h"
 #include "../main_window/history_control/complex_message/TextBlock.h"
@@ -28,7 +27,7 @@ MessageItemMemMonitor::CategoriesArray MessageItemMemMonitor::getMessageItemsFoo
              textBlocks(0, 0),
              imgPreviewBlocks(0, 0),
              fileSharingBlocks(0, 0),
-             linkPreviewBlocks(0, 0),
+             snippetBlocks(0, 0),
              stickersBlocks(0, 0),
              quotesBlocks(0, 0);
 
@@ -58,19 +57,11 @@ MessageItemMemMonitor::CategoriesArray MessageItemMemMonitor::getMessageItemsFoo
                 break;
             case Ui::ComplexMessage::IItemBlock::ContentType::Link:
             {
-                auto imagePreviewBlock = tryGetImagePreviewBlock(block);
-                if (imagePreviewBlock)
+                auto snippetBlock = tryGetSnippetBlock(block);
+                if (snippetBlock)
                 {
-                    imgPreviewBlocks.first++;
-                    imgPreviewBlocks.second += Utils::getMemoryFootprint(imagePreviewBlock);
-                    break;
-                }
-
-                auto linkPreviewBlock = tryGetLinkPreviewBlock(block);
-                if (linkPreviewBlock)
-                {
-                    linkPreviewBlocks.first++;
-                    linkPreviewBlocks.second += Utils::getMemoryFootprint(linkPreviewBlock);
+                    snippetBlocks.first++;
+                    snippetBlocks.second += Utils::getMemoryFootprint(snippetBlock);
                     break;
                 }
 
@@ -114,10 +105,10 @@ MessageItemMemMonitor::CategoriesArray MessageItemMemMonitor::getMessageItemsFoo
     }
 
     countBlocks.second += (quotesBlocks.second + fileSharingBlocks.second + stickersBlocks.second
-                           + linkPreviewBlocks.second + imgPreviewBlocks.second + textBlocks.second);
+                           + snippetBlocks.second + imgPreviewBlocks.second + textBlocks.second);
 
 
-    return { countBlocks, textBlocks, imgPreviewBlocks, linkPreviewBlocks, stickersBlocks, fileSharingBlocks, quotesBlocks };
+    return { countBlocks, textBlocks, imgPreviewBlocks, snippetBlocks, stickersBlocks, fileSharingBlocks, quotesBlocks };
 }
 
 
@@ -140,14 +131,9 @@ Ui::ComplexMessage::TextBlock* MessageItemMemMonitor::tryGetTextBlock(Ui::Comple
     return dynamic_cast<Ui::ComplexMessage::TextBlock *>(_itemBlock);
 }
 
-Ui::ComplexMessage::ImagePreviewBlock *MessageItemMemMonitor::tryGetImagePreviewBlock(Ui::ComplexMessage::IItemBlock *_itemBlock)
+Ui::ComplexMessage::SnippetBlock *MessageItemMemMonitor::tryGetSnippetBlock(Ui::ComplexMessage::IItemBlock *_itemBlock)
 {
-    return dynamic_cast<Ui::ComplexMessage::ImagePreviewBlock *>(_itemBlock);
-}
-
-Ui::ComplexMessage::LinkPreviewBlock *MessageItemMemMonitor::tryGetLinkPreviewBlock(Ui::ComplexMessage::IItemBlock *_itemBlock)
-{
-    return dynamic_cast<Ui::ComplexMessage::LinkPreviewBlock *>(_itemBlock);
+    return dynamic_cast<Ui::ComplexMessage::SnippetBlock *>(_itemBlock);
 }
 
 Ui::ComplexMessage::StickerBlock *MessageItemMemMonitor::tryGetStickerBlock(Ui::ComplexMessage::IItemBlock *_stickerBlock)

@@ -4,6 +4,7 @@
 #include "storage.h"
 #include "../network_log.h"
 #include "../core.h"
+#include "../tools/json_helper.h"
 #include "../../corelib/collection_helper.h"
 
 namespace
@@ -309,12 +310,12 @@ void gallery_storage::set_first_entry_reached(bool _reached)
     first_entry_reached_ = _reached;
 }
 
-std::string gallery_storage::get_aimid() const
+const std::string& gallery_storage::get_aimid() const
 {
     return aimid_;
 }
 
-gallery_state gallery_storage::get_gallery_state() const
+const gallery_state& gallery_storage::get_gallery_state() const
 {
     return state_;
 }
@@ -447,10 +448,10 @@ void gallery_storage::merge_from_server(const gallery_storage& _other, const gal
             }
         }
 
-        auto ch = gallery_item();
+        gallery_item ch;
         ch.id_.msg_id_ = p.msg_id_;
         ch.action_ = p.type_;
-        _changes.push_back(ch);
+        _changes.push_back(std::move(ch));
         }
     }
 
@@ -561,161 +562,103 @@ void gallery_storage::set_state(const gallery_state& _state, bool _store_patch_v
 
 int32_t gallery_storage::unserialize(const rapidjson::Value& _node, bool _parse_for_patches)
 {
-    auto delUpTo = _node.FindMember("delUpto");
-    if (delUpTo != _node.MemberEnd() && delUpTo->value.IsInt64())
-        delUpTo_ = delUpTo->value.GetInt64();
+    tools::unserialize_value(_node, "delUpto", delUpTo_);
 
-    auto node_state = _node.FindMember("galleryState");
+    const auto node_state = _node.FindMember("galleryState");
     if (node_state == _node.MemberEnd() || !node_state->value.IsObject())
         return 1;
 
-    auto path_version = node_state->value.FindMember("galleryPatchVersion");
-    if (path_version != node_state->value.MemberEnd() && path_version->value.IsString())
-        state_.patch_version_ = path_version->value.GetString();
+    tools::unserialize_value(node_state->value, "galleryPatchVersion", state_.patch_version_);
 
-    auto last_entry = node_state->value.FindMember("lastEntryId");
+    const auto last_entry = node_state->value.FindMember("lastEntryId");
     if (last_entry != node_state->value.MemberEnd() && last_entry->value.IsObject())
     {
-        auto id = last_entry->value.FindMember("mid");
-        if (id != last_entry->value.MemberEnd() && id->value.IsInt64())
-            state_.last_entry_.msg_id_ = id->value.GetInt64();
-
-        auto seq = last_entry->value.FindMember("seq");
-        if (seq != last_entry->value.MemberEnd() && seq->value.IsInt())
-            state_.last_entry_.seq_ = seq->value.GetInt();
+        tools::unserialize_value(last_entry->value, "mid", state_.last_entry_.msg_id_);
+        tools::unserialize_value(last_entry->value, "seq", state_.last_entry_.seq_);
     }
 
-    auto items_count = node_state->value.FindMember("itemsCount");
+    const auto items_count = node_state->value.FindMember("itemsCount");
     if (items_count != node_state->value.MemberEnd() && items_count->value.IsObject())
     {
-        auto images_count = items_count->value.FindMember("image");
-        if (images_count != items_count->value.MemberEnd() && images_count->value.IsInt())
-            state_.images_count_ = images_count->value.GetInt();
-
-        auto videos_count = items_count->value.FindMember("video");
-        if (videos_count != items_count->value.MemberEnd() && videos_count->value.IsInt())
-            state_.videos_count_ = videos_count->value.GetInt();
-
-        auto files_count = items_count->value.FindMember("file");
-        if (files_count != items_count->value.MemberEnd() && files_count->value.IsInt())
-            state_.files_count_ = files_count->value.GetInt();
-
-        auto links_count = items_count->value.FindMember("link");
-        if (links_count != items_count->value.MemberEnd() && links_count->value.IsInt())
-            state_.links_count_ = links_count->value.GetInt();
-
-        auto ptt_count = items_count->value.FindMember("ptt");
-        if (ptt_count != items_count->value.MemberEnd() && ptt_count->value.IsInt())
-            state_.ptt_count_ = ptt_count->value.GetInt();
-
-        auto audio_count = items_count->value.FindMember("audio");
-        if (audio_count != items_count->value.MemberEnd() && audio_count->value.IsInt())
-            state_.audio_count_ = audio_count->value.GetInt();
+        tools::unserialize_value(items_count->value, "image", state_.images_count_);
+        tools::unserialize_value(items_count->value, "video", state_.videos_count_);
+        tools::unserialize_value(items_count->value, "file", state_.files_count_);
+        tools::unserialize_value(items_count->value, "link", state_.links_count_);
+        tools::unserialize_value(items_count->value, "ptt", state_.ptt_count_);
+        tools::unserialize_value(items_count->value, "audio", state_.audio_count_);
     }
 
-    auto unserialize_entries = [this](const auto& _node)
+    const auto unserialize_entries = [this](const auto& _node)
     {
         auto entries = _node->FindMember("entries");
         if (entries != _node->MemberEnd() && entries->value.IsArray())
         {
-            for (auto iter = entries->value.Begin(); iter != entries->value.End(); ++iter)
+            for (const auto& entry : entries->value.GetArray())
             {
                 gallery_entry_id item_id;
                 {
-                    auto entry_id = iter->FindMember("id");
-                    auto id = entry_id->value.FindMember("mid");
-                    if (id != entry_id->value.MemberEnd() && id->value.IsInt64())
-                        item_id.msg_id_ = id->value.GetInt64();
-
-                    auto seq = entry_id->value.FindMember("seq");
-                    if (seq != entry_id->value.MemberEnd() && seq->value.IsInt())
-                        item_id.seq_ = seq->value.GetInt();
+                    if (auto entry_id = entry.FindMember("id"); entry_id != entry.MemberEnd())
+                    {
+                        tools::unserialize_value(entry_id->value, "mid", item_id.msg_id_);
+                        tools::unserialize_value(entry_id->value, "seq", item_id.seq_);
+                    }
                 }
                 gallery_item item;
                 {
                     item.id_ = item_id;
 
-                    auto caption = iter->FindMember("caption");
-                    if (caption != iter->MemberEnd() && caption->value.IsString())
-                        item.caption_ = caption->value.GetString();
-
-                    auto type = iter->FindMember("type");
-                    if (type != iter->MemberEnd() && type->value.IsString())
-                        item.type_ = type->value.GetString();
-
-                    auto url = iter->FindMember("url");
-                    if (url != iter->MemberEnd() && url->value.IsString())
-                        item.url_ = url->value.GetString();
-
-                    auto sender = iter->FindMember("sender");
-                    if (sender != iter->MemberEnd() && sender->value.IsString())
-                        item.sender_ = sender->value.GetString();
-
-                    auto outgoing = iter->FindMember("outgoing");
-                    if (outgoing != iter->MemberEnd() && outgoing->value.IsBool())
-                        item.outgoing_ = outgoing->value.GetBool();
+                    tools::unserialize_value(entry, "caption", item.caption_);
+                    tools::unserialize_value(entry, "type", item.type_);
+                    tools::unserialize_value(entry, "url", item.url_);
+                    tools::unserialize_value(entry, "sender", item.sender_);
+                    tools::unserialize_value(entry, "outgoing", item.outgoing_);
 
                     item.outgoing_ |= (my_aimid_ == item.sender_);
 
-                    auto time = iter->FindMember("time");
-                    if (time != iter->MemberEnd() && time->value.IsInt())
-                        item.time_ = time->value.GetInt();
+                    if (int time = 0; tools::unserialize_value(entry, "time", time))
+                        item.time_ = time;
                 }
 
-                items_.push_back(item);
+                items_.push_back(std::move(item));
             }
         }
     };
 
 
-    auto subreqs = _node.FindMember("subreqs");
+    const auto subreqs = _node.FindMember("subreqs");
     if (subreqs != _node.MemberEnd() && subreqs->value.IsArray() && subreqs->value.Size() != 0)
     {
-        auto includeStart = subreqs->value.Begin()->FindMember("includeStart");
-        if (includeStart != subreqs->value.Begin()->MemberEnd() && includeStart->value.IsBool())
-            first_entry_reached_ = includeStart->value.GetBool();
-
+        tools::unserialize_value(*subreqs->value.Begin(), "includeStart", first_entry_reached_);
         unserialize_entries(subreqs->value.Begin());
     }
 
-    auto tail = _node.FindMember("tail");
+    const auto tail = _node.FindMember("tail");
     if (tail != _node.MemberEnd() && tail->value.IsObject())
     {
         unserialize_entries(&(tail->value));
         auto older_entry_id = tail->value.FindMember("olderEntryId");
         if (older_entry_id != tail->value.MemberEnd() && older_entry_id->value.IsObject())
         {
-            auto id = older_entry_id->value.FindMember("mid");
-            if (id != older_entry_id->value.MemberEnd() && id->value.IsInt64())
-                older_entry_id_.msg_id_ = id->value.GetInt64();
-
-            auto seq = older_entry_id->value.FindMember("seq");
-            if (seq != older_entry_id->value.MemberEnd() && seq->value.IsInt())
-                older_entry_id_.seq_ = seq->value.GetInt();
+            tools::unserialize_value(older_entry_id->value, "mid", older_entry_id_.msg_id_);
+            tools::unserialize_value(older_entry_id->value, "seq", older_entry_id_.seq_);
         }
     }
 
     if (_parse_for_patches)
     {
-        auto patch = _node.FindMember("patch");
-        if (patch != _node.MemberEnd() && patch->value.IsArray() && patch->value.Size() != 0)
+        const auto patches = _node.FindMember("patch");
+        if (patches != _node.MemberEnd() && patches->value.IsArray() && patches->value.Size() != 0)
         {
-            for (auto iter = patch->value.Begin(); iter != patch->value.End(); ++iter)
+            patches_.reserve(patches->value.Size());
+            for (const auto& patch : patches->value.GetArray())
             {
-                gallery_patch p;
-                auto action = iter->FindMember("action");
-                if (action != iter->MemberEnd() && action->value.IsObject())
+                if (auto action = patch.FindMember("action"); action != patch.MemberEnd() && action->value.IsObject())
                 {
-                    auto type = action->value.FindMember("type");
-                    if (type != action->value.MemberEnd() && type->value.IsString())
-                        p.type_ = type->value.GetString();
-
-                    auto msgid = action->value.FindMember("msgId");
-                    if (msgid != action->value.MemberEnd() && msgid->value.IsInt64())
-                        p.msg_id_ = msgid->value.GetInt64();
+                    gallery_patch p;
+                    tools::unserialize_value(action->value, "type", p.type_);
+                    tools::unserialize_value(action->value, "msgId", p.msg_id_);
+                    patches_.push_back(std::move(p));
                 }
-
-                patches_.push_back(p);
             }
         }
     }
@@ -723,12 +666,12 @@ int32_t gallery_storage::unserialize(const rapidjson::Value& _node, bool _parse_
     return 0;
 }
 
-std::vector<gallery_patch> gallery_storage::get_patch() const
+const std::vector<gallery_patch>& gallery_storage::get_patch() const
 {
     return patches_;
 }
 
-gallery_items_block gallery_storage::get_items() const
+const gallery_items_block& gallery_storage::get_items() const
 {
     return items_;
 }
@@ -828,16 +771,16 @@ std::vector<gallery_item> gallery_storage::get_items(int64_t _msg_id, const std:
 
     _index = 0;
     _total = 0;
-    for (auto iter = items_.begin(); iter != items_.end(); ++iter)
+    for (const auto& item : items_)
     {
-        if (std::find(_types.begin(), _types.end(), iter->type_) == _types.end())
+        if (std::none_of(_types.begin(), _types.end(), [&item](const auto& t) { return t == item.type_; }))
             continue;
 
-        if (iter->id_.msg_id_ ==_msg_id)
+        if (item.id_.msg_id_ == _msg_id)
         {
-            result.push_back(*iter);
+            result.push_back(item);
         }
-        else if (iter->id_.msg_id_ < _msg_id)
+        else if (item.id_.msg_id_ < _msg_id)
         {
             ++_index;
         }
@@ -1200,7 +1143,7 @@ bool gallery_storage::check_consistency()
     if (!loaded_from_local_ || (std::chrono::system_clock::now() - last_consistency_check_time_) < consistency_check_period)
         return true;
 
-    auto count_from_state = state_.audio_count_ + state_.files_count_ + state_.images_count_ + state_.links_count_ + state_.videos_count_ + state_.ptt_count_;
+    const auto count_from_state = state_.audio_count_ + state_.files_count_ + state_.images_count_ + state_.links_count_ + state_.videos_count_ + state_.ptt_count_;
     auto consistency_value = 0.0;
     if (items_.size() <= (size_t)count_from_state)
         consistency_value = (double)items_.size() / count_from_state;
@@ -1216,7 +1159,7 @@ bool gallery_storage::check_consistency()
         std::stringstream s;
         s << "items in cache: " << items_.size() << "; items in state: " << count_from_state << "\r\n";
         bs.write(s.str());
-        if (consistency_value < consistency_value)
+        if (consistency_value < consistency_valid_value)
             bs.write<std::string_view>("gallery is going to be requested again\r\n");
 
         g_core->write_data_to_network_log(std::move(bs));

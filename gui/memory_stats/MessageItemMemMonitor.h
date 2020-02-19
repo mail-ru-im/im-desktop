@@ -23,6 +23,7 @@ namespace Ui
         class DebugTextBlock;
         class QuoteBlock;
         class StickerBlock;
+        class SnippetBlock;
         class IItemBlock;
     }
 }
@@ -45,8 +46,7 @@ private:
     Utils::QObjectWatcher *messageItemsWatcher();
 
     Ui::ComplexMessage::TextBlock* tryGetTextBlock(Ui::ComplexMessage::IItemBlock* _itemBlock);
-    Ui::ComplexMessage::ImagePreviewBlock* tryGetImagePreviewBlock(Ui::ComplexMessage::IItemBlock* _itemBlock);
-    Ui::ComplexMessage::LinkPreviewBlock* tryGetLinkPreviewBlock(Ui::ComplexMessage::IItemBlock* _itemBlock);
+    Ui::ComplexMessage::SnippetBlock* tryGetSnippetBlock(Ui::ComplexMessage::IItemBlock* _itemBlock);
     Ui::ComplexMessage::StickerBlock* tryGetStickerBlock(Ui::ComplexMessage::IItemBlock* _stickerBlock);
     Ui::ComplexMessage::FileSharingBlock* tryGetFileSharingBlock(Ui::ComplexMessage::IItemBlock* _fileSharingBlock);
     Ui::ComplexMessage::QuoteBlock* tryGetQuoteBlock(Ui::ComplexMessage::IItemBlock* _quoteBlock);

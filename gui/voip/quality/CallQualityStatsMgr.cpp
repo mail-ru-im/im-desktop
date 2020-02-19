@@ -1,9 +1,7 @@
 #include "CallQualityStatsMgr.h"
-
 #include "../gui/core_dispatcher.h"
 #include "gui_settings.h"
 #include "utils/gui_coll_helper.h"
-
 #include "RateCallQualityWidget.h"
 #include "RatingIssuesWidget.h"
 #include "controls/GeneralDialog.h"
@@ -78,7 +76,7 @@ void CallQualityStatsMgr::onShowCallQualityStarsPopup()
 
     auto generalDialog = std::make_unique<GeneralDialog>(w, Utils::InterConnector::instance().getMainWindow(),
                                                          false, true, true, true, options);
-    auto okCancelButtons = generalDialog->addButtonsPair(QT_TRANSLATE_NOOP("popup_window", "CANCEL"), QT_TRANSLATE_NOOP("popup_window", "OK"), true);
+    auto okCancelButtons = generalDialog->addButtonsPair(QT_TRANSLATE_NOOP("popup_window", "Cancel"), QT_TRANSLATE_NOOP("popup_window", "OK"), true);
     w->setOkCancelButton(okCancelButtons.first, okCancelButtons.second);
 
     const auto res = generalDialog->showInCenter();
@@ -105,7 +103,7 @@ void CallQualityStatsMgr::onRatingConfirmed(int _starsCount)
     auto generalDialog = std::make_unique<GeneralDialog>(w, Utils::InterConnector::instance().getMainWindow(),
                                                          false, true, true, true,
                                                          options);
-    auto okCancelButtons = generalDialog->addButtonsPair(QT_TRANSLATE_NOOP("popup_window", "CANCEL"),
+    auto okCancelButtons = generalDialog->addButtonsPair(QT_TRANSLATE_NOOP("popup_window", "Cancel"),
                                                          QT_TRANSLATE_NOOP("popup_window", "OK"), true);
     Q_UNUSED(okCancelButtons);
 
@@ -186,7 +184,6 @@ void CallQualityStatsMgr::initCallsCount()
 
     callsCount_ = (calls.find(aimId) != calls.end()) ? calls[aimId]
                                                      : 0;
-
 }
 
 void CallQualityStatsMgr::setCallsCount(int _callsCount)

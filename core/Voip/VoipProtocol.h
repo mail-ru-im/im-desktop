@@ -1,5 +1,4 @@
-#ifndef __VOIP_PROTOCOL_H__
-#define __VOIP_PROTOCOL_H__
+#pragma once
 #include "../async_task.h"
 #include "../connections/wim/wim_packet.h"
 
@@ -19,5 +18,3 @@ namespace voip_manager {
     };
 
 }
-
-#endif//__VOIP_PROTOCOL_H__

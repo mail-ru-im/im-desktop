@@ -1,11 +1,10 @@
 #pragma once
 
-#include "solution.h"
-
 #ifdef __linux__
 #include <QtCore/qcoreapplication.h>
 #include <QtCore/qfile.h>
 #include <QtCore/qdir.h>
+#include <QtCore/qstringbuilder.h>
 #else
 #define _CRT_SECURE_NO_WARNINGS
 #define _CRT_NON_CONFORMING_SWPRINTFS
@@ -143,6 +142,7 @@
 #include <QTextBrowser>
 #include <QProgressBar>
 #include <QCoreApplication>
+#include <QCryptographicHash>
 
 #include <QGraphicsDropShadowEffect>
 #include <QProxyStyle>
@@ -174,19 +174,3 @@ typedef rapidjson::MemoryPoolAllocator<rapidjson::CrtAllocator> rapidjson_alloca
 #define qsl(x) QStringLiteral(x)
 #define ql1s(x) QLatin1String(x)
 #define ql1c(x) QLatin1Char(x)
-
-#ifndef __AS_CONST__
-#define __AS_CONST__
-
-namespace Utils
-{
-    template <typename T>
-    constexpr typename std::add_const<T>::type& as_const(T& t) noexcept
-    {
-        return t;
-    }
-    template <typename T>
-    void as_const(const T&&) = delete;
-}
-
-#endif // __AS_CONST__

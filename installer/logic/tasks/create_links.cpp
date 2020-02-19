@@ -2,12 +2,36 @@
 #include "create_links.h"
 #include "../tools.h"
 #include "../../utils/links/shell_link.h"
+#include "../../../common.shared/config/config.h"
 
 #include <comutil.h>
 
-const wchar_t* str_app_name_shortcut_en = build::get_product_variant(L"ICQ.lnk", L"Mail.ru Agent.lnk", L"Myteam.lnk", L"Messenger.lnk");
-const wchar_t* str_app_name_en = build::get_product_variant(L"ICQ", L"Mail.ru Agent", L"Myteam", L"Messenger");
-const wchar_t* str_app_user_model_id = build::get_product_variant(L"ICQ.Client", L"MailRu.Agent.Client", L"Myteam.Client", L"Messenger.Client");
+const wchar_t* str_app_name_shortcut_en()
+{
+    static const auto str = []() {
+        const auto str = config::get().string(config::values::installer_shortcut_win);
+        return QString::fromUtf8(str.data(), str.size()).toStdWString() + L".lnk";
+    }();
+    return str.c_str();
+}
+
+const wchar_t* str_app_name_en()
+{
+    static const auto str = []() {
+        const auto str = config::get().string(config::values::product_name_full);
+        return QString::fromUtf8(str.data(), str.size()).toStdWString();
+    }();
+    return str.c_str();
+}
+
+const wchar_t* str_app_user_model_id()
+{
+    static const auto str = []() {
+        const auto str = config::get().string(config::values::app_user_model_win);
+        return QString::fromUtf8(str.data(), str.size()).toStdWString();
+    }();
+    return str.c_str();
+}
 
 namespace installer
 {
@@ -19,8 +43,8 @@ namespace installer
 
             installer::error err;
 
-            CAtlString icq_exe = (const wchar_t*) get_icq_exe().replace('/', '\\').utf16();
-            CAtlString installer_exe = (const wchar_t*) get_installer_exe().replace('/', '\\').utf16();
+            CAtlString icq_exe = (const wchar_t*) get_icq_exe().replace(ql1c('/'), ql1c('\\')).utf16();
+            CAtlString installer_exe = (const wchar_t*) get_installer_exe().replace(ql1c('/'), ql1c('\\')).utf16();
             CAtlString icq_exe_short = (const wchar_t*) get_icq_exe_short().utf16();
 
             CAtlString program_dir, start, desktop, quick_launch;
@@ -50,46 +74,46 @@ namespace installer
 
             int iIconIndex = 0;
 
-            CAtlString str = program_dir + L"\\" + str_app_name_shortcut_en;
-            if (S_OK != links::CreateLink(icq_exe, L"", str, str_app_name_en, iIconIndex))
+            CAtlString str = program_dir + L"\\" + str_app_name_shortcut_en();
+            if (S_OK != links::CreateLink(icq_exe, L"", str, str_app_name_en(), iIconIndex))
             {
                 assert(!"link creation was failed!");
             }
 
-            str = program_dir + L"\\Uninstall " + str_app_name_shortcut_en;
-            if (S_OK != links::CreateLink(installer_exe, L"-uninstall", str, (LPCWSTR) (CAtlString(L"Uninstall ") + str_app_name_shortcut_en), 1))
+            str = program_dir + L"\\Uninstall " + str_app_name_shortcut_en();
+            if (S_OK != links::CreateLink(installer_exe, L"-uninstall", str, (LPCWSTR) (CAtlString(L"Uninstall ") + str_app_name_shortcut_en()), 1))
             {
                 assert(!"link creation was failed!");
             }
 
-            str = start + L"\\" + str_app_name_shortcut_en;
-            if (S_OK != links::CreateLink(icq_exe, L"", str, str_app_name_en, iIconIndex))
+            str = start + L"\\" + str_app_name_shortcut_en();
+            if (S_OK != links::CreateLink(icq_exe, L"", str, str_app_name_en(), iIconIndex))
             {
                 assert(!"link creation was failed!");
             }
 
             str = links::GetQuickLaunchDir();
-            str += CAtlString(L"\\") + str_app_name_shortcut_en;
+            str += CAtlString(L"\\") + str_app_name_shortcut_en();
             CComPtr<IShellLink> psl;
-            psl.Attach(links::CreateShellLink(icq_exe,(LPCTSTR) L"", str_app_name_en, iIconIndex));
+            psl.Attach(links::CreateShellLink(icq_exe,(LPCTSTR) L"", str_app_name_en(), iIconIndex));
             if (psl == NULL)
             {
                 assert(!"link creation was failed!");
             }
 
-            links::SetShellLinkTitle(psl, str_app_name_en);
-            links::SetShellLinkAppID(psl, str_app_user_model_id);
+            links::SetShellLinkTitle(psl, str_app_name_en());
+            links::SetShellLinkAppID(psl, str_app_user_model_id());
             links::SaveShellLink(psl, str);
 
-            str = desktop + L"\\" + str_app_name_shortcut_en;
-            psl.Attach(links::CreateShellLink(icq_exe,(LPCTSTR) L"", str_app_name_en, iIconIndex));
+            str = desktop + L"\\" + str_app_name_shortcut_en();
+            psl.Attach(links::CreateShellLink(icq_exe,(LPCTSTR) L"", str_app_name_en(), iIconIndex));
             if (psl == NULL)
             {
                 assert(!"link creation was failed!");
             }
 
-            links::SetShellLinkTitle(psl, str_app_name_en);
-            links::SetShellLinkAppID(psl, str_app_user_model_id);
+            links::SetShellLinkTitle(psl, str_app_name_en());
+            links::SetShellLinkAppID(psl, str_app_user_model_id());
             links::SaveShellLink(psl, str);
 
             links::PinToTaskbar(str);
@@ -106,8 +130,8 @@ namespace installer
 
             installer::error err;
 
-            CAtlString icq_exe = (const wchar_t*) get_icq_exe().replace('/', '\\').utf16();
-            CAtlString installer_exe = (const wchar_t*) get_installer_exe().replace('/', '\\').utf16();
+            CAtlString icq_exe = (const wchar_t*) get_icq_exe().replace(ql1c('/'), ql1c('\\')).utf16();
+            CAtlString installer_exe = (const wchar_t*) get_installer_exe().replace(ql1c('/'), ql1c('\\')).utf16();
             CAtlString icq_exe_short = (const wchar_t*) get_icq_exe_short().utf16();
 
             CAtlString program_dir, start, desktop, quick_launch;
@@ -132,21 +156,21 @@ namespace installer
 
             links::RemoveFromMFUList(icq_exe_short);
 
-            CAtlString str = program_dir + L"\\" + str_app_name_shortcut_en;
+            CAtlString str = program_dir + L"\\" + str_app_name_shortcut_en();
             links::RemoveLink(str);
 
-            str = program_dir + L"\\Uninstall " + str_app_name_shortcut_en;
+            str = program_dir + L"\\Uninstall " + str_app_name_shortcut_en();
             links::RemoveLink(str);
 
-            str = start + _T("\\") + str_app_name_shortcut_en;
+            str = start + _T("\\") + str_app_name_shortcut_en();
             links::RemoveLink(str);
 
             str = links::GetQuickLaunchDir();
-            str += CAtlString(L"\\") + str_app_name_shortcut_en;
+            str += CAtlString(L"\\") + str_app_name_shortcut_en();
             links::RemoveLink(str);
 
             str = desktop;
-            str += CAtlString(L"\\") + str_app_name_shortcut_en;
+            str += CAtlString(L"\\") + str_app_name_shortcut_en();
             links::RemoveLink(str);
 
             ::CoUninitialize();

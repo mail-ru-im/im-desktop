@@ -19,8 +19,9 @@ UI_COMPLEX_MESSAGE_NS_BEGIN
 
 class EmbeddedPreviewWidgetBase;
 class ILinkPreviewBlockLayout;
+class YoutubeLinkPreviewBlockLayout;
 
-class LinkPreviewBlock final : public GenericBlock
+class LinkPreviewBlock : public GenericBlock
 {
     friend class LinkPreviewBlockLayout;
 
@@ -45,8 +46,6 @@ public:
 
     const QString& getSiteName() const;
 
-    const QFont& getSiteNameFont() const;
-
     bool hasTitle() const;
 
     bool isInPreloadingState() const;
@@ -57,7 +56,7 @@ public:
 
     void onDistanceToViewportChanged(const QRect& _widgetAbsGeometry, const QRect& _viewportVisibilityAbsRect) override;
 
-    void selectByPos(const QPoint& from, const QPoint& to, const BlockSelectionType selection) override;
+    void selectByPos(const QPoint& from, const QPoint& to, bool) override;
 
     void setMaxPreviewWidth(int width) override;
 
@@ -85,9 +84,15 @@ public:
 
     QString formatRecentsText() const override;
 
+    bool pressed(const QPoint& _p) override;
     bool clicked(const QPoint& _p) override;
 
     virtual void cancelRequests() override;
+
+    void highlight(const highlightsV& _hl) override;
+    void removeHighlight() override;
+
+    const QPixmap& getPreviewImage() const;
 
 protected:
     void drawBlock(QPainter &p, const QRect& _rect, const QColor& _quoteColor) override;
@@ -102,6 +107,14 @@ protected:
 
     bool drag() override;
 
+    virtual void drawFavicon(QPainter &p);
+
+    virtual void drawSiteName(QPainter &p);
+
+    virtual std::unique_ptr<YoutubeLinkPreviewBlockLayout> createLayout();
+
+    virtual QString getTitle() const;
+
 private Q_SLOTS:
     void onLinkMetainfoMetaDownloaded(int64_t seq, bool success, Data::LinkMetadata meta);
 
@@ -111,15 +124,10 @@ private Q_SLOTS:
 
     void setPreviewImage(const QPixmap& _image);
 
-public:
-    const QPixmap& getPreviewImage() const;
-
 private:
     Q_PROPERTY(int PreloadingTicker READ getPreloadingTickerValue WRITE setPreloadingTickerValue);
 
     void createTextControls(const QRect &blockGeometry);
-
-    bool createTitleControl(const QString &title);
 
     int getPreloadingTickerValue() const;
 
@@ -129,10 +137,11 @@ private:
     void updateFonts() override;
 
     std::unique_ptr<TextRendering::TextUnit> Title_;
+    std::unique_ptr<TextRendering::TextUnit> domain_;
 
     QPixmap FavIcon_;
 
-    QString SiteName_;
+    //QString SiteName_;
 
     QString Uri_;
 
@@ -155,8 +164,6 @@ private:
     QPainterPath Bubble_;
 
     int32_t Time_;
-
-    QFont SiteNameFont_;
 
     bool MetaDownloaded_;
 
@@ -182,17 +189,13 @@ private:
         ClickableLinks
     };
 
-    void drawFavicon(QPainter &p);
-
     void drawPreloader(QPainter &p);
 
     void drawPreview(QPainter &p);
 
-    void drawSiteName(QPainter &p);
-
     QPainterPath evaluateClippingPath(const QRect &imageRect) const;
 
-    bool isOverSiteLink(const QPoint p) const;
+    bool isOverSiteLink(const QPoint& p) const;
 
     bool isTitleClickable() const;
 

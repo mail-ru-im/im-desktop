@@ -11,8 +11,6 @@ public:
 
     virtual ~QuoteBlockLayout() override;
 
-    const IItemBlockLayout::IBoxModel& getBlockBoxModel() const override;
-
     QRect getBlockGeometry() const override;
 
 protected:

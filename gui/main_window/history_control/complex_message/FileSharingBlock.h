@@ -28,6 +28,11 @@ UI_COMPLEX_MESSAGE_NS_BEGIN
 
 class IFileSharingBlockLayout;
 
+namespace MediaUtils
+{
+    enum class MediaType;
+}
+
 class FileSharingBlock final : public FileSharingBlockBase
 {
     Q_OBJECT
@@ -47,9 +52,7 @@ public:
 
     QSize getCtrlButtonSize() const;
 
-    QSize getOriginalPreviewSize() const;
-    QSize getSmallPreviewSize() const;
-    QSize getMinPreviewSize() const;
+    QSize originSizeScaled() const;
 
     static QPixmap scaledSticker(const QPixmap&);
     static QImage scaledSticker(const QImage&);
@@ -62,6 +65,8 @@ public:
 
     void onVisibilityChanged(const bool isVisible) override;
 
+    void onSelectionStateChanged(const bool isSelected) override;
+
     void onDistanceToViewportChanged(const QRect& _widgetAbsGeometry, const QRect& _viewportVisibilityAbsRect) override;
 
     void setCtrlButtonGeometry(const QRect &rect);
@@ -69,6 +74,8 @@ public:
     void setQuoteSelection() override;
 
     int desiredWidth(int _width = 0) const override;
+
+    int getMaxWidth() const override;
 
     bool isSizeLimited() const override;
 
@@ -89,6 +96,19 @@ public:
     bool isAutoplay();
 
     bool isSticker() const noexcept;
+
+    MediaUtils::MediaType mediaType() const;
+
+    bool needStretchToOthers() const override;
+    bool needStretchByShift() const override;
+
+    bool hasLeadLines() const override;
+
+    bool isBubbleRequired() const override;
+
+    bool canStretchWithSender() const override;
+
+    int minControlsWidth() const;
 
 protected:
     void drawBlock(QPainter &p, const QRect& _rect, const QColor& _quoteColor) override;
@@ -125,7 +145,7 @@ private:
     void drawPlainFileProgress(QPainter& _p);
     void drawPlainFileShowInDirLink(QPainter &p);
 
-    void drawPreview(QPainter &p, const QRect &previewRect, QPainterPath& _path, const QColor& quote_color);
+    void drawPreview(QPainter &p, const QRect &previewRect, const QColor& quote_color);
     void drawPreviewableBlock(QPainter &p, const QRect &previewRect, const QColor& quote_color);
 
     void initPlainFile();
@@ -191,6 +211,8 @@ private:
     void updateStyle() override;
     void updateFonts() override;
 
+    bool isProgressVisible() const;
+
     std::unique_ptr<Ui::DialogPlayer> videoplayer_;
 
     QString Id_;
@@ -209,7 +231,6 @@ private:
     QPainterPath RelativePreviewClippingPath_;
 
     QPixmap Preview_;
-    bool isSmallPreview_;
 
     int64_t PreviewRequestId_;
 
@@ -236,6 +257,7 @@ private Q_SLOTS:
     void localPreviewLoaded(QPixmap pixmap, const QSize _originalSize);
     void localDurationLoaded(qint64 _duration);
     void localGotAudioLoaded(bool _gotAudio);
+    void multiselectChanged();
 };
 
 UI_COMPLEX_MESSAGE_NS_END

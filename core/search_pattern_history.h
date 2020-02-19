@@ -48,6 +48,8 @@ namespace core
             void remove_pattern(const std::string_view _pattern, const std::string_view _contact);
             std::shared_ptr<get_patterns_handler> get_patterns(const std::string_view _contact);
 
+            void free_dialog(const std::string_view _contact);
+
             void save_all();
 
         private:

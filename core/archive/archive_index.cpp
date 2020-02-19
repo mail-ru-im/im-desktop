@@ -55,9 +55,7 @@ archive_index::archive_index(std::wstring _file_name, std::string _aimid)
 }
 
 
-archive_index::~archive_index()
-{
-}
+archive_index::~archive_index() = default;
 
 bool archive_index::serialize_from(int64_t _from, int64_t _count_early, int64_t _count_later, headers_list& _list, include_from_id _mode) const
 {
@@ -171,7 +169,7 @@ void archive_index::insert_header(archive::message_header& header, const std::ch
         header = existing_header;
 
     if (!(header.is_patch() && header.is_modified()))
-        merged_count_++;
+        ++merged_count_;
 }
 
 void archive_index::notify_core_outgoing_msg_count()
@@ -181,13 +179,12 @@ void archive_index::notify_core_outgoing_msg_count()
 
 bool archive_index::get_header(int64_t _msgid, message_header& _header) const
 {
-    auto iter_header = headers_index_.find(_msgid);
-    if (iter_header == headers_index_.end())
-        return false;
-
-    _header = iter_header->second;
-
-    return true;
+    if (const auto iter_header = headers_index_.find(_msgid); iter_header != headers_index_.end())
+    {
+        _header = iter_header->second;
+        return true;
+    }
+    return false;
 }
 
 bool archive_index::has_header(const int64_t _msgid) const
@@ -209,7 +206,8 @@ archive::storage::result_type archive_index::update(const archive::history_block
             hm->get_data_offset(),
             hm->get_data_size(),
             hm->get_update_patch_version(),
-            hm->has_shared_contact_with_sn()
+            hm->has_shared_contact_with_sn(),
+            hm->has_poll_with_id()
         );
     }
 

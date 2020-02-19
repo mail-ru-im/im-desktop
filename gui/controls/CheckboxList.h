@@ -8,7 +8,7 @@ namespace Ui
     {
         Q_OBJECT
     public:
-        CheckBox(QWidget* _parent);
+        CheckBox(QWidget* _parent, Qt::Alignment _align = Qt::AlignLeft);
 
         enum class Activity
         {
@@ -29,6 +29,7 @@ namespace Ui
     private:
         Activity state_;
         QPixmap button_;
+        Qt::Alignment align_;
     };
 
     /* title | checkbox */

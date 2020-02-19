@@ -28,10 +28,11 @@ namespace
         Out origin_size &_origin_size);
 
     std::string parse_title(const rapidjson::Value &_doc_node);
+
+    std::string parse_filename(const rapidjson::Value &_doc_node);
 }
 
-link_meta::link_meta(
-    const std::string &_title,
+link_meta::link_meta(const std::string &_title,
     const std::string &_annotation,
     const std::string &_preview_uri,
     const std::string &_download_uri,
@@ -40,7 +41,8 @@ link_meta::link_meta(
     const std::string &_content_type,
     const preview_size &_preview_size,
     const int64_t _file_size,
-    const origin_size& _origin_size)
+    const origin_size& _origin_size,
+    const std::string& _filename)
     : preview_uri_(_preview_uri)
     , download_uri_(_download_uri)
     , title_(_title)
@@ -51,6 +53,7 @@ link_meta::link_meta(
     , preview_size_(_preview_size)
     , file_size_(_file_size)
     , origin_size_(_origin_size)
+    , filename_(_filename)
 {
     assert(!site_name_.empty());
     assert(!content_type_.empty());
@@ -71,28 +74,23 @@ std::string link_meta::get_preview_uri(
 {
     assert(!_width || (*_width >= 0));
     assert(!_height || (*_height >= 0));
-    assert(has_preview_uri());
 
     std::string result;
 
-    const auto MAX_ARGS_LENGTH = 20u;
-    result.reserve(preview_uri_.length() + MAX_ARGS_LENGTH);
+    constexpr auto MAX_ARGS_LENGTH = 20u;
+    result.reserve(preview_uri_.size() + MAX_ARGS_LENGTH);
 
     result += preview_uri_;
 
     if (_width && (*_width > 0))
     {
-        static const std::string_view W_PARAM = "&w=";
-
-        result += W_PARAM;
+        result += "&w=";
         result += std::to_string(*_width);
     }
 
     if (_height && (*_height > 0))
     {
-        static const std::string_view H_PARAM = "&h=";
-
-        result += H_PARAM;
+        result += "&h=";
         result += std::to_string(*_height);
     }
 
@@ -149,6 +147,11 @@ const std::string& link_meta::get_title() const
     return title_;
 }
 
+const std::string& link_meta::get_filename() const
+{
+    return filename_;
+}
+
 bool link_meta::has_favicon_uri() const
 {
     return !favicon_uri_.empty();
@@ -160,7 +163,7 @@ bool link_meta::has_preview_uri() const
 }
 
 str_2_str_map format_get_preview_params(
-    const std::string &_uri_to_preview,
+    std::string_view _uri_to_preview,
     const int32_t_opt _width,
     const int32_t_opt _height,
     const bool _crop,
@@ -194,8 +197,7 @@ str_2_str_map format_get_preview_params(
     const auto favicon_size_px = favicon_size_2_px(_favicon_size);
     assert(favicon_size_px > 0);
 
-    const auto is_favicon_enabled = (favicon_size_px > 0);
-    if (is_favicon_enabled)
+    if (const auto is_favicon_enabled = favicon_size_px > 0; is_favicon_enabled)
     {
         result.emplace("favicon", "1");
         result.emplace("favsize", std::to_string(favicon_size_px));
@@ -204,13 +206,9 @@ str_2_str_map format_get_preview_params(
     return result;
 }
 
-str_2_str_map format_get_url_content_params(const std::string &_uri)
+str_2_str_map format_get_url_content_params(std::string_view _uri)
 {
-    str_2_str_map result;
-
-    result.emplace("url", wim_packet::escape_symbols(_uri));
-
-    return result;
+    return str_2_str_map{ {"url", wim_packet::escape_symbols(_uri)} };
 }
 
 link_meta_uptr parse_json(InOut char *_json, const std::string &_uri)
@@ -248,13 +246,15 @@ link_meta_uptr parse_json(InOut char *_json, const std::string &_uri)
 
     const auto site_name = extract_host(_uri);
 
-    const auto content_type = parse_content_type(root_node);
+    const auto content_type = parse_content_type(root_node);    
 
-    const auto is_invalid_json = (preview_uri.empty() && title.empty() && annotation.empty());
+    const auto is_invalid_json = content_type.empty();
     if (is_invalid_json)
     {
         return nullptr;
     }
+
+    const auto filename = parse_filename(root_node);
 
     return std::make_unique<link_meta>(
         title,
@@ -266,27 +266,23 @@ link_meta_uptr parse_json(InOut char *_json, const std::string &_uri)
         content_type,
         size,
         file_size,
-        o_size);
+        o_size,
+        filename);
 }
 
 namespace uri
 {
     std::string get_preview()
     {
-        std::stringstream ss;
-        ss << urls::get_url(urls::url_type::preview_host) << std::string_view("/getPreview");
-
-        return ss.str();
-        
-
+        std::string res;
+        res += urls::get_url(urls::url_type::preview_host);
+        res += "/getPreview";
+        return res;
     }
 
-    std::string get_url_content()
+    std::string_view get_url_content()
     {
-        std::stringstream ss;
-        ss << std::string_view("https://api.icq.net/preview") << std::string_view("/getURLContent");
-
-        return ss.str();
+        return "https://api.icq.net/preview/getURLContent";
     }
 }
 
@@ -382,7 +378,6 @@ namespace
         Out _file_size = -1;
 
         auto iter_images = _doc_node.FindMember("images");
-        auto iter_ctype = _doc_node.FindMember("content_type");
 
         if ((iter_images == _doc_node.MemberEnd()) ||
             !iter_images->value.IsArray() ||
@@ -400,21 +395,21 @@ namespace
 
         const auto is_video = parse_content_type(_doc_node) == "video";
 
-        auto iter_custom = _doc_node.FindMember("custom_fields");
-        if (iter_custom != _doc_node.MemberEnd() && iter_custom->value.IsArray() && !iter_custom->value.Empty())
+
+        if (const auto iter_custom = _doc_node.FindMember("custom_fields"); iter_custom != _doc_node.MemberEnd() && iter_custom->value.IsArray() && !iter_custom->value.Empty())
         {
-            for (auto node = iter_custom->value.Begin(), nend = iter_custom->value.End(); node != nend; ++node)
+            for (const auto& node : iter_custom->value.GetArray())
             {
-                if (!node->IsObject())
+                if (!node.IsObject())
                     continue;
 
                 std::string_view name;
-                if (!tools::unserialize_value(*node, "name", name))
+                if (!tools::unserialize_value(node, "name", name))
                     continue;
 
                 if (name == "download_url")
                 {
-                    tools::unserialize_value(*node, "value", _download_uri);
+                    tools::unserialize_value(node, "value", _download_uri);
                     break;
                 }
             }
@@ -514,6 +509,13 @@ namespace
     {
         std::string res;
         tools::unserialize_value(_doc_node, "title", res);
+        return res;
+    }
+
+    std::string parse_filename(const rapidjson::Value &_doc_node)
+    {
+        std::string res;
+        tools::unserialize_value(_doc_node, "file_name", res);
         return res;
     }
 }

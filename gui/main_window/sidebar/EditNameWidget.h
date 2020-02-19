@@ -1,7 +1,5 @@
 #pragma once
 
-class QVBoxLayout;
-
 namespace Ui
 {
     class TextBrowserEx;

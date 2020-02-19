@@ -45,15 +45,15 @@ static int getGlyphIndex(const EmojiCode& code)
     }
 }
 
-void setEmojiVector(const EmojiRecordSptrVec& vector)
+void setEmojiVector(const EmojiRecordVec& vector)
 {
     glyphs.clear();
     for (const auto& record : vector)
     {
-        if (isSkipEmojiFullCode(record->fullCodePoints))
+        if (isSkipEmojiFullCode(record.fullCodePoints))
             continue;
 
-        const auto g = getGlyphIndex(record->fullCodePoints);
+        const auto g = getGlyphIndex(record.fullCodePoints);
         if (g)
             glyphs.insert(g);
     }
@@ -78,7 +78,7 @@ namespace
 
 bool supportEmoji(const EmojiCode& code)
 {
-    static std::unordered_map<EmojiCode, std::unique_ptr<bool>, EmojiCodeHasher> supportCache; // TODO use optional
+    static std::unordered_map<EmojiCode, std::optional<bool>, EmojiCodeHasher> supportCache;
 
     auto& x = supportCache[code];
     if (x)
@@ -86,7 +86,7 @@ bool supportEmoji(const EmojiCode& code)
 
     const auto g = getGlyphIndex(code);
     const auto res = g && !isBlackListed(g);
-    x = std::make_unique<bool>(res);
+    x = std::make_optional<bool>(res);
     return res;
 }
 

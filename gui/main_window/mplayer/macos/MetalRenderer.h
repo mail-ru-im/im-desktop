@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QMacCocoaViewContainer>
+#include "../FrameRenderer.h"
 
 class MetalRenderer_p;
 
@@ -19,7 +20,7 @@ private:
 
     void paint();
 
-    void updateFrame(QPixmap _image) override;
+    void updateFrame(const QImage& _image) override;
 
     virtual void filterEvents(QObject* _parent) override;
 

@@ -65,7 +65,7 @@ namespace Ui
         contactList_->setIndexWidget(0, curMembersHost_);
         usersSearchModel.setWidget(curMembersHost_);
 
-        mainDialog_->addButtonsPair(QT_TRANSLATE_NOOP("popup_window", "CANCEL"), QT_TRANSLATE_NOOP("popup_window", "ADD"), true);
+        mainDialog_->addButtonsPair(QT_TRANSLATE_NOOP("popup_window", "Cancel"), QT_TRANSLATE_NOOP("popup_window", "Add"), true);
 
         connect(conferenceContacts_, &FocusableListView::clicked, this, &SelectionContactsForConference::itemClicked, Qt::QueuedConnection);
 
@@ -124,25 +124,18 @@ namespace Ui
     void SelectionContactsForConference::updateConferenceListSize()
     {
         if (conferenceContacts_->flow() == QListView::TopToBottom)
-        {
             conferenceContacts_->setFixedHeight(::Ui::GetContactListParams().itemHeight() * conferenceMembersModel_->rowCount());
-        }
         else
-        {
-            // All in one row.
-            conferenceContacts_->setFixedHeight(::Ui::GetContactListParams().itemHeight());
-        }
-
+            conferenceContacts_->setFixedHeight(::Ui::GetContactListParams().itemHeight()); // All in one row.
         // Force update first element in list view.
-        conferenceContacts_->update(conferenceMembersModel_->index(0));
+        //conferenceContacts_->update(conferenceMembersModel_->index(0));
+        contactList_->getView()->doItemsLayout(); // update() do not work anymore, hack QListView dynamic content violation with other method
     }
 
     void SelectionContactsForConference::onVoipCallDestroyed(const voip_manager::ContactEx& _contactEx)
     {
         if (!_contactEx.incoming && _contactEx.connection_count <= 1)
-        {
             reject();
-        }
     }
 
     // Set maximum restriction for selected item count. Used for video conference.
@@ -172,8 +165,7 @@ namespace Ui
 
             memberArrowDown_->show();
             memberArrowUp_->hide();
-        }
-        else
+        } else
         {
             conferenceContacts_->setFlow(QListView::TopToBottom);
             auto deleg = new Logic::ContactListItemDelegate(this, Logic::MembersWidgetRegim::VIDEO_CONFERENCE, conferenceMembersModel_);
@@ -183,7 +175,6 @@ namespace Ui
             memberArrowDown_->hide();
             memberArrowUp_->show();
         }
-
         updateConferenceListSize();
     }
 
@@ -272,17 +263,12 @@ namespace Ui
         currentVisibleInstance_ = this;
 
         if (currentVisibleInstance)
-        {
             currentVisibleInstance->mainDialog_->reject();
-        }
 
         res = SelectContactsWidget::show();
 
         if (currentVisibleInstance_ == this)
-        {
             currentVisibleInstance_ = nullptr;
-        }
-
         return res;
     }
 
@@ -308,8 +294,7 @@ namespace Ui
             // Fetch all members first.
             connection_ = connect(searchModel_, &QAbstractItemModel::dataChanged, this, &ContactsForVideoConference::allMembersDataChanged);
             searchModel_->setSearchPattern(QString());
-        }
-        else
+        } else
         {
             auto chatInfo = std::make_shared<Data::ChatInfo>();
             chatInfo->Members_.reserve(allMembers_.Members_.size());
@@ -341,9 +326,7 @@ namespace Ui
                 nCount++;
             }
         }
-
         allMembers_.MembersCount_ = nCount;
-
         if (allMembers_.MembersCount_ > 0)
         {
             updateMemberList();
@@ -362,16 +345,15 @@ namespace Ui
 
     void ContactListItemHorizontalDelegate::paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const
     {
-        bool isOfficial = false;
-        bool isMuted = false;
+        bool isOfficial = false, isMuted = false, isOnline = false  ;
 
         const auto aimId = Logic::aimIdFromIndex(index);
         if (!aimId.isEmpty())
         {
             isOfficial = Logic::GetFriendlyContainer()->getOfficial(aimId);
-
             if (aimId != Ui::MyInfo()->aimId())
                 isMuted = Logic::getContactListModel()->isMuted(aimId);
+            isOnline = Logic::getContactListModel()->isOnline(aimId);
         }
 
         auto isDefault = false;
@@ -379,7 +361,6 @@ namespace Ui
             aimId,
             Logic::GetFriendlyContainer()->getFriendly(aimId),
             Utils::scale_bitmap(::Ui::GetContactListParams().getAvatarSize()),
-            QString(),
             isDefault,
             false /* _regenerate */,
             ::Ui::GetContactListParams().isCL());
@@ -388,9 +369,10 @@ namespace Ui
         const QPoint pos(Utils::scale_value(16), contactList.getAvatarY());
         {
             Utils::PainterSaver ps(*painter);
+            painter->setRenderHints(QPainter::SmoothPixmapTransform | QPainter::Antialiasing | QPainter::TextAntialiasing);
             painter->translate(option.rect.topLeft());
 
-            Utils::drawAvatarWithBadge(*painter, pos, *avatar, isOfficial, isMuted, false);
+            Utils::drawAvatarWithBadge(*painter, pos, *avatar, isOfficial, isMuted, false, isOnline, true);
         }
     }
 
@@ -459,8 +441,6 @@ namespace Ui
     void ConferenceSearchMember::setSearchPattern(const QString& _search)
     {
         bSearchMode_ = !_search.isEmpty();
-
         ::Logic::SearchMembersModel::setSearchPattern(_search);
     }
 }
-

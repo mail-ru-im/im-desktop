@@ -5,7 +5,8 @@ namespace media::permissions
     enum class DeviceType
     {
         Microphone,
-        Camera
+        Camera,
+        Screen // macOS 10.15+ only
     };
 
     enum class Permission

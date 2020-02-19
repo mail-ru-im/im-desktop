@@ -78,7 +78,7 @@ namespace Ui
 
         void setSubmitButton(SubmitButton* _button);
 
-        void showEdit(Data::MessageBuddySptr _message);
+        void showEdit(Data::MessageBuddySptr _message, const MediaType _type);
         void hidePopups();
 
         void setFocusOnInput();
@@ -96,6 +96,8 @@ namespace Ui
         QRect getAttachFileButtonRect() const;
 
         void setUnderQuote(const bool _underQuote);
+
+        void forceSendButton(const bool _value);
 
     private:
         void onAttachClicked(const ClickType _type);
@@ -151,5 +153,6 @@ namespace Ui
 
         anim::Animation animResize_;
         int curEditHeight_;
+        bool forceSendButton_;
     };
 }

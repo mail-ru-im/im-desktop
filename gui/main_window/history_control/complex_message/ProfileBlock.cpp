@@ -94,45 +94,29 @@ namespace
         return Fonts::adjustedAppFont(14, Fonts::FontWeight::SemiBold);
     }
 
-    const QColor& getNameColor(bool _selected)
+    QColor getNameColor()
     {
-        static const auto color = Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID);
-        if (_selected)
-            return getSelectedTextColor();
-        else
-            return color;
+        return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID);
     }
 
-    const QColor& getUnderNameColor(bool _selected)
+    QColor getUnderNameColor()
     {
-        static const auto color = Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_PASTEL);
-        if (_selected)
-            return getSelectedTextColor();
-        else
-            return color;
+        return Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_PASTEL);
     }
 
-    const QColor& getDescriptionColor(bool _selected)
+    QColor getDescriptionColor()
     {
-        static const auto color = Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID);
-        if (_selected)
-            return getSelectedTextColor();
-        else
-            return color;
+        return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID);
     }
 
     enum class ButtonState {Normal, Hovered, Active};
 
-    const QColor& getButtonBackgroundColor(ButtonState _state, bool _selected, bool _outgoing)
+    const QColor& getButtonBackgroundColor(ButtonState _state, bool _outgoing)
     {
         static const auto emptyColor = QColor();
-        static const auto selectedColor = Styling::getParameters().getColor(Styling::StyleVariable::GHOST_SECONDARY);
 
-        if (_state != ButtonState::Normal && _selected)
+        if (_state != ButtonState::Normal)
             return emptyColor;
-
-        if (_selected)
-            return selectedColor;
 
         if (_outgoing)
         {
@@ -170,16 +154,12 @@ namespace
         return emptyColor;
     }
 
-    const QColor& getButtonTextColor(bool _selected)
+    QColor getButtonTextColor()
     {
-        static const auto color = Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_INVERSE);
-        if (_selected)
-            return getSelectedTextColor();
-        else
-            return color;
+        return Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_INVERSE);
     }
 
-    const QPixmap& getArrowButtonPixmap(bool _hovered, bool _active, bool _selected, bool _outgoing)
+    const QPixmap& getArrowButtonPixmap(bool _hovered, bool _active, bool _outgoing)
     {
         auto getPixmap = [](const QColor& _color)
         {
@@ -188,11 +168,6 @@ namespace
             Utils::check_pixel_ratio(pixmap);
             return pixmap;
         };
-
-        static const auto pixmapSelected = getPixmap(Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT));
-
-        if (_selected)
-            return pixmapSelected;
 
         if (_outgoing)
         {
@@ -230,7 +205,7 @@ namespace
     void showIntermediateProfile(const QString& _name, const QString& _phone, const QString& _sn)
     {
         auto userProfile = new Ui::UserProfile(Utils::InterConnector::instance().getMainWindow(), _phone, _sn, _name);
-        Ui::GeneralDialog d(userProfile, Utils::InterConnector::instance().getMainWindow(), false, true);
+        Ui::GeneralDialog d(userProfile, Utils::InterConnector::instance().getMainWindow());
 
         QObject::connect(userProfile, &Ui::UserProfile::saveClicked, &d, [_name, _phone, &d, _sn]()
         {
@@ -243,7 +218,7 @@ namespace
         });
 
         d.addLabel(QT_TRANSLATE_NOOP("profile_block", "About this contact"));
-        d.addCancelButton(QT_TRANSLATE_NOOP("profile_block", "CANCEL"), true);
+        d.addCancelButton(QT_TRANSLATE_NOOP("profile_block", "Cancel"), true);
         d.showInCenter();
     }
 
@@ -324,7 +299,7 @@ bool ProfileBlockBase::pressed(const QPoint &_p)
 
     clickAreaPressed_ = getClickArea(Layout_->getContentRect()).contains(mappedPoint);
 
-    if (button_)
+    if (button_ && !Utils::InterConnector::instance().isMultiselect())
         button_->setPressed(button_->rect().contains(mappedPoint));
 
     update();
@@ -338,13 +313,13 @@ bool ProfileBlockBase::clicked(const QPoint &_p)
 
     auto clickHandled = false;
 
-    if (getClickArea(Layout_->getContentRect()).contains(mappedPoint))
+    if (getClickArea(Layout_->getContentRect()).contains(mappedPoint) && !Utils::InterConnector::instance().isMultiselect())
     {
         onClickAreaPressed();
         clickHandled = true;
     }
 
-    if (button_ && button_->rect().contains(mappedPoint))
+    if (button_ && button_->rect().contains(mappedPoint) && !Utils::InterConnector::instance().isMultiselect())
     {
         onButtonPressed();
         clickHandled = true;
@@ -368,9 +343,6 @@ void ProfileBlockBase::drawBlock(QPainter& p, const QRect& _rect, const QColor& 
 
     if (!isStandalone())
     {
-        if (isSelected())
-            drawSelectedFrame(p, QRect(QPoint(0, 0), contentSize));
-
         p.setTransform(QTransform().translate(MessageStyle::Files::getHorMargin(), MessageStyle::Files::getVerMargin()));
         contentSize.setWidth(contentSize.width() - MessageStyle::Files::getHorMargin() * 2);
         contentSize.setHeight(contentSize.height() - MessageStyle::Files::getVerMargin() * 2);
@@ -399,13 +371,13 @@ void ProfileBlockBase::drawBlock(QPainter& p, const QRect& _rect, const QColor& 
         }
 
         auto pixmapSize = getArrowButtonPixmapSize();
-        p.drawPixmap(contentSize.width() - pixmapSize.width(), getNamePos().y() + (getAvatarSize() - pixmapSize.height()) / 2, getArrowButtonPixmap(clickAreaHovered_, clickAreaPressed_, isSelected(), isOutgoing()));
+        p.drawPixmap(contentSize.width() - pixmapSize.width(), getNamePos().y() + (getAvatarSize() - pixmapSize.height()) / 2, getArrowButtonPixmap(clickAreaHovered_, clickAreaPressed_, isOutgoing()));
 
         if (avatar_)
             p.drawPixmap(getAvatarPos().x(), getAvatarPos().y(), *avatar_);
         else
             p.drawPixmap(getAvatarPos().x(), getAvatarPos().y(),
-                         Utils::roundImage(Utils::getDefaultAvatar(QString(), name_.isEmpty() ? underNameText_ : name_, Utils::scale_bitmap(getAvatarSize())),QString(), false, false));
+                         Utils::roundImage(Utils::getDefaultAvatar(QString(), name_.isEmpty() ? underNameText_ : name_, Utils::scale_bitmap(getAvatarSize())), false, false));
     }
     else
     {
@@ -428,7 +400,7 @@ void ProfileBlockBase::drawSelectedFrame(QPainter& _p, const QRect& _rect)
     Utils::PainterSaver ps(_p);
     _p.setRenderHint(QPainter::Antialiasing);
 
-    const auto &bodyBrush = MessageStyle::getBodyBrush(isOutgoing(), isSelected(), getChatAimid());
+    const auto &bodyBrush = MessageStyle::getBodyBrush(isOutgoing(), getChatAimid());
     _p.setBrush(bodyBrush);
     _p.setPen(Qt::NoPen);
 
@@ -442,14 +414,20 @@ void ProfileBlockBase::initialize()
 
 void ProfileBlockBase::mouseMoveEvent(QMouseEvent* _event)
 {
-    if (loaded_)
+    if (Utils::InterConnector::instance().isMultiselect())
     {
-        auto clickAreaHovered = getClickArea(Layout_->getContentRect()).contains(_event->pos());
+        setCursor(Qt::PointingHandCursor);
+    }
+    else if (loaded_)
+    {
+        auto clickAreaHovered = getClickArea(Layout_->getContentRect()).contains(_event->pos()) && !Utils::InterConnector::instance().isMultiselect();
         auto buttonHovered = button_->rect().contains(_event->pos());
 
         auto needUpdate = buttonHovered != button_->hovered() || clickAreaHovered != clickAreaHovered_;
 
-        button_->setHovered(buttonHovered);
+
+        if (!Utils::InterConnector::instance().isMultiselect())
+            button_->setHovered(buttonHovered);
         clickAreaHovered_ = clickAreaHovered;
 
         setCursor(clickAreaHovered_ || button_->hovered() ? Qt::PointingHandCursor : Qt::ArrowCursor);
@@ -513,9 +491,9 @@ void ProfileBlockBase::init(const QString& _name, const QString& _underName, con
     button_ = std::make_unique<BLabel>();
     auto buttonUnit = TextRendering::MakeTextUnit(getButtonText());
     button_->setTextUnit(std::move(buttonUnit));
-    button_->background_ = getButtonBackgroundColor(ButtonState::Normal, false, isOutgoing());
-    button_->hoveredBackground_ = getButtonBackgroundColor(ButtonState::Hovered, false, isOutgoing());
-    button_->pressedBackground_ = getButtonBackgroundColor(ButtonState::Active, false, isOutgoing());
+    button_->background_ = getButtonBackgroundColor(ButtonState::Normal, isOutgoing());
+    button_->hoveredBackground_ = getButtonBackgroundColor(ButtonState::Hovered, isOutgoing());
+    button_->pressedBackground_ = getButtonBackgroundColor(ButtonState::Active, isOutgoing());
     button_->setBorderRadius(Utils::scale_value(8));
     button_->setVerticalPosition(TextRendering::VerPosition::MIDDLE);
     button_->setYOffset(getButtonHeight() / 2);
@@ -525,10 +503,10 @@ void ProfileBlockBase::init(const QString& _name, const QString& _underName, con
 
 void ProfileBlockBase::initTextUnits()
 {
-    nameUnit_->init(getNameFont(), getNameColor(false), QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, 1);
-    underNameUnit_->init(getUnderNameFont(), getUnderNameColor(false), QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, 1);
-    descriptionUnit_->init(getDescriptionFont(), getDescriptionColor(false), QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, 2, TextRendering::LineBreakType::PREFER_SPACES);
-    button_->initTextUnit(getButtonFont(), getButtonTextColor(false), QColor(), QColor(), QColor(), TextRendering::HorAligment::CENTER, 1);
+    nameUnit_->init(getNameFont(), getNameColor(), QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, 1);
+    underNameUnit_->init(getUnderNameFont(), getUnderNameColor(), QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, 1);
+    descriptionUnit_->init(getDescriptionFont(), getDescriptionColor(), QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, 2, TextRendering::LineBreakType::PREFER_SPACES);
+    button_->initTextUnit(getButtonFont(), getButtonTextColor(), QColor(), QColor(), QColor(), TextRendering::HorAligment::CENTER, 1);
 }
 
 void ProfileBlockBase::loadAvatar(const QString& _sn, const QString& _name)
@@ -539,30 +517,9 @@ void ProfileBlockBase::loadAvatar(const QString& _sn, const QString& _name)
         _sn,
         _name,
         Utils::scale_bitmap(getAvatarSize()),
-        QString(),
         Out isDefault,
         false,
         false);
-}
-
-void ProfileBlockBase::setSelected(bool _selected)
-{
-    if (getParentComplexMessage()->getBlockCount() == 1 || getParentComplexMessage()->getQuotes().isEmpty())
-       getParentComplexMessage()->setDrawFullBubbleSelected(_selected && isStandalone());
-
-    if (loaded_)
-    {
-        nameUnit_->setColor(getNameColor(_selected));
-        underNameUnit_->setColor(getUnderNameColor(_selected));
-        descriptionUnit_->setColor(getDescriptionColor(_selected));
-
-        button_->setDefaultColor(getButtonTextColor(_selected));
-        button_->background_ = getButtonBackgroundColor(ButtonState::Normal, _selected, isOutgoing());
-        button_->hoveredBackground_ = getButtonBackgroundColor(ButtonState::Hovered, _selected, isOutgoing());
-        button_->pressedBackground_ = getButtonBackgroundColor(ButtonState::Active, _selected, isOutgoing());
-    }
-
-    GenericBlock::setSelected(_selected);
 }
 
 QPoint ProfileBlockBase::calcUndernamePos() const
@@ -585,6 +542,7 @@ ProfileBlock::ProfileBlock(ComplexMessageItem* _parent, const QString& _link)
     , link_(_link)
 {
     connect(GetDispatcher(), &Ui::core_dispatcher::idInfo, this, &ProfileBlock::onIdInfo);
+    connect(Ui::GetDispatcher(), &Ui::core_dispatcher::chatInfo, this, &ProfileBlock::chatInfo);
 }
 
 ProfileBlock::~ProfileBlock()
@@ -595,8 +553,8 @@ ProfileBlock::~ProfileBlock()
 QString ProfileBlock::extractProfileId(const QString& _link)
 {
     const auto parts = _link.splitRef(ql1c('/'));
-    if (!parts.empty() && !parts.last().isEmpty())
-        return parts.last().toString();
+    if (!parts.empty() && !parts.back().isEmpty())
+        return parts.back().toString();
 
     return QString();
 }
@@ -682,14 +640,37 @@ void ProfileBlock::onIdInfo(const qint64 _seq, const Data::IdInfo& _idInfo)
         loadAvatar(info_.sn_, info_.name_);
     }
 
+    if (info_.isChatInfo())
+    {
+        Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
+        if (!info_.sn_.isEmpty())
+            collection.set_value_as_qstring("aimid", info_.sn_);
+
+        collection.set_value_as_qstring("stamp", info_.stamp_);
+
+        collection.set_value_as_int("limit", 0);
+        chatInfoSeq_ = Ui::GetDispatcher()->post_message_to_core("chats/info/get", collection.get());
+    }
+
     notifyBlockContentsChanged();
+}
+
+void ProfileBlock::chatInfo(qint64 _seq, const std::shared_ptr<Data::ChatInfo>& _chatInfo, const int)
+{
+    if (_seq != chatInfoSeq_)
+        return;
+
+    chatInfo_ = _chatInfo;
 }
 
 void ProfileBlock::onButtonPressed()
 {
     if (info_.type_ == Data::IdInfo::IdType::Chat)
     {
-        Utils::openDialogOrProfile(info_.stamp_, Utils::OpenDOPParam::stamp);
+        if (chatInfo_)
+            Utils::openChatDialog(info_.stamp_, info_.sn_, chatInfo_->ApprovedJoin_, chatInfo_->Public_);
+        else
+            Utils::openDialogOrProfile(info_.stamp_, Utils::OpenDOPParam::stamp);
     }
     else
     {
@@ -703,7 +684,10 @@ void ProfileBlock::onClickAreaPressed()
 {
     if (info_.type_ == Data::IdInfo::IdType::Chat)
     {
-        Utils::openDialogOrProfile(info_.stamp_, Utils::OpenDOPParam::stamp);
+        if (chatInfo_)
+            Utils::openChatDialog(info_.stamp_, info_.sn_, chatInfo_->ApprovedJoin_, chatInfo_->Public_);
+        else
+            Utils::openDialogOrProfile(info_.stamp_, Utils::OpenDOPParam::stamp);
     }
     else
     {

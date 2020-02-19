@@ -2,7 +2,8 @@
 
 #include "UrlParser.h"
 #include "utils.h"
-#include "../app_config.h"
+#include "../common.shared/config/config.h"
+#include "url_config.h"
 
 namespace
 {
@@ -21,7 +22,7 @@ namespace
 }
 
 Utils::UrlParser::UrlParser()
-    : parser_(Ui::GetAppConfig().getUrlFilesGet())
+    : parser_(Ui::getUrlConfig().getUrlFilesParser().toStdString(), additionalFsUrls())
     , charsProcessed_(0)
     , forceNotUrl_(false)
 {
@@ -116,4 +117,19 @@ QString Utils::UrlParser::getFilesharingId() const
     }
 
     return QString();
+}
+
+const std::vector<std::string>& Utils::UrlParser::additionalFsUrls()
+{
+    const static auto urls = []() {
+        const auto urls_csv = config::get().string(config::values::additional_fs_parser_urls_csv);
+        const auto str = QString::fromUtf8(urls_csv.data(), urls_csv.size());
+        const auto splitted = str.splitRef(ql1c(','), QString::SkipEmptyParts);
+        std::vector<std::string> urls;
+        urls.reserve(splitted.size());
+        for (const auto& x : splitted)
+            urls.push_back(x.toString().toStdString());
+        return urls;
+    }();
+    return urls;
 }

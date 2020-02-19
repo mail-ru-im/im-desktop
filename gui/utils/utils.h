@@ -4,9 +4,11 @@
 #include "../../gui.shared/qt_overload.h"
 #include "../types/message.h"
 #include "../types/filesharing_download_result.h"
+#include "../controls/TextUnit.h"
 #include "stdafx.h"
 
 class QApplication;
+class QScreen;
 
 #ifdef _WIN32
 QPixmap qt_pixmapFromWinHBITMAP(HBITMAP bitmap, int hbitmapFormat = 0);
@@ -15,11 +17,8 @@ QPixmap qt_pixmapFromWinHBITMAP(HBITMAP bitmap, int hbitmapFormat = 0);
 namespace Ui
 {
     class GeneralDialog;
-
-    namespace TextRendering
-    {
-        class TextUnit;
-    }
+    class CheckBox;
+    class MessagesScrollArea;
 }
 
 namespace Utils
@@ -47,7 +46,7 @@ namespace Utils
     };
 
     template <typename T>
-    class ScopeExitT
+    class [[nodiscard]] ScopeExitT
     {
     public:
         ScopeExitT() = delete;
@@ -80,8 +79,7 @@ namespace Utils
         int ShadowWidth_;
     };
 
-
-    class PainterSaver
+    class [[nodiscard]] PainterSaver
     {
     public:
         PainterSaver(QPainter& _painter)
@@ -103,13 +101,18 @@ namespace Utils
 
     bool isUin(const QString& _aimId);
 
+    const std::vector<QString>& urlSchemes();
+    bool isInternalScheme(const QString& scheme);
+
     QString getCountryNameByCode(const QString& _iso_code);
+    QString getCountryCodeByName(const QString& _name);
     QMap<QString, QString> getCountryCodes();
     // Stolen from Formatter in history_control , move it here completely?
     QString formatFileSize(const int64_t size);
 
     QString ScaleStyle(const QString& _style, double _scale);
 
+    void SetProxyStyle(QWidget* _widget, QStyle* _style);
     void ApplyStyle(QWidget* _widget, const QString& _style);
     void ApplyPropertyParameter(QWidget* _widget, const char* _property, QVariant _parameter);
 
@@ -120,7 +123,7 @@ namespace Utils
 
     std::vector<std::vector<QString>> GetPossibleStrings(const QString& _text, unsigned& _count);
 
-    QPixmap roundImage(const QPixmap& _img, const QString& _state, bool _isDefault, bool _miniIcons);
+    QPixmap roundImage(const QPixmap& _img, bool _isDefault, bool _miniIcons);
 
     void addShadowToWidget(QWidget* _target);
     void addShadowToWindow(QWidget* _target, bool _enabled = true);
@@ -137,13 +140,15 @@ namespace Utils
 
     double fscale_value(const double _px) noexcept;
     int scale_value(const int _px) noexcept;
-    QSize scale_value(const QSize _px) noexcept;
-    QSizeF scale_value(const QSizeF _px) noexcept;
-    QRect scale_value(const QRect _px) noexcept;
+    QSize scale_value(const QSize& _px) noexcept;
+    QSizeF scale_value(const QSizeF& _px) noexcept;
+    QRect scale_value(const QRect& _px) noexcept;
+    QPoint scale_value(const QPoint& _px) noexcept;
 
     int unscale_value(int _px) noexcept;
     QSize unscale_value(const QSize& _px) noexcept;
     QRect unscale_value(const QRect& _px) noexcept;
+    QPoint unscale_value(const QPoint& _px) noexcept;
 
     int scale_bitmap_ratio() noexcept;
     int scale_bitmap(const int _px) noexcept;
@@ -307,6 +312,8 @@ namespace Utils
 
     QSize getMaxImageSize();
 
+    QScreen* mainWindowScreen();
+
     QPixmap loadPixmap(const QString& _resource);
 
     bool loadPixmap(const QString& _path, Out QPixmap& _pixmap);
@@ -348,7 +355,7 @@ namespace Utils
 
     QStringRef normalizeLink(const QStringRef& _link);
 
-    const wchar_t* get_crossprocess_mutex_name();
+    std::string_view get_crossprocess_mutex_name();
 
     QHBoxLayout* emptyHLayout(QWidget* parent = nullptr);
     QVBoxLayout* emptyVLayout(QWidget* parent = nullptr);
@@ -361,6 +368,7 @@ namespace Utils
     QString getInstallerName();
 
     void openMailBox(const QString& email, const QString& mrimKey, const QString& mailId);
+    void openAttachUrl(const QString& email, const QString& mrimKey, bool canCancel);
     void openAgentUrl(
         const QString& _url,
         const QString& _fail_url,
@@ -394,9 +402,11 @@ namespace Utils
         enum class Color
         {
             Red,
-            Green
+            Green,
+            Gray
         };
-        void drawBadge(const std::unique_ptr<Ui::TextRendering::TextUnit>& _textUnit, QPainter& _p, int _x, int _y, Color _color);
+        int drawBadge(const std::unique_ptr<Ui::TextRendering::TextUnit>& _textUnit, QPainter& _p, int _x, int _y, Color _color);
+        int drawBadgeRight(const std::unique_ptr<Ui::TextRendering::TextUnit>& _textUnit, QPainter& _p, int _x, int _y, Color _color);
     }
 
     QSize getUnreadsSize(const QFont& _font, const bool _withBorder, const int _unreads, const int _balloonSize);
@@ -422,6 +432,9 @@ namespace Utils
     }
 
     QString convertMentions(const QString& _source, const Data::MentionMap& _mentions);
+    QString convertFilesPlaceholders(const QString& _source, const Data::FilesPlaceholderMap& _files);
+    QString replaceFilesPlaceholders(QString _text, const Data::FilesPlaceholderMap& _files);
+    QString setFilesPlaceholders(QString _text, const Data::FilesPlaceholderMap& _files);
 
     bool isNick(const QStringRef& _text);
     QString makeNick(const QString& _text);
@@ -439,6 +452,10 @@ namespace Utils
     }
 
     bool isServiceLink(const QString& _url);
+    void clearContentCache();
+    void clearAvatarsCache();
+    void removeOmicronFile();
+    void checkForUpdates();
 
     enum class OpenDOPResult
     {
@@ -453,6 +470,7 @@ namespace Utils
         stamp,
     };
 
+    OpenDOPResult openChatDialog(const QString& _stamp, const QString& _aimid, bool _joinApproval, bool _public);
     OpenDOPResult openDialogOrProfile(const QString& _contact, const OpenDOPParam _paramType = OpenDOPParam::aimid);
     void openDialogWithContact(const QString& _contact, qint64 _id = -1, bool _sel = true);
 
@@ -461,11 +479,11 @@ namespace Utils
     void drawBubbleRect(QPainter& _p, const QRectF& _rect, const QColor& _color, int _bWidth, int _bRadious);
 
     int getShadowMargin();
-    void drawBubbleShadow(QPainter& _p, const QPainterPath& _bubble, const int _clipLength = -1);
+    void drawBubbleShadow(QPainter& _p, const QPainterPath& _bubble, const int _clipLength = -1, const int _shadowMargin = -1, const QColor _shadowColor = QColor());
 
     QSize avatarWithBadgeSize(const int _avatarWidthScaled);
-    void drawAvatarWithBadge(QPainter& _p, const QPoint& _topLeft, const QPixmap& _pm, const bool _isOfficial, const bool _isMuted, const bool _isSelected);
-    void drawAvatarWithBadge(QPainter& _p, const QPoint& _topLeft, const QPixmap& _pm, const QString& _aimid, const bool _officialOnly = false, const bool _isSelected = false);
+    void drawAvatarWithBadge(QPainter& _p, const QPoint& _topLeft, const QPixmap& _pm, const bool _isOfficial, const bool _isMuted, const bool _isSelected, const bool _isOnline, const bool _small_online);
+    void drawAvatarWithBadge(QPainter& _p, const QPoint& _topLeft, const QPixmap& _pm, const QString& _aimid, const bool _officialOnly = false, const bool _isSelected = false, const bool _small_online = true);
     void drawAvatarWithoutBadge(QPainter& _p, const QPoint& _topLeft, const QPixmap& _pm);
 
     template<typename T>
@@ -511,7 +529,8 @@ namespace Utils
             MW_Resizing = 0,
             Keep_Sidebar,
             MacEventFilter,
-            ShowLoginPage
+            ShowLoginPage,
+            ShowGDPRPage,
         };
 
         Initiator initiator_ = Initiator::Unknown;
@@ -534,11 +553,29 @@ namespace Utils
     {
         Q_OBJECT
     public:
-        PhoneValidator(QWidget* _parent, bool _isCode);
+        PhoneValidator(QWidget* _parent, bool _isCode, bool _isParseFullNumber = false);
         virtual QValidator::State validate(QString& input, int&) const override;
 
     private:
         bool isCode_;
+        bool isParseFullNumber_;
+    };
+
+    class DeleteMessagesWidget : public QWidget
+    {
+        Q_OBJECT
+    public:
+        DeleteMessagesWidget(QWidget* _parent, int _deleteForYou, int _deleteForAll);
+        bool isDeleteForAll() const;
+
+    protected:
+        void paintEvent(QPaintEvent* _event) override;
+        void resizeEvent(QResizeEvent* _event) override;
+
+    private:
+        Ui::CheckBox* checkbox_;
+        std::unique_ptr<Ui::TextRendering::TextUnit> label_;
+        bool deleteForAll_;
     };
 
     void logMessage(const QString& _message);
@@ -562,8 +599,18 @@ namespace Utils
     QPixmap tintImage(const QPixmap& _source, const QColor& _tint);
     bool isChat(const QString& _aimid);
 
-    void showDownloadToast(const Data::FileSharingDownloadResult& _result);
     QString getDomainUrl();
+
+    QString getStickerBotAimId();
+
+    template<typename T, typename V>
+    bool is_less_by_first(const std::pair<T, V>& x1, const std::pair<T, V>& x2)
+    {
+        static_assert(std::is_same_v<decltype(x1), decltype(x2)>);
+        return static_cast<std::underlying_type_t<decltype(x1.first)>>(x1.first) < static_cast<std::underlying_type_t<decltype(x2.first)>>(x2.first);
+    };
+
+    QString msgIdLogStr(qint64 _msgId);
 }
 
 Q_DECLARE_METATYPE(Utils::CloseWindowInfo)
@@ -574,9 +621,48 @@ namespace Logic
     enum class Placeholder
     {
         Contacts,
-        Recents,
-        Dialog
+        Recents
     };
-    void updatePlaceholders(const std::vector<Placeholder> &_locations = {Placeholder::Contacts, Placeholder::Recents, Placeholder::Dialog});
+    void updatePlaceholders(const std::vector<Placeholder> &_locations = {Placeholder::Contacts, Placeholder::Recents});
 }
 
+namespace MimeData
+{
+    QString getMentionMimeType();
+    QString getRawMimeType();
+    QString getFileMimeType();
+
+    QByteArray convertMapToArray(const std::map<QString, QString, StringComparator>& _map);
+    std::map<QString, QString, StringComparator> convertArrayToMap(const QByteArray& _array);
+
+    void copyMimeData(const Ui::MessagesScrollArea& _area);
+
+    const std::vector<QString>& getFilesPlaceholderList();
+}
+
+namespace FileSharing
+{
+    enum class FileType
+    {
+        archive,
+        xls,
+        html,
+        keynote,
+        numbers,
+        pages,
+        pdf,
+        ppt,
+        audio,
+        txt,
+        doc,
+        apk,
+
+        unknown,
+
+        max_val,
+    };
+
+    FileType getFSType(const QString& _filename);
+
+    QString getPlaceholderForType(FileType _fileType);
+}

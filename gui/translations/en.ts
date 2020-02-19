@@ -71,6 +71,13 @@
     </message>
 </context>
 <context>
+    <name>UpdaterButton</name>
+    <message>
+        <source>Update %1</source>
+        <translation>UPDATE %1</translation>
+    </message>
+</context>
+<context>
     <name>about_us</name>
     <message>
         <source>This product includes software developed by the OpenSSL project for use in the OpenSSL Toolkit</source>
@@ -89,24 +96,38 @@
         <translation>https://openssl.org</translation>
     </message>
     <message>
-        <source>Presented by Mail.ru</source>
-        <translation>Presented by Mail.ru</translation>
-    </message>
-    <message>
         <source>© Mail.ru LLC</source>
         <translation>© Mail.ru LLC</translation>
+    </message>
+    <message>
+        <source>Beta version contains new features, but it is not complete yet.
+You can leave your feedback or report an error here:</source>
+        <translation>Beta version contains new features, but it is not complete yet.
+You can leave your feedback or report an error here:</translation>
+    </message>
+    <message>
+        <source>https://icq.im/desktopbeta</source>
+        <translation>https://icq.im/desktopbeta</translation>
+    </message>
+    <message>
+        <source>Check for updates</source>
+        <translation>Check for Updates</translation>
+    </message>
+    <message>
+        <source>You have the latest version</source>
+        <translation>You have the latest version</translation>
+    </message>
+    <message>
+        <source>Update required</source>
+        <translation>Update required</translation>
+    </message>
+    <message>
+        <source>Server error</source>
+        <translation>Server error</translation>
     </message>
 </context>
 <context>
     <name>add_new_contact_dialogs</name>
-    <message>
-        <source>ADD</source>
-        <translation>ADD</translation>
-    </message>
-    <message>
-        <source>ADD ANOTHER ONE</source>
-        <translation>ADD ANOTHER ONE</translation>
-    </message>
     <message>
         <source>New contact</source>
         <translation>New contact</translation>
@@ -167,20 +188,82 @@
         <source>Phone number</source>
         <translation>Phone number</translation>
     </message>
+    <message>
+        <source>Add</source>
+        <translation>Add</translation>
+    </message>
+    <message>
+        <source>Add another one</source>
+        <translation>Add another one</translation>
+    </message>
+</context>
+<context>
+    <name>add_widget</name>
+    <message>
+        <source>Phone number</source>
+        <translation>Phone number</translation>
+    </message>
+    <message>
+        <source>Nickname</source>
+        <translation>Nickname</translation>
+    </message>
+    <message>
+        <source>Enter nickname</source>
+        <translation>Enter a nickname</translation>
+    </message>
+    <message>
+        <source>Email</source>
+        <translation>Email</translation>
+    </message>
+    <message>
+        <source>Enter email</source>
+        <translation>Enter Email</translation>
+    </message>
+    <message>
+        <source>Add contact by phone or nickname?</source>
+        <translation>Add contact by phone number or nickname?</translation>
+    </message>
+    <message>
+        <source>Add contact by phone or email?</source>
+        <translation>Add contact by phone or email?</translation>
+    </message>
 </context>
 <context>
     <name>appearance</name>
-    <message>
-        <source>Default</source>
-        <translation>Default</translation>
-    </message>
     <message>
         <source>Blue</source>
         <translation>Blue</translation>
     </message>
     <message>
-        <source>Night</source>
-        <translation>Night</translation>
+        <source>Green</source>
+        <translation>Green</translation>
+    </message>
+    <message>
+        <source>Dark Green</source>
+        <translation>Dark green</translation>
+    </message>
+    <message>
+        <source>Violet</source>
+        <translation>Lilac</translation>
+    </message>
+    <message>
+        <source>Orange</source>
+        <translation>Orange</translation>
+    </message>
+    <message>
+        <source>Dark blue</source>
+        <translation>Dark blue</translation>
+    </message>
+</context>
+<context>
+    <name>attach_phone_number</name>
+    <message>
+        <source>For security reasons you need to confirm your phone number. This number will not appear on your profile.</source>
+        <translation>For security reasons you need to confirm your phone number.</translation>
+    </message>
+    <message>
+        <source>Security alert</source>
+        <translation>Attention</translation>
     </message>
 </context>
 <context>
@@ -205,12 +288,6 @@
         <translation>Avatar was not uploaded due to server error</translation>
     </message>
     <message>
-        <source>Edit
-photo</source>
-        <translation>Edit
-photo</translation>
-    </message>
-    <message>
         <source>Upload photo</source>
         <translation>Upload photo</translation>
     </message>
@@ -223,25 +300,39 @@ photo</translation>
         <translation>Image should be at least 200x200 px</translation>
     </message>
     <message>
-        <source>CHOOSE FILE</source>
-        <translation>CHOOSE FILE</translation>
+        <source>Choose file</source>
+        <translation>Select a file</translation>
+    </message>
+    <message>
+        <source>Select a file</source>
+        <translation>Select a file</translation>
     </message>
 </context>
 <context>
-    <name>burger_menu</name>
+    <name>block_and_delete</name>
     <message>
-        <source>Update is available</source>
-        <translation>Update is available</translation>
+        <source>Delete messages</source>
+        <translation>Delete messages</translation>
     </message>
     <message>
-        <source>Restart application, 
-so update could take effect</source>
-        <translation>Restart application, 
-so update could take effect</translation>
+        <source>Block and delete?</source>
+        <translation>Block and delete?</translation>
     </message>
     <message>
-        <source>RESTART</source>
-        <translation>RESTART</translation>
+        <source>Cancel</source>
+        <translation>Cancel</translation>
+    </message>
+    <message>
+        <source>Yes</source>
+        <translation>Yes</translation>
+    </message>
+    <message>
+        <source>This member won&apos;t be able to join the channel again. You could also delete his messages</source>
+        <translation>This member won&apos;t be able to join the channel again. You could also delete his messages</translation>
+    </message>
+    <message>
+        <source>This member won&apos;t be able to join the group again. You could also delete his messages</source>
+        <translation>This member won&apos;t be able to join the group again. You could also delete his messages</translation>
     </message>
 </context>
 <context>
@@ -249,10 +340,6 @@ so update could take effect</translation>
     <message>
         <source> and </source>
         <translation> and </translation>
-    </message>
-    <message>
-        <source>Your friend is now available for chat and calls. You can say hi now!</source>
-        <translation>Your friend is now available for chat and calls. You can say hi now!</translation>
     </message>
     <message>
         <source>You</source>
@@ -353,16 +440,6 @@ so update could take effect</translation>
         <translation>%1 removed %2</translation>
     </message>
     <message>
-        <source>%1 have left group</source>
-        <comment>many</comment>
-        <translation>%1 have left group</translation>
-    </message>
-    <message>
-        <source>%1 has left group</source>
-        <comment>one</comment>
-        <translation>%1 has left group</translation>
-    </message>
-    <message>
         <source>%1 changed chat rules to &quot;%2&quot;</source>
         <translation>%1 changed chat rules to &quot;%2&quot;</translation>
     </message>
@@ -409,6 +486,75 @@ so update could take effect</translation>
     <message>
         <source>You declined a call from %1</source>
         <translation>You declined a call from %1</translation>
+    </message>
+    <message>
+        <source>Theme was changed to &quot;%1&quot;</source>
+        <translation>Topic changed to %1</translation>
+    </message>
+    <message>
+        <source>%1 was added</source>
+        <translation>%1 was added</translation>
+    </message>
+    <message>
+        <source>%1 were added</source>
+        <translation>%1 were added</translation>
+    </message>
+    <message>
+        <source>Chat description was deleted</source>
+        <translation>Chat Description Deleted</translation>
+    </message>
+    <message>
+        <source>%1 was removed</source>
+        <translation>%1 was deleted</translation>
+    </message>
+    <message>
+        <source>%1 were removed</source>
+        <translation>%1 was deleted</translation>
+    </message>
+    <message>
+        <source>Channel avatar was changed</source>
+        <translation>Channel avatar was changed</translation>
+    </message>
+    <message>
+        <source>Description was changed to &quot;%1&quot;</source>
+        <translation>Description changed to %1</translation>
+    </message>
+    <message>
+        <source>Channel rules were changed to &quot;%1&quot;</source>
+        <translation>Channel rules changed to %1</translation>
+    </message>
+    <message>
+        <source>You have recently added %1 to your phone contacts. Write a new message or make a call %2</source>
+        <translation>You have recently added %1 to your phone contacts. Write a new message or make a call %2</translation>
+    </message>
+    <message>
+        <source>So %1 is here now! Write, call %2</source>
+        <translation>So %1 is here now! Write, call %2</translation>
+    </message>
+    <message>
+        <source>%1 has left group (this message is visible only to group admins)</source>
+        <comment>one</comment>
+        <translation>%1 has left group (this message is visible only to group admins)</translation>
+    </message>
+    <message>
+        <source>You changed chat link to %1</source>
+        <translation>You changed chat link to %1</translation>
+    </message>
+    <message>
+        <source>Channel link was changed to %1</source>
+        <translation>Channel link was changed to %1</translation>
+    </message>
+    <message>
+        <source>%1 changed chat link to %2</source>
+        <translation>%1 changed link to %2</translation>
+    </message>
+    <message>
+        <source>Add avatar</source>
+        <translation>Add avatar</translation>
+    </message>
+    <message>
+        <source>Add description</source>
+        <translation>add description</translation>
     </message>
 </context>
 <context>
@@ -460,18 +606,6 @@ so update could take effect</translation>
     <message>
         <source>are typing</source>
         <translation>are typing</translation>
-    </message>
-    <message>
-        <source>CANCEL</source>
-        <translation>CANCEL</translation>
-    </message>
-    <message>
-        <source>FORWARD</source>
-        <translation>FORWARD</translation>
-    </message>
-    <message>
-        <source>COPY</source>
-        <translation>COPY</translation>
     </message>
     <message>
         <source>edited</source>
@@ -584,16 +718,28 @@ so update could take effect</translation>
         <translation>Cancel</translation>
     </message>
     <message>
-        <source>New group</source>
-        <translation>New group</translation>
-    </message>
-    <message>
-        <source>New channel</source>
-        <translation>New channel</translation>
-    </message>
-    <message>
         <source>Contact</source>
         <translation>Contact</translation>
+    </message>
+    <message>
+        <source>UNIMPORTANT</source>
+        <translation>UNIMPORTANT</translation>
+    </message>
+    <message>
+        <source>Location</source>
+        <translation>Location</translation>
+    </message>
+    <message>
+        <source>Poll</source>
+        <translation>Poll</translation>
+    </message>
+    <message>
+        <source>Create group</source>
+        <translation>Create group</translation>
+    </message>
+    <message>
+        <source>Create channel</source>
+        <translation>Create channel</translation>
     </message>
 </context>
 <context>
@@ -629,6 +775,21 @@ so update could take effect</translation>
         <source>%1 members</source>
         <comment>21</comment>
         <translation>%1 members</translation>
+    </message>
+    <message>
+        <source>%1 messages selected</source>
+        <comment>2</comment>
+        <translation>%1 messages selected</translation>
+    </message>
+    <message>
+        <source>%1 messages selected</source>
+        <comment>5</comment>
+        <translation>%1 messages selected</translation>
+    </message>
+    <message>
+        <source>%1 messages selected</source>
+        <comment>21</comment>
+        <translation>%1 message selected</translation>
     </message>
 </context>
 <context>
@@ -684,10 +845,6 @@ so update could take effect</translation>
     <message>
         <source>Your comments or suggestions...</source>
         <translation>Your comments or suggestions...</translation>
-    </message>
-    <message>
-        <source>SEND</source>
-        <translation>SEND</translation>
     </message>
     <message>
         <source>Error occurred, try again later</source>
@@ -817,6 +974,14 @@ so update could take effect</translation>
         <source>Different problem</source>
         <translation>Different problem</translation>
     </message>
+    <message>
+        <source>Get debug information</source>
+        <translation>Get log archive</translation>
+    </message>
+    <message>
+        <source>Send</source>
+        <translation>Send</translation>
+    </message>
 </context>
 <context>
     <name>context_menu</name>
@@ -937,10 +1102,6 @@ so update could take effect</translation>
         <translation>Report and block</translation>
     </message>
     <message>
-        <source>Delete and leave</source>
-        <translation>Delete and leave</translation>
-    </message>
-    <message>
         <source>Hide</source>
         <translation>Hide</translation>
     </message>
@@ -948,17 +1109,53 @@ so update could take effect</translation>
         <source>Go to profile</source>
         <translation>Go to profile</translation>
     </message>
+    <message>
+        <source>Remove</source>
+        <translation>Remove</translation>
+    </message>
+    <message>
+        <source>Delete</source>
+        <translation>Delete</translation>
+    </message>
+    <message>
+        <source>Select</source>
+        <translation>Select</translation>
+    </message>
+    <message>
+        <source>Remove from Unimportant</source>
+        <translation>Remove from unimportant</translation>
+    </message>
+    <message>
+        <source>Move to Unimportant</source>
+        <translation>Move to unimportant</translation>
+    </message>
+    <message>
+        <source>Share channel link</source>
+        <translation>Share channel link</translation>
+    </message>
+    <message>
+        <source>Copy channel link</source>
+        <translation>Copy channel link</translation>
+    </message>
+    <message>
+        <source>Share group link</source>
+        <translation>Share group link</translation>
+    </message>
+    <message>
+        <source>Copy group link</source>
+        <translation>Copy link to group</translation>
+    </message>
+    <message>
+        <source>Revoke vote</source>
+        <translation>Revoke vote</translation>
+    </message>
+    <message>
+        <source>Stop poll</source>
+        <translation>Stop poll</translation>
+    </message>
 </context>
 <context>
     <name>countries</name>
-    <message>
-        <source>Qatar</source>
-        <translation>Qatar</translation>
-    </message>
-    <message>
-        <source>East Timor</source>
-        <translation>East Timor</translation>
-    </message>
     <message>
         <source>Afghanistan</source>
         <translation>Afghanistan</translation>
@@ -980,12 +1177,12 @@ so update could take effect</translation>
         <translation>Andorra</translation>
     </message>
     <message>
-        <source>Anguilla</source>
-        <translation>Anguilla</translation>
-    </message>
-    <message>
         <source>Angola</source>
         <translation>Angola</translation>
+    </message>
+    <message>
+        <source>Anguilla</source>
+        <translation>Anguilla</translation>
     </message>
     <message>
         <source>Antigua and Barbuda</source>
@@ -1014,6 +1211,10 @@ so update could take effect</translation>
     <message>
         <source>Azerbaijan</source>
         <translation>Azerbaijan</translation>
+    </message>
+    <message>
+        <source>Bahamas, The</source>
+        <translation>Bahamas, The</translation>
     </message>
     <message>
         <source>Bahrain</source>
@@ -1100,12 +1301,24 @@ so update could take effect</translation>
         <translation>Canada</translation>
     </message>
     <message>
+        <source>Cape Verde</source>
+        <translation>Cape Verde</translation>
+    </message>
+    <message>
         <source>Cayman Islands</source>
         <translation>Cayman Islands</translation>
     </message>
     <message>
+        <source>Central African Republic</source>
+        <translation>Central African Republic</translation>
+    </message>
+    <message>
         <source>Chad</source>
         <translation>Chad</translation>
+    </message>
+    <message>
+        <source>Chile</source>
+        <translation>Chile</translation>
     </message>
     <message>
         <source>China</source>
@@ -1114,10 +1327,6 @@ so update could take effect</translation>
     <message>
         <source>Christmas Island</source>
         <translation>Christmas Island</translation>
-    </message>
-    <message>
-        <source>Central African Republic</source>
-        <translation>Central African Republic</translation>
     </message>
     <message>
         <source>Cocos Islands</source>
@@ -1130,6 +1339,14 @@ so update could take effect</translation>
     <message>
         <source>Comoros</source>
         <translation>Comoros</translation>
+    </message>
+    <message>
+        <source>Congo, Democratic Republic of the</source>
+        <translation>Congo, Democratic Republic of the</translation>
+    </message>
+    <message>
+        <source>Congo, Republic of the</source>
+        <translation>Congo, Republic of the</translation>
     </message>
     <message>
         <source>Cook Islands</source>
@@ -1160,12 +1377,12 @@ so update could take effect</translation>
         <translation>Czech Republic</translation>
     </message>
     <message>
-        <source>Djibouti</source>
-        <translation>Djibouti</translation>
-    </message>
-    <message>
         <source>Denmark</source>
         <translation>Denmark</translation>
+    </message>
+    <message>
+        <source>Djibouti</source>
+        <translation>Djibouti</translation>
     </message>
     <message>
         <source>Dominica</source>
@@ -1174,6 +1391,10 @@ so update could take effect</translation>
     <message>
         <source>Dominican Republic</source>
         <translation>Dominican Republic</translation>
+    </message>
+    <message>
+        <source>East Timor</source>
+        <translation>East Timor</translation>
     </message>
     <message>
         <source>Ecuador</source>
@@ -1188,10 +1409,6 @@ so update could take effect</translation>
         <translation>El Salvador</translation>
     </message>
     <message>
-        <source>Ethiopia</source>
-        <translation>Ethiopia</translation>
-    </message>
-    <message>
         <source>Equatorial Guinea</source>
         <translation>Equatorial Guinea</translation>
     </message>
@@ -1204,8 +1421,16 @@ so update could take effect</translation>
         <translation>Estonia</translation>
     </message>
     <message>
+        <source>Ethiopia</source>
+        <translation>Ethiopia</translation>
+    </message>
+    <message>
         <source>Falkland Islands</source>
         <translation>Falkland Islands</translation>
+    </message>
+    <message>
+        <source>Faroe Islands</source>
+        <translation>Faroe Islands</translation>
     </message>
     <message>
         <source>Fiji</source>
@@ -1232,8 +1457,8 @@ so update could take effect</translation>
         <translation>Gabon</translation>
     </message>
     <message>
-        <source>Ghana</source>
-        <translation>Ghana</translation>
+        <source>Gambia, The</source>
+        <translation>Gambia, The</translation>
     </message>
     <message>
         <source>Georgia</source>
@@ -1242,6 +1467,10 @@ so update could take effect</translation>
     <message>
         <source>Germany</source>
         <translation>Germany</translation>
+    </message>
+    <message>
+        <source>Ghana</source>
+        <translation>Ghana</translation>
     </message>
     <message>
         <source>Gibraltar</source>
@@ -1262,6 +1491,10 @@ so update could take effect</translation>
     <message>
         <source>Guadeloupe</source>
         <translation>Guadeloupe</translation>
+    </message>
+    <message>
+        <source>Guam</source>
+        <translation>Guam</translation>
     </message>
     <message>
         <source>Guatemala</source>
@@ -1308,12 +1541,12 @@ so update could take effect</translation>
         <translation>Indonesia</translation>
     </message>
     <message>
-        <source>Iraq</source>
-        <translation>Iraq</translation>
-    </message>
-    <message>
         <source>Iran</source>
         <translation>Iran</translation>
+    </message>
+    <message>
+        <source>Iraq</source>
+        <translation>Iraq</translation>
     </message>
     <message>
         <source>Ireland</source>
@@ -1350,6 +1583,18 @@ so update could take effect</translation>
     <message>
         <source>Kiribati</source>
         <translation>Kiribati</translation>
+    </message>
+    <message>
+        <source>Korea, North</source>
+        <translation>Korea, North</translation>
+    </message>
+    <message>
+        <source>Korea, South</source>
+        <translation>Korea, South</translation>
+    </message>
+    <message>
+        <source>Kosovo</source>
+        <translation>Kosovo</translation>
     </message>
     <message>
         <source>Kuwait</source>
@@ -1444,8 +1689,20 @@ so update could take effect</translation>
         <translation>Mauritius</translation>
     </message>
     <message>
+        <source>Mayotte</source>
+        <translation>Mayotte</translation>
+    </message>
+    <message>
         <source>Mexico</source>
         <translation>Mexico</translation>
+    </message>
+    <message>
+        <source>Micronesia</source>
+        <translation>Micronesia</translation>
+    </message>
+    <message>
+        <source>Moldova</source>
+        <translation>Moldova</translation>
     </message>
     <message>
         <source>Monaco</source>
@@ -1456,12 +1713,12 @@ so update could take effect</translation>
         <translation>Mongolia</translation>
     </message>
     <message>
-        <source>Montserrat</source>
-        <translation>Montserrat</translation>
-    </message>
-    <message>
         <source>Montenegro</source>
         <translation>Montenegro</translation>
+    </message>
+    <message>
+        <source>Montserrat</source>
+        <translation>Montserrat</translation>
     </message>
     <message>
         <source>Morocco</source>
@@ -1572,6 +1829,14 @@ so update could take effect</translation>
         <translation>Puerto Rico</translation>
     </message>
     <message>
+        <source>Qatar</source>
+        <translation>Qatar</translation>
+    </message>
+    <message>
+        <source>Reunion</source>
+        <translation>Reunion</translation>
+    </message>
+    <message>
         <source>Romania</source>
         <translation>Romania</translation>
     </message>
@@ -1582,6 +1847,10 @@ so update could take effect</translation>
     <message>
         <source>Rwanda</source>
         <translation>Rwanda</translation>
+    </message>
+    <message>
+        <source>Saint Helena, Ascension and Tristan da Cunha</source>
+        <translation>Saint Helena, Ascension and Tristan da Cunha</translation>
     </message>
     <message>
         <source>Saint Kitts and Nevis</source>
@@ -1606,6 +1875,10 @@ so update could take effect</translation>
     <message>
         <source>San Marino</source>
         <translation>San Marino</translation>
+    </message>
+    <message>
+        <source>Sao Tome and Principe</source>
+        <translation>São Tomé and Príncipe</translation>
     </message>
     <message>
         <source>Saudi Arabia</source>
@@ -1652,6 +1925,14 @@ so update could take effect</translation>
         <translation>South Africa</translation>
     </message>
     <message>
+        <source>South Ossetia</source>
+        <translation>South Ossetia</translation>
+    </message>
+    <message>
+        <source>South Sudan</source>
+        <translation>South Sudan</translation>
+    </message>
+    <message>
         <source>Spain</source>
         <translation>Spain</translation>
     </message>
@@ -1680,8 +1961,20 @@ so update could take effect</translation>
         <translation>Switzerland</translation>
     </message>
     <message>
+        <source>Syria</source>
+        <translation>Syria</translation>
+    </message>
+    <message>
+        <source>Taiwan (Republic of China)</source>
+        <translation>Taiwan (Republic of China)</translation>
+    </message>
+    <message>
         <source>Tajikistan</source>
         <translation>Tajikistan</translation>
+    </message>
+    <message>
+        <source>Tanzania</source>
+        <translation>Tanzania</translation>
     </message>
     <message>
         <source>Thailand</source>
@@ -1724,10 +2017,6 @@ so update could take effect</translation>
         <translation>Tuvalu</translation>
     </message>
     <message>
-        <source>U.S. Virgin Islands</source>
-        <translation>U.S. Virgin Islands</translation>
-    </message>
-    <message>
         <source>Uganda</source>
         <translation>Uganda</translation>
     </message>
@@ -1752,6 +2041,10 @@ so update could take effect</translation>
         <translation>Uruguay</translation>
     </message>
     <message>
+        <source>U.S. Virgin Islands</source>
+        <translation>U.S. Virgin Islands</translation>
+    </message>
+    <message>
         <source>Uzbekistan</source>
         <translation>Uzbekistan</translation>
     </message>
@@ -1772,6 +2065,10 @@ so update could take effect</translation>
         <translation>Vietnam</translation>
     </message>
     <message>
+        <source>Wallis and Futuna</source>
+        <translation>Wallis and Futuna</translation>
+    </message>
+    <message>
         <source>Yemen</source>
         <translation>Yemen</translation>
     </message>
@@ -1782,98 +2079,6 @@ so update could take effect</translation>
     <message>
         <source>Zimbabwe</source>
         <translation>Zimbabwe</translation>
-    </message>
-    <message>
-        <source>Bahamas, The</source>
-        <translation>Bahamas, The</translation>
-    </message>
-    <message>
-        <source>Cape Verde</source>
-        <translation>Cape Verde</translation>
-    </message>
-    <message>
-        <source>Chile</source>
-        <translation>Chile</translation>
-    </message>
-    <message>
-        <source>Congo, Democratic Republic of the</source>
-        <translation>Congo, Democratic Republic of the</translation>
-    </message>
-    <message>
-        <source>Congo, Republic of the</source>
-        <translation>Congo, Republic of the</translation>
-    </message>
-    <message>
-        <source>Faroe Islands</source>
-        <translation>Faroe Islands</translation>
-    </message>
-    <message>
-        <source>Gambia, The</source>
-        <translation>Gambia, The</translation>
-    </message>
-    <message>
-        <source>Guam</source>
-        <translation>Guam</translation>
-    </message>
-    <message>
-        <source>Korea, North</source>
-        <translation>Korea, North</translation>
-    </message>
-    <message>
-        <source>Korea, South</source>
-        <translation>Korea, South</translation>
-    </message>
-    <message>
-        <source>Kosovo</source>
-        <translation>Kosovo</translation>
-    </message>
-    <message>
-        <source>Mayotte</source>
-        <translation>Mayotte</translation>
-    </message>
-    <message>
-        <source>Micronesia</source>
-        <translation>Micronesia</translation>
-    </message>
-    <message>
-        <source>Moldova</source>
-        <translation>Moldova</translation>
-    </message>
-    <message>
-        <source>Reunion</source>
-        <translation>Reunion</translation>
-    </message>
-    <message>
-        <source>Saint Helena, Ascension and Tristan da Cunha</source>
-        <translation>Saint Helena, Ascension and Tristan da Cunha</translation>
-    </message>
-    <message>
-        <source>Sao Tome and Principe</source>
-        <translation>São Tomé and Príncipe</translation>
-    </message>
-    <message>
-        <source>South Ossetia</source>
-        <translation>South Ossetia</translation>
-    </message>
-    <message>
-        <source>South Sudan</source>
-        <translation>South Sudan</translation>
-    </message>
-    <message>
-        <source>Syria</source>
-        <translation>Syria</translation>
-    </message>
-    <message>
-        <source>Taiwan (Republic of China)</source>
-        <translation>Taiwan (Republic of China)</translation>
-    </message>
-    <message>
-        <source>Tanzania</source>
-        <translation>Tanzania</translation>
-    </message>
-    <message>
-        <source>Wallis and Futuna</source>
-        <translation>Wallis and Futuna</translation>
     </message>
 </context>
 <context>
@@ -1964,6 +2169,25 @@ so update could take effect</translation>
     </message>
 </context>
 <context>
+    <name>delete_messages</name>
+    <message>
+        <source>Delete messages</source>
+        <translation>Delete messages</translation>
+    </message>
+    <message>
+        <source>OK</source>
+        <translation>Ok</translation>
+    </message>
+    <message>
+        <source>Messages will be deleted only for you</source>
+        <translation>Messages will be deleted only for you</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>Cancel</translation>
+    </message>
+</context>
+<context>
     <name>files_widget</name>
     <message>
         <source>Send with caption</source>
@@ -2002,14 +2226,6 @@ so update could take effect</translation>
         <translation>files</translation>
     </message>
     <message>
-        <source>CANCEL</source>
-        <translation>CANCEL</translation>
-    </message>
-    <message>
-        <source>SEND</source>
-        <translation>SEND</translation>
-    </message>
-    <message>
         <source>Send files</source>
         <translation>Send files</translation>
     </message>
@@ -2021,12 +2237,34 @@ so update could take effect</translation>
         <source>Quick send</source>
         <translation>Quick send</translation>
     </message>
+    <message>
+        <source>Cancel</source>
+        <translation>Cancel</translation>
+    </message>
+    <message>
+        <source>Send</source>
+        <translation>Send</translation>
+    </message>
 </context>
 <context>
     <name>gallery</name>
     <message>
         <source>Go to message</source>
         <translation>Go to message</translation>
+    </message>
+</context>
+<context>
+    <name>generic_block</name>
+    <message>
+        <source>Copied to clipboard</source>
+        <translation>Copied to clipboard</translation>
+    </message>
+</context>
+<context>
+    <name>geolocation_block</name>
+    <message>
+        <source>Location</source>
+        <translation>Location</translation>
     </message>
 </context>
 <context>
@@ -2044,10 +2282,6 @@ so update could take effect</translation>
         <translation>New members are waiting for admin approval</translation>
     </message>
     <message>
-        <source>Select members</source>
-        <translation>Select members</translation>
-    </message>
-    <message>
         <source>Add to chat</source>
         <translation>Add to chat</translation>
     </message>
@@ -2058,18 +2292,6 @@ so update could take effect</translation>
     <message>
         <source>Chat name</source>
         <translation>Chat name</translation>
-    </message>
-    <message>
-        <source>Link to chat</source>
-        <translation>Link to Chat</translation>
-    </message>
-    <message>
-        <source>Ability to join chat by link</source>
-        <translation>Ability to join chat by link</translation>
-    </message>
-    <message>
-        <source>The chat will appear in the app&apos;s showcase and any user can find it in the list</source>
-        <translation>The chat will appear in the app&apos;s showcase and any user can find it in the list</translation>
     </message>
     <message>
         <source>Chat information is unavailable now, please try again later</source>
@@ -2124,12 +2346,48 @@ so update could take effect</translation>
         <translation>Channel name</translation>
     </message>
     <message>
-        <source>The channel will appear in the app&apos;s showcase and any user can find it in the list</source>
-        <translation>The channel will appear in the app&apos;s showcase and any user can find it in the list</translation>
-    </message>
-    <message>
         <source>Public channel</source>
         <translation>Public channel</translation>
+    </message>
+    <message>
+        <source>Make new link</source>
+        <translation>Generate new link</translation>
+    </message>
+    <message>
+        <source>Apply</source>
+        <translation>Apply</translation>
+    </message>
+    <message>
+        <source>Public group can be found in the search</source>
+        <translation>Public group can be found in the search</translation>
+    </message>
+    <message>
+        <source>Channels are public by default, but you can change it after in settings</source>
+        <translation>Channels are public by default, but you can change it after in settings</translation>
+    </message>
+    <message>
+        <source>The link will open the group in %1</source>
+        <translation>This link will open the group in %1</translation>
+    </message>
+    <message>
+        <source>The link will open the channel in %1</source>
+        <translation>This link will open the channel in %1</translation>
+    </message>
+    <message>
+        <source>The public channel can be found in the search and its link will be available to all members</source>
+        <translation>The public channel can be found in the search, and its link will be available to all members</translation>
+    </message>
+    <message>
+        <source>The public group can be found in the search and its link will be available to all members</source>
+        <translation>The public group can be found in the search, and its link will be available to all members</translation>
+    </message>
+    <message>
+        <source>You have chosen no one from the list. Are you sure you want to create a group with no participants?</source>
+        <translation>You have not selected anyone from the list, are you sure you want to create a group without members?</translation>
+    </message>
+    <message>
+        <source>Group name</source>
+        <translation>Group name</translation>
     </message>
 </context>
 <context>
@@ -2189,30 +2447,6 @@ so update could take effect</translation>
         <translation>Voice Message</translation>
     </message>
     <message>
-        <source>SUBSCRIBE</source>
-        <translation>SUBSCRIBE</translation>
-    </message>
-    <message>
-        <source>JOIN</source>
-        <translation>JOIN</translation>
-    </message>
-    <message>
-        <source>ENABLE NOTIFICATIONS</source>
-        <translation>ENABLE NOTIFICATIONS</translation>
-    </message>
-    <message>
-        <source>DISABLE NOTIFICATIONS</source>
-        <translation>DISABLE NOTIFICATIONS</translation>
-    </message>
-    <message>
-        <source>DELETE AND LEAVE</source>
-        <translation>DELETE AND LEAVE</translation>
-    </message>
-    <message>
-        <source>UNBLOCK</source>
-        <translation>UNBLOCK</translation>
-    </message>
-    <message>
         <source>Voice message</source>
         <translation>Voice message</translation>
     </message>
@@ -2245,12 +2479,12 @@ so update could take effect</translation>
         <translation>OK</translation>
     </message>
     <message>
-        <source>Contact</source>
-        <translation>Contact</translation>
-    </message>
-    <message>
         <source>Lock</source>
         <translation>Lock</translation>
+    </message>
+    <message>
+        <source>Contact</source>
+        <translation>Contact</translation>
     </message>
     <message>
         <source>You was banned to write in this group</source>
@@ -2259,6 +2493,14 @@ so update could take effect</translation>
     <message>
         <source>The join request has been sent to administrator</source>
         <translation>The join request has been sent to administrator</translation>
+    </message>
+    <message>
+        <source>Play record</source>
+        <translation>Play record</translation>
+    </message>
+    <message>
+        <source>Pause record</source>
+        <translation>Pause record</translation>
     </message>
     <message>
         <source>Convert error</source>
@@ -2271,14 +2513,6 @@ so update could take effect</translation>
     <message>
         <source>BufferOOM error</source>
         <translation>Record error. Not enough memory</translation>
-    </message>
-    <message>
-        <source>Play record</source>
-        <translation>Play record</translation>
-    </message>
-    <message>
-        <source>Pause record</source>
-        <translation>Pause record</translation>
     </message>
     <message>
         <source>Cancel</source>
@@ -2296,6 +2530,34 @@ so update could take effect</translation>
         <source>To record a voice message, you need to allow access to the microphone in the system settings</source>
         <translation>To record a voice message, you need to allow access to the microphone in the system settings</translation>
     </message>
+    <message>
+        <source>Join</source>
+        <translation>Join</translation>
+    </message>
+    <message>
+        <source>Poll</source>
+        <translation>Poll</translation>
+    </message>
+    <message>
+        <source>Subscribe</source>
+        <translation>Subscribe</translation>
+    </message>
+    <message>
+        <source>Enable notifications</source>
+        <translation>Enable notifications</translation>
+    </message>
+    <message>
+        <source>Disable notifications</source>
+        <translation>Disable notifications</translation>
+    </message>
+    <message>
+        <source>Delete and leave</source>
+        <translation>Delete and leave</translation>
+    </message>
+    <message>
+        <source>Unblock</source>
+        <translation>Unblock</translation>
+    </message>
 </context>
 <context>
     <name>linux_desktop_file</name>
@@ -2306,10 +2568,6 @@ so update could take effect</translation>
 </context>
 <context>
     <name>local_pin</name>
-    <message>
-        <source>CANCEL</source>
-        <translation>CANCEL</translation>
-    </message>
     <message>
         <source>log out</source>
         <translation>log out</translation>
@@ -2343,20 +2601,16 @@ so update could take effect</translation>
         <translation>If you forgot your passcode, you can </translation>
     </message>
     <message>
-        <source>APPLY</source>
-        <translation>APPLY</translation>
+        <source>Cancel</source>
+        <translation>Cancel</translation>
+    </message>
+    <message>
+        <source>Apply</source>
+        <translation>Apply</translation>
     </message>
 </context>
 <context>
     <name>login_page</name>
-    <message>
-        <source>Welcome to ICQ</source>
-        <translation>Welcome to ICQ</translation>
-    </message>
-    <message>
-        <source>UIN or Email</source>
-        <translation>UIN or Email</translation>
-    </message>
     <message>
         <source>Password</source>
         <translation>Password</translation>
@@ -2366,72 +2620,24 @@ so update could take effect</translation>
         <translation>Keep me signed in</translation>
     </message>
     <message>
-        <source>Type country or code</source>
-        <translation>Type country or code</translation>
-    </message>
-    <message>
-        <source>Login via phone</source>
-        <translation>Login via phone</translation>
-    </message>
-    <message>
-        <source>Login with UIN/Email</source>
-        <translation>Login with UIN/Email</translation>
-    </message>
-    <message>
         <source>Resend code</source>
         <translation>Resend code</translation>
-    </message>
-    <message>
-        <source>Wrong UIN/Email or password. Please try again.</source>
-        <translation>Wrong UIN/Email or password. Please try again.</translation>
     </message>
     <message>
         <source>You have entered an invalid code. Please try again.</source>
         <translation>You have entered an invalid code. Please try again.</translation>
     </message>
     <message>
-        <source>Invalid phone number. Please try again.</source>
-        <translation>Invalid phone number. Please try again.</translation>
-    </message>
-    <message>
         <source>Forgot password?</source>
         <translation>Forgot password?</translation>
-    </message>
-    <message>
-        <source>Email</source>
-        <translation>Email</translation>
-    </message>
-    <message>
-        <source>Login with Email</source>
-        <translation>Login with Email</translation>
     </message>
     <message>
         <source>Two-factor authentication is on, please create an app password &lt;a href=&quot;https://e.mail.ru/settings/2-step-auth&quot;&gt;here&lt;/a&gt; to login</source>
         <translation>Two-factor authentication is on.&lt;br&gt;Please create &lt;a href=&quot;https://e.mail.ru/settings/2-step-auth&quot;&gt;here&lt;/a&gt; an app password to login</translation>
     </message>
     <message>
-        <source>Enter code from SMS</source>
-        <translation>Enter code from SMS</translation>
-    </message>
-    <message>
-        <source>Enter phone number</source>
-        <translation>Enter phone number</translation>
-    </message>
-    <message>
-        <source>Enter UIN or Email</source>
-        <translation>Enter UIN or Email</translation>
-    </message>
-    <message>
         <source>Enter your Email</source>
         <translation>Enter your Email</translation>
-    </message>
-    <message>
-        <source>NEXT</source>
-        <translation>NEXT</translation>
-    </message>
-    <message>
-        <source>phone number</source>
-        <translation>phone number</translation>
     </message>
     <message>
         <source>Change</source>
@@ -2451,55 +2657,95 @@ so update could take effect</translation>
     </message>
     <message>
         <source>Recall in %1</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Enter last %1 digit</source>
-        <comment>1</comment>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Enter last %1 digits</source>
-        <comment>2</comment>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Enter last %1 digits</source>
-        <comment>5</comment>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Enter last %1 digits</source>
-        <comment>21</comment>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Login by phone call</source>
-        <translation>Login by phone call</translation>
-    </message>
-    <message>
-        <source>Welcome to Mail.ru Agent</source>
-        <translation>Welcome to Mail.ru Agent</translation>
-    </message>
-    <message>
-        <source>Welcome to Messenger</source>
-        <translation>Welcome to Messenger</translation>
-    </message>
-    <message>
-        <source>Wrong Email or password. Please try again.</source>
-        <translation>Wrong Email or password. Please try again.</translation>
-    </message>
-    <message>
-        <source>Welcome to Myteam</source>
-        <translation>Welcome to Myteam</translation>
-    </message>
-    <message>
-        <source>I don&apos;t have an account</source>
-        <translation>I don&apos;t have an account</translation>
+        <translation>Recall in %1</translation>
     </message>
     <message>
         <source>Enter one-time password received by email</source>
         <translation>Enter one-time password received by email</translation>
+    </message>
+    <message>
+        <source>Enter your login and password</source>
+        <translation>Enter your login and password</translation>
+    </message>
+    <message>
+        <source>To login use you corporative account created at</source>
+        <translation>To log in, use the corporate account created in</translation>
+    </message>
+    <message>
+        <source>Check the country code and enter your phone number</source>
+        <translation>Check the country code and enter your phone number</translation>
+    </message>
+    <message>
+        <source>Phone</source>
+        <translation>Phone</translation>
+    </message>
+    <message>
+        <source>SMS code</source>
+        <translation>SMS code</translation>
+    </message>
+    <message>
+        <source>Enter last 6 digits of number that called you</source>
+        <translation>Enter last 6 digits of number that called you</translation>
+    </message>
+    <message>
+        <source>Login</source>
+        <translation>Login</translation>
+    </message>
+    <message>
+        <source>Mail.ru for business</source>
+        <translation>Mail.ru for business</translation>
+    </message>
+    <message>
+        <source>Invalid phone number</source>
+        <translation>Invalid phone number</translation>
+    </message>
+    <message>
+        <source>Sign in</source>
+        <translation>Sign in</translation>
+    </message>
+    <message>
+        <source>Incorrect code</source>
+        <translation>Incorrect code</translation>
+    </message>
+    <message>
+        <source>Sign in by password</source>
+        <translation>Sign in by password</translation>
+    </message>
+    <message>
+        <source>Sign in via phone</source>
+        <translation>Sign in via phone</translation>
+    </message>
+    <message>
+        <source>We called the number</source>
+        <translation>We called the number</translation>
+    </message>
+    <message>
+        <source>Wrong login or password</source>
+        <translation>Wrong login or password</translation>
+    </message>
+    <message>
+        <source>Wrong Email or password</source>
+        <translation>Wrong Email or password</translation>
+    </message>
+    <message>
+        <source>To log in use you corporate account created in</source>
+        <translation>To log in, use the corporate account created in</translation>
+    </message>
+    <message>
+        <source>Verification code was sent to number</source>
+        <translation>Verification code was sent to</translation>
+    </message>
+    <message>
+        <source>Send code</source>
+        <translation>Send code</translation>
+    </message>
+    <message>
+        <source>Dictate over the phone</source>
+        <translation>Dictate over the phone</translation>
+    </message>
+    <message>
+        <source>Phone code</source>
+        <translation>Phone code</translation>
     </message>
 </context>
 <context>
@@ -2598,7 +2844,7 @@ so update could take effect</translation>
     </message>
     <message>
         <source>Emoji &amp;&amp; Symbols</source>
-        <translation type="unfinished"></translation>
+        <translation>Emoji &amp;&amp; Symbols</translation>
     </message>
     <message>
         <source>Zoom</source>
@@ -2664,50 +2910,10 @@ so update could take effect</translation>
     </message>
 </context>
 <context>
-    <name>merge_accounts</name>
+    <name>message</name>
     <message>
-        <source>Now Mail.Ru Agent supports only one account. You can merge it with ICQ one.</source>
-        <translation>Now Mail.Ru Agent supports only one account. You can merge it with ICQ one.</translation>
-    </message>
-    <message>
-        <source>Choose Mail.Ru Agent account</source>
-        <translation>Choose Mail.Ru Agent account</translation>
-    </message>
-    <message>
-        <source>Choose ICQ account</source>
-        <translation>Choose ICQ account</translation>
-    </message>
-    <message>
-        <source>Account settings</source>
-        <translation>Account settings</translation>
-    </message>
-    <message>
-        <source>ICQ</source>
-        <translation>ICQ</translation>
-    </message>
-    <message>
-        <source>Back</source>
-        <translation>Back</translation>
-    </message>
-    <message>
-        <source>Next</source>
-        <translation>Next</translation>
-    </message>
-    <message>
-        <source>Skip</source>
-        <translation>Skip</translation>
-    </message>
-    <message>
-        <source>Now Mail.ru Agent supports only one account. You can merge it with ICQ one.</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Mail.ru Agent</source>
-        <translation>Mail.ru Agent</translation>
-    </message>
-    <message>
-        <source>Choose Mail.ru Agent account</source>
-        <translation></translation>
+        <source>Sticker</source>
+        <translation>Sticker</translation>
     </message>
 </context>
 <context>
@@ -2910,6 +3116,10 @@ so update could take effect</translation>
         <comment>21</comment>
         <translation>Enter last %1 digits</translation>
     </message>
+    <message>
+        <source>Enter your number</source>
+        <translation>Enter your number</translation>
+    </message>
 </context>
 <context>
     <name>pin</name>
@@ -2937,32 +3147,12 @@ so update could take effect</translation>
         <translation>Install ICQ on mobile</translation>
     </message>
     <message>
-        <source>to synchronize your contacts</source>
-        <translation>to synchronize your contacts</translation>
-    </message>
-    <message>
-        <source>Looks like you have no contacts yet</source>
-        <translation>Looks like you have no contacts yet</translation>
-    </message>
-    <message>
-        <source>You have no opened chats yet</source>
-        <translation>You have no opened chats yet</translation>
-    </message>
-    <message>
-        <source>CONTINUE</source>
-        <translation>CONTINUE</translation>
-    </message>
-    <message>
         <source>Nothing found</source>
         <translation>Nothing found</translation>
     </message>
     <message>
         <source>Error occurred, try again later</source>
         <translation>Error occurred, try again later</translation>
-    </message>
-    <message>
-        <source>First name</source>
-        <translation>First name</translation>
     </message>
     <message>
         <source>Last name</source>
@@ -2983,6 +3173,152 @@ so update could take effect</translation>
     <message>
         <source>Install Myteam on mobile</source>
         <translation>Install Myteam on mobile</translation>
+    </message>
+    <message>
+        <source>First name*</source>
+        <translation>First name*</translation>
+    </message>
+    <message>
+        <source>your contacts will see them</source>
+        <translation>your contacts will see them</translation>
+    </message>
+    <message>
+        <source>Continue</source>
+        <translation>Continue</translation>
+    </message>
+    <message>
+        <source>Chat list is empty</source>
+        <translation>Chat list is empty</translation>
+    </message>
+    <message>
+        <source>Contact list is empty</source>
+        <translation>Contact list is empty</translation>
+    </message>
+    <message>
+        <source>Copy</source>
+        <translation>Copy</translation>
+    </message>
+    <message>
+        <source>Share the link %1 so people can write you</source>
+        <translation>Share the %1 link so you can write</translation>
+    </message>
+    <message>
+        <source>Add a name and avatar</source>
+        <translation>Add a name and avatar</translation>
+    </message>
+    <message>
+        <source>Failed to download file or media</source>
+        <translation>Failed to upload file or media</translation>
+    </message>
+</context>
+<context>
+    <name>poll</name>
+    <message>
+        <source>Create poll</source>
+        <translation>Create poll</translation>
+    </message>
+    <message>
+        <source>Ask your question</source>
+        <translation>Ask your question</translation>
+    </message>
+    <message>
+        <source>Add another option</source>
+        <translation>Add another option</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>Cancel</translation>
+    </message>
+    <message>
+        <source>Send</source>
+        <translation>Send</translation>
+    </message>
+    <message>
+        <source>Answer</source>
+        <translation>Add an option</translation>
+    </message>
+</context>
+<context>
+    <name>poll_block</name>
+    <message>
+        <source>Public</source>
+        <translation>Public</translation>
+    </message>
+    <message>
+        <source>Anonymous</source>
+        <translation>Anonymous</translation>
+    </message>
+    <message>
+        <source>%1 poll - %2 vote</source>
+        <comment>1</comment>
+        <translation>%1 poll - %2 vote</translation>
+    </message>
+    <message>
+        <source>%1 poll - %2 votes</source>
+        <comment>2</comment>
+        <translation>%1 poll - %2 votes</translation>
+    </message>
+    <message>
+        <source>%1 poll - %2 votes</source>
+        <comment>5</comment>
+        <translation>%1 poll - %2 votes</translation>
+    </message>
+    <message>
+        <source>Poll</source>
+        <translation>Poll</translation>
+    </message>
+    <message>
+        <source>Poll: %1</source>
+        <translation>Poll: %1</translation>
+    </message>
+    <message>
+        <source>%1 poll - %2 votes</source>
+        <comment>21</comment>
+        <translation>%1 poll - %2 vote</translation>
+    </message>
+    <message>
+        <source>Poll: </source>
+        <translation>Poll: </translation>
+    </message>
+    <message>
+        <source>Sticker</source>
+        <translation>Sticker</translation>
+    </message>
+    <message>
+        <source>GIF</source>
+        <translation>GIF</translation>
+    </message>
+    <message>
+        <source>Video</source>
+        <translation>Video</translation>
+    </message>
+    <message>
+        <source>Poll Id copied to clipboard</source>
+        <translation>Poll id copied</translation>
+    </message>
+    <message>
+        <source>Photo</source>
+        <translation>A photo</translation>
+    </message>
+    <message>
+        <source>Vote: an error occurred</source>
+        <translation>Voting: an error occurred</translation>
+    </message>
+    <message>
+        <source>Revoke vote: an error occurred</source>
+        <translation>Cancel voice: an error occurred</translation>
+    </message>
+    <message>
+        <source>Stop poll: an error occurred</source>
+        <translation>Stop poll: an error has occurred</translation>
+    </message>
+    <message>
+        <source>Voice message</source>
+        <translation>Voice message</translation>
+    </message>
+    <message>
+        <source>File</source>
+        <translation>File</translation>
     </message>
 </context>
 <context>
@@ -3022,10 +3358,6 @@ so update could take effect</translation>
     <message>
         <source>Are you sure you want to delete user from ignore list?</source>
         <translation>Are you sure you want to delete user from ignore list?</translation>
-    </message>
-    <message>
-        <source>Are you sure you want to block user in this chat?</source>
-        <translation>Are you sure you want to block user in this chat?</translation>
     </message>
     <message>
         <source>Are you sure you want to unblock user?</source>
@@ -3072,76 +3404,12 @@ so update could take effect</translation>
         <translation>Contacts</translation>
     </message>
     <message>
-        <source>CANCEL</source>
-        <translation>CANCEL</translation>
-    </message>
-    <message>
-        <source>YES</source>
-        <translation>YES</translation>
-    </message>
-    <message>
-        <source>SAVE</source>
-        <translation>SAVE</translation>
-    </message>
-    <message>
-        <source>DONE</source>
-        <translation>DONE</translation>
-    </message>
-    <message>
-        <source>DELETE</source>
-        <translation>DELETE</translation>
-    </message>
-    <message>
-        <source>BACK</source>
-        <translation>BACK</translation>
-    </message>
-    <message>
-        <source>CONTINUE</source>
-        <translation>CONTINUE</translation>
-    </message>
-    <message>
-        <source>NEXT</source>
-        <translation>NEXT</translation>
-    </message>
-    <message>
-        <source>WAITING</source>
-        <translation>WAITING</translation>
-    </message>
-    <message>
-        <source>CLOSE</source>
-        <translation>CLOSE</translation>
-    </message>
-    <message>
-        <source>JOIN</source>
-        <translation>JOIN</translation>
-    </message>
-    <message>
-        <source>OPEN</source>
-        <translation>OPEN</translation>
-    </message>
-    <message>
-        <source>ADD</source>
-        <translation>ADD</translation>
-    </message>
-    <message>
-        <source>REMOVE</source>
-        <translation>REMOVE</translation>
-    </message>
-    <message>
-        <source>SEND</source>
-        <translation>SEND</translation>
-    </message>
-    <message>
         <source>Are you sure you want to remove this sticker pack?</source>
         <translation>Are you sure you want to remove this sticker pack?</translation>
     </message>
     <message>
         <source>Remove sticker pack</source>
         <translation>Remove sticker pack</translation>
-    </message>
-    <message>
-        <source>FORWARD</source>
-        <translation>FORWARD</translation>
     </message>
     <message>
         <source>show author</source>
@@ -3158,10 +3426,6 @@ so update could take effect</translation>
     <message>
         <source>Clear avatars</source>
         <translation>Clear avatars</translation>
-    </message>
-    <message>
-        <source>Advanced Settings</source>
-        <translation>Advanced Settings</translation>
     </message>
     <message>
         <source>OK</source>
@@ -3204,72 +3468,12 @@ so update could take effect</translation>
         <translation></translation>
     </message>
     <message>
-        <source>Stick memory usage widget</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Cache dialogs for (milliseconds)</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Current memory usage: </source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Memory: </source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Real memory: </source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Copy text</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Refresh</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Total accounted for: </source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Cached avatars</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Cached themes</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Cached emojis</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Cached previews</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Cached stickers</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>VOIP initialization</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Video players</source>
-        <translation></translation>
-    </message>
-    <message>
         <source>Restart</source>
         <translation>Restart</translation>
     </message>
     <message>
         <source>Server search</source>
-        <translation></translation>
+        <translation>Server search</translation>
     </message>
     <message>
         <source>Log messagesModel</source>
@@ -3300,16 +3504,8 @@ so update could take effect</translation>
         <translation></translation>
     </message>
     <message>
-        <source>CHECK</source>
-        <translation>CHECK</translation>
-    </message>
-    <message>
         <source>Block</source>
         <translation>Block</translation>
-    </message>
-    <message>
-        <source>APPLY</source>
-        <translation>APPLY</translation>
     </message>
     <message>
         <source>Share</source>
@@ -3318,6 +3514,154 @@ so update could take effect</translation>
     <message>
         <source>REPEAT</source>
         <translation>REPEAT</translation>
+    </message>
+    <message>
+        <source>Remove %1 from your contacts?</source>
+        <translation>Remove %1 from your contacts?</translation>
+    </message>
+    <message>
+        <source>Remove contact</source>
+        <translation>Remove contact</translation>
+    </message>
+    <message>
+        <source>You can delete for all only your messages (%1 from %2). Are you sure you want to continue?</source>
+        <translation>You can delete for everyone only your messages (%1 of %2). Continue?</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to mark the chat as unimportant? The chat won&apos;t jump to the top of the list when you receive a new message</source>
+        <translation>Are you sure you want to mark the chat as unimportant? The chat won&apos;t jump to the top of the list when you receive a new message</translation>
+    </message>
+    <message>
+        <source>Choose country</source>
+        <translation>Choose a country</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>Cancel</translation>
+    </message>
+    <message>
+        <source>Done</source>
+        <translation>Done</translation>
+    </message>
+    <message>
+        <source>Back</source>
+        <translation>Back</translation>
+    </message>
+    <message>
+        <source>Continue</source>
+        <translation>Continue</translation>
+    </message>
+    <message>
+        <source>Save</source>
+        <translation>Save</translation>
+    </message>
+    <message>
+        <source>Add</source>
+        <translation>Add</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation>Close</translation>
+    </message>
+    <message>
+        <source>Yes</source>
+        <translation>Yes</translation>
+    </message>
+    <message>
+        <source>Delete</source>
+        <translation>Delete</translation>
+    </message>
+    <message>
+        <source>Send</source>
+        <translation>Send</translation>
+    </message>
+    <message>
+        <source>Next</source>
+        <translation>Next</translation>
+    </message>
+    <message>
+        <source>Check</source>
+        <translation>Check</translation>
+    </message>
+    <message>
+        <source>Apply</source>
+        <translation>Apply</translation>
+    </message>
+    <message>
+        <source>Remove</source>
+        <translation>Delete</translation>
+    </message>
+    <message>
+        <source>Waiting</source>
+        <translation>Waiting</translation>
+    </message>
+    <message>
+        <source>Join</source>
+        <translation>Enter</translation>
+    </message>
+    <message>
+        <source>If you stop the poll, nobody will be able to vote anymore. This action can not be undone</source>
+        <translation>If you stop the poll, nobody will be able to vote anymore. This action can not be undone</translation>
+    </message>
+    <message>
+        <source>Stop</source>
+        <translation>Stop</translation>
+    </message>
+    <message>
+        <source>Stop this poll?</source>
+        <translation>Stop this poll?</translation>
+    </message>
+    <message>
+        <source>Open</source>
+        <translation>Open</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to leave channel?</source>
+        <translation>Are you sure you want to leave the channel?</translation>
+    </message>
+    <message>
+        <source>If you change group type to a private link to the group will be changed, and the old one will stop working</source>
+        <translation>If you change the group type to private, the group link will change and the old one will stop working</translation>
+    </message>
+    <message>
+        <source>Make private</source>
+        <translation>Make private</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to clear the chat history?</source>
+        <translation>Are you sure you want to delete the chat history?</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to clear the channel history?</source>
+        <translation>Are you sure you want to delete the chat history?</translation>
+    </message>
+    <message>
+        <source>If you generate a new link to the channel the old one will stop working</source>
+        <translation>If you generate a new link to the channel, then you can get into the channel only through it</translation>
+    </message>
+    <message>
+        <source>If you generate a new link to the group the old one will stop working</source>
+        <translation>If you generate a new link to the group, then you can get into the group only on it</translation>
+    </message>
+    <message>
+        <source>Generate</source>
+        <translation>Generate</translation>
+    </message>
+    <message>
+        <source>The old link will stop working</source>
+        <translation>Old link will stop working</translation>
+    </message>
+    <message>
+        <source>Public link will stop working</source>
+        <translation>Public link will stop working</translation>
+    </message>
+    <message>
+        <source>Set dev_id</source>
+        <translation>Set dev_id</translation>
+    </message>
+    <message>
+        <source>Create</source>
+        <translation>Create</translation>
     </message>
 </context>
 <context>
@@ -3378,16 +3722,16 @@ so update could take effect</translation>
         <source>File %1 downloaded to %2</source>
         <translation>File %1 downloaded to %2</translation>
     </message>
+    <message>
+        <source>Error file downloading</source>
+        <translation>File upload error</translation>
+    </message>
 </context>
 <context>
     <name>profile_block</name>
     <message>
         <source>Contact was saved. Phone is visible in profile.</source>
         <translation>Contact was saved. Phone is visible in profile.</translation>
-    </message>
-    <message>
-        <source>CANCEL</source>
-        <translation>CANCEL</translation>
     </message>
     <message>
         <source>Contact</source>
@@ -3424,6 +3768,10 @@ so update could take effect</translation>
     <message>
         <source>WRITE</source>
         <translation>WRITE</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>Cancel</translation>
     </message>
 </context>
 <context>
@@ -3480,18 +3828,6 @@ so update could take effect</translation>
         <translation>Share contact</translation>
     </message>
     <message>
-        <source>BACK</source>
-        <translation>BACK</translation>
-    </message>
-    <message>
-        <source>OPEN CHAT</source>
-        <translation>OPEN CHAT</translation>
-    </message>
-    <message>
-        <source>SEND</source>
-        <translation>SEND</translation>
-    </message>
-    <message>
         <source>To share contact add phone number or ask contact to add nickname.</source>
         <translation>To share contact add phone number or ask contact to add nickname.</translation>
     </message>
@@ -3510,6 +3846,18 @@ so update could take effect</translation>
     <message>
         <source>No phone number and nickname</source>
         <translation>No phone number and nickname</translation>
+    </message>
+    <message>
+        <source>Back</source>
+        <translation>Back</translation>
+    </message>
+    <message>
+        <source>Open chat</source>
+        <translation>Open chat</translation>
+    </message>
+    <message>
+        <source>Send</source>
+        <translation>Send</translation>
     </message>
 </context>
 <context>
@@ -3544,28 +3892,6 @@ so update could take effect</translation>
         <source>OK</source>
         <translation>OK</translation>
     </message>
-    <message>
-        <source> ﻿* Reply on messages by photos, files and voice messages;
- * Navigation with Tab on the main elements of the application instead of using mouse;
- * Voice message recording improvements;
- * The maximum interface scale increased up to 300%;
- * Aero Snap support;
- * Chat history scrolling improvements;
- 
- And:
- * List of hotkeys to the settings page update;
- * Lots of other improvements and fixes. </source>
-        <translation> ﻿* Reply on messages by photos, files and voice messages;
- * Navigation with Tab on the main elements of the application instead of using mouse;
- * Voice message recording improvements;
- * The maximum interface scale increased up to 300%;
- * Aero Snap support;
- * Chat history scrolling improvements;
- 
- Also:
- * List of hotkeys to the settings page update;
- * Lots of other improvements and fixes. </translation>
-    </message>
 </context>
 <context>
     <name>report_widget</name>
@@ -3584,10 +3910,6 @@ so update could take effect</translation>
     <message>
         <source>Other</source>
         <translation>Other</translation>
-    </message>
-    <message>
-        <source>CANCEL</source>
-        <translation>CANCEL</translation>
     </message>
     <message>
         <source>OK</source>
@@ -3609,6 +3931,10 @@ so update could take effect</translation>
         <source>Block</source>
         <translation>Block</translation>
     </message>
+    <message>
+        <source>Cancel</source>
+        <translation>Cancel</translation>
+    </message>
 </context>
 <context>
     <name>search</name>
@@ -3626,6 +3952,18 @@ so update could take effect</translation>
     <message>
         <source>Search</source>
         <translation>Search</translation>
+    </message>
+</context>
+<context>
+    <name>selection</name>
+    <message>
+        <source>Cancel</source>
+        <translation>Cancel</translation>
+    </message>
+    <message>
+        <source>%1 message selected</source>
+        <comment>1</comment>
+        <translation>%1 message selected</translation>
     </message>
 </context>
 <context>
@@ -3687,8 +4025,8 @@ so update could take effect</translation>
         <translation>Chat</translation>
     </message>
     <message>
-        <source>Preview images and links</source>
-        <translation>Preview images and links</translation>
+        <source>Preview links</source>
+        <translation>Preview links</translation>
     </message>
     <message>
         <source>Auto play videos</source>
@@ -3984,7 +4322,7 @@ so update could take effect</translation>
     </message>
     <message>
         <source>Problem</source>
-        <translation></translation>
+        <translation>Problem</translation>
     </message>
     <message>
         <source>Main window</source>
@@ -4005,6 +4343,30 @@ so update could take effect</translation>
     <message>
         <source>History in chat</source>
         <translation>History in chat</translation>
+    </message>
+    <message>
+        <source>Animate taskbar icon</source>
+        <translation>Animate taskbar icon</translation>
+    </message>
+    <message>
+        <source>Turn on video sound on hover</source>
+        <translation>Turn on video sound on hover</translation>
+    </message>
+    <message>
+        <source>Install beta updates</source>
+        <translation>Install beta versions</translation>
+    </message>
+    <message>
+        <source>Show smart reply</source>
+        <translation>Show smart answers</translation>
+    </message>
+    <message>
+        <source>Close search after result selection</source>
+        <translation>Close search after result selection</translation>
+    </message>
+    <message>
+        <source>Advanced Settings</source>
+        <translation>Advanced settings</translation>
     </message>
 </context>
 <context>
@@ -4192,6 +4554,14 @@ so update could take effect</translation>
         <source>Scroll history in chat</source>
         <translation>Scroll history in chat</translation>
     </message>
+    <message>
+        <source>Enter multiselect mode</source>
+        <translation>Enable multi select mode</translation>
+    </message>
+    <message>
+        <source>Mark all dialogs as read</source>
+        <translation>Mark all dialogs as read</translation>
+    </message>
 </context>
 <context>
     <name>sidebar</name>
@@ -4258,10 +4628,6 @@ Please edit phone number and try again.</translation>
         <translation>Waiting for approval</translation>
     </message>
     <message>
-        <source>Chat settings</source>
-        <translation>Chat settings</translation>
-    </message>
-    <message>
         <source>Members</source>
         <translation>Members</translation>
     </message>
@@ -4288,10 +4654,6 @@ Please edit phone number and try again.</translation>
     <message>
         <source>Assign admin role</source>
         <translation>Assign admin role</translation>
-    </message>
-    <message>
-        <source>Remove from chat</source>
-        <translation>Remove from chat</translation>
     </message>
     <message>
         <source>Information</source>
@@ -4340,10 +4702,6 @@ Please edit phone number and try again.</translation>
     <message>
         <source>Unblock</source>
         <translation>Unblock</translation>
-    </message>
-    <message>
-        <source>Join</source>
-        <translation>Join</translation>
     </message>
     <message>
         <source>Add to channel</source>
@@ -4418,10 +4776,6 @@ Please edit phone number and try again.</translation>
         <translation>Share</translation>
     </message>
     <message>
-        <source>SEARCH</source>
-        <translation>SEARCH</translation>
-    </message>
-    <message>
         <source>Description</source>
         <translation>Description</translation>
     </message>
@@ -4486,10 +4840,6 @@ Please edit phone number and try again.</translation>
         <translation>Report and block</translation>
     </message>
     <message>
-        <source>Delete and leave</source>
-        <translation>Delete and leave</translation>
-    </message>
-    <message>
         <source>Admins</source>
         <translation>Admins</translation>
     </message>
@@ -4517,6 +4867,50 @@ Please edit phone number and try again.</translation>
         <source>The join request has been sent to administrator</source>
         <translation>The join request has been sent to administrator</translation>
     </message>
+    <message>
+        <source>Remove</source>
+        <translation>Remove</translation>
+    </message>
+    <message>
+        <source>Leave and delete</source>
+        <translation>Leave and delete</translation>
+    </message>
+    <message>
+        <source>Block and delete</source>
+        <translation>Block and delete</translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation>Search</translation>
+    </message>
+    <message>
+        <source>Join</source>
+        <translation>Join</translation>
+    </message>
+    <message>
+        <source>Share channel</source>
+        <translation>Share channel</translation>
+    </message>
+    <message>
+        <source>Channel settings</source>
+        <translation>Channel settings</translation>
+    </message>
+    <message>
+        <source>Block and delete from group</source>
+        <translation>Block and remove from group</translation>
+    </message>
+    <message>
+        <source>Group settings</source>
+        <translation>Group settings</translation>
+    </message>
+    <message>
+        <source>Add to group</source>
+        <translation>Add to group</translation>
+    </message>
+    <message>
+        <source>Public group</source>
+        <translation>Public group</translation>
+    </message>
 </context>
 <context>
     <name>siderbar</name>
@@ -4535,6 +4929,28 @@ Please edit phone number and try again.</translation>
     <message>
         <source>About the group</source>
         <translation>About the group</translation>
+    </message>
+</context>
+<context>
+    <name>smartreply</name>
+    <message>
+        <source>Show smart replies</source>
+        <translation>Show smart answers</translation>
+    </message>
+    <message>
+        <source>Hide smart replies</source>
+        <translation>Hide smart answers</translation>
+    </message>
+</context>
+<context>
+    <name>snippet_block</name>
+    <message>
+        <source>File</source>
+        <translation>File</translation>
+    </message>
+    <message>
+        <source>Copied to clipboard</source>
+        <translation>Copied to clipboard</translation>
     </message>
 </context>
 <context>
@@ -4587,14 +5003,6 @@ Please edit phone number and try again.</translation>
         <translation>MY</translation>
     </message>
     <message>
-        <source>SEARCH</source>
-        <translation>SEARCH</translation>
-    </message>
-    <message>
-        <source>CANCEL</source>
-        <translation>CANCEL</translation>
-    </message>
-    <message>
         <source>Search</source>
         <translation>Search</translation>
     </message>
@@ -4613,6 +5021,10 @@ Please edit phone number and try again.</translation>
     <message>
         <source>Nothing found</source>
         <translation>Nothing found</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>Cancel</translation>
     </message>
 </context>
 <context>
@@ -4660,20 +5072,32 @@ Please edit phone number and try again.</translation>
 <context>
     <name>terms_privacy_widget</name>
     <message>
-        <source>Terms and Privacy Policy</source>
-        <translation>Terms and Privacy Policy</translation>
+        <source>Accept and agree</source>
+        <translation>Accept and agree</translation>
     </message>
     <message>
-        <source>I AGREE</source>
-        <translation>I AGREE</translation>
+        <source>By clicking &quot;Accept and agree&quot;, you confirm that you have read carefully and agree to our &lt;a href=&quot;%1&quot;&gt;Terms&lt;/a&gt; and &lt;a href=&quot;%2&quot;&gt;Privacy Policy&lt;/a&gt;</source>
+        <translation>By clicking &quot;Accept and agree&quot;, you confirm that you have read carefully and agree to our &lt;a href=&quot;%1&quot;&gt;Terms&lt;/a&gt; and &lt;a href=&quot;%2&quot;&gt;Privacy Policy&lt;/a&gt;</translation>
     </message>
     <message>
-        <source>By clicking &quot;I Agree&quot;, you confirm that you have read carefully and agree to our &lt;a href=&quot;%1&quot;&gt;Terms&lt;/a&gt; and &lt;a href=&quot;%2&quot;&gt;Privacy Policy&lt;/a&gt;.</source>
-        <translation>By clicking &quot;I Agree&quot;, you confirm that you have read carefully and agree to our &lt;a href=&quot;%1&quot;&gt;Terms&lt;/a&gt; and &lt;a href=&quot;%2&quot;&gt;Privacy Policy&lt;/a&gt;.</translation>
+        <source>Welcome to Mail.ru Agent</source>
+        <translation>Welcome to Mail.ru Agent</translation>
     </message>
     <message>
-        <source>Please pay your attention that we have updated our &lt;a href=&quot;%1&quot;&gt;Terms&lt;/a&gt; and &lt;a href=&quot;%2&quot;&gt;Privacy Policy&lt;/a&gt;. By clicking &quot;I Agree&quot;, you confirm that you have read updated documents carefully and agree to them.</source>
-        <translation>Please pay your attention that we have updated our &lt;a href=&quot;%1&quot;&gt;Terms&lt;/a&gt; and &lt;a href=&quot;%2&quot;&gt;Privacy Policy&lt;/a&gt;. By clicking &quot;I Agree&quot;, you confirm that you have read updated documents carefully and agree to them.</translation>
+        <source>Welcome to Myteam</source>
+        <translation>Welcome to myteam</translation>
+    </message>
+    <message>
+        <source>Welcome to Messenger</source>
+        <translation>Welcome to messenger</translation>
+    </message>
+    <message>
+        <source>ICQ New - the evolution of communication</source>
+        <translation>ICQ New — the evolution of communication</translation>
+    </message>
+    <message>
+        <source>Welcome to ICQ</source>
+        <translation>Welcome to ICQ</translation>
     </message>
 </context>
 <context>
@@ -4710,12 +5134,16 @@ Please edit phone number and try again.</translation>
         <translation>Link copied</translation>
     </message>
     <message>
-        <source>There are no profiles with this email address</source>
-        <translation>There are no profiles with this email address</translation>
-    </message>
-    <message>
         <source>There are no profiles or groups with this nickname</source>
         <translation>There are no profiles or groups with this nickname</translation>
+    </message>
+    <message>
+        <source>Copied to clipboard</source>
+        <translation>Copied to clipboard</translation>
+    </message>
+    <message>
+        <source>There are no profiles with this email</source>
+        <translation>There is no profile with this email</translation>
     </message>
 </context>
 <context>
@@ -4727,10 +5155,6 @@ Please edit phone number and try again.</translation>
     <message>
         <source>Add member</source>
         <translation>Add member</translation>
-    </message>
-    <message>
-        <source>Chat options</source>
-        <translation>Options</translation>
     </message>
     <message>
         <source>Smileys and stickers</source>
@@ -4791,6 +5215,10 @@ Please edit phone number and try again.</translation>
     <message>
         <source>Attach</source>
         <translation>Attach</translation>
+    </message>
+    <message>
+        <source>Information</source>
+        <translation>Information</translation>
     </message>
 </context>
 <context>
@@ -4892,6 +5320,14 @@ Please edit phone number and try again.</translation>
     <message>
         <source>VIDEO</source>
         <translation>VIDEO</translation>
+    </message>
+    <message>
+        <source>Screen recording permissions</source>
+        <translation>Screen recording permissions</translation>
+    </message>
+    <message>
+        <source>To share screen you need to allow access to the screen recording in the system settings</source>
+        <translation>To share screen you need to allow access to the screen recording in the system settings</translation>
     </message>
 </context>
 <context>

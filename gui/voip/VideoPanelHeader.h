@@ -1,8 +1,5 @@
-#ifndef __VIDEO_PANEL_HEADER_H__
-#define __VIDEO_PANEL_HEADER_H__
-
+#pragma once
 #include "NameAndStatusWidget.h"
-#include "WindowHeaderFormat.h"
 #include "CommonUI.h"
 
 namespace voip_manager
@@ -13,6 +10,19 @@ namespace voip_manager
 
 namespace Ui
 {
+    enum eVideoPanelHeaderItems {
+        kVPH_ShowNone = 0x0000,
+        kVPH_ShowName   = 0x0001,
+        kVPH_ShowTime   = 0x0002,
+        kVPH_ShowMin    = 0x0004,
+        kVPH_ShowMax    = 0x0008,
+        kVPH_ShowClose  = 0x0010,
+        kVPH_ShowLogo   = 0x0020,
+        kVPH_ShowSecure = 0x0040,
+        kVPH_BackToVideo = 0x0080,
+        kVPH_ShowAll = 0xffff
+    };
+
     std::string getFotmatedTime(unsigned _ts);
 
     //class videoPanelHeader;
@@ -49,7 +59,7 @@ namespace Ui
         virtual void fadeIn(unsigned int duration)  override;
         virtual void fadeOut(unsigned int duration) override;
          
-        void setContacts(const std::vector<voip_manager::Contact>&);
+        void setContacts(const std::vector<voip_manager::Contact>&, bool active_call);
         void setTopOffset(int offset);
 
     public Q_SLOTS:
@@ -81,5 +91,3 @@ namespace Ui
     };
 
 }
-
-#endif//__VIDEO_PANEL_HEADER_H__

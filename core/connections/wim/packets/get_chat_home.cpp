@@ -3,6 +3,7 @@
 
 #include "../../../http_request.h"
 #include "../../urls_cache.h"
+#include "../../../tools/json_helper.h"
 
 using namespace core;
 using namespace wim;

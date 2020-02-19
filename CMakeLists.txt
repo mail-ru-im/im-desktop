@@ -8,57 +8,80 @@ include(CheckFunctionExists)
 
 project(icq)
 
-if(NOT APP_TYPE)
-    set(IS_ICQ ON)
-    message(STATUS "building: ICQ (NOT APP_TYPE)")
-elseif(${APP_TYPE} STREQUAL "ICQ" OR ${APP_TYPE} STREQUAL "icq")
-    set(IS_ICQ ON)
-    message(STATUS "building: ICQ")
-elseif(${APP_TYPE} STREQUAL "Agent" OR ${APP_TYPE} STREQUAL "agent")
-    set(IS_AGENT ON)
-    message(STATUS "building: Agent")
-elseif(${APP_TYPE} STREQUAL "Myteam" OR ${APP_TYPE} STREQUAL "myteam")
-    set(IS_BIZ ON)
-    message(STATUS "building: Biz")
-elseif(${APP_TYPE} STREQUAL "Messenger" OR ${APP_TYPE} STREQUAL "messenger")
-    set(IS_DIT ON)
-    message(STATUS "building: Messenger")
-else()
-    message(FATAL_ERROR "You must specify the application type (-DAPP_TYPE=ICQ|Agent|Myteam|Messenger)")
+if(NOT PRODUCT)
+    set(PRODUCT "icq")
+    message("Default product is ${PRODUCT}")
 endif()
+
+message(STATUS "PRODUCT is ${PRODUCT}")
+
+add_definitions(-DSUPPORT_EXTERNAL_CONFIG)
+message(STATUS "add_definitions(-DSUPPORT_EXTERNAL_CONFIG)")
 
 if(NOT WIN32)
     CHECK_FUNCTION_EXISTS(secure_getenv HAVE_SECURE_GETENV)
     if(HAVE_SECURE_GETENV)
         add_definitions(-DHAVE_SECURE_GETENV=1)
+        message(STATUS "add_definitions(-DHAVE_SECURE_GETENV=1)")
     endif()
 endif()
 
-if(BUILD_IS_ALPHA)
-    message(STATUS "... cmake: This build is ALPHA")
-    add_definitions(-DBUILD_IS_ALPHA=1)
-endif()
-
-if (IS_BIZ)
-    add_definitions(-DBIZ_VERSION=1)
-elseif (IS_DIT)
-    add_definitions(-DDIT_VERSION=1)
+if(NOT APP_ENVIRONMENT)
+    message(STATUS "... cmake: APP_ENVIRONMENT is empty")
+else()
+    message(STATUS "... cmake: APP_ENVIRONMENT is ${APP_ENVIRONMENT}")
+    add_definitions(-DAPP_ENVIRONMENT="${APP_ENVIRONMENT}")
 endif()
 
 if(BUILD_FOR_STORE)
     message(STATUS "... cmake: This build for Store -> BUILD_FOR_STORE")
     add_definitions(-DBUILD_FOR_STORE=1)
+    message(STATUS "add_definitions(-DBUILD_FOR_STORE=1)")
 endif()
 
 if(NOT ICQ_QT_DYNAMIC)
     add_definitions(-DICQ_QT_STATIC)
     message(STATUS "Qt linking: static")
+    message(STATUS "add_definitions(-DICQ_QT_STATIC)")
 else()
     add_definitions(-DICQ_QT_DYNAMIC)
     message(STATUS "Qt linking: dynamic")
+    message(STATUS "add_definitions(-DICQ_QT_DYNAMIC)")
 endif()
 
+
+message(STATUS "DIR CMAKE_SOURCE_DIR = ${CMAKE_SOURCE_DIR}")
+find_package (Git)
+if (GIT_FOUND)
+    message("-- git found: ${GIT_EXECUTABLE} in version ${GIT_VERSION_STRING}")
+    if(GIT_VERSION_STRING VERSION_LESS 2.23.0)
+        execute_process(
+            COMMAND ${GIT_EXECUTABLE} rev-parse --abbrev-ref HEAD
+            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+            OUTPUT_VARIABLE GIT_BRANCH_NAME
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+        )
+    else()
+        execute_process(
+            COMMAND ${GIT_EXECUTABLE} branch --show-current
+            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+            OUTPUT_VARIABLE GIT_BRANCH_NAME
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+        )
+    endif()
+    message(STATUS "Current GIT BRANCH NAME = ${GIT_BRANCH_NAME}")
+    add_definitions("-DGIT_BRANCH_NAME=\"${GIT_BRANCH_NAME}\"")
+    message(STATUS "add_definitions(-DGIT_BRANCH_NAME=${GIT_BRANCH_NAME})")
+endif (GIT_FOUND)
+
 get_filename_component(ICQ_ROOT "${CMAKE_SOURCE_DIR}" ABSOLUTE)
+set(PRODUCT_SPEC_DIR "${ICQ_ROOT}/products/${PRODUCT}")
+if(EXISTS "${PRODUCT_SPEC_DIR}")
+    message(STATUS "PRODUCT_SPEC_DIR = ${PRODUCT_SPEC_DIR}")
+else()
+    message(FATAL_ERROR "Folder ${PRODUCT_SPEC_DIR} is not exists!)")
+endif()
+include(${PRODUCT_SPEC_DIR}/project_settings.cmake)
 
 if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
     set(ICQ_DEBUG ON)
@@ -67,12 +90,14 @@ if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
     set(CMAKE_CONFIGURATION_TYPES "Debug" CACHE STRING "" FORCE)
     if(APPLE)
         add_definitions(-DDEBUG=1)
+        message(STATUS "add_definitions(-DDEBUG=1)")
     endif()
 elseif(${CMAKE_BUILD_TYPE} STREQUAL "Release")
     set(ICQ_RELEASE ON)
     set(ICQ_BIN_DIR "${ICQ_ROOT}/bin/Release")
     set(ICQ_LIB_DIR "${ICQ_ROOT}/bin/Release")
     set(CMAKE_CONFIGURATION_TYPES "Release" CACHE STRING "" FORCE)
+    add_definitions(-DNDEBUG)
 else()
     message(FATAL_ERROR "Need to specify CMAKE_BUILD_TYPE (-DCMAKE_BUILDTYPE=Debug|Release)")
 endif()
@@ -87,24 +112,49 @@ set(ICQ_CORELIB_STATIC_LINKING ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+if(ENABLE_ASAN)
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address")
+  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=address")
+  list(APPEND _build_flags "-fsanitize=address")
+endif()
+if(ENABLE_TSAN)
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=thread")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=thread")
+  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=thread")
+  list(APPEND _build_flags "-fsanitize=thread")
+endif()
+if(ENABLE_UBSAN)
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=undefined")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=undefined")
+  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=undefined")
+  list(APPEND _build_flags "-fsanitize=undefined")
+endif()
+if(VOIP_AS_MODULE)
+  add_subdirectory(voip3)
+  set(VOIP_LIBRARIES libvoip::sdk_cpp_merged)
+endif()
+
 if(MSVC)
     set(ICQ_PLATFORM windows)
     set(ICQ_ARCH x86)
+
     if(ICQ_DEBUG)
         add_definitions(/MTd)
     else()
         add_definitions(/MT)
-        add_definitions(/Oi)
         # disable LTO because of https://bugreports.qt.io/browse/QTBUG-41301
         # add_definitions(/GL)
         # set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /LTCG")
     endif()
+    add_definitions(/Zi)
     add_definitions(/MP)
     set(CMAKE_HAVE_PTHREAD_H OFF)
     add_definitions(-D_UNICODE)
+    add_definitions(-DUNICODE)
     add_definitions(-D_VARIADIC_MAX=6)
+    add_definitions(-D_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS)
     add_definitions(/Zm500)
-    add_definitions(/Zi)
     add_definitions(/W4)
     add_definitions(/wd4100)
     add_definitions(/we5038) # Wreorder
@@ -112,6 +162,7 @@ if(MSVC)
     add_definitions(/we4067)
     add_definitions(/we4389) # '==': signed/unsigned mismatch
     add_definitions(/we4189) # local variable is initialized but not referenced
+    add_definitions(/we4172) # returning address of local variable or temporary
     add_definitions(/we4245)
     add_definitions(/we4263)
     add_definitions(/we4264)
@@ -123,35 +174,42 @@ if(MSVC)
     add_definitions(/we4099) # type name first seen using 'struct' now seen using 'class'
     add_definitions(/we4146)
     add_definitions(/we4114)
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /STACK:3145728") # for emoji map
     #add_definitions(/we4266) #update boost and qt or disable this warning for these headers
+
+    set(WIN32_COMMON_OPTS "/Ob2 /Oi /Ot /GS- /GF /Gy /Gw /fp:except- /arch:SSE2 /Zc:inline")
+    set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} ${WIN32_COMMON_OPTS}")
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} ${WIN32_COMMON_OPTS}")
+
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /DEBUG /OPT:REF /OPT:ICF")
-    set(CMAKE_SHARED_LINKER_FLAGS_RELEASE "${CMAKE_SHARED_LINKER_FLAGS_RELEASE} /DEBUG /OPT:REF /OPT:ICF")
-    set(WIN_SDK8_DIR "$ENV{ProgramFiles\(x86\)}/Windows Kits/8.1")
-    include_directories("${WIN_SDK8_DIR}/Include/shared")
-    include_directories("${WIN_SDK8_DIR}/Include/winrt")
-    include_directories("${WIN_SDK8_DIR}/Include/um")
-    link_directories("${WIN_SDK8_DIR}/Lib/winv6.3/um/x86")
+    set(WIN_SDK_DIR "$ENV{ProgramFiles\(x86\)}/Windows Kits/10")
+    set(WIN_SDK_VER "10.0.17763.0")
+    include_directories("${WIN_SDK_DIR}/Include/${WIN_SDK_VER}/shared")
+    include_directories("${WIN_SDK_DIR}/Include/${WIN_SDK_VER}/winrt")
+    include_directories("${WIN_SDK_DIR}/Include/${WIN_SDK_VER}/um")
+    link_directories("${WIN_SDK_DIR}/Lib/${WIN_SDK_VER}/um/x86")
 elseif(APPLE)
     set(ICQ_PLATFORM macos)
     set(ICQ_ARCH x64)
     set(CMAKE_XCODE_ATTRIBUTE_DEBUG_INFORMATION_FORMAT "dwarf-with-dsym")
     set(CMAKE_XCODE_ATTRIBUTE_GCC_GENERATE_DEBUGGING_SYMBOLS "YES")
+    set(CMAKE_XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY "")
     set(CMAKE_OSX_DEPLOYMENT_TARGET 10.11)
+
+    set(MACOS_COMMON_FLAGS "-ffunction-sections -fdata-sections -fno-stack-protector -fvisibility-inlines-hidden -fvisibility=hidden -fasm-blocks -stdlib=libc++")
+    set(MACOS_COMMON_FLAGS "${MACOS_COMMON_FLAGS} -mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET} -Werror=most -Werror=switch")
+    list(APPEND _build_flags "-ffunction-sections")
+    list(APPEND _build_flags "-fdata-sections")
+    list(APPEND _build_flags "-fno-stack-protector")
     list(APPEND _build_flags "-fvisibility-inlines-hidden")
     list(APPEND _build_flags "-fvisibility=hidden")
     list(APPEND _build_flags "-fasm-blocks")
     list(APPEND _build_flags "-stdlib=libc++")
-    add_definitions(-fvisibility-inlines-hidden)
-    add_definitions(-fvisibility=hidden)
-    add_definitions(-fasm-blocks)
-    add_definitions(-stdlib=libc++)
-    add_definitions(-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET})
-    add_definitions(-Werror=inconsistent-missing-override)
-    add_definitions(-Werror=most)
-    add_definitions(-Werror=effc++)
-    add_definitions(-Werror=switch)
-    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -stdlib=libc++")
+
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${MACOS_COMMON_FLAGS}")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${MACOS_COMMON_FLAGS} -Werror=inconsistent-missing-override -Werror=effc++")
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -stdlib=libc++")
+    add_definitions(-Werror=return-stack-address)
 elseif(UNIX)
     set(LINUX ON)
     if(LINUX_ARCH EQUAL 32)
@@ -172,21 +230,32 @@ elseif(UNIX)
         message(STATUS "Linux x64")
     endif()
     add_definitions(-fPIC)
+    add_definitions(-Werror=return-local-addr)
 
     if (RELATIVE_DEBUG_PATHS)
         add_definitions(-fdebug-prefix-map=${ICQ_ROOT}=.)
     endif()
 
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ARCH_FLAGS}")
-    if(IM_AUTO_TESTING)
-        message(STATUS "... LINUX_TESTING: -fsanitize=address")
-        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${ARCH_FLAGS} -static-libgcc -static-libstdc++ -no-pie -fsanitize=address")
-    else()
-        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${ARCH_FLAGS} -static-libgcc -static-libstdc++ -no-pie")
+    set(LINUX_COMMON_FLAGS "-ffunction-sections -g -fdata-sections -fno-stack-protector -U_FORTIFY_SOURCE -DBOOST_NO_AUTO_PTR -Wno-deprecated-declarations")
+    if(ENABLE_LTO)
+      list(APPEND _build_flags "-flto")
+      set(LINUX_COMMON_FLAGS "${LINUX_COMMON_FLAGS} -flto")
+      set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -flto")
     endif()
-    set(CMAKE_SHARED_LINKER_FLAGS_RELEASE "${CMAKE_SHARED_LINKER_FLAGS_RELEASE} ${ARCH_FLAGS} -static-libgcc -static-libstdc++ -fsanitize=address")
-
+    list(APPEND _build_flags "-ffunction-sections")
+    list(APPEND _build_flags "-fdata-sections")
+    list(APPEND _build_flags "-g")
+    list(APPEND _build_flags "-fno-stack-protector")
+    list(APPEND _build_flags "-U_FORTIFY_SOURCE")
+    list(APPEND _build_flags "-DBOOST_NO_AUTO_PTR")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${ARCH_FLAGS} ${LINUX_COMMON_FLAGS}")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ARCH_FLAGS} ${LINUX_COMMON_FLAGS}")
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${ARCH_FLAGS} -no-pie -Wl,--version-script=${ICQ_ROOT}/icq.exports -Wl,--gc-sections")
+    #set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-Map=${ICQ_BIN_DIR}/icq.map -Wl,--cref")
+    if(NOT DISABLE_STATIC_CXX)
+      set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libgcc -static-libstdc++")
+    endif()
 else()
     message(FATAL_ERROR "Unknown platform")
 endif()
@@ -212,11 +281,11 @@ else()
     message(STATUS "corelib linking: dynamic")
 endif()
 
-if (USE_OTP_VIA_EMAIL)
-    message(STATUS "USE_OTP_VIA_EMAIL: enabled")
-    add_definitions(-DUSE_OTP_VIA_EMAIL)
-endif()
+option(ABORT_ON_ASSERT "Abort on asserts" OFF)
 
+if (ABORT_ON_ASSERT)
+    add_definitions(-DABORT_OB_ASSERTS)
+endif()
 
 # ---------------------------  paths  ----------------------------
 set(CMAKE_EXECUTABLE_OUTPUT_DIRECTORY_DEBUG ${ICQ_BIN_DIR})
@@ -258,7 +327,7 @@ set(Boost_USE_STATIC_RUNTIME ON)
 set(Boost_NO_SYSTEM_PATHS ON)
 if(MSVC)
     add_definitions(-D_SCL_SECURE_NO_WARNINGS)
-    find_package(Boost REQUIRED chrono date_time filesystem locale system thread unit_test_framework regex)
+    find_package(Boost REQUIRED chrono date_time filesystem locale system thread  regex)
 elseif(APPLE)
     find_package(Boost REQUIRED)
     set(Boost_LIBRARIES ${Boost_LIBRARIES} "${BOOST_LIBRARYDIR}/libboost_chrono.a")
@@ -279,7 +348,7 @@ include_directories(${BOOST_INCLUDEDIR})
 
 
 # -------------------------- rapid-json --------------------------
-add_definitions(-DRAPIDJSON_HAS_STDSTRING=1)
+add_definitions(-DRAPIDJSON_HAS_STDSTRING=1 -DUSE_RAPIDJSON)
 set(ICQ_RAPID_JSON "${ICQ_EXTERNAL}/rapidjson")
 include_directories(${ICQ_RAPID_JSON}/include)
 
@@ -296,7 +365,6 @@ else()
     set(NGHTTP2_LIBRARIES "${NGHTTP2_LIBRARY_DIR}/libnghttp2.a")
 endif()
 
-
 # --------------------------    curl    --------------------------
 add_definitions(-DCURL_STATICLIB)
 set(ICQ_CURL "${ICQ_EXTERNAL}/curl")
@@ -310,7 +378,6 @@ if(MSVC)
 else()
     set(CURL_LIBRARIES "${CURL_LIBRARY_DIR}/libcurl.a")
 endif()
-
 
 # --------------------------   openssl   -------------------------
 set(ICQ_OPENSSL "${ICQ_EXTERNAL}/openssl")
@@ -327,7 +394,6 @@ elseif(APPLE)
     set(OPENSSL_LIBRARIES "${OPENSSL_LIBRARY_DIR}/libssl.a")
 endif()
 
-
 # --------------------------    zlib    --------------------------
 set(ICQ_ZLIB "${ICQ_EXTERNAL}/zlib")
 include_directories(${ICQ_ZLIB}/include)
@@ -338,12 +404,10 @@ if(MSVC)
         debug "${ZLIB_LIBRARY_DIR}/zlibd.lib")
 endif()
 
-
 # ------------------------    libcrypto    -----------------------
 if(APPLE)
     set(LIBCRYPTO_LIBRARIES "${OPENSSL_LIBRARY_DIR}/libcrypto.a")
 endif()
-
 
 # --------------------------   OpenAl   --------------------------
 set(ICQ_OPENAL "${ICQ_EXTERNAL}/openal")
@@ -361,8 +425,8 @@ endif()
 # --------------------------   ffmpeg   --------------------------
 set(ICQ_FFMPEG "${ICQ_EXTERNAL}/ffmpeg")
 if(MSVC)
-	include_directories(${ICQ_FFMPEG}/include_old)										# use old ffmped for windows until xp is being supported
-	SET(FFMPEG_LIBRARY_DIR "${ICQ_EXTERNAL}/ffmpeg/lib_old/${ICQ_PLATFORM}/${ICQ_ARCH}")
+    include_directories(${ICQ_FFMPEG}/include_old)										# use old ffmped for windows until xp is being supported
+    SET(FFMPEG_LIBRARY_DIR "${ICQ_EXTERNAL}/ffmpeg/lib_old/${ICQ_PLATFORM}/${ICQ_ARCH}")
     set(FFMPEG_LIBRARIES ${FFMPEG_LIBRARIES} "${FFMPEG_LIBRARY_DIR}/libavcodec.lib")
     set(FFMPEG_LIBRARIES ${FFMPEG_LIBRARIES} "${FFMPEG_LIBRARY_DIR}/libavfilter.lib")
     set(FFMPEG_LIBRARIES ${FFMPEG_LIBRARIES} "${FFMPEG_LIBRARY_DIR}/libavformat.lib")
@@ -370,8 +434,8 @@ if(MSVC)
     set(FFMPEG_LIBRARIES ${FFMPEG_LIBRARIES} "${FFMPEG_LIBRARY_DIR}/libswresample.lib")
     set(FFMPEG_LIBRARIES ${FFMPEG_LIBRARIES} "${FFMPEG_LIBRARY_DIR}/libswscale.lib")
 else()
-	include_directories(${ICQ_FFMPEG}/include)
-	set_lib_var(FFMPEG_LIBRARY_DIR ffmpeg)
+    include_directories(${ICQ_FFMPEG}/include)
+    set_lib_var(FFMPEG_LIBRARY_DIR ffmpeg)
     set(FFMPEG_LIBRARIES ${FFMPEG_LIBRARIES} "${FFMPEG_LIBRARY_DIR}/libavfilter.a")
     set(FFMPEG_LIBRARIES ${FFMPEG_LIBRARIES} "${FFMPEG_LIBRARY_DIR}/libavformat.a") # libavformat.a depends on libavcodec.a
     set(FFMPEG_LIBRARIES ${FFMPEG_LIBRARIES} "${FFMPEG_LIBRARY_DIR}/libavcodec.a")
@@ -380,32 +444,34 @@ else()
     set(FFMPEG_LIBRARIES ${FFMPEG_LIBRARIES} "${FFMPEG_LIBRARY_DIR}/libswscale.a")
 endif()
 
-
 # --------------------------   minizip   -------------------------
 set(ICQ_MINIZIP "${ICQ_EXTERNAL}/minizip")
 include_directories(${ICQ_MINIZIP}/include)
 
 # --------------------------   libvoip   -------------------------
 if(MSVC)
-    set(ICQ_VOIP "${ICQ_ROOT}/core/Voip/libvoip/lib")
-    set(VOIP_LIBRARIES
-        optimized "${ICQ_VOIP}/release/libvoip_x86.lib"
-        debug "${ICQ_VOIP}/debug/libvoip_x86.lib")
-    set(VOIP_LIBRARY_1 "${ICQ_VOIP}/${CMAKE_BUILD_TYPE}/libvoip_x86.dll")
-    set(VOIP_LIBRARY_2 "${ICQ_VOIP}/${CMAKE_BUILD_TYPE}/libvoip_x86.lib")
-    set(VOIP_DX_COMPILER_LIBRARY "${ICQ_VOIP}/${CMAKE_BUILD_TYPE}/D3DCompiler_43.dll")
-elseif(APPLE)
-    set(ICQ_VOIP "${ICQ_ROOT}/core/Voip/libvoip/lib.mac")
-    set(VOIP_LIBRARIES "${ICQ_VOIP}/libvoip_x64.a" "${ICQ_VOIP}/libippcore_l.a" "${ICQ_VOIP}/libippvc_l.a")
-elseif(LINUX)
-    set(ICQ_VOIP "${ICQ_ROOT}/core/Voip/libvoip/lib.linux")
-    if(LINUX32)
-        set(VOIP_LIBRARIES "${ICQ_VOIP}/libvoip_x86.a" "${ICQ_VOIP}/libippcore_l_x86.a" "${ICQ_VOIP}/libippvc_l_x86.a")
-    else()
-        set(VOIP_LIBRARIES "${ICQ_VOIP}/libvoip_x64.a" "${ICQ_VOIP}/libippcore_l.a" "${ICQ_VOIP}/libippvc_l.a")
-    endif()
+ set(ICQ_VOIP "${ICQ_ROOT}/core/Voip/libvoip/lib.windows")
+ set(VOIP_LIBRARIES "${VOIP_LIBRARIES}" msdmo.lib dmoguids.lib wmcodecdspuuid.lib amstrmid.lib winmm.lib secur32.lib ws2_32.lib comsuppw.lib)
+ set(VOIP_LIBRARIES "${VOIP_LIBRARIES}" optimized comsuppw.lib debug comsuppwd.lib)
+  set(VOIP_DX_COMPILER_LIBRARY "${ICQ_VOIP}/d3dcompiler_43.dll")
 endif()
 
+if(NOT VOIP_AS_MODULE)
+    include_directories("${ICQ_ROOT}/core/Voip/libvoip/include")
+    if(MSVC)
+        set(VOIP_LIBRARIES "${VOIP_LIBRARIES}" optimized "${ICQ_VOIP}/libvoip_sdk_merged_x86.lib" debug "${ICQ_VOIP}/libvoip_sdk_merged_x86d.lib")
+    elseif(APPLE)
+        set(ICQ_VOIP "${ICQ_ROOT}/core/Voip/libvoip/lib.macos")
+        set(VOIP_LIBRARIES "${ICQ_VOIP}/libvoip_sdk_merged_x64.a")
+    elseif(LINUX)
+        set(ICQ_VOIP "${ICQ_ROOT}/core/Voip/libvoip/lib.linux")
+        if(LINUX32)
+            set(VOIP_LIBRARIES "${ICQ_VOIP}/libvoip_sdk_merged_x86.a")
+        else()
+            set(VOIP_LIBRARIES "${ICQ_VOIP}/libvoip_sdk_merged_x64.a")
+        endif()
+    endif()
+endif()
 
 # --------------------------     qt     --------------------------
 set(ICQ_QT_ROOT "${ICQ_EXTERNAL}/qt/${ICQ_PLATFORM}")
@@ -538,48 +604,92 @@ endif()
 set(ICQ_PHONENUMBER "${ICQ_EXTERNAL}/phonenumber")
 set_lib_var(PHONENUMBER_LIBRARY_DIR phonenumber)
 add_definitions ("-DI18N_PHONENUMBERS_USE_BOOST")
+include_directories(${ICQ_PHONENUMBER}/include)
 if(LINUX OR APPLE)
-	include_directories(${ICQ_PHONENUMBER}/include)
     set(PHONENUMBER_LIBRARIES ${PHONENUMBER_LIBRARY_DIR}/libphonenumber.a)
 elseif(MSVC)
-	include_directories(${ICQ_PHONENUMBER}/include_win)
-	set(PHONENUMBER_LIBRARIES 
-		optimized ${PHONENUMBER_LIBRARY_DIR}/phonenumber.lib
-		debug ${PHONENUMBER_LIBRARY_DIR}/phonenumberd.lib)
+    set(PHONENUMBER_LIBRARIES optimized ${PHONENUMBER_LIBRARY_DIR}/phonenumber.lib debug ${PHONENUMBER_LIBRARY_DIR}/phonenumberd.lib)
 endif()
 
 # ------------------------- protobuf  -------------------------
 set(ICQ_PROTOBUF "${ICQ_EXTERNAL}/protobuf")
 set_lib_var(PROTOBUF_LIBRARY_DIR protobuf)
 
-if(LINUX OR APPLE)
-        include_directories(${ICQ_PROTOBUF}/include)
-elseif (MSVC)
-        include_directories(${ICQ_PROTOBUF}/include_win)
-	set(PROTOBUF_LIBRARIES 
-		optimized ${PROTOBUF_LIBRARY_DIR}/libprotobuf-lite.lib
-		debug ${PROTOBUF_LIBRARY_DIR}/libprotobuf-lited.lib)
+include_directories(${ICQ_PROTOBUF}/include)
+
+# --------------------------- breadpad  --------------------------
+
+if (LINUX)
+    set(ICQ_BREAKPAD "${ICQ_EXTERNAL}/breakpad/src")
+    set_lib_var(BREAKPAD_LIBRARY_DIR breakpad)
+
+    FILE(GLOB breadpad_common_files
+        ${ICQ_BREAKPAD}/common/*.cc
+        ${ICQ_BREAKPAD}/common/*.h
+    )
+
+    FILE(GLOB breadpad_client_files
+        ${ICQ_BREAKPAD}/client/*.cc
+        ${ICQ_BREAKPAD}/client/*.h
+    )
+
+    include_directories(${ICQ_BREAKPAD})
+    include_directories(${ICQ_BREAKPAD}/client)
+    include_directories(${ICQ_BREAKPAD}/common)
+    set(BREAKPAD_LIBRARIES ${BREAKPAD_LIBRARY_DIR}/libbreakpad_client.a)
+
+    FILE(GLOB_RECURSE breadpad_common_platform_files
+        ${ICQ_BREAKPAD}/common/linux/*.cc
+        ${ICQ_BREAKPAD}/common/linux/*.h
+    )
+
+    FILE(GLOB_RECURSE breadpad_client_platform_files
+        ${ICQ_BREAKPAD}/client/linux/*.cc
+        ${ICQ_BREAKPAD}/client/linux/*.h
+    )
+
+    SOURCE_GROUP(breakpad FILES ${breadpad_common_files} ${breadpad_client_files}
+    ${breadpad_common_platform_files} ${breadpad_client_platform_files})
 endif()
 
-# --------------------------- icu  ----------------------------
-set(ICQ_ICU "${ICQ_EXTERNAL}/icu")
-set_lib_var(ICU_LIBRARY_DIR icu)
+# --------------------------- crashpad  --------------------------
 
+if (APPLE)
+    set(ICQ_CRASHPAD "${ICQ_EXTERNAL}/crashpad")
+    set_lib_var(CRASHPAD_LIBRARY_DIR crashpad)
+
+    include_directories(${ICQ_CRASHPAD}/include)
+    include_directories(${ICQ_CRASHPAD}/include/mini_chromium)
+
+    set(CRASHPAD_LIBRARIES
+        ${CRASHPAD_LIBRARY_DIR}/libclient.a
+        ${CRASHPAD_LIBRARY_DIR}/libutil.a
+        ${CRASHPAD_LIBRARY_DIR}/libbase.a
+        ${CRASHPAD_LIBRARY_DIR}/libsnapshot.a)
+endif()
+
+# --------------------------- re2  ----------------------------
+set(ICQ_RE2 "${ICQ_EXTERNAL}/re2")
+set_lib_var(RE2_LIBRARY_DIR re2)
+
+include_directories(${ICQ_RE2}/include)
 if(LINUX OR APPLE)
-        set(ICU_LIBRARIES
-                ${ICU_LIBRARY_DIR}/libicui18n.a
-                ${ICU_LIBRARY_DIR}/libicuuc.a
-                ${ICU_LIBRARY_DIR}/libicudata.a)
+    set(RE2_LIBRARIES ${RE2_LIBRARY_DIR}/libre2.a)
 elseif (MSVC)
-	add_definitions ("-DU_STATIC_IMPLEMENTATION")
-	include_directories(${ICQ_ICU}/include)
-	set(ICU_LIBRARIES 
-		optimized ${ICU_LIBRARY_DIR}/sicuuc.lib
-		optimized ${ICU_LIBRARY_DIR}/sicuin.lib
-		optimized ${ICU_LIBRARY_DIR}/sicudt.lib
-		debug ${ICU_LIBRARY_DIR}/sicuucd.lib
-		debug ${ICU_LIBRARY_DIR}/sicuind.lib
-		debug ${ICU_LIBRARY_DIR}/sicudtd.lib)
+    set(RE2_LIBRARIES optimized ${RE2_LIBRARY_DIR}/libre2.lib debug ${RE2_LIBRARY_DIR}/libre2d.lib)
+endif()
+
+# --------------------------    zstd    --------------------------
+set(ICQ_ZSTD "${ICQ_EXTERNAL}/zstd")
+set(ZSTD_INCLUDE_DIR "${ICQ_ZSTD}/include")
+include_directories(${ZSTD_INCLUDE_DIR})
+set_lib_var(ZSTD_LIBRARY_DIR zstd)
+if(MSVC)
+    set(ZSTD_LIBRARIES
+        optimized "${ZSTD_LIBRARY_DIR}/libzstd_static.lib"
+        debug "${ZSTD_LIBRARY_DIR}/libzstd_staticd.lib")
+else()
+    set(ZSTD_LIBRARIES "${ZSTD_LIBRARY_DIR}/libzstd.a")
 endif()
 
 # ------------------------ source groups  ------------------------
@@ -599,13 +709,15 @@ endmacro()
 macro(use_precompiled_header_msvc pch_h pch_cpp ${ARGN})
     set(_pch_bin "${PROJECT_BINARY_DIR}/${CMAKE_BUILD_TYPE}.${PROJECT_NAME}.pch")
     foreach(_source IN ITEMS ${ARGN})
-        set_source_files_properties(${_source} PROPERTIES
-            COMPILE_FLAGS "/Yu\"${pch_h}\" /Fp\"${_pch_bin}\""
-            OBJECT_DEPENDS "${_pch_bin}")
+        if(NOT "${_source}" STREQUAL "${pch_cpp}")
+            set_source_files_properties(${_source} PROPERTIES
+                COMPILE_FLAGS "/Yu\"${pch_h}\" /Fp\"${_pch_bin}\""
+                OBJECT_DEPENDS "${_pch_bin}")
+        endif()
     endforeach()
     set_source_files_properties("${pch_cpp}" PROPERTIES
         COMPILE_FLAGS "/Yc\"${pch_h}\" /Fp\"${_pch_bin}\""
-        OBJECT_DEPENDS "${_pch_bin}")
+        OBJECT_OUTPUTS "${_pch_bin}")
 endmacro()
 
 

@@ -27,21 +27,24 @@ namespace Ui
         QString storeId_;
         QPixmap icon_;
         bool purchased_;
+        bool iconRequested_;
 
-        PackInfo() : id_(-1), purchased_(false) {}
+        PackInfo() : id_(-1), purchased_(false), iconRequested_(false) {}
         PackInfo(
             const int32_t _id,
             const QString& _name,
             const QString& _subtitle,
             const QString& _storeId,
             const QPixmap& _icon,
-            bool _purchased)
+            bool _purchased,
+            bool _iconRequested)
             : id_(_id)
             , name_(_name)
             , subtitle_(_subtitle)
             , storeId_(_storeId)
             , icon_(_icon)
             , purchased_(_purchased)
+            , iconRequested_(_iconRequested)
         {
         }
     };
@@ -174,7 +177,7 @@ namespace Ui
         private:
 
             void startDrag(const int _packNum, const QPoint& _mousePos);
-            void drawStickerPack(QPainter& _p, const QRect& _stickerRect, const PackInfo& _pack, bool _hovered = false, bool _selected = false);
+            void drawStickerPack(QPainter& _p, const QRect& _stickerRect, PackInfo& _pack, bool _hovered = false, bool _selected = false);
 
             int getDragPackNum();
 

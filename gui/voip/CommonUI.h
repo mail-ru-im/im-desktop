@@ -1,11 +1,6 @@
-
 #pragma once
-
 #include "../../core/Voip/VoipManagerDefines.h"
-//#include <functional>
 #include <memory>
-//#include "../main_window/MainWindow.h"
-
 #ifdef __APPLE__
 #include "macos/VideoFrameMacos.h"
 #endif
@@ -20,7 +15,6 @@ namespace Ui
 {
     class BaseVideoPanel;
     class ShadowWindow;
-
 
     class ResizeEventFilter : public QObject
     {
@@ -80,7 +74,7 @@ namespace Ui
         QWidget& obj_;
     };
 
-    class AspectRatioResizebleWnd : public QWidget
+    /*class AspectRatioResizebleWnd : public QWidget
     {
         Q_OBJECT
     public:
@@ -118,7 +112,7 @@ namespace Ui
         bool onWMSizing(RECT& _rc, unsigned _wParam);
 #endif
         void fitMinimalSizeToAspect();
-    };
+    };*/
 
     // Inherit from this class to create panel in voip window.
     class BaseVideoPanel : public QWidget
@@ -202,6 +196,8 @@ namespace Ui
         PanelBackground(QWidget* parent);
 
         void updateSizeFromParent();
+    private:
+        std::unique_ptr<UIEffects> videoPanelEffect_;
     };
 
 
@@ -224,19 +220,15 @@ namespace Ui
         virtual void fadeOut(unsigned int duration) override {}
 
     protected:
-
-        void resizeEvent(QResizeEvent * event) override;
-        void mouseMoveEvent(QMouseEvent* _e) override;
-        void mouseReleaseEvent(QMouseEvent * event) override;
-        void mousePressEvent(QMouseEvent * event) override;
-
-        template <typename E> void resendMouseEventToPanel(E* event_);
+        void resizeEvent(QResizeEvent *event) override;
+        void mouseMoveEvent(QMouseEvent *event) override;
+        void mouseReleaseEvent(QMouseEvent *event) override;
+        void mousePressEvent(QMouseEvent *event) override;
+        void resendMouseEventToPanel(QMouseEvent *event);
 
     protected:
-
         // We will resend events to this widget.
         BaseVideoPanel* eventWidget_;
-
         // Background widget to able process mouse events on transparent parts of panel.
         PanelBackground* backgroundWidget_;
     };

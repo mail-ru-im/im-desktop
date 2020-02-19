@@ -14,10 +14,11 @@
 #include "../contact_list/TopPanel.h"
 #include "../../utils/log/log.h"
 #include "styles/StyleVariable.h"
+#include "../common.shared/config/config.h"
+#include"../../main_window/MainPage.h"
 
 #include "SimpleSettingsRow.h"
 #include "ProfileSettingsRow.h"
-#include "UpdaterSettingsRow.h"
 #include "SpacerSettingsRow.h"
 
 namespace
@@ -43,8 +44,6 @@ namespace Ui
         HeaderTitleBar* topWidget_ = nullptr;
 
         SimpleListWidget* settingsList_ = nullptr;
-        SimpleListItem* updatePlate_ = nullptr;
-        SimpleListItem* updateSpacer_ = nullptr;
 
         std::vector<std::pair<int, Utils::CommonSettingsType>> indexToType_;
 
@@ -62,43 +61,43 @@ namespace Ui
 
             const auto addRow = [this](auto _row, const auto _type, const auto& _accName)
             {
-                Testing::setAccessibleName(_row, qsl("AS settingsRow ") % _accName);
+                Testing::setAccessibleName(_row, ql1s("AS settingsRow ") % _accName);
                 indexToType_.emplace_back(settingsList_->addItem(_row), _type);
                 return _row;
             };
 
             const auto addSpacer = [addRow]()
             {
-                return addRow(new SpacerSettingsRow(), Utils::CommonSettingsType::CommonSettingsType_None, qsl("spacer"));
+                return addRow(new SpacerSettingsRow(), Utils::CommonSettingsType::CommonSettingsType_None, ql1s("spacer"));
             };
 
             const auto addSimpleRow = [addRow](const auto& _icon, const auto _bg, const auto& _caption, const auto _type)
             {
-                return addRow(new SimpleSettingsRow(qsl(":/settings/") % _icon, _bg, _caption), _type, _icon);
+                return addRow(new SimpleSettingsRow(ql1s(":/settings/") % _icon, _bg, _caption), _type, _icon);
             };
 
-            addRow(new ProfileSettingsRow(), Utils::CommonSettingsType::CommonSettingsType_Profile, qsl("Profile"));
+            addRow(new ProfileSettingsRow(), Utils::CommonSettingsType::CommonSettingsType_Profile, ql1s("Profile"));
             addSpacer();
 
-            updatePlate_ = addRow(new UpdaterSettingsRow(), Utils::CommonSettingsType::CommonSettingsType_Updater, qsl("Updater"));
-            updateSpacer_ = addSpacer();
-
-            addSimpleRow(qsl("general"), Styling::StyleVariable::SECONDARY_RAINBOW_MINT, QT_TRANSLATE_NOOP("settings", "General"), Utils::CommonSettingsType::CommonSettingsType_General);
-            addSimpleRow(qsl("notifications"), Styling::StyleVariable::SECONDARY_ATTENTION, QT_TRANSLATE_NOOP("settings", "Notifications"), Utils::CommonSettingsType::CommonSettingsType_Notifications);
-            addSimpleRow(qsl("lock"), Styling::StyleVariable::BASE_SECONDARY, QT_TRANSLATE_NOOP("settings", "Privacy"), Utils::CommonSettingsType::CommonSettingsType_Security);
-            addSimpleRow(qsl("appearance"), Styling::StyleVariable::SECONDARY_RAINBOW_COLD, QT_TRANSLATE_NOOP("settings", "Appearance"), Utils::CommonSettingsType::CommonSettingsType_Appearance);
-            addSimpleRow(qsl("sticker"), Styling::StyleVariable::SECONDARY_RAINBOW_ORANGE, QT_TRANSLATE_NOOP("settings", "Stickers"), Utils::CommonSettingsType::CommonSettingsType_Stickers);
+            addSimpleRow(ql1s("general"), Styling::StyleVariable::SECONDARY_RAINBOW_MINT, QT_TRANSLATE_NOOP("settings", "General"), Utils::CommonSettingsType::CommonSettingsType_General);
+            addSimpleRow(ql1s("notifications"), Styling::StyleVariable::SECONDARY_ATTENTION, QT_TRANSLATE_NOOP("settings", "Notifications"), Utils::CommonSettingsType::CommonSettingsType_Notifications);
+            addSimpleRow(ql1s("lock"), Styling::StyleVariable::BASE_PRIMARY, QT_TRANSLATE_NOOP("settings", "Privacy"), Utils::CommonSettingsType::CommonSettingsType_Security);
+            addSimpleRow(ql1s("appearance"), Styling::StyleVariable::SECONDARY_RAINBOW_COLD, QT_TRANSLATE_NOOP("settings", "Appearance"), Utils::CommonSettingsType::CommonSettingsType_Appearance);
+            addSimpleRow(ql1s("sticker"), Styling::StyleVariable::SECONDARY_RAINBOW_ORANGE, QT_TRANSLATE_NOOP("settings", "Stickers"), Utils::CommonSettingsType::CommonSettingsType_Stickers);
             addSpacer();
 
 #ifndef STRIP_VOIP
-            addSimpleRow(qsl("video"), Styling::StyleVariable::SECONDARY_RAINBOW_AQUA, QT_TRANSLATE_NOOP("settings", "Voice and video"), Utils::CommonSettingsType::CommonSettingsType_VoiceVideo);
+            addSimpleRow(ql1s("video"), Styling::StyleVariable::SECONDARY_RAINBOW_AQUA, QT_TRANSLATE_NOOP("settings", "Voice and video"), Utils::CommonSettingsType::CommonSettingsType_VoiceVideo);
 #endif //STRIP_VOIP
-            addSimpleRow(qsl("shortcuts"), Styling::StyleVariable::SECONDARY_RAINBOW_PURPLE, QT_TRANSLATE_NOOP("settings", "Shortcuts"), Utils::CommonSettingsType::CommonSettingsType_Shortcuts);
-            addSimpleRow(qsl("language"), Styling::StyleVariable::SECONDARY_RAINBOW_PINK, QT_TRANSLATE_NOOP("settings", "Language"), Utils::CommonSettingsType::CommonSettingsType_Language);
+            addSimpleRow(ql1s("shortcuts"), Styling::StyleVariable::SECONDARY_RAINBOW_PURPLE, QT_TRANSLATE_NOOP("settings", "Shortcuts"), Utils::CommonSettingsType::CommonSettingsType_Shortcuts);
+            addSimpleRow(ql1s("language"), Styling::StyleVariable::SECONDARY_RAINBOW_PINK, QT_TRANSLATE_NOOP("settings", "Language"), Utils::CommonSettingsType::CommonSettingsType_Language);
             addSpacer();
 
-            addSimpleRow(qsl("report"), Styling::StyleVariable::SECONDARY_RAINBOW_BLUE, QT_TRANSLATE_NOOP("settings", "Contact Us"), Utils::CommonSettingsType::CommonSettingsType_ContactUs);
-            addSimpleRow(build::ProductNameShort(), Styling::StyleVariable::SECONDARY_RAINBOW_GREEN, QT_TRANSLATE_NOOP("settings", "About app"), Utils::CommonSettingsType::CommonSettingsType_About);
+            addSimpleRow(ql1s("report"), Styling::StyleVariable::SECONDARY_RAINBOW_BLUE, QT_TRANSLATE_NOOP("settings", "Contact Us"), Utils::CommonSettingsType::CommonSettingsType_ContactUs);
+            addSimpleRow(ql1s("product"), Styling::StyleVariable::SECONDARY_RAINBOW_GREEN, QT_TRANSLATE_NOOP("settings", "About app"), Utils::CommonSettingsType::CommonSettingsType_About);
+
+            addSimpleRow(ql1s("alert_icon"), Styling::StyleVariable::SECONDARY_ATTENTION, QT_TRANSLATE_NOOP("settings", "Advanced Settings"), Utils::CommonSettingsType::CommonSettingsType_Debug);
+            settingsList_->itemAt((int)Utils::CommonSettingsType::CommonSettingsType_Debug)->setVisible(environment::is_develop());
 
             Testing::setAccessibleName(settingsList_, qsl("AS settingstab settingsList"));
             _contentLayout->addWidget(settingsList_);
@@ -133,17 +132,18 @@ namespace Ui
 
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::compactModeChanged, this, &SettingsTab::compactModeChanged);
         connect(ui_->settingsList_, &SimpleListWidget::clicked, this, &SettingsTab::listClicked);
-
-        connect(Ui::GetDispatcher(), &Ui::core_dispatcher::updateReady, this, &SettingsTab::appUpdateReady);
-
-        ui_->updatePlate_->hide();
-        ui_->updateSpacer_->hide();
+        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::showDebugSettings, this, [this]()
+        {
+            if (auto debugSettings = ui_->settingsList_->itemAt((int)Utils::CommonSettingsType::CommonSettingsType_Debug))
+            {
+                debugSettings->setVisible(true);
+                if (const auto page = Utils::InterConnector::instance().getMainPage())
+                    page->settingsTabActivate(Utils::CommonSettingsType::CommonSettingsType_Debug);
+            }
+        });
     }
 
-    SettingsTab::~SettingsTab()
-    {
-        //
-    }
+    SettingsTab::~SettingsTab() = default;
 
     void SettingsTab::selectSettings(Utils::CommonSettingsType _type)
     {
@@ -182,6 +182,10 @@ namespace Ui
             settingsStickersClicked();
             break;
 
+        case Utils::CommonSettingsType::CommonSettingsType_Debug:
+            settingsDebugClicked();
+            break;
+
         case Utils::CommonSettingsType::CommonSettingsType_General:
         default:
             settingsGeneralClicked();
@@ -207,8 +211,6 @@ namespace Ui
 
         for (int i = 0, size = ui_->settingsList_->count(); i < size; ++i)
             ui_->settingsList_->itemAt(i)->setCompactMode(isCompact_);
-
-        ui_->updateSpacer_->setVisible(ui_->updatePlate_->isVisible());
     }
 
     void SettingsTab::settingsProfileClicked()
@@ -309,6 +311,14 @@ namespace Ui
         GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::settingsscr_stickers_action);
     }
 
+    void SettingsTab::settingsDebugClicked()
+    {
+        setCurrentItem(Utils::CommonSettingsType::CommonSettingsType_Debug);
+
+        emit Utils::InterConnector::instance().showSettingsHeader(QT_TRANSLATE_NOOP("settings", "Advanced Settings"));
+        emit Utils::InterConnector::instance().generalSettingsShow((int)Utils::CommonSettingsType::CommonSettingsType_Debug);
+    }
+
     void SettingsTab::setCurrentItem(const Utils::CommonSettingsType _item)
     {
         currentSettingsItem_ = _item;
@@ -327,16 +337,6 @@ namespace Ui
     {
         if (const auto type = getTypeByIndex(_index); isClickableType(type))
             selectSettings(type);
-    }
-
-    void SettingsTab::appUpdateReady()
-    {
-        if (auto plate = qobject_cast<UpdaterSettingsRow*>(ui_->updatePlate_))
-        {
-            plate->setUpdateReady(true);
-            if (ui_->updateSpacer_)
-                ui_->updateSpacer_->show();
-        }
     }
 
     Utils::CommonSettingsType SettingsTab::getTypeByIndex(int _index) const
@@ -361,5 +361,4 @@ namespace Ui
     {
         setCompactMode(isCompact_, true);
     }
-
 }

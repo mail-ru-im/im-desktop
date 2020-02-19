@@ -6,27 +6,28 @@
 #pragma once
 
 #include <string>
+#include <chrono>
 
 namespace omicronlib
 {
     //!@name Omicron constants.
     //@{
-    //! Default update interval from omicron (seconds).
-    constexpr inline uint32_t default_update_interval() noexcept
+    //! Default update interval from omicron (milliseconds).
+    constexpr inline std::chrono::milliseconds default_update_interval() noexcept
     {
 #ifdef DEBUG
-        return 60;
+        return std::chrono::seconds(60);
 #else
-        return 21600;
+        return std::chrono::hours(6);
 #endif
     }
-    //! Internal tick timeout for service thread (seconds).
-    constexpr inline uint32_t internal_tick_timeout() noexcept
+    //! Internal tick timeout for service thread (milliseconds).
+    constexpr inline std::chrono::milliseconds internal_tick_timeout() noexcept
     {
 #ifdef DEBUG
-        return 10;
+        return std::chrono::seconds(10);
 #else
-        return 60;
+        return std::chrono::seconds(60);
 #endif
     }
     //@}
@@ -98,8 +99,9 @@ namespace omicronlib
     enum class environment_type
     {
         alpha = 0,
-        beta,
-        release
+        beta = 1,
+        release = 2,
+        develop = 3
     };
     //! Convert environment type into string.
     /*!
@@ -124,8 +126,8 @@ namespace omicronlib
         //@{
         omicron_config(const std::string& _api_url,
                        const std::string& _app_id,
-                       uint32_t _update_interval = default_update_interval(),
-                       environment_type _environment = environment_type::alpha);
+                       environment_type _environment = environment_type::develop,
+                       std::chrono::milliseconds _update_interval = default_update_interval());
 
         omicron_config(const omicron_config&) = default;
         omicron_config(omicron_config&&) noexcept = default;
@@ -182,7 +184,7 @@ namespace omicronlib
         /*!
             \return The specified value of the update interval.
         */
-        uint32_t get_update_interval() const;
+        std::chrono::milliseconds get_update_interval() const;
 
         //! Add a fingerprint.
         /*!
@@ -231,7 +233,7 @@ namespace omicronlib
         std::string api_url_; //!< Endpoint of the omicron service.
         std::string app_id_; //!< Unique application ID.
         omicron_proxy_settings proxy_settings_; //!< Proxy settings.
-        uint32_t update_interval_; //!< Update interval for the omicron service.
+        std::chrono::milliseconds update_interval_; //!< Update interval for the omicron service.
         environment_type environment_; //!< Environment type.
         std::map<std::string, std::string> fingerprints_; //!< Fingerprints for the additional personalization of the client in the omicron.
         download_json_conf_func custom_json_downloader_; //!< Custom download function.

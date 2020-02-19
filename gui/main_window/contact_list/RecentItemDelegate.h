@@ -54,7 +54,8 @@ namespace Ui
         favorites,
         unknowns,
         more_people,
-        messages
+        messages,
+        unimportant
     };
 
     class RecentItemService : public RecentItemBase
@@ -64,6 +65,7 @@ namespace Ui
         ServiceItemType type_;
 
         ::Ui::TextRendering::TextUnitPtr text_;
+        ::Ui::TextRendering::TextUnitPtr badgeTextUnit_;
 
         void draw(
             QPainter& _p,
@@ -155,6 +157,8 @@ namespace Ui
         int prevWidthMessage_;
 
         const bool muted_;
+
+        const bool online_;
 
         bool official_ = false;
 
@@ -291,8 +295,7 @@ namespace Ui
         Q_OBJECT
 
     public Q_SLOTS:
-
-        void onContactSelected(const QString& _aimId, qint64 _msgid, qint64);
+        void onContactSelected(const QString& _aimId);
         void onItemClicked(const QString& _aimId);
         void dlgStateChanged(const Data::DlgState& _dlgState);
         void refreshAll();

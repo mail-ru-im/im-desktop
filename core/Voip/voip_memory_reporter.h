@@ -1,5 +1,4 @@
 #pragma once
-
 #include "../stats/memory/memory_consumption_reporter.h"
 
 namespace voip_manager

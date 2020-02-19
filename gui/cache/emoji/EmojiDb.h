@@ -19,33 +19,44 @@ namespace Emoji
     constexpr inline bool useNativeEmoji() noexcept { return true; }
 #endif
 
+    // EmojiRecord don't store fileName string
     struct EmojiRecord
     {
-        EmojiRecord(QString _category, QString _fileName, const int _index, EmojiCode _baseCodePoints);
-        EmojiRecord(QString _category, QString _fileName, const int _index, EmojiCode _baseCodePoints, EmojiCode _fullCodePoints);
+        EmojiRecord(QLatin1String _category, QLatin1String _fileName, QLatin1String _shortName, const int _index, EmojiCode _baseCodePoints);
+        EmojiRecord(QLatin1String _category, QLatin1String _fileName, QLatin1String _shortName, const int _index, EmojiCode _baseCodePoints, EmojiCode _fullCodePoints);
 
-        const QString Category_;
-        const QString FileName_;
+        EmojiRecord(const EmojiRecord&) = default;
+        EmojiRecord(EmojiRecord&&) = default;
+        EmojiRecord& operator=(const EmojiRecord&) = default;
+        EmojiRecord& operator=(EmojiRecord&&) = default;
 
-        const int Index_;
+        QLatin1String Category_;
+        QLatin1String FileName_;
+        QLatin1String ShortName_;
 
-        const EmojiCode baseCodePoints_;
-        const EmojiCode fullCodePoints;
+        int Index_;
+
+        EmojiCode baseCodePoints_;
+        EmojiCode fullCodePoints;
+
+        bool isValid() const noexcept;
+
+        static const EmojiRecord& invalid();
     };
 
-    using EmojiRecordSptr = std::shared_ptr<EmojiRecord>;
-
-    using EmojiRecordSptrVec = std::vector<EmojiRecordSptr>;
+    using EmojiRecordVec = std::vector<EmojiRecord>;
 
     void InitEmojiDb();
 
     bool isEmoji(const EmojiCode& _code);
 
-    const EmojiRecordSptr& GetEmojiInfoByCodepoint(const EmojiCode& _code);
+    const EmojiRecord& GetEmojiInfoByCodepoint(const EmojiCode& _code);
 
-    const QVector<QString>& GetEmojiCategories();
+    const QVector<QLatin1String>& GetEmojiCategories();
 
-    const EmojiRecordSptrVec& GetEmojiInfoByCategory(const QString& _category);
+    const EmojiRecordVec& GetEmojiInfoByCategory(QLatin1String _category);
+
+    const EmojiCode& GetEmojiInfoByCountryName(const QString& _country);
 }
 
 #endif // EMOJI_DB

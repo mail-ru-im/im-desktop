@@ -14,6 +14,8 @@ namespace Ui
     class GeneralDialog;
     class qt_gui_settings;
     class DialogButton;
+    class TextEditEx;
+    class ContactAvatarWidget;
 
     struct AvatarData
     {
@@ -118,6 +120,7 @@ namespace Ui
         void escapePressed();
         void enterPressed();
         void recalcAvatarArea();
+        void nameChanged();
 
     public Q_SLOTS:
         void UpdateMembers();
@@ -135,11 +138,16 @@ namespace Ui
             QWidget* _parent,
             bool _handleKeyPressEvents = true,
             Logic::AbstractSearchModel* searchModel = nullptr,
-            bool _enableAuthorWidget = false);
+            bool _enableAuthorWidget = false,
+            bool _chatCreation = false,
+            bool _isChannel = false);
 
         ~SelectContactsWidget();
 
         virtual bool show();
+        inline const QPixmap &lastCroppedImage() const { return lastCroppedImage_; }
+        inline ContactAvatarWidget *photo() const { return photo_; }
+        QString getName() const;
 
         void setAuthors(const QSet<QString> &_authors);
         void setChatName(const QString& _chatName);
@@ -161,6 +169,7 @@ namespace Ui
         int calcListHeight() const;
         bool isCheckboxesVisible() const;
         bool isShareMode() const;
+        bool isCreateGroupMode() const;
         bool isVideoConference() const;
         bool isPopupWithCloseBtn() const;
         bool isPopupWithCancelBtn() const;
@@ -172,6 +181,7 @@ namespace Ui
         {
             begin,
 
+            Name,
             Search,
             Accept,
             Cancel,
@@ -195,6 +205,8 @@ namespace Ui
         bool sortCL_;
         bool handleKeyPressEvents_;
         bool enableAuthorWidget_;
+        bool chatCreation_;
+        bool isChannel_;
         int maximumSelectedCount_;
         QString chatAimId_;
         Logic::AbstractSearchModel* searchModel_;
@@ -202,6 +214,10 @@ namespace Ui
         QPointer<AuthorWidget> authorWidget_;
         DialogButton* cancelButton_;
         DialogButton* acceptButton_;
+
+        TextEditEx *chatName_;
+        ContactAvatarWidget *photo_;
+        QPixmap lastCroppedImage_;
 
         std::map<QWidget*, FocusPosition> focusWidget_;
     };

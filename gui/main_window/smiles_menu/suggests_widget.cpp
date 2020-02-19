@@ -8,14 +8,10 @@
 #include "../../utils/InterConnector.h"
 #include "../../main_window/MainWindow.h"
 #include "../../styles/ThemeParameters.h"
+#include "StickerPreview.h"
 
 namespace
 {
-    int getStickerWidth()
-    {
-        return Utils::scale_value(60);
-    }
-
     int getStickersSpacing()
     {
         return Utils::scale_value(8);
@@ -30,8 +26,13 @@ namespace
 using namespace Ui;
 using namespace Stickers;
 
+int Stickers::getStickerWidth()
+{
+    return Utils::scale_value(60);
+}
+
 StickersWidget::StickersWidget(QWidget* _parent)
-    : StickersTable(_parent, -1, getStickerWidth(), getStickerWidth() + getStickersSpacing(), false)
+    : StickersTable(_parent, -1, Stickers::getStickerWidth(), Stickers::getStickerWidth() + getStickersSpacing(), false)
     , stickerPreview_(nullptr)
 {
     connect(GetDispatcher(), &core_dispatcher::onSticker, this, [this](const qint32 _error, const qint32 _setId, qint32, const QString& _stickerId)
@@ -56,11 +57,11 @@ void StickersWidget::closeStickerPreview()
     stickerPreview_ = nullptr;
 }
 
-void StickersWidget::onStickerPreview(const int32_t _setId, const QString& _stickerId)
+void StickersWidget::onStickerPreview(const QString& _stickerId)
 {
     if (!stickerPreview_)
     {
-        stickerPreview_ = new Smiles::StickerPreview(Utils::InterConnector::instance().getMainWindow()->getWidget(), _setId, _stickerId, Smiles::StickerPreview::Context::Popup);
+        stickerPreview_ = new Smiles::StickerPreview(Utils::InterConnector::instance().getMainWindow()->getWidget(), -1, _stickerId, Smiles::StickerPreview::Context::Popup);
         stickerPreview_->setGeometry(Utils::InterConnector::instance().getMainWindow()->getWidget()->rect());
         stickerPreview_->show();
         stickerPreview_->raise();
@@ -80,22 +81,22 @@ void StickersWidget::onStickerHovered(const int32_t _setId, const QString& _stic
 
 void StickersWidget::init(const QString& _text)
 {
-    stickersArray_.clear();
-
     Stickers::Suggest suggest;
     Stickers::getSuggestWithSettings(_text, suggest);
 
     stickersArray_.reserve(suggest.size());
+
     for (const auto& _sticker : suggest)
     {
         const auto sticker = getSticker(_sticker.fsId_);
         if (!sticker)
             Ui::GetDispatcher()->getSticker(_sticker.fsId_, core::sticker_size::small);
 
-        stickersArray_.emplace_back(_sticker.fsId_);
+        if (std::find(stickersArray_.begin(), stickersArray_.end(), _sticker.fsId_) == stickersArray_.end())
+            stickersArray_.push_back(_sticker.fsId_);
     }
 
-    const int w = (getStickerWidth() + getStickersSpacing()) * suggest.size();
+    const int w = (Stickers::getStickerWidth() + getStickersSpacing()) * suggest.size();
 
     setFixedWidth(w);
     setFixedHeight(getSuggestHeight());
@@ -103,7 +104,7 @@ void StickersWidget::init(const QString& _text)
 
 bool StickersWidget::resize(const QSize& _size, bool _force)
 {
-    needHeight_ = getStickerWidth();
+    needHeight_ = Stickers::getStickerWidth();
 
     columnCount_ = stickersArray_.size();
 
@@ -165,6 +166,11 @@ void StickersWidget::setSelected(const std::pair<int32_t, QString>& _sticker)
     StickersTable::setSelected(_sticker);
 }
 
+void StickersWidget::clearStickers()
+{
+    stickersArray_.clear();
+}
+
 StickersSuggest::StickersSuggest(QWidget* _parent)
     : QWidget(_parent)
     , stickers_(nullptr)
@@ -178,16 +184,26 @@ StickersSuggest::StickersSuggest(QWidget* _parent)
 
     connect(stickers_, &StickersWidget::stickerSelected, this, &StickersSuggest::stickerSelected);
     connect(stickers_, &StickersWidget::stickerHovered, this, &StickersSuggest::stickerHovered);
+    connect(tooltip_, &TooltipWidget::scrolledToLastItem, this, &StickersSuggest::scrolledToLastItem);
 }
 
 void StickersSuggest::showAnimated(const QString& _text, const QPoint& _p, const QSize& _maxSize, const QRect& _rect)
 {
+    stickers_->clearStickers();
     stickers_->init(_text);
     stickers_->setSelected(std::make_pair(-1, QString()));
-    tooltip_->scrollToTop();
+    if (needScrollToTop_)
+        tooltip_->scrollToTop();
     tooltip_->showAnimated(_p, _maxSize, _rect);
 
     keyboardActive_ = false;
+}
+
+void StickersSuggest::updateStickers(const QString& _text, const QPoint& _p, const QSize& _maxSize, const QRect& _rect)
+{
+    stickers_->init(_text);
+    stickers_->clearSelection();
+    tooltip_->updateTooltip(_p, _maxSize, _rect);
 }
 
 void StickersSuggest::hideAnimated()
@@ -198,6 +214,11 @@ void StickersSuggest::hideAnimated()
 bool StickersSuggest::isTooltipVisible() const
 {
     return tooltip_->isVisible();
+}
+
+void Ui::Stickers::StickersSuggest::setArrowVisible(const bool _visible)
+{
+    tooltip_->setArrowVisible(_visible);
 }
 
 void StickersSuggest::stickerHovered(const QRect& _stickerRect)
@@ -260,11 +281,12 @@ void StickersSuggest::keyPressEvent(QKeyEvent* _event)
             break;
         }
         case Qt::Key_Return:
+        case Qt::Key_Enter:
         {
             const auto selectedSticker = stickers_->getSelected();
             if (keyboardActive_ && !selectedSticker.second.isEmpty())
             {
-                emit stickerSelected(selectedSticker.first, selectedSticker.second);
+                emit stickerSelected(selectedSticker.second);
 
                 _event->accept();
             }

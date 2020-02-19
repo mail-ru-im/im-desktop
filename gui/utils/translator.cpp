@@ -30,12 +30,8 @@ namespace Utils
 
     void Translator::updateLocale()
     {
-        QLocale locale(getLang());
-        QString localeStr = locale.name();
-        localeStr.replace(ql1c('_'), ql1c('-'));
-
         Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
-        collection.set_value_as_qstring("locale", std::move(localeStr).toLower());
+        collection.set_value_as_qstring("locale", getLocaleStr());
         Ui::GetDispatcher()->post_message_to_core("set_locale", collection.get());
     }
 

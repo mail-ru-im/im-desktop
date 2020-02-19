@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "ContactListWithHeaders.h"
+#include "../common.shared/config/config.h"
 #include "ContactListModel.h"
 #include "../../utils/InterConnector.h"
 #include "../../utils/utils.h"
@@ -39,7 +40,7 @@ namespace Logic
         connect(&Utils::InterConnector::instance(),
                 &Utils::InterConnector::showSearchDropdownFull,
                 this,
-                [this](){ setMenu((build::is_biz() ||build::is_dit()) ? FullmenuBiz : Fullmenu); }
+                [this](){ setMenu(config::get().is_on(config::features::add_contact) ? Fullmenu : FullmenuBiz); }
         );
     }
 
@@ -107,7 +108,7 @@ namespace Logic
                 if (Testing::isAccessibleRole(_role))
                     return qsl("new_groupchat");
 
-                static auto hdr = dropDownBtn(qsl("~newGroupchat~"), QT_TRANSLATE_NOOP("contact_list", "New group"), qsl(":/add_groupchat"));
+                static auto hdr = dropDownBtn(qsl("~newGroupchat~"), QT_TRANSLATE_NOOP("contact_list", "Create group"), qsl(":/add_groupchat"));
                 return QVariant::fromValue(&hdr);
             }
             else if (row == getIndexNewChannel())
@@ -115,7 +116,7 @@ namespace Logic
                 if (Testing::isAccessibleRole(_role))
                     return qsl("new_channel");
 
-                static auto hdr = dropDownBtn(qsl("~newChannel~"), QT_TRANSLATE_NOOP("contact_list", "New channel"), qsl(":/add_channel"));
+                static auto hdr = dropDownBtn(qsl("~newChannel~"), QT_TRANSLATE_NOOP("contact_list", "Create channel"), qsl(":/add_channel"));
                 return QVariant::fromValue(&hdr);
             }
         }

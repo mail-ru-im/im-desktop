@@ -82,19 +82,18 @@ void favorites::remove(const std::string_view _aimid)
         }
     }
 
-    if (auto iter = index_.find(std::string(_aimid)); iter != index_.end())
+    if (const auto iter = index_.find(_aimid); iter != index_.end())
         index_.erase(iter);
 }
 
 bool favorites::contains(const std::string_view _aimid) const
 {
-    return index_.find(std::string(_aimid)) != index_.end();
+    return index_.find(_aimid) != index_.end();
 }
 
 int64_t favorites::get_time(const std::string_view _aimid) const
 {
-    auto iter = index_.find(std::string(_aimid));
-    if (iter != index_.end())
+    if (const auto iter = index_.find(_aimid); iter != index_.end())
         return iter->second;
 
     return -1;
@@ -123,13 +122,14 @@ int32_t favorites::unserialize(const rapidjson::Value& _node)
     if (iter_contacts == _node.MemberEnd() || !iter_contacts->value.IsArray())
         return -1;
 
+    contacts_.reserve(iter_contacts->value.Size());
     for (const auto& contact : iter_contacts->value.GetArray())
     {
         favorite dlg;
         if (dlg.unserialize(contact) != 0)
             return -1;
 
-        index_.insert(std::make_pair(dlg.get_aimid(), dlg.get_time()));
+        index_.insert({ dlg.get_aimid(), dlg.get_time() });
         contacts_.push_back(std::move(dlg));
     }
 

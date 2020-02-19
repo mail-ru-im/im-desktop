@@ -22,7 +22,6 @@
 #include "ComplexMessageItem.h"
 #include "FileSharingUtils.h"
 #include "LinkPreviewBlockBlankLayout.h"
-#include "Selection.h"
 
 #include "YoutubeLinkPreviewBlockLayout.h"
 
@@ -40,6 +39,7 @@ UI_COMPLEX_MESSAGE_NS_BEGIN
 LinkPreviewBlock::LinkPreviewBlock(ComplexMessageItem *parent, const QString &uri, const bool _hasLinkInMessage)
     : GenericBlock(parent, uri, MenuFlagLinkCopyable, false)
     , Title_(nullptr)
+    , domain_(nullptr)
     , Uri_(Utils::normalizeLink(QStringRef(&uri)).toString())
     , RequestId_(-1)
     , Layout_(nullptr)
@@ -53,12 +53,9 @@ LinkPreviewBlock::LinkPreviewBlock(ComplexMessageItem *parent, const QString &ur
     , MaxPreviewWidth_(0)
     , hasLinkInMessage_(_hasLinkInMessage)
 {
-    setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-
     assert(!Uri_.isEmpty());
-    Layout_ = std::make_unique<YoutubeLinkPreviewBlockLayout>();
-    setLayout(Layout_->asQLayout());
 
+    setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     connections_.reserve(4);
 }
 
@@ -81,7 +78,7 @@ QSize LinkPreviewBlock::getFaviconSizeUnscaled() const
         return QSize(0, 0);
     }
 
-    return MessageStyle::Snippet::getFaviconSizeUnscaled();
+    return MessageStyle::Snippet::getFaviconSize();
 }
 
 QSize LinkPreviewBlock::getPreviewImageSize() const
@@ -119,12 +116,7 @@ bool LinkPreviewBlock::updateFriendly(const QString&/* _aimId*/, const QString&/
 
 const QString& LinkPreviewBlock::getSiteName() const
 {
-    return SiteName_;
-}
-
-const QFont& LinkPreviewBlock::getSiteNameFont() const
-{
-    return SiteNameFont_;
+    return Meta_.getSiteName();
 }
 
 bool LinkPreviewBlock::hasTitle() const
@@ -173,12 +165,12 @@ void LinkPreviewBlock::onDistanceToViewportChanged(const QRect& _widgetAbsGeomet
 
 }
 
-void LinkPreviewBlock::selectByPos(const QPoint& from, const QPoint& to, const BlockSelectionType selection)
+void LinkPreviewBlock::selectByPos(const QPoint& from, const QPoint& to, bool topToBottom)
 {
     if (isHasLinkInMessage())
         return;
 
-    GenericBlock::selectByPos(from, to, selection);
+    GenericBlock::selectByPos(from, to, topToBottom);
 }
 
 void LinkPreviewBlock::setMaxPreviewWidth(int width)
@@ -209,15 +201,11 @@ void LinkPreviewBlock::showEvent(QShowEvent *event)
 
     const auto hasTextControls = hasTitle();
     if (hasTextControls)
-    {
         return;
-    }
 
     const auto hasText = (!Meta_.getTitle().isEmpty());
     if (!hasText)
-    {
         return;
-    }
 
     const auto &blockGeometry = Layout_->asBlockLayout()->getBlockGeometry();
     assert(blockGeometry.width() > 0);
@@ -255,9 +243,6 @@ void LinkPreviewBlock::drawBlock(QPainter &p, const QRect& _rect, const QColor& 
 
     if (Title_)
         Title_->draw(p);
-
-    if (isSelected())
-        p.fillRect(rect(), MessageStyle::getSelectionColor());
 
     GenericBlock::drawBlock(p, _rect, _quoteColor);
 }
@@ -302,7 +287,7 @@ void LinkPreviewBlock::onLinkMetainfoMetaDownloaded(int64_t seq, bool success, D
 
     // 3. if succeed then extract valuable data from the metainfo
 
-    ContentType_ = Meta_.getContentType();
+    ContentType_ = Meta_.getContentTypeStr();
 
     const auto &previewSize = Meta_.getPreviewSize();
     assert(previewSize.width() >= 0);
@@ -310,15 +295,12 @@ void LinkPreviewBlock::onLinkMetainfoMetaDownloaded(int64_t seq, bool success, D
 
     PreviewSize_ = scalePreviewSize(previewSize);
 
-    SiteName_ = Meta_.getSiteName();
-    assert(!SiteName_.isEmpty());
-
     // 4. make a proper layout for the content type
 
     assert(Layout_);
     const auto existingGeometry = Layout_->asBlockLayout()->getBlockGeometry();
 
-    Layout_ = std::make_unique<YoutubeLinkPreviewBlockLayout>();
+    Layout_ = createLayout();
     setLayout(Layout_->asQLayout());
 
     // 5. postpone text processing if geometry is not ready
@@ -354,18 +336,14 @@ void LinkPreviewBlock::onLinkMetainfoImageDownloaded(int64_t seq, bool success, 
 
     const auto skipSeq = (seq != RequestId_);
     if (skipSeq)
-    {
         return;
-    }
 
     assert(!ImageDownloaded_);
     ImageDownloaded_ = true;
     updateRequestId();
 
     if (!success)
-    {
         return;
-    }
 
     assert(!image.isNull());
 
@@ -374,22 +352,11 @@ void LinkPreviewBlock::onLinkMetainfoImageDownloaded(int64_t seq, bool success, 
 
 void LinkPreviewBlock::createTextControls(const QRect &blockGeometry)
 {
-    assert(!Title_);
-
-    const auto isTitleCreated = createTitleControl(Meta_.getTitle());
-    if (isTitleCreated)
-        notifyBlockContentsChanged();
-}
-
-bool LinkPreviewBlock::createTitleControl(const QString &title)
-{
-    if (title.isEmpty() || Title_)
-        return false;
-
-    Title_ = TextRendering::MakeTextUnit(title, Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS);
+    if (const auto title = getTitle(); !Title_ && !title.isEmpty())
+        Title_ = TextRendering::MakeTextUnit(title, {}, TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
+    if (const auto domain = Meta_.getSiteName(); !domain_ && !domain.isEmpty())
+        domain_ = TextRendering::MakeTextUnit(domain, {}, TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
     updateStyle();
-
-    return true;
 }
 
 int LinkPreviewBlock::getPreloadingTickerValue() const
@@ -412,11 +379,23 @@ void LinkPreviewBlock::setPreloadingTickerValue(const int32_t _val)
 
 void LinkPreviewBlock::updateStyle()
 {
+    bool needUpdate = false;
     if (Title_)
     {
         Title_->init(Layout_->getTitleFont(), MessageStyle::getTextColor(), MessageStyle::getLinkColor(), MessageStyle::getSelectionColor(), MessageStyle::getHighlightColor());
         Title_->evaluateDesiredSize();
+        needUpdate = true;
+    }
 
+    if (domain_)
+    {
+        domain_->init(MessageStyle::Snippet::getSiteNameFont(), MessageStyle::Snippet::getSiteNameColor(), QColor(), QColor(), MessageStyle::getHighlightColor());
+        domain_->evaluateDesiredSize();
+        needUpdate = true;
+    }
+
+    if (needUpdate)
+    {
         notifyBlockContentsChanged();
         update();
     }
@@ -424,9 +403,6 @@ void LinkPreviewBlock::updateStyle()
 
 void LinkPreviewBlock::updateFonts()
 {
-    SiteNameFont_ = MessageStyle::Snippet::getSiteNameFont();
-    update();
-
     updateStyle();
 }
 
@@ -465,7 +441,7 @@ void LinkPreviewBlock::drawPreloader(QPainter &p)
     const auto &preloaderBrush = MessageStyle::Snippet::getPreloaderBrush();
     p.setBrush(preloaderBrush);
 
-    const auto width = getBlockLayout()->getBlockGeometry().width();
+    const auto width = getBlockLayout() ? getBlockLayout()->getBlockGeometry().width() : 0;
     const auto brushX = ((width * getPreloadingTickerValue()) / 50);
     p.setBrushOrigin(brushX, 0);
 
@@ -523,35 +499,39 @@ void LinkPreviewBlock::drawPreview(QPainter &p)
 
 void LinkPreviewBlock::drawSiteName(QPainter &p)
 {
-    if (SiteName_.isEmpty())
+    if (domain_)
     {
-        return;
+        domain_->setOffsets(Layout_->getSiteNamePos());
+        domain_->draw(p, TextRendering::VerPosition::BASELINE);
     }
+}
 
-    Utils::PainterSaver ps(p);
+std::unique_ptr<YoutubeLinkPreviewBlockLayout> LinkPreviewBlock::createLayout()
+{
+    return std::make_unique<YoutubeLinkPreviewBlockLayout>();
+}
 
-    p.setPen(MessageStyle::Snippet::getSiteNameColor());
-    p.setFont(getSiteNameFont());
-
-    const auto &siteNamePos = Layout_->getSiteNamePos();
-
-    p.drawText(siteNamePos, SiteName_);
+QString LinkPreviewBlock::getTitle() const
+{
+    return Meta_.getTitle();
 }
 
 void LinkPreviewBlock::initialize()
 {
     GenericBlock::initialize();
 
+    Layout_ = createLayout();
+    setLayout(Layout_->asQLayout());
+
     connectSignals(true);
 
     assert(RequestId_ == -1);
     RequestId_ = GetDispatcher()->downloadLinkMetainfo(
-        getChatAimid(),
         Uri_,
+        core_dispatcher::LoadPreview::Yes,
         0,
-        0);
-
-    SiteNameFont_ = MessageStyle::Snippet::getSiteNameFont();
+        0,
+        Utils::msgIdLogStr(getParentComplexMessage()->getId()));
 
     assert(!PreloadingTickerAnimation_);
     PreloadingTickerAnimation_ = new QPropertyAnimation(this, QByteArrayLiteral("PreloadingTicker"), this);
@@ -564,7 +544,7 @@ void LinkPreviewBlock::initialize()
     PreloadingTickerAnimation_->start();
 }
 
-bool LinkPreviewBlock::isOverSiteLink(const QPoint p) const
+bool LinkPreviewBlock::isOverSiteLink(const QPoint& p) const
 {
     return rect().contains(p);
 }
@@ -745,7 +725,7 @@ void LinkPreviewBlock::requestPinPreview()
         }
     });
 
-    reqData->reqId_ = GetDispatcher()->downloadLinkMetainfo(getChatAimid(), Uri_, 0, 0);
+    reqData->reqId_ = GetDispatcher()->downloadLinkMetainfo(Uri_, core_dispatcher::LoadPreview::Yes, 0, 0, Utils::msgIdLogStr(getParentComplexMessage()->getId()));
 }
 
 QString LinkPreviewBlock::formatRecentsText() const
@@ -757,6 +737,16 @@ QString LinkPreviewBlock::formatRecentsText() const
     }
 
     return GenericBlock::formatRecentsText();
+}
+
+bool LinkPreviewBlock::pressed(const QPoint& _p)
+{
+    const auto mappedPoint = mapFromParent(_p, Layout_->asBlockLayout()->getBlockGeometry());
+
+    if (isOverSiteLink(mappedPoint))
+        return true;
+
+    return false;
 }
 
 bool LinkPreviewBlock::clicked(const QPoint& _p)
@@ -783,6 +773,22 @@ void LinkPreviewBlock::cancelRequests()
         return;
 
     GetDispatcher()->cancelLoaderTask(Uri_);
+}
+
+void LinkPreviewBlock::highlight(const highlightsV& _hl)
+{
+    if (Title_)
+        Title_->setHighlighted(_hl);
+    if (domain_)
+        domain_->setHighlighted(_hl);
+}
+
+void LinkPreviewBlock::removeHighlight()
+{
+    if (Title_)
+        Title_->setHighlighted(false);
+    if (domain_)
+        domain_->setHighlighted(false);
 }
 
 UI_COMPLEX_MESSAGE_NS_END

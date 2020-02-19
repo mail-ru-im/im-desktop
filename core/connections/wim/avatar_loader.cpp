@@ -10,6 +10,8 @@
 
 #include "packets/request_avatar.h"
 
+#include "../common.shared/string_utils.h"
+
 #include <boost/range/adaptor/reversed.hpp>
 
 using namespace core;
@@ -57,29 +59,17 @@ avatar_loader::avatar_loader()
 }
 
 
-avatar_loader::~avatar_loader()
+avatar_loader::~avatar_loader() = default;
+
+std::string_view avatar_loader::get_avatar_type_by_size(int32_t _size) const
 {
-}
+    constexpr static std::pair<int32_t, std::string_view> sizes[] = { {0, "128"}, {128, "256"}, {256, "1024"} };
 
-using avatar_izes_array = std::map<int32_t, std::string_view>;
-
-const avatar_izes_array& get_avatar_sizes()
-{
-    const static avatar_izes_array old_api_sizes = { {0, "ceilBigBuddyIcon"}, {64, "floorBigBuddyIcon"}, {128, "floorLargeBuddyIcon"} };
-    const static avatar_izes_array new_api_sizes = { {0, "buddyIcon"}, {64, "bigBuddyIcon"}, {128, "largeBuddyIcon"} };
-
-    return is_new_avatar_rapi() ? new_api_sizes : old_api_sizes;
-}
-
-std::string avatar_loader::get_avatar_type_by_size(int32_t _size) const
-{
-    for (const auto& [size, name] : boost::adaptors::reverse(get_avatar_sizes()))
+    for (auto [size, name] : boost::adaptors::reverse(sizes))
         if (_size > size)
-            return std::string(name);
+            return name;
 
-    assert(false);
-
-    return "buddyIcon";
+    return std::begin(sizes)->second;
 }
 
 std::wstring avatar_loader::get_avatar_path(const std::wstring& _avatars_data_path, std::string_view _contact, std::string_view _avatar_type) const
@@ -87,16 +77,10 @@ std::wstring avatar_loader::get_avatar_path(const std::wstring& _avatars_data_pa
     std::wstring path = core::tools::from_utf8(_contact);
     std::replace(path.begin(), path.end(), L'|', L'_');
 
-    path = _avatars_data_path + path;
+    if (_avatar_type.empty())
+        return _avatars_data_path + path;
 
-    if (!_avatar_type.empty())
-    {
-        std::string lower_avatar_type = std::string(_avatar_type);
-        std::transform(lower_avatar_type.begin(), lower_avatar_type.end(), lower_avatar_type.begin(), ::tolower);
-        path += L'/' + core::tools::from_utf8(lower_avatar_type) + L"_.jpg";
-    }
-
-    return path;
+    return su::wconcat(_avatars_data_path, path, L'/', core::tools::from_utf8(_avatar_type), L".jpg");
 }
 
 bool load_avatar_from_file(std::shared_ptr<avatar_context> _context)
@@ -138,9 +122,7 @@ void avatar_loader::execute_task(std::shared_ptr<avatar_task> _task, std::functi
         _task->get_context()->avatar_type_,
         write_time);
 
-    auto wr_this = weak_from_this();
-
-    server_thread_->run_async_task(packet)->on_result_ = [wr_this, _task, packet, _on_complete](int32_t _error)
+    server_thread_->run_async_task(packet)->on_result_ = [wr_this = weak_from_this(), _task, packet, _on_complete](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -216,10 +198,7 @@ void avatar_loader::run_tasks_loop()
         return;
     }
 
-    auto wr_this = weak_from_this();
-
-
-    execute_task(task, [wr_this, task](int32_t _error)
+    execute_task(task, [wr_this = weak_from_this(), task](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -291,13 +270,12 @@ std::shared_ptr<avatar_load_handlers> avatar_loader::get_contact_avatar_async(co
 
     _context->avatar_type_ = get_avatar_type_by_size(_context->avatar_size_);
     _context->avatar_file_path_ = get_avatar_path(_context->avatars_data_path_, _context->contact_, _context->avatar_type_);
-    auto wr_this = weak_from_this();
 
     local_thread_->run_async_function([_context, handlers]()->int32_t
     {
         return (load_avatar_from_file(_context) ? 0 : -1);
 
-    })->on_result_ = [wr_this, handlers, _context](int32_t _error)
+    })->on_result_ = [wr_this = weak_from_this(), handlers, _context](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)

@@ -116,6 +116,7 @@ if(ICQ_CORELIB_STATIC_LINKING)
         ${LIBCRYPTO_LIBRARIES}
         ${NGHTTP2_LIBRARIES}
         ${CURL_LIBRARIES}
+        ${ZSTD_LIBRARIES}
         ${LIBEVENT_LIBRARIES})
 else()
     target_link_libraries(${PROJECT_NAME}
@@ -129,5 +130,6 @@ else()
         ${CURL_LIBRARIES}
         ${VOIP_LIBRARIES}
         ${ZLIB_LIBRARIES}
+        ${ZSTD_LIBRARIES}
         ${LIBEVENT_LIBRARIES})
 endif()

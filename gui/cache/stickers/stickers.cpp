@@ -2,6 +2,7 @@
 
 #include "../../../corelib/enumerations.h"
 
+#include "../../url_config.h"
 #include "../../core_dispatcher.h"
 #include "../../utils/gui_coll_helper.h"
 #include "../../gui_settings.h"
@@ -911,6 +912,19 @@ void Cache::addSet(std::shared_ptr<Set> _set)
     setsTree_[id] = std::move(_set);
 }
 
+void Cache::addStickerByFsId(const std::vector<QString>& _fsIds, const QString& _keyword, const SuggestType _type)
+{
+    for (const auto& id : _fsIds)
+    {
+        if (auto& fsSticker = fsStickers_[id]; !fsSticker)
+            fsSticker = std::make_shared<Ui::Stickers::Sticker>(id);
+
+        auto& infoV = suggests_[_keyword];
+        if (std::none_of(infoV.begin(), infoV.end(), [&id](const auto & x) { return x.fsId_ == id; }))
+            infoV.emplace_back(id, _type);
+    }
+}
+
 setSptr Cache::insertSet(int32_t _setId)
 {
     auto iter = setsTree_.find(_setId);
@@ -960,30 +974,32 @@ void Cache::clearCache()
 
 bool Cache::getSuggest(const QString& _keyword, Suggest& _suggest, const std::set<SuggestType>& _types) const
 {
+    _suggest.clear();
+    if (_types.empty())
+        return false;
+
     QVarLengthArray<QString> keywords;
     keywords.push_back(_keyword);
 
-    if (const auto iter_alias = aliases_.find(_keyword); iter_alias != aliases_.end() && _types.find(SuggestType::suggestWord) != _types.end())
+    if (_types.find(SuggestType::suggestWord) != _types.end())
     {
-        for (const auto& _emoji : iter_alias->second)
-            keywords.push_back(_emoji);
+        if (const auto it_alias = aliases_.find(_keyword); it_alias != aliases_.end())
+        {
+            for (const auto& _emoji : it_alias->second)
+                keywords.push_back(_emoji);
+        }
     }
 
-    _suggest.clear();
-
-    for (const auto& _cur_keyword : keywords)
+    for (const auto& kw : keywords)
     {
-        auto iter_suggest = suggests_.find(_cur_keyword);
-        if (iter_suggest == suggests_.end())
-            continue;
-
-        for (const auto& _s : iter_suggest->second)
+        if (auto itSuggest = suggests_.find(kw); itSuggest != suggests_.end())
         {
-            if (_types.find(_s.type_) != _types.end())
+            for (const auto& sticker : itSuggest->second)
             {
-                if (_suggest.end() == std::find(_suggest.begin(), _suggest.end(), _s))
+                if (_types.find(sticker.type_) != _types.end())
                 {
-                    _suggest.push_back(_s);
+                    if (std::find(_suggest.begin(), _suggest.end(), sticker) == _suggest.end())
+                        _suggest.push_back(sticker);
                 }
             }
         }
@@ -1007,13 +1023,13 @@ const setsMap &Cache::getStoreTree() const
     return storeTree_;
 }
 
-QString Cache::getTemplatePreviewBaseUrl() const
+const QString& Cache::getTemplatePreviewBaseUrl() const
 {
     assert(!templatePreviewBaseUrl_.isEmpty());
     return templatePreviewBaseUrl_;
 }
 
-QString Cache::getTemplateOriginalBaseUrl() const
+const QString& Cache::getTemplateOriginalBaseUrl() const
 {
     assert(!templateOriginalBaseUrl_.isEmpty());
     return templateOriginalBaseUrl_;
@@ -1022,6 +1038,9 @@ QString Cache::getTemplateOriginalBaseUrl() const
 QString Cache::getTemplateSendBaseUrl() const
 {
     assert(!templateSendBaseUrl_.isEmpty());
+    if (templateSendBaseUrl_.isEmpty())
+        return ql1s("https://") % Ui::getUrlConfig().getUrlFilesParser() % ql1c('/');
+
     return templateSendBaseUrl_;
 }
 
@@ -1196,7 +1215,6 @@ bool getSuggestWithSettings(const QString& _keyword, Suggest& _suggest)
     return getCache().getSuggest(_keyword, _suggest, types);
 }
 
-
 bool isUserSet(const int32_t _setId)
 {
     if (auto searchSet = getCache().getSet(_setId); searchSet)
@@ -1245,11 +1263,6 @@ std::string getStatContextStr(StatContext _context)
         return std::string();
 }
 
-QString getBotUin()
-{
-    return qsl("100500");
-}
-
 const setsMap &getSetsTree()
 {
     return getCache().getSetsTree();
@@ -1258,6 +1271,11 @@ const setsMap &getSetsTree()
 const setsMap &getStoreTree()
 {
     return getCache().getStoreTree();
+}
+
+void addStickers(const std::vector<QString>& _fsIds, const QString& _text, const Stickers::SuggestType _type)
+{
+    getCache().addStickerByFsId(_fsIds, _text, _type);
 }
 
 UI_STICKERS_NS_END

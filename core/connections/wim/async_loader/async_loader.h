@@ -8,6 +8,7 @@
 #include "downloadable_file_chunks.h"
 #include "downloaded_file_info.h"
 #include "file_sharing_meta.h"
+#include "../wim_packet.h"
 
 #include "../../../log/log.h"
 
@@ -32,8 +33,6 @@ namespace core
         typedef async_handler<preview_proxy::link_meta> link_meta_handler_t;
         typedef async_handler<file_sharing_meta> file_sharing_meta_handler_t;
 
-        struct wim_packet_params;
-
         struct cancelled_tasks
         {
             std::unordered_set<std::string> tasks_;
@@ -41,22 +40,30 @@ namespace core
             std::mutex mutex_;
         };
 
+        struct async_loader_log_params
+        {
+            bool need_log_ = false;
+            std::string log_str_;
+            log_replace_functor log_functor_;
+        };
+
         class async_loader
             : public std::enable_shared_from_this<async_loader>
         {
         public:
+
             explicit async_loader(std::wstring _content_cache_dir);
 
             void set_download_dir(std::wstring _download_dir);
 
-            void download(priority_t _priority, const std::string& _url, const std::string& _base_url, const wim_packet_params& _wim_params, default_handler_t _handler, time_t _last_modified_time = 0, int64_t _id = -1, std::string_view _normalized_url = {});
+            void download(priority_t _priority, const std::string& _url, const std::string& _base_url, const wim_packet_params& _wim_params, default_handler_t _handler, time_t _last_modified_time = 0, int64_t _id = -1, std::string_view _normalized_url = {}, async_loader_log_params _log_params = {}, bool _is_binary_data = false);
 
-            void download_file(priority_t _priority, const std::string& _url, const std::string& _base_url, const std::wstring& _file_name, const wim_packet_params& _wim_params, file_info_handler_t _handler = file_info_handler_t(), time_t _last_modified_time = 0, int64_t _id = -1, const bool _with_data = true, std::string_view _normalized_url = {});
-            void download_file(priority_t _priority, const std::string& _url, const std::string& _base_url, const std::string& _file_name, const wim_packet_params& _wim_params, file_info_handler_t _handler = file_info_handler_t(), time_t _last_modified_time = 0, int64_t _id = -1, const bool _with_data = true, std::string_view _normalized_url = {});
+            void download_file(priority_t _priority, const std::string& _url, const std::string& _base_url, std::wstring_view _file_name, const wim_packet_params& _wim_params, file_info_handler_t _handler = file_info_handler_t(), time_t _last_modified_time = 0, int64_t _id = -1, const bool _with_data = true, std::string_view _normalized_url = {}, async_loader_log_params _log_params = {}, bool _is_binary_data = false); //TODO refactor me: make param pack
+            void download_file(priority_t _priority, const std::string& _url, const std::string& _base_url, const std::string& _file_name, const wim_packet_params& _wim_params, file_info_handler_t _handler = file_info_handler_t(), time_t _last_modified_time = 0, int64_t _id = -1, const bool _with_data = true, std::string_view _normalized_url = {}, async_loader_log_params _log_params = {}, bool _is_binary_data = false);
 
             void cancel(const std::string& _url);
 
-            void download_image_metainfo(const std::string& _url, const wim_packet_params& _wim_params, link_meta_handler_t _handler = link_meta_handler_t(), int64_t _id = -1);
+            void download_image_metainfo(const std::string& _url, const wim_packet_params& _wim_params, link_meta_handler_t _handler = link_meta_handler_t(), int64_t _id = -1, std::string_view _log_str = {});
             void download_file_sharing_metainfo(const std::string& _url, const wim_packet_params& _wim_params, file_sharing_meta_handler_t _handler = file_sharing_meta_handler_t(), int64_t _id = -1);
 
             void download_image_preview(priority_t _priority, const std::string& _url, const wim_packet_params& _wim_params, link_meta_handler_t _metainfo_handler = link_meta_handler_t(), file_info_handler_t _preview_handler = file_info_handler_t(), int64_t _id = -1);
@@ -71,11 +78,15 @@ namespace core
 
             void contact_switched(const std::string& _contact);
 
-            std::wstring get_meta_path(const std::string& _url, const std::wstring& _path);
+            std::wstring get_meta_path(std::string_view _url, const std::wstring& _path);
 
-            static void save_filesharing_local_path(const std::wstring& _meta_path, const std::string& _url, const std::wstring& _path);
+            static void save_filesharing_local_path(const std::wstring& _meta_path, std::string_view _url, const std::wstring& _path);
 
-            void save_filesharing_local_path(const std::string& _url, const std::wstring& _path);
+            void save_filesharing_local_path(std::string_view _url, const std::wstring& _path);
+
+            std::string path_in_cache(const std::string& _url);
+
+            static async_loader_log_params make_filesharing_log_params(std::string_view _fs_id);
 
         private:
             void download_file_sharing_impl(std::string _url, wim_packet_params _wim_params, downloadable_file_chunks_ptr _file_chunks, std::string_view _normalized_url = {});
@@ -92,7 +103,7 @@ namespace core
             void fire_chunks_callback(loader_errors _error, const std::string& _url);
 
             template <class metainfo_parser_t, typename T>
-            void download_metainfo(const std::string& _url, const std::string& _signed_url, metainfo_parser_t _parser, const wim_packet_params& _wim_params, async_handler<T> _handler, int64_t _id = -1, std::string_view _normalized_url = {})
+            void download_metainfo(const std::string& _url, const std::string& _signed_url, metainfo_parser_t _parser, const wim_packet_params& _wim_params, async_handler<T> _handler, int64_t _id = -1, std::string_view _normalized_url = {}, async_loader_log_params _log_params = {})
             {
                 __INFO("async_loader",
                     "download_metainfo\n"
@@ -133,7 +144,7 @@ namespace core
                 if (load_from_local())
                     return;
 
-                auto local_handler = default_handler_t([_url, _signed_url, _parser, _handler, meta_path, _id, load_from_local, this](loader_errors _error, const default_data_t& _data)
+                auto local_handler = default_handler_t([_url, _signed_url, _parser, _handler, meta_path, _id, load_from_local, _log_params, this](loader_errors _error, const default_data_t& _data)
                 {
                     __INFO("async_loader",
                         "download_metainfo\n"
@@ -144,9 +155,9 @@ namespace core
 
                     if (_error == loader_errors::network_error)
                     {
-                        suspended_tasks_.push([_url, _signed_url, _parser, _handler, _id, this](const wim_packet_params& wim_params)
+                        suspended_tasks_.push([_url, _signed_url, _parser, _handler, _id, _log_params, this](const wim_packet_params& wim_params)
                         {
-                            download_metainfo(_url, _signed_url, _parser, wim_params, _handler, _id);
+                            download_metainfo(_url, _signed_url, _parser, wim_params, _handler, _id, {}, _log_params);
                         });
                         return;
                     }
@@ -180,7 +191,7 @@ namespace core
 
                 }, _handler.progress_callback_);
 
-                download(highest_priority(), _signed_url, _url, _wim_params, local_handler, 0, _id, _normalized_url);
+                download(highest_priority(), _signed_url, _url, _wim_params, local_handler, 0, _id, _normalized_url, _log_params);
             }
 
             void cleanup_cache();

@@ -6,7 +6,7 @@
 namespace common_crash_sender
 {
     void start_sending_process();
-    void post_dump_to_hockey_app_and_delete();
+    void post_dump_and_delete();
 }
 
 #endif // _WIN32

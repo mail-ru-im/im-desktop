@@ -23,7 +23,7 @@ namespace core::wim
 
         virtual ~get_dialog_gallery();
 
-        core::archive::gallery_storage get_gallery() const;
+        const core::archive::gallery_storage& get_gallery() const;
 
     private:
         virtual int32_t init_request(std::shared_ptr<core::http_request_simple> _request) override;

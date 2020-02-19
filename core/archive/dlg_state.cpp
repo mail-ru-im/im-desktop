@@ -48,6 +48,7 @@ enum dlg_state_fields
     last_read_mention = 23,
     stranger = 24,
     info_version = 25,
+    no_recents_update = 26,
 };
 
 dlg_state::dlg_state()
@@ -66,6 +67,7 @@ dlg_state::dlg_state()
     , suspicious_(false)
     , attention_(false)
     , stranger_(false)
+    , no_recents_update_(false)
     , last_message_(std::make_unique<history_message>())
     , pinned_message_(std::make_unique<history_message>())
 {
@@ -105,6 +107,7 @@ void dlg_state::copy_from(const dlg_state& _state)
     suspicious_ = _state.suspicious_;
     attention_ = _state.attention_;
     stranger_ = _state.stranger_;
+    no_recents_update_ = _state.no_recents_update_;
     heads_ = _state.heads_;
     info_version_ = _state.info_version_;
 }
@@ -280,6 +283,7 @@ void dlg_state::serialize(icollection* _collection, const time_t _offset, const 
     coll.set<bool>("suspicious", get_suspicious());
     coll.set<bool>("attention", get_attention());
     coll.set<bool>("stranger", get_stranger());
+    coll.set<bool>("no_recents_update", get_no_recents_update());
 
     if (info_version_)
         coll.set<std::string>("info_version", *info_version_);
@@ -344,6 +348,7 @@ void dlg_state::serialize(core::tools::binary_stream& _data) const
     state_pack.push_child(core::tools::tlv(dlg_state_fields::attention, get_attention()));
     state_pack.push_child(core::tools::tlv(dlg_state_fields::last_read_mention, get_last_read_mention()));
     state_pack.push_child(core::tools::tlv(dlg_state_fields::stranger, get_stranger()));
+    state_pack.push_child(core::tools::tlv(dlg_state_fields::no_recents_update, get_no_recents_update()));
 
     if (info_version_)
         state_pack.push_child(core::tools::tlv(dlg_state_fields::info_version, *info_version_));
@@ -420,6 +425,7 @@ bool dlg_state::unserialize(core::tools::binary_stream& _data)
     auto tlv_last_read_mention = state_pack.get_item(dlg_state_fields::last_read_mention);
     auto tlv_stranger = state_pack.get_item(dlg_state_fields::stranger);
     auto tlv_info_version = state_pack.get_item(dlg_state_fields::info_version);
+    auto tlv_no_recents_update = state_pack.get_item(dlg_state_fields::no_recents_update);
 
     if (!tlv_unreads_count || !tlv_last_msg_id || !tlv_yours_last_read || !tlv_theirs_last_read ||
         !tlv_theirs_last_delivered || !tlv_last_message || !tlv_visible)
@@ -468,6 +474,9 @@ bool dlg_state::unserialize(core::tools::binary_stream& _data)
 
     if (tlv_stranger)
         set_stranger(tlv_stranger->get_value<bool>());
+
+    if (tlv_no_recents_update)
+        set_no_recents_update(tlv_no_recents_update->get_value<bool>());
 
     core::tools::binary_stream bs_message = tlv_last_message->get_value<core::tools::binary_stream>();
     last_message_->unserialize(bs_message);
@@ -682,6 +691,7 @@ bool archive_state::merge_state(const dlg_state& _new_state, Out dlg_state_chang
     state_->set_theirs_last_delivered(_new_state.get_theirs_last_delivered());
     state_->set_last_read_mention(_new_state.get_last_read_mention());
     state_->set_stranger(_new_state.get_stranger());
+    state_->set_no_recents_update(_new_state.get_no_recents_update());
 
     if (_new_state.has_info_version())
         state_->set_info_version(_new_state.get_info_version());

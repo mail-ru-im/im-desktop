@@ -20,7 +20,8 @@ namespace HistoryControl
         static ChatEventInfoSptr Make(
             const core::coll_helper& _info,
             const bool _isOutgoing,
-            const QString& _myAimid);
+            const QString& _myAimid,
+            const QString& _aimid);
 
         const QString& formatEventText() const;
 
@@ -34,12 +35,16 @@ namespace HistoryControl
         const std::map<QString, QString>& getMembersLinks() const;
         const QVector<QString>& getMembers() const;
 
+        QString getAimId() const;
+
     private:
         const core::chat_event_type Type_;
 
         const bool IsCaptchaPresent_;
 
         const bool IsOutgoing_;
+
+        const bool IsChannel_;
 
         const QString MyAimid_;
 
@@ -50,6 +55,8 @@ namespace HistoryControl
         QString SenderFriendly_;
 
         QString Generic_;
+
+        QString AimId_;
 
         struct
         {
@@ -63,9 +70,10 @@ namespace HistoryControl
             QString NewName_;
             QString NewDescription_;
             QString NewRules_;
+            QString NewStamp_;
         } Chat_;
 
-        ChatEventInfo(const core::chat_event_type _type, const bool _isCaptchaPresent, const bool _isOutgoing, const QString& _myAimid);
+        ChatEventInfo(const core::chat_event_type _type, const bool _isCaptchaPresent, const bool _isOutgoing, const QString& _myAimid, const QString& _aimid, const bool _is_channel);
 
         QString formatEventTextInternal() const;
 
@@ -91,6 +99,8 @@ namespace HistoryControl
 
         QString formatChatRulesModified() const;
 
+        QString formatChatStampModified() const;
+
         QString formatMchatInviteText() const;
 
         QString formatMchatKickedText() const;
@@ -108,6 +118,8 @@ namespace HistoryControl
         void setGenericText(QString _text);
 
         void setNewChatRules(const QString& _newChatRules);
+
+        void setNewChatStamp(const QString& _newChatStamp);
 
         void setNewDescription(const QString& _newDescription);
 

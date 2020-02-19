@@ -18,19 +18,6 @@ namespace core
 namespace Ui
 {
     class HistoryControlPage;
-
-    struct Input
-    {
-        Input() = default;
-
-        Input(const QString& _text, const int _pos)
-            : text_(_text)
-            , pos_(_pos)
-        {}
-
-        QString text_;
-        int pos_ = 0;
-    };
 }
 
 namespace Logic
@@ -130,6 +117,14 @@ namespace Logic
         Yes
     };
 
+    struct CachedChatData
+    {
+        QString stamp_;
+        QString name_;
+        QString description_;
+        QString rules_;
+    };
+
     class ContactListModel : public CustomAbstractListModel
     {
         Q_OBJECT
@@ -138,7 +133,7 @@ namespace Logic
         void currentDlgStateChanged() const;
         void selectedContactChanged(const QString& _new, const QString& _prev);
         void contactChanged(const QString&) const;
-        void select(const QString&, qint64, qint64 quote_id = -1, Logic::UpdateChatSelection mode = Logic::UpdateChatSelection::No) const;
+        void select(const QString&, qint64, Logic::UpdateChatSelection mode = Logic::UpdateChatSelection::No) const;
         void profile_loaded(profile_ptr _profile) const;
         void contact_added(const QString& _contact, bool _result);
         void contact_removed(const QString& _contact);
@@ -181,7 +176,7 @@ namespace Logic
         QString getAimidByABName(const QString& _name);
         void setCurrentCallbackHappened(Ui::HistoryControlPage* _page);
 
-        void setCurrent(const QString& _aimId, qint64 id, bool _select = false, std::function<void(Ui::HistoryControlPage*)> _getPageCallback = nullptr, qint64 quote_id = -1);
+        void setCurrent(const QString& _aimId, qint64 id, bool _select = false, std::function<void(Ui::HistoryControlPage*)> _getPageCallback = nullptr);
 
         const ContactItem* getContactItem(const QString& _aimId) const;
 
@@ -192,14 +187,12 @@ namespace Logic
 
         void setContactVisible(const QString& _aimId, bool _visible);
 
-        Ui::Input getInputText(const QString& _aimId) const;
-        void setInputText(const QString& _aimId, const Ui::Input& _input);
-        QString getState(const QString& _aimId) const;
         int getOutgoingCount(const QString& _aimId) const;
         bool isChat(const QString& _aimId) const;
         bool isMuted(const QString& _aimId) const;
         bool isLiveChat(const QString& _aimId) const;
         bool isOfficial(const QString& _aimId) const;
+        bool isOnline(const QString& _aimId) const;
         QModelIndex contactIndex(const QString& _aimId) const;
 
         void addContactToCL(const QString& _aimId, std::function<void(bool)> _callBack = [](bool) {});
@@ -210,9 +203,10 @@ namespace Logic
         QString getYourRole(const QString& _aimId) const;
         void setYourRole(const QString& _aimId, const QString& _role);
         void removeContactFromCL(const QString& _aimId);
-        void renameChat(const QString& _aimId, const QString& _friendly);
         void renameContact(const QString& _aimId, const QString& _friendly, std::function<void(bool)> _callBack = nullptr);
         void static getIgnoreList();
+
+        bool youAreNotAMember(const QString& _aimid) const;
 
         void removeContactsFromModel(const QVector<QString>& _vcontacts);
 
@@ -241,6 +235,11 @@ namespace Logic
         Data::DialogGalleryState getGalleryState(const QString& _aimid) const;
 
         QString getChatStamp(const QString& _aimid) const;
+        QString getChatName(const QString& _aimid) const;
+        QString getChatDescription(const QString& _aimid) const;
+        QString getChatRules(const QString& _aimId) const;
+
+        void updateChatInfo(const Data::ChatInfo& _chat_info);
 
     private:
         std::function<void(Ui::HistoryControlPage*)> gotPageCallback_;
@@ -281,7 +280,8 @@ namespace Logic
 
         QSet<QString> deletedContacts_;
 
-        QMap<QString, QString> chatStamps_;
+        QMap<QString, CachedChatData> chatsCache_;
+        std::vector<QString> notAMemberChats_;
     };
 
     ContactListModel* getContactListModel();

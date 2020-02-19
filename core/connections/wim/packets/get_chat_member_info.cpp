@@ -22,7 +22,6 @@ int32_t get_chat_member_info::init_request(std::shared_ptr<core::http_request_si
 {
     constexpr char method[] = "getChatMemberInfo";
 
-    _request->set_gzip(true);
     _request->set_url(urls::get_url(urls::url_type::rapi_host));
     _request->set_normalized_url(method);
     _request->set_keep_alive();

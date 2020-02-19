@@ -1,6 +1,4 @@
-#ifndef __DETACHED_VIDEO_WND_H__
-#define __DETACHED_VIDEO_WND_H__
-
+#pragma once
 #include "VideoFrame.h"
 #include "CommonUI.h"
 #include "VoipProxy.h"
@@ -25,6 +23,7 @@ namespace Ui
         Q_SIGNALS :
             void onMouseEnter();
             void onMouseLeave();
+            void needShowScreenPermissionsPopup();
 
 
         private Q_SLOTS:
@@ -90,11 +89,12 @@ namespace Ui
         void changeEvent(QEvent* _e) override;
         void enterEvent(QEvent* _e) override;
         void leaveEvent(QEvent* _e) override;
-        
+
     Q_SIGNALS:
 
         void windowWillDeminiaturize();
         void windowDidDeminiaturize();
+        void needShowScreenPermissionsPopup();
 
     private Q_SLOTS:
         void checkPanelsVis();
@@ -138,7 +138,7 @@ namespace Ui
         void mouseDoubleClickEvent(QMouseEvent* _e) override;
         quintptr getContentWinId();
         void updatePanels() const;
+
+        void activateMainVideoWindow();
     };
 }
-
-#endif//__DETACHED_VIDEO_WND_H__

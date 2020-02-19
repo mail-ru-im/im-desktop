@@ -12,16 +12,19 @@
 #include "../sounds/SoundsManager.h"
 #include "../../core_dispatcher.h"
 #include "../../gui_settings.h"
+#include "../../url_config.h"
 #include "../../my_info.h"
 #include "../../controls/ContextMenu.h"
 #include "../../utils/gui_coll_helper.h"
 #include "../../utils/InterConnector.h"
 #include "../../utils/utils.h"
+#include "../../utils/features.h"
 #include "../../utils/log/log.h"
 #include "../history_control/history/MessageBuilder.h"
 #include "utils/gui_metrics.h"
 #include "main_window/LocalPIN.h"
 #include "styles/ThemeParameters.h"
+#include "../common.shared/config/config.h"
 
 #if defined(_WIN32)
     //#   include "toast_notifications/win32/ToastManager.h"
@@ -43,12 +46,21 @@ namespace
     constexpr std::chrono::milliseconds init_mail_timeout = std::chrono::seconds(5);
 
 #ifdef _WIN32
-    HICON createHIconFromQIcon(const QIcon &icon, int xSize, int ySize) {
-        if (!icon.isNull()) {
-            const QPixmap pm = icon.pixmap(icon.actualSize(QSize(xSize, ySize)));
-            if (!pm.isNull()) {
+    enum class hIconSize
+    {
+        small,
+        big
+    };
+
+    HICON createHIconFromQIcon(const QIcon& _icon, const hIconSize _size)
+    {
+        if (!_icon.isNull())
+        {
+            const int xSize = GetSystemMetrics(_size == hIconSize::small ? SM_CXSMICON : SM_CXICON);
+            const int ySize = GetSystemMetrics(_size == hIconSize::small ? SM_CYSMICON : SM_CYICON);
+            const QPixmap pm = _icon.pixmap(_icon.actualSize(QSize(xSize, ySize)));
+            if (!pm.isNull())
                 return qt_pixmapToWinHICON(pm);
-            }
         }
         return nullptr;
     }
@@ -67,21 +79,21 @@ namespace Ui
         , MailAlert_(new  RecentMessagesAlert(AlertType::alertTypeEmail))
         , MainWindow_(parent)
         , first_start_(true)
-        , Base_(build::GetProductVariant(qsl(":/logo/ico_icq"), qsl(":/logo/ico_agent"), qsl(":/logo/ico_biz"), qsl(":/logo/ico_dit")))
-        , Unreads_(build::GetProductVariant(qsl(":/logo/ico_icq_unread"), qsl(":/logo/ico_agent_unread"), qsl(":/logo/ico_biz_unread"), qsl(":/logo/ico_dit_unread")))
+        , Base_(qsl(":/logo/ico"))
+        , Unreads_(qsl(":/logo/ico_unread"))
 #ifdef _WIN32
-        , TrayBase_(build::GetProductVariant(qsl(":/logo/ico_icq_tray"), qsl(":/logo/ico_agent_tray"), qsl(":/logo/ico_biz_tray"), qsl(":/logo/ico_dit_tray")))
-        , TrayUnreads_(build::GetProductVariant(qsl(":/logo/ico_icq_unread_tray"), qsl(":/logo/ico_agent_unread_tray"), qsl(":/logo/ico_biz_unread_tray"), qsl(":/logo/ico_dit_unread_tray")))
+        , TrayBase_(qsl(":/logo/ico_tray"))
+        , TrayUnreads_(qsl(":/logo/ico_unread_tray"))
 #else
-        , TrayBase_(build::GetProductVariant(qsl(":/logo/ico_icq"), qsl(":/logo/ico_agent"), qsl(":/logo/ico_biz"), qsl(":/logo/ico_dit")))
-        , TrayUnreads_(build::GetProductVariant(qsl(":/logo/ico_icq_unread"), qsl(":/logo/ico_agent_unread"), qsl(":/logo/ico_biz_unread"), qsl(":/logo/ico_dit_unread")))
+        , TrayBase_(qsl(":/logo/ico"))
+        , TrayUnreads_(qsl(":/logo/ico_unread"))
 #endif //_WIN32
         , InitMailStatusTimer_(nullptr)
         , UnreadsCount_(0)
         , MailCount_(0)
 #ifdef _WIN32
         , ptbl(nullptr)
-        , overlayIcon_(nullptr)
+        , flashing_(false)
 #endif //_WIN32
     {
 #ifdef _WIN32
@@ -91,6 +103,9 @@ namespace Ui
             if (FAILED(hr))
                 ptbl = nullptr;
         }
+
+        for (auto& icon : winIcons_)
+            icon = nullptr;
 #endif //_WIN32
         init();
 
@@ -131,18 +146,18 @@ namespace Ui
 
     TrayIcon::~TrayIcon()
     {
-        cleanupOverlayIcon();
+        cleanupWinIcons();
         clearAllNotifications();
         disconnect(get_gui_settings());
     }
 
-    void TrayIcon::cleanupOverlayIcon()
+    void TrayIcon::cleanupWinIcons()
     {
 #ifdef _WIN32
-        if (overlayIcon_)
+        for (auto& icon : winIcons_)
         {
-            DestroyIcon(overlayIcon_);
-            overlayIcon_ = nullptr;
+            DestroyIcon(icon);
+            icon = nullptr;
         }
 #endif
     }
@@ -209,13 +224,8 @@ namespace Ui
             state = qsl("online");
 
         const auto curTheme = MacSupport::currentTheme();
-        const auto product = build::ProductNameShort();
-
-        QString iconResource(qsl(":/menubar/%1_%2_%3%4_100").
-            arg(product,
-                state,
-                curTheme,
-                UnreadsCount_ > 0 ? qsl("_unread") : QString())
+        QString iconResource(qsl(":/menubar/%1_%2%3_100").
+            arg(state, curTheme, UnreadsCount_ > 0 ? qsl("_unread") : QString())
         );
         QIcon icon(Utils::parse_image_name(iconResource));
         systemTrayIcon_->setIcon(icon);
@@ -307,15 +317,22 @@ namespace Ui
 #ifdef _WIN32
         if (_updateOverlay)
         {
-            cleanupOverlayIcon();
+            cleanupWinIcons();
+
+            const auto hwnd = reinterpret_cast<HWND>(MainWindow_->winId());
             if (ptbl)
             {
-                overlayIcon_ = UnreadsCount_ > 0 ? createHIconFromQIcon(createIcon(), GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON)) : nullptr;
-                ptbl->SetOverlayIcon(MainWindow_->getParentWindow(), overlayIcon_, L"");
+                winIcons_[0] = UnreadsCount_ > 0 ? createHIconFromQIcon(createIcon(), hIconSize::small) : nullptr;
+                ptbl->SetOverlayIcon(hwnd, winIcons_[0], L"");
             }
             else
             {
-                MainWindow_->setWindowIcon(UnreadsCount_ > 0 ? Unreads_ : Base_);
+                const auto& icon = UnreadsCount_ > 0 ? Unreads_ : Base_;
+                winIcons_[0] = createHIconFromQIcon(icon, hIconSize::small);
+                winIcons_[1] = createHIconFromQIcon(icon, hIconSize::big);
+
+                SendMessage(hwnd, WM_SETICON, ICON_SMALL, LPARAM(winIcons_[0]));
+                SendMessage(hwnd, WM_SETICON, ICON_BIG, LPARAM(winIcons_[1]));
             }
         }
 #endif //_WIN32
@@ -324,12 +341,62 @@ namespace Ui
             setMacIcon();
         else
             systemTrayIcon_->setIcon(UnreadsCount_ > 0 ? createIcon(true): TrayBase_);
+
+        animateTaskbarIcon();
     }
 
     void TrayIcon::updateIconIfNeeded()
     {
         if (updateUnreadsCounter())
             updateIcon();
+    }
+
+    void TrayIcon::animateTaskbarIcon()
+    {
+        bool nowFlashing = false;
+#ifdef _WIN32
+        nowFlashing = flashing_;
+
+        const auto flash = [this](const auto _flag, const auto _count, const auto _to)
+        {
+            FLASHWINFO fi;
+            fi.cbSize = sizeof(FLASHWINFO);
+            fi.hwnd = reinterpret_cast<HWND>(MainWindow_->winId());
+            fi.uCount = _count;
+            fi.dwTimeout = _to;
+            fi.dwFlags = _flag;
+            FlashWindowEx(&fi);
+
+            flashing_ = _flag != FLASHW_STOP;
+        };
+
+        if (UnreadsCount_ == 0)
+            flash(FLASHW_STOP, 0, 0);
+#endif
+
+        static int prevCount = UnreadsCount_;
+        const auto canAnimate =
+            (UnreadsCount_ > prevCount || nowFlashing) &&
+            UnreadsCount_ > 0 &&
+            get_gui_settings()->get_value<bool>(settings_alert_tray_icon, false) &&
+            !MainWindow_->isActive();
+        prevCount = UnreadsCount_;
+
+        if (canAnimate)
+        {
+#if defined(__APPLE__)
+            if (ncSupported())
+                NotificationCenterManager_->animateDockIcon();
+#elif defined(_WIN32)
+            UINT timeOutMs = GetCaretBlinkTime();
+            if (!timeOutMs || timeOutMs == INFINITE)
+                timeOutMs = 250;
+
+            flash(FLASHW_TRAY | FLASHW_TIMERNOFG, 10, timeOutMs);
+#else
+            qApp->alert(MainWindow_, 1000);
+#endif
+        }
     }
 
     void TrayIcon::clearNotifications(const QString& aimId)
@@ -613,7 +680,7 @@ namespace Ui
 
                         action = [_aimId, mentionId]()
                         {
-                            emit Logic::getContactListModel()->select(_aimId, mentionId, mentionId);
+                            emit Logic::getContactListModel()->select(_aimId, mentionId);
                         };
 
                         break;
@@ -678,13 +745,13 @@ namespace Ui
                 displayName = QChar(0xD83D) % QChar(0xDC4B) % ql1c(' ') % QT_TRANSLATE_NOOP("notifications", "You have been mentioned in %1").arg(displayName);
             }
 
-            const bool isShowMessage = !get_gui_settings()->get_value<bool>(settings_hide_message_notification, false) && !Ui::LocalPIN::instance()->locked();
+            const bool isShowMessage = Features::showNotificationsText() && !Ui::LocalPIN::instance()->locked();
             const QString messageText = isShowMessage ? state.GetText() : QT_TRANSLATE_NOOP("notifications", "New message");
 
             NotificationCenterManager_->DisplayNotification(
                 alertType2String(_alertType),
                 state.AimId_,
-                state.senderNick_,
+                Logic::getContactListModel()->isChannel(state.AimId_) ? QString() : state.senderNick_,
                 messageText,
                 state.MailId_,
                 displayName,
@@ -906,6 +973,9 @@ namespace Ui
                 ? settings_notify_new_mail_messages
                 : settings_notify_new_messages;
         if (!get_gui_settings()->get_value<bool>(paramName, true))
+            return false;
+
+        if (_notifType == NotificationType::email && !getUrlConfig().isMailConfigPresent())
             return false;
 
 #ifdef _WIN32

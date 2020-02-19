@@ -34,6 +34,7 @@ namespace Logic
         void selectContact(const QString&);
         void dlgStatesHandled(const QVector<Data::DlgState>&);
         void favoriteChanged(const QString&);
+        void unimportantChanged(const QString&);
         void dlgStateChanged(const Data::DlgState&);
         void refreshAll();
 
@@ -63,6 +64,7 @@ namespace Logic
         void unknownToRecents(const Data::DlgState&);
 
         void toggleFavoritesVisible();
+        void toggleUnimportantVisible();
 
         void unknownAppearance();
 
@@ -73,13 +75,14 @@ namespace Logic
         };
 
         void sendLastRead(const QString& aimId = QString(), bool force = false, ReadMode _mode = ReadMode::ReadText);
-        int markAllRead();
+        std::pair<int, int> markAllRead();
         void setAttention(const QString& _aimId, const bool _value);
         bool getAttention(const QString& _aimId) const;
         void hideChat(const QString& aimId);
         void muteChat(const QString& aimId, bool mute);
 
         bool isFavorite(const QString& aimid) const;
+        bool isUnimportant(const QString& _aimid) const;
         bool isSuspicious(const QString& _aimid) const;
         bool isStranger(const QString& _aimid);
         bool isServiceItem(const QModelIndex& _index) const override;
@@ -87,6 +90,9 @@ namespace Logic
         bool isFavoritesGroupButton(const QModelIndex& i) const;
         bool isFavoritesVisible() const;
         quint16 getFavoritesCount() const;
+        bool isUnimportantGroupButton(const QModelIndex& i) const;
+        bool isUnimportantVisible() const;
+        quint16 getUnimportantCount() const;
         bool isRecentsHeader(const QModelIndex& i) const;
 
         bool isServiceAimId(const QString& _aimId) const;
@@ -99,10 +105,18 @@ namespace Logic
         void setItemFriendlyText(const QString& _aimId, const Recents::FriendlyItemText& _frText);
 
         int totalUnreads() const;
-        int recentsUnreads() const;
+        int unimportantUnreads() const;
         int favoritesUnreads() const;
 
         bool hasAttentionDialogs() const;
+        bool hasAttentionFavorites() const;
+        bool hasAttentionUnimportant() const;
+
+        bool hasMentionsInFavorites() const;
+        bool hasMentionsInUnimportant() const;
+
+        int getMutedFavoritesWithMentions() const;
+        int getMutedUnimportantWithMentions() const;
 
         QString firstContact() const;
         QString nextUnreadAimId(const QString& _current) const;
@@ -122,20 +136,25 @@ namespace Logic
         int correctIndex(int i) const;
         int getVisibleIndex(int i) const;
         int visibleContactsInFavorites() const;
+        int visibleContactsInUnimportant() const;
 
         int getFavoritesHeaderIndex() const;
+        int getUnimportantHeaderIndex() const;
         int getRecentsHeaderIndex() const;
-        int getVisibleServiceItemInFavorites() const;
+        int getVisibleServiceItems() const;
 
         void scheduleRefreshTimer();
 
         void makeIndexes();
 
         std::vector<Data::DlgState> Dialogs_;
+        std::vector<Data::DlgState> HiddenDialogs_;
         QHash<QString, int> Indexes_;
         QTimer* Timer_;
         quint16 FavoritesCount_;
         bool FavoritesVisible_;
+        quint16 UnimportantCount_;
+        bool UnimportantVisible_;
 
         std::map<QString, Recents::FriendlyItemText> friendlyTexts_;
         QTimer* refreshTimer_;

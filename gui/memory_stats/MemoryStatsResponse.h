@@ -1,11 +1,9 @@
 #pragma once
 
-#include <unordered_set>
 #include "namespaces.h"
 #include "../corelib/iserializable.h"
 #include "MemoryStatsCommon.h"
 #include "MemoryStatsReport.h"
-#include "stdafx.h"
 
 MEMSTATS_NS_BEGIN
 

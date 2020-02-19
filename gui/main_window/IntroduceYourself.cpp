@@ -3,143 +3,149 @@
 #include "IntroduceYourself.h"
 
 #include "../controls/ContactAvatarWidget.h"
-#include "../controls/LineEditEx.h"
+#include "../controls/CommonInput.h"
 #include "../controls/TextEmojiWidget.h"
 #include "../controls/DialogButton.h"
 #include "../core_dispatcher.h"
 #include "../gui_settings.h"
 #include "../utils/utils.h"
 #include "../utils/InterConnector.h"
+#include "../utils/features.h"
 #include "styles/ThemeParameters.h"
+#include "../previewer/toast.h"
 
+namespace
+{
+    constexpr int fontsize = 15;
+}
 
 namespace Ui
 {
     IntroduceYourself::IntroduceYourself(const QString& _aimid, const QString& _display_name, QWidget* parent)
         : QWidget(parent)
+        , aimid_(_aimid)
     {
-        QHBoxLayout *horizontal_layout = Utils::emptyHLayout(this);
+        QHBoxLayout *horizontalLayout = Utils::emptyHLayout(this);
 
-        auto main_widget_ = new QWidget(this);
-        main_widget_->setStyleSheet(qsl("background-color: %1; border: 0;")
+        auto mainWidget = new QWidget(this);
+        mainWidget->setFixedWidth(Utils::scale_value(314));
+        mainWidget->setSizePolicy(QSizePolicy::Policy::Expanding, QSizePolicy::Policy::Minimum);
+        mainWidget->setStyleSheet(qsl("background-color: %1; border: 0;")
         .arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE)));
-        Testing::setAccessibleName(main_widget_, qsl("AS iy main_widget_"));
-        horizontal_layout->addWidget(main_widget_);
+        Testing::setAccessibleName(mainWidget, qsl("AS iy main_widget_"));
+        horizontalLayout->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Expanding));
+        horizontalLayout->addWidget(mainWidget);
+        horizontalLayout->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Expanding));
+        horizontalLayout->setAlignment(Qt::AlignHCenter);
 
+        auto globalLayout = Utils::emptyVLayout(mainWidget);
+
+        auto middleWidget = new QWidget(this);
+        middleWidget->setSizePolicy(QSizePolicy::Policy::Expanding, QSizePolicy::Policy::Preferred);
+        Testing::setAccessibleName(middleWidget, qsl("AS iy middle_widget"));
+
+        globalLayout->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Expanding));
+        globalLayout->addWidget(middleWidget);
+        globalLayout->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Expanding));
+
+        auto middleLayout = Utils::emptyVLayout(middleWidget);
+        middleLayout->setAlignment(Qt::AlignCenter);
+
+        contactAvatar_ = new ContactAvatarWidget(middleWidget, _aimid, QString(), Utils::scale_value(164), true, true);
+        if (Features::avatarChangeAllowed())
+            contactAvatar_->SetMode(ContactAvatarWidget::Mode::Introduce);
+
+        contactAvatar_->setSizePolicy(QSizePolicy::Policy::Fixed, QSizePolicy::Policy::Fixed);
+        Testing::setAccessibleName(contactAvatar_, qsl("AS iy contactAvatar"));
+        connect(contactAvatar_, &ContactAvatarWidget::afterAvatarChanged, this, &IntroduceYourself::avatarChanged);
+        connect(contactAvatar_, &ContactAvatarWidget::avatarSetToCore, this, &IntroduceYourself::avatarSet);
+
+        middleLayout->addWidget(contactAvatar_);
+        middleLayout->setAlignment(contactAvatar_, Qt::AlignTop | Qt::AlignHCenter);
+        middleLayout->addItem(new QSpacerItem(0, Utils::scale_value(16), QSizePolicy::Expanding, QSizePolicy::Fixed));
+
+        auto title = new LabelEx(middleWidget);
+        title->setAlignment(Qt::AlignHCenter);
+        title->setSizePolicy(QSizePolicy::Policy::Expanding, QSizePolicy::Policy::Preferred);
+        title->setFixedWidth(Utils::scale_value(314));
+        title->setWordWrap(true);
+        title->setTextInteractionFlags(Qt::TextBrowserInteraction);
+        title->setOpenExternalLinks(true);
+        title->setFont(Fonts::appFontScaled(23));
+        title->setColor(Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
+        title->setText(QT_TRANSLATE_NOOP("placeholders", "Add a name and avatar"));
+        middleLayout->addWidget(title);
+        middleLayout->setAlignment(title, Qt::AlignTop | Qt::AlignHCenter);
+        middleLayout->addItem(new QSpacerItem(0, Utils::scale_value(16), QSizePolicy::Expanding, QSizePolicy::Fixed));
+
+        auto explanation = new LabelEx(middleWidget);
+        explanation->setAlignment(Qt::AlignHCenter);
+        explanation->setSizePolicy(QSizePolicy::Policy::Expanding, QSizePolicy::Policy::Preferred);
+        explanation->setFixedWidth(Utils::scale_value(314));
+        explanation->setWordWrap(true);
+        explanation->setTextInteractionFlags(Qt::TextBrowserInteraction);
+        explanation->setOpenExternalLinks(true);
+        explanation->setFont(Fonts::appFontScaled(fontsize));
+        explanation->setColor(Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
+        explanation->setText(QT_TRANSLATE_NOOP("placeholders", "your contacts will see them"));
+        middleLayout->addWidget(explanation);
+        middleLayout->setAlignment(explanation, Qt::AlignTop | Qt::AlignHCenter);
+        middleLayout->addItem(new QSpacerItem(0, Utils::scale_value(16), QSizePolicy::Expanding, QSizePolicy::Fixed));
+
+        firstNameEdit_ = new CommonInputContainer(middleWidget);
+        firstNameEdit_->setPlaceholderText(QT_TRANSLATE_NOOP("placeholders", "First name*"));
+        firstNameEdit_->setFixedWidth(Utils::scale_value(300));
+        firstNameEdit_->setSizePolicy(QSizePolicy::Policy::Minimum, QSizePolicy::Policy::Preferred);
+        firstNameEdit_->setAttribute(Qt::WA_MacShowFocusRect, false);
+        firstNameEdit_->setFont(Fonts::appFontScaled(fontsize));
+        Testing::setAccessibleName(firstNameEdit_, qsl("AS iy firstNameEdit_"));
+        middleLayout->addWidget(firstNameEdit_);
+        middleLayout->addItem(new QSpacerItem(0, Utils::scale_value(6), QSizePolicy::Expanding, QSizePolicy::Fixed));
+        middleLayout->setAlignment(firstNameEdit_, Qt::AlignTop | Qt::AlignHCenter);
+
+        lastNameEdit_ = new CommonInputContainer(middleWidget);
+        lastNameEdit_->setPlaceholderText(QT_TRANSLATE_NOOP("placeholders", "Last name"));
+        lastNameEdit_->setFixedWidth(Utils::scale_value(300));
+        lastNameEdit_->setSizePolicy(QSizePolicy::Policy::Minimum, QSizePolicy::Policy::Preferred);
+        lastNameEdit_->setAttribute(Qt::WA_MacShowFocusRect, false);
+        lastNameEdit_->setFont(Fonts::appFontScaled(fontsize));
+        Testing::setAccessibleName(lastNameEdit_, qsl("AS iy lastNameEdit_"));
+        middleLayout->addWidget(lastNameEdit_);
+        middleLayout->setAlignment(lastNameEdit_, Qt::AlignTop | Qt::AlignHCenter);
+
+        auto buttonWidget = new QWidget(middleWidget);
+        buttonWidget->setSizePolicy(QSizePolicy::Policy::Expanding, QSizePolicy::Policy::Minimum);
+        auto buttonLayout = Utils::emptyHLayout(buttonWidget);
+        buttonLayout->setAlignment(Qt::AlignTop | Qt::AlignHCenter);
+        nextButton_ = new DialogButton(buttonWidget, QT_TRANSLATE_NOOP("placeholders", "Continue"), DialogButtonRole::CONFIRM, DialogButtonShape::ROUNDED);
+        setButtonActive(false);
+        nextButton_->setCursor(QCursor(Qt::PointingHandCursor));
+        nextButton_->setFixedHeight(Utils::scale_value(40));
+        nextButton_->setMinimumWidth(Utils::scale_value(100));
+        nextButton_->setContentsMargins(Utils::scale_value(32), Utils::scale_value(9), Utils::scale_value(32), Utils::scale_value(11));
+        nextButton_->setSizePolicy(QSizePolicy::Policy::Preferred, QSizePolicy::Policy::Preferred);
+
+        Testing::setAccessibleName(nextButton_, qsl("AS iy nextButton_"));
+
+        middleLayout->addItem(new QSpacerItem(0, Utils::scale_value(20), QSizePolicy::Expanding, QSizePolicy::Fixed));
+        buttonLayout->addWidget(nextButton_);
+        middleLayout->addWidget(buttonWidget);
+
+        connect(firstNameEdit_, &CommonInputContainer::textChanged, this, &IntroduceYourself::TextChanged);
+        connect(nextButton_, &QPushButton::clicked, this, &IntroduceYourself::UpdateProfile);
+        connect(firstNameEdit_, &CommonInputContainer::enterPressed, this, [this]()
         {
-            auto global_layout = Utils::emptyVLayout(main_widget_);
+            lastNameEdit_->setFocus();
+        });
+        connect(lastNameEdit_, &CommonInputContainer::enterPressed, this, [this]()
+        {
+            if (!firstNameEdit_->text().trimmed().isEmpty())
+                UpdateProfile();
+            else
+                firstNameEdit_->setFocus();
+        });
 
-            auto upper_widget = new QWidget(this);
-            upper_widget->setSizePolicy(QSizePolicy::Policy::Expanding, QSizePolicy::Policy::Expanding);
-            Testing::setAccessibleName(upper_widget, qsl("AS iy upper_widget"));
-            global_layout->addWidget(upper_widget);
-
-            auto middle_widget = new QWidget(this);
-            middle_widget->setSizePolicy(QSizePolicy::Policy::Expanding, QSizePolicy::Policy::Preferred);
-            Testing::setAccessibleName(middle_widget, qsl("AS iy middle_widget"));
-            global_layout->addWidget(middle_widget);
-
-            auto bottom_widget = new QWidget(this);
-            bottom_widget->setSizePolicy(QSizePolicy::Policy::Expanding, QSizePolicy::Policy::Expanding);
-            Testing::setAccessibleName(bottom_widget, qsl("AS iy bottom_widget"));
-            global_layout->addWidget(bottom_widget);
-
-            auto middle_layout = Utils::emptyVLayout(middle_widget);
-            middle_layout->setAlignment(Qt::AlignHCenter);
-            {
-                auto pl = Utils::emptyHLayout();
-                pl->setAlignment(Qt::AlignCenter);
-                {
-                    auto w = new ContactAvatarWidget(this, _aimid, _display_name, Utils::scale_value(180), true);
-                    w->SetMode(ContactAvatarWidget::Mode::Introduce);
-
-                    w->setSizePolicy(QSizePolicy::Policy::Fixed, QSizePolicy::Policy::Fixed);
-                    Testing::setAccessibleName(w, qsl("AS iy w"));
-                    pl->addWidget(w);
-                    QObject::connect(w, &ContactAvatarWidget::afterAvatarChanged, this, &IntroduceYourself::avatarChanged);
-                }
-                middle_layout->addLayout(pl);
-            }
-
-            {
-
-                first_name_edit_ = new LineEditEx(middle_widget);
-                first_name_edit_->setPlaceholderText(QT_TRANSLATE_NOOP("placeholders", "First name"));
-                first_name_edit_->setAlignment(Qt::AlignCenter);
-                first_name_edit_->setMinimumWidth(Utils::scale_value(320));
-                first_name_edit_->setSizePolicy(QSizePolicy::Policy::Minimum, QSizePolicy::Policy::Preferred);
-                first_name_edit_->setAttribute(Qt::WA_MacShowFocusRect, false);
-                first_name_edit_->setFont(Fonts::appFontScaled(18));
-                Utils::ApplyStyle(first_name_edit_, Styling::getParameters().getLineEditCommonQss());
-                Testing::setAccessibleName(first_name_edit_, qsl("AS iy first_name_edit_"));
-                middle_layout->addWidget(first_name_edit_);
-            }
-
-            {
-
-                last_name_edit_ = new LineEditEx(middle_widget);
-                last_name_edit_->setPlaceholderText(QT_TRANSLATE_NOOP("placeholders", "Last name"));
-                last_name_edit_->setAlignment(Qt::AlignCenter);
-                last_name_edit_->setMinimumWidth(Utils::scale_value(320));
-                last_name_edit_->setSizePolicy(QSizePolicy::Policy::Minimum, QSizePolicy::Policy::Preferred);
-                last_name_edit_->setAttribute(Qt::WA_MacShowFocusRect, false);
-                last_name_edit_->setFont(Fonts::appFontScaled(18));
-                Utils::ApplyStyle(last_name_edit_, Styling::getParameters().getLineEditCommonQss());
-                Testing::setAccessibleName(last_name_edit_, qsl("AS iy last_name_edit_"));
-                middle_layout->addWidget(last_name_edit_);
-            }
-
-            {
-                auto horizontalSpacer = new QSpacerItem(0, Utils::scale_value(56), QSizePolicy::Preferred, QSizePolicy::Minimum);
-                middle_layout->addItem(horizontalSpacer);
-
-                auto pl = Utils::emptyHLayout();
-                pl->setAlignment(Qt::AlignCenter);
-
-                next_button_ = new DialogButton(middle_widget, QT_TRANSLATE_NOOP("placeholders", "CONTINUE"), DialogButtonRole::CONFIRM);
-                setButtonActive(false);
-                next_button_->setCursor(QCursor(Qt::PointingHandCursor));
-                next_button_->setSizePolicy(QSizePolicy::Policy::Preferred, QSizePolicy::Policy::Preferred);
-
-                first_name_edit_->setAlignment(Qt::AlignCenter);
-                last_name_edit_->setAlignment(Qt::AlignCenter);
-                Testing::setAccessibleName(next_button_, qsl("AS iy next_button_"));
-                pl->addWidget(next_button_);
-                middle_layout->addLayout(pl);
-            }
-
-            {
-                error_label_ = new LabelEx(middle_widget);
-                error_label_->setAlignment(Qt::AlignCenter);
-                error_label_->setFont(Fonts::appFontScaled(15));
-                error_label_->setColor(Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_ATTENTION));
-                Testing::setAccessibleName(error_label_, qsl("AS iy error_label_"));
-                middle_layout->addWidget(error_label_);
-            }
-
-            {
-                auto bottom_layout = Utils::emptyVLayout(bottom_widget);
-                bottom_layout->setAlignment(Qt::AlignHCenter);
-
-                auto horizontalSpacer = new QSpacerItem(0, Utils::scale_value(32), QSizePolicy::Preferred, QSizePolicy::Minimum);
-                bottom_layout->addItem(horizontalSpacer);
-            }
-        }
-
-          connect(first_name_edit_, &QLineEdit::textChanged, this, &IntroduceYourself::TextChanged);
-          connect(next_button_, &QPushButton::clicked, this, &IntroduceYourself::UpdateProfile);
-          connect(first_name_edit_, &LineEditEx::enter, this, [this]()
-                {
-                    last_name_edit_->setFocus();
-                });
-          connect(last_name_edit_, &LineEditEx::enter, this, [this]()
-                {
-                    if (!first_name_edit_->text().isEmpty())
-                        UpdateProfile();
-                    else
-                        first_name_edit_->setFocus();
-                });
-          connect(GetDispatcher(), &Ui::core_dispatcher::updateProfile, this, &IntroduceYourself::RecvResponse);
+        connect(GetDispatcher(), &Ui::core_dispatcher::updateProfile, this, &IntroduceYourself::RecvResponse);
     }
 
     void IntroduceYourself::init(QWidget* /*parent*/)
@@ -152,9 +158,25 @@ namespace Ui
 
     }
 
+    void IntroduceYourself::UpdateParams(const QString & _aimid, const QString & _display_name)
+    {
+        contactAvatar_->UpdateParams(_aimid, _display_name);
+
+        if (aimid_ != _aimid)
+        {
+            firstNameEdit_->setText(_display_name);
+            lastNameEdit_->clear();
+        }
+
+        firstNameEdit_->setEnabled(true);
+        lastNameEdit_->setEnabled(true);
+        setButtonActive(!firstNameEdit_->text().isEmpty());
+        firstNameEdit_->setFocus();
+    }
+
     void IntroduceYourself::TextChanged()
     {
-        const auto text = first_name_edit_->text();
+        const auto text = firstNameEdit_->text();
 
         setButtonActive(!text.isEmpty()
             && std::any_of(text.begin(), text.end(), [](auto symb) { return !symb.isSpace(); }));
@@ -162,19 +184,20 @@ namespace Ui
 
     void IntroduceYourself::setButtonActive(bool _is_active)
     {
-        next_button_->setEnabled(_is_active);
+        nextButton_->changeRole(_is_active ? DialogButtonRole::CONFIRM : DialogButtonRole::DISABLED);
     }
 
     void IntroduceYourself::UpdateProfile()
     {
-        if (!first_name_edit_->text().isEmpty())
+        if (!firstNameEdit_->text().isEmpty())
         {
             setButtonActive(false);
-            first_name_edit_->setEnabled(false);
-            last_name_edit_->setEnabled(false);
-            Utils::UpdateProfile({ { std::make_pair(std::string("firstName"), first_name_edit_->text()) },
-                                   { std::make_pair(std::string("lastName"), last_name_edit_->text()) } });
+            firstNameEdit_->setEnabled(false);
+            lastNameEdit_->setEnabled(false);
+            Utils::UpdateProfile({ { std::make_pair(std::string("firstName"), firstNameEdit_->text()) },
+                                   { std::make_pair(std::string("lastName"), lastNameEdit_->text()) } });
             Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::introduce_name_set);
+            emit profileUpdated();
         }
     }
 
@@ -186,10 +209,11 @@ namespace Ui
         }
         else
         {
-            first_name_edit_->setEnabled(true);
-            last_name_edit_->setEnabled(true);
+            firstNameEdit_->setEnabled(true);
+            lastNameEdit_->setEnabled(true);
             setButtonActive(true);
-            error_label_->setText(QT_TRANSLATE_NOOP("placeholders", "Error occurred, try again later"));
+            firstNameEdit_->setFocus();
+            Utils::showToastOverMainWindow(QT_TRANSLATE_NOOP("placeholders", "Error occurred, try again later"), Utils::scale_value(10));
         }
     }
 

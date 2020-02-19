@@ -2,34 +2,65 @@
 
 #include "link_metadata.h"
 
+namespace
+{
+    Data::LinkContentType contentTypeFromStr(const QString& _contentTypeStr)
+    {
+        if (_contentTypeStr == ql1s("article"))
+            return Data::LinkContentType::Article;
+        else if (_contentTypeStr == ql1s("article-video"))
+            return Data::LinkContentType::ArticleVideo;
+        else if (_contentTypeStr == ql1s("article-gif"))
+            return Data::LinkContentType::ArticleGif;
+        else if (_contentTypeStr == ql1s("image"))
+            return Data::LinkContentType::Image;
+        else if (_contentTypeStr == ql1s("video"))
+            return Data::LinkContentType::Video;
+        else if (_contentTypeStr == ql1s("gif"))
+            return Data::LinkContentType::Gif;
+        else if (_contentTypeStr == ql1s("file"))
+            return Data::LinkContentType::File;
+        else
+            return Data::LinkContentType::None;
+    }
+}
+
 DATA_NS_BEGIN
 
 LinkMetadata::LinkMetadata()
-    : FileSize_(-1)
+    : fileSize_(-1)
+    , contentType_(LinkContentType::None)
 {
 }
 
-LinkMetadata::LinkMetadata(
-    const QString &title,
-    const QString &description,
-    const QString &siteName,
-    const QString &contentType,
-    const QSize &previewSize,
-    const QString &downloadUri,
-    const int64_t fileSize,
-    const QSize &originSize)
-    : Title_(title)
-    , Description_(description)
-    , DownloadUri_(downloadUri)
-    , SiteName_(siteName)
-    , ContentType_(contentType)
-    , PreviewSize_(previewSize)
-    , FileSize_(fileSize)
-    , originSize_(originSize)
+LinkMetadata::LinkMetadata(const QString &_title,
+    const QString &_description,
+    const QString &_siteName,
+    const QString &_contentType,
+    const QString& _previewUri,
+    const QString& _faviconUri,
+    const QSize &_previewSize,
+    const QString &_downloadUri,
+    const int64_t _fileSize,
+    const QSize &_originSize,
+    const QString& _fileName)
+    : title_(_title)
+    , description_(_description)
+    , downloadUri_(_downloadUri)
+    , siteName_(_siteName)
+    , contentTypeStr_(_contentType)
+    , previewUri_(_previewUri)
+    , faviconUri_(_faviconUri)
+    , fileName_(_fileName)
+    , previewSize_(_previewSize)
+    , fileSize_(_fileSize)
+    , originSize_(_originSize)
 {
-    assert(PreviewSize_.width() >= 0);
-    assert(PreviewSize_.height() >= 0);
-    assert(FileSize_ >= -1);
+    assert(previewSize_.width() >= 0);
+    assert(previewSize_.height() >= 0);
+    assert(fileSize_ >= -1);
+
+    contentType_ = contentTypeFromStr(contentTypeStr_);
 }
 
 LinkMetadata::~LinkMetadata()
@@ -38,32 +69,52 @@ LinkMetadata::~LinkMetadata()
 
 const QString& LinkMetadata::getTitle() const
 {
-    return Title_;
+    return title_;
 }
 
 const QString& LinkMetadata::getDescription() const
 {
-    return Description_;
+    return description_;
 }
 
 const QString& LinkMetadata::getDownloadUri() const
 {
-    return DownloadUri_;
+    return downloadUri_;
 }
 
 const QString& LinkMetadata::getSiteName() const
 {
-    return SiteName_;
+    return siteName_;
 }
 
-const QString& LinkMetadata::getContentType() const
+const QString& LinkMetadata::getContentTypeStr() const
 {
-    return ContentType_;
+    return contentTypeStr_;
+}
+
+const QString& LinkMetadata::getPreviewUri() const
+{
+    return previewUri_;
+}
+
+const QString& LinkMetadata::getFaviconUri() const
+{
+    return faviconUri_;
+}
+
+const QString& LinkMetadata::getFileName() const
+{
+    return fileName_;
+}
+
+LinkContentType LinkMetadata::getContentType() const
+{
+    return contentType_;
 }
 
 const QSize& LinkMetadata::getPreviewSize() const
 {
-    return PreviewSize_;
+    return previewSize_;
 }
 
 const QSize& LinkMetadata::getOriginSize() const
@@ -71,10 +122,9 @@ const QSize& LinkMetadata::getOriginSize() const
     return originSize_;
 }
 
-
 int64_t LinkMetadata::getFileSize() const
 {
-    return FileSize_;
+    return fileSize_;
 }
 
 DATA_NS_END

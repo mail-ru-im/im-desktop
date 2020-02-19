@@ -3,6 +3,7 @@
 #include "wim_packet.h"
 #include "../../../corelib/collection_helper.h"
 #include "../../utils.h"
+#include "../../tools/json_helper.h"
 
 
 using namespace core;
@@ -311,7 +312,6 @@ fetch_parameters::fetch_parameters()
     next_fetch_timeout_(std::chrono::seconds(60)),
     last_successful_fetch_(0)
 {
-
 }
 
 void fetch_parameters::serialize(core::tools::binary_stream& _stream) const

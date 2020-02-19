@@ -15,7 +15,7 @@
 
 
 #ifdef _WIN32
-static int X509_ñallback(int ok, X509_STORE_CTX *ctx)
+static int X509_callback(int ok, X509_STORE_CTX *ctx)
 {
     if (!ok)
     {
@@ -115,7 +115,7 @@ static CURLcode ssl_ctx_callback_impl(CURL *curl, void *ssl_ctx, void *userptr)
         CertCloseStore(h_system_store, 0);
     }
 
-    X509_STORE_set_verify_cb(store, X509_ñallback);
+    X509_STORE_set_verify_cb(store, X509_callback);
 
     return CURLE_OK;
 }

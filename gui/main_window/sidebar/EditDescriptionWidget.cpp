@@ -139,7 +139,7 @@ namespace Ui
         headerUnit_->setOffsets(getHeaderHorOffset(), getHeaderVerOffset());
 
         const auto descriptionWidth = getWidgetWidth() - getLeftMargin() - getRightMargin();
-        description_ = new InputEdit(this, getDescriptionFont(), getDescriptionColor(), true, false);
+        description_ = new TextEditEx(this, getDescriptionFont(), getDescriptionColor(), true, false);
         QSizePolicy sp(QSizePolicy::Policy::Fixed, QSizePolicy::Policy::Preferred);
         sp.setVerticalStretch(1);
         description_->setSizePolicy(sp);
@@ -153,6 +153,7 @@ namespace Ui
         description_->setPlaceholderText(QT_TRANSLATE_NOOP("profile_edit_dialogs", "About me"));
         description_->setAcceptDrops(false);
         description_->setPlainText(_initData.description_, false);
+        description_->setEnterKeyPolicy(TextEditEx::EnterKeyPolicy::FollowSettingsRules);
         Utils::ApplyStyle(description_, Styling::getParameters().getTextEditCommonQss(true));
         Testing::setAccessibleName(description_, qsl("AS ped description_"));
 

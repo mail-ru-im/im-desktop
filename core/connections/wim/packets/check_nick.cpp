@@ -19,7 +19,6 @@ int32_t check_nick::init_request(std::shared_ptr<core::http_request_simple> _req
 {
     auto method = set_nick_ ? std::string("setNick") : std::string("checkNick");
 
-    _request->set_gzip(false);
     _request->set_url(urls::get_url(urls::url_type::rapi_host));
     _request->set_normalized_url(method);
     _request->set_keep_alive();
@@ -27,7 +26,7 @@ int32_t check_nick::init_request(std::shared_ptr<core::http_request_simple> _req
     rapidjson::Document doc(rapidjson::Type::kObjectType);
     auto& a = doc.GetAllocator();
 
-    doc.AddMember("method", method, a);
+    doc.AddMember("method", std::move(method), a);
     doc.AddMember("reqId", get_req_id(), a);
 
     rapidjson::Value node_params(rapidjson::Type::kObjectType);

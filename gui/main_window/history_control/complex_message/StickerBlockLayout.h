@@ -13,8 +13,6 @@ public:
 
     virtual QSize blockSizeForMaxWidth(const int32_t maxWidth) override;
 
-    const IItemBlockLayout::IBoxModel& getBlockBoxModel() const override;
-
     virtual QRect getBlockGeometry() const override;
 
 protected:

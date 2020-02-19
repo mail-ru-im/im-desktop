@@ -19,6 +19,9 @@ public:
     virtual bool keepRows() const { return false;}
     virtual bool sameSavePath(const ToastBase* _other) const { return true;}
     virtual QString getPath() const { return QString(); }
+
+    void setVisibilityDuration(std::chrono::milliseconds _duration);
+
 signals:
     void dissapeared();
 
@@ -35,7 +38,7 @@ protected:
     void handleMouseLeave();
     virtual void updateSize() {}
 
-    virtual QPoint shiftToastPos() { return QPoint(); }
+    virtual QPoint shiftToastPos() const { return QPoint(); }
 
 private Q_SLOTS:
     void startHide();
@@ -85,6 +88,14 @@ private:
     Ui::TextRendering::TextUnitPtr textUnit_;
 };
 
+class PlaceholderToast : public Toast
+{
+public:
+    explicit PlaceholderToast(const QString& _text, QWidget* _parent, int _maxLineCount = 1);
+
+    QPoint shiftToastPos() const override;
+};
+
 class SavedPathToast_p;
 
 class SavedPathToast : public ToastBase
@@ -125,7 +136,7 @@ protected:
     void leaveEvent(QEvent* _event) override;
     void updateSize() override;
 
-    QPoint shiftToastPos() override;
+    QPoint shiftToastPos() const override;
 
 private:
     void compose(bool _isMinimal, const int maxWidth, const QFontMetrics fm, int fileWidth, int pathWidth, int _totalWidth);
@@ -143,5 +154,7 @@ private:
 namespace Utils
 {
     void showToastOverMainWindow(const QString& _text, int _bottomOffset, int _maxLineCount = 1); // show text toast over main window
+    void showToastOverContactDialog(const QString& _text, int _maxLineCount = 1); // show text toast over contactDialog
     void showDownloadToast(const Data::FileSharingDownloadResult& _result);
+    void showCopiedToast(std::optional<std::chrono::milliseconds> _visibilityDuration = std::nullopt);
 }

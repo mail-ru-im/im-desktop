@@ -26,7 +26,6 @@ int32_t search_chat_members::init_request(std::shared_ptr<core::http_request_sim
 {
     constexpr char method[] = "searchChatMembers";
 
-    _request->set_gzip(true);
     _request->set_url(urls::get_url(urls::url_type::rapi_host));
     _request->set_normalized_url(method);
     _request->set_keep_alive();

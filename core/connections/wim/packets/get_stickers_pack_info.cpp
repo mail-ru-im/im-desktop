@@ -50,7 +50,7 @@ int32_t get_stickers_pack_info_packet::init_request(std::shared_ptr<core::http_r
 
     params["client"] = core::utils::get_client_string();
 
-    params["lang"] = g_core->get_locale();
+    params["lang"] = params_.locale_;
 
     if (pack_id_ > 0)
         params["id"] = std::to_string(pack_id_);

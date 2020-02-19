@@ -410,6 +410,7 @@ namespace Ui
         {
         case QEvent::Enter:
             setMouseTracking(true);
+            updatePos();
             if (obj == view_)
             {
                 if constexpr (!platform::is_apple())

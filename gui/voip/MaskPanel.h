@@ -1,8 +1,6 @@
 #pragma once
-
 #include "CommonUI.h"
 #include "Masks.h"
-
 
 namespace Ui
 {

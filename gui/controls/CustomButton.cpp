@@ -3,6 +3,7 @@
 #include "../utils/utils.h"
 
 #include "TooltipWidget.h"
+#include "fonts.h"
 
 namespace
 {
@@ -10,6 +11,51 @@ namespace
 
     constexpr std::chrono::milliseconds tooltipShowDelay() noexcept { return 400ms; }
     constexpr std::chrono::milliseconds focusInAnimDuration() noexcept { return 50ms; }
+
+    int get_radius()
+    {
+        return Utils::scale_value(8);
+    }
+
+    int getMargin()
+    {
+        return Utils::scale_value(8);
+    }
+
+    int getBubbleCornerRadius()
+    {
+        return Utils::scale_value(18);
+    }
+
+    void drawBubble(QPainter& _p, const QRect& _widgetRect, const QColor& _color, const int _topMargin, const int _botMargin, const int _radius)
+    {
+        if (_widgetRect.isEmpty() || !_color.isValid())
+            return;
+
+        Utils::PainterSaver ps(_p);
+        _p.setRenderHint(QPainter::Antialiasing);
+
+        const auto bubbleRect = _widgetRect.adjusted(0, _topMargin, 0, -_botMargin);
+
+        QPainterPath path;
+        path.addRoundedRect(bubbleRect, _radius, _radius);
+
+        Utils::drawBubbleShadow(_p, path, _radius);
+
+        _p.setPen(Qt::NoPen);
+        _p.setCompositionMode(QPainter::CompositionMode_Source);
+        _p.fillPath(path, _color);
+    }
+
+    QSize buttonIconSize()
+    {
+        return QSize(32, 32);
+    }
+
+    int textIconSpacing()
+    {
+        return Utils::scale_value(4);
+    }
 }
 
 namespace Ui
@@ -25,6 +71,7 @@ namespace Ui
         , active_(false)
         , hovered_(false)
         , pressed_(false)
+        , forceHover_(false)
         , bgRect_(rect())
         , shape_(ButtonShape::RECTANGLE)
     {
@@ -51,10 +98,22 @@ namespace Ui
     void CustomButton::paintEvent(QPaintEvent* _e)
     {
         QPainter p(this);
-        p.setRenderHints(QPainter::TextAntialiasing | QPainter::Antialiasing);
+        p.setRenderHints(QPainter::TextAntialiasing | QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
 
         if (bgColor_.isValid())
-            p.fillRect(bgRect_, bgColor_);
+        {
+            if (shape_ == ButtonShape::ROUNDED_RECTANGLE)
+            {
+                p.setBrush(bgColor_);
+                auto pen = QPen(bgColor_, 0);
+                p.setPen(pen);
+                p.drawRoundedRect(bgRect_, get_radius(), get_radius());
+            }
+            else
+            {
+                p.fillRect(bgRect_, bgColor_);
+            }
+        }
 
         if (focusColor_.isValid() && (animFocus_.isRunning() || hasFocus()))
         {
@@ -82,7 +141,9 @@ namespace Ui
             }
         }
 
-        if (!isEnabled() && !pixmapDisabled_.isNull())
+        if (forceHover_)
+            pixmapToDraw_ = pixmapHover_;
+        else if (!isEnabled() && !pixmapDisabled_.isNull())
             pixmapToDraw_ = pixmapDisabled_;
         else if (pressed_ && !pixmapPressed_.isNull())
             pixmapToDraw_ = pixmapPressed_;
@@ -132,7 +193,7 @@ namespace Ui
         update();
 
         if (textColor_.isValid())
-            setTextColor(textColor_);
+            setTextColor(textColorNormal_);
 
         QAbstractButton::leaveEvent(_e);
     }
@@ -175,7 +236,7 @@ namespace Ui
         update();
 
         if (textColor_.isValid())
-            setTextColor(textColor_);
+            setTextColor(textColorNormal_);
 
         emit clickedWithButtons(_e->button());
 
@@ -275,6 +336,12 @@ namespace Ui
         }
     }
 
+    void CustomButton::setNormalTextColor(const QColor & _color)
+    {
+        textColor_ = _color;
+        textColorNormal_ = _color;
+    }
+
     void CustomButton::setHoveredTextColor(const QColor& _color)
     {
         textColorHovered_ = _color;
@@ -331,6 +398,12 @@ namespace Ui
         textOffsetLeft_ = _offset;
         update();
     }
+
+    void CustomButton::forceHover(bool _force)
+    {
+        forceHover_ = _force;
+        update();
+	}
 
     void CustomButton::setFocusColor(const QColor& _color)
     {
@@ -453,6 +526,16 @@ namespace Ui
         update();
     }
 
+    void CustomButton::clearIcon()
+    {
+        pixmapDefault_ = QPixmap();
+        pixmapActive_ = QPixmap();
+        pixmapDisabled_ = QPixmap();
+        pixmapPressed_ = QPixmap();
+        pixmapHover_ = QPixmap();
+        update();
+    }
+
     void CustomButton::setCustomToolTip(const QString& _toopTip)
     {
         toolTip_ = _toopTip;
@@ -461,6 +544,134 @@ namespace Ui
     const QString& CustomButton::getCustomToolTip() const
     {
         return toolTip_;
+    }
+
+    RoundButton::RoundButton(QWidget* _parent, int _radius)
+        : ClickableWidget(_parent)
+        , forceHover_(false)
+        , radius_(_radius == 0 ? getBubbleCornerRadius() : _radius)
+    {
+        connect(this, &RoundButton::hoverChanged, this, Utils::QOverload<>::of(&RoundButton::update));
+        connect(this, &RoundButton::pressChanged, this, Utils::QOverload<>::of(&RoundButton::update));
+    }
+
+    void RoundButton::setColors(const QColor& _bgNormal, const QColor& _bgHover, const QColor& _bgActive)
+    {
+        bgNormal_ = _bgNormal;
+        bgHover_ = _bgHover;
+        bgActive_ = _bgActive;
+        update();
+    }
+
+    void RoundButton::setTextColor(const QColor& _color)
+    {
+        textColor_ = _color;
+
+        if (text_)
+            text_->setColor(_color);
+
+        update();
+    }
+
+    void RoundButton::setText(const QString& _text, int _size)
+    {
+        if (_text.isEmpty())
+        {
+            text_.reset();
+        }
+        else
+        {
+            text_ = TextRendering::MakeTextUnit(_text, {}, TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
+            text_->init(Fonts::appFontScaled(_size), textColor_);
+            text_->evaluateDesiredSize();
+        }
+
+        update();
+    }
+
+    void RoundButton::setIcon(const QString& _iconPath, int _size)
+    {
+        icon_ = Utils::renderSvgScaled(_iconPath, _size == 0 ? buttonIconSize() : QSize(_size, _size), textColor_);
+        update();
+    }
+
+    void RoundButton::setIcon(const QPixmap& _icon)
+    {
+        icon_ = _icon;
+        update();
+    }
+
+    void RoundButton::forceHover(bool _force)
+    {
+        forceHover_ = _force;
+        update();
+    }
+
+    int RoundButton::textDesiredWidth() const
+    {
+        if (text_)
+            return text_->desiredWidth() + getMargin() * 2;
+
+        return 0;
+    }
+
+    void RoundButton::paintEvent(QPaintEvent*)
+    {
+        QPainter p(this);
+        p.setRenderHint(QPainter::Antialiasing);
+        p.setRenderHint(QPainter::SmoothPixmapTransform);
+
+        if (const auto bg = getBgColor(); bg.isValid())
+            drawBubble(p, rect(), bg, getMargin(), getMargin(), radius_);
+
+        const auto hasIcon = !icon_.isNull();
+        const auto hasText = !!text_;
+
+        if (!hasIcon && !hasText)
+            return;
+
+        const auto r = Utils::scale_bitmap_ratio();
+        const auto iconWidth = hasIcon ? icon_.width() / r : 0;
+        const auto textWidth = hasText ? text_->desiredWidth() : 0;
+        const auto fullWidth = iconWidth + textWidth + ((hasText && hasIcon) ? textIconSpacing() : 0);
+
+        if (hasIcon)
+        {
+            const auto x = (width() - fullWidth) / 2;
+            const auto y = (height() - icon_.height() / r) / 2;
+            p.drawPixmap(x, y, icon_);
+        }
+
+        if (hasText)
+        {
+            const auto x = (width() - fullWidth) / 2 + (fullWidth - textWidth);
+            const auto y = height() / 2;
+            text_->setOffsets(x, y);
+
+            text_->draw(p, TextRendering::VerPosition::MIDDLE);
+        }
+    }
+
+    void RoundButton::resizeEvent(QResizeEvent* _event)
+    {
+        bubblePath_ = QPainterPath();
+        update();
+    }
+
+    QColor RoundButton::getBgColor() const
+    {
+        if (forceHover_)
+            return bgHover_;
+
+        QColor bg;
+        if (isPressed() && bgActive_.isValid())
+            bg = bgActive_;
+        else if (isHovered() && bgHover_.isValid())
+            bg = bgHover_;
+        else
+            bg = bgNormal_;
+
+        return bg;
     }
 }
 

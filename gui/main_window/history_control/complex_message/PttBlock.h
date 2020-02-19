@@ -26,7 +26,6 @@ namespace PttDetails
 
     public:
         PlayButton(QWidget* _parent, const QString& _aimId);
-        void setSelected(const bool _isSelected);
         void setPressed(const bool _isPressed);
 
         enum class ButtonState
@@ -42,14 +41,12 @@ namespace PttDetails
 
     private:
         QString aimId_;
-        bool isSelected_;
         bool isPressed_;
         ButtonState state_;
 
         QColor normal_;
         QColor hovered_;
         QColor pressed_;
-        QColor selected_;
     };
 
     class ButtonWithBackground : public CustomButton
@@ -81,7 +78,6 @@ namespace PttDetails
         ProgressWidget(QWidget* _parent, const ButtonType _type, bool _isOutgoing);
         ~ProgressWidget();
 
-        void setSelected(const bool _isSelected);
         void setProgress(const double _progress);
         void updateStyle();
 
@@ -90,7 +86,6 @@ namespace PttDetails
 
     private:
         ButtonType type_;
-        bool isSelected_;
         double progress_;
         const bool isOutgoing_;
         anim::Animation anim_;
@@ -133,7 +128,9 @@ public:
 
     bool isDecodedTextCollapsed() const;
 
-    void selectByPos(const QPoint& from, const QPoint& to, const BlockSelectionType selection) override;
+    void selectByPos(const QPoint& from, const QPoint& to, bool) override;
+
+    void selectAll() override;
 
     void setCtrlButtonGeometry(const QRect &rect);
 
@@ -147,15 +144,18 @@ public:
 
     bool isNeedCheckTimeShift() const override;
 
-    void setSelected(const bool _isSelected) override;
+    bool isSelected() const override;
 
     bool clicked(const QPoint& _p) override;
+    bool pressed(const QPoint& _p) override;
 
     void doubleClicked(const QPoint& _p, std::function<void(bool)> _callback = std::function<void(bool)>()) override;
 
     void releaseSelection() override;
 
     void onVisibilityChanged(const bool isVisible) override;
+
+    IItemBlock::MenuFlags getMenuFlags() const override;
 
     //void setEmojiSizeType(const TextRendering::EmojiSizeType& _emojiSizeType) {};
 
@@ -242,12 +242,13 @@ private:
     void updateFonts() override;
 
     void updateDecodedTextStyle();
-    void updateDecodedTextSelection(bool _isFullSelection);
     QColor getDecodedTextColor() const;
     QColor getProgressColor() const;
     QColor getPlaybackColor() const;
 
     bool isOutgoing() const;
+
+    bool canShowButtonText() const;
 
     QPainterPath bubbleClipPath_;
 
@@ -292,6 +293,7 @@ private:
     PttDetails::ProgressWidget* progressText_;
 
     QTimer* downloadAnimDelay_;
+    QTimer* tripleClickTimer_ = nullptr;
 
 private Q_SLOTS:
 

@@ -32,9 +32,7 @@ namespace Ui
         QObject::connect(tabbar_, &TabBar::clicked, this, &TabWidget::onTabClicked);
     }
 
-    TabWidget::~TabWidget()
-    {
-    }
+    TabWidget::~TabWidget() = default;
 
     void TabWidget::hideTabbar()
     {
@@ -53,7 +51,7 @@ namespace Ui
         {
             index = pages_->addWidget(_widget);
             auto tab = new TabItem(_icon, _iconActive, this);
-            Testing::setAccessibleName(tab, ql1s("AS tab ") + _widget->accessibleName());
+            Testing::setAccessibleName(tab, ql1s("AS tab ") % _widget->accessibleName());
             tab->setName(_name);
             tabbar_->addItem(tab);
             if (index == 0)
@@ -99,6 +97,12 @@ namespace Ui
     void TabWidget::setBadgeIcon(int _index, const QString& _icon)
     {
         tabbar_->setBadgeIcon(_index, _icon);
+    }
+
+    void TabWidget::insertAdditionalWidget(QWidget * _w)
+    {
+        if (auto l = qobject_cast<QBoxLayout*>(layout()))
+            l->insertWidget(l->count() - 1, _w);
     }
 
     void TabWidget::onTabClicked(int _index)

@@ -6,6 +6,7 @@
 #include "LinkList.h"
 #include "FilesList.h"
 #include "PttList.h"
+#include "EditNicknameWidget.h"
 #include "../MainWindow.h"
 #include "../GroupChatOperations.h"
 #include "../MainPage.h"
@@ -26,12 +27,15 @@
 #include "../../previewer/toast.h"
 #include "../../styles/ThemeParameters.h"
 #include "../../controls/TransparentScrollBar.h"
+#include "../../controls/DialogButton.h"
 #include "../../controls/ContextMenu.h"
+#include "../../controls/GeneralDialog.h"
 #include "../../fonts.h"
 #include "../../utils/gui_coll_helper.h"
 #include "../../utils/stat_utils.h"
 #include "../../utils/InterConnector.h"
 #include "../../utils/features.h"
+#include "../../../common.shared/config/config.h"
 
 namespace
 {
@@ -73,12 +77,16 @@ namespace
     constexpr auto SPACER_MARGIN = 8;
     constexpr auto SHORT_MEMBERS_COUNT = 5;
     constexpr auto APPROVE_ALL_BUTTON_HEIGHT = 48;
-    constexpr auto INFO_LABEL_ADD_OFFSET = 36;
     constexpr auto TOAST_OFFSET = 10;
     constexpr auto INFO_SPACER_HEIGHT = 8;
     constexpr auto BOTTOM_SPACER = 40;
     constexpr auto POPUP_HOR_OFFSET = 8;
     constexpr auto POPUP_VER_OFFSET = 52;
+    constexpr auto ABOUT_LINK_SPACER_HEIGHT = 24;
+    constexpr auto ABOUT_LINK_RIGHT_OFFSET = 16;
+    constexpr auto APPLY_SETTINGS_MARGIN = 24;
+    constexpr auto SETTINGS_LEFT_OFFSET = 20;
+    constexpr auto SETTINGS_ADD_OFFSET = 4;
 
     bool isYouAdmin(std::shared_ptr<Data::ChatInfo> _info)
     {
@@ -124,12 +132,20 @@ namespace
         result[qsl("aimid")] = aimId;
         return result;
     }
+
+    QMap<QString, QVariant> makeCopyData(const QString& _command)
+    {
+        QMap<QString, QVariant> result;
+        result[qsl("command")] = _command;
+        return result;
+    }
 }
 
 namespace Ui
 {
     GroupProfile::GroupProfile(QWidget* parent)
         : SidebarPage(parent)
+        , frameCountMode_(FrameCountMode::_1)
         , shortChatModel_(new Logic::ChatMembersModel(this))
         , listChatModel_(new Logic::ChatMembersModel(this))
         , currentGalleryPage_(-1)
@@ -137,6 +153,7 @@ namespace Ui
         , mainAction_(-1)
         , galleryIsEmpty_(false)
         , forceMembersRefresh_(false)
+        , invalidNick_(false)
     {
         init();
     }
@@ -148,6 +165,8 @@ namespace Ui
 
     void GroupProfile::initFor(const QString& aimId)
     {
+        isActive_ = true;
+
         const auto newContact = currentAimId_ != aimId;
         currentAimId_ = aimId;
 
@@ -179,7 +198,7 @@ namespace Ui
 
         Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::profilescr_view, { { "chat_type", Utils::chatTypeByAimId(currentAimId_) } });
 
-        isActive_ = true;
+        invalidNick_ = false;
     }
 
     void GroupProfile::setFrameCountMode(FrameCountMode _mode)
@@ -218,6 +237,7 @@ namespace Ui
     {
         cl_->setWidthForDelegate(_event->size().width());
         galleryPopup_->setFixedWidth(_event->size().width() - Utils::scale_value(POPUP_HOR_OFFSET * 2));
+        aboutLinkToChatBlock_->setFixedWidth(_event->size().width());
 
         SidebarPage::resizeEvent(_event);
     }
@@ -277,13 +297,19 @@ namespace Ui
         setMouseTracking(true);
 
         connect(Ui::GetDispatcher(), &Ui::core_dispatcher::chatInfo, this, &GroupProfile::chatInfo);
+        connect(Ui::GetDispatcher(), &Ui::core_dispatcher::chatInfoFailed, this, &GroupProfile::chatInfoFailed);
         connect(Ui::GetDispatcher(), &Ui::core_dispatcher::dialogGalleryState, this, &GroupProfile::dialogGalleryState);
         connect(Logic::getRecentsModel(), &Logic::RecentsModel::favoriteChanged, this, &GroupProfile::favoriteChanged);
+        connect(Logic::getRecentsModel(), &Logic::RecentsModel::unimportantChanged, this, &GroupProfile::unimportantChanged);
         connect(Ui::GetDispatcher(), &Ui::core_dispatcher::setChatRoleResult, this, &GroupProfile::memberActionResult);
         connect(Ui::GetDispatcher(), &Ui::core_dispatcher::blockMemberResult, this, &GroupProfile::memberActionResult);
         connect(Ui::GetDispatcher(), &Ui::core_dispatcher::pendingListResult, this, &GroupProfile::memberActionResult);
+        connect(Ui::GetDispatcher(), &Ui::core_dispatcher::modChatParamsResult, this, &GroupProfile::modChatParamsResult);
+        connect(Ui::GetDispatcher(), &Ui::core_dispatcher::suggestGroupNickResult, this, &GroupProfile::suggestGroupNickResult);
+        connect(Ui::GetDispatcher(), &Ui::core_dispatcher::modChatParamsResult, this, &GroupProfile::loadChatInfo);
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::chatEvents, this, &GroupProfile::chatEvents);
         connect(Logic::getContactListModel(), &Logic::ContactListModel::contactChanged, this, &GroupProfile::onContactChanged);
+        connect(Logic::getRecentsModel(), &Logic::RecentsModel::favoriteChanged, this, &GroupProfile::favoriteChanged);
     }
 
     QWidget* GroupProfile::initContent(QWidget* _parent)
@@ -322,6 +348,7 @@ namespace Ui
             connect(link_->text_, &TextLabel::textClicked, this, &GroupProfile::linkClicked);
             connect(link_->text_, &TextLabel::copyClicked, this, &GroupProfile::linkCopy);
             connect(link_->text_, &TextLabel::shareClicked, this, &GroupProfile::linkShare);
+            connect(link_->text_, &TextLabel::menuAction, this, &GroupProfile::menuAction);
         }
 
         addSpacer(widget, layout);
@@ -333,7 +360,7 @@ namespace Ui
             notifications_ = addCheckbox(qsl(":/notify_icon"), QT_TRANSLATE_NOOP("sidebar", "Notifications"), widget, layout);
             connect(notifications_, &SidebarCheckboxButton::checked, this, &GroupProfile::notificationsChecked);
 
-            settings_ = addButton(qsl(":/settings_icon_sidebar"), QT_TRANSLATE_NOOP("sidebar", "Chat settings"), widget, layout);
+            settings_ = addButton(qsl(":/settings_icon_sidebar"), QT_TRANSLATE_NOOP("sidebar", "Group settings"), widget, layout);
             connect(settings_, &SidebarButton::clicked, this, &GroupProfile::settingsClicked);
         }
 
@@ -377,6 +404,7 @@ namespace Ui
 
             pendings_ = addButton(qsl(":/waiting_for_accept_icon"), QT_TRANSLATE_NOOP("sidebar", "Waiting for approval"), membersWidget_, membersLayout);
             connect(pendings_, &SidebarButton::clicked, this, &GroupProfile::pendingsClicked);
+            connect(&Utils::InterConnector::instance(), &Utils::InterConnector::showPendingMembers, this, &GroupProfile::pendingsClicked);
 
             shortMembersList_ = addMembersWidget(shortChatModel_, delegate_, SHORT_MEMBERS_COUNT, membersWidget_, membersLayout);
             connect(shortMembersList_, &MembersWidget::selected, this, &GroupProfile::contactSelected);
@@ -417,7 +445,7 @@ namespace Ui
             report_ = addButton(qsl(":/alert_icon"), QT_TRANSLATE_NOOP("sidebar", "Report and block"), widget, layout);
             connect(report_, &SidebarButton::clicked, this, &GroupProfile::reportCliked);
 
-            leave_ = addButton(qsl(":/exit_icon"), QT_TRANSLATE_NOOP("sidebar", "Delete and leave"), widget, layout);
+            leave_ = addButton(qsl(":/exit_icon"), QT_TRANSLATE_NOOP("sidebar", "Leave and delete"), widget, layout);
             connect(leave_, &SidebarButton::clicked, this, &GroupProfile::leaveClicked);
         }
 
@@ -434,20 +462,83 @@ namespace Ui
         auto layout = Utils::emptyVLayout(widget);
         layout->setAlignment(Qt::AlignTop);
 
-        linkToChat_ = addCheckbox(qsl(":/share_icon"), QT_TRANSLATE_NOOP("groupchats", "Link to chat"), widget, layout);
-        connect(linkToChat_, &SidebarCheckboxButton::checked, this, &GroupProfile::linkToChatChecked);
+        public_ = addCheckbox(QString(), QT_TRANSLATE_NOOP("groupchats", "Public chat"), widget, layout);
+        connect(public_, &SidebarCheckboxButton::checked, this, &GroupProfile::publicClicked);
 
-        addLabel(QT_TRANSLATE_NOOP("groupchats", "Ability to join chat by link"), widget, layout, Utils::scale_value(INFO_LABEL_ADD_OFFSET));
+        publicLabel_ = addLabel(QT_TRANSLATE_NOOP("groupchats", "Public group can be found in the search"), widget, layout, Utils::scale_value(SETTINGS_ADD_OFFSET));
 
-        public_ = addCheckbox(qsl(":/eye_icon"), QT_TRANSLATE_NOOP("groupchats", "Public chat"), widget, layout);
-        connect(public_, &SidebarCheckboxButton::checked, this, &GroupProfile::publicChecked);
+        aboutLinkToChatBlock_ = new QWidget(widget);
+        {
+            auto aboutLinkToChatLayout = Utils::emptyVLayout(aboutLinkToChatBlock_);
 
-        addLabel(QT_TRANSLATE_NOOP("groupchats", "The chat will appear in the app's showcase and any user can find it in the list"), widget, layout, Utils::scale_value(INFO_LABEL_ADD_OFFSET));
+            {
+                auto spacer = new QWidget(widget);
+                Utils::transparentBackgroundStylesheet(spacer);
+                spacer->setFixedHeight(ABOUT_LINK_SPACER_HEIGHT);
+                aboutLinkToChatLayout->addWidget(spacer);
+            }
 
-        joinModeration_ = addCheckbox(qsl(":/header/add_user"), QT_TRANSLATE_NOOP("groupchats", "Join with Approval"), widget, layout);
-        connect(joinModeration_, &SidebarCheckboxButton::checked, this, &GroupProfile::joinModerationChecked);
+            const auto appName = config::get().string(config::values::product_name_full);
+            const QString argName = QString::fromUtf8(appName.data(), appName.size());
+            aboutLinkToChat_ = addInfoBlock(QT_TRANSLATE_NOOP("groupchats", "The link will open the group in %1").arg(argName), qsl(""), aboutLinkToChatBlock_, aboutLinkToChatLayout, Utils::scale_value(SETTINGS_ADD_OFFSET));
+            aboutLinkToChat_->setHeaderLinkColor(Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
+            aboutLinkToChat_->text_->setCursorForText();
+            connect(aboutLinkToChat_->text_, &TextLabel::textClicked, this, &GroupProfile::aboutLinkClicked);
 
-        addLabel(QT_TRANSLATE_NOOP("groupchats", "New members are waiting for admin approval"), widget, layout, Utils::scale_value(INFO_LABEL_ADD_OFFSET));
+            {
+                auto spacer = new QWidget(widget);
+                Utils::transparentBackgroundStylesheet(spacer);
+                spacer->setFixedHeight(INFO_SPACER_HEIGHT);
+                aboutLinkToChatLayout->addWidget(spacer);
+            }
+
+            makeNewLink_ = addText(QT_TRANSLATE_NOOP("groupchats", "Make new link"), aboutLinkToChatBlock_, aboutLinkToChatLayout, Utils::scale_value(SETTINGS_ADD_OFFSET), -1);
+            makeNewLink_->setCursorForText();
+            makeNewLink_->setColor(Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY));
+            connect(makeNewLink_, &TextLabel::textClicked, this, &GroupProfile::makeNewLink);
+
+            {
+                auto spacer = new QWidget(widget);
+                Utils::transparentBackgroundStylesheet(spacer);
+                spacer->setFixedHeight(ABOUT_LINK_SPACER_HEIGHT);
+                aboutLinkToChatLayout->addWidget(spacer);
+            }
+
+        }
+        layout->addWidget(aboutLinkToChatBlock_);
+
+        {
+            EditNicknameWidget::FormData initData;
+            initData.fixedPart_ = Utils::getDomainUrl() % ql1c('/');
+            initData.groupMode_ = true;
+            initData.fixedSize_ = false;
+            initData.margins_ = QMargins(Utils::scale_value(SETTINGS_LEFT_OFFSET), Utils::scale_value(ABOUT_LINK_SPACER_HEIGHT), Utils::scale_value(ABOUT_LINK_RIGHT_OFFSET), 0);
+            editGroupLinkWidget_ = new EditNicknameWidget(widget, initData);
+            editGroupLinkWidget_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
+            layout->addWidget(editGroupLinkWidget_);
+            editGroupLinkWidget_->hide();
+        }
+
+        joinModeration_ = addCheckbox(QString(), QT_TRANSLATE_NOOP("groupchats", "Join with Approval"), widget, layout);
+        connect(joinModeration_, &SidebarCheckboxButton::checked, this, &GroupProfile::checkApplyButton);
+
+        addLabel(QT_TRANSLATE_NOOP("groupchats", "New members are waiting for admin approval"), widget, layout, Utils::scale_value(SETTINGS_ADD_OFFSET));
+
+        auto spacer = new QSpacerItem(0, Utils::scale_value(APPLY_SETTINGS_MARGIN), QSizePolicy::Preferred, QSizePolicy::Fixed);
+        layout->addItem(spacer);
+
+        auto hLayout = Utils::emptyHLayout();
+        hLayout->setContentsMargins(Utils::scale_value(SETTINGS_LEFT_OFFSET), 0, 0, 0);
+        applyChatSettings_ = new DialogButton(widget, QT_TRANSLATE_NOOP("groupchats", "Apply"));
+        hLayout->addWidget(applyChatSettings_);
+        hLayout->addSpacerItem(new QSpacerItem(0, 0, QSizePolicy::Expanding));
+        layout->addLayout(hLayout);
+
+        connect(editGroupLinkWidget_, &Ui::EditNicknameWidget::ready, this, [this]() { invalidNick_ = false; checkApplyButton(); });
+        connect(editGroupLinkWidget_, &Ui::EditNicknameWidget::theSame, this, [this]() { invalidNick_ = true; checkApplyButton(); });
+        connect(editGroupLinkWidget_, &Ui::EditNicknameWidget::error, this, [this]() { invalidNick_ = true; checkApplyButton(); });
+
+        connect(applyChatSettings_, &Ui::DialogButton::clicked, this, &GroupProfile::applyChatSettings);
 
         return widget;
     }
@@ -501,6 +592,19 @@ namespace Ui
         return widget;
     }
 
+    void GroupProfile::initTexts()
+    {
+        share_->setText(isChannel(chatInfo_) ? QT_TRANSLATE_NOOP("sidebar", "Share channel") : QT_TRANSLATE_NOOP("sidebar", "Share group"));
+        settings_->setText(isChannel(chatInfo_) ? QT_TRANSLATE_NOOP("sidebar", "Channel settings") : QT_TRANSLATE_NOOP("sidebar", "Group settings"));
+        addToChat_->setText(isChannel(chatInfo_) ? QT_TRANSLATE_NOOP("sidebar", "Add to channel") : QT_TRANSLATE_NOOP("sidebar", "Add to group"));
+        public_->setText(isChannel(chatInfo_) ? QT_TRANSLATE_NOOP("groupchats", "Public channel") : QT_TRANSLATE_NOOP("sidebar", "Public group"));
+        const auto appName = config::get().string(config::values::product_name_full);
+        const QString argName = QString::fromUtf8(appName.data(), appName.size());
+        aboutLinkToChat_->setHeaderText(QString(isChannel(chatInfo_) ? QT_TRANSLATE_NOOP("groupchats", "The link will open the channel in %1") : QT_TRANSLATE_NOOP("groupchats", "The link will open the group in %1")).arg(argName));
+        aboutLinkToChat_->setHeaderLinkColor(Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
+        publicLabel_->setText(isChannel(chatInfo_) ? QT_TRANSLATE_NOOP("groupchats", "The public channel can be found in the search and its link will be available to all members") : QT_TRANSLATE_NOOP("groupchats", "The public group can be found in the search and its link will be available to all members"));
+    }
+
     void GroupProfile::updateCloseIcon()
     {
         const auto headerIconSize = QSize(ICON_SIZE, ICON_SIZE);
@@ -516,6 +620,7 @@ namespace Ui
         auto isPinned = Logic::getRecentsModel()->isFavorite(currentAimId_);
         pin_->setIcon(Utils::renderSvgScaled(isPinned ? qsl(":/unpin_chat_icon") : qsl(":/pin_chat_icon"), QSize(ICON_SIZE, ICON_SIZE), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY)));
         pin_->setText(isPinned ? QT_TRANSLATE_NOOP("sidebar", "Unpin") : QT_TRANSLATE_NOOP("sidebar", "Pin"));
+        pin_->setVisible(!Logic::getRecentsModel()->isUnimportant(currentAimId_));
     }
 
     void GroupProfile::loadChatInfo()
@@ -523,9 +628,14 @@ namespace Ui
         Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
         collection.set_value_as_qstring("aimid", currentAimId_);
 
-        const auto stamp = Logic::getContactListModel()->getChatStamp(currentAimId_);
-        if (!stamp.isEmpty())
-            collection.set_value_as_qstring("stamp", stamp);
+        if (currentAimId_.isEmpty() || Logic::getContactListModel()->youAreNotAMember(currentAimId_))
+        {
+            const auto stamp = Logic::getContactListModel()->getChatStamp(currentAimId_);
+            if (!stamp.isEmpty())
+                collection.set_value_as_qstring("stamp", stamp);
+            else
+                return;
+        }
 
         collection.set_value_as_int("limit", SHORT_MEMBERS_COUNT);
         Ui::GetDispatcher()->post_message_to_core("chats/info/get", collection.get());
@@ -546,8 +656,23 @@ namespace Ui
             break;
 
         case settings:
-            titleBar_->setTitle(QT_TRANSLATE_NOOP("sidebar", "Chat settings"));
+            titleBar_->setTitle(isChannel(chatInfo_) ? QT_TRANSLATE_NOOP("sidebar", "Channel settings") : QT_TRANSLATE_NOOP("sidebar", "Group settings"));
             titleBar_->setArrowVisible(false);
+            editGroupLinkWidget_->setVisible(chatInfo_ && chatInfo_->Public_);
+            if (chatInfo_)
+                editGroupLinkWidget_->setNick(chatInfo_->Stamp_);
+            editGroupLinkWidget_->clearHint();
+            aboutLinkToChatBlock_->setVisible(chatInfo_ && !chatInfo_->Public_);
+
+            public_->blockSignals(true);
+            public_->setChecked(chatInfo_->Public_);
+            public_->blockSignals(false);
+
+            joinModeration_->blockSignals(true);
+            joinModeration_->setChecked(chatInfo_->ApprovedJoin_);
+            joinModeration_->blockSignals(false);
+
+            applyChatSettings_->setEnabled(false);
             break;
 
         case list:
@@ -560,20 +685,16 @@ namespace Ui
         }
 
         stackedWidget_->setCurrentIndex(_tab);
+        searchWidget_->setNeedClear(_tab != list);
         searchWidget_->searchCompleted();
 
         updateCloseIcon();
         updateRegim();
 
         if (_tab == main)
-        {
-            const auto admin = isYouAdmin(chatInfo_);
-            editButton_->setVisible(admin || !isChatControlled(chatInfo_));
-        }
+            editButton_->setVisible(isYouAdminOrModer(chatInfo_) || !isChatControlled(chatInfo_));
         else
-        {
             editButton_->setVisible(false);
-        }
     }
 
     void GroupProfile::changeGalleryPage(int _page)
@@ -640,7 +761,7 @@ namespace Ui
             }
         }
 
-        delegate_->setRegim(isYouAdminOrModer(chatInfo_) ? Logic::MembersWidgetRegim::ADMIN_MEMBERS : (isChatControlled(chatInfo_) ? Logic::MembersWidgetRegim::CONTACT_LIST : Logic::MembersWidgetRegim::MEMBERS_LIST));
+        delegate_->setRegim(isYouAdminOrModer(chatInfo_) ? Logic::MembersWidgetRegim::ADMIN_MEMBERS : Logic::MembersWidgetRegim::CONTACT_LIST);
     }
 
     void GroupProfile::updateChatControls()
@@ -648,7 +769,9 @@ namespace Ui
         if (!chatInfo_)
             return;
 
+        const auto chatInCL = Logic::getContactListModel()->contains(currentAimId_);
         const auto isIgnored = Logic::getIgnoreModel()->contains(currentAimId_);
+        const auto isUnimportant = Logic::getRecentsModel()->isUnimportant(currentAimId_);
         const auto youBlocked = chatInfo_->YouBlocked_;
         const auto youPending = chatInfo_->YouPending_;
         const auto youNotMember = chatInfo_->YourRole_.isEmpty();
@@ -679,10 +802,17 @@ namespace Ui
         }
         else if (youNotMember)
         {
-            mainAction_ = join;
-            mainActionButton_->setIcon(makeIcon(qsl(":/input/add")));
-            mainActionButton_->setText(chatIsChannel ? QT_TRANSLATE_NOOP("sidebar", "Subscribe") : QT_TRANSLATE_NOOP("sidebar", "Join"));
-            mainActionButton_->show();
+            if (!chatInfo_->Stamp_.isEmpty())
+            {
+                mainAction_ = join;
+                mainActionButton_->setIcon(makeIcon(qsl(":/input/add")));
+                mainActionButton_->setText(chatIsChannel ? QT_TRANSLATE_NOOP("sidebar", "Subscribe") : QT_TRANSLATE_NOOP("sidebar", "Join"));
+                mainActionButton_->show();
+            }
+            else
+            {
+                mainActionButton_->hide();
+            }
         }
         else
         {
@@ -692,26 +822,42 @@ namespace Ui
             mainActionButton_->setVisible(frameCountMode_ == FrameCountMode::_1);
         }
 
-        if (chatInfo_)
+        link_->setVisible(chatInfo_->Public_ || isYouAdminOrModer(chatInfo_));
+        if (link_->isVisible())
         {
-            link_->setVisible(!youBlocked && chatInfo_->Live_);
-            share_->setVisible(!youBlocked && chatInfo_->Live_);
+            link_->text_->clearMenuActions();
+            if (chatIsChannel)
+            {
+                link_->text_->addMenuAction(qsl(":/context_menu/forward"), QT_TRANSLATE_NOOP("context_menu", "Share channel link"), makeCopyData(qsl("share")));
+                link_->text_->addMenuAction(qsl(":/context_menu/copy"), QT_TRANSLATE_NOOP("context_menu", "Copy channel link"), makeCopyData(qsl("copy_link")));
+            }
+            else
+            {
+                link_->text_->addMenuAction(qsl(":/context_menu/forward"), QT_TRANSLATE_NOOP("context_menu", "Share group link"), makeCopyData(qsl("share")));
+                link_->text_->addMenuAction(qsl(":/context_menu/copy"), QT_TRANSLATE_NOOP("context_menu", "Copy group link"), makeCopyData(qsl("copy_link")));
+            }
         }
-        notifications_->setVisible(!isIgnored);
-        secondSpacer_->setVisible(!youPending && !youNotMember);
+
+        share_->setVisible(chatInfo_->Public_ || isYouAdminOrModer(chatInfo_));
+        notifications_->setVisible(chatInCL || (!isIgnored && !youNotMember));
+        settings_->setVisible(isYouAdminOrModer(chatInfo_));
+        secondSpacer_->setVisible(share_->isVisible() || notifications_->isVisible() || settings_->isVisible());
         galleryWidget_->setVisible(!galleryIsEmpty_ && !youPending && !youNotMember);
-        thirdSpacer_->setVisible(!galleryIsEmpty_ && !youPending && !youNotMember);
+        thirdSpacer_->setVisible(galleryWidget_->isVisible());
         membersWidget_->setVisible(justAMember && (!chatIsChannel || isYouAdminOrModer(chatInfo_)));
         about_->setHeaderText(chatIsChannel ? QT_TRANSLATE_NOOP("siderbar", "About the channel") : QT_TRANSLATE_NOOP("siderbar", "About the group"));
+        about_->setVisible(!chatInfo_->About_.isEmpty());
+        rules_->setVisible(!chatInfo_->Rules_.isEmpty());
         fourthSpacer_->setVisible(justAMember && (!chatIsChannel || isYouAdminOrModer(chatInfo_)));
-        pin_->setVisible(!youPending && !youNotMember);
-        theme_->setVisible(!youPending && !youNotMember);
-        fifthSpacer_->setVisible(!youPending && !youNotMember);
-        clearHistory_->setVisible(!youPending && !youNotMember);
-        block_->setVisible(youBlocked || justAMember);
-        report_->setVisible(youBlocked || justAMember);
-        leave_->setVisible(youBlocked || justAMember);
+        pin_->setVisible(!youPending && !youNotMember && !isUnimportant);
+        theme_->setVisible(chatInCL || (!youPending && !youNotMember));
+        fifthSpacer_->setVisible(chatInCL || (!youPending && !youNotMember));
+        clearHistory_->setVisible(chatInCL || (!youPending && !youNotMember));
+        block_->setVisible(chatInCL || youBlocked || justAMember);
+        report_->setVisible(chatInCL || youBlocked || justAMember);
+        leave_->setVisible(chatInCL || youBlocked || justAMember);
         infoSpacer_->setVisible(mainActionButton_->isVisible() || about_->isVisible() || link_->isVisible());
+        editButton_->setVisible(stackedWidget_->currentIndex() == main && (isYouAdminOrModer(chatInfo_) || !isChatControlled(chatInfo_)));
     }
 
     void GroupProfile::blockUser(const QString& aimId, ActionType _action)
@@ -720,12 +866,25 @@ namespace Ui
         if (!model->contains(aimId))
             return;
 
-        const auto confirmed = Utils::GetConfirmationWithTwoButtons(
-            QT_TRANSLATE_NOOP("popup_window", "CANCEL"),
-            QT_TRANSLATE_NOOP("popup_window", "YES"),
-            _action == ActionType::POSITIVE ? QT_TRANSLATE_NOOP("popup_window", "Are you sure you want to block user in this chat?") : QT_TRANSLATE_NOOP("popup_window", "Are you sure you want to unblock user?"),
-            Logic::GetFriendlyContainer()->getFriendly(aimId),
-            nullptr);
+        bool confirmed = false, removeMessages = false;
+        if (_action == ActionType::POSITIVE)
+        {
+            auto w = new Ui::BlockAndDeleteWidget(nullptr, Logic::GetFriendlyContainer()->getFriendly(aimId), currentAimId_);
+            GeneralDialog generalDialog(w, Utils::InterConnector::instance().getMainWindow());
+            generalDialog.addLabel(QT_TRANSLATE_NOOP("block_and_delete", "Block and delete?"));
+            generalDialog.addButtonsPair(QT_TRANSLATE_NOOP("block_and_delete", "Cancel"), QT_TRANSLATE_NOOP("block_and_delete", "Yes"), true);
+            confirmed = generalDialog.showInCenter();
+            removeMessages = w->needToRemoveMessages();
+        }
+        else
+        {
+            confirmed = Utils::GetConfirmationWithTwoButtons(
+                QT_TRANSLATE_NOOP("popup_window", "Cancel"),
+                QT_TRANSLATE_NOOP("popup_window", "Yes"),
+                QT_TRANSLATE_NOOP("popup_window", "Are you sure you want to unblock user?"),
+                Logic::GetFriendlyContainer()->getFriendly(aimId),
+                nullptr);
+        }
 
         if (confirmed)
         {
@@ -733,15 +892,16 @@ namespace Ui
             collection.set_value_as_qstring("aimid", currentAimId_);
             collection.set_value_as_qstring("contact", aimId);
             collection.set_value_as_bool("block", _action == ActionType::POSITIVE);
+            collection.set_value_as_bool("remove_messages", removeMessages);
             Ui::GetDispatcher()->post_message_to_core("chats/block", collection.get());
+        }
 
-            if (_action == ActionType::NEGATIVE)
-            {
-                if (chatInfo_ && chatInfo_->BlockedCount_ == 1)
-                    changeTab(main);
+        if (_action == ActionType::NEGATIVE)
+        {
+            if (chatInfo_ && chatInfo_->BlockedCount_ == 1)
+                changeTab(main);
 
-                model->loadBlocked();
-            }
+            model->loadBlocked();
         }
     }
 
@@ -752,8 +912,8 @@ namespace Ui
             return;
 
         const auto confirmed = Utils::GetConfirmationWithTwoButtons(
-            QT_TRANSLATE_NOOP("popup_window", "CANCEL"),
-            QT_TRANSLATE_NOOP("popup_window", "YES"),
+            QT_TRANSLATE_NOOP("popup_window", "Cancel"),
+            QT_TRANSLATE_NOOP("popup_window", "Yes"),
             _action == ActionType::POSITIVE ? QT_TRANSLATE_NOOP("popup_window", "Are you sure you want to ban user to write in this chat?") : QT_TRANSLATE_NOOP("popup_window", "Are you sure you want to allow user to write in this chat?"),
             Logic::GetFriendlyContainer()->getFriendly(_aimId),
             nullptr);
@@ -775,8 +935,8 @@ namespace Ui
             return;
 
         const auto confirmed = Utils::GetConfirmationWithTwoButtons(
-            QT_TRANSLATE_NOOP("popup_window", "CANCEL"),
-            QT_TRANSLATE_NOOP("popup_window", "YES"),
+            QT_TRANSLATE_NOOP("popup_window", "Cancel"),
+            QT_TRANSLATE_NOOP("popup_window", "Yes"),
             _action == ActionType::POSITIVE ? QT_TRANSLATE_NOOP("popup_window", "Are you sure you want to make user admin in this chat?") : QT_TRANSLATE_NOOP("popup_window", "Are you sure you want to revoke admin role?"),
             Logic::GetFriendlyContainer()->getFriendly(aimId),
             nullptr);
@@ -786,14 +946,14 @@ namespace Ui
             Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
             collection.set_value_as_qstring("aimid", currentAimId_);
             collection.set_value_as_qstring("contact", aimId);
-            collection.set_value_as_qstring("role", _action == ActionType::POSITIVE ? qsl("moder") : qsl("member"));
+            collection.set_value_as_qstring("role", _action == ActionType::POSITIVE ? qsl("moder") : (isChannel(chatInfo_) ? qsl("readonly") : qsl("member")));
             Ui::GetDispatcher()->post_message_to_core("chats/role/set", collection.get());
         }
     }
 
     void GroupProfile::chatInfo(qint64, const std::shared_ptr<Data::ChatInfo>& _chat_info, const int _requestMembersLimit)
     {
-        if (_chat_info->AimId_ != currentAimId_)
+        if (!isActive() || _chat_info->AimId_ != currentAimId_)
             return;
 
         if (!chatInfo_ || chatInfo_->AimId_ != _chat_info->AimId_ || chatInfo_->MembersCount_ != _chat_info->MembersCount_ || forceMembersRefresh_)
@@ -804,6 +964,7 @@ namespace Ui
         }
 
         chatInfo_ = _chat_info;
+        initTexts();
 
         info_->setInfo(QString::number(_chat_info->MembersCount_) % ql1c(' ') %
             Utils::GetTranslator()->getNumberString(_chat_info->MembersCount_,
@@ -815,47 +976,25 @@ namespace Ui
 
         addToChat_->setText(isChannel(_chat_info) ? QT_TRANSLATE_NOOP("sidebar", "Add to channel") : QT_TRANSLATE_NOOP("sidebar", "Add to chat"));
 
-        if (_chat_info->About_.isEmpty())
-        {
-            about_->hide();
-        }
-        else
-        {
+        if (!_chat_info->About_.isEmpty())
             about_->setText(_chat_info->About_);
-            about_->show();
-        }
 
-        if (_chat_info->Rules_.isEmpty())
-        {
-            rules_->hide();
-        }
-        else
-        {
+        if (!_chat_info->Rules_.isEmpty())
             rules_->setText(_chat_info->Rules_);
-            rules_->show();
-        }
 
-        if (!_chat_info->Live_)
-        {
-            link_->hide();
-        }
-        else
-        {
-            link_->setText(Utils::getDomainUrl() % ql1c('/') % _chat_info->Stamp_, Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY));
-            link_->show();
-        }
+        link_->setText(Utils::getDomainUrl() % ql1c('/') % _chat_info->Stamp_, Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY));
+        link_->setVisible(chatInfo_->Public_ || isYouAdminOrModer(chatInfo_));
 
         infoSpacer_->setVisible(mainActionButton_->isVisible() || about_->isVisible() || link_->isVisible());
-        share_->setVisible(_chat_info->Live_);
+        share_->setVisible(chatInfo_->Public_ || isYouAdminOrModer(chatInfo_));
 
         members_->setMembersCount(_chat_info->MembersCount_);
         allMembers_->setCounter(_chat_info->MembersCount_);
         approveAll_->setCounter(_chat_info->PendingCount_, false);
 
-        const auto admin = isYouAdmin(_chat_info);
-        settings_->setVisible(admin);
+        settings_->setVisible(isYouAdminOrModer(chatInfo_));
         if (stackedWidget_->currentIndex() == main)
-            editButton_->setVisible(admin || !isChatControlled(_chat_info));
+            editButton_->setVisible(isYouAdminOrModer(chatInfo_) || !isChatControlled(_chat_info));
         else
             editButton_->hide();
 
@@ -887,18 +1026,49 @@ namespace Ui
         };
 
         setCheckedBlocking(public_, _chat_info->Public_);
-        setCheckedBlocking(linkToChat_, _chat_info->Live_);
         setCheckedBlocking(joinModeration_, _chat_info->ApprovedJoin_);
 
-        public_->setEnabled(_chat_info->Live_);
+        aboutLinkToChat_->setText(Utils::getDomainUrl() % ql1c('/') % chatInfo_->Stamp_);
+        editGroupLinkWidget_->setNick(chatInfo_->Stamp_);
+
+        editGroupLinkWidget_->setVisible(chatInfo_->Public_);
+        editGroupLinkWidget_->clearHint();
+        aboutLinkToChatBlock_->setVisible(!chatInfo_->Public_);
+
+        checkApplyButton();
 
         updateRegim();
         updateChatControls();
     }
 
+    void GroupProfile::chatInfoFailed(qint64 _seq, core::group_chat_info_errors _errorCode, const QString& _aimId)
+    {
+        if (!isActive() || _aimId != currentAimId_)
+            return;
+
+        if (_errorCode == core::group_chat_info_errors::not_in_chat || _errorCode == core::group_chat_info_errors::blocked)
+        {
+            if (chatInfo_)
+            {
+                chatInfo_->YourRole_.clear();
+            }
+            else
+            {
+                chatInfo_ = std::make_shared<Data::ChatInfo>();
+                chatInfo_->Controlled_ = true;
+            }
+
+            info_->setInfo(QT_TRANSLATE_NOOP("groupchats", "You are not a member of this chat"));
+
+            if (_errorCode == core::group_chat_info_errors::blocked)
+                chatInfo_->YouBlocked_ = true;
+            updateChatControls();
+        }
+    }
+
     void GroupProfile::dialogGalleryState(const QString& _aimId, const Data::DialogGalleryState& _state)
     {
-        if (_aimId != currentAimId_)
+        if (!isActive() || _aimId != currentAimId_)
             return;
 
         galleryIsEmpty_ = _state.isEmpty();
@@ -950,10 +1120,32 @@ namespace Ui
 
     void GroupProfile::favoriteChanged(const QString _aimid)
     {
-        if (_aimid != currentAimId_)
+        if (!isActive() || _aimid != currentAimId_)
             return;
 
         updatePinButton();
+    }
+
+    void GroupProfile::unimportantChanged(const QString _aimid)
+    {
+        if (!isActive() || _aimid != currentAimId_)
+            return;
+
+        updatePinButton();
+    }
+
+    void GroupProfile::modChatParamsResult(int _error)
+    {
+        applyChatSettings_->setEnabled(_error != 0);
+    }
+
+    void GroupProfile::suggestGroupNickResult(const QString& _nick)
+    {
+        auto nick = _nick.isEmpty() ? chatInfo_->Stamp_ : _nick;
+        aboutLinkToChat_->setText(Utils::getDomainUrl() % ql1c('/') % nick);
+        editGroupLinkWidget_->setNick(nick);
+
+        checkApplyButton();
     }
 
     void GroupProfile::share()
@@ -984,6 +1176,7 @@ namespace Ui
 
     void GroupProfile::settingsClicked()
     {
+        checkApplyButton();
         changeTab(settings);
         GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::profilescr_settings_event, { { "chat_type", Utils::chatTypeByAimId(currentAimId_) } });
     }
@@ -1035,14 +1228,14 @@ namespace Ui
 
     void GroupProfile::addToChatClicked()
     {
-        auto membersModel = new Logic::ChatContactsModel(this);
-        membersModel->loadChatContacts(currentAimId_);
+        Logic::ChatContactsModel membersModel;
+        membersModel.loadChatContacts(currentAimId_);
 
-        SelectContactsWidget select_members_dialog(membersModel, Logic::MembersWidgetRegim::SELECT_MEMBERS,
+        SelectContactsWidget selectMembersDialog(&membersModel, Logic::MembersWidgetRegim::SELECT_MEMBERS,
                 isChannel(chatInfo_) ? QT_TRANSLATE_NOOP("sidebar", "Add to channel") : QT_TRANSLATE_NOOP("sidebar", "Add to chat"),
-                QT_TRANSLATE_NOOP("popup_window", "DONE"), this);
+                QT_TRANSLATE_NOOP("popup_window", "Done"), this);
 
-        if (select_members_dialog.show() == QDialog::Accepted)
+        if (selectMembersDialog.show() == QDialog::Accepted)
         {
             GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::adtochatscr_adding_action, { { "counter", Utils::averageCount(Logic::getContactListModel()->GetCheckedContacts().size()) }, {"from", "profile" } });
             postAddChatMembersFromCLModelToCore(currentAimId_);
@@ -1117,9 +1310,9 @@ namespace Ui
         closeGallery();
 
         const auto confirmed = Utils::GetConfirmationWithTwoButtons(
-            QT_TRANSLATE_NOOP("popup_window", "CANCEL"),
-            QT_TRANSLATE_NOOP("popup_window", "YES"),
-            QT_TRANSLATE_NOOP("popup_window", "Are you sure you want to erase chat history?"),
+            QT_TRANSLATE_NOOP("popup_window", "Cancel"),
+            QT_TRANSLATE_NOOP("popup_window", "Yes"),
+            isChannel(chatInfo_) ? QT_TRANSLATE_NOOP("popup_window", "Are you sure you want to clear the channel history?") : QT_TRANSLATE_NOOP("popup_window", "Are you sure you want to erase chat history?"),
             Logic::GetFriendlyContainer()->getFriendly(currentAimId_),
             nullptr);
 
@@ -1159,9 +1352,9 @@ namespace Ui
         closeGallery();
 
         auto confirmed = Utils::GetConfirmationWithTwoButtons(
-            QT_TRANSLATE_NOOP("popup_window", "CANCEL"),
-            QT_TRANSLATE_NOOP("popup_window", "YES"),
-            QT_TRANSLATE_NOOP("popup_window", "Are you sure you want to leave chat?"),
+            QT_TRANSLATE_NOOP("popup_window", "Cancel"),
+            QT_TRANSLATE_NOOP("popup_window", "Yes"),
+            isChannel(chatInfo_) ? QT_TRANSLATE_NOOP("popup_window", "Are you sure you want to leave channel?") : QT_TRANSLATE_NOOP("popup_window", "Are you sure you want to leave chat?"),
             Logic::GetFriendlyContainer()->getFriendly(currentAimId_),
             nullptr);
 
@@ -1183,7 +1376,16 @@ namespace Ui
         Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::profilescr_groupurl_action, { { "chat_type", Utils::chatTypeByAimId(currentAimId_) }, { "do", "copy_url" } });
     }
 
-    void GroupProfile::linkCopy(const QString&)
+    void GroupProfile::aboutLinkClicked()
+    {
+        if (applyChatSettings_->isEnabled())
+            return;
+
+        copy(ql1s("https://") % aboutLinkToChat_->text_->getText());
+        Utils::showToastOverMainWindow(QT_TRANSLATE_NOOP("sidebar", "Link copied"), Utils::scale_value(TOAST_OFFSET));
+    }
+
+    void GroupProfile::linkCopy()
     {
         if (!chatInfo_)
             return;
@@ -1213,8 +1415,8 @@ namespace Ui
         else if (mainAction_ == unblock)
         {
             const auto confirmed = Utils::GetConfirmationWithTwoButtons(
-                QT_TRANSLATE_NOOP("popup_window", "CANCEL"),
-                QT_TRANSLATE_NOOP("popup_window", "YES"),
+                QT_TRANSLATE_NOOP("popup_window", "Cancel"),
+                QT_TRANSLATE_NOOP("popup_window", "Yes"),
                 QT_TRANSLATE_NOOP("popup_window", "Are you sure you want to delete user from ignore list?"),
                 Logic::GetFriendlyContainer()->getFriendly(currentAimId_),
                 nullptr);
@@ -1226,6 +1428,33 @@ namespace Ui
         }
     }
 
+    void GroupProfile::makeNewLink()
+    {
+        if (!chatInfo_)
+            return;
+
+        if (Utils::getDomainUrl() % ql1c('/') % chatInfo_->Stamp_ == aboutLinkToChat_->text_->getText())
+        {
+            const QString text = isChannel(chatInfo_) ? QT_TRANSLATE_NOOP("popup_window", "If you generate a new link to the channel the old one will stop working") : QT_TRANSLATE_NOOP("popup_window", "If you generate a new link to the group the old one will stop working");
+            auto confirm = Utils::GetConfirmationWithTwoButtons(
+                QT_TRANSLATE_NOOP("popup_window", "Cancel"),
+                QT_TRANSLATE_NOOP("popup_window", "Generate"),
+                text,
+                QT_TRANSLATE_NOOP("popup_window", "The old link will stop working"),
+                nullptr);
+
+            if (!confirm)
+            {
+                return;
+            }
+        }
+
+        Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
+        collection.set_value_as_qstring("sn", currentAimId_);
+        collection.set_value_as_bool("public", public_->isChecked());
+        Ui::GetDispatcher()->post_message_to_core("suggest_group_nick", collection.get());
+    }
+
     void GroupProfile::contactSelected(const QString& _aimid)
     {
         Utils::InterConnector::instance().showSidebar(_aimid);
@@ -1235,77 +1464,72 @@ namespace Ui
 
     void GroupProfile::contactRemoved(const QString& _aimid)
     {
-        if (stackedWidget_->currentIndex() == list && currentListPage_ == blocked)
-            return blockUser(_aimid, ActionType::NEGATIVE);
-
-        deleteMemberDialog(stackedWidget_->currentIndex() == list ? listChatModel_ : shortChatModel_, currentAimId_, _aimid, Logic::MEMBERS_LIST, this);
+        blockUser(_aimid, stackedWidget_->currentIndex() == list && currentListPage_ == blocked ? ActionType::NEGATIVE : ActionType::POSITIVE);
     }
 
     void GroupProfile::contactMenuRequested(const QString& _aimid)
     {
         auto menu = new ContextMenu(this);
-
         auto model = stackedWidget_->currentIndex() == list ? listChatModel_ : shortChatModel_;
         if (model->contains(_aimid))
         {
-            bool myInfo = MyInfo()->aimId() == _aimid;
-            const auto role = model->getMemberItem(_aimid)->getRole();
-            if (role != ql1s("admin") && isYouAdmin(chatInfo_))
+            if (MyInfo()->aimId() == _aimid)
             {
-                if (role == ql1s("moder"))
-                    menu->addActionWithIcon(
+                menu->addActionWithIcon(
+                    qsl(":/exit_icon"),
+                    QT_TRANSLATE_NOOP("sidebar", "Leave and delete"),
+                    makeData(qsl("leave"), _aimid));
+            }
+            else
+            {
+                const auto role = model->getMemberItem(_aimid)->getRole();
+                if (role != ql1s("admin") && isYouAdmin(chatInfo_))
+                {
+                    if (role == ql1s("moder"))
+                        menu->addActionWithIcon(
                             qsl(":/context_menu/admin_off"),
                             QT_TRANSLATE_NOOP("sidebar", "Revoke admin role"),
                             makeData(qsl("revoke_admin"), _aimid));
-                else
-                    menu->addActionWithIcon(
+                    else
+                        menu->addActionWithIcon(
                             qsl(":/context_menu/admin"),
                             QT_TRANSLATE_NOOP("sidebar", "Assign admin role"),
                             makeData(qsl("make_admin"), _aimid));
-            }
+                }
 
-            if (!myInfo)
                 menu->addActionWithIcon(
-                        qsl(":/context_menu/profile"),
-                        QT_TRANSLATE_NOOP("sidebar", "Profile"),
-                        makeData(qsl("profile"), _aimid));
+                    qsl(":/context_menu/profile"),
+                    QT_TRANSLATE_NOOP("sidebar", "Profile"),
+                    makeData(qsl("profile"), _aimid));
 
-            if (isYouAdminOrModer(chatInfo_))
-            {
-                if (role == ql1s("member"))
-                    menu->addActionWithIcon(
+                if (isYouAdminOrModer(chatInfo_))
+                {
+                    if (role == ql1s("member"))
+                        menu->addActionWithIcon(
                             qsl(":/context_menu/readonly"),
                             QT_TRANSLATE_NOOP("sidebar", "Ban to write"),
                             makeData(qsl("readonly"), _aimid));
-                else if (role == ql1s("readonly"))
-                    menu->addActionWithIcon(
+                    else if (role == ql1s("readonly"))
+                        menu->addActionWithIcon(
                             qsl(":/context_menu/readonly_off"),
                             QT_TRANSLATE_NOOP("sidebar", "Allow to write"),
                             makeData(qsl("revoke_readonly"), _aimid));
-            }
+                }
 
-            if (role != ql1s("admin") && role != ql1s("moder"))
-                menu->addActionWithIcon(
+                if (role != ql1s("admin") && role != ql1s("moder"))
+                    menu->addActionWithIcon(
                         qsl(":/context_menu/block"),
-                        QT_TRANSLATE_NOOP("sidebar", "Block"),
+                        QT_TRANSLATE_NOOP("sidebar", "Block and delete"),
                         makeData(qsl("block"), _aimid));
 
-            if (myInfo || (role != ql1s("admin") && role != ql1s("moder")))
-            {
-                menu->addSeparator();
-                menu->addActionWithIcon(
-                        qsl(":/context_menu/delete"),
-                        QT_TRANSLATE_NOOP("sidebar", "Remove from chat"),
-                        makeData(qsl("remove"), _aimid));
-            }
-
-            if (!myInfo)
-            {
-                menu->addSeparator();
-                menu->addActionWithIcon(
+                if (Features::clRemoveContactsAllowed())
+                {
+                    menu->addSeparator();
+                    menu->addActionWithIcon(
                         qsl(":/context_menu/spam"),
                         QT_TRANSLATE_NOOP("sidebar", "Report"),
                         makeData(qsl("spam"), _aimid));
+                }
             }
         }
         menu->invertRight(true);
@@ -1328,33 +1552,6 @@ namespace Ui
 
         if (chatInfo_ && chatInfo_->PendingCount_ == 1)
             changeTab(main);
-    }
-
-    void GroupProfile::linkToChatChecked(bool _checked)
-    {
-        Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
-        collection.set_value_as_qstring("aimid", currentAimId_);
-        collection.set_value_as_bool("link", _checked);
-        Ui::GetDispatcher()->post_message_to_core("chats/mod/link", collection.get());
-        Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::groupsettingsscr_action, { { _checked ? "turn_on" : "turn_off", "link" } });
-    }
-
-    void GroupProfile::publicChecked(bool _checked)
-    {
-        Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
-        collection.set_value_as_qstring("aimid", currentAimId_);
-        collection.set_value_as_bool("public", _checked);
-        Ui::GetDispatcher()->post_message_to_core("chats/mod/public", collection.get());
-        Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::groupsettingsscr_action, { { _checked ? "turn_on" : "turn_off", "public" } });
-    }
-
-    void GroupProfile::joinModerationChecked(bool _checked)
-    {
-        Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
-        collection.set_value_as_qstring("aimid", currentAimId_);
-        collection.set_value_as_bool("approved", _checked);
-        Ui::GetDispatcher()->post_message_to_core("chats/mod/join", collection.get());
-        Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::groupsettingsscr_action, { { _checked ? "turn_on" : "turn_off", "approval" } });
     }
 
     void GroupProfile::closeClicked()
@@ -1381,17 +1578,10 @@ namespace Ui
         auto avatar = editGroup(currentAimId_, name, desription, rules);
         if (name != chatInfo_->Name_)
         {
-            if (Logic::getContactListModel()->isLiveChat(currentAimId_))
-            {
-                Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
-                collection.set_value_as_qstring("aimid", currentAimId_);
-                collection.set_value_as_qstring("name", name);
-                Ui::GetDispatcher()->post_message_to_core("chats/mod/name", collection.get());
-            }
-            else
-            {
-                Logic::getContactListModel()->renameChat(currentAimId_, name);
-            }
+            Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
+            collection.set_value_as_qstring("aimid", currentAimId_);
+            collection.set_value_as_qstring("name", name);
+            Ui::GetDispatcher()->post_message_to_core("chats/mod/name", collection.get());
         }
 
         if (desription != chatInfo_->About_)
@@ -1454,11 +1644,7 @@ namespace Ui
         const auto command = params[qsl("command")].toString();
         const auto aimId = params[qsl("aimid")].toString();
 
-        if (command == ql1s("remove"))
-        {
-            deleteMemberDialog(stackedWidget_->currentIndex() == list ? listChatModel_ : shortChatModel_, currentAimId_, aimId, Logic::MEMBERS_LIST, this);
-        }
-        else if (command == ql1s("profile"))
+        if (command == ql1s("profile"))
         {
             Utils::InterConnector::instance().showSidebar(aimId);
         }
@@ -1491,13 +1677,16 @@ namespace Ui
         {
             changeRole(aimId, ActionType::NEGATIVE);
         }
+        else if (command == ql1s("leave"))
+        {
+            leaveClicked();
+        }
     }
 
     void GroupProfile::menuAction(QAction* action)
     {
         const auto params = action->data().toMap();
         const auto command = params[qsl("command")].toString();
-        const auto text = params[qsl("text")].toString();
 
         if (command == ql1s("share"))
         {
@@ -1505,17 +1694,21 @@ namespace Ui
         }
         else if (command == ql1s("copy_link"))
         {
-            if (chatInfo_)
-                copy(ql1s("https://") % Utils::getDomainUrl() % ql1c('/') % chatInfo_->Stamp_);
+            linkCopy();
         }
         else if (command == ql1s("copy"))
         {
+            const auto text = params[qsl("text")].toString();
             copy(text);
+            Utils::showToastOverMainWindow(QT_TRANSLATE_NOOP("toast", "Copied to clipboard"), Utils::scale_value(TOAST_OFFSET));
         }
     }
 
     void GroupProfile::memberActionResult(int)
     {
+        if (!isActive())
+            return;
+
         if (stackedWidget_->currentIndex() == list)
         {
             switch (currentListPage_)
@@ -1542,7 +1735,7 @@ namespace Ui
 
     void GroupProfile::chatEvents(const QString& _aimid)
     {
-        if (currentAimId_ != _aimid)
+        if (!isActive() || currentAimId_ != _aimid)
             return;
 
         memberActionResult(0);
@@ -1550,7 +1743,7 @@ namespace Ui
 
     void GroupProfile::onContactChanged(const QString& _aimid)
     {
-        if (currentAimId_ != _aimid)
+        if (!isActive() || currentAimId_ != _aimid)
             return;
 
         updateMuteState();
@@ -1564,6 +1757,7 @@ namespace Ui
 
     void GroupProfile::avatarClicked()
     {
+        GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::profilescr_avatar_click, { { "chat_type", Utils::chatTypeByAimId(currentAimId_) } });
         Utils::InterConnector::instance().getMainWindow()->openAvatar(currentAimId_);
     }
 
@@ -1571,5 +1765,146 @@ namespace Ui
     {
         galleryPopup_->move(mapToGlobal(QPoint(Utils::scale_value(POPUP_HOR_OFFSET), Utils::scale_value(POPUP_VER_OFFSET))));
         galleryPopup_->show();
+    }
+
+    void GroupProfile::applyChatSettings()
+    {
+        if (!chatInfo_)
+            return;
+
+        bool somethingChanged = false;
+
+        Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
+        collection.set_value_as_qstring("aimid", currentAimId_);
+        if (public_->isChecked() != chatInfo_->Public_)
+        {
+            collection.set_value_as_bool("public", public_->isChecked());
+            somethingChanged = true;
+        }
+
+        if (chatInfo_->Stamp_ != editGroupLinkWidget_->getNick() && !invalidNick_)
+        {
+            auto nick = editGroupLinkWidget_->getNick();
+            collection.set_value_as_qstring("stamp", nick);
+            somethingChanged = true;
+
+            aboutLinkToChat_->setText(Utils::getDomainUrl() % ql1c('/') % nick);
+
+            GetDispatcher()->post_stats_to_core(public_->isChecked() ? core::stats::stats_event_names::profilescr_groupname_action : core::stats::stats_event_names::profilescr_newgroupurl_action, { { "chat_type", Utils::chatTypeByAimId(currentAimId_) } });
+        }
+
+        if (joinModeration_->isChecked() != chatInfo_->ApprovedJoin_)
+        {
+            collection.set_value_as_bool("approved", joinModeration_->isChecked());
+            somethingChanged = true;
+        }
+
+        if (somethingChanged)
+            Ui::GetDispatcher()->post_message_to_core("chats/mod/params", collection.get());
+
+        Utils::InterConnector::instance().setFocusOnInput();
+
+        editGroupLinkWidget_->clearHint();
+    }
+
+    void GroupProfile::checkApplyButton()
+    {
+        if (!chatInfo_)
+            return;
+
+        editGroupLinkWidget_->setVisible(public_->isChecked());
+        aboutLinkToChatBlock_->setVisible(!public_->isChecked());
+
+        if (invalidNick_)
+        {
+            aboutLinkToChat_->setTextLinkColor(Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY));
+            aboutLinkToChat_->text_->setCursorForText();
+            applyChatSettings_->setEnabled(false);
+            return;
+        }
+
+        if (public_->isChecked() != chatInfo_->Public_)
+        {
+            aboutLinkToChat_->setTextLinkColor(Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
+            aboutLinkToChat_->text_->unsetCursorForText();
+            applyChatSettings_->setEnabled(true);
+            return;
+        }
+
+        if (chatInfo_->Stamp_ != editGroupLinkWidget_->getNick())
+        {
+            aboutLinkToChat_->setTextLinkColor(Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
+            aboutLinkToChat_->text_->unsetCursorForText();
+            applyChatSettings_->setEnabled(true);
+            return;
+        }
+
+        if (joinModeration_->isChecked() != chatInfo_->ApprovedJoin_)
+        {
+            aboutLinkToChat_->setTextLinkColor(Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
+            aboutLinkToChat_->text_->unsetCursorForText();
+            applyChatSettings_->setEnabled(true);
+            return;
+        }
+
+        aboutLinkToChat_->setTextLinkColor(Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY));
+        aboutLinkToChat_->text_->setCursorForText();
+        applyChatSettings_->setEnabled(false);
+    }
+
+    void GroupProfile::publicClicked()
+    {
+        if (!chatInfo_)
+            return;
+
+        if (!public_->isChecked())
+        {
+            if (chatInfo_->Public_)
+            {
+                const QString text = QT_TRANSLATE_NOOP("popup_window", "If you change group type to a private link to the group will be changed, and the old one will stop working");
+                auto confirm = Utils::GetConfirmationWithTwoButtons(
+                    QT_TRANSLATE_NOOP("popup_window", "Cancel"),
+                    QT_TRANSLATE_NOOP("popup_window", "Make private"),
+                    text,
+                    QT_TRANSLATE_NOOP("popup_window", "Public link will stop working"),
+                    nullptr);
+
+                if (!confirm)
+                {
+                    QSignalBlocker sb(public_);
+                    public_->setChecked(true);
+                    return;
+                }
+
+                Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
+                collection.set_value_as_qstring("sn", currentAimId_);
+                collection.set_value_as_bool("public", false);
+                Ui::GetDispatcher()->post_message_to_core("suggest_group_nick", collection.get());
+            }
+            else
+            {
+                aboutLinkToChat_->setText(Utils::getDomainUrl() % ql1c('/') % chatInfo_->Stamp_);
+                editGroupLinkWidget_->setNick(chatInfo_->Stamp_);
+            }
+        }
+
+        if (public_->isChecked())
+        {
+            if (chatInfo_ && chatInfo_->Public_)
+            {
+                aboutLinkToChat_->setText(Utils::getDomainUrl() % ql1c('/') % chatInfo_->Stamp_);
+                editGroupLinkWidget_->setNick(chatInfo_->Stamp_);
+            }
+            else
+            {
+                editGroupLinkWidget_->setNick(QString());
+                Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
+                collection.set_value_as_qstring("sn", currentAimId_);
+                collection.set_value_as_bool("public", true);
+                Ui::GetDispatcher()->post_message_to_core("suggest_group_nick", collection.get());
+            }
+        }
+
+        checkApplyButton();
     }
 }

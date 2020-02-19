@@ -228,7 +228,7 @@ void Previewer::ImageLoader::onImageMetaDownloaded(qint64 _seq, const Data::Link
 {
     if (seq_ == _seq)
     {
-        const auto needContent = _meta.getContentType() == ql1s("image");
+        const auto needContent = _meta.getContentTypeStr() == ql1s("image");
         seq_ = Ui::GetDispatcher()->downloadImage(_meta.getDownloadUri(), QString(), false, 0, 0, true, false, needContent);
     }
 }

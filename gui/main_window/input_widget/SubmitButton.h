@@ -15,6 +15,7 @@ namespace Ui
 
     Q_SIGNALS:
         void longTapped(QPrivateSignal);
+        void longPressed(QPrivateSignal);
         void mouseMovePressed(QPrivateSignal);
 
     public:
@@ -43,6 +44,9 @@ namespace Ui
         void mouseMoveEvent(QMouseEvent* _e) override;
         void focusInEvent(QFocusEvent* _event) override;
         void focusOutEvent(QFocusEvent* _event) override;
+        void keyPressEvent(QKeyEvent* _event) override;
+        void keyReleaseEvent(QKeyEvent* _event) override;
+        bool focusNextPrevChild(bool _next) override;
 
         void updateStyleImpl(const InputStyleMode _mode) override;
         void onTooltipTimer() override;
@@ -63,8 +67,10 @@ namespace Ui
 
         QString getStateTooltip() const;
 
+        void setIsUnderLongPress(bool _v);
+
     private:
-        State state_;
+        State state_ = State::Send;
 
         IconStates currentIcon_;
         QPixmap nextIcon_;
@@ -72,9 +78,14 @@ namespace Ui
         anim::Animation anim_;
 
         QTimer longTapTimer_;
-        bool enableCircleHover_;
+        QTimer longPressTimer_;
+        QTimer autoDelayTimer_;
+        bool isWaitingLongPress_ = false;
+        bool isUnderLongPress_ = false;
+
+        bool enableCircleHover_ = false;
         std::unique_ptr<CircleHover> circleHover_;
         QMargins extention_;
-        bool underMouse_;
+        bool underMouse_ = false;
     };
 }

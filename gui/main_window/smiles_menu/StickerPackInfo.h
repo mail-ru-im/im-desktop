@@ -30,7 +30,7 @@ namespace Ui
 
     private Q_SLOTS:
 
-        void onStickerPreview(const int32_t _setId, const QString& _stickerId);
+        void onStickerPreview(const QString& _stickerId);
 
     Q_SIGNALS :
 

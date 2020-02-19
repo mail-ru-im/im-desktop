@@ -11,14 +11,12 @@
 }
 
 @property (retain) NSArray *videoCaptureDevices;
-@property (retain) NSArray *audioDevices;
 
 @end
 
 @implementation CaptureDeviceMonitor
 
 @synthesize videoCaptureDevices = _videoCaptureDevices;
-@synthesize audioDevices = _audioDevices;
 
 - (id)init
 {
@@ -34,7 +32,6 @@
                                                      name:AVCaptureDeviceWasDisconnectedNotification
                                                    object:nil];
         self.videoCaptureDevices = [AVCaptureDevice devicesWithMediaType:AVMediaTypeVideo];
-        self.audioDevices        = [AVCaptureDevice devicesWithMediaType:AVMediaTypeAudio];
     }
     return self;
 }
@@ -45,8 +42,7 @@
     // Remove Observers
     [[NSNotificationCenter defaultCenter] removeObserver:self];
     self.videoCaptureDevices = nil;
-    self.audioDevices = nil;
-    [super dealloc];   
+    [super dealloc];
 }
 
 - (void)setCaptureObserver:(device::DeviceMonitoringCallback *)observer
@@ -56,60 +52,29 @@
 
 - (void)addDevices:(NSNotification *)notification
 {
-    {
-        NSArray *vdevices = [AVCaptureDevice devicesWithMediaType:AVMediaTypeVideo];
-        for (AVCaptureDevice *device in vdevices) {
-            if(NSNotFound == [self.videoCaptureDevices indexOfObject:device])
-            {
-                self.videoCaptureDevices = vdevices;
-                if(_captureObserver) {
-                    _captureObserver->DeviceMonitoringListChanged();
-                }
-                return;
+    NSArray *vdevices = [AVCaptureDevice devicesWithMediaType:AVMediaTypeVideo];
+    for (AVCaptureDevice *device in vdevices) {
+        if(NSNotFound == [self.videoCaptureDevices indexOfObject:device])
+        {
+            self.videoCaptureDevices = vdevices;
+            if(_captureObserver) {
+                _captureObserver->DeviceMonitoringListChanged();
             }
+            return;
         }
     }
-    {
-        NSArray *adevices = [AVCaptureDevice devicesWithMediaType:AVMediaTypeAudio];
-        for (AVCaptureDevice *adevice in adevices) {
-            if(NSNotFound == [self.audioDevices indexOfObject:adevice])
-            {
-                self.audioDevices = adevices;
-                if(_captureObserver) {
-                    _captureObserver->DeviceMonitoringListChanged();
-                }
-                return;
-            }
-        }
-    }
-
 }
 - (void)removeDevices:(NSNotification *)notification
 {
-    {
-        NSArray *vdevices = [AVCaptureDevice devicesWithMediaType:AVMediaTypeVideo];
-        for (AVCaptureDevice *device in self.videoCaptureDevices) {
-            if(NSNotFound == [vdevices indexOfObject:device])
-            {
-                self.videoCaptureDevices = vdevices;
-                if(_captureObserver) {
-                    _captureObserver->DeviceMonitoringListChanged();
-                }
-                return;
+    NSArray *vdevices = [AVCaptureDevice devicesWithMediaType:AVMediaTypeVideo];
+    for (AVCaptureDevice *device in self.videoCaptureDevices) {
+        if(NSNotFound == [vdevices indexOfObject:device])
+        {
+            self.videoCaptureDevices = vdevices;
+            if(_captureObserver) {
+                _captureObserver->DeviceMonitoringListChanged();
             }
-        }
-    }
-    {
-        NSArray *adevices = [AVCaptureDevice devicesWithMediaType:AVMediaTypeAudio];
-        for (AVCaptureDevice *adevice in self.audioDevices) {
-            if(NSNotFound == [adevices indexOfObject:adevice])
-            {
-                self.audioDevices = adevices;
-                if(_captureObserver) {
-                    _captureObserver->DeviceMonitoringListChanged();
-                }
-                return;
-            }
+            return;
         }
     }
 }
@@ -129,23 +94,60 @@ DeviceMonitoringMacos::~DeviceMonitoringMacos()
 
 bool DeviceMonitoringMacos::Start()
 {
-    if (_objcInstance) {
-        return false;
-    }
-
+    if(_isStarted) return false;
+    SetHandlers(true);
     _objcInstance = [[CaptureDeviceMonitor alloc] init];
     [(CaptureDeviceMonitor*)_objcInstance setCaptureObserver:this];
+
+    _isStarted = true;
 
     return true;
 }
 
 void DeviceMonitoringMacos::Stop()
 {
+    if(!_isStarted) return;
+    SetHandlers(false);
     if (_objcInstance) {
         [(CaptureDeviceMonitor*)_objcInstance setCaptureObserver:nil];
         [(CaptureDeviceMonitor*)_objcInstance release];
         _objcInstance = nullptr;
     }
+    _isStarted = false;
+}
+
+typedef OSStatus AudioObjectChanePropertyListenerFuction(AudioObjectID,
+                                                         const AudioObjectPropertyAddress *,
+                                                         AudioObjectPropertyListenerProc,
+                                                         void *);
+
+void DeviceMonitoringMacos::SetHandlers(bool isSet)
+{
+    AudioObjectChanePropertyListenerFuction &AudioObjectChangePropertyListener =
+            isSet ? AudioObjectAddPropertyListener : AudioObjectRemovePropertyListener;
+
+    AudioObjectPropertyAddress propertyAddress = {kAudioHardwarePropertyDevices,
+                                                  kAudioObjectPropertyScopeGlobal,
+                                                  kAudioObjectPropertyElementMaster};
+
+    AudioObjectChangePropertyListener(kAudioObjectSystemObject, &propertyAddress, objectListenerProc, this);
+
+    propertyAddress.mSelector = kAudioHardwarePropertyDefaultInputDevice;
+    AudioObjectChangePropertyListener(kAudioObjectSystemObject, &propertyAddress, objectListenerProc, this);
+
+    propertyAddress.mSelector = kAudioHardwarePropertyDefaultOutputDevice;
+    AudioObjectChangePropertyListener(kAudioObjectSystemObject, &propertyAddress, objectListenerProc, this);
+}
+
+OSStatus DeviceMonitoringMacos::objectListenerProc(
+        AudioObjectID objectId,
+        UInt32 numberAddresses,
+        const AudioObjectPropertyAddress addresses[],
+        void* clientData)
+{
+    auto* ptrThis = (DeviceMonitoringMacos*)clientData;
+    ptrThis->DeviceMonitoringListChanged();
+    return 0;
 }
 
 }

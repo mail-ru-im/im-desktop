@@ -20,6 +20,7 @@
 #include "../main_window/friendly/FriendlyContainer.h"
 #include "../my_info.h"
 #include "../main_window/mediatype.h"
+#include "contact.h"
 
 namespace
 {
@@ -28,8 +29,6 @@ namespace
     {
         return  std::abs(_first.GetTime() - _second.GetTime()) >= timeDiffForIndent.count();
     }
-
-    bool containsSitePreviewUri(const QString &text, Out QStringRef &uri);
 }
 
 namespace Data
@@ -54,6 +53,25 @@ namespace Data
         sn_ = helper.get<QString>("sn");
     }
 
+    void GeoData::serialize(core::icollection *_collection) const
+    {
+        core::coll_helper coll(_collection, false);
+        Ui::gui_coll_helper helper(_collection->create_collection(), true);
+        helper.set_value_as_qstring("name", name_);
+        helper.set_value_as_double("lat", lat_);
+        helper.set_value_as_double("long", long_);
+
+        coll.set_value_as_collection("geo", helper.get());
+    }
+
+    void GeoData::unserialize(core::icollection *_collection)
+    {
+        Ui::gui_coll_helper helper(_collection, false);
+        name_ = helper.get<QString>("name");
+        lat_ = helper.get_value_as_double("lat");
+        long_ = helper.get_value_as_double("long");
+    }
+
 
     DlgState::DlgState()
         : UnreadCount_(0)
@@ -64,6 +82,7 @@ namespace Data
         , TheirsLastDelivered_(-1)
         , DelUpTo_(-1)
         , FavoriteTime_(-1)
+        , UnimportantTime_(-1)
         , Time_(-1)
         , Outgoing_(false)
         , Chat_(false)
@@ -78,6 +97,7 @@ namespace Data
         , mentionAlert_(false)
         , isSuspicious_(false)
         , isStranger_(false)
+        , noRecentsUpdate_(false)
         , mediaType_(Ui::MediaType::noMedia)
     {
     }
@@ -112,7 +132,7 @@ namespace Data
 
         if (modification.IsBase())
         {
-            SetText(modification.GetText());
+            SetText(modification.GetSourceText());
 
             Type_ = core::message_type::base;
 
@@ -160,43 +180,6 @@ namespace Data
         }
 
         return true;
-    }
-
-    Logic::preview_type MessageBuddy::GetPreviewableLinkType() const
-    {
-        assert(Type_ > core::message_type::min);
-        assert(Type_ < core::message_type::max);
-
-        if (FileSharing_ || Sticker_ || ChatEvent_ || VoipEvent_)
-        {
-            return Logic::preview_type::none;
-        }
-
-        QStringRef uri;
-        if (containsSitePreviewUri(Text_, Out uri))
-        {
-            return Logic::preview_type::site;
-        }
-
-        return Logic::preview_type::none;
-    }
-
-    bool MessageBuddy::ContainsAnyPreviewableLink() const
-    {
-        const auto previewLinkType = GetPreviewableLinkType();
-        assert(previewLinkType > Logic::preview_type::min);
-        assert(previewLinkType < Logic::preview_type::max);
-
-        return (previewLinkType != Logic::preview_type::none);
-    }
-
-    bool MessageBuddy::ContainsPreviewableSiteLink() const
-    {
-        const auto previewLinkType = GetPreviewableLinkType();
-        assert(previewLinkType > Logic::preview_type::min);
-        assert(previewLinkType < Logic::preview_type::max);
-
-        return (previewLinkType == Logic::preview_type::site);
     }
 
     bool MessageBuddy::ContainsGif() const
@@ -425,13 +408,6 @@ namespace Data
         return FileSharing_;
     }
 
-    QStringRef MessageBuddy::GetFirstSiteLinkFromText() const
-    {
-        QStringRef result;
-        containsSitePreviewUri(GetText(), Out result);
-        return result;
-    }
-
     bool MessageBuddy::GetIndentBefore() const
     {
         return IndentBefore_;
@@ -442,9 +418,14 @@ namespace Data
         return Sticker_;
     }
 
-    const QString& MessageBuddy::GetText() const
+    const QString& MessageBuddy::GetSourceText() const
     {
         return Text_;
+    }
+
+    const QString MessageBuddy::GetText() const
+    {
+        return (Sticker_ ? QT_TRANSLATE_NOOP("message", "Sticker") : Text_.trimmed());
     }
 
     qint32 MessageBuddy::GetTime() const
@@ -520,7 +501,7 @@ namespace Data
 
     void MessageBuddy::FillFrom(const MessageBuddy &buddy)
     {
-        Text_ = buddy.GetText();
+        Text_ = buddy.GetSourceText();
 
         SetLastId(buddy.Id_);
         Unread_ = buddy.Unread_;
@@ -643,7 +624,7 @@ namespace Data
 
     Logic::MessageKey MessageBuddy::ToKey() const
     {
-        return Logic::MessageKey(Id_, Prev_, InternalId_, PendingId_, Time_, Type_, IsOutgoing(), GetPreviewableLinkType(), Logic::control_type::ct_message, Date_);
+        return Logic::MessageKey(Id_, Prev_, InternalId_, PendingId_, Time_, Type_, IsOutgoing(), Logic::control_type::ct_message, Date_);
     }
 
     bool MessageBuddy::IsEdited() const
@@ -681,19 +662,20 @@ namespace Data
     bool MessageBuddy::needUpdateWith(const MessageBuddy &_buddy) const
     {
         const auto snAdded = sharedContact_ && sharedContact_->sn_.isEmpty() && _buddy.sharedContact_ && !_buddy.sharedContact_->sn_.isEmpty();
-        const auto needUpdate = GetUpdatePatchVersion() < _buddy.GetUpdatePatchVersion() || Prev_ != _buddy.Prev_ || snAdded;
+        const auto pollIdAdded = poll_ && poll_->id_.isEmpty() && _buddy.poll_ && !_buddy.poll_->id_.isEmpty();
+        const auto needUpdate = GetUpdatePatchVersion() < _buddy.GetUpdatePatchVersion() || Prev_ != _buddy.Prev_ || snAdded || pollIdAdded;
 
         return needUpdate;
+    }
+
+    QString MessageBuddy::getSender() const
+    {
+        return (Chat_ && HasChatSender()) ? normalizeAimId(ChatSender_) : AimId_;
     }
 
     void MessageBuddy::SetOutgoing(const bool isOutgoing)
     {
         Outgoing_ = isOutgoing;
-
-        if (!HasId() && Outgoing_)
-        {
-            assert(!InternalId_.isEmpty());
-        }
     }
 
     void MessageBuddy::SetSticker(const HistoryControl::StickerInfoSptr &sticker)
@@ -953,7 +935,8 @@ namespace Data
                 HistoryControl::ChatEventInfo::Make(
                     chat_event,
                     message->IsOutgoing(),
-                    myAimid
+                    myAimid,
+                    message->AimId_
                 )
             );
         }
@@ -1008,6 +991,22 @@ namespace Data
             SharedContactData contact;
             contact.unserialize(contact_coll);
             message->sharedContact_ = std::move(contact);
+        }
+
+        if (msgColl->is_value_exist("geo"))
+        {
+            auto geo_coll = msgColl.get_value_as_collection("geo");
+            GeoData geo;
+            geo.unserialize(geo_coll);
+            message->geo_ = std::move(geo);
+        }
+
+        if (msgColl->is_value_exist("poll"))
+        {
+            auto poll_coll = msgColl.get_value_as_collection("poll");
+            PollData poll;
+            poll.unserialize(poll_coll);
+            message->poll_ = std::move(poll);
         }
 
         return message;
@@ -1072,9 +1071,13 @@ namespace Data
         state.unreadMentionsCount_ = helper->get<int32_t>("unread_mention_count");
         state.isSuspicious_ = helper->get<bool>("suspicious");
         state.isStranger_ = helper->get<bool>("stranger");
+        state.noRecentsUpdate_ = helper->get<bool>("no_recents_update");
 
         if (helper->is_value_exist("favorite_time"))
             state.FavoriteTime_ = helper->get<int64_t>("favorite_time");
+
+        if (helper->is_value_exist("unimportant_time"))
+            state.UnimportantTime_ = helper->get<int64_t>("unimportant_time");
 
         if (helper->is_value_exist("message"))
         {
@@ -1154,6 +1157,12 @@ namespace Data
 
         if (sharedContact_)
             sharedContact_->serialize(_collection);
+
+        if (geo_)
+            geo_->serialize(_collection);
+
+        if (poll_)
+            poll_->serialize(_collection);
     }
 
     void Quote::unserialize(core::icollection* _collection)
@@ -1213,6 +1222,22 @@ namespace Data
             contact.unserialize(contact_coll);
             sharedContact_ = std::move(contact);
         }
+
+        if (coll.is_value_exist("geo"))
+        {
+            auto geo_coll = coll.get_value_as_collection("geo");
+            GeoData geo;
+            geo.unserialize(geo_coll);
+            geo_ = std::move(geo);
+        }
+
+        if (coll.is_value_exist("poll"))
+        {
+            auto poll_coll = coll.get_value_as_collection("poll");
+            PollData poll;
+            poll.unserialize(poll_coll);
+            poll_ = std::move(poll);
+        }
     }
 
     void UrlSnippet::unserialize(core::icollection * _collection)
@@ -1268,35 +1293,5 @@ namespace Data
 
             messages.push_back(Data::unserializeMessage(value, aimId, myAimid, theirs_last_delivered, theirs_last_read));
         }
-    }
-}
-
-namespace
-{
-    bool containsSitePreviewUri(const QString &text, Out QStringRef &uri)
-    {
-        Out uri = QStringRef();
-
-        static const QRegularExpression space(
-            qsl("\\s|\\n|\\r"),
-            QRegularExpression::UseUnicodePropertiesOption | QRegularExpression::OptimizeOnFirstUsageOption
-        );
-
-        const auto parts = text.splitRef(space, QString::SkipEmptyParts);
-
-        for (const auto &part : parts)
-        {
-            Utils::UrlParser parser;
-
-            parser.process(part);
-
-            if (parser.hasUrl())
-            {
-                uri = part;
-                return true;
-            }
-        }
-
-        return false;
     }
 }

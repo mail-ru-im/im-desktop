@@ -22,7 +22,7 @@ namespace omicronlib
         static omicron_impl& instance();
 
         omicron_code init(const omicron_config& _conf, const std::wstring& _file_name = {});
-        bool star_auto_updater();
+        bool start_auto_updater();
         omicron_code update_data();
         void cleanup();
 

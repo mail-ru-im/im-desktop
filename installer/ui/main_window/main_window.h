@@ -40,8 +40,9 @@ namespace installer
             progress_page* progress_page_;
             error_page* error_page_;
 
+            QLabel* transitionLabel_;
+
             void start_installation();
-            void installBundle();
         };
     }
 }

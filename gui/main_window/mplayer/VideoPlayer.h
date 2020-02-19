@@ -1,5 +1,7 @@
 #pragma once
 
+#include "../history_control/complex_message/MediaControls.h"
+
 namespace Ui
 {
     class FFMpegPlayer;
@@ -29,6 +31,7 @@ namespace Ui
         void signalFullscreen(bool _checked);
         void mouseMoved();
         void playClicked(bool _paused);
+        void mouseRightClicked();
 
     public Q_SLOTS:
 
@@ -86,6 +89,7 @@ namespace Ui
         const bool fullscreen_;
 
         bool separateWindow_ = false;
+        bool soundOnByUser_;
 
     private:
 
@@ -97,11 +101,12 @@ namespace Ui
 
     protected:
 
-        virtual void paintEvent(QPaintEvent* _e) override;
+        void paintEvent(QPaintEvent* _e) override;
 
-        virtual bool eventFilter(QObject* _obj, QEvent* _event) override;
-        virtual void mousePressEvent(QMouseEvent* _event) override;
-        virtual void resizeEvent(QResizeEvent * event) override;
+        bool eventFilter(QObject* _obj, QEvent* _event) override;
+        void mousePressEvent(QMouseEvent* _event) override;
+        void mouseReleaseEvent(QMouseEvent* _event) override;
+        void resizeEvent(QResizeEvent * event) override;
 
     public:
 
@@ -121,6 +126,7 @@ namespace Ui
         void setVolume(const int32_t _volume, const bool _toRestore);
         int32_t getVolume() const;
         void restoreVolume();
+        void updateVolume(const bool _hovered);
 
         void setGotAudio(bool _gotAudio);
 
@@ -130,60 +136,12 @@ namespace Ui
         bool isOverControls(const QPoint& _pos) const;
     };
 
-    class DialogControls_p;
-
-    enum ControlType : short;
-
-    class DialogControls : public QWidget
-    {
-        Q_OBJECT
-    public:
-        enum State
-        {
-            Preview,
-            Playing,
-            Paused
-        };
-
-        DialogControls(bool _isGif, int32_t _duration, QWidget* _parent = nullptr);
-        ~DialogControls();
-
-        void setState(State _state);
-        void setRect(const QRect& _rect);
-        void setMute(bool _enable);
-        void setDuration(int32_t _duration);
-        void setPosition(int32_t _position);
-        void setGotAudio(bool _gotAudio);
-
-    Q_SIGNALS:
-        void fullscreen();
-        void mute(bool _enable);
-        void play(bool _enable);
-        void clicked();
-
-    protected:
-        void paintEvent(QPaintEvent* _event) override;
-        void mouseMoveEvent(QMouseEvent* _event) override;
-        void mousePressEvent(QMouseEvent* _event) override;
-        void mouseReleaseEvent(QMouseEvent* _event) override;
-        void mouseDoubleClickEvent(QMouseEvent* _event) override;
-        void enterEvent(QEvent* _event) override;
-        void leaveEvent(QEvent* _event) override;
-
-    private:
-        void onClick(ControlType _type);
-        void onDefaultClick();
-        void onDoubleClick();
-        void onMousePressed(const QPoint& _pos);
-
-        std::unique_ptr<DialogControls_p> d;
-    };
-
-
     class Drawable;
 
     class CustomButton;
     class FrameRenderer;
+
+    class MediaControls;
 
     class DialogPlayer : public QWidget
     {
@@ -217,12 +175,14 @@ namespace Ui
         const bool showControlPanel_;
         bool replay_ = false;
         bool visible_ = false;
+        bool isGalleryView_;
+        bool soundOnByUser_;
 
         QTimer unloadTimer_;
 
         QRect normalModePosition_;
 
-        QPointer<DialogControls> dialogControls_;
+        QPointer<MediaControls> dialogControls_;
 
         QPixmap preview_;
 
@@ -233,12 +193,14 @@ namespace Ui
 
         enum Flags
         {
-            is_gif = 1 << 0,
-            is_sticker = 1 << 1,
-            enable_control_panel = 1 << 2,
-            gpu_renderer = 1 << 3,
-            as_window = 1 << 4,
-            enable_dialog_controls = 1 << 5
+            is_gif                  = 1 << 0,
+            is_sticker              = 1 << 1,
+            enable_control_panel    = 1 << 2,
+            gpu_renderer            = 1 << 3,
+            as_window               = 1 << 4,
+            dialog_mode             = 1 << 5,
+            compact_mode            = 1 << 6,
+            short_no_sound          = 1 << 7,
         };
 
         void showAs();
@@ -247,7 +209,7 @@ namespace Ui
 
         void start(bool _start);
 
-        DialogPlayer(QWidget* _parent, const uint32_t _flags = 0, const QPixmap &_preview = QPixmap(), const int32_t _duration = 0);
+        DialogPlayer(QWidget* _parent, const uint32_t _flags = 0, const QPixmap &_preview = QPixmap());
         DialogPlayer(DialogPlayer* _attached, QWidget* _parent);
         virtual ~DialogPlayer();
 
@@ -303,7 +265,15 @@ namespace Ui
 
         void setGotAudio(bool _gotAudio);
 
+        void setSiteName(const QString& _siteName);
+
+        void setFavIcon(const QPixmap& _favicon);
+
         void updateVisibility(bool _visible);
+
+        QWidget* getParentForContextMenu() const;
+
+        int bottomLeftControlsWidth() const;
 
     public Q_SLOTS:
 
@@ -323,11 +293,13 @@ namespace Ui
         void closed();
         void firstFrameReady();
         void mouseClicked();
+        void mouseRightClicked();
         void mouseDoubleClicked();
         void fullScreenClicked();
         void mouseWheelEvent(const QPoint& _delta);
         void openGallery();
         void playClicked(bool _paused);
+        void copyLink();
 
     protected:
 
@@ -344,8 +316,8 @@ namespace Ui
 
         bool isAutoPlay();
 
-        DialogControls* createControls(bool _isGif, int32_t _duration);
+        MediaControls* createControls(const uint32_t _flags);
 
-        std::unique_ptr<FrameRenderer> createRenderer(QWidget* _parent, bool _openGL);
+        std::unique_ptr<FrameRenderer> createRenderer(QWidget* _parent, bool _useGPU, bool _dialogMode);
     };
 }

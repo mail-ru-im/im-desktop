@@ -15,12 +15,20 @@ namespace Ui
         void setCircleHover(std::unique_ptr<CircleHover>&& _) override;
         void enableCircleHover(bool _val) override;
 
+        void setUnderLongPress(bool _val);
+
         void updateHover();
         void updateHover(bool _hover);
         void setRectExtention(const QMargins& _m);
         bool containsCursorUnder() const;
 
         void showToolTipForce();
+
+    protected:
+        void keyPressEvent(QKeyEvent* _event) override;
+        void keyReleaseEvent(QKeyEvent* _event) override;
+        void focusInEvent(QFocusEvent* _event) override;
+        void focusOutEvent(QFocusEvent* _event) override;
 
     private:
         void updateHoverCircle(bool _hover);
@@ -30,6 +38,7 @@ namespace Ui
 
     private:
         bool enableCircleHover_ = false;
+        bool underLongPress_ = false;
         bool enableTooltip_ = false;
         bool underMouse_ = false;
         std::unique_ptr<CircleHover> circleHover_;

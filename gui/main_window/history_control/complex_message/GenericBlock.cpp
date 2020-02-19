@@ -66,7 +66,10 @@ QSize GenericBlock::blockSizeForMaxWidth(const int32_t maxWidth)
 {
     assert(maxWidth > 0);
 
-    return getBlockLayout()->blockSizeForMaxWidth(maxWidth);
+    if (const auto layout = getBlockLayout())
+        return layout->blockSizeForMaxWidth(maxWidth);
+
+    return QSize();
 }
 
 
@@ -122,6 +125,17 @@ QString GenericBlock::getSourceText() const
     return SourceText_;
 }
 
+QString GenericBlock::getPlaceholderText() const
+{
+    return getSourceText();
+}
+
+const QString& GenericBlock::getLink() const
+{
+    static QString emptyLink;
+    return emptyLink;
+}
+
 QString GenericBlock::getTextForCopy() const
 {
     return getSourceText();
@@ -130,6 +144,11 @@ QString GenericBlock::getTextForCopy() const
 bool GenericBlock::isBubbleRequired() const
 {
     return IsBubbleRequired_;
+}
+
+bool GenericBlock::isMarginRequired() const
+{
+    return IsBubbleRequired_; // by default request margin for blocks with bubble
 }
 
 void GenericBlock::setBubbleRequired(bool required)
@@ -174,9 +193,15 @@ bool GenericBlock::onMenuItemTriggered(const QVariantMap &params)
     if (command == ql1s("copy_link"))
     {
         if (const auto link = params[qsl("arg")].toString(); !link.isEmpty())
+        {
             QApplication::clipboard()->setText(link);
+            showToast(QT_TRANSLATE_NOOP("generic_block", "Copied to clipboard"));
+        }
         else
+        {
             onMenuCopyLink();
+        }
+
         return true;
     }
     else if (command == ql1s("copy_email"))
@@ -249,9 +274,7 @@ QRect GenericBlock::setBlockGeometry(const QRect &ltr)
 {
     auto blockLayout = getBlockLayout();
     if (!blockLayout)
-    {
         return ltr;
-    }
 
     const auto blockGeometry = blockLayout->setBlockGeometry(ltr);
 
@@ -319,7 +342,7 @@ bool GenericBlock::isInsideForward() const
     return IsInsideForward_;
 }
 
-void GenericBlock::selectByPos(const QPoint &from, const QPoint &to, const BlockSelectionType selection)
+void GenericBlock::selectByPos(const QPoint &from, const QPoint &to, bool topToBottom)
 {
     const QRect globalWidgetRect(
         mapToGlobal(rect().topLeft()),
@@ -338,9 +361,18 @@ void GenericBlock::selectByPos(const QPoint &from, const QPoint &to, const Block
     const auto overlapRatePercents = ((overlappedHeight * 100) / widgetHeight);
     assert(overlapRatePercents >= 0);
 
-    const auto isSelected = (overlapRatePercents > 45);
-
+    const auto isSelected = (overlapRatePercents > 50);
+    if (isSelected)
+    {
+        Utils::InterConnector::instance().setMultiselect(true);
+        Parent_->setSelectionCenter(topToBottom ? (Parent_->mapFromGlobal(to).y() - 2) : (Parent_->mapFromGlobal(from).y() + 2));
+    }
     setSelected(isSelected);
+}
+
+void GenericBlock::selectAll()
+{
+    setSelected(true);
 }
 
 bool GenericBlock::isSelected() const
@@ -359,6 +391,49 @@ void GenericBlock::clearSelection()
     setSelected(false);
 }
 
+Data::FilesPlaceholderMap GenericBlock::getFilePlaceholders()
+{
+    Data::FilesPlaceholderMap emptyFiles;
+    return emptyFiles;
+}
+
+void GenericBlock::updateWith(IItemBlock* _other)
+{
+    const auto otherText = _other->getSourceText();
+    if (getSourceText() != otherText)
+        setText(otherText);
+}
+
+bool GenericBlock::needStretchToOthers() const
+{
+    return false;
+}
+
+void GenericBlock::stretchToWidth(const int _width)
+{
+    auto blockGeometry = getBlockGeometry();
+    if (needStretchByShift())
+    {
+        shiftHorizontally((_width - blockGeometry.width()) / 2);
+    }
+    else
+    {
+        blockGeometry.setSize(QSize(_width, blockGeometry.height()));
+        resizeBlock(blockGeometry.size());
+        setGeometry(blockGeometry);
+    }
+}
+
+QRect GenericBlock::getBlockGeometry() const
+{
+    auto layout = getBlockLayout();
+
+    if (!layout)
+        return QRect();
+
+    return layout->getBlockGeometry();
+}
+
 bool GenericBlock::drag()
 {
     return false;
@@ -375,22 +450,26 @@ bool GenericBlock::isInitialized() const
 }
 
 void GenericBlock::notifyBlockContentsChanged()
-{
-    auto blockLayout = getBlockLayout();
-
-    if (!blockLayout)
-    {
-        assert(!"block layout is missing");
-        return;
-    }
-
-    blockLayout->onBlockContentsChanged();
+{    
+    if (auto blockLayout = getBlockLayout())
+        blockLayout->onBlockContentsChanged();
 
     getParentComplexMessage()->updateSize();
 
     updateGeometry();
 
     update();
+}
+
+bool GenericBlock::hasLeadLines() const
+{
+    return false;
+}
+
+void GenericBlock::markDirty()
+{
+    if (auto blockLayout = getBlockLayout())
+        blockLayout->markDirty();
 }
 
 void GenericBlock::onMenuCopyLink()
@@ -555,10 +634,7 @@ bool GenericBlock::isHasLinkInMessage() const
 
 QPoint GenericBlock::getShareButtonPos(const bool _isBubbleRequired, const QRect& _bubbleRect) const
 {
-    const auto blockLayout = getBlockLayout();
-    assert(blockLayout);
-
-    const auto blockGeometry = blockLayout->getBlockGeometry();
+    const auto blockGeometry = getBlockGeometry();
 
     auto buttonX = 0;
 
@@ -577,6 +653,21 @@ QPoint GenericBlock::getShareButtonPos(const bool _isBubbleRequired, const QRect
 QPoint GenericBlock::mapFromParent(const QPoint& _point, const QRect& _blockGeometry) const
 {
     return QPoint(_point.x() - _blockGeometry.x(), _point.y() - _blockGeometry.y());
+}
+
+void GenericBlock::resizeBlock(const QSize& _size)
+{
+    if (auto layout = getBlockLayout())
+    {
+        layout->resizeBlock(_size);
+        onBlockSizeChanged(_size);
+    }
+}
+
+void GenericBlock::onBlockSizeChanged(const QSize& _size)
+{
+    if (auto layout = getBlockLayout())
+        layout->onBlockSizeChanged(_size);
 }
 
 void GenericBlock::showFileSavedToast(const QString& _path)
@@ -605,6 +696,11 @@ void GenericBlock::showToast(const QString& _text)
         if (auto page = dialog->getHistoryPage(dialog->currentAimId()))
             Ui::ToastManager::instance()->showToast(new Ui::Toast(_text, page), getToastPos(page->size()));
     }
+}
+
+bool GenericBlock::isEdited() const
+{
+    return getParentComplexMessage()->isEdited();
 }
 
 qint64 GenericBlock::getGalleryId() const

@@ -28,6 +28,8 @@ namespace core
         local_pin_salt = 24,
         local_pin_hash = 25,
 
+        install_beta_updates = 26,
+
         max
     };
 

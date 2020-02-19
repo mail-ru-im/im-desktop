@@ -55,7 +55,7 @@ namespace common
                 wmv
             };
 
-            type type_;
+            type type_ = type::undefined;
             protocol protocol_;
             extension extension_;
             std::string url_;
@@ -173,7 +173,9 @@ namespace common
                 int safe_pos = 0;
             };
 
-            url_parser(const std::string& _files_url);
+            url_parser(std::string_view _files_url);
+            url_parser(std::string_view _files_url, std::vector<std::string> _files_urls);
+            url_parser(std::vector<std::string> _files_urls);
 
             void process(char c);
             void finish();

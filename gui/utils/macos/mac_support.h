@@ -43,6 +43,7 @@ public:
 
     void listenSleepAwakeEvents();
 
+    void checkForUpdates();
     void runMacUpdater();
     void cleanMacUpdater();
 
@@ -68,6 +69,7 @@ public:
     static QString settingsPath();
 
     static QString bundleName();
+    static QString bundleDir();
 
     static QString defaultDownloadsPath();
 
@@ -76,8 +78,6 @@ public:
     static void getPossibleStrings(const QString& text, std::vector<std::vector<QString>> & result, unsigned& _count);
 
     static bool nativeEventFilter(const QByteArray &data, void *message, long *result);
-
-    static void replacePasteboard(const QString & text);
 
     void createMenuBar(bool simple);
     void updateMainMenu();
@@ -96,12 +96,17 @@ public:
 
     static void showNSModalPanelWindowLevel(QWidget *w);
 
+    static void showNSFloatingWindowLevel(QWidget *w);
+
     static void showOverAll(QWidget *w);
 
     static bool isMetalSupported();
 
 private:
     void setupDockClickHandler();
+    bool setFeedUrl();
+
+    std::unique_ptr<QTimer> updateFeedUrl_;
 };
 
 class MacMenuBlocker
@@ -110,12 +115,14 @@ public:
     MacMenuBlocker();
     ~MacMenuBlocker();
 
-    using MenuStateContainer = std::vector<std::pair<QAction*, bool /* old state */>>;
+    void block();
+    void unblock();
 
-    MenuStateContainer& menuState();
+    using MenuStateContainer = std::vector<std::pair<QAction*, bool /* old state */>>;
 
 private:
     MenuStateContainer macMenuState_;
     std::unique_ptr<QObject> receiver_;
+    bool isBlocked_;
 };
 

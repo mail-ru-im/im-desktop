@@ -63,7 +63,7 @@ namespace core
         class mailbox
         {
             std::string email_;
-            unsigned unreadCount_;
+            unsigned int unreadCount_;
 
         public:
             mailbox();

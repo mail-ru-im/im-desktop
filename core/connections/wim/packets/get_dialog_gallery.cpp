@@ -31,7 +31,7 @@ get_dialog_gallery::~get_dialog_gallery()
 
 }
 
-core::archive::gallery_storage get_dialog_gallery::get_gallery() const
+const core::archive::gallery_storage& get_dialog_gallery::get_gallery() const
 {
     return gallery_;
 }
@@ -40,7 +40,6 @@ int32_t get_dialog_gallery::init_request(std::shared_ptr<core::http_request_simp
 {
     constexpr char method[] = "getEntryGallery";
 
-    _request->set_gzip(true);
     _request->set_url(urls::get_url(urls::url_type::rapi_host));
     _request->set_normalized_url(method);
     _request->set_keep_alive();
@@ -104,6 +103,5 @@ int32_t get_dialog_gallery::init_request(std::shared_ptr<core::http_request_simp
 int32_t get_dialog_gallery::parse_results(const rapidjson::Value &_node_results)
 {
     gallery_.set_my_aimid(my_aimid_);
-    auto result = gallery_.unserialize(_node_results, parse_for_patches_);
-    return result;
+    return gallery_.unserialize(_node_results, parse_for_patches_);
 }

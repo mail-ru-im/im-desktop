@@ -47,15 +47,11 @@ public:
 private:
     QRect evaluateAvatarRect(const QRect& _widgetContentLtr) const;
 
-    QRect evaluateBlocksBubbleGeometry(
-        const bool isBubbleRequired,
-        const QRect& _blocksContentLtr) const;
+    QRect evaluateBlocksBubbleGeometry(const bool isMarginRequired, const QRect& _blocksContentLtr) const;
 
     QRect evaluateBlocksContainerLtr(
         const QRect& _avatarRect,
         const QRect& _widgetContentLtr) const;
-
-    QMargins evaluateBlocksContentRectMargins() const;
 
     QRect evaluateBlockLtr(
         const QRect &blocksContentLtr,

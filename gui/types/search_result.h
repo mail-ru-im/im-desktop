@@ -2,6 +2,7 @@
 
 #include "chat.h"
 #include "message.h"
+#include "cache/countries.h"
 
 namespace Logic
 {
@@ -22,7 +23,8 @@ namespace Data
         contact,
         chat,
         message,
-        suggest
+        suggest,
+        country
     };
 
     struct AbstractSearchResult
@@ -41,6 +43,7 @@ namespace Data
         bool isChat() const { return getType() == SearchResultType::chat; }
         bool isMessage() const { return getType() == SearchResultType::message; }
         bool isSuggest() const { return getType() == SearchResultType::suggest; }
+        bool isCountry() const {return getType() == SearchResultType::country;}
 
         bool dialogSearchResult_ = false;
         bool isLocalResult_ = true;
@@ -144,9 +147,32 @@ namespace Data
         Data::CommonChatInfo info_;
     };
     using CommonChatSearchResultSptr = std::shared_ptr<SearchResultCommonChat>;
+
+
+    struct Country
+    {
+        QString name_;
+        QString phone_code_;
+
+        Country(const QString& _name = QString(), const QString& _code = QString()) : name_(_name), phone_code_(_code) {};
+    };
+
+    struct SearchResultCountry : public AbstractSearchResult
+    {
+        SearchResultType getType() const override { return SearchResultType::country; }
+        QString getAimId() const override { return country_.name_; };
+        QString getFriendlyName() const override { return country_.name_; };
+        QString getCountryName() { return country_.name_; }
+        QString getCountryCode() { return country_.phone_code_; }
+
+        Country country_;
+    };
+    using CountrySearchResultSptr = std::shared_ptr<SearchResultCountry>;
 }
 
 Q_DECLARE_METATYPE(Data::AbstractSearchResultSptr);
 Q_DECLARE_METATYPE(Data::ChatSearchResultSptr);
 Q_DECLARE_METATYPE(Data::MessageSearchResultSptr);
 Q_DECLARE_METATYPE(Data::SearchResultsV);
+Q_DECLARE_METATYPE(Data::SearchResultCountry);
+Q_DECLARE_METATYPE(Data::CountrySearchResultSptr);

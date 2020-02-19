@@ -35,7 +35,23 @@
 
 - (void) initMetal
 {
-    self.device = MTLCreateSystemDefaultDevice();
+    NSArray<id<MTLDevice>> *devices = MTLCopyAllDevices();
+
+    self.device = nil;
+
+    // try to find integrated video device
+    for (id<MTLDevice> device in devices)
+    {
+        if (device.isLowPower)
+        {
+            self.device = device;
+            break;
+        }
+    }
+
+    if (self.device == nil)
+        self.device = MTLCreateSystemDefaultDevice();
+
     self.colorPixelFormat = MTLPixelFormatBGRA8Unorm;
     self.autoResizeDrawable = true;
 
@@ -86,7 +102,7 @@
             { { static_cast<float>(-size.width/2.f),   static_cast<float>(size.height/2.f) },  { 0.f, 0.f } },
             { {  static_cast<float>(size.width/2.f),   static_cast<float>(size.height/2.f) },  { 1.f, 0.f } },
     };
-    
+
     vertices_ = [self.device newBufferWithBytes : quadVertices
                                          length : sizeof(quadVertices)
                                         options : MTLResourceStorageModeShared];
@@ -120,7 +136,7 @@
     scaledSize_ = scaledSize;
 }
 
-- (void)setFrameSize: (NSSize) newSize;
+- (void)setFrameSize: (NSSize) newSize
 {
     viewportSize_.x = newSize.width;
     viewportSize_.y = newSize.height;
@@ -136,6 +152,9 @@
     id <MTLCommandBuffer> commandBuffer = [commandQueue_ commandBuffer];
     MTLRenderPassDescriptor *renderPassDescriptor = self.currentRenderPassDescriptor;
 
+    if (!renderPassDescriptor)
+        return;
+
     id <MTLRenderCommandEncoder>  renderEncoder = [commandBuffer renderCommandEncoderWithDescriptor : renderPassDescriptor];
 
     [renderEncoder setRenderPipelineState : pipelineState_];
@@ -150,7 +169,7 @@
 
     [renderEncoder setFragmentTexture : texture_
                               atIndex : 0];
-    
+
     [renderEncoder drawPrimitives : MTLPrimitiveTypeTriangle
                       vertexStart : 0
                       vertexCount : numVertices_];
@@ -158,6 +177,11 @@
     [renderEncoder endEncoding];
     [commandBuffer presentDrawable : self.currentDrawable];
     [commandBuffer commit];
+}
+
+- (BOOL)acceptsFirstMouse:(NSEvent *)theEvent
+{
+    return YES;
 }
 
 @end

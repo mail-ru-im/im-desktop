@@ -35,9 +35,7 @@ gui_settings::~gui_settings()
 
 void gui_settings::start_save()
 {
-    auto wr_this = weak_from_this();
-
-    timer_ =  g_core->add_timer([wr_this]
+    timer_ = g_core->add_timer([wr_this = weak_from_this()]
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)

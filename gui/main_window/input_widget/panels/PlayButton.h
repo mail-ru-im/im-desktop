@@ -25,6 +25,7 @@ namespace Ui
 
         void setState(State _s);
         State getState() const;
+        void updateIcon();
 
     private:
         void updateIcon(State _s);

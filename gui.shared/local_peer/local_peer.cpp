@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "local_peer.h"
 #include "../qt_overload.h"
+#include "../../common.shared/config/config.h"
 
 #include <QtNetwork/QLocalSocket>
 #include <QtNetwork/QLocalServer>
@@ -15,16 +16,8 @@ namespace
 
     QString get_crossprocess_pipe_name()
     {
-        if (build::is_biz())
-            return crossprocess_pipe_name_biz;
-
-        if (build::is_dit())
-            return crossprocess_pipe_name_dit;
-
-        if (build::is_agent())
-            return crossprocess_pipe_name_agent;
-
-        return crossprocess_pipe_name_icq;
+        const auto name = config::get().string(config::values::crossprocess_pipe);
+        return QString::fromUtf8(name.data(), name.size());
     }
 }
 

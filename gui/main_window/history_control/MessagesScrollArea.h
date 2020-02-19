@@ -11,12 +11,25 @@ namespace hist
 
 namespace Ui
 {
+    class SmartReplyWidget;
     class MessagesScrollbar;
     class MessageItem;
     class HistoryControlPageItem;
     class MessagesScrollAreaLayout;
 
     struct InsertHistMessagesParams;
+    struct DeleteMessageInfo;
+
+    struct SelectedMessageInfo
+    {
+        QString text_;
+        bool isOutgoing_ = false;
+        Data::QuotesVec quotes_;
+        QPoint from_;
+        QPoint to_;
+        Data::FilesPlaceholderMap filesPlaceholders_;
+        Data::MentionMap mentions_;
+    };
 
     enum class ScrollDirection
     {
@@ -66,7 +79,7 @@ namespace Ui
         using MessageItemVisitor = std::function<bool(Ui::MessageItem*, const bool)>;
         using WidgetVisitor = std::function<bool(QWidget*, const bool)>;
 
-        MessagesScrollArea(QWidget *parent, QWidget *typingWidget, hist::DateInserter* dateInserter);
+        MessagesScrollArea(QWidget *parent, QWidget *typingWidget, hist::DateInserter* dateInserter, const QString& _aimid);
 
         void cancelSelection();
 
@@ -86,9 +99,23 @@ namespace Ui
 
         Logic::MessageKeyVector getItemsKeys() const;
 
-        QString getSelectedText() const;
+        enum class TextFormat
+        {
+            Raw,
+            Formatted
+        };
 
-        Data::QuotesVec getQuotes() const;
+        QString getSelectedText(TextFormat _format = TextFormat::Formatted) const;
+        Data::FilesPlaceholderMap getFilesPlaceholders() const;
+        Data::MentionMap getMentions() const;
+
+        enum class IsForward
+        {
+            No,
+            Yes
+        };
+
+        Data::QuotesVec getQuotes(IsForward _isForward = IsForward::No) const;
 
         MessagesScrollAreaLayout* getLayout() const { return Layout_; }
 
@@ -129,7 +156,9 @@ namespace Ui
 
         bool isScrollAtBottom() const;
 
-        void clearSelection();
+        void clearSelection(bool keepSingleSelection = false);
+
+        void clearPartialSelection();
 
         void pressedDestroyed();
 
@@ -162,6 +191,16 @@ namespace Ui
 
         void invalidateLayout();
         void checkVisibilityForRead();
+
+        void countSelected(int& _forMe, int& _forAll) const;
+        std::vector<DeleteMessageInfo> getSelectedMessagesForDelete() const;
+
+        int getSelectedCount() const;
+
+        void setSmartreplyWidget(SmartReplyWidget* _widget);
+        void showSmartReplies();
+        void hideSmartReplies();
+        void setSmartreplyButton(QWidget* _button);
 
     public slots:
         void notifySelectionChanges();
@@ -199,15 +238,21 @@ namespace Ui
         void onUpdateHistoryPosition(int32_t position, int32_t offset);
         void onHideScrollbarTimer();
 
+        void multiSelectCurrentElementChanged();
+        void multiSelectCurrentMessageUp(bool);
+        void multiSelectCurrentMessageDown(bool);
+        void messageSelected(qint64, const QString&);
+
     public Q_SLOTS:
         void onWheelEvent(QWheelEvent* e);
+        void updateSelected(qint64, const QString&, bool);
+        void updateSelectedCount();
+        void multiselectChanged();
 
     private:
         bool isHidingScrollbar() const;
         void hideScrollbar();
         void setScrollbarVisible(bool _visible);
-
-        int getSelectedCount() const;
 
         void onSelectionChanged(int _selectedCount);
 
@@ -276,6 +321,12 @@ namespace Ui
 
         qint64 messageId_;
         bool recvLastMessage_;
+
+        Logic::MessageKey lastSelectedMessageId_;
+
+        QString aimid_;
+
+        std::map<Logic::MessageKey, SelectedMessageInfo> selected_;
     };
 
 }

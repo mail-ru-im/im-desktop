@@ -2,6 +2,7 @@
 #include "write_registry.h"
 #include "../tools.h"
 #include "../../../common.shared/version_info_constants.h"
+#include "../../../common.shared/config/config.h"
 #include <regex>
 
 namespace installer
@@ -10,33 +11,36 @@ namespace installer
     {
         installer::error write_to_uninstall_key()
         {
-            CAtlString uninstall_command = (LPCWSTR)(QString("\"") + get_installer_exe().replace('/', '\\') + "\"" + " -uninstall").utf16();
-            CAtlString display_name = (LPCWSTR)(get_product_display_name() + " (" + QT_TRANSLATE_NOOP("write_to_uninstall", "version") + " " + VERSION_INFO_STR + ")").utf16();
-            CAtlString exe = (LPCWSTR)get_icq_exe().replace('/', '\\').utf16();
-            CAtlString install_path = (LPCWSTR)get_install_folder().replace('/', '\\').utf16();
+            CAtlString uninstall_command = (LPCWSTR)(QString(ql1c('"') + get_installer_exe().replace(ql1c('/'), ql1c('\\')) % ql1s("\" -uninstall")).utf16());
+            CAtlString display_name = (LPCWSTR)(QString(get_product_display_name() % ql1s(" (") % QT_TRANSLATE_NOOP("write_to_uninstall", "version") % ql1c(' ') % QString::fromUtf8(VERSION_INFO_STR) % ql1c(')')).utf16());
+            CAtlString exe = (LPCWSTR)get_icq_exe().replace(ql1c('/'), ql1c('\\')).utf16();
+            CAtlString install_path = (LPCWSTR)get_install_folder().replace(ql1c('/'), ql1c('\\')).utf16();
 
             CRegKey key_current_version;
             if (ERROR_SUCCESS != key_current_version.Open(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion"))
-                return installer::error(errorcode::open_registry_key, "open registry key: Software\\Microsoft\\Windows\\CurrentVersion");
+                return installer::error(errorcode::open_registry_key, ql1s("open registry key: Software\\Microsoft\\Windows\\CurrentVersion"));
 
             CRegKey key_uninstall;
             if (ERROR_SUCCESS != key_uninstall.Create(key_current_version, L"Uninstall"))
-                return installer::error(errorcode::create_registry_key, QString("create registry key: Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall"));
+                return installer::error(errorcode::create_registry_key, ql1s("create registry key: Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall"));
 
             CRegKey key_icq;
             if (ERROR_SUCCESS != key_icq.Create(key_uninstall, (LPCWSTR)get_product_name().utf16()))
-                return installer::error(errorcode::create_registry_key, QString("create registry key: Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\") + get_product_name());
+                return installer::error(errorcode::create_registry_key, ql1s("create registry key: Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\") % get_product_name());
 
-            QString version = VERSION_INFO_STR;
+            QString version = QString::fromUtf8(VERSION_INFO_STR);
             QString major_version, minor_version;
-            QStringList version_list = version.split('.');
+            const QStringList version_list = version.split(ql1c('.'));
             if (version_list.size() > 2)
             {
                 major_version = version_list[0];
                 minor_version = version_list[1];
             }
 
-            CAtlString link = build::is_icq() ? L"https://icq.com" : L"https://agent.mail.ru";
+            const auto help_link = config::get().url(config::urls::installer_help);
+
+            const auto link = help_link.empty() ? std::wstring() : L"https://" + QString::fromUtf8(help_link.data(), help_link.size()).toStdWString();
+
             const auto setValueResults =
             {
                 key_icq.SetStringValue(L"DisplayName", display_name),
@@ -49,13 +53,13 @@ namespace installer
                 key_icq.SetStringValue(L"UninstallString", uninstall_command),
                 key_icq.SetDWORDValue(L"NoModify", (DWORD)1),
                 key_icq.SetDWORDValue(L"NoRepair", (DWORD)1),
-                (build::is_dit() ? ERROR_SUCCESS : key_icq.SetStringValue(L"HelpLink", link)),
-                (build::is_dit() ? ERROR_SUCCESS : key_icq.SetStringValue(L"URLInfoAbout", link)),
-                (build::is_dit() ? ERROR_SUCCESS : key_icq.SetStringValue(L"URLUpdateInfo", link)),
+                (link.empty() ? ERROR_SUCCESS : key_icq.SetStringValue(L"HelpLink", link.c_str())),
+                (link.empty() ? ERROR_SUCCESS : key_icq.SetStringValue(L"URLInfoAbout", link.c_str())),
+                (link.empty() ? ERROR_SUCCESS : key_icq.SetStringValue(L"URLUpdateInfo", link.c_str())),
             };
 
             if (std::any_of(setValueResults.begin(), setValueResults.end(), [](const auto _result) { return _result != ERROR_SUCCESS; }))
-                return installer::error(errorcode::set_registry_value, QString("set registry value: Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\") + get_product_name() + "\\...");
+                return installer::error(errorcode::set_registry_value, ql1s("set registry value: Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\") % get_product_name() % ql1s("\\..."));
 
             return installer::error();
         }
@@ -110,8 +114,7 @@ namespace installer
         {
             installer::error err;
 
-            QString exe_path = get_icq_exe();
-            exe_path = exe_path.replace('/', '\\');
+            const QString exe_path = get_icq_exe().replace(ql1c('/'), ql1c('\\'));
             CRegKey key_software;
 
             auto error = write_registry_autorun();
@@ -121,30 +124,22 @@ namespace installer
             }
 
             if (ERROR_SUCCESS != key_software.Open(HKEY_CURRENT_USER, L"Software"))
-                return installer::error(errorcode::open_registry_key, "open registry key: Software");
+                return installer::error(errorcode::open_registry_key, ql1s("open registry key: Software"));
 
             CRegKey key_product;
             if (ERROR_SUCCESS != key_product.Create(key_software, (const wchar_t*) get_product_name().utf16()))
-                return installer::error(errorcode::create_registry_key, QString("create registry key: ") + get_product_name());
+                return installer::error(errorcode::create_registry_key, ql1s("create registry key: ") % get_product_name());
 
             if (ERROR_SUCCESS != key_product.SetStringValue(L"path", (const wchar_t*) exe_path.utf16()))
-                return installer::error(errorcode::set_registry_value, QString("set registry value: Software\\") + get_product_name() + "path");
+                return installer::error(errorcode::set_registry_value, ql1s("set registry value: Software\\") % get_product_name() % ql1s("path"));
 
             write_referer(key_product);
 
-            if (get_product_name() == product_name_biz)
-            {
-                register_url_scheme(scheme_app_type::biz, exe_path);
-            }
-            else if (get_product_name() == product_name_dit)
-            {
-                register_url_scheme(scheme_app_type::dit, exe_path);
-            }
-            else
-            {
-                register_url_scheme(scheme_app_type::icq, exe_path);
-                register_url_scheme(scheme_app_type::agent, exe_path);
-            }
+            const auto scheme_csv = config::get().string(config::values::register_url_scheme_csv);
+            const auto splitted = QString::fromUtf8(scheme_csv.data(), scheme_csv.size()).split(QLatin1Char(','));
+
+            for (int i = 0; i < splitted.size(); i += 2)
+                register_url_scheme(splitted.at(i).toStdWString(), splitted.at(i + 1).toStdWString(), exe_path);
 
             err = write_to_uninstall_key();
             if (!err.is_ok())
@@ -155,12 +150,11 @@ namespace installer
 
         installer::error write_registry_autorun()
         {
-            QString exe_path = get_icq_exe();
-            exe_path = exe_path.replace('/', '\\');
+            const QString exe_path = get_icq_exe().replace(ql1c('/'), ql1c('\\'));
 
             CRegKey key_software_run;
             if (ERROR_SUCCESS != key_software_run.Open(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Run", KEY_SET_VALUE | KEY_QUERY_VALUE))
-                return installer::error(errorcode::open_registry_key, "open registry key: Software\\Microsoft\\Windows\\CurrentVersion\\Run");
+                return installer::error(errorcode::open_registry_key, ql1s("open registry key: Software\\Microsoft\\Windows\\CurrentVersion\\Run"));
 
             bool haveAutorun = false;
             {
@@ -170,8 +164,8 @@ namespace installer
                     haveAutorun = true;
             }
 
-            if (ERROR_SUCCESS != key_software_run.SetStringValue((const wchar_t*) get_product_name().utf16(), (const wchar_t*)(QString("\"") + exe_path + "\"" + " /startup").utf16()))
-                return installer::error(errorcode::set_registry_value, QString("set registry value: Software\\Microsoft\\Windows\\CurrentVersion\\Run ") + get_product_name());
+            if (ERROR_SUCCESS != key_software_run.SetStringValue((const wchar_t*) get_product_name().utf16(), (const wchar_t*)(QString(ql1c('"') % exe_path % ql1s("\" /startup")).utf16())))
+                return installer::error(errorcode::set_registry_value, ql1s("set registry value: Software\\Microsoft\\Windows\\CurrentVersion\\Run ") % get_product_name());
 
             return installer::error();
         }
@@ -183,7 +177,8 @@ namespace installer
             ::SHDeleteKey(HKEY_CURRENT_USER, key_product);
             ::SHDeleteKey(HKEY_CURRENT_USER, (LPCWSTR)(CAtlString(L"Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\") + (const wchar_t*) get_product_name().utf16()));
             ::SHDeleteValue(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Run", (const wchar_t*) get_product_name().utf16());
-            ::SHDeleteKey(HKEY_CURRENT_USER, CAtlString(L"Software\\Classes\\") + build::get_product_variant(L"icq", L"magent", L"myteam", L"messenger"));
+            const auto hkey_class = config::get().string(config::values::installer_hkey_class_win);
+            ::SHDeleteKey(HKEY_CURRENT_USER, CAtlString(L"Software\\Classes\\") + QString::fromUtf8(hkey_class.data(), hkey_class.size()).toStdWString().c_str());
 
             return installer::error();
         }
@@ -193,19 +188,19 @@ namespace installer
             CRegKey key_software;
 
             if (ERROR_SUCCESS != key_software.Open(HKEY_CURRENT_USER, L"Software"))
-                return installer::error(errorcode::open_registry_key, "open registry key: Software");
+                return installer::error(errorcode::open_registry_key, ql1s("open registry key: Software"));
 
             CRegKey key_product;
             if (ERROR_SUCCESS != key_product.Create(key_software, (const wchar_t*) get_product_name().utf16()))
-                return installer::error(errorcode::create_registry_key, QString("create registry key: ") + get_product_name());
+                return installer::error(errorcode::create_registry_key, ql1s("create registry key: ") % get_product_name());
 
-            if (ERROR_SUCCESS != key_product.SetStringValue(L"update_version", (const wchar_t*) QString(VERSION_INFO_STR).utf16()))
-                return installer::error(errorcode::set_registry_value, "set registry value: Software\\icq.desktop update_version");
+            if (ERROR_SUCCESS != key_product.SetStringValue(L"update_version", (const wchar_t*) QString::fromUtf8(VERSION_INFO_STR).utf16()))
+                return installer::error(errorcode::set_registry_value, ql1s("set registry value: Software\\icq.desktop update_version"));
 
             return installer::error();
         }
 
-        void register_url_scheme(scheme_app_type _app_type, const QString& _exe_path)
+        void register_url_scheme(const std::wstring& _scheme, const std::wstring& _name, const QString& _exe_path)
         {
             HKEY key_cmd, key_icq = 0, key_icon = 0;
             DWORD disp = 0;
@@ -213,26 +208,9 @@ namespace installer
 
             CAtlString sub_path = L"Software\\Classes\\";
             CAtlString url_link_string = L"URL:";
-            if (_app_type == scheme_app_type::icq)
-            {
-                sub_path += L"icq";
-                url_link_string += L"ICQ Link";
-            }
-            else if (_app_type == scheme_app_type::dit)
-            {
-                sub_path += L"itd-messenger";
-                url_link_string += L"Dit Link";
-            }
-            else if (_app_type == scheme_app_type::agent)
-            {
-                sub_path += L"magent";
-                url_link_string += L"Agent Link";
-            }
-            else if (_app_type == scheme_app_type::biz)
-            {
-                sub_path += L"myteam-messenger";
-                url_link_string += L"Myteam Link";
-            }
+
+            sub_path += _scheme.c_str();
+            url_link_string += _name.c_str();
 
             CAtlString command_string = CAtlString("\"") + (const wchar_t*) _exe_path.utf16() + L"\" -urlcommand \"%1\"";
 

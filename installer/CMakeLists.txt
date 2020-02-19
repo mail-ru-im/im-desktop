@@ -2,20 +2,31 @@ cmake_minimum_required(VERSION 3.4)
 
 project(updater)
 
-
 if(NOT UNIX OR APPLE)
     message(FATAL_ERROR "Only Linux is supported")
 endif()
 
-if(NOT APP_TYPE)
-    message(FATAL_ERROR "You must specify the application type (-DAPP_TYPE=icq|agent)")
+if(NOT PRODUCT)
+    message(FATAL_ERROR "You must specify the product type (-DPRODUCT=icq|agent)")
 endif()
 
-add_definitions(-DAPP_TYPE="${APP_TYPE}")
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+add_definitions(-DQT_NO_CAST_FROM_ASCII)
+add_definitions(-DQT_NO_CAST_TO_ASCII)
+add_definitions(-DQT_NO_CAST_FROM_BYTEARRAY)
+add_definitions(-DQT_STRICT_ITERATORS)
+
 add_definitions(-fPIC)
 get_filename_component(ICQ_ROOT "${CMAKE_SOURCE_DIR}/.." ABSOLUTE)
 set(ICQ_EXTERNAL "${ICQ_ROOT}/external")
 set(ICQ_QT_ROOT "${ICQ_EXTERNAL}/qt/linux")
+
+set(PRODUCT_SPEC_DIR "${ICQ_ROOT}/products/${PRODUCT}")
+include(${PRODUCT_SPEC_DIR}/project_settings.cmake)
+add_definitions(-DAPP_PROJECT_NAME="${APP_PROJECT_NAME}")
+message("APP_PROJECT_NAME is ${APP_PROJECT_NAME}")
 
 if(LINUX_ARCH EQUAL 32)
     set(LINUX32 ON)
@@ -42,8 +53,6 @@ set(UPDATER_QRC "${CMAKE_SOURCE_DIR}/resource.qrc")
 
 set(ICQ_QT_INCLUDE_DIR "${ICQ_QT_ROOT}/include")
 
-set(CMAKE_CXX_STANDARD 14)
-
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ARCH_FLAGS}")
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${ARCH_FLAGS} -static-libgcc -static-libstdc++")
 
@@ -61,7 +70,7 @@ get_filename_component(ICQ_RCC_EXE "${ICQ_QT_ROOT}/bin/rcc" ABSOLUTE)
 file(REMOVE ${UPDATER_QRC})
 
 add_custom_command(OUTPUT ${UPDATER_QRC}
-                   COMMAND sed -e s/%APP_TYPE%/${APP_TYPE}/ ${UPDATER_QRC_SOURCE} > ${UPDATER_QRC})
+                   COMMAND sed -e s/%APP_PROJECT_NAME%/${APP_PROJECT_NAME}/ ${UPDATER_QRC_SOURCE} > ${UPDATER_QRC})
 
 add_custom_command(OUTPUT qresource.cpp
                    COMMAND ${ICQ_RCC_EXE} ${UPDATER_QRC} -pass 1 -o qresource.cpp

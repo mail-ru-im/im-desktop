@@ -25,6 +25,8 @@ namespace Ui
         void setBadgeText(int _index, const QString& _text);
         void setBadgeIcon(int _index, const QString& _icon);
 
+        void insertAdditionalWidget(QWidget* _w);
+
     Q_SIGNALS:
         void tabBarClicked(int, QPrivateSignal) const;
         void currentChanged(int, QPrivateSignal) const;

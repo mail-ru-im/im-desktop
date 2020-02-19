@@ -25,14 +25,14 @@ scheduler::scheduler()
 
             if (res == std::cv_status::timeout)
             {
-                const auto current_time = std::chrono::system_clock::now();
+                const auto current_time = std::chrono::steady_clock::now();
 
-                for (const auto& timer_task : timed_tasks_)
+                for (auto& timer_task : timed_tasks_)
                 {
-                    if (current_time - timer_task->last_execute_time_ >= timer_task->timeout_)
+                    if (current_time - timer_task.last_execute_time_ >= timer_task.timeout_)
                     {
-                        timer_task->last_execute_time_ = current_time;
-                        g_core->execute_core_context(timer_task->function_);
+                        timer_task.last_execute_time_ = current_time;
+                        g_core->execute_core_context(timer_task.function_);
                     }
                 }
             }
@@ -43,7 +43,10 @@ scheduler::scheduler()
 
 scheduler::~scheduler()
 {
-    is_stop_ = true;
+    {
+        std::scoped_lock lock(mutex_);
+        is_stop_ = true;
+    }
     condition_.notify_all();
     thread_->join();
 }
@@ -58,17 +61,17 @@ uint32_t core::scheduler::push_timer(std::function<void()> _function, std::chron
 {
     const auto currentId = get_id();
 
-    auto timer_task = std::make_shared<scheduler_timer_task>();
-    timer_task->function_ = std::move(_function);
-    timer_task->timeout_ = _timeout;
-    timer_task->id_ = currentId;
+    scheduler_timer_task timer_task;
+    timer_task.function_ = std::move(_function);
+    timer_task.timeout_ = _timeout;
+    timer_task.id_ = currentId;
+    timer_task.last_execute_time_ = std::chrono::steady_clock::now();
 
     decltype(timed_tasks_) tmp_list;
     tmp_list.push_back(std::move(timer_task));
 
     {
-        std::lock_guard<std::mutex> lock(mutex_);
-        tmp_list.front()->last_execute_time_ = std::chrono::system_clock::now();
+        std::scoped_lock lock(mutex_);
         timed_tasks_.splice(timed_tasks_.end(), tmp_list, tmp_list.begin());
     }
 
@@ -79,10 +82,9 @@ void core::scheduler::stop_timer(uint32_t _id)
 {
     decltype(timed_tasks_) tmp_list;
     {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::scoped_lock lock(mutex_);
         const auto end = timed_tasks_.end();
-        const auto it = std::find_if(timed_tasks_.begin(), end, [_id](const auto& x) { return x->id_ == _id; });
-        if (it != end)
+        if (const auto it = std::find_if(timed_tasks_.begin(), end, [_id](const auto& x) { return x.id_ == _id; }); it != end)
             tmp_list.splice(tmp_list.begin(), timed_tasks_, it);
     }
 }

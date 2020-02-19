@@ -8,27 +8,28 @@
 #include "logic/worker.h"
 #include "ui/main_window/main_window.h"
 #include "utils/styles.h"
+#include "utils/statistics.h"
 
 #include "../common.shared/win32/crash_handler.h"
 #include "../common.shared/win32/common_crash_sender.h"
+#include "../common.shared/config/config.h"
 
 Q_IMPORT_PLUGIN(QWindowsIntegrationPlugin);
 Q_IMPORT_PLUGIN(QICOPlugin);
 using namespace installer;
-const wchar_t* installer_singlton_mutex_name_icq = L"{5686F5E0-121F-449B-ABB7-B01021D7DE65}";
-const wchar_t* installer_singlton_mutex_name_agent = L"{6CE5AF68-83B7-477A-9101-D9F56C5F57B8}";
-const wchar_t* installer_singlton_mutex_name_biz = L"{4301FF79-43C0-4182-A453-948D60C8BA56}";
-const wchar_t* installer_singlton_mutex_name_dit = L"{9150781C-C201-4520-B8B7-0BF54BBCE1D4}";
-const wchar_t* get_installer_singlton_mutex_name() { return build::get_product_variant(installer_singlton_mutex_name_icq, installer_singlton_mutex_name_agent, installer_singlton_mutex_name_biz, installer_singlton_mutex_name_dit);}
-const wchar_t* old_version_launch_mutex_name = L"MRAICQLAUNCH";
+
+static void waitGlobalThreadPool()
+{
+    QThreadPool::globalInstance()->waitForDone(std::chrono::milliseconds(8000).count());
+}
 #endif //_WIN32
 
 int main(int _argc, char* _argv[])
 {
 #ifndef __linux__
-    if (_argv[1] == send_dump_arg)
+    if (_argc > 1 && QString::fromUtf8(_argv[1]) == send_dump_arg)
     {
-        ::common_crash_sender::post_dump_to_hockey_app_and_delete();
+        ::common_crash_sender::post_dump_and_delete();
         return 0;
     };
 #endif //__linux__
@@ -36,13 +37,14 @@ int main(int _argc, char* _argv[])
     int res = 0;
 
 #ifdef _WIN32
-    const wchar_t* product_path = build::get_product_variant(product_path_icq_w, product_path_agent_w, product_path_biz_w, product_path_dit_w);
-    core::dump::crash_handler chandler("icq.dekstop.installer", ::common::get_user_profile() + L"/" + product_path, false);
+    const auto start_time = std::chrono::system_clock::now();
+    const auto product_path = config::get().string(config::values::product_path);
+    core::dump::crash_handler chandler("icq.dekstop.installer", ::common::get_user_profile() + L'/' + QString::fromUtf8(product_path.data(), product_path.size()).toStdWString(), false);
     chandler.set_process_exception_handlers();
     chandler.set_thread_exception_handlers();
     chandler.set_is_sending_after_crash(true);
 
-    CHandle mutex(::CreateSemaphore(NULL, 0, 1, get_installer_singlton_mutex_name()));
+    CHandle mutex(::CreateSemaphoreA(NULL, 0, 1, std::string(config::get().string(config::values::installer_main_instance_mutex_win)).c_str()));
     if (ERROR_ALREADY_EXISTS == ::GetLastError())
         return res;
 #endif //_WIN32
@@ -54,31 +56,34 @@ int main(int _argc, char* _argv[])
 #endif
 
 #ifdef __linux__
-    QString binary_path = app.applicationDirPath() + "/" + APP_TYPE;
+    const QString app_name = QString::fromUtf8(APP_PROJECT_NAME);
+    QString binary_path = app.applicationDirPath() % QLatin1Char('/') % app_name;
     QFile::remove(binary_path);
 #ifdef __x86_64__
-    QFile::copy(QString(":/bin/Release64/%1").arg(APP_TYPE), binary_path);
+    QFile::copy(QStringLiteral(":/bin/Release64/%1").arg(app_name), binary_path);
 #else
-    QFile::copy(QString(":/bin/Release32/%1").arg(APP_TYPE), binary_path);
+    QFile::copy(QStringLiteral(":/bin/Release32/%1").arg(app_name), binary_path);
 #endif
-    std::string chmod("chmod 755 ");
-    binary_path.replace(" ", "\\ ");
-    chmod += binary_path.toStdString();
+    binary_path.replace(QLatin1Char(' '), QLatin1String("\\ "));
+    const std::string chmod = "chmod 755 " + binary_path.toStdString();
     system(chmod.c_str());
 #else
 
     logic::get_translator()->init();
+    QFontDatabase::addApplicationFont(qsl(":/fonts/SourceSansPro_Regular"));
+    QFontDatabase::addApplicationFont(qsl(":/fonts/SourceSansPro_Bold"));
+    QFontDatabase::addApplicationFont(qsl(":/fonts/SFProText_Regular"));
 
     std::unique_ptr<ui::main_window> wnd;
     bool autoInstall = false;
     {
-        QStringList arguments = app.arguments();
+        const QStringList arguments = app.arguments();
 
         logic::install_config config;
 
         for (auto iter = arguments.cbegin(); iter != arguments.cend(); ++iter)
         {
-            if (*iter == "-uninstalltmp")
+            if (*iter == ql1s("-uninstalltmp"))
             {
                 config.set_uninstalltmp(true);
 
@@ -88,15 +93,15 @@ int main(int _argc, char* _argv[])
 
                 config.set_folder_for_delete(*iter);
             }
-            else if (*iter == "-uninstall")
+            else if (*iter == ql1s("-uninstall"))
             {
                 config.set_uninstall(true);
             }
-            else if (*iter == "-appx")
+            else if (*iter == ql1s("-appx"))
             {
                 config.set_appx(true);
             }
-            else if (*iter == "-update")
+            else if (*iter == ql1s("-update"))
             {
                 config.set_update(true);
             }
@@ -116,17 +121,23 @@ int main(int _argc, char* _argv[])
             {
                 config.set_nolaunch_from_8x(true);
             }
-            else if (*iter == "-autoinstall")
+            else if (*iter == ql1s("-autoinstall"))
             {
                 autoInstall = true;
             }
-            else if (*iter == "-installsilent")
+            else if (*iter == ql1s("-installsilent"))
             {
                 config.set_install_silent_from_agent_5x(true);
             }
         }
 
         set_install_config(config);
+
+        QObject::connect(logic::get_worker(), &logic::worker::error, [start_time](const installer::error& _err)
+        {
+            if (!_err.is_ok())
+                QThreadPool::globalInstance()->start(new statisctics::SendTask(_err, start_time));
+        });
 
         auto connect_to_events = [&wnd, &app, autoInstall]()
         {
@@ -135,19 +146,18 @@ int main(int _argc, char* _argv[])
                 QApplication::exit();
             });
 
-            QObject::connect(logic::get_worker(), &logic::worker::error, [](installer::error _err)
+            QObject::connect(logic::get_worker(), &logic::worker::error, [](const installer::error&)
             {
                 QApplication::exit();
             });
 
             QObject::connect(logic::get_worker(), &logic::worker::select_account, [&wnd, &app, autoInstall]()
             {
-                app.setStyleSheet(ui::styles::load_style(":/styles/styles.qss"));
+                app.setStyleSheet(ui::styles::load_style(qsl(":/styles/styles.qss")) % ui::styles::load_style(qsl(":/product/styles.qss")));
 
                 wnd = std::make_unique<ui::main_window>(ui::main_window_start_page::page_accounts, autoInstall);
 
-                QIcon icon(build::get_product_variant(":/images/installer_icq_icon.ico", ":/images/installer_agent_icon.ico", ":/images/installer_agent_icon.ico", ":/images/installer_dit_icon.ico"));
-                wnd->setWindowIcon(icon);
+                wnd->setWindowIcon(QIcon(qsl(":/product/installer.ico")));
 
                 wnd->show();
             });
@@ -179,9 +189,7 @@ int main(int _argc, char* _argv[])
         }
         else if (logic::get_install_config().is_update_final())
         {
-            const auto updater_singlton_mutex_name = build::get_product_variant(updater_singlton_mutex_name_icq, updater_singlton_mutex_name_agent, updater_singlton_mutex_name_biz, updater_singlton_mutex_name_dit);
-
-            CHandle mutex(::CreateSemaphore(NULL, 0, 1, updater_singlton_mutex_name.c_str()));
+            CHandle mutex(::CreateSemaphoreA(NULL, 0, 1, std::string(config::get().string(config::values::updater_main_instance_mutex_win)).c_str()));
             if (ERROR_ALREADY_EXISTS == ::GetLastError())
                 return true;
 
@@ -193,7 +201,7 @@ int main(int _argc, char* _argv[])
         }
         else
         {
-            app.setStyleSheet(ui::styles::load_style(":/styles/styles.qss"));
+            app.setStyleSheet(ui::styles::load_style(qsl(":/styles/styles.qss")) % ui::styles::load_style(qsl(":/product/styles.qss")));
 
             if (logic::get_install_config().is_appx())
             {
@@ -205,17 +213,17 @@ int main(int _argc, char* _argv[])
             {
                 wnd = std::make_unique<ui::main_window>(ui::main_window_start_page::page_start, autoInstall);
 
-                QIcon icon(build::get_product_variant(":/images/installer_icq_icon.ico", ":/images/installer_agent_icon.ico", ":/images/installer_biz_icon.ico", ":/images/installer_dit_icon.ico"));
-
-                wnd->setWindowIcon(icon);
+                wnd->setWindowIcon(QIcon(qsl(":/product/installer.ico")));
 
                 wnd->show();
             }
 
-
             res = app.exec();
         }
 
+        logic::worker::clear_tmp_install_dir();
+
+        waitGlobalThreadPool();
     }
 #endif //__linux__
     return res;

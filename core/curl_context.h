@@ -26,8 +26,12 @@ namespace core
         bool is_write_data_log();
         void set_write_data_log(bool _enable);
 
-        void write_log_data(const char* _data, uint32_t _size);
+        void write_log_data(const char* _data, int64_t _size);
         void write_log_string(std::string_view _log_string);
+        void write_log_string(char _log_char)
+        {
+            write_log_string(std::string_view(&_log_char, 1));
+        }
 
         void set_replace_log_function(replace_log_function _func);
         void set_range(int64_t _from, int64_t _to);
@@ -37,6 +41,7 @@ namespace core
         void set_http_post();
         void set_modified_time(time_t _last_modified_time);
         void set_custom_header_params(const std::vector<std::string>& _params);
+        void set_custom_header_param(const std::string& _param);
 
         void set_priority(priority_t _priority);
         priority_t get_priority() const;
@@ -44,12 +49,12 @@ namespace core
         void set_id(int64_t _id);
         int64_t get_id() const;
 
-        void set_post_data(const char* _data, int32_t _size, bool _copy);
+        void set_post_data(const char* _data, int64_t _size, bool _copy);
         void set_post_parameters(const std::string& _post_parameters);
         void set_post_form_parameters(const std::map<std::string, std::string>& _post_form_parameters);
         void set_post_form_files(const std::multimap<std::string, std::string>& _post_form_files);
         void set_post_form_filedatas(const std::multimap<std::string, file_binary_stream>& _post_form_filedatas);
-        void set_gzip(bool _gzip);
+        void set_post_data_compression(data_compression_method _method);
 
         long get_response_code() const;
         double get_request_time() const;
@@ -62,6 +67,8 @@ namespace core
         CURLcode execute_handler(CURL* _curl);
         CURLMcode execute_multi_handler(CURLM* _multi, CURL* _curl);
 
+        void decompress_output_if_needed();
+
         void load_info(CURL* _curl, CURLcode _resul);
         void write_log(CURLcode res);
 
@@ -72,6 +79,15 @@ namespace core
         bool is_multi_task() const;
 
         bool is_gzip() const;
+        bool is_zstd() const;
+        bool is_compressed() const;
+
+        bool is_use_curl_decompression() const;
+        void set_use_curl_decompression(bool _enable);
+
+        const std::string& zstd_request_dict() const;
+        const std::string& zstd_response_dict() const;
+        const std::string& normalized_url() const;
 
     private:
         void write_log_message(std::string_view _result, std::chrono::steady_clock::time_point _start_time);
@@ -118,8 +134,8 @@ namespace core
         std::multimap<std::string, file_binary_stream> post_form_filedatas_;
 
         char* post_data_;
-        int32_t post_data_size_;
-        bool free_post_data_;
+        int64_t post_data_size_;
+        std::unique_ptr<char[]> post_data_copy_;
 
         time_t modified_time_;
         int64_t id_;
@@ -130,8 +146,12 @@ namespace core
 
         bool is_send_im_stats_;
         bool multi_;
-        bool gzip_;
+        data_compression_method compression_method_;
 
         std::chrono::steady_clock::time_point start_time_;
+
+        std::string zstd_request_dict_;
+        std::string zstd_response_dict_;
+        bool use_curl_decompression_;
     };
 }

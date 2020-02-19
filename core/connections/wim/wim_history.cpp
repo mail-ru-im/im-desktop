@@ -3,6 +3,7 @@
 #include "../../archive/history_message.h"
 #include "../../archive/history_patch.h"
 #include "../../archive/dlg_state.h"
+#include "../../tools/json_helper.h"
 
 #include "../../log/log.h"
 

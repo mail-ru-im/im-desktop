@@ -6,6 +6,7 @@
 #include "../../controls/TextEmojiWidget.h"
 #include "../../controls/TransparentScrollBar.h"
 
+#include "../../../common.shared/config/config.h"
 
 #include "../../core_dispatcher.h"
 #include "../../gui_settings.h"
@@ -13,6 +14,7 @@
 #include "../../utils/InterConnector.h"
 #include "../../utils/utils.h"
 #include "../../utils/translator.h"
+#include "../../utils/features.h"
 #include "../../styles/ThemeParameters.h"
 
 using namespace Ui;
@@ -36,6 +38,25 @@ void GeneralSettingsWidget::Creator::initGeneral(GeneralSettings* _parent)
     auto layout = Utils::emptyHLayout(_parent);
     Testing::setAccessibleName(scrollArea, qsl("AS settings scrollArea"));
     layout->addWidget(scrollArea);
+
+    const auto addSimpleSwitcher = [scrollArea, mainLayout](const auto& _caption, const char* _name, const bool _defaultValue, const std::function<void(bool)> _func = {})
+    {
+        return GeneralCreator::addSwitcher(
+            scrollArea,
+            mainLayout,
+            _caption,
+            get_gui_settings()->get_value<bool>(_name, _defaultValue),
+            [_name, _defaultValue, _func](bool checked)
+            {
+                if (get_gui_settings()->get_value<bool>(_name, _defaultValue) != checked)
+                    get_gui_settings()->set_value<bool>(_name, checked);
+
+                if (_func)
+                    _func(checked);
+
+                return QString();
+            });
+    };
 
     {
         if constexpr (!platform::is_linux())
@@ -123,122 +144,56 @@ void GeneralSettingsWidget::Creator::initGeneral(GeneralSettings* _parent)
         GeneralCreator::addHeader(scrollArea, mainLayout, QT_TRANSLATE_NOOP("settings", "Chat"), 20);
         mainLayout->addSpacing(Utils::scale_value(12));
 
-        GeneralCreator::addSwitcher(
-                scrollArea,
-                mainLayout,
-                QT_TRANSLATE_NOOP("settings", "Consequently marking messages as read"),
-                get_gui_settings()->get_value<bool>(settings_partial_read, settings_partial_read_deafult()),
-                [](bool checked) {
-                    if (get_gui_settings()->get_value<bool>(settings_partial_read, settings_partial_read_deafult()) !=
-                        checked) {
-                        get_gui_settings()->set_value<bool>(settings_partial_read, checked);
 
-                        GetDispatcher()->post_stats_to_core(
-                                core::stats::stats_event_names::settings_main_readall_action,
-                                {{"Change_Position", std::string(checked ? "+" : "-")}});
-                    }
+        addSimpleSwitcher(QT_TRANSLATE_NOOP("settings", "Consequently marking messages as read"), settings_partial_read, settings_partial_read_default(), [](const bool _checked)
+        {
+            GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::settings_main_readall_action, { {"Change_Position", std::string(_checked ? "+" : "-")} });
+        });
 
-                    return QString();
-                });
+        if (config::get().is_on(config::features::snippet_in_chat))
+            addSimpleSwitcher(QT_TRANSLATE_NOOP("settings", "Preview links"), settings_show_video_and_images, true);
 
-        GeneralCreator::addSwitcher(
-                scrollArea,
-                mainLayout,
-                QT_TRANSLATE_NOOP("settings", "Preview images and links"),
-                get_gui_settings()->get_value<bool>(settings_show_video_and_images, true),
-                [](bool checked) {
-                    if (get_gui_settings()->get_value<bool>(settings_show_video_and_images, true) != checked)
-                        get_gui_settings()->set_value<bool>(settings_show_video_and_images, checked);
-                    return QString();
-                });
+        addSimpleSwitcher(QT_TRANSLATE_NOOP("settings", "Auto play videos"), settings_autoplay_video, true);
+        addSimpleSwitcher(QT_TRANSLATE_NOOP("settings", "Turn on video sound on hover"), settings_hoversound_video, settings_hoversound_video_default());
+        addSimpleSwitcher(QT_TRANSLATE_NOOP("settings", "Auto play GIFs"), settings_autoplay_gif, true);
+        addSimpleSwitcher(QT_TRANSLATE_NOOP("settings", "Show read status in groups"), settings_show_groupchat_heads, true, [](const bool _checked)
+        {
+            if (_checked)
+                emit Utils::InterConnector::instance().showHeads();
+            else
+                emit Utils::InterConnector::instance().hideHeads();
+        });
 
-        GeneralCreator::addSwitcher(
-                scrollArea,
-                mainLayout,
-                QT_TRANSLATE_NOOP("settings", "Auto play videos"),
-                get_gui_settings()->get_value<bool>(settings_autoplay_video, true),
-                [](bool checked) {
-                    if (get_gui_settings()->get_value<bool>(settings_autoplay_video, true) != checked)
-                        get_gui_settings()->set_value<bool>(settings_autoplay_video, checked);
-                    return QString();
-                });
+        if (Features::isSmartreplyEnabled())
+        {
+            auto switcher = addSimpleSwitcher(QT_TRANSLATE_NOOP("settings", "Show smart reply"), settings_show_smartreply, settings_show_smartreply_default(), [](const bool _checked)
+            {
+                if (_checked)
+                    emit Utils::InterConnector::instance().showSmartreplies();
+                else
+                    emit Utils::InterConnector::instance().hideSmartReplies(QString());
 
-        GeneralCreator::addSwitcher(
-                scrollArea,
-                mainLayout,
-                QT_TRANSLATE_NOOP("settings", "Auto play GIFs"),
-                get_gui_settings()->get_value<bool>(settings_autoplay_gif, true),
-                [](bool checked) {
-                    if (get_gui_settings()->get_value<bool>(settings_autoplay_gif, true) != checked)
-                        get_gui_settings()->set_value<bool>(settings_autoplay_gif, checked);
-                    return QString();
-                });
+                const core::stats::event_props_type props = { { "enabled", _checked ? "1" : "0" } };
+                GetDispatcher()->post_im_stats_to_core(core::stats::im_stat_event_names::smartreply_settings_swtich, props);
+                GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::settingsscr_smartreply_action, props);
+            });
 
-        GeneralCreator::addSwitcher(
-                scrollArea,
-                mainLayout,
-                QT_TRANSLATE_NOOP("settings", "Show read status in groups"),
-                get_gui_settings()->get_value<bool>(settings_show_groupchat_heads, true),
-                [](bool checked) {
-                    if (get_gui_settings()->get_value<bool>(settings_show_groupchat_heads, true) != checked)
-                        get_gui_settings()->set_value<bool>(settings_show_groupchat_heads, checked);
+            connect(&Utils::InterConnector::instance(), &Utils::InterConnector::smartReplySettingShowChanged, switcher, [switcher]()
+            {
+                QSignalBlocker sb(switcher);
+                switcher->setChecked(get_gui_settings()->get_value<bool>(settings_show_smartreply, settings_show_smartreply_default()));
+            });
+        }
+        addSimpleSwitcher(QT_TRANSLATE_NOOP("settings", "Close search after result selection"), settings_fast_drop_search_results, settings_fast_drop_search_default());
 
-                    if (checked)
-                            emit Utils::InterConnector::instance().showHeads();
-                    else
-                            emit Utils::InterConnector::instance().hideHeads();
+        if (Features::isSuggestsEnabled())
+        {
+            addSimpleSwitcher(QT_TRANSLATE_NOOP("settings", "Show stickers suggests for emoji"), settings_show_suggests_emoji, true);
+            addSimpleSwitcher(QT_TRANSLATE_NOOP("settings", "Show stickers suggests for words"), settings_show_suggests_words, true);
+        }
 
-                    return QString();
-                });
-
-        GeneralCreator::addSwitcher(scrollArea, mainLayout,
-                                    QT_TRANSLATE_NOOP("settings", "Show stickers suggests for emoji"),
-                                    get_gui_settings()->get_value<bool>(settings_show_suggests_emoji, true),
-                                    [](bool checked) {
-                                        if (get_gui_settings()->get_value<bool>(settings_show_suggests_emoji, true) !=
-                                            checked)
-                                            get_gui_settings()->set_value<bool>(settings_show_suggests_emoji, checked);
-
-                                        return QString();
-                                    });
-
-        GeneralCreator::addSwitcher(scrollArea, mainLayout,
-                                    QT_TRANSLATE_NOOP("settings", "Show stickers suggests for words"),
-                                    get_gui_settings()->get_value<bool>(settings_show_suggests_words, true),
-                                    [](bool checked) {
-                                        if (get_gui_settings()->get_value<bool>(settings_show_suggests_words, true) !=
-                                            checked)
-                                            get_gui_settings()->set_value<bool>(settings_show_suggests_words, checked);
-
-                                        return QString();
-                                    });
-
-        GeneralCreator::addSwitcher(scrollArea, mainLayout,
-                                    QT_TRANSLATE_NOOP("settings", "Automatically replace emojis"),
-                                    get_gui_settings()->get_value<bool>(settings_autoreplace_emoji,
-                                                                        settings_autoreplace_emoji_deafult()),
-                                    [](bool checked) {
-                                        if (get_gui_settings()->get_value<bool>(settings_autoreplace_emoji,
-                                                                                settings_autoreplace_emoji_deafult()) !=
-                                            checked)
-                                            get_gui_settings()->set_value<bool>(settings_autoreplace_emoji, checked);
-
-                                        return QString();
-                                    });
-
-        GeneralCreator::addSwitcher(scrollArea, mainLayout, QT_TRANSLATE_NOOP("settings", "Big emoji in chat"),
-                                    get_gui_settings()->get_value<bool>(settings_allow_big_emoji,
-                                                                        settings_allow_big_emoji_deafult()),
-                                    [](bool checked) {
-                                        if (get_gui_settings()->get_value<bool>(settings_allow_big_emoji,
-                                                                                settings_allow_big_emoji_deafult()) !=
-                                            checked) {
-                                            get_gui_settings()->set_value<bool>(settings_allow_big_emoji, checked);
-                                            emit Utils::InterConnector::instance().emojiSizeChanged();
-                                        }
-
-                                        return QString();
-                                    });
+        addSimpleSwitcher(QT_TRANSLATE_NOOP("settings", "Automatically replace emojis"), settings_autoreplace_emoji, settings_autoreplace_emoji_default());
+        addSimpleSwitcher(QT_TRANSLATE_NOOP("settings", "Big emoji in chat"), settings_allow_big_emoji, settings_allow_big_emoji_default());
 
         mainLayout->addSpacing(Utils::scale_value(20));
 
@@ -264,19 +219,8 @@ void GeneralSettingsWidget::Creator::initGeneral(GeneralSettings* _parent)
         GeneralCreator::addHeader(scrollArea, mainLayout, QT_TRANSLATE_NOOP("settings", "Contacts"), 20);
         mainLayout->addSpacing(Utils::scale_value(12));
 
-        GeneralCreator::addSwitcher(
-                scrollArea,
-                mainLayout,
-                QT_TRANSLATE_NOOP("settings", "Show popular contacts"),
-                get_gui_settings()->get_value<bool>(settings_show_popular_contacts, true),
-                [](bool checked) {
-                    if (get_gui_settings()->get_value<bool>(settings_show_popular_contacts, true) != checked) {
-                        get_gui_settings()->set_value<bool>(settings_show_popular_contacts, checked);
-                        emit Utils::InterConnector::instance().clSortChanged();
-                    }
+        addSimpleSwitcher(QT_TRANSLATE_NOOP("settings", "Show popular contacts"), settings_show_popular_contacts, true);
 
-                    return QString();
-                });
         mainLayout->addSpacing(Utils::scale_value(20));
     }
 

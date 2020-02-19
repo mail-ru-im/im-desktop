@@ -1,14 +1,4 @@
-//
-//  WindowTest.h
-//  ICQ
-//
-//  Created by IceSeer on 04/12/15.
-//  Copyright © 2015 Mail.RU. All rights reserved.
-//
-
-#ifndef __WINDOW_TEST_H__
-#define __WINDOW_TEST_H__
-
+#pragma once
 #include <QtWidgets/qwidget.h>
 
 namespace Ui
@@ -28,17 +18,14 @@ namespace platform_specific
 
         virtual WId frameId() const;
 
-        virtual void addPanels(std::vector<QPointer<Ui::BaseVideoPanel>>& _panels);
-        virtual void clearPanels();
-        virtual void fullscreenModeChanged(bool _fullscreen);
-        virtual void fullscreenAnimationStart();
-        virtual void fullscreenAnimationFinish();
-        virtual void windowWillDeminiaturize();
-        virtual void windowDidDeminiaturize();
+        virtual void addPanels(std::vector<QPointer<Ui::BaseVideoPanel>>& _panels) {}
+        virtual void clearPanels() {}
+        virtual void fullscreenModeChanged(bool _fullscreen) {}
+        virtual void fullscreenAnimationStart() {}
+        virtual void fullscreenAnimationFinish() {}
+        virtual void windowWillDeminiaturize() {}
+        virtual void windowDidDeminiaturize() {}
         virtual void createdTalk() {}
         virtual void startedTalk() {}
     };
-
 }
-
-#endif//__WINDOW_TEST_H__

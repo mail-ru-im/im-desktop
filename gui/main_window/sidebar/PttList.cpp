@@ -2,6 +2,7 @@
 
 #include "PttList.h"
 #include "SidebarUtils.h"
+#include "../common.shared/config/config.h"
 #include "../../core_dispatcher.h"
 #include "../../controls/TextUnit.h"
 #include "../../controls/ContextMenu.h"
@@ -165,7 +166,7 @@ namespace Ui
         _p.drawEllipse(QPoint(Utils::scale_value(HOR_OFFSET + BUTTON_SIZE / 2), Utils::scale_value(ICON_VER_OFFSET + BUTTON_SIZE / 2) + _rect.y()), Utils::scale_value(BUTTON_SIZE / 2), Utils::scale_value(BUTTON_SIZE / 2));
         _p.drawPixmap(Utils::scale_value(HOR_OFFSET + BUTTON_SIZE / 2 - SUB_BUTTON_SIZE / 2), Utils::scale_value(ICON_VER_OFFSET + BUTTON_SIZE / 2 - SUB_BUTTON_SIZE / 2) + _rect.y(), playIcon_);
 
-        const auto showPttRecognized = !build::is_dit();
+        const auto showPttRecognized = config::get().is_on(config::features::ptt_recognition);
         if (showPttRecognized)
         {
             switch (textState_)
@@ -356,7 +357,7 @@ namespace Ui
 
     bool PttItem::textClicked(const QPoint& _pos) const
     {
-        if (build::is_dit())
+        if (!config::get().is_on(config::features::ptt_recognition))
             return false;
 
         QRect r(width_ - Utils::scale_value(HOR_OFFSET + BUTTON_SIZE + RIGHT_OFFSET - PREVIEW_RIGHT_OFFSET), Utils::scale_value(VER_OFFSET), Utils::scale_value(BUTTON_SIZE), Utils::scale_value(BUTTON_SIZE));
@@ -679,7 +680,7 @@ namespace Ui
                 }
                 if (i->isOverDate(_event->pos()))
                 {
-                    emit Logic::getContactListModel()->select(aimId_, i->getMsg(), i->getMsg(), Logic::UpdateChatSelection::No);
+                    emit Logic::getContactListModel()->select(aimId_, i->getMsg(), Logic::UpdateChatSelection::No);
                     i->setDateState(true, false);
                 }
                 else

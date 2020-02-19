@@ -5,11 +5,13 @@
 #include "tools/hmac_sha_base64.h"
 #include "../common.shared/version_info.h"
 #include "../common.shared/common_defs.h"
+#include "../common.shared/config/config.h"
 
 #include "openssl/rand.h"
 #include "openssl/evp.h"
 #include "openssl/aes.h"
 
+#include "zip.h"
 
 #if defined(__APPLE__)
 #include<mach/mach.h>
@@ -21,37 +23,72 @@ typedef struct
 } statm_t;
 #endif
 
+namespace
+{
+    // service function for zip_up_directory
+    int fill_zip_file_time(const boost::filesystem::wpath& _file, tm_zip* _tmzip, uLong* _dt)
+    {
+        int ret = -1;
+
+#ifdef _WIN32
+        FILETIME ftLocal;
+        HANDLE hFind;
+        WIN32_FIND_DATA ff32;
+
+        hFind = FindFirstFile(_file.c_str(), &ff32);
+        if (hFind != INVALID_HANDLE_VALUE)
+        {
+            FileTimeToLocalFileTime(&(ff32.ftLastWriteTime), &ftLocal);
+            FileTimeToDosDateTime(&ftLocal, ((LPWORD)_dt) + 1, ((LPWORD)_dt) + 0);
+            FindClose(hFind);
+            ret = 0;
+        }
+#else
+        boost::system::error_code ec;
+        auto file_time = boost::filesystem::last_write_time(_file, ec);
+        tm file_tm = { 0 };
+
+        if (localtime_r(&file_time, &file_tm))
+        {
+            _tmzip->tm_sec = file_tm.tm_sec;
+            _tmzip->tm_min = file_tm.tm_min;
+            _tmzip->tm_hour = file_tm.tm_hour;
+            _tmzip->tm_mday = file_tm.tm_mday;
+            _tmzip->tm_mon = file_tm.tm_mon;
+            _tmzip->tm_year = file_tm.tm_year;
+            ret = 0;
+        }
+#endif
+        return ret;
+    }
+}
+
 namespace core
 {
     namespace utils
     {
         std::string_view get_dev_id()
         {
-            if (platform::is_apple())
-            {
-                return std::string_view(build::get_product_variant("ic18eTwFBO7vAdt9","ic1gBBFr7Ir9EOA2","ic1iPK_NRh952CO-", "on2fah4R-mac"));
-            }
-            else if (platform::is_windows())
-            {
-                return std::string_view(build::get_product_variant("ic1nmMjqg7Yu-0hL", "ic1ReaqsoxgOBHFX", "ic1nQK338I3UIa_q", "on2fah4R-win"));
-            }
-            else
-            {
-                return std::string_view(build::get_product_variant("ic1fdj2RfSjLxBAs", "ic1pz70eh6TmSyL6", "ic11odzi_v6LYcz6", "on2fah4R-linux"));
-            }
+            return common::get_dev_id();
+        }
+
+        std::wstring get_product_data_path(std::wstring_view relative)
+        {
+            std::wstringstream res;
+#ifdef __linux__
+            res << core::tools::system::get_user_profile() << L"/.config/" << relative;
+#elif _WIN32
+            res << ::common::get_user_profile() << L'/' << relative;
+#else
+            res << core::tools::system::get_user_profile() << L'/' << relative;
+#endif //__linux__
+            return res.str();
         }
 
         std::wstring get_product_data_path()
         {
-            const wchar_t* product_path = build::get_product_variant(product_path_icq_w, (platform::is_apple() ? product_path_agent_mac_w : product_path_agent_w), product_path_biz_w, product_path_dit_w);
-
-#ifdef __linux__
-            return (core::tools::system::get_user_profile() + L"/.config/" + product_path);
-#elif _WIN32
-            return ::common::get_user_profile() + L'/' + product_path;
-#else
-            return (core::tools::system::get_user_profile() + L'/' + product_path);
-#endif //__linux__
+            constexpr auto v = platform::is_apple() ? config::values::product_path_mac : config::values::product_path;
+            return get_product_data_path(tools::from_utf8(config::get().string(v)));
         }
 
         std::string get_product_name()
@@ -59,30 +96,30 @@ namespace core
             return "icq.desktop";
         }
 
-        std::string get_app_name()
+        std::string_view get_app_name()
         {
             if constexpr (platform::is_windows())
             {
-                return build::get_product_variant("Mail.ru Windows ICQ", "Mail.ru Windows Agent", "Myteam Windows", "Messenger Windows");
+                return config::get().string(config::values::app_name_win);
             }
             else if constexpr (platform::is_apple())
             {
-                return build::get_product_variant("Mail.ru Mac OS X ICQ", "Mail.ru Mac OS X Agent", "Myteam OS X", "Messenger OS X");
+                return config::get().string(config::values::app_name_mac);
             }
             else if constexpr (platform::is_linux())
             {
-                return build::get_product_variant("Mail.ru Linux ICQ", "Mail.ru Linux Agent", "Myteam Linux", "Messenger Linux");
+                return config::get().string(config::values::app_name_linux);
             }
             else
             {
                 static_assert("unsupported platform");
-                return build::get_product_variant("Mail.ru ICQ", "Mail.ru Agent", "Myteam", "Messenger");
+                return config::get().string(config::values::app_name_linux);
             }
         }
 
         std::string_view get_ua_app_name()
         {
-            return build::get_product_variant("ICQ", "Agent", "myteam", "Messenger");
+            return config::get().string(config::values::user_agent_app_name);
         }
 
         constexpr std::string_view get_platform_name() noexcept
@@ -150,9 +187,9 @@ namespace core
             return "unknown";
         }
 
-        std::string get_client_string()
+        std::string_view get_client_string()
         {
-            return build::get_product_variant("icq", "agent", "myteam", "dit");
+            return config::get().string(config::values::client_rapi);
         }
 
         std::wstring get_report_path()
@@ -163,11 +200,6 @@ namespace core
         std::wstring get_report_log_path()
         {
             return get_report_path() + L"/crash.log";
-        }
-
-        std::wstring get_report_mini_dump_path()
-        {
-            return get_report_path() + L"/crashdump.dmp";
         }
 
         std::wstring get_themes_path()
@@ -316,7 +348,18 @@ namespace core
             pthread_setname_np(tname);
         #endif
 #else
+        if (IsDebuggerPresent())
+        {
             SetThreadName(GetCurrentThreadId(), std::string(_name).c_str());
+        }
+        else
+        {
+            // The SetThreadDescription API was brought in version 1607 of Windows 10. Works even if no debugger is attached.
+            typedef HRESULT(WINAPI* SetThreadDescription)(HANDLE hThread, PCWSTR lpThreadDescription);
+            auto set_thread_description_func = reinterpret_cast<SetThreadDescription>(GetProcAddress(GetModuleHandle(L"Kernel32.dll"), "SetThreadDescription"));
+            if (set_thread_description_func)
+                set_thread_description_func(GetCurrentThread(), tools::from_utf8(_name).c_str());
+        }
 #endif
         }
 
@@ -470,6 +513,108 @@ namespace core
             core::tools::sha256(salted_password, buffer);
 
             return std::string(buffer);
+        }
+
+        boost::filesystem::wpath generate_unique_path(const boost::filesystem::wpath& _path)
+        {
+            auto result = _path;
+            int n = 0;
+            while (tools::system::is_exist(result))
+            {
+                const auto stem = _path.stem().wstring();
+                const auto extension = _path.extension().wstring();
+                std::wstringstream new_name;
+                new_name << '/' << stem << " (" << ++n << ')' << extension;
+                result = _path.parent_path() / new_name.str();
+            }
+
+            return result;
+        }
+
+        boost::filesystem::wpath zip_up_directory(const boost::filesystem::wpath& _path)
+        {
+            boost::filesystem::wpath zip;
+
+            boost::system::error_code ec;
+            if (tools::system::is_exist(_path) && boost::filesystem::is_directory(_path, ec))
+            {
+                bool succeeded = true;
+                const auto parent_path = _path.parent_path();
+                const auto parent_path_len = parent_path.string().size() + 1; // +1 for '\\' or '/'
+
+                zip = parent_path / (_path.filename().wstring() + L".zip");
+
+                if (auto zf = zipOpen(zip.string().c_str(), APPEND_STATUS_CREATE))
+                {
+                    try
+                    {
+                        auto it = boost::filesystem::recursive_directory_iterator(_path, ec);
+                        auto end = boost::filesystem::recursive_directory_iterator();
+                        for (; it != end && !ec; it.increment(ec))
+                        {
+                            if (it->status().type() != boost::filesystem::file_type::regular_file)
+                                continue;
+
+                            const auto& added_file = it->path();
+                            tools::binary_stream bs;
+                            if (bs.load_from_file(added_file.wstring()))
+                            {
+                                zip_fileinfo zfi = { 0 };
+                                fill_zip_file_time(added_file, &zfi.tmz_date, &zfi.dosDate);
+
+                                // the file name inside the archive is obtained by removing the parent_path part from its path
+                                succeeded &= zipOpenNewFileInZip(zf, added_file.string().substr(parent_path_len).c_str(), &zfi, nullptr, 0, nullptr, 0, nullptr, Z_DEFLATED, Z_BEST_SPEED) == ZIP_OK;
+                                succeeded &= zipWriteInFileInZip(zf, bs.get_data_for_write(), bs.available()) == ZIP_OK;
+                                succeeded &= zipCloseFileInZip(zf) == ZIP_OK;
+                                if (!succeeded)
+                                    break;
+                            }
+                        }
+                    }
+                    catch (const std::exception&)
+                    {
+                        succeeded = false;
+                    }
+
+                    succeeded &= zipClose(zf, nullptr) == ZIP_OK;
+
+                    if (!succeeded)
+                    {
+                        boost::filesystem::remove(zip, ec);
+                        zip.clear();
+                    }
+                }
+            }
+
+            return zip;
+        }
+
+        boost::filesystem::wpath create_logs_archive(const boost::filesystem::wpath& _path)
+        {
+            boost::filesystem::wpath arch_path;
+
+            if (const auto source_zip = zip_up_directory(get_logs_path()); !source_zip.empty())
+            {
+                auto zip_path = _path;
+
+                boost::system::error_code ec;
+                if (boost::filesystem::is_directory(_path, ec))
+                    zip_path /= source_zip.filename();
+
+                zip_path = generate_unique_path(zip_path);
+
+                if (tools::system::copy_file(source_zip.wstring(), zip_path.wstring()))
+                {
+                    tools::system::delete_file(source_zip.wstring());
+                    arch_path = std::move(zip_path);
+                }
+                else
+                {
+                    arch_path = std::move(source_zip);
+                }
+            }
+
+            return arch_path;
         }
 
         namespace aes

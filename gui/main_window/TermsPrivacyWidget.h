@@ -11,63 +11,64 @@ class MacMenuBlocker;
 
 namespace Ui
 {
-class PictureWidget;
-class TextBrowserEx;
+    class PictureWidget;
+    class TextBrowserEx;
+    class DialogButton;
 
-class TermsPrivacyWidget: public QWidget
-{
-    Q_OBJECT
+    const QString& legalTermsUrl();
+    const QString& privacyPolicyUrl();
 
-public:
-    struct AcceptParams
+    class TermsPrivacyWidget : public QWidget
     {
-        bool accepted_ = false;
-    };
+        Q_OBJECT
 
-    struct Options
-    {
-        QDialog* containingDialog_ = nullptr;
-        bool controlContainingDialog_ = false;
-        bool blockUntilAccepted_ = false;
-    };
+    public:
+        struct AcceptParams
+        {
+            bool accepted_ = false;
+        };
 
-public:
-    TermsPrivacyWidget(const QString& _titleHtml,
-                       const QString& _descriptionHtml,
-                       const Options& _options,
-                       QWidget* _parent = nullptr);
-    ~TermsPrivacyWidget();
-    void setContainingDialog(QDialog* _containingDialog);
+        struct Options
+        {
+            bool isGdprUpdate_ = false;
+        };
 
-Q_SIGNALS:
-    void agreementAccepted(const AcceptParams& _acceptParams);
+    public:
+        TermsPrivacyWidget(const QString& _titleHtml,
+            const QString& _descriptionHtml,
+            const Options& _options,
+            QWidget* _parent = nullptr);
+        ~TermsPrivacyWidget();
 
-public Q_SLOTS:
-    void onAgreeClicked();
-    void reportAgreementAccepted(const AcceptParams& _acceptParams);
+    Q_SIGNALS:
+        void agreementAccepted(const AcceptParams& _acceptParams);
 
-private Q_SLOTS:
-    void onFocusChanged(QWidget *_from, QWidget *_to);
+    public Q_SLOTS:
+        void onAgreeClicked();
+        void reportAgreementAccepted(const AcceptParams& _acceptParams);
 
-protected:
-    void keyPressEvent(QKeyEvent *_event) override;
-    void showEvent(QShowEvent *_event) override;
+    protected:
+        void keyPressEvent(QKeyEvent *_event) override;
+        void showEvent(QShowEvent *_event) override;
 
-private:
-    QPixmap iconPixmap_;
+    private:
+        void onAnchorClicked(const QUrl& _link) const;
 
-    PictureWidget* icon_ = nullptr;
-    TextBrowserEx* title_ = nullptr;
-    TextBrowserEx* description_ = nullptr;
-    QPushButton* agreeButton_ = nullptr;
+    private:
+        QPixmap iconPixmap_;
 
-    QVBoxLayout* layout_ = nullptr;
+        PictureWidget* icon_ = nullptr;
+        TextBrowserEx* title_ = nullptr;
+        TextBrowserEx* description_ = nullptr;
+        DialogButton* agreeButton_ = nullptr;
 
-    Options options_;
+        QVBoxLayout* layout_ = nullptr;
+
+        Options options_;
 
 #if defined(__APPLE__)
-    std::unique_ptr<MacMenuBlocker> macMenuBlocker_;
+        std::unique_ptr<MacMenuBlocker> macMenuBlocker_;
 #endif
-};
+    };
 
 }

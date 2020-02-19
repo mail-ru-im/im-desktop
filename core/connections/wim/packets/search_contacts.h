@@ -21,6 +21,7 @@ namespace core
         {
             std::string keyword_;
             std::string phone_;
+            bool hide_keyword_;
 
             int32_t init_request(std::shared_ptr<core::http_request_simple> _request) override;
             int32_t parse_results(const rapidjson::Value& _node_results) override;
@@ -28,7 +29,7 @@ namespace core
         public:
             search_contacts_response response_;
 
-            search_contacts(wim_packet_params _packet_params, const std::string_view _keyword, const std::string_view _phone);
+            search_contacts(wim_packet_params _packet_params, const std::string_view _keyword, const std::string_view _phone, const bool _hide_keyword);
 
             const std::shared_ptr<core::archive::persons_map>& get_persons() const override;
 

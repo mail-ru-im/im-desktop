@@ -169,7 +169,7 @@ void CommonMediaLoader::loadPreview()
 
 void CommonMediaLoader::cancel()
 {
-    Ui::GetDispatcher()->cancelLoaderTask(downloadLink_);
+    Ui::GetDispatcher()->cancelLoaderTask(downloadLink_.isEmpty() ? link_ : downloadLink_);
     seq_ = 0;
 
     disconnectSignals();
@@ -203,8 +203,8 @@ void CommonMediaLoader::onImageMetaDownloaded(qint64 _seq, const Data::LinkMetad
     if (seq_ != _seq)
         return;
 
-    isVideo_ = _meta.getContentType() == ql1s("video");
-    isGif_ = _meta.getContentType() == ql1s("gif");
+    isVideo_ = _meta.getContentTypeStr() == ql1s("video");
+    isGif_ = _meta.getContentTypeStr() == ql1s("gif");
     originSize_ = _meta.getOriginSize();
     downloadLink_ = _meta.getDownloadUri();
 }
@@ -218,6 +218,14 @@ void CommonMediaLoader::onImageError(qint64 _seq)
     }
 }
 
+void CommonMediaLoader::onProgress(qint64 _seq, int64_t _bytesTotal, int64_t _bytesTransferred, int32_t _pctTransferred)
+{
+    Q_UNUSED(_pctTransferred)
+
+    if (seq_ == _seq)
+        emit progress(_bytesTotal, _bytesTransferred);
+}
+
 void CommonMediaLoader::connectSignals()
 {
     imageDownloadedConneection_ = connect(Ui::GetDispatcher(), &Ui::core_dispatcher::imageDownloaded,
@@ -228,6 +236,9 @@ void CommonMediaLoader::connectSignals()
 
     imageErrorConneection_ = connect(Ui::GetDispatcher(), &Ui::core_dispatcher::imageDownloadError,
                                      this, &CommonMediaLoader::onImageError);
+
+    progressConneection_ = connect(Ui::GetDispatcher(), &Ui::core_dispatcher::imageDownloadingProgress,
+                                   this, &CommonMediaLoader::onProgress);
 }
 
 void CommonMediaLoader::disconnectSignals()
@@ -235,6 +246,7 @@ void CommonMediaLoader::disconnectSignals()
     disconnect(imageDownloadedConneection_);
     disconnect(metaDownloadedConneection_);
     disconnect(imageErrorConneection_);
+    disconnect(progressConneection_);
 }
 
 void FileSaver::save(FileSaver::Callback _callback, const QString& _link, const QString& _path)
@@ -258,14 +270,14 @@ void FileSaver::save(FileSaver::Callback _callback, const QString& _link, const 
 void FileSaver::onSaved(const QString& _path)
 {
     Q_UNUSED(_path)
-    callback_(true);
+    callback_(true, _path);
 
     deleteLater();
 }
 
 void FileSaver::onError()
 {
-    callback_(false);
+    callback_(false, QString());
 
     deleteLater();
 }

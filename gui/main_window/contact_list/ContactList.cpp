@@ -32,6 +32,7 @@
 #include "../../utils/stat_utils.h"
 #include "../../utils/InterConnector.h"
 #include "../../utils/gui_coll_helper.h"
+#include "../../utils/features.h"
 #include "../../fonts.h"
 #include "../Placeholders.h"
 #include "AddContactDialogs.h"
@@ -159,26 +160,25 @@ namespace Ui
     }
 
     ContactList::ContactList(QWidget* _parent)
-    : QWidget(_parent)
-    , listEventFilter_(new RCLEventFilter(this))
-    , recentsPlaceholder_(nullptr)
-    , popupMenu_(nullptr)
-    , recentsDelegate_(new Ui::RecentItemDelegate(this))
-    , unknownsDelegate_(new Logic::UnknownItemDelegate(this))
-    , clDelegate_(new Logic::ContactListItemDelegate(this, Logic::MembersWidgetRegim::CONTACT_LIST))
-    , contactListWidget_(new ContactListWidget(this, Logic::MembersWidgetRegim::CONTACT_LIST, nullptr))
-    , clWithHeaders_(new Logic::ContactListWithHeaders(this, Logic::getContactListModel()))
-    , scrolledView_(nullptr)
-    , scrollMultipler_(1)
-    , transitionLabel_(nullptr)
-    , transitionAnim_(nullptr)
-    , currentTab_(RECENTS)
-    , prevTab_(RECENTS)
-    , tapAndHold_(false)
-    , pictureOnlyView_(false)
+        : QWidget(_parent)
+        , listEventFilter_(new RCLEventFilter(this))
+        , recentsPlaceholder_(nullptr)
+        , popupMenu_(nullptr)
+        , recentsDelegate_(new Ui::RecentItemDelegate(this))
+        , unknownsDelegate_(new Logic::UnknownItemDelegate(this))
+        , clDelegate_(new Logic::ContactListItemDelegate(this, Logic::MembersWidgetRegim::CONTACT_LIST))
+        , contactListWidget_(new ContactListWidget(this, Logic::MembersWidgetRegim::CONTACT_LIST, nullptr))
+        , clWithHeaders_(new Logic::ContactListWithHeaders(this, Logic::getContactListModel()))
+        , scrolledView_(nullptr)
+        , scrollMultipler_(1)
+        , transitionLabel_(nullptr)
+        , transitionAnim_(nullptr)
+        , currentTab_(RECENTS)
+        , prevTab_(RECENTS)
+        , tapAndHold_(false)
+        , pictureOnlyView_(false)
+        , nextSelectWithOffset_(false)
     {
-        Utils::ApplyStyle(this, Styling::getParameters().getContactListQss());
-
         auto mainLayout = Utils::emptyVLayout(this);
         mainLayout->setSizeConstraint(QLayout::SetNoConstraint);
         stackedWidget_ = new QStackedWidget(this);
@@ -227,7 +227,10 @@ namespace Ui
 
         connect(QScroller::scroller(recentsView_->viewport()), &QScroller::stateChanged, this, &ContactList::touchScrollStateChangedRecents, Qt::QueuedConnection);
 
-        connect(Logic::getContactListModel(), &Logic::ContactListModel::select, this, Utils::QOverload<const QString&, qint64, qint64, Logic::UpdateChatSelection>::of(&ContactList::select));
+        connect(Logic::getContactListModel(), &Logic::ContactListModel::select, this, [this](const QString& _aimId, const qint64 _msgId, const Logic::UpdateChatSelection _mode)
+        {
+            contactListWidget_->select(_aimId, _msgId, {}, _mode);
+        });
 
         connect(contactListWidget_->getView(), &Ui::FocusableListView::clicked, this, &ContactList::statsCLItemPressed);
         connect(contactListWidget_, &ContactListWidget::itemClicked, recentsDelegate_, &Ui::RecentItemDelegate::onItemClicked);
@@ -262,14 +265,8 @@ namespace Ui
                 emit Logic::getUnknownsModel()->refresh();
         });
 
-
-        connect(Logic::getRecentsModel(), &Logic::RecentsModel::selectContact, this, [this](const QString& contact) {
-            select(contact);
-        }, Qt::DirectConnection);
-
-        connect(Logic::getUnknownsModel(), &Logic::UnknownsModel::selectContact, this, [this](const QString& contact) {
-            select(contact);
-        }, Qt::DirectConnection);
+        connect(Logic::getRecentsModel(), &Logic::RecentsModel::selectContact, contactListWidget_, Utils::QOverload<const QString&>::of(&ContactListWidget::select));
+        connect(Logic::getUnknownsModel(), &Logic::UnknownsModel::selectContact, contactListWidget_, Utils::QOverload<const QString&>::of(&ContactListWidget::select));
 
         connect(Logic::getUnknownsModel(), &Logic::UnknownsModel::dlgStateChanged, unknownsDelegate_, &Logic::UnknownItemDelegate::dlgStateChanged);
         connect(Logic::getRecentsModel(), &Logic::RecentsModel::dlgStateChanged, recentsDelegate_, &Ui::RecentItemDelegate::dlgStateChanged);
@@ -341,38 +338,46 @@ namespace Ui
 
     void ContactList::itemClicked(const QModelIndex& _current)
     {
-        if (qobject_cast<const Logic::ContactListWithHeaders*>(_current.model()))
+        if (qobject_cast<const Logic::ContactListWithHeaders*>(_current.model()) || qobject_cast<const Logic::ContactListModel*>(_current.model()))
         {
-            auto cont = _current.data().value<Data::Contact*>();
-            if (cont && cont->GetType() == Data::DROPDOWN_BUTTON)
+            if (const auto cont = _current.data().value<Data::Contact*>())
             {
-                if (cont->AimId_ == ql1s("~addContact~"))
+                if (cont->GetType() == Data::DROPDOWN_BUTTON)
                 {
-                    emit addContactClicked(QPrivateSignal());
-                    Utils::showAddContactsDialog( {  Utils::AddContactDialogs::Initiator::From::ConlistScr } );
-                }
-                else if (cont->AimId_ == ql1s("~newGroupchat~"))
-                {
-                    emit createGroupChatClicked();
+                    if (cont->AimId_ == ql1s("~addContact~"))
+                    {
+                        emit addContactClicked(QPrivateSignal());
+                        Utils::showAddContactsDialog({ Utils::AddContactDialogs::Initiator::From::ConlistScr });
+                    }
+                    else if (cont->AimId_ == ql1s("~newGroupchat~"))
+                    {
+                        emit createGroupChatClicked();
 
-                    GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::chats_createbutton_click);
+                        GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::chats_createbutton_click);
+                    }
+                    else if (cont->AimId_ == ql1s("~newChannel~"))
+                    {
+                        emit createChannelClicked();
+                    }
+                    return;
                 }
-                else if (cont->AimId_ == ql1s("~newChannel~"))
+                else if (cont->GetType() == Data::GROUP)
                 {
-                    emit createChannelClicked();
+                    emit groupClicked(cont->GroupId_);
+                    return;
                 }
-                return;
             }
         }
 
-        if (qobject_cast<const Logic::ContactListModel*>(_current.model()))
+        const auto rcntModel = qobject_cast<const Logic::RecentsModel *>(_current.model());
+        const auto isLeftButton = QApplication::mouseButtons() & Qt::LeftButton || QApplication::mouseButtons() == Qt::NoButton;
+        if (isLeftButton && rcntModel && rcntModel->isServiceItem(_current))
         {
-            auto cont = _current.data().value<Data::Contact*>();
-            if (cont && cont->GetType() == Data::GROUP)
-            {
-                emit groupClicked(cont->GroupId_);
-                return;
-            }
+            if (rcntModel->isFavoritesGroupButton(_current))
+                Logic::getRecentsModel()->toggleFavoritesVisible();
+            else if (rcntModel->isUnimportantGroupButton(_current))
+                Logic::getRecentsModel()->toggleUnimportantVisible();
+            return;
         }
 
         const auto unkModel = qobject_cast<const Logic::UnknownsModel *>(_current.model());
@@ -393,18 +398,9 @@ namespace Ui
         const auto unkModel = qobject_cast<const Logic::UnknownsModel *>(_current.model());
 
         const auto isLeftButton = QApplication::mouseButtons() & Qt::LeftButton || QApplication::mouseButtons() == Qt::NoButton;
-
         if (isLeftButton)
         {
-            if (rcntModel && rcntModel->isServiceItem(_current))
-            {
-                if (rcntModel->isFavoritesGroupButton(_current))
-                {
-                    Logic::getRecentsModel()->toggleFavoritesVisible();
-                }
-                return;
-            }
-            else if (unkModel && !unkModel->isServiceItem(_current))
+            if (unkModel && !unkModel->isServiceItem(_current))
             {
                 const auto rect = recentsView_->visualRect(_current);
                 const auto pos1 = recentsView_->mapFromGlobal(QCursor::pos());
@@ -712,7 +708,7 @@ namespace Ui
                     }
                     else if (url.isValid())
                     {
-                        Ui::GetDispatcher()->sendMessageToContact(aimId, url.toString(), sendQuotesOnce ? quotes : Data::QuotesVec(), {});
+                        Ui::GetDispatcher()->sendMessageToContact(aimId, url.toString(), sendQuotesOnce ? quotes : Data::QuotesVec());
                         sendQuotesOnce = false;
                         mayQuotesSent = true;
                         if (auto cd = Utils::InterConnector::instance().getContactDialog())
@@ -870,7 +866,7 @@ namespace Ui
 
     void ContactList::changeSelected(const QString& _aimId)
     {
-        auto updateSelection = [kbFocused = isKeyboardFocused()](auto _view, const QModelIndex& _index)
+        auto updateSelection = [this](auto _view, const QModelIndex& _index)
         {
             QSignalBlocker sb(_view);
             if (_index.isValid())
@@ -880,7 +876,7 @@ namespace Ui
                     _view->selectionModel()->setCurrentIndex(_index, QItemSelectionModel::ClearAndSelect);
 
                     const auto inc = cur.row() < _index.row() ? 1 : -1;
-                    if (const auto next = _index.model()->index(_index.row() + inc, 0); next.isValid() && kbFocused)
+                    if (const auto next = _index.model()->index(_index.row() + inc, 0); next.isValid() && (isKeyboardFocused() || nextSelectWithOffset_))
                         _view->scrollTo(next);
                     else
                         _view->scrollTo(_index);
@@ -896,6 +892,8 @@ namespace Ui
                 _view->selectionModel()->clearSelection();
             }
             _view->update();
+
+            nextSelectWithOffset_ = false;
         };
 
         QModelIndex index = Logic::getRecentsModel()->contactIndex(_aimId);
@@ -906,12 +904,7 @@ namespace Ui
 
     void ContactList::select(const QString& _aimId)
     {
-        select(_aimId, -1, -1, Logic::UpdateChatSelection::No);
-    }
-
-    void ContactList::select(const QString& _aimId, qint64 _message_id, qint64 _quote_id, Logic::UpdateChatSelection _mode)
-    {
-        contactListWidget_->select(_aimId, _message_id, _quote_id, _mode);
+        contactListWidget_->select(_aimId);
     }
 
     void ContactList::scrollToItem(const QString& _aimId, QAbstractItemView::ScrollHint _hint)
@@ -947,10 +940,21 @@ namespace Ui
         else if (!dlg.Attention_)
             popupMenu_->addActionWithIcon(qsl(":/context_menu/mark_unread"), QT_TRANSLATE_NOOP("context_menu", "Mark as unread"), Logic::makeData(qsl("recents/mark_unread"), aimId));
 
-        if (Logic::getRecentsModel()->isFavorite(aimId))
-            popupMenu_->addActionWithIcon(qsl(":/context_menu/unpin"), QT_TRANSLATE_NOOP("context_menu", "Unpin"), Logic::makeData(qsl("recents/unfavorite"), aimId));
-        else
-            popupMenu_->addActionWithIcon(qsl(":/context_menu/pin"), QT_TRANSLATE_NOOP("context_menu", "Pin"), Logic::makeData(qsl("recents/favorite"), aimId));
+        if (!Logic::getRecentsModel()->isUnimportant(aimId))
+        {
+            if (Logic::getRecentsModel()->isFavorite(aimId))
+                popupMenu_->addActionWithIcon(qsl(":/context_menu/unpin"), QT_TRANSLATE_NOOP("context_menu", "Unpin"), Logic::makeData(qsl("recents/unfavorite"), aimId));
+            else
+                popupMenu_->addActionWithIcon(qsl(":/context_menu/pin"), QT_TRANSLATE_NOOP("context_menu", "Pin"), Logic::makeData(qsl("recents/favorite"), aimId));
+        }
+
+        if (!Logic::getRecentsModel()->isFavorite(aimId))
+        {
+            if (Logic::getRecentsModel()->isUnimportant(aimId))
+                popupMenu_->addActionWithIcon(qsl(":/context_menu/unmark_unimportant"), QT_TRANSLATE_NOOP("context_menu", "Remove from Unimportant"), Logic::makeData(qsl("recents/remove_from_unimportant"), aimId));
+            else
+                popupMenu_->addActionWithIcon(qsl(":/context_menu/mark_unimportant"), QT_TRANSLATE_NOOP("context_menu", "Move to Unimportant"), Logic::makeData(qsl("recents/mark_unimportant"), aimId));
+        }
 
         if (Logic::getContactListModel()->isMuted(aimId))
             popupMenu_->addActionWithIcon(qsl(":/context_menu/mute_off"), QT_TRANSLATE_NOOP("context_menu", "Turn on notifications"), Logic::makeData(qsl("recents/unmute"), aimId));
@@ -965,17 +969,21 @@ namespace Ui
         if (Logic::getContactListModel()->isChat(aimId))
         {
             popupMenu_->addActionWithIcon(qsl(":/alert_icon"), QT_TRANSLATE_NOOP("context_menu", "Report and block"), Logic::makeData(qsl("recents/report"), aimId));
-            popupMenu_->addActionWithIcon(qsl(":/exit_icon"), QT_TRANSLATE_NOOP("context_menu", "Delete and leave"), Logic::makeData(qsl("contacts/remove"), aimId));
+            popupMenu_->addActionWithIcon(qsl(":/exit_icon"), QT_TRANSLATE_NOOP("context_menu", "Leave and delete"), Logic::makeData(qsl("contacts/remove"), aimId));
         }
-        else
+        else if (Features::clRemoveContactsAllowed())
         {
             popupMenu_->addActionWithIcon(qsl(":/alert_icon"), QT_TRANSLATE_NOOP("context_menu", "Report"), Logic::makeData(qsl("recents/report"), aimId));
         }
 
-        if (!Logic::getRecentsModel()->isFavorite(aimId))
+        if (!Logic::getRecentsModel()->isFavorite(aimId) && !Logic::getRecentsModel()->isUnimportant(aimId))
         {
+            if (Features::clRemoveContactsAllowed() && !Logic::getContactListModel()->isChat(aimId))
+                popupMenu_->addActionWithIcon(qsl(":/context_menu/delete"), QT_TRANSLATE_NOOP("context_menu", "Remove"), Logic::makeData(qsl("recents/remove"), aimId));
+
             popupMenu_->addSeparator();
             popupMenu_->addActionWithIcon(qsl(":/context_menu/close"), QT_TRANSLATE_NOOP("context_menu", "Hide"), Logic::makeData(qsl("recents/close"), aimId));
+
         }
 
         popupMenu_->popup(QCursor::pos());
@@ -1106,8 +1114,11 @@ namespace Ui
 
     void ContactList::dropKeyboardFocus()
     {
-        setKeyboardFocused(false);
-        recentsView_->updateSelectionUnderCursor();
+        if (isKeyboardFocused())
+        {
+            setKeyboardFocused(false);
+            recentsView_->updateSelectionUnderCursor();
+        }
     }
 
     ContactListWidget* ContactList::getContactListWidget() const
@@ -1128,10 +1139,20 @@ namespace Ui
         connect(_searchWidget, &SearchWidget::selectFirstInRecents, this, &ContactList::highlightFirstItem);
         connect(this, &ContactList::topItemUpPressed, _searchWidget, &SearchWidget::setTabFocus);
 
+        connect(this, &ContactList::needClearSearch, _searchWidget, &SearchWidget::searchCompleted);
+
         connect(_searchWidget, &SearchWidget::search, this, [this](const QString& _searchPattern)
         {
             if (!getSearchInDialog())
                 setSearchMode(!_searchPattern.isEmpty());
+        });
+
+        connect(this, &ContactList::itemSelected, _searchWidget, [this, _searchWidget](const QString&, qint64 _msgid)
+        {
+            const auto forceClear = _msgid == -1
+                && !getSearchInDialog()
+                && get_gui_settings()->get_value<bool>(settings_fast_drop_search_results, settings_fast_drop_search_default());
+            _searchWidget->clearSearch(forceClear);
         });
     }
 
@@ -1229,6 +1250,11 @@ namespace Ui
         }
         recentsView_->update();
         recentsView_->scrollTo(index);
+    }
+
+    void ContactList::setNextSelectWithOffset()
+    {
+        nextSelectWithOffset_ = true;
     }
 
     void ContactList::highlightFirstItem()

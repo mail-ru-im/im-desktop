@@ -39,6 +39,7 @@ namespace core
 
             const std::string& get_normalized_phone() const { return normalized_phone_; }
             bool get_sms_enabled() const { return sms_enabled_; }
+            bool is_valid() const override { return true; }
         };
 
     }

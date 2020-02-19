@@ -7,8 +7,8 @@
 #include "../InterConnector.h"
 #include "main_window/ContactDialog.h"
 #include "main_window/MainWindow.h"
-#include "AllowedUinsToSendLogsTo.h"
 #include "../../memory_stats/gui_memory_monitor.h"
+#include "../common.shared/config/config.h"
 
 namespace Utils
 {
@@ -110,8 +110,8 @@ void SendLogsToUinHandler::onHaveLogsPath(const QString &_logsPath)
 bool SendLogsToUinHandler::getUserConsent() const
 {
     return Utils::GetConfirmationWithTwoButtons(
-        QT_TRANSLATE_NOOP("popup_window", "CANCEL"),
-        QT_TRANSLATE_NOOP("popup_window", "YES"),
+        QT_TRANSLATE_NOOP("popup_window", "Cancel"),
+        QT_TRANSLATE_NOOP("popup_window", "Yes"),
         QT_TRANSLATE_NOOP("popup_window", request_->getInfo().logsInfo_.haveNumRTPFilesLimit() ?
             "Are you sure you want to send app logs and call dumps?" : "Are you sure you want to send the app logs?"),
         QT_TRANSLATE_NOOP("popup_window", "Send logs"),
@@ -120,8 +120,17 @@ bool SendLogsToUinHandler::getUserConsent() const
 
 bool SendLogsToUinHandler::uinIsAllowed(const QString &_contactUin) const
 {
-    return std::any_of(ALLOWED_UINS_TO_SEND_LOGS.cbegin(), ALLOWED_UINS_TO_SEND_LOGS.cend(), [&_contactUin](const QString& _uin){
-        return (_uin == _contactUin);
+    const static auto uins = []() {
+        const auto uins_csv = config::get().string(config::values::uins_for_send_log_csv);
+        const auto splitted = QString::fromUtf8(uins_csv.data(), uins_csv.size()).split(ql1c(','), QString::SkipEmptyParts);
+        std::vector<QString> res;
+        res.reserve(splitted.size());
+        for (const auto& x : splitted)
+            res.push_back(x);
+        return res;
+    }();
+    return std::any_of(uins.begin(), uins.end(), [&_contactUin](const QString& _uin) {
+        return _uin == _contactUin;
     });
 }
 

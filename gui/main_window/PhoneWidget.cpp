@@ -15,6 +15,7 @@
 #include "../utils/InterConnector.h"
 #include "../utils/gui_coll_helper.h"
 #include "../utils/translator.h"
+#include "../utils/features.h"
 #include "styles/ThemeParameters.h"
 
 namespace
@@ -29,6 +30,7 @@ namespace
     const int BUTTONS_OFFSET = 64;
     const int DIALOG_WIDTH = 360;
     const int DIALOG_HEIGHT = 478;
+    const int CUT_DIALOG_HEIGHT = 360;
     const int SIM_HEIGHT = 60;
     const int SUPERSAFE_HEIGHT = 80;
     const int BUTTON_HEIGHT = 32;
@@ -42,24 +44,42 @@ namespace
     const int PHONE_EDIT_WIDTH = 224;
     const int ABOUT_PHONE_NUMBER_WIDTH = 296;
     const int ABOUT_PHONE_NUMBER_OFFSET = 52;
+    const int EXTERNAL_ABOUT_PHONE_NUMBER_OFFSET = 156;
     const int COMPLETER_SPACING = 12;
     const int ENTERED_PHONE_NUMBER_TOP_MARGIN = 126;
     const int CODE_ACTIONS_TOP_MARGIN = 266;
     const int LABEL_OFFSET = 10;
+    const int EXTERNAL_LABEL_OFFSET = 3;
     const int SPECIFY_NUMBER_HOR_OSSET = 64;
     const int SMS_CODE_SPACING = 38;
     const int SPACE_BETWEEN_BUTTONS = 16;
     const int LOGOUT_OFFSET = 370;
+    const int EXTERNAL_LOGOUT_OFFSET = 280;
     const int HOR_MARGIN = 32;
 
     const int TIMER_INTERVAL = 1000;
     const int SECONDS_TO_RESEND = 60;
+
+    int get_dialog_height()
+    {
+        return Features::externalPhoneAttachment() ? CUT_DIALOG_HEIGHT : DIALOG_HEIGHT;
+    }
+
+    int logout_offset()
+    {
+        return Features::externalPhoneAttachment() ? EXTERNAL_LOGOUT_OFFSET : LOGOUT_OFFSET;
+    }
+
+    int get_label_offset()
+    {
+        return Features::externalPhoneAttachment() ? EXTERNAL_LABEL_OFFSET : LABEL_OFFSET;
+    }
 }
 
 namespace Ui
 {
 
-    PhoneWidget::PhoneWidget(QWidget* _parent, const PhoneWidgetState& _state, const QString& _label, const QString& _about, bool _canClose, bool _forceAttach)
+    PhoneWidget::PhoneWidget(QWidget* _parent, const PhoneWidgetState& _state, const QString& _label, const QString& _about, bool _canClose, AttachState _attachState)
         : QWidget(_parent)
         , state_(_state)
         , next_(nullptr)
@@ -75,7 +95,7 @@ namespace Ui
         , labelText_(_label)
         , aboutText_(_about)
         , canClose_(_canClose)
-        , forceAttach_(_forceAttach)
+        , attachState_(_attachState)
         , loggedOut_(false)
         , showPhoneHint_(false)
     {
@@ -113,7 +133,7 @@ namespace Ui
         else if (state_ == PhoneWidgetState::ENTER_PHONE_STATE)
         {
             about_phone_enter_->draw(p);
-            if (forceAttach_)
+            if (attachState_ == AttachState::FORCE_LOGOUT)
                 logout_->draw(p);
         }
         else if (state_ == PhoneWidgetState::ENTER_CODE_SATE)
@@ -140,15 +160,15 @@ namespace Ui
         if (state_ == PhoneWidgetState::ENTER_CODE_SATE && change_phone_->contains(_e->pos()))
         {
             setState(PhoneWidgetState::ENTER_PHONE_STATE);
-            next_->setText(QT_TRANSLATE_NOOP("popup_window", "NEXT"));
+            next_->setText(QT_TRANSLATE_NOOP("popup_window", "Next"));
             label_->setText(labelText_.isEmpty() ? QT_TRANSLATE_NOOP("phone_widget", "Your phone number") : labelText_);
-            label_->setOffsets(Utils::scale_value(DIALOG_WIDTH) / 2 - label_->desiredWidth() / 2, Utils::scale_value(TOP_MARGIN + SUPERSAFE_HEIGHT + LABEL_OFFSET));
+            label_->setOffsets(Utils::scale_value(DIALOG_WIDTH) / 2 - label_->desiredWidth() / 2, Utils::scale_value(TOP_MARGIN + SUPERSAFE_HEIGHT + get_label_offset()));
             next_->show();
             if (canClose_)
-                next_->move(Utils::scale_value(DIALOG_WIDTH - BUTTON_MARGIN) - next_->width(), Utils::scale_value(DIALOG_HEIGHT - BOTTOM_MARGIN) - next_->height());
+                next_->move(Utils::scale_value(DIALOG_WIDTH - BUTTON_MARGIN) - next_->width(), Utils::scale_value(get_dialog_height() - BOTTOM_MARGIN) - next_->height());
             else
-                next_->move(Utils::scale_value(DIALOG_WIDTH) / 2 - next_->width() / 2, Utils::scale_value(DIALOG_HEIGHT - BOTTOM_MARGIN) - next_->height());
-            cancel_->move(Utils::scale_value(BUTTON_MARGIN), Utils::scale_value(DIALOG_HEIGHT - BOTTOM_MARGIN) - cancel_->height());
+                next_->move(Utils::scale_value(DIALOG_WIDTH) / 2 - next_->width() / 2, Utils::scale_value(get_dialog_height() - BOTTOM_MARGIN) - next_->height());
+            cancel_->move(Utils::scale_value(BUTTON_MARGIN), Utils::scale_value(get_dialog_height() - BOTTOM_MARGIN) - cancel_->height());
             countryCode_->show();
             phoneNumber_->show();
             enteredPhoneNumber_->hide();
@@ -165,7 +185,7 @@ namespace Ui
         {
             callPhone();
         }
-        else if (state_ == PhoneWidgetState::ENTER_PHONE_STATE && forceAttach_ && logout_->contains(_e->pos()))
+        else if (state_ == PhoneWidgetState::ENTER_PHONE_STATE && attachState_ == AttachState::FORCE_LOGOUT && logout_->contains(_e->pos()))
         {
             logout();
         }
@@ -177,7 +197,7 @@ namespace Ui
 
         auto point = (state_ == PhoneWidgetState::ENTER_CODE_SATE && change_phone_->contains(_e->pos()));
         point |= (state_ == PhoneWidgetState::ENTER_CODE_SATE && secRemaining_ == 0 && (send_again_->contains(_e->pos()) || phone_call_->contains(_e->pos())));
-        point |= (state_ == PhoneWidgetState::ENTER_PHONE_STATE && forceAttach_ && logout_->contains(_e->pos()));
+        point |= (state_ == PhoneWidgetState::ENTER_PHONE_STATE && attachState_ == AttachState::FORCE_LOGOUT && logout_->contains(_e->pos()));
 
         if (point)
             setCursor(Qt::PointingHandCursor);
@@ -215,26 +235,26 @@ namespace Ui
 
     void PhoneWidget::init()
     {
-        next_ = new DialogButton(this, QT_TRANSLATE_NOOP("popup_window", "NEXT"), DialogButtonRole::CONFIRM);
+        next_ = new DialogButton(this, QT_TRANSLATE_NOOP("popup_window", "Next"), DialogButtonRole::CONFIRM);
         next_->setCursor(QCursor(Qt::PointingHandCursor));
         next_->setFixedSize(Utils::scale_value(BUTTON_WIDTH), Utils::scale_value(BUTTON_HEIGHT));
         connect(next_, &QPushButton::clicked, this, &PhoneWidget::nextClicked);
 
-        cancel_ = new DialogButton(this, QT_TRANSLATE_NOOP("popup_window", "CANCEL"), DialogButtonRole::CANCEL);
+        cancel_ = new DialogButton(this, QT_TRANSLATE_NOOP("popup_window", "Cancel"), DialogButtonRole::CANCEL);
         cancel_->setCursor(QCursor(Qt::PointingHandCursor));
         cancel_->setFixedSize(Utils::scale_value(BUTTON_WIDTH), Utils::scale_value(BUTTON_HEIGHT));
         connect(cancel_, &QPushButton::clicked, this, &PhoneWidget::cancelClicked);
         if (!canClose_)
             cancel_->hide();
 
-        icon_ = Utils::loadPixmap(forceAttach_ ? qsl(":/phone_widget/supersafe_100") : qsl(":/phone_widget/sim_100"));
+        icon_ = Utils::loadPixmap((attachState_ == AttachState::FORCE_LOGOUT || attachState_ == AttachState::NEED_PHONE) ? qsl(":/phone_widget/supersafe_100") : qsl(":/phone_widget/sim_100"));
         mark_ = Utils::renderSvg(qsl(":/phone_widget/list_marker"), Utils::scale_value(QSize(10, 10)), Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY));
 
         label_ = TextRendering::MakeTextUnit(QT_TRANSLATE_NOOP("phone_widget", "Change number"));
         label_->init(Fonts::appFontScaled(22, Fonts::FontWeight::SemiBold), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
 
         const auto label_height = label_->getHeight(label_->desiredWidth());
-        auto margin = Utils::scale_value(TOP_MARGIN + SUPERSAFE_HEIGHT + LABEL_OFFSET);
+        auto margin = Utils::scale_value(TOP_MARGIN + SUPERSAFE_HEIGHT + get_label_offset());
 
         label_->setOffsets(Utils::scale_value(DIALOG_WIDTH) / 2 - label_->desiredWidth() / 2, margin);
         margin += label_height;
@@ -267,7 +287,7 @@ namespace Ui
         countryCode_->hide();
         countryCode_->setValidator(new Utils::PhoneValidator(this, true));
 
-        auto countries = Utils::getCountryCodes();
+        const auto countries = Utils::getCountryCodes();
         auto model = new QStandardItemModel(this);
         model->setColumnCount(2);
         int i = 0;
@@ -350,9 +370,15 @@ namespace Ui
         change_phone_->setOffsets(Utils::scale_value(DIALOG_WIDTH) / 2 + Utils::scale_value(ABOUT_PHONE_NUMBER_WIDTH) / 2 - change_phone_->desiredWidth(), Utils::scale_value(ENTERED_PHONE_NUMBER_TOP_MARGIN) + change_phone_offset);
 
         about_phone_enter_ = TextRendering::MakeTextUnit(aboutText_.isEmpty() ? QT_TRANSLATE_NOOP("phone_widget", "Enter your new number") : aboutText_);
+        if (Features::externalPhoneAttachment())
+            about_phone_enter_->setLineSpacing(Utils::scale_value(platform::is_apple() ? 2 : -2));
+
         about_phone_enter_->init(Fonts::appFontScaled(13), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY), QColor(), QColor(), QColor(), TextRendering::HorAligment::CENTER);
         about_phone_enter_->getHeight(Utils::scale_value(DIALOG_WIDTH - SPECIFY_NUMBER_HOR_OSSET * 2));
-        about_phone_enter_->setOffsets(Utils::scale_value(SPECIFY_NUMBER_HOR_OSSET), phoneNumber_->y() + phoneNumber_->height() + Utils::scale_value(ABOUT_PHONE_NUMBER_OFFSET));
+        if (Features::externalPhoneAttachment())
+            about_phone_enter_->setOffsets(Utils::scale_value(SPECIFY_NUMBER_HOR_OSSET), Utils::scale_value(EXTERNAL_ABOUT_PHONE_NUMBER_OFFSET));
+        else
+            about_phone_enter_->setOffsets(Utils::scale_value(SPECIFY_NUMBER_HOR_OSSET), phoneNumber_->y() + phoneNumber_->height() + Utils::scale_value(ABOUT_PHONE_NUMBER_OFFSET));
 
         phone_hint_ = TextRendering::MakeTextUnit(QString());
         phone_hint_->init(Fonts::appFontScaled(13), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID), QColor(), QColor(), QColor(), TextRendering::HorAligment::CENTER);
@@ -381,14 +407,14 @@ namespace Ui
         logout_ = TextRendering::MakeTextUnit(QT_TRANSLATE_NOOP("phone_widget", "Sign out"));
         logout_->init(Fonts::appFontScaled(13), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY));
         logout_->evaluateDesiredSize();
-        logout_->setOffsets((Utils::scale_value(DIALOG_WIDTH) - logout_->desiredWidth()) / 2, Utils::scale_value(LOGOUT_OFFSET));
+        logout_->setOffsets((Utils::scale_value(DIALOG_WIDTH) - logout_->desiredWidth()) / 2, Utils::scale_value(logout_offset()));
 
         if (canClose_)
-            next_->move(Utils::scale_value(DIALOG_WIDTH - BUTTON_MARGIN) - next_->width(), Utils::scale_value(DIALOG_HEIGHT - BOTTOM_MARGIN) - next_->height());
+            next_->move(Utils::scale_value(DIALOG_WIDTH - BUTTON_MARGIN) - next_->width(), Utils::scale_value(get_dialog_height() - BOTTOM_MARGIN) - next_->height());
         else
-            next_->move(Utils::scale_value(DIALOG_WIDTH) /2 - next_->width() / 2, Utils::scale_value(DIALOG_HEIGHT - BOTTOM_MARGIN) - next_->height());
+            next_->move(Utils::scale_value(DIALOG_WIDTH) /2 - next_->width() / 2, Utils::scale_value(get_dialog_height() - BOTTOM_MARGIN) - next_->height());
 
-        cancel_->move(Utils::scale_value(BUTTON_MARGIN), Utils::scale_value(DIALOG_HEIGHT - BOTTOM_MARGIN) - cancel_->height());
+        cancel_->move(Utils::scale_value(BUTTON_MARGIN), Utils::scale_value(get_dialog_height() - BOTTOM_MARGIN) - cancel_->height());
 
         about_phone_changed_ = TextRendering::MakeTextUnit(QT_TRANSLATE_NOOP("phone_widget", "Your new account number is"));
         about_phone_changed_->init(Fonts::appFontScaled(16), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY), QColor(), QColor(), QColor(), TextRendering::HorAligment::CENTER);
@@ -402,7 +428,7 @@ namespace Ui
         changed_phone_number_->evaluateDesiredSize();
         changed_phone_number_->setOffsets(Utils::scale_value(DIALOG_WIDTH) / 2 - changed_phone_number_->desiredWidth() / 2, labelOffset + Utils::scale_value(PHONE_EDIT_MARGIN) + h + Utils::scale_value(ACTIONS_SPACING * 2));
 
-        setFixedSize(Utils::scale_value(DIALOG_WIDTH), Utils::scale_value(DIALOG_HEIGHT));
+        setFixedSize(Utils::scale_value(DIALOG_WIDTH), Utils::scale_value(get_dialog_height()));
 
         timer_ = new QTimer(this);
         timer_->setInterval(TIMER_INTERVAL);
@@ -417,13 +443,21 @@ namespace Ui
 
         if (state_ == PhoneWidgetState::ENTER_PHONE_STATE)
         {
-            next_->setText(QT_TRANSLATE_NOOP("popup_window", "NEXT"));
+            next_->setText(QT_TRANSLATE_NOOP("popup_window", "Next"));
             label_->setText(labelText_.isEmpty() ? QT_TRANSLATE_NOOP("phone_widget", "Your phone number") : labelText_);
             label_->setOffsets(Utils::scale_value(DIALOG_WIDTH) / 2 - label_->desiredWidth() / 2, label_->verOffset());
-            next_->setEnabled(false);
-            countryCode_->show();
-            phoneNumber_->show();
+            if (!Features::externalPhoneAttachment())
+            {
+                next_->setEnabled(false);
+                countryCode_->show();
+                phoneNumber_->show();
+            }
         }
+
+        QObject::connect(&Utils::InterConnector::instance(), &Utils::InterConnector::phoneAttached, this, &PhoneWidget::phoneAttached);
+
+        if (canClose_)
+            QObject::connect(&Utils::InterConnector::instance(), &Utils::InterConnector::phoneAttachmentCancelled, this, &PhoneWidget::cancelClicked);
     }
 
     void PhoneWidget::sendCode()
@@ -466,8 +500,8 @@ namespace Ui
         hide();
         QString text = QT_TRANSLATE_NOOP("popup_window", "Are you sure you want to sign out?");
         auto confirm = Utils::GetConfirmationWithTwoButtons(
-            QT_TRANSLATE_NOOP("popup_window", "CANCEL"),
-            QT_TRANSLATE_NOOP("popup_window", "YES"),
+            QT_TRANSLATE_NOOP("popup_window", "Cancel"),
+            QT_TRANSLATE_NOOP("popup_window", "Yes"),
             text,
             QT_TRANSLATE_NOOP("popup_window", "Sign out"),
             nullptr);
@@ -500,7 +534,7 @@ namespace Ui
         };
         const auto callCheck = LoginPage::isCallCheck(checks_);
         label_->setText(callCheck ? QT_TRANSLATE_NOOP("phone_widget", "Change number") : QT_TRANSLATE_NOOP("phone_widget", "Code from SMS"));
-        label_->setOffsets(Utils::scale_value(DIALOG_WIDTH) / 2 - label_->desiredWidth() / 2, Utils::scale_value(TOP_MARGIN - LABEL_OFFSET));
+        label_->setOffsets(Utils::scale_value(DIALOG_WIDTH) / 2 - label_->desiredWidth() / 2, Utils::scale_value(TOP_MARGIN - get_label_offset()));
         showPhoneHint_ = callCheck;
 
         if (codeLength_ != -1)
@@ -528,7 +562,7 @@ namespace Ui
         if (state_ == PhoneWidgetState::ABOUT_STATE)
         {
             setState(PhoneWidgetState::ENTER_PHONE_STATE);
-            next_->setText(QT_TRANSLATE_NOOP("popup_window", "NEXT"));
+            next_->setText(QT_TRANSLATE_NOOP("popup_window", "Next"));
             label_->setText(labelText_.isEmpty() ? QT_TRANSLATE_NOOP("phone_widget", "Your phone number") : labelText_);
             label_->setOffsets(Utils::scale_value(DIALOG_WIDTH) / 2 - label_->desiredWidth() / 2, label_->verOffset());
             next_->setEnabled(false);
@@ -538,6 +572,17 @@ namespace Ui
         }
         else if (state_ == PhoneWidgetState::ENTER_PHONE_STATE)
         {
+            if (Features::externalPhoneAttachment())
+            {
+                Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
+                const auto email = MyInfo()->aimId();
+                collection.set_value_as_qstring("email", email);
+                Ui::GetDispatcher()->post_message_to_core("mrim/get_key", collection.get(), this, [email, this](core::icollection* _collection)
+                {
+                    Utils::openAttachUrl(email, QString::fromUtf8(Ui::gui_coll_helper(_collection, false).get_value_as_string("key")), canClose_);
+                });
+                return;
+            }
             setState(PhoneWidgetState::ENTER_CODE_SATE);
             next_->hide();
             updateTextOnGetSmsResult();
@@ -548,7 +593,7 @@ namespace Ui
             smsCode_->setFocus();
             countryCode_->hide();
             phoneNumber_->hide();
-            cancel_->move(Utils::scale_value(DIALOG_WIDTH) / 2 - cancel_->width() / 2, Utils::scale_value(DIALOG_HEIGHT - BOTTOM_MARGIN) - cancel_->height());
+            cancel_->move(Utils::scale_value(DIALOG_WIDTH) / 2 - cancel_->width() / 2, Utils::scale_value(get_dialog_height() - BOTTOM_MARGIN) - cancel_->height());
             sendCode();
             update();
         }
@@ -593,14 +638,14 @@ namespace Ui
     {
         if (_phone.length() < 3)
         {
-            next_->setText(QT_TRANSLATE_NOOP("popup_window", "NEXT"));
+            next_->setText(QT_TRANSLATE_NOOP("popup_window", "Next"));
             next_->setFixedWidth(Utils::scale_value(BUTTON_WIDTH));
             next_->setEnabled(false);
             if (canClose_)
-                next_->move(Utils::scale_value(DIALOG_WIDTH - BUTTON_MARGIN) - next_->width(), Utils::scale_value(DIALOG_HEIGHT - BOTTOM_MARGIN) - next_->height());
+                next_->move(Utils::scale_value(DIALOG_WIDTH - BUTTON_MARGIN) - next_->width(), Utils::scale_value(get_dialog_height() - BOTTOM_MARGIN) - next_->height());
             else
-                next_->move(Utils::scale_value(DIALOG_WIDTH) / 2 - next_->width() / 2, Utils::scale_value(DIALOG_HEIGHT - BOTTOM_MARGIN) - next_->height());
-            cancel_->move(Utils::scale_value(BUTTON_MARGIN), Utils::scale_value(DIALOG_HEIGHT - BOTTOM_MARGIN) - cancel_->height());
+                next_->move(Utils::scale_value(DIALOG_WIDTH) / 2 - next_->width() / 2, Utils::scale_value(get_dialog_height() - BOTTOM_MARGIN) - next_->height());
+            cancel_->move(Utils::scale_value(BUTTON_MARGIN), Utils::scale_value(get_dialog_height() - BOTTOM_MARGIN) - cancel_->height());
 
             return;
         }
@@ -658,13 +703,13 @@ namespace Ui
             cleanErrors();
             next_->setFixedWidth(Utils::scale_value(BUTTON_WIDTH));
             next_->setEnabled(true);
-            next_->setText(QT_TRANSLATE_NOOP("popup_window", "NEXT"));
+            next_->setText(QT_TRANSLATE_NOOP("popup_window", "Next"));
 
             if (canClose_)
-                next_->move(Utils::scale_value(DIALOG_WIDTH - BUTTON_MARGIN) - next_->width(), Utils::scale_value(DIALOG_HEIGHT - BOTTOM_MARGIN) - next_->height());
+                next_->move(Utils::scale_value(DIALOG_WIDTH - BUTTON_MARGIN) - next_->width(), Utils::scale_value(get_dialog_height() - BOTTOM_MARGIN) - next_->height());
             else
-                next_->move(Utils::scale_value(DIALOG_WIDTH) / 2 - next_->width() / 2, Utils::scale_value(DIALOG_HEIGHT - BOTTOM_MARGIN) - next_->height());
-            cancel_->move(Utils::scale_value(BUTTON_MARGIN), Utils::scale_value(DIALOG_HEIGHT - BOTTOM_MARGIN) - cancel_->height());
+                next_->move(Utils::scale_value(DIALOG_WIDTH) / 2 - next_->width() / 2, Utils::scale_value(get_dialog_height() - BOTTOM_MARGIN) - next_->height());
+            cancel_->move(Utils::scale_value(BUTTON_MARGIN), Utils::scale_value(get_dialog_height() - BOTTOM_MARGIN) - cancel_->height());
 
             return;
         }
@@ -700,13 +745,13 @@ namespace Ui
             next_->setFixedWidth(Utils::scale_value(BUTTON_HOR_PADDING * 2) + m.width(text));
             if (!canClose_)
             {
-                next_->move(Utils::scale_value(DIALOG_WIDTH) / 2 - next_->width() / 2, Utils::scale_value(DIALOG_HEIGHT - BOTTOM_MARGIN) - next_->height());
+                next_->move(Utils::scale_value(DIALOG_WIDTH) / 2 - next_->width() / 2, Utils::scale_value(get_dialog_height() - BOTTOM_MARGIN) - next_->height());
             }
             else
             {
                 auto full = cancel_->width() + next_->width() + Utils::scale_value(SPACE_BETWEEN_BUTTONS);
-                cancel_->move((Utils::scale_value(DIALOG_WIDTH) - full) / 2, Utils::scale_value(DIALOG_HEIGHT - BOTTOM_MARGIN) - cancel_->height());
-                next_->move(cancel_->x() + cancel_->width() + Utils::scale_value(SPACE_BETWEEN_BUTTONS), Utils::scale_value(DIALOG_HEIGHT - BOTTOM_MARGIN) - next_->height());
+                cancel_->move((Utils::scale_value(DIALOG_WIDTH) - full) / 2, Utils::scale_value(get_dialog_height() - BOTTOM_MARGIN) - cancel_->height());
+                next_->move(cancel_->x() + cancel_->width() + Utils::scale_value(SPACE_BETWEEN_BUTTONS), Utils::scale_value(get_dialog_height() - BOTTOM_MARGIN) - next_->height());
             }
             return;
         }
@@ -717,13 +762,13 @@ namespace Ui
         Utils::ApplyStyle(phoneNumber_, Styling::getParameters().getLineEditCommonQss(true));
         next_->setFixedWidth(Utils::scale_value(BUTTON_WIDTH));
         next_->setEnabled(false);
-        next_->setText(QT_TRANSLATE_NOOP("popup_window", "NEXT"));
+        next_->setText(QT_TRANSLATE_NOOP("popup_window", "Next"));
 
         if (canClose_)
-            next_->move(Utils::scale_value(DIALOG_WIDTH - BUTTON_MARGIN) - next_->width(), Utils::scale_value(DIALOG_HEIGHT - BOTTOM_MARGIN) - next_->height());
+            next_->move(Utils::scale_value(DIALOG_WIDTH - BUTTON_MARGIN) - next_->width(), Utils::scale_value(get_dialog_height() - BOTTOM_MARGIN) - next_->height());
         else
-            next_->move(Utils::scale_value(DIALOG_WIDTH) / 2 - next_->width() / 2, Utils::scale_value(DIALOG_HEIGHT - BOTTOM_MARGIN) - next_->height());
-        cancel_->move(Utils::scale_value(BUTTON_MARGIN), Utils::scale_value(DIALOG_HEIGHT - BOTTOM_MARGIN) - cancel_->height());
+            next_->move(Utils::scale_value(DIALOG_WIDTH) / 2 - next_->width() / 2, Utils::scale_value(get_dialog_height() - BOTTOM_MARGIN) - next_->height());
+        cancel_->move(Utils::scale_value(BUTTON_MARGIN), Utils::scale_value(get_dialog_height() - BOTTOM_MARGIN) - cancel_->height());
 
         update();
     }
@@ -756,11 +801,11 @@ namespace Ui
             setState(PhoneWidgetState::FINISH_STATE);
             cancel_->hide();
             label_->setText(QT_TRANSLATE_NOOP("phone_widget", "Number changed"));
-            label_->setOffsets(Utils::scale_value(DIALOG_WIDTH) / 2 - label_->desiredWidth() / 2, Utils::scale_value(TOP_MARGIN + SUPERSAFE_HEIGHT + LABEL_OFFSET));
+            label_->setOffsets(Utils::scale_value(DIALOG_WIDTH) / 2 - label_->desiredWidth() / 2, Utils::scale_value(TOP_MARGIN + SUPERSAFE_HEIGHT + get_label_offset()));
             enteredPhoneNumber_->hide();
             smsCode_->hide();
             next_->setText(QT_TRANSLATE_NOOP("popup_window", "OK"));
-            next_->move(Utils::scale_value(DIALOG_WIDTH) / 2 - next_->width() / 2, Utils::scale_value(DIALOG_HEIGHT - BOTTOM_MARGIN) - next_->height());
+            next_->move(Utils::scale_value(DIALOG_WIDTH) / 2 - next_->width() / 2, Utils::scale_value(get_dialog_height() - BOTTOM_MARGIN) - next_->height());
             next_->show();
             changed_phone_number_->setText(countryCode_->text() + phoneNumber_->text());
             changed_phone_number_->evaluateDesiredSize();
@@ -793,6 +838,12 @@ namespace Ui
         update();
     }
 
+    void PhoneWidget::phoneAttached(bool _success)
+    {
+        if (_success)
+            emit Utils::InterConnector::instance().acceptGeneralDialog();
+    }
+
     void PhoneWidget::onTimer()
     {
         --secRemaining_;
@@ -823,8 +874,9 @@ namespace Ui
         update();
     }
 
-    void PhoneWidget::countrySelected(const QString&)
+    void PhoneWidget::countrySelected(const QString& _code)
     {
+        countryCode_->setText(_code);
         phoneNumber_->setFocus();
     }
 }

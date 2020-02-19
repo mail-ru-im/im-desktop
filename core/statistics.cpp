@@ -12,7 +12,7 @@
 #include "async_task.h"
 #include "utils.h"
 #include "../corelib/enumerations.h"
-#include "../common.shared/keys.h"
+#include "../common.shared/config/config.h"
 #include "../common.shared/common.h"
 
 using namespace core::stats;
@@ -98,9 +98,7 @@ statistics::~statistics()
 
 void statistics::start_save()
 {
-    auto wr_this = weak_from_this();
-
-    save_timer_ =  g_core->add_timer([wr_this]
+    save_timer_ =  g_core->add_timer([wr_this = weak_from_this()]
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -112,8 +110,7 @@ void statistics::start_save()
 
 void statistics::delayed_start_send()
 {
-    auto wr_this = weak_from_this();
-    start_send_timer_ = g_core->add_timer([wr_this]
+    start_send_timer_ = g_core->add_timer([wr_this = weak_from_this()]
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -127,8 +124,7 @@ void statistics::delayed_start_send()
 
 void statistics::start_disk_operations()
 {
-    auto wr_this = weak_from_this();
-    disk_stats_timer_ = g_core->add_timer([wr_this]{
+    disk_stats_timer_ = g_core->add_timer([wr_this = weak_from_this()]{
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
             return;
@@ -141,8 +137,7 @@ void statistics::start_disk_operations()
 
 void statistics::start_ram_usage_monitoring()
 {
-    auto wr_this = weak_from_this();
-    ram_stats_timer_ = g_core->add_timer([wr_this]{
+    ram_stats_timer_ = g_core->add_timer([wr_this = weak_from_this()]{
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
             return;
@@ -412,8 +407,7 @@ void statistics::send_async()
     if (events_.empty())
         return;
 
-    std::vector<std::string> post_data_vector = get_post_data();
-    auto wr_this = weak_from_this();
+    auto post_data_vector = get_post_data();
 
     if (post_data_vector.empty())
         return;
@@ -426,7 +420,7 @@ void statistics::send_async()
             statistics::send(user_proxy, post_data, file_name);
         return 0;
 
-    })->on_result_ = [wr_this](int32_t _error)
+    })->on_result_ = [wr_this = weak_from_this()](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -443,9 +437,7 @@ void statistics::set_disk_stats(const statistics::disk_stats &_stats)
 
 void statistics::query_disk_size_async()
 {
-    auto wr_this = weak_from_this();
-
-    stats_thread_->run_async_function([wr_this]() -> int32_t
+    stats_thread_->run_async_function([wr_this = weak_from_this()]() -> int32_t
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -535,13 +527,13 @@ std::vector<std::string> statistics::get_post_data() const
         if (begin == end)
             continue;
 
-        auto time = time_now;
-        auto time1 = time + 4;
-        auto time3 = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()) * 1000;
-        auto delta = time3 - time;
+        const auto time = time_now;
+        const auto time1 = time + 4;
+        const auto time3 = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()) * 1000;
+        const auto delta = time3 - time;
 
-        auto version = core::utils::get_user_agent();
-        auto flurryKey = build::get_product_variant(flurry_key, agent_flurry_key, biz_flurry_key, dit_flurry_key);
+        const auto version = core::utils::get_user_agent();
+        const auto flurryKey = config::get().string(config::values::flurry_key);
         std::stringstream data_stream;
 
         data_stream << "{\"a\":{\"af\":" << time3

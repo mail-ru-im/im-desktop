@@ -53,11 +53,11 @@ namespace core
 
     struct istream : ibase
     {
-        virtual uint8_t* read(uint32_t) = 0;
+        virtual uint8_t* read(int64_t) = 0;
         virtual void write(std::istream& _source) = 0;
-        virtual void write(const uint8_t*, uint32_t) = 0;
+        virtual void write(const uint8_t*, int64_t) = 0;
         virtual bool empty() const = 0;
-        virtual uint32_t size() const = 0;
+        virtual int64_t size() const = 0;
         virtual void reset() = 0;
         virtual ~istream() {}
     };

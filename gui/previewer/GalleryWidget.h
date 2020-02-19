@@ -10,6 +10,7 @@ namespace Data
 namespace Ui
 {
     class CustomButton;
+    class ContextMenu;
     class ActionButtonWidget;
     class DialogPlayer;
     class Button;
@@ -39,9 +40,13 @@ namespace Previewer
 
         bool isClosing() const;
 
+        bool eventFilter(QObject* _object, QEvent* _event) override;
+
     Q_SIGNALS:
         void finished();
         void closed();
+
+        void closeContextMenu(QPrivateSignal) const;
 
     public slots:
         void closeGallery();
@@ -53,6 +58,7 @@ namespace Previewer
     protected:
         void mousePressEvent(QMouseEvent* _event) override;
         void mouseReleaseEvent(QMouseEvent* _event) override;
+        void mouseDoubleClickEvent(QMouseEvent* _event) override;
         void keyPressEvent(QKeyEvent* _event) override;
         void keyReleaseEvent(QKeyEvent* _event) override;
         void wheelEvent(QWheelEvent* _event) override;
@@ -101,6 +107,9 @@ namespace Previewer
         void onPlayClicked(bool _paused);
 
     private:
+        template <typename ... Args>
+        void addAction(int action, Ui::ContextMenu* parent, Args && ...args);
+        void trackMenu(const QPoint& _globalPos, const bool _isAsync = false);
 
         void moveToScreen();
 
@@ -135,6 +144,8 @@ namespace Previewer
 
         void showOverAll();
 
+        void resumeGrabKeyboard();
+
     private:
         QString aimId_;
 
@@ -144,6 +155,11 @@ namespace Previewer
 
         QTimer* scrollTimer_;
         QTimer* delayTimer_;
+
+        bool skipNextMouseRelease_ = false;
+        QPoint contexMenuPos_;
+        QTimer* contextMenuShowTimer_ = nullptr;
+        QPointer<QMenu> contextMenu_;
 
         bool firstOpen_;
 

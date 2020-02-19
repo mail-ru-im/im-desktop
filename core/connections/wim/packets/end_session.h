@@ -27,6 +27,7 @@ namespace core
         public:
 
             end_session(wim_packet_params _params);
+            bool is_valid() const override { return true; }
             virtual ~end_session();
         };
 

@@ -15,6 +15,7 @@ namespace Ui
     VisualDataBase::VisualDataBase()
         : IsHovered_(false)
         , IsSelected_(false)
+        , IsOnline_(false)
         , HasLastSeen_(false)
         , isCheckedBox_(false)
         , isChatMember_(false)
@@ -32,7 +33,6 @@ namespace Ui
     VisualDataBase::VisualDataBase(
         const QString& _aimId,
         const QPixmap& _avatar,
-        const QString& _state,
         const QString& _status,
         const bool _isHovered,
         const bool _isSelected,
@@ -51,15 +51,16 @@ namespace Ui
         const bool _muted,
         const bool _notInCL,
         const bool _hasAttention,
-        const bool _isCreator)
+        const bool _isCreator,
+        const bool _isOnline)
         : AimId_(_aimId)
         , Avatar_(_avatar)
-        , State_(_state)
         , ContactName_(_contactName)
         , nick_(_nick)
         , highlights_(_highlights)
         , IsHovered_(_isHovered)
         , IsSelected_(_isSelected)
+        , IsOnline_(_isOnline)
         , HasLastSeen_(_hasLastSeen)
         , LastSeen_(_lastSeen)
         , isCheckedBox_(_isWithCheckBox)

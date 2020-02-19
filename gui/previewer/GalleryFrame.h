@@ -82,7 +82,11 @@ namespace Previewer
         void setSaveEnabled(bool _enable);
         void setMenuEnabled(bool _enable);
 
+        static QString actionIconPath(Action action);
+        static QString actionText(Action action);
+
         void setMenuActions(Actions _actions);
+        Actions menuActions() const;
 
         void setZoomVisible(bool _visible);
         void setNavigationButtonsVisible(bool _visible);
@@ -125,6 +129,10 @@ namespace Previewer
         void hideEvent(QHideEvent* _event) override;
 
     private:
+        template <typename ... Args>
+        QAction* makeAction(Action action, CustomMenu* parent, Args && ...args);
+        template <typename ... Args>
+        void addAction(Action action, CustomMenu* parent, Args && ...args);
         void onClick(ControlType _type);
         void setLabelText(ControlType _type, const QString& _text);
 

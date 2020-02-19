@@ -34,5 +34,4 @@ platform_win32::GraphicsPanelWin32::GraphicsPanelWin32(
 
 platform_win32::GraphicsPanelWin32::~GraphicsPanelWin32()
 {
-
 }

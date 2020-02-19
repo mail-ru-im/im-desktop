@@ -40,10 +40,8 @@ std::thread::id main_thread::get_core_thread_id() const
 {
     assert(get_threads_ids().size() == 1);
 
-    if (get_threads_ids().size() == 1)
-    {
-        return get_threads_ids()[0];
-    }
+    if (const auto& thread_ids = get_threads_ids(); thread_ids.size() == 1)
+        return thread_ids[0];
 
     return std::thread::id(); // nobody
 }

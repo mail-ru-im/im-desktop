@@ -72,8 +72,7 @@ namespace
 
     QFont getBadgeTextForNumbersFont()
     {
-        const auto static f = Fonts::appFontScaled(platform::is_apple() ? 10 : 11,
-                                                   platform::is_apple() ? Fonts::FontWeight::Medium : Fonts::FontWeight::Normal);
+        const auto static f = Fonts::appFontScaled(11, platform::is_apple() ? Fonts::FontWeight::Medium : Fonts::FontWeight::Normal);
         return f;
     }
 
@@ -119,9 +118,7 @@ namespace Ui
         QObject::connect(this, &SimpleListItem::hoverChanged, this, &TabItem::updateTextColor);
     }
 
-    TabItem::~TabItem()
-    {
-    }
+    TabItem::~TabItem() = default;
 
     void TabItem::setSelected(bool _value)
     {
@@ -241,9 +238,7 @@ namespace Ui
         setFixedHeight(TabBar::getDefaultHeight());
     }
 
-    TabBar::~TabBar()
-    {
-    }
+    TabBar::~TabBar() = default;
 
     void TabBar::setBadgeText(int _index, const QString& _text)
     {

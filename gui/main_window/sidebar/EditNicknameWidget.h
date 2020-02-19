@@ -19,11 +19,24 @@ namespace Ui
 
     Q_SIGNALS:
         void changed();
+        void ready();
+        void theSame();
+        void error();
 
     public:
         struct FormData
         {
+            FormData()
+                : groupMode_(false)
+                , fixedSize_(false)
+            {
+            }
+
             QString nickName_;
+            QString fixedPart_;
+            bool groupMode_;
+            bool fixedSize_;
+            QMargins margins_;
         };
 
         EditNicknameWidget(QWidget* _parent = nullptr, const FormData& _initData = FormData());
@@ -36,6 +49,10 @@ namespace Ui
         void setToastParent(QWidget* _parent);
 
         void setStatFrom(std::string_view _from);
+        void setNick(const QString& _nick);
+
+        QString getNick() const;
+        void clearHint();
 
     private Q_SLOTS:
         void onFormChanged();
@@ -52,6 +69,7 @@ namespace Ui
         void paintEvent(QPaintEvent* _event) override;
         void keyPressEvent(QKeyEvent* _event) override;
         void showEvent(QShowEvent* _event) override;
+        void resizeEvent(QResizeEvent* _event) override;
 
     private:
         bool isFormComplete() const;
@@ -76,6 +94,9 @@ namespace Ui
         QWidget* toastParent_;
         std::string statFrom_;
         bool nickSet_;
+        bool groupMode_;
+        bool fixedSize_;
+        QMargins margins_;
     };
 
     void showEditNicknameDialog(EditNicknameWidget* _widget);

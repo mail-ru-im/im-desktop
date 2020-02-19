@@ -1,7 +1,6 @@
 #include "stdafx.h"
 #include "speech_to_text.h"
 #include "../../../http_request.h"
-#include "../loader/web_file_info.h"
 #include "../../../tools/json_helper.h"
 #include "../../urls_cache.h"
 
@@ -13,7 +12,7 @@ speech_to_text::speech_to_text(
     wim_packet_params _params,
     const std::string& _url,
     const std::string& _locale)
-    :    wim_packet(std::move(_params)),
+    : wim_packet(std::move(_params)),
     Url_(_url),
     Locale_(_locale),
     Comeback_(0)
@@ -21,21 +20,20 @@ speech_to_text::speech_to_text(
 }
 
 
-speech_to_text::~speech_to_text()
-{
-}
-
+speech_to_text::~speech_to_text() = default;
 
 int32_t speech_to_text::init_request(std::shared_ptr<core::http_request_simple> _request)
 {
-    std::stringstream ss_url;
+    std::string ss_url;
 
     auto pos = Url_.rfind('/');
-    std::string fileid;
+    std::string_view fileid;
     if (pos != std::string::npos)
-        fileid = Url_.substr(pos + 1, Url_.length() - pos - 1);
+        fileid = std::string_view(Url_).substr(pos + 1, Url_.length() - pos - 1);
 
-    ss_url << urls::get_url(urls::url_type::files_host) << std::string_view("/speechtotext/") << fileid;
+    ss_url += urls::get_url(urls::url_type::files_host);
+    ss_url += "/speechtotext/";
+    ss_url += fileid;
 
     std::map<std::string, std::string> params;
 
@@ -48,13 +46,13 @@ int32_t speech_to_text::init_request(std::shared_ptr<core::http_request_simple> 
     params["type"] = "ptt";
     params["locale"] = Locale_;
 
-    const auto sha256 = escape_symbols(get_url_sign(ss_url.str(), params, params_, false));
-    params["sig_sha256"] = sha256;
+    auto sha256 = escape_symbols(get_url_sign(ss_url, params, params_, false));
+    params["sig_sha256"] = std::move(sha256);
 
-    std::stringstream ss_url_signed;
-    ss_url_signed << ss_url.str() << '?' << format_get_params(params);
+    ss_url += '?';
+    ss_url += format_get_params(params);
 
-    _request->set_url(ss_url_signed.str());
+    _request->set_url(ss_url);
     _request->set_normalized_url("pushToTalkRecognition");
     _request->set_keep_alive();
 
@@ -96,11 +94,19 @@ int32_t speech_to_text::execute_request(std::shared_ptr<core::http_request_simpl
             if (doc.ParseInsitu(response->read(size)).HasParseError())
                 return wpie_error_parse_response;
 
-            auto iter_comeback = doc.FindMember("comeback");
-            if (iter_comeback == doc.MemberEnd() || !iter_comeback->value.IsString())
+            if (const auto iter_comeback = doc.FindMember("comeback"); iter_comeback != doc.MemberEnd())
+            {
+                if (iter_comeback->value.IsString())
+                    Comeback_ = std::stoi(rapidjson_get_string(iter_comeback->value));
+                else if (iter_comeback->value.IsInt())
+                    Comeback_ = iter_comeback->value.GetInt();
+                else
+                    return wpie_http_parse_response;
+            }
+            else
+            {
                 return wpie_http_parse_response;
-
-            Comeback_ = std::stoi(iter_comeback->value.GetString());
+            }
         }
 
         return wpie_http_error;
@@ -132,7 +138,7 @@ int32_t speech_to_text::parse_response(std::shared_ptr<core::tools::binary_strea
     return 0;
 }
 
-std::string speech_to_text::get_text() const
+const std::string& speech_to_text::get_text() const
 {
     return Text_;
 }

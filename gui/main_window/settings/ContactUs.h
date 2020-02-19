@@ -9,6 +9,7 @@ namespace Ui
     class TextEditEx;
     class TextEmojiWidget;
     class RotatingSpinner;
+    class ProgressAnimation;
 
     class AttachFileWidget : public QWidget
     {
@@ -29,6 +30,26 @@ namespace Ui
         void attachFile();
     };
 
+    class GetDebugInfoWidget : public QWidget
+    {
+        Q_OBJECT
+    public:
+        GetDebugInfoWidget(QWidget* _parent = nullptr);
+
+    private:
+        void onClick();
+        void onTimeout();
+        void onResult(const QString& _fileName);
+
+        void startAnimation();
+        void stopAnimation();
+
+    private:
+        CustomButton* icon_;
+        ProgressAnimation* progress_;
+        QTimer* checkTimer_;
+    };
+
     class ContactUsWidget : public QWidget
     {
         Q_OBJECT
@@ -41,6 +62,7 @@ namespace Ui
         TextEditEx* suggestioner_;
         LineEditEx* email_;
         DialogButton* sendButton_;
+        GetDebugInfoWidget* debugInfoWidget_;
 
         TextEmojiWidget* suggestionSizeError_;
         TextEmojiWidget* emailError_;

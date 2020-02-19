@@ -41,12 +41,6 @@ namespace Logic
         void set_default_role(const QString& role);
         const QString& get_default_role() const;
 
-        void set_input_text(const QString& _inputText);
-        const QString& get_input_text() const;
-
-        void set_input_pos(int _pos);
-        int get_input_pos() const;
-
         void set_contact_profile(profile_ptr _profile);
         profile_ptr getContactProfile() const;
         const QString& get_aimid() const;
@@ -69,11 +63,9 @@ namespace Logic
 
 
         bool            visible_;
-        QString         input_text_;
         QString         chat_role_;
         QString         default_role_;
         QString         stamp_;
-        int             input_pos_;
     };
 
     static_assert(std::is_move_assignable<ContactItem>::value, "ContactItem must be move assignable");

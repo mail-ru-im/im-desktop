@@ -12,6 +12,7 @@
 #include "../../my_info.h"
 
 #include "styles/ThemeParameters.h"
+#include "controls/TextUnit.h"
 
 using namespace Ui::TextRendering;
 
@@ -97,7 +98,7 @@ namespace
         return getNameTextHighlightedColor();
     }
 
-    void drawAvatar(QPainter& _painter, const Ui::ContactListParams& _params, const QString& _aimid, const int _itemHeight, const bool _isSelected)
+    void drawAvatar(QPainter& _painter, const Ui::ContactListParams& _params, const QString& _aimid, const int _itemHeight, const bool _isSelected, const bool _isMessage)
     {
         const auto avatarSize = _params.getAvatarSize();
 
@@ -106,7 +107,6 @@ namespace
             _aimid,
             QString(),
             Utils::scale_bitmap(avatarSize),
-            QString(),
             isDefault,
             false,
             false
@@ -118,7 +118,8 @@ namespace
             const auto x = _params.getAvatarX();
             const auto y = (_itemHeight - avatar.height() / ratio) / 2;
 
-            Utils::drawAvatarWithBadge(_painter, QPoint(x, y), avatar, _aimid, false, _isSelected);
+            _painter.setRenderHints(QPainter::SmoothPixmapTransform | QPainter::Antialiasing);
+            Utils::drawAvatarWithBadge(_painter, QPoint(x, y), avatar, _aimid, false, _isSelected, !_isMessage);
         }
     }
 
@@ -183,8 +184,8 @@ namespace
                 parts.push_back(s.url_);
         }
 
-        if (!_msg->IsSticker() && !_msg->GetText().isEmpty())
-            parts.push_back(_msg->GetText());
+        if (!_msg->IsSticker() && !_msg->GetSourceText().isEmpty())
+            parts.push_back(_msg->GetSourceText());
 
         for (const auto& part: parts)
         {
@@ -197,13 +198,13 @@ namespace
                 const auto res = part.midRef(std::max(startPos, 0), len);
 
                 if (hl.indexStart_ >= largeMessageThreshold)
-                    return ql1s("...") % res;
+                    return Ui::getEllipsis() % res;
 
                 return res.toString();
             }
         }
 
-        return _msg->GetText();
+        return _msg->GetSourceText();
     }
 
     QString getSenderName(const Data::MessageBuddySptr& _msg, const bool _fromDialogSearch)
@@ -300,7 +301,7 @@ namespace Logic
         }
     }
 
-    void SearchItemDelegate::onContactSelected(const QString& _aimId, qint64 _msgId, qint64)
+    void SearchItemDelegate::onContactSelected(const QString& _aimId, qint64 _msgId)
     {
         selectedMessage_ = _msgId;
     }
@@ -320,13 +321,13 @@ namespace Logic
     {
         const auto& params = Ui::GetContactListParams();
 
-        drawAvatar(_painter, params, _item->getAimId(), _option.rect.height(), _isSelected);
+        drawAvatar(_painter, params, _item->getAimId(), _option.rect.height(), _isSelected, _item->isMessage());
         drawCachedItem(_painter, _option, _item, _isSelected);
     }
 
     void SearchItemDelegate::drawMessageItem(QPainter& _painter, const QStyleOptionViewItem& _option, const Data::MessageSearchResultSptr& _item, const bool _isSelected) const
     {
-        drawAvatar(_painter, Ui::GetRecentsParams(), _item->getSenderAimId(), _option.rect.height(), _isSelected);
+        drawAvatar(_painter, Ui::GetRecentsParams(), _item->getSenderAimId(), _option.rect.height(), _isSelected, _item->isMessage());
         drawCachedItem(_painter, _option, _item, _isSelected);
     }
 
@@ -564,7 +565,7 @@ namespace Logic
         ci.name_ = createName(ci.searchResult_->getFriendlyName(), ci.isSelected_, maxWidth);
         ci.name_->setOffsets(leftOffset, getMsgNameVerOffset());
 
-        const auto msgFont = Fonts::appFont(params.messageFontSize(), Fonts::FontWeight::Normal);
+        const auto msgFont = Fonts::appFont(Utils::scale_value(params.messageFontSize()), Fonts::FontWeight::Normal, Fonts::FontAdjust::NoAdjust);
 
         const auto hlPos = msg->isLocalResult_ ? Ui::HighlightPosition::anywhere : Ui::HighlightPosition::wordStart;
         auto messageText = Ui::createHightlightedText(

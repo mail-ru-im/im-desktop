@@ -19,6 +19,7 @@ namespace core::wim
         , keyword_(_keyword)
         , contact_(_contact)
         , cursor_(_cursor)
+        , hide_keyword_(false)
         , persons_(std::make_shared<core::archive::persons_map>())
     {
     }
@@ -44,7 +45,6 @@ namespace core::wim
         if (keyword_.empty() && cursor_.empty())
             return -1;
 
-        _request->set_gzip(true);
         _request->set_url(urls::get_url(urls::url_type::rapi_host));
         _request->set_normalized_url(get_method_name());
         _request->set_keep_alive();
@@ -98,9 +98,12 @@ namespace core::wim
             log_replace_functor f;
             f.add_marker("a");
             f.add_json_marker("aimsid", aimsid_range_evaluator());
-            f.add_json_marker("text");
-            f.add_json_marker("keyword");
             f.add_json_array_marker("highlight");
+            if (hide_keyword_)
+                f.add_json_marker("keyword");
+
+            f.add_message_markers();
+
             _request->set_replace_log_function(f);
         }
 

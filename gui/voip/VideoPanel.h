@@ -1,6 +1,4 @@
-#ifndef __VIDEO_PANEL_H__
-#define __VIDEO_PANEL_H__
-
+#pragma once
 #include "CommonUI.h"
 #include "VoipProxy.h"
 
@@ -15,7 +13,6 @@ namespace voip_manager
 
 namespace Ui
 {
-
     struct UIEffects;
     class MaskWidget;
 
@@ -40,9 +37,10 @@ namespace Ui
         void onShareScreenClickOn();
         void onGoToChatButton();
         void onMicrophoneClick();
+        void needShowScreenPermissionsPopup();
 
     private Q_SLOTS:
-        void onHangUpButtonClicked();        
+        void onHangUpButtonClicked();
         void onVideoOnOffClicked();
         void _onFullscreenClicked();
         void controlActivated(bool);
@@ -86,7 +84,7 @@ namespace Ui
         void changeEvent(QEvent* _e) override;
         void enterEvent(QEvent* _e) override;
         void leaveEvent(QEvent* _e) override;
-        void resizeEvent(QResizeEvent* _e) override;        
+        void resizeEvent(QResizeEvent* _e) override;
         void keyReleaseEvent(QKeyEvent* _e) override;
 
     private:
@@ -117,5 +115,3 @@ namespace Ui
         bool isCameraEnabled_;
     };
 }
-
-#endif//__VIDEO_PANEL_H__

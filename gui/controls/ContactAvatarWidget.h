@@ -20,6 +20,8 @@ namespace Ui
         void enterEvent(QEvent*) override;
         void leaveEvent(QEvent*) override;
         void resizeEvent(QResizeEvent*) override;
+        void dragEnterEvent(QDragEnterEvent*) override;
+        void dropEvent(QDropEvent*) override;
 
     private:
         struct InfoForSetAvatar
@@ -53,11 +55,12 @@ namespace Ui
         void leftClicked();
         void rightClicked();
         void cancelSelectFileForAvatar();
+        void avatarSetToCore();
 
     private Q_SLOTS:
         void avatarChanged(const QString&);
 
-        void cropAvatar();
+        void cropAvatar(bool _drop = false);
         void openAvatarPreview();
 
         void avatarEnter();
@@ -80,15 +83,17 @@ namespace Ui
         void SetVisibleShadow(bool _isVisibleShadow);
         void SetVisibleSpinner(bool _isVisibleSpinner);
         void SetOutline(bool _isVisibleOutline);
+        void SetSmallBadge(bool _small);
+        void SetOffset(int _offset);
 
         void applyAvatar(const QPixmap &alter = QPixmap());
         const QPixmap &croppedImage() const;
 
     private:
-        QString GetState();
         void postSetAvatarToCore(const QPixmap& _avatar);
         void ResetInfoForSetAvatar();
         void updateSpinnerPos();
+        void selectFile(const QString& _url = QString(), bool _drop = false);
 
     private:
         QWidget *imageCropHolder_;
@@ -105,5 +110,8 @@ namespace Ui
         RotatingSpinner* spinner_;
         bool hovered_;
         bool pressed_;
+        bool smallBadge_;
+        bool displayNameChanged_;
+        int offset_;
     };
 }

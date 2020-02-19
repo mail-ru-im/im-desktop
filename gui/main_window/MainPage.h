@@ -41,8 +41,11 @@ namespace Ui
     class SettingsHeader;
     class LineLayoutSeparator;
     class LoaderOverlay;
+    class ContextMenu;
+    class UpdaterButton;
 
     enum class Tabs;
+    enum class CreateChatSource;
 
     namespace Stickers
     {
@@ -107,8 +110,8 @@ namespace Ui
         void onContactSelected(const QString& _contact);
         void onMessageSent();
         void contactsClicked();
-        void createGroupChat();
-        void createChannel();
+        void createGroupChat(const CreateChatSource _source);
+        void createChannel(const CreateChatSource _source);
         void dialogBackClicked(const bool _needHighlightInRecents);
         void sidebarBackClicked();
         // settings
@@ -136,6 +139,7 @@ namespace Ui
         void changeCLHeadToSearchSlot();
         void changeCLHeadToUnknownSlot();
         void recentsTopPanelBack();
+        void addByNick();
 
         void onShowWindowForTesters();
         void compactModeChanged();
@@ -146,9 +150,9 @@ namespace Ui
         void currentPageChanged(int _index);
 
         void tabBarCurrentChanged(int _index);
+        void tabBarRightClicked(int _index);
 
         void tabBarClicked(int _index);
-        void tabBarRightClicked(int _index);
 
         void showStickersStore();
 
@@ -164,6 +168,7 @@ namespace Ui
         void onContactRemoved(const QString&);
 
         void addContactClicked();
+        void readAllClicked();
 
         void showLoaderOverlay();
         void hideLoaderOverlay();
@@ -337,9 +342,9 @@ namespace Ui
         SettingsTab* settingsTab_;
         ContactsTab* contactsTab_;
         LineLayoutSeparator* spreadedModeLine_;
+        UpdaterButton* updaterButton_;
         bool NeedShowUnknownsHeader_;
         int currentTab_;
-        int anim_;
         bool isManualRecentsMiniMode_;
         FrameCountMode frameCountMode_;
         OneFrameMode oneFrameMode_;
@@ -357,19 +362,16 @@ namespace Ui
 
         struct RecentsHeaderButtons
         {
-            HeaderTitleBarButton* readAll_ = nullptr;
+            HeaderTitleBarButton* more_ = nullptr;
             HeaderTitleBarButton* newContacts_ = nullptr;
             HeaderTitleBarButton* newEmails_ = nullptr;
-            HeaderTitleBarButton* addContact_ = nullptr;
-
         } recentsHeaderButtons_;
 
         QString prevSearchInput_;
 
-        qint64 unreadCount_;
-        bool attention_;
-
         std::vector<std::pair<int, Tabs>> indexToTabs_;
+
+        ContextMenu* moreMenu_;
 
         Tabs getTabByIndex(int _index) const;
         int getIndexByTab(Tabs _tab) const;

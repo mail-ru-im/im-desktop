@@ -13,6 +13,11 @@ namespace Ui
         mediaTypeVoip = 6,
         mediaTypeFileSharing = 7,
         mediaTypeContact = 8,
+        mediaTypeGeo = 9,
+        mediaTypePoll = 10,
+        mediaTypeFsVideo = 11,
+        mediaTypeFsPhoto = 12,
+        mediaTypeFsGif = 13,
     };
 
 

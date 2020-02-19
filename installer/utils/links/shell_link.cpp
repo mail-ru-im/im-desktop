@@ -2,6 +2,8 @@
 #include "shell_link.h"
 #include "Win7Features.h"
 
+#include <filesystem>
+
 namespace installer
 {
 	namespace links
@@ -135,8 +137,7 @@ namespace installer
 
 		FolderItemVerbs* GetVerbs(const CAtlString& _filePath)
 		{
-            std::tr2::sys::path file_path;
-            file_path = _filePath.GetString();
+            std::filesystem::path file_path = _filePath.GetString();
 
 			CComPtr<IShellDispatch> shell;
 			HRESULT hr = shell.CoCreateInstance(CLSID_Shell, NULL,CLSCTX_INPROC_SERVER);
@@ -145,7 +146,7 @@ namespace installer
 				return NULL;
 			}
 
-			CAtlString path_string = file_path.parent_path().string().c_str();
+			CAtlString path_string = file_path.parent_path().wstring().c_str();
 			path_string.Replace('/', '\\');
 
 			CComVariant path(CComBSTR((LPCWSTR) path_string));
@@ -247,7 +248,7 @@ namespace installer
 		{
 			/// body of function ----------------------------------------------
 
-			if ( (*recurseCount) > 10)//глубже 10 вложений искать не будем
+			if ( (*recurseCount) > 10) // max find recursion deep is 10
 			{
 				return TRUE;
 			}
@@ -276,7 +277,7 @@ namespace installer
 				{
 					if (bRecurse)
 					{
-						//рекурсивно ищем в папке
+						// recursive find
 						if ((_tcsncmp(findFileData.cFileName, _T("."), 1) == 0) || (_tcsncmp(findFileData.cFileName, _T(".."), 2) == 0))
 							continue;
 
@@ -470,7 +471,7 @@ namespace installer
 
 														lpPairKeyValue->strKey = keyForEnum + _T("\\count");
 														lpPairKeyValue->strValue = strValue;
-														vecForDel.push_back(std::tr1::shared_ptr<PairKeyValue>(lpPairKeyValue));
+														vecForDel.push_back(std::shared_ptr<PairKeyValue>(lpPairKeyValue));
 													}
 												}
 											}
@@ -488,14 +489,13 @@ namespace installer
 
 
 			HKEY hKeyForDel;
-			std::vector<std::tr1::shared_ptr<PairKeyValue>>::iterator it, itEnd = vecForDel.end();
-			for (it = vecForDel.begin(); it<itEnd; ++it )
+			for (const auto& x : vecForDel)
 			{
-				hRes = RegOpenKeyEx(HKEY_CURRENT_USER, (*it)->strKey, 0, KEY_ALL_ACCESS, &hKeyForDel);
+				hRes = RegOpenKeyEx(HKEY_CURRENT_USER, x->strKey, 0, KEY_ALL_ACCESS, &hKeyForDel);
 				if (hRes != ERROR_SUCCESS)
 					continue;
 
-				RegDeleteValue(hKeyForDel, (*it)->strValue);
+				RegDeleteValue(hKeyForDel, x->strValue);
 
 				RegCloseKey(hKeyForDel);
 			}
@@ -511,11 +511,11 @@ namespace installer
 				sDir = sDir.Trim(_T("\\"));
 				sDir += _T("\\Microsoft\\Internet Explorer\\Quick Launch");
 
-                std::tr2::sys::path path;
-                path = ((const wchar_t*)sDir);
-				if (!std::tr2::sys::exists(path))
+                std::filesystem::path path = ((const wchar_t*)sDir);
+                std::error_code ec;
+                if (!std::filesystem::exists(path, ec))
 				{
-					if (!std::tr2::sys::create_directories(path))
+                    if (!std::filesystem::create_directories(path, ec))
 					{
 
 					}

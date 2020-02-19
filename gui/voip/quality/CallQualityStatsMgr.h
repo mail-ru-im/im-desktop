@@ -1,10 +1,7 @@
 #pragma once
-
 #include <QObject>
-
 #include "ShowQualityReasonsPopupConfig.h"
 #include "ShowQualityStarsPopupConfig.h"
-
 #include "../../../core/Voip/VoipManagerDefines.h"
 
 namespace Ui

@@ -1,94 +1,68 @@
 #include "stdafx.h"
-
-#include "../../../core_dispatcher.h"
-
-#include "../../../controls/LabelEx.h"
-#include "../../../controls/DialogButton.h"
-#include "../../../fonts.h"
-#include "../../../main_window/ContactDialog.h"
-#include "../../../main_window/GroupChatOperations.h"
-#include "../../../utils/utils.h"
-#include "../../../utils/gui_coll_helper.h"
-#include "../../contact_list/ContactList.h"
-#include "../../contact_list/ContactListModel.h"
-#include "../../contact_list/SelectionContactsForGroupChat.h"
-#include "../../MainPage.h"
-#include "../../history_control/MessagesScrollArea.h"
-
 #include "SelectionPanel.h"
+#include "controls/ClickWidget.h"
+#include "controls/CustomButton.h"
+#include "styles/StyleVariable.h"
+#include "styles/ThemeParameters.h"
+#include "utils/InterConnector.h"
+#include "utils/utils.h"
+#include "fonts.h"
 
 namespace
 {
-    constexpr int horizontalSpace = 12;
-    constexpr int verticalSpace = 12;
-    constexpr int buttonSpace = 12;
+    constexpr int HOR_OFFSET = 16;
 }
 
 namespace Ui
 {
-    SelectionPanel::SelectionPanel(QWidget* _parent, MessagesScrollArea* _messages)
+    SelectionPanel::SelectionPanel(QWidget* _parent)
         : QFrame(_parent)
-        , messages_(_messages)
     {
-        assert(_messages);
+        auto layout = Utils::emptyHLayout(this);
+        layout->setContentsMargins(Utils::scale_value(HOR_OFFSET), 0, Utils::scale_value(HOR_OFFSET), 0);
 
-        auto forward = new DialogButton(this, QT_TRANSLATE_NOOP("chat_page", "FORWARD"), DialogButtonRole::CONFIRM);
-        forward->setCursor(Qt::PointingHandCursor);
+        label_ = new ClickableTextWidget(this, Fonts::appFontScaled(15), Styling::StyleVariable::TEXT_SOLID);
+        label_->setCursor(Qt::ArrowCursor);
+        layout->addWidget(label_);
 
-        auto copy = new DialogButton(this, QT_TRANSLATE_NOOP("chat_page", "COPY"), DialogButtonRole::CONFIRM);
-        copy->setCursor(Qt::PointingHandCursor);
+        layout->addSpacerItem(new QSpacerItem(0, 0, QSizePolicy::Expanding));
 
-        auto cancel = new LabelEx(this);
-        cancel->setText(QT_TRANSLATE_NOOP("chat_page", "CANCEL"));
-        cancel->setCursor(Qt::PointingHandCursor);
-        cancel->adjustSize();
+        cancel_ = new CustomButton(this);
+        cancel_->setFont(Fonts::appFontScaled(15));
+        cancel_->setShape(Ui::ButtonShape::ROUNDED_RECTANGLE);
+        cancel_->setNormalTextColor(Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY));
+        cancel_->setHoveredTextColor(Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY_HOVER));
+        cancel_->setText(QT_TRANSLATE_NOOP("selection", "Cancel"));
+        layout->addWidget(cancel_);
 
-        connect(forward, &QPushButton::clicked, this, &SelectionPanel::onForwardClicked);
-        connect(copy, &QPushButton::clicked, this, &SelectionPanel::onCopyClicked);
-        connect(cancel, &LabelEx::clicked, this, &SelectionPanel::closePanel);
-
-        auto layout = Utils::emptyHLayout();
-        layout->setContentsMargins(
-            Utils::scale_value(horizontalSpace), Utils::scale_value(verticalSpace),
-            Utils::scale_value(horizontalSpace), Utils::scale_value(verticalSpace));
-
-        Testing::setAccessibleName(forward, qsl("AS selection forward"));
-        layout->addWidget(forward);
-        layout->addSpacing(Utils::scale_value(buttonSpace));
-        Testing::setAccessibleName(copy, qsl("AS selection copy"));
-        layout->addWidget(copy);
-        layout->addStretch();
-        Testing::setAccessibleName(cancel, qsl("AS selection cancel"));
-        layout->addWidget(cancel);
-
-        setLayout(layout);
+        connect(cancel_, &CustomButton::clicked, this, []() { Utils::InterConnector::instance().setMultiselect(false); });
+        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::selectedCount, this, &SelectionPanel::setSelectedCount);
+        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::multiSelectCurrentElementChanged, this, &SelectionPanel::multiSelectCurrentElementChanged);
     }
 
-    void SelectionPanel::closePanel()
+    void SelectionPanel::setSelectedCount(int _count)
     {
-        messages_->clearSelection();
+        label_->setText(Utils::GetTranslator()->getNumberString(_count, QT_TRANSLATE_NOOP3("selection", "%1 message selected", "1"),
+            QT_TRANSLATE_NOOP3("contactlist", "%1 messages selected", "2"),
+            QT_TRANSLATE_NOOP3("contactlist", "%1 messages selected", "5"),
+            QT_TRANSLATE_NOOP3("contactlist", "%1 messages selected", "21")).arg(_count));
+        update();
     }
 
-    void SelectionPanel::onForwardClicked()
+    void SelectionPanel::multiSelectCurrentElementChanged()
     {
-        const auto quotes = messages_->getQuotes();
-        if (quotes.empty())
-            return;
+        if (Utils::InterConnector::instance().currentMultiselectElement() == Utils::MultiselectCurrentElement::Cancel)
+        {
+            static auto hoverColor = Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY);
+            hoverColor.setAlpha(0.18 * 255);
+            cancel_->forceHover(true);
+            cancel_->setBackgroundColor(hoverColor);
 
-        forwardMessage(quotes, false);
-
-        closePanel();
-    }
-
-    void SelectionPanel::onCopyClicked()
-    {
-        const auto text = messages_->getSelectedText();
-
-        const auto clipboard = QApplication::clipboard();
-        clipboard->setText(text);
-
-        closePanel();
-
-        MainPage::instance()->getContactDialog()->setFocusOnInputWidget();
+        }
+        else
+        {
+            cancel_->forceHover(false);
+            cancel_->setBackgroundColor(QColor());
+        }
     }
 }

@@ -88,27 +88,9 @@ class loader : public std::enable_shared_from_this<loader>
 public:
     void send_task_ranges_async(std::weak_ptr<upload_task> _wr_task);
 
-    void load_file_sharing_task_ranges_async(std::weak_ptr<download_task> _wr_task);
-
     std::shared_ptr<upload_progress_handler> upload_file_sharing(
         const std::string &_guid,
         upload_file_params&& _file_params,
-        const wim_packet_params& _params);
-
-    std::shared_ptr<download_progress_handler> download_file_sharing(
-        const int64_t _seq,
-        const std::string& _file_url,
-        const file_sharing_function _function,
-        const std::wstring& _files_folder,
-        const std::wstring& _previews_folder,
-        const std::wstring& _filename,
-        const bool _force_request_metainfo,
-        const wim_packet_params& _params);
-
-    std::shared_ptr<get_file_direct_uri_handler>  get_file_direct_uri(
-        const int64_t _seq,
-        const std::string& _file_url,
-        const std::wstring& _cache_dir,
         const wim_packet_params& _params);
 
     void abort_file_sharing_process(const std::string &_process_id);
@@ -116,8 +98,6 @@ public:
     bool has_file_sharing_task(const std::string &_id) const;
 
     void resume_file_sharing_tasks();
-
-    void set_played(const std::string& _file_url, const std::wstring& _previews_folder, bool _played, const wim_packet_params& _params);
 
     loader(std::wstring _cache_dir);
 

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <boost/filesystem.hpp>
+
 #define CORE_TOOLS_SYSTEM_NS_BEGIN namespace core { namespace tools { namespace system {
 #define CORE_TOOLS_SYSTEM_NS_END } } }
 
@@ -44,7 +46,14 @@ std::string to_lower(std::string_view str);
 
 size_t get_memory_size_mb();
 
-bool is_exist(const std::wstring& path);
+bool is_exist(std::wstring_view path);
+
+bool is_empty(std::wstring_view path);
+
+inline bool is_exist(const std::wstring& path)
+{
+    return is_exist(std::wstring_view(path));
+}
 
 bool is_exist(const boost::filesystem::wpath & path);
 
@@ -66,14 +75,14 @@ bool unzip(const boost::filesystem::path& _archive, const boost::filesystem::pat
 
 bool clean_directory(const boost::filesystem::path& _dir);
 
-std::ifstream open_file_for_read(const std::string& _file_name, std::ios_base::openmode _mode = std::ios_base::in);
-std::ifstream open_file_for_read(const std::wstring& _file_name, std::ios_base::openmode _mode = std::ios_base::in);
+std::ifstream open_file_for_read(std::string_view _file_name, std::ios_base::openmode _mode = std::ios_base::in);
+std::ifstream open_file_for_read(std::wstring_view _file_name, std::ios_base::openmode _mode = std::ios_base::in);
 
-std::ofstream open_file_for_write(const std::string& _file_name, std::ios_base::openmode _mode = std::ios_base::out);
-std::ofstream open_file_for_write(const std::wstring& _file_name, std::ios_base::openmode _mode = std::ios_base::out);
+std::ofstream open_file_for_write(std::string_view _file_name, std::ios_base::openmode _mode = std::ios_base::out);
+std::ofstream open_file_for_write(std::wstring_view _file_name, std::ios_base::openmode _mode = std::ios_base::out);
 
-size_t get_file_size(const std::string& _file_name);
-size_t get_file_size(const std::wstring& _file_name);
+size_t get_file_size(std::string_view _file_name);
+size_t get_file_size(std::wstring_view _file_name);
 
 bool is_do_not_dirturb_on();
 

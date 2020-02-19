@@ -94,7 +94,7 @@ void storage::close()
     active_file_stream_.reset();
 }
 
-static std::int32_t get_last_error()
+static std::int32_t get_system_last_error()
 {
 #ifdef _WIN32
     return std::int32_t(GetLastError());
@@ -117,21 +117,21 @@ storage::result_type storage::write_data_block(core::tools::binary_stream& _data
     {
         active_file_stream_->write((const char*)&data_size, sizeof(data_size));
         if (active_file_stream_->fail())
-            return { false, get_last_error() };
+            return { false, get_system_last_error() };
         active_file_stream_->write((const char*)&data_size, sizeof(data_size));
         if (active_file_stream_->fail())
-            return { false, get_last_error() };
+            return { false, get_system_last_error() };
 
         active_file_stream_->write((const char*)_data.read(data_size), data_size);
         if (active_file_stream_->fail())
-            return { false, get_last_error() };
+            return { false, get_system_last_error() };
 
         active_file_stream_->write((const char*)&data_size, sizeof(data_size));
         if (active_file_stream_->fail())
-            return { false, get_last_error() };
+            return { false, get_system_last_error() };
         active_file_stream_->write((const char*)&data_size, sizeof(data_size));
         if (active_file_stream_->fail())
-            return { false, get_last_error() };
+            return { false, get_system_last_error() };
         return { true, 0 };
     }
 

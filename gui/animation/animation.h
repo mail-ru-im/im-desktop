@@ -1,7 +1,5 @@
 #pragma once
 
-#include "stdafx.h"
-
 namespace anim
 {
     enum class State

@@ -7,11 +7,14 @@
 #include "../../controls/TransparentScrollBar.h"
 #include "../../utils/utils.h"
 #include "../../styles/ThemeParameters.h"
+#include "../sounds/SoundsManager.h"
 
 using namespace Ui;
 
 void GeneralSettingsWidget::Creator::initVoiceVideo(QWidget* _parent, VoiceAndVideoOptions& _voiceAndVideo)
 {
+    Ui::GetSoundsManager(); // Start device monitoring
+
     auto scrollArea = CreateScrollAreaAndSetTrScrollBarV(_parent);
     scrollArea->setWidgetResizable(true);
     scrollArea->setStyleSheet(qsl("QWidget{border: none; background-color: %1;}").arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE)));
@@ -36,25 +39,17 @@ void GeneralSettingsWidget::Creator::initVoiceVideo(QWidget* _parent, VoiceAndVi
     {
         assert(ix >= 0);
         if (ix < 0)
-        {
             return;
-        }
 
         std::vector<DeviceInfo>* devList = NULL;
         switch (dev_type)
         {
         case voip_proxy::kvoipDevTypeAudioPlayback:
-        {
             devList = &_voiceAndVideo.aPlaDeviceList; break;
-        }
         case voip_proxy::kvoipDevTypeAudioCapture:
-        {
             devList = &_voiceAndVideo.aCapDeviceList; break;
-        }
         case voip_proxy::kvoipDevTypeVideoCapture:
-        {
             devList = &_voiceAndVideo.vCapDeviceList; break;
-        }
         case voip_proxy::kvoipDevTypeUndefined:
         default:
             assert(!"unexpected device type");
@@ -62,7 +57,8 @@ void GeneralSettingsWidget::Creator::initVoiceVideo(QWidget* _parent, VoiceAndVi
         };
 
         assert(devList);
-        if (devList->empty()) { return; }
+        if (devList->empty())
+            return;
 
         assert(ix < (int)devList->size());
         const DeviceInfo& info = (*devList)[ix];

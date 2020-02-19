@@ -75,7 +75,7 @@ void GuiMetrics::eventChatLoaded(const QString& _contact)
         Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::chat_open, props);
 
         std::stringstream logData;
-        logData << "archive/messages/get for " << _contact.toUtf8().constData() << " completed in " << time_diff << " ms";
+        logData << "archive/messages/get for " << _contact.toUtf8().constData() << " completed in " << time_diff << " ms\r\n";
 
         Log::write_network_log(logData.str());
     }

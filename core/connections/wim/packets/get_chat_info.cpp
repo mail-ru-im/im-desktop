@@ -26,7 +26,6 @@ int32_t get_chat_info::init_request(std::shared_ptr<core::http_request_simple> _
 {
     constexpr char method[] = "getChatInfo";
 
-    _request->set_gzip(true);
     _request->set_url(urls::get_url(urls::url_type::rapi_host));
     _request->set_normalized_url(method);
     _request->set_keep_alive();
@@ -39,14 +38,10 @@ int32_t get_chat_info::init_request(std::shared_ptr<core::http_request_simple> _
 
     rapidjson::Value node_params(rapidjson::Type::kObjectType);
 
-    if (!params_.aimid_.empty())
-    {
-        node_params.AddMember("sn", params_.aimid_, a);
-    }
-    else if (!params_.stamp_.empty())
-    {
+    if (!params_.stamp_.empty())
         node_params.AddMember("stamp", params_.stamp_, a);
-    }
+    else if (!params_.aimid_.empty())
+        node_params.AddMember("sn", params_.aimid_, a);
 
     node_params.AddMember("memberLimit", params_.members_limit_ ? params_.members_limit_ : max_members_count, a);
 

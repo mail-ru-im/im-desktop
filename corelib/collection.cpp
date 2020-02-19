@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "collection.h"
+#include <inttypes.h>
 
 using namespace core;
 
@@ -24,13 +25,13 @@ int32_t core::collection_value::addref()
 
 int32_t core::collection_value::release()
 {
-    if (0 == (--ref_count_))
+    int32_t r = (--ref_count_);
+    if (0 == r)
     {
         delete this;
         return 0;
     }
-
-    return ref_count_;
+    return r;
 }
 
 void core::collection_value::clear()
@@ -166,7 +167,7 @@ void core::collection_value::set_as_bool(bool val)
 
 bool core::collection_value::get_as_bool() const
 {
-    bool val = 0;
+    bool val = false;
     if (type_ != collection_value_type::vt_bool)
     {
         assert(!"invalid value type");
@@ -293,7 +294,7 @@ const char* core::collection_value::log() const
         break;
     case core::vt_int64:
         log_data_ = (char*) malloc(40);
-        sprintf(log_data_, "%lld", data__.int64_value_);
+        sprintf(log_data_, "%" PRId64, data__.int64_value_);
         break;
     case core::vt_uint:
         log_data_ = (char*) malloc(20);
@@ -303,7 +304,7 @@ const char* core::collection_value::log() const
         return "<collection>";
     case core::vt_stream:
         log_data_ = (char*) malloc(40);
-        sprintf(log_data_, "<stream size=%d>", data__.istream_value_->size());
+        sprintf(log_data_, "<stream size=" "%" PRId64 ">", data__.istream_value_->size());
         break;
     case core::vt_array:
         log_data_ = (char*) malloc(40);
@@ -327,14 +328,11 @@ coll_stream::coll_stream()
 
 }
 
-coll_stream::~coll_stream()
-{
+coll_stream::~coll_stream() = default;
 
-}
-
-uint8_t* coll_stream::read(uint32_t _size)
+uint8_t* coll_stream::read(int64_t _size)
 {
-    return (uint8_t*) stream_.read((uint32_t) _size);
+    return (uint8_t*) stream_.read( _size);
 }
 
 void coll_stream::reset()
@@ -347,9 +345,9 @@ void coll_stream::write(std::istream& _source)
     stream_.write_stream(_source);
 }
 
-void coll_stream::write(const uint8_t* _buffer, uint32_t _size)
+void coll_stream::write(const uint8_t* _buffer, int64_t _size)
 {
-    stream_.write((const char*) _buffer, (uint32_t) _size);
+    stream_.write((const char*) _buffer, _size);
 }
 
 bool coll_stream::empty() const
@@ -357,7 +355,7 @@ bool coll_stream::empty() const
     return !stream_.available();
 }
 
-uint32_t coll_stream::size() const
+int64_t coll_stream::size() const
 {
     return stream_.available();
 }
@@ -369,13 +367,13 @@ int32_t coll_stream::addref()
 
 int32_t coll_stream::release()
 {
-    if (0 == (--ref_count_))
+    int32_t r = (--ref_count_);
+    if (0 == r)
     {
         delete this;
         return 0;
     }
-
-    return ref_count_;
+    return r;
 }
 
 
@@ -387,7 +385,7 @@ int32_t coll_stream::release()
 // collection
 //////////////////////////////////////////////////////////////////////////
 collection::collection()
-    :    ref_count_(1), cursor_(values_.end()), log_data_(0)
+    :    ref_count_(1), cursor_(values_.end()), log_data_(nullptr)
 {
 }
 
@@ -406,13 +404,13 @@ int32_t core::collection::addref()
 
 int32_t core::collection::release()
 {
-    if (0 == (--ref_count_))
+    int32_t r = (--ref_count_);
+    if (0 == r)
     {
         delete this;
         return 0;
     }
-
-    return ref_count_;
+    return r;
 }
 
 ivalue* core::collection::create_value()
@@ -565,13 +563,13 @@ int32_t core::coll_array::addref()
 
 int32_t coll_array::release()
 {
-    if (0 == (--ref_count_))
+    int32_t r = (--ref_count_);
+    if (0 == r)
     {
         delete this;
         return 0;
     }
-
-    return ref_count_;
+    return r;
 }
 
 
@@ -621,13 +619,13 @@ int32_t hheaders_list::addref()
 
 int32_t hheaders_list::release()
 {
-    if (0 == (--ref_count_))
+    int32_t r = (--ref_count_);
+    if (0 == r)
     {
         delete this;
         return 0;
     }
-
-    return ref_count_;
+    return r;
 }
 
 void hheaders_list::push_back(hheader* _header)

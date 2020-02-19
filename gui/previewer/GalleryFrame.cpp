@@ -8,6 +8,7 @@
 #include "../controls/TooltipWidget.h"
 #include "../fonts.h"
 #include "Drawable.h"
+#include "styles/ThemeParameters.h"
 
 #ifdef __APPLE__
 #include "utils/macos/mac_support.h"
@@ -461,9 +462,50 @@ void GalleryFrame::setMenuEnabled(bool _enable)
     update(menu->rect());
 }
 
+QString GalleryFrame::actionIconPath(Action action)
+{
+    switch (action)
+    {
+    case GoTo:
+        return qsl(":/context_menu/goto");
+    case Copy:
+        return qsl(":/context_menu/copy");
+    case Forward:
+        return qsl(":/context_menu/forward");
+    case SaveAs:
+        return qsl(":/context_menu/download");
+    default:
+        Q_UNREACHABLE();
+        return QString();
+    }
+}
+
+QString GalleryFrame::actionText(Action action)
+{
+    switch (action)
+    {
+    case GoTo:
+        return QT_TRANSLATE_NOOP("previewer", "Go to message");
+    case Copy:
+        return QT_TRANSLATE_NOOP("previewer", "Copy to clipboard");
+    case Forward:
+        return QT_TRANSLATE_NOOP("previewer", "Forward");
+    case SaveAs:
+        return QT_TRANSLATE_NOOP("previewer", "Save as");
+    default:
+        Q_UNREACHABLE();
+        return QString();
+    }
+}
+
 void GalleryFrame::setMenuActions(Actions _actions)
 {
     d->menuActions_ = _actions;
+}
+
+GalleryFrame::Actions GalleryFrame::menuActions() const
+{
+    return d->menuActions_;
 }
 
 void GalleryFrame::setZoomVisible(bool _visible)
@@ -701,43 +743,42 @@ CustomMenu* GalleryFrame::createMenu()
 {
     auto menu = new CustomMenu();
 
-    auto iconSize = Utils::scale_value(QSize(20, 20));
-    const auto iconColor = Qt::white;
-
     if (d->menuActions_ & GoTo)
-    {
-        auto goToMessage = new QAction(QT_TRANSLATE_NOOP("previewer", "Go to message"), menu);
-        connect(goToMessage, &QAction::triggered, this, &GalleryFrame::goToMessage);
-        menu->addAction(goToMessage, Utils::renderSvg(qsl(":/context_menu/goto"), iconSize, iconColor));
-    }
+        addAction(GoTo, menu, this, &GalleryFrame::goToMessage);
 
     if (d->menuActions_ & Copy)
-    {
-        auto copy = new QAction(QT_TRANSLATE_NOOP("previewer", "Copy to clipboard"), menu);
-        connect(copy, &QAction::triggered, this, &GalleryFrame::copy);
-        menu->addAction(copy, Utils::renderSvg(qsl(":/context_menu/copy"), iconSize, iconColor));
-    }
+        addAction(Copy, menu, this, &GalleryFrame::copy);
 
     if (d->menuActions_ & Forward)
-    {
-        auto forward = new QAction(QT_TRANSLATE_NOOP("previewer", "Forward"), menu);
-        connect(forward, &QAction::triggered, this, &GalleryFrame::forward);
-        menu->addAction(forward, Utils::renderSvg(qsl(":/context_menu/forward"), iconSize, iconColor));
-    }
+        addAction(Forward, menu, this, &GalleryFrame::forward);
 
     if (d->menuActions_ & SaveAs)
-    {
-        auto saveAs = new QAction(QT_TRANSLATE_NOOP("previewer", "Save as"), menu);
-        connect(saveAs, &QAction::triggered, this, &GalleryFrame::saveAs);
-        menu->addAction(saveAs, Utils::renderSvg(qsl(":/context_menu/download"), iconSize, iconColor));
-    }
+        addAction(SaveAs, menu, this, &GalleryFrame::saveAs);
 
     return menu;
+}
+template<typename ...Args>
+QAction* GalleryFrame::makeAction(Action action, CustomMenu* parent, Args&& ...args)
+{
+    auto a = new QAction(actionText(action), parent);
+    connect(a, &QAction::triggered, std::forward<Args>(args)...);
+    return a;
+}
+
+template<typename ...Args>
+void GalleryFrame::addAction(Action action, CustomMenu* parent, Args && ...args)
+{
+    const auto iconSize = Utils::scale_value(QSize(20, 20));
+    const auto iconColor = Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_SECONDARY);
+    auto a = makeAction(action, parent, std::forward<Args>(args)...);
+    parent->addAction(a, Utils::renderSvg(actionIconPath(action), iconSize, iconColor));
 }
 
 void GalleryFrame::showMenuAt(const QPoint& _pos)
 {
-    d->menu_->deleteLater();
+    if (d->menu_)
+        d->menu_->deleteLater();
+
     d->menu_ = createMenu();
     d->menu_->showAtPos(_pos);
 }
@@ -797,7 +838,7 @@ public:
 
         const auto height = fm.height();
 
-        for (auto i = 0u; i < items_.size(); i++)
+        for (auto i = 0u; i < items_.size(); ++i)
         {
             auto & label = items_[i].second->label_;
             auto & icon = items_[i].second->icon_;
@@ -856,18 +897,16 @@ CustomMenu::CustomMenu()
     // set defaults
     d->arrowSize_ = Utils::scale_value(QSize(20, 8));
     d->itemHeight_ = Utils::scale_value(36);
-    d->backgroundColor_ = QColor(qsl("#38383c"));
-    d->hoverColor_ = QColor(qsl("#4b4b4f"));
-    d->fontColor_ = Qt::white;
+    d->backgroundColor_ = Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE_PERMANENT);
+    d->hoverColor_ = Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE_PERMANENT_HOVER);
+    d->fontColor_ = Styling::getParameters().getColorHex(Styling::StyleVariable::TEXT_SOLID_PERMANENT);
     d->font_ = Fonts::appFontScaled(14, Fonts::FontWeight::Normal);
     d->needUpdate_ = false;
 
     setMouseTracking(true);
 }
 
-CustomMenu::~CustomMenu()
-{
-}
+CustomMenu::~CustomMenu() = default;
 
 void CustomMenu::addAction(QAction* _action, const QPixmap& _icon)
 {
@@ -908,7 +947,7 @@ void CustomMenu::showAtPos(const QPoint &_pos)
 void CustomMenu::paintEvent(QPaintEvent *_event)
 {
     QPainter p(this);
-    p.setRenderHint(QPainter::HighQualityAntialiasing);
+    p.setRenderHint(QPainter::Antialiasing);
 
     QPainterPath rectPath;
     rectPath.setFillRule(Qt::WindingFill);

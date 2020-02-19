@@ -12,7 +12,7 @@ namespace Logic
         Q_OBJECT
 
     public Q_SLOTS:
-        void onContactSelected(const QString& _aimId, qint64 _msgId, qint64);
+        void onContactSelected(const QString& _aimId, qint64 _msgId);
         void clearSelection();
         void dropCache();
 

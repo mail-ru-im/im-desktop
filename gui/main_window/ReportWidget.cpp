@@ -225,7 +225,7 @@ namespace Ui
         auto w = new ReportWidget(nullptr, _title);
         GeneralDialog generalDialog(w, Utils::InterConnector::instance().getMainWindow());
         generalDialog.addLabel(QT_TRANSLATE_NOOP("report_widget", "Report"));
-        generalDialog.addButtonsPair(QT_TRANSLATE_NOOP("report_widget","CANCEL"), QT_TRANSLATE_NOOP("report_widget", "OK"), true);
+        generalDialog.addButtonsPair(QT_TRANSLATE_NOOP("report_widget","Cancel"), QT_TRANSLATE_NOOP("report_widget", "OK"), true);
         auto result = generalDialog.showInCenter();
         if (result)
         {
@@ -242,14 +242,14 @@ namespace Ui
         auto w = new ReportWidget(nullptr, QString());
         GeneralDialog generalDialog(w, Utils::InterConnector::instance().getMainWindow());
         generalDialog.addLabel(QT_TRANSLATE_NOOP("report_widget", "Report"));
-        generalDialog.addButtonsPair(QT_TRANSLATE_NOOP("report_widget", "CANCEL"), QT_TRANSLATE_NOOP("report_widget", "OK"), true);
+        generalDialog.addButtonsPair(QT_TRANSLATE_NOOP("report_widget", "Cancel"), QT_TRANSLATE_NOOP("report_widget", "OK"), true);
         auto result = generalDialog.showInCenter();
         if (result)
         {
             Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
             collection.set_value_as_qstring("id", _stickerId);
             collection.set_value_as_qstring("chatId", _chatId);
-            collection.set_value_as_qstring("sn", _aimid);
+            collection.set_value_as_qstring("contact", _aimid);
             collection.set_value_as_qstring("reason", getReasonString(w->getReason()));
             Ui::GetDispatcher()->post_message_to_core("report/sticker", collection.get());
         }
@@ -261,7 +261,7 @@ namespace Ui
         auto w = new ReportWidget(nullptr, _title);
         GeneralDialog generalDialog(w, Utils::InterConnector::instance().getMainWindow());
         generalDialog.addLabel(QT_TRANSLATE_NOOP("report_widget", "Report"));
-        generalDialog.addButtonsPair(QT_TRANSLATE_NOOP("report_widget", "CANCEL"), QT_TRANSLATE_NOOP("report_widget", "OK"), true);
+        generalDialog.addButtonsPair(QT_TRANSLATE_NOOP("report_widget", "Cancel"), QT_TRANSLATE_NOOP("report_widget", "OK"), true);
         auto result = generalDialog.showInCenter();
         if (result)
         {
@@ -281,7 +281,7 @@ namespace Ui
                 auto w = new BlockWidget(nullptr, _title);
                 GeneralDialog generalDialog(w, Utils::InterConnector::instance().getMainWindow());
                 generalDialog.addLabel(QT_TRANSLATE_NOOP("report_widget", "Block"));
-                generalDialog.addButtonsPair(QT_TRANSLATE_NOOP("report_widget", "CANCEL"), QT_TRANSLATE_NOOP("report_widget", "OK"), true);
+                generalDialog.addButtonsPair(QT_TRANSLATE_NOOP("report_widget", "Cancel"), QT_TRANSLATE_NOOP("report_widget", "OK"), true);
                 auto result = generalDialog.showInCenter();
                 if (!result)
                     return BlockAndReportResult::CANCELED;
@@ -293,7 +293,7 @@ namespace Ui
                 auto r = new ReportWidget(nullptr, _title);
                 GeneralDialog generalDialog(r, Utils::InterConnector::instance().getMainWindow());
                 generalDialog.addLabel(QT_TRANSLATE_NOOP("report_widget", "Report"));
-                generalDialog.addButtonsPair(QT_TRANSLATE_NOOP("report_widget", "CANCEL"), QT_TRANSLATE_NOOP("report_widget", "OK"), true);
+                generalDialog.addButtonsPair(QT_TRANSLATE_NOOP("report_widget", "Cancel"), QT_TRANSLATE_NOOP("report_widget", "OK"), true);
                 auto result = generalDialog.showInCenter();
                 if (result)
                 {
@@ -314,7 +314,7 @@ namespace Ui
         auto w = new ReportWidget(nullptr, QString());
         GeneralDialog generalDialog(w, Utils::InterConnector::instance().getMainWindow());
         generalDialog.addLabel(QT_TRANSLATE_NOOP("report_widget", "Report"));
-        generalDialog.addButtonsPair(QT_TRANSLATE_NOOP("report_widget", "CANCEL"), QT_TRANSLATE_NOOP("report_widget", "OK"), true);
+        generalDialog.addButtonsPair(QT_TRANSLATE_NOOP("report_widget", "Cancel"), QT_TRANSLATE_NOOP("report_widget", "OK"), true);
         auto result = generalDialog.showInCenter();
         if (result)
         {
@@ -322,7 +322,7 @@ namespace Ui
             collection.set_value_as_int64("id", _msgId);
             collection.set_value_as_qstring("text", _msgText);
             collection.set_value_as_qstring("chatId", _chatId);
-            collection.set_value_as_qstring("sn", _aimId);
+            collection.set_value_as_qstring("contact", _aimId);
             collection.set_value_as_qstring("reason", getReasonString(w->getReason()));
             Ui::GetDispatcher()->post_message_to_core("report/message", collection.get());
         }

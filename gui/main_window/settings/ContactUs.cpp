@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "GeneralSettingsWidget.h"
 #include "../Placeholders.h"
+#include "../ConnectionWidget.h"
 #include "../contact_list/contact_profile.h"
 #include "../contact_list/ContactListModel.h"
 #include "../../controls/CustomButton.h"
@@ -18,10 +19,15 @@
 #include "../../utils/utils.h"
 #include "../../my_info.h"
 #include "../../../common.shared/version_info_constants.h"
+#include "../../../common.shared/config/config.h"
+#include "../../../common.shared/string_utils.h"
+#include "../../../common.shared/omicron_keys.h"
 #include "styles/ThemeParameters.h"
 #include "../../controls/DialogButton.h"
+#include "previewer/toast.h"
 #include "ContactUs.h"
 
+#include "../../controls/LoaderSpinner.h"
 
 using namespace Ui;
 
@@ -102,8 +108,37 @@ namespace
 
     std::string get_feedback_url()
     {
-        const std::string defaultUrl = build::GetProductVariant(icq_feedback_url, agent_feedback_url, biz_feedback_url, dit_feedback_url);
-        return Omicron::_o("feedback_url", defaultUrl);
+        return Omicron::_o(omicron::keys::feedback_url, su::concat("https://", config::get().url(config::urls::feedback)));
+    }
+
+    constexpr std::chrono::milliseconds getDebugInfoTimeout() noexcept
+    {
+        return std::chrono::milliseconds(500);
+    }
+
+    auto getIconsSize()
+    {
+        return QSize(24, 24);
+    }
+
+    auto getIconsColor()
+    {
+        return Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY);
+    }
+
+    auto getInfoTextColor()
+    {
+        return Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY);
+    }
+
+    auto getDebugInfoSpinnerPenWidth()
+    {
+        return Utils::fscale_value(1.3);
+    }
+
+    auto getDebugInfoSpinnerWidth()
+    {
+        return Utils::fscale_value(20);
     }
 }
 
@@ -113,10 +148,11 @@ ContactUsWidget::ContactUsWidget(QWidget *_parent)
     , successPage_(nullptr)
     , attachWidget_(nullptr)
     , dropper_(nullptr)
+    , debugInfoWidget_(nullptr)
     , hasProblemDropper_(false)
 {
 
-    hasProblemDropper_ = (get_gui_settings()->get_value(settings_language, QString()) == qsl("ru")) && (build::is_icq() || build::is_agent());
+    hasProblemDropper_ = config::get().is_on(config::features::feedback_selected) && (get_gui_settings()->get_value(settings_language, QString()) == ql1s("ru"));
 
     init();
     setState(State::Feedback);
@@ -131,8 +167,8 @@ ContactUsWidget::ContactUsWidget(QWidget *_parent)
 
         suggestioner_->setEnabled(true);
         attachWidget_->setEnabled(true);
+        debugInfoWidget_->setEnabled(true);
         email_->setEnabled(true);
-
 
         if (!succeeded)
         {
@@ -213,7 +249,7 @@ void ContactUsWidget::initSuccess()
             auto successImage = new QPushButton(successWidget);
             successImage->setObjectName(qsl("successImage"));
             successImage->setFlat(true);
-            successImage->setFixedSize(Utils::scale_value(120), Utils::scale_value(136));
+            successImage->setFixedSize(Utils::scale_value(96), Utils::scale_value(96));
             Testing::setAccessibleName(successImage, qsl("AS contanctus successImage"));
             successImageLayout->addWidget(successImage);
         }
@@ -300,7 +336,7 @@ void ContactUsWidget::initFeedback()
     suggestioner_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
     suggestioner_->setMinimumHeight(Utils::scale_value(TEXTEDIT_MIN_HEIGHT));
     suggestioner_->setMaximumHeight(Utils::scale_value(TEXTEDIT_MAX_HEIGHT));
-    suggestioner_->setPlaceholderText(QT_TRANSLATE_NOOP("contactus_page","Your comments or suggestions..."));
+    suggestioner_->setPlaceholderText(QT_TRANSLATE_NOOP("contactus_page", "Your comments or suggestions..."));
     suggestioner_->setAutoFillBackground(false);
     suggestioner_->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
     suggestioner_->setTextInteractionFlags(Qt::TextEditable | Qt::TextEditorInteraction);
@@ -314,7 +350,7 @@ void ContactUsWidget::initFeedback()
     Testing::setAccessibleName(suggestioner_, qsl("AS contanctus suggestioner_"));
 
     suggestionSizeError_ = new TextEmojiWidget(suggestioner_, captionFont(),
-                                                        Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_ATTENTION), Utils::scale_value(12));
+        Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_ATTENTION), Utils::scale_value(12));
     Utils::grabTouchWidget(suggestionSizeError_);
     suggestionSizeError_->setVisible(false);
     Testing::setAccessibleName(suggestionSizeError_, qsl("AS contanctus suggestionSizeError"));
@@ -326,9 +362,14 @@ void ContactUsWidget::initFeedback()
     attachWidget_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
     sendingPageLayout->addWidget(attachWidget_);
 
+    debugInfoWidget_ = new GetDebugInfoWidget(sendingPage_);
+    Testing::setAccessibleName(debugInfoWidget_, qsl("debug_info"));
+    Utils::grabTouchWidget(debugInfoWidget_);
+    sendingPageLayout->addWidget(debugInfoWidget_);
+
     email_ = new LineEditEx(sendingPage_);
     email_->setFont(labelFont());
-    email_->changeTextColor(Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
+    email_->changeTextColor(getInfoTextColor());
 
     email_->setContentsMargins(0, 0, 0, 0);
     email_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
@@ -338,7 +379,7 @@ void ContactUsWidget::initFeedback()
     QString communication_email = get_gui_settings()->get_value(settings_feedback_email, QString());
     QString aimid = MyInfo()->aimId();
 
-    if (communication_email.isEmpty() && (build::is_agent() || build::is_dit()) && aimid.contains(ql1c('@')))
+    if (communication_email.isEmpty() && config::get().is_on(config::features::contact_us_via_mail_default) && aimid.contains(ql1c('@')))
         communication_email = aimid;
     email_->setText(communication_email);
     email_->setProperty("normal", true);
@@ -347,13 +388,13 @@ void ContactUsWidget::initFeedback()
 
     emailError_ = new TextEmojiWidget(sendingPage_, captionFont(), Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_ATTENTION), Utils::scale_value(12));
     Utils::grabTouchWidget(emailError_);
-    emailError_->setText(QT_TRANSLATE_NOOP("contactus_page","Please enter a valid email address"));
+    emailError_->setText(QT_TRANSLATE_NOOP("contactus_page", "Please enter a valid email address"));
     emailError_->setVisible(false);
     Testing::setAccessibleName(emailError_, qsl("AS contanctus emailError"));
     sendingPageLayout->addWidget(emailError_);
 
     connect(&Utils::InterConnector::instance(), &Utils::InterConnector::generalSettingsShow, this,
-            [this](int type)
+        [this](int type)
     {
         if ((Utils::CommonSettingsType)type == Utils::CommonSettingsType::CommonSettingsType_ContactUs && !Utils::isValidEmailAddress(email_->text()))
             email_->setText(QString());
@@ -370,7 +411,7 @@ void ContactUsWidget::initFeedback()
     sendLayout->setSpacing(Utils::scale_value(12));
     sendLayout->setAlignment(Qt::AlignLeft);
 
-    sendButton_ = new DialogButton(sendWidget, QT_TRANSLATE_NOOP("contactus_page", "SEND"), (suggestioner_->getPlainText().length() && email_->text().length()) ? DialogButtonRole::CONFIRM : DialogButtonRole::DISABLED);
+    sendButton_ = new DialogButton(sendWidget, QT_TRANSLATE_NOOP("contactus_page", "Send"), (suggestioner_->getPlainText().length() && email_->text().length()) ? DialogButtonRole::CONFIRM : DialogButtonRole::DISABLED);
     sendButton_->setCursor(Qt::PointingHandCursor);
     sendButton_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
     sendButton_->setMinimumWidth(Utils::scale_value(100));
@@ -463,6 +504,7 @@ void ContactUsWidget::sendFeedback()
 
         suggestioner_->setEnabled(false);
         attachWidget_->setEnabled(false);
+        debugInfoWidget_->setEnabled(false);
         email_->setEnabled(false);
 
         const auto myInfo = MyInfo();
@@ -474,15 +516,16 @@ void ContactUsWidget::sendFeedback()
         // fb.screen_resolution
         col.set_value_as_qstring("screen_resolution", (qsl("%1x%2").arg(qApp->desktop()->screenGeometry().width()).arg(qApp->desktop()->screenGeometry().height())));
         // fb.referrer
-        col.set_value_as_qstring("referrer", build::ProductNameShort());
+        const auto shortName = config::get().string(config::values::product_name_short);
+        col.set_value_as_string("referrer", shortName);
         {
-            const auto appName = build::ProductName();
-            const QString icqVer = appName + QString::fromUtf8(VERSION_INFO_STR);
+            const auto appName = config::get().string(config::values::product_name);
+            const QString icqVer = QString::fromUtf8(appName.data(), appName.size()) + QString::fromUtf8(VERSION_INFO_STR);
             auto osv = QSysInfo::prettyProductName();
-            if (!osv.length() || osv == ql1s("unknown"))
+            if (osv.isEmpty() || osv == ql1s("unknown"))
                 osv = qsl("%1 %2 (%3 %4)").arg(QSysInfo::productType(), QSysInfo::productVersion(), QSysInfo::kernelType(), QSysInfo::kernelVersion());
 
-            const auto concat = build::GetProductVariant(qsl("%1 %2 icq:%3"), qsl("%1 %2 agent:%3"), qsl("%1 %2 biz:%3"), qsl("%1 %2 dit:%3")).arg(osv, icqVer, myInfo->aimId());
+            const auto concat = qsl("%1 %2 %3:%4").arg(osv, icqVer, QString::fromUtf8(shortName.data(), shortName.size()), myInfo->aimId());
             // fb.question.3004
             col.set_value_as_qstring("version", concat);
             // fb.question.159
@@ -519,7 +562,7 @@ void ContactUsWidget::sendFeedback()
 
         if (hasProblemDropper_)
         {
-            const auto problem = build::is_icq() ? "fb.question.53496" : "fb.question.53490";
+            const auto problem = config::get().string(config::values::feedback_selected_id);
             col.set_value_as_qstring(problem, selectedProblem_);
         }
         // attachements_count
@@ -587,14 +630,13 @@ AttachFileWidget::AttachFileWidget(QWidget *_parent)
     attachLinkLayout->setSpacing(Utils::scale_value(12));
 
     auto attachImage = new CustomButton(attachLinkWidget);
-    attachImage->setDefaultImage(qsl(":/background_icon"), Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY), QSize(24, 24));
-    attachImage->setFixedSize(Utils::scale_value(24), Utils::scale_value(24));
+    attachImage->setDefaultImage(qsl(":/background_icon"), getIconsColor(), getIconsSize());
+    attachImage->setFixedSize(Utils::scale_value(getIconsSize()));
     connect(attachImage, &QPushButton::clicked, this, &AttachFileWidget::attachFile);
     Testing::setAccessibleName(attachImage, qsl("AS contanctus attachImage"));
     attachLinkLayout->addWidget(attachImage);
 
-    auto attachLink = new TextEmojiWidget(attachLinkWidget, labelFont(),
-                                          Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY), Utils::scale_value(16));
+    auto attachLink = new TextEmojiWidget(attachLinkWidget, labelFont(), getInfoTextColor(), Utils::scale_value(16));
     Utils::grabTouchWidget(attachLink);
     attachLink->setText(QT_TRANSLATE_NOOP("contactus_page", "Attach screenshot"));
     connect(attachLink, &TextEmojiWidget::clicked, this, &AttachFileWidget::attachFile);
@@ -667,12 +709,12 @@ void AttachFileWidget::processFile(const QString& _filePath)
         QString sizeString;
         if (fs < 100)
         {
-            sizeString = qsl("%1 %2").arg(QString::number(fs, 'f', 2), QT_TRANSLATE_NOOP("contactus_page", "KB"));
+            sizeString = QString::number(fs, 'f', 2) % ql1c(' ') % QT_TRANSLATE_NOOP("contactus_page", "KB");
         }
         else
         {
             fs /= 1024.;
-            sizeString = qsl("%1 %2").arg(QString::number(fs, 'f', 2), QT_TRANSLATE_NOOP("contactus_page", "MB"));
+            sizeString = QString::number(fs, 'f', 2) % ql1c(' ') % QT_TRANSLATE_NOOP("contactus_page", "MB");
         }
 
         auto fileInfoWidget = new QWidget(fileWidget);
@@ -692,7 +734,7 @@ void AttachFileWidget::processFile(const QString& _filePath)
         fileNameLabel->setText(fileName);
         fileNameLabel->setFont(labelFont());
         QPalette pal = fileNameLabel->palette();
-        pal.setColor(QPalette::Foreground, Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
+        pal.setColor(QPalette::Foreground, getInfoTextColor());
         fileNameLabel->setPalette(pal);
 
         Testing::setAccessibleName(fileNameLabel, qsl("AS contanctus fileName"));
@@ -701,8 +743,8 @@ void AttachFileWidget::processFile(const QString& _filePath)
         auto fileSizeLabel = new LabelEx(fileInfoWidget);
         Utils::grabTouchWidget(fileSizeLabel);
         fileSizeLabel->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Preferred);
-        fileSizeLabel->setText(qsl(" - %1").arg(sizeString));
-        fileSizeLabel->setColor(Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
+        fileSizeLabel->setText(ql1s(" - ") % sizeString);
+        fileSizeLabel->setColor(getInfoTextColor());
         fileSizeLabel->setFont(labelFont());
         Testing::setAccessibleName(fileSizeLabel, qsl("AS contanctus fileSize"));
         fileInfoLayout->addWidget(fileSizeLabel);
@@ -751,3 +793,100 @@ void AttachFileWidget::hideError() const
     attachSizeError_->setVisible(true);
 }
 
+GetDebugInfoWidget::GetDebugInfoWidget(QWidget* _parent)
+    : QWidget(_parent)
+    , icon_(nullptr)
+    , progress_(nullptr)
+    , checkTimer_(new QTimer(this))
+{
+    setSizePolicy(QSizePolicy::Policy::Expanding, QSizePolicy::Policy::Minimum);
+
+    auto rootVLayout = Utils::emptyVLayout(this);
+    rootVLayout->setContentsMargins(QMargins());
+    rootVLayout->setAlignment(Qt::AlignTop);
+
+    auto commonWidget = new QWidget(this);
+    auto commonLayout = Utils::emptyHLayout(commonWidget);
+    {
+        commonLayout->setContentsMargins(QMargins());
+        commonLayout->setSpacing(Utils::scale_value(12));
+        commonWidget->setCursor(Qt::PointingHandCursor);
+
+        icon_ = new CustomButton(commonWidget);
+        icon_->setDefaultImage(qsl(":/get_logs_icon"), getIconsColor(), getIconsSize());
+        icon_->setFixedSize(Utils::scale_value(getIconsSize()));
+        connect(icon_, &QPushButton::clicked, this, &GetDebugInfoWidget::onClick);
+        Testing::setAccessibleName(icon_, qsl("AS contanctus debug_icon"));
+        commonLayout->addWidget(icon_);
+
+        progress_ = new ProgressAnimation(commonWidget);
+        progress_->setProgressWidth(getDebugInfoSpinnerWidth());
+        progress_->setFixedSize(getIconsSize());
+        progress_->hide();
+        commonLayout->addWidget(progress_);
+
+        auto info = new TextEmojiWidget(commonWidget, labelFont(), getInfoTextColor(), Utils::scale_value(16));
+        Utils::grabTouchWidget(info);
+        info->setText(QT_TRANSLATE_NOOP("contactus_page", "Get debug information"));
+        connect(info, &TextEmojiWidget::clicked, this, &GetDebugInfoWidget::onClick);
+        Testing::setAccessibleName(info, qsl("AS contanctus debug_info"));
+        commonLayout->addWidget(info);
+    }
+
+    rootVLayout->addWidget(commonWidget);
+
+    checkTimer_->setSingleShot(true);
+    checkTimer_->setInterval(getDebugInfoTimeout().count());
+
+    connect(checkTimer_, &QTimer::timeout, this, &GetDebugInfoWidget::onTimeout);
+}
+
+void GetDebugInfoWidget::onClick()
+{
+    setEnabled(false);
+    checkTimer_->start();
+
+    Ui::gui_coll_helper col(GetDispatcher()->create_collection(), true);
+    col.set_value_as_qstring("path", Ui::getDownloadPath());
+    GetDispatcher()->post_message_to_core("create_logs_archive", col.get(), this,
+        [this](core::icollection* _coll)
+        {
+            Ui::gui_coll_helper coll(_coll, false);
+            onResult(QString::fromUtf8(coll.get_value_as_string("archive")));
+        });
+}
+
+void GetDebugInfoWidget::onTimeout()
+{
+    startAnimation();
+}
+
+void GetDebugInfoWidget::onResult(const QString& _fileName)
+{
+    checkTimer_->stop();
+    stopAnimation();
+
+    setEnabled(true);
+
+    Data::FileSharingDownloadResult result;
+    result.filename_ = _fileName;
+    Utils::showDownloadToast(result);
+}
+
+void GetDebugInfoWidget::startAnimation()
+{
+    icon_->hide();
+    progress_->show();
+
+    progress_->setProgressPenColor(getIconsColor());
+    progress_->setProgressPenWidth(getDebugInfoSpinnerPenWidth());
+    progress_->start();
+}
+
+void GetDebugInfoWidget::stopAnimation()
+{
+    progress_->stop();
+    progress_->hide();
+
+    icon_->show();
+}

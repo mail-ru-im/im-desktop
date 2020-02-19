@@ -2,6 +2,7 @@
 #include "BackgroundWidget.h"
 
 #include "../utils/utils.h"
+#include "../utils/InterConnector.h"
 #include "../main_window/MainPage.h"
 #include "../styles/ThemeParameters.h"
 
@@ -9,10 +10,13 @@ Q_LOGGING_CATEGORY(bgWidget, "bgWidget")
 
 namespace Ui
 {
-    BackgroundWidget::BackgroundWidget(QWidget* _parent)
+    BackgroundWidget::BackgroundWidget(QWidget* _parent, bool _isMultiselectEnabled)
         : QWidget(_parent)
         , tiling_(false)
+        , isMultiselectEnabled_(_isMultiselectEnabled)
     {
+        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::multiselectChanged, this, Utils::QOverload<>::of(&BackgroundWidget::update));
+        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::multiselectAnimationUpdate, this, Utils::QOverload<>::of(&BackgroundWidget::update));
     }
 
     void BackgroundWidget::paintEvent(QPaintEvent *_e)
@@ -42,6 +46,14 @@ namespace Ui
             {
                 p.fillRect(view, QBrush(wallpaper_));
             }
+        }
+
+        if (isMultiselectEnabled_)
+        {
+            double current = Utils::InterConnector::instance().multiselectAnimationCurrent() / 100.0;
+            auto color = Styling::getParameters().getColor(Styling::StyleVariable::CHAT_ENVIRONMENT);
+            color.setAlpha(0.85 * 255 * current);
+            p.fillRect(rect(), color);
         }
     }
 

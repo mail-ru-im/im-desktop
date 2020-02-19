@@ -76,6 +76,9 @@ namespace Ui
 {
     UserProfile::UserProfile(QWidget* _parent)
         : SidebarPage(_parent)
+        , report_(nullptr)
+        , remove_(nullptr)
+        , frameCountMode_(FrameCountMode::_1)
         , currentGalleryPage_(-1)
         , galleryIsEmpty_(false)
         , shortView_(false)
@@ -87,7 +90,10 @@ namespace Ui
 
     UserProfile::UserProfile(QWidget* _parent, const QString& _phone, const QString& _aimid, const QString& _friendly)
         : SidebarPage(_parent)
+        , report_(nullptr)
+        , remove_(nullptr)
         , currentPhone_(_phone)
+        , frameCountMode_(FrameCountMode::_1)
         , currentGalleryPage_(-1)
         , galleryIsEmpty_(false)
         , shortView_(true)
@@ -248,6 +254,7 @@ namespace Ui
         setMouseTracking(true);
 
         connect(Logic::getRecentsModel(), &Logic::RecentsModel::favoriteChanged, this, &UserProfile::favoriteChanged);
+        connect(Logic::getRecentsModel(), &Logic::RecentsModel::unimportantChanged, this, &UserProfile::unimportantChanged);
         connect(Ui::GetDispatcher(), &Ui::core_dispatcher::dialogGalleryState, this, &UserProfile::dialogGalleryState);
         connect(Ui::GetDispatcher(), &Ui::core_dispatcher::userInfo, this, &UserProfile::userInfo);
         connect(Ui::GetDispatcher(), &Ui::core_dispatcher::recvPermitDeny, this, &UserProfile::recvPermitDeny);
@@ -335,15 +342,25 @@ namespace Ui
 
                 nick_ = addInfoBlock(QT_TRANSLATE_NOOP("sidebar", "Nickname"), QString(), widget, layout);
                 nick_->text_->showButtons();
+                nick_->text_->addMenuAction(qsl(":/context_menu/mention"), QT_TRANSLATE_NOOP("context_menu", "Copy nickname"), makeData(qsl("copy_nick")));
+                nick_->text_->addMenuAction(qsl(":/context_menu/copy"), QT_TRANSLATE_NOOP("context_menu", "Copy the link to this profile"), makeData(qsl("copy_link")));
+                nick_->text_->addMenuAction(qsl(":/context_menu/forward"), QT_TRANSLATE_NOOP("context_menu", "Share profile link"), makeData(qsl("share_link_nick")));
+
                 connect(nick_->text_, &TextLabel::textClicked, this, &UserProfile::nickClicked);
                 connect(nick_->text_, &TextLabel::copyClicked, this, &UserProfile::nickCopy);
                 connect(nick_->text_, &TextLabel::shareClicked, this, &UserProfile::nickShare);
+                connect(nick_->text_, &TextLabel::menuAction, this, &UserProfile::menuAction);
 
                 email_ = addInfoBlock(QT_TRANSLATE_NOOP("sidebar", "Email"), QString(), widget, layout);
                 email_->text_->showButtons();
+                email_->text_->addMenuAction(qsl(":/context_menu/link"), QT_TRANSLATE_NOOP("context_menu", "Copy email"), makeData(qsl("copy_email")));
+                email_->text_->addMenuAction(qsl(":/context_menu/copy"), QT_TRANSLATE_NOOP("context_menu", "Copy the link to this profile"), makeData(qsl("copy_link")));
+                email_->text_->addMenuAction(qsl(":/context_menu/forward"), QT_TRANSLATE_NOOP("context_menu", "Share profile link"), makeData(qsl("share_link_email")));
+
                 connect(email_->text_, &TextLabel::textClicked, this, &UserProfile::emailClicked);
                 connect(email_->text_, &TextLabel::copyClicked, this, &UserProfile::emailCopy);
                 connect(email_->text_, &TextLabel::shareClicked, this, &UserProfile::share);
+                connect(email_->text_, &TextLabel::menuAction, this, &UserProfile::menuAction);
             }
 
             if (shortView_)
@@ -351,10 +368,11 @@ namespace Ui
 
             phone_ = addInfoBlock(QT_TRANSLATE_NOOP("sidebar", "Phone number"), QString(), widget, layout);
             phone_->text_->showButtons();
-
+            phone_->text_->makeCopyable();
             connect(phone_->text_, &TextLabel::copyClicked, this, &UserProfile::phoneCopy);
             connect(phone_->text_, &TextLabel::shareClicked, this, &UserProfile::sharePhoneClicked);
             connect(phone_->text_, &TextLabel::textClicked, this, &UserProfile::phoneClicked);
+            connect(phone_->text_, &TextLabel::menuAction, this, &UserProfile::menuAction);
 
             if (shortView_)
             {
@@ -432,6 +450,9 @@ namespace Ui
 
             report_ = addButton(qsl(":/alert_icon"), QT_TRANSLATE_NOOP("sidebar", "Report"), widget, layout);
             connect(report_, &SidebarButton::clicked, this, &UserProfile::reportCliked);
+
+            remove_ = addButton(qsl(":/context_menu/delete"), QT_TRANSLATE_NOOP("sidebar", "Remove"), widget, layout);
+            connect(remove_, &SidebarButton::clicked, this, &UserProfile::removeContact);
         }
 
         layout->addSpacerItem(new QSpacerItem(0, Utils::scale_value(BOTTOM_SPACER), QSizePolicy::Preferred, QSizePolicy::Fixed));
@@ -499,10 +520,13 @@ namespace Ui
         auto isPinned = Logic::getRecentsModel()->isFavorite(currentAimId_);
         pin_->setIcon(Utils::renderSvgScaled(isPinned ? qsl(":/unpin_chat_icon") : qsl(":/pin_chat_icon"), QSize(ICON_SIZE, ICON_SIZE), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY)));
         pin_->setText(isPinned ? QT_TRANSLATE_NOOP("sidebar", "Unpin") : QT_TRANSLATE_NOOP("sidebar", "Pin"));
+        pin_->setVisible(!Logic::getRecentsModel()->isUnimportant(currentAimId_));
     }
 
     void UserProfile::changeTab(int _tab)
     {
+        emit cl_->forceSearchClear(true);
+
         switch (_tab)
         {
         case main:
@@ -591,8 +615,10 @@ namespace Ui
     {
         const auto selected = Logic::getContactListModel()->selectedContact() == currentAimId_;
         const auto isIgnored = Logic::getIgnoreModel()->contains(currentAimId_);
+        const auto isUnimportant = Logic::getRecentsModel()->isUnimportant(currentAimId_);
         const auto haveContact = Logic::getContactListModel()->contains(currentAimId_);
         const auto itsMe = (currentAimId_ == Ui::MyInfo()->aimId());
+        const auto inCL = Logic::getContactListModel()->contains(currentAimId_);
 
         controlsWidget_->setVisible(!itsMe && (!selected || isIgnored || frameCountMode_ == FrameCountMode::_1));
         createGroup_->setVisible(!itsMe);
@@ -601,7 +627,8 @@ namespace Ui
         videoCall_->setVisible(!selected || frameCountMode_ == FrameCountMode::_1);
         unblock_->setVisible(isIgnored);
         block_->setVisible(!isIgnored && !itsMe);
-        report_->setVisible(!itsMe);
+        report_->setVisible(!itsMe && Features::clRemoveContactsAllowed());
+        remove_->setVisible(inCL && Features::clRemoveContactsAllowed());
         notifications_->setVisible(!isIgnored && !itsMe);
         firstSpacer_->setVisible(!isIgnored && (share_->isVisible() || notifications_->isVisible()));
         if (stackedWidget_->currentIndex() == main)
@@ -609,6 +636,7 @@ namespace Ui
         else
             editButton_->hide();
 
+        pin_->setVisible(!isUnimportant);
         infoSpacer_->setVisible(controlsWidget_->isVisible() || about_->isVisible() || nick_->isVisible() || email_->isVisible() || phone_->isVisible());
     }
 
@@ -641,6 +669,25 @@ namespace Ui
         info_->setInfo(status, online ? Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY) : Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
     }
 
+    QString UserProfile::getShareLink() const
+    {
+        if (Features::isNicksEnabled() && !userInfo_.nick_.isEmpty())
+        {
+            return ql1s("https://") % Features::getProfileDomain() % ql1c('/') % userInfo_.nick_;
+        }
+        else
+        {
+            Utils::UrlParser p;
+            p.process(currentAimId_);
+            if (p.hasUrl() && p.getUrl().is_email())
+                return ql1s("https://") % Features::getProfileDomainAgent() % ql1c('/') % currentAimId_;
+            else if (Utils::isUin(currentAimId_))
+                return ql1s("https://") % Features::getProfileDomain() % ql1c('/') % currentAimId_;
+        }
+
+        return QString();
+    }
+
     void UserProfile::editButtonClicked()
     {
         auto name = Logic::GetFriendlyContainer()->getFriendly(currentAimId_);
@@ -666,30 +713,18 @@ namespace Ui
 
     void UserProfile::avatarClicked()
     {
+        GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::profilescr_avatar_click, { { "chat_type", Utils::chatTypeByAimId(currentAimId_) }});
         Utils::InterConnector::instance().getMainWindow()->openAvatar(currentAimId_);
     }
 
     void UserProfile::share()
     {
-        QString link;
-        if (Features::isNicksEnabled() && !userInfo_.nick_.isEmpty())
-        {
-            link = ql1s("https://") % Utils::getDomainUrl() % ql1c('/') % userInfo_.nick_;
-        }
-        else
-        {
-            Utils::UrlParser p;
-            p.process(currentAimId_);
-            if (p.hasUrl() && p.getUrl().is_email())
-                link = ql1s("https://") % Features::getProfileDomainAgent() % ql1c('/') % currentAimId_;
-            else
-                return;
-        }
+        QString link = getShareLink();
+        if (link.isEmpty())
+            return;
 
         if (auto count = forwardMessage(link, QString(), QString(), false))
-        {
             Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::sharingscr_choicecontact_action, { { "count", Utils::averageCount(count) } });
-        }
     }
 
     void UserProfile::shareClicked()
@@ -755,7 +790,7 @@ namespace Ui
 
     void UserProfile::createGroupClicked()
     {
-        createGroupChat({ currentAimId_ });
+        createGroupChat({ currentAimId_ }, CreateChatSource::profile);
         Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::profilescr_newgroup_action);
     }
 
@@ -786,8 +821,8 @@ namespace Ui
         closeGallery();
 
         const auto confirmed = Utils::GetConfirmationWithTwoButtons(
-            QT_TRANSLATE_NOOP("popup_window", "CANCEL"),
-            QT_TRANSLATE_NOOP("popup_window", "YES"),
+            QT_TRANSLATE_NOOP("popup_window", "Cancel"),
+            QT_TRANSLATE_NOOP("popup_window", "Yes"),
             QT_TRANSLATE_NOOP("popup_window", "Are you sure you want to erase chat history?"),
             Logic::GetFriendlyContainer()->getFriendly(currentAimId_),
             nullptr);
@@ -820,7 +855,34 @@ namespace Ui
         }
     }
 
+    void UserProfile::removeContact()
+    {
+        const QString text = QT_TRANSLATE_NOOP("popup_window", "Remove %1 from your contacts?").arg(Logic::GetFriendlyContainer()->getFriendly(currentAimId_));
+
+        auto confirm = Utils::GetConfirmationWithTwoButtons(
+            QT_TRANSLATE_NOOP("popup_window", "Cancel"),
+            QT_TRANSLATE_NOOP("popup_window", "Yes"),
+            text,
+            QT_TRANSLATE_NOOP("popup_window", "Remove contact"),
+            nullptr
+        );
+
+        if (confirm)
+        {
+            Logic::getRecentsModel()->hideChat(currentAimId_);
+            Logic::getContactListModel()->removeContactFromCL(currentAimId_);
+        }
+    }
+
     void UserProfile::favoriteChanged(const QString _aimid)
+    {
+        if (_aimid != currentAimId_)
+            return;
+
+        updatePinButton();
+    }
+
+    void UserProfile::unimportantChanged(const QString _aimid)
     {
         if (_aimid != currentAimId_)
             return;
@@ -917,11 +979,36 @@ namespace Ui
     {
         const auto params = action->data().toMap();
         const auto command = params[qsl("command")].toString();
-        const auto text = params[qsl("text")].toString();
 
         if (command == ql1s("copy"))
         {
+            const auto text = params[qsl("text")].toString();
             copy(text);
+            Utils::showToastOverMainWindow(QT_TRANSLATE_NOOP("toast", "Copied to clipboard"), Utils::scale_value(TOAST_OFFSET));
+        }
+        else if (command == ql1s("copy_nick"))
+        {
+            nickClicked();
+        }
+        else if (command == ql1s("copy_link"))
+        {
+            if (auto link = getShareLink(); !link.isEmpty())
+            {
+                copy(link);
+                Utils::showToastOverMainWindow(link % QChar::LineFeed % QT_TRANSLATE_NOOP("toast", "Link copied"), Utils::scale_value(TOAST_OFFSET));
+            }
+        }
+        else if (command == ql1s("share_link_nick"))
+        {
+            nickShare();
+        }
+        else if (command == ql1s("copy_email"))
+        {
+            emailClicked();
+        }
+        else if (command == ql1s("share_link_email"))
+        {
+            share();
         }
     }
 
@@ -969,8 +1056,8 @@ namespace Ui
     void UserProfile::unblockClicked()
     {
         const auto confirmed = Utils::GetConfirmationWithTwoButtons(
-            QT_TRANSLATE_NOOP("popup_window", "CANCEL"),
-            QT_TRANSLATE_NOOP("popup_window", "YES"),
+            QT_TRANSLATE_NOOP("popup_window", "Cancel"),
+            QT_TRANSLATE_NOOP("popup_window", "Yes"),
             QT_TRANSLATE_NOOP("popup_window", "Are you sure you want to delete user from ignore list?"),
             Logic::GetFriendlyContainer()->getFriendly(currentAimId_),
             nullptr);
@@ -992,7 +1079,16 @@ namespace Ui
 
     void UserProfile::updateNick()
     {
-         nick_->setText(Utils::makeNick(Logic::GetFriendlyContainer()->getNick(currentAimId_)), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY));
+        const auto nick = Utils::makeNick(Logic::GetFriendlyContainer()->getNick(currentAimId_));
+        if (!nick.isEmpty() && !currentAimId_.contains(ql1c('@')))
+        {
+            nick_->setVisible(Features::isNicksEnabled());
+            nick_->setText(nick, Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY));
+        }
+        else
+        {
+            nick_->setVisible(false);
+        }
     }
 
     void UserProfile::connectionStateChanged()

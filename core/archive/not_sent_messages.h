@@ -24,14 +24,14 @@ namespace core
 
         struct message_stat_time
         {
-            std::chrono::system_clock::time_point create_time_;
+            std::chrono::steady_clock::time_point create_time_;
             bool need_stat_;
             std::string contact_;
             int64_t msg_id_;
 
             message_stat_time(
                 const bool _need_stat = false,
-                std::chrono::system_clock::time_point _create_time = std::chrono::system_clock::time_point(),
+                std::chrono::steady_clock::time_point _create_time = std::chrono::steady_clock::now(),
                 std::string_view _contact = std::string_view(),
                 const int64_t _msg_id = -1)
                 : create_time_(_create_time)
@@ -72,7 +72,6 @@ namespace core
 
             static not_sent_message_sptr make(
                 const not_sent_message_sptr& _message,
-                const std::string& _wimid,
                 const uint64_t _message_time);
 
             static not_sent_message_sptr make(
@@ -128,7 +127,7 @@ namespace core
             void update_post_time(const std::chrono::system_clock::time_point& _time_point);
 
             const std::chrono::system_clock::time_point& get_post_time() const;
-            const std::chrono::system_clock::time_point& get_create_time() const;
+            const std::chrono::steady_clock::time_point& get_create_time() const;
 
             void set_calc_stat(const bool _calc);
             bool is_calc_stat() const;
@@ -157,6 +156,12 @@ namespace core
             std::optional<int64_t> get_duration() const;
             std::optional<file_sharing_base_content_type> get_base_content_type() const;
 
+            void set_geo(const core::archive::geo& _geo);
+            const core::archive::geo& get_geo() const;
+
+            void set_poll(const core::archive::poll& _poll);
+            const core::archive::poll get_poll() const;
+
         private:
 
             std::string aimid_;
@@ -169,7 +174,7 @@ namespace core
 
             bool calc_sent_stat_;
 
-            std::chrono::system_clock::time_point create_time_;
+            std::chrono::steady_clock::time_point create_time_;
 
             int64_t updated_id_;
 
@@ -185,7 +190,6 @@ namespace core
 
             not_sent_message(
                 const not_sent_message_sptr& _message,
-                const std::string& _wimid,
                 const uint64_t _message_time);
 
             not_sent_message(
@@ -276,7 +280,7 @@ namespace core
             void load_if_need();
 
             message_stat_time_v remove(const std::string &_aimid, const bool _remove_if_modified, const history_block_sptr &_data);
-            message_stat_time remove(const std::string& _internal_id);
+            void remove(const std::string& _internal_id);
 
             void drop(const std::string& _aimid);
 
@@ -303,6 +307,7 @@ namespace core
             int32_t insert_deleted_message(const std::string& _contact, delete_message _message);
             int32_t remove_deleted_message(const std::string& _contact, const delete_message& _message);
             bool get_first_pending_delete_message(std::string& _contact, delete_message& _message) const;
+            bool get_pending_delete_messages(std::string& _contact, std::vector<delete_message>& _messages) const;
 
             template <class container_type_>
             bool save(storage& _storage, const container_type_& _pendings) const;

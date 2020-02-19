@@ -217,6 +217,11 @@ std::unique_ptr<Previewer::AbstractViewer> Previewer::GifViewer::create(const QS
     return viewer;
 }
 
+QWidget* Previewer::GifViewer::getParentForContextMenu() const
+{
+    return qobject_cast<QWidget*>(parent());
+}
+
 Previewer::GifViewer::GifViewer(const QString& _fileName, const QSize& _viewportSize, QWidget* _parent)
     : AbstractViewer(_viewportSize, _parent)
 {
@@ -265,6 +270,11 @@ void Previewer::FFMpegViewer::showOverAll()
 #ifdef __APPLE__
     MacSupport::showOverAll(ffplayer_.get());
 #endif
+}
+
+QWidget* Previewer::FFMpegViewer::getParentForContextMenu() const
+{
+    return ffplayer_.get();
 }
 
 Previewer::FFMpegViewer::FFMpegViewer(const MediaData& _mediaData,
@@ -350,6 +360,7 @@ Previewer::FFMpegViewer::FFMpegViewer(const MediaData& _mediaData,
     });
 
     connect(ffplayer_.get(), &Ui::DialogPlayer::mouseDoubleClicked, this, &FFMpegViewer::doubleClicked, Qt::QueuedConnection); // direct connection leads to crash in qt internals
+    connect(ffplayer_.get(), &Ui::DialogPlayer::mouseRightClicked, this, &FFMpegViewer::rightClicked, Qt::QueuedConnection); // direct connection leads to crash in qt internals
 
     ffplayer_->setReplay(true);
     ffplayer_->setCursor(Qt::PointingHandCursor);
@@ -450,9 +461,10 @@ void Previewer::JpegPngViewer::scale(double _newScaleFactor, QPoint _anchor)
     repaint();
 }
 
-void Previewer::JpegPngViewer::scaleBy(double _scaleFactorDiff, QPoint _anchor)
+bool Previewer::JpegPngViewer::scaleBy(double _scaleFactorDiff, QPoint _anchor)
 {
     scale(scaleFactor_ * _scaleFactorDiff, _anchor);
+    return true;
 }
 
 void Previewer::JpegPngViewer::move(const QPoint &_offset)
@@ -463,6 +475,11 @@ void Previewer::JpegPngViewer::move(const QPoint &_offset)
     smoothUpdateTimer_.start();
 
     repaint();
+}
+
+QWidget* Previewer::JpegPngViewer::getParentForContextMenu() const
+{
+    return qobject_cast<QWidget*>(parent());
 }
 
 void Previewer::JpegPngViewer::constrainOffset()

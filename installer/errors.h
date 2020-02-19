@@ -23,46 +23,49 @@ namespace installer
         get_module_name = 17,
         start_installer_from_temp = 18,
         invalid_installer_pack = 19,
-        create_exported_account_folder = 20,
-        create_exported_settings_folder = 21,
 
-        terminate_connect_timeout = 22,
-        terminate_procid_rcvd = 23,
-        terminate_open_proc_failed = 24,
-        terminate_shutdown_sent = 25,
+        terminate_connect_timeout = 20,
+        terminate_procid_rcvd = 21,
+        terminate_open_proc_failed = 22,
+        terminate_shutdown_sent = 23,
 
-        terminate_abnormal_open_proc_failed = 26,
-        terminate_abnormal_wait_timeout = 27,
+        terminate_abnormal_open_proc_failed = 24,
+        terminate_abnormal_wait_timeout = 25,
+        generate_guid = 26,
+        move_file = 27,
     };
 
     class error
     {
-        errorcode	error_;
+        errorcode	error_ = errorcode::ok;
         QString		error_text_;
 
     public:
 
-        error(errorcode _error = errorcode::ok, const QString& _error_text = "")
+        error() = default;
+
+        error(errorcode _error, const QString& _error_text = QString())
             : error_(_error),
             error_text_(_error_text)
         {
 
         }
 
+        errorcode code() const noexcept { return error_; }
+        const QString& text() const { return error_text_; }
+
         bool is_ok() const
         {
-            return (error_ == errorcode::ok);
+            return error_ == errorcode::ok;
         }
 
         void show() const
         {
-            std::wstringstream ss_err;
-            ss_err << L"installation error, code = " << error_ << L", (" << (const wchar_t*)error_text_.utf16() << L").";
-
-            ::MessageBox(0, ss_err.str().c_str(), L"ICQ installer", MB_ICONERROR);
+            const QString res = QLatin1String("installation error, code = ") % get_code_string() % QLatin1String(", (") % text() % QLatin1String(").");
+            ::MessageBox(0, res.toStdWString().c_str(), L"ICQ installer", MB_ICONERROR);
         }
 
-        QString get_code_string()
+        QString get_code_string() const
         {
             return QString::number(error_);
         }

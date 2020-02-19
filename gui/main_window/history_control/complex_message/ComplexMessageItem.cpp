@@ -14,12 +14,14 @@
 #include "../../../utils/stat_utils.h"
 #include "../../../my_info.h"
 #include "../StickerInfo.h"
+#include "../SnippetCache.h"
 
 #include "../../contact_list/ContactList.h"
 #include "../../contact_list/ContactListModel.h"
 #include "../../contact_list/RecentsModel.h"
 #include "../../contact_list/SelectionContactsForGroupChat.h"
 #include "../../friendly/FriendlyContainer.h"
+#include "../../input_widget/InputWidgetUtils.h"
 
 #include "../../MainPage.h"
 #include "../../ReportWidget.h"
@@ -31,10 +33,11 @@
 #include "ComplexMessageItemLayout.h"
 #include "IItemBlockLayout.h"
 #include "IItemBlock.h"
-#include "Selection.h"
+#include "QuoteBlock.h"
 
 #include "TextBlock.h"
 #include "DebugTextBlock.h"
+#include "SnippetBlock.h"
 
 #include "ComplexMessageItem.h"
 #include "../../mediatype.h"
@@ -59,42 +62,28 @@ namespace
     }
 }
 
-ComplexMessageItem::ComplexMessageItem(
-    QWidget *parent,
-    const int64_t id,
-    const int64_t prevId,
-    const QString& _internalId,
-    const QDate date,
-    const QString &chatAimid,
-    const QString &senderAimid,
-    const QString &senderFriendly,
-    const QString &sourceText,
-    const Data::MentionMap& _mentions,
-    const bool isOutgoing)
-    : MessageItemBase(parent)
-
-    , ChatAimid_(chatAimid)
-    , Date_(date)
-    , FullSelectionType_(BlockSelectionType::Invalid)
+ComplexMessageItem::ComplexMessageItem(QWidget* _parent, const Data::MessageBuddy& _msg)
+    : MessageItemBase(_parent)
+    , ChatAimid_(_msg.AimId_)
+    , Date_(_msg.GetDate())
     , hoveredBlock_(nullptr)
     , hoveredSharingBlock_(nullptr)
-    , Id_(id)
-    , PrevId_(prevId)
-    , internalId_(_internalId)
+    , Id_(_msg.Id_)
+    , PrevId_(_msg.Prev_)
+    , internalId_(_msg.InternalId_)
     , Initialized_(false)
-    , IsOutgoing_(isOutgoing)
-    , IsDeliveredToServer_(true)
+    , IsOutgoing_(_msg.IsOutgoing())
+    , deliveredToServer_(_msg.IsDeliveredToServer())
     , Layout_(nullptr)
     , MenuBlock_(nullptr)
     , MouseLeftPressedOverAvatar_(false)
     , MouseLeftPressedOverSender_(false)
     , MouseRightPressedOverItem_(false)
     , desiredSenderWidth_(0)
-    , SenderAimid_(senderAimid)
-    , SenderFriendly_(senderFriendly)
+    , SenderAimid_(_msg.getSender())
     , shareButton_(nullptr)
     , shareButtonOpacityEffect_(nullptr)
-    , SourceText_(sourceText)
+    , SourceText_(_msg.GetText())
     , TimeWidget_(nullptr)
     , timeOpacityEffect_(nullptr)
     , Time_(-1)
@@ -102,24 +91,30 @@ ComplexMessageItem::ComplexMessageItem(
     , bObserveToSize_(false)
     , bubbleHovered_(false)
     , hasTrailingLink_(false)
-    , mentions_(_mentions)
-    , isDrawFullBubbleSelected_(false)
+    , hasLinkInText_(false)
+    , mentions_(_msg.Mentions_)
 {
     assert(Id_ >= -1);
     assert(!SenderAimid_.isEmpty());
     assert(!ChatAimid_.isEmpty());
+
+    SenderFriendly_ = Logic::GetFriendlyContainer()->getFriendly(_msg.Chat_ ? SenderAimid_ : (_msg.IsOutgoing() ? Ui::MyInfo()->aimId() : _msg.AimId_));
 
     if (!isHeadless())
     {
         assert(Date_.isValid());
     }
 
+    setBuddy(_msg);
     setContact(ChatAimid_);
 
     Layout_ = new ComplexMessageItemLayout(this);
     setLayout(Layout_);
 
     connectSignals();
+
+    connect(&Utils::InterConnector::instance(), &Utils::InterConnector::multiSelectCurrentMessageChanged, this, Utils::QOverload<>::of(&ComplexMessageItem::updateSize));
+    connect(&Utils::InterConnector::instance(), &Utils::InterConnector::multiselectAnimationUpdate, this, Utils::QOverload<>::of(&ComplexMessageItem::updateSize));
 }
 
 ComplexMessageItem::~ComplexMessageItem()
@@ -131,14 +126,23 @@ ComplexMessageItem::~ComplexMessageItem()
     timeAnimation_.finish();
 }
 
-void ComplexMessageItem::clearSelection()
+void ComplexMessageItem::clearBlockSelection()
 {
     assert(!Blocks_.empty());
 
-    FullSelectionType_ = BlockSelectionType::None;
-
     for (auto block : Blocks_)
         block->clearSelection();
+
+    Layout_->onBlockSizeChanged();
+    update();
+}
+
+void ComplexMessageItem::clearSelection(bool _keepSingleSelection)
+{
+    if (!_keepSingleSelection)
+        clearBlockSelection();
+
+    HistoryControlPageItem::clearSelection(_keepSingleSelection);
 }
 
 QString ComplexMessageItem::formatRecentsText() const
@@ -153,7 +157,7 @@ QString ComplexMessageItem::formatRecentsText() const
 
     QString tmp;
 
-    unsigned textBlocks = 0, fileSharingBlocks = 0, linkBlocks = 0, quoteBlocks = 0, otherBlocks = 0;
+    unsigned textBlocks = 0, fileSharingBlocks = 0, linkBlocks = 0, quoteBlocks = 0, pollBlocks = 0, otherBlocks = 0;
 
     for (const auto b : Blocks_)
     {
@@ -171,7 +175,6 @@ QString ComplexMessageItem::formatRecentsText() const
             break;
 
         case IItemBlock::ContentType::Link:
-            ++linkBlocks;
             tmp = b->formatRecentsText();
             if (Blocks_.size() - textBlocks - quoteBlocks != 1 || !textOnly.contains(tmp))
             {
@@ -179,6 +182,7 @@ QString ComplexMessageItem::formatRecentsText() const
                     textOnly += QChar::Space;
                 textOnly += tmp;
             }
+            ++linkBlocks;
             break;
 
         case IItemBlock::ContentType::FileSharing:
@@ -194,6 +198,10 @@ QString ComplexMessageItem::formatRecentsText() const
 
         case IItemBlock::ContentType::DebugText:
             continue;
+            break;
+
+        case IItemBlock::ContentType::Poll:
+            ++pollBlocks;
             break;
 
         case IItemBlock::ContentType::Other:
@@ -216,6 +224,10 @@ QString ComplexMessageItem::formatRecentsText() const
             }
         }
     }
+    else if (pollBlocks)
+    {
+        res = QT_TRANSLATE_NOOP("poll_block", "Poll: ") % textOnly;
+    }
     else if (!textOnly.isEmpty() && ((linkBlocks || quoteBlocks) || (fileSharingBlocks && (linkBlocks || otherBlocks || textBlocks || quoteBlocks))))
     {
         res = textOnly;
@@ -236,10 +248,22 @@ QString ComplexMessageItem::formatRecentsText() const
     return res;
 }
 
-MediaType ComplexMessageItem::getMediaType() const
+MediaType ComplexMessageItem::getMediaType(MediaRequestMode _mode) const
 {
     if (!Blocks_.empty())
     {
+        const auto containsPoll = std::any_of(Blocks_.begin(), Blocks_.end(), [](const auto& _block) { return _block->getContentType() == IItemBlock::ContentType::Poll; });
+
+        if (containsPoll)
+            return Ui::MediaType::mediaTypePoll;
+
+        const auto mediaBlocksNumber = std::count_if(Blocks_.begin(), Blocks_.end(),
+            [](const auto& _block)
+            {
+                return _block->isPreviewable();
+            }
+        );
+
         for (const auto _block : Blocks_)
         {
             const auto contentType = _block->getContentType();
@@ -247,7 +271,26 @@ MediaType ComplexMessageItem::getMediaType() const
             if (contentType == IItemBlock::ContentType::Quote || contentType == IItemBlock::ContentType::DebugText)
                 continue;
 
-            return _block->getMediaType();
+            const auto mediaType = _block->getMediaType();
+
+            if (contentType == IItemBlock::ContentType::FileSharing && mediaBlocksNumber == 1)
+            {
+                if (mediaType == Ui::MediaType::mediaTypePhoto)
+                    return Ui::MediaType::mediaTypeFsPhoto;
+                else if (mediaType == Ui::MediaType::mediaTypeVideo)
+                    return Ui::MediaType::mediaTypeFsVideo;
+                else if (mediaType == Ui::MediaType::mediaTypeGif)
+                    return Ui::MediaType::mediaTypeFsGif;
+                else
+                    return mediaType;
+            }
+            else
+            {
+                if (mediaBlocksNumber != 1 && _mode == MediaRequestMode::Chat)
+                    return Ui::MediaType::noMedia;
+                else
+                    return mediaType;
+            }
         }
     }
 
@@ -357,33 +400,34 @@ QString ComplexMessageItem::getQuoteHeader() const
     return getSenderFriendly() % ql1s(" (") % QDateTime::fromTime_t(Time_).toString(qsl("dd.MM.yyyy hh:mm")) % ql1s("):\n");
 }
 
-QString ComplexMessageItem::getSelectedText(const bool isQuote) const
+QString ComplexMessageItem::getSelectedText(const bool _isQuote, TextFormat _format) const
 {
     QString text;
-    const auto isEmptySelection = (FullSelectionType_ == BlockSelectionType::None || FullSelectionType_ == BlockSelectionType::Invalid);
-    if (isEmptySelection && !isSelected())
+    if (!isSelected())
         return text;
 
     text.reserve(1024);
 
-    if (isQuote)
+    if (_isQuote)
         text += getQuoteHeader();
 
-    const auto isFullSelection = (FullSelectionType_ == BlockSelectionType::Full);
-    if (isFullSelection)
+    if (Utils::InterConnector::instance().isMultiselect())
     {
         if (!Blocks_.empty() && Blocks_.front()->getContentType() == IItemBlock::ContentType::DebugText)
-            text += Blocks_.front()->getSelectedText(true) % QChar::LineFeed;
+        {
+            const auto dest = _format == TextFormat::Raw ? IItemBlock::TextDestination::quote : IItemBlock::TextDestination::selection;
+            text += Blocks_.front()->getSelectedText(true, dest) % QChar::LineFeed;
+        }
 
-        if (!Description_.isEmpty())
+        if (Blocks_.size() < 2 && !Description_.isEmpty())
             text += Url_ % QChar::LineFeed % Description_;
         else
-            text += getBlocksText(Blocks_, true);
+            text += getBlocksText(Blocks_, false, _format);
 
         return text;
     }
 
-    const auto selectedText = getBlocksText(Blocks_, true);
+    const auto selectedText = getBlocksText(Blocks_, true, _format);
     if (selectedText.isEmpty())
         return text;
 
@@ -422,8 +466,10 @@ bool ComplexMessageItem::isEditable() const
 
         auto textBlocks = 0;
         auto fileBlocks = 0;
+        auto mediaBlocks = 0;
         auto linkBlocks = 0;
         auto quoteBlocks = 0;
+        auto pollBlocks = 0;
         auto otherBlocks = 0;
         auto forward = false;
 
@@ -438,7 +484,10 @@ bool ComplexMessageItem::isEditable() const
                 textBlocks++;
                 break;
             case IItemBlock::ContentType::FileSharing:
-                fileBlocks++;
+                if (block->isPreviewable())
+                    mediaBlocks++;
+                else
+                    fileBlocks++;
                 break;
             case IItemBlock::ContentType::Link:
                 linkBlocks++;
@@ -448,20 +497,29 @@ bool ComplexMessageItem::isEditable() const
                 if (!forward && block->getQuote().isForward_)
                     forward = true;
                 break;
+            case IItemBlock::ContentType::Poll:
+                pollBlocks++;
+                break;
             default:
                 otherBlocks++;
                 break;
             }
         }
 
-        const auto textOnly = textBlocks && !(fileBlocks || linkBlocks || otherBlocks);
-        const auto textAndMedia = textBlocks && (linkBlocks || fileBlocks);
+        const auto textOnly = textBlocks && !(fileBlocks || linkBlocks || pollBlocks || otherBlocks);
+        const auto textAndMedia = textBlocks && (linkBlocks || fileBlocks || mediaBlocks);
+        const auto mediaOnly = mediaBlocks && !(textBlocks || linkBlocks);
         const auto linkOnly = linkBlocks;
-        const auto quoteAndText = !forward && quoteBlocks && textBlocks && !(fileBlocks || linkBlocks || otherBlocks);
-        return textOnly || textAndMedia || linkOnly || quoteAndText;
+        const auto quoteAndText = !forward && quoteBlocks;
+        return (textOnly || textAndMedia || linkOnly || quoteAndText || mediaOnly) && !pollBlocks;
     }
 
     return false;
+}
+
+bool ComplexMessageItem::isMediaOnly() const
+{
+    return isMediaOnly_;
 }
 
 bool ComplexMessageItem::isSimple() const
@@ -476,21 +534,27 @@ bool ComplexMessageItem::isSingleSticker() const
 
 void ComplexMessageItem::onHoveredBlockChanged(IItemBlock *newHoveredBlock)
 {
-    if (hoveredBlock_ == newHoveredBlock)
+    if (hoveredBlock_ == newHoveredBlock || Utils::InterConnector::instance().isMultiselect())
         return;
 
     hoveredBlock_ = newHoveredBlock;
     emit hoveredBlockChanged();
 
+    updateTimeAnimated();
+}
+
+void ComplexMessageItem::onSharingBlockHoverChanged(IItemBlock* newHoveredBlock)
+{
+    if (Utils::InterConnector::instance().isMultiselect())
+        return;
+
     if (newHoveredBlock && !newHoveredBlock->isSharingEnabled())
     {
-        if (newHoveredBlock->containSharingBlock())
+        if (newHoveredBlock->containsSharingBlock())
             newHoveredBlock = hoveredSharingBlock_;
         else
             newHoveredBlock = nullptr;
     }
-
-    updateTimeAnimated();
 
     const auto sharingBlockChanged = (newHoveredBlock != hoveredSharingBlock_);
     if (!sharingBlockChanged)
@@ -556,7 +620,7 @@ void ComplexMessageItem::onDistanceToViewportChanged(const QRect& _widgetAbsGeom
 }
 
 
-void ComplexMessageItem::replaceBlockWithSourceText(IItemBlock *block)
+void ComplexMessageItem::replaceBlockWithSourceText(IItemBlock *block, ReplaceReason _reason)
 {
     const auto scopedExit = Utils::ScopeExitT([this]() { emit layoutChanged(QPrivateSignal()); });
     cleanupBlock(block);
@@ -581,7 +645,9 @@ void ComplexMessageItem::replaceBlockWithSourceText(IItemBlock *block)
     auto& existingBlock = *iter;
     assert(existingBlock);
 
-    auto textBlock = new TextBlock(this, existingBlock->getSourceText());
+    auto textBlock = new TextBlock(this, (_reason == ReplaceReason::NoMeta)
+                                                ? existingBlock->getPlaceholderText()
+                                                : existingBlock->getSourceText());
 
     textBlock->onVisibilityChanged(true);
     textBlock->onActivityChanged(true);
@@ -624,7 +690,7 @@ void ComplexMessageItem::removeBlock(IItemBlock *block)
     updateTimeWidgetUnderlay();
 
     for (auto b : Blocks_)
-        b->getBlockLayout()->markDirty();
+        b->markDirty();
 
     Layout_->onBlockSizeChanged();
 }
@@ -643,9 +709,17 @@ void ComplexMessageItem::cleanupBlock(IItemBlock* _block)
         resetHover();
 }
 
-void ComplexMessageItem::selectByPos(const QPoint& from, const QPoint& to)
+void ComplexMessageItem::selectByPos(const QPoint& from, const QPoint& to, const QPoint& areaFrom, const QPoint& areaTo)
 {
     assert(!Blocks_.empty());
+
+    if (Utils::InterConnector::instance().isMultiselect())
+        clearBlockSelection();
+
+    if (handleSelectByPos(from, to, areaFrom, areaTo))
+    {
+        return;
+    }
 
     const auto isSelectionTopToBottom = (from.y() <= to.y());
 
@@ -666,61 +740,36 @@ void ComplexMessageItem::selectByPos(const QPoint& from, const QPoint& to)
     const auto isBottomPointAboveBlocks = (bottomPoint.y() <= globalBlocksRect.top());
     const auto isBottomPointBelowBlocks = (bottomPoint.y() >= globalBlocksRect.bottom());
 
-    FullSelectionType_ = BlockSelectionType::Invalid;
-
     const auto isNotSelected = (
         (isTopPointAboveBlocks && isBottomPointAboveBlocks) ||
         (isTopPointBelowBlocks && isBottomPointBelowBlocks));
-    if (isNotSelected)
-    {
-        FullSelectionType_ = BlockSelectionType::None;
-    }
-
-    const auto isFullSelection = (isTopPointAboveBlocks && isBottomPointBelowBlocks);
-    if (isFullSelection)
-    {
-        FullSelectionType_ = BlockSelectionType::Full;
-    }
 
     for (auto block : Blocks_)
     {
-        const auto blockLayout = block->getBlockLayout();
-        if (!blockLayout)
-        {
-            continue;
-        }
-
-        const auto blockGeometry = blockLayout->getBlockGeometry();
+        const auto blockGeometry = block->getBlockGeometry();
 
         const QRect globalBlockGeometry(
             mapToGlobal(blockGeometry.topLeft()),
             mapToGlobal(blockGeometry.bottomRight()));
 
-        auto selectionType = BlockSelectionType::Invalid;
-
-        if (isFullSelection)
-        {
-            selectionType = BlockSelectionType::Full;
-        }
-        else if (isNotSelected)
-        {
-            selectionType = BlockSelectionType::None;
-        }
-        else
-        {
-            selectionType = evaluateBlockSelectionType(globalBlockGeometry, topPoint, bottomPoint);
-        }
-
-        assert(selectionType != BlockSelectionType::Invalid);
-
-        const auto blockNotSelected = (selectionType == BlockSelectionType::None);
-        if (blockNotSelected)
+        const auto isBlockAboveSelection = (globalBlockGeometry.bottom() < topPoint.y());
+        const auto isBlockBelowSelection = (globalBlockGeometry.top() > bottomPoint.y());
+        if (isBlockAboveSelection || isBlockBelowSelection)
         {
             block->clearSelection();
             continue;
         }
 
-        block->selectByPos(topPoint, bottomPoint, selectionType);
+        block->selectByPos(topPoint, bottomPoint, isSelectionTopToBottom);
+        if (block->isSelected())
+        {
+            if (Utils::InterConnector::instance().isMultiselect(ChatAimid_))
+                clearBlockSelection();
+
+            handleSelectByPos(from, to, areaFrom, areaTo);
+            emit Utils::InterConnector::instance().selectionStateChanged(getId(), getInternalId(), true);
+            emit Utils::InterConnector::instance().updateSelectedCount();
+        }
     }
 }
 
@@ -763,6 +812,7 @@ void ComplexMessageItem::setItems(IItemBlocksVec blocks)
             [](IItemBlock *block) { return block; }));
 
     Blocks_ = std::move(blocks);
+    fillFilesPlaceholderMap();
 
     updateTimeWidgetUnderlay();
 }
@@ -849,10 +899,10 @@ bool ComplexMessageItem::canBeUpdatedWith(const ComplexMessageItem& _other) cons
     {
         auto block = *iter;
         auto otherBlock = *iterOther;
-        if (block->getContentType() != otherBlock->getContentType())
-            return false;
 
-        if (block->getSourceText() != otherBlock->getSourceText() && block->getContentType() != IItemBlock::ContentType::Text)
+        const auto bothText = block->getContentType() == IItemBlock::ContentType::Text && otherBlock->getContentType() == IItemBlock::ContentType::Text;
+
+        if (block->getSourceText() != otherBlock->getSourceText() && !bothText)
             return false;
 
         ++iter;
@@ -873,6 +923,8 @@ void ComplexMessageItem::updateWith(ComplexMessageItem &_update)
         Url_ = _update.Url_;
         mentions_ = _update.mentions_;
         SourceText_ = _update.SourceText_;
+        SenderFriendly_ = _update.SenderFriendly_;
+        setBuddy(_update.buddy());
         bool needUpdateSize = false;
         if (_update.isEdited() != isEdited())
         {
@@ -886,14 +938,16 @@ void ComplexMessageItem::updateWith(ComplexMessageItem &_update)
         {
             auto block = *iter;
             auto otherBlock = *iterOther;
-            if (block->getSourceText() != otherBlock->getSourceText())
-                block->setText(otherBlock->getSourceText());
+
+            block->updateWith(otherBlock);
 
             ++iter;
             ++iterOther;
         }
 
         Description_ = _update.Description_;
+
+        fillFilesPlaceholderMap();
 
         if (needUpdateSize)
             updateSize();
@@ -923,26 +977,34 @@ void ComplexMessageItem::mouseMoveEvent(QMouseEvent *_event)
 {
     _event->ignore();
 
-    const auto mousePos = _event->pos();
+    if (!Utils::InterConnector::instance().isMultiselect())
+    {
+        const auto mousePos = _event->pos();
 
-    if (isOverAvatar(mousePos) || isOverSender(mousePos))
-        setCursor(Qt::PointingHandCursor);
-    else
-        setCursor(Qt::ArrowCursor);
+        if (isOverAvatar(mousePos) || isOverSender(mousePos))
+            setCursor(Qt::PointingHandCursor);
+        else
+            setCursor(Qt::ArrowCursor);
 
-    auto blockUnderCursor = findBlockUnder(mousePos);
-    onHoveredBlockChanged(blockUnderCursor);
+        auto sharingBlockUnderCursor = findBlockUnder(mousePos, FindForSharing::Yes);
+        onSharingBlockHoverChanged(sharingBlockUnderCursor);
+
+        auto blockUnderCursor = findBlockUnder(mousePos);
+        onHoveredBlockChanged(blockUnderCursor);
+    }
 
     MessageItemBase::mouseMoveEvent(_event);
 }
 
 void ComplexMessageItem::mousePressEvent(QMouseEvent *event)
 {
+    const auto isLeftButtonPressed = (event->button() == Qt::LeftButton);
+    if (Utils::InterConnector::instance().isMultiselect() && isLeftButtonPressed)
+        return MessageItemBase::mousePressEvent(event);
+
     MouseLeftPressedOverAvatar_ = false;
     MouseLeftPressedOverSender_ = false;
     MouseRightPressedOverItem_ = false;
-
-    const auto isLeftButtonPressed = (event->button() == Qt::LeftButton);
 
     if (isLeftButtonPressed)
     {
@@ -954,9 +1016,7 @@ void ComplexMessageItem::mousePressEvent(QMouseEvent *event)
 
     const auto isRightButtonPressed = (event->button() == Qt::RightButton);
     if (isRightButtonPressed)
-    {
         MouseRightPressedOverItem_ = true;
-    }
 
     if (!bubbleHovered_ && !MouseLeftPressedOverAvatar_ && !MouseLeftPressedOverSender_)
         event->ignore();
@@ -971,7 +1031,9 @@ void ComplexMessageItem::mousePressEvent(QMouseEvent *event)
 
         if (pressed)
         {
-            emit selectionChanged();
+            emit Utils::InterConnector::instance().selectionStateChanged(getId(), getInternalId(), true);
+            emit Utils::InterConnector::instance().updateSelectedCount();
+            event->accept();
             return;
         }
     }
@@ -990,9 +1052,11 @@ void ComplexMessageItem::mousePressEvent(QMouseEvent *event)
 
 void ComplexMessageItem::mouseReleaseEvent(QMouseEvent *event)
 {
-    event->ignore();
-
     const auto isLeftButtonReleased = (event->button() == Qt::LeftButton);
+    if (Utils::InterConnector::instance().isMultiselect() && isLeftButtonReleased)
+        return MessageItemBase::mouseReleaseEvent(event);
+
+    event->ignore();
 
     if (isLeftButtonReleased)
     {
@@ -1009,7 +1073,7 @@ void ComplexMessageItem::mouseReleaseEvent(QMouseEvent *event)
         const auto rightButtonClickOnWidget = (isRightButtonPressed && MouseRightPressedOverItem_);
         if (rightButtonClickOnWidget)
         {
-            if (isOverAvatar(event->pos()) && !isContextMenuReplyOnly())
+            if (isOverAvatar(event->pos()) && !isContextMenuReplyOnly() && !Utils::InterConnector::instance().isMultiselect(ChatAimid_))
             {
                 emit avatarMenuRequest(SenderAimid_);
                 return;
@@ -1046,6 +1110,9 @@ void ComplexMessageItem::mouseReleaseEvent(QMouseEvent *event)
 
 void ComplexMessageItem::mouseDoubleClickEvent(QMouseEvent *event)
 {
+    if (Utils::InterConnector::instance().isMultiselect())
+        return;
+
     const auto isLeftButtonReleased = (event->button() == Qt::LeftButton);
 
     if (isLeftButtonReleased)
@@ -1054,12 +1121,19 @@ void ComplexMessageItem::mouseDoubleClickEvent(QMouseEvent *event)
         const auto &bubbleRect = Layout_->getBubbleRect();
         if (bubbleRect.contains(event->pos()))
         {
-            for (auto b : Blocks_)
+            for (auto block : Blocks_)
             {
-                const auto blockRect = b->getBlockLayout()->getBlockGeometry();
+                const auto blockRect = block->getBlockGeometry();
                 const auto bockContain = blockRect.contains(event->pos());
                 if (bockContain)
-                    b->doubleClicked(event->pos(), [&emitQuote](bool result) { if (result) emitQuote = false; });
+                {
+                    block->doubleClicked(event->pos(), [&emitQuote](bool result) { if (result) emitQuote = false; });
+                    if (block->isSelected())
+                    {
+                        emit Utils::InterConnector::instance().selectionStateChanged(getId(), getInternalId(), true);
+                        emit Utils::InterConnector::instance().updateSelectedCount();
+                    }
+                }
             }
         }
 
@@ -1162,8 +1236,9 @@ void ComplexMessageItem::paintEvent(QPaintEvent *event)
     renderDebugInfo();
 
     QPainter p(this);
-    p.setRenderHint(QPainter::Antialiasing);
-    p.setRenderHint(QPainter::TextAntialiasing);
+    p.setRenderHints(QPainter::SmoothPixmapTransform | QPainter::Antialiasing | QPainter::TextAntialiasing);
+
+    drawSelection(p, Layout_->getBubbleRect());
 
     drawBubble(p, QuoteAnimation_.quoteColor());
 
@@ -1183,7 +1258,6 @@ void ComplexMessageItem::paintEvent(QPaintEvent *event)
 
 void ComplexMessageItem::onAvatarChanged(const QString& aimId)
 {
-    assert(!aimId.isEmpty());
     assert(!SenderAimid_.isEmpty());
 
     if (SenderAimid_ != aimId || (!hasAvatar() && !isNeedAvatar()))
@@ -1225,6 +1299,7 @@ void ComplexMessageItem::onMenuItemTriggered(QAction *action)
     }
 
     const auto isPendingMessage = (Id_ <= -1);
+    const auto containsPoll = std::any_of(Blocks_.begin(), Blocks_.end(), [](const auto& _block) { return _block->getContentType() == IItemBlock::ContentType::Poll; });
 
     if (command == ql1s("copy"))
     {
@@ -1252,7 +1327,7 @@ void ComplexMessageItem::onMenuItemTriggered(QAction *action)
 
         // delete this message
         if (confirm)
-            Ui::GetDispatcher()->deleteMessage(Id_, internalId_, ChatAimid_, false);
+            Ui::GetDispatcher()->deleteMessages(ChatAimid_, { DeleteMessageInfo(Id_, internalId_, false) });
 
         Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::chat_report_action, stat_props);
     }
@@ -1265,23 +1340,38 @@ void ComplexMessageItem::onMenuItemTriggered(QAction *action)
         const QString text = QT_TRANSLATE_NOOP("popup_window", "Are you sure you want to delete message?");
 
         auto confirm = Utils::GetConfirmationWithTwoButtons(
-            QT_TRANSLATE_NOOP("popup_window", "CANCEL"),
-            QT_TRANSLATE_NOOP("popup_window", "YES"),
+            QT_TRANSLATE_NOOP("popup_window", "Cancel"),
+            QT_TRANSLATE_NOOP("popup_window", "Yes"),
             text,
             QT_TRANSLATE_NOOP("popup_window", "Delete message"),
             nullptr
         );
 
         if (confirm)
-            GetDispatcher()->deleteMessage(Id_, internalId_, ChatAimid_, is_shared);
+            GetDispatcher()->deleteMessages(ChatAimid_, { DeleteMessageInfo(Id_, internalId_, is_shared) });
 
         stat_props.emplace_back("delete_target", is_shared ? "all" : "self");
         Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::chat_delete_action, stat_props);
+
+        if (is_shared && containsPoll)
+            Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::polls_action, { {"chat_type", Ui::getStatsChatType() }, { "action", "del_for_all" } });
     }
     else if (command == ql1s("edit"))
     {
         callEditing();
         Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::chat_edit_action, stat_props);
+    }
+    else if (command == ql1s("select"))
+    {
+        clearBlockSelection();
+        Utils::InterConnector::instance().clearPartialSelection(ChatAimid_);
+        Utils::InterConnector::instance().setMultiselect(true);
+        setSelected(true);
+        emit Utils::InterConnector::instance().messageSelected(getId(), getInternalId());
+    }
+    else if (command == ql1s("multiselect_forward"))
+    {
+        emit Utils::InterConnector::instance().multiselectForward(ChatAimid_);
     }
     else if (!isPendingMessage)
     {
@@ -1294,7 +1384,45 @@ void ComplexMessageItem::onMenuItemTriggered(QAction *action)
                 Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::chat_unpin_action, stat_props);
             else
                 Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::chat_pin_action, stat_props);
+
+            if (!isUnpin && containsPoll)
+                Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::polls_action, { {"chat_type", Ui::getStatsChatType() }, { "action", "pin" } });
         }
+    }
+}
+
+void ComplexMessageItem::onLinkMetainfoMetaDownloaded(int64_t _seq, bool _success, Data::LinkMetadata _meta)
+{
+    if (auto it = snippetsWaitingForMeta_.find(_seq); it != snippetsWaitingForMeta_.end())
+    {
+        const auto scopedExit = Utils::ScopeExitT([this]() { emit layoutChanged(QPrivateSignal()); });
+        auto& snippet = it->second;
+
+        if (_success || snippet.linkInText_)
+        {
+            auto blockIt = std::find(Blocks_.begin(), Blocks_.end(), snippet.textBlock_);
+            if (blockIt != Blocks_.end() || !snippet.textBlock_)
+            {
+                auto it = snippet.textBlock_ ? Blocks_.erase(blockIt) : Blocks_.begin() + std::min(snippet.insertAt_, Blocks_.size());
+
+                if (snippet.textBlock_)
+                    snippet.textBlock_->deleteLater();
+
+                if (_success)
+                {
+                    auto snippetBlock = new SnippetBlock(this, snippet.link_, snippet.linkInText_, snippet.estimatedType_);
+                    Blocks_.insert(it, snippetBlock);
+                    snippetBlock->onActivityChanged(true);
+                    snippetBlock->onVisibilityChanged(true);
+
+                    snippetBlock->show();
+                }
+
+                Layout_->onBlockSizeChanged();
+            }
+        }
+
+        snippetsWaitingForMeta_.erase(it);
     }
 }
 
@@ -1322,7 +1450,7 @@ bool ComplexMessageItem::containsShareableBlocks() const
          (const IItemBlock *block)
          {
              assert(block);
-             return block->isSharingEnabled() || block->containSharingBlock();
+             return block->isSharingEnabled() || block->containsSharingBlock();
          });
 }
 
@@ -1351,6 +1479,7 @@ void ComplexMessageItem::drawBubble(QPainter &p, const QColor& quote_color)
 
     const auto bubbleRequired = isBubbleRequired();
     const auto headerRequired = isHeaderRequired();
+
     if (!bubbleRequired && !headerRequired)
         return;
 
@@ -1367,7 +1496,7 @@ void ComplexMessageItem::drawBubble(QPainter &p, const QColor& quote_color)
         if (!bubbleRequired && headerRequired)
         {
             // draw bubble only for header
-            const auto newHeight = r.height() - Blocks_.front()->getBlockLayout()->getBlockGeometry().height();
+            const auto newHeight = r.height() - Blocks_.front()->getBlockGeometry().height();
             if (newHeight > 0)
                 r.setHeight(newHeight);
             flags &= ~(Utils::RenderBubbleFlags::RightBottomSmall);
@@ -1383,7 +1512,7 @@ void ComplexMessageItem::drawBubble(QPainter &p, const QColor& quote_color)
     if (!needBorder && !isHeaderRequired())
         Utils::drawBubbleShadow(p, Bubble_);
 
-    p.fillPath(Bubble_, MessageStyle::getBodyBrush(isOutgoing(), isDrawFullBubbleSelected_, getContact()));
+    p.fillPath(Bubble_, MessageStyle::getBodyBrush(isOutgoing(), getContact()));
 
     if (quote_color.isValid())
         p.fillPath(Bubble_, QBrush(quote_color));
@@ -1392,7 +1521,7 @@ void ComplexMessageItem::drawBubble(QPainter &p, const QColor& quote_color)
         Utils::drawBubbleRect(p, Bubble_.boundingRect(), MessageStyle::getBorderColor(), MessageStyle::getBorderWidth(), MessageStyle::getBorderRadius());
 }
 
-QString ComplexMessageItem::getBlocksText(const IItemBlocksVec& _items, const bool _isSelected) const
+QString ComplexMessageItem::getBlocksText(const IItemBlocksVec& _items, const bool _isSelected, TextFormat _format) const
 {
     QString result;
 
@@ -1408,9 +1537,10 @@ QString ComplexMessageItem::getBlocksText(const IItemBlocksVec& _items, const bo
         if (!_isSelected && item->getContentType() == IItemBlock::ContentType::DebugText)
             continue;
 
+        const auto dest = _format == TextFormat::Raw ? IItemBlock::TextDestination::quote : IItemBlock::TextDestination::selection;
         const auto itemText = _isSelected
-            ? item->getSelectedText(selectedItemCount > 1)
-            : item->getTextForCopy();
+            ? item->getSelectedText(selectedItemCount > 1, dest)
+            : _format == TextFormat::Raw ? item->getSourceText() : item->getTextForCopy();
 
         if (itemText.isEmpty())
             continue;
@@ -1432,23 +1562,20 @@ void ComplexMessageItem::drawGrid(QPainter &p)
     p.drawRect(Layout_->getBlocksContentRect());
 }
 
-IItemBlock* ComplexMessageItem::findBlockUnder(const QPoint &pos) const
+IItemBlock* ComplexMessageItem::findBlockUnder(const QPoint& _pos, FindForSharing _findFor) const
 {
     for (auto block : Blocks_)
     {
         if (!block)
             continue;
 
-        auto b = block->findBlockUnder(pos);
+        auto b = block->findBlockUnder(_pos);
         if (b)
             return b;
 
-        const auto blockLayout = block->getBlockLayout();
-        if (!blockLayout)
-            continue;
 
-        auto rc = blockLayout->getBlockGeometry();
-        if (block->isSharingEnabled())
+        auto rc = block->getBlockGeometry();
+        if (block->isSharingEnabled() && _findFor == FindForSharing::Yes)
         {
             if (isOutgoing())
                 rc.setLeft(rc.left() - getSharingAdditionalWidth());
@@ -1456,7 +1583,7 @@ IItemBlock* ComplexMessageItem::findBlockUnder(const QPoint &pos) const
                 rc.setRight(rc.right() + getSharingAdditionalWidth());
         }
 
-        if (rc.contains(pos))
+        if (rc.contains(_pos))
             return block;
     }
 
@@ -1465,6 +1592,9 @@ IItemBlock* ComplexMessageItem::findBlockUnder(const QPoint &pos) const
 
 QString ComplexMessageItem::getSenderFriendly() const
 {
+    if (Logic::getContactListModel()->isChannel(ChatAimid_))
+        return Logic::GetFriendlyContainer()->getFriendly(ChatAimid_);
+
     assert(!SenderFriendly_.isEmpty());
     return SenderFriendly_;
 }
@@ -1489,13 +1619,11 @@ Data::QuotesVec ComplexMessageItem::getQuotes(const bool _selectedTextOnly, cons
         if (!_selectedTextOnly && dropQuotes && isQuote(block))
             continue;
 
-        if (Blocks_.size() > 1 &&
-            !hasTrailingLink_ &&
-            block->getContentType() == IItemBlock::ContentType::Link &&
-            !block->isLinkMediaPreview())
+        if (block->getContentType() == IItemBlock::ContentType::Link && hasLinkInText_ && !block->isLinkMediaPreview())
             continue;
 
         auto quote = getQuoteFromBlock(block, _selectedTextOnly);
+        quote.hasReply_ = !quotesOnly;
         if (!quote.isEmpty())
         {
             if (!result.isEmpty())
@@ -1507,7 +1635,7 @@ Data::QuotesVec ComplexMessageItem::getQuotes(const bool _selectedTextOnly, cons
                 {
                     prevQuote.text_.reserve(prevQuote.text_.size() + quote.text_.size() + 1);
 
-                    if (!prevQuote.text_.endsWith(QChar::LineFeed) && !prevQuote.text_.endsWith(ql1c('\n')))
+                    if (!prevQuote.text_.endsWith(QChar::LineFeed) && !prevQuote.text_.endsWith(ql1c('\n')) && !quote.text_.startsWith(ql1c('\n')))
                         prevQuote.text_ += QChar::LineFeed;
 
                     prevQuote.text_ += quote.text_;
@@ -1553,6 +1681,8 @@ void ComplexMessageItem::initialize()
     setMouseTracking(true);
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
 
+    loadSnippetsMetaInfo();
+
     updateSize();
 }
 
@@ -1591,9 +1721,12 @@ void ComplexMessageItem::initSender()
 
 bool ComplexMessageItem::isBubbleRequired() const
 {
-    return
-        Blocks_.size() > 1 ||
-        std::any_of(Blocks_.begin(), Blocks_.end(), [](const auto& b) { return b->isBubbleRequired(); });
+    return Blocks_.size() > 1 || std::any_of(Blocks_.begin(), Blocks_.end(), [](const auto& b) { return b->isBubbleRequired(); });
+}
+
+bool ComplexMessageItem::isMarginRequired() const
+{
+    return std::any_of(Blocks_.begin(), Blocks_.end(), [](const auto& b) { return b->isMarginRequired(); });
 }
 
 bool ComplexMessageItem::isHeaderRequired() const
@@ -1604,6 +1737,11 @@ bool ComplexMessageItem::isHeaderRequired() const
 bool ComplexMessageItem::isSmallPreview() const
 {
     return Blocks_.size() == 1 && Blocks_.front()->isSmallPreview();
+}
+
+bool ComplexMessageItem::canStretchWithSender() const
+{
+    return !(Blocks_.size() == 1 && !Blocks_.front()->canStretchWithSender());
 }
 
 int ComplexMessageItem::getMaxWidth() const
@@ -1642,6 +1780,26 @@ const Data::MentionMap& ComplexMessageItem::getMentions() const
     return mentions_;
 }
 
+void ComplexMessageItem::fillFilesPlaceholderMap()
+{
+    files_.clear();
+
+    for (const auto& b : Blocks_)
+    {
+        const auto& ct = b->getContentType();
+        if (ct == IItemBlock::ContentType::FileSharing || ct == IItemBlock::ContentType::Sticker || ct == IItemBlock::ContentType::Quote)
+        {
+            if (const auto files = b->getFilePlaceholders(); !files.empty())
+                files_.insert(files.begin(), files.end());
+        }
+    }
+}
+
+const Data::FilesPlaceholderMap& ComplexMessageItem::getFilesPlaceholders() const
+{
+    return files_;
+}
+
 QString ComplexMessageItem::getEditableText() const
 {
     using editPair = std::pair<IItemBlock::ContentType, QString>;
@@ -1655,10 +1813,11 @@ QString ComplexMessageItem::getEditableText() const
         {
         case IItemBlock::ContentType::Text:
         case IItemBlock::ContentType::FileSharing:
+        case IItemBlock::ContentType::Sticker:
             pairs.emplace_back(ct, b->getSourceText());
             break;
         case IItemBlock::ContentType::Link:
-            if (b->isLinkMediaPreview() || (!b->isLinkMediaPreview() && hasTrailingLink_))
+            if (!hasLinkInText_ || b->isLinkMediaPreview())
                 pairs.emplace_back(ct, b->getSourceText());
             break;
         default:
@@ -1675,10 +1834,12 @@ QString ComplexMessageItem::getEditableText() const
 
     for (size_t i = 0; i < pairs.size(); ++i)
     {
-        const auto& [type, text] = pairs[i];
+        auto& [type, text] = pairs[i];
 
-        if (i > 0 && type != IItemBlock::ContentType::Text && pairs[i - 1].first != IItemBlock::ContentType::Text)
-            result += ql1c(' ');
+        if (i > 0
+            && !text.startsWith(QChar::LineFeed)
+            && !(type != IItemBlock::ContentType::Text && pairs[i - 1].first == IItemBlock::ContentType::Text))
+            result += QChar::LineFeed;
 
         result += text;
     }
@@ -1717,7 +1878,11 @@ void ComplexMessageItem::callEditing()
             getInternalId(),
             version_,
             Url_,
-            Description_);
+            Description_,
+            getQuotesForEdit(),
+            getTime(),
+            getFilesPlaceholders(),
+            getMediaType());
     }
     else
     {
@@ -1728,13 +1893,20 @@ void ComplexMessageItem::callEditing()
             getEditableText(),
             getMentions(),
             getQuotesForEdit(),
-            getTime());
+            getTime(),
+            getFilesPlaceholders(),
+            getMediaType());
     }
 }
 
 void ComplexMessageItem::setHasTrailingLink(const bool _hasLink)
 {
     hasTrailingLink_ = _hasLink;
+}
+
+void ComplexMessageItem::setHasLinkInText(const bool _hasLinkInText)
+{
+    hasLinkInText_ = _hasLinkInText;
 }
 
 int ComplexMessageItem::getBlockCount() const
@@ -1750,6 +1922,7 @@ IItemBlock* ComplexMessageItem::getHoveredBlock() const
 void ComplexMessageItem::resetHover()
 {
     onHoveredBlockChanged(nullptr);
+    onSharingBlockHoverChanged(nullptr);
 }
 
 int ComplexMessageItem::getSharingAdditionalWidth() const
@@ -1810,25 +1983,12 @@ bool ComplexMessageItem::isOverSender(const QPoint & pos) const
 
 bool ComplexMessageItem::isSelected() const
 {
-    return std::any_of(Blocks_.begin(), Blocks_.end(), [](const auto& b) { return b->isSelected(); });
+    return HistoryControlPageItem::isSelected() || std::any_of(Blocks_.begin(), Blocks_.end(), [](const auto& b) { return b->isSelected(); });
 }
 
 bool ComplexMessageItem::isAllSelected() const
 {
-    return std::all_of(Blocks_.begin(), Blocks_.end(), [](const auto& b) { return b->isAllSelected(); });
-}
-
-void ComplexMessageItem::setDrawFullBubbleSelected(const bool _selected)
-{
-    if (isDrawFullBubbleSelected_ != _selected)
-    {
-        isDrawFullBubbleSelected_ = _selected;
-        if (TimeWidget_)
-            TimeWidget_->setSelected(_selected);
-
-        updateSenderControlColor();
-        update();
-    }
+    return HistoryControlPageItem::isSelected() || std::all_of(Blocks_.begin(), Blocks_.end(), [](const auto& b) { return b->isAllSelected(); });
 }
 
 bool ComplexMessageItem::isSenderVisible() const
@@ -1844,6 +2004,64 @@ void ComplexMessageItem::setCustomBubbleHorPadding(const int32_t _val)
 bool ComplexMessageItem::hasSharedContact() const
 {
     return buddy().sharedContact_.has_value();
+}
+
+GenericBlock* ComplexMessageItem::addSnippetBlock(const QString& _link, const bool _linkInText, SnippetBlock::EstimatedType _estimatedType, size_t _insertAt, bool _quoteOrForward)
+{
+    GenericBlock* block = nullptr;
+    const auto metaInCache = SnippetCache::instance()->contains(_link);
+
+    if ((!deliveredToServer_ && !metaInCache || _linkInText) && !_quoteOrForward)
+    {
+        if (!_linkInText)
+            block = new TextBlock(this, _link);
+
+        SnippetData snippet;
+        snippet.link_ = _link;
+        snippet.linkInText_ = _linkInText;
+        snippet.textBlock_ = block;
+        snippet.estimatedType_ = _estimatedType;
+        snippet.insertAt_ = _insertAt;
+
+        snippetsWaitingForInitialization_.push_back(std::move(snippet));
+    }
+    else
+    {
+        block = new SnippetBlock(this, _link, _linkInText, _estimatedType);
+    }
+
+    return block;
+}
+
+void ComplexMessageItem::setSelected(bool _selected)
+{
+    for (auto block : Blocks_)
+        block->onSelectionStateChanged(_selected);
+
+    MessageItemBase::setSelected(_selected);
+}
+
+bool ComplexMessageItem::containsText() const
+{
+    if (!Description_.isEmpty())
+        return true;
+
+    for (auto b : Blocks_)
+    {
+        auto contentType = b->getContentType();
+        if (contentType == IItemBlock::ContentType::Quote)
+        {
+            if (auto quote = dynamic_cast<QuoteBlock*>(b); !quote->containsText())
+                return false;
+            else
+                continue;
+        }
+
+        if (contentType != IItemBlock::ContentType::Text && contentType != IItemBlock::ContentType::DebugText)
+            return false;
+    }
+
+    return true;
 }
 
 void ComplexMessageItem::onChainsChanged()
@@ -1862,7 +2080,6 @@ void ComplexMessageItem::loadAvatar()
         SenderAimid_,
         getSenderFriendly(),
         Utils::scale_bitmap(MessageStyle::getAvatarSize()),
-        QString(),
         Out isDefault,
         false,
         false);
@@ -1876,18 +2093,27 @@ void ComplexMessageItem::onCopyMenuItem(ComplexMessageItem::MenuItemType type)
 
     if (isCopy)
     {
-        QString itemText;
-        itemText.reserve(1024);
+        QString rawText;
+        rawText.reserve(1024);
 
         if (isQuote || isForward)
-            itemText += getQuoteHeader();
+            rawText += getQuoteHeader();
 
         if (isSelected())
-            itemText += getSelectedText(false);
+            rawText += getSelectedText(false, TextFormat::Raw);
         else
-            itemText += getBlocksText(Blocks_, false);
+            rawText += getBlocksText(Blocks_, false, TextFormat::Raw);
 
-        emit copy(itemText);
+        const auto text = !mentions_.empty() ? Utils::convertMentions(rawText, mentions_) : rawText;
+        const auto placeholders = getFilesPlaceholders();
+        auto dt = new QMimeData();
+        dt->setText(text);
+        dt->setData(MimeData::getRawMimeType(), std::move(rawText).toUtf8());
+        dt->setData(MimeData::getFileMimeType(), MimeData::convertMapToArray(placeholders));
+        dt->setData(MimeData::getMentionMimeType(), MimeData::convertMapToArray(mentions_));
+        QApplication::clipboard()->setMimeData(dt);
+
+        emit copy(text);
     }
     else if (isQuote)
     {
@@ -1938,12 +2164,32 @@ void ComplexMessageItem::trackMenu(const QPoint &globalPos)
     Testing::setAccessibleName(menu, qsl("AS complexmessageitem menu"));
 
     const auto replyOnly = isContextMenuReplyOnly();
+    const auto msgSent = getId() != -1;
 
     const auto role = Logic::getContactListModel()->getYourRole(ChatAimid_);
     const auto isDisabled = role == ql1s("notamember") || role == ql1s("readonly");
+    const auto notAMember = Logic::getContactListModel()->youAreNotAMember(ChatAimid_);
+
+    if (Utils::InterConnector::instance().isMultiselect())
+    {
+        auto hasSelected = true;
+        if (auto scrollArea = qobject_cast<MessagesScrollArea*>(parent()))
+            hasSelected = (scrollArea->getSelectedCount() != 0);
+
+        if (!isDisabled)
+            menu->addActionWithIcon(qsl(":/context_menu/reply"), QT_TRANSLATE_NOOP("context_menu", "Reply"), &Utils::InterConnector::instance(), &Utils::InterConnector::multiselectReply)->setEnabled(hasSelected && !notAMember);
+
+        menu->addActionWithIcon(qsl(":/context_menu/copy"), QT_TRANSLATE_NOOP("context_menu", "Copy"), &Utils::InterConnector::instance(), &Utils::InterConnector::multiselectCopy)->setEnabled(hasSelected);
+        menu->addActionWithIcon(qsl(":/context_menu/forward"), QT_TRANSLATE_NOOP("context_menu", "Forward"), makeData(ql1s("multiselect_forward")))->setEnabled(hasSelected);
+        menu->addSeparator();
+        menu->addActionWithIcon(qsl(":/context_menu/delete"), QT_TRANSLATE_NOOP("context_menu", "Delete"), &Utils::InterConnector::instance(), &Utils::InterConnector::multiselectDelete)->setEnabled(hasSelected && !notAMember);
+        connect(menu, &ContextMenu::triggered, this, &ComplexMessageItem::onMenuItemTriggered, Qt::QueuedConnection);
+        menu->popup(globalPos);
+        return;
+    }
 
     if (!isDisabled)
-        menu->addActionWithIcon(qsl(":/context_menu/reply"), QT_TRANSLATE_NOOP("context_menu", "Reply"), makeData(qsl("quote")))->setEnabled(true);
+        menu->addActionWithIcon(qsl(":/context_menu/reply"), QT_TRANSLATE_NOOP("context_menu", "Reply"), makeData(qsl("quote")))->setEnabled(msgSent && !notAMember);
 
     MenuBlock_ = findBlockUnder(mapFromGlobal(globalPos));
 
@@ -1953,6 +2199,8 @@ void ComplexMessageItem::trackMenu(const QPoint &globalPos)
     const auto isOpenable = hasBlock ? MenuBlock_->getMenuFlags() & IItemBlock::MenuFlagOpenInBrowser : false;
     const auto isCopyable = hasBlock ? MenuBlock_->getMenuFlags() & IItemBlock::MenuFlagCopyable : false;
     const auto isOpenFolder = hasBlock ? MenuBlock_->getMenuFlags() & IItemBlock::MenuFlagOpenFolder : false;
+    const auto isRevokeVote = hasBlock ? MenuBlock_->getMenuFlags() & IItemBlock::MenuFlagRevokeVote : false;
+    const auto isStopPoll = hasBlock ? MenuBlock_->getMenuFlags() & IItemBlock::MenuFlagStopPoll : false;
 
     bool hasCopyableEmail = false;
     QString link;
@@ -1969,8 +2217,9 @@ void ComplexMessageItem::trackMenu(const QPoint &globalPos)
             link = MenuBlock_->linkAtPos(globalPos);
 
             bool hasCopyableLink = false;
+            auto selectedText = getSelectedText(false);
 
-            if (!link.isEmpty())
+            if (!link.isEmpty() && (selectedText == link || selectedText.isEmpty()))
             {
                 static const QRegularExpression re(
                     qsl("^mailto:"),
@@ -1990,30 +2239,41 @@ void ComplexMessageItem::trackMenu(const QPoint &globalPos)
             }
 
             if (hasCopyableLink)
-                menu->addActionWithIcon(qsl(":/context_menu/link"), QT_TRANSLATE_NOOP("context_menu", "Copy link"), makeData(qsl("copy_link"), link))->setEnabled(!replyOnly);
+                menu->addActionWithIcon(qsl(":/context_menu/link"), QT_TRANSLATE_NOOP("context_menu", "Copy link"),
+                                        makeData(qsl("copy_link"), link))->setEnabled(!replyOnly);
             if (hasCopyableEmail)
-                menu->addActionWithIcon(qsl(":/context_menu/copy"), QT_TRANSLATE_NOOP("context_menu", "Copy email"), makeData(qsl("copy_email"), link))->setEnabled(!replyOnly);
+                menu->addActionWithIcon(qsl(":/context_menu/copy"), QT_TRANSLATE_NOOP("context_menu", "Copy email"),
+                                        makeData(qsl("copy_email"), link))->setEnabled(!replyOnly);
             else if (isCopyable)
-                menu->addActionWithIcon(qsl(":/context_menu/copy"), QT_TRANSLATE_NOOP("context_menu", "Copy"), makeData(qsl("copy")))->setEnabled(!replyOnly);
+                menu->addActionWithIcon(qsl(":/context_menu/copy"), QT_TRANSLATE_NOOP("context_menu", "Copy"),
+                                        makeData(qsl("copy")))->setEnabled(!replyOnly);
         }
     }
 
     if (hasBlock && isFileCopyable)
-        menu->addActionWithIcon(qsl(":/context_menu/copy"), QT_TRANSLATE_NOOP("context_menu", "Copy to clipboard"), makeData(qsl("copy_file")))->setEnabled(!replyOnly);
+        menu->addActionWithIcon(qsl(":/context_menu/copy"), QT_TRANSLATE_NOOP("context_menu", "Copy to clipboard"), makeData(qsl("copy_file")))->setEnabled(!replyOnly && msgSent);
 
-    menu->addActionWithIcon(qsl(":/context_menu/forward"), QT_TRANSLATE_NOOP("context_menu", "Forward"), makeData(qsl("forward")))->setEnabled(!replyOnly);
+    if (isRevokeVote)
+        menu->addActionWithIcon(qsl(":/context_menu/cancel"), QT_TRANSLATE_NOOP("context_menu", "Revoke vote"), makeData(qsl("revoke_vote")))->setEnabled(!replyOnly);
+
+    if (isStopPoll)
+        menu->addActionWithIcon(qsl(":/context_menu/stop"), QT_TRANSLATE_NOOP("context_menu", "Stop poll"), makeData(qsl("stop_poll")))->setEnabled(!replyOnly);
+
+    menu->addActionWithIcon(qsl(":/context_menu/forward"), QT_TRANSLATE_NOOP("context_menu", "Forward"), makeData(qsl("forward")))->setEnabled(!replyOnly && msgSent);
+
+    menu->addActionWithIcon(qsl(":/context_menu/select"), QT_TRANSLATE_NOOP("context_menu", "Select"), makeData(qsl("select")));
 
     if (Logic::getContactListModel()->isYouAdmin(ChatAimid_))
     {
         const Data::DlgState dlg = Logic::getRecentsModel()->getDlgState(ChatAimid_);
         if (dlg.pinnedMessage_ && dlg.pinnedMessage_->Id_ == Id_)
-            menu->addActionWithIcon(qsl(":/context_menu/unpin"), QT_TRANSLATE_NOOP("context_menu", "Unpin"), makeData(qsl("unpin")))->setEnabled(!replyOnly);
+            menu->addActionWithIcon(qsl(":/context_menu/unpin"), QT_TRANSLATE_NOOP("context_menu", "Unpin"), makeData(qsl("unpin")))->setEnabled(!replyOnly && msgSent);
         else
-            menu->addActionWithIcon(qsl(":/context_menu/pin"), QT_TRANSLATE_NOOP("context_menu", "Pin"), makeData(qsl("pin")))->setEnabled(!replyOnly);
+            menu->addActionWithIcon(qsl(":/context_menu/pin"), QT_TRANSLATE_NOOP("context_menu", "Pin"), makeData(qsl("pin")))->setEnabled(!replyOnly && msgSent);
     }
 
     if (hasBlock && isFileCopyable)
-        menu->addActionWithIcon(qsl(":/context_menu/download"), QT_TRANSLATE_NOOP("context_menu", "Save as..."), makeData(qsl("save_as")))->setEnabled(!replyOnly);
+        menu->addActionWithIcon(qsl(":/context_menu/download"), QT_TRANSLATE_NOOP("context_menu", "Save as..."), makeData(qsl("save_as")))->setEnabled(!replyOnly && msgSent);
 
     if (isOpenable)
         menu->addActionWithIcon(qsl(":/context_menu/browser"), QT_TRANSLATE_NOOP("context_menu", "Open in browser"), makeData(qsl("open_in_browser")))->setEnabled(!replyOnly);
@@ -2022,19 +2282,25 @@ void ComplexMessageItem::trackMenu(const QPoint &globalPos)
         menu->addActionWithIcon(qsl(":/context_menu/open_folder"), QT_TRANSLATE_NOOP("context_menu", "Show in folder"), makeData(qsl("open_folder")))->setEnabled(!replyOnly);
 
     if (!isDisabled && isEditable())
-        menu->addActionWithIcon(qsl(":/context_menu/edit"), QT_TRANSLATE_NOOP("context_menu", "Edit"), makeData(qsl("edit")))->setEnabled(!replyOnly);
+        menu->addActionWithIcon(qsl(":/context_menu/edit"), QT_TRANSLATE_NOOP("context_menu", "Edit"), makeData(qsl("edit")))->setEnabled(!replyOnly && !notAMember);
 
     if (hasCopyableEmail && !link.isEmpty())
         menu->addActionWithIcon(qsl(":/context_menu/goto"), QT_TRANSLATE_NOOP("context_menu", "Go to profile"), makeData(qsl("open_profile"), link))->setEnabled(!replyOnly);
 
     menu->addSeparator();
-    menu->addActionWithIcon(qsl(":/context_menu/delete"), QT_TRANSLATE_NOOP("context_menu", "Delete for me"), makeData(qsl("delete")))->setEnabled(!replyOnly);
+    menu->addActionWithIcon(qsl(":/context_menu/delete"), QT_TRANSLATE_NOOP("context_menu", "Delete for me"), makeData(qsl("delete")))->setEnabled(!replyOnly && !notAMember);
 
     if (ChatAimid_ != MyInfo()->aimId() && (isOutgoing() || Logic::getContactListModel()->isYouAdmin(ChatAimid_)))
-        menu->addActionWithIcon(qsl(":/context_menu/deleteall"), QT_TRANSLATE_NOOP("context_menu", "Delete for all"), makeData(qsl("delete_all")))->setEnabled(!replyOnly);
+        menu->addActionWithIcon(qsl(":/context_menu/deleteall"), QT_TRANSLATE_NOOP("context_menu", "Delete for all"), makeData(qsl("delete_all")))->setEnabled(!replyOnly && !notAMember);
 
     if (GetAppConfig().IsContextMenuFeaturesUnlocked())
         menu->addActionWithIcon(qsl(":/context_menu/copy"), qsl("Copy Message ID"), makeData(qsl("dev:copy_message_id")))->setEnabled(!replyOnly);
+
+    if (GetAppConfig().IsShowMsgIdsEnabled())
+    {
+        if (hasBlock && (MenuBlock_->getContentType() == IItemBlock::ContentType::Poll))
+            menu->addActionWithIcon(qsl(":/context_menu/copy"), qsl("Copy Poll ID"), makeData(qsl("copy_poll_id")))->setEnabled(!replyOnly);
+    }
 
     if (hasBlock && (MenuBlock_->getContentType() == IItemBlock::ContentType::Sticker ||
         (isChat_ && SenderAimid_ != MyInfo()->aimId() && !Logic::getContactListModel()->isYouAdmin(ChatAimid_))))
@@ -2054,11 +2320,7 @@ void ComplexMessageItem::updateSenderControlColor()
     if (!Sender_)
         return;
 
-    QColor color;
-    if (isDrawFullBubbleSelected_)
-        color = Qt::white;
-    else
-        color = Utils::getNameColor(SenderAimid_);
+    QColor color = Utils::getNameColor(SenderAimid_);
 
     Sender_->setColor(color);
 }
@@ -2193,39 +2455,63 @@ Data::Quote ComplexMessageItem::getQuoteFromBlock(IItemBlock* _block, const bool
     if (!_block)
         return Data::Quote();
 
-    auto q = _block->getQuote();
-    if (!q.isEmpty())
+    Data::Quote quote = _block->getQuote();
+    if (!quote.isEmpty())
     {
         if (_selectedTextOnly)
-            q.text_ = _block->getSelectedText(false, IItemBlock::TextDestination::quote);
+            quote.text_ = _block->getSelectedText(false, IItemBlock::TextDestination::quote);
 
-        return q;
+        quote.files_ = files_;
+    }
+    else
+    {
+        quote.text_ = _selectedTextOnly ? _block->getSelectedText(false, IItemBlock::TextDestination::quote) : _block->getSourceText();
+        quote.senderId_ = isOutgoing() ? MyInfo()->aimId() : _block->getSenderAimid();
+        quote.chatId_ = getChatAimid();
+        if (Logic::getContactListModel()->isChannel(quote.chatId_))
+            quote.senderId_ = quote.chatId_;
+        quote.chatStamp_ = Logic::getContactListModel()->getChatStamp(quote.chatId_);
+        quote.time_ = getTime();
+        quote.msgId_ = getId();
+        quote.mentions_ = mentions_;
+        quote.mediaType_ = _block->getMediaType();
+        quote.sharedContact_ = buddy().sharedContact_;
+        quote.geo_ = buddy().geo_;
+        quote.files_ = getFilesPlaceholders();
+        quote.poll_ = buddy().poll_;
+
+        if (quote.poll_)
+            quote.mediaType_ = Ui::MediaType::mediaTypePoll;
+
+        if (quote.isEmpty())
+            return Data::Quote();
+
+        QString senderFriendly = getSenderFriendly();
+        if (senderFriendly.isEmpty())
+            senderFriendly = Logic::GetFriendlyContainer()->getFriendly(quote.senderId_);
+        if (isOutgoing())
+            senderFriendly = MyInfo()->friendly();
+        quote.senderFriendly_ = std::move(senderFriendly);
+
+        if (const auto stickerInfo = _block->getStickerInfo())
+        {
+            quote.setId_ = stickerInfo->SetId_;
+            quote.stickerId_ = stickerInfo->StickerId_;
+        }
+
+        if (!Url_.isEmpty() && !Description_.isEmpty() && (!_selectedTextOnly || Utils::InterConnector::instance().isMultiselect()))
+        {
+            quote.url_ = Url_;
+            quote.description_ = Description_;
+        }
     }
 
-    Data::Quote quote;
-    quote.text_ = _selectedTextOnly ? _block->getSelectedText(false, IItemBlock::TextDestination::quote) : _block->getSourceText();
-    quote.senderId_ = isOutgoing() ? MyInfo()->aimId() : _block->getSenderAimid();
-    quote.chatId_ = getChatAimid();
-    quote.time_ = getTime();
-    quote.msgId_ = getId();
-    quote.mentions_ = mentions_;
-    quote.mediaType_ = _block->getMediaType();
-    quote.sharedContact_ = buddy().sharedContact_;
+    quote.text_ = Utils::setFilesPlaceholders(quote.text_, files_);
 
-    if (quote.isEmpty())
-        return Data::Quote();
-
-    QString senderFriendly = getSenderFriendly();
-    if (senderFriendly.isEmpty())
-        senderFriendly = Logic::GetFriendlyContainer()->getFriendly(quote.senderId_);
-    if (isOutgoing())
-        senderFriendly = MyInfo()->friendly();
-    quote.senderFriendly_ = std::move(senderFriendly);
-
-    if (const auto stickerInfo = _block->getStickerInfo())
+    if (_selectedTextOnly)
     {
-        quote.setId_ = stickerInfo->SetId_;
-        quote.stickerId_ = stickerInfo->StickerId_;
+        quote.type_ = Data::Quote::Type::quote;
+        return quote;
     }
 
     switch (_block->getContentType())
@@ -2251,12 +2537,6 @@ Data::Quote ComplexMessageItem::getQuoteFromBlock(IItemBlock* _block, const bool
         break;
     }
 
-    if (!Url_.isEmpty() && !Description_.isEmpty() && (!_selectedTextOnly || FullSelectionType_ == ComplexMessage::BlockSelectionType::Full))
-    {
-        quote.url_ = Url_;
-        quote.description_ = Description_;
-    }
-
     return quote;
 }
 
@@ -2270,6 +2550,8 @@ void ComplexMessageItem::updateTimeWidgetUnderlay()
             MediaType::mediaTypePtt,
             MediaType::mediaTypeFileSharing,
             MediaType::mediaTypeContact,
+            MediaType::mediaTypeGeo,
+            MediaType::mediaTypePoll,
         };
 
         const auto mediaType = Blocks_.back()->getMediaType();
@@ -2313,6 +2595,19 @@ bool ComplexMessageItem::isNeedAvatar() const
     return false;
 }
 
+void ComplexMessageItem::loadSnippetsMetaInfo()
+{
+    connect(GetDispatcher(), &core_dispatcher::linkMetainfoMetaDownloaded, this, &ComplexMessageItem::onLinkMetainfoMetaDownloaded, Qt::UniqueConnection);
+
+    for (auto& snippet : snippetsWaitingForInitialization_)
+    {
+        auto seq = Ui::GetDispatcher()->downloadLinkMetainfo(snippet.link_);
+        snippetsWaitingForMeta_[seq] = std::move(snippet);
+    }
+
+    snippetsWaitingForInitialization_.clear();
+}
+
 MessageTimeWidget* ComplexMessageItem::getTimeWidget() const
 {
     return TimeWidget_;
@@ -2343,13 +2638,25 @@ void ComplexMessageItem::setQuoteSelection()
     QuoteAnimation_.startQuoteAnimation();
 }
 
+void ComplexMessageItem::highlightText(const highlightsV& _highlights)
+{
+    for (auto& b : Blocks_)
+        b->highlight(_highlights);
+}
+
+void ComplexMessageItem::resetHighlight()
+{
+    for (auto& b : Blocks_)
+        b->removeHighlight();
+}
+
 void ComplexMessageItem::setDeliveredToServer(const bool _isDeliveredToServer)
 {
     if (!isOutgoing())
         return;
 
-    if (IsDeliveredToServer_ != _isDeliveredToServer)
-        IsDeliveredToServer_ = _isDeliveredToServer;
+    if (deliveredToServer_ != _isDeliveredToServer)
+        deliveredToServer_ = _isDeliveredToServer;
 }
 
 bool ComplexMessageItem::isQuoteAnimation() const
@@ -2370,39 +2677,6 @@ bool ComplexMessageItem::isObserveToSize() const
 void ComplexMessageItem::onObserveToSize()
 {
     bObserveToSize_ = true;
-}
-
-namespace
-{
-    BlockSelectionType evaluateBlockSelectionType(const QRect &blockGeometry, const QPoint &selectionTop, const QPoint &selectionBottom)
-    {
-        const auto isBlockAboveSelection = (blockGeometry.bottom() < selectionTop.y());
-        const auto isBlockBelowSelection = (blockGeometry.top() > selectionBottom.y());
-        if (isBlockAboveSelection || isBlockBelowSelection)
-        {
-            return BlockSelectionType::None;
-        }
-
-        const auto isTopPointAboveBlock = (blockGeometry.top() >= selectionTop.y());
-        const auto isBottomPointBelowBlock = (blockGeometry.bottom() <= selectionBottom.y());
-
-        if (isTopPointAboveBlock && isBottomPointBelowBlock)
-        {
-            return BlockSelectionType::Full;
-        }
-
-        if (isTopPointAboveBlock)
-        {
-            return BlockSelectionType::FromBeginning;
-        }
-
-        if (isBottomPointBelowBlock)
-        {
-            return BlockSelectionType::TillEnd;
-        }
-
-        return BlockSelectionType::PartialInternal;
-    }
 }
 
 UI_COMPLEX_MESSAGE_NS_END

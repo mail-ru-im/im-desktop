@@ -4,7 +4,7 @@ namespace Testing
 {
     void setAccessibleName(QWidget* target, const QString& name)
     {
-        if (isEnabled())
+        if constexpr (isEnabled())
         {
             //assert(!!target);
             if (target)

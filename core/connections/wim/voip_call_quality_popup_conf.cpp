@@ -2,6 +2,8 @@
 #include "voip_call_quality_popup_conf.h"
 
 #include "../../../corelib/collection_helper.h"
+#include "../../tools/json_helper.h"
+
 
 using namespace core;
 using namespace wim;

@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "ContactAvatarWidget.h"
 
+#include "../common.shared/config/config.h"
 #include "AvatarPreview.h"
 
 #include "GeneralDialog.h"
@@ -22,7 +23,6 @@ namespace
     const auto MIN_AVATAR_SIZE = 200;
     const auto AVATAR_CROP_SIZE = 1024;
     const int ADD_PHOTO_FONTSIZE = 24;
-    const int CHANGE_ICON_SIZE = 32;
 
     QByteArray processImage(const QPixmap &_avatar)
     {
@@ -35,17 +35,13 @@ namespace
                 avatar = avatar.scaledToHeight(AVATAR_CROP_SIZE, Qt::SmoothTransformation);
         }
 
-        auto quality = 75; // 75 is a default quality for jpeg
         QByteArray result;
         do                 // if result image is too big (which is not supposed to happen), try smaller quality values
         {
             result.clear();
             QBuffer buffer(&result);
-            avatar.save(&buffer, "jpg", quality);
-            if (quality > 0)
-                quality -= 10;
-            else
-                avatar = avatar.scaled(avatar.size() / 2, Qt::KeepAspectRatio, Qt::SmoothTransformation); // should never happen, only for loop to not be potentially infinite
+            avatar.save(&buffer, "png");
+            avatar = avatar.scaled(avatar.size() / 2, Qt::KeepAspectRatio, Qt::SmoothTransformation); // should never happen, only for loop to not be potentially infinite
         }
         while (result.size() > 8 * 1024 * 1024);
 
@@ -55,6 +51,11 @@ namespace
     QSize getCamIconSize() noexcept
     {
         return Utils::scale_value(QSize(32, 32));
+    }
+
+    QSize getCamIconSizeBig() noexcept
+    {
+        return Utils::scale_value(QSize(48, 48));
     }
 }
 
@@ -73,11 +74,14 @@ namespace Ui
         , isVisibleBadge_(_isVisibleBadge)
         , connected_(false)
         , seq_(-1)
-        , defaultAvatar_(true)
+        , defaultAvatar_(Logic::GetAvatarStorage()->isDefaultAvatar(_aimid.isEmpty() ? MyInfo()->aimId() : _aimid))
         , officialBadgeOnly_(_officialOnly)
         , spinner_(nullptr)
         , hovered_(false)
         , pressed_(false)
+        , smallBadge_(false)
+        , displayNameChanged_(false)
+        , offset_(0)
     {
         setFixedSize(Utils::avatarWithBadgeSize(_size));
 
@@ -105,41 +109,37 @@ namespace Ui
     {
     }
 
-    QString ContactAvatarWidget::GetState()
-    {
-        if (mode_ == Mode::MyProfile || mode_ == Mode::Introduce)
-        {
-            return isVisibleShadow_ ? qsl("photo enter") : qsl("photo leave");
-        }
-        return QString();
-    }
-
     void ContactAvatarWidget::paintEvent(QPaintEvent* _e)
     {
         QPainter p(this);
-        if (aimid_.isEmpty() && displayName_.isEmpty() && (!infoForSetAvatar_.croppedImage.isNull() || !infoForSetAvatar_.roundedCroppedImage.isNull()))
+        p.setRenderHints(QPainter::SmoothPixmapTransform | QPainter::Antialiasing);
+        if (aimid_.isEmpty() && (!infoForSetAvatar_.croppedImage.isNull() || !infoForSetAvatar_.roundedCroppedImage.isNull()))
         {
-            p.setRenderHint(QPainter::Antialiasing);
-            p.setRenderHint(QPainter::SmoothPixmapTransform);
             if (infoForSetAvatar_.roundedCroppedImage.isNull())
             {
                 auto scaled = infoForSetAvatar_.croppedImage.scaled(QSize(size_, size_), Qt::KeepAspectRatio, Qt::SmoothTransformation);
-                infoForSetAvatar_.roundedCroppedImage = Utils::roundImage(scaled, QString(), false, false);
+                infoForSetAvatar_.roundedCroppedImage = Utils::roundImage(scaled, false, false);
             }
             p.drawPixmap(0, 0, size_, size_, infoForSetAvatar_.roundedCroppedImage);
             return QWidget::paintEvent(_e);
         }
 
-        const auto &scAvatar = Logic::GetAvatarStorage()->GetRounded(aimid_, displayName_, isVisibleOutline_ ? Utils::scale_bitmap(size_ - Utils::scale_value(4)) : Utils::scale_bitmap(size_), GetState(), defaultAvatar_, false, false);
+        const auto &scAvatar = Logic::GetAvatarStorage()->GetRounded(aimid_, displayName_, isVisibleOutline_ ? Utils::scale_bitmap(size_ - Utils::scale_value(4)) : Utils::scale_bitmap(size_), defaultAvatar_, displayNameChanged_, false);
 
         if (scAvatar->isNull())
             return;
 
         QPixmap avatar = *scAvatar;
+        const auto camSize = mode_ == Mode::Introduce ? getCamIconSizeBig() : getCamIconSize();
+        const auto camPath = mode_ == Mode::Introduce ? qsl(":/cam_icon_into") : qsl(":/cam_icon");
+        auto getIcon = [&camPath, &camSize](const Styling::StyleVariable _color)
+        {
+            return Utils::renderSvg(camPath, camSize, Styling::getParameters().getColor(_color));
+        };
 
         if ((mode_ == Mode::MyProfile || mode_ == Mode::Introduce) && hovered_ && !defaultAvatar_)
         {
-            static const auto icon = Utils::renderSvg(qsl(":/cam_icon"), getCamIconSize(), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT));
+            const auto icon = getIcon(Styling::StyleVariable::TEXT_SOLID_PERMANENT);
 
             QPainter pAvatar(&avatar);
             QPainterPath path;
@@ -150,14 +150,13 @@ namespace Ui
             pAvatar.setRenderHint(QPainter::SmoothPixmapTransform);
             pAvatar.fillPath(path, Styling::getParameters().getColor(Styling::StyleVariable::GHOST_SECONDARY));
 
-            const auto x = (width() - icon.width() / Utils::scale_bitmap_ratio()) / 2;
-            const auto y = (height() - icon.height() / Utils::scale_bitmap_ratio()) / 2;
+            const auto x = (width() - camSize.width() ) / 2;
+            const auto y = (height() - camSize.height() ) / 2;
             pAvatar.drawPixmap(x, y, icon);
         }
 
         if (isVisibleOutline_)
         {
-            p.setRenderHint(QPainter::Antialiasing);
             QPen pen;
             pen.setBrush(Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY));
             pen.setWidth(Utils::scale_value(4));
@@ -168,8 +167,6 @@ namespace Ui
         {
             p.setPen(Qt::NoPen);
             p.setBrush(Qt::NoBrush);
-            p.setRenderHint(QPainter::Antialiasing);
-            p.setRenderHint(QPainter::SmoothPixmapTransform);
 
             QPen pen(Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY), Utils::scale_value(1), Qt::DashLine, Qt::RoundCap);
             p.setPen(pen);
@@ -182,25 +179,22 @@ namespace Ui
                 (size_ / 2)
             );
 
-            const QPixmap* icon = nullptr;
+            QPixmap newIcon;
             auto bgColor = Styling::StyleVariable::BASE;
             if (pressed_)
             {
-                static const auto pm = Utils::renderSvg(qsl(":/cam_icon"), getCamIconSize(), Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_ACTIVE));
+                newIcon = getIcon(Styling::StyleVariable::PRIMARY_ACTIVE);
                 bgColor = Styling::StyleVariable::GHOST_ACCENT_ACTIVE;
-                icon = &pm;
             }
             else if (hovered_)
             {
-                static const auto pm = Utils::renderSvg(qsl(":/cam_icon"), getCamIconSize(), Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_HOVER));
+                newIcon = getIcon(Styling::StyleVariable::PRIMARY_HOVER);
                 bgColor = Styling::StyleVariable::GHOST_ACCENT_HOVER;
-                icon = &pm;
             }
             else
             {
-                static const auto pm = Utils::renderSvg(qsl(":/cam_icon"), getCamIconSize(), Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY));
+                newIcon = getIcon(Styling::StyleVariable::PRIMARY);
                 bgColor = Styling::StyleVariable::GHOST_ACCENT;
-                icon = &pm;
             }
 
             QPainterPath path;
@@ -208,22 +202,22 @@ namespace Ui
             p.setPen(Qt::NoPen);
             p.fillPath(path, Styling::getParameters().getColor(bgColor));
 
-            const auto x = (width() - icon->width() / Utils::scale_bitmap_ratio()) / 2;
-            const auto y = (height() - icon->height() / Utils::scale_bitmap_ratio()) / 2;
-            p.drawPixmap(x, y, *icon);
+            const auto x = (width() - camSize.width()) / 2;
+            const auto y = (height() - camSize.height()) / 2;
+            p.drawPixmap(x, y, newIcon);
         }
         else if (mode_ == Mode::ChangeAvatar || mode_ == Mode::Introduce)
         {
             if (infoForSetAvatar_.croppedImage.isNull())
             {
-                Utils::drawAvatarWithBadge(p, QPoint(), avatar, aimid_, officialBadgeOnly_);
+                Utils::drawAvatarWithBadge(p, QPoint(), avatar, aimid_, officialBadgeOnly_, false, smallBadge_);
             }
             else
             {
                 if (infoForSetAvatar_.roundedCroppedImage.isNull())
                 {
                     auto scaled = infoForSetAvatar_.croppedImage.scaled(QSize(size_, size_), Qt::KeepAspectRatio, Qt::SmoothTransformation);
-                    infoForSetAvatar_.roundedCroppedImage = Utils::roundImage(scaled, QString(), false, false);
+                    infoForSetAvatar_.roundedCroppedImage = Utils::roundImage(scaled, false, false);
                 }
                 p.drawPixmap(0, 0, size_, size_, infoForSetAvatar_.roundedCroppedImage);
             }
@@ -231,21 +225,35 @@ namespace Ui
             if (isVisibleShadow_)
             {
                 p.setPen(Qt::NoPen);
-                p.setRenderHint(QPainter::Antialiasing);
-                p.setRenderHint(QPainter::SmoothPixmapTransform);
                 p.setBrush(QBrush(Styling::getParameters().getColor(Styling::StyleVariable::GHOST_SECONDARY)));
                 p.drawEllipse(0, 0, size_, size_);
-                static auto change_icon = Utils::renderSvgScaled(qsl(":/cam_icon"), QSize(CHANGE_ICON_SIZE, CHANGE_ICON_SIZE), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT));
-                p.drawPixmap(width() / 2 - Utils::scale_value(CHANGE_ICON_SIZE) / 2, height() / 2 - Utils::scale_value(CHANGE_ICON_SIZE) / 2, change_icon);
+                auto change_icon = Utils::renderSvg(camPath, camSize, Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT));
+                p.drawPixmap(width() / 2 - camSize.width() / 2, height() / 2 - camSize.height() / 2, change_icon);
             }
         }
         else if (isVisibleBadge_ && !aimid_.isEmpty())
         {
-            Utils::drawAvatarWithBadge(p, QPoint(), avatar, aimid_, officialBadgeOnly_);
+            Utils::drawAvatarWithBadge(p, QPoint(0, offset_), avatar, aimid_, officialBadgeOnly_, false, smallBadge_);
         }
         else
         {
             Utils::drawAvatarWithoutBadge(p, QPoint(), avatar);
+        }
+
+        if (mode_ == Mode::CreateChat && defaultAvatar_ && !displayName_.isEmpty())
+        {
+            const auto elipseRadious = Utils::scale_value(8);
+            QPen pen;
+            pen.setBrush(Styling::getParameters().getColor(Styling::StyleVariable::CHAT_PRIMARY));
+            pen.setWidth(Utils::scale_value(2));
+            p.setPen(pen);
+            p.setBrush(Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY));
+            p.drawEllipse(QPoint(size_ - elipseRadious, size_ - elipseRadious), elipseRadious, elipseRadious);
+
+            const auto edit_size = Utils::scale_value(QSize(12, 12));
+            auto edit_icon = Utils::renderSvg(qsl(":/avatar_edit_icon"), edit_size, Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT));
+            p.drawPixmap(size_ - elipseRadious - edit_size.width() / 2, size_ - elipseRadious - edit_size.height() / 2, edit_icon);
+            //avatar_edit_icon
         }
 
         return QWidget::paintEvent(_e);
@@ -260,6 +268,8 @@ namespace Ui
     void ContactAvatarWidget::UpdateParams(const QString& _aimid, const QString& _displayName)
     {
         aimid_ = _aimid;
+        Logic::GetAvatarStorage()->UpdateDefaultAvatarIfNeed(aimid_);
+
         displayName_ = _displayName;
         update();
     }
@@ -306,6 +316,27 @@ namespace Ui
         updateSpinnerPos();
     }
 
+    void ContactAvatarWidget::dragEnterEvent(QDragEnterEvent* _e)
+    {
+        auto urls = _e->mimeData()->urls();
+        if (urls.size() == 1)
+        {
+            const auto url = urls.constFirst().toString();
+            if (url.endsWith(qsl(".jpg")) || url.endsWith(qsl(".jpeg")) || url.endsWith(qsl(".png")) || url.endsWith(qsl(".bmp")))
+            {
+                _e->acceptProposedAction();
+                return;
+            }
+        }
+        _e->setDropAction(Qt::IgnoreAction);
+    }
+
+    void ContactAvatarWidget::dropEvent(QDropEvent* _e)
+    {
+        if (!_e->mimeData()->urls().empty())
+            selectFile(_e->mimeData()->urls().constFirst().toLocalFile(), true);
+    }
+
     bool ContactAvatarWidget::isDefault()
     {
         return defaultAvatar_;
@@ -335,6 +366,7 @@ namespace Ui
                 connect(this, &ContactAvatarWidget::mouseEntered, this, &ContactAvatarWidget::avatarEnter);
                 connect(this, &ContactAvatarWidget::mouseLeft, this, &ContactAvatarWidget::avatarLeave);
                 this->setCursor(Qt::CursorShape::PointingHandCursor);
+                setAcceptDrops(true);
             }
         }
         else if (mode_ == Mode::CreateChat || mode_ == Mode::ChangeAvatar)
@@ -347,6 +379,7 @@ namespace Ui
                 connect(this, &ContactAvatarWidget::mouseEntered, this, &ContactAvatarWidget::avatarEnter);
                 connect(this, &ContactAvatarWidget::mouseLeft, this, &ContactAvatarWidget::avatarLeave);
                 this->setCursor(Qt::CursorShape::PointingHandCursor);
+                setAcceptDrops(true);
             }
         }
         else
@@ -357,6 +390,7 @@ namespace Ui
             disconnect(this, &ContactAvatarWidget::mouseEntered, this, &ContactAvatarWidget::avatarEnter);
             disconnect(this, &ContactAvatarWidget::mouseLeft, this, &ContactAvatarWidget::avatarLeave);
             this->setCursor(Qt::CursorShape::ArrowCursor);
+            setAcceptDrops(false);
         }
 
     }
@@ -390,6 +424,21 @@ namespace Ui
         update();
     }
 
+    void ContactAvatarWidget::SetSmallBadge(bool _small)
+    {
+        smallBadge_ = _small;
+        update();
+    }
+
+    void ContactAvatarWidget::SetOffset(int _offset)
+    {
+        auto size = Utils::avatarWithBadgeSize(size_);
+        size.setHeight(size.height() + _offset * 2);
+        setFixedSize(size);
+        offset_ = _offset;
+        update();
+    }
+
     void ContactAvatarWidget::applyAvatar(const QPixmap &alter)
     {
         if (alter.isNull())
@@ -419,11 +468,19 @@ namespace Ui
             helper.set_value_as_qstring("aimid", aimid_);
 
         seq_ = GetDispatcher()->post_message_to_core("set_avatar", helper.get());
+
+        emit avatarSetToCore();
     }
 
     void ContactAvatarWidget::selectFileForAvatar()
     {
+        selectFile();
+    }
+
+    void ContactAvatarWidget::selectFile(const QString& _url, bool _drop)
+    {
         ResetInfoForSetAvatar();
+
         QFileDialog fileDialog(platform::is_linux() ? nullptr : this);
         fileDialog.setDirectory(infoForSetAvatar_.currentDirectory);
         fileDialog.setFileMode(QFileDialog::ExistingFiles);
@@ -435,12 +492,15 @@ namespace Ui
         while (isContinue)
         {
             isContinue = false;
-            if (fileDialog.exec())
+            if (!_url.isEmpty() || fileDialog.exec())
             {
-                infoForSetAvatar_.currentDirectory = fileDialog.directory().path();
+                QString dirPath = _url.isEmpty() ? fileDialog.directory().path() : (QFileInfo(_url).dir().path());
+                QString filePath = _url.isEmpty() ? fileDialog.selectedFiles().constFirst() : (QFileInfo(_url).absoluteFilePath());
+
+                infoForSetAvatar_.currentDirectory = dirPath;
 
                 {
-                    QFile file(fileDialog.selectedFiles().constFirst());
+                    QFile file(filePath);
                     if (!file.open(QIODevice::ReadOnly))
                         return;
 
@@ -456,8 +516,8 @@ namespace Ui
                 if (newAvatar.height() < MIN_AVATAR_SIZE || newAvatar.width() < MIN_AVATAR_SIZE)
                 {
                     if (Utils::GetErrorWithTwoButtons(
-                        QT_TRANSLATE_NOOP("popup_window", "CANCEL"),
-                        QT_TRANSLATE_NOOP("avatar_upload", "CHOOSE FILE"),
+                        QT_TRANSLATE_NOOP("popup_window", "Cancel"),
+                        QT_TRANSLATE_NOOP("avatar_upload", "Select a file"),
                         QString(),
                         QT_TRANSLATE_NOOP("avatar_upload", "Upload photo"),
                         QT_TRANSLATE_NOOP("avatar_upload", "Image should be at least 200x200 px"),
@@ -479,7 +539,7 @@ namespace Ui
         }
 
         infoForSetAvatar_.image = newAvatar;
-        cropAvatar();
+        cropAvatar(_drop);
     }
 
     void ContactAvatarWidget::ResetInfoForSetAvatar()
@@ -487,6 +547,7 @@ namespace Ui
         infoForSetAvatar_.image = QImage();
         infoForSetAvatar_.croppingRect = QRectF();
         infoForSetAvatar_.croppedImage = QPixmap();
+        infoForSetAvatar_.roundedCroppedImage = QPixmap();
     }
 
     void ContactAvatarWidget::updateSpinnerPos()
@@ -499,7 +560,7 @@ namespace Ui
         }
     }
 
-    void ContactAvatarWidget::cropAvatar()
+    void ContactAvatarWidget::cropAvatar(bool _drop)
     {
         QWidget *hostWidget = nullptr;
         QLayout *hostLayout = nullptr;
@@ -507,17 +568,18 @@ namespace Ui
         QWidget *mainWidget = nullptr;
         QLayout *mainLayout = nullptr;
 
+        const auto horMargin = Utils::scale_value(16);
         if (imageCropHolder_)
         {
             hostWidget = new QWidget(this);
             hostLayout = new QHBoxLayout(hostWidget);
-            hostWidget->setSizePolicy(QSizePolicy::Policy::Preferred, QSizePolicy::Policy::Fixed);
+            hostWidget->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
             hostWidget->setFixedHeight(imageCropSize_.height());
-            hostLayout->setContentsMargins(Utils::scale_value(16), Utils::scale_value(12), Utils::scale_value(16), 0);
+            hostLayout->setContentsMargins(horMargin, Utils::scale_value(12), horMargin, 0);
 
             mainWidget = new QWidget(hostWidget);
             mainLayout = Utils::emptyHLayout(mainWidget);
-            mainWidget->setSizePolicy(QSizePolicy::Policy::Preferred, QSizePolicy::Policy::Preferred);
+            mainWidget->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
             Testing::setAccessibleName(mainWidget, qsl("AS caw mainWidget"));
             hostLayout->addWidget(mainWidget);
         }
@@ -525,13 +587,13 @@ namespace Ui
         {
             mainWidget = new QWidget(this);
             mainLayout = new QHBoxLayout(mainWidget);
-            mainLayout->setContentsMargins(Utils::scale_value(16), Utils::scale_value(12), Utils::scale_value(16), 0);
+            mainLayout->setContentsMargins(horMargin, Utils::scale_value(12), horMargin, 0);
         }
 
         auto avatarCropper = new Ui::ImageCropper(mainWidget, imageCropSize_);
         avatarCropper->setProportion(QSizeF(1.0, 1.0));
         avatarCropper->setProportionFixed(true);
-        avatarCropper->setBackgroundColor(QColor(ql1s("#ffffff")));
+        avatarCropper->setBackgroundColor(Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE));
         if (!infoForSetAvatar_.croppingRect.isNull())
         {
             avatarCropper->setCroppingRect(infoForSetAvatar_.croppingRect);
@@ -544,7 +606,16 @@ namespace Ui
         if (!imageCropHolder_)
             hostWidget = mainWidget;
 
-        GeneralDialog imageCropDialog(hostWidget, imageCropHolder_ ? imageCropHolder_ : Utils::InterConnector::instance().getMainWindow(), false, false);
+        const auto w = avatarCropper->width() + 2 * horMargin;
+        GeneralDialog imageCropDialog(
+            hostWidget,
+            imageCropHolder_ ? imageCropHolder_ : Utils::InterConnector::instance().getMainWindow(),
+            false,
+            true,
+            true,
+            true,
+            QSize(w, 0)
+        );
         imageCropDialog.setObjectName(qsl("image.cropper"));
         if (imageCropHolder_)
         {
@@ -567,14 +638,15 @@ namespace Ui
             });
         }
 
-        imageCropDialog.addLabel((mode_ == Mode::CreateChat || mode_ == Mode::ChangeAvatar) ? QT_TRANSLATE_NOOP("avatar_upload", "Edit photo") : QT_TRANSLATE_NOOP("avatar_upload", "Upload photo"));
-        imageCropDialog.addButtonsPair(QT_TRANSLATE_NOOP("popup_window", "BACK"), QT_TRANSLATE_NOOP("popup_window", "CONTINUE"), true, false, false);
+        imageCropDialog.addLabel((mode_ == Mode::CreateChat || mode_ == Mode::ChangeAvatar || mode_ == Mode::Introduce) ? QT_TRANSLATE_NOOP("avatar_upload", "Edit photo") : QT_TRANSLATE_NOOP("avatar_upload", "Upload photo"));
+        imageCropDialog.addButtonsPair(QT_TRANSLATE_NOOP("popup_window", "Cancel"), QT_TRANSLATE_NOOP("popup_window", "Continue"), true, false, false, nullptr, DialogButtonShape::ROUNDED);
         imageCropDialog.setRightButtonDisableOnClicked(true);
 
-        QObject::connect(&imageCropDialog, &GeneralDialog::leftButtonClicked, this, [=, &imageCropDialog]()
+        QObject::connect(&imageCropDialog, &GeneralDialog::leftButtonClicked, this, [=, &imageCropDialog, &_drop]()
         {
             imageCropDialog.reject();
-            QTimer::singleShot(500, this, [=](){ emit summonSelectFileForAvatar(); });
+            if (!_drop)
+                QTimer::singleShot(500, this, [=](){ emit summonSelectFileForAvatar(); });
         },
         Qt::QueuedConnection);
         QObject::connect(&imageCropDialog, &GeneralDialog::rightButtonClicked, this, [=, &imageCropDialog]()
@@ -590,18 +662,12 @@ namespace Ui
                 p->setEnabled(true);
         },
         Qt::QueuedConnection);
-        QObject::connect(&imageCropDialog, &GeneralDialog::shown, this, [=](QWidget *dlg)
-        {
-            //
-        },
-        Qt::QueuedConnection);
 
         if (!imageCropDialog.showInCenter())
             return;
 
         if (mode_ == Mode::CreateChat || mode_ == Mode::ChangeAvatar)
         {
-            infoForSetAvatar_.roundedCroppedImage = QPixmap();
             emit avatarDidEdit();
         }
         else
@@ -632,14 +698,17 @@ namespace Ui
 
         Ui::GeneralDialog previewDialog(avatarPreviewHost, Utils::InterConnector::instance().getMainWindow());
         previewDialog.addLabel(QT_TRANSLATE_NOOP("avatar_upload", "Preview"));
-        previewDialog.addButtonsPair(QT_TRANSLATE_NOOP("popup_window", "BACK"), QT_TRANSLATE_NOOP("popup_window", "SAVE"), true);
-
-        QObject::connect(&previewDialog, &GeneralDialog::leftButtonClicked, this, &ContactAvatarWidget::cropAvatar, Qt::QueuedConnection);
+        previewDialog.addButtonsPair(QT_TRANSLATE_NOOP("popup_window", "Back"), QT_TRANSLATE_NOOP("popup_window", "Save"), true, true, true, nullptr, DialogButtonShape::ROUNDED);
 
         if (previewDialog.showInCenter())
         {
             SetVisibleSpinner(true);
             postSetAvatarToCore(croppedAvatar);
+        }
+        else
+        {
+            ResetInfoForSetAvatar();
+            update();
         }
     }
 
@@ -653,8 +722,8 @@ namespace Ui
         if (_error != 0)
         {
              if (Utils::GetErrorWithTwoButtons(
-                QT_TRANSLATE_NOOP("popup_window", "CANCEL"),
-                QT_TRANSLATE_NOOP("avatar_upload", "CHOOSE FILE"),
+                QT_TRANSLATE_NOOP("popup_window", "Cancel"),
+                QT_TRANSLATE_NOOP("avatar_upload", "Choose file"),
                 QString(),
                 QT_TRANSLATE_NOOP("avatar_upload", "Upload photo"),
                 QT_TRANSLATE_NOOP("avatar_upload", "Avatar was not uploaded due to server error"),
@@ -665,10 +734,8 @@ namespace Ui
         }
         else
         {
-            if (build::is_agent() || build::is_dit())
-            {
+            if (config::get().is_on(config::features::force_avatar_update))
                 Logic::GetAvatarStorage()->SetAvatar(aimid_, infoForSetAvatar_.croppedImage);
-            }
 
             emit afterAvatarChanged();
         }

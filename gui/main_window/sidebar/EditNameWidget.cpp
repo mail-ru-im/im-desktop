@@ -1,3 +1,4 @@
+#include "stdafx.h"
 #include "EditNameWidget.h"
 #include "SidebarUtils.h"
 
@@ -10,7 +11,7 @@
 #include "../../utils/Text.h"
 #include "../../utils/InterConnector.h"
 #include "../../gui_settings.h"
-#include "../../styles/ThemesContainer.h"
+#include "../../styles/ThemeParameters.h"
 
 namespace
 {

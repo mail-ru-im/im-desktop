@@ -120,17 +120,14 @@ namespace core {
             std::stringstream ss_host;
             ss_host << urls::get_url(urls::url_type::webrtc_host) << std::string_view("/voip/webrtcMsg");
 
-            std::stringstream ss_url;
-            ss_url << ss_host.str()
-                << "?aimsid=" << escape_symbols(params_.aimsid_)
-                << "&f=json"
-                << "&r=" << escape_symbols(_internal_params.requestId);
+            std::stringstream ss_params;
+            ss_params << "json" << '&' << _internal_params.request;
 
-            if (!_internal_params.request.empty()) {
-                ss_url << '&' << _internal_params.request;
-            }
+            _request->push_post_parameter("aimsid", escape_symbols(params_.aimsid_));
+            _request->push_post_parameter("r", escape_symbols(_internal_params.requestId));
+            _request->push_post_parameter("f", ss_params.str());
 
-            _request->set_url(ss_url.str());
+            _request->set_url(ss_host.str());
             _request->set_normalized_url("webrtcMsg");
 
             if (!params_.full_log_)
@@ -139,6 +136,18 @@ namespace core {
                 f.add_marker("aimsid", aimsid_range_evaluator());
                 _request->set_replace_log_function(f);
             }
+            return 0;
+        }
+
+        int32_t wim_webrtc::execute_request(std::shared_ptr<core::http_request_simple> request)
+        {
+            if (!request->post())
+                return wpie_network_error;
+
+            http_code_ = (uint32_t)request->get_response_code();
+
+            if (http_code_ != 200)
+                return wpie_http_error;
 
             return 0;
         }

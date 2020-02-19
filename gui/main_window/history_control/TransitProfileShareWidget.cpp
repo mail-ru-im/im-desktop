@@ -55,17 +55,17 @@ namespace
 
     QFont primaryTextFont(Fonts::FontWeight _weight = Fonts::FontWeight::Normal)
     {
-        return Fonts::appFontScaled(platform::is_apple() ? 15 : 16, _weight);
+        return Fonts::appFontScaled(16, _weight);
     }
 
     QFont secondaryTextFont()
     {
-        return Fonts::appFontScaled(platform::is_apple() ? 13 : 14);
+        return Fonts::appFontScaled(14);
     }
 
     QFont errorTextFont()
     {
-        return Fonts::appFontScaled(platform::is_apple() ? 12 : 13);
+        return Fonts::appFontScaled(13);
     }
 
     QColor primaryTextColor()
@@ -100,12 +100,12 @@ namespace
 
     QString leftButtonText()
     {
-        return QT_TRANSLATE_NOOP("profilesharing", "BACK");
+        return QT_TRANSLATE_NOOP("profilesharing", "Back");
     }
 
     QString rightButtonText(TransitState _errors)
     {
-        return _errors != TransitState::ON_PROFILE ? QT_TRANSLATE_NOOP("profilesharing", "OPEN CHAT") : QT_TRANSLATE_NOOP("profilesharing", "SEND");
+        return _errors != TransitState::ON_PROFILE ? QT_TRANSLATE_NOOP("profilesharing", "Open chat") : QT_TRANSLATE_NOOP("profilesharing", "Send");
     }
 
     int buttonSize()
@@ -154,7 +154,7 @@ TransitProfileSharing::TransitProfileSharing(QWidget* _parent, const QString& _a
     userProfile_->addLabel(getCaption(TransitState::ON_PROFILE));
     btnPair_ = userProfile_->addButtonsPair(leftButtonText(), rightButtonText(TransitState::ON_PROFILE), false);
     userProfile_->installEventFilter(this);
-    
+
     connect(Ui::GetDispatcher(), &Ui::core_dispatcher::userInfo, this, &TransitProfileSharing::onUserInfo);
     connect(&Utils::InterConnector::instance(), &Utils::InterConnector::applicationLocked, this, [this]()
     {
@@ -261,7 +261,7 @@ void TransitProfileSharing::setState(const TransitState _state)
         errorUnchecked_->addLabel(getCaption(TransitState::UNCHECKED));
         errorUnchecked_->addButtonsPair(leftButtonText(), rightButtonText(TransitState::UNCHECKED), true);
         errorUnchecked_->installEventFilter(this);
-        
+
         errorUnchecked_->setFocus();
         if (errorUnchecked_->showInCenter())
         {

@@ -4,15 +4,14 @@ namespace Emoji
 {
 
     struct EmojiRecord;
-    using EmojiRecordSptr = std::shared_ptr<EmojiRecord>;
-    using EmojiRecordSptrVec = std::vector<EmojiRecordSptr>;
+    using EmojiRecordVec = std::vector<EmojiRecord>;
 
     class EmojiCode;
 
     namespace mac {
         QImage getEmoji(const EmojiCode& code, int rectSize);
         bool supportEmoji(const EmojiCode& code);
-        void setEmojiVector(const EmojiRecordSptrVec& vector);
+        void setEmojiVector(const EmojiRecordVec& vector);
         bool isSkipEmojiFullCode(const EmojiCode& code);
     }
 }

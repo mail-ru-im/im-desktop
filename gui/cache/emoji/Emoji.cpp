@@ -45,7 +45,7 @@ namespace
 
     enum class EmojiType {Svg, Png};
 
-    QString getEmojiFilePathKey(const QString& _base, const int32_t _size, EmojiType _type)
+    QString getEmojiFilePathKey(QLatin1String _base, const int32_t _size, EmojiType _type)
     {
         if (_type == EmojiType::Svg)
             return _base;
@@ -62,26 +62,26 @@ namespace
             return qsl(":/apple_emoji/default_") % _size % qsl(".png");
     }
 
-    QString getEmojiOneFullPath(const QString& _base)
+    QString getEmojiOneFullPath(QLatin1String _base)
     {
         QString path = qsl(":/emoji/") % _base % qsl(".svg");
-
-        return QFileInfo::exists(path) ? path : getEmojiDefaultPath(EmojiType::Svg);
+        if (!QFileInfo::exists(path))
+            path = getEmojiDefaultPath(EmojiType::Svg);
+        return path;
     }
 
-    QString getAppleEmojiFullPath(const QString& _base, const int32_t _size)
+    QString getAppleEmojiFullPath(QLatin1String _base, const int32_t _size)
     {
         const auto size = getNearestAppleEmojiSize(_size).second;
 
         QString path = qsl(":/apple_emoji/") % _base % ql1c('_') % size % qsl(".png");
 
-        if (QFileInfo::exists(path))
-            return path;
-        else
-            return getEmojiDefaultPath(EmojiType::Png, size);
+        if (!QFileInfo::exists(path))
+            path = getEmojiDefaultPath(EmojiType::Png, size);
+        return path;
     }
 
-    QString getEmojiFilePath(const QString& _base, const int32_t _size, EmojiType _type)
+    QString getEmojiFilePath(QLatin1String _base, const int32_t _size, EmojiType _type)
     {
         auto& path =  EmojiFilePathCache_[getEmojiFilePathKey(_base, _size, _type)];
 
@@ -104,6 +104,38 @@ namespace Emoji
     void Cleanup()
     {
         EmojiCache_.clear();
+    }
+
+    Emoji::EmojiSizePx getEmojiSize() noexcept
+    {
+        Emoji::EmojiSizePx emojiSize = Emoji::EmojiSizePx::_32;
+        int scale = (int)(Utils::getScaleCoefficient() * 100.0);
+        scale = Utils::scale_bitmap(scale);
+        switch (scale)
+        {
+        case 100:
+            emojiSize = Emoji::EmojiSizePx::_32;
+            break;
+        case 125:
+            emojiSize = Emoji::EmojiSizePx::_40;
+            break;
+        case 150:
+            emojiSize = Emoji::EmojiSizePx::_48;
+            break;
+        case 200:
+            emojiSize = Emoji::EmojiSizePx::_64;
+            break;
+        case 250:
+            emojiSize = Emoji::EmojiSizePx::_80;
+            break;
+        case 300:
+            emojiSize = Emoji::EmojiSizePx::_96;
+            break;
+        default:
+            assert(!"invalid scale");
+        }
+
+        return emojiSize;
     }
 
     QImage GetEmoji(const EmojiCode& _code, const EmojiSizePx _size)
@@ -130,7 +162,7 @@ namespace Emoji
     static QImage getEmoji_qpainter(const EmojiCode& _code, int32_t _sizePx)
     {
         assert(!_code.isNull());
-        const auto pixelRatio = qApp->primaryScreen()->devicePixelRatio();
+        const auto pixelRatio = qApp->devicePixelRatio();
         const QString s = EmojiCode::toQString(_code);
 
         const auto size = int(_sizePx * pixelRatio);
@@ -175,7 +207,7 @@ namespace Emoji
         return image;
     }
 
-    static QImage getEmojiImage(const QString& _base, int32_t _sizePx)
+    static QImage getEmojiImage(QLatin1String _base, int32_t _sizePx)
     {
         const auto useAppleEmoji = Features::useAppleEmoji();
 
@@ -192,14 +224,14 @@ namespace Emoji
         assert(_sizePx > 0);
         assert(!_code.isNull());
 
-        const auto info = GetEmojiInfoByCodepoint(_code);
-        if (!info)
+        const auto& info = GetEmojiInfoByCodepoint(_code);
+        if (!info.isValid())
             return QImage();
 
-        assert(info->Index_ >= 0);
-        assert(!info->FileName_.isEmpty());
+        assert(info.Index_ >= 0);
+        assert(info.FileName_.size() > 0);
 
-        const auto key = MakeCacheKey(info->Index_, _sizePx);
+        const auto key = MakeCacheKey(info.Index_, _sizePx);
         if (const auto cacheIter = std::as_const(EmojiCache_).find(key); cacheIter != std::as_const(EmojiCache_).end())
         {
             assert(!cacheIter->second.isNull());
@@ -207,9 +239,9 @@ namespace Emoji
         }
 
 #if defined(__APPLE__)
-        auto image = useNativeEmoji() && mac::supportEmoji(_code) ? getEmoji_mac(_code, _sizePx) : getEmojiImage(info->FileName_, _sizePx);
+        auto image = useNativeEmoji() && mac::supportEmoji(_code) ? getEmoji_mac(_code, _sizePx) : getEmojiImage(info.FileName_, _sizePx);
 #else
-        auto image = getEmojiImage(info->FileName_, _sizePx);
+        auto image = getEmojiImage(info.FileName_, _sizePx);
 #endif
 
         EmojiCache_.insert({ key, image });
@@ -217,12 +249,19 @@ namespace Emoji
         return image;
     }
 
+    QImage GetEmojiImage(const EmojiCode& _code, int32_t _sizePx)
+    {
+        if (const auto& info = GetEmojiInfoByCodepoint(_code); info.isValid())
+            return getEmojiImage(info.FileName_, _sizePx);
+        return QImage();
+    }
+
     uint32_t readCodepoint(const QStringRef& text, int& pos)
     {
         if (pos >= text.length())
             return 0;
 
-        QChar high = text.at(pos);
+        const QChar high = text.at(pos);
         ++pos;
 
         if (pos >= text.length() || !high.isHighSurrogate())
@@ -230,7 +269,7 @@ namespace Emoji
             return high.unicode();
         }
 
-        QChar low = text.at(pos);
+        const QChar low = text.at(pos);
 
         if (!low.isLowSurrogate())
             return high.unicode();
@@ -276,7 +315,7 @@ namespace Emoji
         return EmojiCache_;
     }
 
-    bool isSupported(const QString& _filename)
+    bool isSupported(QLatin1String _filename)
     {
         const auto& [sizeAsInt, sizeAsStr] = appleEmojiSizes().front(); // get first size
         const auto type = Features::useAppleEmoji() ? EmojiType::Png : EmojiType::Svg;

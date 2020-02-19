@@ -2,8 +2,6 @@
 
 namespace Ui
 {
-    class smiles_Widget;
-
     namespace Smiles
     {
         class AttachedView

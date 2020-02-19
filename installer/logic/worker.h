@@ -13,7 +13,7 @@ namespace installer
 Q_SIGNALS:
 
             void progress(int);
-            void error(installer::error);
+            void error(const installer::error&);
             void select_account();
             void finish();
 
@@ -59,6 +59,7 @@ Q_SIGNALS:
             void uninstall();
             void uninstalltmp();
             void clear_updates();
+            static void clear_tmp_install_dir();
 
             worker();
             virtual ~worker();

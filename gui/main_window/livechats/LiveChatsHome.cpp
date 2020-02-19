@@ -77,7 +77,7 @@ namespace Ui
             info_.YouMember_ = true;
             if (info_.ApprovedJoin_)
             {
-                joinButton_->setText(QT_TRANSLATE_NOOP("popup_window", "WAITING"));
+                joinButton_->setText(QT_TRANSLATE_NOOP("popup_window", "Waiting"));
                 joinButton_->setEnabled(false);
             }
         }
@@ -87,18 +87,18 @@ namespace Ui
     {
         if (Logic::getContactListModel()->contains(info_.AimId_))
         {
-            joinButton_->setText(QT_TRANSLATE_NOOP("popup_window", "OPEN"));
+            joinButton_->setText(QT_TRANSLATE_NOOP("popup_window", "Open"));
             joinButton_->setEnabled(true);
         }
         else
         {
             if (info_.YouPending_)
             {
-                joinButton_->setText(QT_TRANSLATE_NOOP("popup_window", "WAITING"));
+                joinButton_->setText(QT_TRANSLATE_NOOP("popup_window", "Waiting"));
             }
             else
             {
-                joinButton_->setText(QT_TRANSLATE_NOOP("popup_window", "JOIN"));
+                joinButton_->setText(QT_TRANSLATE_NOOP("popup_window", "Join"));
             }
 
             joinButton_->setEnabled(!info_.YouPending_);

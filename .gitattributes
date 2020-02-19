@@ -13,3 +13,4 @@
 *.dylib binary
 *.nib binary
 *.icns binary
+external/** filter=lfs diff=lfs merge=lfs -text

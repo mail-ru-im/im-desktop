@@ -1,16 +1,7 @@
-//
-//  mac_updater.m
-//  ICQ
-//
-//  Created by Vladimir Kubyshev on 03/12/15.
-//  Copyright © 2015 Mail.RU. All rights reserved.
-//
-
 #import <Cocoa/Cocoa.h>
 #import <Carbon/Carbon.h>
 #import <Foundation/Foundation.h>
 #import <Sparkle/Sparkle.h>
-#import <HockeySDK/HockeySDK.h>
 #import <Quartz/Quartz.h>
 #import <MetalKit/MetalKit.h>
 
@@ -30,6 +21,12 @@
 #include "../gui/utils/gui_metrics.h"
 #include "../gui/gui_settings.h"
 
+#include "../gui/app_config.h"
+#include "../libomicron/include/omicron/omicron.h"
+#include "../common.shared/version_info.h"
+#include "../common.shared/omicron_keys.h"
+#include "../common.shared/config/config.h"
+
 #include "core_dispatcher.h"
 
 #import "mac_support.h"
@@ -41,6 +38,23 @@
 #include <objc/runtime.h>
 
 #import <SystemConfiguration/SystemConfiguration.h>
+
+namespace
+{
+    constexpr bool supportUpdates() noexcept
+    {
+#ifdef UPDATES
+        return true;
+#else
+        return false;
+#endif
+    }
+
+    constexpr std::chrono::seconds checkUpdateInterval()
+    {
+        return std::chrono::hours(24);
+    }
+}
 
 enum
 {
@@ -71,7 +85,7 @@ enum
 };
 
 
-static QMap<int, QAction *> menuItems_;
+static std::map<int, QAction *> menuItems_;
 static Ui::MainWindow * mainWindow_ = nil;
 static auto closeAct_ = Ui::ShortcutsCloseAction::Default;
 
@@ -291,6 +305,24 @@ static NSString * fromQString(const QString & src)
 
 // Events catcher
 
+// sparkle
+
+@interface SparkleUpdaterDelegate : NSObject <SUUpdaterDelegate>
+@end
+
+@implementation SparkleUpdaterDelegate
+- (void)updaterDidNotFindUpdate:(SUUpdater *)__unused updater
+{
+
+}
+
+-(void)updater:(SUUpdater *)__unused updater didFindValidUpdate:(SUAppcastItem *)__unused item
+{
+
+}
+@end
+// end of sparkle
+
 BOOL isNetworkAvailable()
 {
     BOOL connected;
@@ -416,6 +448,7 @@ MacSupport::MacSupport(Ui::MainWindow * mainWindow):
 
 MacSupport::~MacSupport()
 {
+    updateFeedUrl_.reset();
     menuItems_.clear();
 
     mainWindow_ = nil;
@@ -427,42 +460,82 @@ MacSupport::~MacSupport()
     macPreviewProxy_ = nil;
 }
 
+namespace
+{
+    std::string feedUrl()
+    {
+        std::string feed_url;
+        feed_url += "https://";
+        if constexpr (environment::is_alpha())
+            feed_url += Ui::GetAppConfig().getMacUpdateAlpha();
+        else if (Ui::GetDispatcher()->isInstallBetaUpdatesEnabled())
+            feed_url += Ui::GetAppConfig().getMacUpdateBeta();
+        else
+            feed_url += Ui::GetAppConfig().getMacUpdateRelease();
+
+        feed_url += '/';
+
+        std::string current_build_version = core::tools::version_info().get_version();
+        if constexpr (environment::is_alpha())
+            feed_url += omicronlib::_o(omicron::keys::update_alpha_version, current_build_version);
+        else if (Ui::GetDispatcher()->isInstallBetaUpdatesEnabled())
+            feed_url += omicronlib::_o(omicron::keys::update_beta_version, current_build_version);
+        else
+            feed_url += omicronlib::_o(omicron::keys::update_release_version, current_build_version);
+
+        feed_url += "/version.xml";
+        return feed_url;
+    };
+}
+
 void MacSupport::enableMacUpdater()
 {
-#ifdef UPDATES
+    if constexpr (!supportUpdates())
+        return;
+
     if (sparkleUpdater_ != nil)
         return;
 
-    NSDictionary *plist = [[NSBundle mainBundle] infoDictionary];
-
-    BOOL automaticChecks = [plist[@"SUEnableAutomaticChecks"] boolValue];
-    NSURL * updateFeed = [NSURL URLWithString:plist[@"SUFeedURL"]];
-
     sparkleUpdater_ = [[SUUpdater alloc] init];
 
-    [sparkleUpdater_ setAutomaticallyChecksForUpdates:automaticChecks];
+    //SparkleUpdaterDelegate* delegate = [SparkleUpdaterDelegate new];
+    //[sparkleUpdater_ setDelegate: delegate];
 
-    if constexpr (build::is_debug())
-        updateFeed = [NSURL URLWithString:@"http://testmra.mail.ru/icq_mac_update/icq_update.xml"];
-
-    if (updateFeed)
+    if (!updateFeedUrl_)
     {
-        [sparkleUpdater_ setFeedURL:updateFeed];
-        [sparkleUpdater_ setUpdateCheckInterval:86400];
-
-//        [sparkleUpdater_ checkForUpdates:nil];
+        updateFeedUrl_ = std::make_unique<QTimer>();
+        updateFeedUrl_->setInterval(std::chrono::milliseconds(checkUpdateInterval()).count());
+        QObject::connect(updateFeedUrl_.get(), &QTimer::timeout, updateFeedUrl_.get(), [this]()
+        {
+            checkForUpdates();
+        });
+        updateFeedUrl_->start();
     }
-#endif
+
+    checkForUpdates();
+}
+
+bool MacSupport::setFeedUrl()
+{
+    if (sparkleUpdater_)
+    {
+        std::string feed_url = feedUrl();
+
+        NSString* su_feed_url = [NSString stringWithUTF8String:feed_url.c_str()];
+        NSURL * updateFeed = [NSURL URLWithString:su_feed_url];
+
+        if (updateFeed)
+        {
+            [sparkleUpdater_ setFeedURL:updateFeed];
+            return true;
+        }
+    }
+    return false;
 }
 
 void MacSupport::enableMacCrashReport()
 {
-    if constexpr (build::is_release())
-    {
-        [[BITHockeyManager sharedHockeyManager] configureWithIdentifier:HOCKEY_APPID];
-        [BITHockeyManager sharedHockeyManager].disableMetricsManager = YES;
-        [[BITHockeyManager sharedHockeyManager] startManager];
-    }
+    return;
 }
 
 void MacSupport::listenSleepAwakeEvents()
@@ -488,9 +561,17 @@ void MacSupport::listenSleepAwakeEvents()
     });
 }
 
+void MacSupport::checkForUpdates()
+{
+    if (isDoNotDisturbOn())
+        return;
+    if (sparkleUpdater_ && setFeedUrl())
+        [sparkleUpdater_ checkForUpdatesInBackground];
+}
+
 void MacSupport::runMacUpdater()
 {
-    if (sparkleUpdater_)
+    if (sparkleUpdater_ && setFeedUrl())
         [sparkleUpdater_ checkForUpdates:nil];
 }
 
@@ -517,12 +598,7 @@ void MacSupport::enableMacPreview(WId wid)
 
 void MacSupport::postCrashStatsIfNedded()
 {
-    if ([[BITHockeyManager sharedHockeyManager].crashManager didCrashInLastSession])
-    {
-        core::stats::event_props_type props;
-        props.emplace_back("time", std::to_string(0));
-        Ui::GetDispatcher()->post_im_stats_to_core(core::stats::im_stat_event_names::crash, props);
-    }
+    return;
 }
 
 MacTitlebar* MacSupport::windowTitle()
@@ -632,7 +708,8 @@ QString MacSupport::settingsPath()
 {
     NSArray *paths = NSSearchPathForDirectoriesInDomains(NSApplicationSupportDirectory, NSUserDomainMask, YES);
     NSString *applicationSupportDirectory = [paths firstObject];
-    return toQString([applicationSupportDirectory stringByAppendingPathComponent:[NSString stringWithUTF8String:(build::is_icq() ? product_path_icq_a : product_path_agent_mac_a)]]);
+    const auto productPath = config::get().string(config::values::product_path_mac);
+    return toQString([applicationSupportDirectory stringByAppendingPathComponent:[NSString stringWithUTF8String:productPath.data()]]);
 }
 
 QString MacSupport::bundleName()
@@ -640,11 +717,17 @@ QString MacSupport::bundleName()
     return QString::fromUtf8([[[NSBundle mainBundle] bundleIdentifier] UTF8String]);
 }
 
+QString MacSupport::bundleDir()
+{
+    return QString::fromUtf8([[[NSBundle mainBundle] bundlePath] UTF8String]);
+}
+
 QString MacSupport::defaultDownloadsPath()
 {
     NSArray *paths = NSSearchPathForDirectoriesInDomains(NSLibraryDirectory, NSUserDomainMask, YES);
     NSString *path = [paths objectAtIndex:0];
-    path = [path stringByAppendingPathComponent:[NSString stringWithUTF8String:(build::is_icq() ? product_path_icq_a : product_path_agent_mac_a)]];
+    const auto productPath = config::get().string(config::values::product_path_mac);
+    path = [path stringByAppendingPathComponent:[NSString stringWithUTF8String:(productPath.data())]];
     path = [path stringByAppendingPathComponent:@"Downloads"];
     return QString::fromUtf8([path UTF8String]);
 
@@ -675,57 +758,57 @@ void MacSupport::createMenuBar(bool simple)
         QAction *action = nullptr;;
 
         auto menu = mainMenu_->addMenu(Utils::Translations::Get(qsl("&Edit")));
-        menuItems_.insert(edit_undo, createAction(menu, Utils::Translations::Get(qsl("Undo")), qsl("Ctrl+Z"), mainWindow_, &Ui::MainWindow::undo));
-        menuItems_.insert(edit_redo, createAction(menu, Utils::Translations::Get(qsl("Redo")), qsl("Shift+Ctrl+Z"), mainWindow_, &Ui::MainWindow::redo));
+        menuItems_.insert({edit_undo, createAction(menu, Utils::Translations::Get(qsl("Undo")), qsl("Ctrl+Z"), mainWindow_, &Ui::MainWindow::undo)});
+        menuItems_.insert({edit_redo, createAction(menu, Utils::Translations::Get(qsl("Redo")), qsl("Shift+Ctrl+Z"), mainWindow_, &Ui::MainWindow::redo)});
         menu->addSeparator();
-        menuItems_.insert(edit_cut, createAction(menu, Utils::Translations::Get(qsl("Cut")), qsl("Ctrl+X"), mainWindow_, &Ui::MainWindow::cut));
-        menuItems_.insert(edit_copy, createAction(menu, Utils::Translations::Get(qsl("Copy")), qsl("Ctrl+C"), mainWindow_, &Ui::MainWindow::copy));
-        menuItems_.insert(edit_paste, createAction(menu, Utils::Translations::Get(qsl("Paste")), qsl("Ctrl+V"), mainWindow_, &Ui::MainWindow::paste));
-        //menuItems_.insert(edit_pasteAsQuote, createAction(menu, Utils::Translations::Get("Paste as Quote"), qsl("Alt+Ctrl+V"), mainWindow_, &Ui::MainWindow::quote));
+        menuItems_.insert({edit_cut, createAction(menu, Utils::Translations::Get(qsl("Cut")), qsl("Ctrl+X"), mainWindow_, &Ui::MainWindow::cut)});
+        menuItems_.insert({edit_copy, createAction(menu, Utils::Translations::Get(qsl("Copy")), qsl("Ctrl+C"), mainWindow_, &Ui::MainWindow::copy)});
+        menuItems_.insert({edit_paste, createAction(menu, Utils::Translations::Get(qsl("Paste")), qsl("Ctrl+V"), mainWindow_, &Ui::MainWindow::paste)});
+        //menuItems_.insert({edit_pasteAsQuote, createAction(menu, Utils::Translations::Get("Paste as Quote"), qsl("Alt+Ctrl+V"), mainWindow_, &Ui::MainWindow::quote)});
         menu->addSeparator();
-        menuItems_.insert(edit_pasteEmoji, createAction(menu, Utils::Translations::Get(qsl("Emoji && Symbols")), qsl("Meta+Ctrl+Space"), mainWindow_, &Ui::MainWindow::pasteEmoji));
+        menuItems_.insert({edit_pasteEmoji, createAction(menu, Utils::Translations::Get(qsl("Emoji && Symbols")), qsl("Meta+Ctrl+Space"), mainWindow_, &Ui::MainWindow::pasteEmoji)});
         extendedMenus_.push_back(menu);
         editMenu_ = menu;
         QObject::connect(menu, &QMenu::aboutToShow, menu, []() { emit Utils::InterConnector::instance().closeAnyPopupMenu(); });
 
         menu = mainMenu_->addMenu(Utils::Translations::Get(qsl("Contact")));
 
-        if (!build::is_dit() && !build::is_biz())
+        if (config::get().is_on(config::features::add_contact))
         {
-            menuItems_.insert(contact_addBuddy, createAction(menu, Utils::Translations::Get(qsl("Add Buddy")), qsl("Ctrl+N"), mainWindow_, [](){
+            menuItems_.insert({contact_addBuddy, createAction(menu, Utils::Translations::Get(qsl("Add Buddy")), qsl("Ctrl+N"), mainWindow_, [](){
                 if (mainWindow_)
                     mainWindow_->onShowAddContactDialog({ Utils::AddContactDialogs::Initiator::From::HotKey });
-            }));
+            })});
         }
-        
-        menuItems_.insert(contact_profile, createAction(menu, Utils::Translations::Get(qsl("Profile")), qsl("Ctrl+I"), mainWindow_, &Ui::MainWindow::activateProfile));
+
+        menuItems_.insert({contact_profile, createAction(menu, Utils::Translations::Get(qsl("Profile")), qsl("Ctrl+I"), mainWindow_, &Ui::MainWindow::activateProfile)});
 
         auto code = Ui::get_gui_settings()->get_value<int>(settings_shortcuts_close_action, static_cast<int>(Ui::ShortcutsCloseAction::Default));
         closeAct_ = static_cast<Ui::ShortcutsCloseAction>(code);
-        menuItems_.insert(contact_close, createAction(menu, Utils::getShortcutsCloseActionName(closeAct_), qsl("Ctrl+W"), mainWindow_, &Ui::MainWindow::activateShortcutsClose));
+        menuItems_.insert({contact_close, createAction(menu, Utils::getShortcutsCloseActionName(closeAct_), qsl("Ctrl+W"), mainWindow_, &Ui::MainWindow::activateShortcutsClose)});
 
         extendedMenus_.push_back(menu);
         QObject::connect(menu, &QMenu::aboutToShow, menu, []() { emit Utils::InterConnector::instance().closeAnyPopupMenu(); });
 
         menu = mainMenu_->addMenu(Utils::Translations::Get(qsl("View")));
-        menuItems_.insert(view_unreadMessage, createAction(menu, Utils::Translations::Get(qsl("Next Unread Message")), qsl("Ctrl+]"), mainWindow_, &Ui::MainWindow::activateNextUnread));
-        menuItems_.insert(view_fullScreen, createAction(menu, Utils::Translations::Get(qsl("Enter Full Screen")), qsl("Meta+Ctrl+F"), mainWindow_, &Ui::MainWindow::toggleFullScreen));
+        menuItems_.insert({view_unreadMessage, createAction(menu, Utils::Translations::Get(qsl("Next Unread Message")), qsl("Ctrl+]"), mainWindow_, &Ui::MainWindow::activateNextUnread)});
+        menuItems_.insert({view_fullScreen, createAction(menu, Utils::Translations::Get(qsl("Enter Full Screen")), qsl("Meta+Ctrl+F"), mainWindow_, &Ui::MainWindow::toggleFullScreen)});
         extendedMenus_.push_back(menu);
         QObject::connect(menu, &QMenu::aboutToShow, menu, []() { emit Utils::InterConnector::instance().closeAnyPopupMenu(); });
 
         menu = mainMenu_->addMenu(Utils::Translations::Get(qsl("Window")));
-        menuItems_.insert(window_minimizeWindow, createAction(menu, Utils::Translations::Get(qsl("Minimize")), qsl("Ctrl+M"), mainWindow_, &Ui::MainWindow::minimize));
-        menuItems_.insert(window_maximizeWindow, createAction(menu, Utils::Translations::Get(qsl("Zoom")), QString(), mainWindow_, &Ui::MainWindow::zoomWindow));
+        menuItems_.insert({window_minimizeWindow, createAction(menu, Utils::Translations::Get(qsl("Minimize")), qsl("Ctrl+M"), mainWindow_, &Ui::MainWindow::minimize)});
+        menuItems_.insert({window_maximizeWindow, createAction(menu, Utils::Translations::Get(qsl("Zoom")), QString(), mainWindow_, &Ui::MainWindow::zoomWindow)});
         menu->addSeparator();
-        menuItems_.insert(window_prevChat, createAction(menu, Utils::Translations::Get(qsl("Select Previous Chat")), qsl("Meta+Shift+Tab"), mainWindow_, &Ui::MainWindow::activatePrevChat));
-        menuItems_.insert(window_nextChat, createAction(menu, Utils::Translations::Get(qsl("Select Next Chat")), qsl("Meta+Tab"), mainWindow_, &Ui::MainWindow::activateNextChat));
+        menuItems_.insert({window_prevChat, createAction(menu, Utils::Translations::Get(qsl("Select Previous Chat")), qsl("Meta+Shift+Tab"), mainWindow_, &Ui::MainWindow::activatePrevChat)});
+        menuItems_.insert({window_nextChat, createAction(menu, Utils::Translations::Get(qsl("Select Next Chat")), qsl("Meta+Tab"), mainWindow_, &Ui::MainWindow::activateNextChat)});
         menu->addSeparator();
         // in QMenu are no tags to make difference between items with same title, so ql1c(' ') is added as mark
-        menuItems_.insert(window_mainWindow, createAction(menu, Utils::getAppTitle() % ql1c(' '), qsl("Ctrl+0"), mainWindow_, &Ui::MainWindow::activate));
+        menuItems_.insert({window_mainWindow, createAction(menu, Utils::getAppTitle() % ql1c(' '), qsl("Ctrl+0"), mainWindow_, &Ui::MainWindow::activate)});
         menu->addSeparator();
-        menuItems_.insert(window_bringToFront, createAction(menu, Utils::Translations::Get(qsl("Bring All To Front")), QString(), mainWindow_, &Ui::MainWindow::bringToFront));
+        menuItems_.insert({window_bringToFront, createAction(menu, Utils::Translations::Get(qsl("Bring All To Front")), QString(), mainWindow_, &Ui::MainWindow::bringToFront)});
         menu->addSeparator();
-        menuItems_.insert(window_switchMainWindow, createAction(menu, Utils::getAppTitle(), QString(), mainWindow_, &Ui::MainWindow::activate));
+        menuItems_.insert({window_switchMainWindow, createAction(menu, Utils::getAppTitle(), QString(), mainWindow_, &Ui::MainWindow::activate)});
 
         if (const auto& mainPage = mainWindow_->getMainPage())
             menuItems_[window_switchVoipWindow] = createAction(menu, Utils::Translations::Get(qsl("ICQ VOIP")), QString(), mainPage, &Ui::MainPage::showVideoWindow);
@@ -734,37 +817,38 @@ void MacSupport::createMenuBar(bool simple)
         extendedMenus_.push_back(menu);
         QObject::connect(menu, &QMenu::aboutToShow, menu, []() { emit Utils::InterConnector::instance().closeAnyPopupMenu(); });
 
-        if (false)
+        if constexpr (false)
         {
             action = createAction(menu, Utils::Translations::Get(qsl("About app")), QString(), mainWindow_, &Ui::MainWindow::activateAbout);
             action->setMenuRole(QAction::MenuRole::ApplicationSpecificRole);
-            menuItems_.insert(global_about, action);
+            menuItems_.insert({global_about, action});
             extendedActions_.push_back(action);
 
             action = createAction(menu, Utils::Translations::Get(qsl("Settings")), QString(), mainWindow_, &Ui::MainWindow::activateSettings);
             action->setMenuRole(QAction::MenuRole::ApplicationSpecificRole);
-            menuItems_.insert(global_settings, action);
+            menuItems_.insert({global_settings, action});
             extendedActions_.push_back(action);
         }
         else
         {
             action = createAction(menu, qsl("about.*"), QString(), mainWindow_, &Ui::MainWindow::activateAbout);
-            menuItems_.insert(global_about, action);
+            menuItems_.insert({global_about, action});
             extendedActions_.push_back(action);
 
             action = createAction(menu, qsl("settings"), QString(), mainWindow_, &Ui::MainWindow::activateSettings);
-            menuItems_.insert(global_settings, action);
+            menuItems_.insert({global_settings, action});
             extendedActions_.push_back(action);
         }
 
-#ifdef UPDATES
-        action = createAction(menu, Utils::Translations::Get(qsl("Check For Updates...")), QString(), mainWindow_, &Ui::MainWindow::checkForUpdates);
-        action->setMenuRole(QAction::MenuRole::ApplicationSpecificRole);
-        menuItems_.insert(global_update, action);
-        extendedActions_.push_back(action);
-#endif
+        if constexpr (supportUpdates())
+        {
+            action = createAction(menu, Utils::Translations::Get(qsl("Check For Updates...")), QString(), mainWindow_, &Ui::MainWindow::checkForUpdates);
+            action->setMenuRole(QAction::MenuRole::ApplicationSpecificRole);
+            menuItems_.insert({global_update, action});
+            extendedActions_.push_back(action);
+        }
 
-        mainMenu_->addAction(qsl("quit"), mainWindow_, SLOT(exit())); // use qt5 style connect since qt5.11
+        mainMenu_->addAction(qsl("quit"), mainWindow_, &Ui::MainWindow::exit);
 
         mainWindow_->setMenuBar(mainMenu_);
     }
@@ -777,7 +861,7 @@ void MacSupport::createMenuBar(bool simple)
         }
     }
 
-    for (auto menu: extendedMenus_)
+    for (auto menu : extendedMenus_)
         menu->setEnabled(!simple);
 
     windowMenu_->setEnabled(true);
@@ -848,6 +932,8 @@ void MacSupport::updateMainMenu()
     QAction *windowICQ = menuItems_[window_switchMainWindow];
     QAction *bringToFront = menuItems_[window_bringToFront];
 
+    menuItems_[window_mainWindow]->setEnabled(true);
+
     const auto mainPage = mainWindow_ ? mainWindow_->getMainPage() : nullptr;
     bool mainWindowActive = mainWindow_ && mainWindow_->isActive();
 
@@ -899,10 +985,11 @@ void MacSupport::updateMainMenu()
     }
 
     const auto notMiniAndFull = (!isCall || mainWindowActive) && !mainWindow_->isMinimized() && !isFullScreen && !inDock;
+    const auto isFullResizeEnabled = mainWindow_ && (notMiniAndFull || (!voipWindowFullscreen && !voipWindowMinimized));
     if (windowMaximize)
-        windowMaximize->setEnabled(mainWindow_ && (notMiniAndFull || (!voipWindowFullscreen && !voipWindowMinimized)));
+        windowMaximize->setEnabled(isFullResizeEnabled);
     if (windowMinimize)
-        windowMinimize->setEnabled(mainWindow_ && (notMiniAndFull || (!voipWindowFullscreen && !voipWindowMinimized)));
+        windowMinimize->setEnabled(isFullResizeEnabled);
 
     if (windowVoip)
     {
@@ -914,6 +1001,7 @@ void MacSupport::updateMainMenu()
     if (windowICQ)
     {
         windowICQ->setCheckable(true);
+        windowICQ->setEnabled(true);
         windowICQ->setChecked(mainWindow_ && mainWindowActive);
     }
 
@@ -927,7 +1015,6 @@ void MacSupport::updateMainMenu()
         {
             QPainter p(&diamond);
             p.setRenderHint(QPainter::Antialiasing);
-            p.setRenderHint(QPainter::HighQualityAntialiasing);
             p.setPen(Qt::black);
             p.setBrush(Qt::black);
             p.setFont(Fonts::appFontScaled(18));
@@ -979,15 +1066,6 @@ void MacSupport::log(QString logString)
     NSString * logString_ = fromQString(logString);
 
     NSLog(@"%@", logString_);
-}
-
-void MacSupport::replacePasteboard(const QString &text)
-{
-    NSPasteboard * pb = [NSPasteboard generalPasteboard];
-
-    [pb clearContents];
-    [pb declareTypes:[NSArray arrayWithObject:NSPasteboardTypeString] owner:nil];
-    [pb setString:fromQString(text) forType:NSPasteboardTypeString];
 }
 
 typedef const UCKeyboardLayout * LayoutsPtr;
@@ -1327,6 +1405,7 @@ void MacSupport::showNSPopUpMenuWindowLevel(QWidget* w)
     w->show();
     NSWindow *wnd = [reinterpret_cast<NSView *>(w->winId()) window];
     [wnd setLevel:NSPopUpMenuWindowLevel];
+    [wnd setHidesOnDeactivate:NO];
 }
 
 void MacSupport::showNSModalPanelWindowLevel(QWidget* w)
@@ -1336,11 +1415,19 @@ void MacSupport::showNSModalPanelWindowLevel(QWidget* w)
     [wnd setLevel:NSModalPanelWindowLevel];
 }
 
+void MacSupport::showNSFloatingWindowLevel(QWidget* w)
+{
+    w->show();
+    NSWindow *wnd = [reinterpret_cast<NSView *>(w->winId()) window];
+    [wnd setLevel:NSFloatingWindowLevel];
+}
+
 void MacSupport::showOverAll(QWidget* w)
 {
     w->show();
     NSWindow *wnd = [reinterpret_cast<NSView *>(w->winId()) window];
     [wnd setLevel:NSScreenSaverWindowLevel];
+    [wnd setHidesOnDeactivate:NO];
 }
 
 bool MacSupport::isMetalSupported()
@@ -1350,9 +1437,22 @@ bool MacSupport::isMetalSupported()
 
     if (!checked)
     {
-        auto device = MTLCreateSystemDefaultDevice();
-        if (device)
-            isMetalSupported = true;
+        NSOperatingSystemVersion minimumSupportedOSVersion = { .majorVersion = 10, .minorVersion = 12, .patchVersion = 0 };
+        const auto isAtLeastSierra = [NSProcessInfo.processInfo isOperatingSystemAtLeastVersion:minimumSupportedOSVersion];
+
+        if (isAtLeastSierra)
+        {
+            NSArray<id<MTLDevice>>* devices = MTLCopyAllDevices();
+
+            for (id<MTLDevice> device in devices)
+            {
+                if (device)
+                {
+                    isMetalSupported = true;
+                    break;
+                }
+            }
+        }
 
         checked = true;
     }
@@ -1369,34 +1469,49 @@ void MacSupport::zoomWindow(WId wid)
 
 MacMenuBlocker::MacMenuBlocker()
     : receiver_(std::make_unique<QObject>())
+    , isBlocked_(false)
 {
-    macMenuState_.reserve(menuItems_.size());
-
-    for (auto it = menuItems_.begin(); it != menuItems_.end(); ++it)
-    {
-        if (!it.value())
-            continue;
-
-        macMenuState_.emplace_back(it.value(), it.value()->isEnabled());
-        it.value()->setEnabled(false);
-
-        auto index = macMenuState_.size() - 1;
-        QObject::connect(it.value(), &QAction::changed, receiver_.get(), [index, this]{
-            menuState()[index].first->setEnabled(false);
-        });
-    }
 }
 
 MacMenuBlocker::~MacMenuBlocker()
+{
+    unblock();
+}
+
+void MacMenuBlocker::block()
+{
+    if (isBlocked_)
+        return;
+
+    if (!macMenuState_.empty())
+        macMenuState_.clear();
+
+    macMenuState_.reserve(menuItems_.size());
+
+    for (auto &[key, action] : menuItems_)
+    {
+        if (!action)
+            continue;
+
+        if (key == window_mainWindow || key == window_bringToFront
+            || key == window_maximizeWindow || key == window_minimizeWindow
+            || key == window_switchMainWindow)
+        {
+            continue;
+        }
+
+        macMenuState_.emplace_back(action, action->isEnabled());
+        action->setEnabled(false);
+    }
+    isBlocked_ = true;
+}
+
+void MacMenuBlocker::unblock()
 {
     for (auto [action, enabled]: macMenuState_)
     {
         QSignalBlocker blocker(action);
         action->setEnabled(enabled);
     }
-}
-
-MacMenuBlocker::MenuStateContainer& MacMenuBlocker::menuState()
-{
-    return macMenuState_;
+    isBlocked_ = false;
 }

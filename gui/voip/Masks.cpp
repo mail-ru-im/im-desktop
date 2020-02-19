@@ -50,6 +50,5 @@ void voip_masks::Mask::onLoadingProgress(quint64 _seq, unsigned _percent)
 {
     if (progressSeq_ != _seq)
         return;
-
     emit loadingProgress(_percent);
 }

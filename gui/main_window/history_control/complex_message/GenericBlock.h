@@ -70,9 +70,15 @@ public:
 
     virtual QString getSourceText() const override;
 
+    virtual QString getPlaceholderText() const override;
+
+    virtual const QString& getLink() const override;
+
     virtual QString getTextForCopy() const override;
 
     virtual bool isBubbleRequired() const override;
+
+    virtual bool isMarginRequired() const override;
 
     void setBubbleRequired(bool required);
 
@@ -88,7 +94,7 @@ public:
 
     MenuFlags getMenuFlags() const override;
 
-    bool onMenuItemTriggered(const QVariantMap &params) final override;
+    bool onMenuItemTriggered(const QVariantMap &params) override;
 
     void onActivityChanged(const bool isActive) override;
 
@@ -126,13 +132,42 @@ public:
 
     bool isInsideForward() const;
 
-    void selectByPos(const QPoint& from, const QPoint& to, const BlockSelectionType selection) override;
+    void selectByPos(const QPoint& from, const QPoint& to, bool _topToBottom) override;
+
+    void selectAll() override;
 
     bool isSelected() const override;
 
     void setSelected(bool _selected) override;
 
     void clearSelection() override;
+    virtual Data::FilesPlaceholderMap getFilePlaceholders() override;
+
+    void updateWith(IItemBlock* _other) override;
+
+    bool needStretchToOthers() const override;
+
+    void stretchToWidth(const int _width) override;
+
+    QRect getBlockGeometry() const override;
+
+    qint64 getGalleryId() const;
+
+    void notifyBlockContentsChanged();
+
+    bool hasLeadLines() const override;
+
+    void markDirty() override;
+
+    static void showFileSavedToast(const QString& _path);
+
+    static void showErrorToast();
+
+    static void showFileCopiedToast();
+
+    static void showToast(const QString& _text);
+
+    bool isEdited() const;
 
 protected:
     virtual bool drag() override;
@@ -142,8 +177,6 @@ protected:
     virtual void initialize() = 0;
 
     bool isInitialized() const;
-
-    void notifyBlockContentsChanged();
 
     virtual void onMenuCopyLink();
 
@@ -175,15 +208,9 @@ protected:
 
     QPoint mapFromParent(const QPoint& _point, const QRect& _blockGeometry) const;
 
-    void showFileSavedToast(const QString& _path);
+    void resizeBlock(const QSize& _size) override;
 
-    void showErrorToast();
-
-    void showFileCopiedToast();
-
-    void showToast(const QString& _text);
-
-    qint64 getGalleryId() const;
+    void onBlockSizeChanged(const QSize& _size) override;
 
     QuoteColorAnimation QuoteAnimation_;
 
@@ -194,7 +221,7 @@ private:
 
     void stopResourcesUnloadTimer();
 
-    QPoint getToastPos(const QSize& _dialogSize);
+    static QPoint getToastPos(const QSize& _dialogSize);
 
     bool Initialized_;
 

@@ -1,10 +1,8 @@
-#ifndef __SECURE_CALL_WND_H__
-#define __SECURE_CALL_WND_H__
+#pragma once
 #include "../controls/TextEmojiWidget.h"
 
 namespace Ui
 {
-
     class ImageContainer : public QWidget
     {
         Q_OBJECT
@@ -62,7 +60,4 @@ namespace Ui
         void onBtnOkClicked();
         void onDetailsButtonClicked();
     };
-
 }
-
-#endif//__SECURE_CALL_WND_H__

@@ -6,10 +6,13 @@
 #include "styles/ThemeParameters.h"
 #include "controls/TooltipWidget.h"
 
+#include "media/permissions/MediaCapturePermissions.h"
+
 namespace
 {
     constexpr std::chrono::milliseconds getAnimDuration() noexcept { return std::chrono::milliseconds(100); }
     constexpr std::chrono::milliseconds longTapTimeout() noexcept { return std::chrono::milliseconds(250); }
+    constexpr std::chrono::milliseconds autoDelayTimeout() noexcept { return std::chrono::milliseconds(100); }
 
     int normalIconSize()
     {
@@ -83,8 +86,6 @@ namespace Ui
 {
     SubmitButton::SubmitButton(QWidget* _parent)
         : ClickableWidget(_parent)
-        , enableCircleHover_(false)
-        , underMouse_(false)
     {
         setFocusPolicy(Qt::TabFocus);
         setFocusColor(focusColorPrimary());
@@ -106,11 +107,20 @@ namespace Ui
             if (isHovered())
                 emit longTapped(QPrivateSignal());
         });
+
+        longPressTimer_.setSingleShot(true);
+        longPressTimer_.setInterval(longTapTimeout().count());
+        connect(&longPressTimer_, &QTimer::timeout, this, [this]()
+        {
+            if (hasFocus())
+            {
+                setIsUnderLongPress(true);
+                emit longPressed(QPrivateSignal());
+            }
+        });
     }
 
-    SubmitButton::~SubmitButton()
-    {
-    }
+    SubmitButton::~SubmitButton() = default;
 
     void SubmitButton::setState(const State _state, const StateTransition _transition)
     {
@@ -168,7 +178,10 @@ namespace Ui
         if (enableCircleHover_ != _val)
         {
             enableCircleHover_ = _val;
-            updateHoverCircle(isHovered());
+            if (!enableCircleHover_)
+                setIsUnderLongPress(false);
+            updateHoverCircle(isHovered() || (isUnderLongPress_ && hasFocus()));
+            setFocusColor(enableCircleHover_ ? Qt::transparent : focusColorPrimary());
         }
     }
 
@@ -262,12 +275,94 @@ namespace Ui
     {
         ClickableWidget::focusInEvent(_event);
         onMouseStateChanged();
+        if (isUnderLongPress_)
+            updateHoverCircle(true);
     }
 
     void SubmitButton::focusOutEvent(QFocusEvent* _event)
     {
         ClickableWidget::focusOutEvent(_event);
         onMouseStateChanged();
+
+        longPressTimer_.stop();
+        if (isUnderLongPress_)
+            updateHoverCircle(false);
+    }
+
+    static constexpr bool isEnterKey(int key) noexcept
+    {
+        return key == Qt::Key_Enter || key == Qt::Key_Return;
+    }
+
+    static bool hasPermission()
+    {
+        return media::permissions::checkPermission(media::permissions::DeviceType::Microphone) == media::permissions::Permission::Allowed;
+    }
+
+    void SubmitButton::keyPressEvent(QKeyEvent* _event)
+    {
+        if (hasPermission())
+        {
+            _event->ignore();
+            if constexpr (platform::is_apple())
+            {
+                if (_event->isAutoRepeat())
+                {
+                    if (!enableCircleHover_ && !isUnderLongPress_ && isEnterKey(_event->key()) && !longPressTimer_.isActive() && hasFocus())
+                        longPressTimer_.start();
+                    _event->accept();
+                }
+            }
+        }
+        else
+        {
+            if (_event->isAutoRepeat())
+                _event->accept();
+            else
+                ClickableWidget::keyPressEvent(_event);
+        }
+    }
+
+    void SubmitButton::keyReleaseEvent(QKeyEvent* _event)
+    {
+        if (hasPermission())
+        {
+            _event->ignore();
+            if (_event->isAutoRepeat())
+            {
+                if (!enableCircleHover_ && !isUnderLongPress_ && isEnterKey(_event->key()) && !longPressTimer_.isActive() && hasFocus())
+                    longPressTimer_.start();
+                _event->accept();
+            }
+            else
+            {
+                if (isUnderLongPress_ && !isEnterKey(_event->key()))
+                    return;
+
+                longPressTimer_.stop();
+                setIsUnderLongPress(false);
+                if (isEnterKey(_event->key()) && hasFocus())
+                {
+                    click(ClickType::ByKeyboard);
+                    _event->accept();
+                }
+            }
+        }
+        else
+        {
+            if (_event->isAutoRepeat())
+                _event->accept();
+            else
+                ClickableWidget::keyReleaseEvent(_event);
+        }
+    }
+
+    bool SubmitButton::focusNextPrevChild(bool _next)
+    {
+        if (enableCircleHover_ && !isUnderLongPress_)
+            return false;
+
+        return ClickableWidget::focusNextPrevChild(_next);
     }
 
     void SubmitButton::onMouseStateChanged()
@@ -283,7 +378,7 @@ namespace Ui
         if (const auto newUnderMouse = containsCursorUnder(); newUnderMouse != underMouse_)
         {
             underMouse_ = newUnderMouse;
-            updateHoverCircle(underMouse_);
+            updateHoverCircle(underMouse_ && !isUnderLongPress_);
         }
     }
 
@@ -400,6 +495,12 @@ namespace Ui
 
 
         return QString();
+    }
+
+    void SubmitButton::setIsUnderLongPress(bool _v)
+    {
+        if (_v != isUnderLongPress_)
+            isUnderLongPress_ = _v;
     }
 
     bool SubmitButton::containsCursorUnder() const

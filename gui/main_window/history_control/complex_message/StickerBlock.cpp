@@ -11,7 +11,6 @@
 #include "../../mediatype.h"
 
 #include "StickerBlockLayout.h"
-#include "Selection.h"
 
 #include "StickerBlock.h"
 #include "ComplexMessageItem.h"
@@ -155,9 +154,6 @@ void StickerBlock::drawBlock(QPainter &p, const QRect& _rect, const QColor& _quo
             p.drawRoundRect(rect, Utils::scale_value(8), Utils::scale_value(8));
         }
     }
-
-    if (isSelected())
-        renderSelected(p);
 }
 
 void StickerBlock::initialize()
@@ -207,13 +203,6 @@ void StickerBlock::loadSticker()
     setCursor(Qt::PointingHandCursor);
     updateGeometry();
     update();
-}
-
-void StickerBlock::renderSelected(QPainter& _p)
-{
-    assert(isSelected());
-
-    _p.fillRect(rect(), MessageStyle::getSelectionColor());
 }
 
 void StickerBlock::requestSticker()

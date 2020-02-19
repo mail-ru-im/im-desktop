@@ -226,25 +226,7 @@ namespace Ui
         clear();
 
         patchVersion_ = _msg->GetUpdatePatchVersion();
-        complexMessage_ = ComplexMessageItemBuilder::makeComplexItem(
-            nullptr,
-            _msg->Id_,
-            _msg->InternalId_,
-            QDate(),
-            _msg->Prev_,
-            _msg->GetText(),
-            _msg->AimId_,
-            _msg->AimId_,
-            Logic::GetFriendlyContainer()->getFriendly(_msg->GetChatSender()),
-            _msg->Quotes_,
-            _msg->Mentions_,
-            _msg->GetSticker(),
-            _msg->GetFileSharing(),
-            false,
-            false,
-            false,
-            _msg->GetDescription(),
-            _msg->GetUrl(), _msg->sharedContact_);
+        complexMessage_ = ComplexMessageItemBuilder::makeComplexItem(nullptr, *_msg, ComplexMessageItemBuilder::ForcePreview::No);
 
         previewType_ = complexMessage_->getPinPlaceholder();
 
@@ -607,7 +589,7 @@ namespace Ui
             auto mw = Utils::InterConnector::instance().getMainWindow();
             if (mw)
             {
-                const auto link = complexMessage_->getFirstLink();
+                const auto link = Utils::replaceFilesPlaceholders(complexMessage_->getFirstLink(), complexMessage_->getFilesPlaceholders());
                 Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::fullmediascr_view, { { "chat_type", Utils::chatTypeByAimId(Logic::getContactListModel()->selectedContact()) },{ "from", "chat" },{ "media_type", isImage() ? "photo" : "video" } });
                 mw->openGallery(Logic::getContactListModel()->selectedContact(), Utils::normalizeLink(QStringRef(&link)).toString(), complexMessage_->getId());
             }

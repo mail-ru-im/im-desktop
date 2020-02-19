@@ -31,7 +31,7 @@ int32_t get_gateway::init_request(std::shared_ptr<core::http_request_simple> _re
 
     const time_t ts = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()) - params_.time_offset_;
     std::stringstream ss_host;
-    ss_host << urls::get_url(urls::url_type::files_gateway_host) << std::string_view("/init");
+    ss_host << urls::get_url(urls::url_type::files_host) << std::string_view("/init");
 
     std::stringstream ss_file_size;
     ss_file_size << file_size_;

@@ -66,6 +66,7 @@ namespace Ui
         , isFloating_(_overlay)
     {
         Utils::grabTouchWidget(this);
+        setMultiselectEnabled(false);
 
         setDate(QDate());
 
@@ -92,13 +93,6 @@ namespace Ui
     ServiceMessageItem::~ServiceMessageItem()
     {
     }
-
-    void ServiceMessageItem::setQuoteSelection()
-    {
-        /// TODO-quote
-        assert(0);
-    }
-
 
     void ServiceMessageItem::drawDate(QPainter& _p)
     {
@@ -158,9 +152,9 @@ namespace Ui
     QFont ServiceMessageItem::getFont()
     {
         if (platform::is_apple() && type_ == type::typeDate)
-            return Fonts::adjustedAppFont(12, Fonts::FontWeight::Normal);
+            return Fonts::adjustedAppFont(12, Fonts::FontWeight::Normal, Fonts::FontAdjust::NoAdjust);
         else
-            return Fonts::adjustedAppFont(12, Fonts::FontWeight::SemiBold);
+            return Fonts::adjustedAppFont(12, Fonts::FontWeight::SemiBold, Fonts::FontAdjust::NoAdjust);
     }
 
     QColor ServiceMessageItem::getColor()
@@ -209,7 +203,7 @@ namespace Ui
         return message_;
     }
 
-    MediaType ServiceMessageItem::getMediaType() const
+    MediaType ServiceMessageItem::getMediaType(MediaRequestMode) const
     {
         return MediaType::noMedia;
     }

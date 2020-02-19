@@ -5,6 +5,8 @@
 #include "../../corelib/collection_helper.h"
 #include "../utils/gui_coll_helper.h"
 
+#include "../common.shared/json_unserialize_helpers.h"
+
 #include <rapidjson/writer.h>
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/document.h>
@@ -27,7 +29,7 @@ namespace Omicron
 
             init_ = true;
 
-            std::lock_guard<SpinLock> lock(dataLock_);
+            std::scoped_lock lock(dataLock_);
             data_.swap(newData);
         }
     }
@@ -42,8 +44,8 @@ namespace Omicron
     {
         if (init_)
         {
-            auto data = getData();
-            auto it = data->FindMember(rapidjson::StringRef(_keyName.data(), _keyName.size()));
+            const auto data = getData();
+            const auto it = data->FindMember(common::json::make_string_ref(_keyName));
             if (it != data->MemberEnd() && it->value.IsBool())
                 return it->value.GetBool();
         }
@@ -55,8 +57,8 @@ namespace Omicron
     {
         if (init_)
         {
-            auto data = getData();
-            auto it = data->FindMember(rapidjson::StringRef(_keyName.data(), _keyName.size()));
+            const auto data = getData();
+            const auto it = data->FindMember(common::json::make_string_ref(_keyName));
             if (it != data->MemberEnd() && it->value.IsInt())
                 return it->value.GetInt();
         }
@@ -68,8 +70,8 @@ namespace Omicron
     {
         if (init_)
         {
-            auto data = getData();
-            auto it = data->FindMember(rapidjson::StringRef(_keyName.data(), _keyName.size()));
+            const auto data = getData();
+            const auto it = data->FindMember(common::json::make_string_ref(_keyName));
             if (it != data->MemberEnd() && it->value.IsInt())
                 return it->value.GetUint();
         }
@@ -81,8 +83,8 @@ namespace Omicron
     {
         if (init_)
         {
-            auto data = getData();
-            auto it = data->FindMember(rapidjson::StringRef(_keyName.data(), _keyName.size()));
+            const auto data = getData();
+            const auto it = data->FindMember(common::json::make_string_ref(_keyName));
             if (it != data->MemberEnd() && it->value.IsInt64())
                 return it->value.GetInt64();
         }
@@ -94,8 +96,8 @@ namespace Omicron
     {
         if (init_)
         {
-            auto data = getData();
-            auto it = data->FindMember(rapidjson::StringRef(_keyName.data(), _keyName.size()));
+            const auto data = getData();
+            const auto it = data->FindMember(common::json::make_string_ref(_keyName));
             if (it != data->MemberEnd() && it->value.IsInt64())
                 return it->value.GetUint64();
         }
@@ -107,8 +109,8 @@ namespace Omicron
     {
         if (init_)
         {
-            auto data = getData();
-            auto it = data->FindMember(rapidjson::StringRef(_keyName.data(), _keyName.size()));
+            const auto data = getData();
+            const auto it = data->FindMember(common::json::make_string_ref(_keyName));
             if (it != data->MemberEnd() && it->value.IsDouble())
                 return it->value.GetDouble();
         }
@@ -120,8 +122,8 @@ namespace Omicron
     {
         if (init_)
         {
-            auto data = getData();
-            auto it = data->FindMember(rapidjson::StringRef(_keyName.data(), _keyName.size()));
+            const auto data = getData();
+            const auto it = data->FindMember(common::json::make_string_ref(_keyName));
             if (it != data->MemberEnd() && it->value.IsString())
                 return std::string(it->value.GetString(), it->value.GetStringLength());
         }
@@ -133,8 +135,8 @@ namespace Omicron
     {
         if (init_)
         {
-            auto data = getData();
-            auto it = data->FindMember(rapidjson::StringRef(_keyName.data(), _keyName.size()));
+            const auto data = getData();
+            const auto it = data->FindMember(common::json::make_string_ref(_keyName));
             if (it != data->MemberEnd() && it->value.IsString())
                 return QString::fromUtf8(it->value.GetString(), it->value.GetStringLength());
         }
@@ -146,8 +148,8 @@ namespace Omicron
     {
         if (init_)
         {
-            auto data = getData();
-            auto it = data->FindMember(rapidjson::StringRef(_keyName.data(), _keyName.size()));
+            const auto data = getData();
+            const auto it = data->FindMember(common::json::make_string_ref(_keyName));
             if (it != data->MemberEnd() && (it->value.IsObject() || it->value.IsArray()))
             {
                 rapidjson::StringBuffer buffer;
@@ -164,8 +166,8 @@ namespace Omicron
     {
         if (init_)
         {
-            auto data = getData();
-            auto it = data->FindMember(rapidjson::StringRef(_keyName.data(), _keyName.size()));
+            const auto data = getData();
+            const auto it = data->FindMember(common::json::make_string_ref(_keyName));
             if (it != data->MemberEnd() && (it->value.IsObject() || it->value.IsArray()))
             {
                 rapidjson::StringBuffer buffer;
@@ -186,7 +188,7 @@ namespace Omicron
 
     std::shared_ptr<const rapidjson::Document> OmicronContainer::getData() const
     {
-        std::lock_guard<SpinLock> lock(dataLock_);
+        std::scoped_lock lock(dataLock_);
         return data_;
     }
 }

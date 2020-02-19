@@ -1,7 +1,6 @@
 #pragma once
 
 #include "proxy_settings.h"
-#include "../../connections/urls_cache.h"
 
 namespace core
 {

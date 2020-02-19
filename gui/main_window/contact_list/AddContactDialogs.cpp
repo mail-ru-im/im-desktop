@@ -6,6 +6,7 @@
 #include "main_window/MainWindow.h"
 #include "core_dispatcher.h"
 #include "utils/utils.h"
+#include "../common.shared/config/config.h"
 
 static bool ShowingAddContactsDialog = false;
 
@@ -56,8 +57,8 @@ void showAddContactsDialog(const QString& _name, const QString& _phone, AddConta
         gd->rejectDialog(Utils::CloseWindowInfo());
     });
 
-    auto okCancelBtns = gd->addButtonsPair(QT_TRANSLATE_NOOP("popup_window", "CANCEL"),
-                                           QT_TRANSLATE_NOOP("popup_window", "ADD"),
+    auto okCancelBtns = gd->addButtonsPair(QT_TRANSLATE_NOOP("popup_window", "Cancel"),
+                                           QT_TRANSLATE_NOOP("popup_window", "Add"),
                                            true,   /* isActive */
                                            false,  /* rejectable - handle it in the widget */
                                            false); /* _acceptable - handle it in the widget */
@@ -79,7 +80,21 @@ void showAddContactsDialog(const QString& _name, const QString& _phone, AddConta
 
 void showAddContactsDialog(const AddContactDialogs::Initiator &_initiator)
 {
-    showAddContactsDialog(QString(), QString(), AddContactCallback(),  _initiator);
+    auto w = new Ui::TwoOptionsWidget(nullptr, qsl(":/add_by_phone"), QT_TRANSLATE_NOOP("add_widget", "Phone number"), qsl(":/add_by_nick"),
+        config::get().is_on(config::features::has_nicknames) ? QT_TRANSLATE_NOOP("add_widget", "Nickname") : QT_TRANSLATE_NOOP("add_widget", "Email"));
+    Ui::GeneralDialog generalDialog(w, Utils::InterConnector::instance().getMainWindow());
+    generalDialog.addLabel(config::get().is_on(config::features::has_nicknames)
+                           ? QT_TRANSLATE_NOOP("add_widget", "Add contact by phone or nickname?")
+                           : QT_TRANSLATE_NOOP("add_widget", "Add contact by phone or email?"));
+
+    generalDialog.addCancelButton(QT_TRANSLATE_NOOP("report_widget", "Cancel"), true);
+    if (generalDialog.showInCenter())
+    {
+        if (w->isFirstSelected())
+            showAddContactsDialog(QString(), QString(), AddContactCallback(), _initiator);
+        else if (w->isSecondSelected())
+            emit Utils::InterConnector::instance().addByNick();
+    }
 }
 
 void sendStatsFor(const AddContactDialogs::Initiator& _initiator)

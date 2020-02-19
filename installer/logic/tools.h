@@ -68,6 +68,7 @@ namespace installer
 
         QString get_product_folder();
         QString get_install_folder();
+        QString get_installer_tmp_folder();
         QString get_updates_folder();
         QString get_icq_exe();
         QString get_icq_exe_short();
@@ -81,12 +82,31 @@ namespace installer
         QString get_exported_account_folder();
         QString get_exported_settings_folder();
 
-        const wchar_t* get_crossprocess_mutex_name();
+        std::string_view get_crossprocess_mutex_name();
         QString get_crossprocess_pipe_name();
 
         const install_config& get_install_config();
         void set_install_config(const install_config& _config);
 
         translate::translator_base* get_translator();
+    }
+
+    namespace draw
+    {
+        constexpr int animationDuration = 250;
+
+        class ButtonEffect : public QGraphicsOpacityEffect
+        {
+        public:
+            ButtonEffect(QWidget* _parent, int _minWidth = 0, int _maxWidth = 0) : QGraphicsOpacityEffect(_parent), minWidth_(_minWidth), maxWidth_(_maxWidth){}
+
+        protected:
+            void draw(QPainter* _painter);
+        private:
+            int minWidth_;
+            int maxWidth_;
+        };
+
+        void animateButton(QWidget* _button, bool _state, int _minWidth = 0, int _maxWidth = 0);
     }
 }

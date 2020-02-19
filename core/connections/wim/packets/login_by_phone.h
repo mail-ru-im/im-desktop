@@ -1,6 +1,3 @@
-#ifndef __LOGIN_BY_PHONE_H_
-#define __LOGIN_BY_PHONE_H_
-
 #pragma once
 
 #include "../wim_packet.h"
@@ -27,6 +24,7 @@ namespace core
             uint32_t						expired_in_;
             uint32_t						host_time_;
             int64_t							time_offset_;
+            bool need_fill_profile_;
 
             virtual int32_t init_request(std::shared_ptr<core::http_request_simple> _request) override;
             virtual int32_t on_response_error_code() override;
@@ -46,9 +44,8 @@ namespace core
             const uint32_t get_expired_in() const { return expired_in_; }
             const uint32_t get_host_time() const { return host_time_; }
             const int64_t	get_time_offset() const { return time_offset_; }
+            const bool get_need_fill_profile() const { return need_fill_profile_; }
+            bool is_valid() const override { return true; }
         };
     }
 }
-
-
-#endif //__LOGIN_BY_PHONE_H_

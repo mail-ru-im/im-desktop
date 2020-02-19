@@ -25,9 +25,7 @@ namespace installer
         {
         }
 
-        worker::~worker()
-        {
-        }
+        worker::~worker() = default;
 
         task_callback dummy_callback = [](const installer::error&){};
 
@@ -163,6 +161,11 @@ namespace installer
             }
         }
 
+        void worker::clear_tmp_install_dir()
+        {
+            QDir(get_installer_tmp_folder()).removeRecursively();
+        }
+
         void worker::update()
         {
             progress_ = 5;
@@ -176,8 +179,13 @@ namespace installer
                     return;
                 }
 
-                run_async_function<installer::error>(write_update_version, [this](const installer::error&)
+                run_async_function<installer::error>(write_update_version, [this](const installer::error& _err)
                 {
+                    if (!_err.is_ok())
+                    {
+                        emit error(_err);
+                        return;
+                    }
                     emit finish();
                 }, 100);
 

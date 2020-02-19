@@ -87,8 +87,10 @@ namespace Ui
         void updateIcon(const bool _updateOverlay = true);
         void updateIconIfNeeded();
 
+        void animateTaskbarIcon();
+
         void setMacIcon();
-        void cleanupOverlayIcon();
+        void cleanupWinIcons();
 
         void clearAllNotifications();
 
@@ -123,7 +125,8 @@ namespace Ui
 #if defined (_WIN32)
 //        std::unique_ptr<ToastManager> ToastManager_;
         ITaskbarList3 *ptbl;
-        HICON overlayIcon_;
+        std::array<HICON, 2> winIcons_;
+        bool flashing_;
 #elif defined(__APPLE__)
         std::unique_ptr<NotificationCenterManager> NotificationCenterManager_;
 #endif //_WIN32

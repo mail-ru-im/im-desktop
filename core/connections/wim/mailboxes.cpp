@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "mailboxes.h"
 #include "../../core.h"
-
+#include "../../tools/json_helper.h"
 
 namespace core
 {
@@ -35,18 +35,10 @@ namespace wim
 
     void mailbox::unserialize(const rapidjson::Value& _node)
     {
-        auto iter_email = _node.FindMember("email");
-
-        if (iter_email == _node.MemberEnd() || !iter_email->value.IsString())
+        if (!tools::unserialize_value(_node, "email", email_))
             return;
 
-        email_ = rapidjson_get_string(iter_email->value);
-
-        auto iter_unread = _node.FindMember("unreadCount");
-        if (iter_unread == _node.MemberEnd() || !iter_unread->value.IsUint())
-            return;
-
-        unreadCount_ = iter_unread->value.GetUint();
+        tools::unserialize_value(_node, "unreadCount", unreadCount_);
     }
 
     void mailbox::serialize(core::coll_helper _collection) const
@@ -267,10 +259,11 @@ namespace wim
         if (iter_mailboxes == doc.MemberEnd() || !iter_mailboxes->value.IsArray())
             return -1;
 
-        for (auto iter = iter_mailboxes->value.Begin(); iter != iter_mailboxes->value.End(); ++iter)
+        for (const auto& mb : iter_mailboxes->value.GetArray())
         {
             mailbox m;
-            m.unserialize(*iter);
+            m.unserialize(mb);
+
             auto mail = m.get_mailbox();
             mailboxes_[std::move(mail)] = std::move(m);
         }

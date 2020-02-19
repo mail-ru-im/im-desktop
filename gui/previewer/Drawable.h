@@ -24,7 +24,6 @@ public:
 
     virtual void setCheckable(bool _checkable) { checkable_ = _checkable; }
 
-
     virtual bool hovered() const { return hovered_; }
     virtual bool pressed() const { return pressed_; }
     virtual bool disabled() const { return disabled_; }

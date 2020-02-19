@@ -3,6 +3,7 @@
 #include "fetch_event_notification.h"
 #include "../wim_im.h"
 #include "../wim_packet.h"
+#include "../../../tools/json_helper.h"
 
 using namespace core;
 using namespace wim;

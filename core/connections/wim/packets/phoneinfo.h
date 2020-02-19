@@ -42,6 +42,7 @@ namespace core
 
         public:
             phoneinfo(wim_packet_params params, const std::string &phone, const std::string &gui_locale);
+            bool is_valid() const override { return true; }
             virtual ~phoneinfo();
         };
 

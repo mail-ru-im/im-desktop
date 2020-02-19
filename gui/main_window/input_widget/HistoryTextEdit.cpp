@@ -1,11 +1,11 @@
 #include "stdafx.h"
 
 #include "HistoryTextEdit.h"
-#include "Text2Emoji.h"
+#include "Text2Symbol.h"
 #include "HistoryUndoStack.h"
 #include "AttachFilePopup.h"
 
-#include "gui_settings.h"
+
 #include "fonts.h"
 #include "main_window/MainWindow.h"
 #include "main_window/MainPage.h"
@@ -48,6 +48,12 @@ namespace
         return Utils::scale_value(80);
     }
 
+    bool canPasteImage()
+    {
+        const auto md = QGuiApplication::clipboard()->mimeData();
+        return md && (md->hasImage() || md->hasUrls());
+    }
+
     constexpr std::chrono::milliseconds getDurationAppear() noexcept { return std::chrono::milliseconds(100); }
     constexpr std::chrono::milliseconds getDurationDisappear() noexcept { return std::chrono::milliseconds(200); }
 }
@@ -59,12 +65,13 @@ namespace Ui
         , isEmpty_(true)
         , phAnimEnabled_(true)
         , stackRedo_(std::make_unique<HistoryUndoStack>())
-        , emojiReplacer_(std::make_unique<Emoji::TextEmojiReplacer>(this))
+        , emojiReplacer_(std::make_unique<Emoji::TextSymbolReplacer>(this))
     {
         setPlaceholderTextEx(QT_TRANSLATE_NOOP("input_widget", "Message"));
         setAcceptDrops(false);
         setAutoFillBackground(false);
         setTabChangesFocus(true);
+        setEnterKeyPolicy(EnterKeyPolicy::FollowSettingsRules);
 
         document()->setDocumentMargin(0);
 
@@ -82,59 +89,6 @@ namespace Ui
         connect(document(), &QTextDocument::contentsChanged, this, &HistoryTextEdit::onEditContentChanged);
     }
 
-    bool HistoryTextEdit::catchEnter(int _modifiers)
-    {
-        auto key1_to_send = get_gui_settings()->get_value<int>(settings_key1_to_send_message, KeyToSendMessage::Enter);
-
-        // spike for fix invalid setting
-        if (key1_to_send == KeyToSendMessage::Enter_Old)
-            key1_to_send = KeyToSendMessage::Enter;
-
-        switch (key1_to_send)
-        {
-        case Ui::KeyToSendMessage::Enter:
-            return _modifiers == Qt::NoModifier || _modifiers == Qt::KeypadModifier;
-        case Ui::KeyToSendMessage::Shift_Enter:
-            return _modifiers & Qt::ShiftModifier;
-        case Ui::KeyToSendMessage::Ctrl_Enter:
-            return _modifiers & Qt::ControlModifier;
-        case Ui::KeyToSendMessage::CtrlMac_Enter:
-            return _modifiers & Qt::MetaModifier;
-        default:
-            break;
-        }
-        return false;
-    }
-
-    bool HistoryTextEdit::catchNewLine(const int _modifiers)
-    {
-        auto key1_to_send = get_gui_settings()->get_value<int>(settings_key1_to_send_message, KeyToSendMessage::Enter);
-
-        // spike for fix invalid setting
-        if (key1_to_send == KeyToSendMessage::Enter_Old)
-            key1_to_send = KeyToSendMessage::Enter;
-
-        const auto ctrl = _modifiers & Qt::ControlModifier;
-        const auto shift = _modifiers & Qt::ShiftModifier;
-        const auto meta = _modifiers & Qt::MetaModifier;
-        const auto enter = (_modifiers == Qt::NoModifier || _modifiers == Qt::KeypadModifier);
-
-        switch (key1_to_send)
-        {
-        case Ui::KeyToSendMessage::Enter:
-            return shift || ctrl || meta;
-        case Ui::KeyToSendMessage::Shift_Enter:
-            return  ctrl || meta || enter;
-        case Ui::KeyToSendMessage::Ctrl_Enter:
-            return shift || meta || enter;
-        case Ui::KeyToSendMessage::CtrlMac_Enter:
-            return shift || ctrl || enter;
-        default:
-            break;
-        }
-        return false;
-    }
-
     void HistoryTextEdit::setPlaceholderTextEx(const QString &_text)
     {
         customPlaceholderText_ = _text;
@@ -150,7 +104,7 @@ namespace Ui
         document()->setDefaultStyleSheet(ql1s("a { color:") % Styling::getParameters().getColorHex(Styling::StyleVariable::TEXT_PRIMARY) % ql1s("; text-decoration:none;}"));
     }
 
-    Emoji::TextEmojiReplacer& HistoryTextEdit::getReplacer()
+    Emoji::TextSymbolReplacer& HistoryTextEdit::getReplacer()
     {
         return *emojiReplacer_;
     }
@@ -401,6 +355,22 @@ namespace Ui
         }
 
         return TextEditEx::focusNextPrevChild(_next);
+    }
+
+    void HistoryTextEdit::contextMenuEvent(QContextMenuEvent* e)
+    {
+        if (auto menu = getContextMenu(); menu)
+        {
+            const auto actions = menu->actions();
+            const auto it = std::find_if(actions.begin(), actions.end(), [](auto a) { return a->objectName() == ql1s("edit-paste"); });
+            if (it != actions.end() && !(*it)->isEnabled())
+            {
+                if (canPasteImage())
+                    (*it)->setEnabled(true);
+            }
+            menu->exec(e->globalPos());
+            menu->deleteLater();
+        }
     }
 
     void HistoryTextEdit::checkMentionNeeded()

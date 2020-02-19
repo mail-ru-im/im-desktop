@@ -4,55 +4,63 @@
 
 DATA_NS_BEGIN
 
+enum class LinkContentType
+{
+    None,
+    Article,
+    ArticleVideo,
+    ArticleGif,
+    Image,
+    Video,
+    Gif,
+    File
+};
+
 class LinkMetadata final
 {
 public:
     LinkMetadata();
 
-    LinkMetadata(
-        const QString &title,
-        const QString &description,
-        const QString &siteName,
-        const QString &contentType,
-        const QSize &previewSize,
-        const QString &downloadUri,
-        const int64_t fileSize,
-        const QSize &originSize);
+    LinkMetadata(const QString& _title,
+        const QString& _description,
+        const QString& _siteName,
+        const QString& _contentType,
+        const QString& _previewUri,
+        const QString& _faviconUri,
+        const QSize& _previewSize,
+        const QString& _downloadUri,
+        const int64_t _fileSize,
+        const QSize& _originSize,
+        const QString& _fileName);
 
     ~LinkMetadata();
 
     const QString& getTitle() const;
-
     const QString& getDescription() const;
-
     const QString& getDownloadUri() const;
-
     const QString& getSiteName() const;
-
-    const QString& getContentType() const;
-
+    const QString& getContentTypeStr() const;
+    const QString& getPreviewUri() const;
+    const QString& getFaviconUri() const;
+    const QString& getFileName() const;
+    LinkContentType getContentType() const;
     const QSize& getPreviewSize() const;
-
     const QSize& getOriginSize() const;
-
     int64_t getFileSize() const;
 
 private:
-    QString Title_;
-
-    QString Description_;
-
-    QString DownloadUri_;
-
-    QString SiteName_;
-
-    QString ContentType_;
-
-    QSize PreviewSize_;
-
-    int64_t FileSize_;
-
+    QString title_;
+    QString description_;
+    QString downloadUri_;
+    QString siteName_;
+    QString contentTypeStr_;
+    QString previewUri_;
+    QString faviconUri_;
+    QString fileName_;
+    QSize previewSize_;
+    int64_t fileSize_;
     QSize originSize_;
+    LinkContentType contentType_;
 };
 
 static_assert(

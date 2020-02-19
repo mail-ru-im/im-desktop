@@ -1,5 +1,25 @@
 #pragma once
 
+#include "../common.shared/json_unserialize_helpers.h"
+
+#ifndef _RAPIDJSON_GET_STRING_
+#define _RAPIDJSON_GET_STRING_
+namespace core
+{
+    template <typename T>
+    inline std::string rapidjson_get_string(const T& value) { return std::string(value.GetString(), value.GetStringLength()); }
+
+    template <>
+    inline std::string rapidjson_get_string<rapidjson::StringBuffer>(const rapidjson::StringBuffer& value) { return std::string(value.GetString(), value.GetSize()); }
+
+    template <typename T>
+    inline std::string_view rapidjson_get_string_view(const T& value) { return std::string_view(value.GetString(), value.GetStringLength()); }
+
+    template <>
+    inline std::string_view rapidjson_get_string_view<rapidjson::StringBuffer>(const rapidjson::StringBuffer& value) { return std::string_view(value.GetString(), value.GetSize()); }
+}
+#endif // _RAPIDJSON_GET_STRING_
+
 namespace core
 {
     namespace tools
@@ -15,93 +35,51 @@ namespace core
         template <class U>
         inline bool unserialize_value(const rapidjson::Value& _node, const U& _name, Out std::string& _out_param)
         {
-            if (const auto iter = _node.FindMember(make_string_ref(_name)); iter != _node.MemberEnd() && iter->value.IsString())
-            {
-                _out_param = rapidjson_get_string(iter->value);
-                return true;
-            }
-
-            return false;
+            return common::json::unserialize_value(_node, _name, _out_param);
         }
 
         template <class U>
         inline bool unserialize_value(const rapidjson::Value& _node, const U& _name, Out std::string_view& _out_param)
         {
-            if (const auto iter = _node.FindMember(make_string_ref(_name)); iter != _node.MemberEnd() && iter->value.IsString())
-            {
-                _out_param = rapidjson_get_string_view(iter->value);
-                return true;
-            }
-
-            return false;
+            return common::json::unserialize_value(_node, _name, _out_param);
         }
 
         template <class U>
         inline bool unserialize_value(const rapidjson::Value& _node, const U& _name, Out int& _out_param)
         {
-            if (const auto iter = _node.FindMember(make_string_ref(_name)); iter != _node.MemberEnd() && iter->value.IsInt())
-            {
-                _out_param = iter->value.GetInt();
-                return true;
-            }
-
-            return false;
+            return common::json::unserialize_value(_node, _name, _out_param);
         }
 
         template <class U>
         inline bool unserialize_value(const rapidjson::Value& _node, const U& _name, Out int64_t& _out_param)
         {
-            if (const auto iter = _node.FindMember(make_string_ref(_name)); iter != _node.MemberEnd() && iter->value.IsInt64())
-            {
-                _out_param = iter->value.GetInt64();
-                return true;
-            }
-
-            return false;
+            return common::json::unserialize_value(_node, _name, _out_param);
         }
 
         template <class U>
         inline bool unserialize_value(const rapidjson::Value& _node, const U& _name, Out uint64_t& _out_param)
         {
-            if (const auto iter = _node.FindMember(make_string_ref(_name)); iter != _node.MemberEnd() && iter->value.IsUint64())
-            {
-                _out_param = iter->value.GetUint64();
-                return true;
-            }
-
-            return false;
+            return common::json::unserialize_value(_node, _name, _out_param);
         }
 
         template <class U>
         inline bool unserialize_value(const rapidjson::Value& _node, const U& _name, Out unsigned int& _out_param)
         {
-            if (const auto iter = _node.FindMember(make_string_ref(_name)); iter != _node.MemberEnd() && iter->value.IsUint())
-            {
-                _out_param = iter->value.GetUint();
-                return true;
-            }
+            return common::json::unserialize_value(_node, _name, _out_param);
+        }
 
-            return false;
+        template <class U>
+        inline bool unserialize_value(const rapidjson::Value& _node, const U& _name, Out double& _out_param)
+        {
+            return common::json::unserialize_value(_node, _name, _out_param);
         }
 
         template <class U>
         inline bool unserialize_value(const rapidjson::Value& _node, const U& _name, Out bool& _out_param)
         {
-            if (const auto iter = _node.FindMember(make_string_ref(_name)); iter != _node.MemberEnd())
-            {
-                if (iter->value.IsBool())
-                {
-                    _out_param = iter->value.GetBool();
-                    return true;
-                }
-                else if (iter->value.IsInt() || iter->value.IsUint())
-                {
-                    _out_param = iter->value != 0;
-                    return true;
-                }
-            }
-
-            return false;
+            return common::json::unserialize_value(_node, _name, _out_param);
         }
+
+        void sort_json_keys_by_name(rapidjson::Value* _node);
     }
 }

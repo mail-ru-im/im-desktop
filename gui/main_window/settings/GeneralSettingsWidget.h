@@ -60,7 +60,6 @@ namespace Ui
         Q_OBJECT
 
     private:
-        std::vector< voip_proxy::device_desc > devices_;
         // Hold user selected devices.
         std::unordered_map<uint8_t, std::string> user_selected_device_;
 
@@ -93,6 +92,7 @@ namespace Ui
         QWidget* shortcuts_ = nullptr;
         QWidget* security_ = nullptr;
         Stickers::Store* stickersStore_ = nullptr;
+        QWidget* debugSettings_ = nullptr;
 
 
         struct Creator
@@ -103,7 +103,6 @@ namespace Ui
             static void initAppearance(QWidget* _parent);
             static void initNotifications(NotificationSettings* _parent);
             static void initContactUs(QWidget* _parent);
-            static void initAttachPhone(QWidget* _parent);
             static void initLanguage(QWidget* _parent);
             static void initShortcuts(QWidget* _parent);
             static void initSecurity(QWidget* _parent);
@@ -114,15 +113,13 @@ namespace Ui
         ~GeneralSettingsWidget();
 
         void setType(int _type);
-
-        //@return uid of set device.
-        std::string setActiveDevice(const voip_proxy::device_desc& _description);
+        void setActiveDevice(const voip_proxy::device_desc& _description);
 
     private:
         void initVoiceAndVideo();
 
         bool getDefaultDeviceFlag(const voip_proxy::EvoipDevTypes& type);
-        voip_proxy::device_desc applyDefaultDeviceLogic(const voip_proxy::device_desc& _description, std::string& runtimeDeviceUid);
+        void applyDefaultDeviceLogic(const voip_proxy::device_desc& _description);
         void onVoipDeviceListUpdated(voip_proxy::EvoipDevTypes deviceType, const voip_proxy::device_desc_vector& _devices);
     };
 }

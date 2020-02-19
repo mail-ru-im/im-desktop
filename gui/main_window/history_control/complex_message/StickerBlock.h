@@ -75,8 +75,6 @@ private:
 
     void loadSticker();
 
-    void renderSelected(QPainter& _p);
-
     void requestSticker();
 
     void updateStickerSize();

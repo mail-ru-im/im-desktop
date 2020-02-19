@@ -62,7 +62,6 @@ int32_t report_contact::init_request(std::shared_ptr<core::http_request_simple> 
 {
     constexpr char method[] = "reportAbuse";
 
-    _request->set_gzip(true);
     _request->set_url(urls::get_url(urls::url_type::rapi_host));
     _request->set_normalized_url(method);
     _request->set_keep_alive();

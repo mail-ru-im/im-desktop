@@ -40,6 +40,27 @@ EXTERNC void * _ReturnAddress(void);
 
 #endif
 
+namespace
+{
+    std::string from_utf16(std::wstring_view _source_16)
+    {
+#ifdef __linux__
+        return std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t>().to_bytes(_source_16.data(), _source_16.data() + _source_16.size());
+#else
+        return std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t>().to_bytes(_source_16.data(), _source_16.data() + _source_16.size());
+#endif //__linux__
+    }
+
+    std::wstring from_utf8(std::string_view _source_8)
+    {
+#ifdef __linux__
+        return std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t>().from_bytes(_source_8.data(), _source_8.data() + _source_8.size());
+#else
+        return std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t>().from_bytes(_source_8.data(), _source_8.data() + _source_8.size());
+#endif //__linux__
+    }
+}
+
 namespace core
 {
     namespace dump
@@ -49,7 +70,7 @@ namespace core
         bool crash_handler::is_sending_after_crash_ = false;
 
         crash_handler::crash_handler(
-            const std::string& _bundle,
+            std::string_view _bundle,
             const std::wstring& _product_path,
             const bool _is_sending_after_crash)
         {
@@ -58,9 +79,7 @@ namespace core
             crash_handler::product_path_ = _product_path;
         }
 
-        crash_handler::~crash_handler()
-        {
-        }
+        crash_handler::~crash_handler() = default;
 
         std::wstring crash_handler::get_product_path()
         {
@@ -95,11 +114,6 @@ namespace core
         std::wstring get_report_log_path()
         {
             return get_report_path() + L"\\crash.log";
-        }
-
-        std::wstring get_report_mini_dump_path()
-        {
-            return get_report_path() + L"\\crashdump.dmp";
         }
 
         int32_t crash_handler::get_dump_type()
@@ -282,11 +296,6 @@ namespace core
             (*ppExceptionPointers)->ContextRecord = pContextRecord;
         }
 
-        std::string from_utf16(const std::wstring& _source_16)
-        {
-            return std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t>().to_bytes(_source_16);
-        }
-
         bool is_dir_existed(const std::wstring& path)
         {
             struct stat info;
@@ -322,7 +331,7 @@ namespace core
             }
 
             // create folder if not existed
-            if (!CreateDirectory((get_report_path() + std::wstring(L"\\")).c_str(), NULL) &&
+            if (!CreateDirectory((get_report_path() + L'\\').c_str(), NULL) &&
                 ERROR_ALREADY_EXISTS != GetLastError())
             {
                 return;
@@ -330,9 +339,15 @@ namespace core
 
             create_log_file_for_hockey_app(pExcPtrs);
 
+            const auto guid = common::get_guid();
+            if (guid.empty())
+                return;
+
+            const auto dump_name = get_report_path() + L'\\' + from_utf8(product_bundle_) + L'_' + guid + L".dmp";
+
             // Create the minidump file
             HANDLE handleFile (CreateFile(
-                get_report_mini_dump_path().c_str(),
+                dump_name.c_str(),
                 GENERIC_WRITE,
                 0,
                 NULL,

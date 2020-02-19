@@ -4,8 +4,10 @@
 
 #include "../../http_request.h"
 #include "../../tools/hmac_sha_base64.h"
+#include "../../tools/json_helper.h"
 #include "../../log/log.h"
 #include "../../utils.h"
+#include "../common.shared/config/config.h"
 
 #include "../../../libomicron/include/omicron/omicron.h"
 
@@ -25,10 +27,7 @@ wim_packet::wim_packet(wim_packet_params params)
 
 }
 
-wim_packet::~wim_packet()
-{
-
-}
+wim_packet::~wim_packet() = default;
 
 bool wim_packet::support_async_execution() const
 {
@@ -54,23 +53,15 @@ int32_t wim_packet::execute()
     err = parse_response(response);
     if (err != 0 && g_core->is_im_stats_enabled())
     {
-        const auto is_one_domain = omicronlib::_o("one_domain_feature", feature::default_one_domain_feature());
-
         core::stats::event_props_type props;
         props.emplace_back("endpoint", request->get_normalized_url());
         props.emplace_back("error", std::to_string(err));
         props.emplace_back("status", std::to_string(status_code_));
 
         if (err == wpie_http_parse_response)
-        {
-            auto event_name = is_one_domain ? stats::im_stat_event_names::u_network_parsing_error_event : stats::im_stat_event_names::network_parsing_error_event;
-            g_core->insert_im_stats_event(event_name, std::move(props));
-        }
+            g_core->insert_im_stats_event(stats::im_stat_event_names::u_network_parsing_error_event, std::move(props));
         else if (status_code_ != 200 && status_code_ != 20000)
-        {
-            auto event_name = is_one_domain ? stats::im_stat_event_names::u_network_api_error_event : stats::im_stat_event_names::network_api_error_event;
-            g_core->insert_im_stats_event(event_name, std::move(props));
-        }
+            g_core->insert_im_stats_event(stats::im_stat_event_names::u_network_api_error_event, std::move(props));
     }
 
     return err;
@@ -89,9 +80,7 @@ void wim_packet::execute_async(handler_t _handler)
         return;
     }
 
-    auto wr_this = weak_from_this();
-
-    execute_request_async(request, [wr_this, request, _handler](int32_t _err)
+    execute_request_async(request, [wr_this = weak_from_this(), request, _handler](int32_t _err)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -108,23 +97,15 @@ void wim_packet::execute_async(handler_t _handler)
         const auto err = ptr_this->parse_response(response);
         if (err != 0 && g_core->is_im_stats_enabled())
         {
-            const auto is_one_domain = omicronlib::_o("one_domain_feature", feature::default_one_domain_feature());
-
             core::stats::event_props_type props;
             props.emplace_back("endpoint", request->get_normalized_url());
             props.emplace_back("error", std::to_string(err));
             props.emplace_back("status", std::to_string(ptr_this->get_status_code()));
 
             if (err == wpie_http_parse_response || err == wpie_http_empty_response)
-            {
-                auto event_name = is_one_domain ? stats::im_stat_event_names::u_network_parsing_error_event : stats::im_stat_event_names::network_parsing_error_event;
-                g_core->insert_im_stats_event(event_name, std::move(props));
-            }
+                g_core->insert_im_stats_event(stats::im_stat_event_names::u_network_parsing_error_event, std::move(props));
             else if (ptr_this->get_status_code() != 200 && ptr_this->get_status_code() != 20000)
-            {
-                auto event_name = is_one_domain ? stats::im_stat_event_names::u_network_api_error_event : stats::im_stat_event_names::network_api_error_event;
-                g_core->insert_im_stats_event(event_name, std::move(props));
-            }
+                g_core->insert_im_stats_event(stats::im_stat_event_names::u_network_api_error_event, std::move(props));
         }
 
         _handler(err);
@@ -134,6 +115,11 @@ void wim_packet::execute_async(handler_t _handler)
 bool wim_packet::is_stopped() const
 {
     return params_.stop_handler_();
+}
+
+bool core::wim::wim_packet::has_valid_token() const
+{
+    return !params_.a_token_.empty();
 }
 
 bool wim_packet::needs_to_repeat_failed(const int32_t _error) noexcept
@@ -182,9 +168,7 @@ int32_t wim_packet::execute_request(std::shared_ptr<core::http_request_simple> r
 
 void wim_packet::execute_request_async(std::shared_ptr<core::http_request_simple> _request, handler_t _handler)
 {
-    auto wr_this = weak_from_this();
-
-    _request->get_async([_request, _handler, wr_this](curl_easy::completion_code _completion_code)
+    _request->get_async([_request, _handler, wr_this = weak_from_this()](curl_easy::completion_code _completion_code)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -322,11 +306,8 @@ int32_t wim_packet::parse_response(std::shared_ptr<core::tools::binary_stream> r
         }
         else
         {
-            auto iter_data = iter_response->value.FindMember("data");
-            if (iter_data != iter_response->value.MemberEnd())
-            {
+            if (const auto iter_data = iter_response->value.FindMember("data"); iter_data != iter_response->value.MemberEnd())
                 parse_response_data_on_error(iter_data->value);
-            }
 
             return on_response_error_code();
         }
@@ -374,7 +355,8 @@ int32_t wim_packet::on_empty_data()
 
 std::string wim_packet::escape_symbols(std::string_view _data)
 {
-    std::stringstream ss_out;
+    std::string res;
+    res.reserve(size_t(_data.size() * 1.1));
 
     std::array<char, 100> buffer;
 
@@ -382,7 +364,7 @@ std::string wim_packet::escape_symbols(std::string_view _data)
     {
         if (core::tools::is_latin(sym) || core::tools::is_digit(sym) || strchr("-._~", sym))
         {
-            ss_out << sym;
+            res += sym;
         }
         else
         {
@@ -391,16 +373,17 @@ std::string wim_packet::escape_symbols(std::string_view _data)
 #else
             sprintf(buffer.data(), "%%%.2X", (unsigned char) sym);
 #endif
-            ss_out << buffer.data();
+            res += buffer.data();
         }
     }
 
-    return ss_out.str();
+    return res;
 }
 
 std::string wim_packet::escape_symbols_data(std::string_view _data)
 {
-    std::stringstream ss_out;
+    std::string res;
+    res.reserve(size_t(_data.size() * 1.1));
 
     std::array<char, 100> buffer;
 
@@ -408,7 +391,7 @@ std::string wim_packet::escape_symbols_data(std::string_view _data)
     {
         if (core::tools::is_latin(sym) || core::tools::is_digit(sym))
         {
-            ss_out << sym;
+            res += sym;
         }
         else
         {
@@ -417,11 +400,11 @@ std::string wim_packet::escape_symbols_data(std::string_view _data)
 #else
             sprintf(buffer.data(), "%%%.2X", (unsigned char)sym);
 #endif
-            ss_out << buffer.data();
+            res += buffer.data();
         }
     }
 
-    return ss_out.str();
+    return res;
 }
 
 std::string wim_packet::create_query_from_map(const str_2_str_map& _params)
@@ -525,58 +508,9 @@ void core::wim::wim_packet::set_repeat_count(const uint32_t _count)
     repeat_count_ = _count;
 }
 
-void core::wim::wim_packet::replace_log_messages(tools::binary_stream& _bs)
-{
-    uint32_t sz = _bs.available();
-    char* logdata = _bs.get_data();
-    char* end = logdata + sz;
-
-    if (!logdata || !sz)
-        return;
-
-    auto replace_marker = [logdata, end](const std::string_view _marker)
-    {
-        char* cursor = logdata;
-
-        while (cursor < end)
-        {
-            cursor = std::search(cursor, end, _marker.data(), _marker.data() + _marker.length());
-            cursor += _marker.length();
-            if (cursor >= end)
-                return;
-
-            while (cursor < end && *cursor++ != '\"') {}
-
-
-            while (cursor < end)
-            {
-                if (*cursor == '\"')
-                    break;
-
-                if (*cursor == '\\')
-                {
-                    *cursor = '*';
-
-                    ++cursor;
-                    if (cursor >= end)
-                        return;
-                }
-
-                *cursor = '*';
-
-                ++cursor;
-            }
-        }
-    };
-
-    for (const std::string_view _marker : { "\"text\":", "\"message\":" })
-        replace_marker(_marker);
-}
-
 std::string wim_packet::extract_etag() const
 {
-    auto header = header_str();
-    if (!header.empty())
+    if (auto header = header_str(); !header.empty())
     {
         std::transform(header.begin(), header.end(), header.begin(), ::tolower);
 
@@ -586,10 +520,10 @@ std::string wim_packet::extract_etag() const
             {
                 constexpr auto etag_postfix = std::string_view("\"");
 
-                const auto etag_pos_end = header.find(etag_postfix, etag_pos_begin + etag_prefix.length());
+                const auto etag_pos_end = header.find(etag_postfix, etag_pos_begin + etag_prefix.size());
 
                 if (etag_pos_end != std::string::npos)
-                    return std::string(header.begin() + etag_pos_begin + etag_prefix.length(), header.begin() + etag_pos_end);
+                    return std::string(header.begin() + etag_pos_begin + etag_prefix.size(), header.begin() + etag_pos_end);
             }
         }
     }
@@ -609,39 +543,64 @@ bool wim_packet::is_timeout_error(const int32_t _error) noexcept
     return _error == wim_protocol_internal_error::wpie_robusto_timeout;
 }
 
+static std::string make_marker(std::string_view _prepend, std::string_view _marker, std::string_view _append)
+{
+    std::string res;
+    res.reserve(_prepend.size() + _marker.size() + _append.size());
+    res += _prepend;
+    res += _marker;
+    res += _append;
+    return res;
+}
+
 void log_replace_functor::add_marker(std::string_view _marker, range_evaluator _re)
 {
-    markers_.push_back(std::make_pair(std::string(_marker) + '=', std::move(_re)));
+    markers_.push_back(std::make_pair(make_marker({}, _marker, std::string_view("=")), std::move(_re)));
 }
 
-void log_replace_functor::add_url_marker(const char* _marker, range_evaluator _re)
+void log_replace_functor::add_url_marker(std::string_view _marker, range_evaluator _re)
 {
-    markers_.push_back(std::make_pair(_marker, std::move(_re)));
+    markers_.push_back(std::make_pair(std::string(_marker), std::move(_re)));
 }
 
-void log_replace_functor::add_json_marker(const char* _marker, range_evaluator _re)
+void log_replace_functor::add_json_marker(std::string_view _marker, range_evaluator _re)
 {
-    const static std::string json_delimeter = "\":\"";
-    const static std::string json_delimeter_with_space = "\": \"";
+    static constexpr std::string_view json_delimeter = "\":\"";
+    static constexpr std::string_view json_delimeter_with_space = "\": \"";
     const static std::string json_delimeter_encoded = wim::wim_packet::escape_symbols("\":\"");
+    const static std::string json_qoute_encoded = wim::wim_packet::escape_symbols("\"");
 
-    markers_json_.push_back(std::make_pair('"' + std::string(_marker) + json_delimeter, _re));
-    markers_json_.push_back(std::make_pair('"' + std::string(_marker) + json_delimeter_with_space, _re));
-    markers_json_encoded_.push_back(std::make_pair(wim::wim_packet::escape_symbols("\"") + _marker + json_delimeter_encoded, std::move(_re)));
+    markers_json_.push_back(std::make_pair(make_marker("\"", _marker, json_delimeter), _re));
+    markers_json_.push_back(std::make_pair(make_marker("\"", _marker, json_delimeter_with_space), _re));
+    markers_json_encoded_.push_back(std::make_pair(make_marker(json_qoute_encoded, _marker, json_delimeter_encoded), std::move(_re)));
 }
 
-void log_replace_functor::add_json_array_marker(const char* _marker, range_evaluator _re)
+void log_replace_functor::add_json_array_marker(std::string_view _marker, range_evaluator _re)
 {
-    const static std::string json_delimeter = "\":[";
-    const static std::string json_delimeter_with_space = "\": [";
-    markers_json_.push_back(std::make_pair(_marker + json_delimeter, _re));
-    markers_json_.push_back(std::make_pair(_marker + json_delimeter_with_space, _re));
+    markers_json_.push_back(std::make_pair(make_marker({}, _marker, "\":["), _re));
+    markers_json_.push_back(std::make_pair(make_marker({}, _marker, "\": ["), _re));
 }
 
-void log_replace_functor::operator()(tools::binary_stream& _bs)
+void log_replace_functor::add_message_markers()
+{
+    add_json_array_marker("snippets");
+    add_json_marker("text");
+    add_json_marker("message");
+    add_json_marker("original_url", tail_from_last_range_evaluator('/'));
+    add_json_marker("id");
+    add_json_marker("preview_url");
+    add_json_marker("url");
+    add_json_marker("snippet");
+    add_json_marker("title");
+    add_json_marker("caption");
+}
+
+void log_replace_functor::operator()(tools::binary_stream& _bs) const
 {
     auto sz = _bs.available();
     auto data = _bs.get_data();
+    if (!sz || !data)
+        return;
 
     std::string json_value_end;
     std::string json_value_end_excluded;
@@ -653,6 +612,8 @@ void log_replace_functor::operator()(tools::binary_stream& _bs)
         bool found_json = false;
 
         range_evaluator range_eval = nullptr;
+
+        static const auto json_array_end_not_encoded = std::string("]");
 
         for (const auto& [m, re] : markers_)
         {
@@ -675,8 +636,8 @@ void log_replace_functor::operator()(tools::binary_stream& _bs)
                     range_eval = re;
                     if (m.back() == '[') // found array marker "...: ["
                     {
-                        static const auto json_array_end_not_encoded = std::string("]");
                         json_value_end = json_array_end_not_encoded;
+                        json_value_end_excluded.clear();
                     }
                     else
                     {
@@ -715,7 +676,7 @@ void log_replace_functor::operator()(tools::binary_stream& _bs)
                 end += i;
                 i += start;
 
-                while (i < sz && i <= end)
+                while (i < sz && i <= size_t(end))
                 {
                     replace(data + i);
                     ++i;
@@ -723,7 +684,7 @@ void log_replace_functor::operator()(tools::binary_stream& _bs)
             }
             else if (!found_json)
             {
-                while (i < sz && *(data + i) != '&')
+                while (i < sz && *(data + i) != '&' && *(data + i) != ' ')
                 {
                     replace(data + i);
                     ++i;
@@ -733,6 +694,11 @@ void log_replace_functor::operator()(tools::binary_stream& _bs)
             {
                 bool skip_value_end = false;
                 int count_to_skip = 0;
+
+                const bool array_marker = json_value_end == json_array_end_not_encoded;
+                int brace_counter = array_marker ? 1 : 0;
+                bool ignore_next_quote = false;
+                bool in_quotes = false;
 
                 while (i <= (sz - json_value_end.size()) && !(!skip_value_end && strncmp(data + i, json_value_end.c_str(), json_value_end.size()) == 0))
                 {
@@ -747,7 +713,44 @@ void log_replace_functor::operator()(tools::binary_stream& _bs)
                         skip_value_end = true;
                     }
 
-                    replace(data + i);
+                    if (array_marker)
+                    {
+                        if (*(data + i) == '\\' && *(data + i + 1) == '\"')
+                            ignore_next_quote = true;
+                        else if (*(data + i) == '\"')
+                        {
+                            if (!ignore_next_quote)
+                            {
+                                in_quotes = !in_quotes;
+                                ++i;
+                            }
+
+                            ignore_next_quote = false;
+                        }
+
+                        if (!in_quotes)
+                        {
+                            if (*(data + i) == '[')
+                                brace_counter++;
+                            else if (*(data + i) == ']')
+                                brace_counter--;
+
+                            if (brace_counter == 0)
+                            {
+                                i += json_value_end.size();
+                                break;
+                            }
+                        }
+                        else
+                        {
+                            replace(data + i);
+                        }
+                    }
+                    else
+                    {
+                        replace(data + i);
+                    }
+
                     ++i;
                 }
             }
@@ -759,25 +762,30 @@ void log_replace_functor::operator()(tools::binary_stream& _bs)
     }
 }
 
+bool log_replace_functor::is_null() const
+{
+    return markers_.empty() && markers_json_.empty() && markers_json_encoded_.empty();
+}
+
 void log_replace_functor::replace(char *c)
 {
     if (*c != ' ') // do not replace space character
         *c = '*';
 }
 
-std::pair<size_t, size_t> aimsid_range_evaluator::operator()(std::string_view s) const
+std::pair<std::ptrdiff_t, std::ptrdiff_t> aimsid_range_evaluator::operator()(std::string_view s) const
 {
     // 025.0643767406.2836549238:123456 -> 025.0643767406.**********:123456
 
-    auto point_count = 0;
-    auto start = 0u;
-    auto end = 0u;
+    size_t point_count = 0;
+    size_t start = 0;
+    size_t end = 0;
 
-    for (auto i = 0u; i < s.size(); i++)
+    for (size_t i = 0; i < s.size(); ++i)
     {
         if (s[i] == '.')
         {
-            point_count++;
+            ++point_count;
             if (point_count == 2)
                 start = i + 1;
         }
@@ -796,12 +804,12 @@ tail_from_last_range_evaluator::tail_from_last_range_evaluator(const char _chr)
 {
 }
 
-std::pair<size_t, size_t> tail_from_last_range_evaluator::operator()(std::string_view _str) const
+std::pair<std::ptrdiff_t, std::ptrdiff_t> tail_from_last_range_evaluator::operator()(std::string_view _str) const
 {
-    auto start = 0u;
-    auto end = _str.size() - 1;
+    size_t start = 0;
+    size_t end = _str.size() - 1;
 
-    for (auto i = 0u; i < _str.size(); i++)
+    for (size_t i = 0u; i < _str.size(); ++i)
     {
         if (_str[i] == chr_)
         {
@@ -817,7 +825,14 @@ std::pair<size_t, size_t> tail_from_last_range_evaluator::operator()(std::string
     return std::make_pair(start, end);
 }
 
-bool core::wim::is_new_avatar_rapi()
+core::distance_range_evaluator::distance_range_evaluator(std::ptrdiff_t _distance)
+    : distance_(_distance)
 {
-    return build::is_dit() || omicronlib::_o("new_avatar_rapi", feature::default_new_avatar_rapi());
+}
+
+std::pair<std::ptrdiff_t, std::ptrdiff_t> core::distance_range_evaluator::operator()(std::string_view) const
+{
+    if (distance_ > 0)
+        return { 0, distance_ };
+    return { distance_, 0 };
 }

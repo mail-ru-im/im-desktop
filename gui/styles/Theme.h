@@ -1,7 +1,6 @@
 #pragma once
 
 #include "WallpaperId.h"
-#include "../controls/TextRendering.h"
 
 namespace Styling
 {
@@ -15,8 +14,6 @@ namespace Styling
     using WallpaperPtr = std::shared_ptr<ThemeWallpaper>;
     using WallpapersVector = std::vector<WallpaperPtr>;
 
-    using JNode = rapidjson::Value;
-
     enum class StyleVariable;
 
     class Property
@@ -27,7 +24,7 @@ namespace Styling
         Property() = default;
         Property(const QColor& _color) : color_(_color) {}
 
-        void unserialize(const JNode& _node);
+        void unserialize(const rapidjson::Value& _node);
         QColor getColor() const;
 
         bool operator==(const Property& _other) const noexcept { return color_ == _other.color_; }
@@ -41,7 +38,7 @@ namespace Styling
         Properties::const_iterator getPropertyIt(const StyleVariable _variable) const;
 
     public:
-        void unserialize(const JNode& _node);
+        void unserialize(const rapidjson::Value& _node);
 
         QColor getColor(const StyleVariable _variable) const;
 
@@ -63,17 +60,17 @@ namespace Styling
         QString name_;
         WallpapersVector availableWallpapers_;
         WallpaperId defaultWallpaperId_;
-        Ui::TextRendering::LinksStyle underlinedLinks_;
+        bool underlinedLinks_;
 
     public:
         Theme();
         const QString& getId() const { return id_; };
         const QString& getName() const { return name_; };
-        Ui::TextRendering::LinksStyle linksUnderlined() const { return underlinedLinks_; };
+        bool isLinksUnderlined() const { return underlinedLinks_; };
         void addWallpaper(WallpaperPtr _wallpaper);
         WallpaperPtr getWallpaper(const WallpaperId& _id) const;
         const WallpapersVector& getAvailableWallpapers() const { return availableWallpapers_; }
-        void unserialize(const JNode& _node);
+        void unserialize(const rapidjson::Value& _node);
 
         bool isWallpaperAvailable(const WallpaperId& _wallpaperId) const;
         WallpaperPtr getFirstWallpaper() const;
@@ -104,7 +101,7 @@ namespace Styling
 
     public:
         ThemeWallpaper(const Theme& _basicStyle);
-        void unserialize(const JNode& _node);
+        void unserialize(const rapidjson::Value& _node);
         bool operator==(const ThemeWallpaper& _other);
 
         void setParentThemeId(const QString& _id) { parentThemeId_ = _id; }

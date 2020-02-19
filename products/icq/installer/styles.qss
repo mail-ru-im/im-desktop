@@ -1,0 +1,37 @@
+QWidget#content_logo
+{
+	background-position: center;
+}
+
+QLabel#dot_label
+{
+    height: 8dip;
+    width: 8dip;
+    border-radius: 4dip;
+    background-color: #57b359;
+}
+
+QProgressBar
+{
+    background-color: #2557b359;
+}
+
+QProgressBar::chunk
+{
+    background-color: #57b359;
+}
+
+QPushButton#custom_button
+{
+	background-color: #57b359;
+}
+
+QPushButton#custom_button:hover
+{
+	background-color: #43a047;
+}
+
+QPushButton#custom_button:disabled
+{
+	background-color: #cbcbcb;
+}

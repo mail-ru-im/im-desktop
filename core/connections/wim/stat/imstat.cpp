@@ -6,6 +6,7 @@
 #include "../../../utils.h"
 #include "openssl/blowfish.h"
 #include "../../../core.h"
+#include "../common.shared/config/config.h"
 
 namespace core
 {
@@ -27,9 +28,7 @@ namespace core
         {
         }
 
-        imstat::~imstat()
-        {
-        }
+        imstat::~imstat() = default;
 
         bool imstat::need_send() const
         {
@@ -139,7 +138,7 @@ namespace core
                             node_a.put("<xmlattr>.login", _params.aimid_);
                             node_a.put("<xmlattr>.protocol_uid", _params.aimid_);
                             node_a.put("<xmlattr>.server", "Boss");
-                            node_a.put("<xmlattr>.account_type", build::product_name());
+                            node_a.put("<xmlattr>.account_type", config::get().string(config::values::product_name));
                             node_a.put("<xmlattr>.main", "1");
 
                             boost::property_tree::ptree node_l;
@@ -185,6 +184,5 @@ namespace core
 
             return std::shared_ptr<wim::wim_packet>();
         }
-
     }
 }

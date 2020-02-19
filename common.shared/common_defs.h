@@ -5,30 +5,29 @@ namespace common
 {
 #ifdef _WIN32
     std::wstring get_user_profile();
+    std::wstring get_guid();
+    std::string get_win_os_version_string();
+    std::string get_win_device_id();
 #endif //_WIN32
 
-
+    std::string_view get_dev_id();
 
     struct core_gui_settings
     {
-        core_gui_settings()
-            : is_build_icq_(-1)
-            , recents_avatars_size_(-1)
-        {
-        }
+        core_gui_settings() = default;
 
         core_gui_settings(
-            int32_t _is_build_icq,
             int32_t _recents_avatars_size,
-            const std::string& _os_version)
-            :   is_build_icq_(_is_build_icq),
-                recents_avatars_size_(_recents_avatars_size),
-                os_version_(_os_version)
+            std::string&& _os_version,
+            std::string&& _locale)
+            :   recents_avatars_size_(_recents_avatars_size),
+                os_version_(std::move(_os_version)),
+                locale_(std::move(_locale))
         {}
 
-        int32_t is_build_icq_;
-        int32_t recents_avatars_size_;
+        int32_t recents_avatars_size_ = -1;
         std::string os_version_;
+        std::string locale_;
     };
 }
 

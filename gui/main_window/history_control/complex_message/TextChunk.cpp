@@ -8,7 +8,7 @@
 
 #include "TextChunk.h"
 
-#include "../../../app_config.h"
+#include "../../../url_config.h"
 
 
 const Ui::ComplexMessage::TextChunk Ui::ComplexMessage::TextChunk::Empty(Ui::ComplexMessage::TextChunk::Type::Undefined, QString(), QString(), -1);
@@ -19,7 +19,7 @@ Ui::ComplexMessage::ChunkIterator::ChunkIterator(const QString &_text)
 }
 
 Ui::ComplexMessage::ChunkIterator::ChunkIterator(const QString& _text, FixedUrls&& _urls)
-    : tokenizer_(_text.toStdString(), Ui::GetAppConfig().getUrlFilesGet(), std::move(_urls))
+    : tokenizer_(_text.toStdString(), Ui::getUrlConfig().getUrlFilesParser().toStdString(), std::move(_urls))
 {
 }
 
@@ -68,7 +68,9 @@ static bool isAlwaysWithPreview(const common::tools::url& _url)
 
     bool isProfile = _url.type_ == common::tools::url::type::profile;
 
-    return isSticker || isProfile;
+    bool isMedia = _url.type_ == common::tools::url::type::image || _url.type_ == common::tools::url::type::video;
+
+    return isSticker || isProfile || isMedia;
 }
 
 Ui::ComplexMessage::TextChunk Ui::ComplexMessage::ChunkIterator::current(bool _allowSnipet, bool _forcePreview) const
@@ -87,11 +89,14 @@ Ui::ComplexMessage::TextChunk Ui::ComplexMessage::ChunkIterator::current(bool _a
 
     auto text = QString::fromStdString(url.original_);
 
+    const auto forbidPreview = url.type_ == common::tools::url::type::site && !isPreviewsEnabled();
+
     if (url.type_ != common::tools::url::type::filesharing &&
+        url.type_ != common::tools::url::type::image &&
         url.type_ != common::tools::url::type::email &&
         url.type_ != common::tools::url::type::profile &&
         !_allowSnipet || !isSnippetUrl(text) ||
-        (!isPreviewsEnabled() && !_forcePreview && !isAlwaysWithPreview(url)))
+        (forbidPreview && !_forcePreview && !isAlwaysWithPreview(url)))
     {
         return TextChunk(TextChunk::Type::Text, std::move(text), QString(), -1);
     }

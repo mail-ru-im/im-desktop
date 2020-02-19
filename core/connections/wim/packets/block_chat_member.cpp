@@ -3,6 +3,7 @@
 
 #include "../../../http_request.h"
 #include "../../../tools/system.h"
+#include "../common.shared/json_unserialize_helpers.h"
 
 #include "../../urls_cache.h"
 
@@ -15,11 +16,13 @@ block_chat_member::block_chat_member(
     wim_packet_params _params,
     const std::string& _aimid,
     const std::string& _contact,
-    bool _block)
+    bool _block,
+    bool _remove_messages)
     : robusto_packet(std::move(_params))
     , aimid_(_aimid)
     , contact_(_contact)
     , block_(_block)
+    , remove_messages_(_remove_messages)
 {
 }
 
@@ -29,9 +32,8 @@ block_chat_member::~block_chat_member()
 
 int32_t block_chat_member::init_request(std::shared_ptr<core::http_request_simple> _request)
 {
-    auto method = block_ ? std::string("blockChatMembers") : std::string("unblockChatMembers");
+    const auto method = block_ ? std::string_view("blockChatMembers") : std::string_view("unblockChatMembers");
 
-    _request->set_gzip(true);
     _request->set_url(urls::get_url(urls::url_type::rapi_host));
     _request->set_normalized_url(method);
     _request->set_keep_alive();
@@ -39,12 +41,14 @@ int32_t block_chat_member::init_request(std::shared_ptr<core::http_request_simpl
     rapidjson::Document doc(rapidjson::Type::kObjectType);
     auto& a = doc.GetAllocator();
 
-    doc.AddMember("method", std::move(method), a);
+    doc.AddMember("method", common::json::make_string_ref(method), a);
 
     doc.AddMember("reqId", get_req_id(), a);
 
     rapidjson::Value node_params(rapidjson::Type::kObjectType);
     node_params.AddMember("sn", aimid_, a);
+    if (block_)
+        node_params.AddMember("deleteLastMessages", remove_messages_, a);
 
     rapidjson::Value node_member(rapidjson::Type::kObjectType);
     node_member.AddMember("sn", contact_, a);
@@ -61,6 +65,7 @@ int32_t block_chat_member::init_request(std::shared_ptr<core::http_request_simpl
     if (!params_.full_log_)
     {
         log_replace_functor f;
+        f.add_json_marker("aimsid", aimsid_range_evaluator());
         f.add_json_marker("authToken");
         f.add_marker("a");
         _request->set_replace_log_function(f);

@@ -40,18 +40,12 @@
 #include <chrono>
 #include <random>
 #include <complex>
-
 #include <inttypes.h>
-
-
-#if defined __APPLE__ || defined __linux__
-#define  NO_ASSERTS
-#endif //__APPLE__ _LINUX_
 #include <cassert>
-#if defined NO_ASSERTS
-#define assert(e) { if (!(e)) puts("ASSERT: " #e); }
-#define RAPIDJSON_ASSERT(e) assert(e)
-#endif //NO_ASSERT
+
+#include <boost/range/adaptor/map.hpp>
+#include <boost/range/adaptor/reversed.hpp>
+#include <boost/range.hpp>
 
 #if defined (_WIN32)
 #include <tchar.h>
@@ -182,6 +176,8 @@
 #include <QCollator>
 #include <QTemporaryFile>
 #include <QScopedValueRollback>
+#include <QtPlatformHeaders/QWindowsWindowFunctions>
+#include <QCache>
 #if defined(IM_AUTO_TESTING)
     #include <QTest>
 #endif
@@ -315,6 +311,8 @@
 #include <QtCore/qsocketnotifier.h>
 #include <QtCore/qtemporaryfile.h>
 #include <QtCore/qscopedvaluerollback.h>
+#include <QtGui/qwindow.h>
+#include <QtCore/qcache.h>
 #else
 #include "macconfig.h"
 #ifndef HOCKEY_APPID
@@ -450,6 +448,7 @@
 #import <QtCore/qcollator.h>
 #import <QtCore/qtemporaryfile.h>
 #import <QtCore/qscopedvaluerollback.h>
+#import <QtCore/qcache.h>
 #endif // _WIN32
 
 #include "../common.shared/typedefs.h"
@@ -462,11 +461,15 @@
 #define ql1s(x) QLatin1String(x)
 #define ql1c(x) QLatin1Char(x)
 
-#include "../gui.shared/product.h"
 #include "utils/translator.h"
 #include "../gui.shared/constants.h"
 #include "../common.shared/constants.h"
 #include "../gui.shared/TestingTools.h"
+
+#if !defined(_WIN32) && !defined(ABORT_ON_ASSERT) && defined(DEBUG)
+#define assert(condition) \
+do { if(!(condition)){ std::cerr << "ASSERT FAILED: " << #condition << " " << __FILE__ << ":" << __LINE__ << std::endl; } } while (0)
+#endif
 
 #ifndef __STRING_COMPARATOR__
 #define __STRING_COMPARATOR__

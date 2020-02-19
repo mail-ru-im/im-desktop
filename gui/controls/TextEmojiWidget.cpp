@@ -181,7 +181,7 @@ namespace Ui
 
     int CompiledText::draw(QPainter& _painter, int _x, int _y, int _w)
     {
-        const static QString ellipsis = qsl("...");
+        const static QString ellipsis = getEllipsis();
         auto xmax = (_w + _x);
 
         if (_w > 0)

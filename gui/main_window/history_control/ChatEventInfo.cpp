@@ -7,7 +7,10 @@
 
 #include "../../cache/emoji/Emoji.h"
 
+#include "../contact_list/ContactListModel.h"
+
 #include "ChatEventInfo.h"
+#include "../friendly/FriendlyContainer.h"
 
 using namespace core;
 
@@ -25,15 +28,16 @@ namespace
 namespace HistoryControl
 {
 
-    ChatEventInfoSptr ChatEventInfo::Make(const core::coll_helper& _info, const bool _isOutgoing, const QString& _myAimid)
+    ChatEventInfoSptr ChatEventInfo::Make(const core::coll_helper& _info, const bool _isOutgoing, const QString& _myAimid, const QString& _aimid)
     {
         assert(!_myAimid.isEmpty());
 
         const auto type = _info.get_value_as_enum<chat_event_type>("type");
         const auto isCaptchaPresent = _info.get_value_as_bool("is_captcha_present", false);
+        const auto isChannel = _info.get_value_as_bool("is_channel", false);
 
         ChatEventInfoSptr eventInfo(new ChatEventInfo(
-            type, isCaptchaPresent, _isOutgoing, _myAimid
+            type, isCaptchaPresent, _isOutgoing, _myAimid, _aimid, isChannel
         ));
 
         const auto isGeneric = (type == chat_event_type::generic);
@@ -95,6 +99,13 @@ namespace HistoryControl
             return eventInfo;
         }
 
+        const auto isChatStampModified = (type == chat_event_type::chat_stamp_modified);
+        if (isChatStampModified)
+        {
+            eventInfo->setNewChatStamp(_info.get<QString>("chat/new_stamp"));
+            return eventInfo;
+        }
+
         const auto isMchatAddMembers = (type == chat_event_type::mchat_add_members);
         const auto isMchatInvite = (type == chat_event_type::mchat_invite);
         const auto isMchatLeave = (type == chat_event_type::mchat_leave);
@@ -121,11 +132,13 @@ namespace HistoryControl
         return eventInfo;
     }
 
-    ChatEventInfo::ChatEventInfo(const chat_event_type _type, const bool _isCaptchaPresent, const bool _isOutgoing, const QString& _myAimid)
+    ChatEventInfo::ChatEventInfo(const chat_event_type _type, const bool _isCaptchaPresent, const bool _isOutgoing, const QString& _myAimid, const QString& _aimid, const bool _isChannel)
         : Type_(_type)
         , IsCaptchaPresent_(_isCaptchaPresent)
         , IsOutgoing_(_isOutgoing)
+        , IsChannel_(_isChannel)
         , MyAimid_(_myAimid)
+        , AimId_(_aimid)
     {
         assert(Type_ > chat_event_type::min);
         assert(Type_ < chat_event_type::max);
@@ -181,6 +194,9 @@ namespace HistoryControl
             case chat_event_type::chat_rules_modified:
                 return formatChatRulesModified();
 
+            case chat_event_type::chat_stamp_modified:
+                return formatChatStampModified();
+
             default:
                 break;
         }
@@ -205,6 +221,10 @@ namespace HistoryControl
 
         if (IsOutgoing_)
             return QT_TRANSLATE_NOOP("chat_event", "You changed picture of group");
+
+        if (IsChannel_ || Logic::getContactListModel()->isChannel(AimId_))
+            return QT_TRANSLATE_NOOP("chat_event", "Channel avatar was changed");
+
         return QT_TRANSLATE_NOOP("chat_event", "%1 changed picture of group").arg(SenderFriendly_);
     }
 
@@ -220,14 +240,22 @@ namespace HistoryControl
     {
         assert(Type_ == chat_event_type::buddy_found);
 
-        return QT_TRANSLATE_NOOP("chat_event", "Your friend is now available for chat and calls. You can say hi now!");
+        constexpr auto smileEmojiId = 0x1f642;
+        const auto smileEmojiString = Emoji::EmojiCode::toQString(Emoji::EmojiCode(smileEmojiId));
+        const QString friendly = Logic::GetFriendlyContainer()->getFriendly(AimId_);
+
+        return QT_TRANSLATE_NOOP("chat_event", "You have recently added %1 to your phone contacts. Write a new message or make a call %2").arg(friendly, smileEmojiString);
     }
 
     QString ChatEventInfo::formatBuddyReg() const
     {
         assert(Type_ == chat_event_type::buddy_reg);
 
-        return QT_TRANSLATE_NOOP("chat_event", "Your friend is now available for chat and calls. You can say hi now!");
+        constexpr auto smileEmojiId = 0x1f642;
+        const auto smileEmojiString = Emoji::EmojiCode::toQString(Emoji::EmojiCode(smileEmojiId));
+        const QString friendly = Logic::GetFriendlyContainer()->getFriendly(AimId_);
+
+        return QT_TRANSLATE_NOOP("chat_event", "So %1 is here now! Write, call %2").arg(friendly, smileEmojiString);
     }
 
     QString ChatEventInfo::formatChatNameModifiedText() const
@@ -238,6 +266,10 @@ namespace HistoryControl
 
         if (IsOutgoing_)
             return QT_TRANSLATE_NOOP("chat_event", "You changed theme to \"%1\"").arg(Chat_.NewName_);
+
+        if (IsChannel_ || Logic::getContactListModel()->isChannel(AimId_))
+            return QT_TRANSLATE_NOOP("chat_event", "Theme was changed to \"%1\"").arg(Chat_.NewName_);
+
         return QT_TRANSLATE_NOOP("chat_event", "%1 changed theme to \"%2\"").arg(SenderFriendly_, Chat_.NewName_);
     }
 
@@ -261,6 +293,14 @@ namespace HistoryControl
         if (joinedSomeone)
             return QT_TRANSLATE_NOOP("chat_event", "%1 has joined group").arg(SenderFriendly_);
 
+        if (IsChannel_ || Logic::getContactListModel()->isChannel(AimId_))
+        {
+            if (Mchat_.MembersFriendly_.size() == 1)
+                return QT_TRANSLATE_NOOP("chat_event", "%1 was added").arg(formatMchatMembersList(true));
+
+            return QT_TRANSLATE_NOOP("chat_event", "%1 were added").arg(formatMchatMembersList(true));
+        }
+
         return QT_TRANSLATE_NOOP("chat_event", "%1 added %2").arg(SenderFriendly_, formatMchatMembersList(false));
     }
 
@@ -273,12 +313,18 @@ namespace HistoryControl
             if (IsOutgoing_)
                 return QT_TRANSLATE_NOOP("chat_event", "You deleted chat description");
 
+            if (IsChannel_ || Logic::getContactListModel()->isChannel(AimId_))
+                return QT_TRANSLATE_NOOP("chat_event", "Chat description was deleted");
+
             return QT_TRANSLATE_NOOP("chat_event", "%1 deleted chat description").arg(SenderFriendly_);
         }
         else
         {
             if (IsOutgoing_)
                 return QT_TRANSLATE_NOOP("chat_event", "You changed description to \"%1\"").arg(Chat_.NewDescription_);
+
+            if (IsChannel_ || Logic::getContactListModel()->isChannel(AimId_))
+                return QT_TRANSLATE_NOOP("chat_event", "Description was changed to \"%1\"").arg(Chat_.NewDescription_);
 
             return QT_TRANSLATE_NOOP("chat_event", "%1 changed description to \"%2\"").arg(SenderFriendly_, Chat_.NewDescription_);
         }
@@ -291,7 +337,23 @@ namespace HistoryControl
         if (IsOutgoing_)
             return QT_TRANSLATE_NOOP("chat_event", "You changed chat rules to \"%1\"").arg(Chat_.NewRules_);
 
+        if (IsChannel_ || Logic::getContactListModel()->isChannel(AimId_))
+            return QT_TRANSLATE_NOOP("chat_event", "Channel rules were changed to \"%1\"").arg(Chat_.NewRules_);
+
         return QT_TRANSLATE_NOOP("chat_event", "%1 changed chat rules to \"%2\"").arg(SenderFriendly_, Chat_.NewRules_);
+    }
+
+    QString ChatEventInfo::formatChatStampModified() const
+    {
+        assert(Type_ == chat_event_type::chat_stamp_modified);
+
+        if (IsOutgoing_)
+            return QT_TRANSLATE_NOOP("chat_event", "You changed chat link to %1").arg(Utils::getDomainUrl() % ql1c('/') % Chat_.NewStamp_);
+
+        if (IsChannel_ || Logic::getContactListModel()->isChannel(AimId_))
+            return QT_TRANSLATE_NOOP("chat_event", "Channel link was changed to %1").arg(Utils::getDomainUrl() % ql1c('/') % Chat_.NewStamp_);
+
+        return QT_TRANSLATE_NOOP("chat_event", "%1 changed chat link to %2").arg(SenderFriendly_, Utils::getDomainUrl() % ql1c('/') % Chat_.NewStamp_);
     }
 
     QString ChatEventInfo::formatMchatInviteText() const
@@ -303,6 +365,14 @@ namespace HistoryControl
         const auto joinedMyselfOnly = isMyAimid(SenderAimid_);
         if (IsOutgoing_ && joinedMyselfOnly)
             return QT_TRANSLATE_NOOP("chat_event", "You have joined group");
+
+        if (IsChannel_ || Logic::getContactListModel()->isChannel(AimId_))
+        {
+            if (Mchat_.MembersFriendly_.size() == 1)
+                return QT_TRANSLATE_NOOP("chat_event", "%1 was added").arg(formatMchatMembersList(true));
+
+            return QT_TRANSLATE_NOOP("chat_event", "%1 were added").arg(formatMchatMembersList(true));
+        }
 
         return QT_TRANSLATE_NOOP("chat_event", "%1 added %2").arg(SenderFriendly_, formatMchatMembersList(false));
     }
@@ -316,6 +386,14 @@ namespace HistoryControl
         if (IsOutgoing_)
             return QT_TRANSLATE_NOOP("chat_event", "You removed %1").arg(formatMchatMembersList(false));
 
+        if (IsChannel_ || Logic::getContactListModel()->isChannel(AimId_))
+        {
+            if (Mchat_.MembersFriendly_.size() == 1)
+                return QT_TRANSLATE_NOOP("chat_event", "%1 was removed").arg(formatMchatMembersList(true));
+
+            return QT_TRANSLATE_NOOP("chat_event", "%1 were removed").arg(formatMchatMembersList(true));
+        }
+
         return QT_TRANSLATE_NOOP("chat_event", "%1 removed %2").arg(SenderFriendly_, formatMchatMembersList(false));
     }
 
@@ -328,6 +406,14 @@ namespace HistoryControl
         if (IsOutgoing_)
             return QT_TRANSLATE_NOOP("chat_event", "You removed %1").arg(formatMchatMembersList(false));
 
+        if (IsChannel_ || Logic::getContactListModel()->isChannel(AimId_))
+        {
+            if (Mchat_.MembersFriendly_.size() == 1)
+                return QT_TRANSLATE_NOOP("chat_event", "%1 was removed").arg(formatMchatMembersList(true));
+
+            return QT_TRANSLATE_NOOP("chat_event", "%1 were removed").arg(formatMchatMembersList(true));
+        }
+
         return QT_TRANSLATE_NOOP("chat_event", "%1 removed %2").arg(SenderFriendly_, formatMchatMembersList(false));
     }
 
@@ -338,9 +424,9 @@ namespace HistoryControl
         assert(!SenderFriendly_.isEmpty());
 
         if (hasMultipleMembers())
-            return QT_TRANSLATE_NOOP3("chat_event", "%1 have left group", "many").arg(formatMchatMembersList(true));
+            return QT_TRANSLATE_NOOP3("chat_event", "%1 have left group (this message is visible only to group admins)", "many").arg(formatMchatMembersList(true));
 
-        return QT_TRANSLATE_NOOP3("chat_event", "%1 has left group", "one").arg(formatMchatMembersList(true));
+        return QT_TRANSLATE_NOOP3("chat_event", "%1 has left group (this message is visible only to group admins)", "one").arg(formatMchatMembersList(true));
     }
 
     QString ChatEventInfo::formatMchatMembersList(const bool _activeVoice) const
@@ -379,7 +465,7 @@ namespace HistoryControl
             result += format(*it);
         }
 
-        result += QT_TRANSLATE_NOOP("chat_event", " and ") % format(friendlyMembers.last());
+        result += QT_TRANSLATE_NOOP("chat_event", " and ") % format(friendlyMembers.back());
         return result;
     }
 
@@ -433,6 +519,14 @@ namespace HistoryControl
         assert(!_newChatRules.isEmpty());
 
         Chat_.NewRules_ = _newChatRules;
+    }
+
+    void ChatEventInfo::setNewChatStamp(const QString& _newChatStamp)
+    {
+        assert(Chat_.NewStamp_.isEmpty());
+        assert(!_newChatStamp.isEmpty());
+
+        Chat_.NewStamp_ = _newChatStamp;
     }
 
     void ChatEventInfo::setNewDescription(const QString& _newDescription)
@@ -490,6 +584,11 @@ namespace HistoryControl
     const QVector<QString>& ChatEventInfo::getMembers() const
     {
         return Mchat_.Members_;
+    }
+
+    QString ChatEventInfo::getAimId() const
+    {
+        return AimId_;
     }
 
     void ChatEventInfo::setMchatMembers(const core::iarray& _members)

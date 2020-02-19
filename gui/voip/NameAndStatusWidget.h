@@ -1,10 +1,8 @@
-#ifndef __NAME_AND_STATUS_WIDGET_H__
-#define __NAME_AND_STATUS_WIDGET_H__
+#pragma once
 #include "../controls/TextEmojiWidget.h"
 
 namespace Ui
 {
-
     template<typename __Base>
     class ShadowedWidget : public __Base
     {
@@ -17,7 +15,7 @@ namespace Ui
         void resizeEvent(QResizeEvent*);
 
     private:
-        QLinearGradient linearGradient_;
+        //QLinearGradient linearGradient_;
         int tailLenPx_;
     };
 
@@ -35,9 +33,7 @@ namespace Ui
         void setStatusProperty(const char* _propName, bool _val);
 
     private:
-        TextUnitLabel* name_;
+        TextEmojiWidget* name_;
         TextEmojiWidget* status_;
     };
 }
-
-#endif//__NAME_AND_STATUS_WIDGET_H__

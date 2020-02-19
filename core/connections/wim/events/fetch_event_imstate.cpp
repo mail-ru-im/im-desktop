@@ -30,12 +30,12 @@ int32_t fetch_event_imstate::parse(const rapidjson::Value& _node_event_data)
         imstate ustate;
 
         if (std::string req_id; tools::unserialize_value(st, "sendReqId", req_id))
-            ustate.set_request_id(req_id);
+            ustate.set_request_id(std::move(req_id));
         else
             continue;
 
         if (std::string msg_id; tools::unserialize_value(st, "msgId", msg_id))
-            ustate.set_msg_id(msg_id);
+            ustate.set_msg_id(std::move(msg_id));
         else
             continue;
 

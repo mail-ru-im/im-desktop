@@ -6,7 +6,18 @@
 #include "../../controls/TextEmojiWidget.h"
 #include "../../controls/TransparentScrollBar.h"
 #include "../../utils/utils.h"
+#include "../../utils/features.h"
 #include "../../styles/ThemeParameters.h"
+#include "../../core_dispatcher.h"
+#include "CheckForUpdateButton.h"
+
+namespace
+{
+    QString betaChatStamp()
+    {
+        return qsl("desktopbeta");
+    }
+}
 
 using namespace Ui;
 
@@ -32,20 +43,21 @@ void GeneralSettingsWidget::Creator::initAbout(QWidget* _parent)
     layout->addWidget(scrollArea);
 
     {
-        auto mainWidget = new QWidget(scrollArea);
+        auto generalWidget = new QWidget(scrollArea);
+        auto generalLayout = Utils::emptyVLayout(generalWidget);
+        auto mainWidget = new QWidget(generalWidget);
         Utils::grabTouchWidget(mainWidget);
-        auto mainLayout = new QHBoxLayout(mainWidget);
-        mainLayout->setContentsMargins(Utils::scale_value(20), Utils::scale_value(36), Utils::scale_value(68), 0);
+        auto mainLayout = new QVBoxLayout(mainWidget);
+        mainLayout->setContentsMargins(0, Utils::scale_value(36), Utils::scale_value(20), 0);
         mainLayout->setAlignment(Qt::AlignTop);
         mainLayout->setSpacing(0);
         {
             const auto textColor = Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID);
             auto aboutWidget = new QWidget(mainWidget);
             auto aboutLayout = Utils::emptyVLayout(aboutWidget);
-            mainLayout->setSpacing(0);
             Utils::grabTouchWidget(aboutWidget);
             aboutLayout->setAlignment(Qt::AlignTop);
-            aboutLayout->setContentsMargins(0, 0, 0, 0);
+            aboutLayout->setContentsMargins(Utils::scale_value(20), 0, 0, 0);
             {
                 auto versionText = new TextEmojiWidget(aboutWidget, Fonts::appFontScaled(15), textColor);
                 versionText->setText(Utils::getVersionLabel());
@@ -115,18 +127,78 @@ void GeneralSettingsWidget::Creator::initAbout(QWidget* _parent)
                 Testing::setAccessibleName(copyrightLabel, qsl("AS settings about us copyrightLabel"));
                 aboutLayout->addWidget(copyrightLabel);
                 aboutLayout->addSpacing(Utils::scale_value(20));
-
-                auto presentedMailru = new TextEmojiWidget(aboutWidget, Fonts::appFontScaled(15), textColor);
-                Utils::grabTouchWidget(presentedMailru);
-                presentedMailru->setText(QT_TRANSLATE_NOOP("about_us", "Presented by Mail.ru"));
-                presentedMailru->setVisible(build::is_icq());
-                Testing::setAccessibleName(presentedMailru, qsl("AS settings about us presentedMailru"));
-                aboutLayout->addWidget(presentedMailru);
             }
+
             Testing::setAccessibleName(aboutWidget, qsl("AS settings about us aboutWidget"));
             mainLayout->addWidget(aboutWidget);
+            generalLayout->addWidget(mainWidget);
+
+            mainLayout->addSpacing(Utils::scale_value(20));
+
+            if (Features::betaUpdateAllowed())
+            {
+                GeneralCreator::addSwitcher(
+                    mainWidget,
+                    mainLayout,
+                    QT_TRANSLATE_NOOP("settings", "Install beta updates"),
+                    Ui::GetDispatcher()->isInstallBetaUpdatesEnabled(),
+                    [](bool checked) {
+                    Ui::GetDispatcher()->setInstallBetaUpdates(checked);
+                    return QString();
+                });
+
+                auto betaWidget = new QWidget(mainWidget);
+                auto betaLayout = Utils::emptyVLayout(betaWidget);
+                Utils::grabTouchWidget(betaWidget);
+                betaLayout->setAlignment(Qt::AlignTop);
+                betaLayout->setContentsMargins(Utils::scale_value(20), 0, 0, 0);
+
+                {
+                    auto betaDescription = new TextEmojiWidget(aboutWidget, Fonts::appFontScaled(15), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY_HOVER));
+                    Utils::grabTouchWidget(betaDescription);
+                    betaDescription->setMultiline(true);
+                    betaDescription->setText(QT_TRANSLATE_NOOP("about_us", "Beta version contains new features, but it is not complete yet.\nYou can leave your feedback or report an error here:"));
+                    betaLayout->addWidget(betaDescription);
+                }
+                {
+                    auto betachatButton = new QPushButton(aboutWidget);
+                    auto betachatLayout = Utils::emptyVLayout(betachatButton);
+                    betachatButton->setFlat(true);
+                    betachatButton->setStyleSheet(qsl("background-color: transparent;"));
+                    betachatButton->setSizePolicy(QSizePolicy::Policy::Expanding, QSizePolicy::Policy::Fixed);
+                    betachatButton->setCursor(QCursor(Qt::CursorShape::PointingHandCursor));
+                    betachatLayout->setAlignment(Qt::AlignTop);
+                    {
+                        auto betachatLink = new TextEmojiWidget(betachatButton, Fonts::appFontScaled(15), Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY));
+                        Utils::grabTouchWidget(betachatLink);
+                        betachatLink->setHoverColor(Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_HOVER));
+                        betachatLink->setActiveColor(Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_ACTIVE));
+                        betachatLink->setText(QT_TRANSLATE_NOOP("about_us", "https://icq.im/desktopbeta"));
+                        connect(betachatButton, &QPushButton::pressed, []()
+                        {
+                            Utils::openDialogOrProfile(betaChatStamp(), Utils::OpenDOPParam::stamp);
+                        });
+                        betachatButton->setFixedHeight(betachatLink->height());
+                        betachatLayout->addWidget(betachatLink);
+                    }
+                    betaLayout->addWidget(betachatButton);
+                }
+
+                mainLayout->addWidget(betaWidget);
+            }
+
+            if (!platform::is_apple() && Features::updateAllowed())
+            {
+                auto widget = new QWidget(mainWidget);
+                auto layout = Utils::emptyHLayout(widget);
+                layout->setAlignment(Qt::AlignTop);
+                layout->setSpacing(0);
+                layout->setContentsMargins(Utils::scale_value(12), 0, 0, 0);
+                layout->addWidget(new CheckForUpdateButton(mainWidget));
+                mainLayout->addWidget(widget);
+            }
         }
-        Testing::setAccessibleName(mainWidget, qsl("AS settings about us mainWidget"));
-        scrollAreaLayout->addWidget(mainWidget);
+        Testing::setAccessibleName(generalWidget, qsl("AS settings about us mainWidget"));
+        scrollAreaLayout->addWidget(generalWidget);
     }
 }

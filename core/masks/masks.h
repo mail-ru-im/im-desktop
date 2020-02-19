@@ -82,6 +82,6 @@ namespace core
 
         state state_;
         int last_http_error_code_ = 0;
-        std::chrono::system_clock::time_point last_request_time_;
+        std::chrono::steady_clock::time_point last_request_time_;
     };
 }

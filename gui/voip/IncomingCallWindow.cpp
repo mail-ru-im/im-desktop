@@ -1,9 +1,7 @@
 #include "stdafx.h"
 #include "IncomingCallWindow.h"
-
 #include "DetachedVideoWnd.h"
 #include "VideoWindow.h"
-#include "VoipTools.h"
 #include "../core_dispatcher.h"
 #include "../cache/avatars/AvatarStorage.h"
 #include "../main_window/friendly/FriendlyContainer.h"
@@ -11,35 +9,26 @@
 #include "../../core/Voip/VoipManagerDefines.h"
 #include "VoipSysPanelHeader.h"
 
-namespace
+enum
 {
-    enum
-    {
 #ifdef __linux__
-        kIncomingCallWndDefH = 400,
+    kIncomingCallWndDefH = 400,
 #else
-        kIncomingCallWndDefH = 300,
+    kIncomingCallWndDefH = 300,
 #endif
-        kIncomingCallWndDefW = 400,
-    };
-
-    // default offset for next incoming window.
-    const float defaultWindowOffset = 0.25f;
-
-#ifdef _DEBUG
-    const int ht[kIncomingCallWndDefH > 0 ? 1 : -1] = { 0 }; // kIncomingCallWndDefH must be not null
-    const int wt[kIncomingCallWndDefW > 0 ? 1 : -1] = { 0 }; // kIncomingCallWndDefW must be not null
-#endif
-}
+    kIncomingCallWndDefW = 400,
+};
+// default offset for next incoming window.
+static const float defaultWindowOffset = 0.25f;
 
 QList<Ui::IncomingCallWindow*> Ui::IncomingCallWindow::instances_;
 
-Ui::IncomingCallWindow::IncomingCallWindow(const std::string& _account, const std::string& _contact)
+Ui::IncomingCallWindow::IncomingCallWindow(const std::string& call_id, const std::string& _contact)
     : QWidget(nullptr, Qt::Window)
     , contact_(_contact)
-    , account_(_account)
-    , header_(new(std::nothrow) voipTools::BoundBox<VoipSysPanelHeader>(this, Utils::scale_value(kIncomingCallWndDefW)))
-    , controls_(new voipTools::BoundBox<IncomingCallControls>(this))
+    , call_id_(call_id)
+    , header_(new(std::nothrow) VoipSysPanelHeader(this, Utils::scale_value(kIncomingCallWndDefW)))
+    , controls_(new IncomingCallControls(this))
     , transparentPanelOutgoingWidget_(nullptr)
     , shadow_(this)
 {
@@ -49,7 +38,7 @@ Ui::IncomingCallWindow::IncomingCallWindow(const std::string& _account, const st
     setStyleSheet(Utils::LoadStyle(qsl(":/qss/incoming_call_linux")));
 #endif
 
-    QIcon icon(build::GetProductVariant(qsl(":/logo/ico_icq"), qsl(":/logo/ico_agent"), qsl(":/logo/ico_biz"), qsl(":/logo/ico_dit")));
+    QIcon icon(qsl(":/logo/ico"));
     setWindowIcon(icon);
 
 #ifdef _WIN32
@@ -129,8 +118,7 @@ Ui::IncomingCallWindow::IncomingCallWindow(const std::string& _account, const st
     setMaximumSize(defaultSize);
     resize(defaultSize);
 
-    QDesktopWidget dw;
-    const auto screenRect = dw.screenGeometry(dw.primaryScreen());
+    const auto screenRect = Utils::mainWindowScreen()->geometry();
     const auto wndSize = defaultSize;
     const auto center  = screenRect.center();
 
@@ -139,15 +127,6 @@ Ui::IncomingCallWindow::IncomingCallWindow(const std::string& _account, const st
 
     const QRect rc(windowPosition, wndSize);
     setGeometry(rc);
-
-    // I hope constructor and destructor are called from the same thread.
-    instances_.push_back(this);
-
-    // Round rect.
-    //QPainterPath path(QPointF(0, 0));
-    //path.addRoundRect(rect(), Utils::scale_value(8));
-    //QRegion region(path.toFillPolygon().toPolygon());
-    //setMask(region);
 }
 
 Ui::IncomingCallWindow::~IncomingCallWindow()
@@ -158,7 +137,6 @@ Ui::IncomingCallWindow::~IncomingCallWindow()
     removeEventFilter(eventFilter_);
     delete eventFilter_;
 
-    // I hope constructor and destructor are called from the same thread.
     instances_.removeAll(this);
 }
 
@@ -188,7 +166,8 @@ void Ui::IncomingCallWindow::showFrame()
     assert(rootWidget_->frameId());
     if (rootWidget_->frameId())
     {
-        Ui::GetDispatcher()->getVoipController().setWindowAdd((quintptr)rootWidget_->frameId(), false, true, 0);
+        instances_.push_back(this);
+        Ui::GetDispatcher()->getVoipController().setWindowAdd((quintptr)rootWidget_->frameId(), call_id_.c_str(), false, true, 0);
     }
 #endif
 }
@@ -199,6 +178,7 @@ void Ui::IncomingCallWindow::hideFrame()
     assert(rootWidget_->frameId());
     if (rootWidget_->frameId())
     {
+        instances_.removeAll(this);
         Ui::GetDispatcher()->getVoipController().setWindowRemove((quintptr)rootWidget_->frameId());
     }
 #endif
@@ -217,7 +197,6 @@ void Ui::IncomingCallWindow::showEvent(QShowEvent* _e)
     }
 
     //shadow_.showShadow();
-
     QWidget::showEvent(_e);
 }
 
@@ -229,9 +208,7 @@ void Ui::IncomingCallWindow::hideEvent(QHideEvent* _e)
     {
         transparentPanelOutgoingWidget_->hide();
     }
-
     //shadow_.hideShadow();
-
     QWidget::hideEvent(_e);
 }
 
@@ -267,44 +244,40 @@ void Ui::IncomingCallWindow::onVoipCallNameChanged(const voip_manager::ContactsL
 void Ui::IncomingCallWindow::onAcceptVideoClicked()
 {
     assert(!contact_.empty());
+    hideFrame();
     if (!contact_.empty())
     {
         Ui::GetDispatcher()->getVoipController().setAcceptV(contact_.c_str());
     }
-    hide();
 }
 
 void Ui::IncomingCallWindow::onAcceptAudioClicked()
 {
     assert(!contact_.empty());
+    hideFrame();
     if (!contact_.empty())
     {
         Ui::GetDispatcher()->getVoipController().setAcceptA(contact_.c_str());
     }
-    hide();
 }
 
 
 void Ui::IncomingCallWindow::onDeclineButtonClicked()
 {
     assert(!contact_.empty());
+    hideFrame();
     if (!contact_.empty())
     {
         Ui::GetDispatcher()->getVoipController().setDecline(contact_.c_str(), false);
     }
-    hide();
 }
-
 
 void Ui::IncomingCallWindow::updateTitle()
 {
-    if(contacts_.empty())
-    {
+    if (contacts_.empty())
         return;
-    }
 
-    auto res = std::find(contacts_.begin(), contacts_.end(), voip_manager::Contact(account_, contact_));
-
+    auto res = std::find(contacts_.begin(), contacts_.end(), voip_manager::Contact(call_id_, contact_));
     if (res != contacts_.end())
     {
         std::vector<std::string> friendlyNames;
@@ -322,35 +295,25 @@ void Ui::IncomingCallWindow::updateTitle()
 QPoint Ui::IncomingCallWindow::findBestPosition(const QPoint& _windowPosition, const QPoint& _offset)
 {
     QPoint res = _windowPosition;
-
     QList<QPoint> avaliblePositions;
-
     // Create list with all avalible positions.
     for (int i = 0; i < instances_.size() + 1; i ++)
     {
         avaliblePositions.push_back(_windowPosition + _offset * i);
     }
-
     // Search position for next window.
     // For several incomming window we place them into cascade.
     for (IncomingCallWindow* window : instances_)
     {
-        if (window)
-        {
+        if (window && !window->isHidden())
             avaliblePositions.removeAll(window->pos());
-        }
     }
-
     if (!avaliblePositions.empty())
-    {
         res = avaliblePositions.first();
-    }
-
     return res;
 }
 
 #ifdef _WIN32
-
 void Ui::IncomingCallWindow::mousePressEvent(QMouseEvent* _e)
 {
     posDragBegin_ = _e->pos();
@@ -362,15 +325,12 @@ void Ui::IncomingCallWindow::mouseMoveEvent(QMouseEvent* _e)
     {
         QPoint diff = _e->pos() - posDragBegin_;
         QPoint newpos = this->pos() + diff;
-
         this->move(newpos);
     }
 }
-
 #endif
 
 #ifndef _WIN32
-
 // Resend messages to header to fix drag&drop for transparent panels.
 void Ui::IncomingCallWindow::mouseMoveEvent(QMouseEvent* event)
 {
@@ -387,12 +347,11 @@ void Ui::IncomingCallWindow::mousePressEvent(QMouseEvent * event)
     resendMouseEventToPanel(event);
 }
 
-template <typename E> void Ui::IncomingCallWindow::resendMouseEventToPanel(E* event_)
+void Ui::IncomingCallWindow::resendMouseEventToPanel(QMouseEvent *event_)
 {
     if (header_->isVisible() && (header_->rect().contains(event_->pos()) || header_->isGrabMouse()))
     {
         QApplication::sendEvent(header_.get(), event_);
     }
 }
-
 #endif

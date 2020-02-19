@@ -280,11 +280,12 @@ namespace Ui
         contactName_->init(Fonts::appFont(GetContactListParams().contactNameFontSize(), getNameWeight()),
                            Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT), QColor(), QColor(), QColor(), Ui::TextRendering::HorAligment::LEFT, 1);
 
+        const auto secondaryFontSize = platform::is_apple() ? 14 : 13;
         contactStatus_ = TextRendering::MakeTextUnit(QString());
-        contactStatus_->init(Fonts::appFontScaled(13, Fonts::FontWeight::Normal), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
+        contactStatus_->init(Fonts::appFontScaled(secondaryFontSize, Fonts::FontWeight::Normal), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
 
         contactRole_ = TextRendering::MakeTextUnit(QString());
-        contactRole_->init(Fonts::appFontScaled(13), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
+        contactRole_->init(Fonts::appFontScaled(secondaryFontSize), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
     }
 
     ContactItem::~ContactItem()
@@ -394,7 +395,7 @@ namespace Ui
 
         Utils::PainterSaver p(_painter);
 
-        _painter.setRenderHint(QPainter::Antialiasing);
+        _painter.setRenderHints(QPainter::SmoothPixmapTransform | QPainter::Antialiasing);
 
         auto renderContactName = [this, &_painter, contactList](int _rightMargin, int _y, bool _center, int _role_right_offset, bool drawStatus)
         {
@@ -468,7 +469,7 @@ namespace Ui
             : contactList.getAvatarX() + params_.leftMargin_;
         const auto avY = contactList.getAvatarY();
 
-        Utils::drawAvatarWithBadge(_painter, QPoint(avX, avY), item_.Avatar_, item_.isOfficial_, item_.isMuted_, item_.IsSelected_);
+        Utils::drawAvatarWithBadge(_painter, QPoint(avX, avY), item_.Avatar_, item_.isOfficial_, item_.isMuted_, item_.IsSelected_, item_.IsOnline_, true);
 
         if (params_.pictOnly_)
             return;
@@ -598,7 +599,7 @@ namespace Logic
     void ContactListItemDelegate::paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const
     {
         auto contactType = Data::BASE;
-        QString displayName, status, state, aimId;
+        QString displayName, status, aimId;
         bool hasLastSeen = false, isChecked = false, isChatMember = false, isOfficial = false;
         int membersCount = 0;
         QDateTime lastSeen;
@@ -664,6 +665,7 @@ namespace Logic
         }
 
         bool serviceContact = false;
+        bool isOnline = false;
         if (contact_in_cl)
         {
             contactType = contact_in_cl->GetType();
@@ -676,7 +678,6 @@ namespace Logic
             else if (!contact_in_cl->Is_chat_ && !serviceContact)
                 status = Logic::GetFriendlyContainer()->getStatusString(aimId);
 
-            state = contact_in_cl->State_;
             if (!hasLastSeen)
             {
                 hasLastSeen = contact_in_cl->HasLastSeen_;
@@ -688,6 +689,7 @@ namespace Logic
             icon = contact_in_cl->iconPixmap_;
             hoverIcon = contact_in_cl->iconHoverPixmap_;
             pressedIcon = contact_in_cl->iconPressedPixmap_;
+            isOnline = serviceContact ? false : Logic::getContactListModel()->isOnline(aimId);
         }
         else
         {
@@ -695,6 +697,7 @@ namespace Logic
                 status = Logic::GetFriendlyContainer()->getStatusString(lastSeen.toTime_t());
 
             isOfficial = Logic::GetFriendlyContainer()->getOfficial(aimId);
+            isOnline = lastSeen.toTime_t() == 0;
         }
 
         if (displayName.isEmpty())
@@ -763,19 +766,16 @@ namespace Logic
 
             auto isDefault = false;
 
-            if (isSelected && (state == ql1s("online") || state == ql1s("mobile")))
-                state += ql1s("_active");
-
             const auto &avatar = Logic::GetAvatarStorage()->GetRounded(
                 aimId, displayName, Utils::scale_bitmap(Ui::GetContactListParams().getAvatarSize()),
-                QString(),
                 isDefault, false /* _regenerate */ ,
                 Ui::GetContactListParams().isCL());
 
             Ui::VisualDataBase visData(
-                aimId, *avatar, state, status, isHovered, isSelected, displayName, nick, highlights,
+                aimId, *avatar, status, isHovered, isSelected, displayName, nick, highlights,
                 hasLastSeen, lastSeen, isChecked, isChatMember, isOfficial, false /* draw last read */, QPixmap() /* last seen avatar*/,
-                role, Logic::getRecentsModel()->getUnreadCount(aimId), Logic::getContactListModel()->isMuted(aimId), false, Logic::getRecentsModel()->getAttention(aimId), isCreator);
+                role, Logic::getRecentsModel()->getUnreadCount(aimId), Logic::getContactListModel()->isMuted(aimId), false, Logic::getRecentsModel()->getAttention(aimId),
+                isCreator, isOnline);
 
             visData.membersCount_ = membersCount;
 

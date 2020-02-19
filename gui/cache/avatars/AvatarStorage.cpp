@@ -43,7 +43,7 @@ namespace Logic
 
         TimesCache_[_aimId] = QDateTime::currentDateTime();
 
-        Out _isDefault = !LoadedAvatars_.contains(_aimId);
+        Out _isDefault = isDefaultAvatar(_aimId);
         const auto key = CreateKey(_aimId, _sizePx);
 
         auto iterByAimIdAndSize = AvatarsByAimIdAndSize_.find(key);
@@ -92,7 +92,7 @@ namespace Logic
         const auto result = AvatarsByAimIdAndSize_.emplace(key, std::make_shared<QPixmap>(std::move(scaledImage)));
         assert(result.second);
 
-        if (_aimId == ql1s("mail"))
+        if (_aimId == ql1s("mail") || _aimId.isEmpty())
             return result.first->second;
 
         auto requestedAvatarsIter = RequestedAvatars_.find(_aimId);
@@ -155,9 +155,14 @@ namespace Logic
         return AvatarsByAimId_;
     }
 
+    bool AvatarStorage::isDefaultAvatar(const QString& _aimId) const
+    {
+        return !LoadedAvatars_.contains(_aimId);
+    }
+
     void AvatarStorage::updateAvatar(const QString& _aimId, bool force)
     {
-        if (!force && LoadedAvatars_.contains(_aimId))
+        if (!force && !isDefaultAvatar(_aimId))
             return;
 
         if (TimesCache_.find(_aimId) != TimesCache_.end())
@@ -191,7 +196,7 @@ namespace Logic
         requests_.insert(seq);
     }
 
-    const QPixmapSCptr& AvatarStorage::GetRounded(const QString& _aimId, const QString& _displayName, const int _sizePx, const QString& _state, bool& _isDefault, bool _regenerate, bool mini_icons)
+    const QPixmapSCptr& AvatarStorage::GetRounded(const QString& _aimId, const QString& _displayName, const int _sizePx, bool& _isDefault, bool _regenerate, bool mini_icons)
     {
         assert(_sizePx > 0);
 
@@ -202,7 +207,7 @@ namespace Logic
             return avatar;
         }
 
-        return GetRounded(*avatar, _aimId, QString(), mini_icons, _isDefault);
+        return GetRounded(*avatar, _aimId, mini_icons, _isDefault);
     }
 
     QString AvatarStorage::GetLocal(const QString& _aimId, const QString& _displayName, const int _sizePx)
@@ -254,8 +259,27 @@ namespace Logic
 
         assert(!_aimId.isEmpty());
         LoadedAvatarsFails_.removeAll(_aimId);
-        auto scaledImage = _pixmap.scaled(_size, _size, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+
+        const auto avatarSize = QSize(_size, _size);
+        auto scaledImage = QPixmap(avatarSize);
+        if (_pixmap.width() == _pixmap.height())
+        {
+            scaledImage = _pixmap.scaled(avatarSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+        }
+        else
+        {
+            const auto cutAreaSize = avatarSize.scaled(_pixmap.size(), Qt::KeepAspectRatio);
+            auto cutArea = QRect(QPoint(), cutAreaSize);
+            cutArea.moveCenter(_pixmap.rect().center());
+
+            scaledImage.fill(Qt::transparent);
+
+            auto p = QPainter(&scaledImage);
+            p.setRenderHints(QPainter::SmoothPixmapTransform | QPainter::Antialiasing);
+            p.drawPixmap(scaledImage.rect(), _pixmap, cutArea);
+        }
         AvatarsByAimId_[_aimId] = std::make_shared<QPixmap>(std::move(scaledImage));
+
         CleanupSecondaryCaches(_aimId);
 
         LoadedAvatars_ << _aimId;
@@ -265,9 +289,7 @@ namespace Logic
 
     void AvatarStorage::UpdateDefaultAvatarIfNeed(const QString& _aimId)
     {
-        assert(!_aimId.isEmpty());
-
-        if (LoadedAvatars_.contains(_aimId))
+        if (!isDefaultAvatar(_aimId))
             return;
 
         if (AvatarsByAimId_.find(_aimId) != AvatarsByAimId_.end())
@@ -308,12 +330,12 @@ namespace Logic
     // TODO : use two-step hash here
     void AvatarStorage::CleanupSecondaryCaches(const QString& _aimId, bool _isRoundedAvatarsClean)
     {
-        const auto cleanupSecondaryCache = [&_aimId](CacheMap &cache)
+        const auto cleanupSecondaryCache = [](CacheMap &cache, const QString& aimid)
         {
             for (auto i = cache.begin(); i != cache.end(); ++i)
             {
                 const auto &key = i->first;
-                if (!key.startsWith(_aimId))
+                if (!key.startsWith(aimid))
                 {
                     continue;
                 }
@@ -328,7 +350,7 @@ namespace Logic
                     }
 
                     const auto &k = i->first;
-                    if (!k.startsWith(_aimId))
+                    if (!k.startsWith(aimid))
                     {
                         break;
                     }
@@ -338,26 +360,24 @@ namespace Logic
             }
         };
 
-        if (_isRoundedAvatarsClean)
-            cleanupSecondaryCache(RoundedAvatarsByAimIdAndSize_);
+        auto aimid = _aimId.isEmpty() ? qsl("default") : _aimId;
 
-        cleanupSecondaryCache(AvatarsByAimIdAndSize_);
+        if (_isRoundedAvatarsClean)
+            cleanupSecondaryCache(RoundedAvatarsByAimIdAndSize_, aimid);
+
+        cleanupSecondaryCache(AvatarsByAimIdAndSize_, aimid);
     }
 
-    const QPixmapSCptr& AvatarStorage::GetRounded(const QPixmap& _avatar, const QString& _aimId, const QString& _state, bool mini_icons, bool _isDefault)
+    const QPixmapSCptr& AvatarStorage::GetRounded(const QPixmap& _avatar, const QString& _aimId, bool mini_icons, bool _isDefault)
     {
         assert(!_avatar.isNull());
 
-        const QString key = _aimId
-        % ql1c('/')
-        % QString::number(_avatar.width())
-        % ql1c('/')
-        % _state;
+        const QString key = CreateKey(_aimId, _avatar.width());
 
         auto i = RoundedAvatarsByAimIdAndSize_.find(key);
         if (i == RoundedAvatarsByAimIdAndSize_.end())
         {
-            auto roundedAvatar = Utils::roundImage(_avatar, _state, _isDefault, mini_icons);
+            auto roundedAvatar = Utils::roundImage(_avatar, _isDefault, mini_icons);
             i = RoundedAvatarsByAimIdAndSize_
                 .emplace(
                     key,
@@ -380,6 +400,6 @@ namespace
     QString CreateKey(const QString &_aimId, const int _sizePx)
     {
         assert(_sizePx > 0);
-        return _aimId % ql1c('/') % QString::number(_sizePx);
+        return (_aimId.isEmpty() ? qsl("default") : _aimId) % ql1c('/') % QString::number(_sizePx);
     }
 }

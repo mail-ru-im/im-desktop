@@ -6,6 +6,7 @@
 #include "../../cache/avatars/AvatarStorage.h"
 #include "../../utils/InterConnector.h"
 #include "../../controls/TooltipWidget.h"
+#include "../../styles/ThemeParameters.h"
 #include "../contact_list/ContactListModel.h"
 #include "../friendly/FriendlyContainer.h"
 #include "../MainPage.h"
@@ -17,6 +18,8 @@ namespace
 {
     constexpr int ANIM_MAX_VALUE = 100;
     constexpr int ADD_OFFSET = 10;
+    constexpr int MULTISELECT_MARK_SIZE = 20;
+    constexpr int MULTISELECT_MARK_OFFSET = 12;
 }
 
 namespace Ui
@@ -33,23 +36,81 @@ namespace Ui
         , isDeleted_(false)
         , isEdited_(false)
         , isContextMenuEnabled_(true)
+        , isMultiselectEnabled_(true)
+        , selectedTop_(false)
+        , selectedBottom_(false)
+        , hoveredTop_(false)
+        , hoveredBottom_(false)
+        , selectionCenter_(0)
         , lastStatus_(LastStatus::None)
         , lastStatusAnimation_(nullptr)
+        , intersected_(false)
+        , wasSelected_(false)
         , QuoteAnimation_(parent)
         , isChat_(false)
     {
         connect(Logic::GetAvatarStorage(), &Logic::AvatarStorage::avatarChanged, this, &HistoryControlPageItem::avatarChanged);
+        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::multiselectSpaceClicked, this, [this]
+        {
+            if (Utils::InterConnector::instance().isMultiselect() && Utils::InterConnector::instance().currentMultiselectMessage() == getId())
+            {
+                setSelected(!isSelected());
+                if (isSelected())
+                    emit Utils::InterConnector::instance().messageSelected(getId(), getInternalId());
+                update();
+            }
+        });
+
+        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::selectionStateChanged, this, [this] (qint64 _id, const QString& _internalId, bool _selected)
+        {
+            if (prev_.getId() == _id && prev_.getInternalId() == _internalId)
+            {
+                selectedTop_ = _selected;
+                update();
+            }
+            else if (next_.getId() == _id && next_.getInternalId() == _internalId)
+            {
+                selectedBottom_ = _selected;
+                update();
+            }
+        });
+
+        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::multiSelectCurrentMessageChanged, this, [this]
+        {
+            auto id = Utils::InterConnector::instance().currentMultiselectMessage();
+            if (prev_.getId() == id && id != -1)
+            {
+                hoveredTop_ = true;
+            }
+            else if (next_.getId() == id && id != -1)
+            {
+                hoveredBottom_ = true;
+            }
+            else
+            {
+                hoveredBottom_ = false;
+                hoveredTop_ = false;
+            }
+            update();
+        });
+
+        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::multiselectChanged, this, [this]
+        {
+            if (!Utils::InterConnector::instance().isMultiselect(aimId_))
+                selectionCenter_ = 0;
+        });
 
         setMouseTracking(true);
     }
 
-    void HistoryControlPageItem::clearSelection()
+    void HistoryControlPageItem::clearSelection(bool)
     {
         if (Selected_)
             update();
 
         Selected_ = false;
         emit selectionChanged();
+        emit Utils::InterConnector::instance().updateSelectedCount();
     }
 
     bool HistoryControlPageItem::hasAvatar() const
@@ -67,13 +128,22 @@ namespace Ui
         return HasTopMargin_;
     }
 
-    void HistoryControlPageItem::select()
+    void HistoryControlPageItem::setSelected(const bool _isSelected)
     {
-        if (!Selected_)
+        const auto prevState = Selected_;
+        if (prevState != _isSelected)
+        {
             update();
+            emit selectionChanged();
+        }
 
-        Selected_ = true;
-        emit selectionChanged();
+        Selected_ = _isSelected;
+
+        if (prevState != _isSelected)
+        {
+            emit Utils::InterConnector::instance().selectionStateChanged(getId(), getInternalId(), Selected_);
+            emit Utils::InterConnector::instance().updateSelectedCount();
+        }
     }
 
     void HistoryControlPageItem::setTopMargin(const bool value)
@@ -86,6 +156,11 @@ namespace Ui
         updateSize();
         updateGeometry();
         update();
+    }
+
+    void HistoryControlPageItem::selectByPos(const QPoint&, const QPoint&, const QPoint&, const QPoint&)
+    {
+
     }
 
     bool HistoryControlPageItem::isSelected() const
@@ -140,6 +215,16 @@ namespace Ui
             updateGeometry();
             update();
         }
+    }
+
+    void HistoryControlPageItem::setPrev(const Logic::MessageKey& _key)
+    {
+        prev_ = _key;
+    }
+
+    void HistoryControlPageItem::setNext(const Logic::MessageKey& _key)
+    {
+        next_= _key;
     }
 
     void HistoryControlPageItem::setContact(const QString& _aimId)
@@ -209,7 +294,7 @@ namespace Ui
 
     void HistoryControlPageItem::drawLastStatusIcon(QPainter& _p,  LastStatus _lastStatus, const QString& _aimid, const QString& _friendly, int _rightPadding)
     {
-        if (!heads_.isEmpty())
+        if (!heads_.isEmpty() || Utils::InterConnector::instance().isMultiselect())
             return;
 
         switch (lastStatus_)
@@ -229,7 +314,12 @@ namespace Ui
 
     void HistoryControlPageItem::mouseMoveEvent(QMouseEvent* e)
     {
-        if (!heads_.isEmpty())
+        if (Utils::InterConnector::instance().isMultiselect())
+        {
+            if (isMultiselectEnabled())
+                setCursor(Qt::PointingHandCursor);
+        }
+        else if (!heads_.isEmpty())
         {
             if (showHeadsTooltip(rect(), e->pos()))
                 setCursor(Qt::PointingHandCursor);
@@ -241,17 +331,39 @@ namespace Ui
     void HistoryControlPageItem::mousePressEvent(QMouseEvent* e)
     {
         pressPoint = e->pos();
+
         return QWidget::mousePressEvent(e);
     }
 
     void HistoryControlPageItem::mouseReleaseEvent(QMouseEvent* e)
     {
-        if (!heads_.isEmpty() && Utils::clicked(pressPoint, e->pos()))
+        const auto pos = e->pos();
+        if (Utils::clicked(pressPoint, pos))
         {
-            clickHeads(rect(), e->pos(), e->button() == Qt::LeftButton);
+            if (Utils::InterConnector::instance().isMultiselect() && isMultiselectEnabled())
+            {
+                if (getId() != -1 && e->button() == Qt::LeftButton)
+                {
+                    setSelected(!isSelected());
+                    if (isSelected())
+                        emit Utils::InterConnector::instance().messageSelected(getId(), getInternalId());
+
+                    update();
+                }
+            }
+            else if (!heads_.isEmpty())
+            {
+                clickHeads(rect(), pos, e->button() == Qt::LeftButton);
+            }
         }
 
         return QWidget::mouseReleaseEvent(e);
+    }
+
+    void HistoryControlPageItem::enterEvent(QEvent* _event)
+    {
+        Utils::InterConnector::instance().setCurrentMultiselectMessage(isMultiselectEnabled() ? getId() : -1);
+        QWidget::enterEvent(_event);
     }
 
     bool HistoryControlPageItem::showHeadsTooltip(const QRect& _rc, const QPoint& _pos)
@@ -316,6 +428,42 @@ namespace Ui
         return false;
     }
 
+    bool HistoryControlPageItem::handleSelectByPos(const QPoint& from, const QPoint& to, const QPoint& areaFrom, const QPoint& areaTo)
+    {
+        if (Utils::InterConnector::instance().isMultiselect())
+        {
+            if (prevFrom_ != areaFrom && prevTo_ != areaTo)
+            {
+                intersected_ = false;
+                wasSelected_ = isSelected();
+            }
+
+            const auto isSelectionTopToBottom = (from.y() <= to.y());
+            const auto &topPoint = (isSelectionTopToBottom ? from : to);
+            const auto &bottomPoint = (isSelectionTopToBottom ? to : from);
+
+            const auto y = selectionCenter_ == 0 ? mapToGlobal(rect().center()).y() : mapToGlobal(QPoint(0, selectionCenter_)).y();
+
+            const auto intersects = QRect(topPoint, bottomPoint).intersects(QRect(QPoint(mapToGlobal(rect().topLeft()).x(), y), QSize(rect().width(), 1)));
+            if (intersected_ == intersects)
+                return true;
+
+            if (intersects)
+                setSelected(!isSelected());
+            else if (intersected_)
+                setSelected(wasSelected_);
+
+            intersected_ = intersects;
+            prevFrom_ = areaFrom;
+            prevTo_ = areaTo;
+
+            update();
+            return true;
+        }
+
+        return false;
+    }
+
     bool HistoryControlPageItem::hasHeads() const noexcept
     {
         return !heads_.isEmpty();
@@ -361,9 +509,98 @@ namespace Ui
         return false;
     }
 
+    void HistoryControlPageItem::setSelectionCenter(int _center)
+    {
+        selectionCenter_ = _center;
+    }
+
+    void HistoryControlPageItem::drawSelection(QPainter& _p, const QRect& _rect)
+    {
+        static auto size = QSize(Utils::scale_value(MULTISELECT_MARK_SIZE), Utils::scale_value(MULTISELECT_MARK_SIZE));
+
+        static auto on = Utils::renderSvgLayered(qsl(":/history/multiselect_on"),
+            {
+                {qsl("circle"), Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY)},
+                {qsl("check"), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT)}
+            },
+            size);
+
+        static auto off = Utils::renderSvg(qsl(":/history/multiselect_off"), size, Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY));
+
+        selectionMarkRect_ = QRect(QPoint(width() - Utils::scale_value(MULTISELECT_MARK_OFFSET) - size.width(), _rect.center().y() - size.height() / 2), size);
+
+        double current = Utils::InterConnector::instance().multiselectAnimationCurrent() / 100.0;
+
+        {
+            Utils::PainterSaver ps(_p);
+            _p.setOpacity(current);
+            _p.drawPixmap(selectionMarkRect_.x(), selectionMarkRect_.y(), off);
+            if (isSelected())
+            {
+                auto min = Utils::scale_value(8);
+                auto w = (int)(((size.width() - min) * current + min) / 2) * 2;
+                auto h = (int)(((size.height() - min) * current + min) / 2) * 2;
+                _p.drawPixmap(selectionMarkRect_.x() + (size.width() - w) / 2.0, selectionMarkRect_.y() + (size.width() - h) / 2.0, w, h, on);
+            }
+        }
+
+        static auto hoverColor = Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_PASTEL);
+        hoverColor.setAlpha(0.05 * 255 * current);
+
+        static auto hoverAndSelectedColor = Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_PASTEL);
+        hoverAndSelectedColor.setAlpha(0.15 * 255 * current);
+
+        static auto selectionColor = Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_PASTEL);
+        selectionColor.setAlpha(0.10 * 255 * current);
+
+        auto r = rect();
+        if (HasTopMargin_ && !selectedTop_ && !hoveredTop_)
+            r.setY(r.y() + (MessageStyle::getTopMargin(true) - MessageStyle::getTopMargin(false)));
+        if (!selectedBottom_ && !hoveredBottom_ && bottomOffset() != Utils::getShadowMargin())
+            r.setHeight(r.height() - (bottomOffset() - Utils::getShadowMargin()));
+
+        const auto hovered = (Utils::InterConnector::instance().currentMultiselectElement() == Utils::MultiselectCurrentElement::Message && Utils::InterConnector::instance().currentMultiselectMessage() == getId());
+
+        if (selectedTop_ || hoveredTop_)
+        {
+            auto topRect = rect();
+            topRect.setHeight(topRect.height() - r.height());
+            auto color = selectedTop_ ? (hoveredTop_ ? hoverAndSelectedColor : selectionColor) : hoverColor;
+            if ((hovered || isSelected()) && !topRect.intersects(r))
+                _p.fillRect(topRect, color);
+        }
+
+        if (selectedBottom_ || hoveredBottom_)
+        {
+            auto bottomRect = rect();
+            bottomRect.setY(r.y() + r.height());
+            auto color = selectedBottom_ ? (hoveredBottom_ ? hoverAndSelectedColor : selectionColor) : hoverColor;
+            if ((hovered || isSelected()) && !bottomRect.intersects(r))
+                _p.fillRect(bottomRect, color);
+        }
+
+        if (hovered)
+        {
+            if (isSelected())
+            {
+                _p.fillRect(r, hoverAndSelectedColor);
+                return;
+            }
+            else
+            {
+                _p.fillRect(r, hoverColor);
+            }
+        }
+
+        if (!isSelected())
+            return;
+
+        _p.fillRect(r, selectionColor);
+    }
+
     void HistoryControlPageItem::drawHeads(QPainter& _p) const
     {
-        if (heads_.isEmpty())
+        if (heads_.isEmpty() || Utils::InterConnector::instance().isMultiselect())
             return;
 
         const QRect rc = rect();
@@ -407,7 +644,7 @@ namespace Ui
             if (i == maxCount && !addPhAnimated && heads_.size() > maxCount + 1)
                 avatar = morePlaceholder;
             else
-                avatar = *Logic::GetAvatarStorage()->GetRounded(heads_[i].aimid_, heads_[i].friendly_, size, QString(), isDefault, false, false);
+                avatar = *Logic::GetAvatarStorage()->GetRounded(heads_[i].aimid_, heads_[i].friendly_, size, isDefault, false, false);
 
             auto margin = xMargin;
             if (heads_[i].adding_ && addAnimation_.isRunning() && i != maxCount)

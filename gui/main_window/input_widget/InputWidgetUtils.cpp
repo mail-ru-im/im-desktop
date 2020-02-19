@@ -6,6 +6,7 @@
 #include "utils/InterConnector.h"
 #include "styles/ThemeParameters.h"
 #include "controls/CustomButton.h"
+#include "fonts.h"
 
 #include "main_window/history_control/HistoryControlPage.h"
 #include "main_window/contact_list/ContactListModel.h"
@@ -220,7 +221,7 @@ namespace Ui
 
     bool replaceEmoji(HistoryTextEdit* _textEdit)
     {
-        if (!Ui::get_gui_settings()->get_value<bool>(settings_autoreplace_emoji, settings_autoreplace_emoji_deafult()))
+        if (!Ui::get_gui_settings()->get_value<bool>(settings_autoreplace_emoji, settings_autoreplace_emoji_default()))
             return false;
 
         const auto[lastWord, position] = getLastWord(_textEdit);
@@ -237,41 +238,47 @@ namespace Ui
             return false;
         }
 
-        if (_textEdit->getReplacer().isAutoreplaceAvailable())
+        const auto &emojiReplacer = _textEdit->getReplacer();
+        if (emojiReplacer.isAutoreplaceAvailable())
         {
-            const auto &emojiCode = _textEdit->getReplacer().getEmojiCode(QStringRef(&lastWord));
-            if (!emojiCode.isNull())
+            const auto &replacement = emojiReplacer.getReplacement(QStringRef(&lastWord));
+            if (!replacement.isNull())
             {
-                QChar currentChar;
-
-                while (currentChar != QChar::Space && currentChar != QChar::LineFeed && currentChar != QChar::ParagraphSeparator)
+                const auto asCode = replacement.value<Emoji::EmojiCode>();
+                const auto asString = replacement.value<QString>();
+                if (!asCode.isNull() || !asString.isEmpty())
                 {
-                    if (cursor.atEnd())
-                        break;
+                    QChar currentChar;
 
-                    cursor.movePosition(QTextCursor::NextCharacter, QTextCursor::KeepAnchor);
-                    currentChar = *cursor.selectedText().crbegin();
-                    cursor.movePosition(QTextCursor::NoMove, QTextCursor::MoveAnchor);
+                    while (currentChar != QChar::Space && currentChar != QChar::LineFeed && currentChar != QChar::ParagraphSeparator)
+                    {
+                        if (cursor.atEnd())
+                            break;
+
+                        cursor.movePosition(QTextCursor::NextCharacter, QTextCursor::KeepAnchor);
+                        currentChar = *cursor.selectedText().crbegin();
+                        cursor.movePosition(QTextCursor::NoMove, QTextCursor::MoveAnchor);
+                    }
+
+                    cursor.removeSelectedText();
+
+                    if (currentChar == QChar::ParagraphSeparator)
+                        currentChar = ql1c('\n');
+
+                    if (!asString.isEmpty())
+                    {
+                        _textEdit->insertPlainText(asString % currentChar);
+                    }
+                    else if (!asCode.isNull())
+                    {
+                        _textEdit->insertEmoji(asCode);
+                        _textEdit->insertPlainText(currentChar);
+                        _textEdit->ensureCursorVisible();
+                    }
+                    _textEdit->getUndoRedoStack().push(_textEdit->getPlainText());
+
+                    return true;
                 }
-
-                cursor.removeSelectedText();
-
-                if (currentChar == QChar::ParagraphSeparator)
-                    currentChar = ql1c('\n');
-
-                if (emojiCode == Emoji::doubleDashCode)
-                {
-                    _textEdit->insertPlainText(QChar(0x2014) % currentChar); // em dash
-                }
-                else
-                {
-                    _textEdit->insertEmoji(emojiCode);
-                    _textEdit->insertPlainText(currentChar);
-                    _textEdit->ensureCursorVisible();
-                }
-                _textEdit->getUndoRedoStack().push(_textEdit->getPlainText());
-
-                return true;
             }
         }
         return false;

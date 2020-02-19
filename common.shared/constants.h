@@ -20,12 +20,12 @@
 #define settings_download_directory_save_as "download_directory_save_as"
 #define settings_old_recents_stickers "recents_stickers"
 #define settings_recents_fs_stickers "recents_fs_stickers"
-#define settings_recents_emojis "recents_emojis_v2"
 #define settings_recents_emojis2 "recents_emojis_v3"
 #define settings_window_maximized "window_maximized"
 #define settings_cl_groups_enabled "cl_groups_enabled"
 #define settings_main_window_rect "main_window_rect"
 #define settings_favorites_visible "favorites_visible"
+#define settings_unimportant_visible "unimportant_visible"
 #define settings_splitter_state "splitter_state"
 #define settings_splitter_state_scale "splitter_state_scale"
 #define settings_recents_mini_mode "recents_mini_mode"
@@ -42,10 +42,12 @@
 #define settings_show_last_message "settings_show_last_message"
 #define settings_show_video_and_images "show_video_and_images"
 #define settings_autoplay_video "autoplay_video"
+#define settings_hoversound_video "hoversound_video"
 #define settings_autoplay_gif "autoplay_gif"
 #define settings_scale_coefficient "scale_coefficient"
 #define settings_show_popular_contacts "show_popular_contacts"
 #define settings_show_groupchat_heads "show_groupchat_heads"
+#define settings_show_smartreply "show_smartreply"
 #define settings_show_suggests_emoji "show_suggest_emoji"
 #define settings_show_suggests_words "show_suggest_words"
 #define settings_allow_big_emoji "allow_big_emoji"
@@ -58,10 +60,14 @@
 #define settings_appearance_bold_text "appearance_bold_text"
 #define settings_appearance_text_size "appearance_text_size"
 #define settings_appearance_last_directory "appearance_last_wp_directory"
+#define settings_fast_drop_search_results "fast_drop_search_results"
 
-constexpr bool settings_allow_big_emoji_deafult() noexcept { return true; }
-constexpr bool settings_autoreplace_emoji_deafult() noexcept { return true; }
-constexpr bool settings_partial_read_deafult() noexcept { return true; }
+constexpr bool settings_allow_big_emoji_default() noexcept { return true; }
+constexpr bool settings_autoreplace_emoji_default() noexcept { return true; }
+constexpr bool settings_hoversound_video_default() noexcept { return true; }
+constexpr bool settings_partial_read_default() noexcept { return true; }
+constexpr bool settings_show_smartreply_default() noexcept { return true; }
+constexpr bool settings_fast_drop_search_default() noexcept { return false; }
 
 #define settings_microphone "microphone"
 #define settings_microphone_gain "microphone_gain"
@@ -75,6 +81,7 @@ constexpr bool settings_partial_read_deafult() noexcept { return true; }
 #define settings_notify_new_messages "notify_new_messages"
 #define settings_notify_new_mail_messages "notify_new_mail_messages"
 #define settings_hide_message_notification "hide_message_notification"
+#define settings_alert_tray_icon "alert_tray_icon"
 
 #define settings_keep_logged_in "keep_logged_in"
 
@@ -93,22 +100,10 @@ constexpr bool settings_partial_read_deafult() noexcept { return true; }
 #define login_page_last_entered_country_code "login_page_last_entered_country_code"
 #define login_page_last_entered_phone "login_page_last_entered_phone"
 #define login_page_last_login_type "login_page_last_login_type"
+#define login_page_need_fill_profile "login_page_need_fill_profile"
 
 #define setting_mplayer_volume "mplayer_volume"
 #define setting_mplayer_mute "mplayer_mute"
-
-#define product_path_icq_w L"ICQ"
-#define product_path_icq_a "ICQ"
-#define product_path_agent_w L"Mail.Ru/Agent"
-#define product_path_agent_a "Mail.Ru/Agent"
-#define product_path_biz_w L"Mail.Ru/Myteam"
-#define product_path_biz_a "Mail.Ru/Myteam"
-#define product_path_dit_w L"Messenger"
-#define product_path_dit_a "Messenger"
-#define product_path_agent_mac_w L"Mail.Ru Agent"
-#define product_path_agent_mac_a "Mail.Ru Agent"
-#define product_name_icq_mac_a "ICQ"
-#define product_name_agent_mac_a "Mail.ru Agent"
 
 #define setting_show_forward_author "show_forward_author"
 
@@ -127,35 +122,38 @@ namespace core
 {
     namespace search
     {
-        inline constexpr size_t max_patterns_count() noexcept
-        {
-            return 10;
-        }
+        constexpr size_t max_patterns_count() noexcept { return 10; }
+        constexpr size_t archive_block_size() noexcept { return 4 * 1024 * 1024; }
     }
 }
 
 namespace feature
 {
-    constexpr bool default_one_domain_feature() noexcept { return true; }
     constexpr long long default_im_stats_send_interval() noexcept { return 1800LL; }
     constexpr long long default_im_stats_max_store_interval() noexcept { return 0LL; }
     constexpr int default_profile_nickname_minimum_length() noexcept { return 5; }
     constexpr int default_profile_nickname_maximum_length() noexcept { return 30; }
     constexpr bool default_profile_nickname_allowed() noexcept { return true; }
-    constexpr const char* default_profile_domain() noexcept { return "icq.im"; }
-    constexpr const char* default_profile_myteam_domain() noexcept { return "myteam.mail.ru/profile"; }
-    constexpr const char* default_no_account_link() noexcept { return "https://biz.mail.ru/myteam"; }
 
     constexpr bool default_use_apple_emoji() noexcept { return true; }
     constexpr bool default_open_file_on_click() noexcept { return true; }
-    constexpr bool default_force_show_chat_popup() noexcept { return true; }
-    constexpr bool default_biz_phone_allowed() noexcept { return false; }
+    constexpr bool default_external_phone_attachment() noexcept { return false; }
     constexpr long long default_history_request_page_size() noexcept { return 100; }
-    constexpr bool default_new_avatar_rapi() noexcept { return false; }
+    constexpr int default_show_timeout_attach_phone_number_popup() noexcept { return 86400; }
+    constexpr const char* default_voip_rating_popup_json_config() noexcept { return "{}"; }
+    constexpr bool default_polls_enabled() noexcept { return true; }
+    constexpr int default_poll_subscribe_timeout_ms() noexcept { return 60000; }
+    constexpr int default_max_poll_options() noexcept { return 10; }
 
-    constexpr const char* default_data_visibility_link_icq() noexcept { return "https://icq.com/help/visibility/"; }
-    constexpr const char* default_data_visibility_link_agent() noexcept { return "https://agent.mail.ru/help/visibility/"; }
-    constexpr const char* default_password_recovery_link_icq() noexcept { return "https://icq.com/password/"; }
-    constexpr const char* default_password_recovery_link_agent() noexcept { return "https://e.mail.ru/cgi-bin/passremind"; }
+    constexpr int default_stickers_suggest_time_interval() noexcept { return 501; }
+    constexpr bool default_stickers_server_suggest_enabled() noexcept { return true; }
+    constexpr int default_stickers_server_suggests_max_allowed_chars() noexcept { return 50; }
+    constexpr int default_stickers_server_suggests_max_allowed_words() noexcept { return 5; }
+    constexpr int default_stickers_local_suggests_max_allowed_chars() noexcept { return 50; }
+    constexpr int default_stickers_local_suggests_max_allowed_words() noexcept { return 10; }
+
     constexpr const char* default_security_call_link() noexcept { return "https://icq.com/security-calls"; }
+    constexpr int default_fs_id_length() noexcept { return 33; }
+    constexpr int default_im_zstd_compression_level() noexcept { return 3; }
+    constexpr const char* default_dev_id() noexcept { return "dev_icq_id"; }
 }

@@ -129,10 +129,10 @@ namespace Ui
             activeDialog_ = &containerDialog;
 
             bool pending = _info->YouPending_;
-            auto pendingText = QT_TRANSLATE_NOOP("popup_window", "WAITING");
+            auto pendingText = QT_TRANSLATE_NOOP("popup_window", "Waiting");
             containerDialog.addButtonsPair(
-                pending ? QT_TRANSLATE_NOOP("popup_window", "CLOSE") : QT_TRANSLATE_NOOP("popup_window", "CANCEL"),
-                pending ? pendingText : QT_TRANSLATE_NOOP("popup_window", "JOIN"),
+                pending ? QT_TRANSLATE_NOOP("popup_window", "Close") : QT_TRANSLATE_NOOP("popup_window", "Cancel"),
+                pending ? pendingText : QT_TRANSLATE_NOOP("popup_window", "Join"),
                 !pending);
 
             QMetaObject::Connection joinedCon;
@@ -150,7 +150,7 @@ namespace Ui
                 {
                     if (id == aimId)
                     {
-                        button->setText(QT_TRANSLATE_NOOP("popup_window", "OPEN"));
+                        button->setText(QT_TRANSLATE_NOOP("popup_window", "Open"));
                         button->setEnabled(true);
 
                         disconnect(*clickCon);
@@ -206,7 +206,7 @@ namespace Ui
         GeneralDialog containerDialog(errorWidget, Utils::InterConnector::instance().getMainWindow());
         activeDialog_ = &containerDialog;
 
-        containerDialog.addCancelButton(QT_TRANSLATE_NOOP("popup_window", "CLOSE"), true);
+        containerDialog.addCancelButton(QT_TRANSLATE_NOOP("popup_window", "Close"), true);
         containerDialog.showInCenter();
 
         GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::chats_open_popup);
@@ -270,7 +270,7 @@ namespace Ui
 
         rootLayout_->addLayout(avatar_layout);
 
-        QString nameText = ((_info->Name_.length() > maxNameTextSize) ? (_info->Name_.midRef(0, maxNameTextSize) % ql1s("...")) : _info->Name_);
+        QString nameText = ((_info->Name_.length() > maxNameTextSize) ? (_info->Name_.midRef(0, maxNameTextSize) % getEllipsis()) : _info->Name_);
 
         name_ = new TextEditEx(this, Fonts::appFontScaled(24), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID), false, true);
         connect(name_, &TextEditEx::setSize, this, &LiveChatProfileWidget::nameResized, Qt::QueuedConnection);
@@ -287,7 +287,7 @@ namespace Ui
         needHeight += initialiNameHeight_;
         rootLayout_->addWidget(name_);
 
-        QString aboutText = ((_info->About_.length() > maxAboutTextSize) ? (_info->About_.midRef(0, maxAboutTextSize) % ql1s("...")) : _info->About_);
+        QString aboutText = ((_info->About_.length() > maxAboutTextSize) ? (_info->About_.midRef(0, maxAboutTextSize) % getEllipsis()) : _info->About_);
 
         TextEditEx* about = new TextEditEx(this, Fonts::appFontScaled(16), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY), false, false);
         about->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
@@ -313,7 +313,7 @@ namespace Ui
                 break;
             }
 
-            aboutText = aboutText.midRef(0, newLength) % ql1s("...");
+            aboutText = aboutText.midRef(0, newLength) % getEllipsis();
         }
 
         needHeight += height;

@@ -7,11 +7,29 @@
 #include "../../utils/PainterPath.h"
 #include "../history_control/MessageStyle.h"
 
+#include "FrameRenderer.h"
+
 #ifdef __WIN32__
 #include "win32/WindowRenderer.h"
 #endif //__WIN32__
 
 Q_LOGGING_CATEGORY(ffmpegPlayer, "ffmpegPlayer")
+
+namespace
+{
+    bool isCompressedType(Ui::thread_message_type _type)
+    {
+        switch (_type)
+        {
+            case Ui::tmt_get_next_video_frame:
+                return true;
+            default:
+                break;
+        }
+
+        return false;
+    }
+}
 
 class AVCodecScope
 {
@@ -56,6 +74,9 @@ namespace Ui
 
         _message = tmpList.front();
 
+        if (isCompressedType(_message.message_))
+            compressed_messages_[_message.message_] = false;
+
         return true;
     }
 
@@ -64,14 +85,23 @@ namespace Ui
         decltype(messages_) tmpList;
         tmpList.push_back(_message);
         {
+            const auto compressedType = isCompressedType(_message.message_);
             std::scoped_lock lock(queue_mutex_);
 
-            if (_clear_others)
+            const auto skipMessage = compressedType && compressed_messages_[_message.message_];
+
+            if (!skipMessage)
             {
-                const auto id = _message.videoId_;
-                messages_.remove_if([id](const auto& x) { return x.videoId_ == id; });
+                if (_clear_others)
+                {
+                    const auto id = _message.videoId_;
+                    messages_.remove_if([id](const auto& x) { return x.videoId_ == id; });
+                }
+                messages_.splice(_forward ? messages_.begin() : messages_.end(), tmpList, tmpList.begin());
+
+                if (compressedType)
+                    compressed_messages_[_message.message_] = true;
             }
-            messages_.splice(_forward ? messages_.begin() : messages_.end(), tmpList, tmpList.begin());
         }
 
         condition_.release(1);
@@ -83,6 +113,8 @@ namespace Ui
         {
             std::scoped_lock lock(queue_mutex_);
             tmpList.splice(tmpList.begin(), messages_);
+
+            std::fill(compressed_messages_.begin(), compressed_messages_.end(), false);
         }
     }
 
@@ -655,9 +687,11 @@ namespace Ui
                         }
 
                         if (rotation)
+                        {
                             lastFrame = lastFrame.transformed(QTransform().rotate(rotation));
+                        }
 
-                        result = std::move(lastFrame);
+                        result = lastFrame;
 
                         ffmpeg::av_frame_unref(frameRGB);
                         ffmpeg::av_frame_free(&frameRGB);
@@ -795,9 +829,8 @@ namespace Ui
         _media.height_ = videoCodecContext->height;
 
         _media.duration_ = _media.formatContext_->duration / (AV_TIME_BASE / 1000);
-
-        _media.scaledSize_.setHeight(_media.height_);
         _media.scaledSize_.setWidth(_media.width_);
+        _media.scaledSize_.setHeight(_media.height_);
 
         resetFrameTimer(_media);
 
@@ -837,7 +870,12 @@ namespace Ui
         return _media.duration_;
     }
 
-    QSize VideoContext::getScaledSize(MediaData& _media) const
+    QSize VideoContext::getSourceSize(MediaData& _media) const
+    {
+        return QSize(_media.width_, _media.height_);
+    }
+
+    QSize VideoContext::getTargetSize(MediaData& _media) const
     {
         return _media.scaledSize_;
     }
@@ -1386,6 +1424,13 @@ namespace Ui
         msg.x_ = _sz.width();
         msg.y_ = _sz.height();
 
+        if (auto mediaData = getMediaData(_videoId))
+        {
+            const auto rotation = getRotation(*mediaData);
+            if (rotation == 90 || rotation == 270)
+                std::swap(msg.x_, msg.y_);
+        }
+
         postVideoThreadMessage(msg, false);
     }
 
@@ -1441,7 +1486,6 @@ namespace Ui
         if (_media.scaledSize_ != _sz)
         {
             _media.scaledSize_ = _sz;
-
             _media.needUpdateSwsContext_ = true;
 
             emit videoSizeChanged(_media.scaledSize_);
@@ -2012,13 +2056,30 @@ namespace Ui
 
     }
 
-    void VideoDecodeThread::prepareCtx(MediaData& _media)
+    void alignedImageBufferCleanupHandler(void *data)
     {
-        int32_t w = std::max(ctx_.getWidth(_media), ctx_.getHeight(_media));
-        int32_t h = std::min(ctx_.getWidth(_media), ctx_.getHeight(_media));
+        auto buffer = static_cast<uchar*>(data);
+        delete[] buffer;
+    }
 
+    QImage createAlignedImage(QSize size, const int _align)
+    {
+        auto width = size.width();
+        auto height = size.height();
+        auto widthalign = _align / 4;
+        auto neededwidth = width + ((width % widthalign) ? (widthalign - (width % widthalign)) : 0);
+        auto bytesperline = neededwidth * 4;
+        auto buffer = new uchar[bytesperline * height + _align];
+        auto cleanupdata = static_cast<void*>(buffer);
+        auto bufferval = reinterpret_cast<uintptr_t>(buffer);
+        auto alignedbuffer = buffer + ((bufferval % _align) ? (_align - (bufferval % _align)) : 0);
 
-        ctx_.updateScaleContext(_media, QSize(w, h));
+        return QImage(alignedbuffer, width, height, bytesperline, QImage::Format_ARGB32, alignedImageBufferCleanupHandler, cleanupdata);
+    }
+
+    bool isAlignedImage(const QImage &image, const int _align)
+    {
+        return !(reinterpret_cast<uintptr_t>(image.constBits()) % _align) && !(image.bytesPerLine() % _align);
     }
 
     void VideoDecodeThread::run()
@@ -2050,10 +2111,6 @@ namespace Ui
                         data.stream_finished_ = false;
                         data.eof_ = false;
                         videoData[videoId] = data;
-                        auto media = ctx_.getMediaData(videoId);
-
-                        if (media)
-                            prepareCtx(*media);
                     }
                     else if (msg.message_ == thread_message_type::tmt_quit)
                     {
@@ -2091,7 +2148,7 @@ namespace Ui
                     }
                     case thread_message_type::tmt_update_scaled_size:
                     {
-                        const QSize scaledSize = ctx_.getScaledSize(media);
+                        const QSize scaledSize = ctx_.getTargetSize(media);
 
                         QSize newSize(msg.x_, msg.y_);
 
@@ -2132,6 +2189,13 @@ namespace Ui
 
                         break;
                     }
+                    case thread_message_type::tmt_empty_frame:
+                    {
+                        if (auto& data = videoData[videoId]; data.emptyFrames_.size() < 5)
+                            data.emptyFrames_.push_back(msg.emptyFrame_);
+
+                        break;
+                    }
                     case thread_message_type::tmt_get_next_video_frame:
                     {
                         if (videoData[videoId].current_state_ == decode_thread_state::dts_end_of_media ||
@@ -2163,21 +2227,25 @@ namespace Ui
                             pts *= ctx_.getVideoTimebase(media);
                             pts = ctx_.synchronizeVideo(frame, pts, media);
 
+
                             if (ctx_.isQuit())
                             {
                                 break;
                             }
 
-                            QSize scaledSize(frame->width, frame->height);
+                            auto scaledSize = ctx_.getTargetSize(media);
+                            const auto sourceSize = ctx_.getSourceSize(media);
 
-                            if (frame->width < frame->height)
-                                scaledSize.transpose();
+                            auto targetRatio = static_cast<double>(sourceSize.width()) / sourceSize.height();
 
-                            if (scaledSize.width() > max_video_w || scaledSize.height() > max_video_h)
-                                scaledSize.scale(max_video_w, max_video_h, Qt::KeepAspectRatio);
+                            if (scaledSize.width() > scaledSize.height())
+                                scaledSize.rheight() = scaledSize.width() / targetRatio;
+                            else
+                                scaledSize.rwidth() = scaledSize.height() * targetRatio;
 
-                            if (frame->width < frame->height)
-                                scaledSize.transpose();
+                            scaledSize = scaledSize.boundedTo(sourceSize);
+
+                            const auto rotation = ctx_.getRotation(media);
 
                             if (scaledSize.width() == 0)
                                 scaledSize.setWidth(1);
@@ -2185,25 +2253,17 @@ namespace Ui
                             if (scaledSize.height() == 0)
                                 scaledSize.setHeight(1);
 
-                            // update scale context
-                            if ((media.needUpdateSwsContext_) || (frame->format != -1 && frame->format != media.codecContext_->pix_fmt) || !media.swsContext_)
+                            QImage lastFrame = videoData[videoId].emptyFrames_.empty() ? QImage() : videoData[videoId].emptyFrames_.front();
+                            if (!videoData[videoId].emptyFrames_.empty())
+                                videoData[videoId].emptyFrames_.pop_front();
+
+                            int align = 256;
+                            if (platform::is_windows()) // spike for opengl
                             {
-                                if (media.frameRGB_)
-                                {
-                                    ffmpeg::av_frame_unref(media.frameRGB_);
-                                    ffmpeg::av_frame_free(&media.frameRGB_);
-
-                                    media.frameRGB_ = 0;
-                                }
-
-                                media.needUpdateSwsContext_ = false;
-                                media.swsContext_ = sws_getCachedContext(
-                                    media.swsContext_,
-                                    frame->width,
-                                    frame->height,
-                                    ffmpeg::AVPixelFormat(frame->format), scaledSize.width(), scaledSize.height(), ffmpeg::AV_PIX_FMT_RGBA, SWS_POINT, 0, 0, 0);
-
-                                int align = 256;
+                                align = 4;
+                            }
+                            else // spike for osx
+                            {
                                 while (1)
                                 {
                                     if (frame->linesize[0] % align == 0)
@@ -2211,23 +2271,27 @@ namespace Ui
 
                                     align = align / 2;
                                 }
-
-                                media.frameRGB_ = ffmpeg::av_frame_alloc();
-                                int numBytes = ffmpeg::av_image_get_buffer_size(ffmpeg::AV_PIX_FMT_RGBA, scaledSize.width(), scaledSize.height(), align);
-                                media.scaledBuffer_.resize(numBytes);
-                                av_image_fill_arrays(media.frameRGB_->data, media.frameRGB_->linesize, &media.scaledBuffer_[0], ffmpeg::AV_PIX_FMT_RGBA, scaledSize.width(), scaledSize.height(), align);
                             }
 
-                            ffmpeg::sws_scale(media.swsContext_, frame->data, frame->linesize, 0, frame->height, media.frameRGB_->data, media.frameRGB_->linesize);
-
-                            QImage lastFrame(scaledSize.width(), scaledSize.height(), QImage::Format_RGBA8888);
-
-                            for (int y = 0; y < scaledSize.height(); ++y)
+                            if (lastFrame.isNull() || lastFrame.size() != scaledSize || !lastFrame.isDetached() || !isAlignedImage(lastFrame, align))
                             {
-                                memcpy(lastFrame.scanLine(y), media.frameRGB_->data[0] + y * media.frameRGB_->linesize[0], scaledSize.width() * 4);
+                                lastFrame = createAlignedImage(scaledSize, align);
                             }
 
-                            const auto rotation = ctx_.getRotation(media);
+                            if ((media.needUpdateSwsContext_) || (frame->format != -1 && frame->format != media.codecContext_->pix_fmt) || !media.swsContext_)
+                            {
+                                media.needUpdateSwsContext_ = false;
+                                media.swsContext_ = sws_getCachedContext(
+                                    media.swsContext_,
+                                    frame->width,
+                                    frame->height,
+                                    ffmpeg::AVPixelFormat(frame->format), scaledSize.width(), scaledSize.height(), ffmpeg::AV_PIX_FMT_BGRA, SWS_POINT, 0, 0, 0);
+                            }
+
+                            uint8_t *toData[AV_NUM_DATA_POINTERS] = { lastFrame.bits(), nullptr };
+                            int toLinesize[AV_NUM_DATA_POINTERS] = { lastFrame.bytesPerLine(), 0 };
+                            ffmpeg::sws_scale(media.swsContext_, frame->data, frame->linesize, 0, frame->height, toData, toLinesize);
+
                             if (rotation)
                                 lastFrame = lastFrame.transformed(QTransform().rotate(rotation));
 
@@ -2512,261 +2576,6 @@ namespace Ui
         return 1;
     }
 
-    FrameRenderer::~FrameRenderer()
-    {
-
-    }
-
-    void FrameRenderer::renderFrame(QPainter& _painter, const QRect& _clientRect)
-    {
-        if (activeImage_.isNull())
-        {
-            _painter.fillRect(_clientRect, Qt::black);
-
-            return;
-        }
-
-        QSize imageSize = activeImage_.size();
-
-        QRect imageRect(0, 0, imageSize.width(), imageSize.height());
-
-        QSize scaledSize;
-        QRect sourceRect;
-
-        if (fillClient_)
-        {
-            scaledSize = QSize(_clientRect.width(), _clientRect.height());
-            QSize size = _clientRect.size();
-            size.scale(imageSize, Qt::KeepAspectRatio);
-            sourceRect = QRect(0, 0, size.width(), size.height());
-            if (imageSize.width() > size.width())
-                sourceRect.moveLeft(imageSize.width() / 2 - size.width() / 2);
-        }
-        else
-        {
-            int32_t h = (int32_t) (((double) imageSize.height() / (double) imageSize.width()) * (double) _clientRect.width());
-
-            if (h > _clientRect.height())
-            {
-                h = _clientRect.height();
-
-                scaledSize.setWidth(((double) imageSize.width() / (double) imageSize.height()) * (double) _clientRect.height());
-            }
-            else
-            {
-                scaledSize.setWidth(_clientRect.width());
-            }
-
-            scaledSize.setHeight(h);
-        }
-
-        int cx = (_clientRect.width() - scaledSize.width()) / 2;
-        int cy = (_clientRect.height() - scaledSize.height()) / 2;
-
-        QRect drawRect(cx, cy, scaledSize.width(), scaledSize.height());
-
-        //auto t1 = std::chrono::system_clock::now();
-
-        if (fillColor_.isValid())
-            _painter.fillRect(_clientRect, fillColor_);
-
-        QSize sz = activeImage_.size();
-
-        //qDebug() << "image size = " << sz;
-
-        auto t2 = std::chrono::system_clock::now();
-
-        if (fillClient_)
-            _painter.drawPixmap(drawRect, activeImage_, sourceRect);
-        else
-            _painter.drawPixmap(drawRect, activeImage_);
-
-        //auto t3 = std::chrono::system_clock::now();
-
-        //qDebug() << "fill time " << (t2 - t1)/std::chrono::milliseconds(1) << "draw frame time " << (t3 - t2)/std::chrono::milliseconds(1);
-    }
-
-    void FrameRenderer::updateFrame(QPixmap _image)
-    {
-        activeImage_ = _image;
-    }
-
-    QPixmap FrameRenderer::getActiveImage() const
-    {
-        return activeImage_;
-    }
-
-    bool FrameRenderer::isActiveImageNull() const
-    {
-        return activeImage_.isNull();
-    }
-
-    void FrameRenderer::setClippingPath(QPainterPath _clippingPath)
-    {
-        clippingPath_ = _clippingPath;
-    }
-
-    void FrameRenderer::setFullScreen(bool _fullScreen)
-    {
-        fullScreen_ = _fullScreen;
-    }
-
-    void FrameRenderer::setFillColor(const QColor& _color)
-    {
-        fillColor_ = _color;
-    }
-
-    void FrameRenderer::setFillClient(bool _fill)
-    {
-        fillClient_ = _fill;
-    }
-
-    void FrameRenderer::setSizeCallback(std::function<void(const QSize)> _callback)
-    {
-        sizeCallback_ = _callback;
-    }
-
-    void FrameRenderer::onSize(const QSize _sz)
-    {
-        if (sizeCallback_)
-            sizeCallback_(_sz);
-    }
-
-
-
-
-    GDIRenderer::GDIRenderer(QWidget* _parent)
-        : QWidget(_parent)
-    {
-        setMouseTracking(true);
-    }
-
-    QWidget* GDIRenderer::getWidget()
-    {
-        return this;
-    }
-
-    void GDIRenderer::redraw()
-    {
-        update();
-    }
-
-    void GDIRenderer::paintEvent(QPaintEvent* _e)
-    {
-        QPainter p;
-        p.begin(this);
-
-        QRect clientRect = geometry();
-
-        if (!fullScreen_)
-        {
-            //assert(!clippingPath_.isEmpty());
-             if (!clippingPath_.isEmpty())
-             {
-                 p.setClipPath(clippingPath_);
-             }
-        }
-
-        p.setRenderHint(QPainter::SmoothPixmapTransform, true);
-
-        renderFrame(p, clientRect);
-
-        p.end();
-
-        QWidget::paintEvent(_e);
-    }
-
-    void GDIRenderer::resizeEvent(QResizeEvent *_event)
-    {
-        onSize(_event->size());
-    }
-
-    void GDIRenderer::filterEvents(QObject* _parent)
-    {
-        installEventFilter(_parent);
-    }
-
-    void GDIRenderer::setWidgetVisible(bool _visible)
-    {
-        setVisible(_visible);
-    }
-
-#ifndef __linux__
-    OpenGLRenderer::OpenGLRenderer(QWidget* _parent)
-        : QOpenGLWidget(_parent)
-    {
-        //if (platform::is_apple())
-            setFillColor(Qt::GlobalColor::black);
-
-        setAutoFillBackground(false);
-
-        setMouseTracking(true);
-    }
-
-    QWidget* OpenGLRenderer::getWidget()
-    {
-        return this;
-    }
-
-    void OpenGLRenderer::redraw()
-    {
-        update();
-    }
-
-    void OpenGLRenderer::paint()
-    {
-        QPainter p;
-        p.begin(this);
-
-        QRect clientRect = geometry();
-
-        if (!fullScreen_)
-        {
-            if (!clippingPath_.isEmpty())
-            {
-                p.setClipPath(clippingPath_);
-            }
-        }
-
-        p.setRenderHint(QPainter::SmoothPixmapTransform, true);
-
-        renderFrame(p, clientRect);
-
-        p.end();
-    }
-
-    void OpenGLRenderer::paintEvent(QPaintEvent* _e)
-    {
-        paint();
-
-        QOpenGLWidget::paintEvent(_e);
-    }
-
-    void OpenGLRenderer::paintGL()
-    {
-        paint();
-
-        QOpenGLWidget::paintGL();
-    }
-
-    void OpenGLRenderer::resizeEvent(QResizeEvent *_event)
-    {
-        onSize(_event->size());
-
-        QOpenGLWidget::resizeEvent(_event);
-    }
-
-    void OpenGLRenderer::filterEvents(QObject* _parent)
-    {
-        installEventFilter(_parent);
-    }
-
-    void OpenGLRenderer::setWidgetVisible(bool _visible)
-    {
-        setVisible(_visible);
-    }
-#endif //__linux__
-
     const auto mouse_move_rate = std::chrono::milliseconds(200);
 
     PlayersList::PlayersList()
@@ -2918,14 +2727,12 @@ namespace Ui
     {
         if (!_eof)
         {
-            QPixmap frame = QPixmap::fromImage(_image);
-
             if (state_ == decode_thread_state::dts_playing)
-                decodedFrames_.emplace_back(frame, _pts);
+                decodedFrames_.emplace_back(_image, _pts);
 
             if (!firstFrame_)
             {
-                firstFrame_ = std::make_unique<DecodedFrame>(frame, _pts);
+                firstFrame_ = std::make_unique<DecodedFrame>(_image, _pts);
 
                 emit firstFrameReady();
             }
@@ -2954,9 +2761,6 @@ namespace Ui
             getMediaContainer()->VideoDecodeThreadStart(mediaId_);
             getMediaContainer()->AudioDecodeThreadStart(mediaId_);
             getMediaContainer()->is_decods_inited_ = true;
-
-            if (auto renderer = weak_renderer_.lock())
-                getMediaContainer()->updateVideoScaleSize(mediaId_, renderer->getWidget()->size());
         }
 
         timer_->start(100);
@@ -3130,8 +2934,8 @@ namespace Ui
                 if (getImageProgress() != duration)
                 {
                     imageProgressAnimation_->stop();
-                    imageProgressAnimation_->setStartValue(0);
-                    imageProgressAnimation_->setEndValue(QVariant::fromValue<decltype(duration)>(duration));
+                    imageProgressAnimation_->setStartValue(qint64(0));
+                    imageProgressAnimation_->setEndValue(qint64(duration));
                     imageProgressAnimation_->setDuration(duration);
                     imageProgressAnimation_->start();
                     timer_->start(100);
@@ -3185,6 +2989,11 @@ namespace Ui
 
         if (renderer)
             renderer->updateFrame(frame.image_);
+
+
+        ThreadMessage msg(mediaId_, thread_message_type::tmt_empty_frame);
+        msg.setEmptyFrame(std::exchange(frame.image_, {}));
+        getMediaContainer()->postVideoThreadMessage(msg, false);
 
         if (!media)
         {
@@ -3244,15 +3053,12 @@ namespace Ui
                 queuedMedia_.push_back(mediaId);
         }
 
-        if (auto renderer = weak_renderer_.lock())
-            getMediaContainer()->updateVideoScaleSize(getMedia(), renderer->getWidget()->size());
-
         return true;// getMediaContainer()->openFile(_mediaPath, *media);
     }
 
     void FFMpegPlayer::onRendererSize(const QSize _sz)
     {
-        getMediaContainer()->updateVideoScaleSize(getMedia(), _sz);
+        getMediaContainer()->updateVideoScaleSize(getMedia(), Utils::scale_bitmap(_sz));
     }
 
     void FFMpegPlayer::onStreamsOpened(uint32_t _videoId)
@@ -3321,6 +3127,9 @@ namespace Ui
 
                     //qDebug() << "send get next id play " << mediaId_;
                     getMediaContainer()->postVideoThreadMessage(ThreadMessage(mediaId_, thread_message_type::tmt_get_next_video_frame), false);
+
+                    if (auto renderer = weak_renderer_.lock())
+                        onRendererSize(renderer->getWidget()->size());
 
                     auto media_ptr = getMediaContainer()->ctx_.getMediaData(mediaId_);
                     if (!media_ptr)
@@ -3572,7 +3381,7 @@ namespace Ui
     {
         if (auto renderer = weak_renderer_.lock())
         {
-            renderer->updateFrame(std::move(_preview));
+            renderer->updateFrame(_preview.toImage());
             renderer->redraw();
         }
     }
@@ -3580,7 +3389,7 @@ namespace Ui
     QPixmap FFMpegPlayer::getActiveImage() const
     {
         if (auto renderer = weak_renderer_.lock())
-            return renderer->getActiveImage();
+            return QPixmap::fromImage(renderer->getActiveImage());
         else
             return QPixmap();
     }
@@ -3695,6 +3504,7 @@ namespace Ui
     {
         _renderer->filterEvents(this);
         _renderer->setSizeCallback([this](auto _size){ onRendererSize(_size); });
+        onRendererSize(_renderer->getWidget()->size());
         weak_renderer_ = std::move(_renderer);
     }
 
@@ -3946,4 +3756,5 @@ namespace Ui
 
         return container;
     }
+
 }

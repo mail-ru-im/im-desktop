@@ -92,6 +92,7 @@
     <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">gui</TargetName>
     <IgnoreImportLibrary Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</IgnoreImportLibrary>
     <IgnoreImportLibrary Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</IgnoreImportLibrary>
+    <Product>icq</Product>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <CustomBuildAfterTargets>
@@ -125,7 +126,7 @@
       <ExceptionHandling>Async</ExceptionHandling>
       <ObjectFileName>release\</ObjectFileName>
       <Optimization>MaxSpeed</Optimization>
-      <PreprocessorDefinitions>_WINDOWS;NO_BUNDLE;CURL_STATICLIB;NGHTTP2_STATICLIB;UNICODE;WIN32;QT_STATIC;QT_NO_DEBUG;QT_GUI_LIB;QT_CORE_LIB;NDEBUG;_USE_32BIT_TIME_T;RAPIDJSON_HAS_STDSTRING=1;SOLUTION_DEF_$(SolutionName);%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_WINDOWS;CURL_STATICLIB;NGHTTP2_STATICLIB;UNICODE;WIN32;QT_STATIC;QT_NO_DEBUG;QT_GUI_LIB;QT_CORE_LIB;QT_NO_CAST_FROM_ASCII;QT_NO_CAST_TO_ASCII;QT_NO_CAST_FROM_BYTEARRAY;QT_STRICT_ITERATORS;NDEBUG;_USE_32BIT_TIME_T;RAPIDJSON_HAS_STDSTRING=1;SOLUTION_DEF_$(SolutionName);%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PreprocessToFile>false</PreprocessToFile>
       <ProgramDataBaseFileName>
       </ProgramDataBaseFileName>
@@ -136,9 +137,10 @@
       <WarningLevel>Level3</WarningLevel>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>Crypt32.lib;Ws2_32.lib;glu32.lib;opengl32.lib;gdi32.lib;user32.lib;shell32.lib;qtmain.lib;Qt5Gui.lib;Qt5Core.lib;Qt5Widgets.lib;Qt5PlatformSupport.lib;qwindows.lib;qico.lib;Imm32.lib;Winmm.lib;psapi.lib;Qt5Multimedia.lib;Qt5Network.lib;qtaudio_windows.lib;strmiids.lib;..\external\openssl\lib\windows\x86\libeay32.lib;..\external\openssl\lib\windows\x86\ssleay32.lib;..\external\nghttp2\lib\windows\x86\nghttp2.lib;..\external\zlib\lib\windows\x86\zlib.lib;..\external\curl\lib\windows\x86\libcurl.lib;wldap32.lib;qtpcre.lib;qtfreetype.lib;qtharfbuzzng.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>Crypt32.lib;Ws2_32.lib;glu32.lib;opengl32.lib;gdi32.lib;user32.lib;shell32.lib;qtmain.lib;Qt5Gui.lib;Qt5Core.lib;Qt5Widgets.lib;Qt5PlatformSupport.lib;qwindows.lib;qico.lib;Imm32.lib;Winmm.lib;psapi.lib;Qt5Multimedia.lib;Qt5Network.lib;qtaudio_windows.lib;strmiids.lib;..\external\nghttp2\lib\windows\x86\nghttp2.lib;..\external\zlib\lib\windows\x86\zlib.lib;..\external\curl\lib\windows\x86\libcurl.lib;..\external\openssl\lib\windows\x86\libeay32.lib;..\external\openssl\lib\windows\x86\ssleay32.lib;wldap32.lib;qtpcre.lib;qtfreetype.lib;qtharfbuzzng.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>..\external\openssl\lib\windows\x86;..\external\nghttp2\lib\windows\x86;..\external\curl\lib\windows\x86;..\external\qt\windows\lib;..\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalOptions>"/MANIFESTDEPENDENCY:type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' publicKeyToken='6595b64144ccf1df' language='*' processorArchitecture='*'" %(AdditionalOptions)</AdditionalOptions>
       <DataExecutionPrevention>true</DataExecutionPrevention>
@@ -158,11 +160,11 @@
       <WarningLevel>0</WarningLevel>
     </Midl>
     <ResourceCompile>
-      <PreprocessorDefinitions>_WINDOWS;NO_BUNDLE;UNICODE;WIN32;QT_NO_DEBUG;QT_GUI_LIB;QT_CORE_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_WINDOWS;UNICODE;WIN32;QT_NO_DEBUG;QT_GUI_LIB;QT_CORE_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ResourceCompile>
     <PreBuildEvent>
       <Command>cd $(ProjectDir)
-call python qt_prebuild.py -config $(Configuration)</Command>
+call python qt_prebuild.py -config $(Configuration) -product $(Product)</Command>
       <Message>compile ui and moc files</Message>
     </PreBuildEvent>
     <CustomBuildStep>
@@ -256,7 +258,7 @@ call clean.bat</Command>
       <ExceptionHandling>Async</ExceptionHandling>
       <ObjectFileName>debug\</ObjectFileName>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>_WINDOWS;NO_BUNDLE;CURL_STATICLIB;NGHTTP2_STATICLIB;UNICODE;WIN32;QT_STATIC;QT_GUI_LIB;QT_CORE_LIB;_USE_32BIT_TIME_T;RAPIDJSON_HAS_STDSTRING=1;SOLUTION_DEF_$(SolutionName);%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_WINDOWS;CURL_STATICLIB;NGHTTP2_STATICLIB;UNICODE;WIN32;QT_STATIC;QT_GUI_LIB;QT_CORE_LIB;QT_NO_CAST_FROM_ASCII;QT_NO_CAST_TO_ASCII;QT_NO_CAST_FROM_BYTEARRAY;QT_STRICT_ITERATORS;_USE_32BIT_TIME_T;RAPIDJSON_HAS_STDSTRING=1;SOLUTION_DEF_$(SolutionName);%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PreprocessToFile>false</PreprocessToFile>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
@@ -266,6 +268,7 @@ call clean.bat</Command>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderOutputFile>$(IntDir)$(TargetName).pch</PrecompiledHeaderOutputFile>
       <OpenMPSupport>false</OpenMPSupport>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <AdditionalDependencies>Crypt32.lib;Ws2_32.lib;glu32.lib;opengl32.lib;gdi32.lib;user32.lib;shell32.lib;qtmaind.lib;Qt5Guid.lib;Qt5Cored.lib;Qt5Widgetsd.lib;Qt5PlatformSupportd.lib;qwindowsd.lib;qicod.lib;Imm32.lib;Winmm.lib;psapi.lib;Qt5Multimediad.lib;Qt5Networkd.lib;qtaudio_windowsd.lib;strmiids.lib;..\external\openssl\lib\windows\x86\libeay32.lib;..\external\openssl\lib\windows\x86\ssleay32.lib;..\external\nghttp2\lib\windows\x86\nghttp2.lib;..\external\zlib\lib\windows\x86\zlib.lib;..\external\curl\lib\windows\x86\libcurl.lib;wldap32.lib;qtpcred.lib;qtfreetyped.lib;qtharfbuzzngd.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -287,11 +290,11 @@ call clean.bat</Command>
       <WarningLevel>0</WarningLevel>
     </Midl>
     <ResourceCompile>
-      <PreprocessorDefinitions>_WINDOWS;NO_BUNDLE;UNICODE;WIN32;QT_GUI_LIB;QT_CORE_LIB;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_WINDOWS;UNICODE;WIN32;QT_GUI_LIB;QT_CORE_LIB;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ResourceCompile>
     <PreBuildEvent>
       <Command>cd $(ProjectDir)
-call python qt_prebuild.py -config $(Configuration)</Command>
+call python qt_prebuild.py -config $(Configuration) -product $(Product)</Command>
     </PreBuildEvent>
     <PreBuildEvent>
       <Message>compile ui and moc files</Message>
@@ -378,13 +381,11 @@ call clean.bat
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\common.shared\common_defs.cpp" />
+    <ClCompile Include="..\common.shared\config\config.cpp" />
     <ClCompile Include="..\common.shared\win32\crash_handler.cpp" />
     <ClCompile Include="..\gui.shared\local_peer\local_peer.cpp" />
     <ClCompile Include="..\gui.shared\TestingTools.cpp" />
     <ClCompile Include="..\gui.shared\translator_base.cpp" />
-    <ClCompile Include="Debug\mocs\moc_checkbox.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-    </ClCompile>
     <ClCompile Include="debug\mocs\moc_error_page.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
     </ClCompile>
@@ -402,10 +403,6 @@ call clean.bat
     </ClCompile>
     <ClCompile Include="debug\mocs\moc_worker.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="logic\bundle_installer.cpp" />
-    <ClCompile Include="release\mocs\moc_checkbox.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="release\mocs\moc_error_page.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
@@ -425,7 +422,6 @@ call clean.bat
     <ClCompile Include="release\mocs\moc_worker.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="ui\main_window\checkbox.cpp" />
     <ClCompile Include="ui\main_window\pages\error_page.cpp" />
     <ClCompile Include="logic\tasks\create_links.cpp" />
     <ClCompile Include="logic\tools.cpp" />
@@ -434,10 +430,13 @@ call clean.bat
     <ClCompile Include="logic\tasks\terminate_process.cpp" />
     <ClCompile Include="ui\main_window\pages\progress_page.cpp" />
     <ClCompile Include="ui\main_window\pages\start_page.cpp" />
+    <ClCompile Include="ui\main_window\product_translations.cpp" />
     <ClCompile Include="utils\7z\7z.cpp" />
     <ClCompile Include="utils\crash_sender.cpp" />
+    <ClCompile Include="utils\curl_utils.cpp" />
     <ClCompile Include="utils\links\shell_link.cpp" />
     <ClCompile Include="utils\links\Win7Features.cpp" />
+    <ClCompile Include="utils\statistics.cpp" />
     <ClCompile Include="utils\styles.cpp" />
     <ClCompile Include="utils\dpi.cpp" />
     <ClCompile Include="main.cpp" />
@@ -458,14 +457,14 @@ call clean.bat
   <ItemGroup>
     <ClInclude Include="..\common.shared\common_crash_sender.h" />
     <ClInclude Include="..\common.shared\common_defs.h" />
+    <ClInclude Include="..\common.shared\config\config.h" />
+    <ClInclude Include="..\common.shared\config\config_data.h" />
     <ClInclude Include="..\common.shared\keys.h" />
     <ClInclude Include="..\common.shared\version_info_constants.h" />
     <ClInclude Include="..\common.shared\win32\crash_handler.h" />
     <ClInclude Include="..\gui.shared\TestingTools.h" />
     <ClInclude Include="..\gui.shared\translator_base.h" />
-    <ClInclude Include="logic\bundle_installer.h" />
-    <ClInclude Include="ui\main_window\checkbox.h" />
-    <ClInclude Include="solution.h" />
+    <ClInclude Include="Header.h" />
     <ClInclude Include="ui\main_window\pages\error_page.h" />
     <ClInclude Include="logic\tasks\create_links.h" />
     <ClInclude Include="errors.h" />
@@ -475,12 +474,15 @@ call clean.bat
     <ClInclude Include="logic\tasks\terminate_process.h" />
     <ClInclude Include="ui\main_window\pages\progress_page.h" />
     <ClInclude Include="ui\main_window\pages\start_page.h" />
+    <ClInclude Include="ui\main_window\product_translations.h" />
     <ClInclude Include="utils\7z\7z.h" />
     <ClInclude Include="utils\7z\7z_header.h" />
     <ClInclude Include="utils\7z\7z_types.h" />
+    <ClInclude Include="utils\curl_utils.h" />
     <ClInclude Include="utils\links\JumpListItem.h" />
     <ClInclude Include="utils\links\shell_link.h" />
     <ClInclude Include="utils\links\Win7Features.h" />
+    <ClInclude Include="utils\statistics.h" />
     <ClInclude Include="utils\styles.h" />
     <ClInclude Include="utils\dpi.h" />
     <ClInclude Include="ui\main_window\main_window.h" />
@@ -489,7 +491,7 @@ call clean.bat
     <ClInclude Include="logic\tasks\write_registry.h" />
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="$(SolutionName).rc" />
+    <ResourceCompile Include="..\products\$(Product)\installer\installer.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets" />

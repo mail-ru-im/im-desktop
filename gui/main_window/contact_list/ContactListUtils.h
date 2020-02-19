@@ -23,6 +23,7 @@ namespace Logic
         CONTACT_LIST_POPUP = 11,
         COMMON_CHATS = 12,
         SHARE_CONTACT = 13,
+        COUNTRY_LIST = 14,
     };
 
     bool is_members_regim(int _regim);

@@ -19,7 +19,7 @@ namespace
     class ProxyStyle : public QProxyStyle
     {
     public:
-        QSize sizeFromContents(ContentsType ct, const QStyleOption* opt, const QSize & csz, const QWidget* widget = 0) const
+        QSize sizeFromContents(ContentsType ct, const QStyleOption* opt, const QSize & csz, const QWidget* widget = 0) const override
         {
             QSize sz = QProxyStyle::sizeFromContents(ct, opt, csz, widget);
             if (ct == ContentsType::CT_PushButton)
@@ -28,16 +28,21 @@ namespace
             return sz;
         }
     };
+
+    QFont buttonFont()
+    {
+        return Fonts::appFontScaled(14, Fonts::FontWeight::SemiBold);
+    }
 }
 
 namespace Ui
 {
-    DialogButton::DialogButton(QWidget* _parent, const QString _text, const DialogButtonRole _role)
+    DialogButton::DialogButton(QWidget* _parent, const QString _text, const DialogButtonRole _role, const DialogButtonShape _shape)
         : QPushButton(_parent)
         , hovered_(false)
         , pressed_(false)
         , text_(_text)
-        , role_(_role)
+        , initRole_(_role)
         , bgColor_(Qt::transparent)
         , bgColorHover_(Qt::transparent)
         , bgColorPress_(Qt::transparent)
@@ -47,35 +52,49 @@ namespace Ui
         , textColor_(Qt::transparent)
         , textColorHover_(Qt::transparent)
         , textColorPress_(Qt::transparent)
+        , shape_(_shape)
     {
-        setStyle(new ProxyStyle);
+        Utils::SetProxyStyle(this, new ProxyStyle());
         setFocusPolicy(Qt::NoFocus);
         setMouseTracking(true);
         setFlat(true);
-        setCursor(Qt::PointingHandCursor);
 
         setFixedHeight(Utils::scale_value(32));
 
-        setBorderColor();
-        setBackgroundColor();
+        changeRole(initRole_);
 
-        setTextColor();
-        updateTextColor();
-
-        const auto font = Fonts::appFontScaled(14, Fonts::FontWeight::SemiBold);
-        QFontMetrics metrics(font);
+        QFontMetrics metrics(buttonFont());
         setMinimumWidth(std::max(defaultButtonWidth(), metrics.width(text_) + 2*Utils::scale_value(10)));
-        setFont(font);
+        setFont(buttonFont());
         setText(text_);
     }
 
     void DialogButton::changeRole(const DialogButtonRole _role)
     {
         role_ = _role;
+        setCursor(!isEnabled() ? Qt::ArrowCursor : Qt::PointingHandCursor);
         setBackgroundColor();
         setBorderColor();
         setTextColor();
+        updateTextColor();
         update();
+    }
+
+    bool DialogButton::isEnabled() const
+    {
+        return role_ != DialogButtonRole::DISABLED;
+    }
+
+    void DialogButton::setEnabled(bool _isEnabled)
+    {
+        changeRole(_isEnabled ? initRole_ : DialogButtonRole::DISABLED);
+    }
+
+    void DialogButton::updateWidth()
+    {
+        QFontMetrics metrics(font());
+        const auto margins = contentsMargins();
+        setFixedWidth(metrics.width(text()) + margins.left() + margins.right());
     }
 
     void DialogButton::paintEvent(QPaintEvent * _e)
@@ -86,7 +105,9 @@ namespace Ui
         p.setRenderHint(QPainter::Antialiasing);
         p.setPen(hovered_ ? borderColorHover_ : (pressed_ ? borderColorPress_ : borderColor_));
         p.setBrush(hovered_ ? bgColorHover_ : (pressed_ ? bgColorPress_ : bgColor_));
-        p.drawRoundedRect(insideRect, Utils::scale_value(4), Utils::scale_value(4));
+
+        const auto radius = (shape_ == DialogButtonShape::RECT) ? Utils::scale_value(4) : height() / 2;
+        p.drawRoundedRect(insideRect, radius, radius);
 
         p.setPen(hovered_ ? textColorHover_ : (pressed_ ? textColorPress_ : textColor_));
         p.drawText(rect(), Qt::AlignCenter, text());
@@ -116,6 +137,10 @@ namespace Ui
     void DialogButton::mousePressEvent(QMouseEvent * _e)
     {
         pressed_ = true;
+
+        if (!isEnabled())
+            return;
+
         update();
         updateTextColor();
 
@@ -125,29 +150,23 @@ namespace Ui
     void DialogButton::mouseReleaseEvent(QMouseEvent * _e)
     {
         pressed_ = false;
+
+        if (!isEnabled())
+            return;
+
         update();
         updateTextColor();
 
         QPushButton::mouseReleaseEvent(_e);
     }
 
-    void DialogButton::changeEvent(QEvent * _e)
-    {
-        if (_e->type() != QEvent::EnabledChange)
-            return;
-
-        if (role_ != DialogButtonRole::CONFIRM && role_ != DialogButtonRole::DISABLED)
-            return;
-
-        if (isEnabled())
-            changeRole(DialogButtonRole::CONFIRM);
-        else
-            changeRole(DialogButtonRole::DISABLED);
-    }
-
     void DialogButton::focusInEvent(QFocusEvent *_e)
     {
         hovered_ = true;
+
+        if (!isEnabled())
+            return;
+
         update();
         updateTextColor();
 
@@ -157,6 +176,10 @@ namespace Ui
     void DialogButton::focusOutEvent(QFocusEvent *_e)
     {
         hovered_ = false;
+
+        if (!isEnabled())
+            return;
+
         update();
         updateTextColor();
 
@@ -165,6 +188,9 @@ namespace Ui
 
     void DialogButton::keyPressEvent(QKeyEvent *_e)
     {
+        if (role_ == DialogButtonRole::DISABLED)
+            return;
+
         if (_e->key() == Qt::Key_Escape || _e->key() == Qt::Key_Space
             || _e->key() == Qt::Key_Return || _e->key() == Qt::Key_Enter)
         {

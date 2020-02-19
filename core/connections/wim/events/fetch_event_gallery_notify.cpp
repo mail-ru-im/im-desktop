@@ -2,6 +2,7 @@
 
 #include "fetch_event_gallery_notify.h"
 #include "../wim_im.h"
+#include "tools/json_helper.h"
 
 using namespace core;
 using namespace wim;
@@ -20,11 +21,11 @@ const archive::gallery_storage& fetch_event_gallery_notify::get_gallery() const
 
 int32_t fetch_event_gallery_notify::parse(const rapidjson::Value& _node_event_data)
 {
-    auto iter_sn = _node_event_data.FindMember("sn");
-    if (iter_sn == _node_event_data.MemberEnd() || !iter_sn->value.IsString())
+    if (std::string sn; tools::unserialize_value(_node_event_data, "sn", sn))
+        gallery_.set_aimid(sn);
+    else
         return 1;
 
-    gallery_.set_aimid(iter_sn->value.GetString());
     gallery_.set_my_aimid(my_aimid_);
 
     return gallery_.unserialize(_node_event_data, false);

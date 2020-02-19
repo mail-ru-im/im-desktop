@@ -107,7 +107,11 @@ namespace Logic
         LastSeenSubscription subscription;
         subscription.lastseen_ = result;
         if (!_subscribe)
-            subscription.subscriptionTime_ = QDateTime::currentDateTime();
+        {
+            const auto prev = subscriptions_.find(_aimid);
+            if (prev == subscriptions_.end() || prev->second.subscriptionTime_.isValid())
+                subscription.subscriptionTime_ = QDateTime::currentDateTime();
+        }
         subscriptions_[_aimid] = std::move(subscription);
 
         return result;
@@ -213,7 +217,7 @@ namespace Logic
                 s.subscriptionTime_ = subscriptionTime;
                 subscriptions_[aimid] = std::move(s);
 
-                if (!subscriptionTime.isValid() && changed)
+                if (changed)
                     emit lastseenChanged(aimid, QPrivateSignal());
             }
         }

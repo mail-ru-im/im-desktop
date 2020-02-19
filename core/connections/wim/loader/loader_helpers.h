@@ -25,14 +25,10 @@ enum class path_type
 
 struct wim_packet_params;
 
-std::string get_filename_in_cache(std::string_view _uri);
-
 std::wstring get_path_in_cache(const std::wstring& _cache_dir, std::string_view _uri, const path_type _path_type);
-
-const std::string& get_path_suffix(const path_type _type);
 
 preview_proxy::link_meta_uptr load_link_meta_from_file(const std::wstring &_path, const std::string &_url);
 
-std::string sign_loader_uri(const std::string &_host, const wim_packet_params &_params, const str_2_str_map &_extra = str_2_str_map());
+std::string sign_loader_uri(std::string_view _host, const wim_packet_params &_params, str_2_str_map _extra);
 
 CORE_WIM_NS_END

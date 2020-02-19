@@ -4,6 +4,7 @@
 #include "../../common.shared/patch_version.h"
 #include "../types/typing.h"
 #include "../main_window/mediatype.h"
+#include "poll.h"
 
 namespace core
 {
@@ -49,10 +50,21 @@ namespace Data
         void serialize(core::icollection* _collection) const;
         void unserialize(core::icollection* _collection);
     };
-
     using SharedContact = std::optional<SharedContactData>;
 
+    struct GeoData
+    {
+        QString name_;
+        double lat_;
+        double long_;
+
+        void serialize(core::icollection* _collection) const;
+        void unserialize(core::icollection* _collection);
+    };
+    using Geo = std::optional<GeoData>;
+
     using MentionMap = std::map<QString, QString, StringComparator>; // uin - friendly
+    using FilesPlaceholderMap = std::map<QString, QString, StringComparator>; // link - placeholder
 
     void serializeMentions(core::coll_helper& _collection, const Data::MentionMap& _mentions);
 
@@ -66,12 +78,6 @@ namespace Data
         bool IsEmpty() const;
 
         bool CheckInvariant() const;
-
-        Logic::preview_type GetPreviewableLinkType() const;
-
-        bool ContainsAnyPreviewableLink() const;
-
-        bool ContainsPreviewableSiteLink() const;
 
         bool ContainsGif() const;
 
@@ -123,13 +129,13 @@ namespace Data
 
         const HistoryControl::FileSharingInfoSptr& GetFileSharing() const;
 
-        QStringRef GetFirstSiteLinkFromText() const;
-
         bool GetIndentBefore() const;
 
         const HistoryControl::StickerInfoSptr& GetSticker() const;
 
-        const QString& GetText() const;
+        const QString& GetSourceText() const;
+
+        const QString GetText() const;
 
         qint32 GetTime() const;
 
@@ -207,6 +213,8 @@ namespace Data
 
         bool needUpdateWith(const MessageBuddy& _buddy) const;
 
+        QString getSender() const;
+
         QString AimId_;
         QString InternalId_;
         qint64 Id_;
@@ -216,11 +224,14 @@ namespace Data
         QVector<Quote> Quotes_;
         MentionMap Mentions_;
         std::vector<UrlSnippet> snippets_;
+        FilesPlaceholderMap Files_;
 
         bool Chat_;
         QString ChatFriendly_;
 
         SharedContact sharedContact_;
+        Poll poll_;
+        Geo geo_;
 
         //filled by model
         bool Unread_;
@@ -307,6 +318,7 @@ namespace Data
         qint64 TheirsLastDelivered_;
         qint64 DelUpTo_;
         qint64 FavoriteTime_;
+        qint64 UnimportantTime_;
         qint32 Time_;
         bool Outgoing_;
         bool Chat_;
@@ -332,6 +344,7 @@ namespace Data
 
         bool isSuspicious_;
         bool isStranger_;
+        bool noRecentsUpdate_;
 
         std::vector<DlgStateHead> heads_;
 
@@ -370,6 +383,9 @@ namespace Data
         bool isForward_;
         MentionMap mentions_;
         SharedContact sharedContact_;
+        Poll poll_;
+        Geo geo_;
+        FilesPlaceholderMap files_;
 
         //gui only values
         bool isFirstQuote_;
@@ -378,6 +394,8 @@ namespace Data
 
         Quote::Type type_;
         Ui::MediaType mediaType_;
+
+        bool hasReply_;
 
         Quote()
             : time_(-1)
@@ -390,10 +408,11 @@ namespace Data
             , isSelectable_(false)
             , type_(Quote::Type::text)
             , mediaType_(Ui::MediaType::noMedia)
+            , hasReply_(true)
         {
         }
 
-        bool isEmpty() const { return text_.isEmpty() && !isSticker() && !sharedContact_; }
+        bool isEmpty() const { return text_.isEmpty() && !isSticker() && !sharedContact_ && !poll_; }
         bool isSticker() const { return setId_ != -1 && stickerId_ != -1; }
         bool isInteractive() const;
 

@@ -5,6 +5,11 @@
 
 namespace core
 {
+    namespace smartreply
+    {
+        enum class type;
+    }
+
     class coll_helper;
     namespace wim
     {
@@ -60,6 +65,7 @@ namespace core
             timepoint next_fetch_time_;
             std::chrono::seconds next_fetch_timeout_;
             time_t last_successful_fetch_;
+            std::vector<smartreply::type> suggest_types_;
 
             fetch_parameters();
             bool is_valid() const;

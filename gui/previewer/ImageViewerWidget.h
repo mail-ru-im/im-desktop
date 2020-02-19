@@ -32,8 +32,11 @@ namespace Previewer
 
         void showMedia(const MediaData& _mediaData);
 
+        QWidget* getParentForContextMenu() const;
+
         void showPixmap(const QPixmap& _pixmap, const QSize& _originalImageSize, bool _isVideoPreview);
 
+        bool tryScale(QWheelEvent* _event);
 
         bool isZoomSupport() const;
 
@@ -46,6 +49,8 @@ namespace Previewer
 
         bool canZoomIn() const;
         bool canZoomOut() const;
+
+        QRect viewerRect() const;
 
         void reset();
 
@@ -66,6 +71,7 @@ namespace Previewer
         void imageClicked();
         void zoomChanged();
         void closeRequested();
+        void rightClicked();
 
     protected:
         void mousePressEvent(QMouseEvent* _event) override;

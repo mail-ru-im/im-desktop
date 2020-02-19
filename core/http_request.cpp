@@ -4,6 +4,7 @@
 #include "openssl/crypto.h"
 #include "tools/system.h"
 #include "tools/url.h"
+#include "tools/features.h"
 #include "log/log.h"
 #include "utils.h"
 #include "async_task.h"
@@ -12,6 +13,9 @@
 #include "network_log.h"
 #include "../corelib/enumerations.h"
 #include "../libomicron/include/omicron/omicron.h"
+#include "../common.shared/string_utils.h"
+#include "../common.shared/omicron_keys.h"
+#include "../common.shared/string_utils.h"
 
 using namespace core;
 
@@ -19,7 +23,6 @@ namespace
 {
     constexpr auto default_http_connect_timeout = std::chrono::seconds(5);
     constexpr auto default_http_execute_timeout = std::chrono::seconds(8);
-    constexpr auto max_get_url_length_omicron_name = "max_get_url_length";
     constexpr auto default_max_get_url_length = 3500u;
     constexpr auto uri_too_long_code = 414;
 }
@@ -50,14 +53,13 @@ http_request_simple::http_request_simple(proxy_settings _proxy_settings, std::st
     id_(-1),
     is_send_im_stats_(true),
     multi_(false),
-    gzip_(false)
+    use_curl_decompression_(false),
+    compression_method_(data_compression_method::none)
 {
     assert(!user_agent_.empty());
 }
 
-http_request_simple::~http_request_simple()
-{
-}
+http_request_simple::~http_request_simple() = default;
 
 void http_request_simple::set_output_stream(std::shared_ptr<tools::stream> _output)
 {
@@ -120,7 +122,7 @@ void http_request_simple::push_post_form_filedata(std::wstring_view name, std::w
     assert(!file_name.empty());
     file_binary_stream file_data;
     file_data.file_name_ = file_name.substr(file_name.find_last_of(L"\\/") + 1);
-    file_data.file_stream_.load_from_file(std::wstring(file_name)); // TODO optimize me
+    file_data.file_stream_.load_from_file(file_name);
     if (file_data.file_stream_.available())
         post_form_filedatas_.insert(std::make_pair(tools::from_utf16(name), std::move(file_data)));
 }
@@ -172,37 +174,39 @@ void http_request_simple::set_timeout(std::chrono::milliseconds _timeout)
     timeout_ = _timeout;
 }
 
+void core::http_request_simple::set_use_curl_decompresion(bool _enable)
+{
+    use_curl_decompression_ = _enable;
+}
+
 std::string http_request_simple::get_post_param() const
 {
     std::string result;
-    if (!post_parameters_.empty())
+    for (const auto&[key, value] : post_parameters_)
     {
-        std::stringstream ss_post_params;
-
-        for (auto iter = post_parameters_.begin(); iter != post_parameters_.end(); ++iter)
+        result += key;
+        if (post_parameters_.size() > 1 || !value.empty())
         {
-            if (iter != post_parameters_.begin())
-                ss_post_params << '&';
-
-            ss_post_params << iter->first;
-
-            if (post_parameters_.size() > 1 || !iter->second.empty())
-            {
-                ss_post_params << '=' << iter->second;
-            }
+            result += '=';
+            result += value;
         }
-
-        result = ss_post_params.str();
+        result += '&';
     }
+    if (!result.empty())
+        result.pop_back();
     return result;
 }
 
 bool http_request_simple::send_request(bool _post, double& _request_time)
 {
-    if (!_post && url_.size() > omicronlib::_o(max_get_url_length_omicron_name, default_max_get_url_length))
+    if (!_post)
     {
-        response_code_ = uri_too_long_code;
-        return true;
+        if (const auto max_size = omicronlib::_o(omicron::keys::max_get_url_length, default_max_get_url_length); url_.size() > max_size)
+        {
+            g_core->write_string_to_network_log(su::concat("send_request: too long url ", std::to_string(url_.size()), " > ", std::to_string(max_size), " [GET ", normalized_url_, "]\r\n"));
+            response_code_ = uri_too_long_code;
+            return true;
+        }
     }
 
     auto ctx = std::make_shared<curl_context>(output_, stop_func_, progress_func_, keep_alive_);
@@ -212,11 +216,13 @@ bool http_request_simple::send_request(bool _post, double& _request_time)
 
     if (!ctx->init(connect_timeout_, timeout_, proxy_settings, user_agent_))
     {
+        g_core->write_string_to_network_log("send_request: ctx init fail\r\n");
         assert(false);
         return false;
     }
 
-    ctx->set_gzip(gzip_);
+    ctx->set_post_data_compression(compression_method_);
+    ctx->set_use_curl_decompression(use_curl_decompression_);
     ctx->set_normalized_url(get_normalized_url());
     if (_post)
     {
@@ -270,12 +276,16 @@ bool http_request_simple::send_request(bool _post, double& _request_time)
 
 void http_request_simple::send_request_async(bool _post, completion_function _completion_function)
 {
-    if (!_post && url_.size() > omicronlib::_o(max_get_url_length_omicron_name, default_max_get_url_length))
+    if (!_post)
     {
-        response_code_ = uri_too_long_code;
-        if (_completion_function)
-            _completion_function(curl_easy::completion_code::success);
-        return;
+        if (const auto max_size = omicronlib::_o(omicron::keys::max_get_url_length, default_max_get_url_length); url_.size() > max_size)
+        {
+            g_core->write_string_to_network_log(su::concat("send_request_async: too long url ", std::to_string(url_.size()), " > ", std::to_string(max_size), " [GET ", normalized_url_, "]\r\n"));
+            response_code_ = uri_too_long_code;
+            if (_completion_function)
+                _completion_function(curl_easy::completion_code::success);
+            return;
+        }
     }
 
     const auto& proxy_settings = g_core->get_proxy_settings();
@@ -283,12 +293,14 @@ void http_request_simple::send_request_async(bool _post, completion_function _co
     auto ctx = std::make_shared<curl_context>(output_, stop_func_, progress_func_, keep_alive_);
     if (!ctx->init(connect_timeout_, timeout_, proxy_settings, user_agent_))
     {
+        g_core->write_string_to_network_log("send_request_async: ctx init fail\r\n");
         if (_completion_function)
             _completion_function(curl_easy::completion_code::failed);
         return;
     }
 
-    ctx->set_gzip(gzip_);
+    ctx->set_post_data_compression(compression_method_);
+    ctx->set_use_curl_decompression(use_curl_decompression_);
 
     if (_post)
     {
@@ -385,33 +397,6 @@ std::shared_ptr<tools::binary_stream> http_request_simple::get_header() const
     return header_;
 }
 
-std::string http_request_simple::get_header_attribute(std::string_view _name) const
-{
-    std::string value;
-
-    if (const auto size = header_->available(); size > 0 && !_name.empty())
-    {
-        std::string_view data(header_->read_available(), size);
-
-        // use case-insensitive search
-        auto it = std::search(data.cbegin(), data.cend(), _name.cbegin(), _name.cend(), [](char ch1, char ch2) { return std::tolower(ch1) == std::tolower(ch2); });
-        if (it != data.cend())
-        {
-            auto start_pos = std::distance(data.cbegin(), it) + _name.size();
-            if ((start_pos + 2) < data.size() && data[start_pos] == ':' && data[start_pos + 1] == ' ')
-            {
-                start_pos += 2;
-                if (auto end_pos = data.find("\r\n", start_pos); end_pos != std::string::npos)
-                    value = data.substr(start_pos, end_pos - start_pos);
-                else
-                    value = data.substr(start_pos);
-            }
-        }
-    }
-
-    return value;
-}
-
 long http_request_simple::get_response_code() const
 {
     return response_code_;
@@ -427,7 +412,7 @@ void http_request_simple::set_custom_header_param(std::string _value)
     custom_headers_.push_back(std::move(_value));
 }
 
-std::vector<std::mutex*> http_request_simple::ssl_sync_objects;
+std::vector<std::unique_ptr<std::mutex>> http_request_simple::ssl_sync_objects;
 
 static unsigned long id_function(void)
 {
@@ -447,9 +432,9 @@ static void locking_function( int32_t mode, int32_t n, const char *file, int32_t
 void core::http_request_simple::init_global()
 {
     auto lock_count = CRYPTO_num_locks();
-    http_request_simple::ssl_sync_objects.resize(lock_count);
-    for (auto i = 0;  i < lock_count;  i++)
-        http_request_simple::ssl_sync_objects[i] = new std::mutex();
+    http_request_simple::ssl_sync_objects.reserve(lock_count);
+    for (decltype(lock_count) i = 0; i < lock_count; ++i)
+        http_request_simple::ssl_sync_objects.emplace_back(std::make_unique<std::mutex>());
 
     CRYPTO_set_id_callback(id_function);
     CRYPTO_set_locking_callback(locking_function);
@@ -463,9 +448,6 @@ void core::http_request_simple::shutdown_global()
     CRYPTO_set_id_callback(NULL);
     CRYPTO_set_locking_callback(NULL);
 
-    for (auto i = 0;  i < CRYPTO_num_locks(  );  i++)
-        delete(http_request_simple::ssl_sync_objects[i]);
-
     http_request_simple::ssl_sync_objects.clear();
 }
 
@@ -475,9 +457,14 @@ std::string core::http_request_simple::normalized_url(std::string_view _url, std
 
     if (!_url.empty())
     {
-        endpoint = _url.substr(0, _url.find('?'));
-        if (!endpoint.empty() && !_meta_info.empty())
-            endpoint = '_' + std::string(_meta_info) + '_' + endpoint;
+        auto make_end_point = [_meta_info](std::string_view _endpoint)
+        {
+            if (!_endpoint.empty() && !_meta_info.empty())
+                return su::concat('_', _meta_info, '_', _endpoint);
+            return std::string(_endpoint);
+        };
+
+        endpoint = make_end_point(_url.substr(0, _url.find('?')));
 
         for (auto& s : endpoint)
             if (!(isalnum(static_cast<int>(s)) || s == '-'))
@@ -512,24 +499,23 @@ void core::http_request_simple::set_multi(bool _multi)
     multi_ = _multi;
 }
 
-void core::http_request_simple::set_gzip(bool _gzip)
+void core::http_request_simple::set_compression_method(data_compression_method _method)
 {
-    gzip_ = _gzip;
-    if (gzip_ && omicronlib::_o("one_domain_feature", feature::default_one_domain_feature()))
-    {
-        custom_headers_.emplace_back("Content-Encoding: gzip");
-    }
+    compression_method_ = _method;
+}
+
+void core::http_request_simple::set_compression_auto()
+{
+    if (features::is_zstd_request_enabled())
+        set_compression_method(data_compression_method::zstd);
+    else
+        set_compression_method(data_compression_method::gzip);
 }
 
 void core::http_request_simple::set_etag(std::string_view _etag)
 {
     if (!_etag.empty())
-    {
-        std::stringstream ss;
-        ss << "If-None-Match: \"" << _etag << "\"";
-
-        custom_headers_.push_back(ss.str());
-    }
+        custom_headers_.push_back(su::concat("If-None-Match: \"", _etag, '"'));
 }
 
 void core::http_request_simple::set_replace_log_function(replace_log_function _func)
@@ -554,9 +540,14 @@ void core::http_request_simple::set_send_im_stats(bool _value)
     is_send_im_stats_ = _value;
 }
 
+bool core::http_request_simple::is_compressed() const
+{
+    return compression_method_ != data_compression_method::none;
+}
+
 std::string core::http_request_simple::get_post_url() const
 {
-    return url_ + '?' + get_post_param();
+    return su::concat(url_, '?', get_post_param());
 }
 
 std::string core::http_request_simple::get_normalized_url() const
@@ -570,4 +561,33 @@ std::string core::http_request_simple::get_normalized_url() const
 proxy_settings core::http_request_simple::get_user_proxy() const
 {
     return proxy_settings_;
+}
+
+std::string core::http_header::get_attribute(const std::shared_ptr<tools::binary_stream>& _header, std::string_view _name)
+{
+    std::string value;
+    if (_header && !_name.empty())
+    {
+        if (const auto size = _header->available(); size > 0)
+        {
+            std::string_view data(_header->read_available(), size);
+
+            // use case-insensitive search
+            auto it = std::search(data.cbegin(), data.cend(), _name.cbegin(), _name.cend(), [](char ch1, char ch2) { return std::tolower(ch1) == std::tolower(ch2); });
+            if (it != data.cend())
+            {
+                auto start_pos = std::distance(data.cbegin(), it) + _name.size();
+                if ((start_pos + 2) < data.size() && data[start_pos] == ':' && data[start_pos + 1] == ' ')
+                {
+                    start_pos += 2;
+                    if (auto end_pos = data.find("\r\n", start_pos); end_pos != std::string_view::npos)
+                        value = data.substr(start_pos, end_pos - start_pos);
+                    else
+                        value = data.substr(start_pos);
+                }
+            }
+            _header->reset_out();
+        }
+    }
+    return value;
 }

@@ -8,10 +8,6 @@
         <translation>هيوستن، لدينا مشكلة</translation>
     </message>
     <message>
-        <source>Failed to install ICQ</source>
-        <translation>فشل تنصيب ICQ</translation>
-    </message>
-    <message>
         <source>Error code: </source>
         <translation>كود الخطأ: </translation>
     </message>
@@ -23,21 +19,31 @@
         <source>Close</source>
         <translation>إغلاق</translation>
     </message>
+</context>
+<context>
+    <name>installer::ui::progress_page</name>
     <message>
-        <source>Failed to install Mail.ru Agent</source>
-        <translation>فشل تنصيب Mail.ru Agent</translation>
-    </message>
-    <message>
-        <source>Failed to install Messenger</source>
-        <translation>فشل تنصيب Biz Mail.Ru</translation>
-    </message>
-    <message>
-        <source>Failed to install Myteam</source>
-        <translation>فشل تنصيب Myteam</translation>
+        <source>High-quality videocalls and screen sharing</source>
+        <translation>فيديوهات عالية الجودة ومشاركة الشاشة</translation>
     </message>
 </context>
 <context>
-    <name>installer::ui::main_window</name>
+    <name>installer::ui::start_page</name>
+    <message>
+        <source>Cloud storage of history and files</source>
+        <translation>سحابة تخزين التاريخ والملفات</translation>
+    </message>
+    <message>
+        <source>Full sync with mobile</source>
+        <translation>مزامنة كاملة مع الجوال</translation>
+    </message>
+    <message>
+        <source>Install</source>
+        <translation>تثبيت</translation>
+    </message>
+</context>
+<context>
+    <name>product</name>
     <message>
         <source>ICQ Setup</source>
         <translation>إعداد ICQ</translation>
@@ -47,58 +53,44 @@
         <translation>إعداد Mail.ru Agent</translation>
     </message>
     <message>
+        <source>Myteam Setup</source>
+        <translation type="unfinished">إعداد Myteam</translation>
+    </message>
+    <message>
         <source>Messenger Setup</source>
         <translation>إعداد Messenger</translation>
     </message>
     <message>
-        <source>Myteam Setup</source>
-        <translation>إعداد Myteam</translation>
-    </message>
-</context>
-<context>
-    <name>installer::ui::progress_page</name>
-    <message>
-        <source>Free video and voice calls</source>
-        <translation>مكالمات صوتية ومرئية مجانية</translation>
+        <source>Failed to install ICQ</source>
+        <translation>فشل تنصيب ICQ</translation>
     </message>
     <message>
-        <source>Hundreds of stickers are always free</source>
-        <translation>مئات الملصقات المجانية دائمًا</translation>
+        <source>Failed to install Mail.ru Agent</source>
+        <translation>فشل تنصيب Mail.ru Agent</translation>
     </message>
     <message>
-        <source>Unlimited and free group chats</source>
-        <translation>محادثات جماعية مجانية لا تنتهي</translation>
-    </message>
-</context>
-<context>
-    <name>installer::ui::start_page</name>
-    <message>
-        <source>Welcome to ICQ</source>
-        <translation>مرحبًا في ICQ</translation>
+        <source>Failed to install Myteam</source>
+        <translation>فشل تنصيب Myteam</translation>
     </message>
     <message>
-        <source>INSTALL</source>
-        <translation>تنصيب</translation>
+        <source>Failed to install Messenger</source>
+        <translation>فشل تنصيب Biz Mail.Ru</translation>
     </message>
     <message>
-        <source>Make Mail.Ru my homepage and add bookmarks in the browser.</source>
-        <translation type="unfinished"></translation>
+        <source>Mail.ru Agent for desktop is</source>
+        <translation>Mail.ru Agent لسطح المكتب هو</translation>
     </message>
     <message>
-        <source>Make Mail.Ru Search my default search engine.</source>
-        <translation type="unfinished"></translation>
+        <source>Myteam for desktop is</source>
+        <translation>Myteam لسطح المكتب هو</translation>
     </message>
     <message>
-        <source>Welcome to Mail.ru Agent</source>
-        <translation>مرحبًا في Mail.ru Agent</translation>
+        <source>Messenger for desktop is</source>
+        <translation>Messenger لسطح المكتب هو</translation>
     </message>
     <message>
-        <source>Welcome to Messenger</source>
-        <translation>مرحبًا في Messenger</translation>
-    </message>
-    <message>
-        <source>Welcome to Myteam</source>
-        <translation>مرحبًا في Myteam</translation>
+        <source>ICQ for desktop is</source>
+        <translation>ICQ لسطح المكتب هو</translation>
     </message>
 </context>
 <context>

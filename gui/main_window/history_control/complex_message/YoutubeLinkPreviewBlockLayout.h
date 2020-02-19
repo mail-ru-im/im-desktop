@@ -7,7 +7,7 @@ UI_COMPLEX_MESSAGE_NS_BEGIN
 
 class LinkPreviewBlock;
 
-class YoutubeLinkPreviewBlockLayout final
+class YoutubeLinkPreviewBlockLayout
     : public GenericBlockLayout
     , public ILinkPreviewBlockLayout
 {
@@ -19,8 +19,6 @@ public:
     virtual IItemBlockLayout* asBlockLayout() override;
 
     virtual QLayout* asQLayout() override;
-
-    const IItemBlockLayout::IBoxModel& getBlockBoxModel() const override;
 
     virtual QSize getMaxPreviewSize() const override;
 
@@ -39,12 +37,13 @@ public:
 protected:
     virtual QSize setBlockGeometryInternal(const QRect &geometry) override;
 
+    virtual QRect evaluateFaviconImageRect(const LinkPreviewBlock &block, const QRect &titleGeometry) const;
+    virtual QRect evaluateSiteNameGeometry(const LinkPreviewBlock &block, const QRect &titleGeometry, const QRect &faviconGeometry) const;
+
 private:
-    QRect evaluateFaviconImageRect(const LinkPreviewBlock &block, const QRect &titleGeometry) const;
 
     QRect evaluatePreviewImageRect(const LinkPreviewBlock &block, const QRect &previewContentLtr) const;
 
-    QRect evaluateSiteNameGeometry(const LinkPreviewBlock &block, const QRect &titleGeometry, const QRect &faviconGeometry) const;
 
     QRect evaluateTitleLtr(const QRect &previewContentLtr, const QRect &previewImageRect, const bool isPlaceholder);
 

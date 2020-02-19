@@ -12,6 +12,7 @@
 #include "../../history_control/FileSharingInfo.h"
 #include "../../history_control/VoipEventInfo.h"
 #include "../../history_control/VoipEventItem.h"
+#include "../../history_control/HistoryControlPageItem.h"
 #include "../../history_control/complex_message/ComplexMessageItem.h"
 #include "../../history_control/complex_message/ComplexMessageItemBuilder.h"
 #include "../../../my_info.h"
@@ -78,33 +79,11 @@ namespace hist::MessageBuilder
             return item;
         }
 
-        const auto sender =
-            (_msg.Chat_ && _msg.HasChatSender()) ?
-            normalizeAimId(_msg.GetChatSender()) :
-            _msg.AimId_;
-
-        const auto isNotAuth = Logic::getRecentsModel()->isSuspicious(_msg.AimId_);
-
-        QString senderFriendly = _msg.Chat_ ? Logic::GetFriendlyContainer()->getFriendly(sender)
+        QString senderFriendly = _msg.Chat_ ? Logic::GetFriendlyContainer()->getFriendly(_msg.getSender())
             : (Logic::GetFriendlyContainer()->getFriendly(_msg.IsOutgoing() ? Ui::MyInfo()->aimId() : _msg.AimId_));
 
-        auto item =
-            Ui::ComplexMessage::ComplexMessageItemBuilder::makeComplexItem(
-                _parent,
-                _msg.Id_,
-                _msg.InternalId_,
-                _msg.GetDate(),
-                _msg.Prev_,
-                _msg.GetText().trimmed(),
-                _msg.AimId_,
-                sender,
-                senderFriendly,
-                _msg.Quotes_,
-                _msg.Mentions_,
-                _msg.GetSticker(),
-                _msg.GetFileSharing(),
-                _msg.IsOutgoing(),
-                isNotAuth, false, _msg.GetDescription(), _msg.GetUrl(), _msg.sharedContact_);
+
+        auto item = Ui::ComplexMessage::ComplexMessageItemBuilder::makeComplexItem(_parent, _msg, Ui::ComplexMessage::ComplexMessageItemBuilder::ForcePreview::No);
 
         item->setContact(_msg.AimId_);
         item->setTime(_msg.GetTime());
@@ -113,11 +92,9 @@ namespace hist::MessageBuilder
         item->setChainedToPrev(_msg.isChainedToPrev());
         item->setChainedToNext(_msg.isChainedToNext());
         item->setTopMargin(_msg.GetIndentBefore());
-        item->setDeliveredToServer(_msg.IsDeliveredToServer());
         item->setEdited(_msg.IsEdited());
         item->setIsChat(_msg.Chat_);
         item->setUpdatePatchVersion(_msg.GetUpdatePatchVersion());
-        item->setBuddy(_msg);
 
         if (_msg.Chat_)
         {
@@ -169,33 +146,15 @@ namespace hist::MessageBuilder
                 return { QT_TRANSLATE_NOOP("contact_list", "Video"), Ui::MediaType::mediaTypeVideo };
         }
 
-        const auto messageText = buddy.GetText().trimmed();
-        if (!buddy.IsSticker() && buddy.Quotes_.isEmpty() && messageText.isEmpty() && !buddy.sharedContact_)
+        const auto messageText = buddy.GetSourceText().trimmed();
+        const auto emptyTextAllowed = buddy.IsSticker() || !buddy.Quotes_.isEmpty() || buddy.sharedContact_ || buddy.poll_;
+
+        if (!emptyTextAllowed && messageText.isEmpty())
             return {};
 
-        auto item =
-            Ui::ComplexMessage::ComplexMessageItemBuilder::makeComplexItem(
-                nullptr,
-                buddy.Id_,
-                buddy.InternalId_,
-                QDate(),
-                0,
-                messageText,
-                buddy.AimId_,
-                buddy.AimId_,
-                buddy.AimId_,
-                buddy.Quotes_,
-                buddy.Mentions_,
-                buddy.GetSticker(),
-                buddy.GetFileSharing(),
-                false, // _isOutgoing
-                false, // _isNotAuth
-                true,// _forcePreview
-                buddy.GetDescription(),
-                buddy.GetUrl(),
-                buddy.sharedContact_);
+        auto item = Ui::ComplexMessage::ComplexMessageItemBuilder::makeComplexItem(nullptr, buddy, Ui::ComplexMessage::ComplexMessageItemBuilder::ForcePreview::Yes);
 
-        return { item->formatRecentsText(), item->getMediaType() };
+        return { item->formatRecentsText(), item->getMediaType(Ui::MediaRequestMode::Recents) };
     }
 
     std::unique_ptr<Ui::ServiceMessageItem> createNew(const QString& _aimId, int _itemWidth, QWidget* _parent)

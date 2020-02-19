@@ -1,8 +1,6 @@
-#include "RateCallQualityWidget.h"
-
 #include <QVBoxLayout>
 #include <QPushButton>
-
+#include "RateCallQualityWidget.h"
 #include "utils/utils.h"
 #include "utils/Text.h"
 #include "controls/HorizontalImgList.h"
@@ -16,13 +14,11 @@ namespace
 constexpr int STAR_WIDTH_HEIGHT = 34;
 constexpr int STAR_HOR_OFFSET = 4;
 constexpr int MARGIN = 0;
-
+constexpr int HOR_TITLE_OFFSET = 16;
+constexpr int WIDGET_WIDTH = 380;
 const auto CAT_IMAGE_BAD = qsl(":/voip_quality/cat_image_bad.svg");
 const auto CAT_IMAGE_NEUTRAL = qsl(":/voip_quality/cat_image.svg");
 const auto CAT_IMAGE_GOOD = qsl(":/voip_quality/cat_image_good.svg");
-
-constexpr auto HOR_TITLE_OFFSET = 16;
-constexpr auto WIDGET_WIDTH = 380;
 }
 
 namespace Ui
@@ -120,25 +116,19 @@ RateCallQualityWidget::RateCallQualityWidget(const QString &_wTitle, QWidget *_p
 
 void RateCallQualityWidget::setOkCancelButton(DialogButton* _okButton, DialogButton* _cancelButton)
 {
-    okDialogButton_ = _okButton;
+    okDialogButton_     = _okButton;
     cancelDialogButton_ = _cancelButton;
-
     if (okDialogButton_)
     {
         okDialogButton_->setEnabled(false);
-
-        connect(okDialogButton_, &QPushButton::clicked,
-                this, [this](){
+         connect(okDialogButton_, &QPushButton::clicked, this, [this]() {
             onConfirmRating(true, currentStarsCount_);
         });
     }
-
     if (cancelDialogButton_)
     {
         cancelDialogButton_->setEnabled(true);
-
-        connect(cancelDialogButton_, &QPushButton::clicked,
-                this, [this](){
+        connect(cancelDialogButton_, &QPushButton::clicked, this, [this]() {
             onConfirmRating(false, 0);
         });
     }
@@ -147,15 +137,11 @@ void RateCallQualityWidget::setOkCancelButton(DialogButton* _okButton, DialogBut
 void RateCallQualityWidget::onCallRated(int _starIndex)
 {
     currentStarsCount_ = _starIndex + 1;
-
     // Update cat widget
     updateCatImageFor(currentStarsCount_);
-
     // enable ok button
     if (okDialogButton_)
-    {
         okDialogButton_->setEnabled(true);
-    }
 }
 
 void RateCallQualityWidget::onCallRateHovered(int _starIndex)
@@ -163,7 +149,6 @@ void RateCallQualityWidget::onCallRateHovered(int _starIndex)
     auto starsCount = _starIndex + 1;
     if (starsCount <= currentStarsCount_)
         return;
-
     updateCatImageFor(starsCount);
 }
 
@@ -184,7 +169,6 @@ void RateCallQualityWidget::onConfirmRating(bool _doConfirm, int _starsCount)
         emit ratingCancelled();
         return;
     }
-
     emit ratingConfirmed(_starsCount);
 }
 

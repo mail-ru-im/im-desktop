@@ -1,8 +1,6 @@
 #include "stdafx.h"
 #include "VideoPanel.h"
-
 #include "DetachedVideoWnd.h"
-#include "VoipTools.h"
 #include "MaskPanel.h"
 #include "../core_dispatcher.h"
 #include "../main_window/MainPage.h"
@@ -14,6 +12,7 @@
 #include "../main_window/contact_list/ContactList.h"
 #include "../main_window/contact_list/ChatMembersModel.h"
 #include "../controls/ContextMenu.h"
+#include "media/permissions/MediaCapturePermissions.h"
 
 #define internal_spacer_w  (Utils::scale_value(16))
 #define internal_spacer_w4 (Utils::scale_value(16))
@@ -56,7 +55,6 @@ Ui::VideoPanel::VideoPanel(
     setProperty("VideoPanelMain", true);
 #endif
 
-
     rootWidget_ = new QWidget(this);
     rootWidget_->setContentsMargins(0, 0, 0, 0);
     rootWidget_->setProperty("VideoPanel", true);
@@ -83,17 +81,16 @@ Ui::VideoPanel::VideoPanel(
         (layout ? layout : layoutTarget)->addWidget(btn);
 
 #ifdef __APPLE__
-        connect(btn, &QPushButton::clicked, this, &VideoPanel::activateWindow, Qt::QueuedConnection);
+        connect(btn, &QPushButton::clicked, this, [this](){ if (!isActiveWindow()) activateWindow(); }, Qt::QueuedConnection);
 #endif
         connect(btn, SIGNAL(clicked()), this, _slot, Qt::QueuedConnection);
     };
     auto addAndCreateButton = [parentWidget, addButton] (const char* _propertyName, const char* _slot, QHBoxLayout* layout = nullptr)->QPushButton*
     {
-        QPushButton* btn = new voipTools::BoundBox<QPushButton>(parentWidget);
+        QPushButton* btn = new QPushButton(parentWidget);
         addButton(btn, _propertyName, _slot, layout);
         return btn;
     };
-
 
     layoutTarget->addSpacing(internal_spacer_w_small);
 
@@ -126,11 +123,7 @@ Ui::VideoPanel::VideoPanel(
 
     shareScreenButton_ = addAndCreateButton("ShareScreenButtonDisable", SLOT(onShareScreen()));
     shareScreenButton_->setProperty("BigButton", true);
-#ifdef __linux__
-    shareScreenButton_->hide();
-#else
     layoutTarget->addSpacing(internal_spacer_w);
-#endif
 
     videoButton_ = addAndCreateButton(NULL, SLOT(onVideoOnOffClicked()));
     videoButton_->setProperty("BigButton", true);
@@ -161,7 +154,6 @@ Ui::VideoPanel::VideoPanel(
 
 Ui::VideoPanel::~VideoPanel()
 {
-
 }
 
 void Ui::VideoPanel::keyReleaseEvent(QKeyEvent* _e)
@@ -176,12 +168,10 @@ void Ui::VideoPanel::keyReleaseEvent(QKeyEvent* _e)
 void Ui::VideoPanel::controlActivated(bool _activated)
 {
     mouseUnderPanel_ = _activated;
-
     if (_activated)
     {
         emit onMouseEnter();
-    }
-    else
+    } else
     {
         emit onMouseLeave();
     }
@@ -192,7 +182,6 @@ void Ui::VideoPanel::onClickGoChat()
     if (!activeContact_.empty())
     {
         Ui::GetDispatcher()->getVoipController().openChat(QString::fromStdString(activeContact_[0].contact));
-
         emit onGoToChatButton();
     }
 }
@@ -204,22 +193,13 @@ void Ui::VideoPanel::setContacts(const std::vector<voip_manager::Contact>& conta
     goToChat_->setVisible(contacts.size() == 1);
 }
 
-//void Ui::VideoPanel::onClickAddChat()
-//{
-//    assert(false);
-//}
-
 void Ui::VideoPanel::setFullscreenMode(bool _en)
 {
     if (!fullScreenButton_)
-    {
         return;
-    }
-
     fullScreenButton_->setProperty("CallFSOff", _en);
     fullScreenButton_->setProperty("CallFSOn", !_en);
     fullScreenButton_->setToolTip(_en ? QT_TRANSLATE_NOOP("tooltips", "Exit full screen") : QT_TRANSLATE_NOOP("tooltips", "Full screen"));
-
     fullScreenButton_->setStyle(QApplication::style());
 }
 
@@ -240,7 +220,6 @@ void Ui::VideoPanel::enterEvent(QEvent* _e)
 void Ui::VideoPanel::leaveEvent(QEvent* _e)
 {
     QWidget::leaveEvent(_e);
-
     mouseUnderPanel_ = false;
     emit onMouseLeave();
 }
@@ -248,13 +227,9 @@ void Ui::VideoPanel::leaveEvent(QEvent* _e)
 void Ui::VideoPanel::resizeEvent(QResizeEvent* _e)
 {
     QWidget::resizeEvent(_e);
-
 #ifdef __APPLE__
     // Forced set fixed size, because under mac we use cocoa to change panel size.
     setFixedSize(size());
-#endif
-
-#ifdef __APPLE__
     assert(parent_);
     if (parent_ && !parent_->isFullScreen())
     {
@@ -266,11 +241,8 @@ void Ui::VideoPanel::resizeEvent(QResizeEvent* _e)
         region = region + QRect(0, 0, rc.width(), Utils::scale_value(5));
 
         setMask(region);
-    }
-    else
-    {
+    } else
         clearMask();
-    }
 #endif
 }
 
@@ -292,7 +264,41 @@ void Ui::VideoPanel::onHangUpButtonClicked()
 void Ui::VideoPanel::onShareScreen()
 {
     const QList<voip_proxy::device_desc>& screens = Ui::GetDispatcher()->getVoipController().screenList();
-    int screenIndex = 0;
+
+    const auto switchSharingImpl = [this, &screens](const int _index)
+    {
+        isScreenSharingEnabled_ = !isScreenSharingEnabled_;
+        Ui::GetDispatcher()->getVoipController().switchShareScreen(!screens.empty() ? &screens[_index] : nullptr);
+        updateVideoDeviceButtonsState();
+    };
+
+    const auto switchSharing = [this, &switchSharingImpl](const int _index)
+    {
+        if constexpr (platform::is_apple())
+        {
+            if (!isScreenSharingEnabled_)
+            {
+                const auto p = media::permissions::checkPermission(media::permissions::DeviceType::Screen);
+                if (p == media::permissions::Permission::Allowed)
+                {
+                    switchSharingImpl(_index);
+                }
+                else
+                {
+                    media::permissions::requestPermission(media::permissions::DeviceType::Screen, [](bool){});
+                    emit needShowScreenPermissionsPopup();
+                }
+            }
+            else
+            {
+                switchSharingImpl(_index);
+            }
+        }
+        else
+        {
+            switchSharingImpl(_index);
+        }
+    };
 
     if (!isScreenSharingEnabled_ && screens.size() > 1)
     {
@@ -300,47 +306,30 @@ void Ui::VideoPanel::onShareScreen()
         ContextMenu::applyStyle(&menu, false, Utils::scale_value(15), Utils::scale_value(36));
         for (int i = 0; i < screens.size(); i++)
         {
-            menu.addAction(QT_TRANSLATE_NOOP("voip_pages", "Screen") % ql1c(' ') % QString::number(i + 1), [i, this, screens]() {
-                isScreenSharingEnabled_ = !isScreenSharingEnabled_;
-                Ui::GetDispatcher()->getVoipController().switchShareScreen(!screens.empty() ? &screens[i] : nullptr);
-                updateVideoDeviceButtonsState();
+            menu.addAction(QT_TRANSLATE_NOOP("voip_pages", "Screen") % ql1c(' ') % QString::number(i + 1), [i, switchSharing]()
+            {
+                switchSharing(i);
             });
         }
-
         menu.exec(QCursor::pos());
-    }
-    else
+    } else
     {
-        isScreenSharingEnabled_ = !isScreenSharingEnabled_;
-        Ui::GetDispatcher()->getVoipController().switchShareScreen(!screens.empty() ? &screens[screenIndex] : nullptr);
-        updateVideoDeviceButtonsState();
+        switchSharing(0);
     }
-
     if (isScreenSharingEnabled_)
-    {
         emit onShareScreenClickOn();
-    }
 }
 
 void Ui::VideoPanel::onVoipMediaLocalVideo(bool _enabled)
 {
-    if (!videoButton_)
-    {
-        return;
-    }
-
     localVideoEnabled_ = _enabled;
-
     updateVideoDeviceButtonsState();
-
     statistic::getGuiMetrics().eventVideocallStartCapturing();
 }
-
 
 void Ui::VideoPanel::changeEvent(QEvent* _e)
 {
     QWidget::changeEvent(_e);
-
     if (_e->type() == QEvent::ActivationChange)
     {
         if (isActiveWindow() || (rootWidget_ && rootWidget_->isActiveWindow()))
@@ -360,7 +349,6 @@ void Ui::VideoPanel::onVideoOnOffClicked()
     {
         emit onCameraClickOn();
     }
-
     Ui::GetDispatcher()->getVoipController().setSwitchVCaptureMute();
 }
 
@@ -414,7 +402,6 @@ bool Ui::VideoPanel::isActiveWindow()
 bool Ui::VideoPanel::isNormalPanelMode()
 {
     auto rc = rect();
-
     return (rc.width() >= Utils::scale_value(kNormalModeMinWidth));
 }
 
@@ -439,7 +426,6 @@ void Ui::VideoPanel::onVoipVideoDeviceSelected(const voip_proxy::device_desc& de
 {
     isScreenSharingEnabled_ = (desc.dev_type == voip_proxy::kvoipDevTypeVideoCapture && desc.video_dev_type == voip_proxy::kvoipDeviceDesktop);
     isCameraEnabled_        = (desc.dev_type == voip_proxy::kvoipDevTypeVideoCapture && desc.video_dev_type == voip_proxy::kvoipDeviceCamera);
-
     updateVideoDeviceButtonsState();
 }
 
@@ -463,7 +449,6 @@ void Ui::VideoPanel::updateVideoDeviceButtonsState()
 void Ui::VideoPanel::onCaptureAudioOnOffClicked()
 {
     Ui::GetDispatcher()->getVoipController().setSwitchACaptureMute();
-
     emit onMicrophoneClick();
 }
 
@@ -477,7 +462,6 @@ void Ui::VideoPanel::onVoipMediaLocalAudio(bool _enabled)
         microfone_->setStyle(QApplication::style());
     }
 }
-
 
 void Ui::VideoPanel::setSelectedMask(MaskWidget* maskWidget)
 {

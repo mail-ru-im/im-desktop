@@ -7,6 +7,7 @@
 #include "../../../gui_settings.h"
 #include "../../../utils/log/log.h"
 #include "../../../utils/utils.h"
+#include "previewer/toast.h"
 #include "utils/medialoader.h"
 
 #include "../FileSizeFormatter.h"
@@ -44,7 +45,6 @@ FileSharingBlockBase::FileSharingBlockBase(
     , Link_(Utils::normalizeLink(QStringRef(&_link)).toString())
     , PreviewMetaRequestId_(-1)
     , Type_(std::make_unique<core::file_sharing_content_type>(_type))
-    , MaxPreviewWidth_(MessageStyle::getPreviewDesiredWidth())
     , ref_(std::make_shared<bool>(false))
     , inited_(false)
     , loadedFromLocal_(false)
@@ -109,13 +109,13 @@ Ui::MediaType FileSharingBlockBase::getMediaType() const
     switch (type.type_)
     {
     case file_sharing_base_content_type::gif:
-        return Ui::MediaType::mediaTypeVideo;
+        return Ui::MediaType::mediaTypeFsGif;
 
     case file_sharing_base_content_type::image:
-        return Ui::MediaType::mediaTypePhoto;
+        return Ui::MediaType::mediaTypeFsPhoto;
 
     case file_sharing_base_content_type::video:
-        return Ui::MediaType::mediaTypeVideo;
+        return Ui::MediaType::mediaTypeFsVideo;
 
     case file_sharing_base_content_type::ptt:
         return Ui::MediaType::mediaTypePtt;
@@ -149,7 +149,17 @@ QString FileSharingBlockBase::getProgressText() const
 
 QString FileSharingBlockBase::getSourceText() const
 {
-    return Link_;
+    if (Link_.isEmpty())
+        return Link_;
+
+    const auto mediaType = getPlaceholderFormatText();
+    const auto id = getFileSharingId();
+    return ql1c('[') % mediaType % ql1s(": ") % id % ql1c(']');
+}
+
+QString FileSharingBlockBase::getPlaceholderText() const
+{
+    return ql1c('[') % QT_TRANSLATE_NOOP("placeholders", "Failed to download file or media") % ql1c(']');
 }
 
 QString FileSharingBlockBase::getSelectedText(const bool, const TextDestination) const
@@ -176,14 +186,14 @@ bool FileSharingBlockBase::isBubbleRequired() const
     return isStandalone() && (!isPreviewable() || isSmallPreview());
 }
 
+bool FileSharingBlockBase::isMarginRequired() const
+{
+    return !isStandalone() || !isPreviewable();
+}
+
 bool FileSharingBlockBase::isSelected() const
 {
     return IsSelected_;
-}
-
-void FileSharingBlockBase::setMaxPreviewWidth(int width)
-{
-    MaxPreviewWidth_ = width;
 }
 
 const QString& FileSharingBlockBase::getFileLocalPath() const
@@ -226,8 +236,6 @@ int64_t FileSharingBlockBase::getBytesTransferred() const
 
 const QString& FileSharingBlockBase::getLink() const
 {
-    assert(!Link_.isEmpty());
-
     return Link_;
 }
 
@@ -276,6 +284,14 @@ bool FileSharingBlockBase::isPtt() const
 bool FileSharingBlockBase::isVideo() const
 {
     return getType().is_video();
+}
+
+Data::FilesPlaceholderMap FileSharingBlockBase::getFilePlaceholders()
+{
+    Data::FilesPlaceholderMap files;
+    if (const auto link = getLink(); !link.isEmpty())
+        files.insert({ link, getSourceText() });
+    return files;
 }
 
 bool FileSharingBlockBase::isPlainFile() const
@@ -366,8 +382,10 @@ void FileSharingBlockBase::onMenuSaveFileAs()
         const QString dir = dir_result % slash % file;
 
         auto saver = new Utils::FileSaver(this);
-        saver->save([this, dir](bool _success)
+        saver->save([dir](bool _success, const QString& _savedPath)
         {
+            Q_UNUSED(_savedPath)
+
             if (_success)
                 showFileSavedToast(dir);
             else
@@ -439,10 +457,6 @@ void FileSharingBlockBase::setSelected(const bool isSelected)
 
     IsSelected_ = isSelected;
 
-    if (!getType().is_sticker()
-        && ( ((getParentComplexMessage()->getBlockCount() == 1 || (!IsSelected_ && getParentComplexMessage()->isFirstBlockDebug())) && getParentComplexMessage()->getQuotes().isEmpty())
-        || isStandalone()))
-        getParentComplexMessage()->setDrawFullBubbleSelected(IsSelected_);
     update();
 }
 
@@ -562,6 +576,41 @@ bool FileSharingBlockBase::isDownload(const Data::FileSharingDownloadResult & _r
     return !_result.requestedUrl_.isEmpty();
 }
 
+QString FileSharingBlockBase::getPlaceholderFormatText() const
+{
+    using namespace core;
+
+    const auto& primalType = getType();
+
+    if( primalType.is_sticker())
+    {
+        return qsl("Sticker");
+    }
+
+    switch (primalType.type_)
+    {
+        case file_sharing_base_content_type::gif:
+            return qsl("GIF");
+
+        case file_sharing_base_content_type::image:
+            return qsl("Photo");
+
+        case file_sharing_base_content_type::video:
+            return qsl("Video");
+
+        case file_sharing_base_content_type::ptt:
+            return qsl("Voice");
+
+        default:
+        {
+            const auto &filename = getFilename();
+            if (!filename.isEmpty())
+                return FileSharing::getPlaceholderForType(FileSharing::getFSType(filename));
+        }
+    }
+    return qsl("File");
+}
+
 void FileSharingBlockBase::onFileDownloaded(qint64 seq, const Data::FileSharingDownloadResult& _result/*QString rawUri, QString localPath*/)
 {
     if (seq != DownloadRequestId_ && getLink() != _result.requestedUrl_)
@@ -661,7 +710,7 @@ void FileSharingBlockBase::onFileSharingError(qint64 seq, QString /*rawUri*/, qi
         clearPreviewMetaRequestId();
 
         if (isFileMetainfoRequestFailed)
-            getParentComplexMessage()->replaceBlockWithSourceText(this);
+            getParentComplexMessage()->replaceBlockWithSourceText(this, ReplaceReason::NoMeta);
     }
 
     onDownloadingFailed(seq);

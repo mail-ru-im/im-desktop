@@ -49,9 +49,9 @@ not_sent_message_sptr not_sent_message::make(const core::tools::tlvpack& _pack)
     return not_sent_message_sptr();
 }
 
-not_sent_message_sptr not_sent_message::make(const not_sent_message_sptr& _message, const std::string& _wimid, const uint64_t _message_time)
+not_sent_message_sptr not_sent_message::make(const not_sent_message_sptr& _message, const uint64_t _message_time)
 {
-    return not_sent_message_sptr(new not_sent_message(_message, _wimid, _message_time));
+    return not_sent_message_sptr(new not_sent_message(_message, _message_time));
 }
 
 not_sent_message_sptr not_sent_message::make(
@@ -119,7 +119,7 @@ not_sent_message::not_sent_message()
     : message_(std::make_shared<history_message>())
     , duplicated_(false)
     , calc_sent_stat_(false)
-    , create_time_(std::chrono::system_clock::now())
+    , create_time_(std::chrono::steady_clock::now())
     , updated_id_(-1)
     , modified_(false)
     , deleted_(false)
@@ -133,16 +133,10 @@ not_sent_message::not_sent_message(
     const message_type _type,
     const uint64_t _message_time,
     std::string&& _internal_id)
-    : aimid_(_aimid)
-    , message_(std::make_shared<history_message>())
-    , duplicated_(false)
-    , calc_sent_stat_(false)
-    , create_time_(std::chrono::system_clock::now())
-    , updated_id_(-1)
-    , modified_(false)
-    , deleted_(false)
-    , delete_operation_(delete_operation::del_for_all)
+    : not_sent_message()
 {
+    aimid_ = _aimid;
+
     message_->set_internal_id(_internal_id.empty() ? core::tools::system::generate_internal_id() : std::move(_internal_id));
 
     message_->set_outgoing(true);
@@ -161,18 +155,10 @@ not_sent_message::not_sent_message(
         message_->set_chat_data(archive::chat_data());
 }
 
-not_sent_message::not_sent_message(const not_sent_message_sptr& _message, const std::string& _wimid, const uint64_t _message_time)
-    : message_(std::make_shared<history_message>())
-    , duplicated_(false)
-    , calc_sent_stat_(false)
-    , create_time_(std::chrono::system_clock::now())
-    , updated_id_(-1)
-    , modified_(false)
-    , deleted_(false)
-    , delete_operation_(delete_operation::del_for_all)
+not_sent_message::not_sent_message(const not_sent_message_sptr& _message, const uint64_t _message_time)
+    : not_sent_message()
 {
     copy_from(_message);
-    message_->set_wimid(_wimid);
     message_->set_time(_message_time);
 }
 
@@ -351,7 +337,7 @@ const std::chrono::system_clock::time_point& not_sent_message::get_post_time() c
     return post_time_;
 }
 
-const std::chrono::system_clock::time_point& not_sent_message::get_create_time() const
+const std::chrono::steady_clock::time_point& not_sent_message::get_create_time() const
 {
     return create_time_;
 }
@@ -453,6 +439,26 @@ std::optional<file_sharing_base_content_type> core::archive::not_sent_message::g
     return message_ && message_->get_file_sharing_data() ? message_->get_file_sharing_data()->get_base_content_type() : std::nullopt;
 }
 
+void not_sent_message::set_geo(const core::archive::geo& _geo)
+{
+    message_->set_geo(_geo);
+}
+
+const core::archive::geo&not_sent_message::get_geo() const
+{
+    return message_->get_geo();
+}
+
+void not_sent_message::set_poll(const core::archive::poll& _poll)
+{
+    message_->set_poll(_poll);
+}
+
+const core::archive::poll not_sent_message::get_poll() const
+{
+    return message_->get_poll();
+}
+
 //////////////////////////////////////////////////////////////////////////
 // delete_message
 //////////////////////////////////////////////////////////////////////////
@@ -543,9 +549,7 @@ pending_operations::pending_operations(
     load_if_need();
 }
 
-pending_operations::~pending_operations()
-{
-}
+pending_operations::~pending_operations() = default;
 
 void pending_operations::insert_message(const std::string& _aimid, const not_sent_message_sptr &_message)
 {
@@ -626,10 +630,8 @@ void pending_operations::load_if_need()
 
 
 
-message_stat_time pending_operations::remove(const std::string& _internal_id)
+void pending_operations::remove(const std::string& _internal_id)
 {
-    message_stat_time st;
-
     for (auto& _messages_pair : pending_messages_)
     {
         for (auto iter = _messages_pair.second.begin(); iter != _messages_pair.second.end();)
@@ -642,11 +644,6 @@ message_stat_time pending_operations::remove(const std::string& _internal_id)
 
             if (same_id)
             {
-                st.create_time_ = not_sent_message.get_create_time();
-                st.need_stat_ = not_sent_message.is_calc_stat();
-                st.contact_ = not_sent_message.get_aimid();
-                st.msg_id_ = message.get_msgid();
-
                 iter = _messages_pair.second.erase(iter);
                 save_pending_sent_messages();
 
@@ -661,8 +658,6 @@ message_stat_time pending_operations::remove(const std::string& _internal_id)
             ++iter;
         }
     }
-
-    return st;
 }
 
 void pending_operations::drop(const std::string& _aimid)
@@ -802,9 +797,6 @@ not_sent_message_sptr pending_operations::update_with_imstate(
 
     if (_hist_msg_id > 0)
     {
-        msg->get_message()->set_msgid(_hist_msg_id);
-        msg->get_message()->set_prev_msgid(_before_hist_msg_id);
-
         if (msg->is_deleted())
         {
             insert_deleted_message(msg->get_aimid(), delete_message(msg->get_aimid(), _hist_msg_id, _message_internal_id, msg->get_delete_operation()));
@@ -918,8 +910,6 @@ not_sent_message_sptr pending_operations::get_first_ready_to_send() const
 
 not_sent_message_sptr pending_operations::get_message_by_internal_id(const std::string& _iid) const
 {
-    assert(!_iid.empty());
-
     for (const auto &pair : pending_messages_)
     {
         const auto &messages = pair.second;
@@ -1030,8 +1020,22 @@ bool pending_operations::get_first_pending_delete_message(std::string& _contact,
     return true;
 }
 
+bool pending_operations::get_pending_delete_messages(std::string& _contact, std::vector<delete_message>& _messages) const
+{
+    if (pending_delete_messages_.empty())
+        return false;
 
+    const auto& contact_messages = *pending_delete_messages_.begin();
 
+    if (contact_messages.second.empty())
+        return false;
+
+    _contact = contact_messages.first;
+    for (const auto& msg : contact_messages.second)
+        _messages.push_back(*msg);
+
+    return true;
+}
 
 template <class container_type_>
 bool pending_operations::save(storage& _storage, const container_type_& _pendings) const

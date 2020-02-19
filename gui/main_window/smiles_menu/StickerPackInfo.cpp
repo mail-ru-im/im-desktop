@@ -12,6 +12,7 @@
 #include "../ReportWidget.h"
 #include "../../controls/TransparentScrollBar.h"
 #include "SmilesMenu.h"
+#include "StickerPreview.h"
 #include "../../cache/stickers/stickers.h"
 #include "../../controls/CustomButton.h"
 #include "../contact_list/SelectionContactsForGroupChat.h"
@@ -19,7 +20,7 @@
 #include "../contact_list/ContactListModel.h"
 #include "../GroupChatOperations.h"
 #include "../../styles/ThemeParameters.h"
-#include "../../app_config.h"
+#include "../../url_config.h"
 
 using namespace Ui;
 
@@ -58,9 +59,7 @@ namespace
 
     QString getStickerpackUrl(const QString& _storeId)
     {
-        static const QString cicq_org = ql1s("https://") % QString::fromStdString(Ui::GetAppConfig().getUrlCICQOrg()) % ql1s("/s/");
-
-        return cicq_org % _storeId;
+        return ql1s("https://") % Ui::getUrlConfig().getUrlStickerShare() % ql1c('/') % _storeId;
     }
 
     QMap<QString, QVariant> makeData(const QString& _command)
@@ -91,11 +90,11 @@ StickersView::StickersView(QWidget* _parent, Smiles::StickersTable* _stickers)
     connect(stickers_, &Smiles::StickersTable::stickerHovered, this, &StickersView::stickerHovered);
 }
 
-void StickersView::onStickerPreview(const int32_t _setId, const QString& _stickerId)
+void StickersView::onStickerPreview(const QString& _stickerId)
 {
     previewActive_ = true;
 
-    emit stickerPreview(_setId, _stickerId);
+    emit stickerPreview(-1, _stickerId);
 }
 
 void StickersView::mouseReleaseEvent(QMouseEvent* _e)
@@ -252,7 +251,7 @@ void PackWidget::setError(const QString& _text)
     errorWidget_->setErrorText(_text);
     errorWidget_->setVisible(true);
 
-    dialog_->addCancelButton(QT_TRANSLATE_NOOP("popup_window", "CLOSE"), true);
+    dialog_->addCancelButton(QT_TRANSLATE_NOOP("popup_window", "Close"), true);
 
 }
 
@@ -337,7 +336,7 @@ void PackWidget::onStickersPackInfo(std::shared_ptr<Ui::Stickers::Set> _set, con
         buttonsLayout->setContentsMargins(getButtonMargin(), getButtonMargin(), getButtonMargin(), getButtonMargin());
         buttonsLayout->setAlignment(Qt::AlignCenter | Qt::AlignBottom);
         {
-            auto closeButton = new DialogButton(this, QT_TRANSLATE_NOOP("popup_window", "CLOSE"), DialogButtonRole::CANCEL);
+            auto closeButton = new DialogButton(this, QT_TRANSLATE_NOOP("popup_window", "Close"), DialogButtonRole::CANCEL);
 
             closeButton->setCursor(Qt::PointingHandCursor);
             closeButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
@@ -352,7 +351,7 @@ void PackWidget::onStickersPackInfo(std::shared_ptr<Ui::Stickers::Set> _set, con
 
         if (!_purchased)
         {
-            addButton_ = new DialogButton(this, QT_TRANSLATE_NOOP("popup_window", "ADD"), DialogButtonRole::CONFIRM);
+            addButton_ = new DialogButton(this, QT_TRANSLATE_NOOP("popup_window", "Add"), DialogButtonRole::CONFIRM);
 
             addButton_->setCursor(QCursor(Qt::PointingHandCursor));
             addButton_->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
@@ -364,7 +363,7 @@ void PackWidget::onStickersPackInfo(std::shared_ptr<Ui::Stickers::Set> _set, con
         }
         else
         {
-            removeButton_ = new DialogButton(this, QT_TRANSLATE_NOOP("popup_window", "REMOVE"), DialogButtonRole::CONFIRM_DELETE);
+            removeButton_ = new DialogButton(this, QT_TRANSLATE_NOOP("popup_window", "Remove"), DialogButtonRole::CONFIRM_DELETE);
 
             removeButton_->setCursor(QCursor(Qt::PointingHandCursor));
             removeButton_->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
@@ -576,7 +575,7 @@ void StickerPackInfo::onShareClicked()
     emit Utils::InterConnector::instance().searchEnd();
 
     QString sourceText = getStickerpackUrl(store_id_);
-    forwardMessage(sourceText, QT_TRANSLATE_NOOP("stickers", "Share"), QT_TRANSLATE_NOOP("popup_window", "SEND"), false);
+    forwardMessage(sourceText, QT_TRANSLATE_NOOP("stickers", "Share"), QT_TRANSLATE_NOOP("popup_window", "Send"), false);
 
     parentDialog_->close();
 }

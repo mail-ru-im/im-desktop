@@ -3,6 +3,7 @@
 
 #include "../../../http_request.h"
 #include "../../../tools/system.h"
+#include "../../../tools/json_helper.h"
 #include "../../../archive/history_message.h"
 #include "../wim_history.h"
 
@@ -28,7 +29,6 @@ int32_t get_mentions_suggests::init_request(std::shared_ptr<core::http_request_s
 {
     constexpr char method[] = "getRecentWriters";
 
-    _request->set_gzip(true);
     _request->set_url(urls::get_url(urls::url_type::rapi_host));
     _request->set_normalized_url(method);
     _request->set_keep_alive();

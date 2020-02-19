@@ -212,7 +212,7 @@ namespace core
             const auto header_string = ss_header.str();
             file_context->file_stream_->write(header_string.c_str(), header_string.length());
             file_context->file_stream_->write((const char*) bs_data->read(data_size), data_size);
-            file_context->file_stream_->write((const char*) "\n", sizeof(char));
+            file_context->file_stream_->put('\n');
 
             file_context->file_stream_->flush();
 
@@ -229,7 +229,7 @@ namespace core
         });
     }
 
-    void network_log::write_string(const std::string& _text)
+    void network_log::write_string(std::string_view _text)
     {
         tools::binary_stream stream;
         stream.write(_text);

@@ -33,7 +33,8 @@ namespace Ui
         needAdjustSize_(false)
     {
         setWindowFlags(windowFlags() | Qt::NoDropShadowWindowHint | Qt::WindowStaysOnTopHint);
-        setStyle(new FlatMenuStyle());
+
+        Utils::SetProxyStyle(this, new FlatMenuStyle());
 
         const QString MENU_STYLE = qsl(
             "QMenu { background-color: %1; border: 2dip solid %2; }"
@@ -73,7 +74,7 @@ namespace Ui
             if (const auto currentActions = actions(); !currentActions.isEmpty())
             {
                 const auto static magrin = Utils::scale_value(20);
-                const auto mwGeometry = mw->nativeGeometry();
+                const auto mwGeometry = mw->geometry();
 
                 const auto geom = QRect(pos(), size());
                 const auto diff = geom.right() - mwGeometry.right();

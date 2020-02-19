@@ -18,9 +18,11 @@
 #include "VoipEventItem.h"
 #include "MessagesScrollbar.h"
 #include "MessagesScrollAreaLayout.h"
+#include "HistoryControlPage.h"
 
 #include "MessagesScrollArea.h"
 #include "../../gui_settings.h"
+#include "../../core_dispatcher.h"
 
 #include "MentionCompleter.h"
 
@@ -119,7 +121,7 @@ namespace Ui
         Max
     };
 
-    MessagesScrollArea::MessagesScrollArea(QWidget *parent, QWidget *typingWidget, hist::DateInserter* dateInserter)
+    MessagesScrollArea::MessagesScrollArea(QWidget *parent, QWidget *typingWidget, hist::DateInserter* dateInserter, const QString& _aimid)
         : QWidget(parent)
         , IsSelecting_(false)
         , TouchScrollInProgress_(false)
@@ -135,6 +137,7 @@ namespace Ui
         , scrollValue_(-1)
         , messageId_(-1)
         , recvLastMessage_(false)
+        , aimid_(_aimid)
     {
         assert(parent);
         assert(Layout_);
@@ -168,6 +171,13 @@ namespace Ui
         connect(Layout_, &MessagesScrollAreaLayout::recreateAvatarRect, this, &MessagesScrollArea::recreateAvatarRect);
         connect(Layout_, &MessagesScrollAreaLayout::itemRead, this, &MessagesScrollArea::itemRead);
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::clearSelecting, this, [this]() { IsSelecting_ = false; });
+        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::selectionStateChanged, this, &MessagesScrollArea::updateSelected);
+        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::updateSelectedCount, this, &MessagesScrollArea::updateSelectedCount);
+        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::multiselectChanged, this, &MessagesScrollArea::multiselectChanged);
+        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::multiSelectCurrentElementChanged, this, &MessagesScrollArea::multiSelectCurrentElementChanged);
+        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::multiSelectCurrentMessageUp, this, &MessagesScrollArea::multiSelectCurrentMessageUp);
+        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::multiSelectCurrentMessageDown, this, &MessagesScrollArea::multiSelectCurrentMessageDown);
+        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::messageSelected, this, &MessagesScrollArea::messageSelected);
         Utils::grabTouchWidget(this);
 
         setMouseTracking(true);
@@ -184,9 +194,157 @@ namespace Ui
             Scrollbar_->fadeOut();
     }
 
+    void MessagesScrollArea::multiSelectCurrentElementChanged()
+    {
+        if (!Utils::InterConnector::instance().isMultiselect(aimid_) || aimid_ != Logic::getContactListModel()->selectedContact())
+            return;
+
+        if (Utils::InterConnector::instance().currentMultiselectElement() == Utils::MultiselectCurrentElement::Message)
+            Utils::InterConnector::instance().setCurrentMultiselectMessage(Layout_->firstAvailableToSelect().getId());
+        else
+            Utils::InterConnector::instance().setCurrentMultiselectMessage(-1);
+    }
+
+    void MessagesScrollArea::multiSelectCurrentMessageUp(bool _shift)
+    {
+        if (!Utils::InterConnector::instance().isMultiselect(aimid_) || aimid_ != Logic::getContactListModel()->selectedContact())
+            return;
+
+        if (Utils::InterConnector::instance().currentMultiselectElement() == Utils::MultiselectCurrentElement::Message)
+        {
+            auto current = Utils::InterConnector::instance().currentMultiselectMessage();
+            if (current == -1)
+                current = lastSelectedMessageId_.getId();
+
+            auto prev = Layout_->prevAvailableToSelect(current);
+            if (prev.getId() != -1)
+            {
+                Utils::InterConnector::instance().setCurrentMultiselectMessage(prev.getId());
+                Layout_->scrollTo(prev, hist::scroll_mode_type::multiselect);
+                if (_shift)
+                {
+                    auto w = getItemByKey(prev);
+                    bool prevSelected = false;
+                    if (auto item = qobject_cast<HistoryControlPageItem*>(w))
+                    {
+                        prevSelected = item->isSelected();
+                        item->setSelected(!prevSelected);
+                    }
+
+                    w = getItemByKey(Logic::MessageKey(current, QString()));
+                    if (auto item = qobject_cast<HistoryControlPageItem*>(w); item && prevSelected == item->isSelected())
+                        item->setSelected(!item->isSelected());
+                }
+            }
+        }
+    }
+
+    void MessagesScrollArea::multiSelectCurrentMessageDown(bool _shift)
+    {
+        if (!Utils::InterConnector::instance().isMultiselect(aimid_) || aimid_ != Logic::getContactListModel()->selectedContact())
+            return;
+
+        if (Utils::InterConnector::instance().currentMultiselectElement() == Utils::MultiselectCurrentElement::Message)
+        {
+            auto current = Utils::InterConnector::instance().currentMultiselectMessage();
+            if (current == -1)
+                current = lastSelectedMessageId_.getId();
+
+            auto next = Layout_->nextAvailableToSelect(current);
+            if (next.getId() != -1)
+            {
+                Utils::InterConnector::instance().setCurrentMultiselectMessage(next.getId());
+                Layout_->scrollTo(next, hist::scroll_mode_type::multiselect);
+                if (_shift)
+                {
+                    auto w = getItemByKey(next);
+                    bool prevSelected = false;
+                    if (auto item = qobject_cast<HistoryControlPageItem*>(w))
+                    {
+                        prevSelected = item->isSelected();
+                        item->setSelected(!prevSelected);
+                    }
+
+                    w = getItemByKey(Logic::MessageKey(current, QString()));
+                    if (auto item = qobject_cast<HistoryControlPageItem*>(w); item && prevSelected == item->isSelected())
+                        item->setSelected(!item->isSelected());
+                }
+            }
+        }
+    }
+
+    void MessagesScrollArea::messageSelected(qint64 _id, const QString& _internalId)
+    {
+        if (Utils::InterConnector::instance().isMultiselect(aimid_) && aimid_ == Logic::getContactListModel()->selectedContact())
+            lastSelectedMessageId_ = Logic::MessageKey(_id, _internalId);
+        //scrollTo(Logic::MessageKey(_id, _internalId), hist::scroll_mode_type::multiselect);
+    }
+
     void MessagesScrollArea::onWheelEvent(QWheelEvent* e)
     {
         QCoreApplication::sendEvent(this, e);
+    }
+
+    void MessagesScrollArea::updateSelected(qint64 _id, const QString& _internalId, bool _selected)
+    {
+        if (aimid_ == Logic::getContactListModel()->selectedContact())
+        {
+            const auto isMultiselect = Utils::InterConnector::instance().isMultiselect(aimid_);
+
+            Logic::MessageKey key(_id, _internalId);
+            if (!_selected)
+            {
+                selected_.erase(key);
+            }
+            else if (auto item = qobject_cast<Ui::HistoryControlPageItem*>(Layout_->getItemByKey(key)))
+            {
+                SelectedMessageInfo info;
+                info.isOutgoing_ = item->isOutgoing();
+                if (!isMultiselect)
+                {
+                    auto selectionBegin = Layout_->absolute2Viewport(SelectionBeginAbsPos_);
+                    auto selectionEnd = Layout_->absolute2Viewport(SelectionEndAbsPos_);
+                    auto selectionBeginGlobal = mapToGlobal(selectionBegin);
+                    auto selectionEndGlobal = mapToGlobal(selectionEnd);
+                    info.from_ = item->mapFromGlobal(selectionBeginGlobal);
+                    info.to_ = item->mapFromGlobal(selectionEndGlobal);
+                }
+                else
+                {
+                    info.from_ = QPoint();
+                    info.to_ = QPoint();
+                }
+
+                if (auto complexItem = qobject_cast<Ui::ComplexMessage::ComplexMessageItem*>(item))
+                {
+                    info.text_ = complexItem->getSelectedText(isMultiselect, Ui::ComplexMessage::ComplexMessageItem::TextFormat::Raw);
+                    info.quotes_ = complexItem->getQuotes(!(Utils::InterConnector::instance().isMultiselect() && aimid_ == Logic::getContactListModel()->selectedContact()), true);
+                    info.filesPlaceholders_ = complexItem->getFilesPlaceholders();
+                    info.mentions_ = complexItem->getMentions();
+                }
+                else if (auto voipItem = qobject_cast<Ui::VoipEventItem*>(item))
+                {
+                    info.text_ = voipItem->formatCopyText();
+                    info.quotes_ += voipItem->getQuote();
+                }
+                selected_[key] = info;
+            }
+
+            if (selected_.empty())
+                Utils::InterConnector::instance().setMultiselect(false);
+        }
+    }
+
+    void MessagesScrollArea::updateSelectedCount()
+    {
+        if (aimid_ == Logic::getContactListModel()->selectedContact())
+            emit Utils::InterConnector::instance().selectedCount(getSelectedCount());
+    }
+
+    void MessagesScrollArea::multiselectChanged()
+    {
+        if (!Utils::InterConnector::instance().isMultiselect(aimid_))
+            clearSelection();
     }
 
     bool MessagesScrollArea::isHidingScrollbar() const
@@ -213,26 +371,27 @@ namespace Ui
 
     int MessagesScrollArea::getSelectedCount() const
     {
-        int selectedItems = 0;
+        return selected_.size();
+    }
 
-        enumerateWidgets(
-            [&selectedItems] (QWidget* _item, const bool)
-            {
-                if (auto complexItem = qobject_cast<Ui::ComplexMessage::ComplexMessageItem*>(_item))
-                {
-                    if (complexItem->isSelected())
-                        ++selectedItems;
-                }
-                else if (auto voipItem = qobject_cast<Ui::VoipEventItem*>(_item))
-                {
-                    if (voipItem->isSelected())
-                        ++selectedItems;
-                }
-                return true;
-            },
-            false);
+    void MessagesScrollArea::setSmartreplyWidget(SmartReplyWidget* _widget)
+    {
+        Layout_->setSmartreplyWidget(_widget);
+    }
 
-        return selectedItems;
+    void MessagesScrollArea::showSmartReplies()
+    {
+        Layout_->showSmartReplyWidgetAnimated();
+    }
+
+    void MessagesScrollArea::hideSmartReplies()
+    {
+        Layout_->hideSmartReplyWidgetAnimated();
+    }
+
+    void MessagesScrollArea::setSmartreplyButton(QWidget* _button)
+    {
+        Layout_->setSmartreplyButton(_button);
     }
 
     void MessagesScrollArea::onSelectionChanged(int _selectedCount)
@@ -253,18 +412,11 @@ namespace Ui
 
     void MessagesScrollArea::insertWidgets(InsertHistMessagesParams&& _params)
     {
-        for (const auto& iter : _params.widgets)
+        std::map<Logic::MessageKey, QWidget*> widgets;
+        if (!selected_.empty())
         {
-            if (auto complexItem = qobject_cast<Ui::ComplexMessage::ComplexMessageItem*>(iter.second.get()))
-            {
-                contacts_.insert(complexItem->getSenderAimid());
-                continue;
-            }
-            else if (auto voipItem = qobject_cast<Ui::VoipEventItem*>(iter.second.get()))
-            {
-                contacts_.insert(voipItem->getContact());
-                continue;
-            }
+            for (const auto& iter : _params.widgets)
+                widgets[iter.first] = (iter.second.get());
         }
 
         Layout_->lock();
@@ -272,6 +424,37 @@ namespace Ui
         Layout_->unlock();
 
         updateScrollbar();
+
+        std::vector<Logic::MessageKey> toEmit;
+        for (const auto& iter : widgets)
+        {
+            if (auto complexItem = qobject_cast<Ui::ComplexMessage::ComplexMessageItem*>(iter.second))
+                contacts_.insert(complexItem->getSenderAimid());
+            else if (auto voipItem = qobject_cast<Ui::VoipEventItem*>(iter.second))
+                contacts_.insert(voipItem->getContact());
+
+            auto selectedInfo = selected_.find(iter.first);
+            if (selectedInfo != selected_.end())
+            {
+                if (auto item = qobject_cast<Ui::HistoryControlPageItem*>(iter.second))
+                {
+                    if (selectedInfo->second.from_.isNull())
+                    {
+                        item->setSelected(true);
+                    }
+                    else
+                    {
+                        auto begin = item->mapToGlobal(selectedInfo->second.from_);
+                        auto end = item->mapToGlobal(selectedInfo->second.to_);
+                        item->selectByPos(begin, end, SelectionBeginAbsPos_, SelectionEndAbsPos_);
+                    }
+                    toEmit.push_back(iter.first);
+                }
+            }
+        }
+
+        for (const auto& key : toEmit)
+            emit Utils::InterConnector::instance().selectionStateChanged(key.getId(), key.getInternalId(), true);
     }
 
     bool MessagesScrollArea::isScrolling() const
@@ -306,7 +489,7 @@ namespace Ui
         if (auto complexItem = qobject_cast<Ui::ComplexMessage::ComplexMessageItem*>(widget))
             contacts_.erase(complexItem->getSenderAimid());
         else if (auto voipItem = qobject_cast<Ui::VoipEventItem*>(widget))
-            contacts_.insert(voipItem->getContact());
+            contacts_.erase(voipItem->getContact());
     }
 
     void MessagesScrollArea::removeWidget(QWidget *widget)
@@ -507,91 +690,58 @@ namespace Ui
         return Layout_->getItemsKeys();
     }
 
-    QString MessagesScrollArea::getSelectedText() const
+    QString MessagesScrollArea::getSelectedText(TextFormat _format) const
     {
-        QString selection_text;
-        QString first_message_text_only;
-        QString first_message_full;
-
-        enumerateWidgets(
-            [&selection_text, &first_message_text_only, &first_message_full]
-            (QWidget* _item, const bool)
+        QString result;
+        size_t i = 1;
+        const auto mentions = _format == TextFormat::Raw ? Data::MentionMap() : getMentions();
+        for (const auto& [_, info] : selected_)
+        {
+            result += mentions.empty() ? info.text_ : Utils::convertMentions(info.text_, mentions);
+            if (i != selected_.size())
             {
-                QString selected_full;
+                result += QChar::LineFeed;
+                result += QChar::LineFeed;
+            }
 
-                if (auto complexItem = qobject_cast<Ui::ComplexMessage::ComplexMessageItem*>(_item))
-                {
-                    selected_full = complexItem->getSelectedText(true);
-
-                    if (first_message_text_only.isEmpty())
-                    {
-                        first_message_text_only = complexItem->getSelectedText(false);
-                        first_message_full = std::move(selected_full);
-
-                        return true;
-                    }
-                }
-                else if (auto voipItem = qobject_cast<Ui::VoipEventItem*>(_item))
-                {
-                    selected_full = voipItem->isSelected() ? voipItem->formatCopyText() : QString();
-
-                    if (first_message_text_only.isEmpty())
-                    {
-                        first_message_text_only = selected_full;
-                        first_message_full = selected_full;
-
-                        return true;
-                    }
-                }
-
-                if (selected_full.isEmpty())
-                    return true;
-
-                if (!selection_text.isEmpty())
-                    selection_text += QChar::LineFeed % QChar::LineFeed;
-
-                selection_text += selected_full;
-
-                return true;
-            }, true
-        );
-
-        QString result = (
-            selection_text.isEmpty() ?
-                first_message_text_only :
-                (first_message_full % QChar::LineFeed % QChar::LineFeed % selection_text));
-
-        if (!result.isEmpty() && result.endsWith(ql1s("\n\n")))
-            result.chop(1);
+            ++i;
+        }
 
         return result;
     }
 
-    Data::QuotesVec MessagesScrollArea::getQuotes() const
+    Data::FilesPlaceholderMap MessagesScrollArea::getFilesPlaceholders() const
+    {
+        Data::FilesPlaceholderMap ph;
+        for (const auto&[_, info] : selected_)
+            ph.insert(info.filesPlaceholders_.begin(), info.filesPlaceholders_.end());
+        return ph;
+    }
+
+    Data::MentionMap MessagesScrollArea::getMentions() const
+    {
+        Data::MentionMap mentions;
+        for (const auto& [_, info] : selected_)
+            mentions.insert(info.mentions_.begin(), info.mentions_.end());
+        return mentions;
+    }
+
+    Data::QuotesVec MessagesScrollArea::getQuotes(MessagesScrollArea::IsForward _isForward) const
     {
         Data::QuotesVec result;
-        enumerateWidgets(
-        [&result] (QWidget* _item, const bool)
+
+        auto isQuote = [](const Data::Quote& _quote) { return _quote.type_ == Data::Quote::quote && _quote.hasReply_; };
+
+        for (const auto&[_, info] : selected_)
+            result += info.quotes_;
+
+        if (_isForward == IsForward::No)
         {
-            if (auto complexItem = qobject_cast<Ui::ComplexMessage::ComplexMessageItem*>(_item))
-            {
-                QString selectedText = complexItem->getSelectedText(false);
-                if (selectedText.isEmpty())
-                    return true;
+            const auto allQuotes = std::all_of(result.begin(), result.end(), isQuote);
 
-                result += complexItem->getQuotes();
-                return true;
-            }
-            else if (auto voipItem = qobject_cast<Ui::VoipEventItem*>(_item))
-            {
-                if (voipItem->isSelected())
-                    result += voipItem->getQuote();
-                return true;
-            }
-
-            return true;
-        }, true
-            );
+            if (!allQuotes)
+                result.erase(std::remove_if(result.begin(), result.end(), isQuote), result.end());
+        }
 
         return result;
     }
@@ -611,7 +761,7 @@ namespace Ui
         const auto bounds = Layout_->getItemsAbsBounds();
         if (bounds.first == 0 && bounds.second == 0)
             return QVector<Logic::MessageKey>();
-        const auto viewportTop = Layout_->getViewportAbsY() + Layout_->getTypingWidgetHeight();
+        const auto viewportTop = Layout_->getViewportAbsY() + Layout_->getBottomWidgetsHeight();
         const auto heightFromTopBoundToViewportTop = viewportTop - bounds.first;
         //assert(heightFromTopBoundToViewportTop > 0);
 
@@ -635,7 +785,7 @@ namespace Ui
         const auto bounds = Layout_->getItemsAbsBounds();
         if (bounds.first == 0 && bounds.second == 0)
             return QVector<Logic::MessageKey>();
-        const auto viewportBottom = Layout_->getViewportAbsY() + minViewPortHeightForUnload() + Layout_->getTypingWidgetHeight();
+        const auto viewportBottom = Layout_->getViewportAbsY() + minViewPortHeightForUnload() + Layout_->getBottomWidgetsHeight();
         const auto heightFromBoundToViewportBottom = bounds.second - viewportBottom;
 
         constexpr auto triggerThresholdK = triggerThreshold();
@@ -731,19 +881,18 @@ namespace Ui
         if (isLeftButton)
         {
             emit Utils::InterConnector::instance().hideMentionCompleter();
-            emit Utils::InterConnector::instance().searchEnd();
+            if (Ui::get_gui_settings()->get_value<bool>(settings_fast_drop_search_results, settings_fast_drop_search_default()))
+                emit Utils::InterConnector::instance().searchEnd();
         }
 
         if (!isSelectionStart)
-        {
             return;
-        }
 
         const auto mouseAbsPos = Layout_->viewport2Absolute(e->pos());
 
         if (!(e->modifiers() & Qt::ShiftModifier))
         {
-            if (isLeftButton)
+            if (isLeftButton && !Utils::InterConnector::instance().isMultiselect())
                 clearSelection();
 
             LastMouseGlobalPos_ = e->globalPos();
@@ -786,6 +935,8 @@ namespace Ui
 
         if (selectedCount == 0)
             MainPage::instance()->setFocusOnInput();
+        else
+            setFocus();
     }
 
     void MessagesScrollArea::enterEvent(QEvent *_event)
@@ -814,6 +965,9 @@ namespace Ui
             Tooltip::wheel(e);
             return;
         }
+
+        if (e->isAccepted())
+            return;
 
         if constexpr (platform::is_apple())
             return;
@@ -1032,8 +1186,9 @@ namespace Ui
             emit fetchRequestedEvent(true);
         }
 
-        if (Mode_ == ScrollingMode::Selection)
+        if (Mode_ == ScrollingMode::Selection && ScrollAnimationTimer_.isActive())
         {
+            SelectionEndAbsPos_ = Layout_->viewport2Absolute(mapFromGlobal(QCursor::pos()));
             applySelection();
         }
 
@@ -1061,6 +1216,9 @@ namespace Ui
             return true;
 
         const auto viewportAbsY = Layout_->getViewportAbsY();
+        if (viewportAbsY <= viewportScrollBounds.first)
+            return true;
+
         const auto scrollPos = (viewportAbsY - viewportScrollBounds.first);
 
         return scrollPos >= 0 && scrollPos < int(0.1 * scrollbarMaximum);
@@ -1100,21 +1258,94 @@ namespace Ui
     {
         assert(!LastMouseGlobalPos_.isNull());
 
-        const auto selectionBegin = Layout_->absolute2Viewport(SelectionBeginAbsPos_);
-        const auto selectionEnd = Layout_->absolute2Viewport(SelectionEndAbsPos_);
-        const auto selectionBeginGlobal = mapToGlobal(selectionBegin);
-        const auto selectionEndGlobal = mapToGlobal(selectionEnd);
+        auto selectionBegin = Layout_->absolute2Viewport(SelectionBeginAbsPos_);
+        auto selectionEnd = Layout_->absolute2Viewport(SelectionEndAbsPos_);
+        auto selectionBeginGlobal = mapToGlobal(selectionBegin);
+        auto selectionEndGlobal = mapToGlobal(selectionEnd);
+        auto selectionGlobalRect = QRect(selectionBeginGlobal, selectionEndGlobal);
 
         if (selectionBeginGlobal == selectionEndGlobal)
             return;
 
+        if (!Utils::InterConnector::instance().isMultiselect())
+        {
+            enumerateWidgets([this, selectionBeginGlobal, selectionEndGlobal](QWidget *w, const bool)
+                {
+                    if (getSelectableItem(w))
+                    {
+                        auto item = qobject_cast<Ui::ComplexMessage::ComplexMessageItem*>(w);
+                        if (!item)
+                            return true;
+
+                        const auto itemRect = w->rect();
+                        const auto globalRect = QRect(w->mapToGlobal(itemRect.topLeft()), itemRect.size());
+                        if (globalRect.contains(selectionBeginGlobal) && !globalRect.contains(selectionEndGlobal))
+                        {
+                            auto center = globalRect.center();
+                            if (selectionBeginGlobal.y() < selectionEndGlobal.y())
+                            {
+                                if (selectionBeginGlobal.y() > center.y())
+                                {
+                                    if (item->isSelected())
+                                    {
+                                        SelectionBeginAbsPos_.setY(SelectionBeginAbsPos_.y() - (selectionBeginGlobal.y() - globalRect.y()) - 1);
+                                        Utils::InterConnector::instance().setMultiselect(true);
+                                    }
+                                    else
+                                    {
+                                        SelectionBeginAbsPos_.setY(SelectionBeginAbsPos_.y() + (globalRect.y() + globalRect.height() - selectionBeginGlobal.y()) + 1);
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                if (selectionBeginGlobal.y() < center.y())
+                                {
+                                    if (item->isSelected())
+                                    {
+                                        SelectionBeginAbsPos_.setY(SelectionBeginAbsPos_.y() + (globalRect.y() + globalRect.height() - selectionBeginGlobal.y()) + 1);
+                                        Utils::InterConnector::instance().setMultiselect(true);
+                                    }
+                                    else
+                                    {
+                                        SelectionBeginAbsPos_.setY(SelectionBeginAbsPos_.y() - (selectionBeginGlobal.y() - globalRect.y()) - 1);
+                                    }
+                                }
+                            }
+
+                            return false;
+                        }
+                    }
+
+                    return true;
+                },
+            false
+            );
+
+            selectionBegin = Layout_->absolute2Viewport(SelectionBeginAbsPos_);
+            selectionEnd = Layout_->absolute2Viewport(SelectionEndAbsPos_);
+            selectionBeginGlobal = mapToGlobal(selectionBegin);
+            selectionEndGlobal = mapToGlobal(selectionEnd);
+            selectionGlobalRect = QRect(selectionBeginGlobal, selectionEndGlobal);
+        }
+
+        bool isSomethingSelected = false;
         enumerateWidgets(
-            [selectionBeginGlobal, selectionEndGlobal](QWidget *w, const bool)
+            [this, selectionBeginGlobal, selectionEndGlobal, selectionGlobalRect, &isSomethingSelected](QWidget *w, const bool)
             {
-                if (auto complexItem = qobject_cast<Ui::ComplexMessage::ComplexMessageItem*>(w))
-                    complexItem->selectByPos(selectionBeginGlobal, selectionEndGlobal);
-                else if (auto voipItem = qobject_cast<Ui::VoipEventItem*>(w))
-                    voipItem->selectByPos(selectionBeginGlobal, selectionEndGlobal);
+                if (auto item = getSelectableItem(w))
+                {
+                    const auto itemRect = w->rect();
+                    const auto globalRect = QRect(w->mapToGlobal(itemRect.topLeft()), itemRect.size());
+                    if (selectionGlobalRect.intersects(globalRect) && isSomethingSelected)
+                        Utils::InterConnector::instance().setMultiselect(true);
+
+                    item->selectByPos(selectionBeginGlobal, selectionEndGlobal, SelectionBeginAbsPos_, SelectionEndAbsPos_);
+                    if (isSomethingSelected && item->isSelected())
+                        lastSelectedMessageId_ = Logic::MessageKey(item->getId(), item->getInternalId());
+
+                    isSomethingSelected |= item->isSelected();
+                }
 
                 return true;
             },
@@ -1122,23 +1353,32 @@ namespace Ui
         );
     }
 
-    void MessagesScrollArea::clearSelection()
+    void MessagesScrollArea::clearSelection(bool _keepSingleSelection)
     {
-        SelectionBeginAbsPos_ = QPoint();
-        SelectionEndAbsPos_ = QPoint();
+        for (const auto& key : selected_)
+        {
+            auto item = Layout_->getItemByKey(key.first);
+            if (auto w = getSelectableItem(item))
+                w->clearSelection(_keepSingleSelection);
+        }
 
-        enumerateWidgets(
-            [](QWidget* _w, const bool)
-            {
-                if (auto w = getSelectableItem(_w))
-                    w->clearSelection();
-
-                return true;
-            },
-            false
-        );
+        if (!_keepSingleSelection)
+            selected_.clear();
+        Utils::InterConnector::instance().setMultiselect(false, aimid_);
 
         emit messagesDeselected();
+    }
+
+    void MessagesScrollArea::clearPartialSelection()
+    {
+        for (const auto& key : selected_)
+        {
+            auto item = Layout_->getItemByKey(key.first);
+            if (auto w = getSelectableItem(item))
+                w->clearSelection(false);
+        }
+
+        selected_.clear();
     }
 
     void MessagesScrollArea::pressedDestroyed()
@@ -1329,7 +1569,7 @@ namespace Ui
     void MessagesScrollArea::updateItems()
     {
         Layout_->updateItemsWidth();
-        if (Ui::get_gui_settings()->get_value<bool>(settings_partial_read, settings_partial_read_deafult()))
+        if (Ui::get_gui_settings()->get_value<bool>(settings_partial_read, settings_partial_read_default()))
             Layout_->readVisibleItems();
     }
 
@@ -1381,6 +1621,30 @@ namespace Ui
     void MessagesScrollArea::checkVisibilityForRead()
     {
         Layout_->checkVisibilityForRead();
+    }
+
+    void MessagesScrollArea::countSelected(int& _forMe, int& _forAll) const
+    {
+        _forMe = 0;
+        _forAll = 0;
+
+        const auto aimid = Logic::getContactListModel()->selectedContact();
+        for (const auto& sel : selected_)
+        {
+            if (aimid != MyInfo()->aimId() && (sel.second.isOutgoing_ || Logic::getContactListModel()->isYouAdmin(aimid)))
+                ++_forAll;
+
+            ++_forMe;
+        }
+    }
+
+    std::vector<DeleteMessageInfo> MessagesScrollArea::getSelectedMessagesForDelete() const
+    {
+        std::vector<DeleteMessageInfo> result;
+        for (const auto& sel : selected_)
+            result.emplace_back(sel.first.getId(), sel.first.getInternalId(), (sel.second.isOutgoing_ || Logic::getContactListModel()->isYouAdmin(Logic::getContactListModel()->selectedContact())));
+
+        return result;
     }
 }
 

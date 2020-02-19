@@ -75,6 +75,7 @@ void Previewer::ImageViewerWidget::showMedia(const MediaData& _mediaData)
         connect(viewer_.get(), &FFMpegViewer::doubleClicked, this, &ImageViewerWidget::closeRequested);
         connect(viewer_.get(), &FFMpegViewer::fullscreenToggled, this, &ImageViewerWidget::fullscreenToggled);
         connect(viewer_.get(), &FFMpegViewer::playCLicked, this, &ImageViewerWidget::playClicked);
+        connect(viewer_.get(), &FFMpegViewer::rightClicked, this, &ImageViewerWidget::rightClicked);
     }
     else
     {
@@ -86,6 +87,11 @@ void Previewer::ImageViewerWidget::showMedia(const MediaData& _mediaData)
 
     firstOpen_ = false;
     repaint();
+}
+
+QWidget* Previewer::ImageViewerWidget::getParentForContextMenu() const
+{
+    return viewer_ ? viewer_->getParentForContextMenu() : nullptr;
 }
 
 void Previewer::ImageViewerWidget::showPixmap(const QPixmap &_pixmap, const QSize &_originalImageSize, bool _isVideoPreview)
@@ -102,6 +108,17 @@ void Previewer::ImageViewerWidget::showPixmap(const QPixmap &_pixmap, const QSiz
 
     viewer_ = JpegPngViewer::create(scaledPreview(_pixmap, _originalImageSize, maxSize), size(), this, viewSize_, _isVideoPreview);
     repaint();
+}
+
+bool Previewer::ImageViewerWidget::tryScale(QWheelEvent* _event)
+{
+    if (viewer_ && _event->modifiers().testFlag(Qt::ControlModifier))
+    {
+        const auto delta = std::copysign(std::min(maxWheelStep, std::abs(_event->delta())), _event->delta());
+        scaleBy(1. + delta / maxWheelStep, _event->pos());
+        return true;
+    }
+    return false;
 }
 
 bool Previewer::ImageViewerWidget::isZoomSupport() const
@@ -229,6 +246,7 @@ void Previewer::ImageViewerWidget::mouseReleaseEvent(QMouseEvent* _event)
 
 void Previewer::ImageViewerWidget::mouseDoubleClickEvent(QMouseEvent *_event)
 {
+    QLabel::mouseDoubleClickEvent(_event);
     if (!viewer_ || !viewer_->isZoomSupport())
         return;
 
@@ -276,10 +294,8 @@ void Previewer::ImageViewerWidget::mouseMoveEvent(QMouseEvent* _event)
 
 void Previewer::ImageViewerWidget::wheelEvent(QWheelEvent* _event)
 {
-    if (viewer_ && _event->modifiers().testFlag(Qt::ControlModifier))
+    if (tryScale(_event))
     {
-        const auto delta = std::copysign(std::min(maxWheelStep, std::abs(_event->delta())), _event->delta());
-        scaleBy(1. + delta / maxWheelStep, _event->pos());
         _event->accept();
     }
     else if (viewer_ && viewer_->getScaleFactor() > viewer_->getPreferredScaleFactor())
@@ -313,6 +329,7 @@ void Previewer::ImageViewerWidget::onViewerLoadTimeout()
     connect(tmpViewer_.get(), &FFMpegViewer::doubleClicked, this, &ImageViewerWidget::closeRequested);
     connect(tmpViewer_.get(), &FFMpegViewer::fullscreenToggled, this, &ImageViewerWidget::fullscreenToggled);
     connect(tmpViewer_.get(), &FFMpegViewer::playCLicked, this, &ImageViewerWidget::playClicked);
+    connect(tmpViewer_.get(), &FFMpegViewer::rightClicked, this, &ImageViewerWidget::rightClicked);
     connect(tmpViewer_.get(), &AbstractViewer::loaded, this, [this]()
     {
         viewer_ = std::move(tmpViewer_);
@@ -351,14 +368,14 @@ void Previewer::ImageViewerWidget::scaleBy(double _scaleFactorDiff, const QPoint
     if (_scaleFactorDiff > 1 && canZoomIn())
     {
         auto maxPossibleScale = getZoomValue(maxZoomSteps) / viewer_->getScaleFactor();
-        viewer_->scaleBy(std::min(maxPossibleScale, _scaleFactorDiff), _anchor);
-        emit zoomChanged();
+        if (viewer_->scaleBy(std::min(maxPossibleScale, _scaleFactorDiff), _anchor))
+            emit zoomChanged();
     }
     else if (_scaleFactorDiff < 1 && canZoomOut())
     {
         auto maxPossibleScale = getZoomValue(-maxZoomSteps) / viewer_->getScaleFactor();
-        viewer_->scaleBy(std::max(maxPossibleScale, _scaleFactorDiff), _anchor);
-        emit zoomChanged();
+        if (viewer_->scaleBy(std::max(maxPossibleScale, _scaleFactorDiff), _anchor))
+            emit zoomChanged();
     }
 }
 
@@ -379,6 +396,11 @@ bool Previewer::ImageViewerWidget::canZoomIn() const
 bool Previewer::ImageViewerWidget::canZoomOut() const
 {
     return currentStep() > 0 || -currentStep() < maxZoomSteps;
+}
+
+QRect Previewer::ImageViewerWidget::viewerRect() const
+{
+    return viewer_ ? viewer_->rect() : QRect{};
 }
 
 double Previewer::ImageViewerWidget::getScaleStep() const

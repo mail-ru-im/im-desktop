@@ -44,20 +44,26 @@ namespace
         return Utils::scale_value(8);
     }
 
-    QString textByMediaType(Ui::MediaType _type)
+    QString textFromQuote(const Data::Quote& _quote)
     {
-        switch (_type)
+        switch (_quote.mediaType_)
         {
+            case Ui::MediaType::noMedia:
+            	return Utils::convertFilesPlaceholders(Utils::convertMentions(_quote.text_, _quote.mentions_), _quote.files_);
+
             case Ui::MediaType::mediaTypeSticker:
                 return QT_TRANSLATE_NOOP("contact_list", "Sticker");
 
             case Ui::MediaType::mediaTypeVideo:
+            case Ui::MediaType::mediaTypeFsVideo:
                 return QT_TRANSLATE_NOOP("contact_list", "Video");
 
             case Ui::MediaType::mediaTypePhoto:
+            case Ui::MediaType::mediaTypeFsPhoto:
                 return QT_TRANSLATE_NOOP("contact_list", "Photo");
 
             case Ui::MediaType::mediaTypeGif:
+            case Ui::MediaType::mediaTypeFsGif:
                 return QT_TRANSLATE_NOOP("contact_list", "GIF");
 
             case Ui::MediaType::mediaTypePtt:
@@ -69,9 +75,16 @@ namespace
             case Ui::MediaType::mediaTypeContact:
                 return QT_TRANSLATE_NOOP("contact_list", "Contact");
 
+            case Ui::MediaType::mediaTypeGeo:
+                return QT_TRANSLATE_NOOP("contact_list", "Location");
+
+            case Ui::MediaType::mediaTypePoll:
+                return QT_TRANSLATE_NOOP("contact_list", "Poll");
+
             default:
                 return QString();
         }
+
     }
 
     int scrollAddedWidth()
@@ -92,18 +105,12 @@ namespace Ui
         else
             aimId_ = _quote.senderId_;
 
-        QString text;
-        if (_quote.mediaType_ == Ui::MediaType::noMedia)
-            text = Utils::convertMentions(_quote.text_, _quote.mentions_);
-        else
-            text = textByMediaType(_quote.mediaType_);
-
         const auto textColor = Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID);
 
         textUnit_ = TextRendering::MakeTextUnit(getName() % ql1s(": "), {}, TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
         textUnit_->init(Fonts::appFontScaled(14, Fonts::FontWeight::Medium), textColor, textColor, textColor, QColor(), TextRendering::HorAligment::LEFT, 1);
 
-        auto quoteText = TextRendering::MakeTextUnit(text, {}, TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
+        auto quoteText = TextRendering::MakeTextUnit(textFromQuote(_quote), {}, TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
         quoteText->init(Fonts::appFontScaled(14, Fonts::FontWeight::Normal), textColor, textColor, textColor, QColor(), TextRendering::HorAligment::LEFT, 1);
         textUnit_->append(std::move(quoteText));
 
@@ -116,6 +123,8 @@ namespace Ui
     void QuoteRow::draw(QPainter& _painter, const QRect& _rect) const
     {
         Utils::PainterSaver ps(_painter);
+
+        _painter.setRenderHints(QPainter::SmoothPixmapTransform | QPainter::Antialiasing);
 
         const auto avaX = getInputTextLeftMargin();
         const auto avaY = (_rect.height() - avatar_.height() / Utils::scale_bitmap_ratio()) / 2;
@@ -136,7 +145,6 @@ namespace Ui
             aimId_,
             getName(),
             Utils::scale_bitmap(avatarSize()),
-            QString(),
             isDef,
             false,
             false
@@ -302,7 +310,10 @@ namespace Ui
         for (auto& row : rows_)
         {
             if (row.getAimId() == _aimid)
+            {
                 row.updateAvatar();
+                update();
+            }
         }
     }
 

@@ -29,7 +29,6 @@ namespace Ui
         VisualDataBase(
             const QString& _aimId,
             const QPixmap& _avatar,
-            const QString& _state,
             const QString& _status,
             const bool _isHovered,
             const bool _isSelected,
@@ -48,14 +47,14 @@ namespace Ui
             const bool _muted,
             const bool _notInCL,
             const bool _hasAttention,
-            const bool _isCreator
+            const bool _isCreator,
+            const bool _isOnline
         );
 
         VisualDataBase& operator=(const VisualDataBase&) = default;
 
         QString AimId_;
         QPixmap Avatar_;
-        QString State_;
         QString ContactName_;
         QString nick_;
 
@@ -63,6 +62,7 @@ namespace Ui
 
         bool IsHovered_;
         bool IsSelected_;
+        bool IsOnline_;
 
         bool HasLastSeen_;
         QDateTime LastSeen_;
@@ -199,10 +199,7 @@ namespace Ui
 
         int contactNameFontSize() const
         {
-            if constexpr (platform::is_apple())
-                return Utils::scale_value(14);
-            else
-                return Utils::scale_value(16);
+            return Utils::scale_value(16);
         }
 
         Fonts::FontWeight contactNameFontWeight() const
@@ -242,10 +239,7 @@ namespace Ui
         //Message
         int messageFontSize() const
         {
-            if constexpr (platform::is_apple())
-                return Utils::scale_value(13);
-            else
-                return Utils::scale_value(14);
+            return 14;
         }
 
         int globalContactMessageFontSize() const
@@ -304,10 +298,7 @@ namespace Ui
         //Unreads counter
         QFont unreadsFont() const
         {
-            if constexpr (platform::is_apple())
-                return Fonts::appFontScaled(12, Fonts::FontWeight::Medium);
-            else
-                return Fonts::appFontScaled(13, Fonts::FontWeight::SemiBold);
+            return Fonts::appFontScaled(13, platform::is_apple() ? Fonts::FontWeight::Medium : Fonts::FontWeight::SemiBold);
         }
 
         int unreadsPadding() const { return  Utils::scale_value(8); }

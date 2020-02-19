@@ -20,7 +20,7 @@ namespace Ui
         ~ServiceMessageItem();
 
         QString formatRecentsText() const override;
-        MediaType getMediaType() const override;
+        MediaType getMediaType(MediaRequestMode _mode = MediaRequestMode::Chat) const override;
 
         void setMessage(const QString& _message);
         void setWidth(const int _width);
@@ -38,7 +38,7 @@ namespace Ui
         int32_t getTime() const override { return -1; }
 
     protected:
-        void setQuoteSelection() override;
+        void setQuoteSelection() override {}
         void paintEvent(QPaintEvent* _event) override;
 
     private:

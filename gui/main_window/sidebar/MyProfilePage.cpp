@@ -5,6 +5,8 @@
 #include "EditDescriptionWidget.h"
 #include "EditNicknameWidget.h"
 
+#include "../common.shared/config/config.h"
+
 #include "../MainPage.h"
 #include "../MainWindow.h"
 #include "../PhoneWidget.h"
@@ -201,12 +203,13 @@ namespace Ui
     }
 
 
-    MyInfoPlate::MyInfoPlate(QWidget* _parent, const QString& _iconPath, int _leftMargin, const QString& _infoEmptyStr, Qt::Alignment _align, int _maxInfoLinesCount, int _correctTopMargin, int _correctBottomMargin)
+    MyInfoPlate::MyInfoPlate(QWidget* _parent, const QString& _iconPath, int _leftMargin, const QString& _infoEmptyStr, Qt::Alignment _align, int _maxInfoLinesCount, int _correctTopMargin, int _correctBottomMargin, bool _canRedo)
         : QWidget(_parent)
         , leftMargin_(_leftMargin)
         , infoEmptyStr_(_infoEmptyStr)
         , hovered_(false)
         , pressed_(false)
+        , redoAvailable_(_canRedo)
     {
         QSizePolicy sp(QSizePolicy::Policy::Expanding, QSizePolicy::Policy::Minimum);
         setSizePolicy(sp);
@@ -229,7 +232,9 @@ namespace Ui
 
             auto infoLayout = Utils::emptyHLayout();
             info_ = new Ui::TextResizedWidget(this, QString(), Data::MentionMap(), Ui::TextRendering::LinksVisible::DONT_SHOW_LINKS);
-            info_->init(getInfoTextFont(), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID), QColor(), QColor(), QColor(),
+            info_->init(getInfoTextFont(),
+                        Styling::getParameters().getColor(redoAvailable_ ? Styling::StyleVariable::TEXT_SOLID : Styling::StyleVariable::BASE_PRIMARY),
+                        QColor(), QColor(), QColor(),
                         TextRendering::HorAligment::LEFT, _maxInfoLinesCount, Ui::TextRendering::LineBreakType::PREFER_SPACES);
             sp.setHorizontalStretch(1);
             info_->setSizePolicy(sp);
@@ -276,14 +281,14 @@ namespace Ui
 
         if (infoStr_.isEmpty() && !infoEmptyStr_.isEmpty())
         {
-            info_->setText(infoEmptyStr_, Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY));
+            info_->setText(infoEmptyStr_, Styling::getParameters().getColor(redoAvailable_ ? Styling::StyleVariable::TEXT_PRIMARY : Styling::StyleVariable::BASE_PRIMARY));
         }
         else
         {
             if (!infoStr_.startsWith(_prefix))
                 infoStr_ = _prefix + infoStr_;
 
-            info_->setText(infoStr_, Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
+            info_->setText(infoStr_, Styling::getParameters().getColor(redoAvailable_ ? Styling::StyleVariable::TEXT_SOLID : Styling::StyleVariable::BASE_PRIMARY));
         }
         Testing::setAccessibleName(info_, qsl("AS myinfo body =") + infoStr_);
 
@@ -302,7 +307,7 @@ namespace Ui
 
     void MyInfoPlate::paintEvent(QPaintEvent* _event)
     {
-        if (hasFocus() || hovered_ || pressed_)
+        if (redoAvailable_ && (hasFocus() || hovered_ || pressed_))
         {
             QPainter p(this);
             p.fillRect(rect(), Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT_INVERSE));
@@ -320,7 +325,7 @@ namespace Ui
 
     void MyInfoPlate::mousePressEvent(QMouseEvent* _event)
     {
-        if (_event->button() == Qt::LeftButton)
+        if (redoAvailable_ && _event->button() == Qt::LeftButton)
         {
             pressed_ = true;
             pos_ = _event->pos();
@@ -332,7 +337,7 @@ namespace Ui
 
     void MyInfoPlate::mouseReleaseEvent(QMouseEvent* _event)
     {
-        if (_event->button() == Qt::LeftButton)
+        if (redoAvailable_ && _event->button() == Qt::LeftButton)
         {
             pressed_ = false;
 
@@ -351,7 +356,7 @@ namespace Ui
 
     void MyInfoPlate::enterEvent(QEvent* _event)
     {
-        if (isEnabled())
+        if (redoAvailable_ && isEnabled())
         {
             hovered_ = true;
             setCursor(Qt::PointingHandCursor);
@@ -363,7 +368,7 @@ namespace Ui
 
     void MyInfoPlate::leaveEvent(QEvent* _event)
     {
-        if (!pressed_ && isEnabled())
+        if (redoAvailable_ && !pressed_ && isEnabled())
         {
             hovered_ = false;
             setCursor(Qt::ArrowCursor);
@@ -388,8 +393,8 @@ namespace Ui
     {
         const QString text = QT_TRANSLATE_NOOP("popup_window", "Are you sure you want to sign out?");
         auto confirm = Utils::GetConfirmationWithTwoButtons(
-            QT_TRANSLATE_NOOP("popup_window", "CANCEL"),
-            QT_TRANSLATE_NOOP("popup_window", "YES"),
+            QT_TRANSLATE_NOOP("popup_window", "Cancel"),
+            QT_TRANSLATE_NOOP("popup_window", "Yes"),
             text,
             QT_TRANSLATE_NOOP("popup_window", "Sign out"),
             nullptr);
@@ -410,18 +415,28 @@ namespace Ui
 
     void MyProfilePage::changePhoneNumber()
     {
+        if (Features::externalPhoneAttachment())
+        {
+
+            auto text = Features::textAttachPhoneNumberPopup();
+            auto title = Features::titleAttachPhoneNumberPopup();
+
+            auto phoneWidget = new PhoneWidget(0, PhoneWidgetState::ENTER_PHONE_STATE, title, text, true, Ui::AttachState::NEED_PHONE);
+            auto attachPhoneDialog = std::make_unique<GeneralDialog>(phoneWidget, Utils::InterConnector::instance().getMainWindow(), false, true, true);
+            QObject::connect(phoneWidget, &PhoneWidget::requestClose, attachPhoneDialog.get(), &GeneralDialog::acceptDialog);
+            attachPhoneDialog->showInCenter();
+            return;
+        }
+
         GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::profileeditscr_changenum_action);
 
-        if (phone_->getInfoStr().isEmpty())
-        {
-            emit Utils::InterConnector::instance().generalSettingsShow((int)Utils::CommonSettingsType::CommonSettingsType_AttachPhone);
-        }
-        else
-        {
-            auto phoneWidget = new PhoneWidget(0);
-            auto generalDialog = std::make_unique<GeneralDialog>(phoneWidget, Utils::InterConnector::instance().getMainWindow());
-            generalDialog->showInCenter();
-        }
+        const auto emptyPhone = phone_->getInfoStr().isEmpty();
+        const auto phoneState = emptyPhone ? PhoneWidgetState::ENTER_PHONE_STATE : PhoneWidgetState::ABOUT_STATE;
+        const auto aboutText = emptyPhone ? QT_TRANSLATE_NOOP("phone_widget", "Enter your number") : QString();
+        const auto attachState = emptyPhone ? Ui::AttachState::NEED_PHONE : Ui::AttachState::CHANGE_PHONE;
+        auto phoneWidget = new PhoneWidget(nullptr, phoneState, QString(), aboutText, true, attachState);
+        auto generalDialog = std::make_unique<GeneralDialog>(phoneWidget, Utils::InterConnector::instance().getMainWindow());
+        generalDialog->showInCenter();
     }
 
     void MyProfilePage::initFor(const QString& _aimId)
@@ -464,7 +479,7 @@ namespace Ui
         Utils::grabTouchWidget(area->viewport(), true);
         Utils::grabTouchWidget(mainWidget_);
 
-        const auto biz_phone_disabled = build::is_biz() && !Features::bizPhoneAllowed();
+        const auto phoneAllowed = Features::phoneAllowed();
 
         auto rootLayout = Utils::emptyVLayout(mainWidget_);
         rootLayout->setContentsMargins(0, getTopMargin(), 0, getBottomMargin());
@@ -475,15 +490,24 @@ namespace Ui
             avatarLayout->setContentsMargins(getLeftMargin(), 0, 0, 0);
             {
                 avatar_ = new ContactAvatarWidget(mainWidget_, QString(), QString(), getAvatarSize(), true, true);
-                avatar_->SetMode(ContactAvatarWidget::Mode::MyProfile);
 
-                connect(avatar_, &ContactAvatarWidget::leftClicked, this, &MyProfilePage::editAvatarClicked);
-                connect(avatar_, &ContactAvatarWidget::rightClicked, this, &MyProfilePage::showAvatarMenu);
-                connect(avatar_, &ContactAvatarWidget::mouseEntered, this, [this]()
+                if (Features::avatarChangeAllowed())
                 {
-                    auto handCursor = !Logic::getContactListModel()->isChat(currentAimId_);
-                    avatar_->setCursor(handCursor ? Qt::PointingHandCursor : Qt::ArrowCursor);
-                });
+                    avatar_->SetMode(ContactAvatarWidget::Mode::MyProfile);
+
+                    connect(avatar_, &ContactAvatarWidget::leftClicked, this, &MyProfilePage::editAvatarClicked);
+                    connect(avatar_, &ContactAvatarWidget::rightClicked, this, &MyProfilePage::showAvatarMenu);
+                    connect(avatar_, &ContactAvatarWidget::mouseEntered, this, [this]()
+                    {
+                        auto handCursor = !Logic::getContactListModel()->isChat(currentAimId_);
+                        avatar_->setCursor(handCursor ? Qt::PointingHandCursor : Qt::ArrowCursor);
+                    });
+                }
+                else if (!avatar_->isDefault())
+                {
+                    avatar_->setCursor(Qt::PointingHandCursor);
+                    connect(avatar_, &ContactAvatarWidget::leftClicked, this, &MyProfilePage::viewAvatarClicked);
+                }
 
                 Utils::grabTouchWidget(avatar_);
                 Testing::setAccessibleName(avatar_, qsl("AS profile avatar_"));
@@ -491,7 +515,7 @@ namespace Ui
 
                 avatarLayout->addSpacing(getInfoPlateSpacing());
 
-                name_ = new MyInfoPlate(mainWidget_, qsl(":/context_menu/edit"), getInfoPlateSpacing(), QT_TRANSLATE_NOOP("sidebar", "Add name"), Qt::AlignVCenter, 2, 0, Utils::scale_value(4));
+                name_ = new MyInfoPlate(mainWidget_, qsl(":/context_menu/edit"), getInfoPlateSpacing(), QT_TRANSLATE_NOOP("sidebar", "Add name"), Qt::AlignVCenter, 2, 0, Utils::scale_value(4), Features::changeNameAvailable());
                 name_->setHeader(QT_TRANSLATE_NOOP("sidebar", "Name"));
                 name_->setFixedHeight(getAvatarSize());
                 Testing::setAccessibleName(name_, qsl("AS profile name_"));
@@ -509,7 +533,7 @@ namespace Ui
             phone_->setHeader(QT_TRANSLATE_NOOP("sidebar", "Phone number"));
             Testing::setAccessibleName(phone_, qsl("AS profile phone_"));
             rootLayout->addWidget(phone_);
-            phone_->setVisible(!build::is_dit() && !biz_phone_disabled);
+            phone_->setVisible(phoneAllowed);
 
             nickName_ = new MyInfoPlate(mainWidget_, qsl(":/context_menu/edit"), getLeftMargin(), QT_TRANSLATE_NOOP("sidebar", "Add nickname"));
             nickName_->setHeader(QT_TRANSLATE_NOOP("sidebar", "Nickname"));
@@ -537,7 +561,7 @@ namespace Ui
                                                 Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY_ACTIVE));
                     permissionsInfo_->setText(QT_TRANSLATE_NOOP("sidebar", "Who can see my data"));
                     permissionsInfo_->setCursor(Qt::PointingHandCursor);
-                    permissionsInfo_->setVisible(!build::is_dit() && !build::is_biz());
+                    permissionsInfo_->setVisible(config::get().is_on(config::features::show_data_visibility_link));
                     Utils::grabTouchWidget(permissionsInfo_);
                     Testing::setAccessibleName(permissionsInfo_, qsl("AS profile permissionsInfo_"));
                     hLayout->addWidget(permissionsInfo_);
@@ -545,7 +569,7 @@ namespace Ui
                     labelLayout->addLayout(hLayout);
                 }
 
-                if (!build::is_dit() && !build::is_biz())
+                if (config::get().is_on(config::features::show_data_visibility_link))
                     labelLayout->addSpacing(getSignoutSpacing());
 
                 {
@@ -578,7 +602,7 @@ namespace Ui
         connect(aboutMe_, &Ui::MyInfoPlate::clicked, this, &Ui::MyProfilePage::editAboutMeClicked);
         connect(nickName_, &Ui::MyInfoPlate::clicked, this, &Ui::MyProfilePage::editNicknameClicked);
         connect(phone_, &Ui::MyInfoPlate::clicked, this, &Ui::MyProfilePage::changePhoneNumber);
-        phone_->setEnabled(!build::is_dit() && !biz_phone_disabled);
+        phone_->setEnabled(!Features::externalPhoneAttachment() || MyInfo()->phoneNumber().isEmpty());
 
         connect(permissionsInfo_, &LabelEx::clicked, this, &MyProfilePage::permissionsInfoClicked);
         connect(signOut_, &LabelEx::clicked, this, &MyProfilePage::signOutClicked);
@@ -607,10 +631,8 @@ namespace Ui
             nickName_->setVisible(Features::isNicksEnabled() && Utils::isUin(Ui::MyInfo()->aimId()));
         }
 
-        const auto biz_phone_disabled = build::is_biz() && !Features::bizPhoneAllowed();
-        phone_->setVisible(!build::is_dit() && !biz_phone_disabled);
-        phone_->setEnabled(!build::is_dit() && !biz_phone_disabled);
-
+        phone_->setVisible(Features::phoneAllowed());
+        phone_->setEnabled(!Features::externalPhoneAttachment() || MyInfo()->phoneNumber().isEmpty());
     }
 
     void Ui::MyProfilePage::sendCommonStat()
@@ -754,7 +776,7 @@ namespace Ui
 
         GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::profileeditscr_name_action);
 
-        auto buttonsPair = gd->addButtonsPair(QT_TRANSLATE_NOOP("popup_window", "CANCEL"), QT_TRANSLATE_NOOP("popup_window", "APPLY"), true, false, false);
+        auto buttonsPair = gd->addButtonsPair(QT_TRANSLATE_NOOP("popup_window", "Cancel"), QT_TRANSLATE_NOOP("popup_window", "Apply"), true, false, false);
         form->setButtonsPair(buttonsPair);
         gd->setButtonsAreaMargins(QMargins(0, getButtonsTopMargin(), 0, getButtonsBottomMargin()));
         gd->showInCenter();
@@ -779,7 +801,7 @@ namespace Ui
 
         GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::profileeditscr_aboutme_action);
 
-        auto buttonsPair = gd->addButtonsPair(QT_TRANSLATE_NOOP("popup_window", "CANCEL"), QT_TRANSLATE_NOOP("popup_window", "APPLY"), true, false, false);
+        auto buttonsPair = gd->addButtonsPair(QT_TRANSLATE_NOOP("popup_window", "Cancel"), QT_TRANSLATE_NOOP("popup_window", "Apply"), true, false, false);
         form->setButtonsPair(buttonsPair);
         gd->setButtonsAreaMargins(QMargins(0, getButtonsTopMargin(), 0, getButtonsBottomMargin()));
         gd->showInCenter();
@@ -787,7 +809,10 @@ namespace Ui
 
     void MyProfilePage::editNicknameClicked()
     {
-        auto form = new EditNicknameWidget(this, { nickName_->getInfoStr().mid(1) });
+        EditNicknameWidget::FormData formData;
+        formData.nickName_ = nickName_->getInfoStr().mid(1);
+        formData.fixedSize_ = true;
+        auto form = new EditNicknameWidget(this, formData);
         form->setStatFrom("profile_edit_scr");
 
         connect(form, &EditNicknameWidget::changed, this, [this, form]()

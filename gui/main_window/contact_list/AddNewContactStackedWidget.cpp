@@ -109,8 +109,8 @@ void AddNewContactStackedWidget::onOkClicked()
     }
     else if (index == ContactNotRegisteredIndex)
     {
-        okButton_->setText(QT_TRANSLATE_NOOP("add_new_contact_dialogs", "ADD"));
-        cancelButton_->setText(QT_TRANSLATE_NOOP("popup_window", "CANCEL"));
+        okButton_->setText(QT_TRANSLATE_NOOP("add_new_contact_dialogs", "Add"));
+        cancelButton_->setText(QT_TRANSLATE_NOOP("popup_window", "Cancel"));
         addContactWidget_->clearData();
         stackedWidget_->setCurrentIndex(AddNewContactIndex);
     }
@@ -126,6 +126,7 @@ void AddNewContactStackedWidget::onSyncAdressBook(const bool _hasError)
     }
 
     result_ = AddContactResult::Added;
+    Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::conlistscr_addcon_action);
     emit finished();
 
     /*
@@ -211,9 +212,9 @@ void AddNewContactStackedWidget::onContactNotFound(const QString &_phoneNumber, 
 {
     enableOkButton(true);
 
-    okButton_->setText(QT_TRANSLATE_NOOP("add_new_contact_dialogs", "ADD ANOTHER ONE"));
+    okButton_->setText(QT_TRANSLATE_NOOP("add_new_contact_dialogs", "Add another one"));
     notRegisteredWidget_->setInfo(_phoneNumber, _name);
-    cancelButton_->setText(QT_TRANSLATE_NOOP("popup_window", "CLOSE"));
+    cancelButton_->setText(QT_TRANSLATE_NOOP("popup_window", "Close"));
     stackedWidget_->setCurrentIndex(ContactNotRegisteredIndex);
 }
 

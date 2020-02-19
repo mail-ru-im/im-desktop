@@ -3,10 +3,9 @@
 #include "curl_multi_handler.h"
 #include "curl_context.h"
 #include "utils.h"
+#include "core.h"
 
-#ifdef _WIN32
-#include "../common.shared/win32/crash_handler.h"
-#endif
+#include "../common.shared/crash_report/crash_reporter.h"
 
 namespace
 {
@@ -19,9 +18,9 @@ namespace
 
     CURL* get_for_this_thread()
     {
-        auto thread_id = std::this_thread::get_id();
+        const auto thread_id = std::this_thread::get_id();
 
-        std::lock_guard<std::mutex> lock(curl_handlers_mutex_);
+        std::scoped_lock lock(curl_handlers_mutex_);
 
         if (const auto iter_handle = curl_handlers.find(thread_id); iter_handle != curl_handlers.end())
             return iter_handle->second;
@@ -41,7 +40,7 @@ namespace core
         auto promise = curl_easy::promise_t();
         auto future = promise.get_future();
 
-        add_task(std::make_shared<curl_task>(_context, promise), _context->get_priority(), _context->get_id());
+        add_task(std::make_shared<curl_task>(_context, std::move(promise)), _context->get_priority(), _context->get_id());
 
         return future;
     }
@@ -72,11 +71,10 @@ namespace core
 
     void core::curl_easy_handler::init()
     {
-#ifdef _WIN32
-        curl_global_init(CURL_GLOBAL_ALL);
-#else
-        curl_global_init(CURL_GLOBAL_SSL);
-#endif
+        if constexpr (platform::is_windows())
+            curl_global_init(CURL_GLOBAL_ALL);
+        else
+            curl_global_init(CURL_GLOBAL_SSL);
     }
 
     void core::curl_easy_handler::cleanup()
@@ -122,6 +120,7 @@ namespace core
         if (is_stopped())
         {
             _task->cancel();
+            g_core->write_string_to_network_log("curl_easy_handler: cancel task in add_task");
             return;
         }
 
@@ -158,23 +157,15 @@ namespace core
 
     void curl_easy_handler::run_task(const task& _task)
     {
-        if constexpr (build::is_debug())
+        if constexpr (!core::dump::is_crash_handle_enabled() || !platform::is_windows())
             return _task();
-
-#ifdef _WIN32
-        if (!core::dump::is_crash_handle_enabled())
-            return _task();
-#endif // _WIN32
 
 #ifdef _WIN32
         __try
-#endif // _WIN32
         {
             return _task();
         }
-
-#ifdef _WIN32
-        __except (::core::dump::crash_handler::seh_handler(GetExceptionInformation()))
+        __except (crash_system::reporter::seh_handler(GetExceptionInformation()))
         {
         }
 #endif // _WIN32
@@ -190,6 +181,9 @@ namespace core
         fetch_thread_ = std::thread([this]()
         {
             utils::set_this_thread_name("curl easy fetch");
+#ifdef _WIN32
+            crash_system::reporter::instance().set_thread_exception_handlers();
+#endif
             for (;;)
             {
                 task nextTask;
@@ -212,6 +206,9 @@ namespace core
         protocol_thread_ = std::thread([this]()
         {
             utils::set_this_thread_name("curl easy proto");
+#ifdef _WIN32
+            crash_system::reporter::instance().set_thread_exception_handlers();
+#endif
             for (;;)
             {
                 task nextTask;

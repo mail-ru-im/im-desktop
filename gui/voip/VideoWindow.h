@@ -1,11 +1,8 @@
-#ifndef __VIDEO_WINDOW_H__
-#define __VIDEO_WINDOW_H__
-
+#pragma once
 #include "VideoFrame.h"
 #include "DetachedVideoWnd.h"
-
 #ifdef __APPLE__
-    #include "macos/VideoFrameMacos.h"
+#include "macos/VideoFrameMacos.h"
 #endif
 
 namespace voip_manager
@@ -72,9 +69,7 @@ namespace Ui
         void keyReleaseEvent(QKeyEvent* _e) override;
 
         void executeCommandList();
-
         void setWindowTitle(const QString& text);
-
 
 #ifndef _WIN32
 #ifndef __APPLE__
@@ -197,6 +192,8 @@ namespace Ui
 
         void resizeToDefaultSize();
 
+        void showScreenPermissionsPopup();
+
     public:
         VideoWindow();
         ~VideoWindow();
@@ -297,11 +294,8 @@ namespace Ui
         QTime doubleClickTime_;
         QPoint doubleClickMousePos_;
 #endif
-
 #ifdef _WIN32
         VideoWindowHeader* header_;
 #endif
     };
 }
-
-#endif//__VIDEO_WINDOW_H__

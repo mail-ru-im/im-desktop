@@ -1,5 +1,6 @@
 #include "stdafx.h"
 
+#include "../common.shared/config/config.h"
 #include "../../../../corelib/enumerations.h"
 
 #include "../../../controls/TextUnit.h"
@@ -26,7 +27,6 @@
 
 #include "ComplexMessageItem.h"
 #include "PttBlockLayout.h"
-#include "Selection.h"
 
 
 #include "PttBlock.h"
@@ -87,7 +87,6 @@ namespace PttDetails
     PlayButton::PlayButton(QWidget* _parent, const QString& _aimId)
         : ClickableWidget(_parent)
         , aimId_(_aimId)
-        , isSelected_(false)
         , isPressed_(false)
         , state_(ButtonState::play)
     {
@@ -96,15 +95,6 @@ namespace PttDetails
         connect(this, &PlayButton::hoverChanged, this, Utils::QOverload<>::of(&PlayButton::update));
         connect(this, &PlayButton::pressed, this, [this]() { setPressed(true); });
         connect(this, &PlayButton::released, this, [this]() { setPressed(false); });
-    }
-
-    void PlayButton::setSelected(const bool _isSelected)
-    {
-        if (isSelected_ != _isSelected)
-        {
-            isSelected_ = _isSelected;
-            update();
-        }
     }
 
     void PlayButton::setPressed(const bool _isPressed)
@@ -135,7 +125,6 @@ namespace PttDetails
         normal_  = params.getColor(Styling::StyleVariable::PRIMARY);
         hovered_ = params.getColor(Styling::StyleVariable::PRIMARY_HOVER);
         pressed_ = params.getColor(Styling::StyleVariable::PRIMARY_ACTIVE);
-        selected_= params.getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT);
 
         update();
     }
@@ -143,14 +132,9 @@ namespace PttDetails
     void PlayButton::paintEvent(QPaintEvent* _e)
     {
         static Utils::ColoredCache<PlayButtonIcons> iconsNormal(Styling::StyleVariable::TEXT_SOLID_PERMANENT);
-        static Utils::ColoredCache<PlayButtonIcons> iconsSelected(Styling::StyleVariable::PRIMARY);
 
         QColor bgColor;
-        if (isSelected_)
-        {
-            bgColor = selected_;
-        }
-        else if (isHovered())
+        if (isHovered())
         {
             if (isPressed_)
                 bgColor = pressed_;
@@ -168,7 +152,7 @@ namespace PttDetails
         p.setBrush(bgColor);
         p.drawEllipse(rect());
 
-        const auto& cache = isSelected_ ? iconsSelected : iconsNormal;
+        const auto& cache = iconsNormal;
         const auto& icons = cache.get(aimId_);
         const auto icon = state_ == ButtonState::play ? icons.play_ : icons.pause_;
 
@@ -225,7 +209,6 @@ namespace PttDetails
     ProgressWidget::ProgressWidget(QWidget* _parent, const ButtonType _type, bool _isOutgoing)
         : QWidget(_parent)
         , type_(_type)
-        , isSelected_(false)
         , progress_(0.)
         , isOutgoing_(_isOutgoing)
     {
@@ -237,15 +220,6 @@ namespace PttDetails
     ProgressWidget::~ProgressWidget()
     {
         anim_.finish();
-    }
-
-    void ProgressWidget::setSelected(const bool _isSelected)
-    {
-        if (isSelected_ != _isSelected)
-        {
-            isSelected_ = _isSelected;
-            update();
-        }
     }
 
     void ProgressWidget::setProgress(const double _progress)
@@ -263,27 +237,23 @@ namespace PttDetails
         QColor bgColor;
         if (type_ == ButtonType::play)
         {
-            bgColor = isSelected_ ? Qt::white : Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY);
+            bgColor = Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY);
         }
         else
         {
-            bgColor = isSelected_
-                ? Styling::getParameters().getColor(Styling::StyleVariable::GHOST_TERTIARY)
-                : (isOutgoing_
+            bgColor = isOutgoing_
                     ? Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_BRIGHT)
-                    : Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT));
+                    : Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT);
         }
 
         QColor lineColor;
         if (type_ == ButtonType::play)
         {
-            lineColor = isSelected_ ? Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY) : Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_BRIGHT);
+            lineColor = Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_BRIGHT);
         }
         else
         {
-            lineColor = isSelected_
-                ? Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT)
-                : Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_INVERSE);
+            lineColor = Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_INVERSE);
         }
 
         QPainter p(this);
@@ -336,7 +306,10 @@ PttBlock::PttBlock(
     assert(_durationSec >= 0);
 
     if (!getParentComplexMessage()->isHeadless())
+    {
         buttonPlay_ = new PttDetails::PlayButton(this, getChatAimid());
+        Utils::InterConnector::instance().disableInMultiselect(buttonPlay_);
+    }
 
     pttLayout_ = new PttBlockLayout();
     setBlockLayout(pttLayout_);
@@ -374,7 +347,10 @@ PttBlock::PttBlock(ComplexMessageItem *_parent,
     assert(_durationSec >= 0);
 
     if (!getParentComplexMessage()->isHeadless())
+    {
         buttonPlay_ = new PttDetails::PlayButton(this, getChatAimid());
+        Utils::InterConnector::instance().disableInMultiselect(buttonPlay_);
+    }
 
     pttLayout_ = new PttBlockLayout();
     setBlockLayout(pttLayout_);
@@ -398,7 +374,12 @@ PttBlock::PttBlock(ComplexMessageItem *_parent,
     }
 }
 
-PttBlock::~PttBlock() = default;
+PttBlock::~PttBlock()
+{
+    Utils::InterConnector::instance().detachFromMultiselect(buttonPlay_);
+    Utils::InterConnector::instance().detachFromMultiselect(buttonText_);
+    Utils::InterConnector::instance().detachFromMultiselect(buttonCollapse_);
+}
 
 void PttBlock::clearSelection()
 {
@@ -407,7 +388,6 @@ void PttBlock::clearSelection()
     if (decodedTextCtrl_)
     {
         decodedTextCtrl_->clearSelection();
-        updateDecodedTextSelection(isSelected());
         update();
     }
 }
@@ -422,9 +402,9 @@ QString PttBlock::getSelectedText(const bool, const TextDestination) const
     QString result;
     result.reserve(512);
 
-    if (isSelected())
+    if (FileSharingBlockBase::isSelected())
     {
-        result += getLink();
+        result += FileSharingBlockBase::getSelectedText();
         result += QChar::LineFeed;
     }
 
@@ -454,23 +434,16 @@ bool PttBlock::isDecodedTextCollapsed() const
     return isDecodedTextCollapsed_;
 }
 
-void PttBlock::selectByPos(const QPoint& from, const QPoint& to, const BlockSelectionType selection)
+void PttBlock::selectByPos(const QPoint& from, const QPoint& to, bool topToBottom)
 {
     assert(to.y() >= from.y());
 
     if (!isDecodedTextVisible())
     {
-        FileSharingBlockBase::selectByPos(from, to, selection);
+        FileSharingBlockBase::selectByPos(from, to, topToBottom);
 
         if (decodedTextCtrl_)
             decodedTextCtrl_->clearSelection();
-    }
-    else if (selection == BlockSelectionType::Full)
-    {
-        setSelected(true);
-
-        if (decodedTextCtrl_)
-            decodedTextCtrl_->selectAll();
     }
     else
     {
@@ -484,7 +457,23 @@ void PttBlock::selectByPos(const QPoint& from, const QPoint& to, const BlockSele
             decodedTextCtrl_->select(localFrom, localTo);
     }
 
-    updateDecodedTextSelection(isSelected());
+    update();
+}
+
+void PttBlock::selectAll()
+{
+    if (!isDecodedTextVisible())
+    {
+        FileSharingBlockBase::selectAll();
+        if (decodedTextCtrl_)
+            decodedTextCtrl_->clearSelection();
+    }
+    else
+    {
+        setSelected(true);
+        if (decodedTextCtrl_)
+            decodedTextCtrl_->selectAll();
+    }
 
     update();
 }
@@ -531,7 +520,7 @@ void PttBlock::onMenuOpenFolder()
 
 void PttBlock::drawBlock(QPainter &_p, const QRect& _rect, const QColor& quote_color)
 {
-    if (!isStandalone() && isSelected())
+    if (!isStandalone() && FileSharingBlockBase::isSelected())
     {
         const auto &bubbleRect = pttLayout_->getContentRect();
         renderClipPaths(bubbleRect);
@@ -578,7 +567,6 @@ void PttBlock::showDownloadAnimation()
     if (!progressPlay_)
     {
         progressPlay_ = new PttDetails::ProgressWidget(this, PttDetails::ProgressWidget::ButtonType::play, isOutgoing());
-        progressPlay_->setSelected(isSelected());
         progressPlay_->setProgress(idleProgressValue);
         progressPlay_->move(buttonPlay_->pos());
         progressPlay_->show();
@@ -659,16 +647,16 @@ void PttBlock::onMetainfoDownloaded()
 {
     if (buttonText_)
     {
-        buttonText_->setVisible(recognize_);
+        buttonText_->setVisible(canShowButtonText());
     }
-    else if (recognize_ && !build::is_dit())
+    else if (canShowButtonText())
     {
         buttonText_ = new PttDetails::ButtonWithBackground(this, qsl(":/ptt/text_icon"), getChatAimid(), isOutgoing());
-        buttonText_->setActive(isSelected());
         buttonText_->setFixedSize(getButtonSize());
         buttonText_->move(pttLayout_->getTextButtonRect().topLeft());
         buttonText_->show();
 
+        Utils::InterConnector::instance().disableInMultiselect(buttonText_);
         connect(buttonText_, &PttDetails::ButtonWithBackground::clicked, this, &PttBlock::onTextButtonClicked);
     }
 }
@@ -701,7 +689,7 @@ void PttBlock::drawBubble(QPainter &_p, const QRect &_bubbleRect)
     Utils::PainterSaver ps(_p);
     _p.setRenderHint(QPainter::Antialiasing);
 
-    const auto &bodyBrush = MessageStyle::getBodyBrush(isOutgoing(), isSelected(), getChatAimid());
+    const auto &bodyBrush = MessageStyle::getBodyBrush(isOutgoing(), getChatAimid());
     _p.setBrush(bodyBrush);
     _p.setPen(Qt::NoPen);
 
@@ -722,10 +710,10 @@ void PttBlock::drawDuration(QPainter &_p)
     Utils::PainterSaver ps(_p);
 
     _p.setFont(MessageStyle::Ptt::getDurationFont());
-    _p.setPen(Styling::getParameters(getChatAimid()).getColor(isSelected() ? Styling::StyleVariable::TEXT_SOLID_PERMANENT : Styling::StyleVariable::TEXT_PRIMARY));
+    _p.setPen(Styling::getParameters(getChatAimid()).getColor(Styling::StyleVariable::TEXT_PRIMARY));
 
     const auto secondsLeft = (durationMSec_ - playbackProgressMsec_);
-    const auto &text = (isPlaying() || isPaused()) ? formatDuration(secondsLeft / 1000) : (isPlayed_ ? durationText_ : durationText_ % ql1c(' ') % QChar(0x2022));
+    const QString text = (isPlaying() || isPaused()) ? formatDuration(secondsLeft / 1000) : (isPlayed_ ? durationText_ : durationText_ % ql1c(' ') % QChar(0x2022));
 
     assert(!text.isEmpty());
     _p.drawText(textX, textY, text);
@@ -738,7 +726,7 @@ void PttBlock::drawPlaybackProgress(QPainter &_p, const int32_t _progressMsec, c
     assert(!getParentComplexMessage()->isHeadless());
 
     const auto leftMargin  = buttonPlay_->pos().x() + getButtonSize().width() + MessageStyle::getBubbleHorPadding();
-    const auto rightMargin = (recognize_ ? width() - pttLayout_->getTextButtonRect().left() : 0) + MessageStyle::getBubbleHorPadding();
+    const auto rightMargin = (canShowButtonText() ? width() - pttLayout_->getTextButtonRect().left() : 0) + MessageStyle::getBubbleHorPadding();
 
     const auto totalWidth = width() - leftMargin - rightMargin;
     const auto progress = _durationMsec ? (double)_progressMsec / _durationMsec : 0.;
@@ -867,7 +855,6 @@ void PttBlock::startTextRequestProgressAnimation()
             progressText_ = new PttDetails::ProgressWidget(this, PttDetails::ProgressWidget::ButtonType::text, isOutgoing());
             progressText_->move(buttonText_->pos());
             progressText_->setProgress(idleProgressValue);
-            progressText_->setSelected(isSelected());
             progressText_->show();
         }
     }
@@ -955,10 +942,10 @@ void PttBlock::updateCollapseState()
     if (!isDecodedTextCollapsed_ && !buttonCollapse_)
     {
         buttonCollapse_ = new PttDetails::ButtonWithBackground(this, qsl(":/controls/top_icon"), getChatAimid());
-        buttonCollapse_->setActive(isSelected());
         buttonCollapse_->setFixedSize(getButtonSize());
         buttonCollapse_->move(pttLayout_->getTextButtonRect().topLeft());
 
+        Utils::InterConnector::instance().disableInMultiselect(buttonCollapse_);
         connect(buttonCollapse_, &PttDetails::ButtonWithBackground::clicked, this, &PttBlock::onTextButtonClicked);
     }
 
@@ -1004,29 +991,19 @@ void PttBlock::updateDecodedTextStyle()
     }
 }
 
-void PttBlock::updateDecodedTextSelection(bool _isFullSelection)
-{
-    if (decodedTextCtrl_)
-    {
-        decodedTextCtrl_->setColor(getDecodedTextColor());
-        decodedTextCtrl_->setSelectionColor(_isFullSelection ? QColor(Qt::transparent) : MessageStyle::getTextSelectionColor(getChatAimid()));
-        notifyBlockContentsChanged();
-    }
-}
-
 QColor PttBlock::getDecodedTextColor() const
 {
-    return Styling::getParameters(getChatAimid()).getColor(isSelected() ? Styling::StyleVariable::TEXT_SOLID_PERMANENT : Styling::StyleVariable::TEXT_SOLID);
+    return Styling::getParameters(getChatAimid()).getColor(Styling::StyleVariable::TEXT_SOLID);
 }
 
 QColor PttBlock::getProgressColor() const
 {
-    return Styling::getParameters(getChatAimid()).getColor(isSelected() ? Styling::StyleVariable::PRIMARY_BRIGHT : Styling::StyleVariable::GHOST_SECONDARY);
+    return Styling::getParameters(getChatAimid()).getColor(Styling::StyleVariable::GHOST_SECONDARY);
 }
 
 QColor PttBlock::getPlaybackColor() const
 {
-    return Styling::getParameters(getChatAimid()).getColor(isSelected() ? Styling::StyleVariable::TEXT_SOLID_PERMANENT : Styling::StyleVariable::PRIMARY);
+    return Styling::getParameters(getChatAimid()).getColor(Styling::StyleVariable::PRIMARY);
 }
 
 bool PttBlock::isOutgoing() const
@@ -1034,8 +1011,16 @@ bool PttBlock::isOutgoing() const
     return isOutgoing_;
 }
 
+bool PttBlock::canShowButtonText() const
+{
+    return recognize_ && config::get().is_on(config::features::ptt_recognition);
+}
+
 void PttBlock::onPlayButtonClicked()
 {
+    if (Utils::InterConnector::instance().isMultiselect())
+        return;
+
     emit Utils::InterConnector::instance().stopPttRecord();
     if (isPlaying())
     {
@@ -1053,6 +1038,9 @@ void PttBlock::onPlayButtonClicked()
 
 void PttBlock::onTextButtonClicked()
 {
+    if (Utils::InterConnector::instance().isMultiselect())
+        return;
+
     if (hasDecodedText())
     {
         isDecodedTextCollapsed_ = !isDecodedTextCollapsed_;
@@ -1101,6 +1089,9 @@ void PttBlock::onPttPaused(int _id)
 
 void PttBlock::onPttText(qint64 _seq, int _error, QString _text, int _comeback)
 {
+    if (Utils::InterConnector::instance().isMultiselect())
+        return;
+
     assert(_seq > 0);
 
     if (textRequestId_ != _seq)
@@ -1136,8 +1127,6 @@ void PttBlock::onPttText(qint64 _seq, int _error, QString _text, int _comeback)
     stopTextRequestProgressAnimation();
 
     initializeDecodedTextCtrl();
-
-    GetDispatcher()->setUrlPlayed(getLink(), true);
 
     isDecodedTextCollapsed_ = false;
     updateCollapseState();
@@ -1185,27 +1174,9 @@ bool PttBlock::isNeedCheckTimeShift() const
     return false;
 }
 
-void PttBlock::setSelected(const bool _isSelected)
+bool PttBlock::isSelected() const
 {
-    if (buttonPlay_)
-        buttonPlay_->setSelected(_isSelected);
-
-    if (buttonText_)
-        buttonText_->setActive(_isSelected);
-
-    if (buttonCollapse_)
-        buttonCollapse_->setActive(_isSelected);
-
-    if (decodedTextCtrl_)
-        decodedTextCtrl_->setColor(getDecodedTextColor());
-
-    if (progressText_)
-        progressText_->setSelected(_isSelected);
-
-    if (progressPlay_)
-        progressPlay_->setSelected(_isSelected);
-
-    FileSharingBlockBase::setSelected(_isSelected);
+    return FileSharingBlockBase::isSelected() || (decodedTextCtrl_ && !isDecodedTextCollapsed_ && decodedTextCtrl_->isSelected());
 }
 
 bool PttBlock::clicked(const QPoint& _p)
@@ -1219,15 +1190,43 @@ bool PttBlock::clicked(const QPoint& _p)
     return true;
 }
 
+bool PttBlock::pressed(const QPoint & _p)
+{
+    if (decodedTextCtrl_ && !isDecodedTextCollapsed_ && tripleClickTimer_ && tripleClickTimer_->isActive())
+    {
+        tripleClickTimer_->stop();
+        decodedTextCtrl_->selectAll();
+        decodedTextCtrl_->fixSelection();
+        update();
+
+        return true;
+    }
+
+    return false;
+}
+
 void PttBlock::doubleClicked(const QPoint& _p, std::function<void(bool)> _callback)
 {
     if (decodedTextCtrl_ && !isDecodedTextCollapsed_)
     {
         QPoint mappedPoint = mapFromParent(_p, pttLayout_->getBlockGeometry());
         const auto textArea = QRect(decodedTextCtrl_->offsets(), rect().bottomRight());
-        if (textArea.contains(mappedPoint))
+        if (textArea.contains(mappedPoint) && !decodedTextCtrl_->isAllSelected())
         {
-            decodedTextCtrl_->doubleClicked(mappedPoint, true, _callback);
+            if (!tripleClickTimer_)
+            {
+                tripleClickTimer_ = new QTimer(this);
+                tripleClickTimer_->setInterval(QApplication::doubleClickInterval());
+                tripleClickTimer_->setSingleShot(true);
+            }
+            auto tripleClick = [this, callback = std::move(_callback)](bool result)
+            {
+                if (callback)
+                    callback(result);
+                if (result)
+                    tripleClickTimer_->start();
+            };
+            decodedTextCtrl_->doubleClicked(mappedPoint, true, std::move(tripleClick));
             update();
             return;
         }
@@ -1242,7 +1241,6 @@ void PttBlock::releaseSelection()
     if (decodedTextCtrl_)
     {
         decodedTextCtrl_->releaseSelection();
-        //updateDecodedTextSelection(isSelected());
     }
     update();
 }
@@ -1251,6 +1249,13 @@ void PttBlock::onVisibilityChanged(const bool isVisible)
 {
     if (!isVisible)
         pausePlayback();
+}
+
+IItemBlock::MenuFlags PttBlock::getMenuFlags() const
+{
+    if (isSelected())
+        return MenuFlags::MenuFlagCopyable;
+    return FileSharingBlockBase::getMenuFlags();
 }
 
 UI_COMPLEX_MESSAGE_NS_END

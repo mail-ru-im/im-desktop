@@ -1,6 +1,6 @@
 #include "NickLineEdit.h"
 
-#include "LineEditEx.h"
+#include "TextEditEx.h"
 #include "TextUnit.h"
 #include "../fonts.h"
 #include "../main_window/ConnectionWidget.h"
@@ -10,6 +10,7 @@
 #include "../styles/ThemeParameters.h"
 
 #include "../omicron/omicron_helper.h"
+#include "../common.shared/omicron_keys.h"
 
 namespace
 {
@@ -55,12 +56,12 @@ namespace
 
     auto getMinNickLength()
     {
-        return Omicron::_o("profile_nickname_minimum_length", feature::default_profile_nickname_minimum_length());
+        return Omicron::_o(omicron::keys::profile_nickname_minimum_length, feature::default_profile_nickname_minimum_length());
     }
 
     auto getMaxNickLength()
     {
-        return Omicron::_o("profile_nickname_maximum_length", feature::default_profile_nickname_maximum_length());
+        return Omicron::_o(omicron::keys::profile_nickname_maximum_length, feature::default_profile_nickname_maximum_length());
     }
 
     constexpr std::chrono::milliseconds getCheckTimeout() noexcept
@@ -96,9 +97,12 @@ namespace
 
 namespace Ui
 {
-    NickLineEdit::NickLineEdit(QWidget* _parent, const QString& _initNick)
+    NickLineEdit::NickLineEdit(QWidget* _parent, const QString& _initNick, const QString& _fixedPart, bool _groupMode)
         : QWidget(_parent)
         , originNick_(_initNick)
+        , fixedPart_(_fixedPart)
+        , previous_(makeHtml(_fixedPart, _initNick))
+        , previousPlain_(_initNick % _fixedPart)
         , hintHorOffset_(0)
         , progressAnimation_(nullptr)
         , checkTimer_(new QTimer(this))
@@ -108,21 +112,28 @@ namespace Ui
         , lastServerRequest_(ServerRequest::None)
         , linkPressed_(false)
         , isFrendlyMinLengthError_(_initNick.isEmpty())
+        , groupMode_(_groupMode)
     {
         setSizePolicy(QSizePolicy::Policy::Preferred, QSizePolicy::Policy::MinimumExpanding);
 
         auto globalLayout = Utils::emptyVLayout(this);
         globalLayout->setContentsMargins(QMargins());
 
-        nick_ = new LineEditEx(this);
+        nick_ = new TextEditEx(this, getNickFont(), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID), true, false);
         nick_->setPlaceholderText(QT_TRANSLATE_NOOP("nick_edit", "Come up with a unique nickname"));
         nick_->setSizePolicy(QSizePolicy::Policy::Preferred, QSizePolicy::Policy::Fixed);
         nick_->setAlignment(Qt::AlignLeft | Qt::AlignTop);
-        nick_->setFont(getNickFont());
         nick_->setAttribute(Qt::WA_MacShowFocusRect, false);
         nick_->setContextMenuPolicy(Qt::ContextMenuPolicy::NoContextMenu);
-        nick_->setText(originNick_);
-        Utils::ApplyStyle(nick_, Styling::getParameters().getLineEditCommonQss(false, Utils::unscale_value(QFontMetrics(getNickFont()).height() + getTextToLineSpacing())));
+        nick_->setTextInteractionFlags(Qt::TextEditorInteraction);
+        nick_->document()->setMaximumBlockCount(1);
+        nick_->setWordWrapMode(QTextOption::NoWrap);
+        nick_->setText(previous_);
+        nick_->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+        nick_->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+        nick_->verticalScrollBar()->setEnabled(false);
+        nick_->setContentsMargins(0, 0, 0, 0);
+        Utils::ApplyStyle(nick_, Styling::getParameters().getTextLineEditCommonQss(false, Utils::unscale_value(QFontMetrics(getNickFont()).height() + getTextToLineSpacing())));
         Testing::setAccessibleName(nick_, qsl("AS nick_edit nick_"));
 
         auto hintLayout = Utils::emptyHLayout();
@@ -150,10 +161,12 @@ namespace Ui
         checkTimer_->setSingleShot(true);
         checkTimer_->setInterval(getCheckTimeout().count());
 
-        connect(nick_, &LineEditEx::textChanged, this, &NickLineEdit::onNickChanged);
+        connect(nick_, &TextEditEx::textChanged, this, &NickLineEdit::onNickChanged);
+        connect(nick_, &TextEditEx::cursorPositionChanged, this, &NickLineEdit::onNickCursorPositionChanged);
         connect(checkTimer_, &QTimer::timeout, this, &NickLineEdit::onCheckTimeout);
 
         connect(GetDispatcher(), &Ui::core_dispatcher::nickCheckSetResult, this, &NickLineEdit::onNickCheckResult);
+        connect(GetDispatcher(), &Ui::core_dispatcher::groupNickCheckSetResult, this, &NickLineEdit::onNickCheckResult);
 
         setMouseTracking(true);
     }
@@ -170,20 +183,34 @@ namespace Ui
         return QSize(width(), height);
     }
 
-    void NickLineEdit::setText(const QString& _nick)
+    void NickLineEdit::setText(const QString& _nick, bool _silent)
     {
-        nick_->setText(_nick);
+        if (_silent)
+            nick_->blockSignals(true);
+
+        previous_ = makeHtml(fixedPart_, _nick);
+        previousPlain_ = fixedPart_ % _nick;
+        nick_->setText(previous_);
+
+        if (_silent)
+            nick_->blockSignals(false);
+
+        moveCursorToTheEnd();
     }
 
-    QString NickLineEdit::getText() const
+    QString NickLineEdit::getText(bool full) const
     {
-        return nick_->text();
+        auto text = nick_->getPlainText();
+        if (full)
+            return text;
+
+        return text.mid(fixedPart_.length(), text.length() - fixedPart_.length());
     }
 
     void NickLineEdit::setNickRequest()
     {
         checkResult_ = -1;
-        lastReqId_ = GetDispatcher()->checkNickname(nick_->text(), true);
+        lastReqId_ = groupMode_ ? GetDispatcher()->checkGroupNickname(getText()) : GetDispatcher()->checkNickname(getText(), true);
         lastServerRequest_ = ServerRequest::SetNick;
     }
 
@@ -202,11 +229,50 @@ namespace Ui
     void NickLineEdit::setFocus()
     {
         nick_->setFocus();
+        moveCursorToTheEnd();
     }
 
     void NickLineEdit::onNickChanged()
     {
+        QSignalBlocker sb(nick_);
+        auto text = nick_->getPlainText();
+        if (!fixedPart_.isEmpty() && !text.startsWith(fixedPart_))
+        {
+            auto cur = nick_->textCursor();
+            auto pos = cur.position();
+            if (text.isEmpty())
+            {
+                previous_ = makeHtml(fixedPart_, QString());
+                previousPlain_ = fixedPart_;
+                cur.movePosition(QTextCursor::End);
+            }
+
+            nick_->setText(previous_);
+
+            if (!text.isEmpty())
+            {
+                if (text.length() > previousPlain_.length())
+                    pos -= (text.length() - previousPlain_.length());
+                else
+                    pos += (previousPlain_.length() - text.length());
+
+                cur.setPosition(pos);
+            }
+
+            nick_->setTextCursor(cur);
+            return;
+        }
+
         emit changed();
+
+        text = text.mid(fixedPart_.length(), text.length() - fixedPart_.length());
+        auto cur = nick_->textCursor();
+        auto pos = cur.position();
+        previous_ = makeHtml(fixedPart_, text);
+        previousPlain_ = fixedPart_ % text;
+        nick_->setText(previous_);
+        cur.setPosition(pos);
+        nick_->setTextCursor(cur);
 
         updateNickLine(false);
         updateCounter();
@@ -214,7 +280,7 @@ namespace Ui
         checkResult_ = -1;
         lastReqId_ = -1;
 
-        if (nick_->text().isEmpty())
+        if (text.isEmpty())
         {
             checkTimer_->stop();
             stopCheckAnimation();
@@ -233,6 +299,18 @@ namespace Ui
                 serverCheckNickname();
             else
                 checkResult_ = static_cast<int>(core::nickname_errors::bad_value);
+        }
+
+        update();
+    }
+
+    void NickLineEdit::onNickCursorPositionChanged()
+    {
+        auto cur = nick_->textCursor();
+        if (!fixedPart_.isEmpty() && cur.position() < fixedPart_.length())
+        {
+            cur.setPosition(fixedPart_.length(), cur.hasSelection() ? QTextCursor::KeepAnchor : QTextCursor::MoveAnchor);
+            nick_->setTextCursor(cur);
         }
 
         update();
@@ -289,7 +367,7 @@ namespace Ui
 
     void NickLineEdit::onCheckTimeout()
     {
-        const auto nick = nick_->text();
+        const auto nick = getText();
 
         if (isFrendlyMinLengthError_ && nick.length() >= getMinNickLength())
             isFrendlyMinLengthError_ = false;
@@ -412,7 +490,7 @@ namespace Ui
                 startCheckAnimation();
         }
 
-        lastReqId_ = GetDispatcher()->checkNickname(nick_->text(), false);
+        lastReqId_ = groupMode_ ? GetDispatcher()->checkGroupNickname(getText()) : GetDispatcher()->checkNickname(getText(), false);
         lastServerRequest_ = ServerRequest::CheckNick;
     }
 
@@ -466,7 +544,15 @@ namespace Ui
 
     void NickLineEdit::updateCounter()
     {
-        counterUnit_->setText(QString::number(getMaxNickLength() - nick_->text().length()), getHintColorNormal());
+        counterUnit_->setText(QString::number(getMaxNickLength() - getText().length()), getHintColorNormal());
+        update();
+    }
+
+    void NickLineEdit::clearHint()
+    {
+        hintUnit_->setText(qsl(""));
+        updateNickLine(false);
+        update();
     }
 
     void NickLineEdit::setServerErrorHint()
@@ -487,8 +573,7 @@ namespace Ui
 
     void NickLineEdit::updateNickLine(bool _isError)
     {
-        Utils::ApplyStyle(nick_, Styling::getParameters().getLineEditCommonQss(_isError, Utils::unscale_value(QFontMetrics(getNickFont()).height() + getTextToLineSpacing())));
-        nick_->changeTextColor(Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
+        Utils::ApplyStyle(nick_, Styling::getParameters().getTextLineEditCommonQss(_isError, Utils::unscale_value(QFontMetrics(getNickFont()).height() + getTextToLineSpacing())));
     }
 
     bool NickLineEdit::checkForCorrectInput(bool _showHints)
@@ -497,7 +582,7 @@ namespace Ui
             qsl("^[a-zA-Z][a-zA-Z0-9._]*$"),
             QRegularExpression::UseUnicodePropertiesOption | QRegularExpression::OptimizeOnFirstUsageOption
         );
-        const auto nick = nick_->text();
+        const auto nick = getText();
         const auto color = getHintColorBad();
 
         if (!nickRule.match(nick).hasMatch())
@@ -514,6 +599,8 @@ namespace Ui
                 else
                     updateHint(HintTextCode::NickLatinChar, color);
             }
+
+            emit checkError();
             return false;
         }
 
@@ -531,12 +618,14 @@ namespace Ui
                     updateHint(HintTextCode::NickMinLength, color);
                 }
             }
+            emit checkError();
             return false;
         }
         else if (nick.length() > getMaxNickLength())
         {
             if (_showHints)
                 updateHint(HintTextCode::NickMaxLength, color);
+            emit checkError();
             return false;
         }
 
@@ -573,5 +662,19 @@ namespace Ui
         default:
             break;
         }
+    }
+
+    void NickLineEdit::moveCursorToTheEnd()
+    {
+        auto cur = nick_->textCursor();
+        cur.movePosition(QTextCursor::End);
+        nick_->setTextCursor(cur);
+    }
+
+    QString NickLineEdit::makeHtml(const QString& _fixed, const QString& _text)
+    {
+        auto color = Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY).name(QColor::HexRgb);
+        QString result = qsl("<font color=%1>").arg(color) % _fixed % qsl("</font>") % _text;
+        return result;
     }
 }

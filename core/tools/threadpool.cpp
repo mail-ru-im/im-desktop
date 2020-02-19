@@ -3,36 +3,50 @@
 
 #include "../utils.h"
 
-#ifdef _WIN32
-#include "../common.shared/win32/crash_handler.h"
-#endif
+#include "../core.h"
+#include "../network_log.h"
+
+#include "../common.shared/crash_report/crash_reporter.h"
 
 using namespace core;
 using namespace tools;
 
 task::task()
     : id_(-1)
+    , time_stamp_(std::chrono::steady_clock::now())
 {
 }
 
-task::task(std::function<void()> _action, int64_t _id)
+task::task(std::function<void()> _action, int64_t _id, std::string_view _name, std::chrono::steady_clock::time_point _time_stamp, std::function<bool()> _cancel)
     : action_(std::move(_action))
+    , cancel_(std::move(_cancel))
     , id_(_id)
+    , name_(_name)
+    , time_stamp_(_time_stamp)
 {
-    if (build::is_debug() || platform::is_apple())
-    {
+    if constexpr (build::is_debug() || platform::is_apple())
         st_ = std::make_unique<boost::stacktrace::stacktrace>();
-    }
 }
 
 void task::execute()
 {
-    action_();
+    if (!cancel_ || !cancel_())
+        action_();
 }
 
 int64_t task::get_id() const noexcept
 {
     return id_;
+}
+
+std::string_view core::tools::task::get_name() const noexcept
+{
+    return name_;
+}
+
+std::chrono::steady_clock::time_point core::tools::task::get_time_stamp() const noexcept
+{
+    return time_stamp_;
 }
 
 task::operator bool() const noexcept
@@ -49,10 +63,12 @@ const std::unique_ptr<boost::stacktrace::stacktrace>& task::get_stack_trace() co
 threadpool::threadpool(
     const std::string_view _name,
     const size_t count,
-    std::function<void()> _on_thread_exit)
+    std::function<void()> _on_thread_exit,
+    bool _task_trace)
 
     : on_task_finish_([](const std::chrono::milliseconds, const core_stacktrace&) {})
     , stop_(false)
+    , task_trace_(_task_trace)
 {
     creator_thread_id_ = std::this_thread::get_id();
 
@@ -62,6 +78,9 @@ threadpool::threadpool(
     const auto worker = [this, _on_thread_exit, name = std::string(_name)]
     {
         utils::set_this_thread_name(name);
+#ifdef _WIN32
+        crash_system::reporter::instance().set_thread_exception_handlers();
+#endif
 
         for(;;)
         {
@@ -83,7 +102,6 @@ threadpool::threadpool(
 bool threadpool::run_task_impl()
 {
     task next_task;
-
     {
         std::unique_lock<std::mutex> lock(queue_mutex_);
 
@@ -103,15 +121,33 @@ bool threadpool::run_task_impl()
     }
     if (next_task)
     {
-        const auto start_time = std::chrono::system_clock::now();
+        const auto start_time = std::chrono::steady_clock::now();
+
+        if (task_trace_)
+        {
+            std::stringstream ss;
+            ss << "async_task: run <" << next_task.get_name()
+                << "> (waited " << std::chrono::duration_cast<std::chrono::milliseconds>(start_time - next_task.get_time_stamp()).count()
+                << " ms)\r\n";
+            g_core->write_string_to_network_log(ss.str());
+        }
 
         next_task.execute();
 
-        const auto finish_time = std::chrono::system_clock::now();
+        const auto finish_time = std::chrono::steady_clock::now();
 
         on_task_finish_(
             std::chrono::duration_cast<std::chrono::milliseconds>(finish_time - start_time),
             next_task.get_stack_trace());
+
+        if (task_trace_)
+        {
+            std::stringstream ss;
+            ss << "async_task: <" << next_task.get_name()
+                << "> completed in " << std::chrono::duration_cast<std::chrono::milliseconds>(finish_time - start_time).count()
+                << " ms\r\n";
+            g_core->write_string_to_network_log(ss.str());
+        }
     }
     else
     {
@@ -122,13 +158,8 @@ bool threadpool::run_task_impl()
 
 bool threadpool::run_task()
 {
-    if constexpr (build::is_debug())
+    if constexpr (!core::dump::is_crash_handle_enabled() || !platform::is_windows())
         return run_task_impl();
-
-#ifdef _WIN32
-    if constexpr (!core::dump::is_crash_handle_enabled())
-        return run_task_impl();
-#endif // _WIN32
 
 #ifdef _WIN32
      __try
@@ -138,7 +169,7 @@ bool threadpool::run_task()
     }
 
 #ifdef _WIN32
-    __except(::core::dump::crash_handler::seh_handler(GetExceptionInformation()))
+    __except(crash_system::reporter::seh_handler(GetExceptionInformation()))
     {
     }
 #endif // _WIN32
@@ -163,30 +194,14 @@ threadpool::~threadpool()
 
 }
 
-bool threadpool::push_back(task_action _task, int64_t _id)
+bool threadpool::push_back(task_action _task, int64_t _id, std::string_view _name, std::function<bool()> _cancel)
 {
     {
         std::unique_lock<std::mutex> lock(queue_mutex_);
         if (stop_)
             return false;
 
-#ifdef _WIN32
-        tasks_.emplace_back([_task = std::move(_task)]
-        {
-            core::dump::crash_handler handler("icq.desktop", utils::get_product_data_path(), false);
-            handler.set_thread_exception_handlers();
-            if (_task)
-            {
-                _task();
-            }
-            else
-            {
-                assert(!"threadpool: _task is empty");
-            }
-        }, _id);
-#else
-        tasks_.emplace_back(std::move(_task), _id);
-#endif // _WIN32
+        tasks_.emplace_back(std::move(_task), _id, std::move(_name), std::chrono::steady_clock::now(), std::move(_cancel));
     }
 
     condition_.notify_one();
@@ -221,30 +236,14 @@ void threadpool::raise_task(int64_t _id)
         tasks_.push_front(std::move(tmp));
 }
 
-bool threadpool::push_front(task_action _task, int64_t _id)
+bool threadpool::push_front(task_action _task, int64_t _id, std::string_view _name, std::function<bool()> _cancel)
 {
     {
         std::unique_lock<std::mutex> lock(queue_mutex_);
         if (stop_)
             return false;
 
-#ifdef _WIN32
-        tasks_.emplace_front([_task = std::move(_task)]
-        {
-            core::dump::crash_handler handler("icq.desktop", utils::get_product_data_path(), false);
-            handler.set_thread_exception_handlers();
-            if (_task)
-            {
-                _task();
-            }
-            else
-            {
-                assert(!"threadpool: _task is empty");
-            }
-        }, _id);
-#else
-        tasks_.emplace_front(std::move(_task), _id);
-#endif // _WIN32
+        tasks_.emplace_front(std::move(_task), _id, std::move(_name), std::chrono::steady_clock::now(), std::move(_cancel));
     }
 
     condition_.notify_one();

@@ -10,8 +10,9 @@
 
 #include "../async_task.h"
 #include "../../common.shared/loader_errors.h"
+#include "../../common.shared/config/config.h"
 
-#include "../configuration/app_config.h"
+#include "connections/urls_cache.h"
 
 namespace core
 {
@@ -545,8 +546,7 @@ namespace core
 
                 for (const auto& [_, icon] : set->get_icons())
                 {
-                    std::wstring icon_file = get_set_icon_path(*set, icon);
-                    if (!core::tools::system::is_exist(icon_file))
+                    if (std::wstring icon_file = get_set_icon_path(*set, icon); !core::tools::system::is_exist(icon_file))
                         return false;
                 }
             }
@@ -611,9 +611,9 @@ namespace core
             std::stringstream ss_url;
 
             if (_fs_id.empty())
-                ss_url << get_base_sticker_url() << _set_id << '/' << _sticker_id << '/' << _size << ".png";
+                ss_url << "https://" << config::get().url(config::urls::cicq_com) << "/store/stickers/" << _set_id << '/' << _sticker_id << '/' << _size << ".png";
             else
-                ss_url << template_url_preview_ << "sticker_" << _size << '/' << _fs_id;
+                ss_url << urls::get_url(urls::url_type::files_preview) << "/max/sticker_" << _size << '/' << _fs_id;
 
             return ss_url.str();
         }
@@ -1390,13 +1390,6 @@ namespace core
                 stickers_cache->update_template_urls(std::move(url_preview), std::move(url_original), std::move(url_send));
                 return 0;
             });
-        }
-
-        const std::string& get_base_sticker_url()
-        {
-            static const std::string base_sticker_url = std::string("https://") + configuration::get_app_config().get_url_cicq_com() + std::string("/store/stickers/");
-
-            return base_sticker_url;
         }
     }
 }

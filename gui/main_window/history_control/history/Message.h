@@ -27,16 +27,6 @@ namespace Logic
         ct_new_messages = 2
     };
 
-    enum class preview_type
-    {
-        min,
-
-        none,
-        site,
-
-        max
-    };
-
     class MessageKey
     {
     public:
@@ -61,7 +51,6 @@ namespace Logic
             const qint32 _time,
             const core::message_type _type,
             const bool _outgoing,
-            const preview_type _previewType,
             const control_type _control_type,
             const QDate _date);
 
@@ -128,6 +117,8 @@ namespace Logic
 
         bool isDate() const noexcept;
 
+        bool isNewMessagesPlate() const noexcept;
+
         bool iNewPlate() const noexcept;
 
         void setId(const int64_t _id) noexcept;
@@ -143,8 +134,6 @@ namespace Logic
 
         core::message_type getType() const noexcept;
         void setType(core::message_type _type) noexcept;
-
-        preview_type getPreviewType() const noexcept;
 
         qint64 getPrev() const noexcept;
 
@@ -174,8 +163,6 @@ namespace Logic
 
         qint64 pendingId_;
 
-        preview_type previewType_;
-
         bool outgoing_;
 
         QDate date_;
@@ -202,6 +189,8 @@ namespace Logic
 
         bool isDate() const noexcept;
 
+        bool isNewMessagesPlate() const noexcept;
+
         bool isDeleted() const noexcept;
 
         bool isFileSharing() const noexcept;
@@ -215,8 +204,6 @@ namespace Logic
         bool isSticker() const noexcept;
 
         bool isVoipEvent() const noexcept;
-
-        bool isPreview() const noexcept;
 
         const HistoryControl::ChatEventInfoSptr& getChatEvent() const;
 

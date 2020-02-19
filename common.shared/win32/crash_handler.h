@@ -18,7 +18,7 @@ namespace core
 
             // Constructor
             crash_handler(
-                const std::string& _bundle,
+                std::string_view _bundle,
                 const std::wstring& _product_path,
                 const bool _is_sending_after_crash);
 

@@ -160,6 +160,12 @@ namespace core
             on_result_type on_result;
         };
 
+        struct get_locale_handler
+        {
+            using on_result_type = std::function<void(std::optional<std::string>)>;
+            on_result_type on_result;
+        };
+
         struct not_sent_messages_handler
         {
             using on_result_type = std::function<void(not_sent_message_sptr _message)>;
@@ -320,10 +326,10 @@ namespace core
             const pending_operations& get_pending_operations() const;
             pending_operations& get_pending_operations();
 
-            void stat_write_sent_time(const message_stat_time& _stime, const std::chrono::system_clock::time_point& _correct_time);
-            void stat_write_delivered_time(message_stat_time& _stime, const std::chrono::system_clock::time_point& _correct_time);
+            void stat_write_sent_time(const message_stat_time& _stime, const std::chrono::steady_clock::time_point& _correct_time);
+            void stat_write_delivered_time(message_stat_time& _stime, const std::chrono::steady_clock::time_point& _correct_time);
 
-            void on_dlgstate_check_message_delivered(const std::string_view _contact, const int64_t _last_delivered_msgid, const std::chrono::system_clock::time_point& _correct_time);
+            void on_dlgstate_check_message_delivered(const std::string_view _contact, const int64_t _last_delivered_msgid, const std::chrono::steady_clock::time_point& _correct_time);
             void stat_clear_message_delivered(const std::string_view _contact);
 
             void cleanup_stat_message_delivered();
@@ -351,7 +357,7 @@ namespace core
 
             std::vector<dlg_state> get_dlg_states(const std::vector<std::string>& _contacts);
 
-            void set_dlg_state(const std::string& _contact, const dlg_state& _state, const std::chrono::system_clock::time_point& _correct_time, Out dlg_state& _result, Out dlg_state_changes& _changes);
+            void set_dlg_state(const std::string& _contact, const dlg_state& _state, const std::chrono::steady_clock::time_point& _correct_time, Out dlg_state& _result, Out dlg_state_changes& _changes);
             bool clear_dlg_state(const std::string& _contact);
 
             std::vector<int64_t> get_messages_for_update(const std::string& _contact);
@@ -382,6 +388,7 @@ namespace core
             bool update_if_exist_not_sent_message(const std::string& _contact, const not_sent_message_sptr& _msg);
 
             bool get_first_message_to_delete(std::string& _contact, delete_message& _message) const;
+            bool get_messages_to_delete(std::string& _contact, std::vector<delete_message>& _message) const;
             int32_t insert_pending_delete_message(const std::string& _contact, delete_message _message);
             int32_t remove_pending_delete_message(const std::string& _contact, const delete_message& _message);
 
@@ -389,14 +396,14 @@ namespace core
                 const std::string& _contact,
                 const bool _remove_if_modified,
                 const std::shared_ptr<archive::history_block>& _data,
-                const std::chrono::system_clock::time_point& _correct_time);
+                const std::chrono::steady_clock::time_point& _correct_time);
 
             int32_t remove_messages_from_not_sent(
                 const std::string& _contact,
                 const bool _remove_if_modified,
                 const std::shared_ptr<archive::history_block>& _data1,
                 const std::shared_ptr<archive::history_block>& _data2,
-                const std::chrono::system_clock::time_point& _correct_time);
+                const std::chrono::steady_clock::time_point& _correct_time);
             void mark_message_duplicated(const std::string& _message_internal_id);
             void update_message_post_time(
                 const std::string& _message_internal_id,
@@ -409,14 +416,15 @@ namespace core
                 const std::string& _message_internal_id,
                 const int64_t& _hist_msg_id,
                 const int64_t& _before_hist_msg_id,
-                const bool _is_delivered,
-                const std::chrono::system_clock::time_point& _correct_time);
+                const std::chrono::steady_clock::time_point& _correct_time);
 
             void failed_pending_message(const std::string& _message_internal_id);
 
             void delete_messages_up_to(const std::string& _contact, const int64_t _id);
 
             int32_t get_outgoing_msg_count(const std::string& _contact);
+
+            std::optional<std::string> get_locale(const std::string& _contact);
 
             static void serialize(std::shared_ptr<headers_list> _headers, coll_helper& _coll);
             static void serialize_headers(std::shared_ptr<archive::history_block> _data, coll_helper& _coll);
@@ -458,9 +466,9 @@ namespace core
             std::shared_ptr<filter_deleted_handler> filter_deleted_messages(const std::string& _contact, std::vector<int64_t>&& _ids);
 
             std::shared_ptr<request_history_file_handler> get_history_block(std::shared_ptr<contact_and_offsets_v> _contacts
-                , std::shared_ptr<contact_and_msgs> _archive, std::shared_ptr<tools::binary_stream> _data);
+                , std::shared_ptr<contact_and_msgs> _archive, std::shared_ptr<tools::binary_stream> _data, std::function<bool()> _cancel);
 
-            std::shared_ptr<request_dlg_state_handler> get_dlg_state(std::string_view _contact);
+            std::shared_ptr<request_dlg_state_handler> get_dlg_state(std::string_view _contact, bool _debug = false);
 
             std::shared_ptr<request_dlg_states_handler> get_dlg_states(const std::vector<std::string>& _contacts);
 
@@ -477,8 +485,11 @@ namespace core
             std::shared_ptr<async_task_handlers> update_if_exist_not_sent_message(const std::string& _contact, const not_sent_message_sptr& _msg);
 
             void get_pending_delete_message(std::function<void(const bool _empty, const std::string& _contact, const delete_message& _message)> _callback);
+            void get_pending_delete_messages(std::function<void(const bool _empty, const std::string& _contact, const std::vector<delete_message>& _messages)> _callback);
             void insert_pending_delete_message(const std::string& _contact, delete_message _message);
             void remove_pending_delete_message(const std::string& _contact, const delete_message& _message);
+
+            [[nodiscard]] std::shared_ptr<get_locale_handler> get_locale(std::string_view _contact);
 
             std::shared_ptr<async_task_handlers> remove_messages_from_not_sent(
                 const std::string& _contact,
@@ -505,13 +516,12 @@ namespace core
             std::shared_ptr<not_sent_messages_handler> update_pending_messages_by_imstate(
                 const std::string& _message_internal_id,
                 const int64_t& _hist_msg_id,
-                const int64_t& _before_hist_msg_id,
-                const bool _is_delivered);
+                const int64_t& _before_hist_msg_id);
 
             std::shared_ptr<async_task_handlers> failed_pending_message(const std::string& _message_internal_id);
 
             std::shared_ptr<has_not_sent_handler> has_not_sent_messages(const std::string& _contact);
-            std::shared_ptr<request_buddies_handler> get_not_sent_messages(const std::string& _contact);
+            std::shared_ptr<request_buddies_handler> get_not_sent_messages(const std::string& _contact, bool _debug = false);
             std::shared_ptr<pending_messages_handler> get_pending_file_sharing();
 
             std::shared_ptr<async_task_handlers> delete_messages_up_to(const std::string& _contact, const int64_t _id);

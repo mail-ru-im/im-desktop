@@ -36,6 +36,7 @@ public:
     bool IsShowMsgIdsEnabled() const noexcept;
     bool IsSaveCallRTPEnabled() const noexcept;
     bool IsServerSearchEnabled() const noexcept;
+    bool IsShowHiddenThemes() const noexcept;
 
     bool WatchGuiMemoryEnabled() const noexcept;
 
@@ -47,14 +48,13 @@ public:
     bool GDPR_AgreedButAwaitingSend() const noexcept;
     bool GDPR_UserHasLoggedInEver() const noexcept;
 
-    const std::string& getUrlFilesGet() const noexcept;
+    const std::string& getMacUpdateAlpha() const noexcept;
+    const std::string& getMacUpdateBeta() const noexcept;
+    const std::string& getMacUpdateRelease() const noexcept;
     const std::string& getUrlAgentProfile() const noexcept;
-    const std::string& getUrlAuthMailRu() const noexcept;
-    const std::string& getUrlRMailRu() const noexcept;
-    const std::string& getUrlWinMailRu() const noexcept;
-    const std::string& getUrlReadMsg() const noexcept;
-    const std::string& getUrlCICQOrg() const noexcept;
     const std::string& getUrlCICQCom() const noexcept;
+    const std::string& getUrlAttachPhone() const noexcept;
+    const std::string& getDevId() const noexcept;
 
     /* seconds */
     int CacheHistoryControlPagesFor() const noexcept;
@@ -66,10 +66,14 @@ public:
     void SetShowMsgOptionHasChanged(bool changed) noexcept;
     void SetSaveCallRTPEnabled(bool changed) noexcept;
     void SetServerSearchEnabled(bool enabled) noexcept;
+    void SetShowHiddenThemes(bool enabled) noexcept;
     void SetGDPR_UserHasLoggedInEver(bool hasLoggedIn) noexcept;
     void SetGDPR_AgreementReportedToServer(GDPR_Report_To_Server_State state) noexcept;
     void SetCacheHistoryControlPagesFor(int secs) noexcept;
     void SetWatchGuiMemoryEnabled(bool _watch) noexcept;
+    void SetCustomDeviceId(bool _custom) noexcept;
+
+    bool hasCustomDeviceId() const;
 
 private:
     bool IsContextMenuFeaturesUnlocked_;
@@ -81,6 +85,7 @@ private:
     bool IsShowMsgIdsEnabled_;
     bool IsSaveCallRTPEnabled_;
     bool IsServerSearchEnabled_;
+    bool IsShowHiddenThemes_;
 
     bool WatchGuiMemoryEnabled_;
 
@@ -92,16 +97,12 @@ private:
 
     int CacheHistoryContolPagesFor_;
 
-    std::string urlBase_;
-    std::string urlFiles_;
-    std::string urlFilesGet_;
-    std::string urlAgentProfile_;
-    std::string urlAuthMailRu_;
-    std::string urlRMailRu_;
-    std::string urlWinMailRu_;
-    std::string urlReadMsg_;
-    std::string urlCICQOrg_;
-    std::string urlCICQCom_;
+    std::string deviceId_;
+
+    std::string urlMacUpdateAlpha_;
+    std::string urlMacUpdateBeta_;
+    std::string urlMacUpdateRelease_;
+    std::string urlAttachPhone_;
 };
 
 typedef std::unique_ptr<AppConfig> AppConfigUptr;

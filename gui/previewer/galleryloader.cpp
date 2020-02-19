@@ -56,9 +56,25 @@ void GalleryLoader::dialogGalleryResult(const int64_t _seq, const QVector<Data::
         for (auto & entry : _entries)
         {
             if (_seq == frontLoadSeq_)
+            {
+                if (!items_.empty())
+                {
+                    const auto& front = items_.front();
+                    if (front.get()->msg() == entry.msg_id_ && front.get()->seq() == entry.seq_)
+                        continue;
+                }
                 items_.push_front(createItem(entry.url_, entry.msg_id_, entry.seq_, entry.time_, entry.sender_, entry.caption_));
+            }
             if (_seq == backLoadSeq_)
+            {
+                if (!items_.empty())
+                {
+                    const auto& back = items_.back();
+                    if (back.get()->msg() == entry.msg_id_ && back.get()->seq() == entry.seq_)
+                        continue;
+                }
                 items_.push_back(createItem(entry.url_, entry.msg_id_, entry.seq_, entry.time_, entry.sender_, entry.caption_));
+            }
 
             count++;
         }
@@ -143,7 +159,7 @@ void GalleryLoader::dialogGalleryUpdate(const QString& _aimId, const QVector<Dat
         auto iter = items_.begin();
         while (iter != items_.end())
         {
-            if (!iter->get() || ((e.action_ == qsl("del") || e.action_ == qsl("edit")) && iter->get()->msg() == e.msg_id_))
+            if (!iter->get() || ((e.action_ == qsl("del") || e.action_ == qsl("edit")) && iter->get()->msg() == e.msg_id_ && hasPrev()))
             {
                 if (e.msg_id_ <= currentMsgId)
                 {
@@ -341,19 +357,21 @@ void GalleryLoader::move(Previewer::GalleryLoader::Direction _direction)
         index_++;
     }
 
-    auto current = static_cast<GalleryItem*>(currentItem());
-    if (current && !current->path().isEmpty())
+    if (auto current = static_cast<GalleryItem*>(currentItem()))
     {
-        emit mediaLoaded();
-    }
-    else if (current && !current->preview().isNull())
-    {
-        emit previewLoaded();
-        current->loadFullMedia();
-    }
-    else
-    {
-        current->load();
+        if (!current->path().isEmpty())
+        {
+            emit mediaLoaded();
+        }
+        else if (!current->preview().isNull())
+        {
+            emit previewLoaded();
+            current->loadFullMedia();
+        }
+        else
+        {
+            current->load();
+        }
     }
 
     loadMore();
@@ -361,7 +379,7 @@ void GalleryLoader::move(Previewer::GalleryLoader::Direction _direction)
 
 void GalleryLoader::loadMore()
 {
-    if (items_.empty())
+    if (items_.empty() || (items_.size() == 1 && items_.front()->link() == initialLink_))
     {
         frontLoadSeq_ = loadItems(0, 0, loadDistance());
         return;
@@ -545,8 +563,10 @@ void GalleryItem::save(const QString &_path)
     parser.process(QStringRef(&link_));
 
     auto saver = new Utils::FileSaver(this);
-    saver->save([this, resultPath](bool _success)
+    saver->save([this, resultPath](bool _success, const QString& _savedPath)
     {
+        Q_UNUSED(_savedPath)
+
         if (_success)
             emit saved(resultPath);
         else

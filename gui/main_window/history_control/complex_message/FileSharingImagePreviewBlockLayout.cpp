@@ -7,6 +7,7 @@
 
 #include "ComplexMessageUtils.h"
 #include "FileSharingBlock.h"
+#include "MediaUtils.h"
 
 
 #include "FileSharingImagePreviewBlockLayout.h"
@@ -19,27 +20,7 @@ FileSharingImagePreviewBlockLayout::~FileSharingImagePreviewBlockLayout() = defa
 
 QSize FileSharingImagePreviewBlockLayout::blockSizeForMaxWidth(const int32_t maxWidth)
 {
-    auto &block = *blockWidget<FileSharingBlock>();
-
-    const auto smallSize = block.getSmallPreviewSize();
-    auto previewSize = Utils::scale_value(block.getOriginalPreviewSize());
-
-    if (!block.isSticker() && previewSize.width() <= smallSize.width() && previewSize.height() <= smallSize.height())
-        return smallSize;
-
-    const QSize maxImageSize = block.getImageMaxSize();
-
-    const auto maxSizeWidth = std::min(Utils::scale_value(maxWidth), maxImageSize.width());
-    const QSize maxSize(maxSizeWidth, maxImageSize.height());
-
-    const auto minSize = getMinSize(block);
-    previewSize = limitSize(previewSize, maxSize, minSize);
-
-    const auto shouldScaleUp = previewSize.width() < minSize.width() && previewSize.height() < minSize.height();
-    if (shouldScaleUp)
-        previewSize = previewSize.scaled(minSize, Qt::KeepAspectRatio);
-
-    return previewSize;
+    return calcBlockSize(maxWidth);
 }
 
 const QRect& FileSharingImagePreviewBlockLayout::getContentRect() const
@@ -63,56 +44,23 @@ QRect FileSharingImagePreviewBlockLayout::getShowInDirLinkRect() const
     return QRect();
 }
 
-const IItemBlockLayout::IBoxModel& FileSharingImagePreviewBlockLayout::getBlockBoxModel() const
+void FileSharingImagePreviewBlockLayout::onBlockSizeChanged(const QSize& _size)
 {
-    static const QMargins margins(
-        Utils::scale_value(16),
-        Utils::scale_value(12),
-        Utils::scale_value(8),
-        Utils::scale_value(16));
-
-    static const BoxModel boxModel(
-        true,
-        margins);
-
-    return boxModel;
+    auto &block = *blockWidget<FileSharingBlock>();
+    PreviewRect_.setSize(_size);
+    setCtrlButtonGeometry(block, PreviewRect_);
 }
 
 QSize FileSharingImagePreviewBlockLayout::setBlockGeometryInternal(const QRect &geometry)
 {
-    auto &block = *blockWidget<FileSharingBlock>();
+    auto block = blockWidget<FileSharingBlock>();
 
-    PreviewRect_ = QRect(QPoint(), evaluatePreviewSize(block, geometry.width()));
-    setCtrlButtonGeometry(block, PreviewRect_);
+    const auto blockSize = calcBlockSize(geometry.width());
 
-    auto blockSize = PreviewRect_.size();
+    PreviewRect_ = QRect(QPoint(), blockSize);
+    setCtrlButtonGeometry(*block, PreviewRect_);
 
     return blockSize;
-}
-
-QSize FileSharingImagePreviewBlockLayout::evaluatePreviewSize(const FileSharingBlock &block, const int32_t blockWidth) const
-{
-    assert(blockWidth > 0);
-
-    const auto smallSize = block.getSmallPreviewSize();
-    auto previewSize = Utils::scale_value(block.getOriginalPreviewSize());
-
-    if (!block.isSticker() && previewSize.width() <= smallSize.width() && previewSize.height() <= smallSize.height())
-        return smallSize;
-
-    auto maxSizeWidth = blockWidth;
-    if (const auto maxWidth = block.getMaxPreviewWidth())
-        maxSizeWidth = std::min(maxSizeWidth, maxWidth);
-    const QSize maxSize(maxSizeWidth, MessageStyle::Preview::getImageHeightMax());
-
-    const auto minSize = getMinSize(block);
-    previewSize = limitSize(previewSize, maxSize, minSize);
-
-    const auto shouldScaleUp = previewSize.width() < minSize.width() && previewSize.height() < minSize.height();
-    if (shouldScaleUp)
-        previewSize = previewSize.scaled(minSize, Qt::KeepAspectRatio);
-
-    return previewSize;
 }
 
 void FileSharingImagePreviewBlockLayout::setCtrlButtonGeometry(FileSharingBlock &block, const QRect &previewRect)
@@ -132,9 +80,19 @@ void FileSharingImagePreviewBlockLayout::setCtrlButtonGeometry(FileSharingBlock 
     block.setCtrlButtonGeometry(buttonRect);
 }
 
-QSize FileSharingImagePreviewBlockLayout::getMinSize(const FileSharingBlock & _block) const
+QSize FileSharingImagePreviewBlockLayout::calcBlockSize(int _availableWidth)
 {
-    return _block.isSticker() ? QSize() : _block.getMinPreviewSize();
+    auto &block = *blockWidget<FileSharingBlock>();
+
+    MediaUtils::MediaBlockParams params;
+    params.availableWidth = _availableWidth;
+    params.isInsideQuote = block.isInsideQuote();
+    params.mediaSize = block.originSizeScaled();
+    params.mediaType = block.mediaType();
+    params.minBlockWidth = block.minControlsWidth();
+
+
+    return MediaUtils::calcMediaBlockSize(params);
 }
 
 UI_COMPLEX_MESSAGE_NS_END

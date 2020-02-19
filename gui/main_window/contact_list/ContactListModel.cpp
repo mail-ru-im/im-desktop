@@ -13,6 +13,7 @@
 #include "../../utils/gui_coll_helper.h"
 #include "../../utils/InterConnector.h"
 #include "../../utils/utils.h"
+#include "../../utils/features.h"
 #include "../../cache/avatars/AvatarStorage.h"
 #include "Common.h"
 
@@ -285,7 +286,7 @@ namespace Logic
 
         removeContactsFromModel(removedContacts);
 
-        Logic::updatePlaceholders({Logic::Placeholder::Contacts, Logic::Placeholder::Dialog});
+        Logic::updatePlaceholders({Logic::Placeholder::Contacts});
         sortNeeded_ = true;
 
         if (needSyncSort)
@@ -318,7 +319,55 @@ namespace Logic
 
     QString ContactListModel::getChatStamp(const QString& _aimid) const
     {
-        return chatStamps_[_aimid];
+        return chatsCache_[_aimid].stamp_;
+    }
+
+    QString ContactListModel::getChatName(const QString& _aimid) const
+    {
+        return chatsCache_[_aimid].name_;
+    }
+
+    QString ContactListModel::getChatDescription(const QString& _aimid) const
+    {
+        return chatsCache_[_aimid].description_;
+    }
+
+    QString ContactListModel::getChatRules(const QString& _aimid) const
+    {
+        return chatsCache_[_aimid].rules_;
+    }
+
+    void ContactListModel::updateChatInfo(const Data::ChatInfo& _info)
+    {
+        CachedChatData data;
+        data.stamp_ = _info.Stamp_;
+        data.name_ = _info.Name_;
+        data.description_ = _info.About_;
+        data.rules_ = _info.Rules_;
+        chatsCache_[_info.AimId_] = data;
+
+        if (!_info.YouMember_ || _info.YourRole_.isEmpty())
+            notAMemberChats_.push_back(_info.AimId_);
+        else if (auto iter = std::find(notAMemberChats_.begin(), notAMemberChats_.end(), _info.AimId_); iter != notAMemberChats_.end())
+            notAMemberChats_.erase(iter);
+
+        if (auto contact = getContactItem(_info.AimId_))
+        {
+            QString role = _info.YourRole_;
+            if (_info.YouPending_)
+                role = qsl("pending");
+            else if (!_info.YouMember_ || role.isEmpty())
+                role = qsl("notamember");
+
+            contact->set_default_role(_info.DefaultRole_);
+
+            contact->set_stamp(_info.Stamp_);
+            if (contact->get_chat_role() != role)
+            {
+                contact->set_chat_role(role);
+                emit youRoleChanged(_info.AimId_);
+            }
+        }
     }
 
     bool ContactListModel::isReadonly(const QString& _aimId) const // no write access to this chat, for channel check use isChannel
@@ -444,7 +493,7 @@ namespace Logic
         updatedItems_.clear();
     }
 
-    void ContactListModel::setCurrent(const QString& _aimId, qint64 id, bool _sel, std::function<void(Ui::HistoryControlPage*)> _gotPageCallback, qint64 quote_id)
+    void ContactListModel::setCurrent(const QString& _aimId, qint64 id, bool _sel, std::function<void(Ui::HistoryControlPage*)> _gotPageCallback)
     {
         if (_gotPageCallback)
         {
@@ -464,7 +513,7 @@ namespace Logic
         emit selectedContactChanged(currentAimId_, prev);
 
         if (!currentAimId_.isEmpty() && _sel)
-            emit select(currentAimId_, id, quote_id);
+            emit select(currentAimId_, id);
     }
 
     void ContactListModel::setCurrentCallbackHappened(Ui::HistoryControlPage* _page)
@@ -594,7 +643,6 @@ namespace Logic
 
         auto addContact = std::make_shared<Data::Contact>();
         addContact->AimId_ = _aimId;
-        addContact->State_ = QString();
         addContact->Friendly_ = _friendly;
         addContact->Is_chat_ = Utils::isChat(_aimId);
         QVector<QString> removed;
@@ -683,13 +731,16 @@ namespace Logic
         return false;
     }
 
-    QString ContactListModel::getState(const QString& _aimId) const
+    bool ContactListModel::isOnline(const QString& _aimId) const
     {
         auto ci = getContactItem(_aimId);
         if (ci)
-            return ci->Get()->GetState();
+            return ci->Get()->GetLastSeenCore() == 0;
 
-        return QString();
+        if (Logic::GetFriendlyContainer()->getLastSeen(_aimId) == 0)
+            return true;
+
+        return false;
     }
 
     int ContactListModel::getOutgoingCount(const QString& _aimId) const
@@ -713,25 +764,6 @@ namespace Logic
     {
         if (g_contact_list_model)
             g_contact_list_model.reset();
-    }
-
-    Ui::Input ContactListModel::getInputText(const QString& _aimId) const
-    {
-        auto ci = getContactItem(_aimId);
-        if (!ci)
-            return Ui::Input();
-
-        return Ui::Input(ci->get_input_text(), ci->get_input_pos());
-    }
-
-    void ContactListModel::setInputText(const QString& _aimId, const Ui::Input& _input)
-    {
-        auto ci = getContactItem(_aimId);
-        if (!ci)
-            return;
-
-        ci->set_input_text(_input.text_);
-        ci->set_input_pos(_input.pos_);
     }
 
     void ContactListModel::getContactProfile(const QString& _aimId, std::function<void(profile_ptr, int32_t error)> _callBack)
@@ -833,17 +865,11 @@ namespace Logic
         });
     }
 
-    void ContactListModel::renameChat(const QString& _aimId, const QString& _friendly)
-    {
-        Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
-
-        collection.set_value_as_qstring("aimid", _aimId);
-        collection.set_value_as_qstring("m_chat_name", _friendly);
-        Ui::GetDispatcher()->post_message_to_core("modify_chat", collection.get());
-    }
-
     void ContactListModel::removeContactFromCL(const QString& _aimId)
     {
+        if (!Utils::isChat(_aimId) && !Features::clRemoveContactsAllowed())
+            return;
+
         Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
         collection.set_value_as_qstring("contact", _aimId);
         Ui::GetDispatcher()->post_message_to_core("contacts/remove", collection.get());
@@ -868,23 +894,23 @@ namespace Logic
 
     void ContactListModel::ignoreContact(const QString& _aimId, bool _ignore)
     {
+        if (_ignore && Ui::GetDispatcher()->getVoipController().hasEstablishCall())
+            Ui::GetDispatcher()->getVoipController().setDecline(_aimId.toStdString().c_str(), true);
+
         Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
         collection.set_value_as_qstring("contact", _aimId);
         collection.set_value_as_bool("ignore", _ignore);
         Ui::GetDispatcher()->post_message_to_core("contacts/ignore", collection.get());
 
         if (_ignore)
-        {
             emit ignore_contact(_aimId);
-            Ui::GetDispatcher()->getVoipController().setDecline(_aimId.toStdString().c_str(), true);
-        }
     }
 
     bool ContactListModel::ignoreContactWithConfirm(const QString& _aimId)
     {
         auto confirm = Utils::GetConfirmationWithTwoButtons(
-            QT_TRANSLATE_NOOP("popup_window", "CANCEL"),
-            QT_TRANSLATE_NOOP("popup_window", "YES"),
+            QT_TRANSLATE_NOOP("popup_window", "Cancel"),
+            QT_TRANSLATE_NOOP("popup_window", "Yes"),
             QT_TRANSLATE_NOOP("popup_window", "Are you sure you want to move contact to ignore list?"),
             Logic::GetFriendlyContainer()->getFriendly(_aimId),
             nullptr);
@@ -930,6 +956,11 @@ namespace Logic
     {
         Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
         Ui::GetDispatcher()->post_message_to_core("contacts/get_ignore", collection.get());
+    }
+
+    bool ContactListModel::youAreNotAMember(const QString& _aimid) const
+    {
+        return std::find(notAMemberChats_.begin(), notAMemberChats_.end(), _aimid) != notAMemberChats_.end();
     }
 
     std::vector<QString> ContactListModel::GetCheckedContacts() const
@@ -978,26 +1009,7 @@ namespace Logic
 
     void ContactListModel::chatInfo(qint64, const std::shared_ptr<Data::ChatInfo>& _info, const int _requestMembersLimit)
     {
-        if (!_info->Stamp_.isEmpty())
-            chatStamps_[_info->AimId_] = _info->Stamp_;
-
-        if (auto contact = getContactItem(_info->AimId_))
-        {
-            QString role = _info->YourRole_;
-            if (_info->YouPending_)
-                role = qsl("pending");
-            else if (!_info->YouMember_ || role.isEmpty())
-                role = qsl("notamember");
-
-            contact->set_default_role(_info->DefaultRole_);
-
-            contact->set_stamp(_info->Stamp_);
-            if (contact->get_chat_role() != role)
-            {
-                contact->set_chat_role(role);
-                emit youRoleChanged(_info->AimId_);
-            }
-        }
+        updateChatInfo(*(_info.get()));
     }
 
     void ContactListModel::joinLiveChat(const QString& _stamp, bool _silent)

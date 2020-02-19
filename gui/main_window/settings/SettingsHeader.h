@@ -18,6 +18,7 @@ namespace Ui
         ~SettingsHeader();
 
         void setText(const QString& _text);
+        bool hasText() const;
 
     signals:
         void backClicked(QPrivateSignal) const;

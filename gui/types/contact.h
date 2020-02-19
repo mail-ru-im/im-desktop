@@ -1,7 +1,5 @@
 #pragma once
 
-#include "stdafx.h"
-
 class QPixmap;
 
 namespace core
@@ -57,7 +55,6 @@ namespace Data
             AimId_ = other->AimId_;
             Friendly_ = other->Friendly_;
             AbContactName_ = other->AbContactName_;
-            State_ = other->State_;
             UserType_ = other->UserType_;
             StatusMsg_ = other->StatusMsg_;
             OtherNumber_ = other->OtherNumber_;
@@ -83,7 +80,6 @@ namespace Data
         QString		AimId_;
         QString		Friendly_;
         QString		AbContactName_;
-        QString		State_;
         QString		UserType_;
         QString		StatusMsg_;
         QString		OtherNumber_;
@@ -142,11 +138,6 @@ namespace Data
         void setType(ContactType _type)
         {
             contactType_ = _type;
-        }
-
-        virtual QString GetState() const
-        {
-            return State_;
         }
 
         virtual QDateTime GetLastSeen() const
@@ -257,6 +248,13 @@ namespace Data
     QStringList UnserializeFavorites(core::coll_helper* helper);
 
     UserInfo UnserializeUserInfo(core::coll_helper* helper);
+
+    inline QString normalizeAimId(const QString& _aimId)
+    {
+        const int pos = _aimId.indexOf(ql1s("@uin.icq"));
+        return pos == -1 ? _aimId : _aimId.left(pos);
+    }
+
 }
 
 Q_DECLARE_METATYPE(Data::Buddy*);

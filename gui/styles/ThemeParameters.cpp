@@ -8,6 +8,8 @@
 
 namespace
 {
+    QString getTextLineEditQss();
+    QString getTextLineEditFocusQss();
     QString getLineEditQss();
     QString getLineEditFocusQss();
     QString getTextEditQss();
@@ -28,9 +30,21 @@ namespace Styling
         return theme_->getColor(_var);
     }
 
+    QColor ThemeParameters::getColor(const StyleVariable _var, double alpha) const
+    {
+        auto c = getColor(_var);
+        c.setAlphaF(alpha);
+        return c;
+    }
+
     QString ThemeParameters::getColorHex(const StyleVariable _var) const
     {
         return getColor(_var).name(QColor::HexArgb);
+    }
+
+    QString ThemeParameters::getColorHex(const StyleVariable _var, double alpha) const
+    {
+        return getColor(_var, alpha).name(QColor::HexArgb);
     }
 
     bool ThemeParameters::isChatWallpaperPlainColor() const
@@ -168,9 +182,7 @@ namespace Styling
 
     QColor ThemeParameters::getPrimaryTabFocusColor() const
     {
-        auto color = getColor(Styling::StyleVariable::PRIMARY);
-        color.setAlphaF(0.28);
-        return color;
+        return getColor(Styling::StyleVariable::PRIMARY, 0.2);
     }
 
     bool ThemeParameters::isBorderNeeded() const noexcept
@@ -213,6 +225,30 @@ namespace Styling
         return qss;
     }
 
+    QString ThemeParameters::getTextLineEditCommonQss(bool _isError, int _height) const
+    {
+        QString qss = getTextLineEditQss() % getTextLineEditFocusQss();
+
+        if (_isError)
+        {
+            qss.replace(qsl("%BORDER_COLOR%"), getColorHex(StyleVariable::SECONDARY_ATTENTION));
+            qss.replace(qsl("%BORDER_COLOR_FOCUS%"), getColorHex(StyleVariable::SECONDARY_ATTENTION));
+        }
+        else
+        {
+            qss.replace(qsl("%BORDER_COLOR%"), getColorHex(StyleVariable::BASE_BRIGHT));
+            qss.replace(qsl("%BORDER_COLOR_FOCUS%"), getColorHex(StyleVariable::PRIMARY));
+        }
+
+        qss.replace(qsl("%BACKGROUND%"), qsl("transparent"));
+        qss.replace(qsl("%BACKGROUND_FOCUS%"), qsl("transparent"));
+        qss.replace(qsl("%FONT_COLOR%"), getColorHex(StyleVariable::BASE_PRIMARY));
+        qss.replace(qsl("%FONT_COLOR_FOCUS%"), getColorHex(StyleVariable::TEXT_SOLID));
+        qss.replace(qsl("%HEIGHT%"), QString::number(_height));
+
+        return qss;
+    }
+
     QString ThemeParameters::getLineEditDisabledQss(int _height) const
     {
         auto qss = getLineEditQss();
@@ -227,8 +263,16 @@ namespace Styling
     {
         QString qss = getLineEditQss() % getLineEditFocusQss();
 
-        qss.replace(qsl("%BORDER_COLOR%"), _lineNoFocusColor.name());
-        qss.replace(qsl("%BORDER_COLOR_FOCUS%"), _lineFocusColor.name());
+        if (_lineNoFocusColor.isValid())
+            qss.replace(qsl("%BORDER_COLOR%"), _lineNoFocusColor.name());
+        else
+            qss.replace(qsl("%BORDER_COLOR%"), qsl("transparent"));
+
+        if (_lineFocusColor.isValid())
+            qss.replace(qsl("%BORDER_COLOR_FOCUS%"), _lineFocusColor.name());
+        else
+            qss.replace(qsl("%BORDER_COLOR_FOCUS%"), qsl("transparent"));
+
         qss.replace(qsl("%BACKGROUND%"), qsl("transparent"));
         qss.replace(qsl("%BACKGROUND_FOCUS%"), qsl("transparent"));
         qss.replace(qsl("%HEIGHT%"), QString::number(_height));
@@ -254,7 +298,7 @@ namespace Styling
         return qss;
     }
 
-    QString ThemeParameters::getContextMenuQss(int _itemHeight, int _paddingLeft, int _paddingRight, int _paddingIcon) const
+    static QString getContextMenuCommon(int _itemHeight, int _paddingLeft, int _paddingRight, int _paddingIcon)
     {
         QString qss = qsl(
             "QMenu{"
@@ -293,17 +337,38 @@ namespace Styling
             "}"
         );
 
-        qss.replace(qsl("%BACKGROUND%"), getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE));
-        qss.replace(qsl("%BACKGROUND_SELECTED%"), getColorHex(Styling::StyleVariable::BASE_BRIGHT_INVERSE));
-        qss.replace(qsl("%BORDER_COLOR%"), getColorHex(Styling::StyleVariable::BASE_BRIGHT_INVERSE));
-        qss.replace(qsl("%SEPARATOR%"), getColorHex(Styling::StyleVariable::BASE_BRIGHT));
-        qss.replace(qsl("%FONT_COLOR%"), getColorHex(Styling::StyleVariable::TEXT_SOLID));
-        qss.replace(qsl("%FONT_DISABLED_COLOR%"), getColorHex(Styling::StyleVariable::BASE_TERTIARY));
-
         qss.replace(qsl("%ITEM_HEIGHT%"), QString::number(_itemHeight));
         qss.replace(qsl("%PADDING_LEFT%"), QString::number(_paddingLeft));
         qss.replace(qsl("%PADDING_RIGHT%"), QString::number(_paddingRight));
         qss.replace(qsl("%ICON_PADDING%"), QString::number(_paddingIcon));
+
+        return qss;
+    }
+
+    QString ThemeParameters::getContextMenuQss(int _itemHeight, int _paddingLeft, int _paddingRight, int _paddingIcon) const
+    {
+        QString qss = getContextMenuCommon(_itemHeight, _paddingLeft, _paddingRight, _paddingIcon);
+
+        qss.replace(ql1s("%BACKGROUND%"), getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE));
+        qss.replace(ql1s("%BACKGROUND_SELECTED%"), getColorHex(Styling::StyleVariable::BASE_BRIGHT_INVERSE));
+        qss.replace(ql1s("%BORDER_COLOR%"), getColorHex(Styling::StyleVariable::BASE_BRIGHT_INVERSE));
+        qss.replace(ql1s("%SEPARATOR%"), getColorHex(Styling::StyleVariable::BASE_BRIGHT));
+        qss.replace(ql1s("%FONT_COLOR%"), getColorHex(Styling::StyleVariable::TEXT_SOLID));
+        qss.replace(ql1s("%FONT_DISABLED_COLOR%"), getColorHex(Styling::StyleVariable::BASE_TERTIARY));
+
+        return qss;
+    }
+
+    QString ThemeParameters::getContextMenuDarkQss(int _itemHeight, int _paddingLeft, int _paddingRight, int _paddingIcon) const
+    {
+        QString qss = getContextMenuCommon(_itemHeight, _paddingLeft, _paddingRight, _paddingIcon);
+
+        qss.replace(ql1s("%BACKGROUND%"), getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE_PERMANENT));
+        qss.replace(ql1s("%BACKGROUND_SELECTED%"), getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE_PERMANENT_HOVER));
+        qss.replace(ql1s("%BORDER_COLOR%"), getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE_PERMANENT_HOVER));
+        qss.replace(ql1s("%SEPARATOR%"), getColorHex(Styling::StyleVariable::LUCENT_TERTIARY_ACTIVE));
+        qss.replace(ql1s("%FONT_COLOR%"), getColorHex(Styling::StyleVariable::TEXT_SOLID_PERMANENT));
+        qss.replace(ql1s("%FONT_DISABLED_COLOR%"), getColorHex(Styling::StyleVariable::TEXT_SOLID_PERMANENT_ACTIVE));
 
         return qss;
     }
@@ -518,21 +583,6 @@ namespace Styling
         return menuQss;
     }
 
-    QString ThemeParameters::getContactListQss() const
-    {
-        QString qss(qsl(
-            "QWidget#noContacts{"
-            "image: url(:/placeholders/empty_cl_100);"
-            "margin : 0;}"
-            "QWidget#noRecents{"
-            "image: url(:/placeholders/empty_recents_100);"
-            "margin : 0;}"
-        )
-        );
-
-        return qss;
-    }
-
     QString ThemeParameters::getTitleQss() const
     {
         return qsl(
@@ -550,122 +600,16 @@ namespace Styling
         QString qss = qsl(
             "Ui--LoginPage{"
             "background-color: %1;"
-            "color: %7;}"
-            "QWidget#stackedWidget{"
-            "max-width: 320dip;"
-            "min-width: 320dip;}"
+            "color: %2;}"
             "QLabel#hint{"
-            "margin-top: 12dip;"
-            "margin-bottom: 12dip;"
-            "font-size: 24dip;}"
-            "QLabel#phoneHint{"
-            "min-height: 48dip;"
-            "max-height: 48dip;"
-            "margin-top: 12dip;"
-            "margin-bottom: 12dip;"
-            "font-size: 15dip;"
-            "color: %7;}"
-            "QPushButton#passwordForgotten{"
-            "min-height: 32dip;"
-            "max-height: 32dip;"
-            "font-size: 16dip;"
-            "text-align: top;}"
-            "QWidget#countryWidget{"
-            "min-height: 48dip;"
-            "max-height: 48dip;"
-            "border-style: none;"
-            "border-bottom-style: solid;"
-            "border-bottom-width: 1dip;"
-            "border-bottom-color: %2;"
-            "color: %7;}"
-            "QTreeView[CountrySearchView = \"true\"]{"
-            "border-style: solid;"
-            "border-width: 1dip;"
-            "border-color: %3;"
-            "font-size: 16dip;"
-            "selection-background-color: %4;"
-            "color: %5;"
-            "selection-color: %5;}"
-            "QLineEdit#countryCodeEdit{"
-            "border-style: outset;"
-            "min-height: 48dip;"
-            "font-size: 18dip;}"
-            "QWidget#phoneWidget[Common = \"true\"]{"
-            "background-color: transparent;"
-            "border-bottom-color: %2;"
-            "border-bottom-width: 1dip;"
-            "border-bottom-style: solid;"
-            "min-height: 48dip;"
-            "max-height: 48dip;"
-            "color: %7;"
-            "margin-top: 4dip;}"
-            "QWidget#phoneWidget[Focused = \"true\"]{"
-            "background-color: transparent;"
-            "border-bottom-color: %4;"
-            "border-bottom-width: 1dip;"
-            "border-bottom-style: solid;"
-            "margin-top: 4dip;}"
-            "QWidget#phoneWidget[Error = \"true\"]{"
-            "background-color: transparent;"
-            "border-bottom-color: %6;"
-            "border-bottom-width: 1dip;"
-            "border-bottom-style: solid;"
-            "margin-top: 4dip;}"
-            "QLineEdit#phoneEdit[Common = \"true\"]{"
-            "border-style: outset;"
-            "min-height: 48dip;"
-            "max-height: 48dip;"
-            "font-size: 18dip;"
-            "text-align: left;"
-            "padding-left: 10dip;}"
-            "QLineEdit#phoneEdit[Error = \"true\"]{"
-            "border-style: outset;"
-            "min-height: 48dip;"
-            "max-height: 48dip;"
-            "font-size: 18dip;"
-            "text-align: left;"
-            "padding-left: 10dip;"
-            "color: %6;}"
-            "QWidget#switchLogin{"
-            "min-height: 30dip;"
-            "max-height: 30dip;"
-            "margin-bottom: 12dip;}"
-            "QWidget#controlsWidget{"
-            "max-width: 1000dip;"
-            "min-width: 380dip;}"
+            "color: %2;}"
             "QWidget#mainWidget{"
             "background-color: transparent;}"
-            "Qwidget#enteredPhone{"
-            "margin-bottom: 32dip;}"
             "QWidget#errorWidget{"
             "min-height: 30dip;}"
-            "QWidget#nextButton{"
-            "min-width: 150dip;"
-            "min-height: 40dip;"
-            "max-height: 40dip;"
-            "margin-top: 20dip;}"
-            "QPushButton#settingsButton{"
-            "min-width: 24dip;"
-            "max-width: 24dip;"
-            "min-height: 24dip;"
-            "max-height: 24dip;"
-            "border-image: url(:/settings_100);}"
-            "QTreeView{"
-            "background: %1;"
-            "color: %7;}"
-            "QLabel#hint{"
-            "color: %7;}"
-            "QLineEdit:disabled{"
-            "color: %8;}"
         ).arg(
             getColorHex(StyleVariable::BASE_GLOBALWHITE),
-            getColorHex(StyleVariable::BASE_BRIGHT),
-            getColorHex(StyleVariable::PRIMARY),
-            getColorHex(StyleVariable::BASE_BRIGHT_INVERSE),
-            getColorHex(StyleVariable::TEXT_SOLID_PERMANENT),
-            getColorHex(StyleVariable::SECONDARY_ATTENTION),
-            getColorHex(StyleVariable::TEXT_SOLID),
-            getColorHex(StyleVariable::BASE_PRIMARY)
+            getColorHex(StyleVariable::TEXT_SOLID)
         );
         return qss;
     }
@@ -732,6 +676,32 @@ namespace Styling
 
 namespace
 {
+    QString getTextLineEditQss()
+    {
+        return qsl(
+            "QTextBrowser {"
+            "min-height: %HEIGHT%dip; max-height: %HEIGHT%dip;"
+            "background-color: %BACKGROUND%;"
+            "border-style: none;"
+            "border-bottom-color: %BORDER_COLOR%;"
+            "border-bottom-width: 1dip;"
+            "border-bottom-style: solid; }"
+        );
+    }
+
+    QString getTextLineEditFocusQss()
+    {
+        return qsl(
+            "QTextBrowser:focus {"
+            "min-height: %HEIGHT%dip; max-height: %HEIGHT%dip;"
+            "background-color: %BACKGROUND_FOCUS%;"
+            "border-style: none;"
+            "border-bottom-color: %BORDER_COLOR_FOCUS%;"
+            "border-bottom-width: 1dip;"
+            "border-bottom-style: solid;}"
+        );
+    }
+
     QString getLineEditQss()
     {
         return qsl(

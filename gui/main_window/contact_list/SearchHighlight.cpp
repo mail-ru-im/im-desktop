@@ -34,7 +34,8 @@ namespace Ui
             {
                 if (_hlPos == HighlightPosition::wordStart)
                 {
-                    if (ndx == 0)
+                    int tmp = 0;
+                    if (ndx == 0 || !Emoji::getEmoji(QStringRef(&h), tmp).isNull())
                     {
                         results.push_back(HighlightFindResult(ndx, h.length()));
                     }

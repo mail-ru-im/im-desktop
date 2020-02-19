@@ -71,45 +71,48 @@ namespace Ui
     public:
         LinkItem(const QString& _url, const QString& _date, qint64 _msg, qint64 _seq, bool _outgoing, const QString& _sender, time_t _time, int _width);
 
-        virtual void draw(QPainter& _p, const QRect& _rect) override;
-        virtual int getHeight() const override;
-        virtual void setWidth(int _width) override;
-        virtual void setReqId(qint64 _id) override;
-        virtual qint64 reqId() const override;
+        void draw(QPainter& _p, const QRect& _rect) override;
+        int getHeight() const override;
+        void setWidth(int _width) override;
+        void setReqId(qint64 _id) override;
+        qint64 reqId() const override;
 
-        virtual QString getLink() const override;
-        virtual qint64 getMsg() const override;
-        virtual qint64 getSeq() const override;
-        virtual QString sender() const override;
-        virtual time_t time() const override;
+        QString getLink() const override;
+        qint64 getMsg() const override;
+        qint64 getSeq() const override;
+        QString sender() const override;
+        time_t time() const override;
 
-        virtual void setPreview(const QPixmap& _preview) override;
+        void setPreview(const QPixmap& _preview) override;
 
-        virtual bool isOverLink(const QPoint& _pos, int _totalHeight) const override;
-        virtual bool isOverLink(const QPoint& _pos) const override;
-        virtual void underline(bool _enabled) override;
+        bool isOverLink(const QPoint& _pos, int _totalHeight) const override;
+        bool isOverLink(const QPoint& _pos) const override;
+        void underline(bool _enabled) override;
 
-        virtual bool isOverDate(const QPoint& _pos) const override;
-        virtual void setDateState(bool _hover, bool _active) override;
+        bool isOverDate(const QPoint& _pos) const override;
+        void setDateState(bool _hover, bool _active) override;
 
-        virtual void setTitle(const QString& _title) override;
-        virtual void setDesc(const QString& _desc) override;
+        void setTitle(const QString& _title) override;
+        void setDesc(const QString& _desc) override;
 
-        virtual bool isOutgoing() const override;
+        bool isOutgoing() const override;
 
-        virtual bool loaded() const override;
-        virtual void setMoreButtonState(const ButtonState& _state) override;
-        virtual bool isOverMoreButton(const QPoint& _pos, int _h) const override;
-        virtual ButtonState moreButtonState() const override;
+        bool loaded() const override;
+        void setMoreButtonState(const ButtonState& _state) override;
+        bool isOverMoreButton(const QPoint& _pos, int _h) const override;
+        ButtonState moreButtonState() const override;
 
-        virtual bool isDateItem() const override { return false; }
+        bool isDateItem() const override { return false; }
+
+    private:
+        void forceRecalcGeometry();
 
     private:
         QString url_;
         std::unique_ptr<Ui::TextRendering::TextUnit> title_;
         std::unique_ptr<Ui::TextRendering::TextUnit> desc_;
         std::unique_ptr<Ui::TextRendering::TextUnit> link_;
-        std::unique_ptr<Ui::TextRendering::TextUnit> friedly_;
+        std::unique_ptr<Ui::TextRendering::TextUnit> friendly_;
         std::unique_ptr<Ui::TextRendering::TextUnit> date_;
         QPixmap preview_;
         int height_;

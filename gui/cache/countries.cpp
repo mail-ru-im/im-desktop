@@ -176,7 +176,7 @@ namespace Ui::countries
             { 351, QT_TRANSLATE_NOOP("countries", "Portugal"), qsl("pt") },
             { 1, QT_TRANSLATE_NOOP("countries", "Puerto Rico"), qsl("pr") },
             { 974, QT_TRANSLATE_NOOP("countries", "Qatar"), qsl("qa") },
-            { 262, QT_TRANSLATE_NOOP("countries", "Reunion"), qsl("xri") },
+            { 262, QT_TRANSLATE_NOOP("countries", "Reunion"), qsl("re") },
             { 40, QT_TRANSLATE_NOOP("countries", "Romania"), qsl("ro") },
             { 7, QT_TRANSLATE_NOOP("countries", "Russia"), qsl("ru") },
             { 250, QT_TRANSLATE_NOOP("countries", "Rwanda"), qsl("rw") },

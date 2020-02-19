@@ -1,3 +1,5 @@
+#include "stdafx.h"
+
 #include "MemoryStatsReport.h"
 
 #include "../corelib/collection_helper.h"

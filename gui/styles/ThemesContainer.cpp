@@ -9,11 +9,15 @@
 #include "../utils/gui_coll_helper.h"
 #include "../utils/InterConnector.h"
 #include "../core_dispatcher.h"
-#include "../../gui.shared/product.h"
+#include "../app_config.h"
 
 namespace
 {
-    const auto DEFAULT_JSON_PATH = build::GetProductVariant(qsl(":/themes/default_meta"), qsl(":/themes/default_meta"), qsl(":/themes/biz_meta"), qsl(":/themes/dit_meta"));
+    inline QString getDefaultJSONPath()
+    {
+        return qsl(":/themes/default_meta");
+    }
+
     constexpr std::chrono::milliseconds updateCheckDelay = std::chrono::seconds(10);
     constexpr std::chrono::milliseconds unloadCheckTimeout = std::chrono::hours(1);
     constexpr auto checkMetaUpdates = false;
@@ -74,9 +78,9 @@ namespace Styling
 
         if (doc.HasParseError() || !doc.HasMember("style"))
         {
-            assert(QFile::exists(DEFAULT_JSON_PATH));
+            assert(QFile::exists(getDefaultJSONPath()));
 
-            QFile file(DEFAULT_JSON_PATH);
+            QFile file(getDefaultJSONPath());
             if (!file.open(QFile::ReadOnly | QFile::Text))
                 return;
 
@@ -107,10 +111,11 @@ namespace Styling
 
         if (themeIter != doc.MemberEnd() && themeIter->value.IsArray())
         {
-            auto themesNode = themeIter->value.GetArray();
-
-            for (auto &themeNodeIt : themesNode)
+            for (auto& themeNodeIt : themeIter->value.GetArray())
             {
+                if (bool themeHidden = false; !Ui::GetAppConfig().IsShowHiddenThemes() && StylingUtils::unserialize_value(themeNodeIt, "hidden", themeHidden) && themeHidden)
+                    continue;
+
                 Theme tmpTheme = defaultTheme;
                 tmpTheme.unserialize(themeNodeIt.GetObject());
                 availableThemes_.push_back(std::make_shared<Theme>(tmpTheme));
@@ -477,8 +482,14 @@ namespace Styling
 
     void ThemesContainer::onDialogClosed(const QString& _aimId, bool)
     {
-        if (tryOnContact_ == _aimId)
-            resetTryOnWallpaper();
+        if (auto w = getContactWallpaper(_aimId); w && w != getGlobalWallpaper() && w->hasWallpaper() && !w->isImageRequested())
+        {
+            // if dialog with the same image is currently open it will remain cached in bg widget
+            // switching to another dialog with same image will not cause a reload
+            const auto wallpapers = getAllWallpapersById(w->getId());
+            for (const auto& wp : wallpapers)
+                wp->resetWallpaperImage();
+        }
     }
 
     WallpaperPtr ThemesContainer::getThemeDefaultWallpaper() const
@@ -639,19 +650,10 @@ namespace Styling
         std::vector<std::pair<QString, QString>> res;
         res.reserve(availableThemes_.size());
 
-        // For theme naming & its translation
-        // !!! Must match names in JSON
-        if constexpr (false)
-        {
-            static auto lightThemeName = QT_TRANSLATE_NOOP("appearance", "Default");
-            static auto blueThemeName = QT_TRANSLATE_NOOP("appearance", "Blue");
-            static auto darkThemeName = QT_TRANSLATE_NOOP("appearance", "Night");
-        }
-
         for (const auto& t : availableThemes_)
         {
             const auto id = t->getId();
-            const auto translatedName = qApp->translate("appearance", t->getName().toUtf8().constData());
+            const auto translatedName = QApplication::translate("appearance", t->getName().toUtf8().constData());
             const QString name =  build::is_debug() ? translatedName % ql1s(" [") % id % ql1c(']') : translatedName;
             res.emplace_back(t->getId(), !name.isEmpty() ? name : id);
         }
@@ -886,27 +888,28 @@ namespace Styling
 
     void ThemesContainer::unloadUnusedWallpaperImages()
     {
-        std::vector<qint64> usedKeys;
+        std::set<qint64> usedKeys;
+
         const auto addKey = [&usedKeys](const auto& _wp)
         {
             if (_wp && _wp->hasWallpaper())
             {
                 if (const auto& img = _wp->getWallpaperImage(); !img.isNull())
-                    usedKeys.push_back(img.cacheKey());
+                    usedKeys.insert(img.cacheKey());
             }
         };
 
         for (const auto& [_, wp] : contactWallpapers_)
             addKey(wp);
         addKey(tryOnWallpaper_);
-        addKey(currentWallpaper_);
+        addKey(getGlobalWallpaper());
 
         const auto wallpapers = getAllAvailableWallpapers();
         for (const auto& wp : wallpapers)
         {
             if (!wp->isImageRequested() && wp->hasWallpaper())
             {
-                if (const auto& img = wp->getWallpaperImage(); !wp->isImageRequested() && !img.isNull())
+                if (const auto& img = wp->getWallpaperImage(); !img.isNull())
                     if (std::none_of(usedKeys.begin(), usedKeys.end(), [imgKey = img.cacheKey()](const auto _key){ return _key == imgKey; }))
                         wp->resetWallpaperImage();
             }

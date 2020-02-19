@@ -30,6 +30,7 @@ namespace Ui
 {
     SearchEdit::SearchEdit(QWidget* _parent)
         : LineEditEx(_parent)
+        , drawPlaceholderAnyway_(false)
     {
         placeholderTextUnit_ = TextRendering::MakeTextUnit(QString());
         placeholderTextUnit_->init(font(),
@@ -41,21 +42,27 @@ namespace Ui
 
     SearchEdit::~SearchEdit() = default;
 
-    void SearchEdit::setPlaceholderTextEx(const QString& _text)
+    void SearchEdit::setPlaceholderTextEx(const QString& _text, bool _drawAnyway)
     {
         if (placeHolderText_ != _text)
         {
             placeHolderText_ = _text;
             placeholderTextUnit_->setText(placeHolderText_);
+            drawPlaceholderAnyway_ = _drawAnyway;
             update();
         }
+    }
+
+    QString SearchEdit::getPlaceholder() const
+    {
+        return placeHolderText_;
     }
 
     void SearchEdit::paintEvent(QPaintEvent* _e)
     {
         LineEditEx::paintEvent(_e);
 
-        if (!placeHolderText_.isEmpty() && !hasFocus() && text().isEmpty())
+        if (!placeHolderText_.isEmpty() && (!hasFocus() || drawPlaceholderAnyway_) && text().isEmpty())
         {
             if (const auto f = font(); f != placeholderTextUnit_->getFont())
             {
@@ -80,6 +87,7 @@ namespace Ui
     SearchWidget::SearchWidget(QWidget* _parent, int _add_hor_space, int _add_ver_space)
         : QWidget(_parent)
         , active_(false)
+        , needsClear_(false)
     {
         setFixedHeight(Utils::scale_value(32) + _add_ver_space * 2);
 
@@ -186,6 +194,12 @@ namespace Ui
         setPlaceholderText(QT_TRANSLATE_NOOP("search_widget", "Search"));
     }
 
+    void SearchWidget::setTempPlaceholderText(const QString & _text)
+    {
+        savedPlaceholder_ = searchEdit_->getPlaceholder();
+        searchEdit_->setPlaceholderTextEx(_text, true);
+    }
+
     void SearchWidget::setPlaceholderText(const QString & _text)
     {
         searchEdit_->setPlaceholderTextEx(_text);
@@ -195,6 +209,16 @@ namespace Ui
     {
         if (searchEdit_)
             searchEdit_->installEventFilter(_obj);
+    }
+
+    void SearchWidget::clearSearch(const bool _force)
+    {
+        if (_force)
+        {
+            setNeedClear(true);
+            emit searchCompleted();
+        }
+        setNeedClear(false);
     }
 
     void SearchWidget::enterEvent(QEvent * _event)
@@ -250,6 +274,11 @@ namespace Ui
     void SearchWidget::focusOutEvent(QFocusEvent*)
     {
         updateStyle();
+        if (!savedPlaceholder_.isEmpty())
+        {
+            setPlaceholderText(savedPlaceholder_);
+            savedPlaceholder_.clear();
+        }
     }
 
     void SearchWidget::keyPressEvent(QKeyEvent* _e)
@@ -325,6 +354,9 @@ namespace Ui
         setDefaultPlaceholder();
 
         emit activeChanged(active_);
+
+        if (active_)
+            Utils::InterConnector::instance().setCurrentMultiselectMessage(-1);
     }
 
     void SearchWidget::updateClearIconVisibility()
@@ -359,7 +391,8 @@ namespace Ui
 
     void SearchWidget::searchCompleted()
     {
-        searchCompletedImpl(SetFocusToInput::Yes);
+        if (needsClear_)
+            searchCompletedImpl(SetFocusToInput::Yes);
     }
 
     void SearchWidget::searchCompletedImpl(const SetFocusToInput _setFocus)
@@ -371,12 +404,16 @@ namespace Ui
         emit searchChanged(QString());
         emit searchEnd();
 
+        if (Utils::InterConnector::instance().isMultiselect())
+            emit Utils::InterConnector::instance().multiSelectCurrentElementChanged();
+
         if (_setFocus == SetFocusToInput::Yes)
             Utils::InterConnector::instance().setFocusOnInput();
     }
 
     void SearchWidget::onEscapePress()
     {
+        setNeedClear(true);
         searchCompleted();
         emit escapePressed();
     }
@@ -402,8 +439,11 @@ namespace Ui
 
     void SearchWidget::focusedOut()
     {
-        searchCompletedImpl(SetFocusToInput::No);
-        updateClearIconVisibility();
+        if (needsClear_)
+        {
+            searchCompletedImpl(SetFocusToInput::No);
+            updateClearIconVisibility();
+        }
         updateStyle();
     }
 

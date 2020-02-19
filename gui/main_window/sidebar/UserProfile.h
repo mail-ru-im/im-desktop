@@ -69,7 +69,9 @@ namespace Ui
         void clearHistoryClicked();
         void blockClicked();
         void reportCliked();
+        void removeContact();
         void favoriteChanged(const QString _aimid);
+        void unimportantChanged(const QString _aimid);
         void dialogGalleryState(const QString& _aimId, const Data::DialogGalleryState& _state);
         void userInfo(const int64_t, const QString& _aimid, const Data::UserInfo& _info);
         void menuAction(QAction*);
@@ -110,6 +112,7 @@ namespace Ui
         void loadInfo();
         void updateControls();
         void updateStatus(int32_t _lastseen);
+        QString getShareLink() const;
 
     private:
         QStackedWidget* stackedWidget_;
@@ -147,6 +150,7 @@ namespace Ui
         SidebarButton* clearHistory_;
         SidebarButton* block_;
         SidebarButton* report_;
+        SidebarButton* remove_;
         SearchWidget* searchWidget_;
         ContactListWidget* cl_;
         GalleryPopup* galleryPopup_;

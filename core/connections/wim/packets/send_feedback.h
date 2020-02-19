@@ -19,9 +19,9 @@ namespace core
     {
         class send_feedback: public wim_packet
         {
-            virtual int32_t init_request(std::shared_ptr<core::http_request_simple> _request) override;
-            virtual int32_t parse_response(std::shared_ptr<core::tools::binary_stream> response) override;
-            virtual int32_t execute_request(std::shared_ptr<core::http_request_simple> _request) override;
+            int32_t init_request(std::shared_ptr<core::http_request_simple> _request) override;
+            int32_t parse_response(std::shared_ptr<core::tools::binary_stream> response) override;
+            int32_t execute_request(std::shared_ptr<core::http_request_simple> _request) override;
 
             std::string url_;
             std::map<std::string, std::string> fields_;

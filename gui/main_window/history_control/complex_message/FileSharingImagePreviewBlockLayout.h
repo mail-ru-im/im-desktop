@@ -19,8 +19,6 @@ public:
 
     virtual const QRect& getContentRect() const override;
 
-    const IItemBlockLayout::IBoxModel& getBlockBoxModel() const override;
-
     virtual QSize setBlockGeometryInternal(const QRect &geometry) override;
 
     virtual const QRect& getFilenameRect() const override;
@@ -29,15 +27,14 @@ public:
 
     virtual QRect getShowInDirLinkRect() const override;
 
+    void onBlockSizeChanged(const QSize& _size) override;
+
 private:
     QRect PreviewRect_;
 
-    QSize evaluatePreviewSize(const FileSharingBlock &block, const int32_t blockWidth) const;
+    void setCtrlButtonGeometry(FileSharingBlock &block, const QRect &previewRect);   
 
-    void setCtrlButtonGeometry(FileSharingBlock &block, const QRect &previewRect);
-
-    QSize getMinSize(const FileSharingBlock& _block) const;
-
+    QSize calcBlockSize(int _availableWidth);
 };
 
 UI_COMPLEX_MESSAGE_NS_END

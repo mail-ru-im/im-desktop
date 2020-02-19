@@ -1,45 +1,13 @@
 #pragma once
 
-#include "controls/TextUnit.h"
-#include "controls/ClickWidget.h"
 #include "types/chat.h"
 #include "../InputWidgetUtils.h"
 
 namespace Ui
 {
-    class PanelButton : public ClickableWidget
-    {
-    public:
-        PanelButton(QWidget* _parent);
-
-        void setColors(const QColor& _bgNormal, const QColor& _bgHover = QColor(), const QColor& _bgActive = QColor());
-
-        void setTextColor(const QColor& _color);
-        void setText(const QString& _text);
-        void setIcon(const QString& _iconPath);
-
-    protected:
-        void paintEvent(QPaintEvent*) override;
-        void resizeEvent(QResizeEvent* _event) override;
-        void focusInEvent(QFocusEvent* _event) override;
-        void focusOutEvent(QFocusEvent* _event) override;
-
-    private:
-        QColor getBgColor() const;
-
-    private:
-        QPixmap icon_;
-        TextRendering::TextUnitPtr text_;
-        QPainterPath bubblePath_;
-
-        QColor bgNormal_;
-        QColor bgHover_;
-        QColor bgActive_;
-        QColor textColor_;
-    };
-
-
     class CustomButton;
+    class RoundButton;
+
     enum class ReadonlyPanelState
     {
         Invalid,
@@ -84,7 +52,7 @@ namespace Ui
         QString stamp_;
         bool isChannel_ = false;
 
-        PanelButton* mainButton_ = nullptr;
+        RoundButton* mainButton_ = nullptr;
         CustomButton* shareButton_ = nullptr;
 
         ReadonlyPanelState state_ = ReadonlyPanelState::Invalid;

@@ -9,8 +9,8 @@
 namespace Ui
 {
     LineEditEx::LineEditEx(QWidget* _parent, const Options &_options)
-        : QLineEdit(_parent),
-          options_(_options)
+        : QLineEdit(_parent)
+        , options_(_options)
     {
         installEventFilter(this);
         changeTextColor(Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
@@ -120,8 +120,6 @@ namespace Ui
 
     void LineEditEx::paintEvent(QPaintEvent *_event)
     {
-        QLineEdit::paintEvent(_event);
-
         if (!customPlaceholder_.isEmpty() && text().isEmpty())
         {
             // copied from QLineEdit::paintEvent
@@ -146,6 +144,7 @@ namespace Ui
             QString elidedText = fm.elidedText(customPlaceholder_, Qt::ElideRight, lineRect.width());
             p.drawText(lineRect, elidedText);
         }
+        QLineEdit::paintEvent(_event);
     }
 
     bool LineEditEx::eventFilter(QObject* _obj, QEvent* _event)

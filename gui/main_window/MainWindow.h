@@ -2,7 +2,6 @@
 
 #ifdef __APPLE__
 class MacSupport;
-class MacMigrationManager;
 #endif
 #include "../voip/secureCallWnd.h"
 
@@ -35,9 +34,7 @@ namespace Ui
 {
     class MainPage;
     class LoginPage;
-#ifdef __APPLE__
-    class AccountsPage;
-#endif
+    class TermsPrivacyWidget;
     class TrayIcon;
     class HistoryControlPage;
     class MainStackedWidget;
@@ -47,9 +44,7 @@ namespace Ui
     class CallQualityStatsMgr;
     class ConnectionStateWatcher;
     class LocalPINWidget;
-#ifdef _WIN32
-    class WinNativeWindow;
-#endif
+
     void memberAddFailed(const int _error);
 
     class ShadowWindow : public QWidget
@@ -130,7 +125,7 @@ namespace Ui
     public Q_SLOTS:
         void showLoginPage(const bool _is_auth_error);
         void showMainPage();
-        void showMigrateAccountPage(const QString& _accountId);
+        void showGDPRPage();
         void checkForUpdates();
         void showIconInTaskbar(bool);
         void activateWithReason(ActivateReason _reason);
@@ -178,10 +173,8 @@ namespace Ui
         void zoomWindow();
 
     public:
-        MainWindow(QApplication* _app, const bool _has_valid_login, const bool _locked);
+        MainWindow(QApplication* _app, const bool _has_valid_login, const bool _locked, const QString& _validOrFirstLogin);
         ~MainWindow();
-
-        void show();
 
         void openGallery(const QString &_aimId, const QString &_link, int64_t _msgId, DialogPlayer* _attachedPlayer = nullptr);
         void showHideGallery();
@@ -215,7 +208,6 @@ namespace Ui
 
         int getTitleHeight() const;
         bool isMaximized() const;
-        bool isMinimized() const;
 
         void resize(int w, int h);
 
@@ -227,22 +219,13 @@ namespace Ui
 
         void lock();
 
-#ifdef _WIN32
-        HWND getParentWindow() const;
-        void hideParentWindow();
-
-        std::unique_ptr<WinNativeWindow> takeNativeWindow();
-#endif
-        QRect nativeGeometry() const;
-
     private:
         void initSizes();
         void initSettings();
         void initStats();
         void showMaximized();
-        void showNormal(bool _activate = true);
+        void showNormal();
         void updateState();
-        void upgradeStuff();
         void notifyWindowActive(const bool _active);
         void userActivity();
         void initGDPR();
@@ -252,13 +235,10 @@ namespace Ui
         void resetMainPage();
         void saveWindowSize(QSize size);
 
-        void activateMainWindow(bool _activate = true);
-
     protected:
         bool nativeEventFilter(const QByteArray&, void* _message, long* _result) override;
         bool eventFilter(QObject *, QEvent *) override;
 
-        void customEvent(QEvent* _event) override;
         void enterEvent(QEvent* _event) override;
         void resizeEvent(QResizeEvent* _event) override;
         void moveEvent(QMoveEvent* _event) override;
@@ -281,6 +261,7 @@ namespace Ui
         QPointer<Previewer::GalleryWidget> gallery_;
         MainPage* mainPage_;
         LoginPage* loginPage_;
+        TermsPrivacyWidget* gdprPage_;
         QApplication* app_;
         TitleWidgetEventFilter* eventFilter_;
         TrayIcon* trayIcon_;
@@ -311,15 +292,10 @@ namespace Ui
 
 #ifdef _WIN32
         HWND fake_parent_window_;
-
-        std::unique_ptr<WinNativeWindow> parentNativeWindow_;
-        HWND parentNativeWindowHandle_;
-        bool ignoreActivateEvent_;
+        bool isAeroEnabled_;
 #endif //_WIN32
 #ifdef __APPLE__
         MacSupport* getMacSupport();
-        AccountsPage* accounts_page_;
-        MacMigrationManager* migrationManager_;
 #endif
         bool windowActive_;
         bool uiActive_;

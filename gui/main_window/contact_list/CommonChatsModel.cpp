@@ -38,7 +38,7 @@ namespace Logic
         emit dataChanged(index(0), index(rowCount()));
 
         Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
-        collection.set_value_as_qstring("sn", _sn);
+        collection.set_value_as_qstring("contact", _sn);
         seq_ = Ui::GetDispatcher()->post_message_to_core("common_chats/get", collection.get());
     }
 

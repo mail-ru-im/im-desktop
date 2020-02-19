@@ -1,7 +1,5 @@
 #include "stdafx.h"
 #include "VoipSysPanelHeader.h"
-
-#include "VoipTools.h"
 #include "../utils/utils.h"
 #include "../../installer/utils/styles.h"
 
@@ -53,26 +51,21 @@ Ui::IncomingCallControls::IncomingCallControls(QWidget* _parent)
     {
         QBoxLayout* layoutInWidget;
         if (_vertical)
-        {
             layoutInWidget = Utils::emptyVLayout();
-        }
         else
-        {
             layoutInWidget = Utils::emptyHLayout();
-        }
 
         layoutInWidget->setAlignment(Qt::AlignCenter);
 
-        QWidget* widget = new voipTools::BoundBox<QWidget>(rootWidget);
+        QWidget* widget = new QWidget(rootWidget);
         widget->setContentsMargins(0, 0, 0, 0);
         widget->setLayout(layoutInWidget);
-
         return widget;
     };
 
     auto getButton = [this, btnMinWidth] (QWidget* _parent, const char* _objectName, const char* /*text*/, const char* _slot, QPushButton** _btnOut)->int
     {
-        QPushButton* btn = new voipTools::BoundBox<QPushButton>(_parent);
+        QPushButton* btn = new QPushButton(_parent);
         btn->setObjectName(QString::fromUtf8(_objectName));
         btn->setSizePolicy(QSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred));
         btn->setCursor(QCursor(Qt::PointingHandCursor));
@@ -85,7 +78,7 @@ Ui::IncomingCallControls::IncomingCallControls(QWidget* _parent)
 
     auto getLabel = [btnMinWidth] (QWidget* _parent, const char* /*_objectName*/, const char* _text, QLabel** _labelOut)->int
     {
-        QLabel* label = new voipTools::BoundBox<QLabel>(_parent);
+        QLabel* label = new QLabel(_parent);
         label->setSizePolicy(QSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred));
         label->setText(QString::fromUtf8(_text));
         label->setFont(Fonts::appFontScaled(9, Fonts::FontWeight::SemiBold));
@@ -102,9 +95,7 @@ Ui::IncomingCallControls::IncomingCallControls(QWidget* _parent)
     QWidget* widget2 = getWidget(true);
     QWidget* widget3 = getWidget(true);
 
-    int tail1 = 0;
-    int tail2 = 0;
-    int tail3 = 0;
+    int tail1 = 0, tail2 = 0, tail3 = 0;
 
     const struct ButtonDesc
     {
@@ -114,35 +105,14 @@ Ui::IncomingCallControls::IncomingCallControls(QWidget* _parent)
         std::string slot;
         int&        tail;
 
-        ButtonDesc(QWidget*    parent,
-            std::string objectName,
-            std::string text,
-            std::string slot,
-            int&        tail) : parent(parent), objectName(objectName), text(text), slot(slot), tail(tail) {}
+        ButtonDesc(QWidget *parent, std::string objectName, std::string text, std::string slot,
+            int& tail) : parent(parent), objectName(objectName), text(text), slot(slot), tail(tail) {}
     }
-    buttonsToCreate [] =
+    buttonsToCreate[] =
     {
-        ButtonDesc(
-            widget1,
-            "incomingCall_hangup",
-            QT_TRANSLATE_NOOP("voip_pages","DECLINE").toUtf8().data(),
-            SLOT(_onDecline()),
-            tail1
-        ),
-        ButtonDesc(
-            widget2,
-            "incomingCall_audio",
-            QT_TRANSLATE_NOOP("voip_pages", "AUDIO").toUtf8().data(),
-            SLOT(_onAudio()),
-            tail2
-        ),
-        ButtonDesc(
-            widget3,
-            "incomingCall_video",
-            QT_TRANSLATE_NOOP("voip_pages", "VIDEO").toUtf8().data(),
-            SLOT(_onVideo()),
-            tail3
-        )
+        ButtonDesc(widget1, "incomingCall_hangup", QT_TRANSLATE_NOOP("voip_pages", "DECLINE").toUtf8().data(), SLOT(_onDecline()), tail1),
+        ButtonDesc(widget2, "incomingCall_audio",  QT_TRANSLATE_NOOP("voip_pages", "AUDIO").toUtf8().data(), SLOT(_onAudio()), tail2),
+        ButtonDesc(widget3, "incomingCall_video",  QT_TRANSLATE_NOOP("voip_pages", "VIDEO").toUtf8().data(), SLOT(_onVideo()), tail3)
     };
 
     for (unsigned ix = 0; ix < sizeof buttonsToCreate / sizeof buttonsToCreate[0]; ++ix)
@@ -157,9 +127,7 @@ Ui::IncomingCallControls::IncomingCallControls(QWidget* _parent)
 
         assert(btn && label);
         if (!btn || !label)
-        {
             continue;
-        }
         buttonDesc.tail = btnTail;// std::max(btnTail, labelTail);
 
         QWidget* tmpWidget = getWidget(false);
@@ -176,15 +144,13 @@ Ui::IncomingCallControls::IncomingCallControls(QWidget* _parent)
     int leftSpace  = VOIP_VIDEO_PANEL_BTN_FULL_OFFSET + VOIP_VIDEO_PANEL_BTN_SIZE - (w1Width + w2Width + 1) / 2;
     int rightSpace = VOIP_VIDEO_PANEL_BTN_FULL_OFFSET + VOIP_VIDEO_PANEL_BTN_SIZE - (w2Width + w3Width + 1) / 2;
 
-    int leftPart  = leftSpace + w1Width;
+    int leftPart  = leftSpace  + w1Width;
     int rightPart = rightSpace + w3Width;
 
     layoutTarget->addStretch(1);
 
     if (leftPart < rightPart)
-    {
         layoutTarget->addSpacing(rightPart - leftPart);
-    }
 
     layoutTarget->addWidget(widget1);
     layoutTarget->addSpacing(leftSpace);
@@ -195,9 +161,7 @@ Ui::IncomingCallControls::IncomingCallControls(QWidget* _parent)
     layoutTarget->addWidget(widget3);
 
     if (leftPart > rightPart)
-    {
         layoutTarget->addSpacing(leftPart - rightPart);
-    }
 
     layoutTarget->addStretch(1);
 }
@@ -238,7 +202,6 @@ void Ui::IncomingCallControls::changeEvent(QEvent* _e)
     }
 }
 
-
 Ui::VoipSysPanelHeader::VoipSysPanelHeader(QWidget* _parent, int maxAvalibleWidth)
     : MoveablePanel(_parent)
     , nameAndStatusContainer_(nullptr)
@@ -278,7 +241,6 @@ Ui::VoipSysPanelHeader::VoipSysPanelHeader(QWidget* _parent, int maxAvalibleWidt
     vLayout->addStretch(1);
     vLayout->addLayout(layout);
 
-
     nameAndStatusContainer_ = new NameAndStatusWidget(rootWidget_, Utils::scale_value(18),
         Utils::scale_value(15), Utils::scale_value(maxAvalibleWidth));
     nameAndStatusContainer_->setNameProperty("VoipPanelHeaderText_Name", true);
@@ -294,7 +256,6 @@ Ui::VoipSysPanelHeader::VoipSysPanelHeader(QWidget* _parent, int maxAvalibleWidt
 
 Ui::VoipSysPanelHeader::~VoipSysPanelHeader()
 {
-
 }
 
 void Ui::VoipSysPanelHeader::enterEvent(QEvent* _e)
@@ -312,32 +273,22 @@ void Ui::VoipSysPanelHeader::leaveEvent(QEvent* _e)
 void Ui::VoipSysPanelHeader::setTitle(const char* _s)
 {
     if (nameAndStatusContainer_)
-    {
         nameAndStatusContainer_->setName(_s);
-    }
 }
 
 void Ui::VoipSysPanelHeader::setStatus(const char* _s)
 {
     if (nameAndStatusContainer_)
-    {
         nameAndStatusContainer_->setStatus(_s);
-    }
 }
 
 bool Ui::VoipSysPanelHeader::uiWidgetIsActive() const
 {
     if (rootWidget_)
-    {
         return rootWidget_->isActiveWindow();
-    }
     return false;
 }
-
 
 void Ui::VoipSysPanelHeader::fadeIn(unsigned int duration) {}
 
 void Ui::VoipSysPanelHeader::fadeOut(unsigned int duration) {}
-
-
-

@@ -20,6 +20,8 @@ namespace Emoji
 
 namespace Ui
 {
+    using ResourceMap = std::map<QString, QString>;
+
     class TextEditEx : public QTextBrowser
     {
         Q_OBJECT
@@ -45,28 +47,6 @@ namespace Ui
         void onCursorPositionChanged();
         void onContentsChanged(int _pos, int _removed, int _added);
 
-    private:
-
-        int index_;
-
-        typedef std::map<QString, QString> ResourceMap;
-
-        ResourceMap resourceIndex_;
-        Data::MentionMap mentions_;
-        QFont font_;
-        int prevPos_;
-        bool input_;
-        bool isFitToText_;
-        int add_;
-        int limit_;
-        int prevCursorPos_;
-
-        QString placeholderText_;
-
-        bool isCatchEnter_;
-        bool isCatchNewLine_;
-        int maxHeight_;
-
     public:
 
         TextEditEx(QWidget* _parent, const QFont& _font, const QPalette& _palette, bool _input, bool _isFitToText);
@@ -82,6 +62,9 @@ namespace Ui
 
         void setMentions(Data::MentionMap _mentions);
         const Data::MentionMap& getMentions() const;
+
+        void setFiles(Data::FilesPlaceholderMap _files);
+        const Data::FilesPlaceholderMap& getFiles() const;
 
         void mergeResources(const ResourceMap& _resources);
         void insertEmoji(const Emoji::EmojiCode& _code);
@@ -101,10 +84,19 @@ namespace Ui
         int32_t getTextHeight() const;
         int32_t getTextWidth() const;
 
-        void setCatchEnter(bool _isCatchEnter);
-        void setCatchNewLine(bool _isCatchNewLine);
-        virtual bool catchEnter(const int _modifiers);
-        virtual bool catchNewLine(const int _modifiers);
+        enum class EnterKeyPolicy
+        {
+            None,
+            CatchNewLine,
+            CatchEnter,
+            CatchEnterAndNewLine,
+            FollowSettingsRules,
+        };
+
+        void setEnterKeyPolicy(EnterKeyPolicy _policy);
+
+        bool catchEnter(const int _modifiers);
+        bool catchNewLine(const int _modifiers);
 
         int adjustHeight(int _width);
 
@@ -124,6 +116,8 @@ namespace Ui
         void keyPressEvent(QKeyEvent*) override;
         void inputMethodEvent(QInputMethodEvent*) override;
 
+        virtual QMenu* getContextMenu();
+
         QMimeData* createMimeDataFromSelection() const override;
         void insertFromMimeData(const QMimeData* _source) override;
         void contextMenuEvent(QContextMenuEvent *e) override;
@@ -131,5 +125,26 @@ namespace Ui
     private:
         QString getPlainText(int _from, int _to = -1) const;
         void resetFormat(const int _pos, const int _len);
+
+        bool catchEnterWithSettingsPolicy(const int _modifiers) const;
+        bool catchNewLineWithSettingsPolicy(const int _modifiers) const;
+
+        int index_;
+
+        ResourceMap resourceIndex_;
+        Data::MentionMap mentions_;
+        Data::FilesPlaceholderMap files_;
+        QFont font_;
+        int prevPos_;
+        bool input_;
+        bool isFitToText_;
+        int add_;
+        int limit_;
+        int prevCursorPos_;
+
+        QString placeholderText_;
+
+        int maxHeight_;
+        EnterKeyPolicy enterPolicy_ = EnterKeyPolicy::None;
     };
 }

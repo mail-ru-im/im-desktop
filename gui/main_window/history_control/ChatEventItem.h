@@ -14,6 +14,8 @@ namespace Ui
         class TextUnit;
     }
 
+    class RoundButton;
+
     class ChatEventItem : public MessageItemBase
     {
         Q_OBJECT
@@ -25,11 +27,11 @@ namespace Ui
 
         ~ChatEventItem();
 
-        void clearSelection() override;
+        void clearSelection(bool) override;
 
         QString formatRecentsText() const override;
 
-        MediaType getMediaType() const override;
+        MediaType getMediaType(MediaRequestMode _mode = MediaRequestMode::Chat) const override;
 
         QSize sizeHint() const override;
 
@@ -38,7 +40,7 @@ namespace Ui
         qint64 getId() const override;
         qint64 getPrevId() const override;
 
-        void setQuoteSelection() override;
+        void setQuoteSelection() override {}
 
         void updateStyle() override;
         void updateFonts() override;
@@ -49,6 +51,13 @@ namespace Ui
         int32_t getTime() const override;
 
         int bottomOffset() const override;
+
+    private Q_SLOTS:
+        void chatInfo(qint64, const std::shared_ptr<Data::ChatInfo>&, const int);
+        void modChatAboutResult(qint64, int);
+        void avatarChanged(const QString&);
+        void addAvatarClicked();
+        void addDescriptionClicked();
 
     private:
 
@@ -65,6 +74,17 @@ namespace Ui
 
         QPoint pressPos_;
 
+        QWidget* textPlaceholder_;
+        QWidget* buttonsWidget_;
+        RoundButton* addAvatar_;
+        RoundButton* addDescription_;
+
+        bool buttonsVisible_;
+        bool descriptionButtonVisible_;
+        bool avatarButtonVisible_;
+
+        qint64 modChatAboutSeq_;
+
         int32_t evaluateTextWidth(const int32_t _widgetWidth);
 
         virtual void paintEvent(QPaintEvent* _event) override;
@@ -78,6 +98,10 @@ namespace Ui
         virtual void mouseReleaseEvent(QMouseEvent* _event) override;
 
         void updateSize(const QSize& _size);
+
+        bool hasButtons() const;
+
+        void updateButtons();
     };
 
 }

@@ -8,10 +8,6 @@
         <translation>Houston, sorunumuz var</translation>
     </message>
     <message>
-        <source>Failed to install ICQ</source>
-        <translation>ICQ kurulamadı</translation>
-    </message>
-    <message>
         <source>Error code: </source>
         <translation>Hata kodu: </translation>
     </message>
@@ -23,21 +19,31 @@
         <source>Close</source>
         <translation>Kapat</translation>
     </message>
+</context>
+<context>
+    <name>installer::ui::progress_page</name>
     <message>
-        <source>Failed to install Mail.ru Agent</source>
-        <translation>Mail.ru Agent kurulamadı</translation>
-    </message>
-    <message>
-        <source>Failed to install Messenger</source>
-        <translation>Messenger kurulamadı</translation>
-    </message>
-    <message>
-        <source>Failed to install Myteam</source>
-        <translation>Myteam kurulamadı</translation>
+        <source>High-quality videocalls and screen sharing</source>
+        <translation>Yüksek kaliteli video aramaları ve ekran paylaşımı</translation>
     </message>
 </context>
 <context>
-    <name>installer::ui::main_window</name>
+    <name>installer::ui::start_page</name>
+    <message>
+        <source>Cloud storage of history and files</source>
+        <translation>Geçmişin ve dosyaların bulutta depolanması</translation>
+    </message>
+    <message>
+        <source>Full sync with mobile</source>
+        <translation>Mobil cihazla tam senkronizasyon</translation>
+    </message>
+    <message>
+        <source>Install</source>
+        <translation>Yüklemek</translation>
+    </message>
+</context>
+<context>
+    <name>product</name>
     <message>
         <source>ICQ Setup</source>
         <translation>ICQ kurulum</translation>
@@ -47,58 +53,44 @@
         <translation>Mail.ru Agent kurulum</translation>
     </message>
     <message>
+        <source>Myteam Setup</source>
+        <translation>Myteam kurulum</translation>
+    </message>
+    <message>
         <source>Messenger Setup</source>
         <translation>Messenger kurulum</translation>
     </message>
     <message>
-        <source>Myteam Setup</source>
-        <translation>Myteam kurulum</translation>
-    </message>
-</context>
-<context>
-    <name>installer::ui::progress_page</name>
-    <message>
-        <source>Free video and voice calls</source>
-        <translation>Ücretsiz ses ve görüntü aramalar</translation>
+        <source>Failed to install ICQ</source>
+        <translation>ICQ kurulamadı</translation>
     </message>
     <message>
-        <source>Hundreds of stickers are always free</source>
-        <translation>Yüzlerce çıkartma ve emoji</translation>
+        <source>Failed to install Mail.ru Agent</source>
+        <translation>Mail.ru Agent kurulamadı</translation>
     </message>
     <message>
-        <source>Unlimited and free group chats</source>
-        <translation>Kısıtlama olmaksızın ücretsiz grup sohbetleri</translation>
-    </message>
-</context>
-<context>
-    <name>installer::ui::start_page</name>
-    <message>
-        <source>Welcome to ICQ</source>
-        <translation>ICQ&apos;ye hoş geldiniz</translation>
+        <source>Failed to install Myteam</source>
+        <translation>Myteam kurulamadı</translation>
     </message>
     <message>
-        <source>INSTALL</source>
-        <translation>YÜKLE</translation>
+        <source>Failed to install Messenger</source>
+        <translation>Messenger kurulamadı</translation>
     </message>
     <message>
-        <source>Make Mail.Ru my homepage and add bookmarks in the browser.</source>
-        <translation type="unfinished"></translation>
+        <source>Mail.ru Agent for desktop is</source>
+        <translation>Masaüstü için Mail.ru Agent</translation>
     </message>
     <message>
-        <source>Make Mail.Ru Search my default search engine.</source>
-        <translation type="unfinished"></translation>
+        <source>Myteam for desktop is</source>
+        <translation>Masaüstü için Myteam</translation>
     </message>
     <message>
-        <source>Welcome to Mail.ru Agent</source>
-        <translation>Mail.ru Agent&apos;a hoş geldiniz</translation>
+        <source>Messenger for desktop is</source>
+        <translation>Masaüstü için Messenger</translation>
     </message>
     <message>
-        <source>Welcome to Messenger</source>
-        <translation>Messenger&apos;a hoş geldiniz</translation>
-    </message>
-    <message>
-        <source>Welcome to Myteam</source>
-        <translation>Myteam&apos;ye hoş geldiniz</translation>
+        <source>ICQ for desktop is</source>
+        <translation>Masaüstü için ICQ</translation>
     </message>
 </context>
 <context>

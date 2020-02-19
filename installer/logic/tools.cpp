@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "tools.h"
+#include "../../common.shared/config/config.h"
 
 #ifdef _WIN32
 #include <windows.h>
@@ -10,11 +11,6 @@ namespace installer
 {
     namespace logic
     {
-        const QString product_display_name = build::get_product_variant("ICQ", "Mail.ru Agent", "Myteam", "Messenger");
-        const QString product_menu_folder = build::get_product_variant("ICQ", "Mail.ru", "Myteam", "Messenger");
-        const QString product_exe_name = build::get_product_variant("icq.exe", "magent.exe", "myteam.exe", "messenger.exe");
-        const QString company_name = build::get_product_variant("ICQ", "Mail.ru", "Mail.ru", "Mail.ru");
-
         QString install_folder;
         QString product_folder;
         QString updates_folder;
@@ -30,7 +26,7 @@ namespace installer
                 folder = QString::fromUtf16(reinterpret_cast<const unsigned short*>(buffer));
 #endif //_WIN32
 
-            folder = folder.replace('\\', '/');
+            folder = folder.replace(ql1c('\\'), ql1c('/'));
 
             return folder;
         }
@@ -39,7 +35,8 @@ namespace installer
         {
             if (product_folder.isEmpty())
             {
-                product_folder = get_appdata_folder() + "/" + build::get_product_variant(product_path_icq_a, product_path_agent_a, product_path_biz_a, product_path_dit_a);
+                const auto path = config::get().string(config::values::product_path);
+                product_folder = get_appdata_folder() % ql1c('/') % QString::fromUtf8(path.data(), path.size());
             }
 
             return product_folder;
@@ -49,7 +46,7 @@ namespace installer
         {
             if (updates_folder.isEmpty())
             {
-                updates_folder = get_product_folder() + "/" + updates_folder_short;
+                updates_folder = get_product_folder() % ql1c('/') % updates_folder_short;
             }
 
             return updates_folder;
@@ -59,60 +56,71 @@ namespace installer
         {
             if (install_folder.isEmpty())
             {
-                install_folder = get_product_folder() + "/bin";
+                install_folder = get_product_folder() % ql1s("/bin");
             }
 
             return install_folder;
         }
 
+        QString get_installer_tmp_folder()
+        {
+            return get_product_folder() % ql1s("/install");
+        }
+
         QString get_icq_exe()
         {
-            return (get_install_folder() + "/" + product_exe_name);
+            return get_install_folder() % ql1c('/') % get_icq_exe_short();
         }
 
         QString get_icq_exe_short()
         {
-            return (product_exe_name);
+            const auto product = config::get().string(config::values::installer_product_exe_win);
+            return QString::fromUtf8(product.data(), product.size());
         }
 
         QString get_installer_exe_short()
         {
-            return build::get_product_variant(installer_exe_name_icq, installer_exe_name_agent, installer_exe_name_biz, installer_exe_name_dit);
+            const auto exe = config::get().string(config::values::installer_exe_win);
+            return QString::fromUtf8(exe.data(), exe.size());
         }
 
         QString get_installer_exe()
         {
-            return (get_install_folder() + "/" + get_installer_exe_short());
+            return get_install_folder() % ql1c('/') % get_installer_exe_short();
         }
 
         QString get_exported_account_folder()
         {
-            return (get_product_folder() + "/0001/key");
+            return get_product_folder() % ql1s("/0001/key");
         }
 
         QString get_exported_settings_folder()
         {
-            return (get_product_folder() + "/settings");
+            return get_product_folder() % ql1s("/settings");
         }
 
         QString get_product_name()
         {
-            return build::get_product_variant(product_name_icq, product_name_agent, product_name_biz, product_name_dit);
+            const auto product = config::get().string(config::values::product_name_short);
+            return QString::fromUtf8(product.data(), product.size()) % ql1s(".desktop");
         }
 
         QString get_product_display_name()
         {
-            return product_display_name;
+            const auto product = config::get().string(config::values::product_name_full);
+            return QString::fromUtf8(product.data(), product.size());
         }
 
         QString get_product_menu_folder()
         {
-            return product_menu_folder;
+            const auto menu = config::get().string(config::values::installer_menu_folder_win);
+            return QString::fromUtf8(menu.data(), menu.size());
         }
 
         QString get_company_name()
         {
-            return company_name;
+            const auto company_name = config::get().string(config::values::company_name);
+            return QString::fromUtf8(company_name.data(), company_name.size());
         }
 
         QString get_installed_product_path()
@@ -122,7 +130,7 @@ namespace installer
 #ifdef _WIN32
 
             CRegKey key;
-            if (key.Open(HKEY_CURRENT_USER, (LPCTSTR)(QString("Software\\") + get_product_name()).utf16(), KEY_READ) == ERROR_SUCCESS)
+            if (key.Open(HKEY_CURRENT_USER, (LPCTSTR)(QString(ql1s("Software\\") % get_product_name()).utf16()), KEY_READ) == ERROR_SUCCESS)
             {
                 wchar_t registry_path[1025];
                 DWORD needed = 1024;
@@ -153,14 +161,58 @@ namespace installer
             return &translator;
         }
 
-        const wchar_t* get_crossprocess_mutex_name()
+        std::string_view get_crossprocess_mutex_name()
         {
-            return build::get_product_variant(crossprocess_mutex_name_icq, crossprocess_mutex_name_agent, crossprocess_mutex_name_biz, crossprocess_mutex_name_dit);
+            return config::get().string(config::values::main_instance_mutex_win);
         }
 
         QString get_crossprocess_pipe_name()
         {
-            return build::get_product_variant(crossprocess_pipe_name_icq, crossprocess_pipe_name_agent, crossprocess_pipe_name_biz, crossprocess_pipe_name_dit);
+            const auto name = config::get().string(config::values::crossprocess_pipe);
+            return QString::fromUtf8(name.data(), name.size());
         }
     }
+}
+
+void installer::draw::animateButton(QWidget * _button, bool _state, int _minWidth, int _maxWidth)
+{
+    const auto startOpacity = _state ? 0.0 : 1.0;
+    const auto endOpacity = _state ? 1.0 : 0.0;
+
+    auto effect = new ButtonEffect(_button, _minWidth, _maxWidth);
+    effect->setOpacity(startOpacity);
+    _button->setGraphicsEffect(effect);
+    _button->setVisible(true);
+
+    auto opacityAnim = new QPropertyAnimation(effect, "opacity");
+    opacityAnim->setDuration(std::chrono::milliseconds(animationDuration).count());
+    opacityAnim->setEasingCurve(QEasingCurve::InOutQuad);
+    opacityAnim->setStartValue(startOpacity);
+    opacityAnim->setEndValue(endOpacity);
+    QObject::connect(opacityAnim, &QPropertyAnimation::finished, _button, [_button, _state, effect]()
+    {
+        if (_button->graphicsEffect() == effect)
+        {
+            _button->setVisible(_state);
+            _button->setGraphicsEffect(nullptr);
+            _button->update();
+        }
+    });
+    opacityAnim->start(QAbstractAnimation::DeleteWhenStopped);
+}
+
+void installer::draw::ButtonEffect::draw(QPainter * _painter)
+{
+    const auto r = boundingRect();
+    const auto val = opacity();
+    const auto range = maxWidth_ - minWidth_;
+    const auto iconWidth = val * range + minWidth_;
+    QRectF pmRect(0, 0, iconWidth, iconWidth);
+    pmRect.moveCenter(r.center());
+
+    _painter->setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
+    _painter->setOpacity(val);
+
+    const QPixmap pixmap = sourcePixmap(Qt::DeviceCoordinates);
+    _painter->drawPixmap(pmRect, pixmap, pixmap.rect());
 }

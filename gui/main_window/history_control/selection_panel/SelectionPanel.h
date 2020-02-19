@@ -2,23 +2,22 @@
 
 namespace Ui
 {
-    class MessagesScrollArea;
+    class ClickableTextWidget;
+    class CustomButton;
 
     class SelectionPanel : public QFrame
     {
         Q_OBJECT
 
-    private Q_SLOTS:
-        void onForwardClicked();
-        void onCopyClicked();
-
     public:
-        SelectionPanel(QWidget* _parent, MessagesScrollArea* _messages);
+        SelectionPanel(QWidget* _parent);
+
+    private Q_SLOTS:
+        void setSelectedCount(int _count);
+        void multiSelectCurrentElementChanged();
 
     private:
-        void closePanel();
-
-    private:
-        MessagesScrollArea* messages_;
+        ClickableTextWidget* label_;
+        CustomButton* cancel_;
     };
 }

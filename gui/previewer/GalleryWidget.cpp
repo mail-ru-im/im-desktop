@@ -1,6 +1,7 @@
 #include "stdafx.h"
 
 #include "../controls/CustomButton.h"
+#include "../controls/ContextMenu.h"
 #include "../main_window/ContactDialog.h"
 #include "../main_window/MainPage.h"
 #include "../main_window/MainWindow.h"
@@ -19,8 +20,6 @@
 #include "../main_window/GroupChatOperations.h"
 #include "../themes/ResourceIds.h"
 #include "../my_info.h"
-
-#include "boost/range/adaptor/reversed.hpp"
 
 #include "Drawable.h"
 #include "DownloadWidget.h"
@@ -59,13 +58,10 @@ namespace
         return Utils::scale_value(162);
     }
 
-    static const Ui::ActionButtonResource::ResourceSet DownloadButtonResources(
-        Themes::PixmapResourceId::PreviewerReload,
-        Themes::PixmapResourceId::PreviewerReloadHover,
-        Themes::PixmapResourceId::PreviewerReloadHover,
-        Themes::PixmapResourceId::FileSharingMediaCancel,
-        Themes::PixmapResourceId::FileSharingMediaCancel,
-        Themes::PixmapResourceId::FileSharingMediaCancel);
+    constexpr bool grabKeyboardSwitchEnabled() noexcept
+    {
+        return platform::is_linux();
+    }
 }
 
 using namespace Previewer;
@@ -125,6 +121,10 @@ GalleryWidget::GalleryWidget(QWidget* _parent)
     connect(imageViewer_, &ImageViewerWidget::clicked, this, &GalleryWidget::clicked);
     connect(imageViewer_, &ImageViewerWidget::fullscreenToggled, this, &GalleryWidget::onFullscreenToggled);
     connect(imageViewer_, &ImageViewerWidget::playClicked, this, &GalleryWidget::onPlayClicked);
+    connect(imageViewer_, &ImageViewerWidget::rightClicked, this, [this]()
+    {
+        trackMenu(QCursor::pos());
+    });
 
     QVBoxLayout* layout = Utils::emptyVLayout();
     Testing::setAccessibleName(imageViewer_, qsl("AS gw imageViewer_"));
@@ -148,6 +148,15 @@ GalleryWidget::GalleryWidget(QWidget* _parent)
     delayTimer_->setSingleShot(true);
     connect(delayTimer_, &QTimer::timeout, this, &GalleryWidget::onDelayTimeout);
 
+    contextMenuShowTimer_ = new QTimer(this);
+    contextMenuShowTimer_->setSingleShot(true);
+    contextMenuShowTimer_->setInterval(QApplication::doubleClickInterval());
+
+    QObject::connect(contextMenuShowTimer_, &QTimer::timeout, this, [this]()
+    {
+        trackMenu(contexMenuPos_, true);
+    });
+
     progressButton_ = new Ui::ActionButtonWidget(Ui::ActionButtonResource::ResourceSet::Play_, this);
     progressButton_->hide();
 
@@ -163,10 +172,14 @@ GalleryWidget::GalleryWidget(QWidget* _parent)
         contentLoader_->startCurrentItemLoading();
     });
 
+    if constexpr (grabKeyboardSwitchEnabled())
+        qApp->installEventFilter(this);
 }
 
 GalleryWidget::~GalleryWidget()
 {
+    if constexpr (grabKeyboardSwitchEnabled())
+        qApp->removeEventFilter(this);
 }
 
 void GalleryWidget::openGallery(const QString &_aimId, const QString &_link, int64_t _msgId, Ui::DialogPlayer* _attachedPlayer)
@@ -205,6 +218,7 @@ void GalleryWidget::closeGallery()
     releaseKeyboard();
 
     Ui::ToastManager::instance()->hideToast();
+    emit closed();
 
     // it fixes https://jira.mail.ru/browse/IMDESKTOP-8547, which is most propably caused by https://bugreports.qt.io/browse/QTBUG-49238
     QMetaObject::invokeMethod(this, "deleteLater", Qt::QueuedConnection);
@@ -241,6 +255,83 @@ void GalleryWidget::escape()
     }
 }
 
+template <typename ... Args>
+void GalleryWidget::addAction(int action, Ui::ContextMenu* menu, Args&& ...args)
+{
+    const auto type = GalleryFrame::Action(action);
+    auto a = menu->addActionWithIcon(GalleryFrame::actionIconPath(type), GalleryFrame::actionText(type), {});
+    QObject::connect(a, &QAction::triggered, std::forward<Args>(args)...);
+}
+
+void GalleryWidget::trackMenu(const QPoint& _globalPos, const bool _isAsync)
+{
+    struct WidgetToRestore
+    {
+        QPointer<QWidget> widget;
+        std::function<void()> restore;
+    };
+
+    auto prepareWidget = [](auto w)
+    {
+        if (w)
+        {
+            if (!w->testAttribute(Qt::WA_TransparentForMouseEvents))
+            {
+                w->setAttribute(Qt::WA_TransparentForMouseEvents, true);
+                return WidgetToRestore{ w, [w]() { w->setAttribute(Qt::WA_TransparentForMouseEvents, false); } };
+            }
+        }
+        return WidgetToRestore{ nullptr };
+    };
+
+    auto parent = imageViewer_->getParentForContextMenu();
+
+    auto parentW = prepareWidget(parent);
+    auto mainWindowW = prepareWidget(Utils::InterConnector::instance().getMainWindow());
+
+    auto menu = new Ui::ContextMenu(parent, Ui::ContextMenu::Color::Dark);
+    menu->setShowAsync(_isAsync);
+    Testing::setAccessibleName(menu, qsl("AS GalleryWidget menu"));
+
+    const auto actions = controlsWidget_->menuActions();
+
+    if (const auto type = GalleryFrame::Action::GoTo; actions & type)
+        addAction(type, menu, this, [this]() { onGoToMessage(); closeGallery(); }, Qt::QueuedConnection);
+
+    if (const auto type = GalleryFrame::Action::Copy; actions & type)
+        addAction(type, menu, this, &GalleryWidget::onCopy, Qt::QueuedConnection);
+
+    if (const auto type = GalleryFrame::Action::Forward; actions & type)
+        addAction(type, menu, this, [this]() { onForward(); closeGallery(); }, Qt::QueuedConnection);
+
+    if (const auto type = GalleryFrame::Action::SaveAs; actions & type)
+        addAction(type, menu, this, &GalleryWidget::onSaveAs, Qt::QueuedConnection);
+
+    connect(menu, &Ui::ContextMenu::aboutToHide, this, [parentW, mainWindowW]()
+    {
+        if (parentW.widget && parentW.restore)
+            parentW.restore();
+        if (mainWindowW.widget && mainWindowW.restore)
+            mainWindowW.restore();
+    }, Qt::QueuedConnection);
+    connect(menu, &Ui::ContextMenu::aboutToHide, menu, &Ui::ContextMenu::deleteLater, Qt::QueuedConnection);
+    connect(this, &GalleryWidget::closeContextMenu, menu, &Ui::ContextMenu::close);
+    connect(imageViewer_, &ImageViewerWidget::zoomChanged, menu, &Ui::ContextMenu::close);
+    connect(new QShortcut(Qt::CTRL + Qt::Key_0, menu), &QShortcut::activated, this, &GalleryWidget::onResetZoom);
+    connect(new QShortcut(Qt::Key_Escape, menu), &QShortcut::activated, menu, &Ui::ContextMenu::close);
+
+    menu->setWheelCallback([this, guard = QPointer(this)](QWheelEvent* _event)
+    {
+        if (!guard)
+            return;
+        imageViewer_->tryScale(_event);
+    });
+
+
+    contextMenu_ = menu;
+    menu->popup(_globalPos);
+}
+
 void GalleryWidget::moveToScreen()
 {
     const auto screen = Utils::InterConnector::instance().getMainWindow()->getScreen();
@@ -260,7 +351,12 @@ QString GalleryWidget::getInfoText(int _n, int _total) const
 
 void GalleryWidget::mousePressEvent(QMouseEvent* _event)
 {
-    if (_event->button() == Qt::LeftButton && !controlsWidget_->isCaptionExpanded())
+    if (contextMenu_)
+    {
+        contextMenu_->close();
+        contextMenu_ = {};
+    }
+    else if (_event->button() == Qt::LeftButton && !controlsWidget_->isCaptionExpanded())
     {
         closeGallery();
     }
@@ -271,6 +367,26 @@ void GalleryWidget::mouseReleaseEvent(QMouseEvent* _event)
     if (_event->button() == Qt::LeftButton)
     {
         clicked();
+    }
+    else if (_event->button() == Qt::RightButton)
+    {
+        if (std::exchange(skipNextMouseRelease_, false))
+            return;
+        if (!controlsWidget_->rect().contains(controlsWidget_->mapFromGlobal(_event->globalPos())) && imageViewer_->viewerRect().contains(imageViewer_->mapFromGlobal(_event->globalPos())))
+        {
+            contexMenuPos_ = _event->globalPos();
+            if (!contextMenuShowTimer_->isActive())
+                contextMenuShowTimer_->start();
+        }
+    }
+}
+
+void GalleryWidget::mouseDoubleClickEvent(QMouseEvent* _event)
+{
+    if (_event->button() == Qt::RightButton)
+    {
+        skipNextMouseRelease_ = true;
+        contextMenuShowTimer_->stop();
     }
 }
 
@@ -322,6 +438,7 @@ bool GalleryWidget::event(QEvent* _event)
         auto ge = static_cast<QGestureEvent*>(_event);
         if (QGesture *pinch = ge->gesture(Qt::PinchGesture))
         {
+            emit closeContextMenu(QPrivateSignal());
             auto pg = static_cast<QPinchGesture *>(pinch);
             imageViewer_->scaleBy(pg->scaleFactor(), QCursor::pos());
             return true;
@@ -331,22 +448,36 @@ bool GalleryWidget::event(QEvent* _event)
     return QWidget::event(_event);
 }
 
+bool GalleryWidget::eventFilter(QObject* _object, QEvent* _event)
+{
+    if (_event->type() == QEvent::MouseButtonPress)
+    {
+        resumeGrabKeyboard();
+        activateWindow();
+    }
+    else if (_event->type() == QEvent::ActivationChange)
+    {
+        if (isActiveWindow())
+            resumeGrabKeyboard();
+        else
+            releaseKeyboard();
+    }
+
+    return QWidget::eventFilter(_object, _event);
+}
+
 void GalleryWidget::updateControls()
 {
     updateNavButtons();
-
-    auto currentItem = contentLoader_->currentItem();
-
-    if (currentItem)
+    if (auto currentItem = contentLoader_->currentItem(); currentItem)
     {
         GalleryFrame::Actions menuActions;
         if (currentItem->msg())
         {
-            auto sender = currentItem->sender();
-            if (!sender.isEmpty())
+            if (const auto sender = currentItem->sender(); !sender.isEmpty())
                 controlsWidget_->setAuthorText(Logic::GetFriendlyContainer()->getFriendly(sender));
 
-            auto t = QDateTime::fromTime_t(currentItem->time());
+            const auto t = QDateTime::fromTime_t(currentItem->time());
             auto dateStr = t.date().toString(qsl("dd.MM.yyyy"));
             auto timeStr = t.toString(qsl("hh:mm"));
 
@@ -362,8 +493,8 @@ void GalleryWidget::updateControls()
             controlsWidget_->setAuthorAndDateVisible(false);
         }
 
-        auto index = contentLoader_->currentIndex();
-        auto total = contentLoader_->totalCount();
+        const auto index = contentLoader_->currentIndex();
+        const auto total = contentLoader_->totalCount();
         if (index > 0 && total > 0)
         {
             controlsWidget_->setCounterText(getInfoText(index, total));
@@ -528,16 +659,19 @@ void GalleryWidget::updateNavButtons()
 
 void GalleryWidget::onZoomIn()
 {
+    emit closeContextMenu(QPrivateSignal());
     imageViewer_->zoomIn();
 }
 
 void GalleryWidget::onZoomOut()
 {
+    emit closeContextMenu(QPrivateSignal());
     imageViewer_->zoomOut();
 }
 
 void GalleryWidget::onResetZoom()
 {
+    emit closeContextMenu(QPrivateSignal());
     imageViewer_->resetZoom();
     controlsWidget_->setZoomInEnabled(true);
     controlsWidget_->setZoomOutEnabled(true);
@@ -617,7 +751,7 @@ void GalleryWidget::onGoToMessage()
     const auto msgId = item->msg();
     if (msgId > 0)
     {
-        Logic::getContactListModel()->setCurrent(aimId_, msgId, true, nullptr, msgId);
+        Logic::getContactListModel()->setCurrent(aimId_, msgId, true, nullptr);
         escape();
     }
 
@@ -715,6 +849,7 @@ void GalleryWidget::prev()
 {
     assert(hasPrev());
 
+    emit closeContextMenu(QPrivateSignal());
     showProgress();
 
     contentLoader_->prev();
@@ -732,6 +867,7 @@ void GalleryWidget::next()
 {
     assert(hasNext());
 
+    emit closeContextMenu(QPrivateSignal());
     showProgress();
 
     contentLoader_->next();
@@ -826,7 +962,7 @@ void GalleryWidget::init()
 void GalleryWidget::bringToBack()
 {
 #ifdef __APPLE__
-    MacSupport::showNSModalPanelWindowLevel(this);
+    MacSupport::showNSFloatingWindowLevel(this);
     imageViewer_->bringToBack();
 #endif
 }
@@ -845,6 +981,12 @@ void GalleryWidget::connectContainerEvents()
     {
         onWheelEvent(_delta);
     });
+}
+
+void GalleryWidget::resumeGrabKeyboard()
+{
+    if (keyboardGrabber() != this)
+        grabKeyboard();
 }
 
 NavigationButton::NavigationButton(QWidget *_parent)

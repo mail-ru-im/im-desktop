@@ -12,7 +12,7 @@ namespace Ui
         void wallpaperChanged(QPrivateSignal) const;
 
     public:
-        BackgroundWidget(QWidget* _parent);
+        BackgroundWidget(QWidget* _parent, bool _isMultiselectEnabled = true);
 
         void setImage(const QPixmap& _pixmap, const bool _tiling);
         void setColor(const QColor& _color);
@@ -27,6 +27,7 @@ namespace Ui
 
     private:
         bool tiling_;
+        bool isMultiselectEnabled_;
         QPixmap wallpaper_;
         QColor bgColor_;
         QRect viewRect_;

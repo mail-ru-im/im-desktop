@@ -395,12 +395,12 @@ namespace Ui
         _layout->addWidget(titleWidget);
 
         auto cmbBox = new QComboBox(_parent);
-        cmbBox->setFixedWidth(Utils::scale_value(280));
-        cmbBox->setStyle(new ComboboxProxyStyle);
+        Utils::SetProxyStyle(cmbBox, new ComboboxProxyStyle());
         Utils::ApplyStyle(cmbBox, Styling::getParameters().getComboBoxQss());
         cmbBox->setFont(Fonts::appFontScaled(16));
         cmbBox->setMaxVisibleItems(6);
         cmbBox->setCursor(Qt::PointingHandCursor);
+        cmbBox->setFixedWidth(Utils::scale_value(280));
         Testing::setAccessibleName(cmbBox, qsl("AS gc cmbBoxProblems"));
 
         QPixmap pixmap(1, Utils::scale_value(50));
@@ -429,22 +429,20 @@ namespace Ui
         return cmbBox;
     }
 
-    SettingsSlider::SettingsSlider(Qt::Orientation _orientation, QWidget* _parent/* = nullptr*/):
-        QSlider(_orientation, _parent)
+    SettingsSlider::SettingsSlider(Qt::Orientation _orientation, QWidget* _parent)
+        : QSlider(_orientation, _parent)
         , hovered_(false)
         , pressed_(false)
     {
-        auto icon = qsl(":/controls/selectbar");
+        const auto icon = qsl(":/controls/selectbar");
         handleNormal_ = Utils::renderSvg(icon, QSize(Utils::scale_value(8), Utils::scale_value(24)), Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY));
         handleHovered_ = Utils::renderSvg(icon, QSize(Utils::scale_value(8), Utils::scale_value(24)), Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_HOVER));
         handlePressed_ = Utils::renderSvg(icon, QSize(Utils::scale_value(8), Utils::scale_value(24)), Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_ACTIVE));
-        setStyle(new SliderProxyStyle);
+
+        Utils::SetProxyStyle(this, new SliderProxyStyle());
     }
 
-    SettingsSlider::~SettingsSlider()
-    {
-        //
-    }
+    SettingsSlider::~SettingsSlider() = default;
 
     void SettingsSlider::mousePressEvent(QMouseEvent * _event)
     {
@@ -494,9 +492,7 @@ namespace Ui
     {
         // Disable mouse wheel event for sliders
         if (parent())
-        {
             parent()->event(_e);
-        }
     }
 
     void SettingsSlider::paintEvent(QPaintEvent * _event)

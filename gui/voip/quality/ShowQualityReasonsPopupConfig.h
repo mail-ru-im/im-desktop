@@ -1,5 +1,4 @@
 #pragma once
-
 #include <QString>
 #include <vector>
 #include "utils/gui_coll_helper.h"

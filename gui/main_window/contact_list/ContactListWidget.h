@@ -13,9 +13,12 @@ namespace Logic
 
 namespace Ui
 {
+    using highlightsV = std::vector<QString>;
+
     class FocusableListView;
     class SearchWidget;
     class ContextMenu;
+    class Placeholder;
 
     class ContactListWidget : public QWidget
     {
@@ -23,7 +26,7 @@ namespace Ui
 
     Q_SIGNALS:
         void searchEnd();
-        void itemSelected(const QString& _aimid, qint64 _msgid, qint64 _quoteid);
+        void itemSelected(const QString& _aimid, qint64 _msgid, const highlightsV& _highlights);
         void liveChatSelected(const QString& _aimid);
         void itemClicked(const QString&);
         void groupClicked(int);
@@ -31,6 +34,7 @@ namespace Ui
         void searchSuggestSelected(const QString& _pattern);
         void searchSuggestRemoved(const QString& _contact, const QString& _pattern);
         void clearSearchSelection();
+        void forceSearchClear(const bool _force);
 
         //sidebar
         void selected(const QString&);
@@ -79,7 +83,7 @@ namespace Ui
         void searchDownPressed();
         void selectionChanged(const QModelIndex &);
         void select(const QString&);
-        void select(const QString&, const qint64 _message_id, const qint64 _quote_id, Logic::UpdateChatSelection _mode);
+        void select(const QString&, const qint64 _message_id, const highlightsV& _highlights, Logic::UpdateChatSelection _mode);
         void showContactsPopupMenu(const QString& aimId, bool _is_chat);
 
     private Q_SLOTS:
@@ -122,6 +126,8 @@ namespace Ui
 
         void selectCurrentSearchCategory();
 
+        void sendGlobalSearchResultStats();
+
         using SearchHeaders = std::vector<std::pair<SearchCategory, QModelIndex>>;
         SearchHeaders getCurrentCategories() const;
 
@@ -141,7 +147,7 @@ namespace Ui
         Logic::AbstractItemDelegateWithRegim* clDelegate_;
         Logic::AbstractItemDelegateWithRegim* searchDelegate_;
 
-        QWidget* contactsPlaceholder_;
+        Placeholder* contactsPlaceholder_;
         QWidget* noSearchResults_;
         QWidget* searchSpinner_;
         QWidget* viewContainer_;
@@ -156,7 +162,9 @@ namespace Ui
 
         QString searchDialogContact_;
         bool noSearchResultsShown_;
-        bool  initial_;
+        bool searchResultsRcvdFirst_;
+        bool searchResultsStatsSent_;
+        bool initial_;
         bool tapAndHold_;
     };
 }

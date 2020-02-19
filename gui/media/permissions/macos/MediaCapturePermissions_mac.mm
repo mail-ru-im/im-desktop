@@ -39,6 +39,33 @@ namespace
 
         return media::permissions::Permission::Allowed;
     }
+
+    media::permissions::Permission isScreenCaptureAllowed()
+    {
+        if (@available(macOS 10.15, *))
+        {
+            CFArrayRef windowList = CGWindowListCopyWindowInfo(kCGWindowListOptionOnScreenOnly, kCGNullWindowID);
+            NSUInteger numberOfWindows = CFArrayGetCount(windowList);
+            NSUInteger numberOfWindowsWithName = 0;
+            for (int idx = 0; idx < numberOfWindows; ++idx) {
+                NSDictionary *windowInfo = (NSDictionary *)CFArrayGetValueAtIndex(windowList, idx);
+                NSString *windowName = windowInfo[(id)kCGWindowName];
+                if (windowName) {
+                    numberOfWindowsWithName++;
+                } else {
+                    //no kCGWindowName detected -> not enabled
+                    break; //breaking early, numberOfWindowsWithName not increased
+                }
+
+            }
+            CFRelease(windowList);
+
+            if (numberOfWindows != numberOfWindowsWithName)
+                return media::permissions::Permission::Denied;
+        }
+
+        return media::permissions::Permission::Allowed;
+    }
 }
 
 constexpr auto getMediaType(media::permissions::DeviceType type) noexcept
@@ -54,12 +81,27 @@ namespace media::permissions
 {
     Permission checkPermission(DeviceType type)
     {
+        if (type == DeviceType::Screen)
+            return isScreenCaptureAllowed();
+
         return MediaAuthorizationStatus(getMediaType(type));
     }
 
     void requestPermission(DeviceType type, PermissionCallback _callback)
     {
-        if (@available(macOS 10.14, *))
+        if (type == DeviceType::Screen)
+        {
+            if (@available(macOS 10.15, *))
+            {
+                CGDisplayStreamRef stream = CGDisplayStreamCreate(CGMainDisplayID(), 1, 1, kCVPixelFormatType_32BGRA, nil, ^(CGDisplayStreamFrameStatus status, uint64_t displayTime, IOSurfaceRef frameSurface, CGDisplayStreamUpdateRef updateRef) {});
+                if (stream)
+                    CFRelease(stream);
+            }
+
+            if (_callback)
+                _callback(true);
+        }
+        else if (@available(macOS 10.14, *))
         {
             AVCaptureDevice* target = [AVCaptureDevice class];
             SEL selector = @selector(requestAccessForMediaType:completionHandler:);
@@ -92,6 +134,9 @@ namespace media::permissions
             break;
         case DeviceType::Camera:
             [[NSWorkspace sharedWorkspace] openURL:[NSURL URLWithString:@"x-apple.systempreferences:com.apple.preference.security?Privacy_Camera"]];
+            break;
+        case DeviceType::Screen:
+            [[NSWorkspace sharedWorkspace] openURL:[NSURL URLWithString:@"x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture"]];
             break;
         }
     }

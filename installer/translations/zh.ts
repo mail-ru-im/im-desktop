@@ -8,10 +8,6 @@
         <translation>休士顿, 我们摊上事了</translation>
     </message>
     <message>
-        <source>Failed to install ICQ</source>
-        <translation>ICQ安装失败</translation>
-    </message>
-    <message>
         <source>Error code: </source>
         <translation>错误代码： </translation>
     </message>
@@ -23,21 +19,31 @@
         <source>Close</source>
         <translation>关闭</translation>
     </message>
+</context>
+<context>
+    <name>installer::ui::progress_page</name>
     <message>
-        <source>Failed to install Mail.ru Agent</source>
-        <translation>Mail.ru Agent 安装失败</translation>
-    </message>
-    <message>
-        <source>Failed to install Messenger</source>
-        <translation>Messenger  安装失败</translation>
-    </message>
-    <message>
-        <source>Failed to install Myteam</source>
-        <translation>Myteam安装失败</translation>
+        <source>High-quality videocalls and screen sharing</source>
+        <translation>高质量的视频通话和屏幕共享</translation>
     </message>
 </context>
 <context>
-    <name>installer::ui::main_window</name>
+    <name>installer::ui::start_page</name>
+    <message>
+        <source>Cloud storage of history and files</source>
+        <translation>云存储历史和文件</translation>
+    </message>
+    <message>
+        <source>Full sync with mobile</source>
+        <translation>与手机完全同步</translation>
+    </message>
+    <message>
+        <source>Install</source>
+        <translation>安装</translation>
+    </message>
+</context>
+<context>
+    <name>product</name>
     <message>
         <source>ICQ Setup</source>
         <translation>ICQ 安装</translation>
@@ -47,58 +53,44 @@
         <translation>Mail.ru Agent 安装</translation>
     </message>
     <message>
+        <source>Myteam Setup</source>
+        <translation>Myteam 安装</translation>
+    </message>
+    <message>
         <source>Messenger Setup</source>
         <translation>Messenger 安装</translation>
     </message>
     <message>
-        <source>Myteam Setup</source>
-        <translation>Myteam 安装</translation>
-    </message>
-</context>
-<context>
-    <name>installer::ui::progress_page</name>
-    <message>
-        <source>Free video and voice calls</source>
-        <translation>免费语音通话和视频通话</translation>
+        <source>Failed to install ICQ</source>
+        <translation>ICQ安装失败</translation>
     </message>
     <message>
-        <source>Hundreds of stickers are always free</source>
-        <translation>数百种免费贴纸和表情</translation>
+        <source>Failed to install Mail.ru Agent</source>
+        <translation>Mail.ru Agent 安装失败</translation>
     </message>
     <message>
-        <source>Unlimited and free group chats</source>
-        <translation>没有限制的免费群聊</translation>
-    </message>
-</context>
-<context>
-    <name>installer::ui::start_page</name>
-    <message>
-        <source>Welcome to ICQ</source>
-        <translation>欢迎登录ICQ</translation>
+        <source>Failed to install Myteam</source>
+        <translation>Myteam安装失败</translation>
     </message>
     <message>
-        <source>INSTALL</source>
-        <translation>安装</translation>
+        <source>Failed to install Messenger</source>
+        <translation>Messenger  安装失败</translation>
     </message>
     <message>
-        <source>Make Mail.Ru my homepage and add bookmarks in the browser.</source>
-        <translation type="unfinished"></translation>
+        <source>Mail.ru Agent for desktop is</source>
+        <translation>桌面的Mail.ru Agent为</translation>
     </message>
     <message>
-        <source>Make Mail.Ru Search my default search engine.</source>
-        <translation type="unfinished"></translation>
+        <source>Myteam for desktop is</source>
+        <translation>桌面的Myteam为</translation>
     </message>
     <message>
-        <source>Welcome to Mail.ru Agent</source>
-        <translation>欢迎使用 Mail.ru Agent</translation>
+        <source>Messenger for desktop is</source>
+        <translation>桌面的Messenger为</translation>
     </message>
     <message>
-        <source>Welcome to Messenger</source>
-        <translation>欢迎使用 Messenger</translation>
-    </message>
-    <message>
-        <source>Welcome to Myteam</source>
-        <translation>欢迎登录Myteam</translation>
+        <source>ICQ for desktop is</source>
+        <translation>桌面的ICQ为</translation>
     </message>
 </context>
 <context>

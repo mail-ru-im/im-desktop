@@ -8,14 +8,6 @@
 
 namespace core
 {
-    class ithread_callback
-    {
-    public:
-        ithread_callback() {}
-        virtual ~ithread_callback() {}
-        virtual void on_thread_shutdown() = 0;
-    };
-
     class async_task
     {
     public:
@@ -67,15 +59,15 @@ namespace core
     class async_executer : core::tools::threadpool
     {
     public:
-        explicit async_executer(const std::string_view _name, size_t _count = 1);
+        explicit async_executer(const std::string_view _name, size_t _count = 1, bool _task_trace = false);
         virtual ~async_executer();
 
-        virtual std::shared_ptr<async_task_handlers> run_async_task(std::shared_ptr<async_task> task);
+        virtual std::shared_ptr<async_task_handlers> run_async_task(std::shared_ptr<async_task> task, std::string_view _task_name = {}, std::function<bool()> _cancel = {});
 
-        virtual std::shared_ptr<async_task_handlers> run_async_function(std::function<int32_t()> func);
+        virtual std::shared_ptr<async_task_handlers> run_async_function(std::function<int32_t()> func, std::string_view _task_name = {}, std::function<bool()> _cancel = {});
 
         template<typename T>
-        std::shared_ptr<t_async_task_handlers<T>> run_t_async_function(std::function<T()> func)
+        std::shared_ptr<t_async_task_handlers<T>> run_t_async_function(std::function<T()> func, std::string_view _task_name = {}, std::function<bool()> _cancel = {})
         {
             auto handler = std::make_shared<t_async_task_handlers<T>>();
 
@@ -88,7 +80,7 @@ namespace core
                     if (handler->on_result_)
                         handler->on_result_(result);
                 });
-            });
+            }, -1, _task_name, std::move(_cancel));
 
             return handler;
         }

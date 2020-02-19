@@ -86,7 +86,7 @@ namespace Ui
         auto w = new ReportWidget(nullptr, Logic::GetFriendlyContainer()->getFriendly(_aimId));
         auto generalDialog = std::make_unique<GeneralDialog>(w, Utils::InterConnector::instance().getMainWindow());
         generalDialog->addLabel(QT_TRANSLATE_NOOP("report_widget", "Report"));
-        generalDialog->addButtonsPair(QT_TRANSLATE_NOOP("popup_window", "BACK"), QT_TRANSLATE_NOOP("popup_window", "OK"), true);
+        generalDialog->addButtonsPair(QT_TRANSLATE_NOOP("popup_window", "Back"), QT_TRANSLATE_NOOP("popup_window", "OK"), true);
         auto result = generalDialog->showInCenter();
         if (result)
             _reason = w->getReason();
@@ -98,7 +98,7 @@ namespace Ui
         auto w = new CloseChatWidget(nullptr, _aimId);
         auto generalDialog = std::make_unique<GeneralDialog>(w, Utils::InterConnector::instance().getMainWindow());
         generalDialog->addLabel(QT_TRANSLATE_NOOP("auth_widget", "Close chat"));
-        generalDialog->addButtonsPair(QT_TRANSLATE_NOOP("popup_window", "CANCEL"), QT_TRANSLATE_NOOP("popup_window", "OK"), true);
+        generalDialog->addButtonsPair(QT_TRANSLATE_NOOP("popup_window", "Cancel"), QT_TRANSLATE_NOOP("popup_window", "OK"), true);
 
         Reasons reportReason = Reasons::SPAM;
         while (true)

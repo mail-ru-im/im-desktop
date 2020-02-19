@@ -37,7 +37,7 @@ namespace core
 
             virtual ~speech_to_text();
 
-            std::string get_text() const;
+            const std::string& get_text() const;
             int32_t get_comeback() const;
         };
     }

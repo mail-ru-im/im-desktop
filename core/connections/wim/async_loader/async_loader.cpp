@@ -9,11 +9,13 @@
 #include "../../../network_log.h"
 #include "../../../tools/file_sharing.h"
 #include "../../../tools/system.h"
+#include "../../../tools/json_helper.h"
 #include "../../../utils.h"
-#include "../../../configuration/app_config.h"
 #include "../../urls_cache.h"
 #include "async_loader.h"
+#include "../common.shared/string_utils.h"
 
+#include "connections/urls_cache.h"
 #include "quarantine/quarantine.h"
 
 namespace
@@ -21,6 +23,29 @@ namespace
     constexpr std::string_view referrer_url() noexcept
     {
         return "https://icq.com";
+    }
+
+    core::log_replace_functor make_default_log_replace_functor(std::string_view _url)
+    {
+        core::log_replace_functor f;
+        f.add_marker("a");
+        f.add_marker("url");
+        f.add_marker("aimsid", core::aimsid_range_evaluator());
+        f.add_url_marker("go.imgsmail.ru/imgpreview", core::tail_from_last_range_evaluator('?'));
+
+        const auto files_url = core::urls::get_url(core::urls::url_type::files_info, core::urls::with_https::no);
+        const auto files_preview_url = core::urls::get_url(core::urls::url_type::files_preview, core::urls::with_https::no);
+
+        if (_url.find(files_url) != _url.npos || _url.find(files_preview_url) != _url.npos)
+        {
+            if (const auto pos = _url.find('?'); pos != _url.npos)
+            {
+                if (const auto id = core::tools::get_file_id(_url.substr(0, pos)); !id.empty())
+                    f.add_url_marker(id, core::distance_range_evaluator(-std::ptrdiff_t(id.size())));
+            }
+        }
+
+        return f;
     }
 }
 
@@ -38,17 +63,35 @@ void core::wim::async_loader::set_download_dir(std::wstring _download_dir)
     download_dir_ = std::move(_download_dir);
 }
 
-void core::wim::async_loader::download(priority_t _priority, const std::string& _url, const std::string& _base_url, const wim_packet_params& _wim_params,
-                                       default_handler_t _handler, time_t _last_modified_time, int64_t _id, std::string_view _normalized_url)
+static std::string make_signed_url(std::string_view _url, std::string_view _aimsid)
 {
+    if (_url.find(core::urls::get_url(core::urls::url_type::files_preview, core::urls::with_https::no)) == std::string::npos)
+        return std::string{ _url };
+
+    std::string res;
+    res += _url;
+
+    if (_url.find('?') == std::string::npos)
+        res += "/?";
+    else
+        res += '&';
+
+    res += "aimsid=";
+    res += _aimsid;
+    return res;
+}
+
+void core::wim::async_loader::download(priority_t _priority, const std::string& _url, const std::string& _base_url, const wim_packet_params& _wim_params,
+                                       default_handler_t _handler, time_t _last_modified_time, int64_t _id, std::string_view _normalized_url,
+                                       async_loader_log_params _log_params, bool _is_binary_data)
+{
+    auto url = make_signed_url(_url, _wim_params.aimsid_);
     __INFO("async_loader",
         "download\n"
         "url      = <%1%>\n"
-        "handler  = <%2%>\n", _url % _handler.to_string());
+        "handler  = <%2%>\n", url % _handler.to_string());
 
     auto user_proxy = g_core->get_proxy_settings();
-
-    auto wr_this = weak_from_this();
 
     auto wim_stop_handler = _wim_params.stop_handler_;
 
@@ -60,33 +103,37 @@ void core::wim::async_loader::download(priority_t _priority, const std::string& 
         std::lock_guard<std::mutex> lock(cancelled->mutex_);
         auto it = cancelled->tasks_.find(_base_url);
         if (it != cancelled->tasks_.end())
-        {
-            cancelled->tasks_.erase(it);
             return true;
-        }
 
         return false;
     };
 
+    if (_log_params.log_functor_.is_null())
+        _log_params.log_functor_ = make_default_log_replace_functor(url);
+
     auto request = std::make_shared<http_request_simple>(user_proxy, utils::get_user_agent(_wim_params.aimid_), std::move(stop), _handler.progress_callback_);
 
-    request->set_url(_url);
-    request->set_need_log(_wim_params.full_log_);
+    request->set_url(url);
+    request->set_need_log(_wim_params.full_log_ || _log_params.need_log_);
     request->set_keep_alive();
     request->set_priority(_priority);
     request->set_id(_id);
+    if (_log_params.need_log_ && !_wim_params.full_log_)
+        request->set_replace_log_function(_log_params.log_functor_);
 
     if (!_normalized_url.empty())
         request->set_normalized_url(_normalized_url);
     else
-        request->set_normalized_url(get_endpoint_for_url(_url));
+        request->set_normalized_url(get_endpoint_for_url(url));
 
     if (_last_modified_time != 0)
         request->set_modified_time_condition(_last_modified_time - _wim_params.time_offset_);
 
-    auto full_log = _wim_params.full_log_;
+    request->set_use_curl_decompresion(_is_binary_data);
+
     const auto start = std::chrono::steady_clock().now();
-    request->get_async([start, _url, _base_url, request, _handler, full_log, cancelled = cancelled_tasks_](curl_easy::completion_code _completion_code)
+    request->get_async([start, url, _base_url, request, _handler, full_log = _wim_params.full_log_, cancelled = cancelled_tasks_, _log_params]
+                       (curl_easy::completion_code _completion_code)
     {
         const auto finish = std::chrono::steady_clock().now();
 
@@ -98,29 +145,17 @@ void core::wim::async_loader::download(priority_t _priority, const std::string& 
         }
 
         tools::binary_stream bs;
-        bs.write(_url.c_str(), _url.size());
+        bs.write(url.c_str(), url.size());
 
         if (!full_log)
-        {
-            log_replace_functor f;
-            f.add_marker("a");
-            f.add_marker("file_id");
-            f.add_marker("url");
-            f.add_url_marker("files.icq.com/preview", tail_from_last_range_evaluator('/'));
-            auto config_url = core::configuration::get_app_config().get_url_files();
-            if (!config_url.empty())
-            {
-                config_url.append("/preview");
-                f.add_url_marker(config_url.c_str(), tail_from_last_range_evaluator('/'));
-            }
-            f.add_url_marker("go.imgsmail.ru/imgpreview", tail_from_last_range_evaluator('?'));
-            f(bs);
-        }
+            _log_params.log_functor_(bs);
 
         std::stringstream log;
         log << "async request result:" << request->get_response_code() << (_completion_code ==  curl_easy::completion_code::success ? " (success)" : " (error)") << '\n';
-        log << "url: " << bs.read_available() << '\n';
-        log << "completed in " << std::chrono::duration_cast<std::chrono::milliseconds>(finish -start).count() << " ms\n";
+        log << "url: " << (bs.available() ? bs.read_available() : "INVALID OR EMPTY URL") << '\n';
+        if (!_log_params.log_str_.empty())
+            log << _log_params.log_str_ << std::endl;
+        log << "completed in " << std::chrono::duration_cast<std::chrono::milliseconds>(finish - start).count() << " ms\n";
 
         g_core->write_string_to_network_log(log.str());
 
@@ -129,7 +164,7 @@ void core::wim::async_loader::download(priority_t _priority, const std::string& 
             "url      = <%1%>\n"
             "handler  = <%2%>\n"
             "success  = <%3%>\n"
-            "response = <%4%>\n", _url % _handler.to_string() % logutils::yn(_completion_code == curl_easy::completion_code::success) % request->get_response_code());
+            "response = <%4%>\n", url % _handler.to_string() % logutils::yn(_completion_code == curl_easy::completion_code::success) % request->get_response_code());
 
         if (_completion_code ==  curl_easy::completion_code::success)
         {
@@ -164,14 +199,16 @@ void core::wim::async_loader::cancel(const std::string& _url)
     cancelled_tasks_->tasks_.insert(_url);
 }
 
-void core::wim::async_loader::download_file(priority_t _priority, const std::string& _url, const std::string& _base_url, const std::wstring& _file_name, const wim_packet_params& _wim_params,
-                                            async_handler<downloaded_file_info> _handler, time_t _last_modified_time, int64_t _id, const bool _with_data, std::string_view _normalized_url)
+void core::wim::async_loader::download_file(priority_t _priority, const std::string& _url, const std::string& _base_url, std::wstring_view _file_name, const wim_packet_params& _wim_params,
+                                            async_handler<downloaded_file_info> _handler, time_t _last_modified_time, int64_t _id, const bool _with_data, std::string_view _normalized_url,
+                                            async_loader_log_params _log_params, bool _is_binary_data)
 {
-    download_file(_priority, _url, _base_url, tools::from_utf16(_file_name), _wim_params, _handler, _last_modified_time, _id, _with_data, _normalized_url);
+    download_file(_priority, _url, _base_url, tools::from_utf16(_file_name), _wim_params, _handler, _last_modified_time, _id, _with_data, _normalized_url, _log_params, _is_binary_data);
 }
 
 void core::wim::async_loader::download_file(priority_t _priority, const std::string& _url, const std::string& _base_url, const std::string& _file_name, const wim_packet_params& _wim_params,
-                                            async_handler<downloaded_file_info> _handler, time_t _last_modified_time, int64_t _id, const bool _with_data, std::string_view _normalized_url)
+                                            async_handler<downloaded_file_info> _handler, time_t _last_modified_time, int64_t _id, const bool _with_data, std::string_view _normalized_url,
+                                            async_loader_log_params _log_params, bool _is_binary_data)
 {
     __INFO("async_loader",
         "download_file\n"
@@ -229,7 +266,8 @@ void core::wim::async_loader::download_file(priority_t _priority, const std::str
 
     }, _handler.progress_callback_);
 
-    async_tasks_->run_async_function([_file_name, wr_this = weak_from_this(), _priority, _url, _base_url, _wim_params, local_handler, _last_modified_time, _id, _with_data, _handler, normalized_url = std::string(_normalized_url)]
+    async_tasks_->run_async_function([_file_name, wr_this = weak_from_this(), _priority, _url, _base_url, _wim_params, local_handler, _last_modified_time, _id,
+                                     _with_data, _handler, normalized_url = std::string(_normalized_url), _log_params, _is_binary_data]
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -265,18 +303,31 @@ void core::wim::async_loader::download_file(priority_t _priority, const std::str
         }
         else
         {
-            ptr_this->download(_priority, _url, _base_url, _wim_params, local_handler, _last_modified_time, _id, normalized_url);
+            ptr_this->download(_priority, _url, _base_url, _wim_params, local_handler, _last_modified_time, _id, normalized_url, _log_params, _is_binary_data);
         }
 
         return 0;
     });
 }
 
-void core::wim::async_loader::download_image_metainfo(const std::string& _url, const wim_packet_params& _wim_params, link_meta_handler_t _handler, int64_t _id)
+void core::wim::async_loader::download_image_metainfo(const std::string& _url, const wim_packet_params& _wim_params, link_meta_handler_t _handler, int64_t _id, std::string_view _log_str)
 {
-    const auto ext_params = preview_proxy::format_get_preview_params(_url);
-    const auto signed_url = sign_loader_uri(preview_proxy::uri::get_preview(), _wim_params, ext_params);
-    download_metainfo(_url, signed_url, preview_proxy::parse_json, _wim_params, _handler, _id, "filesDownloadSnippetMetadata");
+    const auto signed_url = sign_loader_uri(preview_proxy::uri::get_preview(), _wim_params, preview_proxy::format_get_preview_params(_url));
+
+    async_loader_log_params params;
+    params.log_str_ = _log_str;
+    params.need_log_ = true;
+    params.log_functor_.add_marker("a");
+    params.log_functor_.add_marker("url");
+    params.log_functor_.add_json_marker("url");
+    params.log_functor_.add_json_marker("amp_url");
+    params.log_functor_.add_json_marker("preview_url");
+    params.log_functor_.add_json_marker("redirect_url");
+    params.log_functor_.add_json_marker("title");
+    params.log_functor_.add_json_marker("snippet");
+    params.log_functor_.add_json_marker("value");
+
+    download_metainfo(_url, signed_url, preview_proxy::parse_json, _wim_params, _handler, _id, "filesDownloadSnippetMetadata", std::move(params));
 }
 
 void core::wim::async_loader::download_file_sharing_metainfo(const std::string& _url, const wim_packet_params& _wim_params, file_sharing_meta_handler_t _handler, int64_t _id)
@@ -284,18 +335,8 @@ void core::wim::async_loader::download_file_sharing_metainfo(const std::string& 
     const auto id = tools::get_file_id(_url);
     assert(!id.empty());
 
-    std::stringstream ss_url;
-
-    const auto config_url = core::configuration::get_app_config().get_url_files_if_not_default();
-    if (!config_url.empty())
-        ss_url << std::string_view("https://") << config_url;
-    else
-        ss_url << urls::get_url(urls::url_type::files_host);
-
-    ss_url << std::string_view("/getinfo?file_id=") << id;
-    ss_url << "&r=" <<  core::tools::system::generate_guid();
-
-    download_metainfo(_url, ss_url.str(), &file_sharing_meta::parse_json, _wim_params, _handler, _id, "filesDownloadMetadata");
+    const auto signed_url = su::concat(urls::get_url(urls::url_type::files_info), id, "/?f=json&ptt_text=1&aimsid=", _wim_params.aimsid_);
+    download_metainfo(_url, signed_url, &file_sharing_meta::parse_json, _wim_params, _handler, _id, "filesDownloadMetadata");
 }
 
 void core::wim::async_loader::download_image_preview(priority_t _priority, const std::string& _url, const wim_packet_params& _wim_params,
@@ -307,9 +348,7 @@ void core::wim::async_loader::download_image_preview(priority_t _priority, const
         "mhandler = <%2%>\n"
         "phandler = <%3%>\n", _url % _metainfo_handler.to_string() % _preview_handler.to_string());
 
-    auto wr_this = weak_from_this();
-
-    auto local_handler = link_meta_handler_t([_priority, _url, _wim_params, _metainfo_handler, _preview_handler, _id, wr_this](loader_errors _error, const link_meta_data_t& _data)
+    auto local_handler = link_meta_handler_t([_priority, _url, _wim_params, _metainfo_handler, _preview_handler, _id, wr_this = weak_from_this()](loader_errors _error, const link_meta_data_t& _data)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -359,7 +398,7 @@ void core::wim::async_loader::download_image_preview(priority_t _priority, const
         const auto preview_url = meta.get_preview_uri(0, 0);
         const auto file_path = get_path_in_cache(ptr_this->content_cache_dir_, preview_url, path_type::link_preview);
 
-        ptr_this->download_file(_priority, preview_url, _url, file_path, _wim_params, _preview_handler, 0, _id);
+        ptr_this->download_file(_priority, preview_url, _url, file_path, _wim_params, _preview_handler, 0, _id, true, {}, {}, true);
 
     }, _metainfo_handler.progress_callback_);
 
@@ -421,11 +460,10 @@ void core::wim::async_loader::download_image(priority_t _priority, const std::st
     std::string_view endpoint;
     if (_use_proxy)
     {
-        const auto ext_params = preview_proxy::format_get_url_content_params(dl_url);
-        dl_url = sign_loader_uri(preview_proxy::uri::get_url_content(), _wim_params, ext_params);
+        dl_url = sign_loader_uri(preview_proxy::uri::get_url_content(), _wim_params, preview_proxy::format_get_url_content_params(dl_url));
         endpoint = std::string_view("filesDownloadSnippet");
     }
-    download_file(_priority, dl_url, _url, path, _wim_params, local_handler, 0, _id, _with_data, endpoint);
+    download_file(_priority, dl_url, _url, path, _wim_params, local_handler, 0, _id, _with_data, endpoint, {}, true);
 }
 
 void core::wim::async_loader::download_file_sharing(
@@ -459,18 +497,18 @@ void core::wim::async_loader::download_file_sharing(
                 json.push_back('\0');
 
                 auto meta_info = file_sharing_meta::parse_json(json.data(), _url);
-                if (meta_info && !meta_info->local_path_.empty())
+                if (meta_info && meta_info->local_ && !meta_info->local_->local_path_.empty())
                 {
-                    boost::filesystem::wpath local(tools::from_utf8(meta_info->local_path_));
+                    boost::filesystem::wpath local(tools::from_utf8(meta_info->local_->local_path_));
                     if (tools::system::is_exist(local))
                     {
                         boost::system::error_code e;
                         uint64_t last_modified = boost::filesystem::last_write_time(local, e);
-                        if (tools::system::get_file_size(local.wstring()) == meta_info->file_size_ && last_modified == meta_info->last_modified_)
+                        if (tools::system::get_file_size(local.wstring()) == meta_info->info_.file_size_ && last_modified == meta_info->local_->last_modified_)
                         {
                             force_request_metainfo = false;
                             if (_file_name.empty())
-                                _file_name = meta_info->local_path_;
+                                _file_name = meta_info->local_->local_path_;
                         }
                     }
                 }
@@ -510,16 +548,16 @@ void core::wim::async_loader::download_file_sharing(
 
             ptr_this->cleanup_cache();
 
-            if (!meta->local_path_.empty() && !_file_name.empty())
+            if (meta->local_ && !meta->local_->local_path_.empty() && !_file_name.empty())
             {
-                boost::filesystem::wpath local(tools::from_utf8(meta->local_path_));
+                boost::filesystem::wpath local(tools::from_utf8(meta->local_->local_path_));
                 boost::filesystem::wpath dest(tools::from_utf8(_file_name));
 
                 if (tools::system::is_exist(local))
                 {
                     boost::system::error_code e;
                     uint64_t last_modified = boost::filesystem::last_write_time(local, e);
-                    if (tools::system::get_file_size(local.wstring()) == meta->file_size_ && last_modified == meta->last_modified_)
+                    if (tools::system::get_file_size(local.wstring()) == meta->info_.file_size_ && last_modified == meta->local_->last_modified_)
                     {
                         if (local != dest)
                         {
@@ -571,10 +609,10 @@ void core::wim::async_loader::download_file_sharing(
                     case file_sharing_base_content_type::gif:
                     case file_sharing_base_content_type::video:
                     case file_sharing_base_content_type::ptt:
-                        file_path = get_path_in_cache(ptr_this->content_cache_dir_, _url, path_type::file) + tools::from_utf8(boost::filesystem::extension(meta->file_name_short_));
+                        file_path = get_path_in_cache(ptr_this->content_cache_dir_, _url, path_type::file) + tools::from_utf8(boost::filesystem::extension(meta->info_.file_name_));
                         break;
                     default:
-                        file_path = generate_unique_path(boost::filesystem::wpath(ptr_this->download_dir_) / tools::from_utf8(meta->file_name_short_));
+                        file_path = generate_unique_path(boost::filesystem::wpath(ptr_this->download_dir_) / tools::from_utf8(meta->info_.file_name_));
                         break;
                 }
             }
@@ -583,9 +621,18 @@ void core::wim::async_loader::download_file_sharing(
 
             if (tools::system::is_exist(file_path))
             {
-                boost::system::error_code e;
-                uint64_t last_modified = boost::filesystem::last_write_time(file_path, e);
-                if (tools::system::get_file_size(file_path) == meta->file_size_ && last_modified == meta->last_modified_)
+                auto is_same_file_params = [](const auto& _local_path, const auto& _meta)
+                {
+                    if (_meta->local_)
+                    {
+                        boost::system::error_code e;
+                        const uint64_t last_modified = boost::filesystem::last_write_time(_local_path, e);
+                        return last_modified == _meta->local_->last_modified_ && tools::system::get_file_size(_local_path) == _meta->info_.file_size_;
+                    }
+
+                    return false;
+                };
+                if (is_same_file_params(file_path, meta))
                 {
                     fire_callback(loader_errors::success, data, _handler.completion_callback_);
                     return;
@@ -615,7 +662,7 @@ void core::wim::async_loader::download_file_sharing(
                 tools::system::create_directory_if_not_exists(dir);
             }
 
-            auto file_chunks = std::make_shared<downloadable_file_chunks>(_priority, _contact, meta->file_download_url_, file_path, meta->file_size_);
+            auto file_chunks = std::make_shared<downloadable_file_chunks>(_priority, _contact, meta->info_.dlink_, file_path, meta->info_.file_size_);
             file_chunks->downloaded_ = tools::system::get_file_size(file_chunks->tmp_file_name_);
 
             if (file_chunks->total_size_ == file_chunks->downloaded_)
@@ -692,12 +739,12 @@ void core::wim::async_loader::contact_switched(const std::string& _contact)
     }
 }
 
-std::wstring core::wim::async_loader::get_meta_path(const std::string& _url, const std::wstring& _path)
+std::wstring core::wim::async_loader::get_meta_path(std::string_view _url, const std::wstring& _path)
 {
     return get_path_in_cache(content_cache_dir_, _url, path_type::link_meta);
 }
 
-void core::wim::async_loader::save_filesharing_local_path(const std::wstring& _meta_path, const std::string& _url, const std::wstring& _path)
+void core::wim::async_loader::save_filesharing_local_path(const std::wstring& _meta_path, std::string_view _url, const std::wstring& _path)
 {
     core::tools::binary_stream json_file;
 
@@ -723,13 +770,11 @@ void core::wim::async_loader::save_filesharing_local_path(const std::wstring& _m
                     const boost::filesystem::wpath path(_path);
                     boost::system::error_code e;
                     auto last_modified = boost::filesystem::last_write_time(path, e);
-                    meta_info->local_path_ = tools::from_utf16(_path);
-                    meta_info->last_modified_ = last_modified;
+                    meta_info->local_ = fs_meta_local{ uint64_t(last_modified), tools::from_utf16(_path) };
                 }
                 else
                 {
-                    meta_info->local_path_.clear();
-                    meta_info->last_modified_ = 0;
+                    meta_info->local_ = std::nullopt;
                 }
 
                 rapidjson::Document doc(rapidjson::Type::kObjectType);
@@ -741,7 +786,7 @@ void core::wim::async_loader::save_filesharing_local_path(const std::wstring& _m
 
                 const auto json_string = rapidjson_get_string_view(buffer);
 
-                if (!json_string.length())
+                if (json_string.empty())
                 {
                     assert(false);
                     return;
@@ -755,9 +800,23 @@ void core::wim::async_loader::save_filesharing_local_path(const std::wstring& _m
     }
 }
 
-void core::wim::async_loader::save_filesharing_local_path(const std::string& _url, const std::wstring& _path)
+void core::wim::async_loader::save_filesharing_local_path(std::string_view _url, const std::wstring& _path)
 {
     return save_filesharing_local_path(get_meta_path(_url, _path), _url, _path);
+}
+
+std::string core::wim::async_loader::path_in_cache(const std::string& _url)
+{
+    return tools::from_utf16(get_path_in_cache(content_cache_dir_, _url, path_type::file));
+}
+
+core::wim::async_loader_log_params core::wim::async_loader::make_filesharing_log_params(std::string_view _fs_id)
+{
+    async_loader_log_params params;
+    params.log_functor_.add_marker("aimsid", aimsid_range_evaluator());
+    params.log_functor_.add_url_marker(_fs_id, distance_range_evaluator(-std::ptrdiff_t(_fs_id.size())));
+
+    return params;
 }
 
 void core::wim::async_loader::download_file_sharing_impl(std::string _url, wim_packet_params _wim_params, downloadable_file_chunks_ptr _file_chunks, std::string_view _normalized_url)
@@ -843,6 +902,7 @@ void core::wim::async_loader::download_file_sharing_impl(std::string _url, wim_p
     }
 
     request->set_output_stream(std::make_shared<tools::file_output_stream>(std::move(tmp_file)));
+    request->set_use_curl_decompresion(true);
 
     request->get_async([_url, _wim_params, _file_chunks, request, wr_this](curl_easy::completion_code _completion_code) mutable
     {
@@ -881,7 +941,7 @@ void core::wim::async_loader::download_file_sharing_impl(std::string _url, wim_p
         }
         else
         {
-            if (_file_chunks->cancel_ || code == 404)
+            if (_file_chunks->cancel_ || (code >= 400 && code < 500))
             {
                 request->get_response()->close();
                 tools::system::delete_file(_file_chunks->tmp_file_name_);

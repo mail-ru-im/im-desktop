@@ -2,19 +2,11 @@
 
 #include "../corelib/enumerations.h"
 
-class QPushButton;
-
 namespace Emoji
 {
     struct EmojiRecord;
-    typedef std::shared_ptr<EmojiRecord> EmojiRecordSptr;
-    typedef std::vector<EmojiRecordSptr> EmojiRecordSptrVec;
+    using EmojiRecordVec = std::vector<EmojiRecord>;
     class EmojiCode;
-}
-
-namespace Utils
-{
-    class MediaLoader;
 }
 
 namespace Ui
@@ -29,14 +21,11 @@ namespace Ui
 
     using stickersArray = std::vector<QString>;
 
-    class smiles_Widget;
-
-    class DialogPlayer;
-
     namespace Smiles
     {
         class TabButton;
         class Toolbar;
+        class StickerPreview;
 
 
         //////////////////////////////////////////////////////////////////////////
@@ -44,10 +33,10 @@ namespace Ui
         //////////////////////////////////////////////////////////////////////////
         struct emoji_category
         {
-            QString name_;
-            const Emoji::EmojiRecordSptrVec& emojis_;
+            QLatin1String name_;
+            const Emoji::EmojiRecordVec& emojis_;
 
-            emoji_category(const QString& _name, const Emoji::EmojiRecordSptrVec& _emojis)
+            emoji_category(QLatin1String _name, const Emoji::EmojiRecordVec& _emojis)
                 : name_(_name), emojis_(_emojis)
             {
             }
@@ -100,7 +89,7 @@ namespace Ui
 
             QVariant data(const QModelIndex& _idx, int _role) const override;
 
-            int addCategory(const QString& _category);
+            int addCategory(QLatin1String _category);
             int addCategory(const emoji_category& _category);
             bool resize(const QSize& _size, bool _force = false);
             int getEmojisCount() const;
@@ -113,7 +102,7 @@ namespace Ui
 
             QModelIndex index(int _row, int _column, const QModelIndex& _parent = QModelIndex()) const override;
 
-            Emoji::EmojiRecordSptr getEmoji(int _col, int _row) const;
+            const Emoji::EmojiRecord& getEmoji(int _col, int _row) const;
 
         private:
             int getLinearIndex(const int _row, const int _col) const;
@@ -173,11 +162,11 @@ namespace Ui
         public:
             EmojiTableView(QWidget* _parent, EmojiViewItemModel* _model);
 
-            int addCategory(const QString& _category);
+            int addCategory(QLatin1String _category);
             int addCategory(const emoji_category& _category);
             int getCategoryPos(int _index);
             const std::vector<emoji_category>& getCategories() const;
-            Emoji::EmojiRecordSptr getEmoji(int _col, int _row) const;
+            const Emoji::EmojiRecord& getEmoji(int _col, int _row) const;
             void onEmojiAdded();
 
             bool selectUp() override;
@@ -207,7 +196,7 @@ namespace Ui
             Q_OBJECT
 
         Q_SIGNALS:
-            void emojiSelected(Emoji::EmojiRecordSptr _emoji, const QPoint _pos);
+            void emojiSelected(const Emoji::EmojiRecord& _emoji, const QPoint _pos);
             void scrollToGroup(const int _pos);
             void emojiMouseMoved(QPrivateSignal) const;
 
@@ -250,8 +239,8 @@ namespace Ui
             Q_OBJECT
 
         Q_SIGNALS:
-            void emojiSelected(Emoji::EmojiRecordSptr _emoji, const QPoint _pos);
-            void stickerSelected(qint32 _setId, const QString& _stickerId);
+            void emojiSelected(const Emoji::EmojiRecord& _emoji, const QPoint _pos);
+            void stickerSelected(const QString& _stickerId);
             void stickerHovered(qint32 _setId, const QString& _stickerId);
             void stickerPreview(qint32 _setId, const QString& _stickerId);
             void stickerPreviewClose();
@@ -267,7 +256,7 @@ namespace Ui
             void leaveEvent(QEvent* _e) override;
 
         private:
-            Emoji::EmojiRecordSptrVec emojis_;
+            Emoji::EmojiRecordVec emojis_;
 
             QVBoxLayout* vLayout_;
             EmojiTableView* emojiView_;
@@ -289,9 +278,10 @@ namespace Ui
 
         public:
             RecentsWidget(QWidget* _parent);
+            ~RecentsWidget();
 
-            void addSticker(int32_t _set_id, const QString& _stickerOd);
-            void addEmoji(Emoji::EmojiRecordSptr _emoji);
+            void addSticker(const QString& _stickerOd);
+            void addEmoji(const Emoji::EmojiRecord& _emoji);
             void initEmojisFromSettings();
             void initStickersFromSettings();
             void onStickerUpdated(int32_t _setOd, const QString& _stickerOd);
@@ -328,8 +318,8 @@ namespace Ui
 
         Q_SIGNALS:
 
-            void stickerSelected(qint32 _setId, const QString& _stickerId);
-            void stickerPreview(qint32 _setId, const QString& _stickerId);
+            void stickerSelected(const QString& _stickerId);
+            void stickerPreview(const QString& _stickerId);
             void stickerHovered(qint32 _setId, const QString& _stickerId);
 
         private Q_SLOTS:
@@ -435,7 +425,7 @@ namespace Ui
         public:
             void clear();
 
-            bool addSticker(int32_t _setId, const QString& _stickerId);
+            bool addSticker(const QString& _stickerId);
 
             void setMaxRowCount(int _val);
 
@@ -462,7 +452,7 @@ namespace Ui
 
         Q_SIGNALS:
 
-            void stickerSelected(int32_t _setId, const QString& _stickerId);
+            void stickerSelected(const QString& _stickerId);
             void stickerHovered(qint32 _setId, const QString& _stickerId);
             void stickerPreview(int32_t _setId, const QString& _stickerId);
             void stickerPreviewClose();
@@ -497,95 +487,6 @@ namespace Ui
         };
 
 
-
-
-
-
-
-        //////////////////////////////////////////////////////////////////////////
-        // StickerPreview
-        //////////////////////////////////////////////////////////////////////////
-        class StickerPreview : public QWidget
-        {
-            Q_OBJECT
-
-        public:
-
-            enum class Context
-            {
-                Picker,
-                Popup
-            };
-
-            StickerPreview(
-                QWidget* _parent,
-                const int32_t _setId,
-                const QString& _stickerId,
-                Context _context);
-
-            ~StickerPreview();
-
-            void showSticker(
-                const int32_t _setId,
-                const QString& _stickerId);
-
-            void hide();
-
-        Q_SIGNALS:
-
-            void needClose();
-
-        protected:
-
-            virtual void paintEvent(QPaintEvent* _e) override;
-            virtual void mouseReleaseEvent(QMouseEvent* _e) override;
-
-        private Q_SLOTS:
-            void onGifLoaded(const QString& _path);
-            void onActivationChanged(bool _active);
-
-        private:
-
-            void init(const int32_t _setId, const QString& _stickerId);
-
-            void drawSticker(QPainter& _p);
-
-            void drawEmoji(QPainter& _p);
-
-            void updateEmoji();
-
-            int getTopImageMargin() const;
-
-            int getCommonImageMargin() const;
-
-            int getBottomImageMargin() const;
-
-            QRect getImageRect() const;
-            QRect getAdjustedImageRect() const;
-
-            void loadSticker();
-
-            void scaleSticker();
-
-            int32_t setId_;
-            QString stickerId_;
-
-            QPixmap sticker_;
-            std::vector<QImage> emojis_;
-
-            Context context_;
-            std::unique_ptr<DialogPlayer> player_;
-            std::unique_ptr<Utils::MediaLoader> loader_;
-
-            bool hiding_ = false;
-        };
-
-
-
-
-
-
-
         //////////////////////////////////////////////////////////////////////////
         // SmilesMenu
         //////////////////////////////////////////////////////////////////////////
@@ -596,7 +497,7 @@ namespace Ui
 
         Q_SIGNALS:
             void emojiSelected(const Emoji::EmojiCode&, const QPoint _pos);
-            void stickerSelected(int32_t _setId, const QString& _stickerId);
+            void stickerSelected(const QString& _stickerId);
             void visibilityChanged(const bool _isVisible, QPrivateSignal) const;
             void scrolled();
 

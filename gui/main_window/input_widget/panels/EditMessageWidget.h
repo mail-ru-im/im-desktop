@@ -17,6 +17,7 @@ namespace Ui
         EditBlockText(QWidget* _parent);
 
         void setMessage(Data::MessageBuddySptr _message);
+        void setMediaType(MediaType _mediaType);
 
     protected:
         void paintEvent(QPaintEvent*) override;
@@ -28,6 +29,7 @@ namespace Ui
     private:
         TextRendering::TextUnitPtr caption_;
         TextRendering::TextUnitPtr text_;
+        MediaType mediaType_;
     };
 
     class EditMessageWidget : public QWidget, public StyledInputElement
@@ -42,6 +44,7 @@ namespace Ui
         EditMessageWidget(QWidget* _parent);
 
         void setMessage(Data::MessageBuddySptr _message);
+        void setMediaType(const MediaType _mediaType);
 
     protected:
         void updateStyleImpl(const InputStyleMode _mode) override;

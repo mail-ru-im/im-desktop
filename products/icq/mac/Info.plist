@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>ATSApplicationFontsPath</key>
+    <string>./</string>
+    <key>BuildMachineOSBuild</key>
+    <string>18C54</string>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>en</string>
+    <key>CFBundleDocumentTypes</key>
+    <array>
+        <dict>
+            <key>LSHandlerRank</key>
+            <string>Default</string>
+            <key>CFBundleTypeExtensions</key>
+            <array>
+                <string>*</string>
+            </array>
+            <key>CFBundleTypeIconFile</key>
+            <string>icons-bundle</string>
+            <key>CFBundleTypeMIMETypes</key>
+            <array>
+                <string>public.data</string>
+            </array>
+            <key>CFBundleTypeName</key>
+            <string>ICQ</string>
+            <key>CFBundleTypeRole</key>
+            <string>Viewer</string>
+        </dict>
+    </array>
+    <key>CFBundleExecutable</key>
+    <string>ICQ</string>
+    <key>CFBundleIconFile</key>
+    <string>icons-bundle</string>
+    <key>CFBundleIdentifier</key>
+    <string>com.icq.macicq</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+    <key>CFBundleName</key>
+    <string>ICQ</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleShortVersionString</key>
+    <string>3.0.6307</string>
+    <key>CFBundleSignature</key>
+    <string>????</string>
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleTypeRole</key>
+            <string>Viewer</string>
+            <key>CFBundleURLIconFile</key>
+            <string>icons-bundle</string>
+            <key>CFBundleURLName</key>
+            <string>icq</string>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>icq</string>
+            </array>
+        </dict>
+        <dict>
+            <key>CFBundleTypeRole</key>
+            <string>Viewer</string>
+            <key>CFBundleURLIconFile</key>
+            <string>icons-bundle</string>
+            <key>CFBundleURLName</key>
+            <string>icq</string>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>magent</string>
+            </array>
+        </dict>
+    </array>
+    <key>CFBundleVersion</key>
+    <string>6307</string>
+    <key>DTCompiler</key>
+    <string>com.apple.compilers.llvm.clang.1_0</string>
+    <key>DTPlatformBuild</key>
+    <string>10B61</string>
+    <key>DTPlatformVersion</key>
+    <string>GM</string>
+    <key>DTSDKBuild</key>
+    <string>18B71</string>
+    <key>DTSDKName</key>
+    <string>macosx10.14</string>
+    <key>DTXcode</key>
+    <string>1010</string>
+    <key>DTXcodeBuild</key>
+    <string>10B61</string>
+    <key>LSApplicationCategoryType</key>
+    <string>public.app-category.social-networking</string>
+    <key>LSMinimumSystemVersion</key>
+    <string>10.11</string>
+    <key>NSAppTransportSecurity</key>
+    <dict>
+        <key>NSAllowsArbitraryLoads</key>
+        <true/>
+    </dict>
+    <key>NSHighResolutionCapable</key>
+    <true/>
+    <key>NSHumanReadableCopyright</key>
+    <string>Copyright © 2019 Mail.ru. All rights reserved.</string>
+    <key>NSMainNibFile</key>
+    <string>MainMenu</string>
+    <key>NSPrincipalClass</key>
+    <string>IMOSXApplication</string>
+    <key>NSSupportsAutomaticGraphicsSwitching</key>
+    <true/>
+    <key>SUEnableAutomaticChecks</key>
+    <true/>
+    <key>SUPublicEDKey</key>
+    <string>HolMjZAxnC1J9hv9hrUfR3aiJtRPPuMzGXeay+NraNc=</string>
+    <key>SUShowReleaseNotes</key>
+    <true/>
+    <key>NSDesktopFolderUsageDescription</key>
+    <string>We need to access in your Desktop folder so that you can download/upload files.</string>
+    <key>NSDocumentsFolderUsageDescription</key>
+    <string>We need to access in your Documents folder so that you can download/upload files.</string>
+    <key>NSDownloadsFolderUsageDescription</key>
+    <string>We need to access in your Downloads folder so that you can download/upload files.</string>
+    <key>NSCameraUsageDescription</key>
+    <string>We need to access to your camera so that you can make video calls.</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>We need to access to your microphone so that you can make calls and record voice messages.</string>
+    <key>NSAppleEventsUsageDescription</key>
+    <string>We need to access to be able to send automation events to this application.</string>
+    <key>LSFileQuarantineEnabled</key>
+    <true/>
+</dict>
+</plist>

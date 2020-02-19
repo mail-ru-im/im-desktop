@@ -44,7 +44,6 @@ namespace core
 
         // gui message handlers
         void on_login_by_password(int64_t _seq, coll_helper& _params);
-        void on_login_by_password_for_attach_uin(int64_t _seq, coll_helper& _params);
 
         void on_login_get_sms_code(int64_t _seq, coll_helper& _params);
         void on_login_by_phone(int64_t _seq, coll_helper& _params);
@@ -71,6 +70,7 @@ namespace core
         void on_get_archive_messages(int64_t _seq, coll_helper& _params);
         void on_get_archive_mentions(int64_t _seq, coll_helper& _params);
         void on_delete_archive_messages(int64_t _seq, coll_helper& _params);
+        void on_delete_archive_messages_batch(int64_t _seq, coll_helper& _params);
         void on_delete_archive_messages_from(int64_t _seq, coll_helper& _params);
         void on_delete_archive_all_messages(int64_t _seq, coll_helper& _params);
         void on_get_message_context(int64_t _seq, coll_helper& _params);
@@ -91,6 +91,7 @@ namespace core
 
         void on_download_image(int64_t _seq, coll_helper& _params);
         void on_cancel_loader_task(int64_t _seq, coll_helper& _params);
+        void on_get_external_file_path(int64_t _seq, coll_helper& _params);
         void on_download_link_preview(int64_t _seq, coll_helper& _params);
         void on_download_raise_priority(int64_t _seq, coll_helper& _params);
         void on_contact_switched(int64_t _seq, coll_helper& _params);
@@ -113,6 +114,10 @@ namespace core
         void on_get_set_icon_big(int64_t _seq, coll_helper& _params);
         void on_clean_set_icon_big(int64_t _seq, coll_helper& _params);
         void on_set_sticker_order(int64_t _seq, coll_helper& _params);
+        void on_get_smartreply_suggests(int64_t _seq, coll_helper& _params);
+        void on_clear_smartreply_suggests(int64_t _seq, coll_helper& _params);
+        void on_load_smartreply_suggests(int64_t _seq, coll_helper& _params);
+
         void on_get_chat_info(int64_t _seq, coll_helper& _params);
         void on_get_chat_home(int64_t _seq, coll_helper& _params);
         void on_resolve_pending(int64_t _seq, coll_helper& _params);
@@ -133,12 +138,13 @@ namespace core
         void on_remove_contact(int64_t _seq, coll_helper& _params);
         void on_rename_contact(int64_t _seq, coll_helper& _params);
         void on_report_contact(int64_t _seq, coll_helper& _params);
-        void on_url_played(int64_t _seq, coll_helper& _params);
         void on_speech_to_text(int64_t _seq, coll_helper& _params);
         void on_ignore_contact(int64_t _seq, coll_helper& _params);
         void on_get_ignore_contacts(int64_t _seq, coll_helper& _params);
         void on_favorite(int64_t _seq, coll_helper& _params);
         void on_unfavorite(int64_t _seq, coll_helper& _params);
+        void on_mark_unimportant(int64_t _seq, coll_helper& _params);
+        void on_remove_from_unimportant(int64_t _seq, coll_helper& _params);
 
         void on_create_chat(int64_t _seq, coll_helper& _params);
 
@@ -150,6 +156,7 @@ namespace core
         void on_mod_chat_join(int64_t _seq, coll_helper& _params);
         void on_mod_chat_link(int64_t _seq, coll_helper& _params);
         void on_mod_chat_ro(int64_t _seq, coll_helper& _params);
+        void on_mod_chat_stamp(int64_t _seq, coll_helper& _params);
 
         void on_block_chat_member(int64_t _seq, coll_helper& _params);
         void on_set_chat_member_role(int64_t _seq, coll_helper& _params);
@@ -168,7 +175,6 @@ namespace core
         void on_remove_members(int64_t _seq, coll_helper& _params);
         void on_add_members(int64_t _seq, coll_helper& _params);
         void on_add_chat(int64_t _seq, coll_helper& _params);
-        void on_modify_chat(int64_t _seq, coll_helper& _params);
 
         //mrim
         void on_mrim_get_key(int64_t _seq, coll_helper& _params);
@@ -179,6 +185,7 @@ namespace core
         void on_im_stats(int64_t _seq, coll_helper& _params);
 
         std::shared_ptr<base_im> get_im(coll_helper& _params) const;
+        std::shared_ptr<base_im> get_default_im() const;
 
         void on_update_profile(int64_t _seq, coll_helper& _params);
 
@@ -200,9 +207,11 @@ namespace core
         void on_get_attach_phone_info(int64_t _seq, coll_helper& _params);
 
         void on_get_logs_path(int64_t _seq, coll_helper& _params);
+        void on_create_logs_archive(int64_t _seq, coll_helper& _params);
         void on_change_app_config(const int64_t _seq, coll_helper& _params);
         void on_remove_content_cache(const int64_t _seq, coll_helper& _params);
         void on_clear_avatars(const int64_t _seq, coll_helper& _params);
+        void on_remove_omicron_stg(const int64_t _seq, coll_helper& _params);
 
         void on_report_stickerpack(const int64_t _seq, coll_helper& _params);
         void on_report_sticker(const int64_t _seq, coll_helper& _params);
@@ -245,11 +254,24 @@ namespace core
         void on_get_privacy_settings(const int64_t _seq, coll_helper& _params);
 
         void on_nickname_check(const int64_t _seq, coll_helper& _params);
+        void on_group_nickname_check(const int64_t _seq, coll_helper& _params);
+
         void on_get_common_chats(const int64_t _seq, coll_helper& _params);
 
         void on_reset_connection(const int64_t _seq, coll_helper& _params);
 
         void on_update_recent_avatars_size(const int64_t _seq, coll_helper& _params);
+
+        void on_set_install_beta_updates(const int64_t _seq, coll_helper& _params);
+
+        // polls
+        void on_get_poll(const int64_t _seq, coll_helper& _params);
+        void on_vote_in_poll(const int64_t _seq, coll_helper& _params);
+        void on_revoke_vote(const int64_t _seq, coll_helper& _params);
+        void on_stop_poll(const int64_t _seq, coll_helper& _params);
+
+        void on_group_subscribe(const int64_t _seq, coll_helper& _params);
+        void on_suggest_group_nick(const int64_t _seq, coll_helper& _params);
 
     public:
 
@@ -260,6 +282,7 @@ namespace core
         void logout(const bool _is_auth_error);
 
         bool has_valid_login() const;
+        std::string get_login() const;
 
         im_container(const std::shared_ptr<voip_manager::VoipManager>& voip_manager,
                      const std::shared_ptr<memory_stats::memory_stats_collector>& memory_stats_collector);
@@ -267,5 +290,8 @@ namespace core
 
         void create();
         std::string get_first_login() const;
+
+        void download_file(priority_t _priority, const std::string& _file_url,  const std::string& _destination,
+                           std::string_view _normalized_url, bool _is_binary_data, std::function<void(bool)> _on_result);
     };
 }

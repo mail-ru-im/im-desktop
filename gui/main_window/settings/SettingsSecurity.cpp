@@ -291,7 +291,7 @@ void GeneralSettingsWidget::Creator::initSecurity(QWidget* _parent)
                     Logic::getIgnoreModel(),
                     Logic::MembersWidgetRegim::IGNORE_LIST,
                     QT_TRANSLATE_NOOP("popup_window", "Ignore list"),
-                    QT_TRANSLATE_NOOP("popup_window", "CLOSE"),
+                    QT_TRANSLATE_NOOP("popup_window", "Close"),
                     scrollArea);
 
                 ignoredDialog->UpdateViewForIgnoreList(_isEmpty);

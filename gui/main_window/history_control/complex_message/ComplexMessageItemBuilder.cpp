@@ -1,8 +1,10 @@
-#include "stdafx.h"
+﻿#include "stdafx.h"
 
+#include "../common.shared/config/config.h"
 #include "../../../../corelib/enumerations.h"
 
 #include "../../../utils/utils.h"
+#include "../../../utils/UrlParser.h"
 #include "../../../utils/features.h"
 
 #include "../FileSharingInfo.h"
@@ -10,8 +12,6 @@
 #include "ComplexMessageItem.h"
 #include "FileSharingBlock.h"
 #include "FileSharingUtils.h"
-#include "ImagePreviewBlock.h"
-#include "LinkPreviewBlock.h"
 #include "PttBlock.h"
 #include "TextBlock.h"
 #include "DebugTextBlock.h"
@@ -19,11 +19,15 @@
 #include "StickerBlock.h"
 #include "TextChunk.h"
 #include "ProfileBlock.h"
+#include "GeolocationBlock.h"
+#include "PollBlock.h"
+#include "SnippetBlock.h"
 
 #include "ComplexMessageItemBuilder.h"
 #include "../../../controls/TextUnit.h"
 #include "../../../app_config.h"
 #include "memory_stats/MessageItemMemMonitor.h"
+#include "main_window/contact_list/RecentsModel.h"
 
 
 UI_COMPLEX_MESSAGE_NS_BEGIN
@@ -69,7 +73,108 @@ FixedUrls getFixedUrls()
     profileDomainAgent.ok_state = common::tools::url_parser::states::profile_id;
     profileDomainAgent.safe_pos = profileDomainAgent.str.length() - 1;
 
-    return { std::move(profileDomain), std::move(profileDomainAgent) };
+    const auto& additional_fs_urls = Utils::UrlParser::additionalFsUrls();
+
+    auto makeProfileItem = [](std::string&& domain)
+    {
+        common::tools::url_parser::compare_item profileDomain;
+        profileDomain.str = std::move(domain) + '/';
+        profileDomain.ok_state = common::tools::url_parser::states::profile_id;
+        profileDomain.safe_pos = profileDomain.str.size() - 1;
+        return profileDomain;
+    };
+
+    auto makeFsItem = [](const std::string& url)
+    {
+        constexpr std::string_view get = "/get";
+
+        common::tools::url_parser::compare_item profileDomain;
+        profileDomain.str = url + '/';
+        profileDomain.ok_state = common::tools::url_parser::states::filesharing_id;
+        profileDomain.safe_pos = url.size() - get.size() - 1;
+        return profileDomain;
+    };
+
+    FixedUrls res;
+    res.reserve(2 + additional_fs_urls.size());
+    res.push_back(makeProfileItem(Features::getProfileDomain().toStdString()));
+    res.push_back(makeProfileItem(Features::getProfileDomainAgent().toStdString()));
+
+    for (const auto& x : additional_fs_urls)
+        res.push_back(makeFsItem(x));
+
+    return res;
+}
+
+QString convertPollQuoteText(const QString& _text) // replace media with placeholders
+{
+    QString result;
+    ChunkIterator it(_text, getFixedUrls());
+    while (it.hasNext())
+    {
+        auto chunk = it.current(true, false);
+
+        switch (chunk.Type_)
+        {
+            case TextChunk::Type::FileSharingImage:
+                result += QT_TRANSLATE_NOOP("poll_block", "Photo");
+                break;
+            case TextChunk::Type::FileSharingGif:
+                result += QT_TRANSLATE_NOOP("poll_block", "GIF");
+                break;
+            case TextChunk::Type::FileSharingGifSticker:
+            case TextChunk::Type::FileSharingImageSticker:
+            case TextChunk::Type::FileSharingVideoSticker:
+                result += QT_TRANSLATE_NOOP("poll_block", "Sticker");
+                break;
+            case TextChunk::Type::FileSharingVideo:
+                result += QT_TRANSLATE_NOOP("poll_block", "Video");
+                break;
+            case TextChunk::Type::FileSharingPtt:
+                result += QT_TRANSLATE_NOOP("poll_block", "Voice message");
+                break;
+            case TextChunk::Type::FileSharingUpload:
+            case TextChunk::Type::FileSharingGeneral:
+                result += QT_TRANSLATE_NOOP("poll_block", "File");
+                break;
+            case TextChunk::Type::Text:
+            case TextChunk::Type::GenericLink:
+            case TextChunk::Type::ProfileLink:
+            case TextChunk::Type::ImageLink:
+            case TextChunk::Type::Junk:
+                if (chunk.text_.startsWith(ql1c('\n')))
+                    result += QChar::LineFeed;
+                else if(chunk.text_.startsWith(ql1c(' ')))
+                    result += QChar::Space;
+
+                result += chunk.text_.trimmed();
+                break;
+
+            default:
+                assert(!"unknown chunk type");
+                result += chunk.text_;
+                break;
+        }
+
+        if (chunk.text_.endsWith(ql1c('\n')))
+            result += QChar::LineFeed;
+
+        it.next();
+    }
+
+    return result;
+}
+
+SnippetBlock::EstimatedType estimatedTypeFromExtension(const QString& _extension)
+{
+    if (Utils::is_video_extension(_extension))
+        return SnippetBlock::EstimatedType::Video;
+    else if (Utils::is_image_extension_not_gif(_extension))
+        return SnippetBlock::EstimatedType::Image;
+    else if (Utils::is_image_extension(_extension))
+        return SnippetBlock::EstimatedType::GIF;
+
+    return SnippetBlock::EstimatedType::Article;
 }
 
 struct parseResult
@@ -77,11 +182,14 @@ struct parseResult
     std::list<TextChunk> chunks;
     TextChunk snippet;
 
+    QString sourceText_;
     int snippetsCount = 0;
     int mediaCount = 0;
     bool linkInsideText = false;
     bool hasTrailingLink = false;
     Data::SharedContact sharedContact_;
+    Data::Geo geo_;
+    Data::Poll poll_;
 
     void mergeChunks()
     {
@@ -116,9 +224,21 @@ parseResult parseText(const QString& _text, const bool _allowSnippet, const bool
     const auto scount = _text.count(sl);
     if (mcount > 1)
     {
-        const auto f = _text.indexOf(ml) + ml.length();
-        const auto l = _text.lastIndexOf(ml);
-        toSkipLinks.push_back(_text.midRef(f, l - f));
+        auto idxBeg = 0;
+        while (idxBeg < _text.size())
+        {
+            const auto openingMD = idxBeg + _text.midRef(idxBeg).indexOf(ml) + ml.size();
+            const auto closingMD = openingMD + _text.midRef(openingMD).indexOf(ml);
+            if (openingMD != -1 && closingMD != -1)
+            {
+                toSkipLinks.push_back(_text.midRef(openingMD, closingMD - openingMD + idxBeg));
+                idxBeg += closingMD + ml.size() + 1;
+            }
+            else
+            {
+                idxBeg = openingMD + 1;
+            }
+        }
     }
     if (scount > 1)
     {
@@ -200,7 +320,7 @@ parseResult parseText(const QString& _text, const bool _allowSnippet, const bool
                 chunk.Type_ == TextChunk::Type::FileSharingVideoSticker;
 
             if (isMedia)
-                result.mediaCount++;
+                ++result.mediaCount;
 
             if (chunk.Type_ == TextChunk::Type::ImageLink && !_allowSnippet)
                 chunk.Type_ = TextChunk::Type::GenericLink;
@@ -241,127 +361,146 @@ parseResult parseQuote(const Data::Quote& _quote, const Data::MentionMap& _menti
     }
 
     result.sharedContact_ = _quote.sharedContact_;
+    result.geo_ = _quote.geo_;
+    result.poll_ = _quote.poll_;
+    result.sourceText_ = text;
 
     return result;
 }
 
-std::vector<GenericBlock*> createBlocks(const parseResult& _parseRes, ComplexMessageItem* _parent, const int64_t _id, const int64_t _prev, bool _isForward = false)
+enum class QuoteType
+{
+    None,
+    Quote,
+    Forward
+};
+
+std::vector<GenericBlock*> createBlocks(const parseResult& _parseRes, ComplexMessageItem* _parent, const int64_t _id, const int64_t _prev, QuoteType _quoteType = QuoteType::None)
 {
     std::vector<GenericBlock*> blocks;
     blocks.reserve(_parseRes.chunks.size());
+
+    const auto isQuote = _quoteType == QuoteType::Quote;
+    const auto isForward = _quoteType == QuoteType::Forward;
+
+    if (_parseRes.poll_ && !isForward)
+    {
+        blocks.push_back(new PollBlock(_parent, *_parseRes.poll_, convertPollQuoteText(_parseRes.sourceText_)));
+        return blocks;
+    }
 
     for (const auto& chunk : _parseRes.chunks)
     {
         switch (chunk.Type_)
         {
-        case TextChunk::Type::Text:
-        case TextChunk::Type::GenericLink:
-            if (!QStringRef(&chunk.text_).trimmed().isEmpty())
-                blocks.push_back(new TextBlock(_parent, chunk.text_, _isForward ? TextRendering::EmojiSizeType::REGULAR : TextRendering::EmojiSizeType::ALLOW_BIG));
-            break;
+            case TextChunk::Type::Text:
+            case TextChunk::Type::GenericLink:
+            {
+                if (!QStringRef(&chunk.text_).trimmed().isEmpty())
+                    blocks.push_back(new TextBlock(_parent, chunk.text_, isForward ? TextRendering::EmojiSizeType::REGULAR : TextRendering::EmojiSizeType::ALLOW_BIG));
+                break;
+            }
 
-        case TextChunk::Type::ImageLink:
-            blocks.push_back(new ImagePreviewBlock(_parent, chunk.text_, chunk.ImageType_));
-            break;
+            case TextChunk::Type::ImageLink:
+            {
+                auto block = _parent->addSnippetBlock(chunk.text_, _parseRes.linkInsideText, estimatedTypeFromExtension(chunk.ImageType_), blocks.size(), isQuote || isForward);
+                if (block)
+                    blocks.push_back(block);
+                break;
+            }
 
-        case TextChunk::Type::FileSharingImage:
-        case TextChunk::Type::FileSharingImageSticker:
-        case TextChunk::Type::FileSharingGif:
-        case TextChunk::Type::FileSharingGifSticker:
-        case TextChunk::Type::FileSharingVideo:
-        case TextChunk::Type::FileSharingVideoSticker:
-        case TextChunk::Type::FileSharingGeneral:
-            blocks.push_back(chunk.FsInfo_ ? new FileSharingBlock(_parent, chunk.FsInfo_, getFileSharingContentType(chunk.Type_))
-                : new FileSharingBlock(_parent, chunk.text_, getFileSharingContentType(chunk.Type_)));
-            break;
+            case TextChunk::Type::FileSharingImage:
+            case TextChunk::Type::FileSharingImageSticker:
+            case TextChunk::Type::FileSharingGif:
+            case TextChunk::Type::FileSharingGifSticker:
+            case TextChunk::Type::FileSharingVideo:
+            case TextChunk::Type::FileSharingVideoSticker:
+            case TextChunk::Type::FileSharingGeneral:
+                blocks.push_back(chunk.FsInfo_ ? new FileSharingBlock(_parent, chunk.FsInfo_, getFileSharingContentType(chunk.Type_))
+                    : new FileSharingBlock(_parent, chunk.text_, getFileSharingContentType(chunk.Type_)));
+                break;
 
-        case TextChunk::Type::FileSharingPtt:
-            blocks.push_back(chunk.FsInfo_ ? new PttBlock(_parent, chunk.FsInfo_, chunk.FsInfo_->duration() ? int32_t(*(chunk.FsInfo_->duration())) : chunk.DurationSec_, _id, _prev)
-                : new PttBlock(_parent, chunk.text_, chunk.DurationSec_, _id, _prev));
-            break;
+            case TextChunk::Type::FileSharingPtt:
+                blocks.push_back(chunk.FsInfo_ ? new PttBlock(_parent, chunk.FsInfo_, chunk.FsInfo_->duration() ? int32_t(*(chunk.FsInfo_->duration())) : chunk.DurationSec_, _id, _prev)
+                    : new PttBlock(_parent, chunk.text_, chunk.DurationSec_, _id, _prev));
+                break;
 
-        case TextChunk::Type::Sticker:
-            blocks.push_back(new StickerBlock(_parent, chunk.Sticker_));
-            break;
+            case TextChunk::Type::Sticker:
+                blocks.push_back(new StickerBlock(_parent, chunk.Sticker_));
+                break;
 
-        case TextChunk::Type::ProfileLink:
-            blocks.push_back(new ProfileBlock(_parent, chunk.text_));
-            break;
+            case TextChunk::Type::ProfileLink:
+                blocks.push_back(new ProfileBlock(_parent, chunk.text_));
+                break;
 
-        case TextChunk::Type::Junk:
-            break;
+            case TextChunk::Type::Junk:
+                break;
 
-        default:
-            assert(!"unexpected chunk type");
-            break;
+            default:
+                assert(!"unexpected chunk type");
+                break;
         }
     }
 
     // create snippet
     if (_parseRes.snippetsCount == 1 && _parseRes.mediaCount == 0)
-        blocks.push_back(new LinkPreviewBlock(_parent, _parseRes.snippet.text_, _parseRes.linkInsideText));
+    {
+        if (_parseRes.geo_)
+        {
+            blocks.push_back(new GeolocationBlock(_parent, _parseRes.snippet.text_));
+        }
+        else
+        {
+            auto block = _parent->addSnippetBlock(_parseRes.snippet.text_, _parseRes.linkInsideText, SnippetBlock::EstimatedType::Article, blocks.size(), isQuote || isForward);
+            if (block)
+                blocks.push_back(block);
+        }
+    }
 
     if (_parseRes.sharedContact_)
         blocks.push_back(new PhoneProfileBlock(_parent, _parseRes.sharedContact_->name_, _parseRes.sharedContact_->phone_, _parseRes.sharedContact_->sn_));
+
+    if (_parseRes.poll_)
+        blocks.push_back(new PollBlock(_parent, *_parseRes.poll_, convertPollQuoteText(_parseRes.sourceText_)));
 
     return blocks;
 }
 
 namespace ComplexMessageItemBuilder
 {
-    std::unique_ptr<ComplexMessageItem> makeComplexItem(
-        QWidget *_parent,
-        const int64_t _id,
-        const QString& _internalId,
-        const QDate _date,
-        const int64_t _prev,
-        const QString &_text,
-        const QString &_chatAimid,
-        const QString &_senderAimid,
-        const QString &_senderFriendly,
-        const Data::QuotesVec& _quotes,
-        const Data::MentionMap& _mentions,
-        const HistoryControl::StickerInfoSptr& _sticker,
-        const HistoryControl::FileSharingInfoSptr& _filesharing,
-        const bool _isOutgoing,
-        const bool _isNotAuth,
-        const bool _forcePreview,
-        const QString& _description,
-        const QString& _url,
-        const Data::SharedContact& _sharedContact)
+    std::unique_ptr<ComplexMessageItem> makeComplexItem(QWidget* _parent, const Data::MessageBuddy& _msg, ForcePreview _forcePreview)
     {
-        assert(_id >= -1);
-        assert(!_senderAimid.isEmpty());
+        auto complexItem = std::make_unique<ComplexMessage::ComplexMessageItem>(_parent, _msg);
 
-        auto complexItem = std::make_unique<ComplexMessage::ComplexMessageItem>(
-            _parent,
-            _id,
-            _prev,
-            _internalId,
-            _date,
-            _chatAimid,
-            _senderAimid,
-            _senderFriendly,
-            _sticker ? QT_TRANSLATE_NOOP("contact_list", "Sticker") : _text,
-            _mentions,
-            _isOutgoing);
+        const auto isNotAuth = Logic::getRecentsModel()->isSuspicious(_msg.AimId_);
+        const auto isOutgoing = _msg.IsOutgoing();
+        const auto& text = _msg.GetText();
+        const auto& description = _msg.GetDescription();
+        const auto& mentions = _msg.Mentions_;
+        const auto& quotes = _msg.Quotes_;
+        const auto& id = _msg.Id_;
+        const auto& prev = _msg.Prev_;
+        const auto& filesharing = _msg.GetFileSharing();
+        const auto sticker = _msg.GetSticker();
 
-        const bool allowSnippet = (_isOutgoing || !_isNotAuth) && !build::is_dit();
+        const auto mediaType = complexItem->getMediaType();
+        const bool allowSnippet = config::get().is_on(config::features::snippet_in_chat)
+            && (isOutgoing || !isNotAuth || mediaType == Ui::MediaType::mediaTypePhoto);
 
-        const auto quotesCount = _quotes.size();
+        const auto quotesCount = quotes.size();
         std::vector<QuoteBlock*> quoteBlocks;
         quoteBlocks.reserve(quotesCount);
 
         int i = 0;
-        for (auto quote: _quotes)
+        for (auto quote: quotes)
         {
             quote.isFirstQuote_ = (i == 0);
             quote.isLastQuote_ = (i == quotesCount - 1);
-            quote.mentions_ = _mentions;
+            quote.mentions_ = mentions;
             quote.isSelectable_ = (quotesCount == 1);
 
-            const auto& parsedQuote = parseQuote(quote, _mentions, allowSnippet, _forcePreview);
-            const auto parsedBlocks = createBlocks(parsedQuote, complexItem.get(), _id, _prev, quote.isForward_);
+            const auto& parsedQuote = parseQuote(quote, mentions, allowSnippet, _forcePreview == ForcePreview::Yes);
+            const auto parsedBlocks = createBlocks(parsedQuote, complexItem.get(), id, prev, quote.isForward_ ? QuoteType::Forward : QuoteType::Quote);
 
             auto quoteBlock = new QuoteBlock(complexItem.get(), quote);
 
@@ -374,27 +513,32 @@ namespace ComplexMessageItemBuilder
 
         std::vector<GenericBlock*> messageBlocks;
         bool hasTrailingLink = false;
+        bool hasLinkInText = false;
 
-        if (_sticker)
+        if (sticker)
         {
-            TextChunk chunk(TextChunk::Type::Sticker, _text, QString(), -1);
-            chunk.Sticker_ = _sticker;
+            TextChunk chunk(TextChunk::Type::Sticker, text, QString(), -1);
+            chunk.Sticker_ = sticker;
 
             parseResult res;
             res.chunks.push_back(std::move(chunk));
-            messageBlocks = createBlocks(res, complexItem.get(), _id, _prev);
+            messageBlocks = createBlocks(res, complexItem.get(), id, prev);
         }
-        else if (_sharedContact)
+        else if (_msg.sharedContact_)
         {
-            messageBlocks.push_back(new PhoneProfileBlock(complexItem.get(), _sharedContact->name_, _sharedContact->phone_, _sharedContact->sn_));
+            messageBlocks.push_back(new PhoneProfileBlock(complexItem.get(), _msg.sharedContact_->name_, _msg.sharedContact_->phone_, _msg.sharedContact_->sn_));
         }
-        else if (_filesharing && !_filesharing->HasUri())
+        else if (_msg.geo_)
+        {
+            messageBlocks.push_back(new GeolocationBlock(complexItem.get(), text));
+        }
+        else if (filesharing && !filesharing->HasUri())
         {
             auto type = TextChunk::Type::FileSharingGeneral;
-            if (_filesharing->getContentType().type_ == core::file_sharing_base_content_type::undefined && !_filesharing->GetLocalPath().isEmpty())
+            if (filesharing->getContentType().type_ == core::file_sharing_base_content_type::undefined && !filesharing->GetLocalPath().isEmpty())
             {
                 const static auto gifExt = ql1s("gif");
-                const auto ext = QFileInfo(_filesharing->GetLocalPath()).suffix();
+                const auto ext = QFileInfo(filesharing->GetLocalPath()).suffix();
                 if (ext.compare(gifExt, Qt::CaseInsensitive) == 0)
                     type = TextChunk::Type::FileSharingGif;
                 else if (Utils::is_image_extension(ext))
@@ -404,16 +548,16 @@ namespace ComplexMessageItemBuilder
             }
             else
             {
-                switch (_filesharing->getContentType().type_)
+                switch (filesharing->getContentType().type_)
                 {
                 case core::file_sharing_base_content_type::image:
-                    type = _filesharing->getContentType().is_sticker() ? TextChunk::Type::FileSharingImageSticker : TextChunk::Type::FileSharingImage;
+                    type = filesharing->getContentType().is_sticker() ? TextChunk::Type::FileSharingImageSticker : TextChunk::Type::FileSharingImage;
                     break;
                 case core::file_sharing_base_content_type::gif:
-                    type = _filesharing->getContentType().is_sticker() ? TextChunk::Type::FileSharingGifSticker : TextChunk::Type::FileSharingGif;
+                    type = filesharing->getContentType().is_sticker() ? TextChunk::Type::FileSharingGifSticker : TextChunk::Type::FileSharingGif;
                     break;
                 case core::file_sharing_base_content_type::video:
-                    type = _filesharing->getContentType().is_sticker() ? TextChunk::Type::FileSharingVideoSticker : TextChunk::Type::FileSharingVideo;
+                    type = filesharing->getContentType().is_sticker() ? TextChunk::Type::FileSharingVideoSticker : TextChunk::Type::FileSharingVideo;
                     break;
                 case core::file_sharing_base_content_type::ptt:
                     type = TextChunk::Type::FileSharingPtt;
@@ -423,34 +567,39 @@ namespace ComplexMessageItemBuilder
                 }
             }
 
-            TextChunk chunk(type, _text, QString(), -1);
-            chunk.FsInfo_ = _filesharing;
+            TextChunk chunk(type, text, QString(), -1);
+            chunk.FsInfo_ = filesharing;
 
             parseResult res;
             res.chunks.push_back(std::move(chunk));
 
-            if (!_description.isEmpty())
-                res.chunks.push_back(TextChunk(TextChunk::Type::Text, _description, QString(), -1));
+            if (!description.isEmpty())
+                res.chunks.push_back(TextChunk(TextChunk::Type::Text, description, QString(), -1));
 
-            messageBlocks = createBlocks(res, complexItem.get(), _id, _prev);
+            messageBlocks = createBlocks(res, complexItem.get(), id, prev);
         }
         else
         {
-            if (!_description.isEmpty())
+            if (!description.isEmpty())
             {
-                auto parsedMsg = parseText(_url, allowSnippet, _forcePreview);
-                parsedMsg.chunks.push_back(TextChunk(TextChunk::Type::Text, _description, QString(), -1));
-                messageBlocks = createBlocks(parsedMsg, complexItem.get(), _id, _prev);
+                auto parsedMsg = parseText(_msg.GetUrl(), allowSnippet, _forcePreview == ForcePreview::Yes);
+                parsedMsg.chunks.push_back(TextChunk(TextChunk::Type::Text, description, QString(), -1));
+                messageBlocks = createBlocks(parsedMsg, complexItem.get(), id, prev);
                 hasTrailingLink = parsedMsg.hasTrailingLink;
+                hasLinkInText = parsedMsg.linkInsideText;
             }
             else
             {
-                const auto parsedMsg = parseText(_text, allowSnippet, _forcePreview);
+                const auto parsedMsg = parseText(text, allowSnippet, _forcePreview == ForcePreview::Yes);
 
-                messageBlocks = createBlocks(parsedMsg, complexItem.get(), _id, _prev);
+                messageBlocks = createBlocks(parsedMsg, complexItem.get(), id, prev);
                 hasTrailingLink = parsedMsg.hasTrailingLink;
+                hasLinkInText = parsedMsg.linkInsideText;
             }
         }
+
+        if (_msg.poll_)
+            messageBlocks.push_back(new PollBlock(complexItem.get(), *_msg.poll_));
 
         if (!messageBlocks.empty())
         {
@@ -465,7 +614,7 @@ namespace ComplexMessageItemBuilder
         items.reserve(blockCount);
 
         if (appendId)
-            items.insert(items.begin(), new DebugTextBlock(complexItem.get(), _id, DebugTextBlock::Subtype::MessageId));
+            items.insert(items.begin(), new DebugTextBlock(complexItem.get(), id, DebugTextBlock::Subtype::MessageId));
 
         items.insert(items.end(), quoteBlocks.begin(), quoteBlocks.end());
         items.insert(items.end(), messageBlocks.begin(), messageBlocks.end());
@@ -485,14 +634,16 @@ namespace ComplexMessageItemBuilder
 
         complexItem->setItems(std::move(items));
         complexItem->setHasTrailingLink(hasTrailingLink);
+        complexItem->setHasLinkInText(hasLinkInText);
 
-        complexItem->setUrlAndDescription(_url, _description);
+        complexItem->setUrlAndDescription(_msg.GetUrl(), description);
 
         if (GetAppConfig().WatchGuiMemoryEnabled())
             MessageItemMemMonitor::instance().watchComplexMsgItem(complexItem.get());
 
         return complexItem;
     }
+
 }
 
 UI_COMPLEX_MESSAGE_NS_END

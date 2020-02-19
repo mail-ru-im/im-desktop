@@ -1,8 +1,8 @@
 #include "stdafx.h"
 #include "TextUnit.h"
+#include "textrendering/TextRenderingUtils.h"
 
 #include "../styles/ThemeParameters.h"
-#include "../styles/ThemesContainer.h"
 
 namespace Ui
 {
@@ -18,6 +18,7 @@ namespace TextRendering
         , maxLinesCount_(-1)
         , appended_(-1)
         , lineBreak_(LineBreakType::PREFER_WIDTH)
+        , linksStyle_(isLinksUnderlined() ? LinksStyle::UNDERLINED : LinksStyle::PLAIN)
         , lineSpacing_(0)
         , sourceModified_(false)
         , needsEmojiMargin_(false)
@@ -37,6 +38,7 @@ namespace TextRendering
         , maxLinesCount_(-1)
         , appended_(-1)
         , lineBreak_(LineBreakType::PREFER_WIDTH)
+        , linksStyle_(isLinksUnderlined() ? LinksStyle::UNDERLINED : LinksStyle::PLAIN)
         , lineSpacing_(0)
         , sourceModified_(false)
         , needsEmojiMargin_(false)
@@ -49,7 +51,7 @@ namespace TextRendering
             color_ = _color;
         originText_ = _text;
         blocks_ = parseForBlocks(_text, mentions_, showLinks_, processLineFeeds_);
-        initBlocks(blocks_, font_, color_, linkColor_, selectionColor_, highlightColor_, align_, emojiSizeType_, Styling::getThemesContainer().getCurrentTheme()->linksUnderlined());
+        initBlocks(blocks_, font_, color_, linkColor_, selectionColor_, highlightColor_, align_, emojiSizeType_, linksStyle_);
         setBlocksMaxLinesCount(blocks_, maxLinesCount_, lineBreak_);
         evaluateDesiredSize();
     }
@@ -201,6 +203,7 @@ namespace TextRendering
         align_ = _align;
         maxLinesCount_ = _maxLinesCount;
         lineBreak_ = _lineBreak;
+        linksStyle_ = _linksStyle;
         initBlocks(blocks_, _font, _color, _linkColor, _selectionColor, _highlightColor, _align, _emojiSizeType, _linksStyle);
         setBlocksMaxLinesCount(blocks_, _maxLinesCount, lineBreak_);
     }
@@ -325,6 +328,11 @@ namespace TextRendering
         setColor(Styling::getParameters(_aimid).getColor(_var));
     }
 
+    void TextUnit::setLinkColor(const QColor& _color)
+    {
+        setBlocksLinkColor(blocks_, _color);
+    }
+
     void TextUnit::setSelectionColor(const Styling::StyleVariable _var, const QString & _aimid)
     {
         selectionColor_ = Styling::getParameters(_aimid).getColor(_var);
@@ -335,6 +343,12 @@ namespace TextRendering
     {
         selectionColor_ = _color;
         setBlocksSelectionColor(blocks_, selectionColor_);
+    }
+
+    void TextUnit::setHighlightedTextColor(const QColor& _color)
+    {
+        highlightTextColor_ = _color;
+        setBlocksHighlightedTextColor(blocks_, highlightTextColor_);
     }
 
     QColor TextUnit::getColor() const
@@ -385,7 +399,12 @@ namespace TextRendering
 
     void TextUnit::setHighlighted(const bool _isHighlighted)
     {
-        return highlightBlocks(blocks_, _isHighlighted);
+        highlightBlocks(blocks_, _isHighlighted);
+    }
+
+    void TextUnit::setHighlighted(const highlightsV& _entries)
+    {
+        highlightParts(blocks_, _entries);
     }
 
     void TextUnit::setUnderline(const bool _enabled)
@@ -406,7 +425,8 @@ namespace TextRendering
     void TextUnit::setEmojiSizeType(const EmojiSizeType _emojiSizeType)
     {
         emojiSizeType_ = _emojiSizeType;
-        initBlocks(blocks_, font_, color_, linkColor_, selectionColor_, highlightColor_, align_, emojiSizeType_, Styling::getThemesContainer().getCurrentTheme()->linksUnderlined());
+        initBlocks(blocks_, font_, color_, linkColor_, selectionColor_, highlightColor_, align_, emojiSizeType_, linksStyle_);
+        setBlocksHighlightedTextColor(blocks_, highlightTextColor_);
     }
 
     bool TextUnit::needsEmojiMargin() const
@@ -417,6 +437,13 @@ namespace TextRendering
     bool TextUnit::isEmpty() const
     {
         return blocks_.empty();
+    }
+
+    void TextUnit::setAlign(HorAligment _align)
+    {
+        align_ = _align;
+        initBlocks(blocks_, font_, color_, linkColor_, selectionColor_, highlightColor_, align_, emojiSizeType_, isLinksUnderlined() ? LinksStyle::UNDERLINED : LinksStyle::PLAIN);
+        setBlocksHighlightedTextColor(blocks_, highlightTextColor_);
     }
 
     TextUnitPtr MakeTextUnit(const QString& _text, const Data::MentionMap& _mentions, LinksVisible _showLinks, ProcessLineFeeds _processLineFeeds, EmojiSizeType _emojiSizeType)
@@ -501,5 +528,9 @@ namespace TextRendering
         });
     }
 
+}
+QString getEllipsis()
+{
+    return qsl("...");
 }
 }

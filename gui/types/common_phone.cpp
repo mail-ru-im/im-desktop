@@ -4,7 +4,7 @@
 
 namespace Data
 {
-    PhoneInfo::PhoneInfo(): is_phone_valid_(false), valid_(false)
+    PhoneInfo::PhoneInfo(): is_phone_valid_(false)
     {
         //
     }
@@ -50,7 +50,6 @@ namespace Data
             }
             modified_prefix_ = c->get_value_as_string("modified_prefix", "");
             is_phone_valid_ = c->get_value_as_bool("is_phone_valid", false);
-            valid_ = true;
         }
     }
 }

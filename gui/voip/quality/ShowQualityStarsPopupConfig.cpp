@@ -1,6 +1,5 @@
 #include "ShowQualityStarsPopupConfig.h"
 
-
 namespace Ui
 {
 

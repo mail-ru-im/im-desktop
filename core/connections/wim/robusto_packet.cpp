@@ -7,6 +7,8 @@
 #include "../../tools/hmac_sha_base64.h"
 #include "../../utils.h"
 #include "../../tools/system.h"
+#include "../../tools/json_helper.h"
+#include "../../tools/features.h"
 #include "../urls_cache.h"
 
 using namespace core;
@@ -27,10 +29,7 @@ robusto_packet::robusto_packet(wim_packet_params params)
 
 }
 
-robusto_packet::~robusto_packet()
-{
-
-}
+robusto_packet::~robusto_packet() = default;
 
 void robusto_packet::set_robusto_params(const robusto_packet_params& _params)
 {
@@ -170,6 +169,10 @@ void robusto_packet::sign_packet(
 {
     _node.AddMember("aimsid", params_.aimsid_, _a);
 
+    // for the best zstd-compression, json data should be sorted lexicographically
+    if (features::is_zstd_request_enabled())
+        tools::sort_json_keys_by_name(&_node);
+
     rapidjson::StringBuffer buffer;
     rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
     _node.Accept(writer);
@@ -188,7 +191,7 @@ void robusto_packet::sign_packet(
     params["k"] = params_.dev_id_;
     params["ts"] = std::to_string((int64_t) ts);
     params["client"] = core::utils::get_client_string();
-    params["lang"] = g_core->get_locale();
+    params["lang"] = params_.locale_;
     params["body_checksum"] = sha_buffer;
 
     auto sha256 = escape_symbols(get_url_sign(host, params, params_, true));
@@ -202,4 +205,7 @@ void robusto_packet::sign_packet(
     _request->set_custom_header_param("Content-Type: application/json;charset=utf-8");
 
     _request->push_post_parameter(std::move(json_string), std::string());
+
+    if (!_request->is_compressed())
+        _request->set_compression_auto();
 }

@@ -51,6 +51,11 @@ namespace Ui
         return state_;
     }
 
+    void PlayButton::updateIcon()
+    {
+        updateIcon(getState());
+    }
+
     void PlayButton::updateTooltipText(State _s)
     {
         switch (_s)

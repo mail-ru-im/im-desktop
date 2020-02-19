@@ -1,9 +1,5 @@
 #pragma once
-
-#include <QWidget>
 #include "ShowQualityReasonsPopupConfig.h"
-
-class QVBoxLayout;
 
 namespace Ui
 {

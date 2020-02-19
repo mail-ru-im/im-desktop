@@ -27,6 +27,8 @@ namespace Utils
 
         QString getFilesharingId() const;
 
+        static const std::vector<std::string>& additionalFsUrls();
+
     private:
         void processImpl(const QByteArray& _utf8);
         common::tools::url_parser parser_;

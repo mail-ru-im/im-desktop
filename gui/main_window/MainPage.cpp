@@ -1,6 +1,8 @@
 #include "stdafx.h"
 #include "MainPage.h"
 
+#include "../common.shared/config/config.h"
+
 #include "Splitter.h"
 #include "TabWidget.h"
 #include "TabBar.h"
@@ -9,6 +11,7 @@
 #include "ContactDialog.h"
 #include "GroupChatOperations.h"
 #include "IntroduceYourself.h"
+#include "UpdaterButton.h"
 #include "livechats/LiveChatsHome.h"
 #include "livechats/LiveChatProfile.h"
 #include "contact_list/ChatMembersModel.h"
@@ -41,6 +44,7 @@
 #include "../controls/TransparentScrollBar.h"
 #include "../controls/LineLayoutSeparator.h"
 #include "../controls/LoaderOverlay.h"
+#include "../controls/ContextMenu.h"
 #include "../utils/InterConnector.h"
 #include "../utils/utils.h"
 #include "../utils/log/log.h"
@@ -57,6 +61,8 @@
 
 #include "styles/ThemeParameters.h"
 
+#include "url_config.h"
+
 #include "previewer/toast.h"
 
 #ifdef __APPLE__
@@ -70,8 +76,6 @@ namespace
     constexpr int counter_padding = 4;
     constexpr int back_spacing = 16;
     constexpr int unreads_minimum_extent = balloon_size;
-    constexpr int min_step = 0;
-    constexpr int max_step = 100;
     constexpr int BACK_HEIGHT = 52;
     constexpr int MENU_WIDTH = 240;
     constexpr int ANIMATION_DURATION = 200;
@@ -135,6 +139,11 @@ namespace
     constexpr std::chrono::milliseconds getLoaderOverlayDelay()
     {
         return std::chrono::milliseconds(100);
+    }
+
+    bool fastDropSearchEnabled()
+    {
+        return Ui::get_gui_settings()->get_value<bool>(settings_fast_drop_search_results, settings_fast_drop_search_default());
     }
 }
 
@@ -201,13 +210,13 @@ namespace Ui
         , settingsTimer_(new QTimer(this))
         , recvMyInfo_(false)
         , animCLWidth_(new QPropertyAnimation(this, QByteArrayLiteral("clWidth"), this))
-        , clSpacer_(new QWidget())
+        , clSpacer_(new QWidget(this))
         , clHostLayout_(new QVBoxLayout())
         , leftPanelState_(LeftPanelState::spreaded)
         , spacerBetweenHeaderAndRecents_(new QWidget(this))
         , semiWindow_(new SemitransparentWindowAnimated(this, ANIMATION_DURATION))
         , settingsHeader_(new SettingsHeader(this))
-        , profilePage_(new MyProfilePage(this))
+        , profilePage_(nullptr)
         , splitter_(new Splitter(Qt::Horizontal, this))
         , clContainer_(nullptr)
         , pagesContainer_(nullptr)
@@ -216,9 +225,9 @@ namespace Ui
         , settingsTab_(nullptr)
         , contactsTab_(nullptr)
         , spreadedModeLine_(new LineLayoutSeparator(Utils::scale_value(1), LineLayoutSeparator::Direction::Ver, Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT),this))
+        , updaterButton_(nullptr)
         , NeedShowUnknownsHeader_(false)
         , currentTab_(RECENTS)
-        , anim_(min_step)
         , isManualRecentsMiniMode_(get_gui_settings()->get_value(settings_recents_mini_mode, false))
         , frameCountMode_(FrameCountMode::_1)
         , oneFrameMode_(OneFrameMode::Tab)
@@ -253,25 +262,33 @@ namespace Ui
 
         contactsLayout = Utils::emptyVLayout(contactsWidget_);
 
+        moreMenu_ = new ContextMenu(this, 24);
+        if (config::get().is_on(config::features::add_contact))
+            moreMenu_->addActionWithIcon(qsl(":/header/add_user"), QT_TRANSLATE_NOOP("contact_list", "Add contact"), this, []
+        {
+            Utils::InterConnector::instance().getMainWindow()->onShowAddContactDialog({ Utils::AddContactDialogs::Initiator::From::ScrChatsTab });
+        });
+
+        moreMenu_->addActionWithIcon(qsl(":/add_groupchat"), QT_TRANSLATE_NOOP("contact_list", "Create group"), this, [this]() { createGroupChat(CreateChatSource::dots); });
+        moreMenu_->addActionWithIcon(qsl(":/add_channel"), QT_TRANSLATE_NOOP("contact_list", "Create channel"), this, [this]() { createChannel(CreateChatSource::dots); });
+        moreMenu_->addSeparator();
+        moreMenu_->addActionWithIcon(qsl(":/header/check"), QT_TRANSLATE_NOOP("tab header", "Read all"), this, &MainPage::readAllClicked);
+
         topWidget_ = new TopPanelWidget(this);
 
         const auto headerIconSize = QSize(24, 24);
 
-        recentsHeaderButtons_.readAll_ = new HeaderTitleBarButton(this);
+        recentsHeaderButtons_.more_ = new HeaderTitleBarButton(this);
 
-        recentsHeaderButtons_.readAll_->setDefaultImage(qsl(":/header/check"), QColor(), headerIconSize);
-        recentsHeaderButtons_.readAll_->setCustomToolTip(QT_TRANSLATE_NOOP("tab header", "Read all"));
-        Testing::setAccessibleName(recentsHeaderButtons_.readAll_, qsl("AS headerbutton readAll"));
-        topWidget_->getRecentsHeader()->addButtonToLeft(recentsHeaderButtons_.readAll_);
-        QObject::connect(recentsHeaderButtons_.readAll_, &HeaderTitleBarButton::clicked, this, []()
+        recentsHeaderButtons_.more_->setDefaultImage(qsl(":/controls/more_icon"), QColor(), headerIconSize);
+        Testing::setAccessibleName(recentsHeaderButtons_.more_, qsl("AS headerbutton moreMenu"));
+        topWidget_->getRecentsHeader()->addButtonToLeft(recentsHeaderButtons_.more_);
+        QObject::connect(recentsHeaderButtons_.more_, &HeaderTitleBarButton::clicked, this, [this]()
         {
-            auto readCnt = Logic::getRecentsModel()->markAllRead();
-            core::stats::event_props_type props = {
-                { "From", "RecentScr" },
-                { "Chats_Read", std::to_string(readCnt) }
-            };
-
-            Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::mark_read_all, props);
+            auto p = mapToGlobal(rect().topLeft());
+            p.setX(p.x() + Utils::scale_value(8));
+            p.setY(p.y() + Utils::scale_value(8));
+            moreMenu_->popup(p);
         });
 
         recentsHeaderButtons_.newContacts_ = new HeaderTitleBarButton(this);
@@ -304,19 +321,6 @@ namespace Ui
         recentsHeaderButtons_.newEmails_->setVisibility(false);
         connect(MyInfo(), &my_info::received, this, &MainPage::updateNewMailButton);
 
-        if (!build::is_biz() && !build::is_dit())
-        {
-            recentsHeaderButtons_.addContact_ = new HeaderTitleBarButton(this);
-            recentsHeaderButtons_.addContact_->setDefaultImage(qsl(":/header/add_user"), QColor(), headerIconSize);
-            recentsHeaderButtons_.addContact_->setCustomToolTip(QT_TRANSLATE_NOOP("tab header", "Add contact"));
-            Testing::setAccessibleName(recentsHeaderButtons_.addContact_, qsl("AS headerbutton addContact_"));
-            topWidget_->getRecentsHeader()->addButtonToRight(recentsHeaderButtons_.addContact_);
-
-            connect(recentsHeaderButtons_.addContact_, &CustomButton::clicked, []() {
-                Utils::InterConnector::instance().getMainWindow()->onShowAddContactDialog({ Utils::AddContactDialogs::Initiator::From::ScrChatsTab });
-            });
-        }
-
         Testing::setAccessibleName(topWidget_, qsl("AS myTopWidget_"));
         contactsLayout->addWidget(topWidget_);
         spacerBetweenHeaderAndRecents_->setFixedHeight(Utils::scale_value(8));
@@ -328,13 +332,14 @@ namespace Ui
 
         hideSemiWindow();
 
-        connect(contactListWidget_, &ContactList::createGroupChatClicked, this, &MainPage::createGroupChat);
-        connect(contactListWidget_, &ContactList::createChannelClicked, this, &MainPage::createChannel);
+        connect(contactListWidget_, &ContactList::createGroupChatClicked, this, [this]() { createGroupChat(CreateChatSource::pencil); });
+        connect(contactListWidget_, &ContactList::createChannelClicked, this, [this]() { createChannel(CreateChatSource::pencil); });
         connect(contactListWidget_, &ContactList::addContactClicked, this, &MainPage::addContactClicked);
         connect(contactListWidget_, &ContactList::tabChanged, this, &MainPage::tabChanged);
 
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::unknownsGoSeeThem, this, &MainPage::changeCLHeadToUnknownSlot);
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::unknownsGoBack, this, &MainPage::changeCLHeadToSearchSlot);
+        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::addByNick, this, &MainPage::addByNick);
 
         if (isManualRecentsMiniMode_)
         {
@@ -374,10 +379,6 @@ namespace Ui
             pages_->addWidget(generalSettings_);
             Testing::setAccessibleName(liveChatsPage_, qsl("AS liveChatsPage_"));
             pages_->addWidget(liveChatsPage_);
-            Testing::setAccessibleName(profilePage_, qsl("AS profilePage_"));
-            Utils::setDefaultBackground(profilePage_);
-            pages_->addWidget(profilePage_);
-
             pages_->push(contactDialog_);
         }
         Testing::setAccessibleName(clSpacer_, qsl("AS clSpacer_"));
@@ -408,9 +409,12 @@ namespace Ui
         clHostLayout_->addWidget(expandButton_);
 
         connect(Ui::GetDispatcher(), &Ui::core_dispatcher::updateReady, this, [this]() {
-            const auto text = QT_TRANSLATE_NOOP("tab", "NEW");
-            expandButton_->setBadgeText(text);
-            tabWidget_->setBadgeText(getIndexByTab(Tabs::Settings), text);
+            expandButton_->setBadgeText(QT_TRANSLATE_NOOP("tab", "NEW"));
+            if (!updaterButton_)
+            {
+                updaterButton_ = new UpdaterButton(this);
+                tabWidget_->insertAdditionalWidget(updaterButton_);
+            }
         });
 
         clHostLayout_->setContentsMargins(0, 0, 0, 0);
@@ -421,6 +425,7 @@ namespace Ui
         clContainerLayout->setSpacing(0);
         clContainerLayout->setContentsMargins(0, 0, 0, 0);
         clContainerLayout->addLayout(clHostLayout_);
+        Testing::setAccessibleName(spreadedModeLine_, qsl("AS mp spreadedModeLine_"));
         clContainerLayout->addWidget(spreadedModeLine_);
         spreadedModeLine_->hide();
         clContainer_->setLayout(clContainerLayout);
@@ -485,13 +490,13 @@ namespace Ui
         connect(contactListWidget_, &ContactList::itemSelected, this, &MainPage::onContactSelected);
         connect(contactListWidget_, &ContactList::itemSelected, this, &MainPage::hideRecentsPopup);
         connect(contactListWidget_, &ContactList::itemSelected, contactDialog_, &ContactDialog::onContactSelected);
-        connect(contactDialog_, &Ui::ContactDialog::sendMessage, this, &MainPage::onMessageSent);
+        connect(contactDialog_, &ContactDialog::sendMessage, this, &MainPage::onMessageSent);
         connect(contactDialog_, &ContactDialog::clicked, this, &MainPage::hideRecentsPopup);
 
         connect(contactsTab_->getContactListWidget(), &ContactListWidget::itemSelected, this, &MainPage::onContactSelected);
         connect(contactsTab_->getContactListWidget(), &ContactListWidget::itemSelected, contactDialog_, &ContactDialog::onContactSelected);
 
-        connect(sidebar_, &Ui::Sidebar::backButtonClicked, this, &MainPage::sidebarBackClicked);
+        connect(sidebar_, &Sidebar::backButtonClicked, this, &MainPage::sidebarBackClicked);
 
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::showSettingsHeader, this, &MainPage::showSettingsHeader);
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::hideSettingsHeader, this, &MainPage::hideSettingsHeader);
@@ -626,14 +631,19 @@ namespace Ui
 
     void MainPage::updateNewMailButton()
     {
-        recentsHeaderButtons_.newEmails_->setVisibility(get_gui_settings()->get_value<bool>(settings_notify_new_mail_messages, true) && MyInfo()->haveConnectedEmail());
+        const auto isMailVisible =
+            get_gui_settings()->get_value<bool>(settings_notify_new_mail_messages, true) &&
+            MyInfo()->haveConnectedEmail() &&
+            getUrlConfig().isMailConfigPresent();
+
+        recentsHeaderButtons_.newEmails_->setVisibility(isMailVisible);
         topWidget_->getRecentsHeader()->refresh();
     }
 
     void MainPage::switchToContentFrame()
     {
         setOneFrameMode(OneFrameMode::Content);
-        if (getCurrentTab() == Tabs::Settings)
+        if (getCurrentTab() == Tabs::Settings && settingsHeader_->hasText())
             settingsHeader_->show();
         pagesContainer_->show();
         clContainer_->hide();
@@ -672,7 +682,7 @@ namespace Ui
             {
                 QString text;
                 if (id.contains(ql1c('@')) && !Utils::isChat(id))
-                    text = QT_TRANSLATE_NOOP("toast", "There are no profiles with this email address");
+                    text = QT_TRANSLATE_NOOP("toast", "There are no profiles with this email");
                 else
                     text = QT_TRANSLATE_NOOP("toast", "There are no profiles or groups with this nickname");
 
@@ -709,8 +719,8 @@ namespace Ui
     bool MainPage::canSetSearchFocus() const
     {
         return !isSemiWindowVisible() &&
-            contactListWidget_->currentTab() == RECENTS &&
-            (contactListWidget_->isRecentsOpen() || contactListWidget_->isUnknownsOpen());
+            getCurrentTab() == Tabs::Recents &&
+            contactListWidget_->currentTab() == RECENTS;
     }
 
     void MainPage::setCLWidth(int _val)
@@ -770,6 +780,9 @@ namespace Ui
     void MainPage::openDialogOrProfileById(const QString& _id)
     {
         assert(!_id.isEmpty());
+
+        if (fastDropSearchEnabled())
+            emit Utils::InterConnector::instance().searchEnd();
 
         emit Utils::InterConnector::instance().closeAnySemitransparentWindow({ Utils::CloseWindowInfo::Initiator::Unknown, Utils::CloseWindowInfo::Reason::Keep_Sidebar });
 
@@ -964,6 +977,14 @@ namespace Ui
             return;
         }
 
+        if (!profilePage_)
+        {
+            profilePage_ = new MyProfilePage(this);
+            Utils::setDefaultBackground(profilePage_);
+            Testing::setAccessibleName(profilePage_, qsl("AS profilePage_"));
+            pages_->addWidget(profilePage_);
+        }
+
         profilePage_->initFor(_uin);
         pages_->push(profilePage_);
 
@@ -1010,30 +1031,30 @@ namespace Ui
 
     void MainPage::nextChat()
     {
-        if (Logic::getContactListModel()->selectedContact().isEmpty())
-            return;
-
-        if (contactListWidget_->currentTab() == RECENTS && contactListWidget_->isRecentsOpen())
+        if (const auto& sel = Logic::getContactListModel()->selectedContact(); !sel.isEmpty())
         {
-            const auto nextContact = Logic::getRecentsModel()->nextAimId(Logic::getContactListModel()->selectedContact());
-            if (!nextContact.isEmpty())
+            if (contactListWidget_->currentTab() == RECENTS && contactListWidget_->isRecentsOpen())
             {
-                emit Logic::getContactListModel()->select(nextContact, -1);
+                if (const auto nextContact = Logic::getRecentsModel()->nextAimId(sel); !nextContact.isEmpty())
+                {
+                    contactListWidget_->setNextSelectWithOffset();
+                    emit Logic::getContactListModel()->select(nextContact, -1);
+                }
             }
         }
     }
 
     void MainPage::prevChat()
     {
-        if (Logic::getContactListModel()->selectedContact().isEmpty())
-            return;
-
-        if (contactListWidget_->currentTab() == RECENTS && contactListWidget_->isRecentsOpen())
+        if (const auto& sel = Logic::getContactListModel()->selectedContact(); !sel.isEmpty())
         {
-            const auto prevContact = Logic::getRecentsModel()->prevAimId(Logic::getContactListModel()->selectedContact());
-            if (!prevContact.isEmpty())
+            if (contactListWidget_->currentTab() == RECENTS && contactListWidget_->isRecentsOpen())
             {
-                emit Logic::getContactListModel()->select(prevContact, -1);
+                if (const auto prevContact = Logic::getRecentsModel()->prevAimId(sel); !prevContact.isEmpty())
+                {
+                    contactListWidget_->setNextSelectWithOffset();
+                    emit Logic::getContactListModel()->select(prevContact, -1);
+                }
             }
         }
     }
@@ -1058,22 +1079,22 @@ namespace Ui
         contactDialog_->cancelSelection();
     }
 
-    void MainPage::createGroupChat()
+    void MainPage::createGroupChat(const CreateChatSource _source)
     {
         searchEnd();
         openRecents();
 
-        Ui::createGroupChat({});
+        Ui::createGroupChat({}, _source);
 
         hideSemiWindow();
     }
 
-    void MainPage::createChannel()
+    void MainPage::createChannel(const CreateChatSource _source)
     {
         searchEnd();
         openRecents();
 
-        Ui::createChannel();
+        Ui::createChannel(_source);
 
         hideSemiWindow();
     }
@@ -1255,7 +1276,7 @@ namespace Ui
 
     void MainPage::onMessageSent()
     {
-        if (!isUnknownsOpen())
+        if (!isUnknownsOpen() && fastDropSearchEnabled())
             openRecents();
     }
 
@@ -1369,6 +1390,20 @@ namespace Ui
             openRecents();
     }
 
+    void MainPage::readAllClicked()
+    {
+        const auto [readChats, readCnt] = Logic::getRecentsModel()->markAllRead();
+        if (readChats || readCnt)
+        {
+            core::stats::event_props_type props = {
+            { "unread_chats", std::to_string(readChats) },
+            { "unread_messages", std::to_string(readCnt) }
+            };
+
+            Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::mark_read_all, props);
+        }
+    }
+
     void MainPage::showLoaderOverlay()
     {
         updateLoaderOverlayPosition();
@@ -1446,28 +1481,23 @@ namespace Ui
         }
     }
 
-    void MainPage::onVoipCallIncoming(const std::string& _account, const std::string& _contact)
+    void MainPage::onVoipCallIncoming(const std::string& call_id, const std::string& _contact)
     {
-        assert(!_account.empty());
-        assert(!_contact.empty());
-
-        if (!_account.empty() && !_contact.empty())
+        assert(!call_id.empty() && !_contact.empty());
+        if (!call_id.empty() && !_contact.empty())
         {
-            const std::string callId = _account + '#' + _contact;
-
-            auto it = incomingCallWindows_.find(callId);
+            const std::string full_id = call_id + '#' + _contact;
+            auto it = incomingCallWindows_.find(full_id);
             if (incomingCallWindows_.end() == it || !it->second)
             {
-                std::shared_ptr<IncomingCallWindow> window(new(std::nothrow) IncomingCallWindow(_account, _contact));
+                std::shared_ptr<IncomingCallWindow> window(new(std::nothrow) IncomingCallWindow(call_id, _contact));
                 assert(!!window);
-
                 if (!!window)
                 {
                     window->showFrame();
-                    incomingCallWindows_[callId] = window;
+                    incomingCallWindows_[full_id] = window;
                 }
-            }
-            else
+            } else
             {
                 std::shared_ptr<IncomingCallWindow> wnd = it->second;
                 wnd->showFrame();
@@ -1476,40 +1506,34 @@ namespace Ui
         Utils::InterConnector::instance().getMainWindow()->updateMainMenu();
     }
 
-    void MainPage::destroyIncomingCallWindow(const std::string& _account, const std::string& _contact)
+    void MainPage::destroyIncomingCallWindow(const std::string& call_id, const std::string& _contact)
     {
-        assert(!_account.empty());
-        assert(!_contact.empty());
-
-        if (!_account.empty() && !_contact.empty())
+        assert(!call_id.empty() && !_contact.empty());
+        if (!call_id.empty() && !_contact.empty())
         {
-            const std::string call_id = _account + '#' + _contact;
-            auto it = incomingCallWindows_.find(call_id);
+            const std::string full_id = call_id + '#' + _contact;
+            auto it = incomingCallWindows_.find(full_id);
             if (incomingCallWindows_.end() != it)
             {
                 auto window = it->second;
                 assert(!!window);
-
                 if (!!window)
-                {
                     window->hideFrame();
-                }
             }
         }
-
         Utils::InterConnector::instance().getMainWindow()->updateMainMenu();
     }
 
     void MainPage::onVoipCallIncomingAccepted(const voip_manager::ContactEx& _contactEx)
     {
-        destroyIncomingCallWindow(_contactEx.contact.account, _contactEx.contact.contact);
-
+        //destroy exactly when accept button pressed
+        //destroyIncomingCallWindow(_contactEx.contact.call_id, _contactEx.contact.contact);
         Utils::InterConnector::instance().getMainWindow()->closeGallery();
     }
 
     void MainPage::onVoipCallDestroyed(const voip_manager::ContactEx& _contactEx)
     {
-        destroyIncomingCallWindow(_contactEx.contact.account, _contactEx.contact.contact);
+        destroyIncomingCallWindow(_contactEx.contact.call_id, _contactEx.contact.contact);
     }
 
     void MainPage::showVideoWindow()
@@ -1585,12 +1609,9 @@ namespace Ui
 
     void MainPage::selectRecentChat(const QString& _aimId)
     {
-        assert(!!contactListWidget_);
-        if (contactListWidget_)
-        {
-            if (!_aimId.isEmpty())
-                contactListWidget_->select(_aimId);
-        }
+        assert(contactListWidget_);
+        if (contactListWidget_ && !_aimId.isEmpty())
+            contactListWidget_->select(_aimId);
     }
 
     void MainPage::settingsTabActivate(Utils::CommonSettingsType _item)
@@ -1835,6 +1856,8 @@ namespace Ui
             contactListWidget_->setPictureOnlyView(false);
             settingsTab_->setCompactMode(false);
             tabWidget_->showTabbar();
+            if (updaterButton_)
+                updaterButton_->show();
             expandButton_->hide();
             spacerBetweenHeaderAndRecents_->show();
             hideSemiWindow();
@@ -1849,6 +1872,8 @@ namespace Ui
             topWidget_->getSearchWidget()->clearInput();
             settingsTab_->setCompactMode(true);
             tabWidget_->hideTabbar();
+            if (updaterButton_)
+                updaterButton_->hide();
             expandButton_->show();
             spacerBetweenHeaderAndRecents_->hide();
 
@@ -1993,6 +2018,32 @@ namespace Ui
         }
     }
 
+    void MainPage::addByNick()
+    {
+        if (isPictureOnlyView())
+            setLeftPanelState(LeftPanelState::spreaded, true, true);
+
+        if (frameCountMode_ == FrameCountMode::_1 && oneFrameMode_ != OneFrameMode::Tab)
+            switchToTabFrame();
+
+
+        SearchWidget* widget = nullptr;
+        if (getCurrentTab() == Tabs::Contacts)
+        {
+            widget = contactsTab_->getSearchWidget();
+        }
+        else
+        {
+            widget = topWidget_->getSearchWidget();
+        }
+
+        if (widget)
+        {
+            widget->setFocus();
+            widget->setTempPlaceholderText(config::get().is_on(config::features::has_nicknames) ? QT_TRANSLATE_NOOP("add_widget", "Enter nickname") : QT_TRANSLATE_NOOP("add_widget", "Enter email"));
+        }
+    }
+
     void MainPage::openRecents()
     {
         searchEnd();
@@ -2003,8 +2054,7 @@ namespace Ui
 
     void MainPage::onShowWindowForTesters()
     {
-        SettingsForTestersDialog settingsForTesters(QT_TRANSLATE_NOOP("popup_window", "Advanced Settings"), this);
-        settingsForTesters.show();
+        emit Utils::InterConnector::instance().showDebugSettings();
     }
 
     void MainPage::compactModeChanged()
@@ -2054,6 +2104,7 @@ namespace Ui
 
     void MainPage::hideSettingsHeader()
     {
+        settingsHeader_->setText(QString());
         settingsHeader_->hide();
     }
 
@@ -2067,6 +2118,14 @@ namespace Ui
 
     void MainPage::tabBarCurrentChanged(int _index)
     {
+        if (fastDropSearchEnabled())
+        {
+            topWidget_->getSearchWidget()->setNeedClear(true);
+            topWidget_->getSearchWidget()->clearInput();
+            emit contactsTab_->getContactListWidget()->forceSearchClear(true);
+            topWidget_->getSearchWidget()->setNeedClear(false);
+        }
+
         const auto tab = getTabByIndex(_index);
         switch (tab)
         {

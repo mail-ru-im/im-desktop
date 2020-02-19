@@ -209,6 +209,12 @@ namespace ptt
 
         openal::ALint sample = 0;
         openal::alcGetIntegerv(device_, ALC_CAPTURE_SAMPLES, (openal::ALCsizei)sizeof(openal::ALint), &sample);
+        if (errorHappened(device_))
+        {
+            stopImpl();
+            emit error(Error2::DeviceInit, contact_, QPrivateSignal());
+            return;
+        }
         if (sample <= 0)
             return;
 

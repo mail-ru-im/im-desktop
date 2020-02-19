@@ -46,7 +46,8 @@ namespace Ui
 
     void ClickableWidget::click(const ClickType _how)
     {
-        emit clicked(_how, QPrivateSignal());
+        if (isEnabled())
+            emit clicked(_how, QPrivateSignal());
     }
 
     void ClickableWidget::setFocusColor(const QColor & _color)

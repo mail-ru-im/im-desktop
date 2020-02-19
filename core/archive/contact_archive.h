@@ -40,6 +40,13 @@ namespace core
 
             bool local_loaded_;
 
+            mutable struct load_metrics
+            {
+                int64_t index_ms_;
+                int64_t mentions_ms_;
+                int64_t gallery_ms_;
+            } load_metrics_;
+
             bool get_messages_buddies_from_ids(const archive::msgids_list& _ids, history_block& _messages, error_vector& _errors) const;
             bool get_messages_buddies_from_headers(const headers_list& _headers, history_block& _messages, error_vector& _errors) const;
 
@@ -68,6 +75,8 @@ namespace core
             bool get_next_hole(int64_t _from, archive_hole& _hole, int64_t _depth) const;
             int64_t validate_hole_request(const archive_hole& _hole, const int32_t _count) const;
 
+            std::optional<std::string> get_locale() const;
+
             const dlg_state& get_dlg_state() const;
             void set_dlg_state(const dlg_state& _state, Out dlg_state_changes& _changes);
             void clear_dlg_state();
@@ -87,6 +96,7 @@ namespace core
 
             int32_t load_from_local(/*out*/ bool& _first_load);
             void load_gallery_state_from_local();
+            std::string get_load_metrics_for_log() const;
 
             bool need_optimize() const;
             void optimize();
@@ -113,12 +123,12 @@ namespace core
             void get_memory_usage(int64_t& _index_size, int64_t& _gallery_size) const;
         };
 
-        std::wstring db_filename();
-        std::wstring index_filename();
-        std::wstring dlg_state_filename();
-        std::wstring cache_filename();
-        std::wstring mentions_filename();
-        std::wstring gallery_cache_filename();
-        std::wstring gallery_state_filename();
+        std::wstring_view db_filename() noexcept;
+        std::wstring_view index_filename() noexcept;
+        std::wstring_view dlg_state_filename() noexcept;
+        std::wstring_view cache_filename() noexcept;
+        std::wstring_view mentions_filename() noexcept;
+        std::wstring_view gallery_cache_filename() noexcept;
+        std::wstring_view gallery_state_filename() noexcept;
     }
 }

@@ -8,17 +8,16 @@ namespace core
 {
     curl_task::curl_task(std::weak_ptr<curl_context> _context, curl_easy::completion_function _completion_func)
         : context_(_context)
-        , completion_func_(_completion_func)
+        , completion_func_(std::move(_completion_func))
         , async_(true)
     {
     }
 
-    curl_task::curl_task(std::weak_ptr<curl_context> _context, curl_easy::promise_t& _promise)
+    curl_task::curl_task(std::weak_ptr<curl_context> _context, curl_easy::promise_t&& _promise)
         : context_(_context)
         , promise_(std::move(_promise))
         , async_(false)
     {
-
     }
 
     void curl_task::execute(CURL* _curl)
@@ -49,7 +48,7 @@ namespace core
         curl_easy_reset(_curl);
     }
 
-    CURL* curl_task::init_handler()
+    curl_task::init_result curl_task::init_handler()
     {
         auto result = [this](CURLcode _err)
         {
@@ -63,13 +62,13 @@ namespace core
         if (!ctx)
         {
             result(CURLE_FAILED_INIT);
-            return nullptr;
+            return { nullptr, CURLE_FAILED_INIT };
         }
 
         if (ctx->stop_func_ && ctx->stop_func_())
         {
             result(CURLE_ABORTED_BY_CALLBACK);
-            return nullptr;
+            return { nullptr, CURLE_ABORTED_BY_CALLBACK };
         }
 
         auto curl_handler = curl_easy_init();
@@ -77,13 +76,13 @@ namespace core
         {
             result(CURLE_FAILED_INIT);
             curl_easy_cleanup(curl_handler);
-            return nullptr;
+            return { nullptr, CURLE_FAILED_INIT };
         }
 
-        return curl_handler;
+        return { curl_handler, CURLE_OK };
     }
 
-    bool curl_task::execute_multi(CURLM* _multi, CURL* _curl)
+    CURLcode curl_task::execute_multi(CURLM* _multi, CURL* _curl)
     {
         auto result = [this](CURLcode _err)
         {
@@ -97,24 +96,23 @@ namespace core
         if (!ctx)
         {
             result(CURLE_FAILED_INIT);
-            return false;
+            return CURLE_FAILED_INIT;
         }
 
         if (ctx->stop_func_ && ctx->stop_func_())
         {
             result(CURLE_ABORTED_BY_CALLBACK);
-            return false;
+            return CURLE_ABORTED_BY_CALLBACK;
         }
 
-        auto res = ctx->execute_multi_handler(_multi, _curl);
-        if (res != CURLM_OK)
+        if (const auto res = ctx->execute_multi_handler(_multi, _curl); res != CURLM_OK)
         {
             curl_easy_cleanup(_curl);
             result(CURLE_FAILED_INIT);
-            return false;
+            return CURLE_FAILED_INIT;
         }
 
-        return true;
+        return CURLE_OK;
     }
 
     void curl_task::finish_multi(CURLM* _multi, CURL* _curl, CURLcode _res)
@@ -144,20 +142,16 @@ namespace core
 
     priority_t curl_task::get_priority() const
     {
-        auto ctx = context_.lock();
-        if (!ctx)
-            return default_priority();
-
-        return ctx->get_priority();
+        if (const auto ctx = context_.lock(); ctx)
+            return ctx->get_priority();
+        return default_priority();
     }
 
     int64_t curl_task::get_id() const
     {
-        auto ctx = context_.lock();
-        if (!ctx)
-            return -1;
-
-        return ctx->get_id();
+        if (const auto ctx = context_.lock(); ctx)
+            return ctx->get_id();
+        return -1;
     }
 
     void curl_task::cancel()
@@ -189,10 +183,18 @@ namespace core
         return false;
     }
 
-    curl_handler::curl_handler()
+    std::string curl_task::normalized_url() const
     {
-        easy_handler_ = std::make_unique<curl_easy_handler>();
-        multi_handler_ = std::make_unique<curl_multi_handler>();
+        if (auto c = context_.lock())
+            return c->normalized_url();
+
+        return std::string();
+    }
+
+    curl_handler::curl_handler()
+        : easy_handler_(std::make_unique<curl_easy_handler>())
+        , multi_handler_(std::make_unique<curl_multi_handler>())
+    {
     }
 
     curl_handler& curl_handler::instance()
@@ -225,11 +227,10 @@ namespace core
 
     void curl_handler::init()
     {
-#ifdef _WIN32
-        curl_global_init(CURL_GLOBAL_ALL);
-#else
-        curl_global_init(CURL_GLOBAL_SSL);
-#endif
+        if constexpr (platform::is_windows())
+            curl_global_init(CURL_GLOBAL_ALL);
+        else
+            curl_global_init(CURL_GLOBAL_SSL);
 
         easy_handler_->init();
         multi_handler_->init();

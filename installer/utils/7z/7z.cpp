@@ -21,7 +21,7 @@ zip_pack::zip_pack()
 	k_LZMA.ID[1] = 0x1;
 	k_LZMA.ID[2] = 0x1;
 	k_LZMA.IDSize = 3;
-	
+
 	k7zSignature[0] = '7';
 	k7zSignature[1] = 'z';
 	k7zSignature[2] = 0xBC;
@@ -42,15 +42,15 @@ zip_pack::~zip_pack()
 }
 
 SZ_RESULT SzFileReadImpMemory(void *object, void *buffer, size_t size, size_t *processedSize)
-{  
+{
 	file_stream *s = (file_stream *)object;
-	
+
 	if( (s->iPos + size) > s->iFileSize)
 		return SZE_FAIL;
 
 	memcpy(buffer, (BYTE*)(&s->vBuffer[s->iPos]), size);
 	s->iPos += size;
-	
+
 	if (processedSize != 0)
 		*processedSize = size;
 	return SZ_OK;
@@ -60,7 +60,7 @@ SZ_RESULT SzFileSeekImpMemory(void *object, CFileSize pos)
 {
   file_stream *s = (file_stream *)object;
   s->iPos = pos;
- 
+
   if (pos < s->iFileSize)
     return SZ_OK;
   return SZE_FAIL;
@@ -70,7 +70,7 @@ SZ_RESULT SzFileReadImp(void *object, void *buffer, size_t size, size_t *process
 {
   file_stream *s = (file_stream *)object;
   size_t processedSizeLoc = fread(buffer, 1, size, s->File);
-  
+
   if (processedSize != 0)
     *processedSize = processedSizeLoc;
   return SZ_OK;
@@ -112,51 +112,50 @@ bool zip_pack::open(const char* _data, unsigned int _size)
 	SzArDbExInit(&m_db);
 
 	auto res = SzArchiveOpen(&m_archiveStream.InStream, &m_db, &allocImp, &allocTempImp);
-	
-	UInt32 blockIndex = 0xFFFFFFFF; // it can have any value before first call (if outBuffer = 0) 
-	Byte *outBuffer = 0; // it must be 0 before first call for each new archive. 
-	size_t outBufferSize = 0;  // it can have any value before first call (if outBuffer = 0) 
-	
+
+	UInt32 blockIndex = 0xFFFFFFFF; // it can have any value before first call (if outBuffer = 0)
+	Byte *outBuffer = 0; // it must be 0 before first call for each new archive.
+	size_t outBufferSize = 0;  // it can have any value before first call (if outBuffer = 0)
+
 	for (UInt32 i = 0; i < m_db.Database.NumFiles; ++i)
 	{
 		size_t offset;
 		size_t outSizeProcessed = 0;
 		CFileItem *f = m_db.Database.Files + i;
-		QString sPath = f->Name;
-	
+		QString sPath = QString::fromUtf8(f->Name);
+
 		if (!f->IsDirectory)
 		{
 			res = SzExtract(&m_archiveStream.InStream, &m_db, i, &blockIndex, &outBuffer, &outBufferSize, &offset, &outSizeProcessed, &allocImp, &allocTempImp);
-			
+
 			if (res != SZ_OK)
 				break;
-						
+
 			auto stPackFile = std::make_shared<pack_file>();
 			stPackFile->file_size_ = outSizeProcessed;
-			stPackFile->buffer_	= (BYTE*) malloc( outSizeProcessed ); 
+			stPackFile->buffer_	= (BYTE*) malloc( outSizeProcessed );
 			memcpy(stPackFile->buffer_, outBuffer + offset, outSizeProcessed);
 
-			QString file_name = f->Name;
-			archive_files_.insert(std::make_pair(file_name.toLower(), stPackFile));
+			archive_files_.insert(std::make_pair(QString::fromUtf8(f->Name).toLower(), stPackFile));
 		}
 	}
-			
+
 	free(outBuffer);
-	
+
 	SzArDbExFree(&m_db, allocImp.Free);
 	return	(res == SZ_OK);
 }
 
 ///////////// defined other places
 SZ_RESULT zip_pack::SzExtract(
-    ISzInStream *inStream, 
+    ISzInStream *inStream,
     CArchiveDatabaseEx *db,
     UInt32 fileIndex,
     UInt32 *blockIndex,
-    Byte **outBuffer, 
+    Byte **outBuffer,
     size_t *outBufferSize,
-    size_t *offset, 
-    size_t *outSizeProcessed, 
+    size_t *offset,
+    size_t *outSizeProcessed,
     ISzAlloc *allocMain,
     ISzAlloc *allocTemp)
 {
@@ -187,10 +186,10 @@ SZ_RESULT zip_pack::SzExtract(
     *blockIndex = folderIndex;
     allocMain->Free(*outBuffer);
     *outBuffer = 0;
-    
+
 
     RINOK(inStream->Seek(inStream, SzArDbGetFolderStreamPos(db, folderIndex, 0)));
-    
+
     #ifndef _LZMA_IN_CB
     if (packSize != 0)
     {
@@ -214,12 +213,12 @@ SZ_RESULT zip_pack::SzExtract(
       if (res == SZ_OK)
       {
         size_t outRealSize;
-        res = SzDecode(db->Database.PackSizes + 
-          db->FolderStartPackStreamIndex[folderIndex], folder, 
+        res = SzDecode(db->Database.PackSizes +
+          db->FolderStartPackStreamIndex[folderIndex], folder,
           #ifdef _LZMA_IN_CB
           inStream,
           #else
-          inBuffer, 
+          inBuffer,
           #endif
           *outBuffer, (size_t)unPackSize, &outRealSize, allocTemp);
         if (res == SZ_OK)
@@ -243,7 +242,7 @@ SZ_RESULT zip_pack::SzExtract(
   }
   if (res == SZ_OK)
   {
-    UInt32 i; 
+    UInt32 i;
     CFileItem *fileItem = db->Database.Files + fileIndex;
     *offset = 0;
     for(i = db->FolderStartFileIndex[folderIndex]; i < fileIndex; i++)
@@ -321,10 +320,10 @@ SZ_RESULT zip_pack::SafeReadDirectUInt64(ISzInStream *inStream, UInt64 *value)
 }
 ///////////////////////////////////////////////////////////////
 SZ_RESULT zip_pack::SzReadAndDecodePackedStreams2(
-    ISzInStream *inStream, 
+    ISzInStream *inStream,
     CSzData *sd,
     CSzByteBuffer *outBuffer,
-    CFileSize baseOffset, 
+    CFileSize baseOffset,
     CArchiveDatabase *db,
     CFileSize **unPackSizes,
     Byte **digestsDefined,
@@ -347,16 +346,16 @@ SZ_RESULT zip_pack::SzReadAndDecodePackedStreams2(
   SZ_RESULT res;
 
   RINOK(SzReadStreamsInfo(sd, &dataStartPos, db,
-      &numUnPackStreams,  unPackSizes, digestsDefined, digests, 
+      &numUnPackStreams,  unPackSizes, digestsDefined, digests,
       allocTemp->Alloc, allocTemp));
-  
+
   dataStartPos += baseOffset;
   if (db->NumFolders != 1)
     return SZE_ARCHIVE_ERROR;
 
   folder = db->Folders;
   unPackSize = SzFolderGetUnPackSize(folder);
-  
+
   RINOK(inStream->Seek(inStream, dataStartPos));
 
   #ifndef _LZMA_IN_CB
@@ -370,12 +369,12 @@ SZ_RESULT zip_pack::SzReadAndDecodePackedStreams2(
 
   if (!SzByteBufferCreate(outBuffer, (size_t)unPackSize, allocTemp->Alloc))
     return SZE_OUTOFMEMORY;
-  
-  res = SzDecode(db->PackSizes, folder, 
+
+  res = SzDecode(db->PackSizes, folder,
           #ifdef _LZMA_IN_CB
           inStream,
           #else
-          *inBuffer, 
+          *inBuffer,
           #endif
           outBuffer->Items, (size_t)unPackSize,
           &outRealSize, allocTemp);
@@ -389,10 +388,10 @@ SZ_RESULT zip_pack::SzReadAndDecodePackedStreams2(
 }
 ///////////////////////////////////////////////////////////////
 SZ_RESULT zip_pack::SzReadAndDecodePackedStreams(
-    ISzInStream *inStream, 
+    ISzInStream *inStream,
     CSzData *sd,
     CSzByteBuffer *outBuffer,
-    CFileSize baseOffset, 
+    CFileSize baseOffset,
     ISzAlloc *allocTemp)
 {
   CArchiveDatabase db;
@@ -404,8 +403,8 @@ SZ_RESULT zip_pack::SzReadAndDecodePackedStreams(
   #endif
   SZ_RESULT res;
   SzArchiveDatabaseInit(&db);
-  res = SzReadAndDecodePackedStreams2(inStream, sd, outBuffer, baseOffset, 
-    &db, &unPackSizes, &digestsDefined, &digests, 
+  res = SzReadAndDecodePackedStreams2(inStream, sd, outBuffer, baseOffset,
+    &db, &unPackSizes, &digestsDefined, &digests,
     #ifndef _LZMA_IN_CB
     &inBuffer,
     #endif
@@ -421,9 +420,9 @@ SZ_RESULT zip_pack::SzReadAndDecodePackedStreams(
 }
 ///////////////////////////////////////////////////////////
 SZ_RESULT zip_pack::SzArchiveOpen2(
-    ISzInStream *inStream, 
+    ISzInStream *inStream,
     CArchiveDatabaseEx *db,
-    ISzAlloc *allocMain, 
+    ISzAlloc *allocMain,
     ISzAlloc *allocTemp)
 {
   Byte signature[k7zSignatureSize];
@@ -464,7 +463,7 @@ SZ_RESULT zip_pack::SzArchiveOpen2(
 
   pos = k7zStartHeaderSize;
   db->ArchiveInfo.StartPositionAfterHeader = pos;
-  
+
   if (CrcGetDigest(&crc) != crcFromArchive)
     return SZE_ARCHIVE_ERROR;
 
@@ -501,8 +500,8 @@ SZ_RESULT zip_pack::SzArchiveOpen2(
         }
         {
           CSzByteBuffer outBuffer;
-          res = SzReadAndDecodePackedStreams(inStream, &sd, &outBuffer, 
-              db->ArchiveInfo.StartPositionAfterHeader, 
+          res = SzReadAndDecodePackedStreams(inStream, &sd, &outBuffer,
+              db->ArchiveInfo.StartPositionAfterHeader,
               allocTemp);
           if (res != SZ_OK)
           {
@@ -527,10 +526,10 @@ void zip_pack::SzByteBufferFree(CSzByteBuffer *buffer, void (*freeFunc)(void *))
   buffer->Capacity = 0;
 }
 /////////////////////////////////////////////////////////
-UInt32 zip_pack::CrcGetDigest(UInt32 *crc) 
-{ 
-	return *crc ^ 0xFFFFFFFF; 
-} 
+UInt32 zip_pack::CrcGetDigest(UInt32 *crc)
+{
+	return *crc ^ 0xFFFFFFFF;
+}
 /////////////////////////////////////////////////////////
 void zip_pack::CrcUpdateUInt64(UInt32 *crc, UInt64 v)
 {
@@ -545,19 +544,19 @@ void zip_pack::CrcUpdateUInt64(UInt32 *crc, UInt64 v)
 void  zip_pack::CrcUpdateByte(UInt32 *crc, Byte b)
 {
   *crc = g_CrcTable[((Byte)(*crc)) ^ b] ^ (*crc >> 8);
-} 
+}
 /////////////////////////////////////////////////////////
 void zip_pack::CrcUpdateUInt32(UInt32 *crc, UInt32 v)
 {
   int i;
   for (i = 0; i < 4; i++)
     CrcUpdateByte(crc, (Byte)(v >> (8 * i)));
-} 
+}
 /////////////////////////////////////////////////////////
 SZ_RESULT zip_pack::SzArchiveOpen(
-    ISzInStream *inStream, 
+    ISzInStream *inStream,
     CArchiveDatabaseEx *db,
-    ISzAlloc *allocMain, 
+    ISzAlloc *allocMain,
     ISzAlloc *allocTemp)
 {
   SZ_RESULT res = SzArchiveOpen2(inStream, db, allocMain, allocTemp);
@@ -641,9 +640,9 @@ SZ_RESULT zip_pack::SzReadNumber32(CSzData *sd, UInt32 *value)
   return SZ_OK;
 }
 /////////////////////////////////////////////////////////
-SZ_RESULT zip_pack::SzReadID(CSzData *sd, UInt64 *value) 
-{ 
-  return SzReadNumber(sd, value); 
+SZ_RESULT zip_pack::SzReadID(CSzData *sd, UInt64 *value)
+{
+  return SzReadNumber(sd, value);
 }
 /////////////////////////////////////////////////////////
 SZ_RESULT zip_pack::SzSkeepDataSize(CSzData *sd, UInt64 size)
@@ -722,10 +721,10 @@ SZ_RESULT zip_pack::SzReadBoolVector2(CSzData *sd, size_t numItems, Byte **v, vo
 }
 /////////////////////////////////////////////////////////
 SZ_RESULT zip_pack::SzReadHashDigests(
-    CSzData *sd, 
+    CSzData *sd,
     size_t numItems,
-    Byte **digestsDefined, 
-    UInt32 **digests, 
+    Byte **digestsDefined,
+    UInt32 **digests,
     void * (*allocFunc)(size_t size))
 {
   size_t i;
@@ -740,7 +739,7 @@ SZ_RESULT zip_pack::SzReadHashDigests(
 }
 /////////////////////////////////////////////////////////
 SZ_RESULT zip_pack::SzReadPackInfo(
-    CSzData *sd, 
+    CSzData *sd,
     CFileSize *dataOffset,
     UInt32 *numPackStreams,
     CFileSize **packSizes,
@@ -769,7 +768,7 @@ SZ_RESULT zip_pack::SzReadPackInfo(
       break;
     if (type == k7zIdCRC)
     {
-      RINOK(SzReadHashDigests(sd, (size_t)*numPackStreams, packCRCsDefined, packCRCs, allocFunc)); 
+      RINOK(SzReadHashDigests(sd, (size_t)*numPackStreams, packCRCsDefined, packCRCs, allocFunc));
       continue;
     }
     RINOK(SzSkeepData(sd));
@@ -868,7 +867,7 @@ SZ_RESULT zip_pack::SzGetNextFolderItem(CSzData *sd, CFolder *folder, void * (*a
   {
     CBindPair *bindPair = folder->BindPairs + i;;
     RINOK(SzReadNumber32(sd, &bindPair->InIndex));
-    RINOK(SzReadNumber32(sd, &bindPair->OutIndex)); 
+    RINOK(SzReadNumber32(sd, &bindPair->OutIndex));
   }
 
   numPackedStreams = numInStreams - (UInt32)numBindPairs;
@@ -908,7 +907,7 @@ void zip_pack::SzCoderInfoInit(CCoderInfo *coder)
 {
   SzByteBufferInit(&coder->Properties);
 }
-//////////////////////////////////////////////////////// 
+////////////////////////////////////////////////////////
 void zip_pack::SzByteBufferInit(CSzByteBuffer *buffer)
 {
   buffer->Capacity = 0;
@@ -916,7 +915,7 @@ void zip_pack::SzByteBufferInit(CSzByteBuffer *buffer)
 }
 ////////////////////////////////////////////////////////
 SZ_RESULT zip_pack::SzReadUnPackInfo(
-    CSzData *sd, 
+    CSzData *sd,
     UInt32 *numFolders,
     CFolder **folders,  /* for allocFunc */
     void * (*allocFunc)(size_t size),
@@ -967,7 +966,7 @@ SZ_RESULT zip_pack::SzReadUnPackInfo(
       SZ_RESULT res;
       Byte *crcsDefined = 0;
       UInt32 *crcs = 0;
-      res = SzReadHashDigests(sd, *numFolders, &crcsDefined, &crcs, allocTemp->Alloc); 
+      res = SzReadHashDigests(sd, *numFolders, &crcsDefined, &crcs, allocTemp->Alloc);
       if (res == SZ_OK)
       {
         for(i = 0; i < *numFolders; i++)
@@ -1010,7 +1009,7 @@ void zip_pack::SzFolderInit(CFolder *folder)
 }
 /////////////////////////////////////////////////////
 SZ_RESULT zip_pack::SzReadSubStreamsInfo(
-    CSzData *sd, 
+    CSzData *sd,
     UInt32 numFolders,
     CFolder *folders,
     UInt32 *numUnPackStreams,
@@ -1106,14 +1105,14 @@ SZ_RESULT zip_pack::SzReadSubStreamsInfo(
       numDigests += numSubstreams;
   }
 
- 
+
   si = 0;
   while(1)
   {
     if (type == k7zIdCRC)
     {
       int digestIndex = 0;
-      Byte *digestsDefined2 = 0; 
+      Byte *digestsDefined2 = 0;
       UInt32 *digests2 = 0;
       SZ_RESULT res = SzReadHashDigests(sd, numDigests, &digestsDefined2, &digests2, allocTemp->Alloc);
       if (res == SZ_OK)
@@ -1155,7 +1154,7 @@ SZ_RESULT zip_pack::SzReadSubStreamsInfo(
 }
 //////////////////////////////////////////////////////////
 SZ_RESULT zip_pack::SzReadStreamsInfo(
-    CSzData *sd, 
+    CSzData *sd,
     CFileSize *dataOffset,
     CArchiveDatabase *db,
     UInt32 *numUnPackStreams,
@@ -1177,7 +1176,7 @@ SZ_RESULT zip_pack::SzReadStreamsInfo(
         return SZ_OK;
       case k7zIdPackInfo:
       {
-        RINOK(SzReadPackInfo(sd, dataOffset, &db->NumPackStreams, 
+        RINOK(SzReadPackInfo(sd, dataOffset, &db->NumPackStreams,
             &db->PackSizes, &db->PackCRCsDefined, &db->PackCRCs, allocFunc));
         break;
       }
@@ -1188,7 +1187,7 @@ SZ_RESULT zip_pack::SzReadStreamsInfo(
       }
       case k7zIdSubStreamsInfo:
       {
-        RINOK(SzReadSubStreamsInfo(sd, db->NumFolders, db->Folders, 
+        RINOK(SzReadSubStreamsInfo(sd, db->NumFolders, db->Folders,
             numUnPackStreams, unPackSizes, digestsDefined, digests, allocTemp));
         break;
       }
@@ -1198,7 +1197,7 @@ SZ_RESULT zip_pack::SzReadStreamsInfo(
   }
 }
 ///////////////////////////////////////////////////////////
-SZ_RESULT zip_pack::SzReadFileNames(CSzData *sd, UInt32 numFiles, CFileItem *files, 
+SZ_RESULT zip_pack::SzReadFileNames(CSzData *sd, UInt32 numFiles, CFileItem *files,
     void * (*allocFunc)(size_t size))
 {
   UInt32 i;
@@ -1275,14 +1274,14 @@ SZ_RESULT zip_pack::SzReadFileNames(CSzData *sd, UInt32 numFiles, CFileItem *fil
 }
 ///////////////////////////////////////////////////////////////
 SZ_RESULT zip_pack::SzReadHeader2(
-    CSzData *sd, 
+    CSzData *sd,
     CArchiveDatabaseEx *db,   /* allocMain */
     CFileSize **unPackSizes,  /* allocTemp */
     Byte **digestsDefined,    /* allocTemp */
     UInt32 **digests,         /* allocTemp */
     Byte **emptyStreamVector, /* allocTemp */
     Byte **emptyFileVector,   /* allocTemp */
-    ISzAlloc *allocMain, 
+    ISzAlloc *allocMain,
     ISzAlloc *allocTemp)
 {
   UInt64 type;
@@ -1299,13 +1298,13 @@ SZ_RESULT zip_pack::SzReadHeader2(
     RINOK(SzReadArchiveProperties(sd));
     RINOK(SzReadID(sd, &type));
   }
- 
- 
+
+
   if (type == k7zIdMainStreamsInfo)
   {
     RINOK(SzReadStreamsInfo(sd,
         &db->ArchiveInfo.DataStartPosition,
-        &db->Database, 
+        &db->Database,
         &numUnPackStreams,
         unPackSizes,
         digestsDefined,
@@ -1318,7 +1317,7 @@ SZ_RESULT zip_pack::SzReadHeader2(
     return SZ_OK;
   if (type != k7zIdFilesInfo)
     return SZE_ARCHIVE_ERROR;
-  
+
   RINOK(SzReadNumber32(sd, &numFiles));
   db->Database.NumFiles = numFiles;
 
@@ -1415,9 +1414,9 @@ void zip_pack::SzFileInit(CFileItem *fileItem)
 }
 //////////////////////////////////////////////////////////////
 SZ_RESULT zip_pack::SzReadHeader(
-    CSzData *sd, 
-    CArchiveDatabaseEx *db, 
-    ISzAlloc *allocMain, 
+    CSzData *sd,
+    CArchiveDatabaseEx *db,
+    ISzAlloc *allocMain,
     ISzAlloc *allocTemp)
 {
   CFileSize *unPackSizes = 0;
@@ -1425,7 +1424,7 @@ SZ_RESULT zip_pack::SzReadHeader(
   UInt32 *digests = 0;
   Byte *emptyStreamVector = 0;
   Byte *emptyFileVector = 0;
-  SZ_RESULT res = SzReadHeader2(sd, db, 
+  SZ_RESULT res = SzReadHeader2(sd, db,
       &unPackSizes, &digestsDefined, &digests,
       &emptyStreamVector, &emptyFileVector,
       allocMain, allocTemp);
@@ -1455,7 +1454,7 @@ SZ_RESULT zip_pack::SzDecode(const CFileSize *packSizes, const CFolder *folder,
     #else
     const Byte *inBuffer,
     #endif
-    Byte *outBuffer, size_t outSize, 
+    Byte *outBuffer, size_t outSize,
     size_t *outSizeProcessed, ISzAlloc *allocMain)
 {
   UInt32 si;
@@ -1524,7 +1523,7 @@ SZ_RESULT zip_pack::SzDecode(const CFileSize *packSizes, const CFolder *folder,
     lzmaCallback.InCallback.Read = LzmaReadImp;
     #endif
 
-    if (LzmaDecodeProperties(&state.Properties, coder->Properties.Items, 
+    if (LzmaDecodeProperties(&state.Properties, coder->Properties.Items,
         coder->Properties.Capacity) != LZMA_RESULT_OK)
       return SZE_FAIL;
 
@@ -1577,7 +1576,7 @@ int zip_pack::AreMethodsEqual(CMethodID *a1, CMethodID *a2)
     if (a1->ID[i] != a2->ID[i])
       return 0;
   return 1;
-} 
+}
 ////////////////////////////////////////////////////////////
 SZ_RESULT zip_pack::MySzInAlloc(void **p, size_t size, void * (*allocFunc)(size_t size))
 {
@@ -1726,7 +1725,7 @@ void zip_pack::SzCoderInfoFree(CCoderInfo *coder, void (*freeFunc)(void *p))
 ////////////////////////////////////////////////////////
 CFileSize zip_pack::SzArDbGetFolderStreamPos(CArchiveDatabaseEx *db, UInt32 folderIndex, UInt32 indexInFolder)
 {
-  return db->ArchiveInfo.DataStartPosition + 
+  return db->ArchiveInfo.DataStartPosition +
     db->PackStreamStartPositions[db->FolderStartPackStreamIndex[folderIndex] + indexInFolder];
 }
 ////////////////////////////////////////////////////////
@@ -1751,7 +1750,7 @@ int zip_pack::TestSignatureCandidate(Byte *testBytes)
 }
 /////////////////////////////////////////////////////////
 CFileSize zip_pack::SzFolderGetUnPackSize(CFolder *folder)
-{ 
+{
   int i = (int)SzFolderGetNumOutStreams(folder);
   if (i == 0)
     return 0;
@@ -1769,7 +1768,7 @@ int zip_pack::SzFolderFindBindPairForOutStream(CFolder *folder, UInt32 outStream
     if (folder->BindPairs[i].OutIndex == outStreamIndex)
       return i;
   return -1;
-} 
+}
 /////////////////////////////////////////////////////////
 void zip_pack::InitCrcTable()
 {
@@ -1779,9 +1778,9 @@ void zip_pack::InitCrcTable()
     UInt32 r = i;
     int j;
     for (j = 0; j < 8; j++)
-      if (r & 1) 
+      if (r & 1)
         r = (r >> 1) ^ kCrcPoly;
-      else     
+      else
         r >>= 1;
     g_CrcTable[i] = r;
   }
@@ -1885,7 +1884,7 @@ void SzFreeTemp(void *address)
 #define RC_TEST { if (Buffer == BufferLim) return LZMA_RESULT_DATA_ERROR; }
 
 #define RC_INIT(buffer, bufferSize) Buffer = buffer; BufferLim = buffer + bufferSize; RC_INIT2
- 
+
 #endif
 
 #define RC_NORMALIZE if (Range < kTopValue) { RC_TEST; Range <<= 8; Code = (Code << 8) | RC_READ_BYTE; }
@@ -1896,9 +1895,9 @@ void SzFreeTemp(void *address)
 
 #define RC_GET_BIT2(p, mi, A0, A1) IfBit0(p) \
   { UpdateBit0(p); mi <<= 1; A0; } else \
-  { UpdateBit1(p); mi = (mi + mi) + 1; A1; } 
-  
-#define RC_GET_BIT(p, mi) RC_GET_BIT2(p, mi, ; , ;)               
+  { UpdateBit1(p); mi = (mi + mi) + 1; A1; }
+
+#define RC_GET_BIT(p, mi) RC_GET_BIT2(p, mi, ; , ;)
 
 #define RangeDecoderBitTreeDecode(probs, numLevels, res) \
   { int i = numLevels; res = 1; \
@@ -1921,7 +1920,7 @@ void SzFreeTemp(void *address)
 #define LenLow (LenChoice2 + 1)
 #define LenMid (LenLow + (kNumPosStatesMax << kLenNumLowBits))
 #define LenHigh (LenMid + (kNumPosStatesMax << kLenNumMidBits))
-#define kNumLenProbs (LenHigh + kLenNumHighSymbols) 
+#define kNumLenProbs (LenHigh + kLenNumHighSymbols)
 
 
 #define kNumStates 12
@@ -2005,7 +2004,7 @@ int zip_pack::LzmaDecode(CLzmaDecoderState *vs,
   int lc = vs->Properties.lc;
 
   #ifdef _LZMA_OUT_READ
-  
+
   UInt32 Range = vs->Range;
   UInt32 Code = vs->Code;
   #ifdef _LZMA_IN_CB
@@ -2047,7 +2046,7 @@ int zip_pack::LzmaDecode(CLzmaDecoderState *vs,
       UInt32 numProbs = Literal + ((UInt32)LZMA_LIT_SIZE << (lc + vs->Properties.lp));
       UInt32 i;
       for (i = 0; i < numProbs; i++)
-        p[i] = kBitModelTotal >> 1; 
+        p[i] = kBitModelTotal >> 1;
       rep0 = rep1 = rep2 = rep3 = 1;
       state = 0;
       globalPos = 0;
@@ -2098,7 +2097,7 @@ int zip_pack::LzmaDecode(CLzmaDecoderState *vs,
     for (i = 0; i < numProbs; i++)
       p[i] = kBitModelTotal >> 1;
   }
-  
+
   #ifdef _LZMA_IN_CB
   RC_INIT;
   #else
@@ -2112,7 +2111,7 @@ int zip_pack::LzmaDecode(CLzmaDecoderState *vs,
     CProb *prob;
     UInt32 bound;
     int posState = (int)(
-        (nowPos 
+        (nowPos
         #ifdef _LZMA_OUT_READ
         + globalPos
         #endif
@@ -2124,9 +2123,9 @@ int zip_pack::LzmaDecode(CLzmaDecoderState *vs,
     {
       int symbol = 1;
       UpdateBit0(prob)
-      prob = p + Literal + (LZMA_LIT_SIZE * 
+      prob = p + Literal + (LZMA_LIT_SIZE *
         (((
-        (nowPos 
+        (nowPos
         #ifdef _LZMA_OUT_READ
         + globalPos
         #endif
@@ -2175,7 +2174,7 @@ int zip_pack::LzmaDecode(CLzmaDecoderState *vs,
       else if (state < 10) state -= 3;
       else state -= 6;
     }
-    else             
+    else
     {
       UpdateBit1(prob);
       prob = p + IsRep + state;
@@ -2202,14 +2201,14 @@ int zip_pack::LzmaDecode(CLzmaDecoderState *vs,
             UInt32 pos;
             #endif
             UpdateBit0(prob);
-            
+
             #ifdef _LZMA_OUT_READ
             if (distanceLimit == 0)
             #else
             if (nowPos == 0)
             #endif
               return LZMA_RESULT_DATA_ERROR;
-            
+
             state = state < kNumLitStates ? 9 : 11;
             #ifdef _LZMA_OUT_READ
             pos = dictionaryPos - rep0;
@@ -2245,7 +2244,7 @@ int zip_pack::LzmaDecode(CLzmaDecoderState *vs,
             UpdateBit0(prob);
             distance = rep1;
           }
-          else 
+          else
           {
             UpdateBit1(prob);
             prob = p + IsRepG2 + state;
@@ -2306,7 +2305,7 @@ int zip_pack::LzmaDecode(CLzmaDecoderState *vs,
         int posSlot;
         state += kNumLitStates;
         prob = p + PosSlot +
-            ((len < kNumLenToPosStates ? len : kNumLenToPosStates - 1) << 
+            ((len < kNumLenToPosStates ? len : kNumLenToPosStates - 1) <<
             kNumPosSlotBits);
         RangeDecoderBitTreeDecode(prob, kNumPosSlotBits, posSlot);
         if (posSlot >= kStartPosModelIndex)
@@ -2361,7 +2360,7 @@ int zip_pack::LzmaDecode(CLzmaDecoderState *vs,
 
       len += kMatchMinLen;
       #ifdef _LZMA_OUT_READ
-      if (rep0 > distanceLimit) 
+      if (rep0 > distanceLimit)
       #else
       if (rep0 > nowPos)
       #endif

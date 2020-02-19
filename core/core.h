@@ -8,6 +8,7 @@
 #include "tools/binary_stream.h"
 #include "Voip/VoipManagerDefines.h"
 #include <stack>
+#include <optional>
 
 namespace coretools
 {
@@ -32,11 +33,11 @@ namespace core
     class async_executer;
     struct async_task_handlers;
     class im_login_id;
-    class ithread_callback;
     class network_log;
     struct proxy_settings;
     class proxy_settings_manager;
     class hosts_config;
+    class zstd_helper;
 
     namespace update
     {
@@ -91,6 +92,9 @@ namespace core
         // memory usage stats
         std::shared_ptr<memory_stats::memory_stats_collector> memory_stats_collector_;
 
+        // zstd compress/decompress helper
+        std::shared_ptr<zstd_helper> zstd_helper_;
+
         // gui interfaces
         iconnector* gui_connector_;
         icore_factory* core_factory_;
@@ -139,6 +143,8 @@ namespace core
         bool is_network_log_valid() const;
         network_log& get_network_log();
 
+        bool get_gui_settings_bool_value(std::string_view _name, const bool _default) const;
+
     public:
 
         core_dispatcher();
@@ -149,7 +155,7 @@ namespace core
         void execute_core_context(std::function<void()> _func);
 
         void write_data_to_network_log(tools::binary_stream _data);
-        void write_string_to_network_log(const std::string& _text);
+        void write_string_to_network_log(std::string_view _text);
         std::stack<std::wstring> network_log_file_names_history_copy();
 
         uint32_t add_timer(std::function<void()> _func, std::chrono::milliseconds _timeout);
@@ -230,6 +236,9 @@ namespace core
         void set_local_pin_enabled(bool _enable);
         bool get_local_pin_enabled() const;
 
+        void set_install_beta_updates(bool _enable);
+        bool get_install_beta_updates() const;
+
         void set_local_pin(const std::string& _password);
 
         std::string get_local_pin_hash() const;
@@ -239,12 +248,18 @@ namespace core
 
         int64_t get_voip_init_memory_usage() const;
 
-        void check_update(const std::string& _url);
+        void check_update(int64_t _seq, std::optional<std::string> _url);
 
         bool is_keep_local_data() const;
         void remove_local_data(bool _is_exit = false);
 
+        bool is_smartreply_available() const;
+        bool is_suggests_available() const;
+
+
         void reset_connection();
+
+        std::shared_ptr<zstd_helper> get_zstd_helper() const;
     };
 
     extern std::unique_ptr<core::core_dispatcher>		g_core;

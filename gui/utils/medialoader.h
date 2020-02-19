@@ -41,6 +41,7 @@ public:
 signals:
     void previewLoaded(const QPixmap& _preview, const QSize& _originSize);
     void fileLoaded(const QString& _path);
+    void progress(int64_t _bytesTotal, int64_t _bytesTransferred);
     void error();
 
 protected:
@@ -49,7 +50,7 @@ protected:
     bool isVideo_;
     bool isGif_;
     QSize originSize_;
-    int32_t duration_;
+    int32_t duration_ = 0;
     bool gotAudio_;
     LoadMeta loadMeta_;
     QString downloadPath_;
@@ -106,6 +107,7 @@ private Q_SLOTS:
     void onImageDownloaded(qint64 _seq, const QString& _url, const QPixmap& _image, const QString& _path);
     void onImageMetaDownloaded(qint64 _seq, const Data::LinkMetadata &_meta);
     void onImageError(qint64 _seq);
+    void onProgress(qint64 _seq, int64_t _bytesTotal, int64_t _bytesTransferred, int32_t _pctTransferred);
 
 private:
     void connectSignals();
@@ -115,6 +117,7 @@ private:
     QMetaObject::Connection imageDownloadedConneection_;
     QMetaObject::Connection metaDownloadedConneection_;
     QMetaObject::Connection imageErrorConneection_;
+    QMetaObject::Connection progressConneection_;
 };
 
 
@@ -123,7 +126,7 @@ class FileSaver : public QObject
     Q_OBJECT
 public:
 
-    using Callback = std::function<void(bool)>;
+    using Callback = std::function<void(bool, const QString&)>;
 
     FileSaver(QObject* _parent = nullptr) : QObject(_parent) {}
 

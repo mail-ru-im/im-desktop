@@ -46,27 +46,14 @@ namespace core
             if (_value.empty())
                 return false;
 
-            for (auto iter = _value.begin(); iter != _value.end(); ++iter)
-            {
-                if (iter == _value.begin() && (*iter) == '+')
-                    continue;
+            const auto iter = _value.front() == '+' ? std::next(_value.begin()) : _value.begin();
 
-                if (!is_digit(*iter))
-                    return false;
-            }
-
-            return true;
+            return std::all_of(iter, _value.end(), [](auto c) { return is_digit(c); });
         }
 
         bool is_number(const std::string_view _value)
         {
-            for (auto c : _value)
-            {
-                if (!is_digit(c))
-                    return false;
-            }
-
-            return true;
+            return std::all_of(_value.begin(), _value.end(), [](auto c) { return is_digit(c); });
         }
 
         bool is_uin(const std::string_view _value)
@@ -90,7 +77,7 @@ namespace core
 
         bool is_email(const std::string_view _value)
         {
-            bool alpha = 0;
+            bool alpha = false;
             int32_t name = 0, domain = 0, dots = 0;
 
             for (auto c : _value)

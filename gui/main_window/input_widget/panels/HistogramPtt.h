@@ -52,6 +52,9 @@ namespace Ui
 
         void setDuration(std::chrono::milliseconds _duration);
         void enableCircleHover(bool _val);
+        void setUnderLongPress(bool _val);
+        bool hasPlayButton() const;
+        bool hasPauseButton() const;
 
         void setPlayingButton();
         void setPausedButton();

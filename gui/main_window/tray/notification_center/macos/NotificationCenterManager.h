@@ -55,5 +55,7 @@ namespace Ui
         void removeAllNotifications();
 
         static void updateBadgeIcon(int unreads);
+
+        void animateDockIcon();
     };
 }

@@ -5,6 +5,7 @@
 #include "InputWidgetUtils.h"
 
 #include "utils/utils.h"
+#include "utils/features.h"
 #include "utils/InterConnector.h"
 #include "utils/graphicsEffects.h"
 #include "styles/ThemeParameters.h"
@@ -93,12 +94,14 @@ namespace Ui
     AttachFileMenuItem::AttachFileMenuItem(QWidget* _parent, const QString& _icon, const QString& _caption, const QColor& _iconBgColor)
         : SimpleListItem(_parent)
         , iconBgColor_(_iconBgColor)
-        , icon_(Utils::renderSvg(_icon, { pixmapWidth(), pixmapWidth() }, iconColor()))
+        , icon_(Utils::renderSvg(_icon, { pixmapWidth(), pixmapWidth() }, _iconBgColor))
     {
         caption_ = TextRendering::MakeTextUnit(_caption);
         caption_->init(Fonts::appFontScaled(15), captionColor());
         caption_->setOffsets(textOffset(), itemHeight() / 2);
         caption_->evaluateDesiredSize();
+
+        iconBgColor_.setAlphaF(0.05);
 
         setFixedHeight(itemHeight());
         setMinimumWidth(caption_->horOffset() + caption_->desiredWidth() + Utils::scale_value(24));
@@ -199,12 +202,17 @@ namespace Ui
             items_.push_back({ idx, _id });
         };
 
-        addItem(qsl(":/input/attach_photo"), QT_TRANSLATE_NOOP("input_widget", "Photo or Video"), Styling::StyleVariable::SECONDARY_RAINBOW_PURPLE, MenuItemId::photoVideo);
+        addItem(qsl(":/input/attach_photo"), QT_TRANSLATE_NOOP("input_widget", "Photo or Video"), Styling::StyleVariable::SECONDARY_RAINBOW_PINK, MenuItemId::photoVideo);
         addItem(qsl(":/input/attach_documents"), QT_TRANSLATE_NOOP("input_widget", "File"), Styling::StyleVariable::SECONDARY_RAINBOW_MAIL, MenuItemId::file);
-        //addItem(qsl(":/settings/general"), QT_TRANSLATE_NOOP("input_widget", "Camera"), Styling::StyleVariable::SECONDARY_ATTENTION, MenuItemId::camera);
-        addItem(qsl(":/message_type_contact_icon"), QT_TRANSLATE_NOOP("input_widget", "Contact"), Styling::StyleVariable::SECONDARY_RAINBOW_AQUA, MenuItemId::contact);
+        //addItem(qsl(":/input/attach_camera"), QT_TRANSLATE_NOOP("input_widget", "Camera"), Styling::StyleVariable::SECONDARY_RAINBOW_AQUA, MenuItemId::camera);
+
+        if (Features::pollsEnabled())
+            addItem(qsl(":/input/attach_poll"), QT_TRANSLATE_NOOP("input_widget", "Poll"), Styling::StyleVariable::SECONDARY_RAINBOW_PURPLE, MenuItemId::poll);
+
+        addItem(qsl(":/input/attach_contact"), QT_TRANSLATE_NOOP("input_widget", "Contact"), Styling::StyleVariable::SECONDARY_RAINBOW_WARM, MenuItemId::contact);
+        //addItem(qsl(":/input/attach_poll"), QT_TRANSLATE_NOOP("input_widget", "Poll"), Styling::StyleVariable::SECONDARY_RAINBOW_PURPLE, MenuItemId::poll);
         //addItem(qsl(":/message_type_contact_icon"), QT_TRANSLATE_NOOP("input_widget", "Location"), Styling::StyleVariable::SECONDARY_RAINBOW_AQUA, MenuItemId::geo);
-        addItem(qsl(":/input/attach_ptt"), QT_TRANSLATE_NOOP("input_widget", "Voice Message"), Styling::StyleVariable::SECONDARY_RAINBOW_ORANGE, MenuItemId::ptt);
+        addItem(qsl(":/input/attach_ptt"), QT_TRANSLATE_NOOP("input_widget", "Voice Message"), Styling::StyleVariable::SECONDARY_ATTENTION, MenuItemId::ptt);
 
         listWidget_->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Minimum);
 
@@ -218,6 +226,7 @@ namespace Ui
         connect(this, &AttachFilePopup::cameraClicked, input_, &InputWidget::onAttachCamera);
         connect(this, &AttachFilePopup::contactClicked, input_, &InputWidget::onAttachContact);
         connect(this, &AttachFilePopup::pttClicked, input_, &InputWidget::onAttachPtt);
+        connect(this, &AttachFilePopup::pollClicked, input_, &InputWidget::onAttachPoll);
 
         setGraphicsEffect(opacityEffect_);
 
@@ -468,6 +477,10 @@ namespace Ui
         case MenuItemId::contact:
             emit contactClicked(QPrivateSignal());
             sendStat(core::stats::stats_event_names::chatscr_opencontact_action, "plus");
+            break;
+
+        case MenuItemId::poll:
+            emit pollClicked(QPrivateSignal());
             break;
 
         case MenuItemId::ptt:

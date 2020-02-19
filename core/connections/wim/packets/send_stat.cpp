@@ -2,9 +2,9 @@
 #include "utils.h"
 #include "../../../http_request.h"
 #include "../../../common.shared/version_info.h"
+#include "../../../common.shared/config/config.h"
 
 #include "send_stat.h"
-#include "../../urls_cache.h"
 
 namespace
 {
@@ -54,14 +54,16 @@ int32_t send_stat::init_request(std::shared_ptr<http_request_simple> _request)
 
     std::stringstream ss_url;
 
+    const auto host = su::concat("https://", config::get().url(config::urls::stat_base), "/stat/stat");
+
     // params should be sorted alphabetically
-    ss_url << urls::get_url(urls::url_type::imstat_host) << "/stat" <<
+    ss_url << host <<
               "?app=" << escape_symbols(utils::get_client_string()) <<
               "&deviceId=" << escape_symbols(g_core->get_uniq_device_id()) <<
               "&devId=" << escape_symbols(params_.dev_id_) <<
               "&gaid=null" <<
               "&idfa=null" <<
-              "&language=" << escape_symbols(g_core->get_locale().substr(0, 2)) <<
+              "&language=" << escape_symbols(params_.locale_.substr(0, 2)) <<
               "&osVersion=" << escape_symbols(g_core->get_core_gui_settings().os_version_) <<
               "&platform=" << escape_symbols(utils::get_protocol_platform_string()) <<
               "&timezone=" << escape_symbols((time_zone > 0 ? "+" : "")) << time_zone <<

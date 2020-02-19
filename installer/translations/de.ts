@@ -8,10 +8,6 @@
         <translation>Houston, wir haben ein Problem</translation>
     </message>
     <message>
-        <source>Failed to install ICQ</source>
-        <translation>Installation von ICQ fehlgeschlagen</translation>
-    </message>
-    <message>
         <source>Error code: </source>
         <translation>Fehlercode: </translation>
     </message>
@@ -23,21 +19,31 @@
         <source>Close</source>
         <translation>Schließen</translation>
     </message>
+</context>
+<context>
+    <name>installer::ui::progress_page</name>
     <message>
-        <source>Failed to install Mail.ru Agent</source>
-        <translation>Installation von Mail.ru Agent fehlgeschlagen</translation>
-    </message>
-    <message>
-        <source>Failed to install Messenger</source>
-        <translation>Installation von Messenger fehlgeschlagen</translation>
-    </message>
-    <message>
-        <source>Failed to install Myteam</source>
-        <translation>Installation von Myteam fehlgeschlagen</translation>
+        <source>High-quality videocalls and screen sharing</source>
+        <translation>Hochwertige Videoanrufe und Bildschirmfreigabe</translation>
     </message>
 </context>
 <context>
-    <name>installer::ui::main_window</name>
+    <name>installer::ui::start_page</name>
+    <message>
+        <source>Cloud storage of history and files</source>
+        <translation>Cloud-Speicherung von Verlauf und Dateien</translation>
+    </message>
+    <message>
+        <source>Full sync with mobile</source>
+        <translation>Vollständige Synchronisierung mit dem Handy</translation>
+    </message>
+    <message>
+        <source>Install</source>
+        <translation>Installieren</translation>
+    </message>
+</context>
+<context>
+    <name>product</name>
     <message>
         <source>ICQ Setup</source>
         <translation>Installieren des ICQ</translation>
@@ -47,58 +53,44 @@
         <translation>Installieren des Mail.ru Agent</translation>
     </message>
     <message>
+        <source>Myteam Setup</source>
+        <translation>Installieren des Myteam</translation>
+    </message>
+    <message>
         <source>Messenger Setup</source>
         <translation>Installieren des Messenger</translation>
     </message>
     <message>
-        <source>Myteam Setup</source>
-        <translation>Installieren des Myteam</translation>
-    </message>
-</context>
-<context>
-    <name>installer::ui::progress_page</name>
-    <message>
-        <source>Free video and voice calls</source>
-        <translation>Kostenlose Video- und Sprachanrufe</translation>
+        <source>Failed to install ICQ</source>
+        <translation>Installation von ICQ fehlgeschlagen</translation>
     </message>
     <message>
-        <source>Hundreds of stickers are always free</source>
-        <translation>Immer hunderte von kostenlosen Stickern</translation>
+        <source>Failed to install Mail.ru Agent</source>
+        <translation>Installation von Mail.ru Agent fehlgeschlagen</translation>
     </message>
     <message>
-        <source>Unlimited and free group chats</source>
-        <translation>Unbegrenzt kostenlose Gruppenchats</translation>
-    </message>
-</context>
-<context>
-    <name>installer::ui::start_page</name>
-    <message>
-        <source>Welcome to ICQ</source>
-        <translation>Willkommen bei ICQ</translation>
+        <source>Failed to install Myteam</source>
+        <translation>Installation von Myteam fehlgeschlagen</translation>
     </message>
     <message>
-        <source>INSTALL</source>
-        <translation>INSTALLIEREN</translation>
+        <source>Failed to install Messenger</source>
+        <translation>Installation von Messenger fehlgeschlagen</translation>
     </message>
     <message>
-        <source>Make Mail.Ru my homepage and add bookmarks in the browser.</source>
-        <translation type="unfinished"></translation>
+        <source>Mail.ru Agent for desktop is</source>
+        <translation>Mail.ru Agent für Desktop ist</translation>
     </message>
     <message>
-        <source>Make Mail.Ru Search my default search engine.</source>
-        <translation type="unfinished"></translation>
+        <source>Myteam for desktop is</source>
+        <translation>Myteam für Desktop ist</translation>
     </message>
     <message>
-        <source>Welcome to Mail.ru Agent</source>
-        <translation>Willkommen bei Mail.ru Agent</translation>
+        <source>Messenger for desktop is</source>
+        <translation>Messenger für Desktop ist</translation>
     </message>
     <message>
-        <source>Welcome to Messenger</source>
-        <translation>Willkommen bei Messenger</translation>
-    </message>
-    <message>
-        <source>Welcome to Myteam</source>
-        <translation>Willkommen bei Myteam</translation>
+        <source>ICQ for desktop is</source>
+        <translation>ICQ für Desktop ist</translation>
     </message>
 </context>
 <context>

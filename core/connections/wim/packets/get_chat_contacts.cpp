@@ -24,7 +24,6 @@ int32_t get_chat_contacts::init_request(std::shared_ptr<http_request_simple> _re
 {
     constexpr char method[] = "getChatContacts";
 
-    _request->set_gzip(true);
     _request->set_url(urls::get_url(urls::url_type::rapi_host));
     _request->set_normalized_url(method);
     _request->set_keep_alive();

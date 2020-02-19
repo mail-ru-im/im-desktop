@@ -3,7 +3,6 @@
 #include "../../../async_task.h"
 #include "../wim_packet.h"
 #include "upload_task.h"
-#include "download_task.h"
 #include "loader_handlers.h"
 #include "loader_helpers.h"
 #include "preview_proxy.h"
@@ -52,9 +51,7 @@ loader::loader(std::wstring _cache_dir)
     initialize_tasks_runners();
 }
 
-loader::~loader()
-{
-}
+loader::~loader() = default;
 
 void loader::add_file_sharing_task(const std::shared_ptr<fs_loader_task>& _task)
 {
@@ -117,51 +114,8 @@ void loader::resume_file_sharing_tasks()
     }
 }
 
-void loader::set_played(const std::string& _file_url, const std::wstring& _previews_folder, bool _played, const wim_packet_params& _params)
-{
-    auto task = std::make_shared<download_task>(
-        "0",
-        _params,
-        _file_url,
-        std::wstring(),
-        std::wstring(),
-        _previews_folder);
-
-    add_file_sharing_task(task);
-
-    auto wr_this = weak_from_this();
-    std::weak_ptr<download_task> wr_task = task;
-
-    file_sharing_threads_->run_async_function(
-        [wr_task, _played]
-        {
-            const auto task = wr_task.lock();
-            if (!task)
-                return 0;
-
-            task->set_played(_played);
-
-            return 0;
-        }
-    )->on_result_ =
-        [wr_this, wr_task](int32_t _error)
-        {
-            const auto task = wr_task.lock();
-            if (!task)
-                return;
-
-            auto ptr_this = wr_this.lock();
-            if (!ptr_this)
-                return;
-
-            ptr_this->remove_file_sharing_task(task->get_id());
-        };
-}
-
 void loader::send_task_ranges_async(std::weak_ptr<upload_task> _wr_task)
 {
-    auto wr_this = weak_from_this();
-
     file_sharing_threads_->run_async_function([_wr_task]
     {
         auto task = _wr_task.lock();
@@ -170,7 +124,7 @@ void loader::send_task_ranges_async(std::weak_ptr<upload_task> _wr_task)
 
         return (int32_t)task->send_next_range();
 
-    })->on_result_ = [wr_this, _wr_task](int32_t _error)
+    })->on_result_ = [wr_this = weak_from_this(), _wr_task](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -208,65 +162,6 @@ void loader::send_task_ranges_async(std::weak_ptr<upload_task> _wr_task)
             g_core->insert_event(core::stats::stats_event_names::filesharing_sent_success, props);
         }
     };
-}
-
-
-void loader::load_file_sharing_task_ranges_async(std::weak_ptr<download_task> _wr_task)
-{
-    auto wr_this = weak_from_this();
-
-    file_sharing_threads_->run_async_function(
-        [_wr_task]
-        {
-            auto task = _wr_task.lock();
-            if (!task)
-                return -1;
-
-            auto err = task->load_next_range();
-
-            if (err == loader_errors::success)
-            {
-                if (task->is_end())
-                    err = task->on_finish();
-            }
-
-            return (int32_t)err;
-
-        }
-    )->on_result_ =
-        [wr_this, _wr_task](int32_t _error)
-        {
-            auto ptr_this = wr_this.lock();
-            if (!ptr_this)
-                return;
-
-            auto task = _wr_task.lock();
-            if (!task)
-                return;
-
-            if (_error != 0)
-            {
-                task->set_last_error(_error);
-
-                if (_error != (int32_t)loader_errors::network_error)
-                {
-                    ptr_this->on_file_sharing_task_result(task, _error);
-                }
-
-                return;
-            }
-
-            ptr_this->on_file_sharing_task_progress(task);
-
-            if (!task->is_end())
-            {
-                ptr_this->load_file_sharing_task_ranges_async(task);
-            }
-            else
-            {
-                ptr_this->on_file_sharing_task_result(task, 0);
-            }
-        };
 }
 
 std::shared_ptr<upload_progress_handler> loader::upload_file_sharing(
@@ -395,7 +290,7 @@ void cleanup_cache(const std::wstring& _cache_folder)
             boost::filesystem::remove(_file_path, error);
 
             bs.write<std::string_view>("Delete file: ");
-            bs.write<std::string>(_file_path.string());
+            bs.write<std::string_view>(_file_path.string());
             bs.write<std::string_view>("\r\n");
 
         }
@@ -407,222 +302,6 @@ void cleanup_cache(const std::wstring& _cache_folder)
 
     bs.write<std::string_view>("Finish cleanup\r\n");
     g_core->write_data_to_network_log(std::move(bs));
-}
-
-
-std::shared_ptr<download_progress_handler> loader::download_file_sharing(
-    const int64_t _seq,
-    const std::string& _file_url,
-    const file_sharing_function _function,
-    const std::wstring& _files_folder,
-    const std::wstring& _previews_folder,
-    const std::wstring& _filename,
-    const bool _force_request_metainfo,
-    const wim_packet_params& _params)
-{
-    assert(_function > file_sharing_function::min);
-    assert(_function < file_sharing_function::max);
-    assert(_function != file_sharing_function::download_preview_metainfo);
-
-    auto task = std::make_shared<download_task>(
-        std::to_string(_seq),
-        _params,
-        _file_url,
-        _files_folder,
-        _previews_folder,
-        _filename
-    );
-    task->set_handler(std::make_shared<download_progress_handler>());
-    add_file_sharing_task(task);
-
-    auto wr_this = weak_from_this();
-    std::weak_ptr<download_task> wr_task = task;
-
-    file_sharing_threads_->run_async_function([wr_task, _function, _force_request_metainfo]
-    {
-        const auto task = wr_task.lock();
-        if (!task)
-        {
-            return 0;
-        }
-
-        // return -1 (failure) if there are no metainfo file or there are no downloaded fs link in the cache
-
-        if (!task->load_metainfo_from_local_cache())
-        {
-            return -1;
-        }
-
-        const auto check_file_existence = (
-            (_function == file_sharing_function::download_file) ||
-            (_function == file_sharing_function::check_local_copy_exists));
-
-        if (check_file_existence && !task->is_downloaded_file_exists())
-        {
-            return -1;
-        }
-
-        if (_force_request_metainfo)
-        {
-            return -1;
-        }
-
-        return 0;
-
-    })->on_result_ = [wr_this, wr_task, _function, _force_request_metainfo, _previews_folder](int32_t _error)
-    {
-        auto ptr_this = wr_this.lock();
-        if (!ptr_this)
-            return;
-
-        auto task = wr_task.lock();
-        if (!task)
-            return;
-
-        const auto is_local_copy_test_mode = (_function == file_sharing_function::check_local_copy_exists);
-        const auto is_file_and_metainfo_ready = (_error == 0);
-
-        if (is_file_and_metainfo_ready || is_local_copy_test_mode)
-        {
-            task->copy_if_needed();
-
-            ptr_this->on_file_sharing_task_result(task, _error);
-
-            ptr_this->file_sharing_threads_->run_async_function([wr_task, _previews_folder]
-            {
-                cleanup_cache(_previews_folder);
-
-                return 0;
-            });
-
-            return;
-        }
-
-        ptr_this->file_sharing_threads_->run_async_function([wr_task]
-        {
-            auto task = wr_task.lock();
-            if (!task)
-            {
-                return (int32_t)loader_errors::orphaned;
-            }
-
-            loader_errors error = task->download_metainfo();
-
-            if (error == loader_errors::metainfo_not_found)
-            {
-                task->delete_metainfo_file();
-            }
-
-            return (int32_t) error;
-
-        })->on_result_ = [wr_this, wr_task, _function, _force_request_metainfo, _previews_folder](int32_t _error)
-        {
-            auto ptr_this = wr_this.lock();
-            if (!ptr_this)
-                return;
-
-            auto task = wr_task.lock();
-            if (!task)
-                return;
-
-            const auto is_download_file_metainfo_mode = (_function == file_sharing_function::download_file_metainfo);
-
-            const auto success = (_error == 0);
-
-            if (success && (is_download_file_metainfo_mode || _force_request_metainfo))
-            {
-                task->serialize_metainfo();
-            }
-
-            if (!success || is_download_file_metainfo_mode)
-            {
-                ptr_this->on_file_sharing_task_result(task, _error);
-                return;
-            }
-
-            if (_force_request_metainfo)
-            {
-                if (task->is_downloaded_file_exists())
-                {
-                    ptr_this->on_file_sharing_task_result(task, 0);
-                    return;
-                }
-            }
-
-            g_core->insert_event(stats::stats_event_names::filesharing_download_success);
-
-            ptr_this->on_file_sharing_task_progress(task);
-
-            ptr_this->file_sharing_threads_->run_async_function([wr_task]
-            {
-                auto task = wr_task.lock();
-                if (!task)
-                    return -1;
-
-                return (int32_t)task->open_temporary_file();
-
-            })->on_result_ = [wr_this, wr_task, _previews_folder](int32_t _error)
-            {
-                auto ptr_this = wr_this.lock();
-                if (!ptr_this)
-                    return;
-
-                auto task = wr_task.lock();
-                if (!task)
-                    return;
-
-                if (_error != 0)
-                {
-                    ptr_this->on_file_sharing_task_result(task, _error);
-                    return;
-                }
-
-                ptr_this->load_file_sharing_task_ranges_async(task);
-
-                ptr_this->file_sharing_threads_->run_async_function([wr_task, _previews_folder]
-                {
-                    cleanup_cache(_previews_folder);
-
-                    return 0;
-                });
-            };
-        };
-    };
-
-    return task->get_handler();
-}
-
-
-std::shared_ptr<get_file_direct_uri_handler> loader::get_file_direct_uri(
-    const int64_t _seq,
-    const std::string& _file_url,
-    const std::wstring& _cache_dir,
-    const wim_packet_params& _params)
-{
-    auto handler = std::make_shared<get_file_direct_uri_handler>();
-
-    auto url = std::make_shared<std::string>();
-
-    file_sharing_threads_->run_async_function([url, _params, _file_url, _cache_dir]()->int32_t
-    {
-        loader_errors error = loader_errors::success;
-
-        download_task task(tools::system::generate_guid(), _params, _file_url, std::wstring(), _cache_dir, std::wstring());
-        error = task.download_metainfo();
-
-        if (error == loader_errors::success)
-        {
-            *url = task.get_file_direct_url();
-        }
-
-        return (int32_t)error;
-
-    })->on_result_ = [handler, url](int32_t _error)
-    {
-        handler->on_result(_error, *url);
-    };
-
-    return handler;
 }
 
 void loader::add_task(loader_task_sptr _task)

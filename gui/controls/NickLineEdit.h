@@ -2,7 +2,7 @@
 
 namespace Ui
 {
-    class LineEditEx;
+    class TextEditEx;
     class ProgressAnimation;
 
     namespace TextRendering
@@ -15,13 +15,13 @@ namespace Ui
         Q_OBJECT
 
     public:
-        explicit NickLineEdit(QWidget* _parent = nullptr, const QString& _initNick = QString());
+        explicit NickLineEdit(QWidget* _parent = nullptr, const QString& _initNick = QString(), const QString& _fixedPart = QString(), bool _groupMode = false);
         ~NickLineEdit();
 
         QSize sizeHint() const override;
 
-        void setText(const QString& _nick);
-        QString getText() const;
+        void setText(const QString& _nick, bool _silent = false);
+        QString getText(bool full = false) const;
 
         void setNickRequest();
         void cancelSetNick();
@@ -30,15 +30,21 @@ namespace Ui
 
         void setFocus();
 
+        void updateCounter();
+
+        void clearHint();
+
     Q_SIGNALS:
         void changed();
         void ready();
         void serverError(bool _repeateOn = false);
         void nickSet();
         void sameNick();
+        void checkError();
 
     private Q_SLOTS:
         void onNickChanged();
+        void onNickCursorPositionChanged();
         void onNickCheckResult(qint64 _reqId, int _error);
         void onCheckTimeout();
 
@@ -73,17 +79,22 @@ namespace Ui
 
         void serverCheckNickname(bool _recheck = false);
         void updateHint(HintTextCode _code, const QColor& _color = QColor());
-        void updateCounter();
         void setServerErrorHint();
         void updateNickLine(bool _isError);
         bool checkForCorrectInput(bool _showHints = false);
         void startCheckAnimation();
         void stopCheckAnimation();
         void retryLastServerRequest();
+        void moveCursorToTheEnd();
+
+        QString makeHtml(const QString& _fixed, const QString& _text);
 
     private:
         QString originNick_;
-        LineEditEx* nick_;
+        QString fixedPart_;
+        QString previous_;
+        QString previousPlain_;
+        TextEditEx* nick_;
         std::unique_ptr<TextRendering::TextUnit> hintUnit_;
         std::unique_ptr<TextRendering::TextUnit> counterUnit_;
         int hintHorOffset_;
@@ -95,5 +106,6 @@ namespace Ui
         ServerRequest lastServerRequest_;
         bool linkPressed_;
         bool isFrendlyMinLengthError_;
+        bool groupMode_;
     };
 }

@@ -47,14 +47,13 @@ namespace Ui
         void settingsHotkeysClicked();
         void settingsSecurityClicked();
         void settingsStickersClicked();
+        void settingsDebugClicked();
 
         void setCurrentItem(const Utils::CommonSettingsType _item);
 
         void updateSettingsState();
 
         void listClicked(int _index);
-
-        void appUpdateReady();
 
         Utils::CommonSettingsType getTypeByIndex(int _index) const;
         int getIndexByType(Utils::CommonSettingsType _type) const;

@@ -1,7 +1,5 @@
 #include "animation.h"
 
-#include <cmath>
-
 namespace
 {
     constexpr std::chrono::milliseconds animationTimeout() noexcept

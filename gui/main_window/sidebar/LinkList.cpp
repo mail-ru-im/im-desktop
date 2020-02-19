@@ -123,23 +123,23 @@ namespace Ui
         , time_(_time)
         , loaded_(false)
     {
-        title_ = Ui::TextRendering::MakeTextUnit(QString(), Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS);
+        title_ = Ui::TextRendering::MakeTextUnit(QString(), {}, TextRendering::LinksVisible::DONT_SHOW_LINKS);
         title_->init(Fonts::appFontScaled(14, Fonts::FontWeight::SemiBold), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID), QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, 1);
 
-        desc_ = Ui::TextRendering::MakeTextUnit(QString(), Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS);
+        desc_ = Ui::TextRendering::MakeTextUnit(QString(), {}, TextRendering::LinksVisible::DONT_SHOW_LINKS);
         desc_->init(Fonts::appFontScaled(14), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID), QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, 3);
 
-        link_ = Ui::TextRendering::MakeTextUnit(url_, Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS);
+        link_ = Ui::TextRendering::MakeTextUnit(url_, {}, TextRendering::LinksVisible::DONT_SHOW_LINKS);
         link_->init(Fonts::appFontScaled(14), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY), QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, 1);
         height_ = link_->getHeight(_width - Utils::scale_value(HOR_OFFSET + RIGHT_OFFSET) - Utils::scale_value(PREVIEW_WIDTH) - Utils::scale_value(PREVIEW_RIGHT_OFFSET));
 
-        date_ = Ui::TextRendering::MakeTextUnit(_date, Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS);
+        date_ = Ui::TextRendering::MakeTextUnit(_date, {}, TextRendering::LinksVisible::DONT_SHOW_LINKS);
         date_->init(Fonts::appFontScaled(13), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY));
         date_->evaluateDesiredSize();
 
-        friedly_ = Ui::TextRendering::MakeTextUnit(Logic::GetFriendlyContainer()->getFriendly(sender_), Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS);
-        friedly_->init(Fonts::appFontScaled(13), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY));
-        friedly_->evaluateDesiredSize();
+        friendly_ = Ui::TextRendering::MakeTextUnit(Logic::GetFriendlyContainer()->getFriendly(sender_), {}, TextRendering::LinksVisible::DONT_SHOW_LINKS);
+        friendly_->init(Fonts::appFontScaled(13), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY));
+        friendly_->evaluateDesiredSize();
 
         height_ += date_->cachedSize().height();
         height_ += Utils::scale_value(DATE_OFFSET);
@@ -185,8 +185,8 @@ namespace Ui
 
         auto date_offset = link_offset + link_->cachedSize().height() + Utils::scale_value(DATE_OFFSET);
 
-        friedly_->setOffsets(Utils::scale_value(HOR_OFFSET + PREVIEW_WIDTH + PREVIEW_RIGHT_OFFSET), date_offset);
-        friedly_->draw(_p);
+        friendly_->setOffsets(Utils::scale_value(HOR_OFFSET + PREVIEW_WIDTH + PREVIEW_RIGHT_OFFSET), date_offset);
+        friendly_->draw(_p);
 
         date_->setOffsets(width_ - Utils::scale_value(RIGHT_OFFSET) - date_->cachedSize().width(), date_offset);
         date_->draw(_p);
@@ -199,6 +199,9 @@ namespace Ui
 
     void LinkItem::setWidth(int _width)
     {
+        if (width_ == _width)
+            return;
+
         height_ = title_->getHeight(_width - Utils::scale_value(HOR_OFFSET + RIGHT_OFFSET) - Utils::scale_value(PREVIEW_WIDTH) - Utils::scale_value(PREVIEW_RIGHT_OFFSET));
         height_ += desc_->getHeight(_width - Utils::scale_value(HOR_OFFSET + RIGHT_OFFSET) - Utils::scale_value(PREVIEW_WIDTH) - Utils::scale_value(PREVIEW_RIGHT_OFFSET));
         height_ += link_->getHeight(_width - Utils::scale_value(HOR_OFFSET + RIGHT_OFFSET) - Utils::scale_value(PREVIEW_WIDTH) - Utils::scale_value(PREVIEW_RIGHT_OFFSET));
@@ -214,8 +217,8 @@ namespace Ui
         height_ += Utils::scale_value(VER_OFFSET) * 2;
         width_ = _width;
 
-        if (friedly_)
-            friedly_->elide(width_ - Utils::scale_value(HOR_OFFSET + RIGHT_OFFSET + PREVIEW_WIDTH + PREVIEW_RIGHT_OFFSET + DATE_LEFT_OFFSET) - date_->cachedSize().width());
+        if (friendly_)
+            friendly_->elide(width_ - Utils::scale_value(HOR_OFFSET + RIGHT_OFFSET + PREVIEW_WIDTH + PREVIEW_RIGHT_OFFSET + DATE_LEFT_OFFSET) - date_->cachedSize().width());
     }
 
     void LinkItem::setReqId(qint64 _id)
@@ -293,14 +296,14 @@ namespace Ui
     void LinkItem::setTitle(const QString& _title)
     {
         title_->setText(_title);
-        setWidth(width_);
+        forceRecalcGeometry();
         loaded_ = true;
     }
 
     void LinkItem::setDesc(const QString& _desc)
     {
         desc_->setText(_desc);
-        setWidth(width_);
+        forceRecalcGeometry();
     }
 
     bool LinkItem::isOutgoing() const
@@ -352,6 +355,11 @@ namespace Ui
         return moreState_;
     }
 
+    void LinkItem::forceRecalcGeometry()
+    {
+        setWidth(std::exchange(width_, 0));
+    }
+
     LinkList::LinkList(QWidget* _parent)
         : MediaContentWidget(Type::Links, _parent)
         , timer_(new QTimer(this))
@@ -382,7 +390,7 @@ namespace Ui
             auto item = std::make_unique<LinkItem>(e.url_, time.toString(qsl("d MMM, ")) + time.time().toString(qsl("hh:mm")), e.msg_id_, e.seq_, e.outgoing_, e.sender_, e.time_, width());
             h += item->getHeight();
 
-            auto reqId = GetDispatcher()->downloadLinkMetainfo(aimId_, e.url_, 0, 0);
+            auto reqId = GetDispatcher()->downloadLinkMetainfo(e.url_);
             item->setReqId(reqId);
             RequestIds_.push_back(reqId);
             RequestedUrls_.push_back(e.url_);
@@ -432,7 +440,7 @@ namespace Ui
                 break;
             }
 
-            auto reqId = GetDispatcher()->downloadLinkMetainfo(aimId_, e.url_, 0, 0);
+            auto reqId = GetDispatcher()->downloadLinkMetainfo(e.url_);
             auto item = std::make_unique<LinkItem>(e.url_, time.toString(qsl("d MMM, ")) + time.time().toString(qsl("hh:mm")), e.msg_id_, e.seq_, e.outgoing_, e.sender_, e.time_, width());
             h += item->getHeight();
 
@@ -543,7 +551,7 @@ namespace Ui
                 }
                 if (i->isOverDate(_event->pos()))
                 {
-                    emit Logic::getContactListModel()->select(aimId_, i->getMsg(), i->getMsg(), Logic::UpdateChatSelection::No);
+                    emit Logic::getContactListModel()->select(aimId_, i->getMsg(), Logic::UpdateChatSelection::No);
                     i->setDateState(true, false);
                 }
                 else
@@ -572,7 +580,7 @@ namespace Ui
     void LinkList::resizeEvent(QResizeEvent* _event)
     {
         for (auto& i : Items_)
-            i->setWidth(_event->size().width());
+            i->setWidth(width());
 
         MediaContentWidget::resizeEvent(_event);
     }
@@ -701,7 +709,7 @@ namespace Ui
                 {
                     if (std::find(RequestedUrls_.begin(), RequestedUrls_.end(), url) == RequestedUrls_.end())
                     {
-                        auto reqId = GetDispatcher()->downloadLinkMetainfo(aimId_, url, 0, 0);
+                        auto reqId = GetDispatcher()->downloadLinkMetainfo(url);
                         i->setReqId(reqId);
                         RequestedUrls_.push_back(url);
                         RequestIds_.push_back(reqId);

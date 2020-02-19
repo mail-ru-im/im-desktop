@@ -28,17 +28,9 @@ public:
         dev_id = 14,
         update_interval = 15,
         curl_log = 16,
-        // urls
-        url_base = 100,
-        url_files = 101,
-        url_files_get = 102,
-        url_profile_agent = 103,
-        url_auth_mail_ru = 104,
-        url_r_mail_ru = 105,
-        url_win_mail_ru = 106,
-        url_read_msg = 107,
-        url_cicq_org = 108,
-        url_cicq_com = 109
+        task_trace = 17,
+        hide_keyword_pattern = 18,
+        show_hidden_themes = 19,
     };
 
     enum class gdpr_report_to_server_state
@@ -64,6 +56,9 @@ public:
     bool is_server_history_enabled() const;
     bool is_server_search_enabled() const;
     bool unlock_context_menu_features() const;
+    bool is_task_trace_enabled() const;
+    bool is_hide_keyword_pattern() const;
+    bool is_show_hidden_themes() const;
 
     bool gdpr_user_has_agreed() const;
     int32_t gdpr_agreement_reported_to_server() const;
@@ -77,23 +72,31 @@ public:
     bool is_save_rtp_dumps_enabled() const;
     int cache_history_pages_secs() const;
 
-    std::string get_url_base() const;
-    std::string get_url_files() const;
-    std::string get_url_files_get() const;
-    std::string get_url_profile_agent() const;
-    std::string get_url_auth_mail_ru() const;
-    std::string get_url_r_mail_ru() const;
-    std::string get_url_win_mail_ru() const;
-    std::string get_url_read_msg() const;
-    std::string get_url_cicq_org() const;
-    std::string get_url_cicq_com() const;
+    std::string_view get_stat_base_url() const;
+    std::string_view get_url_omicron_data() const;
+    std::string_view get_url_attach_phone() const;
 
-    std::string get_url_files_if_not_default() const;
+    std::string get_update_url(std::string_view _updateble_build_version) const;
 
     void serialize(Out core::coll_helper &_collection) const;
 
     template <typename ValueType>
     void set_config_option(AppConfigOption option, ValueType&& value);
+
+private:
+
+    std::string_view get_update_win_alpha_url() const;
+    std::string_view get_update_win_beta_url() const;
+    std::string_view get_update_win_release_url() const;
+    std::string_view get_update_mac_alpha_url() const;
+    std::string_view get_update_mac_beta_url() const;
+    std::string_view get_update_mac_release_url() const;
+    std::string_view get_update_linux_alpha_32_url() const;
+    std::string_view get_update_linux_alpha_64_url() const;
+    std::string_view get_update_linux_beta_32_url() const;
+    std::string_view get_update_linux_beta_64_url() const;
+    std::string_view get_update_linux_release_32_url() const;
+    std::string_view get_update_linux_release_64_url() const;
 
 private:
     AppConfigMap app_config_options_;

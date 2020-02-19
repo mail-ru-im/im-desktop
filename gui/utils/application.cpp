@@ -11,15 +11,13 @@
 #include "../cache/emoji/Emoji.h"
 #include "../cache/stickers/stickers.h"
 #include "../main_window/MainWindow.h"
-#ifdef _WIN32
-#include "../main_window/win32/WinNativeWindow.h"
-#endif
 #include "../main_window/contact_list/ContactListModel.h"
 #include "../main_window/contact_list/RecentsModel.h"
 #include "../main_window/contact_list/UnknownsModel.h"
 #include "../main_window/friendly/FriendlyContainer.h"
 #include "../my_info.h"
 #include "../../common.shared/version_info.h"
+#include "../../common.shared/config/config.h"
 #include "../../gui.shared/local_peer/local_peer.h"
 
 #include "../main_window/mplayer/FFMpegPlayer.h"
@@ -48,7 +46,7 @@ namespace Utils
         : Mutex_(nullptr)
         , Exist_(false)
     {
-        Mutex_ = ::CreateSemaphore(NULL, 0, 1, Utils::get_crossprocess_mutex_name());
+        Mutex_ = ::CreateSemaphoreA(NULL, 0, 1, std::string(Utils::get_crossprocess_mutex_name()).c_str());
         Exist_ = GetLastError() == ERROR_ALREADY_EXISTS;
     }
 
@@ -172,15 +170,7 @@ namespace Utils
 
     Application::~Application()
     {
-#ifdef _WIN32
-        std::unique_ptr<Ui::WinNativeWindow> nativeWindow;
-        if (mainWindow_)
-            nativeWindow = mainWindow_->takeNativeWindow();
-#endif
         mainWindow_.reset();
-#ifdef _WIN32
-        nativeWindow.reset();
-#endif
         anim::AnimationManager::stopManager();
 
         Emoji::Cleanup();
@@ -221,8 +211,8 @@ namespace Utils
 
         QPixmapCache::setCacheLimit(0);
 
-        QObject::connect(Ui::GetDispatcher(), &Ui::core_dispatcher::coreLogins, this, &Application::coreLogins, Qt::DirectConnection);
         QObject::connect(Ui::GetDispatcher(), &Ui::core_dispatcher::guiSettings, this, &Application::guiSettings, Qt::DirectConnection);
+        QObject::connect(Ui::GetDispatcher(), &Ui::core_dispatcher::coreLogins, this, &Application::coreLogins, Qt::DirectConnection);
 
         if (_cmdParser.isUrlCommand())
             urlCommand_ = _cmdParser.getUrlCommand();
@@ -242,11 +232,10 @@ namespace Utils
 #elif defined __linux__
         int fd;
         struct flock fl;
-        fd = open(qsl("/tmp/%1.pid").arg(build::is_agent() ? qsl("magent") : build::ProductNameShort()).toStdString().c_str(), O_CREAT | O_RDWR, 0666);
-        if(fd == -1)
-        {
+        const auto lockName = config::get().string(config::values::main_instance_mutex_linux);
+        fd = open(qsl("/tmp/%1.pid").arg(QString::fromUtf8(lockName.data(), lockName.size())).toStdString().c_str(), O_CREAT | O_RDWR, 0666);
+        if (fd == -1)
             return true;
-        }
 
         fl.l_type   = F_WRLCK;
         fl.l_whence = SEEK_SET;
@@ -254,12 +243,10 @@ namespace Utils
         fl.l_len    = 0;
         fl.l_pid    = QCoreApplication::applicationPid();
 
-        if( fcntl(fd, F_SETLK, &fl) == -1)
+        if (fcntl(fd, F_SETLK, &fl) == -1)
         {
-            if( errno == EACCES || errno == EAGAIN)
-            {
+            if (errno == EACCES || errno == EAGAIN)
                  return false;
-            }
         }
         return true;
 #else
@@ -306,9 +293,16 @@ namespace Utils
         app_->quit();
     }
 
-    void Application::coreLogins(const bool _has_valid_login, const bool _locked)
+    void Application::coreLogins(const bool _has_valid_login, const bool _locked, const QString& _validOrFirstLogin)
     {
-        initMainWindow(_has_valid_login, _locked);
+        if (Ui::get_gui_settings()->get_value<bool>(login_page_need_fill_profile, false))
+        {
+            Ui::get_gui_settings()->set_value(settings_feedback_email, QString());
+            Ui::GetDispatcher()->post_message_to_core("logout", nullptr);
+            emit Utils::InterConnector::instance().logout();
+        }
+
+        initMainWindow(_has_valid_login, _locked, _validOrFirstLogin);
     }
 
     void Application::guiSettings()
@@ -316,7 +310,7 @@ namespace Utils
         Ui::convertOldDownloadPath();
     }
 
-    void Application::initMainWindow(const bool _has_valid_login, const bool _locked)
+    void Application::initMainWindow(const bool _has_valid_login, const bool _locked, const QString& _validOrFirstLogin)
     {
         anim::AnimationManager::startManager();
         Logic::GetFriendlyContainer();
@@ -326,7 +320,7 @@ namespace Utils
         if constexpr (platform::is_apple())
         {
             dpi = 96;
-            Utils::set_mac_retina(app_->primaryScreen()->devicePixelRatio() == 2);
+            Utils::set_mac_retina(qFuzzyCompare(app_->devicePixelRatio(), 2.0));
             if (Utils::is_mac_retina())
                 app_->setAttribute(Qt::AA_UseHighDpiPixmaps);
         }
@@ -349,7 +343,7 @@ namespace Utils
             QFontDatabase::addApplicationFont(qsl(":/fonts/SFProText_Bold"));
         }
 
-        const auto guiScaleCoefficient = std::min(dpi / 96.0, 2.0);
+        const auto guiScaleCoefficient = std::min(dpi / 96.0, 3.0);
 
         Utils::initBasicScaleCoefficient(guiScaleCoefficient);
 
@@ -361,7 +355,7 @@ namespace Utils
         Ui::get_gui_settings()->set_shadow_width(Utils::scale_value(SHADOW_WIDTH));
 
         Utils::GetTranslator()->init();
-        mainWindow_ = std::make_unique<Ui::MainWindow>(app_.get(), _has_valid_login, _locked);
+        mainWindow_ = std::make_unique<Ui::MainWindow>(app_.get(), _has_valid_login, _locked, _validOrFirstLogin);
 
         Ui::GetDispatcher()->updateRecentAvatarsSize();
 
@@ -458,10 +452,9 @@ namespace Utils
     bool Application::updating()
     {
 #ifdef _WIN32
+        const auto updater_singlton_mutex_name = config::get().string(config::values::updater_main_instance_mutex_win);
 
-        const auto updater_singlton_mutex_name = build::GetProductVariant(updater_singlton_mutex_name_icq, updater_singlton_mutex_name_agent, updater_singlton_mutex_name_biz, updater_singlton_mutex_name_dit);
-
-        CHandle mutex(::CreateSemaphore(NULL, 0, 1, updater_singlton_mutex_name.c_str()));
+        CHandle mutex(::CreateSemaphoreA(NULL, 0, 1, std::string(updater_singlton_mutex_name).c_str()));
         if (ERROR_ALREADY_EXISTS == ::GetLastError())
             return true;
 
@@ -501,8 +494,7 @@ namespace Utils
             if (updateDir.exists())
             {
                 const QString setupName = updateFolder % ql1c('/') % Utils::getInstallerName();
-                QFileInfo setupInfo(setupName);
-                if (!setupInfo.exists())
+                if (!QFileInfo::exists(setupName))
                     return false;
 
                 mutex.Close();

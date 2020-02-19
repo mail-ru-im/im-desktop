@@ -13,6 +13,7 @@ public:
         Invalid = 0,
         SendLogsToSupportServer = 1,
         SendLogsToUin = 2,
+        Internal = 3,
     };
 
     using Id = int32_t;

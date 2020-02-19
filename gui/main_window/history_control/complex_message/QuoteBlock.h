@@ -42,9 +42,13 @@ public:
 
     bool isAllSelected() const override;
 
-    void selectByPos(const QPoint& from, const QPoint& to, const BlockSelectionType selection) override;
+    void selectByPos(const QPoint& from, const QPoint& to, bool topToBottom) override;
+
+    void selectAll() override;
 
     void onVisibilityChanged(const bool isVisible) override;
+
+    void onSelectionStateChanged(const bool isSelected) override;
 
     void onDistanceToViewportChanged(const QRect& _widgetAbsGeometry, const QRect& _viewportVisibilityAbsRect) override;
 
@@ -58,7 +62,9 @@ public:
 
     bool isSharingEnabled() const override;
 
-    bool containSharingBlock() const override;
+    bool containsSharingBlock() const override;
+
+    QString getTextForCopy() const override;
 
     QString getSourceText() const override;
 
@@ -93,6 +99,14 @@ public:
     QString getSenderAimid() const override;
 
     bool isNeedCheckTimeShift() const override;
+
+    void highlight(const highlightsV& _hl) override;
+    void removeHighlight() override;
+    Data::FilesPlaceholderMap getFilePlaceholders() override;
+
+    bool containsText() const;
+
+    int getMaxWidth() const override;
 
 protected:
     void drawBlock(QPainter &p, const QRect& _rect, const QColor& _quoteColor) override;

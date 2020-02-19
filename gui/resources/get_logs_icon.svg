@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="20px" height="20px" viewBox="0 0 20 20" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 57.1 (83088) - https://sketch.com -->
+    <title>🔔icons / line / file copy</title>
+    <desc>Created with Sketch.</desc>
+    <g id="🔔icons-/-line-/-file-copy" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="Group">
+            <path d="M4,1.65 C3.25441559,1.65 2.65,2.25441559 2.65,3 L2.65,17 C2.65,17.7455844 3.25441559,18.35 4,18.35 L16,18.35 C16.7455844,18.35 17.35,17.7455844 17.35,17 L17.35,3 C17.35,2.25441559 16.7455844,1.65 16,1.65 L4,1.65 Z" id="Rectangle" stroke="#B7BCC9" stroke-width="1.3"></path>
+            <polyline id="Line-4" stroke="#B7BCC9" stroke-linecap="square" points="9.6 1.5 9.6 4.42697029 11.6 4.42697029 11.6 6.78909447 9.6 6.78909447 9.6 9.16044743 11.6 9.16044743 11.6 11.5 9.6 11.5"></polyline>
+            <rect id="Rectangle" stroke="#B7BCC9" stroke-width="1.3" opacity="0.900000036" x="9.65" y="13.65" width="1.7" height="2.7"></rect>
+            <rect id="Rectangle" x="0" y="0" width="20" height="20"></rect>
+        </g>
+    </g>
+</svg>

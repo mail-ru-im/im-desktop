@@ -23,10 +23,11 @@ namespace core
             std::string aimid_;
             std::string contact_;
             bool block_;
+            bool remove_messages_;
 
         public:
 
-            block_chat_member(wim_packet_params _params, const std::string& _aimId, const std::string& _contact, bool _block);
+            block_chat_member(wim_packet_params _params, const std::string& _aimId, const std::string& _contact, bool _block, bool _remove_messages);
             virtual ~block_chat_member();
         };
 

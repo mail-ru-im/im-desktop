@@ -25,7 +25,8 @@ public:
         const std::string &_content_type,
         const preview_size &_preview_size,
         const int64_t _file_size,
-        const origin_size& _origin_size);
+        const origin_size& _origin_size,
+        const std::string& _filename);
 
     ~link_meta();
 
@@ -51,6 +52,8 @@ public:
 
     const std::string& get_title() const;
 
+    const std::string& get_filename() const;
+
     bool has_favicon_uri() const;
 
     bool has_preview_uri() const;
@@ -75,6 +78,8 @@ private:
     int64_t file_size_;
 
     origin_size origin_size_;
+
+    std::string filename_;
 };
 
 enum class favicon_size
@@ -90,20 +95,20 @@ enum class favicon_size
 };
 
 str_2_str_map format_get_preview_params(
-    const std::string &_uri_to_preview,
+    std::string_view _uri_to_preview,
     const int32_t_opt _width = int32_t_opt(),
     const int32_t_opt _height = int32_t_opt(),
     const bool _crop = false,
     const favicon_size _favicon_size = favicon_size::small);
 
-str_2_str_map format_get_url_content_params(const std::string &_uri);
+str_2_str_map format_get_url_content_params(std::string_view _uri);
 
 link_meta_uptr parse_json(InOut char *_json, const std::string &_uri);
 
 namespace uri
 {
     std::string get_preview();
-    std::string get_url_content();
+    std::string_view get_url_content();
 }
 
 CORE_WIM_PREVIEW_PROXY_NS_END

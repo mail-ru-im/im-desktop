@@ -7,6 +7,8 @@
 #include "ServiceRequest.h"
 #include "SendLogsToServerRequest.h"
 #include "SendLogsToUinRequest.h"
+#include "InternalServiceRequest.h"
+#include "utils/utils.h"
 
 namespace Utils
 {
@@ -54,6 +56,22 @@ ServiceRequest* ServiceRequestsFactory::requestForUrl(const QString &_urlCommand
 
         auto uin = logsPath.constFirst().toString();
         return buildSendLogsToUinRequest(serviceRequestId, uin, withRTP);
+    }
+    else if (pathRef.startsWith(qsl(url_commandpath_service_clear_cache)))
+    {
+        return new InternalServiceRequest(serviceRequestId, InternalServiceRequest::CommandType::ClearCache);
+    }
+    else if (pathRef.startsWith(qsl(url_commandpath_service_clear_avatars)))
+    {
+        return new InternalServiceRequest(serviceRequestId, InternalServiceRequest::CommandType::ClearAvatars);
+    }
+    else if (pathRef.startsWith(qsl(url_commandpath_service_debug)))
+    {
+        return new InternalServiceRequest(serviceRequestId, InternalServiceRequest::CommandType::OpenDebug);
+    }
+    else if (pathRef.startsWith(qsl(url_commandpath_service_update)))
+    {
+        return new InternalServiceRequest(serviceRequestId, InternalServiceRequest::CommandType::CheckForUpdate);
     }
 
     assert(!"unknown service command");

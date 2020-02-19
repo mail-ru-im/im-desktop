@@ -18,9 +18,9 @@ namespace Ui
         void close_dialog();
 
     public:
-        bool show_;
-        bool close_;
-        qint32 timeout_;
+        bool show_ = false;
+        bool close_ = false;
+        qint32 timeout_ = -1;
         QString text_;
         QString title_;
         QString aimId_;
@@ -32,6 +32,7 @@ namespace Ui
 
     Q_SIGNALS:
         void received();
+        void needGDPR();
 
     public:
         enum class AgreementType
@@ -42,22 +43,16 @@ namespace Ui
     private:
         struct MyInfoData
         {
-            MyInfoData()
-                : flags_(0)
-                , auto_created_(false)
-                , hasMail_(false)
-            {}
-
             QString aimId_;
             QString nick_;
             QString friendly_;
             QString state_;
             QString userType_;
             QString phoneNumber_;
-            uint32_t flags_;
+            uint32_t flags_ = 0;
             QString largeIconId_;
-            bool auto_created_;
-            bool hasMail_;
+            bool auto_created_ = false;
+            bool hasMail_ = false;
 
             std::vector<AgreementType> need_to_accept_types_;
         };
@@ -69,7 +64,6 @@ namespace Ui
         bool gdprAgreement_ = false;
         bool phoneAttachment_ = false;
         bool needAttachPhone_ = false;
-        int64_t attachPhoneInfoSeq_ = 0;
 
         void attachStuff();
 
@@ -78,26 +72,24 @@ namespace Ui
         void unserialize(core::coll_helper* _collection);
         bool haveConnectedEmail() const noexcept { return data_.hasMail_; }
 
-        QString aimId() const { return data_.aimId_; };
-        QString nick() const { return data_.nick_; };
-        QString friendly() const {return data_.friendly_; };
-        QString state() const { return data_.state_; };
-        QString userType() const { return data_.userType_; };
-        QString phoneNumber() const { return data_.phoneNumber_; };
+        const QString& aimId() const { return data_.aimId_; };
+        const QString& nick() const { return data_.nick_; };
+        const QString& friendly() const {return data_.friendly_; };
+        const QString& state() const { return data_.state_; };
+        const QString& userType() const { return data_.userType_; };
+        const QString& phoneNumber() const { return data_.phoneNumber_; };
         uint32_t flags() const noexcept { return data_.flags_; };
         bool auto_created() const noexcept { return data_.auto_created_; };
-        QString largeIconId() const { return data_.largeIconId_; };
+        const QString& largeIconId() const { return data_.largeIconId_; };
+        bool isEmailProfile() const { return aimId().contains(ql1c('@')); }
 
         void CheckForUpdate() const;
-        void needAttachPhoneNumber();
-        void attachPhoneInfo(const int64_t _seq, const AttachPhoneInfo& _info);
+        void attachPhoneInfo(const AttachPhoneInfo& _info);
         bool isGdprAgreementInProgress() const;
         bool isPhoneAttachmentInProgress() const;
 
         void setFriendly(const QString& _friendly);
-
-    private:
-        void showGDPRAgreement();
+        void setAimId(const QString& _aimId);
     };
 
     my_info* MyInfo();

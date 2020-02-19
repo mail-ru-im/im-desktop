@@ -40,7 +40,7 @@ int32_t attach_phone::init_request(std::shared_ptr<core::http_request_simple> _r
         return wpie_invalid_login;
 
     const std::string host = get_attach_phone_host();
-    _request->set_gzip(true);
+    _request->set_compression_auto();
     _request->set_url(host);
     _request->set_normalized_url("attachPhoneNumber");
     _request->push_post_parameter("a", escape_symbols(params_.a_token_));

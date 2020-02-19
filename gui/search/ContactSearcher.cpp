@@ -140,6 +140,9 @@ namespace Logic
 
             if (res->isChat())
             {
+                if (auto chat = std::static_pointer_cast<Data::SearchResultChat>(res))
+                    getContactListModel()->updateChatInfo(chat->chatInfo_);
+
                 if (ci || excludeChats_)
                     continue;
             }

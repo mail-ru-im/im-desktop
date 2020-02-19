@@ -1,8 +1,10 @@
 #include "stdafx.h"
 
 #include "tools/system.h"
+#include "tools/spin_lock.h"
 #include "tools/strings.h"
 #include "tools/binary_stream.h"
+#include "tools/features.h"
 
 #include "core.h"
 #include "curl_handler.h"
@@ -18,6 +20,9 @@
 #include "connections/urls_cache.h"
 #include "configuration/app_config.h"
 #include "../libomicron/include/omicron/omicron.h"
+#include "../common.shared/config/config.h"
+
+#include "zstd_helper.h"
 
 
 const size_t MAX_LOG_DATA_SIZE = 10 * 1024 * 1024;
@@ -57,6 +62,16 @@ namespace
 
         return CURLAUTH_BASIC;
     }
+
+    constexpr const char* get_request_dict_header_attribut() noexcept
+    {
+        return "IM-ZSTD-Request-Dict";
+    }
+
+    constexpr const char* get_response_dict_header_attribut() noexcept
+    {
+        return "IM-ZSTD-Response-Dict";
+    }
 }
 
 struct stats_aggregator
@@ -68,12 +83,7 @@ struct stats_aggregator
 
         stat_delta reset()
         {
-            auto res = *this;
-
-            total_uploaded_ = 0;
-            total_downloaded_ = 0;
-
-            return res;
+            return std::exchange(*this, {});
         }
     };
 
@@ -84,28 +94,32 @@ struct stats_aggregator
 
     void add_uploaded(long _upl)
     {
+        std::scoped_lock lock(spin_lock_);
         delta_.total_uploaded_ += _upl;
     }
 
     void add_downloaded(long _dnl)
     {
+        std::scoped_lock lock(spin_lock_);
         delta_.total_downloaded_ += _dnl;
     }
 
-    bool need_release() const
+    std::optional<stat_delta> release()
     {
-        std::chrono::seconds secs = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now() - last_release_);
-        return secs > release_duration_;
-    }
-
-    stat_delta release()
-    {
-        last_release_ = std::chrono::system_clock::now();
-        return delta_.reset();
+        const auto now = std::chrono::steady_clock::now();
+        std::scoped_lock lock(spin_lock_);
+        std::chrono::seconds secs = std::chrono::duration_cast<std::chrono::seconds>(now - last_release_);
+        if (secs > release_duration_)
+        {
+            last_release_ = now;
+            return delta_.reset();
+        }
+        return std::nullopt;
     }
 
 private:
-    std::chrono::system_clock::time_point last_release_ = std::chrono::system_clock::now();
+    mutable core::tools::spin_lock spin_lock_;
+    std::chrono::steady_clock::time_point last_release_ = std::chrono::steady_clock::now();
     std::chrono::seconds release_duration_;
     stat_delta delta_;
 };
@@ -135,13 +149,14 @@ core::curl_context::curl_context(std::shared_ptr<tools::stream> _output, http_re
     curl_range_to_(-1),
     post_data_(nullptr),
     post_data_size_(0),
-    free_post_data_(false),
+    post_data_copy_(nullptr),
     modified_time_(-1),
     id_(-1),
     max_log_data_size_reached_(false),
     is_send_im_stats_(true),
     multi_(false),
-    gzip_(false)
+    compression_method_(data_compression_method::none),
+    use_curl_decompression_(false)
 {
 }
 
@@ -149,9 +164,6 @@ core::curl_context::~curl_context()
 {
     if (header_chunk_)
         curl_slist_free_all(header_chunk_);
-
-    if (free_post_data_ && post_data_)
-        free(post_data_);
 }
 
 bool core::curl_context::init(std::chrono::milliseconds _connect_timeout, std::chrono::milliseconds _timeout, core::proxy_settings _proxy_settings, const std::string &_user_agent)
@@ -163,6 +175,13 @@ bool core::curl_context::init(std::chrono::milliseconds _connect_timeout, std::c
     proxy_settings_ = _proxy_settings;
     user_agent_ = _user_agent;
 
+    auto zstd_helper = g_core->get_zstd_helper();
+    if (features::is_zstd_request_enabled())
+        zstd_request_dict_ = zstd_helper->get_last_request_dict();
+
+    if (features::is_zstd_response_enabled())
+        zstd_response_dict_ = zstd_helper->get_last_response_dict();
+
     return true;
 }
 
@@ -171,7 +190,7 @@ bool core::curl_context::init_handler(CURL* _curl)
     if (!_curl)
         return false;
 
-    curl_easy_setopt(_curl, CURLOPT_SSL_VERIFYPEER, 1L);
+    curl_easy_setopt(_curl, CURLOPT_SSL_VERIFYPEER, config::get().is_on(config::features::ssl_verify_peer) ? 1L : 0L);
 
     const bool is_http2_used = is_multi_task();
 
@@ -199,7 +218,26 @@ bool core::curl_context::init_handler(CURL* _curl)
     curl_easy_setopt(_curl, CURLOPT_TCP_KEEPINTVL, 5L);
     curl_easy_setopt(_curl, CURLOPT_NOSIGNAL, 1L);
 
-    curl_easy_setopt(_curl, CURLOPT_ACCEPT_ENCODING, "gzip");
+    if (use_curl_decompression_ || zstd_response_dict_.empty())
+    {
+        use_curl_decompression_ = true;
+        curl_easy_setopt(_curl, CURLOPT_ACCEPT_ENCODING, get_data_compression_method_name(data_compression_method::gzip).data());
+    }
+    else
+    {
+        std::string accept_encoding;
+        accept_encoding += "Accept-Encoding: ";
+        accept_encoding += get_data_compression_method_name(data_compression_method::zstd);
+        accept_encoding += ", ";
+        accept_encoding += get_data_compression_method_name(data_compression_method::gzip);
+        set_custom_header_param(accept_encoding);
+
+        std::string response_dict_param;
+        response_dict_param += get_response_dict_header_attribut();
+        response_dict_param += ": ";
+        response_dict_param += zstd_response_dict_;
+        set_custom_header_param(response_dict_param);
+    }
 
     curl_easy_setopt(_curl, CURLOPT_USERAGENT, user_agent_.c_str());
 
@@ -286,14 +324,12 @@ bool core::curl_context::init_handler(CURL* _curl)
             curl_easy_setopt(_curl, CURLOPT_POSTFIELDSIZE, (long)post_data_size_);
             curl_easy_setopt(_curl, CURLOPT_POSTFIELDS, post_data_);
         }
-#ifdef __linux__
-        else
+        else if (platform::is_linux())
         {
             //avoiding bug in curl (empty post body causes hang on linux)
             curl_easy_setopt(_curl, CURLOPT_POSTFIELDSIZE, 0);
             curl_easy_setopt(_curl, CURLOPT_POSTFIELDS, "");
         }
-#endif //__linux__
         curl_easy_setopt(_curl, CURLOPT_POST, 1L);
     }
 
@@ -323,7 +359,22 @@ void core::curl_context::set_replace_log_function(replace_log_function _func)
 bool core::curl_context::is_need_log() const
 {
     if (stop_func_ && stop_func_())
+    {
+        constexpr std::string_view pattern = "curl_context: no log due to stop func";
+        if (normalized_url_.empty())
+        {
+            g_core->write_string_to_network_log(pattern);
+        }
+        else
+        {
+            std::string log_str;
+            log_str += pattern;
+            log_str += ": url ";
+            log_str += normalized_url_;
+            g_core->write_string_to_network_log(log_str);
+        }
         return false;
+    }
 
     return need_log_;
 }
@@ -356,7 +407,7 @@ void core::curl_context::set_write_data_log(bool _enable)
     write_data_log_ = _enable;
 }
 
-void core::curl_context::write_log_data(const char* _data, uint32_t _size)
+void core::curl_context::write_log_data(const char* _data, int64_t _size)
 {
     if (max_log_data_size_reached_)
         return;
@@ -440,8 +491,62 @@ CURLMcode core::curl_context::execute_multi_handler(CURLM* _multi, CURL* _curl)
     return curl_multi_add_handle(_multi, _curl);
 }
 
+void core::curl_context::decompress_output_if_needed()
+{
+    if (!use_curl_decompression_ && output_->available())
+    {
+        const auto encoding = http_header::get_attribute(get_header(), "Content-Encoding");
+        const auto is_gzip_encoding = encoding == get_data_compression_method_name(data_compression_method::gzip);
+        const auto is_zstd_encoding = encoding == get_data_compression_method_name(data_compression_method::zstd);
+        const auto is_send_stats = g_core->is_im_stats_enabled() && is_send_im_stats();
+
+        if (is_send_stats && !zstd_response_dict_.empty() && !is_zstd_encoding)
+        {
+            core::stats::event_props_type props;
+            props.emplace_back("endpoint", normalized_url_);
+            g_core->insert_im_stats_event(stats::im_stat_event_names::u_network_compression_ignored, std::move(props));
+        }
+
+        if (!encoding.empty())
+        {
+            core::tools::binary_stream data;
+            bool result = false;
+            if (is_gzip_encoding)
+            {
+                result = tools::decompress_gzip(*output_, data);
+            }
+            else if (is_zstd_encoding)
+            {
+                const auto response_dict = http_header::get_attribute(get_header(), get_response_dict_header_attribut());
+                result = tools::decompress_zstd(*output_, response_dict.empty() ? zstd_response_dict_ : response_dict, data);
+            }
+
+            if (result)
+            {
+                output_->swap(&data);
+            }
+            else if (is_send_stats)
+            {
+                core::stats::event_props_type props;
+                props.emplace_back("endpoint", normalized_url_);
+                g_core->insert_im_stats_event(stats::im_stat_event_names::u_network_decompression_error, std::move(props));
+
+                write_log_string("\n*** failed to decompress response\n");
+            }
+        }
+
+        if (is_need_log())
+        {
+            if (const auto size = output_->available())
+                write_log_data(output_->get_data_for_log(), size);
+        }
+    }
+}
+
 void core::curl_context::load_info(CURL* _curl, CURLcode _result)
 {
+    decompress_output_if_needed();
+
     curl_easy_getinfo(_curl, CURLINFO_RESPONSE_CODE, &response_code_);
     curl_easy_getinfo(_curl, CURLINFO_TOTAL_TIME, &request_time_);
 
@@ -474,44 +579,36 @@ void core::curl_context::load_info(CURL* _curl, CURLcode _result)
     aggregator.add_downloaded(downloaded_on_iter);
     aggregator.add_uploaded(uploaded_on_iter);
 
-    static bool timer_started = false;
-
-    if (!timer_started)
-    {
+    static std::once_flag flag;
+    std::call_once(flag, []() {
         g_core->add_timer([]
         {
-            if (!aggregator.need_release())
-                return;
+            const auto stat_d = aggregator.release();
 
-            auto stat_d = aggregator.release();
+            if (!stat_d)
+                return;
 
             g_core->get_statistics()->increment_event_prop(stats::stats_event_names::send_used_traffic_size_event,
                 std::string("download"),
-                stat_d.total_downloaded_);
+                (*stat_d).total_downloaded_);
 
             g_core->get_statistics()->increment_event_prop(stats::stats_event_names::send_used_traffic_size_event,
                 std::string("upload"),
-                stat_d.total_uploaded_);
+                (*stat_d).total_uploaded_);
         }, SAVE_AGGREGATED_STATS_INTERVAL);
-
-        timer_started = true;
-    }
+    });
 
     if (g_core->is_im_stats_enabled() && is_send_im_stats())
     {
-        const auto is_one_domain = omicronlib::_o("one_domain_feature", feature::default_one_domain_feature());
-
         core::stats::event_props_type props;
         props.emplace_back("endpoint", normalized_url_);
-        auto event_name = is_one_domain ? stats::im_stat_event_names::u_network_communication_event : stats::im_stat_event_names::network_communication_event;
-        g_core->insert_im_stats_event(event_name, std::move(props));
+        g_core->insert_im_stats_event(stats::im_stat_event_names::u_network_communication_event, std::move(props));
 
         if (_result != CURLE_OK)
         {
             core::stats::event_props_type props;
             props.emplace_back("endpoint", normalized_url_);
-            event_name = is_one_domain ? stats::im_stat_event_names::u_network_error_event : stats::im_stat_event_names::network_error_event;
-            g_core->insert_im_stats_event(event_name, std::move(props));
+            g_core->insert_im_stats_event(stats::im_stat_event_names::u_network_error_event, std::move(props));
         }
         else if (response_code_ < 200 || response_code_ >= 300)
         {
@@ -524,8 +621,7 @@ void core::curl_context::load_info(CURL* _curl, CURLcode _result)
             props.emplace_back("not_2xx", normalized_url_);
             props.emplace_back(response_code_str, normalized_url_);
             props.emplace_back("code", std::to_string(response_code_));
-            event_name = is_one_domain ? stats::im_stat_event_names::u_network_http_code_event : stats::im_stat_event_names::network_http_code_event;
-            g_core->insert_im_stats_event(event_name, std::move(props));
+            g_core->insert_im_stats_event(stats::im_stat_event_names::u_network_http_code_event, std::move(props));
         }
     }
 }
@@ -533,7 +629,10 @@ void core::curl_context::load_info(CURL* _curl, CURLcode _result)
 void core::curl_context::write_log(CURLcode res)
 {
     if (is_need_log())
-        write_log_message(std::to_string(res), start_time_);
+    {
+        const std::string res_str = std::to_string(res) + " (" + curl_easy_strerror(res) + ')';
+        write_log_message(res_str, start_time_);
+    }
 }
 
 bool core::curl_context::execute_request()
@@ -567,7 +666,42 @@ bool core::curl_context::is_multi_task() const
 
 bool core::curl_context::is_gzip() const
 {
-    return gzip_;
+    return compression_method_ == data_compression_method::gzip;
+}
+
+bool core::curl_context::is_zstd() const
+{
+    return compression_method_ == data_compression_method::zstd;
+}
+
+bool core::curl_context::is_compressed() const
+{
+    return compression_method_ != data_compression_method::none;
+}
+
+bool core::curl_context::is_use_curl_decompression() const
+{
+    return use_curl_decompression_;
+}
+
+void core::curl_context::set_use_curl_decompression(bool _enable)
+{
+    use_curl_decompression_ = _enable;
+}
+
+const std::string& core::curl_context::zstd_request_dict() const
+{
+    return zstd_request_dict_;
+}
+
+const std::string& core::curl_context::zstd_response_dict() const
+{
+    return zstd_response_dict_;
+}
+
+const std::string& core::curl_context::normalized_url() const
+{
+    return normalized_url_;
 }
 
 double core::curl_context::get_request_time() const
@@ -582,13 +716,12 @@ void core::curl_context::write_log_message(std::string_view _result, std::chrono
     std::stringstream message;
     if (need_log_original_url_)
         message << "url: " << original_url_ << '\n';
-    message << "curl_easy_perform result is ";
-    message << _result << '\n';
+    message << "curl_easy_perform result is " << _result << '\n';
+
     if (strlen(err_buf_) != 0)
         message << err_buf_ << '\n';
 
-    message << "completed in " << std::chrono::duration_cast<std::chrono::milliseconds>(finish -_start_time).count() << " ms";
-    message << std::endl;
+    message << "completed in " << std::chrono::duration_cast<std::chrono::milliseconds>(finish -_start_time).count() << " ms" << std::endl;
     write_log_string(message.str());
 
     if (replace_log_function_)
@@ -600,7 +733,12 @@ void core::curl_context::write_log_message(std::string_view _result, std::chrono
 void core::curl_context::set_custom_header_params(const std::vector<std::string>& _params)
 {
     for (const auto& parameter : _params)
-        header_chunk_ = curl_slist_append(header_chunk_, parameter.c_str());
+        set_custom_header_param(parameter);
+}
+
+void core::curl_context::set_custom_header_param(const std::string& _param)
+{
+    header_chunk_ = curl_slist_append(header_chunk_, _param.c_str());
 }
 
 void core::curl_context::set_priority(priority_t _priority)
@@ -643,30 +781,71 @@ void core::curl_context::set_post_form_files(const std::multimap<std::string, st
     post_form_files_ = _post_form_files;
 }
 
-void core::curl_context::set_post_data(const char* _data, int32_t _size, bool _copy)
+void core::curl_context::set_post_data(const char* _data, int64_t _size, bool _copy)
 {
-    if (gzip_)
+    if (is_compressed() && _size > 0)
     {
         tools::binary_stream compressed_data;
-        if (tools::compress(_data, _size, compressed_data))
-        {
-            std::stringstream s;
-            s << "\n" << normalized_url_ << " gzip; oldsize = " << _size << " newsize = " << compressed_data.all_size() << "\n";
-            write_log_string(s.str());
+        bool result = false;
+        if (is_gzip())
+            result = tools::compress_gzip(_data, _size, compressed_data);
+        else if (is_zstd() && !zstd_request_dict_.empty())
+            result = tools::compress_zstd(_data, _size, zstd_request_dict_, compressed_data);
 
-            post_data_size_ = compressed_data.all_size();
-            post_data_ = (char*)malloc(post_data_size_);
-            memcpy(post_data_, compressed_data.get_data(), post_data_size_);
-            free_post_data_ = true;
+        if (result)
+        {
+            if (compressed_data.available() < static_cast<uint32_t>(_size))
+            {
+                if (is_gzip())
+                {
+                    set_custom_header_param("Content-Encoding: gzip");
+                }
+                else if (is_zstd())
+                {
+                    set_custom_header_param("Content-Encoding: zstd");
+                    std::string dict;
+                    dict += get_request_dict_header_attribut();
+                    dict += ": ";
+                    dict += zstd_request_dict_;
+                    set_custom_header_param(dict);
+                }
+
+                std::stringstream ss;
+                ss << '\n' << normalized_url_;
+                ss << ' ' << get_data_compression_method_name(compression_method_);
+                ss << "; original_size = " << _size << " compressed_size = " << compressed_data.available() << '\n';
+                write_log_string(ss.str());
+
+                post_data_size_ = compressed_data.available();
+                post_data_copy_ = std::make_unique<char[]>(post_data_size_);
+                post_data_ = post_data_copy_.get();
+                memcpy(post_data_, compressed_data.get_data(), post_data_size_);
+
+                return;
+            }
+            else
+            {
+                compression_method_ = data_compression_method::none;
+                write_log_string("\n*** compressed size >= original size; sent without compression\n");
+            }
         }
-        return;
+        else
+        {
+            compression_method_ = data_compression_method::none;
+            std::string ss;
+            ss += "\n*** failed to compress using ";
+            ss += get_data_compression_method_name(compression_method_);
+            ss += "; sent without compression\n";
+            write_log_string(ss);
+        }
     }
+
     if (_copy)
     {
         post_data_size_ = _size;
-        post_data_ = (char*)malloc(post_data_size_);
+        post_data_copy_ = std::make_unique<char[]>(post_data_size_);
+        post_data_ = post_data_copy_.get();
         memcpy(post_data_, _data, post_data_size_);
-        free_post_data_ = true;
     }
     else
     {
@@ -680,7 +859,7 @@ void core::curl_context::set_post_parameters(const std::string& _post_parameters
     if (_post_parameters.empty())
         return;
 
-    set_post_data(_post_parameters.c_str(), (int32_t)_post_parameters.length(), true);
+    set_post_data(_post_parameters.data(), _post_parameters.size(), true);
 }
 
 void core::curl_context::set_post_form_filedatas(const std::multimap<std::string, file_binary_stream>& _post_form_filedatas)
@@ -688,9 +867,9 @@ void core::curl_context::set_post_form_filedatas(const std::multimap<std::string
     post_form_filedatas_ = _post_form_filedatas;
 }
 
-void core::curl_context::set_gzip(bool _gzip)
+void core::curl_context::set_post_data_compression(data_compression_method _method)
 {
-    gzip_ = (_gzip && omicronlib::_o("one_domain_feature", feature::default_one_domain_feature()));
+    compression_method_ = _method;
 }
 
 static size_t write_header_function(void *contents, size_t size, size_t nmemb, void *userp)
@@ -706,13 +885,13 @@ static size_t write_header_function(void *contents, size_t size, size_t nmemb, v
 static size_t write_memory_callback(void* _contents, size_t _size, size_t _nmemb, void* _userp)
 {
     size_t realsize = _size * _nmemb;
-    auto ctx = (core::curl_context*) _userp;
-    ctx->output_->write((char*) _contents, (uint32_t) realsize);
+    auto ctx = static_cast<core::curl_context*>(_userp);
+    auto contents = static_cast<char*>(_contents);
 
-    if (ctx->is_need_log())
-    {
-        ctx->write_log_data((const char*) _contents, (uint32_t) realsize);
-    }
+    ctx->output_->write(contents, static_cast<int64_t>(realsize));
+
+    if (ctx->is_use_curl_decompression() && ctx->is_need_log())
+        ctx->write_log_data(contents, static_cast<int64_t>(realsize));
 
     return realsize;
 }
@@ -789,24 +968,34 @@ static int32_t trace_function(CURL* /*_handle*/, curl_infotype _type, unsigned c
     if (!ctx->is_need_log())
         return 0;
 
-    if (ctx->is_gzip() && _type == CURLINFO_DATA_OUT)
+    if (ctx->is_compressed() && _type == CURLINFO_DATA_OUT)
     {
         core::tools::binary_stream compressed;
         compressed.write((const char*)_data, _size);
 
         core::tools::binary_stream data;
-        core::tools::decompress(compressed, data);
+        bool result = false;
+        if (ctx->is_gzip())
+            result = core::tools::decompress_gzip(compressed, data);
+        else if (ctx->is_zstd())
+            result = core::tools::decompress_zstd(compressed, ctx->zstd_request_dict(), data);
 
-        ctx->write_log_data(data.get_data(), data.all_size());
-        if (ctx->replace_log_function_)
-            ctx->replace_log_function_(*ctx->log_data_);
+        if (result)
+        {
+            ctx->write_log_data(data.get_data(), data.available());
+            ctx->write_log_string('\n');
+        }
+        else
+        {
+            ctx->write_log_string("*** Unable to decompress sent data\n");
+        }
 
-        ctx->write_log_string("\n");
         return 0;
     }
 
     constexpr std::string_view filter1 = "TLSv";
     constexpr std::string_view filter2 = "STATE:";
+    constexpr std::string_view nread = "nread <= 0";
 
     if (!core::configuration::get_app_config().is_curl_log_enabled())
     {
@@ -818,6 +1007,9 @@ static int32_t trace_function(CURL* /*_handle*/, curl_infotype _type, unsigned c
 
             if (filter2.size() < _size && memcmp(_data, filter2.data(), filter2.size()) == 0)
                 return 0;
+
+            if (nread.size() < _size && memcmp(_data, nread.data(), nread.size()) == 0)
+                ctx->write_log_string('\n');
 
             break;
         case CURLINFO_HEADER_OUT:
@@ -835,8 +1027,6 @@ static int32_t trace_function(CURL* /*_handle*/, curl_infotype _type, unsigned c
         }
     }
 
-    ctx->write_log_data((const char*) _data, (uint32_t) _size);
-    if (ctx->replace_log_function_)
-        ctx->replace_log_function_(*ctx->log_data_);
+    ctx->write_log_data((const char*) _data, static_cast<int64_t>(_size));
     return 0;
 }

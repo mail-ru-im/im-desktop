@@ -55,6 +55,11 @@ namespace Ui
         update();
     }
 
+    bool SettingsHeader::hasText() const
+    {
+        return textUnit_ && !textUnit_->getText().isEmpty();
+    }
+
     void SettingsHeader::paintEvent(QPaintEvent*)
     {
         QPainter p(this);

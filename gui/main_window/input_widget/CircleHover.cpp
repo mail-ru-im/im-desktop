@@ -86,7 +86,6 @@ namespace Ui
     {
         QPainter p(this);
         p.setRenderHint(QPainter::Antialiasing, true);
-        p.setRenderHint(QPainter::HighQualityAntialiasing, true);
         const auto r = rect();
         p.fillRect(r, Qt::transparent);
         p.setOpacity(anim_.current());

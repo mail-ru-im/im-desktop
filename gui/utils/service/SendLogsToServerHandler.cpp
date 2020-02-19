@@ -10,8 +10,10 @@
 #include "main_window/contact_list/ContactListModel.h"
 #include "main_window/contact_list/contact_profile.h"
 #include "my_info.h"
+#include "../common.shared/config/config.h"
 
 #include "../../../common.shared/version_info_constants.h"
+#include "../../../common.shared/config/config.h"
 #include "../../memory_stats/gui_memory_monitor.h"
 
 namespace Utils
@@ -23,10 +25,7 @@ SendLogsToServerHandler::SendLogsToServerHandler(SendLogsToServerRequest *_reque
 
 }
 
-SendLogsToServerHandler::~SendLogsToServerHandler()
-{
-
-}
+SendLogsToServerHandler::~SendLogsToServerHandler() = default;
 
 void SendLogsToServerHandler::start()
 {
@@ -74,20 +73,20 @@ void SendLogsToServerHandler::onHaveLogsPath(const QString &_logsPath)
 
         Ui::gui_coll_helper col(Ui::GetDispatcher()->create_collection(), true);
 
-        col.set_value_as_string("url", build::GetProductVariant(icq_feedback_url, agent_feedback_url, biz_feedback_url, dit_feedback_url));
-
+        col.set_value_as_string("url", "https://" + std::string(config::get().url(config::urls::feedback)));
+        const auto productNameShort = config::get().string(config::values::product_name_short);
         // fb.screen_resolution
         col.set_value_as_qstring("screen_resolution", (qsl("%1x%2").arg(qApp->desktop()->screenGeometry().width()).arg(qApp->desktop()->screenGeometry().height())));
         // fb.referrer
-        col.set_value_as_qstring("referrer", build::ProductNameShort());
+        col.set_value_as_string("referrer", productNameShort);
         {
-            const auto appName = build::ProductName() % ql1s(" ");
-            const QString icqVer = appName + QString::fromUtf8(VERSION_INFO_STR);
+            const auto product = config::get().string(config::values::product_name);
+            const QString icqVer = QString::fromUtf8(product.data(), product.size()) % ql1c(' ') % QString::fromUtf8(VERSION_INFO_STR);
             auto osv = QSysInfo::prettyProductName();
             if (!osv.length() || osv == ql1s("unknown"))
                 osv = qsl("%1 %2 (%3 %4)").arg(QSysInfo::productType(), QSysInfo::productVersion(), QSysInfo::kernelType(), QSysInfo::kernelVersion());
 
-            const auto concat = (build::is_icq() ? qsl("%1 %2 icq:%3") : qsl("%1 %2 agent:%3")).arg(osv, icqVer, _profile ? _profile->get_aimid() : QString());
+            const auto concat = qsl("%1 %2 %3:%4").arg(osv, icqVer, QString::fromUtf8(productNameShort.data(), productNameShort.size()), _profile ? _profile->get_aimid() : QString());
             // fb.question.3004
             col.set_value_as_qstring("version", concat);
             // fb.question.159
@@ -105,8 +104,10 @@ void SendLogsToServerHandler::onHaveLogsPath(const QString &_logsPath)
                 col.set_value_as_string("platform", "Unknown");
         }
 
-        auto fn = qsl("%1%2%3").arg(_profile->get_first_name(), _profile->get_first_name().length() ? qsl(" ") : QString(), _profile->get_last_name());
-        if (!fn.length())
+        const auto& firstName = _profile->get_first_name();
+        const auto space = firstName.isEmpty() ? QLatin1String() : ql1s(" ");
+        QString fn = firstName % space % _profile->get_last_name();
+        if (fn.isEmpty())
         {
             if (!_profile->get_contact_name().isEmpty())
                 fn = _profile->get_contact_name();
@@ -166,8 +167,8 @@ void SendLogsToServerHandler::stop()
 bool SendLogsToServerHandler::getUserConsent() const
 {
     return Utils::GetConfirmationWithTwoButtons(
-        QT_TRANSLATE_NOOP("popup_window", "CANCEL"),
-        QT_TRANSLATE_NOOP("popup_window", "YES"),
+        QT_TRANSLATE_NOOP("popup_window", "Cancel"),
+        QT_TRANSLATE_NOOP("popup_window", "Yes"),
         QT_TRANSLATE_NOOP("popup_window", "Are you sure you want to send the app logs?"),
         QT_TRANSLATE_NOOP("popup_window", "Send logs"),
         nullptr

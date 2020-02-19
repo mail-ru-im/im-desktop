@@ -32,7 +32,8 @@ namespace translate
 
         virtual QString getLang() const;
 
-        virtual QLocale getLocale() const;
+        QLocale getLocale() const;
+        QString getLocaleStr() const;
 
     protected:
         QString getCurrentYearDateFormat() const;

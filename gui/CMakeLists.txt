@@ -1,28 +1,8 @@
 cmake_minimum_required(VERSION 3.8)
 
-if(APPLE)
-    if(IS_ICQ)
-        project(ICQ)
-    elseif(IS_AGENT)
-        project(Mail.Ru_Agent)
-    elseif(IS_BIZ)
-        project(Myteam)
-    else()
-        project(Messenger)
-    endif()
-elseif(LINUX)
-    if(IS_ICQ)
-        project(icq)
-    elseif(IS_AGENT)
-        project(agent)
-    elseif(IS_BIZ)
-        project(myteam)
-    else()
-        project(${APP_TYPE})
-    endif()
-else()
-    project(icq)
-endif()
+project(${APP_PROJECT_NAME})
+
+message(STATUS "APP_PROJECT_NAME is ${APP_PROJECT_NAME}")
 
 macro(QT5_MAKE_OUTPUT_FILE infile prefix ext outfile )
     string(LENGTH ${CMAKE_CURRENT_BINARY_DIR} _binlength)
@@ -139,6 +119,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${ICQ_BIN_DIR})
 
 
 # -------------------------- definitions -------------------------
+message(STATUS "CMAKE_BUILD_TYPE is ${CMAKE_BUILD_TYPE}")
 if(${CMAKE_BUILD_TYPE} STREQUAL "Release")
     add_definitions(-DQT_NO_DEBUG_OUTPUT)
 endif()
@@ -148,13 +129,9 @@ add_definitions(-DQT_NO_CAST_TO_ASCII)
 add_definitions(-DQT_NO_CAST_FROM_BYTEARRAY)
 add_definitions(-DQT_STRICT_ITERATORS)
 
-if(BUILD_IS_ALPHA)
-    message(STATUS "... cmake: This build is BUILD_IS_ALPHA")
-    add_definitions(-DBUILD_IS_ALPHA=1)
-endif()
-
 if(BUILD_FOR_STORE)
     message(STATUS "... cmake: This build for Store -> BUILD_FOR_STORE")
+    message(STATUS "add_definitions(-DBUILD_FOR_STORE=1)")
     add_definitions(-DBUILD_FOR_STORE=1)
 endif()
 
@@ -163,11 +140,13 @@ if(IM_AUTO_TESTING)
     SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 endif()
 
+message(STATUS "ICQ_ROOT is ${ICQ_ROOT}")
 if(MSVC)
     add_definitions(/FI"stdafx.h")
     set(SYSTEM_LIBRARIES d3d9 dxguid opengl32 Ws2_32 Imm32 Winmm runtimeobject strmiids secur32 glu32 psapi)
 elseif(APPLE)
     set(ICQ_MAC_ROOT "${ICQ_ROOT}/mac/ICQ")
+    message(STATUS "ICQ_MAC_ROOT is ${ICQ_MAC_ROOT}")
     add_definitions(-include "stdafx.h")
     include_directories(${ICQ_MAC_ROOT})
     find_library(MAC_OPENGL OpenGL)
@@ -184,13 +163,16 @@ elseif(APPLE)
     find_library(MAC_CARBON Carbon)
     find_library(MAC_QUARTZ Quartz)
     find_library(MAC_METAL Metal)
+    find_library(MAC_IOSURFACE IOSurface)
+    find_library(MAC_GSS GSS)
     find_library(MAC_METAL_KIT MetalKit)
     find_library(MAC_XCTEST XCTest PATHS ${ICQ_PLATFORM_SPECIFIC})
-    find_library(MAC_HOCKEY_SDK HockeySDK PATHS ${ICQ_PLATFORM_SPECIFIC})
     find_library(MAC_SCRIPTING_BRIDGE ScriptingBridge)
     find_library(MAC_VIDEO_TOOLBOX VideoToolbox)
     find_library(MAC_VIDEO_DECODE_ACCELERATION VideoDecodeAcceleration)
     find_library(MAC_SPARKLE Sparkle PATHS ${ICQ_PLATFORM_SPECIFIC})
+    
+    include_directories(${MAC_SPARKLE})
 
     mark_as_advanced(
         MAC_OPENGL
@@ -206,12 +188,13 @@ elseif(APPLE)
         MAC_AUDIO_UNIT
         MAC_CARBON
         MAC_QUARTZ
-        MAC_HOCKEY_SDK
         MAC_SCRIPTING_BRIDGE
         MAC_VIDEO_TOOLBOX
         MAC_VIDEO_DECODE_ACCELERATION
         MAC_METAL_KIT
         MAC_METAL
+        MAC_IOSURFACE
+        MAC_GSS
         MAC_SPARKLE
         MAC_XCTEST)
 
@@ -230,12 +213,13 @@ elseif(APPLE)
         ${MAC_AUDIO_UNIT}
         ${MAC_CARBON}
         ${MAC_QUARTZ}
-        ${MAC_HOCKEY_SDK}
         ${MAC_SCRIPTING_BRIDGE}
         ${MAC_VIDEO_TOOLBOX}
         ${MAC_VIDEO_DECODE_ACCELERATION}
         ${MAC_METAL_KIT}
         ${MAC_METAL}
+        ${MAC_IOSURFACE}
+        ${MAC_GSS}
         ${ICQ_PLATFORM_SPECIFIC}/libqcocoa.a
         ${VOIP_LIBRARIES}
         libcups.2.dylib
@@ -244,13 +228,15 @@ elseif(APPLE)
         ${ICQ_QT_LIB_DIR}/libQt5Core.a
         ${ICQ_QT_LIB_DIR}/libQt5MacExtras.a
         iconv
-        ldap)
+        bsm)
 
     if(ICQ_UPDATE)
-        message(STATUS "updates: on")
+        message(STATUS "Updates: ON [ICQ_UPDATE]")
+        message(STATUS "add_definitions(-DUPDATES)")
+        add_definitions(-DUPDATES)
         set(SYSTEM_LIBRARIES ${SYSTEM_LIBRARIES} ${MAC_SPARKLE})
     else()
-        message(STATUS "updates: off")
+        message(STATUS "Updates: OFF")
     endif()
 
     if(IM_AUTO_TESTING)
@@ -261,15 +247,12 @@ elseif(APPLE)
         set(CMAKE_STATIC_LINKER_FLAGS "${CMAKE_STATIC_LINKER_FLAGS} -F${ICQ_FRAMEWORKS_BUNDLE_DIR} -weak_framework XCTest")
     endif()
 
-if(IS_ICQ)
-    set(MACOSX_BUNDLE_ICON_FILE ${ICQ_MAC_ROOT}/icons-bundle-icq.icns)
-elseif(IS_AGENT)
-    set(MACOSX_BUNDLE_ICON_FILE ${ICQ_MAC_ROOT}/icons-bundle-agent.icns)
-elseif(IS_BIZ)
-    set(MACOSX_BUNDLE_ICON_FILE ${ICQ_MAC_ROOT}/icons-bundle-biz.icns)
-elseif(IS_DIT)
-    set(MACOSX_BUNDLE_ICON_FILE ${ICQ_MAC_ROOT}/icons-bundle-dit.icns)
-endif()
+    message(STATUS "PRODUCT_SPEC_DIR = ${PRODUCT_SPEC_DIR}")
+    set(PRODUCT_MAC "${PRODUCT_SPEC_DIR}/mac")
+    message(STATUS "PRODUCT_MAC = ${PRODUCT_MAC}")
+    set(MACOSX_BUNDLE_ICON_FILE ${PRODUCT_MAC}/icons-bundle.icns)
+    message(STATUS "MACOSX_BUNDLE_ICON_FILE = ${MACOSX_BUNDLE_ICON_FILE}")
+
     set_source_files_properties(${MACOSX_BUNDLE_ICON_FILE} PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
     set_source_files_properties(${MACOSX_BUNDLE_ICON_FILE} PROPERTIES XCODE_EXPLICIT_FILE_TYPE "compiled")
 
@@ -287,12 +270,12 @@ elseif(LINUX)
         ${ICQ_PLATFORM_SPECIFIC}/libgnutls.a
         ${ICQ_PLATFORM_SPECIFIC}/libgpg-error.a
         ${ICQ_PLATFORM_SPECIFIC}/libtasn1.a
-        ${ICQ_PLATFORM_SPECIFIC}/libglfw3.a
         ${ICQ_PLATFORM_SPECIFIC}/libXi.a
         ${ICQ_PLATFORM_SPECIFIC}/libxkbcommon-x11.a
         ${ICQ_PLATFORM_SPECIFIC}/libxkbcommon.a
         ${ICQ_PLATFORM_SPECIFIC}/libfontconfig.a
         ${ICQ_PLATFORM_SPECIFIC}/libfreetype.a
+        ${ICQ_PLATFORM_SPECIFIC}/libuuid.a
         ${ICQ_PLATFORM_SPECIFIC}/libdbus-1.a
         ${ICQ_PLATFORM_SPECIFIC}/librt.a
         ${ICQ_PLATFORM_SPECIFIC}/libxcb-util.a
@@ -304,9 +287,10 @@ elseif(LINUX)
         ${ICQ_PLATFORM_SPECIFIC}/libXdmcp.a
         ${ICQ_PLATFORM_SPECIFIC}/libz.a
         ${VOIP_LIBRARIES}
-        -Wl,-Bdynamic -ldl -lpthread -lX11 -lX11-xcb -lxcb -lXrandr -lXinerama -lXcursor)
+        -Wl,-Bdynamic -ldl -lstdc++fs -lpthread -lX11 -lX11-xcb -lxcb -lXrandr -lXinerama -lXcursor -lXext -lXdamage -lXfixes -lXcomposite)
 
     if(ICQ_DEBUG)
+        message(STATUS "ICQ_DEBUG = ${ICQ_DEBUG}")
         set(SYSTEM_LIBRARIES ${SYSTEM_LIBRARIES} -ludev)
     endif()
     if(LINUX32)
@@ -335,6 +319,7 @@ execute_process(COMMAND
 # --------------------------    gui      -------------------------
 set(SUBPROJECT_ROOT "${ICQ_ROOT}/gui")
 
+message(STATUS "SUBPROJECT_ROOT = ${SUBPROJECT_ROOT}")
 find_sources(SUBPROJECT_SOURCES "${SUBPROJECT_ROOT}" "cpp")
 if(APPLE)
     find_sources(SUBPROJECT_MM_SOURCES "${SUBPROJECT_ROOT}" "mm")
@@ -437,6 +422,12 @@ set(ICQ_LANGUAGES ar cs de en fr pt ru uk zh tr vi es)
 set(ICQ_TRANSLATIONS_DIR "${SUBPROJECT_ROOT}/translations")
 set(ICQ_LANGUAGE_FILES)
 set(ICQ_QM_FILES)
+
+message(STATUS "ICQ_LANGUAGES = ${ICQ_LANGUAGES}")
+message(STATUS "ICQ_TRANSLATIONS_DIR = ${ICQ_TRANSLATIONS_DIR}")
+message(STATUS "ICQ_LANGUAGE_FILES = ${ICQ_LANGUAGE_FILES}")
+message(STATUS "ICQ_QM_FILES = ${ICQ_QM_FILES}")
+
 get_filename_component(ICQ_LRELEASE_EXE "${ICQ_QT_BIN_DIR}/lrelease" ABSOLUTE)
 foreach(lang IN ITEMS ${ICQ_LANGUAGES})
     set(lang_file "${ICQ_TRANSLATIONS_DIR}/${lang}.ts")
@@ -453,14 +444,14 @@ source_group("translations" FILES ${ICQ_QM_FILES})
 # ----------------------------------------------------------------
 
 set(ICQ_RESOURCES_DIR "${SUBPROJECT_ROOT}/resources")
+message(STATUS "ICQ_RESOURCES_DIR = ${ICQ_RESOURCES_DIR}")
 
 # ----------------------  check themes json  ---------------------
-set(ICQ_THEMES_META_PATH "${ICQ_RESOURCES_DIR}/themes/meta.json")
+set(ICQ_THEMES_META_PATH "${PRODUCT_SPEC_DIR}/app/resources/themes/meta.json")
 set(ICQ_THEMES_CHECKER "${ICQ_ROOT}/buildsystem/check_json.py")
 set(ICQ_THEMES_CHECKER_STAMP "${PROJECT_BINARY_DIR}/json_check.stamp")
 
 find_package(PythonInterp)
-
 # configure time
 message(STATUS "Checking themes JSON ${ICQ_THEMES_META_PATH}")
 execute_process(
@@ -515,31 +506,34 @@ if(APPLE)
 endif()
 
 set(ICQ_RESOURCES "${SUBPROJECT_ROOT}/resource.qrc")
+set(EMOJI_RESOURCES "${SUBPROJECT_ROOT}/resource_emoji.qrc")
+set(PRODUCT_RESOURCES "${PRODUCT_SPEC_DIR}/app/resources/product.qrc")
+message(STATUS "ICQ_RESOURCES = ${ICQ_RESOURCES}")
+message(STATUS "EMOJI_RESOURCES = ${EMOJI_RESOURCES}")
+message(STATUS "PRODUCT_RESOURCES = ${PRODUCT_RESOURCES}")
+
 get_filename_component(ICQ_RCC_EXE "${ICQ_QT_BIN_DIR}/rcc" ABSOLUTE)
 if(MSVC)
-    message(STATUS "Making big resources from ${ICQ_RESOURCES}")
-    icq_add_big_resources(RCC_FILES ${ICQ_RESOURCES})
+    message(STATUS "Making BIG resources from ${ICQ_RESOURCES}, ${EMOJI_RESOURCES} and ${PRODUCT_RESOURCES}")
+    icq_add_big_resources(RCC_FILES ${ICQ_RESOURCES} ${EMOJI_RESOURCES} ${PRODUCT_RESOURCES})
+
     set(RC_FILE "${SUBPROJECT_ROOT}/Resource.rc")
-    if(IS_ICQ)
-        set(RC_SOURCE "${SUBPROJECT_ROOT}/Resource-icq.rc")
-    elseif(IS_AGENT)
-        set(RC_SOURCE "${SUBPROJECT_ROOT}/Resource-agent.rc")
-    elseif(IS_BIZ)
-        set(RC_SOURCE "${SUBPROJECT_ROOT}/Resource-biz.rc")
-    elseif(IS_DIT)
-        set(RC_SOURCE "${SUBPROJECT_ROOT}/Resource-dit.rc")
-    endif()
+    set(RC_SOURCE "${PRODUCT_SPEC_DIR}/app/resources/Resource.rc")
     add_custom_command(OUTPUT ${RC_FILE}
         DEPENDS ${RC_SOURCE}
         COMMAND ${CMAKE_COMMAND} -E copy ${RC_SOURCE} ${RC_FILE})
     add_custom_target(generate_rc DEPENDS ${RC_FILE})
     source_group("sources" FILES ${RC_FILE})
-    set(ADDITIONAL_FILES ${ADDITIONAL_FILES} ${RC_FILE})
+    file(COPY "${PRODUCT_SPEC_DIR}/app/resources/main_window/appicon.ico" DESTINATION ${SUBPROJECT_ROOT})
+    if(NOT VOIP_AS_MODULE)
+        # do not works when open project in msvc
+        set(ADDITIONAL_FILES ${ADDITIONAL_FILES} ${RC_FILE})
+    endif()
 else()
     set(ICQ_RESOURCES_OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/qresource.cpp")
     add_custom_command(OUTPUT ${ICQ_RESOURCES_OUTPUT}
-        COMMAND ${ICQ_RCC_EXE} ${ICQ_RESOURCES} -o ${ICQ_RESOURCES_OUTPUT}
-        DEPENDS ${ICQ_QM_FILES} ${ICQ_RESOURCES} ${ICQ_RESOURCE_FILES})
+        COMMAND ${ICQ_RCC_EXE} ${ICQ_RESOURCES} ${EMOJI_RESOURCES} ${PRODUCT_RESOURCES} -o ${ICQ_RESOURCES_OUTPUT}
+        DEPENDS ${ICQ_QM_FILES} ${ICQ_RESOURCES} ${EMOJI_RESOURCES} ${PRODUCT_RESOURCES} ${ICQ_RESOURCE_FILES})
 endif()
 source_group("resources" FILES ${ICQ_RESOURCES})
 source_group("resources" FILES ${ICQ_RESOURCES_OUTPUT})
@@ -598,7 +592,9 @@ if(ICQ_CORELIB_STATIC_LINKING)
             ${ZLIB_LIBRARIES}
             ${PHONENUMBER_LIBRARIES}
             ${PROTOBUF_LIBRARIES}
-            ${ICU_LIBRARIES}
+            ${BREAKPAD_LIBRARIES}
+            ${CRASHPAD_LIBRARIES}
+            ${RE2_LIBRARIES}
             Iphlpapi.lib
             corelib)
     else()
@@ -611,7 +607,9 @@ if(ICQ_CORELIB_STATIC_LINKING)
         ${QT_LIBRARIES}
         ${PHONENUMBER_LIBRARIES}
         ${SYSTEM_LIBRARIES}
-        ${ICU_LIBRARIES}
+        ${BREAKPAD_LIBRARIES}
+        ${CRASHPAD_LIBRARIES}
+        ${RE2_LIBRARIES}
         corelib)
     endif()
 else()
@@ -622,7 +620,9 @@ else()
             ${QT_LIBRARIES}
             ${ZLIB_LIBRARIES}
             Iphlpapi.lib
-            ${SYSTEM_LIBRARIES})
+            ${SYSTEM_LIBRARIES}
+            ${BREAKPAD_LIBRARIES}
+            ${CRASHPAD_LIBRARIES})
     else()
         if(IM_AUTO_TESTING)
             message(STATUS "... LINUX_TESTING: target_link_libraries with Qt5::Test DYNAMIC_LINKING")
@@ -631,14 +631,19 @@ else()
                 ${FFMPEG_LIBRARIES}
                 ${QT_LIBRARIES}
                 ${ZLIB_LIBRARIES}
-                ${SYSTEM_LIBRARIES} Qt5::Test)
+                ${SYSTEM_LIBRARIES}
+                ${BREAKPAD_LIBRARIES}
+                ${CRASHPAD_LIBRARIES}
+                Qt5::Test)
         else()
             target_link_libraries(${PROJECT_NAME}
                 ${OPEN_AL_LIBRARIES}
                 ${FFMPEG_LIBRARIES}
                 ${QT_LIBRARIES}
                 ${ZLIB_LIBRARIES}
-                ${SYSTEM_LIBRARIES})
+                ${SYSTEM_LIBRARIES}
+                ${BREAKPAD_LIBRARIES}
+                ${CRASHPAD_LIBRARIES})
         endif()
     endif()
     add_dependencies(${PROJECT_NAME} corelib)
@@ -662,50 +667,51 @@ if(APPLE)
     set(ICQ_PLIST "${ICQ_BUNDLE_DIR}/Info.plist")
     set(PLIST_BUDDY "/usr/libexec/PlistBuddy")
 
-    if(IS_ICQ)
-        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-            COMMAND cp -f "${ICQ_MAC_ROOT}/imosx-icq-Info.plist" ${ICQ_PLIST})
-        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-            COMMAND ${PLIST_BUDDY} -c "Set :CFBundleExecutable ${PROJECT_NAME}" ${ICQ_PLIST} VERBATIM)
-        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-            COMMAND ${PLIST_BUDDY} -c "Set :CFBundleName ${PROJECT_NAME}" ${ICQ_PLIST} VERBATIM)
-    elseif(IS_AGENT)
-        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-            COMMAND cp -f "${ICQ_MAC_ROOT}/imosx-agent-Info.plist" ${ICQ_PLIST})
-    elseif(IS_BIZ)
-        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-            COMMAND cp -f "${ICQ_MAC_ROOT}/imosx-biz-Info.plist" ${ICQ_PLIST})
-    elseif(IS_DIT)
-        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-            COMMAND cp -f "${ICQ_MAC_ROOT}/imosx-dit-Info.plist" ${ICQ_PLIST})
-    endif()
+    message(STATUS "DIR ICQ_BIN_DIR = ${ICQ_BIN_DIR}")
+    message(STATUS "DIR ICQ_BUNDLE     = ${ICQ_BUNDLE}")
+    message(STATUS "DIR ICQ_BUNDLE_DIR = ${ICQ_BUNDLE_DIR}")
+    message(STATUS "DIR ICQ_PLIST      = ${ICQ_PLIST}")
 
+    message(STATUS "-> copy ${PRODUCT_MAC}/Info.plist to ${ICQ_PLIST}")
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+            COMMAND cp -f "${PRODUCT_MAC}/Info.plist" ${ICQ_PLIST})
+
+    message(STATUS "-> plist Set :LSMinimumSystemVersion ${CMAKE_OSX_DEPLOYMENT_TARGET}")
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         COMMAND ${PLIST_BUDDY} -c "Set :LSMinimumSystemVersion ${CMAKE_OSX_DEPLOYMENT_TARGET}" ${ICQ_PLIST} VERBATIM)
 
+    message(STATUS "copy ${ICQ_MAC_ROOT}/PkgInfo")
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy "${ICQ_MAC_ROOT}/PkgInfo" ${ICQ_BUNDLE_DIR})
 
     set(ICQ_FRAMEWORKS_BUNDLE_DIR "${ICQ_BUNDLE_DIR}/Frameworks")
+    message(STATUS "DIR ICQ_FRAMEWORKS_BUNDLE_DIR = ${ICQ_FRAMEWORKS_BUNDLE_DIR}")
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E make_directory ${ICQ_FRAMEWORKS_BUNDLE_DIR})
 
+    message(STATUS "make_directory ${ICQ_PLUGINS_BUNDLE_DIR}")
     set(ICQ_PLUGINS_BUNDLE_DIR "${ICQ_BUNDLE_DIR}/PlugIns")
         add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E make_directory ${ICQ_PLUGINS_BUNDLE_DIR})
 
-    if(ICQ_RELEASE)
+    if (NOT BUILD_FOR_STORE)
+        message(STATUS "make_directory ${ICQ_HELPERS_BUNDLE_DIR}")
+        set(ICQ_HELPERS_BUNDLE_DIR "${ICQ_BUNDLE_DIR}/Helpers")
+            add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E make_directory ${ICQ_HELPERS_BUNDLE_DIR})
+
         add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-            COMMAND rsync -K -a --exclude=Headers --exclude=Versions/A/Headers --exclude=PrivateHeaders --exclude=Versions/A/PrivateHeaders --exclude=Modules --exclude=Versions/A/Modules --exclude=Versions/A/_CodeSignature "${ICQ_PLATFORM_SPECIFIC}/HockeySDK.framework" "${ICQ_FRAMEWORKS_BUNDLE_DIR}")
-        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-            COMMAND install_name_tool -change "@rpath/HockeySDK.framework/Versions/A/HockeySDK" "@executable_path/../Frameworks/HockeySDK.framework/HockeySDK" ${ICQ_BUNDLE_DIR}/MacOS/${PROJECT_NAME})
+            COMMAND cp -f ${ICQ_CRASHPAD}/bin/crashpad_handler ${ICQ_HELPERS_BUNDLE_DIR})
     endif()
 
     if(ICQ_UPDATE)
+        message(STATUS "-> copy Autoupdate.app")
         add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E make_directory ${ICQ_PLATFORM_SPECIFIC}/Sparkle.framework/Versions/A/Resources/Autoupdate.app/Contents/PlugIns)
+        message(STATUS "-> copy Sparkle.framework")
         add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
             COMMAND rsync -K -a --exclude=Headers --exclude=Versions/A/Headers "${ICQ_PLATFORM_SPECIFIC}/Sparkle.framework" "${ICQ_FRAMEWORKS_BUNDLE_DIR}")
+        message(STATUS "-> install_name_tool Sparkle.framework")
         add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
             COMMAND install_name_tool -change "@rpath/Sparkle.framework/Versions/A/Sparkle" "@executable_path/../Frameworks/Sparkle.framework/Sparkle" ${ICQ_BUNDLE_DIR}/MacOS/${PROJECT_NAME})
     endif()
@@ -717,6 +723,7 @@ if(APPLE)
     endif()
 
     set(ICQ_RESOURCES_BUNDLE_DIR "${ICQ_BUNDLE_DIR}/Resources")
+    message(STATUS "DIR ICQ_RESOURCES_BUNDLE_DIR = ${ICQ_RESOURCES_BUNDLE_DIR}")
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E make_directory ${ICQ_RESOURCES_BUNDLE_DIR})
 

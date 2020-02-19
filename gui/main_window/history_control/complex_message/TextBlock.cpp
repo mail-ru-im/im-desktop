@@ -14,7 +14,6 @@
 
 #include "ComplexMessageItem.h"
 #include "TextBlockLayout.h"
-#include "Selection.h"
 
 #include "TextBlock.h"
 #include "QuoteBlock.h"
@@ -24,7 +23,6 @@ UI_COMPLEX_MESSAGE_NS_BEGIN
 TextBlock::TextBlock(ComplexMessageItem* _parent, const QString &text, const Ui::TextRendering::EmojiSizeType _emojiSizeType)
     : GenericBlock(_parent, text, MenuFlagCopyable, false)
     , Layout_(new TextBlockLayout())
-    , Selection_(BlockSelectionType::None)
     , TripleClickTimer_(new QTimer(this))
     , emojiSizeType_(_emojiSizeType)
 {
@@ -49,8 +47,6 @@ void TextBlock::clearSelection()
 {
     if (textUnit_)
         textUnit_->clearSelection();
-
-    Selection_ = BlockSelectionType::None;
 
     update();
 }
@@ -99,9 +95,6 @@ bool TextBlock::isDraggable() const
 
 bool TextBlock::isSelected() const
 {
-    assert(Selection_ > BlockSelectionType::Min);
-    assert(Selection_ < BlockSelectionType::Max);
-
     if (textUnit_)
         return textUnit_->isSelected();
 
@@ -110,9 +103,6 @@ bool TextBlock::isSelected() const
 
 bool TextBlock::isAllSelected() const
 {
-    assert(Selection_ > BlockSelectionType::Min);
-    assert(Selection_ < BlockSelectionType::Max);
-
     if (textUnit_)
         return textUnit_->isAllSelected();
 
@@ -124,13 +114,8 @@ bool TextBlock::isSharingEnabled() const
     return false;
 }
 
-void TextBlock::selectByPos(const QPoint& from, const QPoint& to, const BlockSelectionType selection)
+void TextBlock::selectByPos(const QPoint& from, const QPoint& to, bool)
 {
-    assert(selection > BlockSelectionType::Min);
-    assert(selection < BlockSelectionType::Max);
-    assert(Selection_ > BlockSelectionType::Min);
-    assert(Selection_ < BlockSelectionType::Max);
-
     if (textUnit_)
     {
         const auto localFrom = mapFromGlobal(from);
@@ -139,7 +124,13 @@ void TextBlock::selectByPos(const QPoint& from, const QPoint& to, const BlockSel
         textUnit_->select(localFrom, localTo);
     }
 
-    Selection_ = selection;
+    update();
+}
+
+void TextBlock::selectAll()
+{
+    if (textUnit_)
+        textUnit_->selectAll();
 
     update();
 }
@@ -160,10 +151,17 @@ void TextBlock::initialize()
 
 void TextBlock::mouseMoveEvent(QMouseEvent *e)
 {
-    if (isOverLink(mapToGlobal(e->pos())))
-        setCursor(Qt::PointingHandCursor);
+    if (!Utils::InterConnector::instance().isMultiselect())
+    {
+        if (isOverLink(mapToGlobal(e->pos())))
+            setCursor(Qt::PointingHandCursor);
+        else
+            setCursor(Qt::ArrowCursor);
+    }
     else
-        setCursor(Qt::ArrowCursor);
+    {
+        setCursor(Qt::PointingHandCursor);
+    }
 
     return GenericBlock::mouseMoveEvent(e);
 }
@@ -186,24 +184,26 @@ void TextBlock::initTextUnit()
         emojiSizeType_
     );
 
+    const auto linkStyle = Styling::getThemesContainer().getCurrentTheme()->isLinksUnderlined() ? TextRendering::LinksStyle::UNDERLINED : TextRendering::LinksStyle::PLAIN;
     textUnit_->init(MessageStyle::getTextFont()
                   , MessageStyle::getTextColor()
                   , MessageStyle::getLinkColor(isOutgoing())
                   , MessageStyle::getTextSelectionColor(getChatAimid())
-                  , QColor()
+                  , MessageStyle::getHighlightColor()
                   , TextRendering::HorAligment::LEFT
                   , -1
                   , TextRendering::LineBreakType::PREFER_WIDTH
                   , emojiSizeType_
-                  , Styling::getThemesContainer().getCurrentTheme()->linksUnderlined());
+                  , linkStyle);
 
+    textUnit_->setHighlightedTextColor(MessageStyle::getHighlightTextColor());
     textUnit_->markdown(MessageStyle::getMarkdownFont(), MessageStyle::getTextColor());
     textUnit_->setLineSpacing(MessageStyle::getTextLineSpacing());
 }
 
 void TextBlock::adjustEmojiSize()
 {
-    if (!Ui::get_gui_settings()->get_value<bool>(settings_allow_big_emoji, settings_allow_big_emoji_deafult()))
+    if (!Ui::get_gui_settings()->get_value<bool>(settings_allow_big_emoji, settings_allow_big_emoji_default()))
         emojiSizeType_ = Ui::TextRendering::EmojiSizeType::REGULAR;
     else
         emojiSizeType_ = Ui::TextRendering::EmojiSizeType::ALLOW_BIG;
@@ -216,14 +216,21 @@ bool TextBlock::isBubbleRequired() const
 
 bool TextBlock::pressed(const QPoint& _p)
 {
-    if (textUnit_ && TripleClickTimer_->isActive())
+    if (textUnit_)
     {
-        TripleClickTimer_->stop();
-        textUnit_->selectAll();
-        textUnit_->fixSelection();
-        update();
+        if (TripleClickTimer_->isActive())
+        {
+            TripleClickTimer_->stop();
+            textUnit_->selectAll();
+            textUnit_->fixSelection();
+            update();
 
-        return true;
+            return true;
+        }
+        else if (textUnit_->isOverLink(mapPoint(_p)))
+        {
+            return true;
+        }
     }
 
     return false;
@@ -232,10 +239,7 @@ bool TextBlock::pressed(const QPoint& _p)
 bool TextBlock::clicked(const QPoint& _p)
 {
     if (textUnit_)
-    {
-        QPoint mappedPoint = mapFromParent(_p, Layout_->getBlockGeometry());
-        textUnit_->clicked(mappedPoint);
-    }
+        textUnit_->clicked(mapPoint(_p));
 
     return true;
 }
@@ -246,9 +250,7 @@ void TextBlock::doubleClicked(const QPoint& _p, std::function<void(bool)> _callb
     {
         if (!textUnit_->isAllSelected())
         {
-            QPoint mappedPoint = mapFromParent(_p, Layout_->getBlockGeometry());
-
-            auto tripleClick = [this, callback = std::move(_callback)](bool result)
+            const auto tripleClick = [this, callback = std::move(_callback)](bool result)
             {
                 if (callback)
                     callback(result);
@@ -256,7 +258,7 @@ void TextBlock::doubleClicked(const QPoint& _p, std::function<void(bool)> _callb
                     TripleClickTimer_->start();
             };
 
-            textUnit_->doubleClicked(mappedPoint, true, std::move(tripleClick));
+            textUnit_->doubleClicked(mapPoint(_p), true, std::move(tripleClick));
 
             update();
         }
@@ -317,15 +319,6 @@ int TextBlock::desiredWidth(int _w) const
     return GenericBlock::desiredWidth(_w);
 }
 
-QString TextBlock::getSourceText() const
-{
-    auto result = GenericBlock::getSourceText();
-    if (result.startsWith(QChar::LineFeed))
-        result.remove(0, 1);
-
-    return result;
-}
-
 QString TextBlock::getTextForCopy() const
 {
     if (!textUnit_)
@@ -367,6 +360,24 @@ void TextBlock::setEmojiSizeType(const TextRendering::EmojiSizeType & _emojiSize
         textUnit_->setEmojiSizeType(_emojiSizeType);
 }
 
+void TextBlock::highlight(const highlightsV& _hl)
+{
+    if (textUnit_)
+    {
+        textUnit_->setHighlighted(_hl);
+        update();
+    }
+}
+
+void TextBlock::removeHighlight()
+{
+    if (textUnit_)
+    {
+        textUnit_->setHighlighted(false);
+        update();
+    }
+}
+
 void TextBlock::updateStyle()
 {
     Layout_->markDirty();
@@ -377,6 +388,11 @@ void TextBlock::updateStyle()
 void TextBlock::updateFonts()
 {
     updateStyle();
+}
+
+QPoint TextBlock::mapPoint(const QPoint& _complexMsgPoint) const
+{
+    return mapFromParent(_complexMsgPoint, Layout_->getBlockGeometry());
 }
 
 UI_COMPLEX_MESSAGE_NS_END

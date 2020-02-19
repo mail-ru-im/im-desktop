@@ -17,6 +17,7 @@ namespace Previewer
     Q_SIGNALS:
         void mouseWheelEvent(const QPoint& _delta);
         void doubleClicked();
+        void rightClicked();
         void loaded();
         void fullscreenToggled(bool _enabled);
         void playCLicked(bool _paused);
@@ -29,10 +30,12 @@ namespace Previewer
         QRect rect() const;
 
         virtual void scale(double _newScaleFactor, QPoint _anchor = QPoint());
-        virtual void scaleBy(double _newScaleFactor, QPoint _anchor = QPoint()) {}
+        virtual bool scaleBy(double _newScaleFactor, QPoint _anchor = QPoint()) { return false; }
         virtual void move(const QPoint& _offset);
 
         void paint(QPainter& _painter);
+
+        virtual QWidget* getParentForContextMenu() const = 0;
 
         double getPreferredScaleFactor() const;
         double getScaleFactor() const;
@@ -90,6 +93,8 @@ namespace Previewer
     public:
         static std::unique_ptr<AbstractViewer> create(const QString& _fileName, const QSize& _viewportSize, QWidget* _parent);
 
+        QWidget* getParentForContextMenu() const override;
+
     private:
         GifViewer(const QString& _fileName, const QSize& _viewportSize, QWidget* _parent);
 
@@ -109,8 +114,9 @@ namespace Previewer
                                                       const bool _isVideoPreview = false);
 
         virtual void scale(double _newScaleFactor, QPoint _anchor = QPoint()) override;
-        virtual void scaleBy(double _scaleFactorDiff, QPoint _anchor = QPoint()) override;
+        virtual bool scaleBy(double _scaleFactorDiff, QPoint _anchor = QPoint()) override;
         virtual void move(const QPoint& _offset) override;
+        QWidget* getParentForContextMenu() const override;
 
     private:
         JpegPngViewer(const QPixmap& _image,
@@ -143,6 +149,8 @@ namespace Previewer
         void show() override;
         void bringToBack() override;
         void showOverAll() override;
+
+        QWidget* getParentForContextMenu() const override;
 
     private:
 

@@ -156,7 +156,7 @@ void ProgressAnimation::startAnimation()
 
     animation_.start([this]()
     {
-        if (platform::is_apple())
+        if constexpr (platform::is_apple())
         {
             if (++rate_ <= 2)
                 return;

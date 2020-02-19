@@ -9,6 +9,8 @@
 #include "../../utils/SChar.h"
 #include "../../utils/gui_coll_helper.h"
 
+#include "../common.shared/config/config.h"
+
 #include "../../controls/TextUnit.h"
 #include "../../main_window/contact_list/SearchWidget.h"
 #include "../../fonts.h"
@@ -61,10 +63,7 @@ namespace
 
     QFont getBadgeTextFont()
     {
-        if constexpr (platform::is_apple())
-            return Fonts::appFontScaled(10, Fonts::FontWeight::Medium);
-        else
-            return Fonts::appFontScaled(11);
+        return Fonts::appFontScaled(11, platform::is_apple() ? Fonts::FontWeight::Medium : Fonts::FontWeight::Normal);
     }
 
     QColor badgeTextColor()
@@ -150,7 +149,7 @@ namespace Ui
         cancel->setFont(Fonts::appFontScaled(15));
         cancel->setPersistent(true);
 
-        cancel->setTextColor(Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY));
+        cancel->setNormalTextColor(Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY));
         cancel->setHoveredTextColor(Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY_HOVER));
         cancel->setPressedTextColor(Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY_ACTIVE));
         Testing::setAccessibleName(cancel, qsl("AS headerbutton search cancel"));
@@ -450,7 +449,7 @@ namespace Ui
         {
             if (const auto mp = mw->getMainPage())
             {
-                if (_active && mp->isSearchInDialog() && !build::is_biz())
+                if (_active && mp->isSearchInDialog() && config::get().is_on(config::features::add_contact))
                     emit Utils::InterConnector::instance().showSearchDropdownAddContact();
             }
         }
@@ -755,11 +754,14 @@ namespace Ui
     {
         Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::titlebar_mail);
 
+        const auto email = email_.isEmpty() ? MyInfo()->aimId() : email_;
+
         Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
-        collection.set_value_as_qstring("email", email_.isEmpty() ? MyInfo()->aimId() : email_);
-        Ui::GetDispatcher()->post_message_to_core("mrim/get_key", collection.get(), this, [this](core::icollection* _collection)
+        collection.set_value_as_qstring("email", email);
+
+        Ui::GetDispatcher()->post_message_to_core("mrim/get_key", collection.get(), this, [email](core::icollection* _collection)
         {
-            Utils::openMailBox(email_, QString::fromUtf8(Ui::gui_coll_helper(_collection, false).get_value_as_string("key")), QString());
+            Utils::openMailBox(email, QString::fromUtf8(Ui::gui_coll_helper(_collection, false).get_value_as_string("key")), QString());
         });
     }
 }

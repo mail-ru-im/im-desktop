@@ -138,15 +138,23 @@ namespace Logic
             Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::recents_close);
             Logic::getRecentsModel()->hideChat(aimId);
         }
-        else if (command == ql1s("recents/read_all"))
+        else if (command == ql1s("recents/remove"))
         {
-            auto readCnt = Logic::getRecentsModel()->markAllRead();
-            core::stats::event_props_type props = {
-                { "From" , "Menu" },
-                { "Chats_Read", std::to_string(readCnt) }
-            };
+            const QString text = QT_TRANSLATE_NOOP("popup_window", "Remove %1 from your contacts?").arg(Logic::GetFriendlyContainer()->getFriendly(aimId));
 
-            Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::mark_read_all, props);
+            auto confirm = Utils::GetConfirmationWithTwoButtons(
+                QT_TRANSLATE_NOOP("popup_window", "Cancel"),
+                QT_TRANSLATE_NOOP("popup_window", "Yes"),
+                text,
+                QT_TRANSLATE_NOOP("popup_window", "Remove contact"),
+                nullptr
+            );
+
+            if (confirm)
+            {
+                Logic::getRecentsModel()->hideChat(aimId);
+                Logic::getContactListModel()->removeContactFromCL(aimId);
+            }
         }
         else if (command == ql1s("recents/mark_unread"))
         {
@@ -182,8 +190,8 @@ namespace Logic
                 ? "Are you sure you want to leave chat?" : "Are you sure you want to delete contact?");
 
             auto confirm = Utils::GetConfirmationWithTwoButtons(
-                QT_TRANSLATE_NOOP("popup_window", "CANCEL"),
-                QT_TRANSLATE_NOOP("popup_window", "YES"),
+                QT_TRANSLATE_NOOP("popup_window", "Cancel"),
+                QT_TRANSLATE_NOOP("popup_window", "Yes"),
                 text,
                 Logic::GetFriendlyContainer()->getFriendly(aimId),
                 nullptr
@@ -207,12 +215,34 @@ namespace Logic
             collection.set_value_as_qstring("contact", aimId);
             Ui::GetDispatcher()->post_message_to_core("unfavorite", collection.get());
         }
+        else if (command == ql1s("recents/mark_unimportant"))
+        {
+            const auto confirmed = Utils::GetConfirmationWithTwoButtons(
+                QT_TRANSLATE_NOOP("popup_window", "Cancel"),
+                QT_TRANSLATE_NOOP("popup_window", "Yes"),
+                QT_TRANSLATE_NOOP("popup_window", "Are you sure you want to mark the chat as unimportant? The chat won't jump to the top of the list when you receive a new message"),
+                Logic::GetFriendlyContainer()->getFriendly(aimId),
+                nullptr);
+
+            if (confirmed)
+            {
+                Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
+                collection.set_value_as_qstring("contact", aimId);
+                Ui::GetDispatcher()->post_message_to_core("mark_unimportant", collection.get());
+            }
+        }
+        else if (command == ql1s("recents/remove_from_unimportant"))
+        {
+            Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
+            collection.set_value_as_qstring("contact", aimId);
+            Ui::GetDispatcher()->post_message_to_core("remove_from_unimportant", collection.get());
+        }
         else if (command == ql1s("recents/clear_history"))
         {
             const auto confirmed = Utils::GetConfirmationWithTwoButtons(
-                QT_TRANSLATE_NOOP("popup_window", "CANCEL"),
-                QT_TRANSLATE_NOOP("popup_window", "YES"),
-                QT_TRANSLATE_NOOP("popup_window", "Are you sure you want to erase chat history?"),
+                QT_TRANSLATE_NOOP("popup_window", "Cancel"),
+                QT_TRANSLATE_NOOP("popup_window", "Yes"),
+                QT_TRANSLATE_NOOP("popup_window", "Are you sure you want to clear the chat history?"),
                 Logic::GetFriendlyContainer()->getFriendly(aimId),
                 nullptr);
 
@@ -497,10 +527,10 @@ namespace Ui
         else
             to = std::max(curVal - step, scrollbar->minimum());
 
-        constexpr auto duration = std::chrono::milliseconds(300);
-
         if (!animScroll_)
         {
+            constexpr auto duration = std::chrono::milliseconds(300);
+
             animScroll_ = new QPropertyAnimation(scrollbar, QByteArrayLiteral("value"), this);
             animScroll_->setDuration(duration.count());
             animScroll_->setEasingCurve(QEasingCurve::InQuad);

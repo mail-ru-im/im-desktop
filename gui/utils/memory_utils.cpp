@@ -18,8 +18,7 @@ typedef struct
 #endif
 
 #include "styles/Theme.h"
-#include "main_window/history_control/complex_message/ImagePreviewBlock.h"
-#include "main_window/history_control/complex_message/LinkPreviewBlock.h"
+#include "main_window/history_control/complex_message/SnippetBlock.h"
 #include "main_window/history_control/complex_message/StickerBlock.h"
 #include "main_window/history_control/complex_message/FileSharingBlock.h"
 #include "main_window/history_control/complex_message/QuoteBlock.h"
@@ -120,17 +119,7 @@ qint64 getMemoryFootprint(QImage _image)
 }
 
 template<>
-qint64 getMemoryFootprint(Ui::ComplexMessage::ImagePreviewBlock* _block)
-{
-    qint64 res = 0;
-
-    res += getMemoryFootprint(_block->getPreviewImage());
-
-    return res;
-}
-
-template<>
-qint64 getMemoryFootprint(Ui::ComplexMessage::LinkPreviewBlock* _block)
+qint64 getMemoryFootprint(Ui::ComplexMessage::SnippetBlock* _block)
 {
     qint64 res = 0;
 
@@ -176,13 +165,6 @@ qint64 getMemoryFootprint(Ui::ComplexMessage::QuoteBlock* _block)
 
     for (auto block: _block->getBlocks())
     {
-        auto imgPreviewBlock = dynamic_cast<Ui::ComplexMessage::ImagePreviewBlock *>(block);
-        if (imgPreviewBlock)
-        {
-            res += getMemoryFootprint(imgPreviewBlock);
-            continue;
-        }
-
         auto fileSharingBlock = dynamic_cast<Ui::ComplexMessage::FileSharingBlock *>(block);
         if (fileSharingBlock)
         {
@@ -197,10 +179,10 @@ qint64 getMemoryFootprint(Ui::ComplexMessage::QuoteBlock* _block)
             continue;
         }
 
-        auto linkPreviewBlock = dynamic_cast<Ui::ComplexMessage::LinkPreviewBlock *>(block);
-        if (linkPreviewBlock)
+        auto snippetBlock = dynamic_cast<Ui::ComplexMessage::SnippetBlock *>(block);
+        if (snippetBlock)
         {
-            res += getMemoryFootprint(linkPreviewBlock);
+            res += getMemoryFootprint(snippetBlock);
             continue;
         }
 

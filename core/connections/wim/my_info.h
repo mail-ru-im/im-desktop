@@ -40,6 +40,15 @@ namespace core
             const std::string& get_nick() const { return nick_; }
             const std::string& get_phone_number() const { return phoneNumber_; }
             const user_agreement_info& get_user_agreement_info() const { return user_agreement_info_; }
+
+            bool operator==(const my_info& _right) const;
+            bool operator!=(const my_info& _right) const;
+        };
+
+        enum class is_equal
+        {
+            no,
+            yes
         };
 
         class my_info_cache

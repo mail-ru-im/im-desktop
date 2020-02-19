@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../types/common_phone.h"
+#include "../controls/TextUnit.h"
 
 namespace core
 {
@@ -14,9 +15,38 @@ namespace Ui
 {
     class LabelEx;
     class LineEditEx;
+    class CommonInputContainer;
+    class PhoneInputContainer;
+    class CodeInputContainer;
     class TextEditEx;
     class CountrySearchCombobox;
     class CustomButton;
+    class DialogButton;
+    class TermsPrivacyWidget;
+    class IntroduceYourself;
+    class TextWidget;
+    class ContextMenu;
+
+    class EntryHintWidget : public QWidget
+    {
+        Q_OBJECT
+    Q_SIGNALS:
+        void changeClicked();
+        private:
+            TextRendering::TextUnitPtr textUnit_;
+            bool explained_;
+        private:
+            void updateSize();
+        protected:
+            void paintEvent(QPaintEvent* _event) override;
+            void mouseReleaseEvent(QMouseEvent* _event) override;
+            void mouseMoveEvent(QMouseEvent* _event) override;
+        public:
+            explicit EntryHintWidget(QWidget* _parent, const QString& _initialText);
+            void setText(const QString& _text);
+            void appendPhone(const QString& _text);
+            void appendLink(const QString& _text, const QString& _link = QString());
+    };
 
     class LoginPage : public QWidget
     {
@@ -27,51 +57,56 @@ namespace Ui
         void attached();
 
     private Q_SLOTS:
-        void countrySelected(const QString&);
         void nextPage();
         void updateTimer();
+        void resendCode();
         void sendCode();
-        void setPhoneFocusIn();
-        void setPhoneFocusOut();
-        void getSmsResult(int64_t, int, int, const QString&, const QString& _checks);
-        void loginResult(int64_t, int);
+        void callPhone();
+        void getSmsResult(int64_t, int, int, const QString& _ivrUrl, const QString& _checks);
+        void loginResult(int64_t, int, bool);
         void loginResultAttachUin(int64_t, int);
         void loginResultAttachPhone(int64_t, int);
         void clearErrors(bool ignorePhoneInfo = false);
         void codeEditChanged(const QString&);
-        void countryCodeChanged(const QString&);
-        void redrawCountryCode();
-        void emptyPhoneRemove();
         void stats_edit_phone();
-        void stats_resend_sms();
+        void postSmsSendStats();
         void phoneInfoResult(qint64, const Data::PhoneInfo&);
         void phoneTextChanged();
         void authError(const int _result);
-        void showGDPR();
+        void onUrlConfigError(const int _error);
 
     public Q_SLOTS:
         void prevPage();
         void switchLoginType();
-        void updateFocus();
         void openProxySettings();
 
     public:
-        LoginPage(QWidget* _parent, bool _isLogin);
-        ~LoginPage();
+        LoginPage(QWidget* _parent);
+        ~LoginPage() = default;
 
         static bool isCallCheck(const QString& _checks);
 
     protected:
         virtual void keyPressEvent(QKeyEvent* _event) override;
         virtual void paintEvent(QPaintEvent* _event) override;
+        virtual void resizeEvent(QResizeEvent* _event) override;
+        bool eventFilter(QObject* _obj, QEvent* _event) override;
 
     private:
+        enum class LoginSubpage
+        {
+            SUBPAGE_PHONE_LOGIN_INDEX = 0,
+            SUBPAGE_PHONE_CONF_INDEX = 1,
+            SUBPAGE_UIN_LOGIN_INDEX = 2,
+            SUBPAGE_INTRODUCEYOURSELF = 3,
+        };
+
         void init();
-        void initLoginSubPage(int _index);
-        void initGDPRpopup();
-        bool gdprPopupNeeded() const;
+        void login();
+        void initLoginSubPage(const LoginSubpage _index);
+        void initGDPR();
+        bool needGDPRPage() const;
         void connectGDPR();
-        void launchGDPRpopup(int _timeout);
         void setGDPRacceptedThisSession(bool _accepted);
         bool userAcceptedGDPR() const;
         bool gdprAcceptedThisSession() const;
@@ -79,7 +114,14 @@ namespace Ui
         void setErrorText(const QString& _customError);
         void updateErrors(int _result);
 
-        void updateTextOnGetSmsResult();
+        void updateBackButton();
+        void updateNextButton();
+        void updateInputFocus();
+        void updatePage();
+        void updateButtonsWidgetHeight();
+        void resizeSpacers();
+
+        void setLoginPageFocus() const;
 
         enum class OTPAuthState
         {
@@ -87,34 +129,42 @@ namespace Ui
             Password
         };
 
+        LoginSubpage currentPage() const;
+
         void updateOTPState(OTPAuthState _state);
+        std::string statType(const LoginSubpage _page) const;
+
+        void showUrlConfigHostDialog();
 
     private:
+
+        QStackedWidget*         mainStakedWidget_;
+
+        TermsPrivacyWidget*     termsWidget_;
         QTimer*                 timer_;
         LineEditEx*             countryCode_;
-        LineEditEx*             phone_;
-        CountrySearchCombobox*  combobox_;
+        PhoneInputContainer*    phone_;
         unsigned int            remainingSeconds_;
-        QString                 prevCountryCode_;
 
-        QStackedWidget*         loginStakedWidget;
-        QPushButton*            nextButton;
-        QWidget*                countrySearchWidget;
-        CustomButton*           backButton;
-        QPushButton*            proxySettingsButton;
-        QPushButton*            editPhoneButton;
-        LabelEx*                switchButton;
-        QPushButton*            resendButton;
-        QFrame*                 phoneWidget;
-        LineEditEx*             uinEdit;
-        LineEditEx*             passwordEdit;
-        QCheckBox*              keepLogged;
-        LineEditEx*             codeEdit;
-        LabelEx*                errorLabel;
-        QLabel*                 enteredPhone;
-        QLabel*                 hintLabel;
-        QLabel*                 phoneHintLabel_;
-        LabelEx*                passwordForgottenLabel;
+        QStackedWidget*         loginStakedWidget_;
+        QWidget*                controlsWidget_;
+
+        DialogButton*           nextButton_;
+        CustomButton*           changePageButton_;
+        CustomButton*           proxySettingsButton_;
+        QPushButton*            resendButton_;
+        CommonInputContainer*   uinInput_;
+        CommonInputContainer*   passwordInput_;
+        QWidget*                keepLoggedWidget_;
+        QWidget*                errorWidget_;
+        QWidget*                buttonsWidget_;
+        QCheckBox*              keepLogged_;
+        CodeInputContainer*     codeInput_;
+        LabelEx*                errorLabel_;
+        TextWidget*             titleLabel_;
+        EntryHintWidget*        entryHint_;
+        QWidget*                forgotPasswordWidget_;
+        LabelEx*                forgotPasswordLabel_;
         bool                    isLogin_;
         int64_t                 sendSeq_;
         int                     codeLength_;
@@ -123,7 +173,17 @@ namespace Ui
 
         Data::PhoneInfo         receivedPhoneInfo_;
         QString                 checks_;
+        QString                 ivrUrl_;
+
+        IntroduceYourself* introduceMyselfWidget_;
 
         std::optional<OTPAuthState> otpState_;
+
+        LoginSubpage lastPage_;
+        int smsCodeSendCount_;
+        QSpacerItem* topSpacer_;
+        QSpacerItem* bottomSpacer_;
+        ContextMenu* resendMenu_;
+        QString lastEnteredCode_;
     };
 }

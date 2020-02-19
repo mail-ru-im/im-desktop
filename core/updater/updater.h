@@ -12,20 +12,20 @@ namespace core
 
             std::atomic<bool>	stop_;
 
-            std::chrono::system_clock::time_point	last_check_time_;
+            std::chrono::steady_clock::time_point last_check_time_;
 
             std::unique_ptr<core::async_executer>	thread_;
 
         public:
 
-            bool must_stop();
+            bool must_stop() const;
 
             updater();
             virtual ~updater();
 
             void check_if_need();
 
-            void check(const std::string& _custom_url = std::string());
+            void check(std::optional<int64_t> _seq, std::optional<std::string> _custom_url);
         };
 
     }

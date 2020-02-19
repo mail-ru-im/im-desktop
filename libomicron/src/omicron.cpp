@@ -22,7 +22,7 @@ namespace omicronlib
 
     bool omicron_start_auto_updater()
     {
-        return omicron_impl::instance().star_auto_updater();
+        return omicron_impl::instance().start_auto_updater();
     }
 
     void omicron_cleanup()

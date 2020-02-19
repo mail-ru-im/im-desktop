@@ -7,13 +7,17 @@
 #include "ContactListWidget.h"
 #include "ContactListModel.h"
 #include "IgnoreMembersModel.h"
+#include "CountryListModel.h"
 #include "SearchWidget.h"
 #include "../GroupChatOperations.h"
 #include "../MainWindow.h"
+#include "../history_control/MessageStyle.h"
 #include "../friendly/FriendlyContainer.h"
 #include "../../core_dispatcher.h"
 #include "../../controls/GeneralDialog.h"
 #include "../../controls/DialogButton.h"
+#include "../../controls/ContactAvatarWidget.h"
+#include "../../controls/TextEditEx.h"
 #include "../../utils/InterConnector.h"
 #include "../../utils/utils.h"
 #include "../../cache/avatars/AvatarStorage.h"
@@ -26,6 +30,7 @@ namespace Ui
 {
     const double heightPartOfMainWindowForFullView = 0.6;
     const int DIALOG_WIDTH = 360;
+    const int NAME_WIDTH = 256;
     const int search_padding_ver = 8;
     const int search_padding_hor = 4;
     const int avatars_area_top_padding = 12;
@@ -402,13 +407,18 @@ namespace Ui
     {
         searchWidget_->setFocus();
 
+        if (regim_ == Logic::MembersWidgetRegim::COUNTRY_LIST)
+        {
+            Logic::getCountryModel()->setSelected(_current);
+            mainDialog_->accept();
+        }
+
         // Restrict max selected elements.
         if (regim_ == Logic::VIDEO_CONFERENCE && maximumSelectedCount_ >= 0)
         {
             bool isForCheck = !Logic::getContactListModel()->getIsChecked(_current);
-
             int selectedItemCount = Logic::getContactListModel()->GetCheckedContacts().size();
-            if (isForCheck && selectedItemCount >= maximumSelectedCount_)
+            if (isForCheck && (selectedItemCount >= maximumSelectedCount_ || _current == Ui::MyInfo()->aimId()))
             {
                 // Disable selection.
                 return;
@@ -457,7 +467,7 @@ namespace Ui
 
         if (regim_ == Logic::MembersWidgetRegim::SHARE_CONTACT)
             mainDialog_->accept();
-        else
+        else if (!isCreateGroupMode())
             mainDialog_->setButtonActive(!Logic::getContactListModel()->GetCheckedContacts().empty());
 
         if (avatarsArea_)
@@ -465,7 +475,7 @@ namespace Ui
             if (Logic::getContactListModel()->getIsChecked(_current))
             {
                 bool isDefault = false;
-                auto avatar = Logic::GetAvatarStorage()->GetRounded(_current, Logic::GetFriendlyContainer()->getFriendly(_current), Utils::scale_bitmap(Utils::scale_value(avatar_size)), QString(), isDefault, false, false);
+                auto avatar = Logic::GetAvatarStorage()->GetRounded(_current, Logic::GetFriendlyContainer()->getFriendly(_current), Utils::scale_bitmap(Utils::scale_value(avatar_size)), isDefault, false, false);
                 avatarsArea_->show();
                 avatarsArea_->raise();
                 avatarsArea_->add(_current, *avatar);
@@ -725,18 +735,22 @@ namespace Ui
 
     SelectContactsWidget::SelectContactsWidget(Logic::CustomAbstractListModel* _chatMembersModel, int _regim, const QString& _labelText,
         const QString& _buttonText, QWidget* _parent, bool _handleKeyPressEvents/* = true*/,
-        Logic::AbstractSearchModel* searchModel /*= nullptr*/, bool _enableAuthorWidget)
+        Logic::AbstractSearchModel* searchModel /*= nullptr*/, bool _enableAuthorWidget, bool _chatCreation, bool _isChannel)
         : QDialog(_parent)
         , regim_(_regim)
         , chatMembersModel_(_chatMembersModel)
         , mainWidget_(new QWidget(this))
         , handleKeyPressEvents_(_handleKeyPressEvents)
         , enableAuthorWidget_(_enableAuthorWidget)
+        , chatCreation_(_chatCreation)
+        , isChannel_(_isChannel)
         , maximumSelectedCount_(-1)
         , searchModel_(searchModel)
         , avatarsArea_(nullptr)
         , cancelButton_(nullptr)
         , acceptButton_(nullptr)
+        , chatName_(nullptr)
+        , photo_(nullptr)
     {
         init(_labelText, _buttonText);
     }
@@ -755,6 +769,51 @@ namespace Ui
             Testing::setAccessibleName(authorWidget_, qsl("AS scfgc authorWidget_"));
             globalLayout_->addWidget(authorWidget_);
             focusWidget_[authorWidget_] = FocusPosition::Author;
+        }
+
+        if (isCreateGroupMode())
+        {
+            auto chatCreationWidget = new QWidget(this);
+            chatCreationWidget->setFixedWidth(Utils::scale_value(DIALOG_WIDTH));
+            chatCreationWidget->setFixedHeight(Utils::scale_value(64));
+
+            auto chatCreationLayout = Utils::emptyHLayout(chatCreationWidget);
+            chatCreationLayout->setContentsMargins(Utils::scale_value(16), Utils::scale_value(8), Utils::scale_value(16), 0);
+
+            photo_ = new ContactAvatarWidget(chatCreationWidget, QString(), QString(), Utils::scale_value(56), true);
+            photo_->SetMode(ContactAvatarWidget::Mode::CreateChat);
+            photo_->SetVisibleShadow(false);
+            photo_->SetVisibleSpinner(false);
+            photo_->UpdateParams(QString(), QString());
+            chatCreationLayout->addWidget(photo_);
+            chatCreationLayout->addSpacing(Utils::scale_value(16));
+
+            QWidget::connect(photo_, &ContactAvatarWidget::avatarDidEdit, this, [=]()
+            {
+                lastCroppedImage_ = photo_->croppedImage();
+            }, Qt::QueuedConnection);
+
+            chatName_ = new TextEditEx(chatCreationWidget, Fonts::appFontScaled(18), MessageStyle::getTextColor(), true, true);
+            Utils::ApplyStyle(chatName_, Styling::getParameters().getTextEditCommonQss(true));
+            chatName_->setWordWrapMode(QTextOption::NoWrap);
+            chatName_->setPlaceholderText(isChannel_ ? QT_TRANSLATE_NOOP("groupchats", "Channel name") : QT_TRANSLATE_NOOP("groupchats", "Group name"));
+            chatName_->setPlainText(QString());
+            chatName_->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Preferred);
+            chatName_->setAutoFillBackground(false);
+            chatName_->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+            chatName_->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+            chatName_->setTextInteractionFlags(Qt::TextEditable | Qt::TextEditorInteraction);
+            chatName_->document()->setDocumentMargin(0);
+            chatName_->addSpace(Utils::scale_value(4));
+            chatName_->adjustHeight(Utils::scale_value(NAME_WIDTH));
+            Testing::setAccessibleName(chatName_, qsl("AS gco chatName_"));
+            chatCreationLayout->addWidget(chatName_);
+
+            focusWidget_[chatName_] = FocusPosition::Name;
+
+            QObject::connect(chatName_, &TextEditEx::textChanged, this, &Ui::SelectContactsWidget::nameChanged);
+
+            globalLayout_->addWidget(chatCreationWidget);
         }
 
         searchWidget_ = new SearchWidget(this, Utils::scale_value(search_padding_hor), Utils::scale_value(search_padding_ver));
@@ -779,11 +838,11 @@ namespace Ui
 
         // TODO : use SetView here
         auto dialogParent = isVideoConference() ? parentWidget() : Utils::InterConnector::instance().getMainWindow();
-        mainDialog_ = std::make_unique<Ui::GeneralDialog>(mainWidget_, dialogParent, handleKeyPressEvents_, !isShareMode());
+        mainDialog_ = std::make_unique<Ui::GeneralDialog>(mainWidget_, dialogParent, handleKeyPressEvents_);
         mainDialog_->installEventFilter(this);
         mainDialog_->addLabel(_labelText);
 
-        if (isShareMode())
+        if (isShareMode() || isCreateGroupMode())
         {
             avatarsArea_ = new AvatarsArea(clHost_);
             avatarsArea_->hide();
@@ -797,7 +856,8 @@ namespace Ui
 
                     const auto curFocus = currentFocusPosition();
 
-                    mainDialog_->setButtonActive(false);
+                    if (!isCreateGroupMode())
+                        mainDialog_->setButtonActive(false);
 
                     if (curFocus == FocusPosition::Avatars || curFocus == FocusPosition::Accept)
                         searchWidget_->setFocus();
@@ -816,17 +876,17 @@ namespace Ui
 
         if (isPopupWithCloseBtn())
         {
-            cancelButton_ = mainDialog_->addCancelButton(QT_TRANSLATE_NOOP("popup_window", "CLOSE"), true);
+            cancelButton_ = mainDialog_->addCancelButton(QT_TRANSLATE_NOOP("popup_window", "Close"), true);
             focusWidget_[cancelButton_] = FocusPosition::Cancel;
         }
         else if (isPopupWithCancelBtn())
         {
-            cancelButton_ = mainDialog_->addCancelButton(QT_TRANSLATE_NOOP("popup_window", "CANCEL"), true);
+            cancelButton_ = mainDialog_->addCancelButton(QT_TRANSLATE_NOOP("popup_window", "Cancel"), true);
             focusWidget_[cancelButton_] = FocusPosition::Cancel;
         }
         else if (!Logic::is_members_regim(regim_) && !Logic::is_video_conference_regim(regim_))
         {
-            auto buttonPair = mainDialog_->addButtonsPair(QT_TRANSLATE_NOOP("popup_window", "CANCEL"), _buttonText, false, true, true);
+            auto buttonPair = mainDialog_->addButtonsPair(QT_TRANSLATE_NOOP("popup_window", "Cancel"), _buttonText, false, true, true);
             acceptButton_ = buttonPair.first;
             cancelButton_ = buttonPair.second;
             focusWidget_[acceptButton_] = FocusPosition::Accept;
@@ -879,6 +939,11 @@ namespace Ui
         return (regim_ == Logic::MembersWidgetRegim::SHARE);
     }
 
+    bool SelectContactsWidget::isCreateGroupMode() const
+    {
+        return chatCreation_;
+    }
+
     bool SelectContactsWidget::isVideoConference() const
     {
         return (regim_ == Logic::MembersWidgetRegim::VIDEO_CONFERENCE);
@@ -892,7 +957,7 @@ namespace Ui
 
     bool SelectContactsWidget::isPopupWithCancelBtn() const
     {
-        return regim_ == Logic::MembersWidgetRegim::SHARE_CONTACT;
+        return regim_ == Logic::MembersWidgetRegim::SHARE_CONTACT || regim_ == Logic::MembersWidgetRegim::COUNTRY_LIST;
     }
 
     void SelectContactsWidget::updateFocus(bool _order)
@@ -918,6 +983,13 @@ namespace Ui
 
             switch (static_cast<FocusPosition>(pos))
             {
+            case  FocusPosition::Name:
+                if (chatName_)
+                {
+                    chatName_->setFocus(reason);
+                    return;
+                }
+                break;
             case FocusPosition::Search:
                 searchWidget_->setFocus(reason);
                 return;
@@ -1003,6 +1075,16 @@ namespace Ui
         }
     }
 
+    void SelectContactsWidget::nameChanged()
+    {
+        if (!photo_ || !chatName_)
+            return;
+
+        auto text = chatName_->getPlainText();
+        photo_->UpdateParams(QString(), text);
+        mainDialog_->setButtonActive(!text.trimmed().isEmpty());
+    }
+
     int SelectContactsWidget::calcListHeight() const
     {
         const auto parentWdg = isVideoConference() ? parentWidget() : Utils::InterConnector::instance().getMainWindow();
@@ -1038,7 +1120,14 @@ namespace Ui
         if (!isPopupWithCloseBtn() && !isPopupWithCancelBtn())
             mainDialog_->setButtonActive(!Logic::getContactListModel()->GetCheckedContacts().empty());
 
-        searchWidget_->setFocus();
+        if (isCreateGroupMode())
+            mainDialog_->setButtonActive(false);
+
+
+        if (isCreateGroupMode())
+            chatName_->setFocus();
+        else
+            searchWidget_->setFocus();
 
         auto result = true;
 
@@ -1049,7 +1138,9 @@ namespace Ui
 
         if (result)
         {
-            if (Logic::getContactListModel()->GetCheckedContacts().empty())
+            if (!isCreateGroupMode()
+                && ((regim_ == Logic::MembersWidgetRegim::COUNTRY_LIST && !Logic::getCountryModel()->isCountrySelected())
+                || (regim_ != Logic::MembersWidgetRegim::COUNTRY_LIST && Logic::getContactListModel()->GetCheckedContacts().empty())))
             {
                 result = false;
             }
@@ -1062,6 +1153,14 @@ namespace Ui
         Logic::getContactListModel()->setIsWithCheckedBox(false);
         searchWidget_->clearInput();
         return result;
+    }
+
+    QString SelectContactsWidget::getName() const
+    {
+        if (!isCreateGroupMode())
+            return QString();
+
+        return chatName_->getPlainText().trimmed();
     }
 
     void SelectContactsWidget::setAuthors(const QSet<QString> &_authors)

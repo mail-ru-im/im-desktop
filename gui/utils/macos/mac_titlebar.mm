@@ -7,6 +7,7 @@
 #include "../../main_window/MainWindow.h"
 #include "../../utils/InterConnector.h"
 #include "../../styles/ThemeParameters.h"
+#include "../../app_config.h"
 
 struct MacTitlebarPrivate
 {
@@ -103,7 +104,8 @@ void MacTitlebar::updateTitleBgColor()
 {
     if (d->nativeWindow_)
     {
-        const auto color = Styling::getParameters().getColor(Styling::StyleVariable::APP_PRIMARY);
+        const auto var = Ui::GetAppConfig().hasCustomDeviceId() ? Styling::StyleVariable::SECONDARY_RAINBOW_WARM : Styling::StyleVariable::APP_PRIMARY;
+        const auto color = Styling::getParameters().getColor(var);
 
         if (!@available(macOS 10.12, *))
             [d->nativeWindow_ setStyleMask:[d->nativeWindow_ styleMask] | NSTexturedBackgroundWindowMask];

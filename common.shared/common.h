@@ -102,15 +102,6 @@ namespace build
 #endif
     }
 
-    constexpr bool is_alpha() noexcept
-    {
-#if defined(BUILD_IS_ALPHA)
-        return true;
-#else
-        return false;
-#endif
-    }
-
     constexpr bool is_store() noexcept
     {
 #if defined(BUILD_FOR_STORE)
@@ -120,6 +111,41 @@ namespace build
 #endif
     }
 
+}
+
+namespace environment
+{
+    inline namespace impl
+    {
+        constexpr std::string_view get() noexcept
+        {
+#if defined(APP_ENVIRONMENT)
+            return std::string_view(APP_ENVIRONMENT);
+#else
+            return std::string_view();
+#endif
+        }
+    }
+
+    constexpr bool is_alpha() noexcept
+    {
+        return get() == "ALPHA";
+    }
+
+    constexpr bool is_beta() noexcept
+    {
+        return get() == "BETA";
+    }
+
+    constexpr bool is_release() noexcept
+    {
+        return get() == "RELEASE";
+    }
+
+    constexpr bool is_develop() noexcept
+    {
+        return get().empty() || get() == "DEVELOP";
+    }
 }
 
 namespace platform
@@ -172,6 +198,38 @@ namespace platform
 #endif
     }
 }
+
+namespace common::utils
+{
+    inline std::vector<std::string_view>
+        splitSV(std::string_view strv, std::string_view delims)
+    {
+        std::vector<std::string_view> output;
+        size_t first = 0;
+
+        while (first < strv.size())
+        {
+            const auto second = strv.find_first_of(delims, first);
+
+            if (first != second)
+                output.emplace_back(strv.substr(first, second - first));
+
+            if (second == std::string_view::npos)
+                break;
+
+            first = second + 1;
+        }
+
+        return output;
+    }
+
+    inline std::vector<std::string_view>
+        splitSV(std::string_view strv, char delim)
+    {
+        return splitSV(strv, std::string_view(&delim, 1));
+    }
+}
+
 namespace core
 {
     constexpr unsigned long BYTE     = 1;
@@ -200,11 +258,11 @@ namespace core
                 return std::string();
 
             if (_value > _max_value)
-            {
                 return (std::to_string(_max_value) + '+');
-            }
 
-            return std::to_string(((_value / _step) + 1) * _step);
+            const auto base = _value / _step;
+            const auto over = (_value % _step) ? 1 : 0;
+            return std::to_string((base + over) * _step);
         }
 
         inline time_t round_to_hours(time_t _value)
@@ -308,7 +366,6 @@ namespace ffmpeg
     }
 }
 
-#ifdef _WIN32
 namespace core
 {
     namespace dump
@@ -319,8 +376,12 @@ namespace core
             // use /settings/dump_type.txt: 0 for not handle crashes
             //                              1 for make mini dump
             //                              2 for make full dump
-            return !build::is_debug();
+
+            if constexpr (platform::is_apple())
+                return !build::is_debug() && !build::is_store();
+            else
+                return !build::is_debug();
         }
     }
 }
-#endif
+

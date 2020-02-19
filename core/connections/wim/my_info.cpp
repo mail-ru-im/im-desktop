@@ -127,6 +127,28 @@ bool my_info::is_phone_number_exists() const
     return !phoneNumber_.empty();
 }
 
+bool my_info::operator==(const my_info& _right) const
+{
+    return
+        aimId_ == _right.aimId_ &&
+        nick_ == _right.nick_ &&
+        friendly_ == _right.friendly_ &&
+        state_ == _right.state_ &&
+        userType_ == _right.userType_ &&
+        phoneNumber_ == _right.phoneNumber_ &&
+        flags_ == _right.flags_ &&
+        largeIconId_ == _right.largeIconId_ &&
+        hasMail_ == _right.hasMail_ &&
+        official_ == _right.official_ &&
+        user_agreement_info_ == _right.user_agreement_info_;
+}
+
+bool my_info::operator!=(const my_info& _right) const
+{
+    return !(*this == _right);
+}
+
+
 my_info_cache::my_info_cache()
     : changed_(false)
     , info_(std::make_shared<my_info>())
@@ -142,6 +164,7 @@ std::shared_ptr<my_info> my_info_cache::get_info() const
 void my_info_cache::set_info(std::shared_ptr<my_info> _info)
 {
     *info_ = *_info;
+
     changed_ = true;
 }
 

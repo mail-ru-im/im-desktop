@@ -39,7 +39,6 @@ int32_t create_chat::init_request(std::shared_ptr<core::http_request_simple> _re
 {
     constexpr char method[] = "createChat";
 
-    _request->set_gzip(true);
     _request->set_url(urls::get_url(urls::url_type::rapi_host));
     _request->set_normalized_url(method);
     _request->set_keep_alive();

@@ -1,6 +1,4 @@
-#ifndef __INCOMING_CALL_WINDOW_H__
-#define __INCOMING_CALL_WINDOW_H__
-
+#pragma once
 #include "VideoFrame.h"
 #include "VideoWindow.h"
 
@@ -15,7 +13,7 @@ namespace Ui
     {
         Q_OBJECT
         std::string contact_;
-        std::string account_;
+        std::string call_id_;
 
     private:
         typedef platform_specific::GraphicsPanel FrameControl_t;
@@ -32,22 +30,19 @@ namespace Ui
         void updateTitle();
 
     public:
-        IncomingCallWindow(const std::string& _account, const std::string& _contact);
+        IncomingCallWindow(const std::string& call_id, const std::string& _contact);
         ~IncomingCallWindow();
 
         void showFrame();
         void hideFrame();
 
     protected:
-
         void mouseMoveEvent(QMouseEvent* _e) override;
         void mousePressEvent(QMouseEvent * event) override;
-
 #ifndef _WIN32
-        void mouseReleaseEvent(QMouseEvent * event) override;
-
+        void mouseReleaseEvent(QMouseEvent *event) override;
         // @return true if we resend message to any transparent panel
-        template <typename E> void resendMouseEventToPanel(E* event_);
+        void resendMouseEventToPanel(QMouseEvent *event_);
 #endif
 
     private:
@@ -59,7 +54,6 @@ namespace Ui
 
         // List of currect contacts
         std::vector<voip_manager::Contact> contacts_;
-
         // List of instances, needs to make cascade of these windows
         static QList<IncomingCallWindow*> instances_;
 
@@ -70,7 +64,6 @@ namespace Ui
 #endif //STRIP_VOIP
 
         QPoint posDragBegin_;
-
         // Search for the best position for window related of other windows.
         QPoint findBestPosition(const QPoint& _windowPosition, const QPoint& _offset);
 
@@ -79,5 +72,3 @@ namespace Ui
         void changeEvent(QEvent *) override;
     };
 }
-
-#endif//__INCOMING_CALL_WINDOW_H__

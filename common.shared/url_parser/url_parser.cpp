@@ -7,6 +7,7 @@
 #endif
 
 #include "url_parser.h"
+#include "../config/config.h"
 
 #include <cctype>
 
@@ -14,25 +15,20 @@ namespace
 {
     #include "domain_parser.in"
 
-    const char* ICQ_COM = "icq.com/files/";
-    static const int ICQ_COM_SAFE_POS = std::char_traits<char>::length("icq.com") - 1;
+    constexpr std::string_view ICQ_COM = "icq.com/files/";
+    static constexpr int ICQ_COM_SAFE_POS = std::string_view("icq.com").size() - 1;
 
-    const char* CHAT_MY_COM = "chat.my.com/files/";
-    static const int CHAT_MY_COM_SAFE_POS = std::char_traits<char>::length("chat.my.com") - 1;
+    constexpr std::string_view CHAT_MY_COM = "chat.my.com/files/";
+    static constexpr int CHAT_MY_COM_SAFE_POS = std::string_view("chat.my.com").size() - 1;
 
-    const char* FILES_ICQ_NET = "files.icq.net";
-    const char* FILES_MYTEAM_MAIL_RU = "files.myteam.mail.ru";
+    constexpr const char* LEFT_DOUBLE_QUOTE = "«";
+    constexpr const char* RIGHT_DOUBLE_QUOTE = "»";
 
-    const char* GET_SUFFIX = "/get/";
+    constexpr char NBSP_FIRST = 0xc2;
+    constexpr char NBSP_SECOND = 0xa0;
 
-    const char* LEFT_DOUBLE_QUOTE = "«";
-    const char* RIGHT_DOUBLE_QUOTE = "»";
-
-    const char NBSP_FIRST = 0xc2;
-    const char NBSP_SECOND = 0xa0;
-
-    const char* LEFT_QUOTE = "‘";
-    const char* RIGHT_QUOTE = "’";
+    constexpr const char* LEFT_QUOTE = "‘";
+    constexpr const char* RIGHT_QUOTE = "’";
 }
 
 const char* to_string(common::tools::url::type _value)
@@ -91,10 +87,7 @@ const char* to_string(common::tools::url::extension _value)
     }
 }
 
-common::tools::url::url()
-    : type_(type::undefined)
-{
-}
+common::tools::url::url() = default;
 
 common::tools::url::url(std::string _url, type _type, protocol _protocol, extension _extension)
     : type_(_type)
@@ -146,7 +139,7 @@ bool common::tools::url::is_ftp() const
 
 bool common::tools::url::has_prtocol() const
 {
-    if (original_.length() < 4)
+    if (original_.size() < 4)
         return false;
 
     return std::string_view(original_.data(), 4) == "http";
@@ -179,19 +172,26 @@ std::ostream& operator<<(std::ostream& _out, const common::tools::url& _url)
     return _out;
 }
 
-common::tools::url_parser::url_parser(const std::string& _files_url)
+static auto make_vector(std::string_view _files_url, std::vector<std::string>&& _files_urls)
 {
-    if constexpr (build::is_biz())
-    {
-        files_urls_.push_back(FILES_ICQ_NET);
-        files_urls_.push_back(FILES_MYTEAM_MAIL_RU);
-        if (std::none_of(files_urls_.cbegin(), files_urls_.cend(), [&_files_url](const auto& x) { return x == _files_url; }))
-            files_urls_.push_back(_files_url);
-    }
-    else
-    {
-        files_urls_.assign({ _files_url });
-    }
+    std::vector<std::string> res(std::move(_files_urls));
+    res.push_back(std::string(_files_url));
+    return res;
+}
+
+common::tools::url_parser::url_parser(std::string_view _files_url)
+    : url_parser(std::vector<std::string>{ std::string(_files_url) })
+{
+}
+
+common::tools::url_parser::url_parser(std::string_view _files_url, std::vector<std::string> _files_urls)
+    : url_parser(make_vector(_files_url, std::move(_files_urls)))
+{
+}
+
+common::tools::url_parser::url_parser(std::vector<std::string> _files_urls)
+    : files_urls_(std::move(_files_urls))
+{
     reset();
     init_fixed_urls_compare();
 }
@@ -289,6 +289,11 @@ void common::tools::url_parser::add_fixed_urls(std::vector<compare_item> &&_item
     }
 }
 
+static bool is_black_list_email_host(std::string_view _s)
+{
+    return std::any_of(std::begin(_s), std::end(_s), [](auto c) { return c == ']' || c == '[' || c == '}' || c == '{'; });
+}
+
 #ifdef URL_PARSER_RESET_PARSER
 #error Rename the macros
 #endif
@@ -303,6 +308,18 @@ void common::tools::url_parser::add_fixed_urls(std::vector<compare_item> &&_item
 #error Rename the macros
 #endif
 #define URL_PARSER_SET_STATE_AND_REPROCESS(X) { assert(state_ != (X)); if (state_ != (X)) { state_ = (X); process(); return; } }
+
+static bool is_supported_scheme(std::string_view scheme)
+{
+    const static auto schemes = []() {
+        const auto scheme_csv = config::get().string(config::values::register_url_scheme_csv); //url1,descr1,url2,desc2,..
+        auto splitted = common::utils::splitSV(scheme_csv, ',');
+        size_t i = 0;
+        splitted.erase(std::remove_if(splitted.begin(), splitted.end(), [&i](const auto&) { return i % 2 != 0; }), splitted.end());
+        return splitted;
+    }();
+    return std::any_of(schemes.begin(), schemes.end(), [scheme](auto x) { return x == scheme; });
+}
 
 void common::tools::url_parser::process()
 {
@@ -324,9 +341,9 @@ void common::tools::url_parser::process()
         return;
     case states::protocol_t1:
         if (c == 't' || c == 'T') state_ = protocol_ == url::protocol::ftp ? states::protocol_p : states::protocol_t2;
-        else if ((c == 'c' || c == 'C') && protocol_ == url::protocol::icq && (!build::is_biz() && !build::is_dit())) state_ = states::protocol_c;
-        else if ((c == 'a' || c == 'A') && protocol_ == url::protocol::agent && (!build::is_biz() && !build::is_dit())) state_ = states::protocol_a;
-        else if ((c == 'y' || c == 'Y') && build::is_biz()) { protocol_ = url::protocol::biz; state_ = states::protocol_y; }
+        else if ((c == 'c' || c == 'C') && protocol_ == url::protocol::icq && is_supported_scheme("icq")) state_ = states::protocol_c;
+        else if ((c == 'a' || c == 'A') && protocol_ == url::protocol::agent && is_supported_scheme("magent")) state_ = states::protocol_a;
+        else if ((c == 'y' || c == 'Y') && is_supported_scheme("myteam-messenger")) { protocol_ = url::protocol::biz; state_ = states::protocol_y; }
         else if (is_space(c, is_utf8_)) URL_PARSER_RESET_PARSER
         else { protocol_ = url::protocol::undefined; URL_PARSER_SET_STATE_AND_REPROCESS(states::host) }
         break;
@@ -414,7 +431,7 @@ void common::tools::url_parser::process()
         else { protocol_ = url::protocol::undefined; URL_PARSER_SET_STATE_AND_REPROCESS(states::host) }
         break;
     case states::protocol_d:
-        if (c == '-' && build::is_dit()) { protocol_ = url::protocol::dit; state_ = states::delimeter_dash; }
+        if (c == '-' && is_supported_scheme("itd-messenger")) { protocol_ = url::protocol::dit; state_ = states::delimeter_dash; }
         else if (is_space(c, is_utf8_)) URL_PARSER_RESET_PARSER
         else { protocol_ = url::protocol::undefined; URL_PARSER_SET_STATE_AND_REPROCESS(states::host) }
         break;
@@ -494,7 +511,7 @@ void common::tools::url_parser::process()
     case states::host_n:
         if (c == '.') state_ = states::host_dot;
         else if (c == ':') { if (!is_email_ && is_valid_top_level_domain(domain_)) state_ = states::host_colon; else URL_PARSER_RESET_PARSER }
-        else if (c == '@') { if (is_email_ || is_not_email_) URL_PARSER_RESET_PARSER else { state_ = states::host; is_email_ = true; } }
+        else if (c == '@') { if (is_email_ || is_not_email_) URL_PARSER_RESET_PARSER else if (is_black_list_email_host(domain_)) { break; } else { state_ = states::host; is_email_ = true; } }
         else if (c == '/') { if (!is_email_ && is_valid_top_level_domain(domain_)) state_ = states::host_slash; else URL_PARSER_RESET_PARSER }
         else if (c == '?') { if (is_email_) URL_PARSER_URI_FOUND else if (is_valid_top_level_domain(domain_)) state_ = states::query; else URL_PARSER_RESET_PARSER }
         else if (c == '#') { if (!is_email_ && is_valid_top_level_domain(domain_)) state_ = states::query; else URL_PARSER_RESET_PARSER }
@@ -502,12 +519,13 @@ void common::tools::url_parser::process()
         else if (is_ending_char(c)) { if (is_valid_top_level_domain(domain_)) URL_PARSER_URI_FOUND else URL_PARSER_RESET_PARSER }
         else if (c == RIGHT_DOUBLE_QUOTE[0] && char_size_ == 2 && char_buf_[1] == RIGHT_DOUBLE_QUOTE[1]) { if (is_valid_top_level_domain(domain_)) URL_PARSER_URI_FOUND else URL_PARSER_RESET_PARSER }
         else if (c == RIGHT_QUOTE[0] && char_size_ == 3 && char_buf_[1] == RIGHT_QUOTE[1] && char_buf_[2] == RIGHT_QUOTE[2]) { if (is_valid_top_level_domain(domain_)) URL_PARSER_URI_FOUND else URL_PARSER_RESET_PARSER }
-        else if (!is_letter_or_digit(c, is_utf8_) && c != '-') URL_PARSER_RESET_PARSER
+        else if (!is_letter_or_digit(c, is_utf8_) && c != '-' && c != '_') URL_PARSER_RESET_PARSER
         else save_char_buf(domain_);
         break;
     case states::host_at:
         if (!is_allowable_char(c, is_utf8_)) URL_PARSER_RESET_PARSER
         else if (protocol_ != url::protocol::undefined) state_ = states::host;
+        else if (is_black_list_email_host(domain_)) break;
         else if (is_email_ || is_not_email_) URL_PARSER_RESET_PARSER
         else { state_ = states::host; is_email_ = true; }
         break;
@@ -973,7 +991,7 @@ bool common::tools::url_parser::save_url()
     if (char_size_ == 2 && char_buf_[0] == NBSP_FIRST && char_buf_[1] == NBSP_SECOND)
         ++tail_size_;
 
-    if (is_email_ && protocol_ == url::protocol::undefined)
+    if (is_email_ && protocol_ == url::protocol::undefined && is_valid_top_level_domain(domain_))
     {
         url_ = make_url(common::tools::url::type::email);
     }
@@ -1155,6 +1173,7 @@ bool common::tools::url_parser::is_ending_char(char _c) const
     case '>': return true;
     case ']': return true;
     case ')': return true;
+    case '}': return true;
     case ';': return true;
     }
     return false;
@@ -1201,11 +1220,12 @@ bool common::tools::url_parser::is_ipv4_segment(const std::string& _name) const
 
 void common::tools::url_parser::init_fixed_urls_compare()
 {
+    constexpr std::string_view get = "/get";
     for (const auto& url : files_urls_)
     {
         compare_item item;
-        item.str = url + GET_SUFFIX;
-        item.safe_pos = url.size() - 1;
+        item.str = url + '/';
+        item.safe_pos = url.size() - get.size() - 1;
         item.ok_state = states::filesharing_id;
         fixed_urls_.push_back(std::move(item));
     }

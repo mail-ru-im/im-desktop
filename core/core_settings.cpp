@@ -119,13 +119,12 @@ bool core_settings::unserialize(const rapidjson::Value& _node)
 
 bool core_settings::load_exported()
 {
-    core::tools::binary_stream bstream_exported;
-    if (bstream_exported.load_from_file(file_name_exported_))
+    if (tools::binary_stream bstream_exported; bstream_exported.load_from_file(file_name_exported_))
     {
         bstream_exported.write<char>('\0');
 
         rapidjson::Document doc;
-        if (!doc.Parse(bstream_exported.read_available()).HasParseError())
+        if (!doc.ParseInsitu(bstream_exported.read_available()).HasParseError())
         {
             if (unserialize(doc))
             {

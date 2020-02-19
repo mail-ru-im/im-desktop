@@ -11,4 +11,6 @@
 
 - (void) setFrameWithSize : (CGImageRef) image size : (NSSize) size;
 
+- (BOOL) acceptsFirstMouse : (NSEvent*) theEvent;
+
 @end

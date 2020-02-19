@@ -25,6 +25,7 @@ namespace core
 
 #define WIM_CAP_VOIP_VOICE         "094613504c7f11d18222444553540000"
 #define WIM_CAP_VOIP_VIDEO         "094613514c7f11d18222444553540000"
+#define WIM_CAP_FOCUS_GROUP_CALLS  "094613503c7f11d18222444553540000"
 #define WIM_CAP_FILETRANSFER       "094613434c7f11d18222444553540000"
 #define WIM_CAP_UNIQ_REQ_ID        "094613534c7f11d18222444553540000"
 #define WIM_CAP_EMOJI              "094613544c7f11d18222444553540000"
@@ -33,6 +34,7 @@ namespace core
 #define WIM_CAP_INTRO_DLG_STATE    "0946135a4c7f11d18222444553540000"
 #define WIM_CAP_CHAT_HEADS         "0946135c4c7f11d18222444553540000"
 #define WIM_CAP_GALLERY_NOTIFY     "0946135e4c7f11d18222444553540000"
+#define WIM_CAP_GROUP_SUBSCRIPTION "1f99494e76cbc880215d6aeab8e42268"
 
 #define SAAB_SESSION_OLDER_THAN_AUTH_UPDATE          1010
 
@@ -168,6 +170,7 @@ namespace core
             proxy_settings proxy_;
             bool full_log_;
             int64_t nonce_;
+            std::string locale_;
 
             wim_packet_params(
                 std::function<bool()> _stop_handler,
@@ -180,7 +183,8 @@ namespace core
                 const time_t _time_offset,
                 const time_t _time_offset_local,
                 const proxy_settings& _proxy,
-                const bool _full_log)
+                const bool _full_log,
+                const std::string& _locale)
                 :
                 stop_handler_(std::move(_stop_handler)),
                 a_token_(_a_token),
@@ -192,7 +196,8 @@ namespace core
                 uniq_device_id_(_uniq_device_id),
                 aimid_(_aimid),
                 proxy_(_proxy),
-                full_log_(_full_log)
+                full_log_(_full_log),
+                locale_(_locale)
             {
                 static int64_t nonce_counter = 0;
                 nonce_ = ++nonce_counter;
@@ -222,6 +227,7 @@ namespace core
 
             static bool is_network_error_or_canceled(const int32_t _error) noexcept;
             static bool is_timeout_error(const int32_t _error) noexcept;
+            bool has_valid_token() const;
 
         public:
             using handler_t = std::function<void (int32_t _result)>;
@@ -258,6 +264,7 @@ namespace core
 
         public:
 
+            virtual bool is_valid() const { return has_valid_token(); };
             virtual bool support_async_execution() const;
 
             int32_t execute() override final;
@@ -269,7 +276,6 @@ namespace core
             static std::string format_get_params(const str_2_str_map& _params);
             static std::string detect_digest(const std::string& hashed_data, const std::string& session_key);
             static std::string create_query_from_map(const str_2_str_map& params);
-            static void replace_log_messages(tools::binary_stream& _bs);
 
             virtual std::shared_ptr<core::tools::binary_stream> getRawData() { return nullptr; }
             uint32_t get_status_code() const { return status_code_; }
@@ -287,23 +293,26 @@ namespace core
             wim_packet(wim_packet_params _params);
             virtual ~wim_packet();
         };
-
-        bool is_new_avatar_rapi();
     }
 
     class log_replace_functor
     {
-        using range_evaluator = std::function<std::pair<size_t, size_t>(std::string_view s)>;
+        using range_evaluator = std::function<std::pair<std::ptrdiff_t, std::ptrdiff_t>(std::string_view s)>;
         using marker_item = std::pair<std::string, range_evaluator>;
         public:
             void add_marker(std::string_view _marker, range_evaluator _re = nullptr);
-            void add_url_marker(const char* _marker, range_evaluator _re = nullptr);
-            void add_json_marker(const char* _marker, range_evaluator _re = nullptr);
-            void add_json_array_marker(const char* _marker, range_evaluator _re = nullptr);
-            void operator()(tools::binary_stream& _bs);
+            void add_url_marker(std::string_view _marker, range_evaluator _re = nullptr);
+            void add_json_marker(std::string_view _marker, range_evaluator _re = nullptr);
+            void add_json_array_marker(std::string_view _marker, range_evaluator _re = nullptr);
+
+            void add_message_markers();
+
+            void operator()(tools::binary_stream& _bs) const;
+
+            bool is_null() const;
 
         private:
-            void replace(char *c);
+            static void replace(char *c);
 
             std::vector<marker_item> markers_;
             std::vector<marker_item> markers_json_;
@@ -313,7 +322,7 @@ namespace core
     class aimsid_range_evaluator
     {
     public:
-        std::pair<size_t, size_t> operator()(std::string_view s) const;
+        std::pair<std::ptrdiff_t, std::ptrdiff_t> operator()(std::string_view s) const;
     };
 
     class tail_from_last_range_evaluator
@@ -321,10 +330,21 @@ namespace core
     public:
         tail_from_last_range_evaluator(const char _chr);
 
-        std::pair<size_t, size_t> operator()(std::string_view _str) const;
+        std::pair<std::ptrdiff_t, std::ptrdiff_t> operator()(std::string_view _str) const;
 
     private:
         const char chr_;
+    };
+
+    class distance_range_evaluator
+    {
+    public:
+        distance_range_evaluator(std::ptrdiff_t _distance);
+
+        std::pair<std::ptrdiff_t, std::ptrdiff_t> operator()(std::string_view _str) const;
+
+    private:
+        const std::ptrdiff_t distance_;
     };
 }
 

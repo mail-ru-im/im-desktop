@@ -42,16 +42,12 @@ namespace Ui
         pimpl->scaledImage = pimpl->imageForCropping.scaled(QSize(width_, height_), Qt::KeepAspectRatio, Qt::SmoothTransformation);
 
         if (height_ != pimpl->scaledImage.height())
-        {
             height_ = pimpl->scaledImage.height();
-        }
 
         if (width_ != pimpl->scaledImage.width())
-        {
             width_ = pimpl->scaledImage.width();
-        }
-        this->setMinimumSize(width_, height_);
-        this->setFixedSize(width_, height_);
+
+        setFixedSize(width_, height_);
 
         // NOTE : not need scale min_size here, before it will be scaled with image
         minScaledSize_ = Utils::scale_value(MIN_SIZE);
@@ -172,6 +168,7 @@ namespace Ui
                 widgetPainter.drawPixmap( 0, ( this->height() - pimpl->scaledImage.height() ) / 2, pimpl->scaledImage );
             }
         }
+        widgetPainter.setRenderHint(QPainter::Antialiasing);
 
         {
             // if it's first showing, center crop area
@@ -190,7 +187,8 @@ namespace Ui
 
             // shadow area
             QPainterPath p;
-            p.addRect(pimpl->croppingRect);
+            const auto radius = pimpl->croppingRect.height();
+            p.addRoundedRect(pimpl->croppingRect, radius, radius);
             p.addRect(this->rect());
             QColor foggingColor(ql1s("#000000"));
             foggingColor.setAlphaF(0.6);

@@ -6,6 +6,7 @@
 #include "../../core_dispatcher.h"
 #include "../../controls/ContextMenu.h"
 #include "../../controls/SwitcherCheckbox.h"
+#include "../../controls/CheckboxList.h"
 #include "../../fonts.h"
 #include "../../app_config.h"
 #include "../../utils/utils.h"
@@ -69,6 +70,11 @@ namespace
     const auto CLICKABLE_AVATAR_INFO_OFFSET = 8;
     const auto NAME_OFFSET = 2;
     const auto MEMBERS_WIDGET_BOTTOM_OFFSET = 8;
+
+    const int BLOCK_AND_DELETE_HOR_OFFSET = 16;
+    const int BLOCK_AND_DELETE_TOP_OFFSET = 16;
+    const int BLOCK_AND_DELETE_ADD_OFFSET = 6;
+    const int BLOCK_AND_DELETE_BOTTOM_OFFSET = 16;
 
     QMap<QString, QVariant> makeData(const QString& _command, qint64 _msg, const QString& _link, const QString& _sender, time_t _time)
     {
@@ -357,7 +363,7 @@ namespace Ui
         name_->setText(friendlyName_);
         name_->elide(width() - margins_.left() - margins_.right() - avatarSize_ - textOffset_ - (clickable_ ? Utils::scale_value(ICON_SIZE + ICON_OFFSET) : 0));
 
-        avatar_ = *(Logic::GetAvatarStorage()->GetRounded(aimId_, friendlyName_, Utils::scale_bitmap(avatarSize_), QString(), defaultAvatar_, false, false));
+        avatar_ = *(Logic::GetAvatarStorage()->GetRounded(aimId_, friendlyName_, Utils::scale_bitmap(avatarSize_), defaultAvatar_, false, false));
         Utils::check_pixel_ratio(avatar_);
         update();
     }
@@ -389,6 +395,7 @@ namespace Ui
     void AvatarNameInfo::paintEvent(QPaintEvent* _event)
     {
         QPainter p(this);
+        p.setRenderHints(QPainter::SmoothPixmapTransform | QPainter::Antialiasing | QPainter::TextAntialiasing);
         if (clickable_)
         {
             if (hovered_)
@@ -409,7 +416,7 @@ namespace Ui
         }
 
         if (!avatar_.isNull())
-            Utils::drawAvatarWithBadge(p, QPoint(margins_.left(), height() / 2 - avatarSize_ / 2), avatar_, aimId_, true);
+            Utils::drawAvatarWithBadge(p, QPoint(margins_.left(), height() / 2 - avatarSize_ / 2), avatar_, aimId_, false, false, false);
 
         if (nameOnly_)
             name_->setOffsets(margins_.left() + avatarSize_ + textOffset_, height() / 2);
@@ -492,7 +499,7 @@ namespace Ui
 
     void AvatarNameInfo::avatarChanged(const QString& aimId)
     {
-        if (aimId != aimId_)
+        if (aimId != aimId_ || aimId.isEmpty())
             return;
 
         loadAvatar();
@@ -511,7 +518,7 @@ namespace Ui
 
     void AvatarNameInfo::loadAvatar()
     {
-        avatar_ = *(Logic::GetAvatarStorage()->GetRounded(aimId_, friendlyName_, Utils::scale_bitmap(avatarSize_), QString(), defaultAvatar_, false, false));
+        avatar_ = *(Logic::GetAvatarStorage()->GetRounded(aimId_, friendlyName_, Utils::scale_bitmap(avatarSize_), defaultAvatar_, false, false));
         Utils::check_pixel_ratio(avatar_);
         update();
     }
@@ -525,7 +532,7 @@ namespace Ui
         , cursorForText_(false)
         , menu_(nullptr)
     {
-        text_ = TextRendering::MakeTextUnit(QString(), Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS);
+        text_ = TextRendering::MakeTextUnit(QString(), Data::MentionMap());
         collapsedText_ = TextRendering::MakeTextUnit(QString(), Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
         readMore_ = TextRendering::MakeTextUnit(QT_TRANSLATE_NOOP("sidebar", "Read more"));
 
@@ -595,6 +602,33 @@ namespace Ui
         update();
     }
 
+    void TextLabel::unsetCursorForText()
+    {
+        cursorForText_ = false;
+        update();
+    }
+
+    void TextLabel::setColor(const QColor& _color)
+    {
+        text_->setColor(_color);
+        update();
+    }
+
+    void TextLabel::setLinkColor(const QColor& _color)
+    {
+        text_->setLinkColor(_color);
+        update();
+    }
+
+    void TextLabel::clearMenuActions()
+    {
+        if (menu_)
+        {
+            menu_->deleteLater();
+            menu_ = nullptr;
+        }
+    }
+
     void TextLabel::addMenuAction(const QString& _iconPath, const QString& _name, const QVariant& _data)
     {
         if (!menu_)
@@ -618,6 +652,11 @@ namespace Ui
         update();
     }
 
+    QString TextLabel::getText() const
+    {
+        return text_->getText();
+    }
+
     void TextLabel::paintEvent(QPaintEvent* _event)
     {
         QPainter p(this);
@@ -637,8 +676,8 @@ namespace Ui
                 static auto shareHover = Utils::renderSvgScaled(qsl(":/share_icon"), QSize(ICON_SIZE, ICON_SIZE), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY_HOVER));
                 static auto shareActive = Utils::renderSvgScaled(qsl(":/share_icon"), QSize(ICON_SIZE, ICON_SIZE), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY_ACTIVE));
 
-                auto copyRect = QRect(width() - Utils::scale_value(ICON_SIZE) * 4, margins_.top(), Utils::scale_value(ICON_SIZE), Utils::scale_value(ICON_SIZE));
-                auto shareRect = QRect(width() - Utils::scale_value(ICON_SIZE) * 2, margins_.top(), Utils::scale_value(ICON_SIZE), Utils::scale_value(ICON_SIZE));
+                const auto copyRect = QRect(width() - Utils::scale_value(ICON_SIZE) * 4, margins_.top(), Utils::scale_value(ICON_SIZE), Utils::scale_value(ICON_SIZE));
+                const auto shareRect = QRect(width() - Utils::scale_value(ICON_SIZE) * 2, margins_.top(), Utils::scale_value(ICON_SIZE), Utils::scale_value(ICON_SIZE));
 
                 if (copyRect.contains(mapFromGlobal(QCursor::pos())))
                 {
@@ -744,19 +783,20 @@ namespace Ui
                 }
                 else
                 {
-                    if (text_->contains(_event->pos()))
-                        emit textClicked();
-
+                    bool buttonWasClicked = false;
                     if (buttonsVisible_)
                     {
                         auto copyRect = QRect(width() - Utils::scale_value(ICON_SIZE) * 4, margins_.top(), Utils::scale_value(ICON_SIZE), Utils::scale_value(ICON_SIZE));
-                        if (copyRect.contains(_event->pos()))
+                        if (copyRect.contains(_event->pos()) && !std::exchange(buttonWasClicked, true))
                             emit copyClicked(text_->getSourceText());
 
                         auto shareRect = QRect(width() - Utils::scale_value(ICON_SIZE) * 2, margins_.top(), Utils::scale_value(ICON_SIZE), Utils::scale_value(ICON_SIZE));
-                        if (shareRect.contains(_event->pos()))
+                        if (shareRect.contains(_event->pos()) && !std::exchange(buttonWasClicked, true))
                             emit shareClicked();
                     }
+
+                    if (!buttonWasClicked && text_->contains(_event->pos()))
+                        emit textClicked();
                 }
             }
         }
@@ -837,6 +877,16 @@ namespace Ui
     void InfoBlock::setText(const QString& _text, const QColor& _color)
     {
         text_->setText(_text, _color);
+    }
+
+    void InfoBlock::setTextLinkColor(const QColor& _color)
+    {
+        text_->setLinkColor(_color);
+    }
+
+    void InfoBlock::setHeaderLinkColor(const QColor& _color)
+    {
+        header_->setLinkColor(_color);
     }
 
     bool InfoBlock::isVisible() const
@@ -948,7 +998,7 @@ namespace Ui
 
         if (command == ql1s("go_to"))
         {
-            emit Logic::getContactListModel()->select(aimId_, msg, msg, Logic::UpdateChatSelection::Yes);
+            emit Logic::getContactListModel()->select(aimId_, msg, Logic::UpdateChatSelection::Yes);
         }
         if (command == ql1s("forward"))
         {
@@ -972,8 +1022,8 @@ namespace Ui
             QString text = QT_TRANSLATE_NOOP("popup_window", "Are you sure you want to delete message?");
 
             auto confirm = Utils::GetConfirmationWithTwoButtons(
-                QT_TRANSLATE_NOOP("popup_window", "CANCEL"),
-                QT_TRANSLATE_NOOP("popup_window", "YES"),
+                QT_TRANSLATE_NOOP("popup_window", "Cancel"),
+                QT_TRANSLATE_NOOP("popup_window", "Yes"),
                 text,
                 QT_TRANSLATE_NOOP("popup_window", "Delete message"),
                 nullptr
@@ -982,7 +1032,7 @@ namespace Ui
             if (confirm)
             {
                 const auto is_shared = (command == ql1s("delete_all"));
-                GetDispatcher()->deleteMessage(msg, QString(), aimId_, is_shared);
+                GetDispatcher()->deleteMessages(aimId_, { DeleteMessageInfo(msg, QString(), is_shared) });
             }
         }
     }
@@ -1172,7 +1222,7 @@ namespace Ui
     void MembersPlate::initSearchLabel(const QFont& _font, const QColor& _color)
     {
         search_->init(_font, _color);
-        search_->setText(QT_TRANSLATE_NOOP("sidebar", "SEARCH"));
+        search_->setText(QT_TRANSLATE_NOOP("sidebar", "Search"));
     }
 
     void MembersPlate::paintEvent(QPaintEvent* _event)
@@ -1509,7 +1559,6 @@ namespace Ui
             name_->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Preferred);
             name_->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
             name_->setTextInteractionFlags(Qt::TextEditable | Qt::TextEditorInteraction);
-            name_->setCatchEnter(false);
             name_->setFrameStyle(QFrame::NoFrame);
             name_->document()->setDocumentMargin(0);
             name_->addSpace(Utils::scale_value(4));
@@ -1539,8 +1588,7 @@ namespace Ui
             description_->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Preferred);
             description_->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
             description_->setTextInteractionFlags(Qt::TextEditable | Qt::TextEditorInteraction);
-            description_->setCatchEnter(false);
-            description_->setCatchNewLine(true);
+            description_->setEnterKeyPolicy(TextEditEx::EnterKeyPolicy::CatchNewLine);
             description_->setFrameStyle(QFrame::NoFrame);
             description_->document()->setDocumentMargin(0);
             description_->addSpace(Utils::scale_value(4));
@@ -1569,8 +1617,7 @@ namespace Ui
             rules_->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Preferred);
             rules_->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
             rules_->setTextInteractionFlags(Qt::TextEditable | Qt::TextEditorInteraction);
-            rules_->setCatchEnter(false);
-            rules_->setCatchNewLine(true);
+            rules_->setEnterKeyPolicy(TextEditEx::EnterKeyPolicy::CatchNewLine);
             rules_->setFrameStyle(QFrame::NoFrame);
             rules_->document()->setDocumentMargin(0);
             rules_->addSpace(Utils::scale_value(4));
@@ -1643,7 +1690,7 @@ namespace Ui
         w->init(_aimid, _name, _description, _rules);
 
         auto generalDialog = std::make_unique<GeneralDialog>(w, Utils::InterConnector::instance().getMainWindow());
-        generalDialog->addButtonsPair(QT_TRANSLATE_NOOP("report_widget", "CANCEL"), QT_TRANSLATE_NOOP("report_widget", "OK"), true);
+        generalDialog->addButtonsPair(QT_TRANSLATE_NOOP("report_widget", "Cancel"), QT_TRANSLATE_NOOP("report_widget", "OK"), true);
         if (generalDialog->showInCenter())
         {
             _name = w->name();
@@ -1664,7 +1711,7 @@ namespace Ui
 
         auto generalDialog = std::make_unique<GeneralDialog>(w, Utils::InterConnector::instance().getMainWindow());
         generalDialog->addLabel(QT_TRANSLATE_NOOP("sidebar", "Contact name"));
-        generalDialog->addButtonsPair(QT_TRANSLATE_NOOP("report_widget", "CANCEL"), QT_TRANSLATE_NOOP("report_widget", "OK"), true);
+        generalDialog->addButtonsPair(QT_TRANSLATE_NOOP("report_widget", "Cancel"), QT_TRANSLATE_NOOP("report_widget", "OK"), true);
         if (generalDialog->showInCenter())
             return w->name();
 
@@ -1682,17 +1729,14 @@ namespace Ui
                 avatar = avatar.scaledToHeight(1024, Qt::SmoothTransformation);
         }
 
-        auto quality = 75;
         QByteArray result;
         do
         {
             result.clear();
             QBuffer buffer(&result);
-            avatar.save(&buffer, "jpg", quality);
-            if (quality > 0)
-                quality -= 10;
-            else
-                avatar = avatar.scaled(avatar.size() / 2, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+            avatar.save(&buffer, "png");
+            avatar = avatar.scaled(avatar.size() / 2, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+
         } while (result.size() > 8 * 1024 * 1024);
 
         return result;
@@ -1708,7 +1752,7 @@ namespace Ui
         auto w = new AvatarNameInfo(_parent);
         w->setMargins(Utils::scale_value(HOR_OFFSET), 0, Utils::scale_value(HOR_OFFSET), 0);
         w->setTextOffset(Utils::scale_value(AVATAR_NAME_OFFSET));
-        w->initName(Fonts::appFontScaled(16, Fonts::FontWeight::SemiBold), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
+        w->initName(Fonts::appFontScaled(16, platform::is_apple() ? Fonts::FontWeight::Medium : Fonts::FontWeight::Normal), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
         w->initInfo(Fonts::appFontScaled(14), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
         w->setFixedHeight(Utils::scale_value(AVATAR_INFO_HEIGHT));
         _layout->addWidget(w);
@@ -1727,10 +1771,10 @@ namespace Ui
         return label;
     }
 
-    TextLabel* addText(const QString& _text, QWidget* _parent, QLayout* _layout)
+    TextLabel* addText(const QString& _text, QWidget* _parent, QLayout* _layout, int _addLeftOffset, int _maxLineNumbers)
     {
-        TextLabel* label = new TextLabel(_parent, MAX_INFO_LINES_COUNT);
-        label->setMargins(Utils::scale_value(HOR_OFFSET), 0, Utils::scale_value(HOR_OFFSET), 0);
+        TextLabel* label = new TextLabel(_parent, _maxLineNumbers == 0 ? MAX_INFO_LINES_COUNT : _maxLineNumbers);
+        label->setMargins(Utils::scale_value(HOR_OFFSET) + _addLeftOffset, 0, Utils::scale_value(HOR_OFFSET), 0);
         label->init(Fonts::appFontScaled(16), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY));
         label->setText(_text);
         _layout->addWidget(label);
@@ -1738,15 +1782,15 @@ namespace Ui
         return label;
     }
 
-    std::unique_ptr<InfoBlock> addInfoBlock(const QString& _header, const QString& _text, QWidget* _parent, QLayout* _layout)
+    std::unique_ptr<InfoBlock> addInfoBlock(const QString& _header, const QString& _text, QWidget* _parent, QLayout* _layout, int _addLeftOffset)
     {
         auto infoBlock = std::make_unique<InfoBlock>();
-        infoBlock->header_ = addLabel(_header, _parent, _layout);
+        infoBlock->header_ = addLabel(_header, _parent, _layout, _addLeftOffset);
         {
             auto m = infoBlock->header_->getMargins();
             infoBlock->header_->setMargins(m.left(), m.top(), m.right(), Utils::scale_value(INFO_HEADER_BOTTOM_MARGIN));
         }
-        infoBlock->text_ = addText(_text, _parent, _layout);
+        infoBlock->text_ = addText(_text, _parent, _layout, _addLeftOffset);
         {
             auto m = infoBlock->text_->getMargins();
             infoBlock->text_->setMargins(m.left(), m.top(), m.right(), Utils::scale_value(INFO_TEXT_BOTTOM_MARGIN));
@@ -1777,7 +1821,7 @@ namespace Ui
         w->setMargins(Utils::scale_value(BUTTON_HOR_OFFSET), 0, Utils::scale_value(HOR_OFFSET), 0);
         w->setTextOffset(Utils::scale_value(HOR_OFFSET));
         w->setIcon(Utils::renderSvgScaled(_icon, QSize(BUTTON_ICON_SIZE, BUTTON_ICON_SIZE), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY)));
-        w->initText(Fonts::appFontScaled(15), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
+        w->initText(Fonts::appFontScaledFixed(15), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
         w->setText(_text);
         w->initCounter(Fonts::appFontScaled(16), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
         w->setColors(Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT_INVERSE));
@@ -1791,8 +1835,12 @@ namespace Ui
         auto w = new SidebarCheckboxButton(_parent);
         w->setFixedHeight(Utils::scale_value(BUTTON_HEIGHT));
         w->setMargins(Utils::scale_value(BUTTON_HOR_OFFSET), 0, Utils::scale_value(HOR_OFFSET), 0);
-        w->setTextOffset(Utils::scale_value(HOR_OFFSET));
-        w->setIcon(Utils::renderSvgScaled(_icon, QSize(BUTTON_ICON_SIZE, BUTTON_ICON_SIZE), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY)));
+        if (!_icon.isEmpty())
+        {
+            w->setTextOffset(Utils::scale_value(HOR_OFFSET));
+            w->setIcon(Utils::renderSvgScaled(_icon, QSize(BUTTON_ICON_SIZE, BUTTON_ICON_SIZE), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY)));
+        }
+
         w->initText(Fonts::appFontScaled(15), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
         w->setText(_text);
         w->initCounter(Fonts::appFontScaled(16), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
@@ -1817,8 +1865,8 @@ namespace Ui
     {
         auto w = new MembersPlate(_parent);
         w->setMargins(Utils::scale_value(MEMBERS_LEFT_MARGIN), Utils::scale_value(MEMBERS_TOP_MARGIN), Utils::scale_value(MEMBERS_RIGHT_MARGIN), Utils::scale_value(MEMBERS_BOTTOM_MARGIN));
-        w->initMembersLabel(Fonts::appFontScaled(12, Fonts::FontWeight::SemiBold), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
-        w->initSearchLabel(Fonts::appFontScaled(12, Fonts::FontWeight::SemiBold), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY));
+        w->initMembersLabel(Fonts::appFontScaledFixed(12, Fonts::FontWeight::SemiBold), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
+        w->initSearchLabel(Fonts::appFontScaledFixed(12, Fonts::FontWeight::SemiBold), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY));
         _layout->addWidget(w);
 
         return w;
@@ -1848,7 +1896,8 @@ namespace Ui
         w->setText(_text);
 
         const auto diff = _iconSize.isValid() ? (_iconSize.width() - BUTTON_ICON_SIZE) / 2 : 0;
-        w->setTextOffset(Utils::scale_value(COLORED_BUTTON_TEXT_OFFSET - diff));
+        if (diff != 0)
+            w->setTextOffset(Utils::scale_value(COLORED_BUTTON_TEXT_OFFSET - diff));
         _layout->addWidget(w);
 
         return w;
@@ -1894,5 +1943,43 @@ namespace Ui
         galleryFiles_->setCounter(_files);
         galleryLinks_->setCounter(_links);
         galleryPtt_->setCounter(_ptt);
+    }
+
+    BlockAndDeleteWidget::BlockAndDeleteWidget(QWidget* _parent, const QString& _friendly, const QString& _chatAimid)
+        : QWidget(_parent)
+        , removeMessages_(false)
+    {
+        checkbox_ = new Ui::CheckBox(this);
+        checkbox_->setText(QT_TRANSLATE_NOOP("block_and_delete", "Delete messages"));
+        checkbox_->setChecked(removeMessages_);
+        checkbox_->move(Utils::scale_value(BLOCK_AND_DELETE_HOR_OFFSET), Utils::scale_value(BLOCK_AND_DELETE_TOP_OFFSET));
+
+        auto isChannel = Logic::getContactListModel()->isChannel(_chatAimid);
+
+        label_ = Ui::TextRendering::MakeTextUnit(isChannel ? QT_TRANSLATE_NOOP("block_and_delete", "This member won't be able to join the channel again. You could also delete his messages")
+            : QT_TRANSLATE_NOOP("block_and_delete", "This member won't be able to join the group again. You could also delete his messages"));
+        label_->init(Fonts::appFontScaled(15), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
+    }
+
+    void BlockAndDeleteWidget::paintEvent(QPaintEvent* _event)
+    {
+        QPainter p(this);
+        label_->setOffsets(Utils::scale_value(BLOCK_AND_DELETE_HOR_OFFSET), checkbox_->height() + Utils::scale_value(BLOCK_AND_DELETE_TOP_OFFSET + BLOCK_AND_DELETE_ADD_OFFSET));
+        label_->draw(p);
+
+        return QWidget::paintEvent(_event);
+    }
+
+    bool BlockAndDeleteWidget::needToRemoveMessages() const
+    {
+        return checkbox_->isChecked();
+    }
+
+    void BlockAndDeleteWidget::resizeEvent(QResizeEvent* _event)
+    {
+        const auto maxWidth = _event->size().width() - Utils::scale_value(BLOCK_AND_DELETE_HOR_OFFSET * 2);
+        checkbox_->setFixedWidth(maxWidth);
+        setFixedHeight(label_->getHeight(maxWidth) + Utils::scale_value(BLOCK_AND_DELETE_TOP_OFFSET + BLOCK_AND_DELETE_BOTTOM_OFFSET + BLOCK_AND_DELETE_ADD_OFFSET) + checkbox_->height());
+        return QWidget::resizeEvent(_event);
     }
 }

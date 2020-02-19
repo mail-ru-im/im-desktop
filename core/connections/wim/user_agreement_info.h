@@ -25,6 +25,8 @@ namespace core
 //            bool unserialize(core::tools::binary_stream& _data);
 
             std::vector<agreement_type> need_to_accept_types_;
+
+            bool operator==(const user_agreement_info& _right) const;
         };
     }
 }

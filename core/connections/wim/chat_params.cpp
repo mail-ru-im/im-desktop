@@ -34,6 +34,11 @@ void chat_params::set_rules(const std::string& _rules)
     rules_ = _rules;
 }
 
+void chat_params::set_stamp(const std::string& _stamp)
+{
+    stamp_ = _stamp;
+}
+
 void chat_params::set_public(bool _public)
 {
     public_ = _public;
@@ -54,6 +59,11 @@ void chat_params::set_readOnly(bool _readOnly)
     readOnly_ = _readOnly;
 }
 
+void core::wim::chat_params::set_isChannel(bool _isChannel)
+{
+    isChannel_ = _isChannel;
+}
+
 chat_params chat_params::create(const core::coll_helper& _params)
 {
     auto result = chat_params();
@@ -71,5 +81,10 @@ chat_params chat_params::create(const core::coll_helper& _params)
         result.set_joiningByLink(_params.get_value_as_bool("link"));
     if (_params.is_value_exist("ro"))
         result.set_readOnly(_params.get_value_as_bool("ro"));
+    if (_params.is_value_exist("stamp"))
+        result.set_stamp(_params.get_value_as_string("stamp"));
+    if (_params.is_value_exist("is_channel"))
+        result.set_isChannel(_params.get_value_as_bool("is_channel"));
+
     return result;
 }

@@ -2,6 +2,7 @@
 
 #include "ButtonWithCircleHover.h"
 #include "controls/TooltipWidget.h"
+#include "InputWidgetUtils.h"
 
 namespace
 {
@@ -39,7 +40,17 @@ namespace Ui
         if (enableCircleHover_ != _val)
         {
             enableCircleHover_ = _val;
-            updateHoverCircle(containsCursorUnder());
+            updateHoverCircle(containsCursorUnder() && !underLongPress_);
+            setFocusColor(enableCircleHover_ ? Qt::transparent : focusColorPrimary());
+        }
+    }
+
+    void ButtonWithCircleHover::setUnderLongPress(bool _val)
+    {
+        if (underLongPress_ != _val)
+        {
+            underLongPress_ = _val;
+            update();
         }
     }
 
@@ -53,7 +64,7 @@ namespace Ui
         if (_hover != underMouse_)
         {
             underMouse_ = _hover;
-            updateHoverCircle(underMouse_);
+            updateHoverCircle(underMouse_ && !underLongPress_);
         }
     }
 
@@ -104,6 +115,40 @@ namespace Ui
             Tooltip::forceShow(true);
             Tooltip::show(t, QRect(mapToGlobal(r.topLeft()), r.size()), { -1, -1 }, Tooltip::ArrowDirection::Down);
         }
+    }
+
+    void ButtonWithCircleHover::keyPressEvent(QKeyEvent* _event)
+    {
+        if (!enableCircleHover_)
+            CustomButton::keyPressEvent(_event);
+    }
+
+    void ButtonWithCircleHover::keyReleaseEvent(QKeyEvent* _event)
+    {
+        if (enableCircleHover_)
+        {
+            _event->ignore();
+            if ((_event->key() == Qt::Key_Enter || _event->key() == Qt::Key_Return) && hasFocus())
+                emit clicked();
+        }
+        else
+        {
+            CustomButton::keyReleaseEvent(_event);
+        }
+    }
+
+    void ButtonWithCircleHover::focusInEvent(QFocusEvent* _event)
+    {
+        CustomButton::focusInEvent(_event);
+        if (enableCircleHover_ && qApp->mouseButtons() == Qt::MouseButton::NoButton)
+            updateHoverCircle(true);
+    }
+
+    void ButtonWithCircleHover::focusOutEvent(QFocusEvent* _event)
+    {
+        CustomButton::focusOutEvent(_event);
+        if (enableCircleHover_ && qApp->mouseButtons() == Qt::MouseButton::NoButton)
+            updateHoverCircle(false);
     }
 
     void ButtonWithCircleHover::showToolTip()

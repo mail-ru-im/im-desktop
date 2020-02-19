@@ -23,48 +23,37 @@ Ui::ResizeEventFilter::ResizeEventFilter(std::vector<QPointer<BaseVideoPanel>>& 
 bool Ui::ResizeEventFilter::eventFilter(QObject* _obj, QEvent* _e)
 {
     QWidget* parent = qobject_cast<QWidget*>(_obj);
-
-    if (parent &&
-        (_e->type() == QEvent::Resize ||
+    if (parent && (_e->type() == QEvent::Resize ||
         _e->type() == QEvent::Move ||
         _e->type() == QEvent::WindowActivate ||
         _e->type() == QEvent::NonClientAreaMouseButtonPress ||
         _e->type() == QEvent::ZOrderChange ||
         _e->type() == QEvent::ShowToParent ||
         _e->type() == QEvent::WindowStateChange ||
-        _e->type() == QEvent::UpdateRequest)) {
-
+        _e->type() == QEvent::UpdateRequest))
+    {
         const QRect rc = parent->geometry();
-
         bool bActive = parent->isActiveWindow();
 
         for (unsigned ix = 0; ix < panels_.size(); ix++)
         {
-            BaseVideoPanel* panel = panels_[ix];
+            auto panel = panels_[ix];
             if (!panel)
-            {
                 continue;
-            }
-
             bActive = bActive || panel->isActiveWindow();
-
             panel->updatePosition(*parent);
         }
-
         if (shadow_)
         {
             int shadowWidth = get_gui_settings()->get_shadow_width();
             shadow_->move(rc.topLeft().x() - shadowWidth, rc.topLeft().y() - shadowWidth);
             shadow_->resize(rc.width() + 2 * shadowWidth, rc.height() + 2 * shadowWidth);
-
             shadow_->setActive(bActive);
-
 #ifdef _WIN32
             SetWindowPos((HWND)shadow_->winId(), (HWND)parent->winId(), 0, 0, 0, 0, SWP_NOACTIVATE | SWP_NOOWNERZORDER | SWP_NOMOVE | SWP_NOSIZE);
 #endif
         }
     }
-
     return QObject::eventFilter(_obj, _e);
 }
 
@@ -77,8 +66,6 @@ void  Ui::ResizeEventFilter::removePanel(BaseVideoPanel* _panel)
 {
     panels_.erase(std::remove(panels_.begin(), panels_.end(), _panel), panels_.end());
 }
-
-
 
 Ui::ShadowWindowParent::ShadowWindowParent(QWidget* parent) : shadow_(nullptr)
 {
@@ -101,17 +88,13 @@ Ui::ShadowWindowParent::~ShadowWindowParent()
 void Ui::ShadowWindowParent::showShadow()
 {
     if (shadow_)
-    {
         shadow_->show();
-    }
 }
 
 void Ui::ShadowWindowParent::hideShadow()
 {
     if (shadow_)
-    {
         shadow_->hide();
-    }
 }
 
 Ui::ShadowWindow* Ui::ShadowWindowParent::getShadowWidget()
@@ -122,11 +105,10 @@ Ui::ShadowWindow* Ui::ShadowWindowParent::getShadowWidget()
 void Ui::ShadowWindowParent::setActive(bool _value)
 {
     if (shadow_)
-    {
         shadow_->setActive(_value);
-    }
 }
 
+#if 0
 Ui::AspectRatioResizebleWnd::AspectRatioResizebleWnd()
     : QWidget(NULL)
     //, firstTimeUseAspectRatio_(true)
@@ -140,7 +122,6 @@ Ui::AspectRatioResizebleWnd::AspectRatioResizebleWnd()
 
 Ui::AspectRatioResizebleWnd::~AspectRatioResizebleWnd()
 {
-
 }
 
 bool Ui::AspectRatioResizebleWnd::isInFullscreen() const
@@ -157,11 +138,9 @@ void Ui::AspectRatioResizebleWnd::switchFullscreen()
     if (!isInFullscreen())
     {
         showFullScreen();
-    }
-    else
+    } else
     {
         showNormal();
-
 #ifndef __linux__
         // Looks like under linux rect() return fullscreen window size and we cannot
         // resize window correct to normal size.
@@ -170,7 +149,6 @@ void Ui::AspectRatioResizebleWnd::switchFullscreen()
             const QRect rc = rect();
             const QPoint p = mapToGlobal(rc.topLeft());
             QRect endRc(p.x(), p.y(), rc.width(), rc.width() / aspectRatio_);
-
             selfResizeEffect_->geometryTo(endRc, 500);
         }
 #endif
@@ -185,7 +163,6 @@ void Ui::AspectRatioResizebleWnd::onVoipFrameSizeChanged(const voip_manager::Fra
         aspectRatio_ = _fs.aspect_ratio;
         fitMinimalSizeToAspect();
         applyFrameAspectRatio(wasAr);
-
 #ifdef __APPLE__
         platform_macos::setAspectRatioForWindow(*this, aspectRatio_);
 #endif
@@ -197,23 +174,17 @@ void Ui::AspectRatioResizebleWnd::applyFrameAspectRatio(float _wasAr)
     if (useAspect_ && aspectRatio_ > 0.001f && selfResizeEffect_ && !isInFullscreen())
     {
         QRect rc = rect();
-
 #ifndef __APPLE__
         const QPoint p = mapToGlobal(rc.topLeft());
 #else
         // On Mac we have wrong coords with mapToGlobal. Maybe because we attach own view to widnow.
         const QPoint p(x(), y());
 #endif
-
         QRect endRc;
         if (_wasAr > 0.001f && fabs((1.0f / aspectRatio_) - _wasAr) < 0.0001f)
-        {
             endRc = QRect(p.x(), p.y(), rc.height(), rc.width());
-        }
         else
-        {
             endRc = QRect(p.x(), p.y(), rc.width(), rc.width() / aspectRatio_);
-        }
 
         const QSize minSize = minimumSize();
         if (endRc.width() < minSize.width())
@@ -240,28 +211,23 @@ void Ui::AspectRatioResizebleWnd::applyFrameAspectRatio(float _wasAr)
             endRc.setRight(screenRect.right());
             endRc.setLeft(endRc.right() - w);
         }
-
         if (endRc.bottom() > screenRect.bottom())
         {
             const int h = endRc.height();
             endRc.setBottom(screenRect.bottom());
             endRc.setTop(endRc.bottom() - h);
         }
-
         if (screenRect.width() < endRc.width())
         {
             endRc.setLeft(screenRect.left());
             endRc.setRight(screenRect.right());
-
             const int h = endRc.width() / aspectRatio_;
             endRc.setTop(endRc.bottom() - h);
         }
-
         if (screenRect.height() < endRc.height())
         {
             endRc.setTop(screenRect.top());
             endRc.setBottom(screenRect.bottom());
-
             const int w = endRc.height() * aspectRatio_;
             endRc.setLeft(endRc.right() - w);
         }
@@ -280,7 +246,7 @@ void Ui::AspectRatioResizebleWnd::applyFrameAspectRatio(float _wasAr)
                     endRc.setBottom(endRc.top() + bestH);
                 }
             }
-            {/* NEED TO EXECUTE 2 TIMES, BECAUSE CALC FOR BEST W NOT MEANS USING BEST H*/
+            {   /* NEED TO EXECUTE 2 TIMES, BECAUSE CALC FOR BEST W NOT MEANS USING BEST H*/
                 const int bestH = 0.8f * screenRect.height();
                 if (endRc.height() > bestH)
                 {
@@ -294,7 +260,6 @@ void Ui::AspectRatioResizebleWnd::applyFrameAspectRatio(float _wasAr)
             }
             //firstTimeUseAspectRatio_ = false;
         }
-
         selfResizeEffect_->geometryTo(endRc, 500);
     }
 }
@@ -303,9 +268,7 @@ void Ui::AspectRatioResizebleWnd::keyReleaseEvent(QKeyEvent* _e)
 {
     QWidget::keyReleaseEvent(_e);
     if (_e->key() == Qt::Key_Escape)
-    {
         escPressed();
-    }
 }
 
 void Ui::AspectRatioResizebleWnd::useAspect()
@@ -322,7 +285,6 @@ void Ui::AspectRatioResizebleWnd::unuseAspect()
 {
     useAspect_ = false;
     setMinimumSize(originMinSize_);
-
 #ifdef __APPLE__
     platform_macos::unsetAspectRatioForWindow(*this);
 #endif
@@ -331,14 +293,11 @@ void Ui::AspectRatioResizebleWnd::unuseAspect()
 #ifdef _WIN32
 bool Ui::AspectRatioResizebleWnd::onWMSizing(RECT& _rc, unsigned _wParam)
 {
-    const int cw = _rc.right - _rc.left;
-    const int ch = _rc.bottom - _rc.top;
-
     if (!useAspect_ || aspectRatio_ < 0.001f)
-    {
         return false;
-    }
 
+    const int cw = _rc.right  - _rc.left;
+    const int ch = _rc.bottom - _rc.top;
     switch(_wParam)
     {
     case WMSZ_TOP:
@@ -348,11 +307,9 @@ bool Ui::AspectRatioResizebleWnd::onWMSizing(RECT& _rc, unsigned _wParam)
             if (w >= minimumWidth())
             {
                 _rc.right = _rc.left + w;
-            }
-            else
+            } else
             {
                 _rc.right = _rc.left + minimumWidth();
-
                 if (_wParam == WMSZ_BOTTOM)
                     _rc.bottom = _rc.top + minimumWidth() / aspectRatio_;
                 else
@@ -360,7 +317,6 @@ bool Ui::AspectRatioResizebleWnd::onWMSizing(RECT& _rc, unsigned _wParam)
             }
         }
         break;
-
     case WMSZ_LEFT:
     case WMSZ_RIGHT:
         {
@@ -368,7 +324,6 @@ bool Ui::AspectRatioResizebleWnd::onWMSizing(RECT& _rc, unsigned _wParam)
             _rc.bottom = _rc.top + h;
         }
         break;
-
     case WMSZ_TOPLEFT:
     case WMSZ_TOPRIGHT:
         {
@@ -376,7 +331,6 @@ bool Ui::AspectRatioResizebleWnd::onWMSizing(RECT& _rc, unsigned _wParam)
             _rc.top = _rc.bottom - h;
         }
         break;
-
     case WMSZ_BOTTOMLEFT:
     case WMSZ_BOTTOMRIGHT:
         {
@@ -384,10 +338,9 @@ bool Ui::AspectRatioResizebleWnd::onWMSizing(RECT& _rc, unsigned _wParam)
             _rc.bottom = _rc.top + h;
         }
         break;
-
-    default: return false;
+    default:
+        return false;
     }
-
     return true;
 }
 #endif
@@ -400,34 +353,13 @@ bool Ui::AspectRatioResizebleWnd::nativeEvent(const QByteArray&, void* _message,
     {
         if (msg->message == WM_SIZING)
         {
-            if (aspectRatio_ < 0.001f)
-            {
+            RECT *rc = (RECT*)msg->lParam;
+            if (!rc || aspectRatio_ < 0.001f)
                 return false;
-            }
-
-            RECT* rc = (RECT*)msg->lParam;
-            if (!rc)
-            {
-                return false;
-            }
-
             *_result = TRUE;
             return onWMSizing(*rc, msg->wParam);
-        }/* else if (msg->_message == WM_WINDOWPOSCHANGING) {
-            if (aspectRatio_ < 0.001f) {
-                return false;
-            }
-
-            WINDOWPOS* wp = (WINDOWPOS*)msg->lParam;
-            if (!wp) {
-                return false;
-            }
-
-            *_result = 0;
-            return _onWindowPosChanging(*wp);
-        }*/
+        }
     }
-#else
 #endif
     return false;
 }
@@ -443,25 +375,13 @@ void Ui::AspectRatioResizebleWnd::fitMinimalSizeToAspect()
     {
         int height = originMinSize_.width() / aspectRatio_;
         int width = originMinSize_.height() * aspectRatio_;
-
         if (height < originMinSize_.height())
-        {
             setMinimumSize(width, originMinSize_.height());
-        }
         else
-        {
             setMinimumSize(originMinSize_.width(), height);
-        }
     }
 }
-
-//void Ui::AspectRatioResizebleWnd::onVoipCallCreated(const voip_manager::ContactEx& _contactEx)
-//{
-//    if (_contactEx.connection_count == 1)
-//    {
-//        firstTimeUseAspectRatio_ = true;
-//    }
-//}
+#endif
 
 Ui::UIEffects::UIEffects(QWidget& _obj, bool opacity, bool geometry)
     : fadedIn_(true)
@@ -478,7 +398,6 @@ Ui::UIEffects::UIEffects(QWidget& _obj, bool opacity, bool geometry)
         animation_->setEasingCurve(QEasingCurve::InOutQuad);
         fadeEffect_->setOpacity(1.0);
     }
-
     if (geometry)
     {
         resizeAnimation_ = std::unique_ptr<QPropertyAnimation>(new QPropertyAnimation(&_obj, QByteArrayLiteral("geometry"), &_obj));
@@ -522,7 +441,6 @@ void Ui::UIEffects::fadeOut(unsigned _interval)
         animation_->setEndValue(0.01);
         animation_->start();
     }
-
     fadedIn_ = false;
 }
 
@@ -535,7 +453,6 @@ void Ui::UIEffects::fadeIn(unsigned _interval)
         animation_->setEndValue(1.0);
         animation_->start();
     }
-
     fadedIn_ = true;
 }
 
@@ -552,9 +469,7 @@ bool Ui::UIEffects::isGeometryRunning()
 void Ui::UIEffects::forceFinish()
 {
     if (isGeometryRunning())
-    {
         resizeAnimation_->setCurrentTime(resizeAnimation_->duration());
-    }
 }
 
 Ui::BaseVideoPanel::BaseVideoPanel(QWidget* parent, Qt::WindowFlags f) :
@@ -566,10 +481,7 @@ Ui::BaseVideoPanel::BaseVideoPanel(QWidget* parent, Qt::WindowFlags f) :
 void Ui::BaseVideoPanel::fadeIn(unsigned int duration)
 {
     if (!effect_)
-    {
         effect_ = std::unique_ptr<UIEffects>(new(std::nothrow) UIEffects(*this, true, false));
-    }
-
     if (effect_)
     {
 #ifndef __linux__
@@ -581,11 +493,7 @@ void Ui::BaseVideoPanel::fadeIn(unsigned int duration)
 void Ui::BaseVideoPanel::fadeOut(unsigned int duration)
 {
     if (!effect_)
-    {
         effect_ = std::unique_ptr<UIEffects>(new(std::nothrow) UIEffects(*this, true, false));
-    }
-
-
     if (effect_)
     {
 #ifndef __linux__
@@ -607,71 +515,49 @@ bool Ui::BaseVideoPanel::isFadedIn()
 void Ui::BaseVideoPanel::forceFinishFade()
 {
     if (effect_)
-    {
         effect_->forceFinish();
-    }
 }
-
 
 Ui::BaseTopVideoPanel::BaseTopVideoPanel(QWidget* parent, Qt::WindowFlags f) : BaseVideoPanel(parent, f) {}
 
 void Ui::BaseTopVideoPanel::updatePosition(const QWidget& parent)
 {
-    // We have code dublication here,
-    // because Mac and Qt have different coords systems.
-    // We can convert Mac coords to Qt, but we need to add
-    // special cases for multi monitor systems.
-#ifdef __APPLE__
-    QRect parentRect = platform_macos::getWidgetRect(*parentWidget());
-    platform_macos::setWindowPosition(*this,
-        QRect(parentRect.left(),
-              parentRect.top() + parentRect.height() - height(),
-              parentRect.width(),
-              height()));
-//    auto rc = platform_macos::getWindowRect(*parentWidget());
-#elif defined(__linux__)
-    auto rc = parentWidget()->geometry();
-    move(0, 0);
-    setFixedWidth(rc.width());
-#else
-    auto rc = parentWidget()->geometry();
-    move(rc.x(), rc.y());
-    setFixedWidth(rc.width());
-#endif
+    if (platform::is_linux())
+    {
+        auto rc = parentWidget()->geometry();
+        move(0, 0);
+        setFixedWidth(rc.width());
+    }
+    else
+    {
+        auto rc = parentWidget()->geometry();
+        move(rc.x(), rc.y());
+        setFixedWidth(rc.width());
+    }
 }
-
 
 Ui::BaseBottomVideoPanel::BaseBottomVideoPanel(QWidget* parent, Qt::WindowFlags f) : BaseVideoPanel(parent, f) {}
 
 void Ui::BaseBottomVideoPanel::updatePosition(const QWidget& parent)
 {
-    // We have code dublication here,
-    // because Mac and Qt have different coords systems.
-    // We can convert Mac coords to Qt, but we need to add
-    // special cases for multi monitor systems.
-#ifdef __APPLE__
-    //auto rc = platform_macos::getWindowRect(*parentWidget());
-    QRect parentRect = platform_macos::getWidgetRect(*parentWidget());
-    platform_macos::setWindowPosition(*this,
-                    QRect(parentRect.left(),
-                          parentRect.top(),
-                          parentRect.width(),
-                          height()));
-#elif defined(__linux__)
-    auto rc = parentWidget()->geometry();
-    move(0, rc.height() - rect().height());
-    setFixedWidth(rc.width());
-#else
-    auto rc = parentWidget()->geometry();
-    move(rc.x(), rc.y() + rc.height() - rect().height());
-    setFixedWidth(rc.width());
-#endif
+    if (platform::is_linux())
+    {
+        auto rc = parentWidget()->geometry();
+        move(0, rc.height() - rect().height());
+        setFixedWidth(rc.width());
+    }
+    else
+    {
+        auto rc = parentWidget()->geometry();
+        move(rc.x(), rc.y() + rc.height() - rect().height());
+        setFixedWidth(rc.width());
+    }
 }
 
 Ui::PanelBackground::PanelBackground(QWidget* parent) : QWidget(parent)
 {
     //setStyleSheet("background-color: #640000;");
-    auto videoPanelEffect_ = new UIEffects(*this);
+    videoPanelEffect_ = std::make_unique<UIEffects>(*this);
     videoPanelEffect_->fadeOut(0);
 }
 
@@ -679,11 +565,8 @@ void Ui::PanelBackground::updateSizeFromParent()
 {
     auto parent = parentWidget();
     if (parent)
-    {
         resize(parent->size());
-    }
 }
-
 
 Ui::TransparentPanel::TransparentPanel(QWidget* _parent, BaseVideoPanel* _eventWidget) : BaseVideoPanel(_parent),
     eventWidget_(_eventWidget)
@@ -707,10 +590,8 @@ Ui::TransparentPanel::TransparentPanel(QWidget* _parent, BaseVideoPanel* _eventW
     layout()->addWidget(rootWidget_);
 }
 
-
 Ui::TransparentPanel::~TransparentPanel()
 {
-
 }
 
 void Ui::TransparentPanel::updatePosition(const QWidget& parent)
@@ -722,9 +603,7 @@ void Ui::TransparentPanel::updatePosition(const QWidget& parent)
 void Ui::TransparentPanel::resizeEvent(QResizeEvent * event)
 {
     if (backgroundWidget_)
-    {
         backgroundWidget_->updateSizeFromParent();
-    }
 }
 
 void Ui::TransparentPanel::mouseMoveEvent(QMouseEvent* _e)
@@ -742,21 +621,16 @@ void Ui::TransparentPanel::mousePressEvent(QMouseEvent * event)
     resendMouseEventToPanel(event);
 }
 
-template <typename E> void Ui::TransparentPanel::resendMouseEventToPanel(E* event_)
+void Ui::TransparentPanel::resendMouseEventToPanel(QMouseEvent *event)
 {
-    if (eventWidget_->isVisible() && (eventWidget_->rect().contains(event_->pos()) || eventWidget_->isGrabMouse()))
+    if (eventWidget_->isVisible() && (eventWidget_->rect().contains(event->pos()) || eventWidget_->isGrabMouse()))
     {
-        QApplication::sendEvent(eventWidget_, event_);
+        QApplication::sendEvent(eventWidget_, event);
     }
 }
 
-
 Ui::FullVideoWindowPanel::FullVideoWindowPanel(QWidget* parent) :
-#ifndef __APPLE__
     Ui::BaseVideoPanel(parent, Qt::Window | Qt::FramelessWindowHint | Qt::NoDropShadowWindowHint)
-#else
-    Ui::BaseVideoPanel(parent, Qt::Window | Qt::FramelessWindowHint /* | Qt::WindowDoesNotAcceptFocus*/ | Qt::NoDropShadowWindowHint)
-#endif
 {
     setAttribute(Qt::WA_NoSystemBackground, true);
     setAttribute(Qt::WA_TranslucentBackground, true);
@@ -764,16 +638,12 @@ Ui::FullVideoWindowPanel::FullVideoWindowPanel(QWidget* parent) :
 
 void Ui::FullVideoWindowPanel::updatePosition(const QWidget& parent)
 {
-#ifdef __APPLE__
-    //auto rc = platform_macos::getWindowRect(*parentWidget());
-    QRect parentRect = platform_macos::getWidgetRect(*parentWidget());
-    platform_macos::setWindowPosition(*this,
-        QRect(parentRect.left(),
-            parentRect.top(),
-            parentRect.width(),
-            parentRect.height()));
+    auto rc = parentWidget()->geometry();
+    setFixedSize(rc.width(), rc.height());
+    move(rc.x(), rc.y());
 
-    // Made round corners for mac.
+#ifdef __APPLE__
+    // Make round corners for mac.
     QWindow* window = parent.window() ? parent.window()->windowHandle(): nullptr;
     if (window && window->visibility() != QWindow::FullScreen)
     {
@@ -782,13 +652,8 @@ void Ui::FullVideoWindowPanel::updatePosition(const QWidget& parent)
         path.addRoundedRect(rc.x(), rc.y(), rc.width(), rc.height(), Utils::scale_value(5), Utils::scale_value(5));
 
         QRegion region(path.toFillPolygon().toPolygon());
-
         setMask(region);
     }
-#else
-    auto rc = parentWidget()->geometry();
-    setFixedSize(rc.width(), rc.height());
-    move(rc.x(), rc.y());
 #endif
 }
 
@@ -796,7 +661,6 @@ void Ui::FullVideoWindowPanel::resizeEvent(QResizeEvent *event)
 {
     emit(onResize());
 }
-
 
 void showAddUserToVideoConverenceDialog(QObject* parent, QWidget* parentWindow,
     std::function< void(Ui::SelectionContactsForConference*) > connectSignal,
@@ -812,14 +676,11 @@ void showAddUserToVideoConverenceDialog(QObject* parent, QWidget* parentWindow,
     usersSearchModel.setChatMembersModel(&modelAll);
 
     Ui::SelectionContactsForConference contactsWidget(
-        &model,
-        &modelAll,
+        &model, &modelAll,
         QT_TRANSLATE_NOOP("voip_pages", "Add to call"),
-        parentWindow,
-        usersSearchModel);
+        parentWindow, usersSearchModel);
 
     connectSignal(&contactsWidget);
-
     contactsWidget.setMaximumSelectedCount(Ui::GetDispatcher()->getVoipController().maxVideoConferenceMembers());
 
     if (contactsWidget.show() == QDialog::Accepted)
@@ -832,7 +693,6 @@ void showAddUserToVideoConverenceDialog(QObject* parent, QWidget* parentWindow,
     }
 
     disconnectSignal();
-
     Logic::getContactListModel()->clearChecked();
 }
 
@@ -908,7 +768,6 @@ void Ui::MoveablePanel::mouseMoveEvent(QMouseEvent* _e)
         QPoint diff = QCursor::pos() - dragState_.posDragBegin;
         dragState_.posDragBegin = QCursor::pos();
         QPoint newpos = parent_->pos() + diff;
-
         parent_->move(newpos);
     }
 }
@@ -916,7 +775,6 @@ void Ui::MoveablePanel::mouseMoveEvent(QMouseEvent* _e)
 void Ui::MoveablePanel::changeEvent(QEvent* _e)
 {
     QWidget::changeEvent(_e);
-
     if (_e->type() == QEvent::ActivationChange)
     {
         if (isActiveWindow() || uiWidgetIsActive())

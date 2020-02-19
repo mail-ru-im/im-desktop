@@ -26,6 +26,7 @@ namespace Ui
 {
     EditBlockText::EditBlockText(QWidget* _parent)
         : ClickableWidget(_parent)
+        , mediaType_(MediaType::noMedia)
     {
         caption_ = TextRendering::MakeTextUnit(QT_TRANSLATE_NOOP("input_widget", "Edit message"));
         caption_->init(Fonts::appFontScaled(14, Fonts::FontWeight::SemiBold), Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_INVERSE));
@@ -50,11 +51,40 @@ namespace Ui
         if (!_message)
             return;
 
-        assert(!_message->GetText().isEmpty());
-        text_->setTextAndMentions(_message->GetText(), _message->Mentions_);
+        const auto isPhoto = mediaType_ == MediaType::mediaTypeFsPhoto;
+        const auto isVideo = mediaType_ == MediaType::mediaTypeFsVideo;
+        const auto isGif = mediaType_ == MediaType::mediaTypeFsGif;
+
+        QString text;
+        if (!_message->GetText().isEmpty())
+        {
+            assert(!_message->GetText().isEmpty());
+            text = _message->GetText();
+        }
+        else if (!_message->GetDescription().isEmpty())
+        {
+            assert(!_message->GetDescription().isEmpty());
+            text = _message->GetDescription();
+        }
+
+
+        if (isPhoto)
+            text = QT_TRANSLATE_NOOP("contact_list", "Photo");
+        else if (isVideo)
+            text = QT_TRANSLATE_NOOP("contact_list", "Video");
+        else if (isGif)
+            text = QT_TRANSLATE_NOOP("contact_list", "GIF");
+
+        text_->setTextAndMentions(text, _message->Mentions_);
+
         elide();
 
         update();
+    }
+
+    void EditBlockText::setMediaType(MediaType _mediaType)
+    {
+        mediaType_ = _mediaType;
     }
 
     void EditBlockText::paintEvent(QPaintEvent* _event)
@@ -71,8 +101,16 @@ namespace Ui
             p.drawRoundedRect(rect(), radius, radius);
         }
 
-        caption_->draw(p, TextRendering::VerPosition::BASELINE);
-        text_->draw(p, TextRendering::VerPosition::BASELINE);
+        auto verPos = TextRendering::VerPosition::BASELINE;
+        if (text_->getText().isEmpty())
+        {
+            caption_->setOffsets(getInputTextLeftMargin(), (height() - caption_->cachedSize().height()) / 2);
+            verPos = TextRendering::VerPosition::TOP;
+        }
+
+        caption_->draw(p, verPos);
+        if (!text_->getText().isEmpty())
+            text_->draw(p, TextRendering::VerPosition::BASELINE);
     }
 
     void EditBlockText::resizeEvent(QResizeEvent* _event)
@@ -131,6 +169,11 @@ namespace Ui
     void EditMessageWidget::setMessage(Data::MessageBuddySptr _message)
     {
         editBlockText_->setMessage(_message);
+    }
+
+    void EditMessageWidget::setMediaType(const MediaType _mediaType)
+    {
+        editBlockText_->setMediaType(_mediaType);
     }
 
     void EditMessageWidget::updateStyleImpl(const InputStyleMode _mode)

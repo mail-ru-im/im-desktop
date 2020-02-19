@@ -3,7 +3,10 @@
 #include "async_task.h"
 #include "main_thread.h"
 #include "network_log.h"
+#include "zstd_helper.h"
 #include "configuration/app_config.h"
+#include "../common.shared/config/config.h"
+#include "../common.shared/omicron_keys.h"
 
 #include "connections/im_container.h"
 #include "connections/base_im.h"
@@ -11,7 +14,7 @@
 #include "connections/im_login.h"
 
 #include "Voip/VoipManager.h"
-#include "Voip/libvoip/include/voip/voip2.h"
+#include "voip/voip3.h"
 
 #include "../corelib/collection_helper.h"
 #include "core_settings.h"
@@ -102,31 +105,66 @@ namespace
 
         return folders;
     }
+
+    void write_additional_coregui_message_data(core::tools::binary_stream& bs, core::icollection* _message_data)
+    {
+        if (_message_data)
+        {
+            if (_message_data->is_value_exist("error"))
+            {
+                if (const auto value = _message_data->get_value("error"))
+                {
+                    if (const auto intval = value->get_as_int())
+                    {
+                        bs.write<std::string_view>(" [");
+                        bs.write<std::string>(std::to_string(intval));
+                        bs.write<std::string_view>("]");
+                    }
+                }
+            }
+
+            if (_message_data->is_value_exist("contact"))
+            {
+                if (const auto value = _message_data->get_value("contact"))
+                {
+                    bs.write<std::string_view>(" <");
+                    bs.write<std::string_view>(value->get_as_string());
+                    bs.write<std::string_view>(">");
+                }
+            }
+            else if (_message_data->is_value_exist("aimid"))
+            {
+                if (const auto value = _message_data->get_value("aimid"))
+                {
+                    bs.write<std::string_view>(" <");
+                    bs.write<std::string_view>(value->get_as_string());
+                    bs.write<std::string_view>(">");
+                }
+            }
+        }
+    }
 }
 
 using namespace core;
 
 std::unique_ptr<core::core_dispatcher>    core::g_core;
 
-int32_t build::is_core_icq = 0;
-
 constexpr std::string_view message_log("_log");
 constexpr std::string_view message_network_log("_network_log");
 
 std::string_view get_omicron_dev_id()
 {
-    if (platform::is_apple())
-    {
-        return std::string_view(build::get_product_variant("icq_desktop_ic18eTwFBO7vAdt9","agent_desktop_ic1gBBFr7Ir9EOA2","ic1iPK_NRh952CO-", "on2fah4R-mac"));
-    }
-    else if (platform::is_windows())
-    {
-        return std::string_view(build::get_product_variant("icq_desktop_ic1nmMjqg7Yu-0hL", "agent_desktop_ic1ReaqsoxgOBHFX", "ic1nQK338I3UIa_q", "on2fah4R-win"));
-    }
-    else
-    {
-        return std::string_view(build::get_product_variant("icq_desktop_ic1fdj2RfSjLxBAs", "agent_desktop_ic1pz70eh6TmSyL6", "ic11odzi_v6LYcz6", "on2fah4R-linux"));
-    }
+    constexpr auto key = platform::is_apple()
+        ? config::values::omicron_dev_id_mac : (platform::is_windows() ? config::values::omicron_dev_id_win : config::values::omicron_dev_id_linux);
+    return config::get().string(key);
+}
+
+constexpr auto get_omicron_app_environment() noexcept
+{
+    return environment::is_alpha() ? omicronlib::environment_type::alpha
+            : (environment::is_beta() ? omicronlib::environment_type::beta
+                : (environment::is_release() ? omicronlib::environment_type::release
+                    : omicronlib::environment_type::develop));
 }
 
 core_dispatcher::core_dispatcher()
@@ -179,7 +217,7 @@ void core::core_dispatcher::write_data_to_network_log(tools::binary_stream _data
         get_network_log().write_data(std::move(_data));
 }
 
-void core::core_dispatcher::write_string_to_network_log(const std::string& _text)
+void core::core_dispatcher::write_string_to_network_log(std::string_view _text)
 {
     if (is_network_log_valid())
         get_network_log().write_string(_text);
@@ -233,8 +271,6 @@ void core::core_dispatcher::link_gui(icore_interface* _core_face, const common::
 {
     // called from main thread
 
-    build::set_core(_settings.is_build_icq_);
-
     gui_connector_ = _core_face->get_gui_connector();
     core_factory_ = _core_face->get_factory();
     core_thread_ = new main_thread();
@@ -248,6 +284,8 @@ void core::core_dispatcher::link_gui(icore_interface* _core_face, const common::
 void core::core_dispatcher::start(const common::core_gui_settings& _settings)
 {
     __LOG(log::init(utils::get_logs_path(), false);)
+
+    zstd_helper_ = std::make_shared<zstd_helper>(utils::get_product_data_path() + L"/zdicts");
 
     http_request_simple::init_global();
 
@@ -267,6 +305,8 @@ void core::core_dispatcher::start(const common::core_gui_settings& _settings)
     settings_ = std::make_shared<core::core_settings>(product_data_root / L"settings" /  tools::from_utf8(core_settings_file_name)
         , utils::get_product_data_path() + L"/settings/" + tools::from_utf8(core_settings_export_file_name));
     settings_->load();
+    if (settings_->get_locale().empty())
+        set_locale(core_gui_settings_.locale_);
 
     if (settings_->end_init_default())
         settings_->save();
@@ -277,7 +317,7 @@ void core::core_dispatcher::start(const common::core_gui_settings& _settings)
     scheduler_ = std::make_unique<scheduler>();
 
 #ifndef STRIP_VOIP
-    voip_manager_.reset(new(std::nothrow) voip_manager::VoipManager(*this));
+    voip_manager_.reset(voip_manager::createVoipManager(*this));
     assert(!!voip_manager_);
 #endif //__STRIP_VOIP
 
@@ -293,22 +333,32 @@ void core::core_dispatcher::start(const common::core_gui_settings& _settings)
 
     im_container_->create();
 
-    start_omicron_service();
+    if (config::get().is_external())
+        get_network_log().write_string("external config is used\n");
+
+    if (config::get().is_on(config::features::omicron_enabled))
+        start_omicron_service();
     load_im_stats();
+
+    zstd_helper_->start_auto_updater(im_container_);
 
 #ifdef _WIN32
     core::dump::set_os_version(core::tools::system::get_os_version_string());
+#endif
+
+#if defined _WIN32 || defined __linux__
     report_sender_ = std::make_shared<dump::report_sender>(g_core->get_login_after_start());
     report_sender_->send_report();
 #endif
 
     load_gui_settings();
 
+    post_app_config();
+
     load_theme_settings();
     post_theme_settings_and_meta();
 
     post_gui_settings();
-    post_app_config();
     post_user_proxy_to_gui();
 
     post_logins();
@@ -351,6 +401,7 @@ void core::core_dispatcher::unlink_gui()
         network_log_.reset();
         proxy_settings_manager_.reset();
         theme_settings_.reset();
+        zstd_helper_.reset();
 
         if (!keep_local_data)
             remove_local_data(true);
@@ -374,18 +425,7 @@ void core::core_dispatcher::post_message_to_gui(std::string_view _message, int64
     tools::binary_stream bs;
     bs.write<std::string_view>("CORE->GUI: message=");
     bs.write<std::string_view>(_message);
-    if (_message_data && _message_data->is_value_exist("error"))
-    {
-        if (const auto value = _message_data->get_value("error"))
-        {
-            if (const auto intval = value->get_as_int())
-            {
-                bs.write<std::string_view>(" [");
-                bs.write<std::string>(std::to_string(intval));
-                bs.write<std::string_view>("]");
-            }
-        }
-    }
+    write_additional_coregui_message_data(bs, _message_data);
     bs.write<std::string_view>("\r\n");
 
     const bool is_pending = "archive/messages/pending" == _message;
@@ -428,7 +468,6 @@ void core::core_dispatcher::post_message_to_gui(std::string_view _message, int64
     else if (_message_data && _message == "messages/received/server")
     {
         std::stringstream s;
-        s << "for: " << _message_data->get_value("contact")->get_as_string() << "; ";
         if (const auto value = _message_data->get_value("ids"))
         {
             if (const auto ids = value->get_as_array())
@@ -446,7 +485,6 @@ void core::core_dispatcher::post_message_to_gui(std::string_view _message, int64
     else if (_message_data && (is_pending || containsHistoryMessages(_message)))
     {
         std::stringstream s;
-        s << "for: " << _message_data->get_value("contact")->get_as_string() << "; ";
         if (_message_data->is_value_exist("messages"))
         {
             if (const auto value = _message_data->get_value("messages"))
@@ -484,18 +522,6 @@ void core::core_dispatcher::post_message_to_gui(std::string_view _message, int64
             }
         }
         bs.write<std::string>(s.str());
-        bs.write<std::string_view>("\r\n");
-    }
-    else if (_message_data && (_message == "dialogs/remove" || _message == "dialogs/hide"))
-    {
-        bs.write<std::string_view>("for: ");
-        bs.write<std::string_view>(_message_data->get_value("contact")->get_as_string());
-        bs.write<std::string_view>(";\r\n");
-    }
-    else if (_message_data && (_message == "contact/presence"))
-    {
-        bs.write<std::string_view>("for: ");
-        bs.write<std::string_view>(_message_data->get_value("aimId")->get_as_string());
         bs.write<std::string_view>("\r\n");
     }
     else if (_message_data && _message == "dlg_states")
@@ -653,8 +679,8 @@ void core_dispatcher::start_session_stats(bool _delayed)
     props.emplace_back(std::make_pair("Sys_Language", loc.name()));
     props.emplace_back(std::make_pair("Sys_OS_Version", core::tools::system::get_os_version_string()));
 
-    if (voip_manager_ && voip_manager_->get_device_manager())
-        props.emplace_back(std::make_pair("Sys_Video_Capture", std::to_string(voip_manager_->get_device_manager()->get_devices_number(voip2::DeviceType::VideoCapturing))));
+    if (voip_manager_)
+        props.emplace_back(std::make_pair("Sys_Video_Capture", std::to_string(voip_manager_->get_devices_number(DeviceType::VideoCapturing))));
 
     insert_event(_delayed ? core::stats::stats_event_names::start_session_params_loaded
         : core::stats::stats_event_names::start_session, props);
@@ -721,7 +747,6 @@ void core_dispatcher::post_gui_settings()
     cl_coll.set_value_as_string("data_path", core::tools::from_utf16(core::utils::get_product_data_path()));
     cl_coll.set_value_as_string("os_version", core::tools::system::get_os_version_string());
 
-
     post_message_to_gui("gui_settings", 0, cl_coll.get());
 }
 
@@ -730,8 +755,14 @@ void core_dispatcher::post_logins()
     coll_helper cl_coll(create_collection(), true);
     gui_settings_->serialize(cl_coll);
 
-    cl_coll.set_value_as_bool("has_valid_login", im_container_->has_valid_login());
+    const auto has_valid_login = im_container_->has_valid_login();
+    cl_coll.set_value_as_bool("has_valid_login", has_valid_login);
+    if (has_valid_login)
+        cl_coll.set_value_as_string("login", im_container_->get_login());
+    else
+        cl_coll.set_value_as_string("login", im_container_->get_first_login());
     cl_coll.set_value_as_bool("locked", get_local_pin_enabled());
+    cl_coll.set_value_as_bool("install_beta_updates", get_install_beta_updates());
 
     post_message_to_gui("core/logins", 0, cl_coll.get());
 }
@@ -944,13 +975,12 @@ void core::core_dispatcher::receive_message_from_gui(std::string_view _message, 
             tools::binary_stream bs;
             bs.write<std::string_view>("GUI->CORE: message=");
             bs.write<std::string_view>(message_string);
+            write_additional_coregui_message_data(bs, _message_data);
             bs.write<std::string_view>("\r\n");
 
             if (message_string == "archive/messages/get")
             {
                 std::stringstream s;
-                s << "for: ";
-                s << params.get_value_as_string("contact");
                 s << " from: ";
                 s << params.get_value_as_int64("from");
                 s << " count_early: ";
@@ -964,9 +994,6 @@ void core::core_dispatcher::receive_message_from_gui(std::string_view _message, 
             else if (message_string == "archive/buddies/get" || message_string == "archive/log/model")
             {
                 std::stringstream s;
-                s << "for: ";
-                s << params.get_value_as_string("contact");
-
                 if (params.is_value_exist("ids"))
                 {
                     s << " ids: ";
@@ -1027,13 +1054,6 @@ void core::core_dispatcher::receive_message_from_gui(std::string_view _message, 
                     }
                 }
                 bs.write<std::string_view>("for: ");
-                bs.write<std::string>(s.str());
-                bs.write<std::string_view>("\r\n");
-            }
-            else if (message_string == "send_message")
-            {
-                std::stringstream s;
-                s << "for: " << params.get_value_as_string("contact");
                 bs.write<std::string>(s.str());
                 bs.write<std::string_view>("\r\n");
             }
@@ -1204,6 +1224,19 @@ network_log& core::core_dispatcher::get_network_log()
     return (*network_log_);
 }
 
+bool core_dispatcher::get_gui_settings_bool_value(std::string_view _name, const bool _default) const
+{
+    bool flag = _default;
+    if (gui_settings_)
+    {
+        tools::binary_stream bs;
+        if (gui_settings_->get_value(_name, bs) && bs.available() >= sizeof(bool))
+            flag = bs.read<bool>();
+    }
+
+    return flag;
+}
+
 std::shared_ptr<core::stats::statistics> core::core_dispatcher::get_statistics()
 {
     return statistics_;
@@ -1235,6 +1268,8 @@ bool core_dispatcher::locale_was_changed() const
 
 void core_dispatcher::set_locale(const std::string& _locale)
 {
+    assert(is_core_thread());
+
     static std::string stored;
     if (stored.empty())
         stored = get_locale();
@@ -1248,6 +1283,8 @@ void core_dispatcher::set_locale(const std::string& _locale)
 
 std::string core_dispatcher::get_locale() const
 {
+    assert(is_core_thread());
+
     return settings_->get_locale();
 }
 
@@ -1323,25 +1360,27 @@ static void omicron_update_helper(const std::string& _data)
     }
 }
 
-static omicronlib::omicron_proxy_settings omicron_proxy_helper()
+static bool omicron_download_helper(const omicronlib::omicron_proxy_settings& /*_proxy_settings*/, const std::string& _url, std::string& _json_data, long& _response_code)
 {
-    omicronlib::omicron_proxy_settings proxy;
+    core::http_request_simple request(g_core->get_proxy_settings(), utils::get_user_agent());
+    request.set_url(_url);
+    request.set_send_im_stats(false);
+    request.set_normalized_url("omicron_dl");
+    request.set_use_curl_decompresion(true);
 
-    if (g_core)
+    if (!request.get())
+        return false;
+
+    _response_code = request.get_response_code();
+
+    auto response = std::static_pointer_cast<tools::binary_stream>(request.get_response());
+    if (response->available())
     {
-        if (auto user_proxy = g_core->get_proxy_settings(); user_proxy.use_proxy_)
-        {
-            proxy.use_proxy_ = true;
-            proxy.server_ = tools::from_utf16(user_proxy.proxy_server_);
-            proxy.port_ = user_proxy.proxy_port_;
-            proxy.type_ = user_proxy.proxy_type_;
-            proxy.need_auth_ = user_proxy.need_auth_;
-            proxy.login_ = tools::from_utf16(user_proxy.login_);
-            proxy.password_ = tools::from_utf16(user_proxy.password_);
-        }
+        response->write(char(0));
+        _json_data = response->read_available();
     }
 
-    return proxy;
+    return true;
 }
 
 void core::core_dispatcher::start_omicron_service()
@@ -1349,7 +1388,7 @@ void core::core_dispatcher::start_omicron_service()
     std::string inifile_dev_id = core::configuration::get_app_config().device_id();
     const auto app_id = inifile_dev_id.empty() ? std::string(get_omicron_dev_id()) : inifile_dev_id;
 
-    omicronlib::omicron_config conf(omicronlib::get_default_api_url(), app_id);
+    omicronlib::omicron_config conf("https://" + std::string(configuration::get_app_config().get_url_omicron_data()), app_id, get_omicron_app_environment());
 
     auto app_version = core::tools::version_info().get_major_version() + '.' + core::tools::version_info().get_minor_version();
     conf.add_fingerprint("app_version", app_version);
@@ -1365,12 +1404,12 @@ void core::core_dispatcher::start_omicron_service()
 
     conf.set_callback_updater(omicron_update_helper);
 
-    conf.set_external_proxy_settings(omicron_proxy_helper);
+    conf.set_json_downloader(omicron_download_helper);
 
     omicronlib::omicron_init(conf, utils::get_product_data_path() + L"/settings/" + tools::from_utf8(omicron_cache_file_name));
 
     auto inifile_update_interval = core::configuration::get_app_config().update_interval();
-    auto update_period = std::chrono::seconds( (inifile_update_interval == 0) ? omicronlib::default_update_interval() : inifile_update_interval);
+    auto update_period = (inifile_update_interval == 0) ? omicronlib::default_update_interval() : std::chrono::seconds(inifile_update_interval);
     omicron_update_timer_id_ = add_timer([fl = account.empty()]()
     {
         static auto need_add_account = fl;
@@ -1410,6 +1449,17 @@ bool core_dispatcher::get_local_pin_enabled() const
     return settings_->get_value(local_pin_enabled, false);
 }
 
+void core_dispatcher::set_install_beta_updates(bool _enable)
+{
+    settings_->set_value(install_beta_updates, _enable);
+    settings_->save();
+}
+
+bool core_dispatcher::get_install_beta_updates() const
+{
+    return omicronlib::_o(omicron::keys::beta_update, config::get().is_on(config::features::beta_update)) &&  settings_->get_value(install_beta_updates, environment::is_beta());
+}
+
 void core_dispatcher::set_local_pin(const std::string& _password)
 {
     const auto salt = std::to_string(utils::rand_number());
@@ -1444,22 +1494,14 @@ int64_t core_dispatcher::get_voip_init_memory_usage() const
     return voip_manager_->get_voip_initialization_memory();
 }
 
-void core_dispatcher::check_update(const std::string &_url)
+void core_dispatcher::check_update(int64_t _seq, std::optional<std::string> _url)
 {
-    updater_->check(_url);
+    updater_->check(_seq, std::move(_url));
 }
 
 bool core_dispatcher::is_keep_local_data() const
 {
-    bool flag = true;
-    if (gui_settings_)
-    {
-        tools::binary_stream bs;
-        if (gui_settings_->get_value(settings_keep_logged_in, bs) && bs.available() >= sizeof(bool))
-            flag = bs.read<bool>();
-    }
-
-    return flag;
+    return get_gui_settings_bool_value(settings_keep_logged_in, true);
 }
 
 void core_dispatcher::remove_local_data(bool _is_exit)
@@ -1482,4 +1524,19 @@ void core_dispatcher::remove_local_data(bool _is_exit)
 void core_dispatcher::reset_connection()
 {
     curl_handler::instance().reset();
+}
+
+bool core_dispatcher::is_smartreply_available() const
+{
+    return get_gui_settings_bool_value(settings_show_smartreply, true);
+}
+
+bool core_dispatcher::is_suggests_available() const
+{
+    return get_gui_settings_bool_value(settings_show_suggests_words, true);
+}
+
+std::shared_ptr<zstd_helper> core_dispatcher::get_zstd_helper() const
+{
+    return zstd_helper_;
 }

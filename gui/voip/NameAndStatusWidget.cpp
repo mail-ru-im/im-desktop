@@ -1,7 +1,5 @@
 #include "stdafx.h"
 #include "NameAndStatusWidget.h"
-
-#include "VoipTools.h"
 #include "../controls/TextEmojiWidget.h"
 #include "../utils/utils.h"
 #include "../controls/TextUnit.h"
@@ -11,15 +9,13 @@ Ui::ShadowedWidget<__Base>::ShadowedWidget(QWidget* _parent, int _tailLen, doubl
     : __Base(_parent)
     , tailLenPx_(_tailLen)
 {
-
-    QGradientStops stops;
+    /*QGradientStops stops;
     QColor voipShadowColor("#000000");
     voipShadowColor.setAlphaF(_alphaFrom);
     stops.append(qMakePair(0.0f, voipShadowColor));
     voipShadowColor.setAlphaF(_alphaTo);
     stops.append(qMakePair(1.0f, voipShadowColor));
-
-    linearGradient_.setStops(stops);
+    linearGradient_.setStops(stops);*/
 }
 
 template<typename __Base>
@@ -31,10 +27,9 @@ template<typename __Base>
 void Ui::ShadowedWidget<__Base>::resizeEvent(QResizeEvent* _e)
 {
     __Base::resizeEvent(_e);
-
-    const QRect rc = __Base::rect();
+    /*const QRect rc = __Base::rect();
     linearGradient_.setStart(rc.right() - tailLenPx_, 0.0f);
-    linearGradient_.setFinalStop(rc.right(), 0.0f);
+    linearGradient_.setFinalStop(rc.right(), 0.0f);*/
 }
 
 template<typename __Base>
@@ -72,8 +67,8 @@ void Ui::ShadowedWidget<__Base>::paintEvent(QPaintEvent*)
 
 Ui::NameAndStatusWidget::NameAndStatusWidget(QWidget* _parent, int _nameBaseline, int _statusBaseline, int maxAvalibleWidth)
     : QWidget(_parent)
-    , name_(NULL)
-    , status_(NULL)
+    , name_(nullptr)
+    , status_(nullptr)
 {
     setContentsMargins(0, 0, 0, 0);
 
@@ -88,12 +83,9 @@ Ui::NameAndStatusWidget::NameAndStatusWidget(QWidget* _parent, int _nameBaseline
     QHBoxLayout* nameLayout = Utils::emptyHLayout();
     nameLayout->addStretch(1);
 
-    {
-        Ui::TextRendering::TextUnitPtr text = Ui::TextRendering::MakeTextUnit(QString());
-        text->init(font, Qt::white, Qt::white, Qt::white, Qt::white, Ui::TextRendering::HorAligment::CENTER, 2);
-        // !std::move
-        name_ = new TextUnitLabel(this, std::move(text), Ui::TextRendering::VerPosition::TOP, maxAvalibleWidth);
-    }
+    name_ = new TextEmojiWidget(this, font, Qt::white);
+    name_->setEllipsis(true);
+    name_->setMaximumWidth(maxAvalibleWidth);
 
     nameLayout->addWidget(name_);
     nameLayout->addStretch(1);
@@ -105,7 +97,7 @@ Ui::NameAndStatusWidget::NameAndStatusWidget(QWidget* _parent, int _nameBaseline
     statusLayout->addStretch(1);
     font.setPixelSize(Utils::scale_value(9));
     font.setCapitalization(QFont::AllUppercase);
-    status_ = new voipTools::BoundBox<TextEmojiWidget>(this, font, Qt::white);
+    status_ = new TextEmojiWidget(this, font, Qt::white);
     status_->disableFixedPreferred();
     statusLayout->addWidget(status_);
     statusLayout->addStretch(1);
@@ -114,7 +106,6 @@ Ui::NameAndStatusWidget::NameAndStatusWidget(QWidget* _parent, int _nameBaseline
 
 Ui::NameAndStatusWidget::~NameAndStatusWidget()
 {
-
 }
 
 void Ui::NameAndStatusWidget::setNameProperty(const char* _propName, bool _val)
@@ -135,16 +126,12 @@ void Ui::NameAndStatusWidget::setName(const char* _name)
 {
     assert(!!_name);
     if (_name && name_)
-    {
-        name_->setText(QString::fromUtf8(_name));
-    }
+        name_->setText(QString::fromUtf8(_name), TextEmojiAlign::allign_center);
 }
 
 void Ui::NameAndStatusWidget::setStatus(const char* _status)
 {
     assert(!!_status);
     if (_status && status_)
-    {
         status_->setText(QString::fromUtf8(_status));
-    }
 }

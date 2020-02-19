@@ -6,6 +6,7 @@
 namespace Ui
 {
     enum class MediaType;
+    using highlightsV = std::vector<QString>;
 }
 
 UI_COMPLEX_MESSAGE_NS_BEGIN
@@ -38,6 +39,8 @@ public:
         MenuFlagOpenInBrowser = (1 << 2),
         MenuFlagCopyable = (1 << 3),
         MenuFlagOpenFolder = (1 << 4),
+        MenuFlagRevokeVote = (1 << 5),
+        MenuFlagStopPoll = (1 << 6),
     };
 
     enum class ContentType
@@ -48,7 +51,8 @@ public:
         Link = 3,
         Quote = 4,
         Sticker = 5,
-        DebugText = 6
+        DebugText = 6,
+        Poll = 7
     };
 
     virtual ~IItemBlock() = 0;
@@ -69,7 +73,7 @@ public:
 
     virtual bool isSharingEnabled() const = 0;
 
-    virtual bool containSharingBlock() const { return false; }
+    virtual bool containsSharingBlock() const { return false; }
 
     virtual bool standaloneText() const = 0;
 
@@ -77,11 +81,11 @@ public:
 
     virtual void onVisibilityChanged(const bool isVisible) = 0;
 
+    virtual void onSelectionStateChanged(const bool isSelected) {};
+
     virtual void onDistanceToViewportChanged(const QRect& _widgetAbsGeometry, const QRect& _viewportVisibilityAbsRect) = 0;
 
-    virtual QRect setBlockGeometry(const QRect &ltr) = 0;
-
-    virtual IItemBlockLayout* getBlockLayout() const = 0;
+    virtual QRect setBlockGeometry(const QRect &ltr) = 0;    
 
     virtual MenuFlags getMenuFlags() const = 0;
 
@@ -96,9 +100,15 @@ public:
 
     virtual QString getSourceText() const = 0;
 
+    virtual QString getPlaceholderText() const = 0;
+
+    virtual const QString& getLink() const = 0;
+
     virtual QString getTextForCopy() const = 0;
 
     virtual bool isBubbleRequired() const = 0;
+
+    virtual bool isMarginRequired() const = 0;
 
     virtual bool isSelected() const = 0;
 
@@ -106,7 +116,9 @@ public:
 
     virtual bool onMenuItemTriggered(const QVariantMap &params) = 0;
 
-    virtual void selectByPos(const QPoint& from, const QPoint& to, const BlockSelectionType selection) = 0;
+    virtual void selectByPos(const QPoint& from, const QPoint& to, bool topToBottom) = 0;
+
+    virtual void selectAll() = 0;
 
     virtual void setSelected(bool _selected) = 0;
 
@@ -161,6 +173,8 @@ public:
     virtual bool isLinkMediaPreview() const { return false; }
     virtual bool isSmallPreview() const { return false; }
 
+    virtual bool canStretchWithSender() const { return true; }
+
     virtual QString getSenderAimid() const = 0;
 
     virtual QString getStickerId() const { return QString(); }
@@ -177,6 +191,36 @@ public:
 
     virtual void updateStyle() = 0;
     virtual void updateFonts() = 0;
+
+    virtual void highlight(const highlightsV& _hl) {}
+    virtual void removeHighlight() {}
+
+    virtual Data::FilesPlaceholderMap getFilePlaceholders() = 0;
+
+    virtual bool isPreviewable() const { return false; }
+
+    virtual void updateWith(IItemBlock* _other) {}
+
+    virtual bool needStretchToOthers() const = 0;
+
+    virtual void stretchToWidth(const int _width) = 0;
+
+    virtual QRect getBlockGeometry() const = 0;
+
+    virtual bool hasLeadLines() const = 0;
+
+    virtual void markDirty() = 0;
+
+    virtual bool managesTime() const { return false; }
+
+    virtual bool needStretchByShift() const { return false; }
+
+    virtual void resizeBlock(const QSize& _size) {}
+
+    virtual void onBlockSizeChanged(const QSize& _size) {}
+
+protected:
+    virtual IItemBlockLayout* getBlockLayout() const = 0;
 };
 
 using IItemBlocksVec = std::vector<IItemBlock*>;

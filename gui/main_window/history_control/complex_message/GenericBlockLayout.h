@@ -13,23 +13,6 @@ class GenericBlockLayout
     , public IItemBlockLayout
 {
 public:
-    class BoxModel : public IBoxModel
-    {
-    public:
-        BoxModel(const bool hasLeadLines, const QMargins &bubbleMargins);
-
-        virtual ~BoxModel();
-
-        virtual QMargins getBubbleMargins() const override;
-
-        virtual bool hasLeadLines() const override;
-
-    private:
-        const bool HasLeadLines_;
-
-        const QMargins BubbleMargins_;
-
-    };
 
     GenericBlockLayout();
 
@@ -53,8 +36,6 @@ public:
 
     virtual QSize blockSizeHint() const override;
 
-    const IItemBlockLayout::IBoxModel& getBlockBoxModel() const override;
-
     virtual QRect getBlockGeometry() const override;
 
     virtual bool onBlockContentsChanged() final override;
@@ -62,6 +43,8 @@ public:
     virtual QRect setBlockGeometry(const QRect &ltr) final override;
 
     virtual void shiftHorizontally(const int _shift) final override;
+
+    void resizeBlock(const QSize& _size) override;
 
 protected:
     template<class T>
@@ -71,6 +54,8 @@ protected:
     T* blockWidget() const;
 
     virtual QSize setBlockGeometryInternal(const QRect &geometry) = 0;
+
+    virtual QSize stretchToWidthInternal(const int _width) { return QSize(); }
 
 private:
     QRect BlockGeometry_;

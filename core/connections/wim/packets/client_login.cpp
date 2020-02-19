@@ -3,6 +3,7 @@
 
 #include "../../../http_request.h"
 #include "../../../tools/hmac_sha_base64.h"
+#include "../../../tools/json_helper.h"
 #include "../../../../common.shared/version_info.h"
 #include "../../../utils.h"
 #include "../../../tools/system.h"
@@ -37,7 +38,8 @@ client_login::client_login(wim_packet_params params, const std::string& login, c
       expired_in_(0),
       host_time_(0),
       time_offset_(0),
-      token_type_(token_type)
+      token_type_(token_type),
+      need_fill_profile_(false)
 {
 }
 
@@ -87,6 +89,15 @@ int32_t client_login::parse_response_data(const rapidjson::Value& _data)
             !iter_expired_in->value.IsUint() || !iter_a->value.IsString())
             return wpie_http_parse_response;
 
+        auto settings = _data.FindMember("settings");
+        if (settings != iter_token->value.MemberEnd() && settings->value.IsObject())
+        {
+            auto iter_need_fill_profile = settings->value.FindMember("needFillProfile");
+            if (iter_need_fill_profile != settings->value.MemberEnd() && iter_need_fill_profile->value.IsBool())
+                need_fill_profile_ = iter_need_fill_profile->value.GetBool();
+        }
+
+
         expired_in_ = iter_expired_in->value.GetUint();
         a_token_ = rapidjson_get_string(iter_a->value);
 
@@ -106,8 +117,8 @@ int32_t client_login::init_request(std::shared_ptr<core::http_request_simple> _r
     if (login_.empty() || password_.empty() && token_type_ == token_type::basic)
         return wpie_invalid_login;
 
-    _request->set_gzip(true);
-    _request->set_url(urls::get_url(urls::url_type::client_login));
+    _request->set_compression_auto();
+    _request->set_url(su::concat(urls::get_url(urls::url_type::wim_host), "auth/clientLogin"));
     _request->set_normalized_url("authClientLogin");
     _request->push_post_parameter("f", "json");
     _request->push_post_parameter("devId", params_.dev_id_);
@@ -120,7 +131,7 @@ int32_t client_login::init_request(std::shared_ptr<core::http_request_simple> _r
 
     _request->push_post_parameter("pwd", password);
 
-    _request->push_post_parameter("service", core::utils::get_client_string());
+    _request->push_post_parameter("service", std::string(core::utils::get_client_string()));
 
     if (!product_guid_8x_.empty())
     {

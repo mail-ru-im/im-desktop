@@ -96,16 +96,16 @@ namespace core
 
             void set_first_entry_reached(bool _reached);
 
-            std::string get_aimid() const;
-            gallery_state get_gallery_state() const;
+            const std::string& get_aimid() const;
+            const gallery_state& get_gallery_state() const;
 
             void merge_from_server(const gallery_storage& _other, const gallery_entry_id& _from, const gallery_entry_id& _till, std::vector<gallery_item>& _changes);
             void set_state(const gallery_state& _state, bool _store_patch_version);
 
             int32_t unserialize(const rapidjson::Value& _node, bool _parse_for_patches);
 
-            std::vector<gallery_patch> get_patch() const;
-            gallery_items_block get_items() const;
+            const std::vector<gallery_patch>& get_patch() const;
+            const gallery_items_block& get_items() const;
 
             std::vector<gallery_item> get_items(const gallery_entry_id& _from, const std::vector<std::string>& _types, int _page_size, bool& _exhausted);
             std::vector<gallery_item> get_items(int64_t _msg_id, const std::vector<std::string>& _types, int& _index, int& _total);

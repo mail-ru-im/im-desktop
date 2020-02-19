@@ -272,7 +272,7 @@ namespace Logic
         clear();
 
         const auto prevPattern = std::move(searchPattern_);
-        searchPattern_ = std::move(_newPattern).trimmed();
+        searchPattern_ = _newPattern.trimmed();
 
         if (isSearchInDialogs() && searchPattern_.isEmpty())
         {

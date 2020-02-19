@@ -7,8 +7,8 @@
 #include "pages/error_page.h"
 
 #include "../../logic/worker.h"
-#include "../../logic/bundle_installer.h"
 #include "../../logic/tools.h"
+#include "../../../common.shared/config/config.h"
 
 namespace installer
 {
@@ -20,25 +20,22 @@ namespace installer
             , progress_page_(nullptr)
             , error_page_(nullptr)
         {
-            setFixedSize(dpi::scale(520), dpi::scale(456));
+            setFixedSize(dpi::scale(792), dpi::scale(592));
 
-            setWindowTitle(build::get_product_variant(QT_TR_NOOP("ICQ Setup"), QT_TR_NOOP("Mail.ru Agent Setup"), QT_TR_NOOP("Myteam Setup"), QT_TR_NOOP("Messenger Setup")));
+            setWindowTitle(QApplication::translate("product", config::get().translation(config::translations::installer_title_win).data()));
 
-            // to disable bundle, define NO_BUNDLE in
-            // * project properties->C/C++->Preprocessor
-            // * project properties->Resources->General
-            // * comment pack_bundle() in qt_prebuld.py
-
-#ifndef NO_BUNDLE
-            const auto offerBundle = logic::get_translator()->getLang() == qsl("ru");
-#else
-            constexpr auto offerBundle = false;
-#endif
             switch(_start_page)
             {
             case main_window_start_page::page_start:
-                start_page_ = new start_page(this, offerBundle);
+                start_page_ = new start_page(this);
+
+                transitionLabel_ = new QLabel(this);
+                transitionLabel_->hide();
+                transitionLabel_->setAttribute(Qt::WA_TranslucentBackground);
+                transitionLabel_->setAttribute(Qt::WA_TransparentForMouseEvents);
+
                 pages_->addWidget(start_page_);
+
                 break;
 
             case main_window_start_page::page_progress:
@@ -65,9 +62,7 @@ namespace installer
                 QTimer::singleShot(500, this, &main_window::on_start_install);
         }
 
-        main_window::~main_window()
-        {
-        }
+        main_window::~main_window() = default;
 
         void main_window::paintEvent(QPaintEvent* _e)
         {
@@ -88,14 +83,38 @@ namespace installer
                 progress_page_ = new progress_page(this);
                 pages_->addWidget(progress_page_);
             }
+            QRect buttonRect(0, dpi::scale(512), dpi::scale(792), dpi::scale(80));
+            QPoint rectTopLeft(buttonRect.topLeft());
+            QPixmap pm(buttonRect.size());
+
+            pm.fill(Qt::transparent);
+            render(&pm, QPoint(), buttonRect, DrawChildren);
+
+            transitionLabel_->move(rectTopLeft);
+            transitionLabel_->setFixedSize(buttonRect.size());
+            transitionLabel_->setPixmap(pm);
+
+            auto effect = new QGraphicsOpacityEffect(transitionLabel_);
+            effect->setOpacity(1.0);
+            transitionLabel_->setGraphicsEffect(effect);
+
+            auto transitionAnim_ = new QPropertyAnimation(effect, "opacity", transitionLabel_);
+            transitionAnim_->setDuration(100);
+
+            transitionAnim_->setStartValue(1.0);
+            transitionAnim_->setEndValue(0.0);
+            transitionAnim_->setEasingCurve(QEasingCurve::InCirc);
+
+            connect(transitionAnim_, &QPropertyAnimation::finished, transitionLabel_, &QLabel::hide);
+
+            transitionLabel_->raise();
+
+            transitionLabel_->show();
+            transitionAnim_->start();
 
             pages_->setCurrentWidget(progress_page_);
 
             start_installation();
-
-#ifndef NO_BUNDLE
-            installBundle();
-#endif
         }
 
         void main_window::on_finish()
@@ -110,17 +129,6 @@ namespace installer
             connect(worker, &logic::worker::error, this, &main_window::on_error);
 
             worker->install();
-        }
-
-        void main_window::installBundle()
-        {
-            if (!start_page_)
-                return;
-
-            const auto installHP = start_page_->isHomePageSelected();
-            const auto installSearch = start_page_->isSearchSelected();
-
-            logic::runBundle(installHP, installSearch);
         }
 
         void main_window::on_error(installer::error _err)

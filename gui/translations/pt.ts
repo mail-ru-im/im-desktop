@@ -71,6 +71,13 @@
     </message>
 </context>
 <context>
+    <name>UpdaterButton</name>
+    <message>
+        <source>Update %1</source>
+        <translation>ATUALIZAÇÃO %1</translation>
+    </message>
+</context>
+<context>
     <name>about_us</name>
     <message>
         <source>This product includes software developed by the OpenSSL project for use in the OpenSSL Toolkit</source>
@@ -89,24 +96,38 @@
         <translation>https://openssl.org</translation>
     </message>
     <message>
-        <source>Presented by Mail.ru</source>
-        <translation>Apresentado por Mail.ru</translation>
-    </message>
-    <message>
         <source>© Mail.ru LLC</source>
         <translation>© Mail.ru LLC</translation>
+    </message>
+    <message>
+        <source>Beta version contains new features, but it is not complete yet.
+You can leave your feedback or report an error here:</source>
+        <translation>A versão beta contém novos recursos, mas ainda não está completa.
+Você pode deixar seu feedback ou relatar um erro aqui:</translation>
+    </message>
+    <message>
+        <source>https://icq.im/desktopbeta</source>
+        <translation>https://icq.im/desktopbeta</translation>
+    </message>
+    <message>
+        <source>Check for updates</source>
+        <translation>Verificar atualizações</translation>
+    </message>
+    <message>
+        <source>You have the latest version</source>
+        <translation>Você tem a versão mais recente</translation>
+    </message>
+    <message>
+        <source>Update required</source>
+        <translation>Atualização necessária</translation>
+    </message>
+    <message>
+        <source>Server error</source>
+        <translation>Erro no servidor</translation>
     </message>
 </context>
 <context>
     <name>add_new_contact_dialogs</name>
-    <message>
-        <source>ADD</source>
-        <translation>ADICIONAR</translation>
-    </message>
-    <message>
-        <source>ADD ANOTHER ONE</source>
-        <translation>ADICIONAR OUTRO</translation>
-    </message>
     <message>
         <source>New contact</source>
         <translation>Novo contato</translation>
@@ -167,20 +188,82 @@
         <source>Phone number</source>
         <translation>Número de celular</translation>
     </message>
+    <message>
+        <source>Add</source>
+        <translation>Adicionar</translation>
+    </message>
+    <message>
+        <source>Add another one</source>
+        <translation>Adicione outro</translation>
+    </message>
+</context>
+<context>
+    <name>add_widget</name>
+    <message>
+        <source>Phone number</source>
+        <translation>Número de telefone</translation>
+    </message>
+    <message>
+        <source>Nickname</source>
+        <translation>Apelido</translation>
+    </message>
+    <message>
+        <source>Enter nickname</source>
+        <translation>Digite um apelido</translation>
+    </message>
+    <message>
+        <source>Email</source>
+        <translation>E-mail</translation>
+    </message>
+    <message>
+        <source>Enter email</source>
+        <translation>Digite o email</translation>
+    </message>
+    <message>
+        <source>Add contact by phone or nickname?</source>
+        <translation>Adicionar contato por número de telefone ou apelido?</translation>
+    </message>
+    <message>
+        <source>Add contact by phone or email?</source>
+        <translation>Adicionar contato por telefone ou e-mail?</translation>
+    </message>
 </context>
 <context>
     <name>appearance</name>
-    <message>
-        <source>Default</source>
-        <translation>Por defeito</translation>
-    </message>
     <message>
         <source>Blue</source>
         <translation>Azul</translation>
     </message>
     <message>
-        <source>Night</source>
-        <translation>Noturna</translation>
+        <source>Green</source>
+        <translation>Verde</translation>
+    </message>
+    <message>
+        <source>Dark Green</source>
+        <translation>Verde escuro</translation>
+    </message>
+    <message>
+        <source>Violet</source>
+        <translation>Lilás</translation>
+    </message>
+    <message>
+        <source>Orange</source>
+        <translation>Laranja</translation>
+    </message>
+    <message>
+        <source>Dark blue</source>
+        <translation>Azul escuro</translation>
+    </message>
+</context>
+<context>
+    <name>attach_phone_number</name>
+    <message>
+        <source>For security reasons you need to confirm your phone number. This number will not appear on your profile.</source>
+        <translation>Por razões de segurança, você precisa confirmar seu número de telefone.</translation>
+    </message>
+    <message>
+        <source>Security alert</source>
+        <translation>Cuidado</translation>
     </message>
 </context>
 <context>
@@ -205,12 +288,6 @@
         <translation>O avatar não foi enviado devido a um erro de servidor</translation>
     </message>
     <message>
-        <source>Edit
-photo</source>
-        <translation>Editar
-foto</translation>
-    </message>
-    <message>
         <source>Upload photo</source>
         <translation>Enviar foto</translation>
     </message>
@@ -223,25 +300,39 @@ foto</translation>
         <translation>A imagem deve ter pelo menos 200x200 px</translation>
     </message>
     <message>
-        <source>CHOOSE FILE</source>
-        <translation>ESCOLHER ARQUIVO</translation>
+        <source>Choose file</source>
+        <translation>Selecionar arquivo</translation>
+    </message>
+    <message>
+        <source>Select a file</source>
+        <translation>Escolher arquivo</translation>
     </message>
 </context>
 <context>
-    <name>burger_menu</name>
+    <name>block_and_delete</name>
     <message>
-        <source>Update is available</source>
-        <translation>Há uma atualização disponível</translation>
+        <source>Delete messages</source>
+        <translation>Apagar mensagens</translation>
     </message>
     <message>
-        <source>Restart application, 
-so update could take effect</source>
-        <translation>Reinicie o aplicativo
-para que a atualização seja concluída</translation>
+        <source>Block and delete?</source>
+        <translation>Bloquear e excluir?</translation>
     </message>
     <message>
-        <source>RESTART</source>
-        <translation>REINICIAR</translation>
+        <source>Cancel</source>
+        <translation>Cancelar</translation>
+    </message>
+    <message>
+        <source>Yes</source>
+        <translation>Sim</translation>
+    </message>
+    <message>
+        <source>This member won&apos;t be able to join the channel again. You could also delete his messages</source>
+        <translation>O participante não poderá retornar ao canal. Você também pode excluir as mensagens dele</translation>
+    </message>
+    <message>
+        <source>This member won&apos;t be able to join the group again. You could also delete his messages</source>
+        <translation>O membro não poderá retornar ao grupo. Você também pode excluir as mensagens dele</translation>
     </message>
 </context>
 <context>
@@ -249,10 +340,6 @@ para que a atualização seja concluída</translation>
     <message>
         <source> and </source>
         <translation> e </translation>
-    </message>
-    <message>
-        <source>Your friend is now available for chat and calls. You can say hi now!</source>
-        <translation>Seu amigo está disponÍvel para chat e chamadas. Diga oi para ele!</translation>
     </message>
     <message>
         <source>You</source>
@@ -353,16 +440,6 @@ para que a atualização seja concluída</translation>
         <translation>%1 removeu %2</translation>
     </message>
     <message>
-        <source>%1 have left group</source>
-        <comment>many</comment>
-        <translation>%1 abandonou o grupo</translation>
-    </message>
-    <message>
-        <source>%1 has left group</source>
-        <comment>one</comment>
-        <translation>%1 abandonou o grupo</translation>
-    </message>
-    <message>
         <source>%1 changed chat rules to &quot;%2&quot;</source>
         <translation>%1 mudou as regras do bate-papo para &quot;%2&quot;</translation>
     </message>
@@ -409,6 +486,70 @@ para que a atualização seja concluída</translation>
     <message>
         <source>You declined a call from %1</source>
         <translation>Você não atendeu a chamada de %1</translation>
+    </message>
+    <message>
+        <source>Theme was changed to &quot;%1&quot;</source>
+        <translation>Tópico alterado para %1</translation>
+    </message>
+    <message>
+        <source>%1 was added</source>
+        <translation>%1 foi adicionado</translation>
+    </message>
+    <message>
+        <source>%1 were added</source>
+        <translation>%1 foram adicionados</translation>
+    </message>
+    <message>
+        <source>Chat description was deleted</source>
+        <translation>Descrição do bate-papo excluída</translation>
+    </message>
+    <message>
+        <source>%1 was removed</source>
+        <translation>%1 foi excluído</translation>
+    </message>
+    <message>
+        <source>%1 were removed</source>
+        <translation>%1 foi excluído</translation>
+    </message>
+    <message>
+        <source>Channel avatar was changed</source>
+        <translation>O avatar do canal foi alterado</translation>
+    </message>
+    <message>
+        <source>Description was changed to &quot;%1&quot;</source>
+        <translation>Descrição alterada para %1</translation>
+    </message>
+    <message>
+        <source>Channel rules were changed to &quot;%1&quot;</source>
+        <translation>Regras do canal alteradas para %1</translation>
+    </message>
+    <message>
+        <source>You have recently added %1 to your phone contacts. Write a new message or make a call %2</source>
+        <translation>Você adicionou %1 recentemente aos seus contatos telefônicos. Escreva uma nova mensagem ou faça uma ligação %2</translation>
+    </message>
+    <message>
+        <source>So %1 is here now! Write, call %2</source>
+        <translation>Então %1 está aqui agora! Escreva, ligue para %2</translation>
+    </message>
+    <message>
+        <source>You changed chat link to %1</source>
+        <translation>Você alterou o link para %1</translation>
+    </message>
+    <message>
+        <source>Channel link was changed to %1</source>
+        <translation>Link alterado para %1</translation>
+    </message>
+    <message>
+        <source>%1 changed chat link to %2</source>
+        <translation>%1 link alterado para %2</translation>
+    </message>
+    <message>
+        <source>Add avatar</source>
+        <translation>Adicionar avatar</translation>
+    </message>
+    <message>
+        <source>Add description</source>
+        <translation>Adicionar descrição</translation>
     </message>
 </context>
 <context>
@@ -460,18 +601,6 @@ para que a atualização seja concluída</translation>
     <message>
         <source>are typing</source>
         <translation>estão digitando</translation>
-    </message>
-    <message>
-        <source>CANCEL</source>
-        <translation>CANCELAR</translation>
-    </message>
-    <message>
-        <source>FORWARD</source>
-        <translation>AVANçAR</translation>
-    </message>
-    <message>
-        <source>COPY</source>
-        <translation>COPIAR</translation>
     </message>
     <message>
         <source>edited</source>
@@ -584,16 +713,28 @@ para que a atualização seja concluída</translation>
         <translation>Cancelar</translation>
     </message>
     <message>
-        <source>New group</source>
-        <translation>Novo Grupo</translation>
-    </message>
-    <message>
-        <source>New channel</source>
-        <translation>Novo Canal</translation>
-    </message>
-    <message>
         <source>Contact</source>
         <translation>Contact</translation>
+    </message>
+    <message>
+        <source>UNIMPORTANT</source>
+        <translation>SEM IMPORTÂNCIA</translation>
+    </message>
+    <message>
+        <source>Location</source>
+        <translation>Localização</translation>
+    </message>
+    <message>
+        <source>Poll</source>
+        <translation>Enquete</translation>
+    </message>
+    <message>
+        <source>Create group</source>
+        <translation>Criar grupo</translation>
+    </message>
+    <message>
+        <source>Create channel</source>
+        <translation>Criar canal</translation>
     </message>
 </context>
 <context>
@@ -629,6 +770,21 @@ para que a atualização seja concluída</translation>
         <source>%1 members</source>
         <comment>21</comment>
         <translation>%1 participantes</translation>
+    </message>
+    <message>
+        <source>%1 messages selected</source>
+        <comment>2</comment>
+        <translation>%1 mensagens selecionadas</translation>
+    </message>
+    <message>
+        <source>%1 messages selected</source>
+        <comment>5</comment>
+        <translation>%1 mensagens selecionadas</translation>
+    </message>
+    <message>
+        <source>%1 messages selected</source>
+        <comment>21</comment>
+        <translation>%1 mensagens selecionadas</translation>
     </message>
 </context>
 <context>
@@ -686,10 +842,6 @@ para que a atualização seja concluída</translation>
         <translation>Comentários e sugestões...</translation>
     </message>
     <message>
-        <source>SEND</source>
-        <translation>ENVIAR</translation>
-    </message>
-    <message>
         <source>Error occurred, try again later</source>
         <translation>Ocorreu um erro. Tente novamente mais tarde</translation>
     </message>
@@ -699,23 +851,23 @@ para que a atualização seja concluída</translation>
     </message>
     <message>
         <source>VOIP</source>
-        <translation></translation>
+        <translation>Chamadas</translation>
     </message>
     <message>
         <source>Nothing selected</source>
-        <translation></translation>
+        <translation>Não selecionado</translation>
     </message>
     <message>
         <source>Emoji and stickers</source>
-        <translation></translation>
+        <translation>Emoji e adesivos</translation>
     </message>
     <message>
         <source>Avatars</source>
-        <translation></translation>
+        <translation>Avatares</translation>
     </message>
     <message>
         <source>Videoplayer</source>
-        <translation></translation>
+        <translation>Video player</translation>
     </message>
     <message>
         <source>Gallery</source>
@@ -723,15 +875,15 @@ para que a atualização seja concluída</translation>
     </message>
     <message>
         <source>Ptt</source>
-        <translation></translation>
+        <translation>Mensagens de voz</translation>
     </message>
     <message>
         <source>Hotkeys</source>
-        <translation></translation>
+        <translation>Teclas de atalho</translation>
     </message>
     <message>
         <source>Crash</source>
-        <translation></translation>
+        <translation>Desligamento do aplicativo</translation>
     </message>
     <message>
         <source>Pinned message</source>
@@ -739,23 +891,23 @@ para que a atualização seja concluída</translation>
     </message>
     <message>
         <source>Decelerations</source>
-        <translation></translation>
+        <translation>Lentidão do aplicativo</translation>
     </message>
     <message>
         <source>Sounds</source>
-        <translation></translation>
+        <translation>Sons</translation>
     </message>
     <message>
         <source>History</source>
-        <translation></translation>
+        <translation>Histórico de Chat</translation>
     </message>
     <message>
         <source>Channels</source>
-        <translation></translation>
+        <translation>Canais</translation>
     </message>
     <message>
         <source>Contact list</source>
-        <translation></translation>
+        <translation>Detalhes de contato</translation>
     </message>
     <message>
         <source>Settings</source>
@@ -763,7 +915,7 @@ para que a atualização seja concluída</translation>
     </message>
     <message>
         <source>Nick</source>
-        <translation></translation>
+        <translation>Apelido</translation>
     </message>
     <message>
         <source>Search</source>
@@ -771,23 +923,23 @@ para que a atualização seja concluída</translation>
     </message>
     <message>
         <source>Mail for domains</source>
-        <translation></translation>
+        <translation>Correio para o domínio</translation>
     </message>
     <message>
         <source>Previews</source>
-        <translation></translation>
+        <translation>Visualizar imagens e links</translation>
     </message>
     <message>
         <source>Connection</source>
-        <translation></translation>
+        <translation>Conexão de rede</translation>
     </message>
     <message>
         <source>Messages</source>
-        <translation></translation>
+        <translation>Mensagens</translation>
     </message>
     <message>
         <source>Statuses</source>
-        <translation></translation>
+        <translation>Status</translation>
     </message>
     <message>
         <source>Notifications</source>
@@ -795,27 +947,35 @@ para que a atualização seja concluída</translation>
     </message>
     <message>
         <source>Mentions</source>
-        <translation></translation>
+        <translation>Menções no Chat</translation>
     </message>
     <message>
         <source>Install</source>
-        <translation></translation>
+        <translation>Instalação do aplicativo</translation>
     </message>
     <message>
         <source>File sharing</source>
-        <translation></translation>
+        <translation>Arquivos</translation>
     </message>
     <message>
         <source>Wallpapers</source>
-        <translation></translation>
+        <translation>Fundo de bate-papo</translation>
     </message>
     <message>
         <source>Group chats</source>
-        <translation></translation>
+        <translation>Bate-papo</translation>
     </message>
     <message>
         <source>Different problem</source>
-        <translation></translation>
+        <translation>Outro problema</translation>
+    </message>
+    <message>
+        <source>Get debug information</source>
+        <translation>Obter arquivo de log</translation>
+    </message>
+    <message>
+        <source>Send</source>
+        <translation>Mandar</translation>
     </message>
 </context>
 <context>
@@ -937,16 +1097,56 @@ para que a atualização seja concluída</translation>
         <translation>Denunciar e bloquear</translation>
     </message>
     <message>
-        <source>Delete and leave</source>
-        <translation>Apagar e sair</translation>
-    </message>
-    <message>
         <source>Hide</source>
         <translation>Ocultar</translation>
     </message>
     <message>
         <source>Go to profile</source>
         <translation>Ir para perfil</translation>
+    </message>
+    <message>
+        <source>Remove</source>
+        <translation>Remover</translation>
+    </message>
+    <message>
+        <source>Delete</source>
+        <translation>Excluir</translation>
+    </message>
+    <message>
+        <source>Select</source>
+        <translation>Selecione</translation>
+    </message>
+    <message>
+        <source>Remove from Unimportant</source>
+        <translation>Remova do sem importância</translation>
+    </message>
+    <message>
+        <source>Move to Unimportant</source>
+        <translation>Mover para sem importância</translation>
+    </message>
+    <message>
+        <source>Share channel link</source>
+        <translation>Compartilhar link do canal</translation>
+    </message>
+    <message>
+        <source>Copy channel link</source>
+        <translation>Copiar link do canal</translation>
+    </message>
+    <message>
+        <source>Share group link</source>
+        <translation>Compartilhar link do grupo</translation>
+    </message>
+    <message>
+        <source>Copy group link</source>
+        <translation>Copiar link para o grupo</translation>
+    </message>
+    <message>
+        <source>Revoke vote</source>
+        <translation>Revogar votação</translation>
+    </message>
+    <message>
+        <source>Stop poll</source>
+        <translation>Parar pesquisa</translation>
     </message>
 </context>
 <context>
@@ -1964,6 +2164,25 @@ para que a atualização seja concluída</translation>
     </message>
 </context>
 <context>
+    <name>delete_messages</name>
+    <message>
+        <source>Delete messages</source>
+        <translation>Apagar mensagens</translation>
+    </message>
+    <message>
+        <source>OK</source>
+        <translation>Ok</translation>
+    </message>
+    <message>
+        <source>Messages will be deleted only for you</source>
+        <translation>As mensagens serão excluídas apenas para você</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>Cancelar</translation>
+    </message>
+</context>
+<context>
     <name>files_widget</name>
     <message>
         <source>Send with caption</source>
@@ -2002,14 +2221,6 @@ para que a atualização seja concluída</translation>
         <translation>arquivos</translation>
     </message>
     <message>
-        <source>CANCEL</source>
-        <translation>CANCELAR</translation>
-    </message>
-    <message>
-        <source>SEND</source>
-        <translation>ENVIAR</translation>
-    </message>
-    <message>
         <source>Send files</source>
         <translation>Enviar arquivos</translation>
     </message>
@@ -2021,12 +2232,34 @@ para que a atualização seja concluída</translation>
         <source>Quick send</source>
         <translation>Envio rápido</translation>
     </message>
+    <message>
+        <source>Cancel</source>
+        <translation>Cancelar</translation>
+    </message>
+    <message>
+        <source>Send</source>
+        <translation>Mandar</translation>
+    </message>
 </context>
 <context>
     <name>gallery</name>
     <message>
         <source>Go to message</source>
         <translation>Ir para mensagem</translation>
+    </message>
+</context>
+<context>
+    <name>generic_block</name>
+    <message>
+        <source>Copied to clipboard</source>
+        <translation>Copiado para a área de transferência</translation>
+    </message>
+</context>
+<context>
+    <name>geolocation_block</name>
+    <message>
+        <source>Location</source>
+        <translation>Localização</translation>
     </message>
 </context>
 <context>
@@ -2044,10 +2277,6 @@ para que a atualização seja concluída</translation>
         <translation>Novos membros estão aguardando aprovação do administrador</translation>
     </message>
     <message>
-        <source>Select members</source>
-        <translation>Selecionar membros</translation>
-    </message>
-    <message>
         <source>Add to chat</source>
         <translation>Adicionar ao bate-papo</translation>
     </message>
@@ -2058,18 +2287,6 @@ para que a atualização seja concluída</translation>
     <message>
         <source>Chat name</source>
         <translation>Nome do bate-papo</translation>
-    </message>
-    <message>
-        <source>Link to chat</source>
-        <translation>Link para o bate-papo</translation>
-    </message>
-    <message>
-        <source>Ability to join chat by link</source>
-        <translation>Possibilidade de entrar no bate-papo com um link</translation>
-    </message>
-    <message>
-        <source>The chat will appear in the app&apos;s showcase and any user can find it in the list</source>
-        <translation>O bate-papo aparecerá em destaque no aplicativo e qualquer usuário será capaz de encontrá-lo na lista</translation>
     </message>
     <message>
         <source>Chat information is unavailable now, please try again later</source>
@@ -2124,12 +2341,48 @@ para que a atualização seja concluída</translation>
         <translation>Nome do canal</translation>
     </message>
     <message>
-        <source>The channel will appear in the app&apos;s showcase and any user can find it in the list</source>
-        <translation>O canal aparecerá nos destaques do aplicativo e qualquer usuário será capaz de encontrá-lo na lista</translation>
-    </message>
-    <message>
         <source>Public channel</source>
         <translation>Canal público</translation>
+    </message>
+    <message>
+        <source>Make new link</source>
+        <translation>Gerar novo link</translation>
+    </message>
+    <message>
+        <source>Apply</source>
+        <translation>Aplicar</translation>
+    </message>
+    <message>
+        <source>Public group can be found in the search</source>
+        <translation>O grupo público pode ser encontrado na pesquisa</translation>
+    </message>
+    <message>
+        <source>Channels are public by default, but you can change it after in settings</source>
+        <translation>Os canais são públicos por padrão, mas você pode alterá-lo depois nas configurações</translation>
+    </message>
+    <message>
+        <source>The link will open the group in %1</source>
+        <translation>Este link abrirá o grupo em %1</translation>
+    </message>
+    <message>
+        <source>The link will open the channel in %1</source>
+        <translation>Este link abrirá o canal em %1</translation>
+    </message>
+    <message>
+        <source>The public channel can be found in the search and its link will be available to all members</source>
+        <translation>O canal público pode ser encontrado na pesquisa e seu link estará disponível para todos os membros</translation>
+    </message>
+    <message>
+        <source>The public group can be found in the search and its link will be available to all members</source>
+        <translation>O grupo público pode ser encontrado na pesquisa e seu link estará disponível para todos os membros</translation>
+    </message>
+    <message>
+        <source>You have chosen no one from the list. Are you sure you want to create a group with no participants?</source>
+        <translation>Você não selecionou ninguém da lista. Tem certeza de que deseja criar um grupo sem membros?</translation>
+    </message>
+    <message>
+        <source>Group name</source>
+        <translation>Nome do grupo</translation>
     </message>
 </context>
 <context>
@@ -2189,30 +2442,6 @@ para que a atualização seja concluída</translation>
         <translation>Mensagem de voz</translation>
     </message>
     <message>
-        <source>SUBSCRIBE</source>
-        <translation>SE INSCREVER</translation>
-    </message>
-    <message>
-        <source>JOIN</source>
-        <translation>JUNTAR-SE</translation>
-    </message>
-    <message>
-        <source>ENABLE NOTIFICATIONS</source>
-        <translation>ATIVAR NOTIFICAÇÕES</translation>
-    </message>
-    <message>
-        <source>DISABLE NOTIFICATIONS</source>
-        <translation>DESATIVAR AS NOTIFICAÇÕES</translation>
-    </message>
-    <message>
-        <source>DELETE AND LEAVE</source>
-        <translation>APAGAR E SAIR</translation>
-    </message>
-    <message>
-        <source>UNBLOCK</source>
-        <translation>DESBLOQUEAR</translation>
-    </message>
-    <message>
         <source>Voice message</source>
         <translation>Mensagem de voz</translation>
     </message>
@@ -2245,12 +2474,12 @@ para que a atualização seja concluída</translation>
         <translation>OK</translation>
     </message>
     <message>
-        <source>Contact</source>
-        <translation>Contact</translation>
-    </message>
-    <message>
         <source>Lock</source>
         <translation>Bloqueio</translation>
+    </message>
+    <message>
+        <source>Contact</source>
+        <translation>Contact</translation>
     </message>
     <message>
         <source>You was banned to write in this group</source>
@@ -2259,6 +2488,14 @@ para que a atualização seja concluída</translation>
     <message>
         <source>The join request has been sent to administrator</source>
         <translation>A solicitação de associação foi enviada ao administrador</translation>
+    </message>
+    <message>
+        <source>Play record</source>
+        <translation>Play record</translation>
+    </message>
+    <message>
+        <source>Pause record</source>
+        <translation>Registro de pausa</translation>
     </message>
     <message>
         <source>Convert error</source>
@@ -2271,14 +2508,6 @@ para que a atualização seja concluída</translation>
     <message>
         <source>BufferOOM error</source>
         <translation>Erro de gravacão. Memória insuficiente</translation>
-    </message>
-    <message>
-        <source>Play record</source>
-        <translation>Play record</translation>
-    </message>
-    <message>
-        <source>Pause record</source>
-        <translation>Registro de pausa</translation>
     </message>
     <message>
         <source>Cancel</source>
@@ -2296,6 +2525,34 @@ para que a atualização seja concluída</translation>
         <source>To record a voice message, you need to allow access to the microphone in the system settings</source>
         <translation>Para gravar uma mensagem de voz, você precisa permitir o acesso ao microfone nas configurações do sistema</translation>
     </message>
+    <message>
+        <source>Join</source>
+        <translation>Junte-se</translation>
+    </message>
+    <message>
+        <source>Poll</source>
+        <translation>Enquete</translation>
+    </message>
+    <message>
+        <source>Subscribe</source>
+        <translation>Inscrever-se</translation>
+    </message>
+    <message>
+        <source>Enable notifications</source>
+        <translation>Ativar notificações</translation>
+    </message>
+    <message>
+        <source>Disable notifications</source>
+        <translation>Desativar notificações</translation>
+    </message>
+    <message>
+        <source>Delete and leave</source>
+        <translation>Excluir e sair</translation>
+    </message>
+    <message>
+        <source>Unblock</source>
+        <translation>Desbloquear</translation>
+    </message>
 </context>
 <context>
     <name>linux_desktop_file</name>
@@ -2306,10 +2563,6 @@ para que a atualização seja concluída</translation>
 </context>
 <context>
     <name>local_pin</name>
-    <message>
-        <source>CANCEL</source>
-        <translation>CANCELAR</translation>
-    </message>
     <message>
         <source>log out</source>
         <translation>sair</translation>
@@ -2343,20 +2596,16 @@ para que a atualização seja concluída</translation>
         <translation>Caso você se esqueceu do seu código, pode </translation>
     </message>
     <message>
-        <source>APPLY</source>
+        <source>Cancel</source>
+        <translation>Cancelar</translation>
+    </message>
+    <message>
+        <source>Apply</source>
         <translation>Aplicar</translation>
     </message>
 </context>
 <context>
     <name>login_page</name>
-    <message>
-        <source>Welcome to ICQ</source>
-        <translation>Bem-vindo ao ICQ</translation>
-    </message>
-    <message>
-        <source>UIN or Email</source>
-        <translation>UIN ou Email</translation>
-    </message>
     <message>
         <source>Password</source>
         <translation>Senha</translation>
@@ -2366,72 +2615,24 @@ para que a atualização seja concluída</translation>
         <translation>Mantenha-me conectado</translation>
     </message>
     <message>
-        <source>Type country or code</source>
-        <translation>Insira o país ou código</translation>
-    </message>
-    <message>
-        <source>Login via phone</source>
-        <translation>Entrar via celular</translation>
-    </message>
-    <message>
-        <source>Login with UIN/Email</source>
-        <translation>Entrar com UIN/Email</translation>
-    </message>
-    <message>
         <source>Resend code</source>
         <translation>Reenviar código</translation>
-    </message>
-    <message>
-        <source>Wrong UIN/Email or password. Please try again.</source>
-        <translation>Email, senha ou UIN errado. Tente novamente.</translation>
     </message>
     <message>
         <source>You have entered an invalid code. Please try again.</source>
         <translation>O código inserido é inválido. Tente novamente.</translation>
     </message>
     <message>
-        <source>Invalid phone number. Please try again.</source>
-        <translation>Número de telefone inválido. Tente novamente.</translation>
-    </message>
-    <message>
         <source>Forgot password?</source>
         <translation>Esqueceu a senha?</translation>
-    </message>
-    <message>
-        <source>Email</source>
-        <translation>Email</translation>
-    </message>
-    <message>
-        <source>Login with Email</source>
-        <translation>Inicie sessão com o email</translation>
     </message>
     <message>
         <source>Two-factor authentication is on, please create an app password &lt;a href=&quot;https://e.mail.ru/settings/2-step-auth&quot;&gt;here&lt;/a&gt; to login</source>
         <translation>Está ativada a autenticação de dois fatores,&lt;br&gt;por favor crie uma palavra-passe para a aplicação &lt;a href=&quot;https://e.mail.ru/settings/2-step-auth&quot;&gt;aqui&lt;/a&gt; para iniciar sessão</translation>
     </message>
     <message>
-        <source>Enter code from SMS</source>
-        <translation>Introduza código do SMS</translation>
-    </message>
-    <message>
-        <source>Enter phone number</source>
-        <translation>Introduza número de telefone</translation>
-    </message>
-    <message>
-        <source>Enter UIN or Email</source>
-        <translation>Introduza UIN ou Email</translation>
-    </message>
-    <message>
         <source>Enter your Email</source>
         <translation>Introduza o seu Email</translation>
-    </message>
-    <message>
-        <source>NEXT</source>
-        <translation>PRÓXIMO</translation>
-    </message>
-    <message>
-        <source>phone number</source>
-        <translation>número de celular</translation>
     </message>
     <message>
         <source>Change</source>
@@ -2451,55 +2652,95 @@ para que a atualização seja concluída</translation>
     </message>
     <message>
         <source>Recall in %1</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Enter last %1 digit</source>
-        <comment>1</comment>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Enter last %1 digits</source>
-        <comment>2</comment>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Enter last %1 digits</source>
-        <comment>5</comment>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Enter last %1 digits</source>
-        <comment>21</comment>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Login by phone call</source>
-        <translation>Login por chamada telefônica</translation>
-    </message>
-    <message>
-        <source>Welcome to Mail.ru Agent</source>
-        <translation>Bem-vindo ao Mail.ru Agent</translation>
-    </message>
-    <message>
-        <source>Welcome to Messenger</source>
-        <translation>Bem-vindo ao Messenger</translation>
-    </message>
-    <message>
-        <source>Wrong Email or password. Please try again.</source>
-        <translation>Email, senha errado. Tente novamente.</translation>
-    </message>
-    <message>
-        <source>Welcome to Myteam</source>
-        <translation>Bem-vindo ao Myteam</translation>
-    </message>
-    <message>
-        <source>I don&apos;t have an account</source>
-        <translation>Não tenho uma conta</translation>
+        <translation>Lembre-se em %1</translation>
     </message>
     <message>
         <source>Enter one-time password received by email</source>
         <translation>Digite a senha descartável recebida por email</translation>
+    </message>
+    <message>
+        <source>Enter your login and password</source>
+        <translation>Insira seu login e sua senha</translation>
+    </message>
+    <message>
+        <source>To login use you corporative account created at</source>
+        <translation>Para fazer login, use a conta corporativa criada em</translation>
+    </message>
+    <message>
+        <source>Check the country code and enter your phone number</source>
+        <translation>Verifique o código do país e digite seu número de telefone</translation>
+    </message>
+    <message>
+        <source>Phone</source>
+        <translation>Número de telefone</translation>
+    </message>
+    <message>
+        <source>SMS code</source>
+        <translation>Código SMS</translation>
+    </message>
+    <message>
+        <source>Enter last 6 digits of number that called you</source>
+        <translation>Digite os últimos 6 dígitos do número que ligou para você</translation>
+    </message>
+    <message>
+        <source>Login</source>
+        <translation>Nome de usuário</translation>
+    </message>
+    <message>
+        <source>Mail.ru for business</source>
+        <translation>Mail.ru para empresas</translation>
+    </message>
+    <message>
+        <source>Invalid phone number</source>
+        <translation>Número de telefone inválido</translation>
+    </message>
+    <message>
+        <source>Sign in</source>
+        <translation>Assinar em</translation>
+    </message>
+    <message>
+        <source>Incorrect code</source>
+        <translation>Código inválido</translation>
+    </message>
+    <message>
+        <source>Sign in by password</source>
+        <translation>Entrar por senha</translation>
+    </message>
+    <message>
+        <source>Sign in via phone</source>
+        <translation>Entrar via telefone</translation>
+    </message>
+    <message>
+        <source>We called the number</source>
+        <translation>Nós chamamos o número</translation>
+    </message>
+    <message>
+        <source>Wrong login or password</source>
+        <translation>Nome de usuário ou senha inválidos</translation>
+    </message>
+    <message>
+        <source>Wrong Email or password</source>
+        <translation>E-mail ou senha inválidos</translation>
+    </message>
+    <message>
+        <source>To log in use you corporate account created in</source>
+        <translation>Para fazer login, use a conta corporativa criada em</translation>
+    </message>
+    <message>
+        <source>Verification code was sent to number</source>
+        <translation>O código de verificação foi enviado para</translation>
+    </message>
+    <message>
+        <source>Send code</source>
+        <translation>Enviar código</translation>
+    </message>
+    <message>
+        <source>Dictate over the phone</source>
+        <translation>Ditar por telefone</translation>
+    </message>
+    <message>
+        <source>Phone code</source>
+        <translation>Código de chamada</translation>
     </message>
 </context>
 <context>
@@ -2598,7 +2839,7 @@ para que a atualização seja concluída</translation>
     </message>
     <message>
         <source>Emoji &amp;&amp; Symbols</source>
-        <translation type="unfinished"></translation>
+        <translation>Emoji &amp; Símbolos</translation>
     </message>
     <message>
         <source>Zoom</source>
@@ -2664,50 +2905,10 @@ para que a atualização seja concluída</translation>
     </message>
 </context>
 <context>
-    <name>merge_accounts</name>
+    <name>message</name>
     <message>
-        <source>Now Mail.Ru Agent supports only one account. You can merge it with ICQ one.</source>
-        <translation>O Mail.Ru Agent agora só oferece suporte a uma conta. Você pode unificar a sua com a do ICQ.</translation>
-    </message>
-    <message>
-        <source>Choose Mail.Ru Agent account</source>
-        <translation>Escolher a conta do Mail.Ru Agent</translation>
-    </message>
-    <message>
-        <source>Choose ICQ account</source>
-        <translation>Escolher a conta do ICQ</translation>
-    </message>
-    <message>
-        <source>Account settings</source>
-        <translation>Configurações da conta</translation>
-    </message>
-    <message>
-        <source>ICQ</source>
-        <translation>ICQ</translation>
-    </message>
-    <message>
-        <source>Back</source>
-        <translation>Voltar</translation>
-    </message>
-    <message>
-        <source>Next</source>
-        <translation>Próximo</translation>
-    </message>
-    <message>
-        <source>Skip</source>
-        <translation>Pular</translation>
-    </message>
-    <message>
-        <source>Now Mail.ru Agent supports only one account. You can merge it with ICQ one.</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Mail.ru Agent</source>
-        <translation>Mail.ru Agent</translation>
-    </message>
-    <message>
-        <source>Choose Mail.ru Agent account</source>
-        <translation></translation>
+        <source>Sticker</source>
+        <translation>Adesivo</translation>
     </message>
 </context>
 <context>
@@ -2722,7 +2923,7 @@ para que a atualização seja concluída</translation>
     </message>
     <message>
         <source>For agent account nickname is not allowed</source>
-        <translation></translation>
+        <translation>Apelidos proibidos para contas de agente</translation>
     </message>
     <message>
         <source>Server error</source>
@@ -2910,6 +3111,10 @@ para que a atualização seja concluída</translation>
         <comment>21</comment>
         <translation></translation>
     </message>
+    <message>
+        <source>Enter your number</source>
+        <translation>Digite seu número</translation>
+    </message>
 </context>
 <context>
     <name>pin</name>
@@ -2937,32 +3142,12 @@ para que a atualização seja concluída</translation>
         <translation>Instale o ICQ no celular</translation>
     </message>
     <message>
-        <source>to synchronize your contacts</source>
-        <translation>para sincronizar os seus contatos</translation>
-    </message>
-    <message>
-        <source>Looks like you have no contacts yet</source>
-        <translation>Parece que você ainda não tem nenhum contato</translation>
-    </message>
-    <message>
-        <source>You have no opened chats yet</source>
-        <translation>Você ainda não tem nenhum bate-papo aberto</translation>
-    </message>
-    <message>
-        <source>CONTINUE</source>
-        <translation>CONTINUAR</translation>
-    </message>
-    <message>
         <source>Nothing found</source>
         <translation>Nada foi encontrado</translation>
     </message>
     <message>
         <source>Error occurred, try again later</source>
         <translation>Ocorreu um erro. Tente novamente mais tarde</translation>
-    </message>
-    <message>
-        <source>First name</source>
-        <translation>Nome</translation>
     </message>
     <message>
         <source>Last name</source>
@@ -2983,6 +3168,152 @@ para que a atualização seja concluída</translation>
     <message>
         <source>Install Myteam on mobile</source>
         <translation>Instale o Myteam no celular</translation>
+    </message>
+    <message>
+        <source>First name*</source>
+        <translation>Primeiro nome*</translation>
+    </message>
+    <message>
+        <source>your contacts will see them</source>
+        <translation>seus contatos os verão</translation>
+    </message>
+    <message>
+        <source>Continue</source>
+        <translation>Continuar</translation>
+    </message>
+    <message>
+        <source>Chat list is empty</source>
+        <translation>A lista de bate-papo está vazia</translation>
+    </message>
+    <message>
+        <source>Contact list is empty</source>
+        <translation>A lista de contatos está vazia</translation>
+    </message>
+    <message>
+        <source>Copy</source>
+        <translation>Copiar</translation>
+    </message>
+    <message>
+        <source>Share the link %1 so people can write you</source>
+        <translation>Compartilhe o link %1 para poder escrever</translation>
+    </message>
+    <message>
+        <source>Add a name and avatar</source>
+        <translation>Adicione um nome e avatar</translation>
+    </message>
+    <message>
+        <source>Failed to download file or media</source>
+        <translation>Falha ao fazer upload de arquivo ou mídia</translation>
+    </message>
+</context>
+<context>
+    <name>poll</name>
+    <message>
+        <source>Create poll</source>
+        <translation>Criar enquete</translation>
+    </message>
+    <message>
+        <source>Ask your question</source>
+        <translation>Faça sua pergunta</translation>
+    </message>
+    <message>
+        <source>Add another option</source>
+        <translation>Adicione outra opção</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>Cancelar</translation>
+    </message>
+    <message>
+        <source>Send</source>
+        <translation>Mandar</translation>
+    </message>
+    <message>
+        <source>Answer</source>
+        <translation>Opção de resposta</translation>
+    </message>
+</context>
+<context>
+    <name>poll_block</name>
+    <message>
+        <source>Public</source>
+        <translation>Público</translation>
+    </message>
+    <message>
+        <source>Anonymous</source>
+        <translation>Anônimo</translation>
+    </message>
+    <message>
+        <source>%1 poll - %2 vote</source>
+        <comment>1</comment>
+        <translation>%1 sondagem - %2 votos</translation>
+    </message>
+    <message>
+        <source>%1 poll - %2 votes</source>
+        <comment>2</comment>
+        <translation>%1 enquete - %2 votos</translation>
+    </message>
+    <message>
+        <source>%1 poll - %2 votes</source>
+        <comment>5</comment>
+        <translation>%1 enquete - %2 votos</translation>
+    </message>
+    <message>
+        <source>Poll</source>
+        <translation>Enquete</translation>
+    </message>
+    <message>
+        <source>Poll: %1</source>
+        <translation>Pesquisa: %1</translation>
+    </message>
+    <message>
+        <source>%1 poll - %2 votes</source>
+        <comment>21</comment>
+        <translation>%1 enquete  -%2 votos</translation>
+    </message>
+    <message>
+        <source>Poll: </source>
+        <translation>Votação: </translation>
+    </message>
+    <message>
+        <source>Sticker</source>
+        <translation>Adesivo</translation>
+    </message>
+    <message>
+        <source>GIF</source>
+        <translation>GIF</translation>
+    </message>
+    <message>
+        <source>Video</source>
+        <translation>Vídeo</translation>
+    </message>
+    <message>
+        <source>Poll Id copied to clipboard</source>
+        <translation>ID da pesquisa copiado</translation>
+    </message>
+    <message>
+        <source>Photo</source>
+        <translation>Foto</translation>
+    </message>
+    <message>
+        <source>Vote: an error occurred</source>
+        <translation>Votação: ocorreu um erro</translation>
+    </message>
+    <message>
+        <source>Revoke vote: an error occurred</source>
+        <translation>Cancelar voz: ocorreu um erro</translation>
+    </message>
+    <message>
+        <source>Stop poll: an error occurred</source>
+        <translation>Interromper enquete: ocorreu um erro</translation>
+    </message>
+    <message>
+        <source>Voice message</source>
+        <translation>Mensagem de voz</translation>
+    </message>
+    <message>
+        <source>File</source>
+        <translation>Ficheiro</translation>
     </message>
 </context>
 <context>
@@ -3022,10 +3353,6 @@ para que a atualização seja concluída</translation>
     <message>
         <source>Are you sure you want to delete user from ignore list?</source>
         <translation>Quer mesmo remover o usuário da lista de ignorados?</translation>
-    </message>
-    <message>
-        <source>Are you sure you want to block user in this chat?</source>
-        <translation>Quer mesmo bloquear o usuário neste bate-papo?</translation>
     </message>
     <message>
         <source>Are you sure you want to unblock user?</source>
@@ -3072,76 +3399,12 @@ para que a atualização seja concluída</translation>
         <translation>Contatos</translation>
     </message>
     <message>
-        <source>CANCEL</source>
-        <translation>CANCELAR</translation>
-    </message>
-    <message>
-        <source>YES</source>
-        <translation>SIM</translation>
-    </message>
-    <message>
-        <source>SAVE</source>
-        <translation>SALVAR</translation>
-    </message>
-    <message>
-        <source>DONE</source>
-        <translation>FEITO</translation>
-    </message>
-    <message>
-        <source>DELETE</source>
-        <translation>APAGAR</translation>
-    </message>
-    <message>
-        <source>BACK</source>
-        <translation>VOLTAR</translation>
-    </message>
-    <message>
-        <source>CONTINUE</source>
-        <translation>CONTINUAR</translation>
-    </message>
-    <message>
-        <source>NEXT</source>
-        <translation>PRÓXIMO</translation>
-    </message>
-    <message>
-        <source>WAITING</source>
-        <translation>AGUARDANDO</translation>
-    </message>
-    <message>
-        <source>CLOSE</source>
-        <translation>FECHAR</translation>
-    </message>
-    <message>
-        <source>JOIN</source>
-        <translation>JUNTAR-SE</translation>
-    </message>
-    <message>
-        <source>OPEN</source>
-        <translation>ABRIR</translation>
-    </message>
-    <message>
-        <source>ADD</source>
-        <translation>ADICIONAR</translation>
-    </message>
-    <message>
-        <source>REMOVE</source>
-        <translation>REMOVER</translation>
-    </message>
-    <message>
-        <source>SEND</source>
-        <translation>ENVIAR</translation>
-    </message>
-    <message>
         <source>Are you sure you want to remove this sticker pack?</source>
         <translation>Tem certeza de que deseja remover este pacote de adesivos?</translation>
     </message>
     <message>
         <source>Remove sticker pack</source>
         <translation>Remover pacote de adesivos</translation>
-    </message>
-    <message>
-        <source>FORWARD</source>
-        <translation>AVANçAR</translation>
     </message>
     <message>
         <source>show author</source>
@@ -3158,10 +3421,6 @@ para que a atualização seja concluída</translation>
     <message>
         <source>Clear avatars</source>
         <translation>Remover avatares</translation>
-    </message>
-    <message>
-        <source>Advanced Settings</source>
-        <translation>Configurações avançadas</translation>
     </message>
     <message>
         <source>OK</source>
@@ -3204,76 +3463,16 @@ para que a atualização seja concluída</translation>
         <translation></translation>
     </message>
     <message>
-        <source>Stick memory usage widget</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Cache dialogs for (milliseconds)</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Current memory usage: </source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Memory: </source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Real memory: </source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Copy text</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Refresh</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Total accounted for: </source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Cached avatars</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Cached themes</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Cached emojis</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Cached previews</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Cached stickers</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>VOIP initialization</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Video players</source>
-        <translation></translation>
-    </message>
-    <message>
         <source>Restart</source>
         <translation>Reiniciar</translation>
     </message>
     <message>
         <source>Server search</source>
-        <translation></translation>
+        <translation>Pesquisa de servidor</translation>
     </message>
     <message>
         <source>Log messagesModel</source>
-        <translation></translation>
+        <translation>Mensagens de log</translation>
     </message>
     <message>
         <source>Do you really want mark all as read?</source>
@@ -3300,16 +3499,8 @@ para que a atualização seja concluída</translation>
         <translation></translation>
     </message>
     <message>
-        <source>CHECK</source>
-        <translation></translation>
-    </message>
-    <message>
         <source>Block</source>
         <translation>Bloquear</translation>
-    </message>
-    <message>
-        <source>APPLY</source>
-        <translation>Aplicar</translation>
     </message>
     <message>
         <source>Share</source>
@@ -3318,6 +3509,154 @@ para que a atualização seja concluída</translation>
     <message>
         <source>REPEAT</source>
         <translation>REPETIR</translation>
+    </message>
+    <message>
+        <source>Remove %1 from your contacts?</source>
+        <translation>Remover %1 dos seus contatos?</translation>
+    </message>
+    <message>
+        <source>Remove contact</source>
+        <translation>Remover contato</translation>
+    </message>
+    <message>
+        <source>You can delete for all only your messages (%1 from %2). Are you sure you want to continue?</source>
+        <translation>Você pode excluir apenas suas mensagens para todos (%1 de %2). Continuar?</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to mark the chat as unimportant? The chat won&apos;t jump to the top of the list when you receive a new message</source>
+        <translation>Tem certeza de que deseja marcar o bate-papo como sem importância? O bate-papo não irá para o topo da lista quando você receber uma nova mensagem</translation>
+    </message>
+    <message>
+        <source>Choose country</source>
+        <translation>Escolha o país</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>Cancelar</translation>
+    </message>
+    <message>
+        <source>Done</source>
+        <translation>Concluído</translation>
+    </message>
+    <message>
+        <source>Back</source>
+        <translation>Voltar</translation>
+    </message>
+    <message>
+        <source>Continue</source>
+        <translation>Continuar</translation>
+    </message>
+    <message>
+        <source>Save</source>
+        <translation>Salvar</translation>
+    </message>
+    <message>
+        <source>Add</source>
+        <translation>Adicionar</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation>Fechar</translation>
+    </message>
+    <message>
+        <source>Yes</source>
+        <translation>Sim</translation>
+    </message>
+    <message>
+        <source>Delete</source>
+        <translation>Excluir</translation>
+    </message>
+    <message>
+        <source>Send</source>
+        <translation>Mandar</translation>
+    </message>
+    <message>
+        <source>Next</source>
+        <translation>Próximo</translation>
+    </message>
+    <message>
+        <source>Check</source>
+        <translation>Verificar</translation>
+    </message>
+    <message>
+        <source>Apply</source>
+        <translation>Aplicar</translation>
+    </message>
+    <message>
+        <source>Remove</source>
+        <translation>Excluir</translation>
+    </message>
+    <message>
+        <source>Waiting</source>
+        <translation>Esperando</translation>
+    </message>
+    <message>
+        <source>Join</source>
+        <translation>Entrar</translation>
+    </message>
+    <message>
+        <source>If you stop the poll, nobody will be able to vote anymore. This action can not be undone</source>
+        <translation>Se você parar a enquete, ninguém poderá mais votar. Essa ação não pode ser desfeita</translation>
+    </message>
+    <message>
+        <source>Stop</source>
+        <translation>Parar</translation>
+    </message>
+    <message>
+        <source>Stop this poll?</source>
+        <translation>Parar esta enquete?</translation>
+    </message>
+    <message>
+        <source>Open</source>
+        <translation>Aberto</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to leave channel?</source>
+        <translation>Tem certeza de que deseja sair do canal?</translation>
+    </message>
+    <message>
+        <source>If you change group type to a private link to the group will be changed, and the old one will stop working</source>
+        <translation>Se você alterar o tipo de grupo para privado, o link do grupo será alterado e o antigo deixará de funcionar.</translation>
+    </message>
+    <message>
+        <source>Make private</source>
+        <translation>Tornar privado</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to clear the chat history?</source>
+        <translation>Tem certeza de que deseja excluir o histórico de bate-papo?</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to clear the channel history?</source>
+        <translation>Tem certeza de que deseja excluir o histórico de bate-papo?</translation>
+    </message>
+    <message>
+        <source>If you generate a new link to the channel the old one will stop working</source>
+        <translation>Se você gerar um novo link para o canal, poderá entrar no canal apenas através dele</translation>
+    </message>
+    <message>
+        <source>If you generate a new link to the group the old one will stop working</source>
+        <translation>Se você gerar um novo link para o grupo, poderá entrar no grupo apenas nele</translation>
+    </message>
+    <message>
+        <source>Generate</source>
+        <translation>Gerar</translation>
+    </message>
+    <message>
+        <source>The old link will stop working</source>
+        <translation>O link antigo deixará de funcionar</translation>
+    </message>
+    <message>
+        <source>Public link will stop working</source>
+        <translation>O link público deixará de funcionar</translation>
+    </message>
+    <message>
+        <source>Set dev_id</source>
+        <translation>Definir dev_id</translation>
+    </message>
+    <message>
+        <source>Create</source>
+        <translation>Criar</translation>
     </message>
 </context>
 <context>
@@ -3378,16 +3717,16 @@ para que a atualização seja concluída</translation>
         <source>File %1 downloaded to %2</source>
         <translation>Arquivo %1 baixado para %2</translation>
     </message>
+    <message>
+        <source>Error file downloading</source>
+        <translation>Erro no upload do arquivo</translation>
+    </message>
 </context>
 <context>
     <name>profile_block</name>
     <message>
         <source>Contact was saved. Phone is visible in profile.</source>
         <translation>O contato foi salvo. O telefone é visível no perfil.</translation>
-    </message>
-    <message>
-        <source>CANCEL</source>
-        <translation>CANCELAR</translation>
     </message>
     <message>
         <source>Contact</source>
@@ -3424,6 +3763,10 @@ para que a atualização seja concluída</translation>
     <message>
         <source>WRITE</source>
         <translation>ESCREVER</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>Cancelar</translation>
     </message>
 </context>
 <context>
@@ -3480,18 +3823,6 @@ para que a atualização seja concluída</translation>
         <translation>Compartilhar contato</translation>
     </message>
     <message>
-        <source>BACK</source>
-        <translation>VOLTAR</translation>
-    </message>
-    <message>
-        <source>OPEN CHAT</source>
-        <translation>CHAT ABERTO</translation>
-    </message>
-    <message>
-        <source>SEND</source>
-        <translation>ENVIAR</translation>
-    </message>
-    <message>
         <source>To share contact add phone number or ask contact to add nickname.</source>
         <translation>Para compartilhar contatos, adicione um número de telefone ou peça para adicionar um apelido.</translation>
     </message>
@@ -3510,6 +3841,18 @@ para que a atualização seja concluída</translation>
     <message>
         <source>No phone number and nickname</source>
         <translation>Nenhum número de telefone e apelido</translation>
+    </message>
+    <message>
+        <source>Back</source>
+        <translation>Voltar</translation>
+    </message>
+    <message>
+        <source>Open chat</source>
+        <translation>Chat aberto</translation>
+    </message>
+    <message>
+        <source>Send</source>
+        <translation>Enviar</translation>
     </message>
 </context>
 <context>
@@ -3544,28 +3887,6 @@ para que a atualização seja concluída</translation>
         <source>OK</source>
         <translation>OK</translation>
     </message>
-    <message>
-        <source> ﻿* Reply on messages by photos, files and voice messages;
- * Navigation with Tab on the main elements of the application instead of using mouse;
- * Voice message recording improvements;
- * The maximum interface scale increased up to 300%;
- * Aero Snap support;
- * Chat history scrolling improvements;
- 
- And:
- * List of hotkeys to the settings page update;
- * Lots of other improvements and fixes. </source>
-        <translation> * Responder em mensagens por fotos, arquivos e mensagens de voz;
- * Navegação com Tab nos principais elementos da aplicação, em vez de usar o mouse;
- * Melhorias na gravação de mensagens de voz;
- * A escala de interface máxima aumentou até 300%;
- * Suporte Aero Snap;
- * Melhorias na rolagem do histórico de bate-papo;
-&#xa0;
- E:
- * Lista de teclas de atalho para a atualização da página de configurações;
- * Muitas outras melhorias e correções. </translation>
-    </message>
 </context>
 <context>
     <name>report_widget</name>
@@ -3584,10 +3905,6 @@ para que a atualização seja concluída</translation>
     <message>
         <source>Other</source>
         <translation>Outros</translation>
-    </message>
-    <message>
-        <source>CANCEL</source>
-        <translation>CANCELAR</translation>
     </message>
     <message>
         <source>OK</source>
@@ -3609,6 +3926,10 @@ para que a atualização seja concluída</translation>
         <source>Block</source>
         <translation>Bloquear</translation>
     </message>
+    <message>
+        <source>Cancel</source>
+        <translation>Cancelar</translation>
+    </message>
 </context>
 <context>
     <name>search</name>
@@ -3626,6 +3947,18 @@ para que a atualização seja concluída</translation>
     <message>
         <source>Search</source>
         <translation>Pesquisa</translation>
+    </message>
+</context>
+<context>
+    <name>selection</name>
+    <message>
+        <source>Cancel</source>
+        <translation>Cancelar</translation>
+    </message>
+    <message>
+        <source>%1 message selected</source>
+        <comment>1</comment>
+        <translation>%1 mensagem selecionada</translation>
     </message>
 </context>
 <context>
@@ -3687,8 +4020,8 @@ para que a atualização seja concluída</translation>
         <translation>Bate-papo</translation>
     </message>
     <message>
-        <source>Preview images and links</source>
-        <translation>Visualize imagens e links</translation>
+        <source>Preview links</source>
+        <translation>Visualizar links</translation>
     </message>
     <message>
         <source>Auto play videos</source>
@@ -3984,7 +4317,7 @@ para que a atualização seja concluída</translation>
     </message>
     <message>
         <source>Problem</source>
-        <translation></translation>
+        <translation>O problema</translation>
     </message>
     <message>
         <source>Main window</source>
@@ -4005,6 +4338,30 @@ para que a atualização seja concluída</translation>
     <message>
         <source>History in chat</source>
         <translation>História no chat</translation>
+    </message>
+    <message>
+        <source>Animate taskbar icon</source>
+        <translation>Animar ícone da barra de tarefas</translation>
+    </message>
+    <message>
+        <source>Turn on video sound on hover</source>
+        <translation>Ativar o som do vídeo ao passar o mouse</translation>
+    </message>
+    <message>
+        <source>Install beta updates</source>
+        <translation>Instale versões beta</translation>
+    </message>
+    <message>
+        <source>Show smart reply</source>
+        <translation>Mostrar respostas inteligentes</translation>
+    </message>
+    <message>
+        <source>Close search after result selection</source>
+        <translation>Fechar pesquisa após seleção de resultados</translation>
+    </message>
+    <message>
+        <source>Advanced Settings</source>
+        <translation>Configurações avançadas</translation>
     </message>
 </context>
 <context>
@@ -4192,6 +4549,14 @@ para que a atualização seja concluída</translation>
         <source>Scroll history in chat</source>
         <translation>Histórico de rolagem no bate-papo</translation>
     </message>
+    <message>
+        <source>Enter multiselect mode</source>
+        <translation>Ativar o modo de seleção múltipla</translation>
+    </message>
+    <message>
+        <source>Mark all dialogs as read</source>
+        <translation>Marque todas as caixas de diálogo como lidas</translation>
+    </message>
 </context>
 <context>
     <name>sidebar</name>
@@ -4258,10 +4623,6 @@ Edite-o e tente novamente.</translation>
         <translation>Aguardando aprovação</translation>
     </message>
     <message>
-        <source>Chat settings</source>
-        <translation>Configurações do bate-papo</translation>
-    </message>
-    <message>
         <source>Members</source>
         <translation>Membros</translation>
     </message>
@@ -4288,10 +4649,6 @@ Edite-o e tente novamente.</translation>
     <message>
         <source>Assign admin role</source>
         <translation>Atribuir função de administrador</translation>
-    </message>
-    <message>
-        <source>Remove from chat</source>
-        <translation>Remover do bate-papo</translation>
     </message>
     <message>
         <source>Information</source>
@@ -4340,10 +4697,6 @@ Edite-o e tente novamente.</translation>
     <message>
         <source>Unblock</source>
         <translation>Desbloquear</translation>
-    </message>
-    <message>
-        <source>Join</source>
-        <translation>juntar-se</translation>
     </message>
     <message>
         <source>Add to channel</source>
@@ -4418,10 +4771,6 @@ Edite-o e tente novamente.</translation>
         <translation>Compartilhar</translation>
     </message>
     <message>
-        <source>SEARCH</source>
-        <translation>PESQUISA</translation>
-    </message>
-    <message>
         <source>Description</source>
         <translation>Descrição</translation>
     </message>
@@ -4486,10 +4835,6 @@ Edite-o e tente novamente.</translation>
         <translation>Denunciar e bloquear</translation>
     </message>
     <message>
-        <source>Delete and leave</source>
-        <translation>Apagar e sair</translation>
-    </message>
-    <message>
         <source>Admins</source>
         <translation>Administradores</translation>
     </message>
@@ -4517,6 +4862,50 @@ Edite-o e tente novamente.</translation>
         <source>The join request has been sent to administrator</source>
         <translation>A solicitação de associação foi enviada ao administrador</translation>
     </message>
+    <message>
+        <source>Remove</source>
+        <translation>Remover</translation>
+    </message>
+    <message>
+        <source>Leave and delete</source>
+        <translation>Sair e apagar</translation>
+    </message>
+    <message>
+        <source>Block and delete</source>
+        <translation>Bloquear e excluir</translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation>Pesquisar</translation>
+    </message>
+    <message>
+        <source>Join</source>
+        <translation>juntar-se</translation>
+    </message>
+    <message>
+        <source>Share channel</source>
+        <translation>Compartilhar canal</translation>
+    </message>
+    <message>
+        <source>Channel settings</source>
+        <translation>Configurações do canal</translation>
+    </message>
+    <message>
+        <source>Block and delete from group</source>
+        <translation>Bloquear e remover do grupo</translation>
+    </message>
+    <message>
+        <source>Group settings</source>
+        <translation>Configurações de grupo</translation>
+    </message>
+    <message>
+        <source>Add to group</source>
+        <translation>Adicionar ao grupo</translation>
+    </message>
+    <message>
+        <source>Public group</source>
+        <translation>Grupo público</translation>
+    </message>
 </context>
 <context>
     <name>siderbar</name>
@@ -4535,6 +4924,28 @@ Edite-o e tente novamente.</translation>
     <message>
         <source>About the group</source>
         <translation>Sobre o grupo</translation>
+    </message>
+</context>
+<context>
+    <name>smartreply</name>
+    <message>
+        <source>Show smart replies</source>
+        <translation>Mostrar respostas inteligentes</translation>
+    </message>
+    <message>
+        <source>Hide smart replies</source>
+        <translation>Ocultar respostas inteligentes</translation>
+    </message>
+</context>
+<context>
+    <name>snippet_block</name>
+    <message>
+        <source>File</source>
+        <translation>Ficheiro</translation>
+    </message>
+    <message>
+        <source>Copied to clipboard</source>
+        <translation>Copiado para a área de transferência</translation>
     </message>
 </context>
 <context>
@@ -4587,14 +4998,6 @@ Edite-o e tente novamente.</translation>
         <translation>MEUS</translation>
     </message>
     <message>
-        <source>SEARCH</source>
-        <translation>PESQUISA</translation>
-    </message>
-    <message>
-        <source>CANCEL</source>
-        <translation>CANCELAR</translation>
-    </message>
-    <message>
         <source>Search</source>
         <translation>Pesquisa</translation>
     </message>
@@ -4613,6 +5016,10 @@ Edite-o e tente novamente.</translation>
     <message>
         <source>Nothing found</source>
         <translation>Nada foi encontrado</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>Cancelar</translation>
     </message>
 </context>
 <context>
@@ -4660,20 +5067,32 @@ Edite-o e tente novamente.</translation>
 <context>
     <name>terms_privacy_widget</name>
     <message>
-        <source>Terms and Privacy Policy</source>
-        <translation>Termos e com nossa Política de Privacidade</translation>
+        <source>Accept and agree</source>
+        <translation>Aceite e concorde</translation>
     </message>
     <message>
-        <source>I AGREE</source>
-        <translation>CONCORDO</translation>
+        <source>By clicking &quot;Accept and agree&quot;, you confirm that you have read carefully and agree to our &lt;a href=&quot;%1&quot;&gt;Terms&lt;/a&gt; and &lt;a href=&quot;%2&quot;&gt;Privacy Policy&lt;/a&gt;</source>
+        <translation>Ao clicar em &quot;Aceitar e concordar&quot;, você confirma que leu com atenção e concorda com nossos &lt;a href=&quot;%1&quot;&gt; Termos &lt;/a&gt; e &lt;a href=&quot;%2&quot;&gt; Política de Privacidade &lt;/a&gt;</translation>
     </message>
     <message>
-        <source>By clicking &quot;I Agree&quot;, you confirm that you have read carefully and agree to our &lt;a href=&quot;%1&quot;&gt;Terms&lt;/a&gt; and &lt;a href=&quot;%2&quot;&gt;Privacy Policy&lt;/a&gt;.</source>
-        <translation>Ao clicar em &quot;Concordo&quot;, você confirma que leu atenciosamente e que concorda com nossos &lt;a href=&quot;%1&quot;&gt;Termos&lt;/a&gt; e com nossa &lt;a href=&quot;%2&quot;&gt;Política de Privacidade&lt;/a&gt;.</translation>
+        <source>Welcome to Mail.ru Agent</source>
+        <translation>Bem-vindo ao agente Mail.ru</translation>
     </message>
     <message>
-        <source>Please pay your attention that we have updated our &lt;a href=&quot;%1&quot;&gt;Terms&lt;/a&gt; and &lt;a href=&quot;%2&quot;&gt;Privacy Policy&lt;/a&gt;. By clicking &quot;I Agree&quot;, you confirm that you have read updated documents carefully and agree to them.</source>
-        <translation>Por favor, observe atentamente que atualizamos nossos &lt;a href=&quot;%1&quot;&gt;Termos&lt;/a&gt; e nossa &lt;a href=&quot;%2&quot;&gt;Política de Privacidade&lt;/a&gt;. Ao clicar em &quot;Concordo&quot;, você confirma que leu atenciosamente os documentos atualizados e que concorda com eles.</translation>
+        <source>Welcome to Myteam</source>
+        <translation>Bem-vindo ao myteam</translation>
+    </message>
+    <message>
+        <source>Welcome to Messenger</source>
+        <translation>Bem-vindo ao messenger</translation>
+    </message>
+    <message>
+        <source>ICQ New - the evolution of communication</source>
+        <translation>ICQ New — a evolução da comunicação</translation>
+    </message>
+    <message>
+        <source>Welcome to ICQ</source>
+        <translation>Bem-vindo ao ICQ</translation>
     </message>
 </context>
 <context>
@@ -4710,12 +5129,16 @@ Edite-o e tente novamente.</translation>
         <translation>Link copiado</translation>
     </message>
     <message>
-        <source>There are no profiles with this email address</source>
-        <translation>Não existe perfil com esse email</translation>
-    </message>
-    <message>
         <source>There are no profiles or groups with this nickname</source>
         <translation>Não existe perfil ou grupo com este nickname</translation>
+    </message>
+    <message>
+        <source>Copied to clipboard</source>
+        <translation>Copiado para a área de transferência</translation>
+    </message>
+    <message>
+        <source>There are no profiles with this email</source>
+        <translation>Não há perfil com este email</translation>
     </message>
 </context>
 <context>
@@ -4727,10 +5150,6 @@ Edite-o e tente novamente.</translation>
     <message>
         <source>Add member</source>
         <translation>Adicionar membro</translation>
-    </message>
-    <message>
-        <source>Chat options</source>
-        <translation>Opções do chat</translation>
     </message>
     <message>
         <source>Smileys and stickers</source>
@@ -4791,6 +5210,10 @@ Edite-o e tente novamente.</translation>
     <message>
         <source>Attach</source>
         <translation>Anexar</translation>
+    </message>
+    <message>
+        <source>Information</source>
+        <translation>Informação</translation>
     </message>
 </context>
 <context>
@@ -4892,6 +5315,14 @@ Edite-o e tente novamente.</translation>
     <message>
         <source>VIDEO</source>
         <translation>VÍDEO</translation>
+    </message>
+    <message>
+        <source>Screen recording permissions</source>
+        <translation>Permissões de gravação de tela</translation>
+    </message>
+    <message>
+        <source>To share screen you need to allow access to the screen recording in the system settings</source>
+        <translation>Para compartilhar a tela, você precisa permitir o acesso à gravação da tela nas configurações do sistema</translation>
     </message>
 </context>
 <context>

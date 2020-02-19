@@ -193,10 +193,15 @@ namespace Ui
         void init(const QFont& _font, const QColor& _color, const QColor& _linkColor = QColor());
         void setText(const QString& _text, const QColor& _color = QColor());
         void setCursorForText();
+        void unsetCursorForText();
+        void setColor(const QColor& _color);
+        void setLinkColor(const QColor& _color);
 
+        void clearMenuActions();
         void addMenuAction(const QString& _iconPath, const QString& _name, const QVariant& _data);
         void makeCopyable();
         void showButtons();
+        QString getText() const;
 
     protected:
         virtual void paintEvent(QPaintEvent* _event) override;
@@ -232,6 +237,8 @@ namespace Ui
         void setVisible(bool _value);
         void setHeaderText(const QString& _text, const QColor& _color = QColor());
         void setText(const QString& _text, const QColor& _color = QColor());
+        void setTextLinkColor(const QColor& _color);
+        void setHeaderLinkColor(const QColor& _color);
         bool isVisible() const;
 
         TextLabel* header_ = nullptr;
@@ -467,8 +474,8 @@ namespace Ui
 
     AvatarNameInfo* addAvatarInfo(QWidget* _parent, QLayout* _layout);
     TextLabel* addLabel(const QString& _text, QWidget* _parent, QLayout* _layout, int _addLeftOffset = 0);
-    TextLabel* addText(const QString& _text, QWidget* _parent, QLayout* _layout);
-    std::unique_ptr<InfoBlock> addInfoBlock(const QString& _header, const QString& _text, QWidget* _parent, QLayout* _layout);
+    TextLabel* addText(const QString& _text, QWidget* _parent, QLayout* _layout, int _addLeftOffset = 0, int _maxLineNumbers = 0);
+    std::unique_ptr<InfoBlock> addInfoBlock(const QString& _header, const QString& _text, QWidget* _parent, QLayout* _layout, int _addLeftOffset = 0);
     QWidget* addSpacer(QWidget* _parent, QLayout* _layout, int height = -1);
     SidebarButton* addButton(const QString& _icon, const QString& _text, QWidget* _parent, QLayout* _layout);
     SidebarCheckboxButton* addCheckbox(const QString& _icon, const QString& _text, QWidget* _parent, QLayout* _layout);
@@ -476,4 +483,21 @@ namespace Ui
     MembersPlate* addMembersPlate(QWidget* _parent, QLayout* _layout);
     MembersWidget* addMembersWidget(Logic::ChatMembersModel* _model, Logic::ContactListItemDelegate* _delegate, int _membersCount, QWidget* _parent, QLayout* _layout);
     ColoredButton* addColoredButton(const QString& _icon, const QString& _text, QWidget* _parent, QLayout* _layout, const QSize& _iconSize = QSize());
+
+    class BlockAndDeleteWidget : public QWidget
+    {
+        Q_OBJECT
+    public:
+        BlockAndDeleteWidget(QWidget* _parent, const QString& _friendly, const QString& _chatAimid);
+        bool needToRemoveMessages() const;
+
+    protected:
+        void paintEvent(QPaintEvent* _event) override;
+        void resizeEvent(QResizeEvent* _event) override;
+
+    private:
+        Ui::CheckBox* checkbox_;
+        std::unique_ptr<Ui::TextRendering::TextUnit> label_;
+        bool removeMessages_;
+    };
 }

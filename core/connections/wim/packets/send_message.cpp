@@ -7,6 +7,31 @@
 #include "../../urls_cache.h"
 #include "send_message.h"
 
+namespace
+{
+    rapidjson::Value createPollParams(const core::archive::poll& _poll, rapidjson_allocator& a)
+    {
+        rapidjson::Value poll_params(rapidjson::Type::kObjectType);
+
+        if (_poll->id_.empty())
+        {
+            poll_params.AddMember("type", "anon", a);
+
+            rapidjson::Value responses_array(rapidjson::Type::kArrayType);
+            for (const auto& response : _poll->answers_)
+                responses_array.PushBack(rapidjson::Value{}.SetString(response.text_.c_str(), response.text_.length(), a), a);
+
+            poll_params.AddMember("responses", responses_array, a);
+        }
+        else
+        {
+            poll_params.AddMember("id", _poll->id_, a);
+        }
+
+        return poll_params;
+    }
+}
+
 using namespace core;
 using namespace wim;
 
@@ -20,7 +45,9 @@ send_message::send_message(wim_packet_params _params,
     const core::archive::mentions_map& _mentions,
     const std::string& _description,
     const std::string& _url,
-    const archive::shared_contact& _shared_contact)
+    const archive::shared_contact& _shared_contact,
+    const core::archive::geo& _geo,
+    const core::archive::poll& _poll)
     :
         wim_packet(std::move(_params)),
         updated_id_(_updated_id),
@@ -37,7 +64,9 @@ send_message::send_message(wim_packet_params _params,
         mentions_(_mentions),
         description_(_description),
         url_(_url),
-        shared_contact_(_shared_contact)
+        shared_contact_(_shared_contact),
+        geo_(_geo),
+        poll_(_poll)
 {
     assert(!internal_id_.empty());
 }
@@ -55,13 +84,15 @@ int32_t send_message::init_request(std::shared_ptr<core::http_request_simple> _r
 
     const auto method = is_sticker && quotes_.empty() ? std::string_view("sendSticker") : std::string_view("sendIM");
 
-    std::stringstream ss_url;
-    ss_url << urls::get_url(urls::url_type::wim_host) << "im/" << method;
+    std::string url;
+    url += urls::get_url(urls::url_type::wim_host);
+    url += "im/";
+    url += method;
 
-    _request->set_url(ss_url.str());
+    _request->set_url(url);
     _request->set_normalized_url(method);
     _request->set_keep_alive();
-    _request->set_gzip(true);
+    _request->set_compression_auto();
     _request->set_priority(priority_send_message());
     _request->push_post_parameter("f", "json");
     _request->push_post_parameter("aimsid", escape_symbols(get_params().aimsid_));
@@ -100,6 +131,22 @@ int32_t send_message::init_request(std::shared_ptr<core::http_request_simple> _r
                 if (!quote.get_shared_contact()->sn_.empty())
                     contact_params.AddMember("sn", quote.get_shared_contact()->sn_, a);
                 quote_params.AddMember("contact", std::move(contact_params), a);
+            }
+            else if (quote.get_geo())
+            {
+                quote_params.AddMember("text", "", a);
+                rapidjson::Value geo_params(rapidjson::Type::kObjectType);
+                geo_params.AddMember("name", quote.get_geo()->name_, a);
+                geo_params.AddMember("lat", quote.get_geo()->lat_, a);
+                geo_params.AddMember("long", quote.get_geo()->long_, a);
+                quote_params.AddMember("geo", std::move(geo_params), a);
+            }
+            else if(quote.get_poll())
+            {
+                quote_params.AddMember("text", quote.get_text(), a);
+                rapidjson::Value poll_params(rapidjson::Type::kObjectType);
+                poll_params.AddMember("id", quote.get_poll()->id_, a);
+                quote_params.AddMember("poll", std::move(poll_params), a);
             }
             else
             {
@@ -141,6 +188,9 @@ int32_t send_message::init_request(std::shared_ptr<core::http_request_simple> _r
                 {
                     text_params.AddMember("mediaType", "text", a);
                     text_params.AddMember("text", message_text_, a);
+
+                    if (poll_)
+                        text_params.AddMember("poll", createPollParams(poll_, a), a);
                 }
                 doc.PushBack(std::move(text_params), a);
             }
@@ -179,6 +229,24 @@ int32_t send_message::init_request(std::shared_ptr<core::http_request_simple> _r
 
         _request->push_post_parameter("parts", escape_symbols(rapidjson_get_string_view(buffer)));
     }
+    else if (poll_)
+    {
+        rapidjson::Document doc(rapidjson::Type::kArrayType);
+        auto& a = doc.GetAllocator();
+
+        rapidjson::Value text_params(rapidjson::Type::kObjectType);
+        text_params.AddMember("mediaType", "text", a);
+        text_params.AddMember("text", message_text_, a);
+
+        text_params.AddMember("poll", createPollParams(poll_, a), a);
+        doc.PushBack(std::move(text_params), a);
+
+        rapidjson::StringBuffer buffer;
+        rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+        doc.Accept(writer);
+
+        _request->push_post_parameter("parts", escape_symbols(rapidjson_get_string_view(buffer)));
+    }
 
     if (!mentions_.empty())
     {
@@ -192,7 +260,7 @@ int32_t send_message::init_request(std::shared_ptr<core::http_request_simple> _r
         _request->push_post_parameter("mentions", std::move(str));
     }
 
-    if (quotes_.empty())
+    if (quotes_.empty() && !geo_ && !poll_)
     {
         if (description_.empty())
         {
@@ -245,6 +313,28 @@ int32_t send_message::init_request(std::shared_ptr<core::http_request_simple> _r
             _request->push_post_parameter("parts", escape_symbols(rapidjson_get_string_view(buffer)));
         }
     }
+    if (geo_)
+    {
+        rapidjson::Document doc(rapidjson::Type::kArrayType);
+        auto& a = doc.GetAllocator();
+
+        rapidjson::Value text_params(rapidjson::Type::kObjectType);
+        text_params.AddMember("mediaType", "text", a);
+        text_params.AddMember("text", message_text_, a);
+
+        rapidjson::Value geo_params(rapidjson::Type::kObjectType);
+        geo_params.AddMember("name", geo_->name_, a);
+        geo_params.AddMember("lat", geo_->lat_, a);
+        geo_params.AddMember("long", geo_->long_, a);
+        text_params.AddMember("geo", std::move(geo_params), a);
+        doc.PushBack(std::move(text_params), a);
+
+        rapidjson::StringBuffer buffer;
+        rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+        doc.Accept(writer);
+
+        _request->push_post_parameter("parts", escape_symbols(rapidjson_get_string_view(buffer)));
+    }
 
     if (is_sms)
     {
@@ -270,9 +360,9 @@ int32_t send_message::init_request(std::shared_ptr<core::http_request_simple> _r
 
 int32_t send_message::parse_response_data(const rapidjson::Value& _data)
 {
-    tools::unserialize_value(_data, "msgId", wim_msg_id_);
     tools::unserialize_value(_data, "histMsgId", hist_msg_id_);
     tools::unserialize_value(_data, "beforeHistMsgId", before_hist_msg_id);
+    tools::unserialize_value(_data, "pollId", poll_id_);
 
     if (std::string_view state; tools::unserialize_value(_data, "state", state) && state == "duplicate")
         duplicate_ = true;

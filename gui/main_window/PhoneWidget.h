@@ -20,11 +20,18 @@ namespace Ui
         FINISH_STATE = 3,
     };
 
+    enum class AttachState
+    {
+        FORCE_LOGOUT = 0,
+        NEED_PHONE = 1,
+        CHANGE_PHONE = 2,
+    };
+
     class PhoneWidget : public QWidget
     {
         Q_OBJECT
     public:
-        PhoneWidget(QWidget* _parent, const PhoneWidgetState& _state = PhoneWidgetState::ABOUT_STATE, const QString& _label = QString(), const QString& _about = QString(), bool _canClose = true, bool _forceAttach = false);
+        PhoneWidget(QWidget* _parent, const PhoneWidgetState& _state = PhoneWidgetState::ABOUT_STATE, const QString& _label = QString(), const QString& _about = QString(), bool _canClose = true, AttachState _attachState = AttachState::CHANGE_PHONE);
         virtual ~PhoneWidget();
 
         void setState(const PhoneWidgetState& _state);
@@ -59,6 +66,7 @@ namespace Ui
         void phoneInfoResult(qint64 _seq, const Data::PhoneInfo& _data);
         void getSmsResult(int64_t, int, int, const QString&, const QString& _ckecks);
         void loginResult(int64_t, int);
+        void phoneAttached(bool);
         void onTimer();
         void countrySelected(const QString&);
 
@@ -101,7 +109,7 @@ namespace Ui
         QString labelText_;
         QString aboutText_;
         bool canClose_;
-        bool forceAttach_;
+        AttachState attachState_;
         bool loggedOut_;
         bool showPhoneHint_;
     };

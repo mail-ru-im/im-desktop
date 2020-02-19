@@ -18,23 +18,6 @@ TextBlockLayout::TextBlockLayout() = default;
 
 TextBlockLayout::~TextBlockLayout() = default;
 
-const IItemBlockLayout::IBoxModel& TextBlockLayout::getBlockBoxModel() const
-{
-    static const QMargins bubbleMargins(
-        0,
-        Utils::scale_value(4),
-        0,
-        Utils::scale_value(8)
-    );
-
-    static const BoxModel boxModel(
-        false,
-        bubbleMargins);
-
-    return boxModel;
-
-}
-
 void TextBlockLayout::markDirty()
 {
     prevWidth_ = 0;

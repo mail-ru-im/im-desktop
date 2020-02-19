@@ -2,6 +2,8 @@
 
 #include "ContactsTab.h"
 
+#include "../common.shared/config/config.h"
+
 #include "contact_list/ContactListWidget.h"
 #include "contact_list/ContactListUtils.h"
 #include "contact_list/ContactListTopPanel.h"
@@ -17,7 +19,7 @@ namespace Ui
         , state_(LeftPanelState::min)
         , header_(new ContactListTopPanel())
         , contactListWidget_(new ContactListWidget(this, Logic::MembersWidgetRegim::CONTACT_LIST_POPUP, nullptr, nullptr))
-        , addButton_((build::is_biz() || build::is_dit()) ? nullptr : new HeaderTitleBarButton(this))
+        , addButton_(config::get().is_on(config::features::add_contact) ? new HeaderTitleBarButton(this) : nullptr)
         , spacer_(new QWidget(this))
     {
         if (addButton_)
@@ -32,8 +34,13 @@ namespace Ui
             });
         }
 
-        connect(contactListWidget_, &ContactListWidget::searchEnd, header_->getSearchWidget(), &SearchWidget::searchCompleted);
+        QObject::connect(contactListWidget_, &ContactListWidget::searchEnd, header_->getSearchWidget(), &SearchWidget::searchCompleted);
         contactListWidget_->connectSearchWidget(header_->getSearchWidget());
+        QObject::connect(&Utils::InterConnector::instance(), &Utils::InterConnector::setContactSearchFocus, this, [this]() {
+            header_->getSearchWidget()->setFocus();
+            emit Utils::InterConnector::instance().hideContactListPlaceholder();
+        });
+
 
         auto l = Utils::emptyVLayout(this);
         spacer_->setFixedHeight(Utils::scale_value(8));
@@ -69,5 +76,10 @@ namespace Ui
     ContactListWidget* ContactsTab::getContactListWidget() const
     {
         return contactListWidget_;
+    }
+
+    SearchWidget* ContactsTab::getSearchWidget() const
+    {
+        return header_->getSearchWidget();
     }
 }

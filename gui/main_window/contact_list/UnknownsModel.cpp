@@ -9,6 +9,7 @@
 #include "../../utils/gui_coll_helper.h"
 #include "../../utils/InterConnector.h"
 #include "../../utils/utils.h"
+#include "../common.shared/config/config.h"
 
 namespace
 {
@@ -227,7 +228,7 @@ namespace Logic
 
             auto iter = std::find(dialogs_.begin(), dialogs_.end(), _dlgState);
 
-            if (!_dlgState.isSuspicious_ || build::is_biz())
+            if (!_dlgState.isSuspicious_ || !config::get().is_on(config::features::unknown_contacts))
             {
                 if (iter != dialogs_.end())
                 {

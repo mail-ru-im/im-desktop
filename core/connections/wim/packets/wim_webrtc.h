@@ -48,6 +48,7 @@ namespace core {
             std::shared_ptr<core::tools::binary_stream> _data;
 
             int32_t init_request(std::shared_ptr<core::http_request_simple> request) override;
+            int32_t execute_request(std::shared_ptr<core::http_request_simple> request) override;
             int32_t parse_response(std::shared_ptr<core::tools::binary_stream> response) override;
 
         public:

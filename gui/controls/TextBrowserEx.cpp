@@ -1,16 +1,20 @@
 #include "stdafx.h"
+
 #include "TextBrowserEx.h"
 #include "utils/Text.h"
+#include "fonts.h"
+#include "styles/ThemeParameters.h"
 
 namespace Ui
 {
 
 TextBrowserEx::TextBrowserEx(const TextBrowserEx::Options& _options, QWidget *_parent)
-    : QTextBrowser(_parent),
-      options_(_options)
+    : QTextBrowser(_parent)
+    , options_(_options)
 {
     setFont(_options.font_);
     setOpenExternalLinks(_options.openExternalLinks_);
+    setOpenLinks(_options.openExternalLinks_);
     setStyleSheet(generateStyleSheet(_options));
     document()->setDefaultStyleSheet(generateStyleSheet(_options));
 
@@ -61,6 +65,14 @@ int setAppropriateHeight(TextBrowserEx &_textBrowser)
 
 }
 
+TextBrowserEx::Options::Options()
+    : linkColor_(Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_INVERSE))
+    , textColor_(Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID))
+    , backgroundColor_(Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE))
+    , font_(Fonts::appFontScaled(15))
+{
+}
+
 QMargins TextBrowserEx::Options::getMargins() const
 {
     if (useDocumentMargin_)
@@ -69,5 +81,4 @@ QMargins TextBrowserEx::Options::getMargins() const
 
     return { leftBodyMargin() , topBodyMargin(), rightBodyMargin(), bottomBodyMargin() };
 }
-
 }

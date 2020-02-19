@@ -13,8 +13,6 @@ public:
 
     virtual ~TextBlockLayout() override;
 
-    const IItemBlockLayout::IBoxModel& getBlockBoxModel() const override;
-
     void markDirty() override;
 
 protected:

@@ -5,6 +5,7 @@
 #include "utils/gui_coll_helper.h"
 #include "utils/InterConnector.h"
 #include "my_info.h"
+#include "../common.shared/config/config.h"
 
 namespace
 {
@@ -378,7 +379,8 @@ namespace Ui
             return;
 
         auto oldInfo = QFileInfo(QDir::toNativeSeparators(value));
-        auto possibleOldInfo = QFileInfo(QDir::toNativeSeparators(DefaultDownloadsPath() % qsl("/") % build::ProductName()));
+        const auto product = config::get().string(config::values::product_name);
+        auto possibleOldInfo = QFileInfo(QDir::toNativeSeparators(DefaultDownloadsPath() % ql1c('/') % QString::fromUtf8(product.data(), product.size())));
         auto newInfo = QFileInfo(DefaultDownloadsPath());
         if (oldInfo == newInfo || oldInfo == possibleOldInfo)
         {

@@ -6,13 +6,16 @@
 #include "tools/binary_stream.h"
 #include "tools/strings.h"
 #include "tools/system.h"
+#include "tools/json_helper.h"
 #include "tools/tlv.h"
 #include "http_request.h"
 #include "async_task.h"
 #include "utils.h"
-#include "../common.shared/keys.h"
 #include "../common.shared/common.h"
 #include "../common.shared/version_info.h"
+#include "../common.shared/omicron_keys.h"
+#include "../common.shared/string_utils.h"
+#include "../common.shared/config/config.h"
 #include "../corelib/enumerations.h"
 #include "../external/curl/include/curl.h"
 
@@ -36,20 +39,17 @@ std::shared_ptr<im_stats::stop_objects> im_stats::stop_objects_;
 
 auto omicron_get_events_send_interval()
 {
-    return std::chrono::seconds(omicronlib::_o("im_stats_send_interval", static_cast<int64_t>(feature::default_im_stats_send_interval())));
+    return std::chrono::seconds(omicronlib::_o(omicron::keys::im_stats_send_interval, static_cast<int64_t>(feature::default_im_stats_send_interval())));
 }
 
 auto omicron_get_events_max_store_interval()
 {
-    return std::chrono::minutes(omicronlib::_o("im_stats_max_store_interval", static_cast<int64_t>(feature::default_im_stats_max_store_interval())));
+    return std::chrono::minutes(omicronlib::_o(omicron::keys::im_stats_max_store_interval, static_cast<int64_t>(feature::default_im_stats_max_store_interval())));
 }
 
 std::string get_client_stat_url()
 {
-    std::stringstream ss_url;
-    ss_url << urls::get_url(urls::url_type::client_stat_url) << std::string_view("/clientStat");
-
-    return ss_url.str();
+    return su::concat("https://", config::get().url(config::urls::stat_base), "/srp/clientStat");
 }
 
 im_stats::im_stats(std::wstring _file_name)
@@ -102,8 +102,7 @@ void im_stats::start_save()
     if (save_timer_id_ > 0)
         return;
 
-    auto wr_this = weak_from_this();
-    save_timer_id_ = g_core->add_timer([wr_this]()
+    save_timer_id_ = g_core->add_timer([wr_this = weak_from_this()]()
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -119,8 +118,7 @@ void im_stats::delayed_start_send()
     if (start_send_timer_id_ > 0)
         return;
 
-    auto wr_this = weak_from_this();
-    start_send_timer_id_ = g_core->add_timer([wr_this]()
+    start_send_timer_id_ = g_core->add_timer([wr_this = weak_from_this()]()
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -141,8 +139,7 @@ void im_stats::start_send(bool _check_start_now)
     if (_check_start_now && (std::chrono::system_clock::now() - last_sent_time_) >= events_send_interval_)
         events_send_interval_ = std::chrono::seconds(1);
 
-    auto wr_this = weak_from_this();
-    send_timer_id_ = g_core->add_timer([wr_this]()
+    send_timer_id_ = g_core->add_timer([wr_this = weak_from_this()]()
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -402,13 +399,12 @@ void im_stats::send_async()
 
     mark_all_events_sent(true);
 
-    auto wr_this = weak_from_this();
     auto user_proxy = g_core->get_proxy_settings();
     stats_thread_->run_async_function([post_data = std::move(post_data), user_proxy, file_name = file_name_]()
     {
         return im_stats::send(user_proxy, post_data, file_name);
 
-    })->on_result_ = [wr_this](int32_t _send_result)
+    })->on_result_ = [wr_this = weak_from_this()](int32_t _send_result)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -515,25 +511,20 @@ int32_t im_stats::send(const proxy_settings& _user_proxy,
     post_request.set_connect_timeout(std::chrono::seconds(5));
     post_request.set_timeout(std::chrono::seconds(5));
     post_request.set_keep_alive();
-    post_request.set_custom_header_param("Content-Encoding: gzip");
     post_request.set_custom_header_param("Content-Type: application/json");
     post_request.set_url(get_client_stat_url());
     post_request.set_normalized_url("clientStat");
 
     tools::binary_stream data;
     data.write(_post_data);
+    post_request.set_post_data(data.get_data(), data.available(), false);
+    post_request.set_compression_auto();
 
-    tools::binary_stream compressed_data;
-    if (tools::compress(data, compressed_data))
+    if (post_request.post())
     {
-        post_request.set_post_data(compressed_data.get_data(), compressed_data.all_size(), false);
-
-        if (post_request.post())
-        {
-            auto http_code = post_request.get_response_code();
-            if (http_code == 200)
-                return 0;
-        }
+        auto http_code = post_request.get_response_code();
+        if (http_code == 200)
+            return 0;
     }
 
     return -1;
@@ -584,10 +575,9 @@ im_stats::im_stats_event::im_stats_event(im_stat_event_names _event_name,
 
 void im_stats::im_stats_event::serialize(rapidjson::Value& _node, rapidjson_allocator& _a) const
 {
-    std::string event_name(im_stat_event_to_string(name_));
-    if (!event_name.empty())
+    if (const auto event_name = im_stat_event_to_string(name_); !event_name.empty())
     {
-        _node.AddMember("name", event_name, _a);
+        _node.AddMember("name", tools::make_string_ref(event_name), _a);
 
         rapidjson::Value node_prop(rapidjson::Type::kObjectType);
         for (const auto& [key, value] : props_)

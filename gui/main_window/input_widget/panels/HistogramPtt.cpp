@@ -54,6 +54,7 @@ namespace Ui
         recorderHistogram_ = new RecorderHistogram(this);
         rootLayot->addWidget(recorderHistogram_);
         rootLayot->setContentsMargins(0, getVerMargin(), 0, getVerMargin());
+        setAttribute(Qt::WA_TransparentForMouseEvents, true);
     }
 
     HistogramPtt::HistogramPtt(QWidget* _parent, std::function<std::chrono::milliseconds(int, double)> _durationCalc)
@@ -92,7 +93,7 @@ namespace Ui
         rootLayout->addWidget(histograms_);
 
         durationText_ = TextRendering::MakeTextUnit(makeTextDuration(std::chrono::seconds::zero()));
-        durationText_->init(Fonts::appFontScaled(platform::is_apple() ? 15 : 16, Fonts::FontWeight::Normal), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT));
+        durationText_->init(Fonts::appFontScaled(16, Fonts::FontWeight::Normal), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT));
         durationText_->evaluateDesiredSize();
         rootLayout->setContentsMargins(buttonHorMargin, 0, durationText_->desiredWidth() + Utils::scale_value(16) + getHorSpacer(), 0);
 
@@ -161,6 +162,23 @@ namespace Ui
     void HistogramPtt::enableCircleHover(bool _val)
     {
         playButton_->enableCircleHover(_val);
+        if (!_val)
+            playButton_->updateIcon();
+    }
+
+    void HistogramPtt::setUnderLongPress(bool _val)
+    {
+        playButton_->setUnderLongPress(_val);
+    }
+
+    bool HistogramPtt::hasPlayButton() const
+    {
+        return playButton_->getState() == PlayButton::State::Play;
+    }
+
+    bool HistogramPtt::hasPauseButton() const
+    {
+        return playButton_->getState() == PlayButton::State::Pause;
     }
 
     void HistogramPtt::setPlayingButton()
@@ -290,7 +308,7 @@ namespace Ui
     void HistogramPtt::updatePressed()
     {
         pressed_ = isPressed();
-        if (pressed_)
+        if (pressed_ && !(histograms_->playerHistogram()->isVisible()))
         {
             enableTooltip_ = false;
             hideToolTip();

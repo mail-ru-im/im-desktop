@@ -37,7 +37,7 @@ namespace Utils
 
     private Q_SLOTS:
         void applicationStateChanged(Qt::ApplicationState state);
-        void coreLogins(const bool _has_valid_login, const bool _locked);
+        void coreLogins(const bool _has_valid_login, const bool _locked, const QString& _validOrFirstLogin);
         void guiSettings();
 
         void receiveUrlCommand(const QString& _urlCommand);
@@ -58,7 +58,7 @@ namespace Utils
         void parseUrlCommand(const QString& _urlCommand);
 
     private:
-        void initMainWindow(const bool _has_valid_login, const bool _locked);
+        void initMainWindow(const bool _has_valid_login, const bool _locked, const QString& _validOrFirstLogin);
         void init_win7_features();
 
         std::unique_ptr<Ui::MainWindow> mainWindow_;

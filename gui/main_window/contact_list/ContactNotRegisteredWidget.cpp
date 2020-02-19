@@ -1,8 +1,12 @@
+#include "stdafx.h"
+
 #include "ContactNotRegisteredWidget.h"
 
 #include "controls/TextBrowserEx.h"
 #include "controls/PictureWidget.h"
 #include "utils/utils.h"
+#include "fonts.h"
+#include "styles/ThemeParameters.h"
 
 namespace
 {

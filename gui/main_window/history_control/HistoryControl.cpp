@@ -113,15 +113,9 @@ namespace Ui
     class EmptyPage : public QWidget
     {
     public:
-        EmptyPage(QWidget* _parent = nullptr);
-
-        private Q_SLOTS:
-        void showPlaceholder();
-        void hidePlaceholder();
+        explicit EmptyPage(QWidget* _parent = nullptr);
 
     private:
-
-        QPointer<QWidget> placeholder_;
         QWidget* dialogWidget_;
     };
 
@@ -129,9 +123,6 @@ namespace Ui
         : QWidget(_parent)
         , dialogWidget_(nullptr)
     {
-        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::showDialogPlaceholder, this, &EmptyPage::showPlaceholder);
-        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::hideDialogPlaceholder, this, &EmptyPage::hidePlaceholder);
-
         auto layout = Utils::emptyHLayout(this);
 
         dialogWidget_ = new QWidget(this);
@@ -148,26 +139,8 @@ namespace Ui
 
         dialogWidget_->setLayout(dialogLayout);
 
-
-        placeholder_ = new Ui::DialogPlaceholder(this);
-
         Testing::setAccessibleName(dialogWidget_, qsl("AS hc dialogWidget_"));
         layout->addWidget(dialogWidget_);
-        Testing::setAccessibleName(placeholder_, qsl("AS hc placeholder_"));
-        layout->addWidget(placeholder_);
-        placeholder_->setVisible(false);
-    }
-
-    void EmptyPage::showPlaceholder()
-    {
-        dialogWidget_->setVisible(false);
-        placeholder_->show();
-    }
-
-    void EmptyPage::hidePlaceholder()
-    {
-        placeholder_->hide();
-        dialogWidget_->setVisible(true);
     }
 
     HistoryControl::HistoryControl(QWidget* parent)
@@ -303,7 +276,7 @@ namespace Ui
         }
     }
 
-    void HistoryControl::contactSelected(const QString& _aimId, qint64 _messageId, qint64 _quoteId)
+    void HistoryControl::contactSelected(const QString& _aimId, qint64 _messageId, const highlightsV& _highlights)
     {
         assert(!_aimId.isEmpty());
 
@@ -316,9 +289,7 @@ namespace Ui
         {
             _messageId = lastReadMsg;
             if (_messageId != -1)
-            {
                 scrollMode = hist::scroll_mode_type::unread;
-            }
         }
         else
         {
@@ -328,7 +299,7 @@ namespace Ui
         auto oldPage = getCurrentPage();
         if (oldPage)
         {
-            const bool canScrollToBottom = scrollMode == hist::scroll_mode_type::unread && Ui::get_gui_settings()->get_value<bool>(settings_partial_read, settings_partial_read_deafult());
+            const bool canScrollToBottom = scrollMode == hist::scroll_mode_type::unread && Ui::get_gui_settings()->get_value<bool>(settings_partial_read, settings_partial_read_default());
             if (_messageId == -1 || canScrollToBottom)
             {
                 if (oldPage->aimId() == _aimId)
@@ -376,12 +347,15 @@ namespace Ui
 
         emit Utils::InterConnector::instance().historyControlReady(_aimId, _messageId, dlgState, -1, createNewPage);
 
+        page->resetMessageHighlights();
+        if (!_highlights.empty())
+            page->setHighlights(_highlights);
+
         if (scrollMode != hist::scroll_mode_type::none || createNewPage)
             page->initFor(_messageId, scrollMode, createNewPage ? HistoryControlPage::FirstInit::Yes : HistoryControlPage::FirstInit::No);
 
         if (createNewPage)
             statistic::getGuiMetrics().eventChatOpen(_aimId);
-
 
         const auto prevButtonVisible = !dialogHistory_.empty();
         for (const auto& p : std::as_const(pages_))
@@ -398,8 +372,7 @@ namespace Ui
         if (contactChanged)
             Logic::GetFriendlyContainer()->unsubscribe(current_);
 
-        if (!current_.isEmpty())
-            times_[current_] = QTime::currentTime();
+        rememberCurrentDialogTime();
         current_ = _aimId;
 
         stackPages_->setCurrentWidget(page);
@@ -441,7 +414,10 @@ namespace Ui
 
     void HistoryControl::switchToEmpty()
     {
+        rememberCurrentDialogTime();
+
         current_.clear();
+        window()->setFocus();
         stackPages_->setCurrentWidget(emptyPage_);
         updateEmptyPageWallpaper();
         MainPage::instance()->hideInput();
@@ -508,11 +484,11 @@ namespace Ui
         collection.set_value_as_qstring("contact", _aimId);
         GetDispatcher()->post_message_to_core("dialogs/remove", collection.get());
 
-        stackPages_->removeWidget(page);
-
         const bool isCurrent = current_ == _aimId;
         if (isCurrent)
             switchToEmpty();
+
+        stackPages_->removeWidget(page);
 
         page->pageLeave();
         page->deleteLater();
@@ -606,6 +582,12 @@ namespace Ui
     void HistoryControl::updateEmptyPageWallpaper() const
     {
         updateWallpaper(QString());
+    }
+
+    void HistoryControl::rememberCurrentDialogTime()
+    {
+        if (!current_.isEmpty())
+            times_[current_] = QTime::currentTime();
     }
 
     void HistoryControl::inputTyped()

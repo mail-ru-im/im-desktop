@@ -9,6 +9,7 @@
 #include "../HistoryTextEdit.h"
 
 #include "core_dispatcher.h"
+#include "gui_settings.h"
 #include "utils/utils.h"
 #include "utils/InterConnector.h"
 #include "main_window/MainPage.h"
@@ -199,6 +200,7 @@ namespace Ui
         , edit_(nullptr)
         , buttonSubmit_(_submit)
         , curEditHeight_(viewportMinHeight())
+        , forceSendButton_(false)
     {
         setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
 
@@ -246,7 +248,18 @@ namespace Ui
             centerHost->setMinimumHeight(getInputMinHeight());
 
             auto centerLayout = Utils::emptyHLayout(centerHost);
-            centerLayout->addSpacing(getInputTextLeftMargin());
+
+            auto leftLayout = Utils::emptyVLayout();
+            leftLayout->setAlignment(Qt::AlignBottom);
+
+            auto leftWidget = new ClickableWidget(this);
+            leftWidget->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
+            leftWidget->setFocusPolicy(Qt::NoFocus);
+            leftWidget->setCursor(Qt::IBeamCursor);
+            leftWidget->setFixedWidth(getInputTextLeftMargin());
+            leftLayout->addWidget(leftWidget);
+            leftLayout->addSpacing(getVerMargin());
+            centerLayout->addLayout(leftLayout);
 
             {
                 textEdit_ = new HistoryTextEdit(this);
@@ -263,6 +276,18 @@ namespace Ui
                 inputLayout->addSpacing(getVerMargin());
 
                 centerLayout->addLayout(inputLayout);
+
+                connect(leftWidget, &ClickableWidget::clicked, this, [this]()
+                {
+                    const auto target = textEdit_->viewport();
+                    auto mousePos = target->mapFromGlobal(QCursor::pos());
+                    mousePos.rx() = 1;
+                    mousePos.ry() = std::clamp(mousePos.y(), 1, target->height() - 1);
+                    QMouseEvent pressEvent(QEvent::MouseButtonPress, mousePos, Qt::LeftButton, Qt::LeftButton, Qt::NoModifier);
+                    QMouseEvent releaseEvent(QEvent::MouseButtonPress, mousePos, Qt::LeftButton, Qt::LeftButton, Qt::NoModifier);
+                    QApplication::sendEvent(target, &pressEvent);
+                    QApplication::sendEvent(target, &releaseEvent);
+                });
             }
 
             buttonEmoji_ = new CustomButton(centerHost, qsl(":/smile"), buttonSize);
@@ -325,13 +350,14 @@ namespace Ui
         setButtonsTabOrder();
     }
 
-    void InputPanelMain::showEdit(Data::MessageBuddySptr _message)
+    void InputPanelMain::showEdit(Data::MessageBuddySptr _message, const MediaType _type)
     {
         initEdit();
 
         setLeftSideState(InputSide::SideState::Minimized);
         setRightSideState(InputSide::SideState::Normal);
 
+        edit_->setMediaType(_type);
         edit_->setMessage(_message);
 
         setCurrentTopWidget(edit_);
@@ -389,7 +415,8 @@ namespace Ui
 
     void InputPanelMain::onTextEditClicked()
     {
-        emit Utils::InterConnector::instance().searchEnd();
+        if (Ui::get_gui_settings()->get_value<bool>(settings_fast_drop_search_results, settings_fast_drop_search_default()))
+            emit Utils::InterConnector::instance().searchEnd();
     }
 
     void InputPanelMain::resizeAnimated(const int _height, const ResizeCondition _condition)
@@ -511,8 +538,9 @@ namespace Ui
     {
         if (edit_ && currentTopWidget_ == edit_)
         {
-            const auto newState = textEdit_->document()->isEmpty() ? InputSide::SideState::Minimized : InputSide::SideState::Normal;
-            setRightSideState(newState);
+            const auto newState = (!forceSendButton_ && textEdit_->document()->isEmpty()) ? InputSide::SideState::Minimized : InputSide::SideState::Normal;
+            if (!forceSendButton_)
+                setRightSideState(newState);
         }
     }
 
@@ -525,8 +553,8 @@ namespace Ui
 
     void InputPanelMain::setButtonsTabOrder()
     {
-        const std::vector<QWidget*> widgets = { buttonAttach_, textEdit_, buttonEmoji_, buttonSubmit_ };
-        for (int i = 0; i < int(widgets.size()) - 1; ++i)
+        QWidget* widgets[] = { buttonAttach_, textEdit_, buttonEmoji_, buttonSubmit_ };
+        for (size_t i = 0; i < std::size(widgets) - 1; ++i)
         {
             assert(widgets[i]);
             assert(widgets[i + 1]);
@@ -565,6 +593,11 @@ namespace Ui
             setCurrentTopWidget(nullptr);
         else if (!currentTopWidget_)
             setCurrentTopWidget(emptyTop_);
+    }
+
+    void InputPanelMain::forceSendButton(const bool _force)
+    {
+        forceSendButton_ = _force;
     }
 
     void InputPanelMain::setFocusOnInput()

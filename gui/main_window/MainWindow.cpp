@@ -17,9 +17,11 @@
 #include "sounds/SoundsManager.h"
 #include "tray/TrayIcon.h"
 #include "../gui_settings.h"
+#include "../app_config.h"
 #include "../controls/MainStackedWidget.h"
 
 #include "controls/TooltipWidget.h"
+#include "main_window/contact_list/SearchWidget.h"
 #include "../controls/CustomButton.h"
 #include "../previewer/GalleryWidget.h"
 #include "../utils/utils.h"
@@ -46,36 +48,147 @@
 
 #include "../core_dispatcher.h"
 
+#include "../../common.shared/config/config.h"
+#include "TermsPrivacyWidget.h"
+
 #ifdef _WIN32
-#include "../../common.shared/win32/crash_handler.h"
-#include "win32/WinNativeWindow.h"
 #include <windowsx.h>
+#include <Uxtheme.h>
 #include <wtsapi32.h>
 #pragma comment(lib, "wtsapi32.lib")
 #endif //_WIN32
 
 #ifdef __APPLE__
-#include "macos/AccountsPage.h"
 #include "../utils/macos/mac_support.h"
-
-#ifndef MAC_MIGRATION
-#define MAC_MIGRATION
-#include "../utils/macos/mac_migration.h"
-#endif
-
 #include "../utils/macos/mac_titlebar.h"
+#include "../../common.shared/crash_report/crash_reporter.h"
 #endif //__APPLE__
 
 namespace
 {
 #ifdef _WIN32
+    typedef HRESULT(__stdcall *DwmIsCompositionEnabled)(BOOL* pfEnabled);
+    typedef HRESULT(__stdcall *DwmExtendFrameIntoClientArea)(HWND hWnd, _In_ const MARGINS* pMarInset);
+
     constexpr int TITLE_CONTEXT_MENU_CMD = WM_USER + 0x100;
 
-    int getWindowBorderWidth()
+    constexpr int NativeWindowBorderWidth = 5;
+
+    enum class Style : DWORD
     {
-        return Utils::scale_value(Ui::NativeWindowBorderWidth);
+        // WS_THICKFRAME: without this the window cannot be resized and so aero snap, de-maximizing and minimizing won't work
+        // WS_CAPTION: enables aero minimize animation/transition
+        BasicBorderless = WS_POPUP | WS_THICKFRAME | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_CLIPCHILDREN,
+        AeroBorderless = BasicBorderless | WS_CAPTION
+    };
+
+    int getWindowBorderWidth() noexcept
+    {
+        return Utils::scale_value(NativeWindowBorderWidth);
+    }
+
+    bool isNativeWindowShowCmd(HWND _hwnd, UINT _cmd)
+    {
+        WINDOWPLACEMENT placement;
+        placement.length = sizeof(WINDOWPLACEMENT);
+        if (!GetWindowPlacement(_hwnd, &placement))
+            return false;
+
+        return placement.showCmd == _cmd;
+    }
+
+    bool getMonitorWorkRect(HWND _hwnd, QRect& _rect)
+    {
+        RECT rect;
+        if (GetWindowRect(_hwnd, &rect))
+        {
+            if (auto monitor = MonitorFromRect(&rect, MONITOR_DEFAULTTONULL))
+            {
+                MONITORINFO info = { 0 };
+                info.cbSize = sizeof(info);
+                if (GetMonitorInfo(monitor, &info))
+                {
+                    _rect.setRect(info.rcWork.left, info.rcWork.top, info.rcWork.right - info.rcWork.left, info.rcWork.bottom - info.rcWork.top);
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    bool getWindowTopLeftOnScreen(const QPoint& _posAbs, QPoint& _topLeft)
+    {
+        POINT pos = {_posAbs.x(), _posAbs.y()};
+        if (auto monitor = MonitorFromPoint(pos, MONITOR_DEFAULTTONULL))
+        {
+            MONITORINFO info = { 0 };
+            info.cbSize = sizeof(info);
+            if (GetMonitorInfo(monitor, &info))
+            {
+                _topLeft.setX(pos.x - info.rcWork.left);
+                _topLeft.setY(pos.y - info.rcWork.top);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    void updateSystemMenu(HWND _hWnd, HMENU& _menu)
+    {
+        if (!_hWnd || !_menu)
+            return;
+
+        auto maximized = isNativeWindowShowCmd(_hWnd, SW_MAXIMIZE);
+        for (int i = 0; i < GetMenuItemCount(_menu); ++i)
+        {
+            MENUITEMINFO itemInfo = { 0 };
+            itemInfo.cbSize = sizeof(itemInfo);
+            itemInfo.fMask = MIIM_TYPE | MIIM_STATE | MIIM_ID;
+            if (GetMenuItemInfo(_menu, i, TRUE, &itemInfo))
+            {
+                if (itemInfo.fType & MF_SEPARATOR)
+                    continue;
+
+                if (itemInfo.wID && !(itemInfo.fState & MF_DEFAULT))
+                {
+                    UINT fState = itemInfo.fState & ~(MF_DISABLED | MF_GRAYED);
+                    if (itemInfo.wID == SC_CLOSE)
+                        fState |= MF_DEFAULT;
+                    else if ((maximized && (itemInfo.wID == SC_MAXIMIZE || itemInfo.wID == SC_SIZE || itemInfo.wID == SC_MOVE))
+                        || (!maximized && itemInfo.wID == SC_RESTORE))
+                        fState |= MF_DISABLED | MF_GRAYED;
+
+                    itemInfo.fMask = MIIM_STATE;
+                    itemInfo.fState = fState;
+                    if (!SetMenuItemInfo(_menu, i, TRUE, &itemInfo))
+                    {
+                        DestroyMenu(_menu);
+                        _menu = 0;
+                        break;
+                    }
+                }
+            }
+            else
+            {
+                DestroyMenu(_menu);
+                _menu = 0;
+                break;
+            }
+        }
     }
 #endif
+
+    auto getWindowMarginOnScreen()
+    {
+        return Utils::scale_value(5);
+    }
+
+    auto getBgColor()
+    {
+        return Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE);
+    }
 
     int getMinWindowWidth()
     {
@@ -232,9 +345,8 @@ namespace Ui
     void TitleWidgetEventFilter::showContextMenu(QPoint _pos)
     {
 #ifdef _WIN32
-        HWND handle = mainWindow_->getParentWindow();
-        HMENU sysMenu = GetSystemMenu(handle, FALSE);
-        if (sysMenu)
+        auto handle = reinterpret_cast<HWND>(mainWindow_->winId());
+        if (auto sysMenu = GetSystemMenu(handle, FALSE))
         {
             UINT enabledState = MF_BYCOMMAND | MF_ENABLED;
             UINT disabledState = MF_BYCOMMAND | (MF_DISABLED | MF_GRAYED);
@@ -254,12 +366,9 @@ namespace Ui
     {
         mainWindow_->activate();
         mainWindow_->updateMainMenu();
-#ifdef _WIN32
-        SendMessage(mainWindow_->getParentWindow(), WM_SYSCOMMAND, SC_KEYMENU, VK_SPACE);
-#else
+
         auto logo = mainWindow_->getWindowLogo();
         showContextMenu(logo->mapToGlobal(logo->rect().center()));
-#endif
     }
 
     bool TitleWidgetEventFilter::eventFilter(QObject* _obj, QEvent* _event)
@@ -336,9 +445,9 @@ namespace Ui
     void MainWindow::hideTaskbarIcon()
     {
 #ifdef _WIN32
-        HWND parent = (HWND)::GetWindowLong(parentNativeWindowHandle_, GWL_HWNDPARENT);
-        if (!parent)
-            ::SetWindowLong(parentNativeWindowHandle_, GWL_HWNDPARENT, (LONG) fake_parent_window_);
+        auto hwnd = reinterpret_cast<HWND>(winId());
+        if (!reinterpret_cast<HWND>(::GetWindowLong(hwnd, GWL_HWNDPARENT)))
+            ::SetWindowLong(hwnd, GWL_HWNDPARENT, (LONG) fake_parent_window_);
 #endif //_WIN32
         trayIcon_->forceUpdateIcon();
     }
@@ -346,7 +455,7 @@ namespace Ui
     void MainWindow::showTaskbarIcon()
     {
 #ifdef _WIN32
-        ::SetWindowLong(parentNativeWindowHandle_, GWL_HWNDPARENT, 0L);
+        ::SetWindowLong(reinterpret_cast<HWND>(winId()), GWL_HWNDPARENT, 0L);
 
         std::unique_ptr<QWidget> w(new QWidget(this));
         w->setWindowFlags(Qt::Tool | Qt::FramelessWindowHint);
@@ -381,15 +490,6 @@ namespace Ui
     bool MainWindow::isMaximized() const
     {
         return platform::is_windows() ? isMaximized_ : QMainWindow::isMaximized();
-    }
-
-    bool MainWindow::isMinimized() const
-    {
-#ifdef _WIN32
-        return isNativeWindowShowCmd(getParentWindow(), SW_SHOWMINIMIZED) || isNativeWindowShowCmd(getParentWindow(), SW_MINIMIZE);
-#else
-        return QMainWindow::isMinimized();
-#endif
     }
 
     bool MainWindow::hasMemoryDockWidget() const
@@ -437,6 +537,7 @@ namespace Ui
         if (!localPINWidget_)
         {
             localPINWidget_ = new LocalPINWidget(LocalPINWidget::Mode::VerifyPIN, this);
+            Testing::setAccessibleName(localPINWidget_, qsl("AS mw localPINWidget_"));
             stackedWidget_->addWidget(localPINWidget_);
         }
 
@@ -449,76 +550,73 @@ namespace Ui
 #endif
     }
 
-#ifdef _WIN32
-    HWND MainWindow::getParentWindow() const
+    static QString makeTitle()
     {
-        return parentNativeWindowHandle_;
-    }
-
-    void MainWindow::hideParentWindow()
-    {
-        ignoreActivateEvent_ = true;
-        ShowWindow(parentNativeWindowHandle_, SW_HIDE);
-        QTimer::singleShot(0, this, [this]() {ignoreActivateEvent_ = false; });
-    }
-
-    std::unique_ptr<WinNativeWindow> MainWindow::takeNativeWindow()
-    {
-        return std::move(parentNativeWindow_);
-    }
-#endif
-
-    QRect MainWindow::nativeGeometry() const
-    {
-#ifdef _WIN32
-        RECT winRect;
-        GetWindowRect(getParentWindow(), &winRect);
-        return QRect(winRect.left, winRect.top, winRect.right - winRect.left, winRect.bottom - winRect.top);
+        auto appTitle = Utils::getAppTitle();
+        if constexpr (environment::is_alpha())
+        {
+            return appTitle % ql1s(" alpha version");
+        }
+        else if constexpr (environment::is_beta())
+        {
+            return appTitle % ql1s(" beta version");
+        }
+        else if constexpr (environment::is_develop())
+        {
+            const auto branchName = []() -> QLatin1String {
+#ifdef GIT_BRANCH_NAME
+                return ql1s(GIT_BRANCH_NAME);
 #else
-        return geometry();
+                return QLatin1String();
 #endif
+            }();
+            const auto space = branchName.size() > 0 ? ql1s(" ") : QLatin1String();
+            return appTitle % ql1s(" develop version") % space % branchName;
+        }
+        return appTitle;
     }
 
-    MainWindow::MainWindow(QApplication* app, const bool _has_valid_login, const bool _locked)
+    MainWindow::MainWindow(QApplication* app, const bool _has_valid_login, const bool _locked, const QString& _validOrFirstLogin)
         : mainPage_(nullptr)
         , loginPage_(nullptr)
+        , gdprPage_(nullptr)
         , app_(app)
-        , eventFilter_(new TitleWidgetEventFilter(this))
-        , trayIcon_(new TrayIcon(this))
-        , backgroundPixmap_(QPixmap())
+        , eventFilter_(nullptr)
+        , trayIcon_(nullptr)
         , Shadow_(nullptr)
         , ffplayer_(nullptr)
-        , callStatsMgr_(build::is_dit() ? nullptr : new CallQualityStatsMgr(this))
+        , callStatsMgr_(nullptr)
         , memoryDockWidget_(nullptr)
-        , connStateWatcher_(new ConnectionStateWatcher(this))
+        , connStateWatcher_(nullptr)
         , SkipRead_(false)
         , TaskBarIconHidden_(false)
         , isMaximized_(false)
         , sleeping_(false)
         , userActivityTimer_(nullptr)
 #ifdef _WIN32
-        , parentNativeWindow_(std::make_unique<WinNativeWindow>())
-        , parentNativeWindowHandle_(nullptr)
-        , ignoreActivateEvent_(false)
+        , isAeroEnabled_(false)
 #endif
-#ifdef __APPLE__
-        , accounts_page_(nullptr)
-        , migrationManager_(new MacMigrationManager(this))
-#endif //__APPLE__
         , windowActive_(false)
         , uiActive_(false)
         , localPINWidget_(nullptr)
     {
         Utils::InterConnector::instance().setMainWindow(this);
 
-#ifdef _WIN32
-        const auto productDataPath = ::common::get_user_profile() + build::GetProductVariant(product_path_icq_w, product_path_agent_w, product_path_biz_w, product_path_dit_w);
-        core::dump::crash_handler chandler("icq.desktop", productDataPath, false);
-        chandler.set_process_exception_handlers();
-        chandler.set_thread_exception_handlers();
-#endif //_WIN32
+        eventFilter_ = new TitleWidgetEventFilter(this);
+        trayIcon_ = new TrayIcon(this);
+        if (config::get().is_on(config::features::call_quality_stat))
+            callStatsMgr_ = new CallQualityStatsMgr(this);
+
+        connStateWatcher_ = new ConnectionStateWatcher(this);
 
 #ifdef __APPLE__
+        const auto productPath = config::get().string(config::values::product_path_mac);
+        const QString dumpPath = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation)
+                % ql1c('/') % QString::fromUtf8(productPath.data(), productPath.size()) % ql1s("/Dumps");
+
+        QDir().mkpath(dumpPath);
+
+        crash_system::reporter::instance().init(dumpPath.toStdString(), _validOrFirstLogin.toStdString(), MacSupport::bundleDir().toStdString());
         getMacSupport()->enableMacCrashReport();
         getMacSupport()->postCrashStatsIfNedded();
         getMacSupport()->listenSleepAwakeEvents();
@@ -536,7 +634,7 @@ namespace Ui
         mainLayout_->setSizeConstraint(QLayout::SetDefaultConstraint);
         titleWidget_ = new QWidget(mainWidget_);
         titleWidget_->setAutoFillBackground(true);
-        Utils::updateBgColor(titleWidget_, Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT_INVERSE));
+        Utils::updateBgColor(titleWidget_, Styling::getParameters().getColor(GetAppConfig().hasCustomDeviceId() ? Styling::StyleVariable::SECONDARY_RAINBOW_WARM : Styling::StyleVariable::BASE_BRIGHT_INVERSE));
         titleWidget_->setFixedHeight(Utils::scale_value(28));
         titleWidget_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
         Testing::setAccessibleName(titleWidget_, qsl("AS titleWidget_"));
@@ -545,9 +643,8 @@ namespace Ui
         titleLayout_ = Utils::emptyHLayout(titleWidget_);
 
         logo_ = new QLabel(titleWidget_);
-        logo_->setPixmap(Utils::renderSvgScaled(build::GetProductVariant(qsl(":/logo/logo_icq"), qsl(":/logo/logo_agent"), qsl(":/logo/logo_biz_16"), qsl(":/logo/logo_dit")), QSize(16, 16)));
+        logo_->setPixmap(Utils::renderSvgScaled(qsl(":/logo/logo_16"), QSize(16, 16)));
         logo_->setObjectName(qsl("windowIcon"));
-        logo_->setProperty(build::GetProductVariant("icq", "agent", "biz", "dit"), true);
         logo_->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
         logo_->setFocusPolicy(Qt::NoFocus);
         Testing::setAccessibleName(logo_, qsl("AS logo_"));
@@ -590,21 +687,24 @@ namespace Ui
         };
 
         hideButton_ = titleBtn(qsl(":/titlebar/minimize_button"), qsl("AS hideButton_"), Styling::StyleVariable::BASE_BRIGHT_HOVER, Styling::StyleVariable::BASE_BRIGHT_ACTIVE);
+        Testing::setAccessibleName(hideButton_, qsl("AS mw hideButton_"));
         titleLayout_->addWidget(hideButton_);
 
         maximizeButton_ = titleBtn(qsl(":/titlebar/expand_button"), qsl("AS maximizeButton_"), Styling::StyleVariable::BASE_BRIGHT_HOVER, Styling::StyleVariable::BASE_BRIGHT_ACTIVE);
+        Testing::setAccessibleName(maximizeButton_, qsl("AS mw maximizeButton_"));
         titleLayout_->addWidget(maximizeButton_);
 
         closeButton_ = titleBtn(qsl(":/titlebar/close_button"), qsl("AS closeButton_"), Styling::StyleVariable::SECONDARY_ATTENTION, Styling::StyleVariable::SECONDARY_ATTENTION);
         closeButton_->setHoverColor(Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT));
         closeButton_->setPressedColor(Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT));
+        Testing::setAccessibleName(closeButton_, qsl("AS mw closeButton_"));
         titleLayout_->addWidget(closeButton_);
 
         Testing::setAccessibleName(titleWidget_, qsl("AS titleWidget_"));
         mainLayout_->addWidget(titleWidget_);
         stackedWidget_ = new MainStackedWidget(mainWidget_);
-        Testing::setAccessibleName(stackedWidget_, qsl("AS stackedWidget_"));
 
+        Testing::setAccessibleName(stackedWidget_, qsl("AS stackedWidget_"));
         mainLayout_->addWidget(stackedWidget_);
         this->setCentralWidget(mainWidget_);
 
@@ -633,9 +733,7 @@ namespace Ui
         titleWidget_->installEventFilter(eventFilter_);
         connect(eventFilter_, &Ui::TitleWidgetEventFilter::logoDoubleClick, this, &Ui::MainWindow::hideWindow);
 
-        QString appTitle = Utils::getAppTitle();
-        if constexpr (build::is_alpha())
-            appTitle += qsl(" alpha version");
+        const QString appTitle = makeTitle();
 
         title_->setText(appTitle);
         title_->setAttribute(Qt::WA_TransparentForMouseEvents);
@@ -643,19 +741,37 @@ namespace Ui
 
         setWindowTitle(title_->text());
 #ifdef _WIN32
-        if (parentNativeWindow_->init(appTitle))
-            parentNativeWindowHandle_ = parentNativeWindow_->hwnd();
+        setWindowFlags(windowFlags() | Qt::Window | Qt::FramelessWindowHint | Qt::WindowMinMaxButtonsHint | Qt::WindowSystemMenuHint);
 
-        setWindowFlags(Qt::Window | Qt::FramelessWindowHint | Qt::NoDropShadowWindowHint | Qt::WindowMinMaxButtonsHint | Qt::WindowSystemMenuHint);
-        setProperty("_q_embedded_native_parent_handle", (WId)parentNativeWindowHandle_);
+        auto hwnd = reinterpret_cast<HWND>(winId());
 
-        SetParent((HWND)winId(), parentNativeWindowHandle_);
-        SetWindowLong((HWND)winId(), GWL_STYLE, WS_CHILD | WS_CLIPCHILDREN | WS_CLIPSIBLINGS);
-        QEvent e(QEvent::EmbeddingControl);
-        QApplication::sendEvent(this, &e);
+        auto dll = LoadLibrary(_T("dwmapi.dll"));
+        if (dll)
+        {
+            // aero available on some versions of Windows
+            if (auto compositionFunc = reinterpret_cast<DwmIsCompositionEnabled>(GetProcAddress(dll, "DwmIsCompositionEnabled")))
+            {
+                BOOL enabled = FALSE;
+                bool success = compositionFunc(&enabled) == S_OK;
+                isAeroEnabled_ = enabled && success;
+            }
+        }
 
-        parentNativeWindow_->setChildWindow((HWND)winId());
-        parentNativeWindow_->setChildWidget(this);
+        SetWindowLongPtr(hwnd, GWL_STYLE, static_cast<LONG>(isAeroEnabled_ ? Style::AeroBorderless : Style::BasicBorderless));
+
+        if (dll)
+        {
+            if (isAeroEnabled_)
+            {
+                if (auto shadowFunc = reinterpret_cast<DwmExtendFrameIntoClientArea>(GetProcAddress(dll, "DwmExtendFrameIntoClientArea")))
+                {
+                    const MARGINS aero_shadow_on = { 1, 1, 1, 1 };
+                    shadowFunc(hwnd, &aero_shadow_on);
+                }
+            }
+
+            FreeLibrary(dll);
+        }
 
         fake_parent_window_ = Utils::createFakeParentWindow();
 #else
@@ -668,7 +784,6 @@ namespace Ui
         connect(maximizeButton_, &QPushButton::clicked, this, &MainWindow::maximize);
         connect(closeButton_, &QPushButton::clicked, this, &MainWindow::hideWindow);
 
-        // prevent the MainWindow from moving inside the parentNativeWindow
         if constexpr (!platform::is_windows())
         {
             connect(eventFilter_, &Ui::TitleWidgetEventFilter::doubleClick, this, &MainWindow::maximize);
@@ -714,10 +829,11 @@ namespace Ui
             Shadow_->show();
         }
 #endif
+
         initSettings();
         initStats();
 #ifdef _WIN32
-        DragAcceptFiles((HWND)winId(), TRUE);
+        DragAcceptFiles(hwnd, TRUE);
 #endif //_WIN32
 
         if (!get_gui_settings()->get_value<bool>(settings_show_in_taskbar, true))
@@ -744,9 +860,10 @@ namespace Ui
         app_->installEventFilter(this);
 
         updateMainMenu();
+
 #ifdef _WIN32
-        // Send the parent native window a WM_SIZE message to update the widget size
-        SendMessage(parentNativeWindowHandle_, WM_SIZE, 0, 0);
+        // redraw frame
+        SetWindowPos(hwnd, nullptr, 0, 0, 0, 0, SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE);
 #endif
     }
 
@@ -762,14 +879,6 @@ namespace Ui
         if (fake_parent_window_)
             ::DestroyWindow(fake_parent_window_);
 #endif
-    }
-
-    void MainWindow::show()
-    {
-#ifdef _WIN32
-        ShowWindow(parentNativeWindowHandle_, SW_SHOW);
-#endif
-        QMainWindow::show();
     }
 
     void MainWindow::onOpenChat(const std::string& _contact)
@@ -793,14 +902,6 @@ namespace Ui
 
     void MainWindow::activate()
     {
-        activateMainWindow();
-    }
-
-    void MainWindow::activateMainWindow(bool _activate)
-    {
-#ifndef _WIN32
-        Q_UNUSED(_activate);
-#endif
         if constexpr (platform::is_apple())
         {
             // workaround - remove blinking after hide/minimize the window
@@ -809,17 +910,19 @@ namespace Ui
             updateMainMenu();
         }
         setVisible(true);
+        activateWindow();
 #ifdef _WIN32
-        if (!isActive())
-        {
-            activateWindow();
-            isMaximized() ? showMaximized() : showNormal(_activate);
-            ShowWindow(parentNativeWindowHandle_, SW_SHOW);
-        }
+        auto hwnd = reinterpret_cast<HWND>(winId());
+        ShowWindow(hwnd, SW_SHOW);
+        if (isMaximized())
+            showMaximized();
+        else if (isNativeWindowShowCmd(hwnd, SW_SHOWMINIMIZED))
+            SendMessage(hwnd, WM_SYSCOMMAND, SC_RESTORE, 0);
+        else
+            showNormal();
+
         if (Shadow_)
             SetWindowPos((HWND)Shadow_->winId(), (HWND)winId(), 0, 0, 0, 0, SWP_NOACTIVATE | SWP_NOOWNERZORDER | SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
-#else
-        activateWindow();
 #endif //_WIN32
 #ifdef __APPLE__
         getMacSupport()->activateWindow(winId());
@@ -847,6 +950,7 @@ namespace Ui
 
         gallery_ = new Previewer::GalleryWidget(this); // will delete itself on close
         connect(gallery_, &Previewer::GalleryWidget::finished, this, &MainWindow::exit);
+        connect(gallery_, &Previewer::GalleryWidget::closed, this, &MainWindow::galeryClosed);
         gallery_->openGallery(_aimId, _link, _msgId, _attachedPlayer);
     }
 
@@ -882,7 +986,7 @@ namespace Ui
     {
 #ifdef _WIN32
         // Check the absence of statuses isMinimized or hided, because native window can be focused in this state.
-        return isActiveWindow() && !isMinimized() && IsWindowVisible(getParentWindow()) > 0;
+        return GetForegroundWindow() == reinterpret_cast<HWND>(winId()) && !isMinimized();
 #else
         return isActiveWindow();
 #endif //_WIN32
@@ -903,13 +1007,7 @@ namespace Ui
 
     int MainWindow::getScreen() const
     {
-#ifdef _WIN32
-        RECT winRect;
-        GetWindowRect(parentNativeWindowHandle_, &winRect);
-        return QApplication::desktop()->screenNumber(QPoint(winRect.left + (winRect.right - winRect.left) / 2, winRect.top + (winRect.bottom - winRect.top) / 2));
-#else
         return QApplication::desktop()->screenNumber(this);
-#endif
     }
 
     QRect MainWindow::screenGeometry() const
@@ -1025,43 +1123,174 @@ namespace Ui
     bool MainWindow::nativeEventFilter(const QByteArray& _data, void* _message, long* _result)
     {
 #ifdef _WIN32
-        if (!_result)
-            return false;
+        Q_UNUSED(_data);
 
-        MSG* msg = (MSG*)(_message);
+        static bool checkGeometry = false;
+        static QRect restoreGeometry;
 
-        if (msg->message == WM_NCHITTEST)
+        auto msg = static_cast<MSG*>(_message);
+        auto hwnd = reinterpret_cast<HWND>(winId());
+
+        if (msg->message == WM_NCCREATE && msg->hwnd == hwnd)
         {
-            if (msg->hwnd != (HANDLE)winId())
-                return false;
-
-            RECT winRect;
-            GetWindowRect(msg->hwnd, &winRect);
-
-            const int borderWidth = getWindowBorderWidth();
-            const int x = GET_X_LPARAM(msg->lParam) - winRect.left;
-            const int y = GET_Y_LPARAM(msg->lParam) - winRect.top;
-
-            auto internalArea = QRect(QPoint(borderWidth, borderWidth),
-                                      QPoint(winRect.right - winRect.left - borderWidth, winRect.bottom - winRect.top - borderWidth));
-
-            if (x >= borderWidth && x <= winRect.right - winRect.left - borderWidth
-                && y >= borderWidth && y <= getTitleHeight())
+            auto userdata = reinterpret_cast<LPCREATESTRUCTW>(msg->lParam)->lpCreateParams;
+            // store window instance pointer in window user data
+            SetWindowLongPtrW(msg->hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(userdata));
+        }
+        else if (msg->message == WM_ERASEBKGND && msg->hwnd == hwnd)
+        {
+            const auto bgColor = getBgColor();
+            auto brush = CreateSolidBrush(RGB(bgColor.red(), bgColor.green(), bgColor.blue()));;
+            SetClassLongPtr(msg->hwnd, GCLP_HBRBACKGROUND, reinterpret_cast<LONG_PTR>(brush));
+        }
+        else if (msg->message == WM_NCACTIVATE && msg->hwnd == hwnd)
+        {
+            if (!isAeroEnabled_ && _result)
             {
-                // This allows for buttons in the toolbar and logo to keep the mouse interaction
-                if (QApplication::widgetAt(QCursor::pos()) != titleWidget_ || getWindowLogo()->rect().contains(QPoint(x, y)))
-                    return false;
-
-                *_result = HTTRANSPARENT;
-                return true;
-            }
-            else if (!internalArea.contains(x, y))
-            {
-                *_result = HTTRANSPARENT;
+                // Prevents window frame reappearing on window activation
+                // in "basic" theme, where no aero shadow is present.
+                *_result = 1;
                 return true;
             }
         }
-        else if ((msg->message == WM_SYSCOMMAND && msg->wParam == SC_RESTORE && msg->hwnd == (HWND)winId()) || (msg->message == WM_SHOWWINDOW && msg->hwnd == (HWND)winId() && msg->wParam == TRUE))
+        else if (msg->message == WM_NCPAINT && msg->hwnd == hwnd)
+        {
+            if (QSysInfo::WindowsVersion < QSysInfo::WV_VISTA && _result)
+            {
+                *_result = 0;
+                return true;
+            }
+        }
+        else if (msg->message == WM_NCHITTEST && msg->hwnd == hwnd && _result)
+        {
+            const int borderWidth = getWindowBorderWidth();
+            const int x = GET_X_LPARAM(msg->lParam);
+            const int y = GET_Y_LPARAM(msg->lParam);
+
+            const auto topLeft = QWidget::mapToGlobal(rect().topLeft());
+            const auto bottomRight = QWidget::mapToGlobal(rect().bottomRight());
+
+            if (x <= topLeft.x() + borderWidth)
+            {
+                if (y <= topLeft.y() + borderWidth)
+                    *_result = HTTOPLEFT;
+                else if (y >= bottomRight.y() - borderWidth)
+                    *_result = HTBOTTOMLEFT;
+                else
+                    *_result = HTLEFT;
+            }
+            else if (x >= bottomRight.x() - borderWidth)
+            {
+                if (y <= topLeft.y() + borderWidth)
+                    *_result = HTTOPRIGHT;
+                else if (y >= bottomRight.y() - borderWidth)
+                    *_result = HTBOTTOMRIGHT;
+                else
+                    *_result = HTRIGHT;
+            }
+            else
+            {
+                if (y <= topLeft.y() + borderWidth)
+                    *_result = HTTOP;
+                else if (y >= bottomRight.y() - borderWidth)
+                    *_result = HTBOTTOM;
+                else
+                    *_result = HTCLIENT;
+            }
+
+            if (*_result == HTCLIENT)
+            {
+                auto curPos = QWidget::mapFromGlobal(QPoint(x, y));
+
+                // workaround for correcting the mapped cursor position:
+                // when the main window is maximized its borders are off-screen,
+                // so adjust the position by this offset value
+                if (isNativeWindowShowCmd(msg->hwnd, SW_MAXIMIZE))
+                {
+                    RECT wRect;
+                    GetWindowRect(msg->hwnd, &wRect);
+
+                    if (auto monitor = MonitorFromRect(&wRect, MONITOR_DEFAULTTONEAREST))
+                    {
+                        MONITORINFO info = { 0 };
+                        info.cbSize = sizeof(info);
+                        if (GetMonitorInfo(monitor, &info))
+                            curPos += QPoint(wRect.left - info.rcWork.left, wRect.top - info.rcWork.top);
+                    }
+                }
+
+                // checking the caption area: between the logo and system buttons
+                if (titleWidget_->geometry().contains(curPos) && !logo_->geometry().contains(curPos) && !hideButton_->geometry().contains(curPos)
+                    && !maximizeButton_->geometry().contains(curPos) && !closeButton_->geometry().contains(curPos))
+                    *_result = HTCAPTION;
+            }
+
+            return true;
+        }
+        else if (msg->message == WM_NCCALCSIZE && msg->hwnd == hwnd && _result)
+        {
+            if (isNativeWindowShowCmd(msg->hwnd, SW_MAXIMIZE))
+            {
+                auto params = reinterpret_cast<LPNCCALCSIZE_PARAMS>(msg->lParam);
+                auto& rect = (msg->wParam == TRUE) ? params->rgrc[0] : *reinterpret_cast<LPRECT>(msg->lParam);
+
+                // adjust client rect to not spill over monitor edges when maximized
+                if (auto monitor = MonitorFromRect(&rect, MONITOR_DEFAULTTONEAREST))
+                {
+                    MONITORINFO info = { 0 };
+                    info.cbSize = sizeof(info);
+                    if (GetMonitorInfo(monitor, &info))
+                        rect = std::move(info.rcWork);
+                }
+            }
+
+            *_result = 0;
+            return true;
+        }
+        else if (msg->message == WM_GETMINMAXINFO && msg->hwnd == hwnd && _result)
+        {
+            auto minMaxInfo = reinterpret_cast<MINMAXINFO*>(msg->lParam);
+            if (isNativeWindowShowCmd(msg->hwnd, SW_MAXIMIZE))
+            {
+                RECT rect;
+                if (GetWindowRect(msg->hwnd, &rect))
+                {
+                    if (auto monitor = MonitorFromRect(&rect, MONITOR_DEFAULTTONULL))
+                    {
+                        MONITORINFO monitorInfo = { 0 };
+                        monitorInfo.cbSize = sizeof(monitorInfo);
+                        if (GetMonitorInfo(monitor, &monitorInfo))
+                        {
+                            auto& work_area = monitorInfo.rcWork;
+                            auto& monitor_rect = monitorInfo.rcMonitor;
+
+                            minMaxInfo->ptMaxPosition.x = std::abs(work_area.left - monitor_rect.left);
+                            minMaxInfo->ptMaxPosition.y = std::abs(work_area.top - monitor_rect.top);
+                            minMaxInfo->ptMaxSize.x = std::abs(work_area.right - work_area.left);
+                            minMaxInfo->ptMaxSize.y = std::abs(work_area.bottom - work_area.top);
+                            minMaxInfo->ptMaxTrackSize = minMaxInfo->ptMaxSize;
+
+                            *_result = 0;
+                            return true;
+                        }
+                    }
+                }
+            }
+            else
+            {
+                minMaxInfo->ptMinTrackSize.x = minimumWidth();
+                minMaxInfo->ptMinTrackSize.y = minimumHeight();
+
+                *_result = 0;
+                return true;
+            }
+        }
+        else if (msg->message == WM_SIZE && msg->hwnd == hwnd && msg->wParam != SIZE_MINIMIZED)
+        {
+            isMaximized_ = isNativeWindowShowCmd(msg->hwnd, SW_MAXIMIZE);
+            updateState();
+        }
+        else if (((msg->message == WM_SYSCOMMAND && msg->wParam == SC_RESTORE) || (msg->message == WM_SHOWWINDOW && msg->wParam == TRUE)) && msg->hwnd == hwnd)
         {
             setVisible(true);
             if (Shadow_)
@@ -1078,10 +1307,6 @@ namespace Ui
             if (!TaskBarIconHidden_)
                 SkipRead_ = false;
             TaskBarIconHidden_ = false;
-#if 0
-            if (msg->lParam == TITLE_CONTEXT_MENU_CMD)
-                maximize();
-#endif
         }
         else if (msg->message == WM_SYSCOMMAND && msg->wParam == SC_CLOSE)
         {
@@ -1094,7 +1319,6 @@ namespace Ui
             hideWindow();
             return true;
         }
-#if 0
         else if (msg->message == WM_SYSCOMMAND && msg->wParam == SC_MINIMIZE)
         {
             minimize();
@@ -1105,6 +1329,7 @@ namespace Ui
             maximize();
             return true;
         }
+#if 0
         else if (msg->message == WM_WINDOWPOSCHANGING || msg->message == WM_WINDOWPOSCHANGED)
         {
             if (msg->hwnd == (HANDLE)winId())
@@ -1136,10 +1361,8 @@ namespace Ui
             }
             return false;
         }
-#endif
         else if (msg->message == WM_ACTIVATE)
         {
-#if 0
             if (!Shadow_)
             {
                 return false;
@@ -1148,16 +1371,19 @@ namespace Ui
             const auto isInactivate = (msg->wParam == WA_INACTIVE);
             const auto isShadowWindow = (msg->hwnd == (HWND)Shadow_->winId());
             if (isShadowWindow && !isInactivate)
-#endif
-            if (!ignoreActivateEvent_ && msg->wParam != WA_INACTIVE && msg->hwnd == (HANDLE)winId())
+            if (msg->wParam != WA_INACTIVE && msg->hwnd == (HANDLE)winId())
             {
-                activateMainWindow(false);
+                activate();
                 return false;
             }
         }
+#endif
         else if (msg->message == WM_DISPLAYCHANGE)
         {
-            checkPosition();
+            // when the native window is minimized it has negative coordinates
+            // and checkPosition() maximizes it, so prevent this
+            if (!isMinimized())
+                checkPosition();
         }
         else if (msg->message == WM_POWERBROADCAST)
         {
@@ -1184,94 +1410,118 @@ namespace Ui
                 gotoWakeup();
             }
         }
-#if 0
-        else if (msg->message == WM_NCLBUTTONDOWN && msg->hwnd == (HWND)winId())
+        else if (msg->message == WM_NCRBUTTONUP && msg->hwnd == hwnd && _result)
         {
-            BYTE bFlag = 0;
-            switch (msg->wParam)
+            const auto mousePos = MAKEPOINTS(msg->lParam);
+
+            auto sysMenu = GetSystemMenu(msg->hwnd, FALSE);
+            updateSystemMenu(msg->hwnd, sysMenu);
+            if (sysMenu)
             {
-            case HTTOP:
-                bFlag = WMSZ_TOP;
-                break;
-
-            case HTTOPLEFT:
-                bFlag = WMSZ_TOPLEFT;
-                break;
-
-            case HTTOPRIGHT:
-                bFlag = WMSZ_TOPRIGHT;
-                break;
-
-            case HTLEFT:
-                bFlag = WMSZ_LEFT;
-                break;
-
-            case HTRIGHT:
-                bFlag = WMSZ_RIGHT;
-                break;
-
-            case HTBOTTOM:
-                bFlag = WMSZ_BOTTOM;
-                break;
-
-            case HTBOTTOMLEFT:
-                bFlag = WMSZ_BOTTOMLEFT;
-                break;
-
-            case HTBOTTOMRIGHT:
-                bFlag = WMSZ_BOTTOMRIGHT;
-                break;
-            }
-
-            if (bFlag)
-            {
-                DefWindowProc(msg->hwnd, WM_SYSCOMMAND, (SC_SIZE | bFlag), msg->lParam);
-                return true;
+                SetForegroundWindow(msg->hwnd);
+                if (int cmd = TrackPopupMenu(sysMenu, TPM_LEFTALIGN | TPM_TOPALIGN | TPM_LEFTBUTTON | TPM_RETURNCMD, mousePos.x, mousePos.y, 0, msg->hwnd, nullptr))
+                {
+                    SendMessage(msg->hwnd, WM_SYSCOMMAND, cmd, 0);
+                    *_result = 0;
+                    return true;
+                }
             }
         }
-        else if (msg->message == WM_SETCURSOR && msg->hwnd == (HWND)winId())
+        else if (msg->message == WM_NCLBUTTONDOWN && msg->hwnd == hwnd)
         {
-            LPCTSTR pszCur = NULL;
-            switch (LOWORD(msg->lParam))
+            // remember the current geometry for possible correction when restoring the maximized main window
+            if (!isNativeWindowShowCmd(msg->hwnd, SW_MAXIMIZE))
+                restoreGeometry = geometry();
+        }
+        else if (msg->message == WM_EXITSIZEMOVE && msg->hwnd == hwnd)
+        {
+            // it is necessary to check the geometry after restoration if the main window is maximized by dragging it to the top of the screen
+            if (isNativeWindowShowCmd(msg->hwnd, SW_MAXIMIZE))
             {
-            case HTTOP:
-            case HTBOTTOM:
-                pszCur = IDC_SIZENS;
-                break;
+                checkGeometry = true;
 
-            case HTTOPLEFT:
-            case HTBOTTOMRIGHT:
-                pszCur = IDC_SIZENWSE;
-                break;
+                auto geometry = restoreGeometry;
+                QRect screenRect;
+                if (getMonitorWorkRect(msg->hwnd, screenRect))
+                {
+                    // change the window position for proper recovery after restarting if most of it is off-screen
+                    QPoint topLeft;
+                    if (!screenRect.contains(geometry.center()) && getWindowTopLeftOnScreen(geometry.topLeft(), topLeft))
+                    {
+                        // if the window size is larger than the screen then fix it with the margins (x, 0, x, x)
+                        // x - getWindowMarginOnScreen()
+                        if (screenRect.width() < geometry.width())
+                            geometry.setWidth(screenRect.width() - 2 * getWindowMarginOnScreen());
+                        if (screenRect.height() < geometry.height())
+                            geometry.setHeight(screenRect.height() - getWindowMarginOnScreen());
 
-            case HTLEFT:
-            case HTRIGHT:
-                pszCur = IDC_SIZEWE;
-                break;
+                        geometry.moveTo(screenRect.topLeft() + topLeft);
 
-            case HTTOPRIGHT:
-            case HTBOTTOMLEFT:
-                pszCur = IDC_SIZENESW;
-                break;
-            }
+                        // shift window if it is not fully displayed on the screen
+                        if (!screenRect.contains(geometry))
+                        {
+                            int dx = 0;
+                            int dy = 0;
+                            const auto winBottomRight = geometry.bottomRight();
+                            const auto screenBottomRight = screenRect.bottomRight();
 
-            if (pszCur)
-            {
-                SetCursor(LoadCursor(NULL, pszCur));
-                return true;
+                            if (screenBottomRight.x() < winBottomRight.x())
+                                dx = screenBottomRight.x() - winBottomRight.x() - getWindowMarginOnScreen();
+                            if (screenBottomRight.y() < winBottomRight.y())
+                                dy = screenBottomRight.y() - winBottomRight.y() - getWindowMarginOnScreen();
+
+                            geometry.translate(dx, dy);
+                        }
+                    }
+                }
+
+                get_gui_settings()->set_value(settings_main_window_rect, geometry);
             }
         }
-#endif
-        else if (msg->message == WM_SIZE)
+        else if (msg->message == WM_WINDOWPOSCHANGING && msg->hwnd == hwnd)
         {
-            isMaximized_ = isNativeWindowShowCmd(getParentWindow(), SW_MAXIMIZE);
-            updateState();
+            auto pos = reinterpret_cast<LPWINDOWPOS>(msg->lParam);
+            if (checkGeometry && isNativeWindowShowCmd(msg->hwnd, SW_SHOWNORMAL))
+            {
+                if (restoreGeometry != QRect(pos->x, pos->y, pos->cx, pos->cy))
+                {
+                    pos->x = restoreGeometry.x();
+                    pos->y = restoreGeometry.y();
+                    pos->cx = restoreGeometry.width();
+                    pos->cy = restoreGeometry.height();
+                }
+
+                checkGeometry = false;
+            }
+            else if (isNativeWindowShowCmd(hwnd, SW_MAXIMIZE))
+            {
+                QRect screenRect;
+                if (getMonitorWorkRect(msg->hwnd, screenRect))
+                {
+                    if (pos->x > screenRect.left() || pos->y > screenRect.top()
+                        || pos->cx < screenRect.width() || pos->cy < screenRect.height())
+                    {
+                        pos->x = screenRect.left();
+                        pos->y = screenRect.top();
+                        pos->cx = screenRect.width();
+                        pos->cy = screenRect.height();
+                    }
+                }
+            }
         }
-        else if (msg->message == WM_SYSKEYDOWN && msg->wParam == VK_SPACE)
+        else if (msg->message == WM_WINDOWPOSCHANGED && msg->hwnd == hwnd)
         {
-            // when Alt+Space is pressed tell the native window to show the context menu
-            SendMessage(parentNativeWindowHandle_, WM_SYSCOMMAND, SC_KEYMENU, VK_SPACE);
-            return true;
+            if (isNativeWindowShowCmd(hwnd, SW_MAXIMIZE))
+            {
+                QRect screenRect;
+                if (getMonitorWorkRect(msg->hwnd, screenRect))
+                {
+                    const auto pos = reinterpret_cast<LPWINDOWPOS>(msg->lParam);
+                    if (pos->x > screenRect.left() || pos->y > screenRect.top()
+                        || pos->cx < screenRect.width() || pos->cy < screenRect.height())
+                        SetWindowPos(msg->hwnd, nullptr, screenRect.left(), screenRect.top(), screenRect.width(), screenRect.height(), SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
+                }
+            }
         }
 #else
 
@@ -1294,8 +1544,50 @@ namespace Ui
                 if (mainPage_ && stackedWidget_->currentWidget() == mainPage_ && !mainPage_->isSemiWindowVisible())
                 {
                     const auto keyEvent = static_cast<QKeyEvent*>(event);
+                    const auto isSearchWidgetActive = (qobject_cast<Ui::SearchEdit*>(QApplication::focusWidget()) != nullptr);
+                    const auto isGalleryActive = gallery_ && gallery_->isActiveWindow();
+                    if (!isSearchWidgetActive && !isGalleryActive)
+                    {
+                        if (Utils::InterConnector::instance().isMultiselect())
+                        {
+                            bool handled = true;
+                            if (keyEvent->key() == Qt::Key_Right)
+                                Utils::InterConnector::instance().multiselectNextElementRight();
+                            else if (keyEvent->key() == Qt::Key_Left)
+                                Utils::InterConnector::instance().multiselectNextElementLeft();
+                            else if (keyEvent->key() == Qt::Key_Up)
+                                Utils::InterConnector::instance().multiSelectCurrentMessageUp(keyEvent->modifiers() & Qt::ShiftModifier);
+                            else if (keyEvent->key() == Qt::Key_Down)
+                                Utils::InterConnector::instance().multiSelectCurrentMessageDown(keyEvent->modifiers() & Qt::ShiftModifier);
+                            else if (keyEvent->key() == Qt::Key_Tab)
+                                Utils::InterConnector::instance().multiselectNextElementTab();
+                            else if (keyEvent->key() == Qt::Key_Escape)
+                                Utils::InterConnector::instance().setMultiselect(false);
+                            else if (keyEvent->key() == Qt::Key_Space)
+                                Utils::InterConnector::instance().multiselectSpace();
+                            else if (keyEvent->key() == Qt::Key_Enter || keyEvent->key() == Qt::Key_Return)
+                                Utils::InterConnector::instance().multiselectEnter();
+                            else
+                                handled = false;
+
+                            if (handled)
+                                return true;
+                        }
+                        else if (keyEvent->key() == Qt::Key_Up && (keyEvent->modifiers() & Qt::ShiftModifier && keyEvent->modifiers() & Qt::AltModifier))
+                        {
+                            Utils::InterConnector::instance().setMultiselect(true, QString(), true);
+                            if (auto page = Utils::InterConnector::instance().getHistoryPage(Logic::getContactListModel()->selectedContact()))
+                                page->setFocusOnArea();
+
+                            return true;
+                        }
+                    }
+
                     if ((keyEvent->key() == Qt::Key_Tab || keyEvent->key() == Qt::Key_Backtab) && !(keyEvent->modifiers() & Qt::ControlModifier))
                     {
+                        if (const auto contDialog = Utils::InterConnector::instance().getContactDialog(); contDialog && contDialog->isPttRecordingHoldByMouse())
+                            return true;
+
                         const auto cur = static_cast<QWidget*>(qApp->focusObject());
                         if (cur == this)
                         {
@@ -1312,6 +1604,19 @@ namespace Ui
 
                             return true;
                         }
+                    }
+                    else if (keyEvent->key() == Qt::Key_Escape)
+                    {
+                        if (const auto contDialog = Utils::InterConnector::instance().getContactDialog(); contDialog && contDialog->isRecordingPtt())
+                        {
+                            contDialog->closePttRecording();
+                            return true;
+                        }
+                    }
+                    else if (keyEvent->key() == Qt::Key_Space)
+                    {
+                        if (const auto contDialog = Utils::InterConnector::instance().getContactDialog(); contDialog && (contDialog->tryPlayPttRecord() || contDialog->tryPausePttRecord()))
+                            return true;
                     }
                 }
 
@@ -1341,22 +1646,6 @@ namespace Ui
         return QMainWindow::eventFilter(obj, event);
     }
 
-    void MainWindow::customEvent(QEvent* _event)
-    {
-#ifdef _WIN32
-        if (_event->type() == NativeWindowMoved)
-        {
-            if (!isMaximized())
-            {
-                auto wndPos = static_cast<NativeWindowMovedEvent*>(_event);
-                auto rc = get_gui_settings()->get_value(settings_main_window_rect, QRect());
-                rc.moveTo(wndPos->getPoint());
-                get_gui_settings()->set_value(settings_main_window_rect, rc);
-            }
-        }
-#endif
-    }
-
     void MainWindow::enterEvent(QEvent* _event)
     {
         QMainWindow::enterEvent(_event);
@@ -1376,6 +1665,23 @@ namespace Ui
 
         saveWindowSize(_event->size());
 
+#ifdef _WIN32
+        // workaround for correcting maximized window size:
+        // for some reason, after fixing the window size in the WM_NCCALCSIZE and WM_GETMINMAXINFO message handlers,
+        // it does not change for QMainWindow, so fix it by changing the window margins
+        if (isMaximized())
+        {
+            const auto winSize = geometry().size();
+            const auto screenSize = QApplication::desktop()->availableGeometry(getScreen()).size();
+            if (winSize.width() > screenSize.width() && winSize.height() > screenSize.height())
+                QMainWindow::setContentsMargins(QMargins(0, 0, winSize.width() - screenSize.width(), winSize.height() - screenSize.height()));
+        }
+        else
+        {
+            QMainWindow::setContentsMargins(QMargins());
+        }
+#endif // _WIN32
+
         updateMainMenu();
     }
 
@@ -1385,6 +1691,31 @@ namespace Ui
         {
             auto rc = get_gui_settings()->get_value(settings_main_window_rect, QRect());
             rc.moveTo(platform::is_apple() ? pos() : geometry().topLeft());
+
+#ifdef _WIN32
+            // when the main window is snapped to the left/right half of the screen
+            // save his normal position for the next restart
+            WINDOWPLACEMENT placement;
+            placement.length = sizeof(WINDOWPLACEMENT);
+            if (GetWindowPlacement(reinterpret_cast<HWND>(winId()), &placement))
+            {
+                const auto& r = placement.rcNormalPosition;
+                auto normalRect = QRect(r.left, r.top, r.right - r.left, r.bottom - r.top);
+
+                // fix the normlRect position when the taskbar is located on the left or top of the screen
+                const auto screenArea = QDesktopWidget().screenGeometry(this);
+                const auto workArea = QDesktopWidget().availableGeometry(this);
+                if (workArea.topLeft() != screenArea.topLeft())
+                {
+                    const auto diff = workArea.topLeft() - screenArea.topLeft();
+                    normalRect.translate(diff);
+                }
+
+                if (rc != normalRect)
+                    rc = std::move(normalRect);
+            }
+#endif
+
             get_gui_settings()->set_value(settings_main_window_rect, rc);
         }
     }
@@ -1476,9 +1807,14 @@ namespace Ui
             }
 
             if (mainPage_ && _event->modifiers() == Qt::ControlModifier && _event->key() == Qt::Key_W)
+            {
                 activateShortcutsClose();
-
-            if (_event->key() == Qt::Key_Escape)
+            }
+            else if (mainPage_ && _event->modifiers() == Qt::ControlModifier && _event->key() == Qt::Key_R)
+            {
+                Logic::getRecentsModel()->markAllRead();
+            }
+            else if (_event->key() == Qt::Key_Escape)
             {
                 const auto histPage = Utils::InterConnector::instance().getHistoryPage(aimId);
                 const auto contDialog = Utils::InterConnector::instance().getContactDialog();
@@ -1508,6 +1844,10 @@ namespace Ui
                 {
                     AttachFilePopup::hidePopup();
                 }
+                else if (histPage && histPage->isSmartrepliesVisible() && !(mainPage_->isSidebarVisible() && !mainPage_->isSideBarInSplitter()))
+                {
+                    emit Utils::InterConnector::instance().hideSmartReplies(aimId);
+                }
                 else if (contDialog && contDialog->isRecordingPtt())
                 {
                     contDialog->closePttRecording();
@@ -1535,9 +1875,16 @@ namespace Ui
                     else if (mainPage_)
                     {
                         if (aimId.isEmpty())
-                            mainPage_->setSearchFocus();
+                        {
+                            if (get_gui_settings()->get_value<bool>(settings_fast_drop_search_results, settings_fast_drop_search_default()))
+                                mainPage_->setSearchFocus();
+                            else if (mainPage_->isSearchActive())
+                                mainPage_->openRecents();
+                        }
                         else
+                        {
                             mainPage_->closeAndHighlightDialog();
+                        }
                     }
                 }
             }
@@ -1553,7 +1900,7 @@ namespace Ui
                 if (contDialog && contDialog->isRecordingPtt())
                     contDialog->stopPttRecord();
             }
-            else if (_event->modifiers() == Qt::ControlModifier && _event->key() == Qt::Key_R)
+            else if (_event->modifiers() == Qt::ControlModifier && _event->key() == Qt::Key_T)
             {
                 const auto contDialog = Utils::InterConnector::instance().getContactDialog();
                 if (contDialog && !contDialog->isRecordingPtt())
@@ -1589,9 +1936,9 @@ namespace Ui
                 }
 
                 if (nextChatSequence)
-                    mainPage_->nextChat();
+                    activateNextChat();
                 else if (prevChatSequence)
-                    mainPage_->prevChat();
+                    activatePrevChat();
             }
 
             if constexpr (platform::is_windows())
@@ -1619,58 +1966,79 @@ namespace Ui
 
     void MainWindow::initSizes()
     {
-        auto mainRect = Ui::get_gui_settings()->get_value(settings_main_window_rect, getDefaultWindowSize());
+        const auto center = QDesktopWidget().availableGeometry(this).center();
+        auto defaultWindowRect = getDefaultWindowSize();
+        defaultWindowRect.moveTo(center.x() - defaultWindowRect.width() / 2, center.y() - defaultWindowRect.height() / 2);
 
-        const int screenCount = QDesktopWidget().screenCount();
+        auto mainRect = Ui::get_gui_settings()->get_value(settings_main_window_rect, defaultWindowRect);
 
-        bool intersects = false;
-
-        for (int i = 0; i < screenCount; ++i)
+        if constexpr (!platform::is_windows())
         {
-            QRect screenGeometry = QDesktopWidget().screenGeometry(i);
+            const int screenCount = QDesktopWidget().screenCount();
 
-            QRect intersectedRect = screenGeometry.intersected(mainRect);
+            bool intersects = false;
 
-            if (intersectedRect.width() > Utils::scale_value(50) && intersectedRect.height() > Utils::scale_value(50))
+            for (int i = 0; i < screenCount; ++i)
             {
-                intersects = true;
-                break;
+                QRect screenGeometry = QDesktopWidget().screenGeometry(i);
+
+                QRect intersectedRect = screenGeometry.intersected(mainRect);
+
+                if (intersectedRect.width() > Utils::scale_value(50) && intersectedRect.height() > Utils::scale_value(50))
+                {
+                    intersects = true;
+                    break;
+                }
             }
-        }
 
-        if (!intersects)
-        {
-            mainRect = getDefaultWindowSize();
-        }
+            if (!intersects)
+                mainRect = defaultWindowRect;
 
-        resize(mainRect.width(), mainRect.height());
+            resize(mainRect.width(), mainRect.height());
+        }
 
         setMinimumHeight((qApp->desktop()->screenGeometry().height() >= Utils::scale_value(800)) ? getMinWindowHeight() : qApp->desktop()->screenGeometry().height() * 0.7);
         setMinimumWidth(getMinWindowWidth());
 
-#ifdef _WIN32
-        parentNativeWindow_->setMinimumSize(minimumWidth(), minimumHeight());
-#endif
-        if (mainRect.left() == 0 && mainRect.top() == 0)
+        if constexpr (!platform::is_windows())
         {
-            QRect desktopRect = QDesktopWidget().availableGeometry(this);
-
-            QPoint center = desktopRect.center();
-
-            move(center.x() - width() / 2, center.y() - height() / 2);
-
-            get_gui_settings()->set_value(settings_main_window_rect, geometry());
-
-#ifdef _WIN32
-            parentNativeWindow_->setGeometry(geometry());
-#endif
+            move(mainRect.left(), mainRect.top());
         }
         else
         {
-            move(mainRect.left(), mainRect.top());
-#ifdef _WIN32
-            parentNativeWindow_->setGeometry(mainRect);
-#endif
+            const auto desktopGeometry = QGuiApplication::primaryScreen()->availableVirtualGeometry();
+
+            // check window size
+            if (desktopGeometry.width() < mainRect.width())
+                mainRect.setWidth(desktopGeometry.width() - 2 * getWindowMarginOnScreen());
+            if (desktopGeometry.height() < mainRect.height())
+                mainRect.setHeight(desktopGeometry.height() - getWindowMarginOnScreen());
+
+            // check window position
+            if (!desktopGeometry.contains(mainRect.topLeft()))
+            {
+                int dx = 0;
+                int dy = 0;
+                if (mainRect.x() < desktopGeometry.x())
+                    dx = desktopGeometry.x() - mainRect.x() + getWindowMarginOnScreen();
+                if (mainRect.y() < desktopGeometry.y())
+                    dy = desktopGeometry.y() - mainRect.y();
+
+                mainRect.translate(dx, dy);
+            }
+            if (!desktopGeometry.contains(mainRect.bottomRight()))
+            {
+                int dx = 0;
+                int dy = 0;
+                if (mainRect.right() > desktopGeometry.right())
+                    dx = desktopGeometry.right() - mainRect.right() - getWindowMarginOnScreen();
+                if (mainRect.bottom() > desktopGeometry.bottom())
+                    dy = desktopGeometry.bottom() - mainRect.bottom() - getWindowMarginOnScreen();
+
+                mainRect.translate(dx, dy);
+            }
+
+            setGeometry(mainRect);
         }
     }
 
@@ -1729,39 +2097,41 @@ namespace Ui
         {
             isMaximized_ = true;
 
-#ifdef _WIN32
-            setVisible(true);
-            SendMessage(parentNativeWindowHandle_, WM_SYSCOMMAND, SC_MAXIMIZE, 0);
-#else
-            QMainWindow::showNormal();
+            if constexpr (platform::is_windows())
+            {
+                setWindowState(Qt::WindowMaximized);
+                QMainWindow::showMaximized();
+            }
+            else
+            {
+                QMainWindow::showNormal();
 
-            const auto screen = getScreen();
-            const auto screenGeometry = QApplication::desktop()->availableGeometry(screen);
-            setGeometry(screenGeometry);
-#endif
+                const auto screen = getScreen();
+                const auto screenGeometry = QApplication::desktop()->availableGeometry(screen);
+                setGeometry(screenGeometry);
+            }
         }
 
         updateState();
     }
 
-    void MainWindow::showNormal(bool _activate)
+    void MainWindow::showNormal()
     {
-#ifndef _WIN32
-        Q_UNUSED(_activate);
-#endif
         isMaximized_ = false;
-#ifdef _WIN32
-        const auto hWnd = getParentWindow();
-        if (IsWindowVisible(hWnd) == 0 || !isNativeWindowShowCmd(hWnd, SW_NORMAL))
-            SendMessage(hWnd, WM_SYSCOMMAND, SC_RESTORE, 0);
-        else if (_activate)
-            SendMessage(hWnd, WM_ACTIVATE, WA_CLICKACTIVE, 0);
-#else
-        QMainWindow::showNormal();
 
-        auto mainRect = Ui::get_gui_settings()->get_value(settings_main_window_rect, getDefaultWindowSize());
-        setGeometry(mainRect);
-#endif
+        if constexpr (platform::is_windows())
+        {
+            setWindowState(Qt::WindowNoState);
+            QMainWindow::showNormal();
+        }
+        else
+        {
+            QMainWindow::showNormal();
+
+            auto mainRect = Ui::get_gui_settings()->get_value(settings_main_window_rect, getDefaultWindowSize());
+            setGeometry(mainRect);
+        }
+
         updateState();
     }
 
@@ -1776,15 +2146,19 @@ namespace Ui
     void MainWindow::checkPosition()
     {
         QRect desktopRect;
-        for (int i = 0; i < QDesktopWidget().screenCount(); ++i)
-            desktopRect |= QDesktopWidget().availableGeometry(i);
+        const auto screens = QGuiApplication::screens();
+        for (const auto screen : screens)
+            desktopRect |= screen->availableGeometry();
 
         QRect main = rect();
         QPoint mainP = mapToGlobal(main.topLeft());
         main.moveTo(mainP);
-        int y = main.y();
-        if (y < desktopRect.y())
-            maximize();
+
+        if constexpr (!platform::is_windows())
+        {
+            if (main.y() < desktopRect.y())
+                maximize();
+        }
     }
 
     void MainWindow::userActivity()
@@ -1796,17 +2170,10 @@ namespace Ui
     void MainWindow::updateMaximizeButton(bool _isMaximized)
     {
         if (_isMaximized)
-        {
             maximizeButton_->setDefaultImage(qsl(":/titlebar/restore_button"));
-            //maximizeButton_->setHoverImage(qsl(":/titlebar/restore_button_hover"));
-            //maximizeButton_->setPressedImage(qsl(":/titlebar/restore_button_active"));
-        }
         else
-        {
             maximizeButton_->setDefaultImage(qsl(":/titlebar/expand_button"));
-            //maximizeButton_->setHoverImage(qsl(":/titlebar/expand_button_hover"));
-            //maximizeButton_->setPressedImage(qsl(":/titlebar/expand_button_active"));
-        }
+
         Styling::Buttons::setButtonDefaultColors(maximizeButton_);
     }
 
@@ -1880,29 +2247,18 @@ namespace Ui
 
     void MainWindow::needChangeState()
     {
-        const auto lastUserActivity = UserActivity::getLastActivityMs();
+        const bool mainActive = windowActive_ && !sleeping_ && UserActivity::getLastActivityMs() < getOfflineTimeout() && !LocalPIN::instance()->locked();
+        const bool voipActive = !Ui::GetDispatcher()->getVoipController().currentCallContacts().empty() && Ui::GetDispatcher()->getVoipController().isConnectionEstablished();
 
-        const bool prevState = uiActive_;
-
-        if ((windowActive_ && lastUserActivity < getOfflineTimeout() && !sleeping_ && !LocalPIN::instance()->locked())
-            || Ui::GetDispatcher()->getVoipController().isConnectionEstablished())
-        {
-            uiActive_ = true;
-        }
-        else
-        {
-            uiActive_ = false;
-        }
+        const bool newState = mainActive || voipActive;
+        const bool prevState = std::exchange(uiActive_, newState);
 
         static bool isFirst = true;
 
         const bool stateChanged = (isFirst || uiActive_ != prevState);
 
         if (uiActive_)
-        {
-
             GetDispatcher()->postUiActivity();
-        }
 
         if (stateChanged)
         {
@@ -1922,7 +2278,6 @@ namespace Ui
             if (mainPage_)
                 mainPage_->notifyUIActive(uiActive_);
         }
-
 
         isFirst = false;
     }
@@ -1993,12 +2348,9 @@ namespace Ui
         if (get_gui_settings()->get_value<bool>(settings_show_in_taskbar, true))
         {
 #ifdef _WIN32
-            SendMessage(parentNativeWindowHandle_, WM_SYSCOMMAND, SC_MINIMIZE, 0);
-#if 0
             showMinimized();
             if (Shadow_)
                 SetWindowPos((HWND)Shadow_->winId(), (HWND)winId(), 0, 0, 0, 0, SWP_NOACTIVATE | SWP_NOOWNERZORDER | SWP_NOMOVE | SWP_NOSIZE | SWP_HIDEWINDOW);
-#endif
 #elif __APPLE__
             if (isFullScreen())
                 toggleFullScreen();
@@ -2074,63 +2426,6 @@ namespace Ui
         trayIcon_->resetState();
     }
 
-    void MainWindow::showMigrateAccountPage(const QString& _accountId)
-    {
-#ifdef __APPLE__
-        migrationManager_->init(_accountId);
-
-        if (migrationManager_->getProfiles().size() == 1)
-        {
-            MacProfile profile = migrationManager_->getProfiles()[0];
-
-            migrationManager_->loginProfile(profile, MacProfile());
-
-            showMainPage();
-        }
-        else
-        {
-            bool migrated = false;
-            if (migrationManager_->getProfiles().size() == 2)
-            {
-                MacProfile profile1 = migrationManager_->getProfiles()[0];
-                MacProfile profile2 = migrationManager_->getProfiles()[1];
-
-                if (profile1.type() != profile2.type())
-                {
-                    MacProfile & main = profile1.type() == MacProfileType::Agent?profile1:profile2;
-                    MacProfile & slave = profile1.type() == MacProfileType::ICQ?profile1:profile2;
-
-                    migrationManager_->loginProfile(main, slave);
-
-                    migrated = true;
-                }
-
-                showMainPage();
-            }
-
-            if (!migrated)
-            {
-                if (!accounts_page_)
-                {
-                    accounts_page_ = new AccountsPage(this, migrationManager_);
-                    connect(accounts_page_, &AccountsPage::account_selected, this, &MainWindow::showMainPage, Qt::QueuedConnection); // strict order
-                    accounts_page_->summon();
-                    Testing::setAccessibleName(accounts_page_, qsl("AS accounts_page_"));
-                    stackedWidget_->addWidget(accounts_page_);
-                }
-
-                stackedWidget_->setCurrentWidget(accounts_page_);
-
-                clear_global_objects();
-            }
-            else
-            {
-                showMainPage();
-            }
-        }
-#endif
-    }
-
     void MainWindow::showLoginPage(const bool _is_auth_error)
     {
         closePopups({ Utils::CloseWindowInfo::Initiator::MainWindow, Utils::CloseWindowInfo::Reason::ShowLoginPage });
@@ -2141,42 +2436,24 @@ namespace Ui
             getMacSupport()->createMenuBar(true);
 
             getMacSupport()->forceEnglishInputSource();
-
-            if (!get_gui_settings()->get_value<bool>(settings_mac_accounts_migrated, false))
-            {
-                if (!MacMigrationManager::canMigrateAccount().isEmpty())
-                {
-                    resetMainPage();
-                    upgradeStuff();
-                    return;
-                }
-                else
-                {
-                    Ui::get_gui_settings()->set_value<bool>(settings_mac_accounts_migrated, true);
-                }
-            }
 #endif
 
             if (!loginPage_)
             {
-                loginPage_ = new LoginPage(this, true /* is_login */);
+                loginPage_ = new LoginPage(this);
                 Testing::setAccessibleName(loginPage_, qsl("AS loginPage_"));
                 stackedWidget_->addWidget(loginPage_);
 
-                connect(loginPage_, &LoginPage::loggedIn, this, &MainWindow::showMainPage, Qt::QueuedConnection);
-                connect(loginPage_, &LoginPage::loggedIn, this, [this]() {
-                    if (callStatsMgr_)
-                        callStatsMgr_->reconnectToMyInfo();
-                });
+                connect(loginPage_, &LoginPage::loggedIn, this, &MainWindow::showMainPage);
+
+                if (callStatsMgr_)
+                    connect(loginPage_, &LoginPage::loggedIn, callStatsMgr_, &CallQualityStatsMgr::reconnectToMyInfo);
             }
 
             stackedWidget_->setCurrentWidget(loginPage_);
-            GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::reg_page_phone);
 
             if (_is_auth_error)
-            {
                 emit Utils::InterConnector::instance().authError(core::le_wrong_login);
-            }
 
             clear_global_objects();
         };
@@ -2189,6 +2466,8 @@ namespace Ui
 
     void MainWindow::showMainPage()
     {
+        connect(MyInfo(), &my_info::needGDPR, this, &MainWindow::showGDPRPage, Qt::UniqueConnection);
+
         if (!mainPage_)
         {
             mainPage_ = MainPage::instance(this);
@@ -2201,26 +2480,44 @@ namespace Ui
         stackedWidget_->setCurrentWidget(mainPage_);
     }
 
-    void MainWindow::upgradeStuff()
+    void MainWindow::showGDPRPage()
     {
-#ifdef __APPLE__
-        const auto profiles = MacMigrationManager::canMigrateAccount();
-        showMigrateAccountPage(profiles);
+        closePopups({ Utils::CloseWindowInfo::Initiator::MainWindow, Utils::CloseWindowInfo::Reason::ShowGDPRPage });
 
-        if (!profiles.isEmpty())
+        auto showGDPRPageInternal = [this]()
         {
-            return;
-        }
+#ifdef __APPLE__
+            getMacSupport()->createMenuBar(true);
 #endif
 
-        if (!get_gui_settings()->get_value(settings_keep_logged_in, true))// || !get_gui_settings()->contains_value(settings_keep_logged_in))
-        {
-            showLoginPage(false);
-        }
+            if (!gdprPage_)
+            {
+                TermsPrivacyWidget::Options options;
+                options.isGdprUpdate_ = true;
+                const auto product = config::get().translation(config::translations::gdpr_welcome);
+
+                gdprPage_ = new TermsPrivacyWidget(QT_TRANSLATE_NOOP("terms_privacy_widget", product.data()),
+                    QT_TRANSLATE_NOOP("terms_privacy_widget",
+                        "By clicking \"Accept and agree\", you confirm that you have read carefully "
+                        "and agree to our <a href=\"%1\">Terms</a> "
+                        "and <a href=\"%2\">Privacy Policy</a>")
+                    .arg(legalTermsUrl(), privacyPolicyUrl()),
+                    options);
+
+                Testing::setAccessibleName(gdprPage_, qsl("AS gdprPage_"));
+                stackedWidget_->addWidget(gdprPage_);
+
+                connect(gdprPage_, &TermsPrivacyWidget::agreementAccepted, this, &MainWindow::showMainPage);
+            }
+
+            stackedWidget_->setCurrentWidget(gdprPage_);
+            GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::gdpr_show_update);
+    };
+
+        if (GeneralDialog::isActive())
+            QTimer::singleShot(0, this, showGDPRPageInternal);
         else
-        {
-            showMainPage();
-        }
+            showGDPRPageInternal();
     }
 
     void MainWindow::checkForUpdates()
@@ -2248,10 +2545,9 @@ namespace Ui
             {
                 if (auto area = qobject_cast<Ui::MessagesScrollArea*>(focused))
                 {
-#ifdef __APPLE__
-                    if (QString text = area->getSelectedText(); !text.isEmpty())
-                        MacSupport::replacePasteboard(text);
-#endif
+                #ifdef __APPLE__
+                    MimeData::copyMimeData(*area);
+                #endif
                     handled = true;
                 }
             }
@@ -2320,57 +2616,67 @@ namespace Ui
 
     void MainWindow::activateNextUnread()
     {
-        activate();
-        closePopups({ Utils::CloseWindowInfo::Initiator::Unknown, Utils::CloseWindowInfo::Reason::Keep_Sidebar });
-        mainPage_->recentsTabActivate(true);
+        if (mainPage_)
+        {
+            activate();
+            closePopups({ Utils::CloseWindowInfo::Initiator::Unknown, Utils::CloseWindowInfo::Reason::Keep_Sidebar });
+            mainPage_->recentsTabActivate(true);
+        }
     }
 
     void MainWindow::activateNextChat()
     {
-        activate();
-        mainPage_->recentsTabActivate(false);
-        mainPage_->selectRecentChat(Logic::getRecentsModel()->nextAimId(Logic::getContactListModel()->selectedContact()));
+        if (mainPage_)
+        {
+            activate();
+            mainPage_->nextChat();
+        }
     }
 
     void MainWindow::activatePrevChat()
     {
-        activate();
-        mainPage_->recentsTabActivate(false);
-        mainPage_->selectRecentChat(Logic::getRecentsModel()->prevAimId(Logic::getContactListModel()->selectedContact()));
+        if (mainPage_)
+        {
+            activate();
+            mainPage_->prevChat();
+        }
     }
 
     void MainWindow::activateAbout()
     {
-        activate();
-        mainPage_->settingsTabActivate(Utils::CommonSettingsType::CommonSettingsType_About);
+        if (mainPage_)
+        {
+            activate();
+            mainPage_->settingsTabActivate(Utils::CommonSettingsType::CommonSettingsType_About);
+        }
     }
 
     void MainWindow::activateProfile()
     {
-        activate();
-        mainPage_->settingsTabActivate(Utils::CommonSettingsType::CommonSettingsType_Profile);
+        if (mainPage_)
+        {
+            activate();
+            mainPage_->settingsTabActivate(Utils::CommonSettingsType::CommonSettingsType_Profile);
+        }
     }
 
     void MainWindow::activateSettings()
     {
-        activate();
-        mainPage_->settingsClicked();
+        if (mainPage_)
+        {
+            activate();
+            mainPage_->settingsClicked();
+        }
     }
-
 
     void MainWindow::closeCurrent()
     {
         activate();
 
-        const auto selectedContact = Logic::getContactListModel()->selectedContact();
-        if (selectedContact.isEmpty())
-        {
+        if (const auto selectedContact = Logic::getContactListModel()->selectedContact(); selectedContact.isEmpty())
             hideWindow();
-        }
         else
-        {
             Logic::getRecentsModel()->hideChat(selectedContact);
-        }
     }
 
     void MainWindow::toggleFullScreen()
@@ -2399,8 +2705,6 @@ namespace Ui
 #ifdef _WIN32
         if (Shadow_)
             SetWindowPos((HWND)Shadow_->winId(), (HWND)winId(), 0, 0, 0, 0, SWP_NOACTIVATE | SWP_NOOWNERZORDER | SWP_NOMOVE | SWP_NOSIZE | SWP_HIDEWINDOW);
-
-        hideParentWindow();
 #endif
 
         Ui::GetDispatcher()->getVoipController().voipReset();
@@ -2420,7 +2724,7 @@ namespace Ui
         MacSupport::closeWindow(winId());
         updateMainMenu();
 #elif defined (_WIN32)
-        hideParentWindow();
+        ShowWindow(reinterpret_cast<HWND>(winId()), SW_HIDE);
 #else
         hide();
 #endif
@@ -2507,14 +2811,14 @@ namespace Ui
     {
         if (isActive())
         {
-            if (mainPage_->isVideoWindowOn())
+            if (mainPage_ && mainPage_->isVideoWindowOn())
                 mainPage_->showVideoWindow();
             activate();
         }
         else
         {
             activate();
-            if (mainPage_->isVideoWindowOn())
+            if (mainPage_ && mainPage_->isVideoWindowOn())
                 mainPage_->showVideoWindow();
         }
 

@@ -13,7 +13,7 @@
 namespace device
 {
 
-std::unique_ptr<DeviceMonitoring> DeviceMonitoringModule::CreateDeviceMonitoring(bool virtual_device)
+std::unique_ptr<DeviceMonitoring> DeviceMonitoringModule::CreateDeviceMonitoring()
 {
 #if _WIN32
     return std::unique_ptr<DeviceMonitoring>(new(std::nothrow) DeviceMonitoringWindows());

@@ -128,12 +128,9 @@ namespace hist
         {
             onReadAllMentionsLess(_messageId, true);
 
-            if (Utils::isChat(aimId_) && !Logic::getContactListModel()->contains(aimId_))
-                return;
-
             const auto dlgState = hist::getDlgState(aimId_);
             const auto lastReadMention = std::max(lastReads_.mention, dlgState.LastReadMention_);
-            if (Ui::get_gui_settings()->get_value<bool>(settings_partial_read, settings_partial_read_deafult()))
+            if (Ui::get_gui_settings()->get_value<bool>(settings_partial_read, settings_partial_read_default()))
             {
                 const auto yoursLastRead = dlgState.YoursLastRead_;
                 const auto needResetUnreadCount = (dlgState.UnreadCount_ != 0 && yoursLastRead == _messageId);

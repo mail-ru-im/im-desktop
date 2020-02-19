@@ -8,22 +8,20 @@
 #include "../../../../common.shared/version_info.h"
 #include "../../../utils.h"
 #include "../../../tools/system.h"
+#include "../../../tools/json_helper.h"
 #include "../../urls_cache.h"
 
 
 std::string get_start_session_host()
 {
-    std::stringstream ss_host;
-    ss_host << core::urls::get_url(core::urls::url_type::wim_host) << std::string_view("aim/startSession");
-
-    return ss_host.str();
+    return su::concat(core::urls::get_url(core::urls::url_type::wim_host), "aim/startSession");
 }
 
 #define ICQ_APP_IDTYPE "ICQ"
 #define WIM_EVENTS "myInfo,presence,buddylist,typing,dataIM,userAddedToBuddyList,webrtcMsg,mchat,hist,hiddenChat,diff,permitDeny,imState,notification,apps"
 #define WIM_PRESENCEFIELDS "aimId,iconId,bigIconId,largeIconId,displayId,friendly,offlineMsg,state,statusMsg,userType,phoneNumber,cellNumber,smsNumber,workNumber,otherNumber,capabilities,ssl,abPhoneNumber,moodIcon,lastName,abPhones,abContactName,lastseen,mute,livechat,official,public,autoAddition,readonly,nick"
-#define WIM_INTERESTCAPS "8eec67ce70d041009409a7c1602a5c84," WIM_CAP_VOIP_VOICE "," WIM_CAP_VOIP_VIDEO
-#define WIM_ASSERTCAPS WIM_CAP_VOIP_VOICE "," WIM_CAP_VOIP_VIDEO "," WIM_CAP_UNIQ_REQ_ID "," WIM_CAP_EMOJI "," WIM_CAP_MAIL_NOTIFICATIONS "," WIM_CAP_MENTIONS "," WIM_CAP_INTRO_DLG_STATE "," WIM_CAP_CHAT_HEADS "," WIM_CAP_GALLERY_NOTIFY
+#define WIM_INTERESTCAPS "8eec67ce70d041009409a7c1602a5c84," WIM_CAP_VOIP_VOICE "," WIM_CAP_VOIP_VIDEO "," WIM_CAP_FOCUS_GROUP_CALLS
+#define WIM_ASSERTCAPS WIM_CAP_VOIP_VOICE "," WIM_CAP_VOIP_VIDEO "," WIM_CAP_FOCUS_GROUP_CALLS "," WIM_CAP_UNIQ_REQ_ID "," WIM_CAP_EMOJI "," WIM_CAP_MAIL_NOTIFICATIONS "," WIM_CAP_MENTIONS "," WIM_CAP_INTRO_DLG_STATE "," WIM_CAP_CHAT_HEADS "," WIM_CAP_GALLERY_NOTIFY "," WIM_CAP_GROUP_SUBSCRIPTION
 #define WIM_INVISIBLE "false"
 
 
@@ -58,7 +56,7 @@ start_session::~start_session()
 
 int32_t start_session::init_request_full_start_session(std::shared_ptr<core::http_request_simple> request)
 {
-    request->set_gzip(true);
+    request->set_compression_auto();
     request->set_url(get_start_session_host());
     request->set_normalized_url("startSession");
     request->set_keep_alive();

@@ -10,15 +10,6 @@ namespace installer
         installer::error write_update_version();
         installer::error write_to_uninstall_key();
 
-
-        enum class scheme_app_type
-        {
-        	icq,
-        	agent,
-        	dit,
-            biz
-        };
-
-        void register_url_scheme(scheme_app_type _app_type, const QString& _exe_path);
+        void register_url_scheme(const std::wstring& _scheme, const std::wstring& _name, const QString& _exe_path);
     }
 }

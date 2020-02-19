@@ -28,4 +28,6 @@ target_link_libraries(${PROJECT_NAME}
     ${SYSTEM_LIBRARIES}
     ${VOIP_LIBRARIES}
     ${ZLIB_LIBRARIES}
+    ${BREAKPAD_LIBRARIES}
+    ${RE2_LIBRARIES}
     corelib)

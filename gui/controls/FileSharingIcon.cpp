@@ -2,7 +2,10 @@
 
 #include "FileSharingIcon.h"
 #include "../utils/utils.h"
+#include "../utils/InterConnector.h"
 #include "../fonts.h"
+
+using namespace FileSharing;
 
 namespace
 {
@@ -31,36 +34,12 @@ namespace
         return cancel_icon;
     }
 
-    QString getExtension(const QString& _filename)
-    {
-        const auto extNdx = _filename.lastIndexOf(ql1c('.'));
-        if (extNdx == -1 || extNdx + 1 == _filename.length())
-            return QString();
-
-        return _filename.mid(extNdx + 1).toLower();
-    }
-
-    enum class type
-    {
-        archive,
-        xls,
-        html,
-        keynote,
-        numbers,
-        pages,
-        pdf,
-        ppt,
-        audio,
-        txt,
-        doc,
-
-        unknown,
-    };
-
     struct FileTypeInfo
     {
         QPixmap icon_;
         QColor color_;
+
+        FileTypeInfo() = default;
 
         FileTypeInfo(const QString& _iconPath, const QColor& _color)
             : icon_(Utils::renderSvg(_iconPath, getIconSize()))
@@ -69,103 +48,51 @@ namespace
         }
     };
 
-    const FileTypeInfo& getTypeInfo(const type _type)
+    using FileInfoArray = std::array<std::pair<FileType, FileTypeInfo>, static_cast<size_t>(FileType::max_val)>;
+    static FileInfoArray getFileInfoArray()
     {
-        static const std::map<type, FileTypeInfo> types
+        FileInfoArray fileinfo =
         {
-            { type::archive, FileTypeInfo(qsl(":/filesharing/archive"), QColor(qsl("#FFBB34"))) },
-            { type::xls, FileTypeInfo(qsl(":/filesharing/excel"), QColor(qsl("#1B7346"))) },
-            { type::html, FileTypeInfo(qsl(":/filesharing/html"), QColor(qsl("#8A6AB3"))) },
-            { type::keynote, FileTypeInfo(qsl(":/filesharing/keynote"), QColor(qsl("#4691EA"))) },
-            { type::numbers, FileTypeInfo(qsl(":/filesharing/numbers"), QColor(qsl("#23D129"))) },
-            { type::pages, FileTypeInfo(qsl(":/filesharing/pages"), QColor(qsl("#F59A36"))) },
-            { type::pdf, FileTypeInfo(qsl(":/filesharing/pdf"), QColor(qsl("#F96657"))) },
-            { type::ppt, FileTypeInfo(qsl(":/filesharing/powerpoint"), QColor(qsl("#D34829"))) },
-            { type::audio, FileTypeInfo(qsl(":/filesharing/sound"), QColor(qsl("#B684C3"))) },
-            { type::txt, FileTypeInfo(qsl(":/filesharing/text"), QColor(qsl("#1E93F1"))) },
-            { type::doc, FileTypeInfo(qsl(":/filesharing/word"), QColor(qsl("#23589B"))) },
+            std::pair(FileType::archive, FileTypeInfo(qsl(":/filesharing/archive"), QColor(qsl("#FFBB34")))),
+            std::pair(FileType::xls, FileTypeInfo(qsl(":/filesharing/excel"), QColor(qsl("#1B7346")))),
+            std::pair(FileType::html, FileTypeInfo(qsl(":/filesharing/html"), QColor(qsl("#8A6AB3")))),
+            std::pair(FileType::keynote, FileTypeInfo(qsl(":/filesharing/keynote"), QColor(qsl("#4691EA")))),
+            std::pair(FileType::numbers, FileTypeInfo(qsl(":/filesharing/numbers"), QColor(qsl("#23D129")))),
+            std::pair(FileType::pages, FileTypeInfo(qsl(":/filesharing/pages"), QColor(qsl("#F59A36")))),
+            std::pair(FileType::pdf, FileTypeInfo(qsl(":/filesharing/pdf"), QColor(qsl("#F96657")))),
+            std::pair(FileType::ppt, FileTypeInfo(qsl(":/filesharing/powerpoint"), QColor(qsl("#D34829")))),
+            std::pair(FileType::audio, FileTypeInfo(qsl(":/filesharing/sound"), QColor(qsl("#B684C3")))),
+            std::pair(FileType::txt, FileTypeInfo(qsl(":/filesharing/text"), QColor(qsl("#1E93F1")))),
+            std::pair(FileType::doc, FileTypeInfo(qsl(":/filesharing/word"), QColor(qsl("#23589B")))),
+            std::pair(FileType::apk, FileTypeInfo(qsl(":/filesharing/other"), QColor(qsl("#A8ADB8")))),
 
-            { type::unknown, FileTypeInfo(qsl(":/filesharing/other"), QColor(qsl("#A8ADB8"))) },
+            std::pair(FileType::unknown, FileTypeInfo(qsl(":/filesharing/other"), QColor(qsl("#A8ADB8")))),
         };
 
-        const auto it = types.find(_type);
-        if (it == types.end())
-            return types.find(type::unknown)->second;
+        if (!std::is_sorted(std::cbegin(fileinfo), std::cend(fileinfo), Utils::is_less_by_first<FileType, FileTypeInfo>))
+            std::sort(std::begin(fileinfo), std::end(fileinfo), Utils::is_less_by_first<FileType, FileTypeInfo>);
 
-        return it->second;
+        return fileinfo;
     }
 
-    type getType(const QString& _filename)
+    const FileTypeInfo& getTypeInfo(const FileType _type)
     {
-        static const std::map<QString, type, StringComparator> knownTypes
-        {
-            { qsl("zip"), type::archive },
-            { qsl("rar"), type::archive },
-            { qsl("tar"), type::archive },
-            { qsl("xz"),  type::archive },
-            { qsl("gz"),  type::archive },
-            { qsl("7z"),  type::archive },
-            { qsl("bz2"),  type::archive },
-
-            { qsl("xls"),  type::xls },
-            { qsl("xlsx"), type::xls },
-            { qsl("xlsm"), type::xls },
-            { qsl("csv"),  type::xls },
-
-            { qsl("html"), type::html },
-            { qsl("htm"),  type::html },
-
-            { qsl("key"),  type::keynote },
-
-            { qsl("numbers"),  type::numbers },
-
-            { qsl("pages"),  type::pages },
-
-            { qsl("pdf"),  type::pdf },
-
-            { qsl("ppt"),  type::ppt },
-            { qsl("pptx"), type::ppt },
-
-            { qsl("wav"),  type::audio },
-            { qsl("mp3"),  type::audio },
-            { qsl("ogg"),  type::audio },
-            { qsl("flac"), type::audio },
-            { qsl("aac"),  type::audio },
-            { qsl("m4a"),  type::audio },
-            { qsl("aiff"), type::audio },
-            { qsl("ape"),  type::audio },
-            { qsl("midi"),  type::audio },
-
-            { qsl("log"), type::txt },
-            { qsl("txt"), type::txt },
-            { qsl("md"), type::txt },
-
-            { qsl("doc"),  type::doc },
-            { qsl("docx"), type::doc },
-            { qsl("rtf"),  type::doc },
-        };
-
-        if (const auto ext = getExtension(_filename); !ext.isEmpty())
-        {
-            const auto it = knownTypes.find(ext);
-            if (it != knownTypes.end())
-                return it->second;
-        }
-
-        return type::unknown;
+        static const auto types = getFileInfoArray();
+        return types[static_cast<size_t>(_type)].second;
     }
 
     QPixmap getUnknownPreviewIcon(const QString& _filename)
     {
-        const auto ext = getExtension(_filename);
-        const auto& otherIcon = getTypeInfo(type::unknown);
+        const auto ext = QFileInfo(_filename).suffix();
+        const auto& otherIcon = getTypeInfo(FileType::unknown);
 
         if (ext.isEmpty() || ext.length() > 7)
             return otherIcon.icon_;
 
-        static std::map<QString, QPixmap, StringComparator> extensions;
-        if (const auto it = extensions.find(ext); it != extensions.end())
-            return it->second;
+        static std::map<QString, std::optional<QPixmap>, StringComparator> extensions;
+        auto& pixmap = extensions[ext];
+        if (pixmap)
+            return *pixmap;
 
         static const std::map<int, QFont> fontSizes = []()
         {
@@ -204,14 +131,14 @@ namespace
         }
         Utils::check_pixel_ratio(pm);
 
-        extensions[ext] = pm;
-        return pm;
+        pixmap  = std::move(pm);
+        return *pixmap;
     }
 
     QPixmap getPreviewIcon(const QString& _filename)
     {
-        const auto t = getType(_filename);
-        if (t == type::unknown)
+        const auto t = getFSType(_filename);
+        if (t == FileType::unknown || t == FileType::apk)
             return getUnknownPreviewIcon(_filename);
 
         return getTypeInfo(t).icon_;
@@ -219,7 +146,7 @@ namespace
 
     QColor getProgressColor(const QString& _filename)
     {
-        return getTypeInfo(getType(_filename)).color_;
+        return getTypeInfo(getFSType(_filename)).color_;
     }
 }
 
@@ -227,7 +154,7 @@ namespace Ui
 {
     FileSharingIcon::FileSharingIcon(QWidget* _parent)
         : ClickableWidget(_parent)
-        , iconColor_(getTypeInfo(type::unknown).color_)
+        , iconColor_(getTypeInfo(FileType::unknown).color_)
         , bytesTotal_(0)
         , bytesCurrent_(0)
     {
@@ -285,7 +212,7 @@ namespace Ui
         if (!fileType_.isNull())
             return fileType_;
 
-        return getTypeInfo(type::unknown).icon_;
+        return getTypeInfo(FileType::unknown).icon_;
     }
 
     QPixmap FileSharingIcon::getIcon(const QString& _fileName)

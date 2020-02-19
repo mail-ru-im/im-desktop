@@ -2,7 +2,7 @@
 
 #include "history/Message.h"
 #include "history/History.h"
-
+#include "animation/animation.h"
 
 namespace hist
 {
@@ -14,11 +14,18 @@ namespace Heads
     class HeadContainer;
 }
 
+namespace Utils
+{
+    class OpacityEffect;
+}
+
 namespace Ui
 {
-
     class MessagesScrollbar;
     class MessagesScrollArea;
+    class SmartReplyWidget;
+
+    using highlightsV = std::vector<QString>;
 
     enum class ScrollOnInsert
     {
@@ -39,6 +46,8 @@ namespace Ui
         using WidgetsList = std::vector<PositionWidget>;
 
         WidgetsList widgets;
+
+        highlightsV highlights_;
 
         RemoveOthers removeOthers = RemoveOthers::No;
 
@@ -158,6 +167,12 @@ namespace Ui
 
         void readVisibleItems();
 
+        Logic::MessageKey firstAvailableToSelect() const;
+
+        Logic::MessageKey nextAvailableToSelect(qint64 _current) const;
+
+        Logic::MessageKey prevAvailableToSelect(qint64 _current) const;
+
         QPoint viewport2Absolute(QPoint viewportPos) const;
 
         void updateBounds();
@@ -171,6 +186,9 @@ namespace Ui
 
         bool eventFilter(QObject* watcher, QEvent* e) override;
 
+        int32_t getBottomWidgetsHeight() const;
+        int32_t getSmartReplyWidgetHeight() const;
+        int32_t getSmartReplyButtonHeight() const;
         int32_t getTypingWidgetHeight() const;
         Interval getItemsAbsBounds() const;
 
@@ -179,6 +197,12 @@ namespace Ui
         void setHeadContainer(Heads::HeadContainer*);
 
         void checkVisibilityForRead();
+
+        void setSmartreplyWidget(SmartReplyWidget* _widget);
+        void showSmartReplyWidgetAnimated();
+        void hideSmartReplyWidgetAnimated();
+
+        void setSmartreplyButton(QWidget* _button);
 
     private:
 
@@ -219,7 +243,9 @@ namespace Ui
 
         MessagesScrollArea *ScrollArea_;
 
-        QWidget *TypingWidget_;
+        QWidget* TypingWidget_;
+        SmartReplyWidget* smartreplyWidget_;
+        QWidget* smartreplyButton_;
 
         hist::DateInserter* dateInserter_;
 
@@ -240,6 +266,7 @@ namespace Ui
             std::optional<qint64> messageId;
             hist::scroll_mode_type type = hist::scroll_mode_type::none;
             int counter = 0;
+            highlightsV highlight_;
         };
 
         ShiftingParams ShiftingParams_;
@@ -251,7 +278,10 @@ namespace Ui
 
         void applyItemsGeometry(const bool _checkVisibility = true);
 
+        void applyBottomWidgetsGeometry();
         void applyTypingWidgetGeometry();
+        void applySmartReplyWidgetGeometry();
+        void applySmartReplyButtonGeometry();
 
         QRect calculateInsertionRect(const ItemsInfoIter &itemInfoIter, Out SlideOp &slideOp);
 
@@ -301,6 +331,14 @@ namespace Ui
 
         void suspendVisibleItem(const ItemInfoUptr& _item);
 
+        enum class SmartreplyAnimType
+        {
+            invalid,
+            show,
+            hide
+        };
+        void animateSmartReplyWidget(const SmartreplyAnimType _type);
+        bool isSmartreplyVisible() const;
 
         enum class SuspendAfterExtract
         {
@@ -320,6 +358,11 @@ namespace Ui
         bool scrollActivityFlag_;
 
         Heads::HeadContainer* heads_;
+
+        anim::Animation smartreplyAnim_;
+        SmartreplyAnimType smartreplyAnimType_ = SmartreplyAnimType::invalid;
+        bool isSmartreplyAnimating_ = false;
+        Utils::OpacityEffect* smartreplyOpacity_;
 
     public:
         size_t widgetsCount() const noexcept;

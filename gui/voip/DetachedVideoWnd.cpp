@@ -10,10 +10,9 @@
 #include "CommonUI.h"
 #include "../controls/ContextMenu.h"
 #include "../main_window/MainWindow.h"
-#include "VoipTools.h"
+#include "media/permissions/MediaCapturePermissions.h"
 
 #ifdef _WIN32
-    #include "QDesktopWidget"
     #include <windows.h>
 #endif
 
@@ -54,19 +53,51 @@ void Ui::MiniWindowVideoPanel::onVoipMediaLocalAudio(bool _enabled)
 void Ui::MiniWindowVideoPanel::onVoipMediaLocalVideo(bool _enabled)
 {
     if (!videoButton_)
-    {
         return;
-    }
 
     localVideoEnabled_ = _enabled;
-
     updateVideoDeviceButtonsState();
 }
 
 void Ui::MiniWindowVideoPanel::onShareScreen()
 {
     const QList<voip_proxy::device_desc>& screens = Ui::GetDispatcher()->getVoipController().screenList();
-    int screenIndex = 0;
+
+    const auto switchSharingImpl = [this, &screens](const int _index)
+    {
+        isScreenSharingEnabled_ = !isScreenSharingEnabled_;
+        Ui::GetDispatcher()->getVoipController().switchShareScreen(!screens.empty() ? &screens[_index] : nullptr);
+        updateVideoDeviceButtonsState();
+    };
+
+    const auto switchSharing = [this, &switchSharingImpl](const int _index)
+    {
+        if constexpr (platform::is_apple())
+        {
+            if (!isScreenSharingEnabled_)
+            {
+                const auto p = media::permissions::checkPermission(media::permissions::DeviceType::Screen);
+                if (p == media::permissions::Permission::Allowed)
+                {
+                    switchSharingImpl(_index);
+                }
+                else
+                {
+                    media::permissions::requestPermission(media::permissions::DeviceType::Screen, [](bool){});
+
+                    emit needShowScreenPermissionsPopup();
+                }
+            }
+            else
+            {
+                switchSharingImpl(_index);
+            }
+        }
+        else
+        {
+            switchSharingImpl(_index);
+        }
+    };
 
     if (!isScreenSharingEnabled_ && screens.size() > 1)
     {
@@ -74,20 +105,15 @@ void Ui::MiniWindowVideoPanel::onShareScreen()
         Ui::ContextMenu::applyStyle(&menu, false, Utils::scale_value(15), Utils::scale_value(36));
         for (int i = 0; i < screens.size(); i++)
         {
-            menu.addAction(QT_TRANSLATE_NOOP("voip_pages", "Screen") % ql1c(' ') % QString::number(i + 1), [i, this, screens]() {
-                isScreenSharingEnabled_ = !isScreenSharingEnabled_;
-                Ui::GetDispatcher()->getVoipController().switchShareScreen(!screens.empty() ? &screens[i] : nullptr);
-                updateVideoDeviceButtonsState();
+            menu.addAction(QT_TRANSLATE_NOOP("voip_pages", "Screen") % ql1c(' ') % QString::number(i + 1), [i, switchSharing]()
+            {
+                switchSharing(i);
             });
         }
-
         menu.exec(QCursor::pos());
-    }
-    else
+    } else
     {
-        isScreenSharingEnabled_ = !isScreenSharingEnabled_;
-        Ui::GetDispatcher()->getVoipController().switchShareScreen(!screens.empty() ? &screens[screenIndex] : nullptr);
-        updateVideoDeviceButtonsState();
+        switchSharing(0);
     }
 }
 
@@ -150,21 +176,18 @@ Ui::MiniWindowVideoPanel::MiniWindowVideoPanel(QWidget* _parent)
     QWidget* parentWidget = rootWidget_;
     auto addButton = [this, parentWidget, layoutTarget](const char* _propertyName, const char* _slot, QHBoxLayout* layout = nullptr)->QPushButton*
     {
-        QPushButton* btn = new voipTools::BoundBox<QPushButton>(parentWidget);
+        QPushButton* btn = new QPushButton(parentWidget);
         if (_propertyName != NULL)
-        {
             btn->setProperty(_propertyName, true);
-        }
         btn->setSizePolicy(QSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding));
         btn->setCursor(QCursor(Qt::PointingHandCursor));
         btn->setFlat(true);
         (layout ? layout : layoutTarget)->addWidget(btn);
 
 #ifdef __APPLE__
-        connect(btn, &QPushButton::clicked, this, &MiniWindowVideoPanel::activateWindow, Qt::QueuedConnection);
+        connect(btn, &QPushButton::clicked, this, [this](){ if (!isActiveWindow()) activateWindow(); }, Qt::QueuedConnection);
 #endif
         connect(btn, SIGNAL(clicked()), this, _slot, Qt::QueuedConnection);
-
         return btn;
     };
 
@@ -248,7 +271,6 @@ void Ui::MiniWindowVideoPanel::updateVideoDeviceButtonsState()
 void Ui::MiniWindowVideoPanel::changeEvent(QEvent* _e)
 {
     QWidget::changeEvent(_e);
-
     if (_e->type() == QEvent::ActivationChange)
     {
         if (isActiveWindow() || (rootWidget_ && rootWidget_->isActiveWindow()))
@@ -275,7 +297,6 @@ void Ui::MiniWindowVideoPanel::enterEvent(QEvent* _e)
 void Ui::MiniWindowVideoPanel::leaveEvent(QEvent* _e)
 {
     QWidget::leaveEvent(_e);
-
     mouseUnderPanel_ = false;
     emit onMouseLeave();
 }
@@ -283,7 +304,6 @@ void Ui::MiniWindowVideoPanel::leaveEvent(QEvent* _e)
 void Ui::MiniWindowVideoPanel::resizeEvent(QResizeEvent* _e)
 {
     QWidget::resizeEvent(_e);
-
 #ifdef __APPLE__
     // Forced set fixed size, because under mac we use cocoa to change panel size.
     setFixedSize(size());
@@ -292,28 +312,19 @@ void Ui::MiniWindowVideoPanel::resizeEvent(QResizeEvent* _e)
 
 void Ui::MiniWindowVideoPanel::updatePosition(const QWidget& parent)
 {
-    // We have code dublication here,
-    // because Mac and Qt have different coords systems.
-    // We can convert Mac coords to Qt, but we need to add
-    // special cases for multi monitor systems.
     int offsetFromButton = Utils::scale_value(22);
-#ifdef __APPLE__
-    //auto rc = platform_macos::getWindowRect(*parentWidget());
-    QRect parentRect = platform_macos::getWidgetRect(*parentWidget());
-    platform_macos::setWindowPosition(*this,
-        QRect(parentRect.left(),
-            parentRect.top() + offsetFromButton,
-            parentRect.width(),
-            height()));
-#elif defined(__linux__)
-    auto rc = parentWidget()->geometry();
-    move(0, rc.height() - rect().height() - offsetFromButton);
-    setFixedWidth(rc.width());
-#else
-    auto rc = parentWidget()->geometry();
-    move(rc.x(), rc.y() + rc.height() - rect().height() - offsetFromButton);
-    setFixedWidth(rc.width());
-#endif
+    if (platform::is_linux())
+    {
+        auto rc = parentWidget()->geometry();
+        move(0, rc.height() - rect().height() - offsetFromButton);
+        setFixedWidth(rc.width());
+    }
+    else
+    {
+        auto rc = parentWidget()->geometry();
+        move(rc.x(), rc.y() + rc.height() - rect().height() - offsetFromButton);
+        setFixedWidth(rc.width());
+    }
 }
 
 
@@ -334,13 +345,13 @@ Ui::DetachedVideoWindow::DetachedVideoWindow(QWidget* parent)
 #ifdef _WIN32
     setWindowFlags(Qt::WindowStaysOnTopHint | Qt::FramelessWindowHint | Qt::SubWindow);
 #else
-        // We have problem on Mac with WA_ShowWithoutActivating and WindowDoesNotAcceptFocus.
-        // If video window is showing with this flags, we cannot activate main ICQ window.
-        // UPDATED: Looks like for mini video window it works ok with  Qt::WindowDoesNotAcceptFocus
-        // and Qt::WA_ShowWithoutActivating.
-        setWindowFlags(Qt::WindowStaysOnTopHint | Qt::Window | Qt::WindowDoesNotAcceptFocus);
-        //setAttribute(Qt::WA_ShowWithoutActivating);
-        setAttribute(Qt::WA_X11DoNotAcceptFocus);
+    // We have problem on Mac with WA_ShowWithoutActivating and WindowDoesNotAcceptFocus.
+    // If video window is showing with this flags, we cannot activate main ICQ window.
+    // UPDATED: Looks like for mini video window it works ok with  Qt::WindowDoesNotAcceptFocus
+    // and Qt::WA_ShowWithoutActivating.
+    setWindowFlags(Qt::WindowStaysOnTopHint | Qt::Window | Qt::WindowDoesNotAcceptFocus);
+    //setAttribute(Qt::WA_ShowWithoutActivating);
+    setAttribute(Qt::WA_X11DoNotAcceptFocus);
 #endif
 
 #ifndef STRIP_VOIP
@@ -350,14 +361,11 @@ Ui::DetachedVideoWindow::DetachedVideoWindow(QWidget* parent)
     rootWidget_->setAttribute(Qt::WA_UpdatesDisabled);
     rootWidget_->setSizePolicy(QSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding));
     layout()->addWidget(rootWidget_);
-#endif //__linux__
+#endif
 
     std::vector<QPointer<BaseVideoPanel>> videoPanels;
-
     if (videoPanel_)
-    {
         videoPanels.push_back(videoPanel_);
-    }
 
     eventFilter_ = new ResizeEventFilter(videoPanels, shadow_->getShadowWidget(), this);
     installEventFilter(eventFilter_);
@@ -374,8 +382,7 @@ Ui::DetachedVideoWindow::DetachedVideoWindow(QWidget* parent)
 
     //setMinimumSize(Utils::scale_value(320), Utils::scale_value(80));
 
-    QDesktopWidget dw;
-    const auto screenRect = dw.screenGeometry(dw.primaryScreen());
+    const auto screenRect = Utils::mainWindowScreen()->geometry();
     const auto detachedWndRect = rect();
 
     auto detachedWndPos = screenRect.topRight();
@@ -385,8 +392,13 @@ Ui::DetachedVideoWindow::DetachedVideoWindow(QWidget* parent)
     if (videoPanel_)
     {
         videoPanel_->fadeOut(0);
-        connect(videoPanel_, SIGNAL(onMouseLeave()), this, SLOT(onPanelMouseLeave()), Qt::QueuedConnection);
-        connect(videoPanel_, SIGNAL(onMouseEnter()), this, SLOT(onPanelMouseEnter()), Qt::QueuedConnection);
+        connect(videoPanel_, &MiniWindowVideoPanel::onMouseLeave, this, &DetachedVideoWindow::onPanelMouseLeave, Qt::QueuedConnection);
+        connect(videoPanel_, &MiniWindowVideoPanel::onMouseEnter, this, &DetachedVideoWindow::onPanelMouseEnter, Qt::QueuedConnection);
+        connect(videoPanel_, &MiniWindowVideoPanel::needShowScreenPermissionsPopup, this, [this]()
+        {
+            activateMainVideoWindow();
+            emit needShowScreenPermissionsPopup();
+        });
     }
 
     const QRect rc(detachedWndPos.x(), detachedWndPos.y(), detachedWndRect.width(), detachedWndRect.height());
@@ -402,7 +414,7 @@ Ui::DetachedVideoWindow::DetachedVideoWindow(QWidget* parent)
 void Ui::DetachedVideoWindow::onVoipCallDestroyed(const voip_manager::ContactEx& _contactEx)
 {
     if (_contactEx.call_count <= 1)
-    { // in this moment destroyed call is active, e.a. call_count + 1
+    {   // in this moment destroyed call is active, e.a. call_count + 1
         closedManualy_ = false;
     }
 }
@@ -458,7 +470,6 @@ void Ui::DetachedVideoWindow::mouseMoveEvent(QMouseEvent* _e)
     {
         QPoint diff = _e->pos() - posDragBegin_;
         QPoint newpos = this->pos() + diff;
-
         this->move(newpos);
     }
 }
@@ -473,25 +484,13 @@ void Ui::DetachedVideoWindow::enterEvent(QEvent* _e)
 void Ui::DetachedVideoWindow::leaveEvent(QEvent* _e)
 {
     QWidget::leaveEvent(_e);
-
     onPanelMouseLeave();
     //showPanelTimer_.start();
 }
 
 void Ui::DetachedVideoWindow::mouseDoubleClickEvent(QMouseEvent* /*e*/)
 {
-    if (parent_)
-    {
-        if (parent_->isMinimized())
-        {
-            emit windowWillDeminiaturize();
-            parent_->showNormal();
-            emit windowDidDeminiaturize();
-        }
-        parent_->raise();
-        parent_->activateWindow();
-        //hide();
-    }
+    activateMainVideoWindow();
 }
 
 quintptr Ui::DetachedVideoWindow::getContentWinId()
@@ -502,9 +501,7 @@ quintptr Ui::DetachedVideoWindow::getContentWinId()
 void Ui::DetachedVideoWindow::onVoipWindowRemoveComplete(quintptr _winId)
 {
     if (_winId == rootWidget_->frameId())
-    {
         hide();
-    }
     Utils::InterConnector::instance().getMainWindow()->updateMainMenu();
 }
 
@@ -523,9 +520,7 @@ void Ui::DetachedVideoWindow::showFrame()
 #ifndef __linux__
     assert(rootWidget_->frameId());
     if (rootWidget_->frameId())
-    {
-        Ui::GetDispatcher()->getVoipController().setWindowAdd((quintptr)rootWidget_->frameId(), false, false, 0);
-    }
+        Ui::GetDispatcher()->getVoipController().setWindowAdd((quintptr)rootWidget_->frameId(), "", false, false, 0);
     //shadow_->showShadow();
 #endif
 }
@@ -535,15 +530,11 @@ void Ui::DetachedVideoWindow::hideFrame()
 #ifndef __linux__
     assert(rootWidget_->frameId());
     if (rootWidget_->frameId())
-    {
         Ui::GetDispatcher()->getVoipController().setWindowRemove((quintptr)rootWidget_->frameId());
-    }
     //shadow_->hideShadow();
 #endif
     if (videoPanel_)
-    {
         videoPanel_->hide();
-    }
 }
 
 void Ui::DetachedVideoWindow::showEvent(QShowEvent* _e)
@@ -560,7 +551,6 @@ bool Ui::DetachedVideoWindow::closedManualy()
 void Ui::DetachedVideoWindow::hideEvent(QHideEvent* _e)
 {
     QWidget::hideEvent(_e);
-
     if (videoPanel_)
     {
         videoPanel_->fadeOut(kAnimationDefDuration);
@@ -597,24 +587,34 @@ void Ui::DetachedVideoWindow::updatePanels() const
         assert(false);
         return;
     }
-
 #ifdef __APPLE__
-
     rootWidget_->clearPanels();
     std::vector<QPointer<Ui::BaseVideoPanel>> panels;
 
     if (videoPanel_ && videoPanel_->isVisible())
-    {
         panels.push_back(videoPanel_);
-    }
 
     rootWidget_->addPanels(panels);
 
     if (videoPanel_ && videoPanel_->isVisible())
-    {
         videoPanel_->updatePosition(*this);
-    }
 #endif
+}
+
+void Ui::DetachedVideoWindow::activateMainVideoWindow()
+{
+    if (parent_)
+    {
+        if (parent_->isMinimized())
+        {
+            emit windowWillDeminiaturize();
+            parent_->showNormal();
+            emit windowDidDeminiaturize();
+        }
+        parent_->raise();
+        parent_->activateWindow();
+        //hide();
+    }
 }
 
 bool Ui::DetachedVideoWindow::isMinimized() const

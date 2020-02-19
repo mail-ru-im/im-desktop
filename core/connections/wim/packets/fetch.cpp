@@ -22,12 +22,15 @@
 #include "../events/fetch_event_chat_heads.h"
 #include "../events/fetch_event_gallery_notify.h"
 #include "../events/fetch_event_mchat.h"
+#include "../events/fetch_event_smartreply_suggests.h"
+#include "../events/fetch_event_poll_update.h"
 
 #include "../events/webrtc.h"
 
 #include "../../../log/log.h"
 
 #include "../../../tools/json_helper.h"
+#include "../../../common.shared/smartreply/smartreply_types.h"
 
 #include <time.h>
 
@@ -40,17 +43,16 @@ static constexpr auto default_next_fetch_timeout = std::chrono::seconds(60);
 
 fetch::fetch(
     wim_packet_params _params,
-    const std::string& _fetch_url,
+    const fetch_parameters& _fetch_params,
     std::chrono::milliseconds _timeout,
-    const timepoint _fetch_time,
     const bool _hidden,
     std::function<bool(std::chrono::milliseconds)> _wait_function)
     :
     wim_packet(std::move(_params)),
-    fetch_url_(_fetch_url),
+    fetch_url_(_fetch_params.fetch_url_),
     timeout_(_timeout),
     wait_function_(std::move(_wait_function)),
-    fetch_time_(_fetch_time),
+    fetch_time_(_fetch_params.next_fetch_time_),
     relogin_(relogin::none),
     next_fetch_time_(std::chrono::system_clock::now()),
     ts_(0),
@@ -62,7 +64,8 @@ fetch::fetch(
     hidden_(_hidden),
     events_count_(0),
     my_aimid_(_params.aimid_),
-    next_fetch_timeout_(default_next_fetch_timeout)
+    next_fetch_timeout_(default_next_fetch_timeout),
+    suggest_types_(_fetch_params.suggest_types_)
 {
 }
 
@@ -85,6 +88,17 @@ int32_t fetch::init_request(std::shared_ptr<core::http_request_simple> _request)
     if (hidden_)
         ss_url << "&hidden=1";
 
+    if (!suggest_types_.empty())
+    {
+        ss_url << "&supportedSuggestTypes=";
+        for (size_t i = 0; i < suggest_types_.size(); ++i)
+        {
+            ss_url << smartreply::type_2_string(suggest_types_[i]);
+            if (i != (suggest_types_.size() - 1))
+                ss_url << ",";
+        }
+    }
+
     _request->set_url(ss_url.str());
     _request->set_normalized_url("fetchEvents");
     _request->set_timeout(timeout_ + std::chrono::seconds(5));
@@ -95,10 +109,7 @@ int32_t fetch::init_request(std::shared_ptr<core::http_request_simple> _request)
     {
         log_replace_functor f;
         f.add_marker("aimsid", aimsid_range_evaluator());
-        f.add_json_marker("text");
-        f.add_json_marker("message");
-        f.add_json_marker("url");
-        f.add_json_marker("caption");
+        f.add_message_markers();
         _request->set_replace_log_function(f);
     }
 
@@ -236,6 +247,10 @@ int32_t fetch::parse_response_data(const rapidjson::Value& _data)
                         push_event(std::make_shared<fetch_event_gallery_notify>(my_aimid_))->parse(iter_event_data->value);
                     else if (event_type == "mchat")
                         push_event(std::make_shared<fetch_event_mchat>())->parse(iter_event_data->value);
+                    else if (event_type == "suggest")
+                        push_event(std::make_shared<fetch_event_smartreply_suggest>())->parse(iter_event_data->value);
+                    else if (event_type == "pollUpdate")
+                        push_event(std::make_shared<fetch_event_poll_update>())->parse(iter_event_data->value);
                 }
             }
         }
@@ -291,7 +306,7 @@ int32_t fetch::parse_response_data(const rapidjson::Value& _data)
 
 int32_t fetch::on_response_error_code()
 {
-    auto code = get_status_code();
+    const auto code = get_status_code();
 
     if (code >= 500 && code < 600)
         return wpie_error_resend;

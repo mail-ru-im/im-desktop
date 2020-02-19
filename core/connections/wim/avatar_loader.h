@@ -20,7 +20,7 @@ namespace core
         struct avatar_context
         {
             int32_t avatar_size_;
-            std::string avatar_type_;
+            std::string_view avatar_type_;
             std::string contact_;
             time_t write_time_;
             std::wstring avatars_data_path_;
@@ -89,7 +89,7 @@ namespace core
             void run_tasks_loop();
 
             std::wstring get_avatar_path(const std::wstring& _avatars_data_path, std::string_view _contact, std::string_view _avatar_type = {}) const;
-            std::string get_avatar_type_by_size(int32_t _size) const;
+            std::string_view get_avatar_type_by_size(int32_t _size) const;
 
 
             void load_avatar_from_server(const std::shared_ptr<avatar_context>& _context, const std::shared_ptr<avatar_load_handlers>& _handlers);

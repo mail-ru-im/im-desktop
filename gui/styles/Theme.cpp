@@ -38,7 +38,7 @@ namespace
 
 namespace Styling
 {
-    void Property::unserialize(const JNode & _node)
+    void Property::unserialize(const rapidjson::Value& _node)
     {
         if (_node.IsObject())
             StylingUtils::unserialize_value(_node, "color", color_);
@@ -59,7 +59,7 @@ namespace Styling
         return properties_.find(_variable);
     }
 
-    void Style::unserialize(const JNode & _node)
+    void Style::unserialize(const rapidjson::Value& _node)
     {
         const auto& props = getVariableStrings();
 
@@ -86,7 +86,7 @@ namespace Styling
     Theme::Theme()
         : id_(qsl("default"))
         , name_(qsl("Noname"))
-        , underlinedLinks_(Ui::TextRendering::LinksStyle::PLAIN)
+        , underlinedLinks_(false)
     {
     }
 
@@ -110,16 +110,15 @@ namespace Styling
         return nullptr;
     }
 
-    void Theme::unserialize(const JNode &_node)
+    void Theme::unserialize(const rapidjson::Value& _node)
     {
         if (const auto nodeIter = _node.FindMember("style"); nodeIter->value.IsObject() && !nodeIter->value.ObjectEmpty())
             Style::unserialize(nodeIter->value);
 
         StylingUtils::unserialize_value(_node, "id", id_);
         StylingUtils::unserialize_value(_node, "name", name_);
+        StylingUtils::unserialize_value(_node, "underline", underlinedLinks_);
 
-        if (auto underline = false; StylingUtils::unserialize_value(_node, "underline", underline) && underline)
-            underlinedLinks_ = Ui::TextRendering::LinksStyle::UNDERLINED;
         unserializeWallpaperId(_node, "defaultWallpaper", defaultWallpaperId_.id_);
     }
 
@@ -144,7 +143,7 @@ namespace Styling
         setProperties(_basicStyle.getProperties());
     }
 
-    void ThemeWallpaper::unserialize(const JNode &_node)
+    void ThemeWallpaper::unserialize(const rapidjson::Value& _node)
     {
         //assert(_node.HasMember("style"));
         if (const auto nodeIter = _node.FindMember("style"); nodeIter->value.IsObject() && !nodeIter->value.ObjectEmpty())

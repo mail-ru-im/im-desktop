@@ -54,52 +54,11 @@ installer--ui--main_window
 	background-color: white;
 }
 
-QWidget#logo_icq
+QWidget#content_logo
 {
 	background-repeat: no-repeat;
-	background-position: center;
-	background-image: url(:/images/content_logo_100.png);
-}
-
-QWidget#logo_agent
-{
-	background-repeat: no-repeat;
-	background-position: center;
-	background-image: url(:/images/content_logo_agent_100.png);
-}
-
-QWidget#logo_biz
-{
-	background-repeat: no-repeat;
-	background-position: center;
-	background-image: url(:/images/content_logo_biz_100.png);
-}
-
-QWidget#logo_dit
-{
-	background-repeat: no-repeat;
-	background-position: center;
-	background-image: url(:/images/content_logo_dit_100.png);
-}
-
-QLabel#start_page_welcome_label_icq
-{
-	font-size: 32dip;
-}
-
-QLabel#start_page_welcome_label_agent
-{
-	font-size: 28dip;
-}
-
-QLabel#start_page_welcome_label_biz
-{
-	font-size: 28dip;
-}
-
-QLabel#start_page_welcome_label_dit
-{
-	font-size: 28dip;
+    background-color: #F5F6FA;
+	background-image: url(:/product/content_logo_100.png);
 }
 
 QLabel#start_page_privacy_label
@@ -114,84 +73,19 @@ QLabel#start_page_privacy_link
 	font-size: 13dip;
 }
 
-QWidget#bundle_cb_icon
-{
-	background-repeat: no-repeat;
-	background-position: center;
-	background-image: url(:/images/checkbox_empty_100.png);
-}
-
-QWidget#bundle_cb_icon[chk="true"]
-{
-	background-repeat: no-repeat;
-	background-position: center;
-	background-image: url(:/images/checkbox_fill_100.png);
-}
-
-QWidget#bundle_cb_icon[hvr="true"][chk="false"]
-{
-	background-repeat: no-repeat;
-	background-position: center;
-	background-image: url(:/images/checkbox_empty_100_hover.png);
-}
-
-QPushButton#custom_button, QPushButton#custom_button_biz, QPushButton#custom_button_dit
-{
-	color: #ffffff;
-	font-size: 16dip;
-	border-style: none;
-	border-radius: 4dip;
-	margin: 0;
-	padding-left: 12dip;
-	padding-right: 12dip;
-	min-width: 80dip;
-	max-height: 30dip;
-	min-height: 30dip;
-}
-
 QPushButton#custom_button
 {
-	background-color: #57b359;
-}
-
-QPushButton#custom_button:hover
-{
-	background-color: #43a047;
-}
-
-QPushButton#custom_button:disabled
-{
-	background-color: #cbcbcb;
-}
-
-QPushButton#custom_button_biz
-{
-	background-color: #18D893;
-}
-
-QPushButton#custom_button_biz:hover
-{
-	background-color: #1AD08E;
-}
-
-QPushButton#custom_button_biz:disabled
-{
-	background-color: #b7bcc9;
-}
-
-QPushButton#custom_button_dit
-{
-	background-color: #2E72BF;
-}
-
-QPushButton#custom_button_dit:hover
-{
-	background-color: #2769B5;
-}
-
-QPushButton#custom_button_dit:disabled
-{
-	background-color: #B7BCC9;
+	color: #ffffff;
+    font-family: SF Pro Display;
+	font-size: 18dip;
+	border-style: none;
+	border-radius: 20dip;
+	margin: 0;
+	padding-left: 32dip;
+	padding-right: 32dip;
+	min-width: 80dip;
+	max-height: 40dip;
+	min-height: 40dip;
 }
 
 QPushButton#frame_button
@@ -214,35 +108,36 @@ QPushButton#frame_button:disabled
 	background-color: #cbcbcb;
 }
 
+QLabel#start_page_welcome_label
+{
+	font-family: Source Sans Pro;
+    font-style: normal;
+    font-weight: 600;
+    font-size: 23dip;
+}
 
 QLabel#progress_page_demo_label
 {
-	font-size: 24dip;
+	font-family: Source Sans Pro;
+    font-style: normal;
+    font-weight: 600;
+    font-size: 23dip;
 	margin-left: 16dip;
 	margin-right: 16dip;
 }
 
 QProgressBar
 {
-	border: none;
+    border: none;
+    border-radius: 10dip;
 	margin-left: 16dip;
 	margin-right: 16dip;
-	background-color: #eaeae2;
 }
 
-QProgressBar#base::chunk
+QProgressBar::chunk:horizontal
 {
-    background-color: #57b359;
-}
-
-QProgressBar#biz::chunk
-{
-    background-color: #18D893;
-}
-
-QProgressBar#dit::chunk
-{
-    background-color: #2E72BF;
+    border: none;
+    border-radius: 10dip;
 }
 
 QLabel#error_page_caption
@@ -270,215 +165,13 @@ QLabel#error_page_support_link
 	font-size: 15dip;
 }
 
-QLabel#choose_account_label
+QLabel#text_label
 {
-	font-size: 22dip;
+    font-family: Source Sans Pro;
+	font-size: 16dip;
 }
-
-QLabel#choose_account_comment_label
-{
-	font-size: 15dip;
-}
-
-QLabel#label_account_nick
-{
-	color: #000000;
-	font-size: 15dip;
-}
-
-QLabel#label_account_uin
-{
-	color: #696969;
-	font-size: 15dip;
-}
-
-QPushButton#account_check
-{
-	background-image: url(:/images/check_icon_100.png);
-	background-position: right;
-	background-repeat: none;
-	background-color: white;
-	border: none;
-}
-
-installer--ui--account_widget
-{
-	background-image: url(:/images/check_icon_100.png);
-	background-position: right center;
-	background-repeat: none;
-	background-color: white;
-	border: none;
-	margin-right: 12dip;
-	border: solid;
-}
-
-
-installer--ui--account_widget:checked
-{
-	background-image: url(:/images/check_icon_100_active.png);
-}
-
-installer--ui--account_widget:hover
-{
-	background-image: url(:/images/check_icon_100_hover.png);
-}
-
-installer--ui--account_widget:checked:hover
-{
-	background-image: url(:/images/check_icon_100_active.png);
-}
-
-
-QWidget#agent_page_icon
-{
-	border: none;
-	background-color: white;
-	background-image: url(:/images/step_1_100_active.png);
-	background-repeat: none;
-}
-
-
-QWidget#agent_page_icon[state="normal"]
-{
-	background-image: url(:/images/step_1_100_active.png);
-}
-
-QWidget#agent_page_icon[state="normalchecked"]
-{
-	background-image: url(:/images/step_100_active.png);
-}
-
-QWidget#agent_page_icon[state="disabled"]
-{
-	background-image: url(:/images/step_100.png);
-}
-
-QWidget#agent_page_icon[state="disabledchecked"]
-{
-	background-image: url(:/images/step_100.png);
-}
-
-
-QLabel#agent_page_text
-{
-	color: red;
-	border: none;
-	background-color: white;
-	font-size: 14dip;
-	margin-bottom: 1dip;
-}
-
-QLabel#agent_page_text[state="normal"]
-{
-	color: #57b359;
-}
-
-QLabel#agent_page_text[state="normalchecked"]
-{
-	color: #57b359;
-}
-
-QLabel#agent_page_text[state="disabled"]
-{
-	color: #999999;
-}
-
-QLabel#agent_page_text[state="disabledchecked"]
-{
-	color: #999999;
-}
-
-QLabel#agent_page_text[state="gray"]
-{
-	color: #999999;
-}
-
-
-QWidget#icq_page_icon
-{
-	border: none;
-	background-color: white;
-	background-image: url(:/images/step_2_100_active.png);
-	background-repeat: none;
-}
-
-QWidget#icq_page_icon[state="normal"]
-{
-	background-image: url(:/images/step_2_100_active.png);
-}
-
-QWidget#icq_page_icon[state="normalchecked"]
-{
-	background-image: url(:/images/step_100_active.png);
-}
-
-QWidget#icq_page_icon[state="disabled"]
-{
-	background-image: url(:/images/step_2_100.png);
-}
-
-QWidget#icq_page_icon[state="disabledchecked"]
-{
-	background-image: url(:/images/step_100.png);
-}
-
-QLabel#icq_page_text
-{
-	color: red;
-	border: none;
-	background-color: white;
-	font-size: 14dip;
-	margin-bottom: 1dip;
-}
-
-QLabel#icq_page_text[state="normal"]
-{
-	color: #57b359;
-}
-
-QLabel#icq_page_text[state="normalchecked"]
-{
-	color: #57b359;
-}
-
-QLabel#icq_page_text[state="disabled"]
-{
-	color: #999999;
-}
-
-QLabel#icq_page_text[state="disabledchecked"]
-{
-	color: #999999;
-}
-
-QLabel#icq_page_text[state="gray"]
-{
-	color: #999999;
-}
-
-
 
 QScrollArea
 {
 	border: none;
-}
-
-
-QWidget#accounts_area_widget
-{
-	background-color: white;
-}
-
-QPushButton#skip_button
-{
-	border: none;
-	color: #cbcbcb;
-	font-size: 13dip;
-	margin-top: 8dip;
-	text-decoration: underline;
-}
-
-QPushButton#skip_button:hover
-{
-	color: #696969;
 }

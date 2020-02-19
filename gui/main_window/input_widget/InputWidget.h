@@ -11,11 +11,17 @@ namespace Emoji
     class EmojiCode;
 }
 
+namespace Data
+{
+    class SmartreplySuggest;
+}
+
 namespace ptt
 {
     class AudioRecorder;
     class AudioRecorder2;
     struct StatInfo;
+    enum class State2;
 }
 
 namespace Ui
@@ -31,6 +37,7 @@ namespace Ui
     class InputPanelBanned;
     class InputPanelReadonly;
     class InputPanelPtt;
+    class InputPanelMultiselect;
 
     class InputBgWidget;
     class BackgroundWidget;
@@ -49,6 +56,7 @@ namespace Ui
         Banned,
         Edit,
         Ptt,
+        Multiselect,
     };
 
     enum class FileSource
@@ -61,6 +69,7 @@ namespace Ui
     {
         Data::QuotesVec quotes_;
         Data::MentionMap mentions_;
+        Data::FilesPlaceholderMap files_;
 
         QPixmap imageBuffer_;
         QString description_;
@@ -71,7 +80,11 @@ namespace Ui
             Data::MessageBuddySptr message_;
             Data::QuotesVec quotes_;
             QString buffer_;
+            MediaType type_;
+            QString editableText_;
         } edit_;
+
+        bool canBeEmpty_ = false;
 
         InputView view_ = InputView::Default;
         std::vector<InputView> viewHistory_;
@@ -87,9 +100,12 @@ namespace Ui
             edit_.message_.reset();
             edit_.buffer_.clear();
             edit_.quotes_.clear();
+            edit_.type_ = MediaType::noMedia;
+            edit_.editableText_.clear();
             view_ = _newView;
             viewHistory_.clear();
             mentionSignIndex_ = -1;
+            canBeEmpty_ = false;
         }
 
         bool isDisabled() const noexcept
@@ -103,6 +119,19 @@ namespace Ui
         }
     };
 
+    struct InputText
+    {
+        InputText() = default;
+
+        InputText(const QString& _text, const int _pos)
+            : text_(_text)
+            , cursorPos_(_pos)
+        {}
+
+        QString text_;
+        int cursorPos_ = 0;
+    };
+
     class InputWidget : public QWidget
     {
         Q_OBJECT
@@ -113,7 +142,7 @@ namespace Ui
         void sendMessage(const QString&);
         void editFocusOut();
         void inputTyped();
-        void needSuggets(const QString _forText, const QPoint _pos);
+        void needSuggets(const QString _forText, const QPoint _pos, QPrivateSignal) const;
         void hideSuggets();
         void resized();
         void needClearQuotes();
@@ -122,9 +151,8 @@ namespace Ui
         void quote(const Data::QuotesVec& _quotes);
         void contactSelected(const QString& _contact);
         void insertEmoji(const Emoji::EmojiCode& _code, const QPoint _pt);
-        void sendSticker(const int32_t _set_id, const QString& _sticker_id);
+        void sendSticker(const QString& _stickerId);
         void onSmilesVisibilityChanged(const bool _isVisible);
-        void clearInputText();
         void insertMention(const QString& _aimId, const QString& _friendly);
         void messageIdsFetched(const QString& _aimId, const Data::MessageBuddies&);
 
@@ -134,6 +162,10 @@ namespace Ui
             Set,
         };
         void mentionOffer(const int _position, const CursorPolicy _policy);
+        void requestSuggests();
+
+    public Q_SLOTS:
+        void clearInputText();
 
     private Q_SLOTS:
         void textChanged();
@@ -170,7 +202,10 @@ namespace Ui
         void onNickInserted(const int _atSignPos, const QString& _nick);
         void insertFiles();
         void onContactChanged(const QString& _contact);
+        void multiselectChanged();
         void onRecvPermitDeny();
+
+        void onRequestedSuggests(const std::vector<Data::SmartreplySuggest>& _suggests);
 
     public:
         InputWidget(QWidget* _parent, BackgroundWidget* _bg);
@@ -188,33 +223,43 @@ namespace Ui
             const QString& _text,
             const Data::MentionMap& _mentions,
             const Data::QuotesVec& _quotes,
-            qint32 _time);
+            qint32 _time,
+            const Data::FilesPlaceholderMap& _files,
+            MediaType _mediaType);
 
         void editWithCaption(
             const int64_t _msgId,
             const QString& _internalId,
             const common::tools::patch_version& _patchVersion,
             const QString& _url,
-            const QString& _description);
+            const QString& _description,
+            const Data::QuotesVec& _quotes,
+            qint32 _time,
+            const Data::FilesPlaceholderMap& _files,
+            MediaType _mediaType);
 
-        void loadInputTextFromCL();
+        void loadInputText();
         void setInputText(const QString& _text, int _pos = -1);
         QString getInputText() const;
 
         const Data::MentionMap& getInputMentions() const;
-        const Data::QuotesVec& getInputQuotes() const;
+        const Data::QuotesVec& getInputQuotes();
+        const Data::FilesPlaceholderMap& getInputFiles() const;
 
         bool isInputEmpty() const;
         bool isEditing() const;
         bool isReplying() const;
         bool isRecordingPtt() const;
         bool isRecordingPtt(const QString& _contact) const;
+        bool tryPlayPttRecord();
+        bool tryPausePttRecord();
 
         bool isPttHold() const;
+        bool isPttHoldByKeyboard() const;
+        bool isPttHoldByMouse() const;
 
         void stopPttRecording();
         void startPttRecordingLock();
-        void startPttRecordingHold();
         void sendPtt();
 
         void closePttPanel();
@@ -230,11 +275,16 @@ namespace Ui
         void onAttachCamera();
         void onAttachContact();
         void onAttachPtt();
+        void onAttachPoll();
 
         QRect getAttachFileButtonRect() const;
 
         void updateBackground();
         bool canSetFocus() const;
+
+        bool hasServerSuggests() const;
+        bool isServerSuggest(const QString& _stickerId) const;
+        void clearLastSuggests();
 
     protected:
         void keyPressEvent(QKeyEvent * _e) override;
@@ -250,7 +300,7 @@ namespace Ui
         bool isAllAttachmentsEmpty(const QString& _contact) const;
 
         bool shouldOfferMentions() const;
-        void checkSuggest();
+        void requestSuggest();
 
         void pasteFromClipboard();
 
@@ -265,6 +315,7 @@ namespace Ui
         void switchToReadonlyPanel(const ReadonlyPanelState _state);
         void switchToBannedPanel(const BannedPanelState _state);
         void switchToPttPanel(const StateTransition _transition);
+        void switchToMultiselectPanel();
 
         void setCurrentWidget(QWidget* _widget);
 
@@ -273,6 +324,7 @@ namespace Ui
         void onSubmitPressed();
         void onSubmitReleased();
         void onSubmitLongTapped();
+        void onSubmitLongPressed();
         void onSubmitMovePressed();
 
         enum class SetHistoryPolicy
@@ -313,13 +365,14 @@ namespace Ui
 
         enum class PttMode
         {
-            Hold,
+            HoldByMouse,
+            HoldByKeyboard,
             Lock,
         };
         void startPttRecord();
 
         void startPtt(PttMode _mode);
-        void setPttMode(PttMode _mode);
+        void setPttMode(const std::optional<PttMode>& _mode);
         void sendPttImpl(ptt::StatInfo&&);
         std::optional<PttMode> getPttMode() const noexcept;
 
@@ -328,12 +381,18 @@ namespace Ui
 
         void onPttReady(const QString& _contact, const QString& _file, std::chrono::seconds _duration, const ptt::StatInfo& _stat);
         void onPttRemoved(const QString& _contact);
+        void onPttStateChanged(const QString& _contact, ptt::State2 _state);
+        void disablePttCircleHover();
 
         void showQuotes();
         void hideQuotes();
         void setQuotesVisible(const bool _isVisible);
 
         QWidget* getCurrentPanel() const;
+
+        void hideSmartreplies() const;
+
+        void processUrls() const;
 
     private:
         std::optional<PttMode> pttMode_;
@@ -350,6 +409,7 @@ namespace Ui
         InputPanelBanned* panelBanned_;
         InputPanelReadonly* panelReadonly_;
         InputPanelPtt* panelPtt_;
+        InputPanelMultiselect* panelMultiselect_;
 
         PttLock* pttLock_;
 
@@ -359,9 +419,10 @@ namespace Ui
         QPixmap bg_;
 
         std::map<QString, InputWidgetState> states_;
+        std::map<QString, InputText> inputTexts_;
 
         QPoint suggestPos_;
-        QTimer suggestTimer_;
+        QTimer* suggestTimer_;
 
         bool isExternalPaste_ = false;
         bool canLockPtt_ = false;
@@ -371,5 +432,8 @@ namespace Ui
         QLabel* transitionLabel_;
         anim::Animation transitionAnim_;
         bool setFocusToSubmit_ = false;
+
+        bool suggestRequested_ = false;
+        std::vector<QString> lastRequestedSuggests_;
     };
 }

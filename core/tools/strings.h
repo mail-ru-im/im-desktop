@@ -18,7 +18,7 @@ namespace core
         template<class t_, class u_>
         t_ trim_right(const t_& _str, u_ _sym)
         {
-            auto endpos = _str.find_last_not_of(_sym);
+            const auto endpos = _str.find_last_not_of(_sym);
             if (t_::npos != endpos)
                 return _str.substr(0, endpos + 1);
 
@@ -28,7 +28,7 @@ namespace core
         template<class t_, class u_>
         t_ trim_left(const t_& _str, u_ _sym)
         {
-            auto startpos = _str.find_first_not_of(_sym);
+            const auto startpos = _str.find_first_not_of(_sym);
             if (t_::npos != startpos)
                 return _str.substr(startpos);
 
@@ -77,7 +77,7 @@ namespace core
         std::vector<T> build_prefix(const std::vector<T>& _term)
         {
             std::vector<T> prefix(_term.size());
-            for (auto i = 1u; i < _term.size(); ++i)
+            for (size_t i = 1; i < _term.size(); ++i)
             {
                 auto j = prefix[i - 1];
                 while (j > 0 && _term[j] != _term[i])

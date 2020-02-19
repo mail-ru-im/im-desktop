@@ -71,6 +71,8 @@ namespace Logic
     {
         Utils::PainterSaver ps(*_painter);
 
+        _painter->setRenderHints(QPainter::SmoothPixmapTransform | QPainter::Antialiasing);
+
         const auto item = _index.data(Qt::DisplayRole).value<MentionSuggest>();
         const auto isSelected = (_option.state & QStyle::State_Selected);
         const auto inHoverColor = !item.isServiceItem() && isSelected;
@@ -126,7 +128,6 @@ namespace Logic
             _item.aimId_,
             _item.friendlyName_,
             Utils::scale_bitmap(avatarSize()),
-            QString(),
             isDef,
             false,
             false

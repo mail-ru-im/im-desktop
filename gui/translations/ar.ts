@@ -71,6 +71,13 @@
     </message>
 </context>
 <context>
+    <name>UpdaterButton</name>
+    <message>
+        <source>Update %1</source>
+        <translation>تحديث %1</translation>
+    </message>
+</context>
+<context>
     <name>about_us</name>
     <message>
         <source>This product includes software developed by the OpenSSL project for use in the OpenSSL Toolkit</source>
@@ -89,24 +96,38 @@
         <translation>https://openssl.org</translation>
     </message>
     <message>
-        <source>Presented by Mail.ru</source>
-        <translation>مقدّم من Mail.ru</translation>
-    </message>
-    <message>
         <source>© Mail.ru LLC</source>
         <translation>© Mail.ru LLC</translation>
+    </message>
+    <message>
+        <source>Beta version contains new features, but it is not complete yet.
+You can leave your feedback or report an error here:</source>
+        <translation>يحتوي الإصدار التجريبي على ميزات جديدة ، لكنه لم يكتمل بعد.
+يمكنك ترك تعليقاتك أو الإبلاغ عن خطأ هنا:</translation>
+    </message>
+    <message>
+        <source>https://icq.im/desktopbeta</source>
+        <translation>https://icq.im/desktopbeta</translation>
+    </message>
+    <message>
+        <source>Check for updates</source>
+        <translation>التحقق من وجود تحديثات</translation>
+    </message>
+    <message>
+        <source>You have the latest version</source>
+        <translation>لديك أحدث نسخة</translation>
+    </message>
+    <message>
+        <source>Update required</source>
+        <translation>التحديث مطلوب</translation>
+    </message>
+    <message>
+        <source>Server error</source>
+        <translation>خطأ في الخادم</translation>
     </message>
 </context>
 <context>
     <name>add_new_contact_dialogs</name>
-    <message>
-        <source>ADD</source>
-        <translation>إضافة</translation>
-    </message>
-    <message>
-        <source>ADD ANOTHER ONE</source>
-        <translation>إضافة آخر</translation>
-    </message>
     <message>
         <source>New contact</source>
         <translation>جهة اتصال جديدة</translation>
@@ -167,20 +188,82 @@
         <source>Phone number</source>
         <translation>رقم الهاتف</translation>
     </message>
+    <message>
+        <source>Add</source>
+        <translation>إضافة</translation>
+    </message>
+    <message>
+        <source>Add another one</source>
+        <translation>أضف واحدة أخرى</translation>
+    </message>
+</context>
+<context>
+    <name>add_widget</name>
+    <message>
+        <source>Phone number</source>
+        <translation>رقم الهاتف</translation>
+    </message>
+    <message>
+        <source>Nickname</source>
+        <translation>كنية</translation>
+    </message>
+    <message>
+        <source>Enter nickname</source>
+        <translation>أدخل اسم مستعار</translation>
+    </message>
+    <message>
+        <source>Email</source>
+        <translation>البريد الإلكتروني</translation>
+    </message>
+    <message>
+        <source>Enter email</source>
+        <translation>أدخل البريد الإلكتروني</translation>
+    </message>
+    <message>
+        <source>Add contact by phone or nickname?</source>
+        <translation>إضافة جهة اتصال عن طريق رقم الهاتف أو اللقب؟</translation>
+    </message>
+    <message>
+        <source>Add contact by phone or email?</source>
+        <translation>إضافة جهة اتصال عن طريق الهاتف أو البريد الإلكتروني؟</translation>
+    </message>
 </context>
 <context>
     <name>appearance</name>
-    <message>
-        <source>Default</source>
-        <translation>افتراضي</translation>
-    </message>
     <message>
         <source>Blue</source>
         <translation>أزرق</translation>
     </message>
     <message>
-        <source>Night</source>
-        <translation>ليلة</translation>
+        <source>Green</source>
+        <translation>أخضر</translation>
+    </message>
+    <message>
+        <source>Dark Green</source>
+        <translation>الأخضر الداكن</translation>
+    </message>
+    <message>
+        <source>Violet</source>
+        <translation>أرجواني</translation>
+    </message>
+    <message>
+        <source>Orange</source>
+        <translation>البرتقالي</translation>
+    </message>
+    <message>
+        <source>Dark blue</source>
+        <translation>أزرق غامق</translation>
+    </message>
+</context>
+<context>
+    <name>attach_phone_number</name>
+    <message>
+        <source>For security reasons you need to confirm your phone number. This number will not appear on your profile.</source>
+        <translation>وفقًا للقانون ، يجب عليك تأكيد رقم هاتفك.</translation>
+    </message>
+    <message>
+        <source>Security alert</source>
+        <translation>الحذر</translation>
     </message>
 </context>
 <context>
@@ -193,26 +276,20 @@
 <context>
     <name>avatar_upload</name>
     <message>
-        <source>Images (*.jpg *.jpeg *.png *.bmp)</source>
-        <translation>تنسيقات الصور: (*.jpg *.jpeg *.png *.bmp)</translation>
-    </message>
-    <message>
-        <source>Upload photo</source>
-        <translation>رفع صورة</translation>
-    </message>
-    <message>
         <source>Preview</source>
         <translation>معاينة</translation>
+    </message>
+    <message>
+        <source>Images (*.jpg *.jpeg *.png *.bmp)</source>
+        <translation>تنسيقات الصور: (*.jpg *.jpeg *.png *.bmp)</translation>
     </message>
     <message>
         <source>Avatar was not uploaded due to server error</source>
         <translation>لم يتم تحميل الأفاتار بسبب خطأ الخادم</translation>
     </message>
     <message>
-        <source>Edit
-photo</source>
-        <translation>تعديل
-صورة</translation>
+        <source>Upload photo</source>
+        <translation>رفع صورة</translation>
     </message>
     <message>
         <source>Edit photo</source>
@@ -223,44 +300,46 @@ photo</source>
         <translation>يجب ألا يقل مقاس الصورة عن 200x200 بكسل</translation>
     </message>
     <message>
-        <source>CHOOSE FILE</source>
-        <translation>اختيار ملف</translation>
+        <source>Choose file</source>
+        <translation>اختر الملف</translation>
+    </message>
+    <message>
+        <source>Select a file</source>
+        <translation>اختيار الملف</translation>
     </message>
 </context>
 <context>
-    <name>burger_menu</name>
+    <name>block_and_delete</name>
     <message>
-        <source>Update is available</source>
-        <translation>التحديث متاح الآن</translation>
+        <source>Delete messages</source>
+        <translation>حذف الرسائل</translation>
     </message>
     <message>
-        <source>Restart application, 
-so update could take effect</source>
-        <translation>يُرجى إعادة تشغيل التطبيق
-لكي يسري التحديث</translation>
+        <source>Block and delete?</source>
+        <translation>كتلة وحذف؟</translation>
     </message>
     <message>
-        <source>RESTART</source>
-        <translation>إعادة تشغيل</translation>
+        <source>Cancel</source>
+        <translation>إلغاء</translation>
+    </message>
+    <message>
+        <source>Yes</source>
+        <translation>نعم</translation>
+    </message>
+    <message>
+        <source>This member won&apos;t be able to join the channel again. You could also delete his messages</source>
+        <translation>لن يتمكن المشارك من العودة إلى القناة. يمكنك أيضا حذف رسائله</translation>
+    </message>
+    <message>
+        <source>This member won&apos;t be able to join the group again. You could also delete his messages</source>
+        <translation>لن يتمكن العضو من العودة إلى المجموعة. يمكنك أيضا حذف رسائله</translation>
     </message>
 </context>
 <context>
     <name>chat_event</name>
     <message>
-        <source>You changed picture of group</source>
-        <translation>قمت بتغيير صورة المجموعة</translation>
-    </message>
-    <message>
-        <source> has birthday!</source>
-        <translation> يحل عيد ميلاده!</translation>
-    </message>
-    <message>
-        <source>Your friend is now available for chat and calls. You can say hi now!</source>
-        <translation>صديقك متاح الآن للدردشة وإجراء المكالمات. يمكنك تحيته الآن!</translation>
-    </message>
-    <message>
-        <source>You have joined group</source>
-        <translation>قمت بالانضمام إلى المجموعة</translation>
+        <source> and </source>
+        <translation> و </translation>
     </message>
     <message>
         <source>You</source>
@@ -273,10 +352,6 @@ so update could take effect</source>
         <translation>أنت</translation>
     </message>
     <message>
-        <source> and </source>
-        <translation> و </translation>
-    </message>
-    <message>
         <source>Missed call</source>
         <translation>مكالمة لم يرد عليها</translation>
     </message>
@@ -287,6 +362,18 @@ so update could take effect</source>
     <message>
         <source>Incoming call</source>
         <translation>مكالمة واردة</translation>
+    </message>
+    <message>
+        <source>You changed picture of group</source>
+        <translation>قمت بتغيير صورة المجموعة</translation>
+    </message>
+    <message>
+        <source> has birthday!</source>
+        <translation> يحل عيد ميلاده!</translation>
+    </message>
+    <message>
+        <source>You have joined group</source>
+        <translation>قمت بالانضمام إلى المجموعة</translation>
     </message>
     <message>
         <source>You deleted chat description</source>
@@ -353,16 +440,6 @@ so update could take effect</source>
         <translation>بادر %1 بإزالة %2</translation>
     </message>
     <message>
-        <source>%1 have left group</source>
-        <comment>many</comment>
-        <translation>غادر %1 الدردشة الجماعية</translation>
-    </message>
-    <message>
-        <source>%1 has left group</source>
-        <comment>one</comment>
-        <translation>غادر %1 الدردشة الجماعية</translation>
-    </message>
-    <message>
         <source>%1 changed chat rules to &quot;%2&quot;</source>
         <translation>غيَّر %1 قواعد الدردشة إلى &quot;%2&quot;</translation>
     </message>
@@ -409,6 +486,70 @@ so update could take effect</source>
     <message>
         <source>You declined a call from %1</source>
         <translation>لم تجب على المكالمة من %1</translation>
+    </message>
+    <message>
+        <source>Theme was changed to &quot;%1&quot;</source>
+        <translation>تم تغيير الخيط إلى %1</translation>
+    </message>
+    <message>
+        <source>%1 was added</source>
+        <translation>تمت إضافة %1</translation>
+    </message>
+    <message>
+        <source>%1 were added</source>
+        <translation>تمت إضافة %1</translation>
+    </message>
+    <message>
+        <source>Chat description was deleted</source>
+        <translation>وصف الدردشة محذوف</translation>
+    </message>
+    <message>
+        <source>%1 was removed</source>
+        <translation>تم حذف %1</translation>
+    </message>
+    <message>
+        <source>%1 were removed</source>
+        <translation>تم حذف %1</translation>
+    </message>
+    <message>
+        <source>Channel avatar was changed</source>
+        <translation>تم تغيير الصورة الرمزية للقناة</translation>
+    </message>
+    <message>
+        <source>Description was changed to &quot;%1&quot;</source>
+        <translation>تم تغيير الوصف إلى %1</translation>
+    </message>
+    <message>
+        <source>Channel rules were changed to &quot;%1&quot;</source>
+        <translation>تم تغيير قواعد القناة إلى %1</translation>
+    </message>
+    <message>
+        <source>You have recently added %1 to your phone contacts. Write a new message or make a call %2</source>
+        <translation>لقد قمت مؤخرًا بإضافة %1 إلى جهات اتصال هاتفك. اكتب رسالة جديدة أو قم بإجراء مكالمة %2</translation>
+    </message>
+    <message>
+        <source>So %1 is here now! Write, call %2</source>
+        <translation>لذلك %1 هنا الآن! اكتب ، اتصل بـ %2</translation>
+    </message>
+    <message>
+        <source>You changed chat link to %1</source>
+        <translation>قمت بتغيير الرابط إلى %1</translation>
+    </message>
+    <message>
+        <source>Channel link was changed to %1</source>
+        <translation>تم تغيير الرابط إلى %1</translation>
+    </message>
+    <message>
+        <source>%1 changed chat link to %2</source>
+        <translation>%1 تغير الارتباط إلى %2</translation>
+    </message>
+    <message>
+        <source>Add avatar</source>
+        <translation>إضافة الصورة الرمزية</translation>
+    </message>
+    <message>
+        <source>Add description</source>
+        <translation>إضافة وصف</translation>
     </message>
 </context>
 <context>
@@ -462,18 +603,6 @@ so update could take effect</source>
         <translation>يكتب</translation>
     </message>
     <message>
-        <source>CANCEL</source>
-        <translation>إلغاء</translation>
-    </message>
-    <message>
-        <source>FORWARD</source>
-        <translation>إعادة إرسال</translation>
-    </message>
-    <message>
-        <source>COPY</source>
-        <translation>نسخ</translation>
-    </message>
-    <message>
         <source>edited</source>
         <translation>تم التحرير</translation>
     </message>
@@ -512,14 +641,6 @@ so update could take effect</source>
         <translation>مرحبًا. يُرجى إضافتي إلى قائمة جهات الاتصال لديك</translation>
     </message>
     <message>
-        <source>FAVORITES</source>
-        <translation>المفضلة</translation>
-    </message>
-    <message>
-        <source>RECENTS</source>
-        <translation>المستجدات</translation>
-    </message>
-    <message>
         <source>Sticker</source>
         <translation>ملصق</translation>
     </message>
@@ -530,6 +651,14 @@ so update could take effect</source>
     <message>
         <source>Voice message</source>
         <translation>رسالة صوتية</translation>
+    </message>
+    <message>
+        <source>FAVORITES</source>
+        <translation>المفضلة</translation>
+    </message>
+    <message>
+        <source>RECENTS</source>
+        <translation>المستجدات</translation>
     </message>
     <message>
         <source>Video</source>
@@ -584,16 +713,28 @@ so update could take effect</source>
         <translation>إلغاء</translation>
     </message>
     <message>
-        <source>New group</source>
-        <translation>مجموعة جديدة</translation>
-    </message>
-    <message>
-        <source>New channel</source>
-        <translation>دردشة مباشرة جديدة</translation>
-    </message>
-    <message>
         <source>Contact</source>
         <translation>جهة اتصال</translation>
+    </message>
+    <message>
+        <source>UNIMPORTANT</source>
+        <translation>غير مهم</translation>
+    </message>
+    <message>
+        <source>Location</source>
+        <translation>موقعك</translation>
+    </message>
+    <message>
+        <source>Poll</source>
+        <translation>مقابلة</translation>
+    </message>
+    <message>
+        <source>Create group</source>
+        <translation>إنشاء مجموعة</translation>
+    </message>
+    <message>
+        <source>Create channel</source>
+        <translation>إنشاء قناة</translation>
     </message>
 </context>
 <context>
@@ -630,32 +771,27 @@ so update could take effect</source>
         <comment>21</comment>
         <translation>%1 أعضاء</translation>
     </message>
+    <message>
+        <source>%1 messages selected</source>
+        <comment>2</comment>
+        <translation>تم تحديد %1 من الرسائل</translation>
+    </message>
+    <message>
+        <source>%1 messages selected</source>
+        <comment>5</comment>
+        <translation>تم تحديد %1 من الرسائل</translation>
+    </message>
+    <message>
+        <source>%1 messages selected</source>
+        <comment>21</comment>
+        <translation>تم تحديد %1 من الرسائل</translation>
+    </message>
 </context>
 <context>
     <name>contactus_page</name>
     <message>
-        <source>Your comments or suggestions...</source>
-        <translation>تعليقاتك أو اقتراحاتك...</translation>
-    </message>
-    <message>
-        <source>Message is too short</source>
-        <translation>الرسالة قصيرة جدًا</translation>
-    </message>
-    <message>
-        <source>Message is too long</source>
-        <translation>الرسالة أطول مما ينبغي</translation>
-    </message>
-    <message>
-        <source>File size exceeds 1 MB</source>
-        <translation>يتجاوز حجم الملف 1 ميجابايت</translation>
-    </message>
-    <message>
         <source>Attachments size exceeds 25 MB</source>
         <translation>يتجاوز حجم المرفقات 25 ميجابايت</translation>
-    </message>
-    <message>
-        <source>Images (*.jpg *.jpeg *.png *.bmp)</source>
-        <translation>تنسيقات الصور: (*.jpg *.jpeg *.png *.bmp)</translation>
     </message>
     <message>
         <source>KB</source>
@@ -664,10 +800,6 @@ so update could take effect</source>
     <message>
         <source>MB</source>
         <translation>MB</translation>
-    </message>
-    <message>
-        <source>Attach screenshot</source>
-        <translation>إرفاق لقطة الشاشة</translation>
     </message>
     <message>
         <source>Your Email</source>
@@ -686,8 +818,28 @@ so update could take effect</source>
         <translation>إرسال مراجعة أخرى</translation>
     </message>
     <message>
-        <source>SEND</source>
-        <translation>إرسال</translation>
+        <source>Message is too short</source>
+        <translation>الرسالة قصيرة جدًا</translation>
+    </message>
+    <message>
+        <source>Message is too long</source>
+        <translation>الرسالة أطول مما ينبغي</translation>
+    </message>
+    <message>
+        <source>File size exceeds 1 MB</source>
+        <translation>يتجاوز حجم الملف 1 ميجابايت</translation>
+    </message>
+    <message>
+        <source>Images (*.jpg *.jpeg *.png *.bmp)</source>
+        <translation>تنسيقات الصور: (*.jpg *.jpeg *.png *.bmp)</translation>
+    </message>
+    <message>
+        <source>Attach screenshot</source>
+        <translation>إرفاق لقطة الشاشة</translation>
+    </message>
+    <message>
+        <source>Your comments or suggestions...</source>
+        <translation>تعليقاتك أو اقتراحاتك...</translation>
     </message>
     <message>
         <source>Error occurred, try again later</source>
@@ -699,23 +851,23 @@ so update could take effect</source>
     </message>
     <message>
         <source>VOIP</source>
-        <translation></translation>
+        <translation>المكالمات</translation>
     </message>
     <message>
         <source>Nothing selected</source>
-        <translation></translation>
+        <translation>غير محدد</translation>
     </message>
     <message>
         <source>Emoji and stickers</source>
-        <translation></translation>
+        <translation>الرموز التعبيرية والملصقات</translation>
     </message>
     <message>
         <source>Avatars</source>
-        <translation></translation>
+        <translation>الآلهة</translation>
     </message>
     <message>
         <source>Videoplayer</source>
-        <translation></translation>
+        <translation>مشغل فيديو</translation>
     </message>
     <message>
         <source>Gallery</source>
@@ -723,15 +875,15 @@ so update could take effect</source>
     </message>
     <message>
         <source>Ptt</source>
-        <translation></translation>
+        <translation>الرسائل الصوتية</translation>
     </message>
     <message>
         <source>Hotkeys</source>
-        <translation></translation>
+        <translation>اختصارات</translation>
     </message>
     <message>
         <source>Crash</source>
-        <translation></translation>
+        <translation>اغلاق التطبيق</translation>
     </message>
     <message>
         <source>Pinned message</source>
@@ -739,23 +891,23 @@ so update could take effect</source>
     </message>
     <message>
         <source>Decelerations</source>
-        <translation></translation>
+        <translation>تباطؤ التطبيق</translation>
     </message>
     <message>
         <source>Sounds</source>
-        <translation></translation>
+        <translation>الأصوات</translation>
     </message>
     <message>
         <source>History</source>
-        <translation></translation>
+        <translation>سجل الدردشة</translation>
     </message>
     <message>
         <source>Channels</source>
-        <translation></translation>
+        <translation>قنوات</translation>
     </message>
     <message>
         <source>Contact list</source>
-        <translation></translation>
+        <translation>تفاصيل الاتصال</translation>
     </message>
     <message>
         <source>Settings</source>
@@ -763,7 +915,7 @@ so update could take effect</source>
     </message>
     <message>
         <source>Nick</source>
-        <translation></translation>
+        <translation>كنية</translation>
     </message>
     <message>
         <source>Search</source>
@@ -771,23 +923,23 @@ so update could take effect</source>
     </message>
     <message>
         <source>Mail for domains</source>
-        <translation></translation>
+        <translation>البريد للنطاق</translation>
     </message>
     <message>
         <source>Previews</source>
-        <translation></translation>
+        <translation>معاينة الصور والروابط</translation>
     </message>
     <message>
         <source>Connection</source>
-        <translation></translation>
+        <translation>اتصال الشبكة</translation>
     </message>
     <message>
         <source>Messages</source>
-        <translation></translation>
+        <translation>رسائل</translation>
     </message>
     <message>
         <source>Statuses</source>
-        <translation></translation>
+        <translation>الأوضاع</translation>
     </message>
     <message>
         <source>Notifications</source>
@@ -795,27 +947,35 @@ so update could take effect</source>
     </message>
     <message>
         <source>Mentions</source>
-        <translation></translation>
+        <translation>يذكر الدردشة</translation>
     </message>
     <message>
         <source>Install</source>
-        <translation></translation>
+        <translation>تثبيت التطبيق</translation>
     </message>
     <message>
         <source>File sharing</source>
-        <translation></translation>
+        <translation>ملفات</translation>
     </message>
     <message>
         <source>Wallpapers</source>
-        <translation></translation>
+        <translation>خلفية الدردشة</translation>
     </message>
     <message>
         <source>Group chats</source>
-        <translation></translation>
+        <translation>دردشات</translation>
     </message>
     <message>
         <source>Different problem</source>
-        <translation></translation>
+        <translation>مشكلة اخرى</translation>
+    </message>
+    <message>
+        <source>Get debug information</source>
+        <translation>الحصول على معلومات التصحيح</translation>
+    </message>
+    <message>
+        <source>Send</source>
+        <translation>إرسال</translation>
     </message>
 </context>
 <context>
@@ -827,10 +987,6 @@ so update could take effect</source>
     <message>
         <source>Profile</source>
         <translation>حساب</translation>
-    </message>
-    <message>
-        <source>Leave and delete</source>
-        <translation>خروج وحذف</translation>
     </message>
     <message>
         <source>Mark as read</source>
@@ -845,12 +1001,16 @@ so update could take effect</source>
         <translation>إيقاف الإخطارات</translation>
     </message>
     <message>
-        <source>Copy link</source>
-        <translation>نسخ الرابط</translation>
-    </message>
-    <message>
         <source>Save as...</source>
         <translation>حفظ باسم...</translation>
+    </message>
+    <message>
+        <source>Copy</source>
+        <translation>نسخ</translation>
+    </message>
+    <message>
+        <source>Copy link</source>
+        <translation>نسخ الرابط</translation>
     </message>
     <message>
         <source>Delete for me</source>
@@ -861,8 +1021,8 @@ so update could take effect</source>
         <translation>حذف الكل</translation>
     </message>
     <message>
-        <source>Copy</source>
-        <translation>نسخ</translation>
+        <source>Leave and delete</source>
+        <translation>خروج وحذف</translation>
     </message>
     <message>
         <source>Forward</source>
@@ -937,16 +1097,56 @@ so update could take effect</source>
         <translation>شكوى وحظر</translation>
     </message>
     <message>
-        <source>Delete and leave</source>
-        <translation>الحذف والخروج</translation>
-    </message>
-    <message>
         <source>Hide</source>
         <translation>إخفاء</translation>
     </message>
     <message>
         <source>Go to profile</source>
         <translation>الذهاب إلى الملف الشخصي</translation>
+    </message>
+    <message>
+        <source>Remove</source>
+        <translation>إزالة</translation>
+    </message>
+    <message>
+        <source>Delete</source>
+        <translation>حذف</translation>
+    </message>
+    <message>
+        <source>Select</source>
+        <translation>حدد</translation>
+    </message>
+    <message>
+        <source>Remove from Unimportant</source>
+        <translation>إزالة من غير مهم</translation>
+    </message>
+    <message>
+        <source>Move to Unimportant</source>
+        <translation>الانتقال إلى غير مهم</translation>
+    </message>
+    <message>
+        <source>Share channel link</source>
+        <translation>حصة رابط القناة</translation>
+    </message>
+    <message>
+        <source>Copy channel link</source>
+        <translation>نسخ رابط القناة</translation>
+    </message>
+    <message>
+        <source>Share group link</source>
+        <translation>حصة رابط المجموعة</translation>
+    </message>
+    <message>
+        <source>Copy group link</source>
+        <translation>نسخ الرابط إلى المجموعة</translation>
+    </message>
+    <message>
+        <source>Revoke vote</source>
+        <translation>إلغاء التصويت</translation>
+    </message>
+    <message>
+        <source>Stop poll</source>
+        <translation>وقف الاستطلاع</translation>
     </message>
 </context>
 <context>
@@ -1964,6 +2164,25 @@ so update could take effect</source>
     </message>
 </context>
 <context>
+    <name>delete_messages</name>
+    <message>
+        <source>Delete messages</source>
+        <translation>حذف الرسائل</translation>
+    </message>
+    <message>
+        <source>OK</source>
+        <translation>حسنا</translation>
+    </message>
+    <message>
+        <source>Messages will be deleted only for you</source>
+        <translation>سيتم حذف الرسائل لك فقط</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>إلغاء</translation>
+    </message>
+</context>
+<context>
     <name>files_widget</name>
     <message>
         <source>Send with caption</source>
@@ -2002,14 +2221,6 @@ so update could take effect</source>
         <translation>ملفات</translation>
     </message>
     <message>
-        <source>CANCEL</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>SEND</source>
-        <translation>إرسال</translation>
-    </message>
-    <message>
         <source>Send files</source>
         <translation>إرسال الملفات</translation>
     </message>
@@ -2021,12 +2232,34 @@ so update could take effect</source>
         <source>Quick send</source>
         <translation>إرسال بسرعة</translation>
     </message>
+    <message>
+        <source>Cancel</source>
+        <translation>إلغاء</translation>
+    </message>
+    <message>
+        <source>Send</source>
+        <translation>إرسال</translation>
+    </message>
 </context>
 <context>
     <name>gallery</name>
     <message>
         <source>Go to message</source>
         <translation>الإنتقال إلى الرسالة</translation>
+    </message>
+</context>
+<context>
+    <name>generic_block</name>
+    <message>
+        <source>Copied to clipboard</source>
+        <translation>نسخ إلى الحافظة</translation>
+    </message>
+</context>
+<context>
+    <name>geolocation_block</name>
+    <message>
+        <source>Location</source>
+        <translation>موقعك</translation>
     </message>
 </context>
 <context>
@@ -2044,10 +2277,6 @@ so update could take effect</source>
         <translation>أعضاء جدد في انتظار موافقة المدير</translation>
     </message>
     <message>
-        <source>Select members</source>
-        <translation>حدد الأعضاء</translation>
-    </message>
-    <message>
         <source>Add to chat</source>
         <translation>إضافة إلى الدردشة</translation>
     </message>
@@ -2058,18 +2287,6 @@ so update could take effect</source>
     <message>
         <source>Chat name</source>
         <translation>اسم الدردشة</translation>
-    </message>
-    <message>
-        <source>Link to chat</source>
-        <translation>رابط للدردشة</translation>
-    </message>
-    <message>
-        <source>Ability to join chat by link</source>
-        <translation>القدرة على الانضمام للدردشة برابط</translation>
-    </message>
-    <message>
-        <source>The chat will appear in the app&apos;s showcase and any user can find it in the list</source>
-        <translation>ستظهر الدردشة في عرض التطبيق ويمكن لأي مستخدم العثور عليها في القائمة</translation>
     </message>
     <message>
         <source>Chat information is unavailable now, please try again later</source>
@@ -2124,12 +2341,48 @@ so update could take effect</source>
         <translation>اسم القناة</translation>
     </message>
     <message>
-        <source>The channel will appear in the app&apos;s showcase and any user can find it in the list</source>
-        <translation>ستظهر القناة في عرض التطبيق ويُمكن لأي مستخدم أن يعثر عليها في القائمة</translation>
-    </message>
-    <message>
         <source>Public channel</source>
         <translation>القناة العامة</translation>
+    </message>
+    <message>
+        <source>Make new link</source>
+        <translation>توليد رابط جديد</translation>
+    </message>
+    <message>
+        <source>Apply</source>
+        <translation>للتقديم</translation>
+    </message>
+    <message>
+        <source>Public group can be found in the search</source>
+        <translation>مجموعة عامة يمكن العثور عليها في البحث</translation>
+    </message>
+    <message>
+        <source>Channels are public by default, but you can change it after in settings</source>
+        <translation>القنوات عامة بشكل افتراضي ، ولكن يمكنك تغييرها بعد ذلك في الإعدادات</translation>
+    </message>
+    <message>
+        <source>The link will open the group in %1</source>
+        <translation>سيفتح هذا الرابط المجموعة في %1</translation>
+    </message>
+    <message>
+        <source>The link will open the channel in %1</source>
+        <translation>سيفتح هذا الرابط القناة في %1</translation>
+    </message>
+    <message>
+        <source>The public channel can be found in the search and its link will be available to all members</source>
+        <translation>يمكن العثور على القناة العامة في البحث ، وسيكون الرابط متاحًا لجميع المشاركين</translation>
+    </message>
+    <message>
+        <source>The public group can be found in the search and its link will be available to all members</source>
+        <translation>يمكن العثور على المجموعة العامة في البحث ، وسيكون الرابط متاحًا لجميع المشاركين</translation>
+    </message>
+    <message>
+        <source>You have chosen no one from the list. Are you sure you want to create a group with no participants?</source>
+        <translation>لم تختر أي شخص من القائمة ، هل أنت متأكد من أنك تريد إنشاء مجموعة بدون أعضاء؟</translation>
+    </message>
+    <message>
+        <source>Group name</source>
+        <translation>اسم المجموعة</translation>
     </message>
 </context>
 <context>
@@ -2161,16 +2414,16 @@ so update could take effect</source>
 <context>
     <name>input_widget</name>
     <message>
-        <source>Message</source>
-        <translation>رسالة</translation>
-    </message>
-    <message>
         <source>EMOJI</source>
         <translation>إيموجي</translation>
     </message>
     <message>
         <source>RECENTS</source>
         <translation>المستجدات</translation>
+    </message>
+    <message>
+        <source>Message</source>
+        <translation>رسالة</translation>
     </message>
     <message>
         <source>Edit message</source>
@@ -2187,30 +2440,6 @@ so update could take effect</source>
     <message>
         <source>Voice Message</source>
         <translation>رسالة صوتية</translation>
-    </message>
-    <message>
-        <source>SUBSCRIBE</source>
-        <translation>الاشتراك</translation>
-    </message>
-    <message>
-        <source>JOIN</source>
-        <translation>انضمام</translation>
-    </message>
-    <message>
-        <source>ENABLE NOTIFICATIONS</source>
-        <translation>تمكين الإخطارات</translation>
-    </message>
-    <message>
-        <source>DISABLE NOTIFICATIONS</source>
-        <translation>أوقف التنبيهات</translation>
-    </message>
-    <message>
-        <source>DELETE AND LEAVE</source>
-        <translation>الحذف والخروج</translation>
-    </message>
-    <message>
-        <source>UNBLOCK</source>
-        <translation>إلغاء الحظر</translation>
     </message>
     <message>
         <source>Voice message</source>
@@ -2245,12 +2474,12 @@ so update could take effect</source>
         <translation>حسنا</translation>
     </message>
     <message>
-        <source>Contact</source>
-        <translation>جهة اتصال</translation>
-    </message>
-    <message>
         <source>Lock</source>
         <translation>قفل</translation>
+    </message>
+    <message>
+        <source>Contact</source>
+        <translation>جهة اتصال</translation>
     </message>
     <message>
         <source>You was banned to write in this group</source>
@@ -2259,6 +2488,14 @@ so update could take effect</source>
     <message>
         <source>The join request has been sent to administrator</source>
         <translation>تم إرسال طلب الانضمام إلى المسؤول</translation>
+    </message>
+    <message>
+        <source>Play record</source>
+        <translation>لعب سجل</translation>
+    </message>
+    <message>
+        <source>Pause record</source>
+        <translation>وقفة سجل</translation>
     </message>
     <message>
         <source>Convert error</source>
@@ -2271,14 +2508,6 @@ so update could take effect</source>
     <message>
         <source>BufferOOM error</source>
         <translation>الخطأ رقم قياسي. الذاكرة غير كافية</translation>
-    </message>
-    <message>
-        <source>Play record</source>
-        <translation>لعب سجل</translation>
-    </message>
-    <message>
-        <source>Pause record</source>
-        <translation>وقفة سجل</translation>
     </message>
     <message>
         <source>Cancel</source>
@@ -2296,6 +2525,34 @@ so update could take effect</source>
         <source>To record a voice message, you need to allow access to the microphone in the system settings</source>
         <translation>لتسجيل رسالة صوتية ، تحتاج إلى السماح بالوصول إلى الميكروفون في إعدادات النظام</translation>
     </message>
+    <message>
+        <source>Join</source>
+        <translation>انضم</translation>
+    </message>
+    <message>
+        <source>Poll</source>
+        <translation>مقابلة</translation>
+    </message>
+    <message>
+        <source>Subscribe</source>
+        <translation>الاشتراك</translation>
+    </message>
+    <message>
+        <source>Enable notifications</source>
+        <translation>تمكين الإشعارات</translation>
+    </message>
+    <message>
+        <source>Disable notifications</source>
+        <translation>قم بإيقاف تشغيل الإشعارات</translation>
+    </message>
+    <message>
+        <source>Delete and leave</source>
+        <translation>حذف والخروج</translation>
+    </message>
+    <message>
+        <source>Unblock</source>
+        <translation>إطلاق</translation>
+    </message>
 </context>
 <context>
     <name>linux_desktop_file</name>
@@ -2306,10 +2563,6 @@ so update could take effect</source>
 </context>
 <context>
     <name>local_pin</name>
-    <message>
-        <source>CANCEL</source>
-        <translation>إلغاء</translation>
-    </message>
     <message>
         <source>log out</source>
         <translation>تسجيل الخروج</translation>
@@ -2343,20 +2596,16 @@ so update could take effect</source>
         <translation>في حال نسيت الرمز الخاص بك، بإمكانك </translation>
     </message>
     <message>
-        <source>APPLY</source>
+        <source>Cancel</source>
+        <translation>إلغاء</translation>
+    </message>
+    <message>
+        <source>Apply</source>
         <translation>تطبيق</translation>
     </message>
 </context>
 <context>
     <name>login_page</name>
-    <message>
-        <source>Welcome to ICQ</source>
-        <translation>مرحبًا في ICQ</translation>
-    </message>
-    <message>
-        <source>UIN or Email</source>
-        <translation>UIN أو البريد الالكتروني</translation>
-    </message>
     <message>
         <source>Password</source>
         <translation>كلمة المرور</translation>
@@ -2366,72 +2615,24 @@ so update could take effect</source>
         <translation>الاستمرار في تسجيل دخولي</translation>
     </message>
     <message>
-        <source>Type country or code</source>
-        <translation>كتابة البلد أو الرمز</translation>
-    </message>
-    <message>
-        <source>Login via phone</source>
-        <translation>تسجيل الدخول عبر الهاتف</translation>
-    </message>
-    <message>
-        <source>Login with UIN/Email</source>
-        <translation>تسجيل الدخول بواسطة UIN/البريد الإلكتروني</translation>
-    </message>
-    <message>
         <source>Resend code</source>
         <translation>إعادة إرسال الكود</translation>
-    </message>
-    <message>
-        <source>Wrong UIN/Email or password. Please try again.</source>
-        <translation>UIN/بريد إلكتروني خاطئ أو كلمة مرور خاطئة. يُرجى إعادة المحاولة.</translation>
     </message>
     <message>
         <source>You have entered an invalid code. Please try again.</source>
         <translation>أدخلت رمزًا غير صحيح. يُرجى إعادة المحاولة.</translation>
     </message>
     <message>
-        <source>Invalid phone number. Please try again.</source>
-        <translation>رقم هاتف غير صحيح. يُرجى إعادة المحاولة.</translation>
-    </message>
-    <message>
         <source>Forgot password?</source>
         <translation>هل نسيت كلمة المرور؟</translation>
-    </message>
-    <message>
-        <source>Email</source>
-        <translation>بريدك الالكتروني</translation>
-    </message>
-    <message>
-        <source>Login with Email</source>
-        <translation>تسجيل الدخول بواسطة البريد الإلكتروني</translation>
     </message>
     <message>
         <source>Two-factor authentication is on, please create an app password &lt;a href=&quot;https://e.mail.ru/settings/2-step-auth&quot;&gt;here&lt;/a&gt; to login</source>
         <translation>المصادقة الثنائية قيد التشغيل، يُرجى إنشاء كلمة مرور للتطبيق &lt;a href=&quot;https://e.mail.ru/settings/2-step-auth&quot;&gt;here&lt;/a&gt; لتسجيل الدخول</translation>
     </message>
     <message>
-        <source>Enter code from SMS</source>
-        <translation>إدخال رمز من رسالة SMS</translation>
-    </message>
-    <message>
-        <source>Enter phone number</source>
-        <translation>إدخال رقم الهاتف</translation>
-    </message>
-    <message>
-        <source>Enter UIN or Email</source>
-        <translation>إدخال UIN أو البريد الإلكتروني</translation>
-    </message>
-    <message>
         <source>Enter your Email</source>
         <translation>إدخال بريدك الإلكتروني</translation>
-    </message>
-    <message>
-        <source>NEXT</source>
-        <translation>التالي</translation>
-    </message>
-    <message>
-        <source>phone number</source>
-        <translation>رقم الهاتف</translation>
     </message>
     <message>
         <source>Change</source>
@@ -2451,55 +2652,95 @@ so update could take effect</source>
     </message>
     <message>
         <source>Recall in %1</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Enter last %1 digit</source>
-        <comment>1</comment>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Enter last %1 digits</source>
-        <comment>2</comment>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Enter last %1 digits</source>
-        <comment>5</comment>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Enter last %1 digits</source>
-        <comment>21</comment>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Login by phone call</source>
-        <translation>تسجيل الدخول عن طريق مكالمة هاتفية</translation>
-    </message>
-    <message>
-        <source>Welcome to Mail.ru Agent</source>
-        <translation>مرحبًا في Mail.ru Agent</translation>
-    </message>
-    <message>
-        <source>Welcome to Messenger</source>
-        <translation>مرحبًا في Messenger</translation>
-    </message>
-    <message>
-        <source>Wrong Email or password. Please try again.</source>
-        <translation>بريد إلكتروني خاطئ أو كلمة مرور خاطئة. يُرجى إعادة المحاولة.</translation>
-    </message>
-    <message>
-        <source>Welcome to Myteam</source>
-        <translation>مرحبًا في Myteam</translation>
-    </message>
-    <message>
-        <source>I don&apos;t have an account</source>
-        <translation>ليس لدي حساب</translation>
+        <translation>أذكر في %1</translation>
     </message>
     <message>
         <source>Enter one-time password received by email</source>
         <translation>أدخل كلمة المرور لمرة واحدة المستلمة عن طريق البريد الإلكتروني</translation>
+    </message>
+    <message>
+        <source>Enter your login and password</source>
+        <translation>إدخال اسم المستخدم و كلمة المرور الخاصة بك</translation>
+    </message>
+    <message>
+        <source>To login use you corporative account created at</source>
+        <translation>لتسجيل الدخول ، استخدم حساب الشركة الذي تم إنشاؤه في</translation>
+    </message>
+    <message>
+        <source>Check the country code and enter your phone number</source>
+        <translation>تحقق من رمز البلد وأدخل رقم هاتفك</translation>
+    </message>
+    <message>
+        <source>Phone</source>
+        <translation>رقم الهاتف</translation>
+    </message>
+    <message>
+        <source>SMS code</source>
+        <translation>رمز من الرسائل القصيرة</translation>
+    </message>
+    <message>
+        <source>Enter last 6 digits of number that called you</source>
+        <translation>أدخل آخر 6 أرقام من الرقم الذي اتصل بك</translation>
+    </message>
+    <message>
+        <source>Login</source>
+        <translation>دخول</translation>
+    </message>
+    <message>
+        <source>Mail.ru for business</source>
+        <translation>Mail.ru للعمل</translation>
+    </message>
+    <message>
+        <source>Invalid phone number</source>
+        <translation>رقم الهاتف غير صحيح</translation>
+    </message>
+    <message>
+        <source>Sign in</source>
+        <translation>لتسجيل الدخول</translation>
+    </message>
+    <message>
+        <source>Incorrect code</source>
+        <translation>رمز غير صالح</translation>
+    </message>
+    <message>
+        <source>Sign in by password</source>
+        <translation>تسجيل الدخول بكلمة مرور</translation>
+    </message>
+    <message>
+        <source>Sign in via phone</source>
+        <translation>تسجيل الدخول عبر الهاتف</translation>
+    </message>
+    <message>
+        <source>We called the number</source>
+        <translation>اتصلنا الرقم</translation>
+    </message>
+    <message>
+        <source>Wrong login or password</source>
+        <translation>اسم المستخدم أو كلمة المرور غير صالحة</translation>
+    </message>
+    <message>
+        <source>Wrong Email or password</source>
+        <translation>البريد الإلكتروني أو كلمة المرور غير صالحة</translation>
+    </message>
+    <message>
+        <source>To log in use you corporate account created in</source>
+        <translation>لتسجيل الدخول ، استخدم حساب الشركة الذي تم إنشاؤه في</translation>
+    </message>
+    <message>
+        <source>Verification code was sent to number</source>
+        <translation>تم إرسال رمز التحقق إلى</translation>
+    </message>
+    <message>
+        <source>Send code</source>
+        <translation>إرسال الرمز</translation>
+    </message>
+    <message>
+        <source>Dictate over the phone</source>
+        <translation>تملي عن طريق الهاتف</translation>
+    </message>
+    <message>
+        <source>Phone code</source>
+        <translation>رمز الاتصال</translation>
     </message>
 </context>
 <context>
@@ -2598,7 +2839,7 @@ so update could take effect</source>
     </message>
     <message>
         <source>Emoji &amp;&amp; Symbols</source>
-        <translation type="unfinished"></translation>
+        <translation>الرموز التعبيرية والرموز</translation>
     </message>
     <message>
         <source>Zoom</source>
@@ -2664,50 +2905,10 @@ so update could take effect</source>
     </message>
 </context>
 <context>
-    <name>merge_accounts</name>
+    <name>message</name>
     <message>
-        <source>Now Mail.Ru Agent supports only one account. You can merge it with ICQ one.</source>
-        <translation>بات Mail.Ru Agent يدعم حسابًا واحدًا فقط. يمكنك دمجه مع حساب ICQ.</translation>
-    </message>
-    <message>
-        <source>Choose Mail.Ru Agent account</source>
-        <translation>اختر حساب Mail.Ru Agent</translation>
-    </message>
-    <message>
-        <source>Choose ICQ account</source>
-        <translation>اختر حساب ICQ</translation>
-    </message>
-    <message>
-        <source>Account settings</source>
-        <translation>إعدادات الحساب</translation>
-    </message>
-    <message>
-        <source>ICQ</source>
-        <translation>ICQ</translation>
-    </message>
-    <message>
-        <source>Back</source>
-        <translation>رجوع</translation>
-    </message>
-    <message>
-        <source>Next</source>
-        <translation>التالي</translation>
-    </message>
-    <message>
-        <source>Skip</source>
-        <translation>تخطى</translation>
-    </message>
-    <message>
-        <source>Now Mail.ru Agent supports only one account. You can merge it with ICQ one.</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Mail.ru Agent</source>
-        <translation>Mail.ru Agent</translation>
-    </message>
-    <message>
-        <source>Choose Mail.ru Agent account</source>
-        <translation></translation>
+        <source>Sticker</source>
+        <translation>لاصقة</translation>
     </message>
 </context>
 <context>
@@ -2722,7 +2923,7 @@ so update could take effect</source>
     </message>
     <message>
         <source>For agent account nickname is not allowed</source>
-        <translation></translation>
+        <translation>الأسماء المستعارة المحظورة على حسابات الوكلاء</translation>
     </message>
     <message>
         <source>Server error</source>
@@ -2910,6 +3111,10 @@ so update could take effect</source>
         <comment>21</comment>
         <translation></translation>
     </message>
+    <message>
+        <source>Enter your number</source>
+        <translation>أدخل رقمك</translation>
+    </message>
 </context>
 <context>
     <name>pin</name>
@@ -2933,24 +3138,8 @@ so update could take effect</source>
 <context>
     <name>placeholders</name>
     <message>
-        <source>Looks like you have no contacts yet</source>
-        <translation>يبدو أنه ليس لديك جهات اتصال حتى الآن</translation>
-    </message>
-    <message>
-        <source>You have no opened chats yet</source>
-        <translation>لا توجد لديك جلسات دردشة مفتوحة بعد</translation>
-    </message>
-    <message>
         <source>Install ICQ on mobile</source>
         <translation>تثبيت ICQ على الهاتف المحمول</translation>
-    </message>
-    <message>
-        <source>to synchronize your contacts</source>
-        <translation>لمزامنة جهات اتصالك</translation>
-    </message>
-    <message>
-        <source>CONTINUE</source>
-        <translation>مواصلة</translation>
     </message>
     <message>
         <source>Nothing found</source>
@@ -2959,10 +3148,6 @@ so update could take effect</source>
     <message>
         <source>Error occurred, try again later</source>
         <translation>حدث خطأ، كرر المحاولة لاحقًا</translation>
-    </message>
-    <message>
-        <source>First name</source>
-        <translation>الاسم</translation>
     </message>
     <message>
         <source>Last name</source>
@@ -2984,36 +3169,182 @@ so update could take effect</source>
         <source>Install Myteam on mobile</source>
         <translation>تثبيت Myteam على الهاتف المحمول</translation>
     </message>
+    <message>
+        <source>First name*</source>
+        <translation>الاسم الاول*</translation>
+    </message>
+    <message>
+        <source>your contacts will see them</source>
+        <translation>جهات الاتصال الخاصة بك سوف نراهم</translation>
+    </message>
+    <message>
+        <source>Continue</source>
+        <translation>استمر</translation>
+    </message>
+    <message>
+        <source>Chat list is empty</source>
+        <translation>قائمة الدردشة فارغة</translation>
+    </message>
+    <message>
+        <source>Contact list is empty</source>
+        <translation>قائمة الاتصال فارغة</translation>
+    </message>
+    <message>
+        <source>Copy</source>
+        <translation>repins</translation>
+    </message>
+    <message>
+        <source>Share the link %1 so people can write you</source>
+        <translation>شارك رابط %1 حتى تتمكن من الكتابة</translation>
+    </message>
+    <message>
+        <source>Add a name and avatar</source>
+        <translation>إضافة اسم و avatar</translation>
+    </message>
+    <message>
+        <source>Failed to download file or media</source>
+        <translation>أخفق تحميل الملف أو الوسائط</translation>
+    </message>
+</context>
+<context>
+    <name>poll</name>
+    <message>
+        <source>Create poll</source>
+        <translation>إنشاء استطلاع</translation>
+    </message>
+    <message>
+        <source>Ask your question</source>
+        <translation>اطرح سؤالك</translation>
+    </message>
+    <message>
+        <source>Add another option</source>
+        <translation>إضافة خيار آخر</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>إلغاء</translation>
+    </message>
+    <message>
+        <source>Send</source>
+        <translation>لإرسال</translation>
+    </message>
+    <message>
+        <source>Answer</source>
+        <translation>خيار الإجابة</translation>
+    </message>
+</context>
+<context>
+    <name>poll_block</name>
+    <message>
+        <source>Public</source>
+        <translation>جمهور</translation>
+    </message>
+    <message>
+        <source>Anonymous</source>
+        <translation>مجهول</translation>
+    </message>
+    <message>
+        <source>%1 poll - %2 vote</source>
+        <comment>1</comment>
+        <translation>%1 استطلاع -%2 صوت</translation>
+    </message>
+    <message>
+        <source>%1 poll - %2 votes</source>
+        <comment>2</comment>
+        <translation>%1استطلاع - %2 صوت</translation>
+    </message>
+    <message>
+        <source>%1 poll - %2 votes</source>
+        <comment>5</comment>
+        <translation>%1استطلاع - %2 صوت</translation>
+    </message>
+    <message>
+        <source>Poll</source>
+        <translation>مقابلة</translation>
+    </message>
+    <message>
+        <source>Poll: %1</source>
+        <translation>استطلاع الرأي: %1</translation>
+    </message>
+    <message>
+        <source>%1 poll - %2 votes</source>
+        <comment>21</comment>
+        <translation>%1استطلاع - %2 صوت</translation>
+    </message>
+    <message>
+        <source>Poll: </source>
+        <translation>تصويت: </translation>
+    </message>
+    <message>
+        <source>Sticker</source>
+        <translation>لاصقة</translation>
+    </message>
+    <message>
+        <source>GIF</source>
+        <translation>GIF</translation>
+    </message>
+    <message>
+        <source>Video</source>
+        <translation>فيديو</translation>
+    </message>
+    <message>
+        <source>Poll Id copied to clipboard</source>
+        <translation>تم نسخ معرف الاستطلاع</translation>
+    </message>
+    <message>
+        <source>Photo</source>
+        <translation>صور</translation>
+    </message>
+    <message>
+        <source>Vote: an error occurred</source>
+        <translation>التصويت: حدث خطأ</translation>
+    </message>
+    <message>
+        <source>Revoke vote: an error occurred</source>
+        <translation>إلغاء الصوت: حدث خطأ</translation>
+    </message>
+    <message>
+        <source>Stop poll: an error occurred</source>
+        <translation>إيقاف الاستطلاع: حدث خطأ</translation>
+    </message>
+    <message>
+        <source>Voice message</source>
+        <translation>رسالة صوتية</translation>
+    </message>
+    <message>
+        <source>File</source>
+        <translation>ملف</translation>
+    </message>
 </context>
 <context>
     <name>popup_window</name>
     <message>
-        <source>Unfortunately, an error occurred:</source>
-        <translation>للأسف، حدث خطأ:</translation>
+        <source>Are you sure you want to sign out?</source>
+        <translation>هل تريد بالتأكيد تسجيل الخروج؟</translation>
     </message>
     <message>
         <source>Are you sure you want to move contact to ignore list?</source>
         <translation>هل أنت متأكد من أنك تريد نقل جهة الاتصال إلى قائمة التجاهل؟</translation>
     </message>
     <message>
-        <source>Are you sure you want to sign out?</source>
-        <translation>هل تريد بالتأكيد تسجيل الخروج؟</translation>
-    </message>
-    <message>
-        <source>Sign out</source>
-        <translation>تسجيل الخروج</translation>
+        <source>Are you sure you want to leave chat?</source>
+        <translation>هل تريد بالتأكيد مغادرة الدردشة؟</translation>
     </message>
     <message>
         <source>Contact name</source>
         <translation>اسم جهة الاتصال</translation>
     </message>
     <message>
+        <source>Sign out</source>
+        <translation>تسجيل الخروج</translation>
+    </message>
+    <message>
         <source>Are you sure you want to erase chat history?</source>
         <translation>هل تريد بالتأكيد مسح محفوظات الدردشة؟</translation>
     </message>
     <message>
-        <source>Are you sure you want to leave chat?</source>
-        <translation>هل تريد بالتأكيد مغادرة الدردشة؟</translation>
+        <source>Unfortunately, an error occurred:</source>
+        <translation>للأسف، حدث خطأ:</translation>
     </message>
     <message>
         <source>Are you sure you want to delete user from this chat?</source>
@@ -3022,10 +3353,6 @@ so update could take effect</source>
     <message>
         <source>Are you sure you want to delete user from ignore list?</source>
         <translation>هل تريد بالتأكيد حذف المستخدم من قائمة التجاهل؟</translation>
-    </message>
-    <message>
-        <source>Are you sure you want to block user in this chat?</source>
-        <translation>هل تريد بالتأكيد حظر المستخدم في هذه الدردشة؟</translation>
     </message>
     <message>
         <source>Are you sure you want to unblock user?</source>
@@ -3072,76 +3399,12 @@ so update could take effect</source>
         <translation>جهات الاتصال</translation>
     </message>
     <message>
-        <source>CANCEL</source>
-        <translation>إلغاء</translation>
-    </message>
-    <message>
-        <source>YES</source>
-        <translation>نعم</translation>
-    </message>
-    <message>
-        <source>SAVE</source>
-        <translation>حفظ</translation>
-    </message>
-    <message>
-        <source>DONE</source>
-        <translation>القيام به</translation>
-    </message>
-    <message>
-        <source>DELETE</source>
-        <translation>حذف</translation>
-    </message>
-    <message>
-        <source>BACK</source>
-        <translation>رجوع</translation>
-    </message>
-    <message>
-        <source>CONTINUE</source>
-        <translation>مواصلة</translation>
-    </message>
-    <message>
-        <source>NEXT</source>
-        <translation>التالي</translation>
-    </message>
-    <message>
-        <source>WAITING</source>
-        <translation>جارِ الانتظار</translation>
-    </message>
-    <message>
-        <source>CLOSE</source>
-        <translation>إغلاق</translation>
-    </message>
-    <message>
-        <source>JOIN</source>
-        <translation>انضمام</translation>
-    </message>
-    <message>
-        <source>OPEN</source>
-        <translation>فتح</translation>
-    </message>
-    <message>
-        <source>ADD</source>
-        <translation>إضافة</translation>
-    </message>
-    <message>
-        <source>REMOVE</source>
-        <translation>إزالة</translation>
-    </message>
-    <message>
-        <source>SEND</source>
-        <translation>إرسال</translation>
-    </message>
-    <message>
         <source>Are you sure you want to remove this sticker pack?</source>
         <translation>هل أنت متأكد من رغبتك في إزالة حزمة الملصقات هذه؟</translation>
     </message>
     <message>
         <source>Remove sticker pack</source>
         <translation>إزالة حزمة الملصقات</translation>
-    </message>
-    <message>
-        <source>FORWARD</source>
-        <translation>إعادة إرسال</translation>
     </message>
     <message>
         <source>show author</source>
@@ -3158,10 +3421,6 @@ so update could take effect</source>
     <message>
         <source>Clear avatars</source>
         <translation>مسح الصور التعبيرية</translation>
-    </message>
-    <message>
-        <source>Advanced Settings</source>
-        <translation>إعدادات متقدِّمة</translation>
     </message>
     <message>
         <source>OK</source>
@@ -3204,76 +3463,16 @@ so update could take effect</source>
         <translation></translation>
     </message>
     <message>
-        <source>Stick memory usage widget</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Cache dialogs for (milliseconds)</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Current memory usage: </source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Memory: </source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Real memory: </source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Copy text</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Refresh</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Total accounted for: </source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Cached avatars</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Cached themes</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Cached emojis</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Cached previews</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Cached stickers</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>VOIP initialization</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Video players</source>
-        <translation></translation>
-    </message>
-    <message>
         <source>Restart</source>
         <translation>إعادة تشغيل</translation>
     </message>
     <message>
         <source>Server search</source>
-        <translation></translation>
+        <translation>خادم البحث</translation>
     </message>
     <message>
         <source>Log messagesModel</source>
-        <translation></translation>
+        <translation>تسجيل الرسائلنموذج</translation>
     </message>
     <message>
         <source>Do you really want mark all as read?</source>
@@ -3300,16 +3499,8 @@ so update could take effect</source>
         <translation></translation>
     </message>
     <message>
-        <source>CHECK</source>
-        <translation></translation>
-    </message>
-    <message>
         <source>Block</source>
         <translation>حظر</translation>
-    </message>
-    <message>
-        <source>APPLY</source>
-        <translation>تطبيق</translation>
     </message>
     <message>
         <source>Share</source>
@@ -3318,6 +3509,154 @@ so update could take effect</source>
     <message>
         <source>REPEAT</source>
         <translation>تكرار</translation>
+    </message>
+    <message>
+        <source>Remove %1 from your contacts?</source>
+        <translation>أز%1 من جهات اتصالك؟</translation>
+    </message>
+    <message>
+        <source>Remove contact</source>
+        <translation>ازالة بيانات الاتصال بالشخص</translation>
+    </message>
+    <message>
+        <source>You can delete for all only your messages (%1 from %2). Are you sure you want to continue?</source>
+        <translation>يمكنك حذف رسائلك فقط للجميع (%1 من %2). المتابعة؟</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to mark the chat as unimportant? The chat won&apos;t jump to the top of the list when you receive a new message</source>
+        <translation>هل تريد بالتأكيد وضع علامة على الدردشة باعتبارها غير مهمة؟ لن تقفز الدردشة إلى أعلى القائمة عندما تتلقى رسالة جديدة</translation>
+    </message>
+    <message>
+        <source>Choose country</source>
+        <translation>اختر البلد</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>إلغاء</translation>
+    </message>
+    <message>
+        <source>Done</source>
+        <translation>حرر</translation>
+    </message>
+    <message>
+        <source>Back</source>
+        <translation>منذ</translation>
+    </message>
+    <message>
+        <source>Continue</source>
+        <translation>تقدم</translation>
+    </message>
+    <message>
+        <source>Save</source>
+        <translation>احتفظ</translation>
+    </message>
+    <message>
+        <source>Add</source>
+        <translation>إضافة</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation>قريب</translation>
+    </message>
+    <message>
+        <source>Yes</source>
+        <translation>نعم</translation>
+    </message>
+    <message>
+        <source>Delete</source>
+        <translation>حذف</translation>
+    </message>
+    <message>
+        <source>Send</source>
+        <translation>إرسال</translation>
+    </message>
+    <message>
+        <source>Next</source>
+        <translation>التالى</translation>
+    </message>
+    <message>
+        <source>Check</source>
+        <translation>تحقق من</translation>
+    </message>
+    <message>
+        <source>Apply</source>
+        <translation>للتقديم</translation>
+    </message>
+    <message>
+        <source>Remove</source>
+        <translation>حذف</translation>
+    </message>
+    <message>
+        <source>Waiting</source>
+        <translation>توقع</translation>
+    </message>
+    <message>
+        <source>Join</source>
+        <translation>بداية</translation>
+    </message>
+    <message>
+        <source>If you stop the poll, nobody will be able to vote anymore. This action can not be undone</source>
+        <translation>إذا أوقفت الاستطلاع ، فلن يتمكن أحد من التصويت بعد الآن. لا يمكن التراجع عن هذا الإجراء</translation>
+    </message>
+    <message>
+        <source>Stop</source>
+        <translation>توقف</translation>
+    </message>
+    <message>
+        <source>Stop this poll?</source>
+        <translation>وقف هذا الاستطلاع؟</translation>
+    </message>
+    <message>
+        <source>Open</source>
+        <translation>فتح</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to leave channel?</source>
+        <translation>هل أنت متأكد أنك تريد مغادرة القناة؟</translation>
+    </message>
+    <message>
+        <source>If you change group type to a private link to the group will be changed, and the old one will stop working</source>
+        <translation>إذا قمت بتغيير نوع المجموعة إلى خاص ، فإن رابط المجموعة سوف يتغير وسوف يتوقف النوع القديم عن العمل</translation>
+    </message>
+    <message>
+        <source>Make private</source>
+        <translation>جعل القطاع الخاص</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to clear the chat history?</source>
+        <translation>هل أنت متأكد من أنك تريد حذف محفوظات الدردشة؟</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to clear the channel history?</source>
+        <translation>هل أنت متأكد من أنك تريد حذف محفوظات الدردشة؟</translation>
+    </message>
+    <message>
+        <source>If you generate a new link to the channel the old one will stop working</source>
+        <translation>إذا أنشأت رابطًا جديدًا للقناة ، فيمكنك الدخول إلى القناة من خلالها فقط</translation>
+    </message>
+    <message>
+        <source>If you generate a new link to the group the old one will stop working</source>
+        <translation>إذا قمت بإنشاء رابط جديد للمجموعة ، فيمكنك الدخول إلى المجموعة فقط عليها</translation>
+    </message>
+    <message>
+        <source>Generate</source>
+        <translation>توليد</translation>
+    </message>
+    <message>
+        <source>The old link will stop working</source>
+        <translation>سوف الرابط القديم تتوقف عن العمل</translation>
+    </message>
+    <message>
+        <source>Public link will stop working</source>
+        <translation>الرابط العام سوف يتوقف عن العمل</translation>
+    </message>
+    <message>
+        <source>Set dev_id</source>
+        <translation>تعيين dev_id</translation>
+    </message>
+    <message>
+        <source>Create</source>
+        <translation>خلق</translation>
     </message>
 </context>
 <context>
@@ -3378,16 +3717,16 @@ so update could take effect</source>
         <source>File %1 downloaded to %2</source>
         <translation>تم تنزيل الملف %1 إلى%2</translation>
     </message>
+    <message>
+        <source>Error file downloading</source>
+        <translation>خطأ في تحميل الملف</translation>
+    </message>
 </context>
 <context>
     <name>profile_block</name>
     <message>
         <source>Contact was saved. Phone is visible in profile.</source>
         <translation>تم حفظ الاتصال. الهاتف مرئي في الملف الشخصي.</translation>
-    </message>
-    <message>
-        <source>CANCEL</source>
-        <translation>إلغاء</translation>
     </message>
     <message>
         <source>Contact</source>
@@ -3424,6 +3763,10 @@ so update could take effect</source>
     <message>
         <source>WRITE</source>
         <translation>إنشاء</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>إلغاء</translation>
     </message>
 </context>
 <context>
@@ -3480,18 +3823,6 @@ so update could take effect</source>
         <translation>مشاركة جهة الاتصال</translation>
     </message>
     <message>
-        <source>BACK</source>
-        <translation>رجوع</translation>
-    </message>
-    <message>
-        <source>OPEN CHAT</source>
-        <translation>دردشة مفتوحة</translation>
-    </message>
-    <message>
-        <source>SEND</source>
-        <translation>إرسال</translation>
-    </message>
-    <message>
         <source>To share contact add phone number or ask contact to add nickname.</source>
         <translation>لمشاركة جهة الاتصال ، أضف رقم الهاتف أو اطلب إضافة اللقب.</translation>
     </message>
@@ -3510,6 +3841,18 @@ so update could take effect</source>
     <message>
         <source>No phone number and nickname</source>
         <translation>لا رقم الهاتف واللقب</translation>
+    </message>
+    <message>
+        <source>Back</source>
+        <translation>منذ</translation>
+    </message>
+    <message>
+        <source>Open chat</source>
+        <translation>افتح الدردشة</translation>
+    </message>
+    <message>
+        <source>Send</source>
+        <translation>إرسال</translation>
     </message>
 </context>
 <context>
@@ -3544,19 +3887,6 @@ so update could take effect</source>
         <source>OK</source>
         <translation>OK</translation>
     </message>
-    <message>
-        <source> ﻿* Reply on messages by photos, files and voice messages;
- * Navigation with Tab on the main elements of the application instead of using mouse;
- * Voice message recording improvements;
- * The maximum interface scale increased up to 300%;
- * Aero Snap support;
- * Chat history scrolling improvements;
- 
- And:
- * List of hotkeys to the settings page update;
- * Lots of other improvements and fixes. </source>
-        <translation type="unfinished"></translation>
-    </message>
 </context>
 <context>
     <name>report_widget</name>
@@ -3575,10 +3905,6 @@ so update could take effect</source>
     <message>
         <source>Other</source>
         <translation>أخرى</translation>
-    </message>
-    <message>
-        <source>CANCEL</source>
-        <translation>إلغاءأخرى</translation>
     </message>
     <message>
         <source>OK</source>
@@ -3600,6 +3926,10 @@ so update could take effect</source>
         <source>Block</source>
         <translation>حظر</translation>
     </message>
+    <message>
+        <source>Cancel</source>
+        <translation>إلغاء</translation>
+    </message>
 </context>
 <context>
     <name>search</name>
@@ -3617,6 +3947,18 @@ so update could take effect</source>
     <message>
         <source>Search</source>
         <translation>بحث</translation>
+    </message>
+</context>
+<context>
+    <name>selection</name>
+    <message>
+        <source>Cancel</source>
+        <translation>إلغاء</translation>
+    </message>
+    <message>
+        <source>%1 message selected</source>
+        <comment>1</comment>
+        <translation>تم تحديد رسالة %1</translation>
     </message>
 </context>
 <context>
@@ -3678,8 +4020,8 @@ so update could take effect</source>
         <translation>دردشة</translation>
     </message>
     <message>
-        <source>Preview images and links</source>
-        <translation>معاينة الصور والروابط</translation>
+        <source>Preview links</source>
+        <translation>معاينة الروابط</translation>
     </message>
     <message>
         <source>Auto play videos</source>
@@ -3975,7 +4317,7 @@ so update could take effect</source>
     </message>
     <message>
         <source>Problem</source>
-        <translation></translation>
+        <translation>المشكلة</translation>
     </message>
     <message>
         <source>Main window</source>
@@ -3996,6 +4338,30 @@ so update could take effect</source>
     <message>
         <source>History in chat</source>
         <translation>التاريخ في الدردشة</translation>
+    </message>
+    <message>
+        <source>Animate taskbar icon</source>
+        <translation>تحريك أيقونة شريط المهام</translation>
+    </message>
+    <message>
+        <source>Turn on video sound on hover</source>
+        <translation>قم بتشغيل صوت الفيديو على التحويم</translation>
+    </message>
+    <message>
+        <source>Install beta updates</source>
+        <translation>تثبيت الإصدارات التجريبية</translation>
+    </message>
+    <message>
+        <source>Show smart reply</source>
+        <translation>عرض الإجابات الذكية</translation>
+    </message>
+    <message>
+        <source>Close search after result selection</source>
+        <translation>إغلاق البحث عند اختيار نتيجة</translation>
+    </message>
+    <message>
+        <source>Advanced Settings</source>
+        <translation>الإعدادات المتقدمة</translation>
     </message>
 </context>
 <context>
@@ -4183,21 +4549,17 @@ so update could take effect</source>
         <source>Scroll history in chat</source>
         <translation>التمرير التاريخ في الدردشة</translation>
     </message>
+    <message>
+        <source>Enter multiselect mode</source>
+        <translation>تمكين وضع الاختيار المتعدد</translation>
+    </message>
+    <message>
+        <source>Mark all dialogs as read</source>
+        <translation>حدد جميع مربعات الحوار كمقروءة</translation>
+    </message>
 </context>
 <context>
     <name>sidebar</name>
-    <message>
-        <source>Attach phone</source>
-        <translation>ربط رقم الهاتف</translation>
-    </message>
-    <message>
-        <source>Profile</source>
-        <translation>حساب</translation>
-    </message>
-    <message>
-        <source>Phone number</source>
-        <translation>رقم الهاتف</translation>
-    </message>
     <message>
         <source>Add to chat</source>
         <translation>إضافة إلى الدردشة</translation>
@@ -4211,16 +4573,28 @@ so update could take effect</source>
         <translation>صورة خلفية</translation>
     </message>
     <message>
+        <source>Nickname</source>
+        <translation>الكنية</translation>
+    </message>
+    <message>
         <source>Blocked people</source>
         <translation>قائمة المحظورين</translation>
+    </message>
+    <message>
+        <source>Phone number</source>
+        <translation>رقم الهاتف</translation>
     </message>
     <message>
         <source>Clear history</source>
         <translation>تاريخ واضح</translation>
     </message>
     <message>
-        <source>Nickname</source>
-        <translation>الكنية</translation>
+        <source>Profile</source>
+        <translation>حساب</translation>
+    </message>
+    <message>
+        <source>Attach phone</source>
+        <translation>ربط رقم الهاتف</translation>
     </message>
     <message>
         <source>Revoke admin role</source>
@@ -4249,10 +4623,6 @@ Please edit phone number and try again.</source>
         <translation>في انتظار الموافقة</translation>
     </message>
     <message>
-        <source>Chat settings</source>
-        <translation>إعدادت المحادثة</translation>
-    </message>
-    <message>
         <source>Members</source>
         <translation>المشاركين</translation>
     </message>
@@ -4279,10 +4649,6 @@ Please edit phone number and try again.</source>
     <message>
         <source>Assign admin role</source>
         <translation>تعيين دور المشرف</translation>
-    </message>
-    <message>
-        <source>Remove from chat</source>
-        <translation>إزالة من الدردشة</translation>
     </message>
     <message>
         <source>Information</source>
@@ -4331,10 +4697,6 @@ Please edit phone number and try again.</source>
     <message>
         <source>Unblock</source>
         <translation>إلغاء الحظر</translation>
-    </message>
-    <message>
-        <source>Join</source>
-        <translation>انضمام</translation>
     </message>
     <message>
         <source>Add to channel</source>
@@ -4409,10 +4771,6 @@ Please edit phone number and try again.</source>
         <translation>المشاركة</translation>
     </message>
     <message>
-        <source>SEARCH</source>
-        <translation>بحث</translation>
-    </message>
-    <message>
         <source>Description</source>
         <translation>الوصف</translation>
     </message>
@@ -4477,10 +4835,6 @@ Please edit phone number and try again.</source>
         <translation>شكوى وحظر</translation>
     </message>
     <message>
-        <source>Delete and leave</source>
-        <translation>الحذف والخروج</translation>
-    </message>
-    <message>
         <source>Admins</source>
         <translation>المشرفون</translation>
     </message>
@@ -4508,6 +4862,50 @@ Please edit phone number and try again.</source>
         <source>The join request has been sent to administrator</source>
         <translation>تم إرسال طلب الانضمام إلى المسؤول</translation>
     </message>
+    <message>
+        <source>Remove</source>
+        <translation>إزالة</translation>
+    </message>
+    <message>
+        <source>Leave and delete</source>
+        <translation>خروج وحذف</translation>
+    </message>
+    <message>
+        <source>Block and delete</source>
+        <translation>كتلة وحذف</translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation>بحث</translation>
+    </message>
+    <message>
+        <source>Join</source>
+        <translation>انضمام</translation>
+    </message>
+    <message>
+        <source>Share channel</source>
+        <translation>مشاركة القناة</translation>
+    </message>
+    <message>
+        <source>Channel settings</source>
+        <translation>إعدادات القناة</translation>
+    </message>
+    <message>
+        <source>Block and delete from group</source>
+        <translation>منع وإزالة من المجموعة</translation>
+    </message>
+    <message>
+        <source>Group settings</source>
+        <translation>إعدادات المجموعة</translation>
+    </message>
+    <message>
+        <source>Add to group</source>
+        <translation>إضافة إلى المجموعة</translation>
+    </message>
+    <message>
+        <source>Public group</source>
+        <translation>مجموعة عامة</translation>
+    </message>
 </context>
 <context>
     <name>siderbar</name>
@@ -4526,6 +4924,28 @@ Please edit phone number and try again.</source>
     <message>
         <source>About the group</source>
         <translation>عن المجموعة</translation>
+    </message>
+</context>
+<context>
+    <name>smartreply</name>
+    <message>
+        <source>Show smart replies</source>
+        <translation>عرض الإجابات الذكية</translation>
+    </message>
+    <message>
+        <source>Hide smart replies</source>
+        <translation>إخفاء الإجابات الذكية</translation>
+    </message>
+</context>
+<context>
+    <name>snippet_block</name>
+    <message>
+        <source>File</source>
+        <translation>ملف</translation>
+    </message>
+    <message>
+        <source>Copied to clipboard</source>
+        <translation>نسخ إلى الحافظة</translation>
     </message>
 </context>
 <context>
@@ -4578,14 +4998,6 @@ Please edit phone number and try again.</source>
         <translation>لي</translation>
     </message>
     <message>
-        <source>SEARCH</source>
-        <translation>بحث</translation>
-    </message>
-    <message>
-        <source>CANCEL</source>
-        <translation>إلغاء</translation>
-    </message>
-    <message>
         <source>Search</source>
         <translation>بحث</translation>
     </message>
@@ -4604,6 +5016,10 @@ Please edit phone number and try again.</source>
     <message>
         <source>Nothing found</source>
         <translation>لم يتم العثور على شيء</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>إلغاء</translation>
     </message>
 </context>
 <context>
@@ -4651,20 +5067,32 @@ Please edit phone number and try again.</source>
 <context>
     <name>terms_privacy_widget</name>
     <message>
-        <source>Terms and Privacy Policy</source>
-        <translation>الشروط  و سياسة الخصوصية</translation>
+        <source>Accept and agree</source>
+        <translation>قبول وتوافق</translation>
     </message>
     <message>
-        <source>I AGREE</source>
-        <translation>أوافق</translation>
+        <source>By clicking &quot;Accept and agree&quot;, you confirm that you have read carefully and agree to our &lt;a href=&quot;%1&quot;&gt;Terms&lt;/a&gt; and &lt;a href=&quot;%2&quot;&gt;Privacy Policy&lt;/a&gt;</source>
+        <translation>بالنقر على &quot;قبول والموافقة&quot; ، فإنك تؤكد أنك قرأت بعناية وتوافق على &lt;a href=&quot;%1&quot;&gt; البنود &lt;/a&gt; و &lt;a href=&quot;%2&quot;&gt; سياسة الخصوصية &lt;/a&gt;</translation>
     </message>
     <message>
-        <source>By clicking &quot;I Agree&quot;, you confirm that you have read carefully and agree to our &lt;a href=&quot;%1&quot;&gt;Terms&lt;/a&gt; and &lt;a href=&quot;%2&quot;&gt;Privacy Policy&lt;/a&gt;.</source>
-        <translation>بالنقر على &quot;أوافق&quot;، فأنت تؤكد أنك قد قرأت &lt;/a&gt;الشروط&lt;a href=&quot;%2&quot;&gt; و&lt;/a&gt;سياسة الخصوصية&lt;a href=&quot;%1&quot;&gt; لدينا بتمعن &quot;وتوافق&quot; عليها.</translation>
+        <source>Welcome to Mail.ru Agent</source>
+        <translation>مرحبا بكم في وكيل Mail.ru</translation>
     </message>
     <message>
-        <source>Please pay your attention that we have updated our &lt;a href=&quot;%1&quot;&gt;Terms&lt;/a&gt; and &lt;a href=&quot;%2&quot;&gt;Privacy Policy&lt;/a&gt;. By clicking &quot;I Agree&quot;, you confirm that you have read updated documents carefully and agree to them.</source>
-        <translation>يُرجى الانتباه إلى أننا قد حدَّثنا &lt;a href=&quot;%1&quot;&gt;الشروط&lt;/a&gt; و&lt;a href=&quot;%2&quot;&gt;سياسة الخصوصية&lt;/a&gt; لدينا. بالنقر على «أوافق»، فأنت تؤكد أنك قد قرأت المستندات المُحدَّثة بتمعن&quot;وتوافق&quot;عليها.</translation>
+        <source>Welcome to Myteam</source>
+        <translation>مرحبا بكم في myteam</translation>
+    </message>
+    <message>
+        <source>Welcome to Messenger</source>
+        <translation>مرحبا بكم في رسول</translation>
+    </message>
+    <message>
+        <source>ICQ New - the evolution of communication</source>
+        <translation>ICQ جديد - تطور الاتصالات</translation>
+    </message>
+    <message>
+        <source>Welcome to ICQ</source>
+        <translation>مرحبًا بك في ICQ</translation>
     </message>
 </context>
 <context>
@@ -4701,12 +5129,16 @@ Please edit phone number and try again.</source>
         <translation>الرابط منسوخ</translation>
     </message>
     <message>
-        <source>There are no profiles with this email address</source>
-        <translation>لا يوجد ملف شخصي لهذا البريد</translation>
-    </message>
-    <message>
         <source>There are no profiles or groups with this nickname</source>
         <translation>لا يوجد ملف شخصي أو مجموعة بهذا الاسم</translation>
+    </message>
+    <message>
+        <source>Copied to clipboard</source>
+        <translation>نسخ إلى الحافظة</translation>
+    </message>
+    <message>
+        <source>There are no profiles with this email</source>
+        <translation>لا يوجد ملف تعريف مع هذا البريد الإلكتروني</translation>
     </message>
 </context>
 <context>
@@ -4718,10 +5150,6 @@ Please edit phone number and try again.</source>
     <message>
         <source>Add member</source>
         <translation>إضافة عضو</translation>
-    </message>
-    <message>
-        <source>Chat options</source>
-        <translation>خيارات الدردشة</translation>
     </message>
     <message>
         <source>Smileys and stickers</source>
@@ -4783,6 +5211,10 @@ Please edit phone number and try again.</source>
         <source>Attach</source>
         <translation>يربط</translation>
     </message>
+    <message>
+        <source>Information</source>
+        <translation>معلومات</translation>
+    </message>
 </context>
 <context>
     <name>tray_menu</name>
@@ -4837,6 +5269,10 @@ Please edit phone number and try again.</source>
         <translation>مكالمة واردة</translation>
     </message>
     <message>
+        <source>Settings</source>
+        <translation>إعدادات</translation>
+    </message>
+    <message>
         <source>Call is secured</source>
         <translation>المكالمة آمنة</translation>
     </message>
@@ -4847,10 +5283,6 @@ Please edit phone number and try again.</source>
     <message>
         <source>How it works</source>
         <translation>كيف يعمل</translation>
-    </message>
-    <message>
-        <source>Settings</source>
-        <translation>إعدادات</translation>
     </message>
     <message>
         <source>Add to call</source>
@@ -4883,6 +5315,14 @@ Please edit phone number and try again.</source>
     <message>
         <source>VIDEO</source>
         <translation>مكالمة فيديو</translation>
+    </message>
+    <message>
+        <source>Screen recording permissions</source>
+        <translation>أذونات تسجيل الشاشة</translation>
+    </message>
+    <message>
+        <source>To share screen you need to allow access to the screen recording in the system settings</source>
+        <translation>لمشاركة الشاشة ، يجب السماح بالوصول إلى تسجيل الشاشة في إعدادات النظام</translation>
     </message>
 </context>
 <context>

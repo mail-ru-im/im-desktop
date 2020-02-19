@@ -42,14 +42,13 @@ void MetalRenderer::paint()
 
 }
 
-void MetalRenderer::updateFrame(QPixmap _image)
+void MetalRenderer::updateFrame(const QImage& _image)
 {
     FrameRenderer::updateFrame(_image);
 
-    auto image = std::move(_image).toImage();
-    auto cgimage = image.toCGImage();
+    auto cgimage = _image.toCGImage();
 
-    auto imageSize = image.size();
+    auto imageSize = _image.size();
 
     [d->view_ setFrameWithSize : cgimage
                           size : NSMakeSize(imageSize.width(), imageSize.height())];

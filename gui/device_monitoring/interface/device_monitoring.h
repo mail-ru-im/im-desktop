@@ -27,7 +27,7 @@ public:
 class DeviceMonitoringModule
 {
 public:
-    static std::unique_ptr<DeviceMonitoring> CreateDeviceMonitoring(bool virtual_device);
+    static std::unique_ptr<DeviceMonitoring> CreateDeviceMonitoring();
 };
 
 }

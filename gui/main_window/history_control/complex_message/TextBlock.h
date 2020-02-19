@@ -1,7 +1,7 @@
 #pragma once
 
 #include "GenericBlock.h"
-#include "../../../controls/TextRendering.h"
+#include "controls/textrendering/TextRendering.h"
 
 UI_NS_BEGIN
 
@@ -47,7 +47,9 @@ public:
 
     bool isSharingEnabled() const override;
 
-    void selectByPos(const QPoint& from, const QPoint& to, const BlockSelectionType selection) override;
+    void selectByPos(const QPoint& from, const QPoint& to, bool) override;
+
+    void selectAll() override;
 
     ContentType getContentType() const override { return ContentType::Text; }
 
@@ -65,8 +67,6 @@ public:
 
     int desiredWidth(int _width = 0) const override;
 
-    QString getSourceText() const override;
-
     QString getTextForCopy() const override;
 
     bool getTextStyle() const;
@@ -78,6 +78,11 @@ public:
     void setText(const QString& _text) override;
 
     void setEmojiSizeType(const TextRendering::EmojiSizeType& _emojiSizeType) override;
+
+    void highlight(const highlightsV& _hl) override;
+    void removeHighlight() override;
+
+    bool managesTime() const override { return true; }
 
 protected:
     void drawBlock(QPainter &p, const QRect& _rect, const QColor& _quoteColor) override;
@@ -95,10 +100,10 @@ private:
     void updateStyle() override;
     void updateFonts() override;
 
+    QPoint mapPoint(const QPoint& _complexMsgPoint) const;
+
 private:
     TextBlockLayout* Layout_;
-
-    BlockSelectionType Selection_;
 
     std::unique_ptr<TextRendering::TextUnit> textUnit_;
 

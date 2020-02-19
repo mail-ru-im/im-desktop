@@ -1,7 +1,7 @@
 ﻿#include "stdafx.h"
 #include "secureCallWnd.h"
-#include "VoipTools.h"
 #include "../core_dispatcher.h"
+#include "../common.shared/config/config.h"
 
 #include "../controls/DialogButton.h"
 #include "../utils/gui_coll_helper.h"
@@ -22,9 +22,7 @@ class WidgetWithBorder : public QWidget
 {
 public:
     WidgetWithBorder(QWidget* parent);
-
 protected:
-
     virtual void paintEvent(QPaintEvent* _e) override;
 };
 
@@ -32,12 +30,10 @@ Ui::ImageContainer::ImageContainer(QWidget* _parent)
     : QWidget(_parent)
     , kerning_(0)
 {
-
 }
 
 Ui::ImageContainer::~ImageContainer()
 {
-
 }
 
 void Ui::ImageContainer::setKerning(int _kerning)
@@ -82,8 +78,7 @@ void Ui::ImageContainer::paintEvent(QPaintEvent*)
 {
     QPainter painter(this);
     painter.save();
-
-    painter.setRenderHint(QPainter::HighQualityAntialiasing);
+    painter.setRenderHint(QPainter::Antialiasing);
 
     std::shared_ptr<QImage> image;
     QRect rcDraw = rcDraw_;
@@ -98,7 +93,6 @@ void Ui::ImageContainer::paintEvent(QPaintEvent*)
             rcDraw.setLeft(rcDraw.left() + kerning_ + imageDrawSize_.width());
         }
     }
-
     painter.restore();
 }
 
@@ -109,46 +103,35 @@ void Ui::ImageContainer::swapImagePack(std::vector<std::shared_ptr<QImage> >& _i
     calculateRectDraw();
 }
 
-
 QPolygon getPolygon(const QRect& rc)
 {
     QRect rc1 = rc;
-
-
-// Fixed border under mac.
 #ifdef __APPLE__
+    // Fixed border under mac.
     rc1.setWidth(rc.width() + 1);
     rc1.setHeight(rc.height() + 1);
 #endif
-
     const int cx = (rc1.left() + rc1.right()) * 0.5f;
     const int cy = rc1.y();
 
     int polygon[7][2];
     polygon[0][0] = cx - SECURE_CALL_WINDOW_UP_ARROW;
     polygon[0][1] = cy + SECURE_CALL_WINDOW_UP_ARROW;
-
     polygon[1][0] = cx;
     polygon[1][1] = cy;
-
     polygon[2][0] = cx + SECURE_CALL_WINDOW_UP_ARROW;
     polygon[2][1] = cy + SECURE_CALL_WINDOW_UP_ARROW;
-
     polygon[3][0] = rc1.right();
     polygon[3][1] = rc1.y() + SECURE_CALL_WINDOW_UP_ARROW;
-
     polygon[4][0] = rc1.bottomRight().x();
     polygon[4][1] = rc1.bottomRight().y();
-
     polygon[5][0] = rc1.bottomLeft().x() + 1;
     polygon[5][1] = rc1.bottomLeft().y();
-
     polygon[6][0] = rc1.left() + 1;
     polygon[6][1] = rc1.y() + SECURE_CALL_WINDOW_UP_ARROW;
 
     QPolygon arrow;
     arrow.setPoints(7, &polygon[0][0]);
-
     return arrow;
 }
 
@@ -161,21 +144,20 @@ QLabel* Ui::SecureCallWnd::createUniformLabel_(const QString& _text, const unsig
     f.setPixelSize(_fontSize);
     f.setStyleStrategy(QFont::PreferAntialias);
 
-    QLabel* label = new voipTools::BoundBox<QLabel>(rootWidget_);
+    QLabel* label = new QLabel(rootWidget_);
     label->setFont(f);
     label->setSizePolicy(_policy);
     label->setText(_text);
     label->setWordWrap(true);
     label->setAlignment(Qt::AlignCenter);
-
     return label;
 }
 
 Ui::SecureCallWnd::SecureCallWnd(QWidget* _parent)
     : QMenu(_parent)
     , rootLayout_(new QVBoxLayout())
-    , rootWidget_(new voipTools::BoundBox<WidgetWithBorder>(this))
-    , textSecureCode_ (new voipTools::BoundBox<ImageContainer>(rootWidget_))
+    , rootWidget_(new WidgetWithBorder(this))
+    , textSecureCode_ (new ImageContainer(rootWidget_))
 {
     setWindowFlags(windowFlags() | Qt::FramelessWindowHint);
 
@@ -192,7 +174,7 @@ Ui::SecureCallWnd::SecureCallWnd(QWidget* _parent)
     rootLayout_->setAlignment(Qt::AlignCenter);
     rootWidget_->setLayout(rootLayout_);
 
-    { // window header text
+    {   // window header text
         QLabel* label = createUniformLabel_(QT_TRANSLATE_NOOP("voip_pages", "Call is secured"), Utils::scale_value(24), QSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred));
         assert(label);
         if (label)
@@ -202,14 +184,14 @@ Ui::SecureCallWnd::SecureCallWnd(QWidget* _parent)
         }
     }
 
-    { // secure code emogi widget
+    {   // secure code emogi widget
         textSecureCode_->setSizePolicy(QSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding));
         //textSecureCode_->setFixedHeight(Utils::scale_value(80));
         textSecureCode_->setKerning(Utils::scale_value(12));
         rootLayout_->addWidget(textSecureCode_);
     }
 
-    { // invitation description
+    {   // invitation description
         QLabel* label = createUniformLabel_(QT_TRANSLATE_NOOP("voip_pages", "For security check, you can verify your images with your partner"), Utils::scale_value(15));
         if (label)
         {
@@ -218,7 +200,7 @@ Ui::SecureCallWnd::SecureCallWnd(QWidget* _parent)
         }
     }
 
-    { // details button
+    {   // details button
         QFont f = QApplication::font();
         f.setPixelSize(Utils::scale_value(15));
         f.setStyleStrategy(QFont::PreferAntialias);
@@ -233,7 +215,7 @@ Ui::SecureCallWnd::SecureCallWnd(QWidget* _parent)
 
         underBtnLayout->addSpacerItem(new QSpacerItem(1, 1, QSizePolicy::Expanding));
 
-        QPushButton* referenceBtn = new voipTools::BoundBox<QPushButton>(rootWidget_);
+        QPushButton* referenceBtn = new QPushButton(rootWidget_);
         referenceBtn->setSizePolicy(QSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred));
         referenceBtn->setFlat(true);
         referenceBtn->setFont(f);
@@ -248,12 +230,12 @@ Ui::SecureCallWnd::SecureCallWnd(QWidget* _parent)
         referenceBtn->setFocusPolicy(Qt::NoFocus);
         referenceBtn->setCursor(Qt::CursorShape::PointingHandCursor);
         underBtnLayout->addWidget(referenceBtn);
-        referenceBtn->setVisible(!build::is_dit() && !build::is_biz());
+        referenceBtn->setVisible(config::get().is_on(config::features::show_security_call_link));
 
         underBtnLayout->addSpacerItem(new QSpacerItem(1, 1, QSizePolicy::Expanding));
     }
 
-    { // btn OK -> start encryption
+    {   // btn OK -> start encryption
         QFont f = QApplication::font();
         f.setPixelSize(Utils::scale_value(17));
         f.setStyleStrategy(QFont::PreferAntialias);
@@ -267,7 +249,7 @@ Ui::SecureCallWnd::SecureCallWnd(QWidget* _parent)
 
         underBtnLayout->addSpacerItem(new QSpacerItem(1, 1, QSizePolicy::Expanding));
 
-        QPushButton* btnOk = new DialogButton(this, QT_TRANSLATE_NOOP("popup_window", "NEXT"), DialogButtonRole::CONFIRM);//new voipTools::BoundBox<QPushButton>(underBtnWidget);
+        QPushButton* btnOk = new DialogButton(this, QT_TRANSLATE_NOOP("popup_window", "Next"), DialogButtonRole::CONFIRM);
         btnOk->setCursor(QCursor(Qt::PointingHandCursor));
         //Utils::ApplyStyle(btnOk, Styling::getParameters().getButtonCommonQss());
         btnOk->setText(QT_TRANSLATE_NOOP("voip_pages", "OK"));
@@ -285,12 +267,11 @@ Ui::SecureCallWnd::SecureCallWnd(QWidget* _parent)
 
 void Ui::SecureCallWnd::setSecureCode(const std::string& _text)
 {
-    assert(textSecureCode_);
-    assert(!_text.empty());
+    assert(textSecureCode_ && !_text.empty());
 
     voip_proxy::VoipEmojiManager& voipEmojiManager = Ui::GetDispatcher()->getVoipController().getEmojiManager();
 
-    std::vector<std::shared_ptr<QImage> > images;
+    std::vector<std::shared_ptr<QImage>> images;
     images.reserve(5);
 
     auto decoded = QString::fromUtf8(_text.c_str());
@@ -301,19 +282,15 @@ void Ui::SecureCallWnd::setSecureCode(const std::string& _text)
     {
         const Utils::SChar superChar = Utils::ReadNextSuperChar(textStream);
         if (superChar.IsNull())
-        {
             break;
-        }
 
         QByteArray byteArray = superChar.ToQString().toUtf8();
         char* dataPtr = byteArray.data();
         size_t dataSz = byteArray.size();
 
-        assert(dataPtr);
-        assert(dataSz);
-
-        if (!dataPtr) { continue; }
-        if (!dataSz)  { continue; }
+        assert(dataPtr && dataSz);
+        if (!dataPtr || !dataSz)
+            continue;
 
         codepoint = 0;
         codepoint |= ((*dataPtr & 0xff) << 24) * (dataSz >= 4); dataPtr += 1 * (dataSz >= 4);
@@ -323,11 +300,8 @@ void Ui::SecureCallWnd::setSecureCode(const std::string& _text)
 
         std::shared_ptr<QImage> image(new QImage());
         if (voipEmojiManager.getEmoji(codepoint, Utils::scale_bitmap_with_value(64), *image))
-        {
             images.push_back(image);
-        }
     }
-
     textSecureCode_->swapImagePack(images, Utils::scale_value(QSize(64, 64)));
 }
 
@@ -344,7 +318,6 @@ void Ui::SecureCallWnd::updateMask()
 
 Ui::SecureCallWnd::~SecureCallWnd()
 {
-
 }
 
 void Ui::SecureCallWnd::showEvent(QShowEvent* _e)
@@ -365,9 +338,7 @@ void Ui::SecureCallWnd::changeEvent(QEvent* _e)
     if (QEvent::ActivationChange == _e->type())
     {
         if (!isActiveWindow())
-        {
             hide();
-        }
     }
 }
 
@@ -380,10 +351,8 @@ void Ui::SecureCallWnd::onBtnOkClicked()
 void Ui::SecureCallWnd::onDetailsButtonClicked()
 {
     QDesktopServices::openUrl(Features::securityCallLink());
-
     // On Mac it does not hide automatically, we make it manually.
     hide();
-
     onSecureCallWndClosed();
 }
 
@@ -400,7 +369,6 @@ WidgetWithBorder::WidgetWithBorder(QWidget* parent) : QWidget (parent) {}
 void WidgetWithBorder::paintEvent(QPaintEvent* _e)
 {
     QWidget::paintEvent(_e);
-
     if (parentWidget())
     {
         // Draw the border.
@@ -416,4 +384,3 @@ void WidgetWithBorder::paintEvent(QPaintEvent* _e)
         painter.strokePath(path, QPen(borderColor, Utils::scale_value(2)));
     }
 }
-

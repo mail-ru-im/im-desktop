@@ -8,10 +8,6 @@
         <translation>Houston chúng ta có một vấn đề</translation>
     </message>
     <message>
-        <source>Failed to install ICQ</source>
-        <translation>Không thể cài đặt ICQ</translation>
-    </message>
-    <message>
         <source>Error code: </source>
         <translation>Mã lỗi: </translation>
     </message>
@@ -23,21 +19,31 @@
         <source>Close</source>
         <translation>Đóng</translation>
     </message>
+</context>
+<context>
+    <name>installer::ui::progress_page</name>
     <message>
-        <source>Failed to install Mail.ru Agent</source>
-        <translation>Không thể cài đặt Mail.ru Agent</translation>
-    </message>
-    <message>
-        <source>Failed to install Messenger</source>
-        <translation>Không thể cài đặt Messenger</translation>
-    </message>
-    <message>
-        <source>Failed to install Myteam</source>
-        <translation>Không thể cài đặt Myteam</translation>
+        <source>High-quality videocalls and screen sharing</source>
+        <translation>Trò chơi video chất lượng cao và chia sẻ màn hình</translation>
     </message>
 </context>
 <context>
-    <name>installer::ui::main_window</name>
+    <name>installer::ui::start_page</name>
+    <message>
+        <source>Cloud storage of history and files</source>
+        <translation>Lưu trữ đám mây của lịch sử và tệp</translation>
+    </message>
+    <message>
+        <source>Full sync with mobile</source>
+        <translation>Đồng bộ hóa hoàn toàn với thiết bị di động</translation>
+    </message>
+    <message>
+        <source>Install</source>
+        <translation>Tải về</translation>
+    </message>
+</context>
+<context>
+    <name>product</name>
     <message>
         <source>ICQ Setup</source>
         <translation>Thiết lập ICQ</translation>
@@ -47,58 +53,44 @@
         <translation>Thiết lập Mail.ru Agent</translation>
     </message>
     <message>
+        <source>Myteam Setup</source>
+        <translation>Thiết lập Myteam</translation>
+    </message>
+    <message>
         <source>Messenger Setup</source>
         <translation>Thiết lập Messenger</translation>
     </message>
     <message>
-        <source>Myteam Setup</source>
-        <translation>Thiết lập Myteam</translation>
-    </message>
-</context>
-<context>
-    <name>installer::ui::progress_page</name>
-    <message>
-        <source>Free video and voice calls</source>
-        <translation>Cuộc gọi thoại và video miễn phí</translation>
+        <source>Failed to install ICQ</source>
+        <translation>Không thể cài đặt ICQ</translation>
     </message>
     <message>
-        <source>Hundreds of stickers are always free</source>
-        <translation>Hàng trăm nhãn dán luôn miễn phí</translation>
+        <source>Failed to install Mail.ru Agent</source>
+        <translation>Không thể cài đặt Mail.ru Agent</translation>
     </message>
     <message>
-        <source>Unlimited and free group chats</source>
-        <translation>Trò chuyện nhóm miễn phí và không giới hạn</translation>
-    </message>
-</context>
-<context>
-    <name>installer::ui::start_page</name>
-    <message>
-        <source>Welcome to ICQ</source>
-        <translation>Chào mừng bạn đến với ICQ</translation>
+        <source>Failed to install Myteam</source>
+        <translation>Không thể cài đặt Myteam</translation>
     </message>
     <message>
-        <source>INSTALL</source>
-        <translation>CÀI ĐẶT, DỰNG LÊN</translation>
+        <source>Failed to install Messenger</source>
+        <translation>Không thể cài đặt Messenger</translation>
     </message>
     <message>
-        <source>Make Mail.Ru my homepage and add bookmarks in the browser.</source>
-        <translation type="unfinished"></translation>
+        <source>Mail.ru Agent for desktop is</source>
+        <translation>Mail.ru Agent cho máy tính để bàn là</translation>
     </message>
     <message>
-        <source>Make Mail.Ru Search my default search engine.</source>
-        <translation type="unfinished"></translation>
+        <source>Myteam for desktop is</source>
+        <translation>Myteam cho máy tính để bàn là</translation>
     </message>
     <message>
-        <source>Welcome to Mail.ru Agent</source>
-        <translation>Chào mừng bạn đến với Mail.ru Agent</translation>
+        <source>Messenger for desktop is</source>
+        <translation>Messenger cho máy tính để bàn là</translation>
     </message>
     <message>
-        <source>Welcome to Messenger</source>
-        <translation>Chào mừng bạn đến với Messenger</translation>
-    </message>
-    <message>
-        <source>Welcome to Myteam</source>
-        <translation>Chào mừng bạn đến với Myteam</translation>
+        <source>ICQ for desktop is</source>
+        <translation>ICQ cho máy tính để bàn là</translation>
     </message>
 </context>
 <context>

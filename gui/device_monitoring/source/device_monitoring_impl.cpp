@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "device_monitoring_impl.h"
+#include "../../core_dispatcher.h"
 
 #include <boost/thread/locks.hpp>
 
@@ -7,29 +8,24 @@ namespace device
 {
 
 DeviceMonitoringImpl::DeviceMonitoringImpl()
-: _captureDeviceCallback(nullptr)
+    : _captureDeviceCallback(nullptr)
 {
-
 }
 
 DeviceMonitoringImpl::~DeviceMonitoringImpl()
 {
-    {
-        boost::unique_lock cs(_callbackLock);
-        _captureDeviceCallback = nullptr;
-    }
-
+    boost::unique_lock cs(_callbackLock);
+    _captureDeviceCallback = nullptr;
 }
 
 void DeviceMonitoringImpl::DeviceMonitoringListChanged()
 {
     boost::shared_lock cs(_callbackLock);
-    //const uint32_t deviceNumber = GetNumberOfDevices();
-    if (/*deviceNumber != _videoCaptureDeviceNumber &&*/ _captureDeviceCallback)
+    if (_captureDeviceCallback)
     {
         _captureDeviceCallback->DeviceMonitoringListChanged();
-    //    _videoCaptureDeviceNumber = deviceNumber;
     }
+    Ui::GetDispatcher()->getVoipController().notifyDevicesChanged();
 }
 
 void DeviceMonitoringImpl::DeviceMonitoringBluetoothHeadsetChanged(bool connected)

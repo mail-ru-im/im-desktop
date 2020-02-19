@@ -172,7 +172,7 @@ namespace Ui
                     }
                     else if (url.isValid())
                     {
-                        Ui::GetDispatcher()->sendMessageToContact(contact, url.toString(), sendQuotesOnce ? quotes : Data::QuotesVec(), {});
+                        Ui::GetDispatcher()->sendMessageToContact(contact, url.toString(), sendQuotesOnce ? quotes : Data::QuotesVec());
                         Parent_->onSendMessage(contact);
 
                         if (sendQuotesOnce && !quotes.isEmpty())
@@ -185,6 +185,8 @@ namespace Ui
                     }
                 }
             }
+
+            emit Utils::InterConnector::instance().hideSmartReplies(contact);
 
             auto inputWidget = Utils::InterConnector::instance().getContactDialog()->getInputWidget();
             auto inputText = inputWidget->getInputText();
@@ -211,7 +213,7 @@ namespace Ui
 
                     GeneralDialog generalDialog(filesWidget, Utils::InterConnector::instance().getMainWindow(), false, true, true, true, options);
                     connect(filesWidget, &FilesWidget::setButtonActive, &generalDialog, &GeneralDialog::setButtonActive);
-                    generalDialog.addButtonsPair(QT_TRANSLATE_NOOP("files_widget", "CANCEL"), QT_TRANSLATE_NOOP("files_widget", "SEND"), true);
+                    generalDialog.addButtonsPair(QT_TRANSLATE_NOOP("files_widget", "Cancel"), QT_TRANSLATE_NOOP("files_widget", "Send"), true);
 
                     filesWidget->setDescription(inputText, inputMentions);
                     filesWidget->setFocusOnInput();

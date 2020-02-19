@@ -22,6 +22,12 @@
 #include "sys/sys.h"
 #include "controls/ClickWidget.h"
 
+#ifdef _WIN32
+#include "../../common.shared/win32/crash_handler.h"
+#endif
+#include "../common.shared/crash_report/crash_reporter.h"
+#include "../common.shared/config/config.h"
+
 #include "media/ptt/AudioUtils.h"
 #include "media/ptt/AudioRecorder2.h"
 
@@ -68,25 +74,6 @@ namespace
     };
 }
 
-void makeBuild(const int _argc, char* _argv[])
-{
-    const auto path = QFileInfo(ql1s(_argv[0])).fileName();
-    if (path.contains(ql1s("agent"), Qt::CaseInsensitive))
-    {
-        build::is_build_icq = false;
-        return;
-    }
-
-    for (int i = 1; i < _argc; ++i)
-    {
-        if (std::string_view(_argv[i]).find("/agent") != std::string_view::npos)
-            build::is_build_icq = false;
-    }
-
-    if (build::is_biz() || build::is_dit())
-        build::is_build_icq = false;
-}
-
 launch::CommandLineParser::CommandLineParser(int _argc, char* _argv[])
     : isUrlCommand_(false)
     , isVersionCommand_(false)
@@ -118,10 +105,7 @@ launch::CommandLineParser::CommandLineParser(int _argc, char* _argv[])
     }
 }
 
-launch::CommandLineParser::~CommandLineParser()
-{
-
-}
+launch::CommandLineParser::~CommandLineParser() = default;
 
 bool launch::CommandLineParser::isUrlCommand() const
 {
@@ -179,7 +163,7 @@ static QString getLoggingCategoryFilter()
 
 static QtMessageHandler defaultHandler = nullptr;
 
-static void myMessageOutput(QtMsgType type, const QMessageLogContext &context, const QString &msg)
+static void debugMessageHandler(QtMsgType type, const QMessageLogContext &context, const QString &msg)
 {
     switch (type) {
     case QtWarningMsg:
@@ -205,7 +189,7 @@ static void myMessageOutput(QtMsgType type, const QMessageLogContext &context, c
 int launch::main(int _argc, char* _argv[])
 {
     if constexpr (build::is_debug())
-        defaultHandler = qInstallMessageHandler(myMessageOutput);
+        defaultHandler = qInstallMessageHandler(debugMessageHandler);
     int result;
     bool restarting;
 
@@ -217,13 +201,18 @@ int launch::main(int _argc, char* _argv[])
             assert(false);
 #endif //__linux__
 
+    crash_system::reporter::instance();
+
+#ifdef _WIN32
+    crash_system::reporter::instance().set_process_exception_handlers();
+    crash_system::reporter::instance().set_thread_exception_handlers();
+#endif
+
     std::vector<char*> v_args;
 
     QString commandLine;
 
     {
-        makeBuild(_argc, _argv);
-
         statistic::getGuiMetrics().eventStarted();
 
         static bool isLaunched = false;
@@ -237,7 +226,7 @@ int launch::main(int _argc, char* _argv[])
             return -1;
         }
 
-        if (build::is_testing())
+        if constexpr (build::is_testing())
         {
             for (int i = 0; i < _argc; ++i)
                 v_args.push_back(strdup(_argv[i]));

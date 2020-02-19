@@ -13,20 +13,30 @@ namespace Ui
         DEFAULT = CONFIRM
     };
 
+    enum class DialogButtonShape
+    {
+        RECT,
+        ROUNDED,
+
+        DEFAULT = RECT
+    };
+
     class DialogButton : public QPushButton
     {
         Q_OBJECT
 
     public:
-        explicit DialogButton(QWidget* _parent, const QString _text, const DialogButtonRole _role = DialogButtonRole::DEFAULT);
+        explicit DialogButton(QWidget* _parent, const QString _text, const DialogButtonRole _role = DialogButtonRole::DEFAULT, const DialogButtonShape _shape = DialogButtonShape::DEFAULT);
         void changeRole(const DialogButtonRole _role);
+        bool isEnabled() const;
+        void updateWidth();
+        void setEnabled(bool _isEnabled);
     protected:
         void paintEvent(QPaintEvent *_e) override;
         void leaveEvent(QEvent *_e) override;
         void enterEvent(QEvent *_e) override;
         void mousePressEvent(QMouseEvent *_e) override;
         void mouseReleaseEvent(QMouseEvent *_e) override;
-        void changeEvent(QEvent *_e) override;
         void focusInEvent(QFocusEvent *_e) override;
         void focusOutEvent(QFocusEvent *_e) override;
         void keyPressEvent(QKeyEvent *_e) override;
@@ -40,6 +50,7 @@ namespace Ui
         bool hovered_;
         bool pressed_;
         QString text_;
+        DialogButtonRole initRole_;
         DialogButtonRole role_;
 
         QColor bgColor_;
@@ -51,5 +62,7 @@ namespace Ui
         QColor textColor_;
         QColor textColorHover_;
         QColor textColorPress_;
+
+        DialogButtonShape shape_;
     };
 }

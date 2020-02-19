@@ -1,8 +1,9 @@
 #pragma once
 
+#include "../common.shared/im_statistics.h"
+
 namespace core
 {
-
     enum class profile_state
     {
         min = 0,
@@ -94,18 +95,18 @@ namespace core
         file_sharing_base_content_type type_;
         file_sharing_sub_content_type subtype_;
 
-        bool is_image() const {return type_ == file_sharing_base_content_type::image;}
-        bool is_gif() const { return type_ == file_sharing_base_content_type::gif; }
-        bool is_video() const { return type_ == file_sharing_base_content_type::video; }
-        bool is_ptt() const { return type_ == file_sharing_base_content_type::ptt; }
-        bool is_sticker() const { return subtype_ == file_sharing_sub_content_type::sticker; }
-        bool is_undefined() const { return type_ == file_sharing_base_content_type::undefined; }
-        file_sharing_content_type()
+        constexpr bool is_image() const noexcept {return type_ == file_sharing_base_content_type::image;}
+        constexpr bool is_gif() const noexcept { return type_ == file_sharing_base_content_type::gif; }
+        constexpr bool is_video() const noexcept { return type_ == file_sharing_base_content_type::video; }
+        constexpr bool is_ptt() const noexcept { return type_ == file_sharing_base_content_type::ptt; }
+        constexpr bool is_sticker() const noexcept { return subtype_ == file_sharing_sub_content_type::sticker; }
+        constexpr bool is_undefined() const noexcept { return type_ == file_sharing_base_content_type::undefined; }
+        constexpr file_sharing_content_type() noexcept
             : type_(file_sharing_base_content_type::undefined)
             , subtype_(file_sharing_sub_content_type::undefined) {}
-        file_sharing_content_type(
+        constexpr file_sharing_content_type(
             file_sharing_base_content_type _type,
-            file_sharing_sub_content_type _subtype = file_sharing_sub_content_type::undefined) : type_(_type), subtype_(_subtype) {};
+            file_sharing_sub_content_type _subtype = file_sharing_sub_content_type::undefined) noexcept : type_(_type), subtype_(_subtype) {};
     };
 
     enum class typing_status
@@ -165,6 +166,8 @@ namespace core
         message_deleted,
 
         chat_rules_modified,
+
+        chat_stamp_modified,
 
         max
     };
@@ -334,19 +337,27 @@ namespace core
             start_session = 1002,
             start_session_params_loaded = 1003,
 
-            reg_page_phone = 2001,
-            reg_login_phone = 2002,
-            reg_page_uin = 2003,
-            reg_login_uin = 2004,
-            reg_edit_country = 2005,
-            reg_error_phone = 2006,
-            reg_sms_send = 2007,
-            reg_sms_resend = 2008,
-            reg_error_code = 2009,
-            reg_edit_phone = 2010,
-            reg_error_uin = 2011,
-            reg_error_other = 2012,
-            login_forgot_password = 2013,
+            reg_page_phone          = 2001,
+            reg_page_uin            = 2002,
+            reg_page_set_name       = 2003,
+            reg_page_set_photo      = 2004,
+            reg_page_callui         = 2005,
+            reg_page_switch         = 2006,
+            reg_login_success       = 2007,
+            reg_correct_name        = 2008,
+            reg_correct_phone       = 2009,
+            reg_edit_country        = 2010,
+            reg_error_phone         = 2011,
+            reg_sms_send            = 2012,
+            reg_sms_first_send    = 2013,
+            reg_sms_resend          = 2014,
+            reg_edit_phone          = 2015,
+            reg_error_login         = 2016,
+            reg_error_other         = 2017,
+            reg_click_privacypolicy = 2018,
+            reg_click_eula          = 2019,
+            login_forgot_password   = 2020,
+            reg_set_avatar          = 2021,
 
             main_window_fullscreen = 3001,
 
@@ -379,7 +390,7 @@ namespace core
             stickers_addpack_button_tap_in_chat = 6017,
             stickers_pack_delete = 6018,
             stickers_emoji_added_in_input = 6019,
-            stickers_suggests_appear_in_input  = 6020,
+            stickers_suggests_appear_in_input = 6020,
             stickers_suggested_sticker_sent = 6021,
             stickers_search_input_tap = 6022,
             stickers_search_request_send = 6023,
@@ -387,6 +398,11 @@ namespace core
             stickers_search_pack_tap = 6025,
             stickers_search_add_pack_button_tap = 6026,
             stickers_search_pack_download = 6027,
+
+            stickers_smartreply_sticker_sent = 6100,
+            smartreply_text_sent = 6101,
+            stickers_smartreply_appear_in_input = 6102,
+            smartreply_text_appear_in_input = 6103,
 
             alert_click = 7001,
             alert_viewall = 7002,
@@ -487,22 +503,24 @@ namespace core
             masks_select = 32002,
 
             //Groupchats, livechats
-            chats_create_open = 33001,
-            chats_create_public = 33002,
-            chats_create_approval = 33003,
-            chats_create_readonly = 33004,
-            chats_create_rename = 33005,
-            chats_create_avatar = 33006,
-            chats_created = 33007,
-            chats_leave = 33008,
-            chats_rename = 33009,
-            chats_avatar_changed = 33010,
-            chats_add_member_sidebar = 33011,
-            chats_add_member_dialog = 33012,
-            chats_join_frompopup = 33013,
-            chats_admins = 33014,
-            chats_blocked = 33015,
-            chats_open_popup = 33016,
+            chats_create_open           = 33001,
+            channel_create_open         = 33002,
+            chats_create_public         = 33003,
+            chats_create_approval       = 33004,
+            chats_create_readonly       = 33005,
+            chats_create_rename         = 33006,
+            chats_create_avatar         = 33007,
+            chats_created               = 33008,
+            channel_created             = 33009,
+            chats_leave                 = 33010,
+            chats_rename                = 33011,
+            chats_avatar_changed        = 33012,
+            chats_add_member_sidebar    = 33013,
+            chats_add_member_dialog     = 33014,
+            chats_join_frompopup        = 33015,
+            chats_admins                = 33016,
+            chats_blocked               = 33017,
+            chats_open_popup            = 33018,
 
             quotes_send_alone = 34001,
             quotes_send_answer = 34002,
@@ -650,6 +668,7 @@ namespace core
             settingsscr_aboutapp_action = 63013,
             privacyscr_calltype_action = 63014,
             privacyscr_grouptype_action = 63015,
+            settingsscr_smartreply_action = 63016,
 
             profilescr_groupurl_action = 64000,
             sharingscr_choicecontact_action = 64001,
@@ -673,8 +692,8 @@ namespace core
             wallpaperscr_action = 64019,
             profilescr_members_action = 64020,
             profilescr_blocked_action = 64021,
+            profilescr_avatar_click = 64022,
 
-            chatscr_join_action = 65000,
             chatscr_leave_action = 65001,
             chatscr_unblockuser_action = 65002,
             chatscr_mute_action = 65003,
@@ -693,6 +712,21 @@ namespace core
 
             sharecontactscr_contact_action = 66000,
 
+            unimportant_set = 67000,
+            unimportant_unset = 67001,
+            unimportant_load = 67002,
+
+            polls_open = 68000,
+            polls_create = 68001,
+            polls_action = 68002,
+
+            globalsearch_start = 69000,
+            globalsearch_result = 69001,
+            globalsearch_selected = 69002,
+
+            profilescr_groupname_action = 70000,
+            profilescr_newgroupurl_action = 70001,
+
             max,
         };
 
@@ -707,19 +741,27 @@ namespace core
             case stats_event_names::start_session_params_loaded : return std::string_view("Start_Session_Params_Loaded");
 
             // registration
-            case stats_event_names::reg_page_phone : return std::string_view("Reg_Page_Phone");
-            case stats_event_names::reg_login_phone : return std::string_view("Reg_Login_Phone");
-            case stats_event_names::reg_page_uin : return std::string_view("Reg_Page_Uin");
-            case stats_event_names::reg_login_uin : return std::string_view("Reg_Login_UIN");
+            case stats_event_names::reg_page_phone : return std::string_view("OnboardScr_Phone_View");
+            case stats_event_names::reg_page_uin : return std::string_view("OnboardScr_Email_View");
+            case stats_event_names::reg_page_set_name: return std::string_view("OnboardScr_Name_View");
+            case stats_event_names::reg_page_set_photo: return std::string_view("OnboardScr_Photo_View");
+            case stats_event_names::reg_page_callui: return std::string_view("OnboardScr_CallEntry_View");
+            case stats_event_names::reg_page_switch: return std::string_view("OnboardScr_SwitchToEmail_Action");
+            case stats_event_names::reg_login_success : return std::string_view("OnboardScr_CodeOK_Action");
+            case stats_event_names::reg_correct_name: return std::string_view("OnboardScr_NameOK_Action");
+            case stats_event_names::reg_correct_phone: return std::string_view("OnboardScr_PhoneOK_Action");
             case stats_event_names::reg_edit_country : return std::string_view("Reg_Edit_Country");
             case stats_event_names::reg_error_phone : return std::string_view("Reg_Error_Phone");
             case stats_event_names::reg_sms_send : return std::string_view("Reg_Sms_Send");
-            case stats_event_names::reg_sms_resend : return std::string_view("Reg_Sms_Resend");
-            case stats_event_names::reg_error_code : return std::string_view("Reg_Error_Code");
+            case stats_event_names::reg_sms_first_send : return std::string_view("OnboardScr_CodeReq_Action");
+            case stats_event_names::reg_sms_resend : return std::string_view("OnboardScr_CodeReqAgain_Action");
             case stats_event_names::reg_edit_phone : return std::string_view("Reg_Edit_Phone");
-            case stats_event_names::reg_error_uin : return std::string_view("Reg_Error_UIN");
+            case stats_event_names::reg_error_login : return std::string_view("OnboardScr_CodeFail_Action");
             case stats_event_names::reg_error_other : return std::string_view("Reg_Error_Other");
-            case stats_event_names::login_forgot_password : return std::string_view("Login_Forgot_Password");
+            case stats_event_names::reg_click_privacypolicy: return std::string_view("OnboardScr_Privacypolicy_Action");
+            case stats_event_names::reg_click_eula: return std::string_view("OnboardScr_Eula_Action");
+            case stats_event_names::login_forgot_password : return std::string_view("OnboardScr_ForgotPas_Action");
+            case stats_event_names::reg_set_avatar: return std::string_view("OnboardScr_PhotoOK_Action");
 
             // main window
             case stats_event_names::main_window_fullscreen : return std::string_view("Mainwindow_Fullscreen");
@@ -756,8 +798,8 @@ namespace core
             case stats_event_names::stickers_addpack_button_tap_in_chat : return std::string_view("Stickers_AddPack_Button_Tap_In_Chat");
             case stats_event_names::stickers_pack_delete : return std::string_view("Stickers_Pack_Delete");
             case stats_event_names::stickers_emoji_added_in_input : return std::string_view("Stickers_Emoji_Added_In_Input");
-            case stats_event_names::stickers_suggests_appear_in_input  : return std::string_view("Stickers_Suggests_Appear_In_Input");
-            case stats_event_names::stickers_suggested_sticker_sent : return std::string_view("Stickers_Suggested_Sticker_Sent");
+            case stats_event_names::stickers_suggests_appear_in_input: return std::string_view("Stickers_Suggests_Appear_In_Input");
+            case stats_event_names::stickers_suggested_sticker_sent: return std::string_view("Stickers_Suggested_Sticker_Sent");
             case stats_event_names::stickers_search_input_tap : return std::string_view("Stickers_Search_Input_Tap");
             case stats_event_names::stickers_search_request_send : return std::string_view("Stickers_Search_Request_Send");
             case stats_event_names::stickers_search_results_receive : return std::string_view("Stickers_Search_Results_Receive");
@@ -765,7 +807,12 @@ namespace core
             case stats_event_names::stickers_search_add_pack_button_tap : return std::string_view("Stickers_Search_Add_Pack_Button_Tap");
             case stats_event_names::stickers_search_pack_download : return std::string_view("Stickers_Search_Pack_Download");
 
-            // alerts
+            case stats_event_names::stickers_smartreply_sticker_sent: return std::string_view("Stickers_Smartreply_Sticker_Sent");
+            case stats_event_names::smartreply_text_sent: return std::string_view("Smartreply_Text_Sent");
+            case stats_event_names::stickers_smartreply_appear_in_input: return std::string_view("Stickers_Smartreply_Appear_In_Input");
+            case stats_event_names::smartreply_text_appear_in_input: return std::string_view("Smartreply_Text_Appear_In_Input");
+
+                // alerts
             case stats_event_names::alert_click : return std::string_view("Alert_Click");
             case stats_event_names::alert_viewall : return std::string_view("Alert_ViewAll");
             case stats_event_names::alert_close : return std::string_view("Alert_Close");
@@ -784,7 +831,7 @@ namespace core
             // cl
             case stats_event_names::recents_close : return std::string_view("Recents_Close");
             case stats_event_names::mark_read : return std::string_view("Mark_Read");
-            case stats_event_names::mark_read_all : return std::string_view("Mark_Read_All");
+            case stats_event_names::mark_read_all : return std::string_view("RecentScr_ReadAll_Action");
 
             case stats_event_names::mute_recents_menu : return std::string_view("Mute_Recents_Menu");
             case stats_event_names::mute_sidebar : return std::string_view("Mute_Sidebar");
@@ -874,13 +921,15 @@ namespace core
             case stats_event_names::masks_select : return std::string_view("Masks_Select");
 
             // Groupchats, livechats
-            case stats_event_names::chats_create_open : return std::string_view("Chats_Create_Open");
+            case stats_event_names::chats_create_open : return std::string_view("RecentScr_AddGroup_Action");
+            case stats_event_names::channel_create_open: return std::string_view("RecentScr_AddChannel_Action");
             case stats_event_names::chats_create_public : return std::string_view("Chats_Create_Public");
             case stats_event_names::chats_create_approval : return std::string_view("Chats_Create_Approval");
             case stats_event_names::chats_create_readonly : return std::string_view("Chats_Create_Readonly");
             case stats_event_names::chats_create_rename : return std::string_view("Chats_Create_Rename");
             case stats_event_names::chats_create_avatar : return std::string_view("Chats_Create_Avatar");
-            case stats_event_names::chats_created : return std::string_view("Chats_Created");
+            case stats_event_names::chats_created : return std::string_view("AddGroupScr_Success_Action");
+            case stats_event_names::channel_created : return std::string_view("AddChannelScr_Success_Action");
             case stats_event_names::chats_leave: return std::string_view("Chats_Leave");
             case stats_event_names::chats_rename: return std::string_view("Chats_Rename");
             case stats_event_names::chats_avatar_changed: return std::string_view("Chats_Avatar_Changed");
@@ -905,7 +954,7 @@ namespace core
             case stats_event_names::chat_down_button: return std::string_view("Chat_DownButton");
 
             case stats_event_names::pencil_click: return std::string_view("Pencil_Click");
-            case stats_event_names::addcontactbutton_click: return std::string_view("AddContactButton_Click");
+            case stats_event_names::addcontactbutton_click: return std::string_view("RecentScr_AddCon_Action");
             case stats_event_names::chats_createbutton_click: return std::string_view("Chats_CreateButton_Click");
             case stats_event_names::addcontactbutton_burger_click: return std::string_view("AddContactButton_Burger_Click");
 
@@ -958,9 +1007,9 @@ namespace core
             case stats_event_names::chats_unknown_close_close: return std::string_view("Chats_Unknown_Close_Close");
 
 
-            case stats_event_names::gdpr_accept_start: return std::string_view("GDPR_Accept_Start");
+            case stats_event_names::gdpr_accept_start: return std::string_view("OnboardScr_PolicyOK_Action");
             case stats_event_names::gdpr_accept_update: return std::string_view("GDPR_Accept_Update");
-            case stats_event_names::gdpr_show_start: return std::string_view("GDPR_Show_Start");
+            case stats_event_names::gdpr_show_start: return std::string_view("OnboardScr_PolicyOK_View");
             case stats_event_names::gdpr_show_update: return std::string_view("GDPR_Show_Update");
 
             case stats_event_names::send_used_traffic_size_event: return std::string_view("SendUsedTrafficSize_Event");
@@ -975,7 +1024,7 @@ namespace core
             case stats_event_names::chatscr_conmodeconnected_event: return std::string_view("ChatScr_ConModeConnected_Event");
             case stats_event_names::chatscr_conmodeupdated_event: return std::string_view("ChatScr_ConModeUpdated_Event");
 
-            case stats_event_names::conlistscr_addcon_action: return std::string_view("ConListScr_AddCon_Action");
+            case stats_event_names::conlistscr_addcon_action: return std::string_view("AddConScr_Success_Action");
             case stats_event_names::scr_addcon_action: return std::string_view("Scr_AddCon_Action");
 
             case stats_event_names::chatscr_dtpscreensize_event: return std::string_view("ChatScr_DTPScreenSize_Event");
@@ -1036,6 +1085,7 @@ namespace core
             case stats_event_names::settingsscr_aboutapp_action: return std::string_view("SettingsScr_AboutApp_Action");
             case stats_event_names::privacyscr_calltype_action: return std::string_view("PrivacyScr_CallType_Action");
             case stats_event_names::privacyscr_grouptype_action: return std::string_view("PrivacyScr_GroupType_Action");
+            case stats_event_names::settingsscr_smartreply_action: return std::string_view("SettingsScr_SmartReply_Action");
 
             case stats_event_names::profilescr_groupurl_action: return std::string_view("ProfileScr_GroupUrl_Action");
             case stats_event_names::sharingscr_choicecontact_action: return std::string_view("SharingScr_choiceContact_Action");
@@ -1059,8 +1109,8 @@ namespace core
             case stats_event_names::wallpaperscr_action: return std::string_view("WallpaperScr_Action");
             case stats_event_names::profilescr_members_action: return std::string_view("ProfileScr_Members_Action");
             case stats_event_names::profilescr_blocked_action: return std::string_view("ProfileScr_Blocked_Action");
+            case stats_event_names::profilescr_avatar_click: return std::string_view("ProfileScr_AvatarFullScr_Action");
 
-            case stats_event_names::chatscr_join_action: return std::string_view("ChatScr_Join_Action");
             case stats_event_names::chatscr_leave_action: return std::string_view("ChatScr_Leave_Action");
             case stats_event_names::chatscr_unblockuser_action: return std::string_view("ChatScr_UnblockUser_Action");
             case stats_event_names::chatscr_mute_action: return std::string_view("ChatScr_Mute_Action");
@@ -1079,77 +1129,23 @@ namespace core
 
             case stats_event_names::sharecontactscr_contact_action: return std::string_view("ShareContactScr_Contact_Action");
 
-            default:
-                return std::string_view();
-            }
-        }
+            case stats_event_names::unimportant_set: return std::string_view("Unimportant_Set");
+            case stats_event_names::unimportant_unset: return std::string_view("Unimportant_Unset");
+            case stats_event_names::unimportant_load: return std::string_view("Unimportant_Load");
 
-        enum class im_stat_event_names
-        {
-            // drop old events name 1-5
-            min = 5,
+            // Polls
+            case stats_event_names::polls_open: return std::string_view("ChatScr_OpenPoll_Action");
+            case stats_event_names::polls_create: return std::string_view("ChatScr_SendPoll_Action");
+            case stats_event_names::polls_action: return std::string_view("ChatScr_Poll_Action");
 
-            memory_state = 6,
-            memory_state_limit = 7,
+            //global search
+            case stats_event_names::globalsearch_start: return std::string_view("SearchScr_Start_Action");
+            case stats_event_names::globalsearch_result: return std::string_view("SearchScr_Result_Action");
+            case stats_event_names::globalsearch_selected: return std::string_view("SearchScr_Join_Action");
 
-            u_network_communication_event = 8,
-            u_network_error_event = 9,
-            u_network_http_code_event = 10,
-            u_network_parsing_error_event = 11,
-            u_network_api_error_event = 12,
-
-            network_communication_event = 1000,
-            network_error_event = 1001,
-            network_http_code_event = 1002,
-            network_parsing_error_event = 1003,
-            network_api_error_event = 1004,
-
-            reg_login_phone = 2000,
-            reg_login_uin = 2001,
-            reg_sms_resend = 2002,
-            reg_error_code = 2003,
-            reg_error_uin = 2004,
-
-            messages_from_created_2_sent = 3000,
-            messages_from_created_2_delivered = 3001,
-
-            crash = 4000,
-
-            max
-        };
-
-        constexpr std::string_view im_stat_event_to_string(const im_stat_event_names _arg)
-        {
-            assert(_arg > im_stat_event_names::min);
-            assert(_arg < im_stat_event_names::max);
-
-            switch (_arg)
-            {
-            case im_stat_event_names::memory_state: return std::string_view("memory_state");
-            case im_stat_event_names::memory_state_limit: return std::string_view("memory_state_limit");
-
-            case im_stat_event_names::u_network_communication_event: return std::string_view("u_im_network_communication");
-            case im_stat_event_names::u_network_error_event: return std::string_view("u_im_network_error");
-            case im_stat_event_names::u_network_http_code_event: return std::string_view("u_im_network_http_code");
-            case im_stat_event_names::u_network_parsing_error_event: return std::string_view("u_im_network_parsing_error");
-            case im_stat_event_names::u_network_api_error_event: return std::string_view("u_im_network_api_error");
-
-            case im_stat_event_names::network_communication_event: return std::string_view("im_network_communication");
-            case im_stat_event_names::network_error_event: return std::string_view("im_network_error");
-            case im_stat_event_names::network_http_code_event: return std::string_view("im_network_http_code");
-            case im_stat_event_names::network_parsing_error_event: return std::string_view("im_network_parsing_error");
-            case im_stat_event_names::network_api_error_event: return std::string_view("im_network_api_error");
-
-            case im_stat_event_names::reg_login_phone: return std::string_view("im_reg_login_phone");
-            case im_stat_event_names::reg_login_uin: return std::string_view("im_reg_login_uin");
-            case im_stat_event_names::reg_sms_resend: return std::string_view("im_reg_sms_resend");
-            case im_stat_event_names::reg_error_code: return std::string_view("im_reg_error_code");
-            case im_stat_event_names::reg_error_uin: return std::string_view("im_reg_error_uin");
-
-            case im_stat_event_names::messages_from_created_2_sent: return std::string_view("messages_from_created_2_sent");
-            case im_stat_event_names::messages_from_created_2_delivered: return std::string_view("messages_from_created_2_delivered");
-
-            case im_stat_event_names::crash: return std::string_view("im_crash");
+            //group nicks
+            case stats_event_names::profilescr_groupname_action: return std::string_view("ProfileScr_GroupName_Action");
+            case stats_event_names::profilescr_newgroupurl_action: return std::string_view("ProfileScr_NewGroupUrl_Action");
 
             default:
                 return std::string_view();
@@ -1228,7 +1224,7 @@ namespace core
         return std::string();
     }
 
-    inline privacy_access_right from_string(const std::string_view _string)
+    inline privacy_access_right from_string(const std::string_view _string) noexcept
     {
         if (_string == "everybody")
             return privacy_access_right::everybody;
@@ -1254,5 +1250,13 @@ namespace core
     {
         basic,
         otp_via_email
+    };
+
+    enum class ext_url_config_error
+    {
+        ok,
+        config_host_invalid,
+        answer_not_enough_fields,
+        answer_parse_error
     };
 }

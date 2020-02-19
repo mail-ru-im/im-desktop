@@ -1,44 +1,6 @@
-#ifndef __VOIP_SERIALIZATION_H__
-#define __VOIP_SERIALIZATION_H__
-
+#pragma once
 #include "VoipManagerDefines.h"
 #include "../../corelib/collection_helper.h"
-
-inline void operator>>(const voip2::ButtonType& _type, core::coll_helper& _coll)
-{
-    switch (_type)
-    {
-    case voip2::ButtonType_Close: _coll.set_value_as_string("button_type", "close"); return;
-    case voip2::ButtonType_GoToChat: _coll.set_value_as_string("button_type", "goToChat"); return;
-    default: assert(false); break;
-    }
-}
-
-inline void operator>>(const voip_manager::ButtonTap& _button_tap, core::coll_helper& _coll)
-{
-    _coll.set_value_as_string("account", _button_tap.account.c_str());
-    _coll.set_value_as_string("contact", _button_tap.contact.c_str());
-    _coll.set_value_as_int64("hwnd", (int64_t)_button_tap.hwnd);
-    _coll.set_value_as_int("type", _button_tap.type);
-    _button_tap.type >> _coll;
-}
-
-inline void operator << (voip_manager::ButtonTap& _button_tap, core::coll_helper& _coll)
-{
-
-    _button_tap.account = _coll.get_value_as_string("account");
-    _button_tap.contact = _coll.get_value_as_string("contact");
-    _button_tap.hwnd = (void*)_coll.get_value_as_int64("hwnd");
-    _button_tap.type = (voip2::ButtonType)_coll.get_value_as_int("type");
-
-    assert(!_button_tap.account.empty());
-    assert(!_button_tap.contact.empty());
-
-    _coll.set_value_as_string("account", _button_tap.account.c_str());
-    _coll.set_value_as_string("contact", _button_tap.contact.c_str());
-    _coll.set_value_as_int64("hwnd", (int64_t)_button_tap.hwnd);
-    _button_tap.type >> _coll;
-}
 
 inline void operator>>(const std::vector<std::string>& _contacts, core::coll_helper& _coll)
 {
@@ -58,33 +20,33 @@ inline void operator>>(const std::vector<std::string>& _contacts, core::coll_hel
     }
 }
 
-inline void operator>>(const voip2::DeviceType& _type, core::coll_helper& _coll)
+inline void operator>>(const DeviceType& _type, core::coll_helper& _coll)
 {
     const char* name = "device_type";
     switch (_type)
     {
-    case voip2::VideoCapturing: _coll.set_value_as_string(name, "video_capture"); return;
-    case voip2::AudioRecording: _coll.set_value_as_string(name, "audio_capture"); return;
-    case voip2::AudioPlayback: _coll.set_value_as_string(name, "audio_playback"); return;
+    case VideoCapturing: _coll.set_value_as_string(name, "video_capture"); return;
+    case AudioRecording: _coll.set_value_as_string(name, "audio_capture"); return;
+    case AudioPlayback: _coll.set_value_as_string(name, "audio_playback"); return;
 
     default: assert(false); break;
     }
 }
 
-inline void operator<<(voip2::DeviceType& _type, const core::coll_helper& _coll)
+inline void operator<<(DeviceType& _type, const core::coll_helper& _coll)
 {
     std::string typeStr = _coll.get_value_as_string("device_type");
     if (typeStr == "video_capture")
     {
-        _type = voip2::VideoCapturing;
+        _type = VideoCapturing;
     }
     else if (typeStr == "audio_capture")
     {
-        _type = voip2::AudioRecording;
+        _type = AudioRecording;
     }
     else if (typeStr == "audio_playback")
     {
-        _type = voip2::AudioPlayback;
+        _type = AudioPlayback;
     }
     else
     {
@@ -92,7 +54,7 @@ inline void operator<<(voip2::DeviceType& _type, const core::coll_helper& _coll)
     }
 }
 
-inline void operator>>(const voip2::LayoutType& _type, core::coll_helper& _coll)
+/*inline void operator>>(const voip2::LayoutType& _type, core::coll_helper& _coll)
 {
     const char* name = "layout_type";
     switch (_type)
@@ -104,33 +66,31 @@ inline void operator>>(const voip2::LayoutType& _type, core::coll_helper& _coll)
 
     default: assert(false); break;
     }
-}
+}*/
 
-inline void operator>>(const voip2::MouseTap& _type, core::coll_helper& _coll)
+inline void operator>>(const MouseTapEnum& _type, core::coll_helper& _coll)
 {
     const char* name = "mouse_tap_type";
     switch (_type)
     {
-    case voip2::MouseTap_Single: _coll.set_value_as_string(name, "single"); return;
-    case voip2::MouseTap_Double: _coll.set_value_as_string(name, "double"); return;
-    case voip2::MouseTap_Long: _coll.set_value_as_string(name, "long"); return;
-    case voip2::MouseTap_Over: _coll.set_value_as_string(name, "over"); return;
-
+    case MouseTap_Single: _coll.set_value_as_string(name, "single"); return;
+    case MouseTap_Double: _coll.set_value_as_string(name, "double"); return;
+    case MouseTap_Long: _coll.set_value_as_string(name, "long"); return;
+    case MouseTap_Over: _coll.set_value_as_string(name, "over"); return;
     default: assert(false); break;
     }
 }
 
-inline void operator>>(const voip2::ViewArea& _type, core::coll_helper& _coll)
+inline void operator>>(const ViewArea& _type, core::coll_helper& _coll)
 {
     const char* name = "view_area_type";
     switch (_type)
     {
-    case voip2::ViewArea_Primary:    _coll.set_value_as_string(name, "primary"); return;
-    case voip2::ViewArea_Detached:   _coll.set_value_as_string(name, "detached"); return;
-    case voip2::ViewArea_Default:    _coll.set_value_as_string(name, "default"); return;
-    case voip2::ViewArea_Background: _coll.set_value_as_string(name, "background"); return;
-    case voip2::ViewArea_Tray:       _coll.set_value_as_string(name, "tray"); return;
-
+    case ViewArea_Primary:    _coll.set_value_as_string(name, "primary"); return;
+    case ViewArea_Detached:   _coll.set_value_as_string(name, "detached"); return;
+    case ViewArea_Default:    _coll.set_value_as_string(name, "default"); return;
+    case ViewArea_Background: _coll.set_value_as_string(name, "background"); return;
+    case ViewArea_Tray:       _coll.set_value_as_string(name, "tray"); return;
     default: assert(false); break;
     }
 }
@@ -182,18 +142,17 @@ inline void operator>>(const voip_manager::DeviceInterrupt& _inter, core::coll_h
     _coll.set_value_as_bool("interrupt",_inter.interrupt);
 }
 
-inline void operator>>(const voip_manager::LayoutChanged& _type, core::coll_helper& _coll)
+/*inline void operator>>(const voip_manager::LayoutChanged& _type, core::coll_helper& _coll)
 {
     _type.layout_type >> _coll;
     _coll.set_value_as_bool("tray", _type.tray);
     _coll.set_value_as_int64("hwnd", (int64_t)_type.hwnd);
-}
+}*/
 
 inline void operator>>(const voip_manager::device_description& _device, core::coll_helper& _coll)
 {
     _coll.set_value_as_string("name", _device.name);
     _coll.set_value_as_string("uid", _device.uid);
-    _coll.set_value_as_bool("is_active", _device.isActive);
     _coll.set_value_as_int("video_capture_type", _device.videoCaptureType);
     _device.type >> _coll;
 }
@@ -202,8 +161,7 @@ inline void operator<<(voip_manager::device_description& _device, const core::co
 {
     _device.name = _coll.get_value_as_string("name");
     _device.uid  = _coll.get_value_as_string("uid");
-    _device.isActive = _coll.get_value_as_bool("is_active");
-    _device.videoCaptureType = (voip2::VideoCaptureType)_coll.get_value_as_int("video_capture_type");
+    _device.videoCaptureType = (VideoCaptureType)_coll.get_value_as_int("video_capture_type");
     _device.type << _coll;
 }
 
@@ -233,7 +191,7 @@ inline void operator>>(const voip_manager::FrameSize& _fs, core::coll_helper& _c
 
 inline void operator>>(const voip_manager::MouseTap& _tap, core::coll_helper& _coll)
 {
-    _coll.set_value_as_string("account", _tap.account.c_str());
+    _coll.set_value_as_string("call_id", _tap.call_id.c_str());
     _coll.set_value_as_string("contact", _tap.contact.c_str());
 
     int64_t hwnd = (int64_t)_tap.hwnd;
@@ -257,16 +215,16 @@ inline void operator>>(const std::string& _param, core::coll_helper& _coll)
 
 inline void operator>>(const voip_manager::Contact& _contact, core::coll_helper& _coll)
 {
-    _coll.set_value_as_string("account", _contact.account.c_str());
+    _coll.set_value_as_string("account", _contact.call_id.c_str());
     _coll.set_value_as_string("contact", _contact.contact.c_str());
 }
 
 inline void operator<<(voip_manager::Contact& _contact, core::coll_helper& _coll)
 {
-    _contact.account = _coll.get_value_as_string("account");
+    _contact.call_id = _coll.get_value_as_string("account");
     _contact.contact = _coll.get_value_as_string("contact");
 
-    assert(!_contact.account.empty());
+    assert(!_contact.call_id.empty());
     assert(!_contact.contact.empty());
 }
 
@@ -373,13 +331,10 @@ template <typename T> void readVector (std::vector<T>& _vector, core::coll_helpe
     }
 }
 
-
 inline void operator>>(const voip_manager::ContactsList& _contactsList, core::coll_helper& _coll)
 {
-
     auto contacts = _contactsList.contacts;
     appendVector(contacts, _coll, "contacts");
-
 
     auto windows = _contactsList.windows;
     appendVector(windows, _coll, "windows");
@@ -389,7 +344,6 @@ inline void operator>>(const voip_manager::ContactsList& _contactsList, core::co
 
 inline void operator<<(voip_manager::ContactsList& _contactsList, core::coll_helper& _coll)
 {
-
     readVector(_contactsList.contacts, _coll, "contacts");
     readVector(_contactsList.windows, _coll, "windows");
     _contactsList.isActive = _coll.get_value_as_bool("isActive");
@@ -454,22 +408,17 @@ inline void operator>>(const voip_manager::eNotificationTypes& _type, core::coll
     case kNotificationType_MediaLocAudioChanged: _coll.set_value_as_string(name, "media_loc_a_changed"); return;
     case kNotificationType_MediaLocVideoChanged: _coll.set_value_as_string(name, "media_loc_v_changed"); return;
     case kNotificationType_MediaRemVideoChanged: _coll.set_value_as_string(name, "media_rem_v_changed"); return;
-    case kNotificationType_MediaRemAudioChanged: _coll.set_value_as_string(name, "media_rem_a_changed"); return;
-    case kNotificationType_MediaLocVideoDeviceChanged: _coll.set_value_as_string(name, "media_rem_v_device_changed"); return;
+    case kNotificationType_MediaLocVideoDeviceChanged: _coll.set_value_as_string(name, "media_loc_v_device_changed"); return;
 
     case kNotificationType_DeviceListChanged: _coll.set_value_as_string(name, "device_list_changed"); return;
     case kNotificationType_DeviceStarted: _coll.set_value_as_string(name, "device_started"); return;
-    case kNotificationType_DeviceMuted: _coll.set_value_as_string(name, "device_muted"); return;
     case kNotificationType_DeviceVolChanged: _coll.set_value_as_string(name, "device_vol_changed"); return;
-    case kNotificationType_DeviceInterrupt: _coll.set_value_as_string(name, "device_interrupt"); return;
 
     case kNotificationType_MouseTap: _coll.set_value_as_string(name, "mouse_tap"); return;
-    case kNotificationType_ButtonTap: _coll.set_value_as_string(name, "button_tap"); return;
     case kNotificationType_LayoutChanged: _coll.set_value_as_string(name, "layout_changed"); return;
 
-    case kNotificationType_MissedCall: _coll.set_value_as_string(name, "missed_call"); return;
     case kNotificationType_ShowVideoWindow: _coll.set_value_as_string(name, "video_window_show"); return;
-    case kNotificationType_FrameSizeChanged: _coll.set_value_as_string(name, "frame_size_changed"); return;
+    //case kNotificationType_FrameSizeChanged: _coll.set_value_as_string(name, "frame_size_changed"); return;
     case kNotificationType_VoipResetComplete: _coll.set_value_as_string(name, "voip_reset_complete"); return;
     case kNotificationType_VoipWindowRemoveComplete: _coll.set_value_as_string(name, "voip_window_remove_complete"); return;
     case kNotificationType_VoipWindowAddComplete: _coll.set_value_as_string(name, "voip_window_add_complete"); return;
@@ -487,5 +436,3 @@ inline void operator>>(const voip_manager::eNotificationTypes& _type, core::coll
     default: assert(false); return;
     }
 }
-
-#endif//__VOIP_SERIALIZATION_H__

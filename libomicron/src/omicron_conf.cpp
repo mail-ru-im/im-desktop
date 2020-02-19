@@ -17,6 +17,8 @@ namespace omicronlib
             return "Beta";
         case environment_type::release:
             return "Release";
+        case environment_type::develop:
+            return "Develop";
         default:
             return "Unknown";
         }
@@ -44,7 +46,7 @@ namespace omicronlib
         return ss_out.str();
     }
 
-    omicron_config::omicron_config(const std::string& _api_url, const std::string& _app_id, uint32_t _update_interval, environment_type _environment)
+    omicron_config::omicron_config(const std::string& _api_url, const std::string& _app_id, environment_type _environment, std::chrono::milliseconds _update_interval)
         : api_url_(_api_url)
         , app_id_(_app_id)
         , update_interval_(_update_interval)
@@ -52,6 +54,7 @@ namespace omicronlib
         , custom_json_downloader_(nullptr)
         , custom_logger_(nullptr)
         , callback_updater_(nullptr)
+        , external_proxy_settings_(nullptr)
     {
     }
 
@@ -146,7 +149,7 @@ namespace omicronlib
         return api_url_.empty();
     }
 
-    uint32_t omicron_config::get_update_interval() const
+    std::chrono::milliseconds omicron_config::get_update_interval() const
     {
         return update_interval_;
     }

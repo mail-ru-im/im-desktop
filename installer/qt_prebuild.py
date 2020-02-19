@@ -8,12 +8,12 @@ qt_path += "/external/qt/windows/bin/"
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-config", type=str, help="build configuration (release or debug)")
+parser.add_argument("-product", type=str, help="product (icq, agent, myteam,..)")
 args = parser.parse_args()
 
 files_to_pack = [
 	"icq.exe",
-	"libvoip_x86.dll",
-	"D3DCompiler_43.dll"]
+	"d3dcompiler_43.dll"]
 
 bundle_to_pack = ["switcher.exe"]
 
@@ -140,8 +140,10 @@ def compile_resources():
 	cpp_file_name = os.path.abspath("resources/resource.cpp").replace("\\", "/")
 	qss_file_name = os.path.abspath("resources/styles/styles.qss").replace("\\", "/")
 
+	qrc_product_file_name = os.path.abspath("../products/{}/installer/resource.qrc").format(args.product).replace("\\", "/")
+
 	if ((not os.path.exists(cpp_file_name)) or (os.path.getmtime(qrc_file_name) > os.path.getmtime(cpp_file_name)) or args.config.lower() != "debug" or (os.path.getmtime(qss_file_name) > os.path.getmtime(cpp_file_name))):
-		subprocess.call(qt_path + "rcc.exe " + '"' + qrc_file_name + '"' + " -o " + '"' + cpp_file_name + '"')
+		subprocess.call(qt_path + "rcc.exe " + '"' + qrc_file_name + '"' + ' ' + '"' + qrc_product_file_name + '"' + " -o " + '"' + cpp_file_name + '"')
 
 if __name__ == "__main__":
 	translation_changed = False

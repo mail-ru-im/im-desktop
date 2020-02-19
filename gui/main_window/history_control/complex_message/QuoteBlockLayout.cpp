@@ -15,14 +15,6 @@ QuoteBlockLayout::QuoteBlockLayout() = default;
 
 QuoteBlockLayout::~QuoteBlockLayout() = default;
 
-const IItemBlockLayout::IBoxModel& QuoteBlockLayout::getBlockBoxModel() const
-{
-    static const QMargins bubbleMargins(0, 0, 0, Utils::scale_value(16));
-    static const BoxModel boxModel(false, bubbleMargins);
-
-    return boxModel;
-}
-
 QRect QuoteBlockLayout::getBlockGeometry() const
 {
     auto &block = *blockWidget<QuoteBlock>();

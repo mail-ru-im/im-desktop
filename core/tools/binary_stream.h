@@ -20,9 +20,15 @@ namespace core
             {
             }
 
-            virtual void write(const char* _data, uint32_t _size) = 0;
+            virtual void write(const char* _data, int64_t _size) = 0;
 
-            virtual uint32_t all_size() const noexcept = 0;
+            virtual int64_t all_size() const noexcept = 0;
+            virtual int64_t available() const noexcept = 0;
+
+            virtual char* get_data() const noexcept = 0;
+            virtual const char* get_data_for_log() const noexcept = 0;
+
+            virtual void swap(stream* _stream) noexcept = 0;
 
             virtual void close() {}
         };
@@ -37,14 +43,14 @@ namespace core
             {
             }
 
-            void write(const char* _data, uint32_t _size) override
+            void write(const char* _data, int64_t _size) override
             {
                 file_.write(_data, _size);
                 if (file_.good())
                     bytes_writed_ += _size;
             }
 
-            uint32_t all_size() const noexcept override
+            int64_t all_size() const noexcept override
             {
                 return bytes_writed_;
             }
@@ -54,9 +60,32 @@ namespace core
                 file_.close();
             }
 
+            int64_t available() const noexcept override
+            {
+                assert(false);
+                return 0;
+            }
+
+            char* get_data() const noexcept override
+            {
+                assert(false);
+                return nullptr;
+            }
+
+            const char* get_data_for_log() const noexcept override
+            {
+                assert(false);
+                return nullptr;
+            }
+
+            void swap(stream* _stream) noexcept override
+            {
+                assert(false);
+            }
+
         private:
             std::ofstream file_;
-            uint32_t bytes_writed_;
+            int64_t bytes_writed_;
         };
 
         class binary_stream
@@ -65,14 +94,12 @@ namespace core
             using data_buffer = std::vector<char>;
 
             mutable data_buffer buffer_;
-            mutable uint32_t input_cursor_ = 0;
-            mutable uint32_t output_cursor_ = 0;
+            mutable int64_t input_cursor_ = 0;
+            mutable int64_t output_cursor_ = 0;
 
         public:
 
-            binary_stream()
-            {
-            }
+            binary_stream() = default;
 
             binary_stream(const binary_stream& _stream)
             {
@@ -96,7 +123,7 @@ namespace core
                 return *this;
             }
 
-            char* get_data() const noexcept
+            char* get_data() const noexcept override
             {
                 if (buffer_.empty())
                     return nullptr;
@@ -111,6 +138,12 @@ namespace core
                 buffer_ = _stream.buffer_;
             }
 
+            void swap(stream* _stream) noexcept override
+            {
+                if (auto bs = dynamic_cast<binary_stream*>(_stream))
+                    swap(*bs);
+            }
+
             void swap(binary_stream& _stream) noexcept
             {
                 using std::swap;
@@ -119,20 +152,25 @@ namespace core
                 swap(_stream.buffer_, buffer_);
             }
 
-            uint32_t available() const noexcept
+            int64_t available() const noexcept override
             {
                 return (input_cursor_ - output_cursor_);
             }
 
-            void reserve(uint32_t _size)
+            void reserve(int64_t _size)
             {
                 if (buffer_.size() < _size)
                     buffer_.resize(_size);
             }
 
-            void resize(uint32_t _size)
+            void resize(int64_t _size)
             {
                 buffer_.resize(_size);
+            }
+
+            void resize(int64_t _size, const char& _val)
+            {
+                buffer_.resize(_size, _val);
             }
 
             void reset() noexcept
@@ -146,9 +184,9 @@ namespace core
                 output_cursor_ = 0;
             }
 
-            char* alloc_buffer(uint32_t _size)
+            char* alloc_buffer(int64_t _size)
             {
-                uint32_t size_need = input_cursor_ + _size;
+                int64_t size_need = input_cursor_ + _size;
                 if (size_need > buffer_.size())
                     buffer_.resize(size_need * 2);
 
@@ -175,12 +213,12 @@ namespace core
                 input_cursor_ += (buffer_.size() - size);
             }
 
-            void write(const char* _data, uint32_t _size) override
+            void write(const char* _data, int64_t _size) override
             {
                 if (_size == 0)
                     return;
 
-                uint32_t size_need = input_cursor_ + _size;
+                int64_t size_need = input_cursor_ + _size;
                 if (size_need > buffer_.size())
                     buffer_.resize(size_need + 1, '\0'); // +1 it '\0' at the end of the buffer
 
@@ -188,7 +226,7 @@ namespace core
                 input_cursor_ += _size;
             }
 
-            char* read(uint32_t _size) const
+            char* read(int64_t _size) const
             {
                 if (_size == 0)
                 {
@@ -211,7 +249,7 @@ namespace core
 
             char* read_available()
             {
-                const uint32_t available_size = available();
+                const int64_t available_size = available();
 
                 if (available_size == 0)
                 {
@@ -235,40 +273,62 @@ namespace core
 
             bool save_2_file(const std::wstring& _file_name) const;
 
-            bool load_from_file(const std::wstring& _file_name);
+            bool load_from_file(std::wstring_view _file_name);
 
             char* get_data_for_write() noexcept
             {
                 return buffer_.data();
             }
 
-            void set_output(uint32_t _value) noexcept
+            const char* get_data_for_log() const noexcept override
+            {
+                if (available() <= 0)
+                    return nullptr;
+
+                return &buffer_[output_cursor_];
+            }
+
+            void set_output(int64_t _value) noexcept
             {
                 output_cursor_ = _value;
             }
 
-            void set_input(uint32_t _value) noexcept
+            void set_input(int64_t _value) noexcept
             {
                 input_cursor_ = _value;
             }
 
-            uint32_t all_size() const noexcept override
+            int64_t all_size() const noexcept override
             {
                 return buffer_.size();
             }
 
+            bool is_zlib_compressed() const noexcept
+            {
+                return all_size() > 2
+                    && static_cast<uint8_t>(buffer_[0]) == 0x78
+                    && (static_cast<uint8_t>(buffer_[1]) == 0x9C
+                        || static_cast<uint8_t>(buffer_[1]) == 0x01
+                        || static_cast<uint8_t>(buffer_[1]) == 0xDA
+                        || static_cast<uint8_t>(buffer_[1]) == 0x5E);
+            }
+            bool is_gzip_compressed() const noexcept
+            {
+                return all_size() > 2
+                    && static_cast<uint8_t>(buffer_[0]) == 0x1F
+                    && static_cast<uint8_t>(buffer_[1]) == 0x8B;
+            }
+            bool is_zstd_compressed() const noexcept
+            {
+                return all_size() > 4
+                    && static_cast<uint8_t>(buffer_[0]) == 0x28
+                    && static_cast<uint8_t>(buffer_[1]) == 0xB5
+                    && static_cast<uint8_t>(buffer_[2]) == 0x2F
+                    && static_cast<uint8_t>(buffer_[3]) == 0xFD;
+            }
             bool is_compressed() const noexcept
             {
-                return all_size() > 2 && (
-                    // zlib
-                    (static_cast<uint8_t>(buffer_[0]) == 0x78 &&
-                        (static_cast<uint8_t>(buffer_[1]) == 0x9C ||
-                         static_cast<uint8_t>(buffer_[1]) == 0x01 ||
-                         static_cast<uint8_t>(buffer_[1]) == 0xDA ||
-                         static_cast<uint8_t>(buffer_[1]) == 0x5E)) ||
-                    // gzip
-                    (static_cast<uint8_t>(buffer_[0]) == 0x1F &&
-                        static_cast<uint8_t>(buffer_[1]) == 0x8B));
+                return is_zlib_compressed() || is_gzip_compressed() || is_zstd_compressed();
             }
 
             bool encrypt_aes256(std::string_view _key);
@@ -289,13 +349,19 @@ namespace core
             return 1'000'000'000U;
         }
 
-        bool compress(const char* _data, size_t _size, binary_stream& _compressed_bs, int _level = Z_BEST_COMPRESSION);
-        bool compress(const binary_stream& _bs, binary_stream& _compressed_bs, int _level = Z_BEST_COMPRESSION);
-        bool decompress(const binary_stream& _bs, binary_stream& _compressed_bs);
+        bool compress_gzip(const char* _data, size_t _size, binary_stream& _compressed_bs, int _level = Z_BEST_COMPRESSION);
+        bool compress_gzip(const stream& _bs, binary_stream& _compressed_bs, int _level = Z_BEST_COMPRESSION);
+        bool decompress_gzip(const char* _data, size_t _size, binary_stream& _uncompressed_bs);
+        bool decompress_gzip(const stream& _bs, binary_stream& _uncompressed_bs);
         inline bool is_compressed(const binary_stream& _bs)
         {
             return _bs.is_compressed();
         }
+
+        bool compress_zstd(const char* _data, size_t _size, const std::string& _dict, binary_stream& _compressed_bs);
+        bool compress_zstd(const stream& _bs, const std::string& _dict, binary_stream& _compressed_bs);
+        bool decompress_zstd(const char* _data, size_t _size, const std::string& _dict, binary_stream& _uncompressed_bs);
+        bool decompress_zstd(const stream& _bs, const std::string& _dict, binary_stream& _uncompressed_bs);
     }
 
 }

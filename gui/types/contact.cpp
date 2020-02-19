@@ -38,7 +38,6 @@ namespace Data
                 contact->AimId_ = QString::fromUtf8(value.get_value_as_string("aimId"));
                 contact->Friendly_ = QString::fromUtf8(value.get_value_as_string("friendly"));
                 contact->AbContactName_ = QString::fromUtf8(value.get_value_as_string("abContactName"));
-                contact->State_ = QString::fromUtf8(value.get_value_as_string("state"));
                 contact->UserType_ = QString::fromUtf8(value.get_value_as_string("userType"));
                 contact->StatusMsg_ = QString::fromUtf8(value.get_value_as_string("statusMsg"));
                 contact->OtherNumber_ = QString::fromUtf8(value.get_value_as_string("otherNumber"));
@@ -86,10 +85,9 @@ namespace Data
     {
         auto result = std::make_shared<Buddy>();
 
-        result->AimId_ = QString::fromUtf8(helper->get_value_as_string("aimId"));
+        result->AimId_ = QString::fromUtf8(helper->get_value_as_string("aimid"));
         result->Friendly_ = QString::fromUtf8(helper->get_value_as_string("friendly"));
         result->AbContactName_ = QString::fromUtf8(helper->get_value_as_string("abContactName"));
-        result->State_ = QString::fromUtf8(helper->get_value_as_string("state"));
         result->UserType_ = QString::fromUtf8(helper->get_value_as_string("userType"));
         result->StatusMsg_ = QString::fromUtf8(helper->get_value_as_string("statusMsg"));
         result->OtherNumber_ = QString::fromUtf8(helper->get_value_as_string("otherNumber"));

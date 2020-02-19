@@ -1,11 +1,6 @@
 #pragma once
 
-#include <QTextBrowser>
-#include <QMargins>
 #include "namespaces.h"
-
-#include "fonts.h"
-#include "styles/ThemeParameters.h"
 
 namespace Ui {
 
@@ -19,10 +14,10 @@ class TextBrowserEx: public QTextBrowser
 public:
     struct Options
     {
-        QColor linkColor_ = Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_INVERSE);
-        QColor textColor_ = Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID);
-        QColor backgroundColor_ = Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE);
-        QFont font_ = Fonts::appFontScaled(15);
+        QColor linkColor_;
+        QColor textColor_;
+        QColor backgroundColor_;
+        QFont font_;
         bool borderless_ = true;
         bool openExternalLinks_ = true;
         qreal documentMargin_ = 0.;
@@ -36,6 +31,8 @@ public:
         int rightBodyMargin() const { return bodyMargins_.right() > QTEXTDOCUMENT_DEFAULT_MARGIN ? (bodyMargins_.right() - QTEXTDOCUMENT_DEFAULT_MARGIN) : 0; }
         int bottomBodyMargin() const { return bodyMargins_.bottom() > QTEXTDOCUMENT_DEFAULT_MARGIN ? (bodyMargins_.bottom() - QTEXTDOCUMENT_DEFAULT_MARGIN) : 0; }
         int topBodyMargin() const { return bodyMargins_.top() > QTEXTDOCUMENT_DEFAULT_MARGIN ? (bodyMargins_.top() - QTEXTDOCUMENT_DEFAULT_MARGIN) : 0; }
+
+        Options();
     };
 
     TextBrowserEx(const Options& _options, QWidget* _parent =  nullptr);

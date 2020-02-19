@@ -9,9 +9,7 @@
 #elif __linux__
     #include "linux/VideoFrameLinux.h"
 #else
-#ifndef STRIP_VOIP
     #error "video frame need to create"
-#endif //STRIP_VOIP
 #endif
 
 platform_specific::GraphicsPanel* platform_specific::GraphicsPanel::create(
@@ -33,28 +31,3 @@ WId platform_specific::GraphicsPanel::frameId() const
 {
     return QWidget::winId();
 }
-
-void platform_specific::GraphicsPanel::addPanels(std::vector<QPointer<Ui::BaseVideoPanel>>& /*panels*/)
-{
-
-}
-
-void platform_specific::GraphicsPanel::clearPanels()
-{
-
-}
-
-void platform_specific::GraphicsPanel::fullscreenModeChanged(bool /*fullscreen*/)
-{
-
-}
-
-void platform_specific::GraphicsPanel::fullscreenAnimationStart() {}
-
-void platform_specific::GraphicsPanel::fullscreenAnimationFinish() {}
-
-void platform_specific::GraphicsPanel::windowWillDeminiaturize() {}
-
-void platform_specific::GraphicsPanel::windowDidDeminiaturize() {}
-
-

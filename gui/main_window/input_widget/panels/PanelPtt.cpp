@@ -35,9 +35,9 @@ namespace Ui
         if (!panel)
         {
             panel = new InputPanelPttImpl(this, _contact, pttThread_, buttonSubmit_);
-            QObject::connect(panel, &InputPanelPttImpl::pttReady, this, [this, _contact](const QString& _file, std::chrono::seconds _duration, const ptt::StatInfo& _stat)
+            QObject::connect(panel, &InputPanelPttImpl::pttReady, this, [this, _contact](const QString& _file, std::chrono::seconds _duration, const ptt::StatInfo& _statInfo)
             {
-                emit pttReady(_contact, _file, _duration, _stat, QPrivateSignal());
+                emit pttReady(_contact, _file, _duration, _statInfo, QPrivateSignal());
             });
             QObject::connect(panel, &InputPanelPttImpl::stateChanged, this, [this, _contact](ptt::State2 _state)
             {
@@ -117,6 +117,20 @@ namespace Ui
         return false;
     }
 
+    bool InputPanelPtt::tryPlay(const QString& _contact)
+    {
+        if (const auto it = panels_.find(_contact); it != panels_.end())
+            return it->second->tryPlay();
+        return false;
+    }
+
+    bool InputPanelPtt::tryPause(const QString & _contact)
+    {
+        if (const auto it = panels_.find(_contact); it != panels_.end())
+            return it->second->tryPausePlay();
+        return false;
+    }
+
     void InputPanelPtt::pressedMouseMove(const QString& _contact)
     {
         if (const auto it = panels_.find(_contact); it != panels_.end())
@@ -127,6 +141,12 @@ namespace Ui
     {
         if (const auto it = panels_.find(_contact); it != panels_.end())
             it->second->enableCircleHover(_val);
+    }
+
+    void InputPanelPtt::setUnderLongPress(const QString& _contact, bool _val)
+    {
+        if (const auto it = panels_.find(_contact); it != panels_.end())
+            it->second->setUnderLongPress(_val);
     }
 
     void InputPanelPtt::updateStyleImpl(const InputStyleMode _mode)

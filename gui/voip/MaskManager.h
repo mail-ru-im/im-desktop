@@ -1,5 +1,4 @@
 #pragma once
-
 #include "Masks.h"
 
 Q_DECLARE_LOGGING_CATEGORY(maskManager)

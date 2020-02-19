@@ -1,5 +1,8 @@
 #include "stdafx.h"
 #include "GeneralSettingsWidget.h"
+
+#include "../common.shared/config/config.h"
+
 #include "../MainWindow.h"
 #include "../../gui_settings.h"
 #include "../../controls/GeneralCreator.h"
@@ -287,26 +290,22 @@ void GeneralSettingsWidget::Creator::initShortcuts(QWidget* _parent)
             {
                 if constexpr (platform::is_apple())
                 {
-                    if (build::is_icq() || build::is_agent())
+                    if (config::get().is_on(config::features::add_contact))
                     {
-                        QString keys = KeySymbols::Mac::command % ql1c('N');
-
                         GeneralCreator::addHotkeyInfo(
                             mainWindowW, mainWindowL,
                             QT_TRANSLATE_NOOP("shortcuts", "Add contact"),
-                            keys);
+                            KeySymbols::Mac::command % ql1c('N'));
                     }
                 }
             }
             {
                 if constexpr (platform::is_apple())
                 {
-                    QString keys = KeySymbols::Mac::command % ql1c(',');
-
                     GeneralCreator::addHotkeyInfo(
                         mainWindowW, mainWindowL,
                         QT_TRANSLATE_NOOP("shortcuts", "Open settings"),
-                        keys);
+                        KeySymbols::Mac::command % ql1c(','));
                 }
             }
         }
@@ -387,6 +386,18 @@ void GeneralSettingsWidget::Creator::initShortcuts(QWidget* _parent)
                         keys);
                 }
             }
+            {
+                QString keys;
+                if constexpr (platform::is_apple())
+                    keys = KeySymbols::Mac::control % ql1c('R');
+                else
+                    keys = qsl("Ctrl + R");
+
+                GeneralCreator::addHotkeyInfo(
+                    recentChatsW, recentChatsL,
+                    QT_TRANSLATE_NOOP("shortcuts", "Mark all dialogs as read"),
+                    keys);
+            }
         }
         {
             auto[chatHistoryW, chatHistoryL] = shortcutBlock(QT_TRANSLATE_NOOP("settings", "History in chat"));
@@ -408,6 +419,18 @@ void GeneralSettingsWidget::Creator::initShortcuts(QWidget* _parent)
                     QT_TRANSLATE_NOOP("shortcuts", "Edit the last message"),
                     KeySymbols::arrow_up);
 
+            }
+            {
+                QString keys;
+                if constexpr (platform::is_apple())
+                    keys = KeySymbols::Mac::shift % KeySymbols::Mac::option % KeySymbols::arrow_up;
+                else
+                    keys = qsl("Shift + Alt + ") % KeySymbols::arrow_up;
+
+                GeneralCreator::addHotkeyInfo(
+                    chatHistoryW, chatHistoryL,
+                    QT_TRANSLATE_NOOP("shortcuts", "Enter multiselect mode"),
+                    keys);
             }
         }
         {

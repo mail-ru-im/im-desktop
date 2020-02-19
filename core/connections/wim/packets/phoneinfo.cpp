@@ -4,6 +4,7 @@
 #include "../../../http_request.h"
 #include "../../../corelib/enumerations.h"
 #include "../../../tools/system.h"
+#include "../../../tools/json_helper.h"
 #include "../../urls_cache.h"
 
 using namespace core;
@@ -57,54 +58,41 @@ int32_t phoneinfo::parse_response(std::shared_ptr<core::tools::binary_stream> re
         const auto _info = doc.FindMember("info");
         if (_info != doc.MemberEnd() && _info->value.IsObject())
         {
-            const auto _operator = _info->value.FindMember("operator");
-            if (_operator != _info->value.MemberEnd() && _operator->value.IsString())
-                info_operator_ = rapidjson_get_string(_operator->value);
-
-            const auto _phone = _info->value.FindMember("phone");
-            if (_phone != _info->value.MemberEnd() && _phone->value.IsString())
-                info_phone_ = rapidjson_get_string(_phone->value);
-
-            const auto _iso_country = _info->value.FindMember("iso_country_code");
-            if (_iso_country != _info->value.MemberEnd() && _iso_country->value.IsString())
-                info_iso_country_ = rapidjson_get_string(_iso_country->value);
+            tools::unserialize_value(_info->value, "operator", info_operator_);
+            tools::unserialize_value(_info->value, "phone", info_phone_);
+            tools::unserialize_value(_info->value, "iso_country_code", info_iso_country_);
         }
 
         const auto _printable = doc.FindMember("printable");
         if (_printable != doc.MemberEnd() && _printable->value.IsArray())
         {
-            for (auto it = _printable->value.Begin(), itend = _printable->value.End(); it != itend; ++it)
+            printable_.reserve(_printable->value.Size());
+            for (const auto& it : _printable->value.GetArray())
             {
-                if (it->IsString())
-                    printable_.push_back(rapidjson_get_string(*it));
+                if (it.IsString())
+                    printable_.push_back(rapidjson_get_string(it));
             }
         }
 
-        const auto _status = doc.FindMember("status");
-        if (_status != doc.MemberEnd() && _status->value.IsString())
-            status_ = rapidjson_get_string(_status->value);
-
+        tools::unserialize_value(doc, "status", status_);
         is_phone_valid_ = (status_ == "OK");
 
         const auto _typing_check = doc.FindMember("typing_check");
         if (_typing_check != doc.MemberEnd() && _typing_check->value.IsObject())
         {
-            const auto _trunk_code = _typing_check->value.FindMember("trunk_code");
-            if (_trunk_code != _typing_check->value.MemberEnd() && _trunk_code->value.IsString())
-                trunk_code_ = rapidjson_get_string(_trunk_code->value);
-
-            const auto _modified_phone_number = _typing_check->value.FindMember("modified_phone_number");
-            if (_modified_phone_number != _typing_check->value.MemberEnd() && _modified_phone_number->value.IsString())
-                modified_phone_number_ = rapidjson_get_string(_modified_phone_number->value);
+            tools::unserialize_value(_typing_check->value, "trunk_code", trunk_code_);
+            tools::unserialize_value(_typing_check->value, "modified_phone_number", modified_phone_number_);
+            tools::unserialize_value(_typing_check->value, "modified_prefix", modified_prefix_);
 
             const auto _remaining_lengths = _typing_check->value.FindMember("remaining_lengths");
             if (_remaining_lengths != _typing_check->value.MemberEnd() && _remaining_lengths->value.IsArray())
             {
-                for (auto it = _remaining_lengths->value.Begin(), itend = _remaining_lengths->value.End(); it != itend; ++it)
+                remaining_lengths_.reserve(_remaining_lengths->value.Size());
+                for (const auto& it : _remaining_lengths->value.GetArray())
                 {
-                    if (it->IsInt())
+                    if (it.IsInt())
                     {
-                        const auto value = it->GetInt();
+                        const auto value = it.GetInt();
                         remaining_lengths_.push_back(value);
                     }
                 }
@@ -113,16 +101,13 @@ int32_t phoneinfo::parse_response(std::shared_ptr<core::tools::binary_stream> re
             const auto _prefix_state = _typing_check->value.FindMember("prefix_state");
             if (_prefix_state != _typing_check->value.MemberEnd() && _prefix_state->value.IsArray())
             {
-                for (auto it = _prefix_state->value.Begin(), itend = _prefix_state->value.End(); it != itend; ++it)
+                prefix_state_.reserve(_prefix_state->value.Size());
+                for (const auto& it : _prefix_state->value.GetArray())
                 {
-                    if (it->IsString())
-                        prefix_state_.push_back(rapidjson_get_string(*it));
+                    if (it.IsString())
+                        prefix_state_.push_back(rapidjson_get_string(it));
                 }
             }
-
-            const auto _modified_prefix = _typing_check->value.FindMember("modified_prefix");
-            if (_modified_prefix != _typing_check->value.MemberEnd() && _modified_prefix->value.IsString())
-                modified_prefix_ = rapidjson_get_string(_modified_prefix->value);
         }
     }
     catch (...)

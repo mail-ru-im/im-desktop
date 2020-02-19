@@ -96,16 +96,28 @@ namespace core { namespace tools { namespace system {
 #endif
     }
 
-    bool is_exist(const std::wstring& _path)
+    bool is_exist(std::wstring_view _path)
     {
 #ifndef _WIN32
         auto p = tools::from_utf16(_path);
         boost::filesystem::path path(p);
 #else
-        boost::filesystem::wpath path(_path);
+        boost::filesystem::wpath path(_path.begin(), _path.end());
 #endif //_WIN32
         boost::system::error_code e;
         return boost::filesystem::exists(path, e);
+    }
+
+    bool is_empty(std::wstring_view _path)
+    {
+#ifndef _WIN32
+        auto p = tools::from_utf16(_path);
+        boost::filesystem::path path(p);
+#else
+        boost::filesystem::wpath path(_path.begin(), _path.end());
+#endif //_WIN32
+        boost::system::error_code e;
+        return boost::filesystem::is_empty(path, e);
     }
 
     bool is_exist(const boost::filesystem::wpath & path)
@@ -292,48 +304,48 @@ namespace core { namespace tools { namespace system {
     }
 
 #ifdef _WIN32
-    std::ifstream open_file_for_read(const std::string& _file_name, std::ios_base::openmode _mode)
+    std::ifstream open_file_for_read(std::string_view _file_name, std::ios_base::openmode _mode)
     {
         return std::ifstream(tools::from_utf8(_file_name), _mode);
     }
 
-    std::ifstream open_file_for_read(const std::wstring& _file_name, std::ios_base::openmode _mode)
+    std::ifstream open_file_for_read(std::wstring_view _file_name, std::ios_base::openmode _mode)
     {
-        return std::ifstream(_file_name, _mode);
+        return std::ifstream(std::wstring(_file_name), _mode);
     }
 
-    std::ofstream open_file_for_write(const std::string& _file_name, std::ios_base::openmode _mode)
+    std::ofstream open_file_for_write(std::string_view _file_name, std::ios_base::openmode _mode)
     {
         return std::ofstream(tools::from_utf8(_file_name), _mode);
     }
 
-    std::ofstream open_file_for_write(const std::wstring& _file_name, std::ios_base::openmode _mode)
+    std::ofstream open_file_for_write(std::wstring_view _file_name, std::ios_base::openmode _mode)
     {
-        return std::ofstream(_file_name, _mode);
+        return std::ofstream(std::wstring(_file_name), _mode);
     }
 #else
-    std::ifstream open_file_for_read(const std::string& _file_name, std::ios_base::openmode _mode)
+    std::ifstream open_file_for_read(std::string_view _file_name, std::ios_base::openmode _mode)
     {
-        return std::ifstream(_file_name, _mode);
+        return std::ifstream(std::string(_file_name), _mode);
     }
 
-    std::ifstream open_file_for_read(const std::wstring& _file_name, std::ios_base::openmode _mode)
+    std::ifstream open_file_for_read(std::wstring_view _file_name, std::ios_base::openmode _mode)
     {
         return std::ifstream(tools::from_utf16(_file_name), _mode);
     }
 
-    std::ofstream open_file_for_write(const std::string& _file_name, std::ios_base::openmode _mode)
+    std::ofstream open_file_for_write(std::string_view _file_name, std::ios_base::openmode _mode)
     {
-        return std::ofstream(_file_name, _mode);
+        return std::ofstream(std::string(_file_name), _mode);
     }
 
-    std::ofstream open_file_for_write(const std::wstring& _file_name, std::ios_base::openmode _mode)
+    std::ofstream open_file_for_write(std::wstring_view _file_name, std::ios_base::openmode _mode)
     {
         return std::ofstream(tools::from_utf16(_file_name), _mode);
     }
 #endif
 
-    size_t get_file_size(const std::string& _file_name)
+    size_t get_file_size(std::string_view _file_name)
     {
         auto file = tools::system::open_file_for_read(_file_name, std::ios::binary | std::ios::ate);
         return file.good()
@@ -341,7 +353,7 @@ namespace core { namespace tools { namespace system {
             : 0;
     }
 
-    size_t get_file_size(const std::wstring& _file_name)
+    size_t get_file_size(std::wstring_view _file_name)
     {
         auto file = tools::system::open_file_for_read(_file_name, std::ios::binary | std::ios::ate);
         return file.good()
@@ -385,7 +397,7 @@ namespace core { namespace tools { namespace system {
 
     std::string generate_internal_id()
     {
-        static auto internal_id = std::chrono::system_clock::now().time_since_epoch().count();
+        static std::atomic<int64_t> internal_id = std::chrono::system_clock::now().time_since_epoch().count();
         std::stringstream guid_string;
 
         guid_string << generate_guid() << '-' << ++internal_id;

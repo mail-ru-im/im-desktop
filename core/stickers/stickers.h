@@ -404,7 +404,5 @@ namespace core
 
             void update_template_urls(const rapidjson::Value& _value);
         };
-
-        const std::string& get_base_sticker_url();
     }
 }

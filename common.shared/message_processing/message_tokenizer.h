@@ -32,7 +32,6 @@ namespace common
         class message_tokenizer final
         {
         public:
-            explicit message_tokenizer(const std::string& _message, const std::string& _files_url);
             message_tokenizer(const std::string& _message, const std::string& _files_url, std::vector<url_parser::compare_item> &&_items);
 
             bool has_token() const;

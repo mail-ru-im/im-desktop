@@ -1,6 +1,8 @@
 #include "stdafx.h"
 #include "user_agreement_info.h"
 
+#include "../../tools/json_helper.h"
+
 #include <rapidjson/prettywriter.h>
 #include <rapidjson/encodedstream.h>
 
@@ -52,3 +54,7 @@ void user_agreement_info::serialize(coll_helper &_coll)
     _coll.set_value_as_array("userAgreement", accepted_types_array.get());
 }
 
+bool user_agreement_info::operator==(const user_agreement_info& _right) const
+{
+    return need_to_accept_types_ == _right.need_to_accept_types_;
+}

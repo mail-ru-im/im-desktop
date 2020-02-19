@@ -5,6 +5,7 @@ namespace Ui
     class ContactListWidget;
     class ContactListTopPanel;
     class HeaderTitleBarButton;
+    class SearchWidget;
     enum class LeftPanelState;
 
     class ContactsTab : public QWidget
@@ -19,6 +20,7 @@ namespace Ui
         void setClWidth(int _width);
 
         ContactListWidget* getContactListWidget() const;
+        SearchWidget* getSearchWidget() const;
 
     private:
         LeftPanelState state_;

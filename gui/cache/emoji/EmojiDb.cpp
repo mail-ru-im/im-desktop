@@ -17,18 +17,21 @@ namespace
 {
     using namespace Emoji;
 
-    EmojiRecordSptrVec EmojiIndexByOrder_;
+    EmojiRecordVec EmojiIndexByOrder_;
 
-    using EmojiIndex = std::unordered_map<EmojiCode, EmojiRecordSptr, EmojiCodeHasher>;
+    using EmojiIndex = std::unordered_map<EmojiCode, size_t, EmojiCodeHasher>;
     EmojiIndex emojiIndexByFullCodepoint_;
     EmojiIndex emojiIndexByBaseCodepoint_;
 
-    using EmojiIndexByCategory = std::map<QString, EmojiRecordSptrVec>;
+    using EmojiFlagVec = std::map<QString, EmojiCode>;
+    EmojiFlagVec flagEmojis_;
+
+    using EmojiIndexByCategory = std::map<QLatin1String, EmojiRecordVec>;
     EmojiIndexByCategory EmojiIndexByCategory_;
 
-    QVector<QString> EmojiCategories_ ;
+    QVector<QLatin1String> EmojiCategories_ ;
 
-    const QVector<QString> EmojiCategoriesOrder_ = { peopleCategory(), natureCategory(), foodCategory(), activityCategory(), travelCategory(),
+    const QVector<QLatin1String> EmojiCategoriesOrder_ = { peopleCategory(), natureCategory(), foodCategory(), activityCategory(), travelCategory(),
                                                      objectsCategory(), symbolsCategory(), flagsCategory(), modifierCategory(), regionalCategory()};
 
 #if defined(__APPLE__)
@@ -39,22 +42,33 @@ namespace
 
 namespace Emoji
 {
-    EmojiRecord::EmojiRecord(QString _category, QString _fileName, const int _index, EmojiCode _baseCodePoints, EmojiCode _fullCodePoints)
-        : Category_(std::move(_category))
-        , FileName_(std::move(_fileName))
+    EmojiRecord::EmojiRecord(QLatin1String _category, QLatin1String _fileName, QLatin1String _shortName, const int _index, EmojiCode _baseCodePoints, EmojiCode _fullCodePoints)
+        : Category_(_category)
+        , FileName_(_fileName)
+        , ShortName_(_shortName)
         , Index_(_index)
         , baseCodePoints_(std::move(_baseCodePoints))
         , fullCodePoints(std::move(_fullCodePoints))
     {
-        assert(!Category_.isEmpty());
-        assert(!FileName_.isEmpty());
-        assert(Index_ >= 0);
+        assert(Category_.size() > 0);
+        assert(FileName_.size() > 0);
         assert(!baseCodePoints_.isNull());
         assert(!fullCodePoints.isNull());
     }
 
-    EmojiRecord::EmojiRecord(QString _category, QString _fileName, const int _index, EmojiCode _baseCodePoints)
-        : EmojiRecord(std::move(_category), std::move(_fileName), _index, _baseCodePoints, _baseCodePoints)
+    bool EmojiRecord::isValid() const noexcept
+    {
+        return Index_ >= 0;
+    }
+
+    const EmojiRecord& EmojiRecord::invalid()
+    {
+        const static auto v = EmojiRecord(QLatin1String(), QLatin1String(), QLatin1String(), -1, EmojiCode(0));
+        return v;
+    }
+
+    EmojiRecord::EmojiRecord(QLatin1String _category, QLatin1String _fileName, QLatin1String _shortName, const int _index, EmojiCode _baseCodePoints)
+        : EmojiRecord(std::move(_category), std::move(_fileName), std::move(_shortName), _index, _baseCodePoints, _baseCodePoints)
     {
     }
 
@@ -80,7 +94,7 @@ namespace Emoji
         };
     }
 
-    static EmojiIndex makeIndex(const EmojiRecordSptrVec& vector, CodePointType type)
+    static EmojiIndex makeIndex(const EmojiRecordVec& vector, CodePointType type)
     {
 #if defined(__APPLE__)
         static_assert ((canSendEmojiOneOnMac() && canViewEmojiOneOnMac())
@@ -88,22 +102,23 @@ namespace Emoji
                        || (!canSendEmojiOneOnMac() && !canViewEmojiOneOnMac()), "invariant fail");
 #endif
         EmojiIndex index;
-        for (const auto& record : vector)
+        for (size_t i = 0; i < vector.size(); ++i)
         {
-            if (skipEmoji(record->baseCodePoints_))
+            const auto& record = vector[i];
+            if (skipEmoji(record.baseCodePoints_))
                 continue;
 
 #if defined(__APPLE__)
             if constexpr (useNativeEmoji())
             {
-                if (mac::isSkipEmojiFullCode(record->fullCodePoints))
+                if (mac::isSkipEmojiFullCode(record.fullCodePoints))
                     continue;
 
-                if (!mac::supportEmoji(record->fullCodePoints) && !canViewEmojiOneOnMac())
+                if (!mac::supportEmoji(record.fullCodePoints) && !canViewEmojiOneOnMac())
                     continue;
             }
 #endif
-            index.emplace(type == CodePointType::Full ? record->fullCodePoints : record->baseCodePoints_, record);
+            index.emplace(type == CodePointType::Full ? record.fullCodePoints : record.baseCodePoints_, i);
         }
         return index;
     }
@@ -147,40 +162,43 @@ namespace Emoji
 
         for (const auto& record : EmojiIndexByOrder_)
         {
-            if (skipEmoji(record->baseCodePoints_))
+            if (skipEmoji(record.baseCodePoints_))
                 continue;
 
-            if (containsSkinTone(record->baseCodePoints_)) // don't add skin tones to picker
+            if (containsSkinTone(record.baseCodePoints_)) // don't add skin tones to picker
                 continue;
 
-            if (containsWithGender(emojiIndexByBaseCodepoint_, record->baseCodePoints_))
+            if (containsWithGender(emojiIndexByBaseCodepoint_, record.baseCodePoints_))
                 continue;
 
-            if (isHairType(record->baseCodePoints_))
+            if (isHairType(record.baseCodePoints_))
                 continue;
 
-            if (record->Category_.isEmpty())
+            if (record.Category_.size() == 0)
                 continue;
 
 #if defined(__APPLE__)
             if constexpr (useNativeEmoji())
             {
-                if (mac::isSkipEmojiFullCode(record->fullCodePoints))
+                if (mac::isSkipEmojiFullCode(record.fullCodePoints))
                     continue;
 
-                if (!canSendEmojiOneOnMac() && !mac::supportEmoji(record->fullCodePoints) && !isSupported(record->FileName_))
+                if (!canSendEmojiOneOnMac() && !mac::supportEmoji(record.fullCodePoints) && !isSupported(record.FileName_))
                     continue;
             }
 #else
-            if (!isSupported(record->FileName_))
+            if (!isSupported(record.FileName_))
                 continue;
 #endif
 
-            const auto& category = record->Category_;
-            assert(!category.isEmpty());
+            const auto& category = record.Category_;
+            assert(category.size() > 0);
 
             auto& records = EmojiIndexByCategory_[category];
             records.push_back(record);
+
+            if (record.ShortName_.size() != 0)
+                flagEmojis_[record.ShortName_] = record.fullCodePoints;
         }
 
         for (auto& category : EmojiCategoriesOrder_)
@@ -199,36 +217,43 @@ namespace Emoji
             || std::as_const(emojiIndexByBaseCodepoint_).find(_code) != std::as_const(emojiIndexByBaseCodepoint_).end();
     }
 
-    const EmojiRecordSptr& GetEmojiInfoByCodepoint(const EmojiCode& _code)
+    const EmojiRecord& GetEmojiInfoByCodepoint(const EmojiCode& _code)
     {
         assert(!_code.isNull());
         assert(!emojiIndexByFullCodepoint_.empty() && !emojiIndexByBaseCodepoint_.empty());
 
         if (const auto iter = std::as_const(emojiIndexByFullCodepoint_).find(_code); iter != std::as_const(emojiIndexByFullCodepoint_).end())
-            return iter->second;
+            return EmojiIndexByOrder_[iter->second];
 
         if (const auto iter = std::as_const(emojiIndexByBaseCodepoint_).find(_code); iter != std::as_const(emojiIndexByBaseCodepoint_).end())
-            return iter->second;
+            return EmojiIndexByOrder_[iter->second];
 
-        static const EmojiRecordSptr EmptyEmoji;
-        return EmptyEmoji;
+        return EmojiRecord::invalid();
     }
 
-    const QVector<QString>& GetEmojiCategories()
+    const QVector<QLatin1String>& GetEmojiCategories()
     {
         assert(!EmojiCategories_.isEmpty());
 
         return EmojiCategories_;
     }
 
-    const EmojiRecordSptrVec& GetEmojiInfoByCategory(const QString& _category)
+    const EmojiRecordVec& GetEmojiInfoByCategory(QLatin1String _category)
     {
-        assert(!_category.isEmpty());
+        assert(_category.size() > 0);
 
         if (const auto iter = std::as_const(EmojiIndexByCategory_).find(_category); iter != std::as_const(EmojiIndexByCategory_).end())
             return iter->second;
 
-        static const EmojiRecordSptrVec empty;
+        static const EmojiRecordVec empty;
+        return empty;
+    }
+    const EmojiCode& GetEmojiInfoByCountryName(const QString& _country)
+    {
+        if (const auto iter = std::as_const(flagEmojis_).find(_country.toLower()); iter != std::as_const(flagEmojis_).end())
+            return iter->second;
+
+        static const EmojiCode empty;
         return empty;
     }
 }

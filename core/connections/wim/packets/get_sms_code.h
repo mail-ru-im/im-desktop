@@ -46,6 +46,7 @@ namespace core
             const std::string& get_trans_id() const {return trans_id_;}
             const std::string& get_ivr_url() const { return ivr_url_; }
             const std::string& get_checks() const { return checks_; }
+            bool is_valid() const override { return true; }
         };
 
         class get_code_by_phone_call : public wim_packet

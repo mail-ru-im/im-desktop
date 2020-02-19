@@ -33,6 +33,8 @@ namespace Ui
     class RecentItemDelegate;
     class RecentsPlaceholder;
 
+    using highlightsV = std::vector<QString>;
+
     class RCLEventFilter : public QObject
     {
         Q_OBJECT
@@ -62,17 +64,17 @@ namespace Ui
         Q_OBJECT
 
     Q_SIGNALS :
-        void itemSelected(const QString&, qint64 _message_id, qint64 _quote_id);
+        void itemSelected(const QString&, qint64 _message_id, const highlightsV& _highlights);
         void groupClicked(int);
         void tabChanged(int);
         void createGroupChatClicked();
         void createChannelClicked();
         void addContactClicked(QPrivateSignal);
         void topItemUpPressed(QPrivateSignal);
+        void needClearSearch();
 
     public Q_SLOTS:
-        void select(const QString&);
-        void select(const QString&, qint64 _message_id, qint64 _quote_id, Logic::UpdateChatSelection _mode);
+        void select(const QString& _aimId);
         void scrollToItem(const QString& _aimId, QAbstractItemView::ScrollHint _hint);
 
         void changeSelected(const QString& _aimId);
@@ -154,6 +156,7 @@ namespace Ui
         void connectSearchWidget(SearchWidget* _searchWidget);
 
         void highlightContact(const QString& _aimId);
+        void setNextSelectWithOffset();
 
     protected:
         virtual void resizeEvent(QResizeEvent* _event) override;
@@ -198,5 +201,6 @@ namespace Ui
         int prevTab_;
         bool tapAndHold_;
         bool pictureOnlyView_;
+        bool nextSelectWithOffset_;
     };
 }

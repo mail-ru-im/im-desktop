@@ -59,11 +59,12 @@ namespace Ui
         void clicked();
 
     public:
-        MyInfoPlate(QWidget* _parent, const QString& _iconPath, int _leftMargin = 0, const QString& _infoEmptyStr = QString(), Qt::Alignment _align = Qt::AlignTop, int _maxInfoLinesCount = -1, int _correctTopMargin = 0, int _correctBottomMargin = 0);
+        MyInfoPlate(QWidget* _parent, const QString& _iconPath, int _leftMargin = 0, const QString& _infoEmptyStr = QString(), Qt::Alignment _align = Qt::AlignTop, int _maxInfoLinesCount = -1, int _correctTopMargin = 0, int _correctBottomMargin = 0, bool _canRedo = true);
         void setHeader(const QString& header);
         void setInfo(const QString& info, const QString& prefix = QString());
         QString getInfoText() const;
         QString getInfoStr() const;
+        void setRedoAvailable(const bool _value) { redoAvailable_ = _value; };
 
     protected:
         void paintEvent(QPaintEvent* _event) override;
@@ -84,6 +85,7 @@ namespace Ui
         QPoint pos_;
         bool hovered_;
         bool pressed_;
+        bool redoAvailable_;
     };
 
     class MyProfilePage : public SidebarPage

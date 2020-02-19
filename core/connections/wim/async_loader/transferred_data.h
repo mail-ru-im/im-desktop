@@ -68,10 +68,9 @@ namespace core
                     auto file_info = additional_data_;
                     const auto& local_path = file_info->local_path_;
 
-                    content_.reset(new tools::binary_stream());
+                    content_ = std::make_shared<tools::binary_stream>();
 
-                    auto file = tools::system::open_file_for_read(local_path, std::ios::binary);
-                    if (file.good())
+                    if (auto file = tools::system::open_file_for_read(local_path, std::ios::binary); file.good())
                         content_->write(file);
                 }
 

@@ -32,7 +32,7 @@ const auto visitorInterval = 50;
 
 ImageVideoList::ImageVideoList(QWidget* _parent, MediaContentWidget::Type _type, const std::string& _mediaType)
     : MediaContentWidget(_type, _parent)
-    , visitor_(new ImageVideoItemVisitor())
+    , visitor_(new ImageVideoItemVisitor(this))
     , mediaType_(_mediaType)
 {
     setMouseTracking(true);

@@ -12,7 +12,9 @@ namespace Ui::MessageStyle
     QColor getSelectionFontColor();
     QColor getTextSelectionColor(const QString& _aimId = QString());
     QColor getSelectionColor();
+
     QColor getHighlightColor();
+    QColor getHighlightTextColor();
 
     QFont getSenderFont();
 
@@ -24,7 +26,7 @@ namespace Ui::MessageStyle
 
     int getBorderWidth();
 
-    QBrush getBodyBrush(const bool isOutgoing, const bool isSelected, const QString& _aimId);
+    QBrush getBodyBrush(const bool isOutgoing, const QString& _aimId);
 
     int32_t getMinBubbleHeight();
 
@@ -131,6 +133,8 @@ namespace Ui::MessageStyle
     int32_t getHiddenControlsShift();
     std::chrono::milliseconds getHiddenControlsAnimationTime();
 
+    int getMessageMaxWidth();
+
     namespace Preview
     {
         int32_t getImageHeightMax();
@@ -148,12 +152,30 @@ namespace Ui::MessageStyle
         QSize getMinPreviewSize(const Option _option);
         QSize getSmallPreviewSize(const Option _option);
         int32_t getSmallPreviewHorPadding();
+
+        enum class BottomLeftControls
+        {
+            NoButtons,
+            OneButton,
+            TwoButtons
+        };
+
+        int32_t timeWidgetLeftMargin();
+        int32_t showDownloadProgressThreshold();
+
+        // if media block's width is less than the threshold its max width will be equal to the threshold value
+        int32_t mediaBlockWidthStretchThreshold();
+
+        int32_t mediaCropThreshold();
+
+        int32_t getInternalBorderRadius();
+        int32_t getBorderRadius(bool _isStandalone);
     }
 
     namespace Snippet
     {
         QSize getFaviconPlaceholderSize();
-        QSize getFaviconSizeUnscaled();
+        QSize getFaviconSize();
         int32_t getLinkPreviewHeightMax();
         QSize getImagePreloaderSize();
         QColor getSiteNameColor();
@@ -167,6 +189,23 @@ namespace Ui::MessageStyle
         int32_t getSiteNameTopPadding();
         QFont getYoutubeTitleFont();
         QBrush getPreloaderBrush();
+
+        int32_t getMaxWidth();
+        int32_t getMinWidth();
+        QFont getTitleFont();
+        QFont getDescriptionFont();
+        QFont getLinkFont();
+        QColor getTitleColor();
+        QColor getDescriptionColor();
+        QColor getLinkColor(bool _isOutgoing);
+
+        int32_t getTitleTopPadding();
+        int32_t getDescriptionTopPadding();
+        int32_t getLinkTopPadding();
+        int32_t getLinkLeftPadding();
+        int32_t getHorizontalModeLinkTopPadding();
+        int32_t getHorizontalModeImageRightMargin();
+        int32_t getPreviewTopPadding();
     }
 
     namespace Quote
@@ -199,6 +238,7 @@ namespace Ui::MessageStyle
         QFont getShowInDirLinkFont();
         int32_t getCtrlIconLeftMargin();
         int32_t getFilenameLeftMargin();
+        int32_t getLinkTopMargin();
     }
 
     namespace Ptt

@@ -1,65 +1,54 @@
 #pragma once
 
-#include <QWidget>
-#include <QItemDelegate>
-
-class QCompleter;
-class QHBoxLayout;
-
 namespace Ui
 {
+    class LineEditEx;
 
-class LineEditEx;
+    class PhoneLineEdit : public QWidget
+    {
+        Q_OBJECT
 
+    public:
+        explicit PhoneLineEdit(QWidget *_parent = nullptr);
 
-class PhoneLineEdit: public QWidget
-{
-    Q_OBJECT
+        QCompleter* getCompleter();
+        LineEditEx* getPhoneNumberWidget();
+        LineEditEx* getCountryCodeWidget();
+        QString getFullPhone() const;
+        QString getPhone() const;
+        void resetInputs();
 
-public:
-    explicit PhoneLineEdit(QWidget *_parent = nullptr);
+        bool setPhone(const QString& _phone);
 
-    QCompleter* getCompleter();
-    LineEditEx* getPhoneNumberWidget();
-    LineEditEx* getCountryCodeWidget();
-    QString getFullPhone() const;
-    void resetInputs();
+    Q_SIGNALS:
+        void fullPhoneChanged(const QString& _phone);
 
-    bool setPhone(const QString& _phone);
+    private Q_SLOTS:
+        void onCountryCodeClicked();
+        void onCountryCodeChanged(const QString& _code);
 
-Q_SIGNALS:
-    void fullPhoneChanged(const QString& _phone);
+        void onPhoneChanged();
+        void onPhoneEmptyTextBackspace();
 
-private Q_SLOTS:
-    void onCountryCodeClicked();
-    void onCountryCodeChanged(const QString& _code);
+        void onAppDeactivated();
 
-    void onPhoneChanged();
-    void onPhoneEmptyTextBackspace();
+        void onFullPhoneNumber(const QString& _code, const QString& _number);
 
-    void onAppDeactivated();
+    private:
+        void focusOnPhoneWidget();
+        void setCountryCode(const QString& _code);
 
-private:
-    void focusOnPhoneWidget();
-    void setCountryCode(const QString& _code);
+    private:
+        LineEditEx* phoneNumber_;
+        LineEditEx* countryCode_;
+        QCompleter* completer_;
+    };
 
-private:
-    LineEditEx* phoneNumber_;
-    LineEditEx* countryCode_;
-    QCompleter* completer_;
+    class CountryCodeItemDelegate : public QItemDelegate
+    {
+    public:
+        CountryCodeItemDelegate(QObject *_parent = nullptr) : QItemDelegate(_parent) {}
 
-    QHBoxLayout* globalLayout_;
-};
-
-class CountryCodeItemDelegate: public QItemDelegate
-{
-public:
-    CountryCodeItemDelegate(QObject *_parent = nullptr);
-
-    QSize sizeHint(const QStyleOptionViewItem &option, const QModelIndex &index) const override;
-
-private:
-
-};
-
+        QSize sizeHint(const QStyleOptionViewItem &option, const QModelIndex &index) const override;
+    };
 }

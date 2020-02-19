@@ -32,6 +32,7 @@ namespace core
             token_type token_type_;
 
             std::string product_guid_8x_;
+            bool need_fill_profile_;
 
             virtual int32_t init_request(std::shared_ptr<core::http_request_simple> _request) override;
             virtual int32_t parse_response_data(const rapidjson::Value& _data) override;
@@ -49,6 +50,9 @@ namespace core
             const int64_t get_time_offset() const { return time_offset_; }
 
             void set_product_guid_8x(const std::string& _guid);
+
+            const bool get_need_fill_profile() const { return need_fill_profile_; }
+            bool is_valid() const override { return true; }
 
         public:
 

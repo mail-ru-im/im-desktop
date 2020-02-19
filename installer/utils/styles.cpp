@@ -13,47 +13,47 @@ namespace installer
 				QString out_string;
 				QTextStream result(&out_string);
 
-				auto tokens =  _style.split(QRegExp("\\;"));
+				const auto tokens =  _style.split(QRegExp(ql1s("\\;")));
 
-				for (auto iter_line = tokens.begin(); iter_line != tokens.end(); iter_line++)
+				for (auto iter_line = tokens.begin(); iter_line != tokens.end(); ++iter_line)
 				{
 					if (iter_line != tokens.begin())
 						result << ";";
 
-					int pos = iter_line->indexOf(QRegExp("[\\-\\d]\\d*dip"));
+					int pos = iter_line->indexOf(QRegExp(ql1s("[\\-\\d]\\d*dip")));
 
 					if (pos != -1)
 					{
-						result << iter_line->left(pos);
-						QString tmp = iter_line->mid(pos, iter_line->right(pos).length());
-						int size = dpi::scale(QVariant(tmp.left(tmp.indexOf("dip"))).toInt());
-												
-						result << QVariant(size).toString();
+						result << iter_line->leftRef(pos);
+						const auto tmp = iter_line->midRef(pos, iter_line->rightRef(pos).size());
+						const int size = dpi::scale(tmp.left(tmp.indexOf(ql1s("dip"))).toInt());
+
+						result << size;
 						result << "px";
 					}
 					else
 					{
-						pos = iter_line->indexOf("_100");
+						pos = iter_line->indexOf(ql1s("_100"));
 						if (pos != -1)
 						{
-							result << iter_line->left(pos);
-							result << "_";
+							result << iter_line->leftRef(pos);
+							result << '_';
 
-							result << QVariant(dpi::scale(1.0) * 100).toString();
-							
-							result << iter_line->mid(pos + 4, iter_line->length());
+							result << dpi::scale(1.0) * 100;
+
+							result << iter_line->midRef(pos + 4, iter_line->size());
 						}
 						else
 						{
-							pos = iter_line->indexOf("/100/");
+							pos = iter_line->indexOf(ql1s("/100/"));
 							if (pos != -1)
 							{
-								result << iter_line->left(pos);
-								result << "/";
-								result << QVariant(dpi::scale(1.0) * 100).toString();
-								
-								result << "/";
-								result << iter_line->mid(pos + 5, iter_line->length());
+								result << iter_line->leftRef(pos);
+								result << '/';
+								result << dpi::scale(1.0) * 100;
+
+								result << '/';
+								result << iter_line->midRef(pos + 5, iter_line->size());
 							}
 							else
 							{
@@ -73,23 +73,21 @@ namespace installer
 				if (!file.open(QIODevice::ReadOnly))
 				{
 					assert(!"open style file error");
-					return "";
+                    return QString();
 				}
 
-				QString qss = file.readAll();
-				if (qss.isEmpty())
-				{
-					return "";
-				}
+				QString qss = QString::fromUtf8(file.readAll());
+                if (qss.isEmpty())
+                    return QString();
 
 				QString out_string;
 				QTextStream result(&out_string);
 
-				QString font_family = "\"Segoe UI\"";
+				QString font_family = qsl("\"Segoe UI\"");
 				if (QSysInfo().windowsVersion() < QSysInfo::WV_VISTA)
-					font_family = "Arial";
+					font_family = qsl("Arial");
 
-				result << scale_style(qss.replace("%FONT_FAMILY%", font_family));
+				result << scale_style(qss.replace(ql1s("%FONT_FAMILY%"), font_family));
 
 				return out_string;
 

@@ -9,6 +9,8 @@ namespace Emoji
 
 namespace Ui
 {
+    using highlightsV = std::vector<QString>;
+
     class HistoryControl;
     class HistoryControlPage;
     class InputWidget;
@@ -31,7 +33,7 @@ namespace Ui
         Q_OBJECT
 
     public Q_SLOTS:
-        void onContactSelected(const QString& _aimId, qint64 _messageId, qint64 _quoteId);
+        void onContactSelected(const QString& _aimId, qint64 _messageId, const highlightsV& _highlights);
         void onContactSelectedToLastMessage(const QString& _aimId, qint64 _messageId);
 
         void onSmilesMenu(const bool _fromKeyboard = false);
@@ -44,12 +46,12 @@ namespace Ui
         void updateDragOverlay();
         void historyControlClicked();
         void inputTyped();
-        void onSuggestShow(const QString _text, const QPoint _pos);
+        void onSuggestShow(const QString& _text, const QPoint& _pos);
         void onSuggestHide();
-        void suggestedStickerSelected(qint32 _setId, const QString& _stickerId);
+        void suggestedStickerSelected(const QString& _stickerId);
 
     Q_SIGNALS:
-        void contactSelected(const QString& _aimId, qint64 _messageId, qint64 _quoteId) const;
+        void contactSelected(const QString& _aimId, qint64 _messageId, const highlightsV& _highlights) const;
         void contactSelectedToLastMessage(const QString& _aimId, qint64 _messageId) const;
 
         void sendMessage(const QString&) const;
@@ -67,6 +69,7 @@ namespace Ui
         QMap<QString, QWidget*> topWidgetsCache_;
         Stickers::StickersSuggest* suggestsWidget_;
         FrameCountMode frameCountMode_;
+        bool suggestWidgetShown_;
 
         void initTopWidget();
         void initSmilesMenu();
@@ -76,6 +79,8 @@ namespace Ui
 
         void insertTopWidget(const QString& _aimId, QWidget* _widget);
         void removeTopWidget(const QString& _aimId);
+
+        void sendSuggestedStickerStats(const QString& _stickerId);
 
     public:
         explicit ContactDialog(QWidget* _parent);
@@ -106,12 +111,15 @@ namespace Ui
         bool isReplyingToMessage() const;
         bool isRecordingPtt() const;
         bool isPttRecordingHold() const;
+        bool isPttRecordingHoldByKeyboard() const;
+        bool isPttRecordingHoldByMouse() const;
+        bool tryPlayPttRecord();
+        bool tryPausePttRecord();
 
         void closePttRecording();
         void sendPttRecord();
         void stopPttRecord();
         void startPttRecordingLock();
-        void startPttRecordingHold();
         void dropReply();
 
         bool isPasteEnabled() const;

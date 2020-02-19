@@ -1,5 +1,5 @@
 #pragma once
-#include "TextRendering.h"
+#include "textrendering/TextRendering.h"
 
 namespace Styling
 {
@@ -8,6 +8,10 @@ namespace Styling
 
 namespace Ui
 {
+    using highlightsV = std::vector<QString>;
+
+    QString getEllipsis();
+
     namespace TextRendering
     {
         class TextUnit
@@ -106,12 +110,17 @@ namespace Ui
 
             void setColor(const QColor& _color);// set text color
             void setColor(const Styling::StyleVariable _var, const QString& _aimid = QString());
+            void setLinkColor(const QColor& _color);
             void setSelectionColor(const Styling::StyleVariable _var, const QString& _aimid = QString());
             void setSelectionColor(const QColor _color);
+
+            void setHighlightedTextColor(const QColor& _color); // set color for highlighted text
 
             [[nodiscard]] QColor getColor() const;// get text color
 
             [[nodiscard]] HorAligment getAlign() const; // get text alignment
+
+            void setAlign(HorAligment _align);
 
             void setColorForAppended(const QColor& _color);//set text color for appended blocks
 
@@ -128,6 +137,7 @@ namespace Ui
             [[nodiscard]] bool sourceModified() const;//check source text is modified; f.e. markdown() modifies source text
 
             void setHighlighted(const bool _isHighlighted); // set all word highlighted attribute
+            void setHighlighted(const highlightsV& _entries); // set all matching words and word-parts highlighted
 
             void setUnderline(const bool _enabled); //set underline
 
@@ -157,11 +167,13 @@ namespace Ui
             QColor linkColor_;
             QColor selectionColor_;
             QColor highlightColor_;
+            QColor highlightTextColor_;
             QSize cachedSize_;
             HorAligment align_;
             int maxLinesCount_;
             int appended_;
             LineBreakType lineBreak_;
+            LinksStyle linksStyle_;
             int lineSpacing_;
             bool sourceModified_;
             bool needsEmojiMargin_;

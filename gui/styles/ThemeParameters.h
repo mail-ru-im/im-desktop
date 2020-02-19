@@ -18,7 +18,9 @@ namespace Styling
         ThemeParameters(ThemePtr _theme, WallpaperPtr _wall) : theme_(_theme), wallpaper_(_wall) { assert(_theme); }
 
         [[nodiscard]] QColor getColor(const StyleVariable _var) const;
+        [[nodiscard]] QColor getColor(const StyleVariable _var, double alpha) const;
         [[nodiscard]] QString getColorHex(const StyleVariable _var) const; // get color string in #AARRGGBB format
+        [[nodiscard]] QString getColorHex(const StyleVariable _var, double alpha) const; // get color string in #AARRGGBB format
 
         [[nodiscard]] bool isChatWallpaperPlainColor() const;
         [[nodiscard]] QColor getChatWallpaperPlainColor() const;
@@ -32,6 +34,7 @@ namespace Styling
         [[nodiscard]] QString getBackgroundCommonQss() const;
 
         [[nodiscard]] QString getLineEditCommonQss(bool _isError = false, int _height = 48) const;
+        [[nodiscard]] QString getTextLineEditCommonQss(bool _isError = false, int _height = 48) const;
         [[nodiscard]] QString getLineEditDisabledQss(int _height = 48) const;
         [[nodiscard]] QString getLineEditCustomQss(const QColor& _lineFocusColor, const QColor& _lineNoFocusColor = Qt::transparent, int _height = 48) const;
 
@@ -39,6 +42,7 @@ namespace Styling
         [[nodiscard]] QString getTextEditBadQss() const;
 
         [[nodiscard]] QString getContextMenuQss(int _itemHeight, int _paddingLeft, int _paddingRight, int _paddingIcon) const;
+        [[nodiscard]] QString getContextMenuDarkQss(int _itemHeight, int _paddingLeft, int _paddingRight, int _paddingIcon) const;
 
         [[nodiscard]] QString getStickersQss() const;
         [[nodiscard]] QString getSmilesQss() const;
@@ -48,7 +52,6 @@ namespace Styling
         [[nodiscard]] QString getContactUsQss() const;
         [[nodiscard]] QString getComboBoxQss() const;
 
-        [[nodiscard]] QString getContactListQss() const;
         [[nodiscard]] QString getTitleQss() const;
         [[nodiscard]] QString getLoginPageQss() const;
 

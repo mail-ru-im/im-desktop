@@ -8,7 +8,7 @@
 #include "../controls/TextEditEx.h"
 #include "../utils/log/log.h"
 #include "../utils/SChar.h"
-#include "../app_config.h"
+#include "../url_config.h"
 
 namespace
 {
@@ -304,7 +304,7 @@ namespace
     Text2DocConverter::Text2DocConverter()
         : HtmlMode_(Text2DocHtmlMode::Pass)
         , MakeUniqResources_(false)
-        , parser_(Ui::GetAppConfig().getUrlFilesGet())
+        , parser_(Ui::getUrlConfig().getUrlFilesParser().toStdString())
     {
         // allow downsizing without reallocation
         const auto DEFAULT_SIZE = 1024;

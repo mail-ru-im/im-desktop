@@ -1,13 +1,16 @@
 #pragma once
 
 #include "animation/animation.h"
+#include "TextUnit.h"
+#include "ClickWidget.h"
 
 namespace Ui
 {
     enum class ButtonShape
     {
         RECTANGLE,
-        CIRCLE
+        CIRCLE,
+        ROUNDED_RECTANGLE
     };
 
     class CustomButton : public QAbstractButton
@@ -32,6 +35,7 @@ namespace Ui
 
         void setBackgroundColor(const QColor& _color);
         void setTextColor(const QColor& _color);
+        void setNormalTextColor(const QColor& _color);
         void setHoveredTextColor(const QColor& _color);
         void setPressedTextColor(const QColor& _color);
 
@@ -48,6 +52,7 @@ namespace Ui
         void setActiveImage(const QString& _svgPath,   const QColor& _color = QColor(), const QSize& _size = QSize());
         void setDisabledImage(const QString& _svgPath, const QColor& _color = QColor(), const QSize& _size = QSize());
         void setPressedImage(const QString& _svgPath,  const QColor& _color = QColor(), const QSize& _size = QSize());
+        void clearIcon();
 
         void setCustomToolTip(const QString& _toopTip);
         const QString& getCustomToolTip() const;
@@ -59,6 +64,7 @@ namespace Ui
         void setTextAlignment(const Qt::Alignment _flags);
         void setTextLeftOffset(const int _offset);
 
+        void forceHover(bool _force);
         void setFocusColor(const QColor& _color);
 
     protected:
@@ -94,6 +100,7 @@ namespace Ui
 
         QColor bgColor_;
         QColor textColor_;
+        QColor textColorNormal_;
         QColor textColorHovered_;
         QColor textColorPressed_;
         Qt::Alignment textAlign_;
@@ -115,12 +122,50 @@ namespace Ui
         bool active_;
         bool hovered_;
         bool pressed_;
+        bool forceHover_;
 
         QRect bgRect_;
         ButtonShape shape_;
 
         QColor focusColor_;
         anim::Animation animFocus_;
+    };
+
+    class RoundButton : public ClickableWidget
+    {
+    public:
+        RoundButton(QWidget* _parent, int _radius = 0);
+
+        void setColors(const QColor& _bgNormal, const QColor& _bgHover = QColor(), const QColor& _bgActive = QColor());
+
+        void setTextColor(const QColor& _color);
+        void setText(const QString& _text, int _size = 12);
+        void setIcon(const QString& _iconPath, int _size = 0);
+        void setIcon(const QPixmap& _icon);
+
+        void forceHover(bool _force);
+
+        int textDesiredWidth() const;
+
+    protected:
+        void paintEvent(QPaintEvent*) override;
+        void resizeEvent(QResizeEvent* _event) override;
+
+    private:
+        QColor getBgColor() const;
+
+    private:
+        QPixmap icon_;
+        TextRendering::TextUnitPtr text_;
+        QPainterPath bubblePath_;
+
+        QColor bgNormal_;
+        QColor bgHover_;
+        QColor bgActive_;
+        QColor textColor_;
+
+        bool forceHover_;
+        int radius_;
     };
 }
 

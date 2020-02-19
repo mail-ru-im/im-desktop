@@ -29,9 +29,6 @@ namespace Emoji
         return { std::forward<Types>(t)... };
     }
 
-    QString migration(const std::string&);
-
-
     class EmojiCode
     {
     public:
@@ -175,11 +172,6 @@ namespace Emoji
                     result += _delimiter;
             }
             return result;
-        }
-
-        static EmojiCode unserialize(const std::string& str) noexcept
-        {
-            return fromQString(migration(str));
         }
 
         static EmojiCode unserialize2(const QStringRef& str) noexcept

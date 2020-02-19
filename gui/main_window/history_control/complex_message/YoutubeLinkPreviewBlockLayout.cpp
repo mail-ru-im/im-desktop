@@ -26,15 +26,6 @@ QLayout* YoutubeLinkPreviewBlockLayout::asQLayout()
     return this;
 }
 
-const IItemBlockLayout::IBoxModel& YoutubeLinkPreviewBlockLayout::getBlockBoxModel() const
-{
-    static const BoxModel boxModel(
-        true,
-        MessageStyle::getDefaultBlockBubbleMargins());
-
-    return boxModel;
-}
-
 QSize YoutubeLinkPreviewBlockLayout::getMaxPreviewSize() const
 {
     return QSize(
@@ -197,14 +188,12 @@ QRect YoutubeLinkPreviewBlockLayout::evaluateSiteNameGeometry(const LinkPreviewB
     const auto &siteName = block.getSiteName();
     if (!siteName.isEmpty())
     {
-        QFontMetrics m(block.getSiteNameFont());
+        QFontMetrics m(MessageStyle::Snippet::getSiteNameFont());
 
         siteNameSize = m.tightBoundingRect(siteName).size();
 
         if (hasTextAbove)
-        {
             siteNameY -= siteNameSize.height();
-        }
     }
     else if (block.isInPreloadingState())
     {
@@ -250,14 +239,21 @@ int32_t YoutubeLinkPreviewBlockLayout::evaluateWidgetHeight(
     auto siteNameBottom = (siteNameGeometry.bottom() + 1);
 
     const auto hasSiteName = !siteNameGeometry.isEmpty();
-    const auto applyBaselineFix = (hasSiteName && !isPlaceholder);
-    if (applyBaselineFix)
+    if (hasSiteName)
     {
-        // an approximation of the gap between font baseline and font bottom line
-        siteNameBottom += (siteNameGeometry.height() / 3);
+        const auto applyBaselineFix = (hasSiteName && !isPlaceholder);
+        if (applyBaselineFix)
+        {
+            // an approximation of the gap between font baseline and font bottom line
+            siteNameBottom += (siteNameGeometry.height() / 3);
+        }
+        bottom = std::max(bottom, siteNameBottom);
+    }
+    else
+    {
+        bottom = std::max(bottom, TitleGeometry_.bottom() + 1);
     }
 
-    bottom = std::max(bottom, siteNameBottom);
 
     auto top = previewImageGeometry.top();
 

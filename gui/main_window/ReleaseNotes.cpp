@@ -61,7 +61,7 @@ ReleaseNotesWidget::ReleaseNotesWidget(QWidget *_parent)
 
     layout->addSpacing(titleTopMargin());
 
-    auto titleLayout = Utils::emptyHLayout(this);
+    auto titleLayout = Utils::emptyHLayout();
     auto title = new TextWidget(this, QT_TRANSLATE_NOOP("release_notes", "What's new"));
     title->init(Fonts::appFontScaled(22, Fonts::FontWeight::SemiBold), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
     titleLayout->addSpacing(leftMargin());
@@ -81,9 +81,12 @@ ReleaseNotesWidget::ReleaseNotesWidget(QWidget *_parent)
     text->init(Fonts::appFontScaled(15, Fonts::FontWeight::Normal), MessageStyle::getTextColor());
 
     auto scrollAreaContent = new QWidget(scrollArea);
-    auto scrollAreaContentLayout = Utils::emptyHLayout(scrollAreaContent);
+    auto scrollAreaContentLayout = Utils::emptyVLayout(scrollAreaContent);
+    auto textLayout = Utils::emptyHLayout(scrollAreaContent);
     Testing::setAccessibleName(text, qsl("AS rn text"));
-    scrollAreaContentLayout->addWidget(text);
+    textLayout->addWidget(text);
+    scrollAreaContentLayout->addLayout(textLayout);
+    scrollAreaContentLayout->addStretch();
     scrollAreaContent->setLayout(scrollAreaContentLayout);
     scrollAreaContent->setStyleSheet(qsl("background-color: %1").arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE)));
 

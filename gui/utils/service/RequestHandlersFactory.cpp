@@ -4,10 +4,12 @@
 #include "ServiceRequest.h"
 #include "SendLogsToServerRequest.h"
 #include "SendLogsToUinRequest.h"
+#include "InternalServiceRequest.h"
 
 #include "RequestHandler.h"
 #include "SendLogsToServerHandler.h"
 #include "SendLogsToUinHandler.h"
+#include "InternalServiceHandler.h"
 
 
 namespace Utils
@@ -38,6 +40,15 @@ RequestHandler* RequestHandlersFactory::handlerForRequest(ServiceRequest *_reque
             return nullptr;
 
         return new SendLogsToServerHandler(toServerRequest);
+    }
+        break;
+    case ServiceRequest::Type::Internal:
+    {
+        auto internalRequest = dynamic_cast<InternalServiceRequest *>(_request);
+        assert(internalRequest);
+        if (!internalRequest)
+            return nullptr;
+        return new InternalServiceHandler(internalRequest);
     }
         break;
     default:

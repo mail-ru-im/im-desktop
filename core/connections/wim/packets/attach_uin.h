@@ -29,7 +29,7 @@ namespace core
         public:
 
             attach_uin(wim_packet_params _from_params, wim_packet_params _to_params);
-
+            bool is_valid() const override { return true; }
             virtual ~attach_uin();
         };
 

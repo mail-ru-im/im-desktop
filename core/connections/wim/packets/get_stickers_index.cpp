@@ -50,7 +50,7 @@ int32_t get_stickers_index::init_request(std::shared_ptr<core::http_request_simp
 
     params["client"] = core::utils::get_client_string();
 
-    params["lang"] = g_core->get_locale();
+    params["lang"] = params_.locale_;
 
     auto sha256 = escape_symbols(get_url_sign(ss_host.str(), params, params_, false));
     params["sig_sha256"] = std::move(sha256);

@@ -1,14 +1,17 @@
 #pragma once
 
-#include <QtCore/QEasingCurve>
 #include "history/History.h"
 #include "styles/WallpaperId.h"
 #include "../../types/chat.h"
 #include "../../types/typing.h"
 #include "../../controls/TextUnit.h"
-#include "../../../corelib/enumerations.h"
 
 Q_DECLARE_LOGGING_CATEGORY(historyPage)
+
+namespace Data
+{
+    class SmartreplySuggest;
+}
 
 namespace Logic
 {
@@ -60,7 +63,12 @@ namespace Ui
     class ClickableTextWidget;
     class ConnectionWidget;
     class TypingWidget;
+    class SmartReplyWidget;
+    class ShowHideButton;
+    class ContactAvatarWidget;
     enum class ConnectionState;
+
+    using highlightsV = std::vector<QString>;
 
     struct InsertHistMessagesParams;
 
@@ -77,6 +85,7 @@ namespace Ui
         ~OverlayTopChatWidget();
 
         void setBadgeText(const QString& _text);
+        void setPosition(const QPoint& _pos);
 
     protected:
         void paintEvent(QPaintEvent* _event) override;
@@ -84,6 +93,7 @@ namespace Ui
     private:
         QString text_;
         TextRendering::TextUnitPtr textUnit_;
+        QPoint pos_;
     };
 
     class TopWidget : public QStackedWidget
@@ -197,6 +207,7 @@ namespace Ui
         void updateMembers();
 
         void switchToPrevDialog(const bool _byKeyboard, QPrivateSignal) const;
+        void lastMsgId(const qint64 _msgId) const;
 
     public Q_SLOTS:
         void scrollMovedToBottom();
@@ -215,6 +226,7 @@ namespace Ui
 
     private Q_SLOTS:
         void searchButtonClicked();
+        void pendingButtonClicked();
         void callVideoButtonClicked();
         void callAudioButtonClicked();
         void moreButtonClicked();
@@ -239,12 +251,19 @@ namespace Ui
         void onNewMessagesReceived(const QVector<qint64>&);
 
         void contactChanged(const QString&);
+        void onChatRoleChanged(const QString&);
         void removeWidget(const Logic::MessageKey&);
 
         void copy(const QString&);
         void quoteText(const Data::QuotesVec&);
         void forwardText(const Data::QuotesVec&);
         void pin(const QString& _chatId, const int64_t _msgId, const bool _isUnpin = false);
+
+        void multiselectDelete();
+        void multiselectChanged();
+        void multiselectCopy();
+        void multiselectReply();
+        void multiselectForward(QString);
 
         void edit(
             const int64_t _msgId,
@@ -253,14 +272,20 @@ namespace Ui
             const QString& _text,
             const Data::MentionMap& _mentions,
             const Data::QuotesVec& _quotes,
-            qint32 _time);
+            qint32 _time,
+            const Data::FilesPlaceholderMap& _files,
+            MediaType _mediaType);
 
         void editWithCaption(
             const int64_t _msgId,
             const QString& _internalId,
             const common::tools::patch_version& _patchVersion,
             const QString& _url,
-            const QString& _description);
+            const QString& _description,
+            const Data::QuotesVec& _quotes,
+            qint32 _time,
+            const Data::FilesPlaceholderMap& _files,
+            MediaType _mediaType);
 
         void pressedDestroyed();
         void onItemLayoutChanged();
@@ -288,6 +313,9 @@ namespace Ui
         void mentionMe(const QString& _contact, Data::MessageBuddySptr _mention);
         void onMentionRead(const qint64 _messageId);
 
+        void groupSubscribe();
+        void groupSubscribeResult(int _error, int _resubscribeIn);
+
         void onNeedUpdateRecentsText();
         void hideHeads();
         void mentionHeads(const QString& _aimId, const QString& _friendly);
@@ -312,6 +340,8 @@ namespace Ui
         };
 
         void initFor(qint64 _id, hist::scroll_mode_type _type, FirstInit _firstInit = FirstInit::No);
+        void resetMessageHighlights();
+        void setHighlights(const highlightsV& _highlights);
 
         void updateState(bool);
         std::optional<qint64> getNewPlateId() const;
@@ -328,6 +358,7 @@ namespace Ui
         bool touchScrollInProgress() const;
         void updateWidgetsTheme();
         void updateTopPanelStyle();
+        void updateSmartreplyStyle();
 
         void showMainTopPanel();
 
@@ -370,6 +401,18 @@ namespace Ui
         QWidget* getTopWidget() const;
 
         bool hasMessageUnderCursor() const;
+
+        int getMessagesAreaHeight() const;
+
+        qint64 getLastMsgId() const { return dlgState_.LastMsgId_; };
+        void setFocusOnArea();
+        void clearPartialSelection();
+
+        void showSmartreplies();
+        void hideSmartreplies();
+        bool isSmartrepliesVisible() const;
+        void showSmartrepliesButton();
+        void hideSmartrepliesButton();
 
     protected:
         void focusOutEvent(QFocusEvent* _event) override;
@@ -426,6 +469,8 @@ namespace Ui
 
         bool isInBackground() const;
 
+        void updatePendingButtonPosition();
+
         class PositionInfo;
 
         Styling::WallpaperId wallpaperId_;
@@ -436,6 +481,8 @@ namespace Ui
         enum class WidgetRemovalResult;
 
         TypingWidget* typingWidget_;
+        SmartReplyWidget* smartreplyWidget_;
+        ShowHideButton* smartreplyButton_;
 
         void initStatus();
         void showStrangerIfNeeded();
@@ -469,6 +516,13 @@ namespace Ui
 
         QRect getScrollAreaGeometry() const;
 
+        void onSmartreplies(const std::vector<Data::SmartreplySuggest>& _suggests);
+        void hideAndClearSmartreplies();
+        void clearSmartrepliesForMessage(const qint64 _msgId);
+        bool canShowSmartreplies() const;
+        void onSmartreplyButtonClicked();
+        void onSmartreplyHide();
+
         bool isContactStatusClickable_;
         bool isMessagesRequestPostponed_;
         bool isMessagesRequestPostponedDown_;
@@ -482,6 +536,7 @@ namespace Ui
         QWidget* prevChatButtonWidget_;
         CustomButton* searchButton_;
         CustomButton* addMemberButton_;
+        CustomButton* pendingButton_;
         CustomButton* callButton_;
         CustomButton* videoCallButton_;
         QWidget* buttonsWidget_;
@@ -497,6 +552,7 @@ namespace Ui
         std::list<ItemData> itemsData_;
         TopWidget* topWidget_;
         OverlayTopChatWidget* overlayTopChatWidget_;
+        OverlayTopChatWidget* overlayPendings_;
         MentionCompleter* mentionCompleter_;
         PinnedMessageWidget* pinnedWidget_;
         ConnectionWidget* connectionWidget_;
@@ -516,7 +572,6 @@ namespace Ui
         void startHideButtonDown();
 
         QTimer* buttonDownTimer_;
-        QEasingCurve buttonDownCurve_;
         bool isFetchBlocked_;
         bool isPageOpen_;
 
@@ -536,6 +591,7 @@ namespace Ui
         QTimer* typedTimer_;
         QTimer* lookingTimer_;
         QTimer* mentionTimer_;
+        QTimer* groupSubscribeTimer_;
         QString lookingId_;
         bool chatscrBlockbarActionTracked_;
 
@@ -545,6 +601,8 @@ namespace Ui
         hist::MessageReader* reader_;
         hist::History* history_;
 
+        highlightsV highlights_;
+
         HistoryControl* control_;
 
         QMetaObject::Connection connectMessageBuddies_;
@@ -553,6 +611,7 @@ namespace Ui
         bool isChatCreator_;
         qint64 requestWithLoaderSequence_;
         QString requestWithLoaderAimId_;
+        ContactAvatarWidget* avatar_;
 
         friend class MessagesWidgetEventFilter;
     };

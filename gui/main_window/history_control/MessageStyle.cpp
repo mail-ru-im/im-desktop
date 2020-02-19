@@ -6,6 +6,8 @@
 
 #include "../../utils/utils.h"
 
+#include "../../utils/InterConnector.h"
+
 #include "styles/ThemeParameters.h"
 
 namespace
@@ -78,20 +80,21 @@ namespace Ui::MessageStyle
         return Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_RAINBOW_WARNING);
     }
 
+    QColor getHighlightTextColor()
+    {
+        return Styling::getParameters().getColor(Styling::StyleVariable::GHOST_PRIMARY);
+    }
+
     QFont getSenderFont()
     {
-        if constexpr (platform::is_apple())
-            return Fonts::adjustedAppFont(senderFontSize(), Fonts::FontWeight::SemiBold);
-        else
-            return Fonts::adjustedAppFont(senderFontSize(), Fonts::FontWeight::Normal);
+        static const auto fontWeight = platform::is_apple() ? Fonts::FontWeight::SemiBold : Fonts::FontWeight::Normal;
+        return Fonts::adjustedAppFont(senderFontSize(), fontWeight);
     }
 
     QFont getQuoteSenderFont()
     {
-        if constexpr (platform::is_apple())
-            return Fonts::adjustedAppFont(senderFontSize(), Fonts::FontWeight::Medium);
-        else
-            return Fonts::adjustedAppFont(senderFontSize(), Fonts::FontWeight::Normal);
+        static const auto fontWeight = platform::is_apple() ? Fonts::FontWeight::Medium : Fonts::FontWeight::Normal;
+        return Fonts::adjustedAppFont(senderFontSize(), fontWeight);
     }
 
     QFont getQuoteSenderFontMarkdown()
@@ -109,9 +112,13 @@ namespace Ui::MessageStyle
         return Utils::scale_value(1);
     }
 
-    QBrush getBodyBrush(const bool _isOutgoing, const bool _isSelected, const QString& _aimId)
+    QBrush getBodyBrush(const bool _isOutgoing, const QString& _aimId)
     {
-        return Styling::getParameters(_aimId).getColor(_isSelected ? Styling::StyleVariable::PRIMARY : (_isOutgoing ? Styling::StyleVariable::CHAT_SECONDARY : Styling::StyleVariable::CHAT_PRIMARY));
+        auto color = Styling::getParameters(_aimId).getColor(_isOutgoing ? Styling::StyleVariable::CHAT_SECONDARY : Styling::StyleVariable::CHAT_PRIMARY);
+        if (Utils::InterConnector::instance().isMultiselect())
+            color.setAlpha(255 * 0.95);
+
+        return color;
     }
 
     int32_t getMinBubbleHeight()
@@ -136,7 +143,7 @@ namespace Ui::MessageStyle
 
     int32_t getRightBubbleMargin()
     {
-        return Utils::scale_value(32);
+        return Utils::scale_value(32) + (Utils::InterConnector::instance().multiselectAnimationCurrent() * Utils::scale_value(8) / 100.0);
     }
 
     int32_t getLeftBubbleMargin()
@@ -441,6 +448,11 @@ namespace Ui::MessageStyle
         return Utils::scale_value(50);
     }
 
+    int getMessageMaxWidth()
+    {
+        return Utils::scale_value(600);
+    }
+
     namespace Preview
     {
         int32_t getImageHeightMax()
@@ -492,18 +504,52 @@ namespace Ui::MessageStyle
         {
             return Utils::scale_value(8);
         }
+
+        int32_t showDownloadProgressThreshold()
+        {
+            return Utils::scale_value(168);
+        }
+
+        int32_t mediaBlockWidthStretchThreshold()
+        {
+            return Utils::scale_value(286);
+        }
+
+        int32_t timeWidgetLeftMargin()
+        {
+            return Utils::scale_value(8);
+        }
+
+        int32_t getBorderRadius(bool _isStandalone)
+        {
+            if (_isStandalone)
+                return MessageStyle::getBorderRadius();
+            else
+                return getInternalBorderRadius();
+        }
+
+        int32_t getInternalBorderRadius()
+        {
+            return Utils::scale_value(8);
+        }
+
+        int32_t mediaCropThreshold()
+        {
+            return Utils::scale_value(24);
+        }
+
     }
 
     namespace Snippet
     {
         QSize getFaviconPlaceholderSize()
         {
-            return QSize(12, 12);
+            return QSize(16, 16);
         }
 
-        QSize getFaviconSizeUnscaled()
+        QSize getFaviconSize()
         {
-            return QSize(12, 12);
+            return Utils::scale_value(QSize(16, 16));
         }
 
         QSize getImagePreloaderSize()
@@ -587,6 +633,85 @@ namespace Ui::MessageStyle
 
             return result;
         }
+
+        int32_t getMaxWidth()
+        {
+            return Utils::scale_value(360);
+        }
+
+        int32_t getMinWidth()
+        {
+            return Utils::scale_value(268);
+        }
+
+        QFont getTitleFont()
+        {
+            return adjustedAppFont(15, Fonts::FontWeight::SemiBold);
+        }
+
+        QFont getDescriptionFont()
+        {
+            return adjustedAppFont(15, Fonts::FontWeight::Normal);
+        }
+
+        QFont getLinkFont()
+        {
+            return adjustedAppFont(13, Fonts::FontWeight::Medium);
+        }
+
+        QColor getTitleColor()
+        {
+            return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID);
+        }
+
+        QColor getDescriptionColor()
+        {
+            return Styling::getParameters().getColor(Styling::StyleVariable::GHOST_PRIMARY_INVERSE_ACTIVE);
+        }
+
+        QColor getLinkColor(bool _isOutgoing)
+        {
+            return Styling::getParameters().getColor(_isOutgoing ? Styling::StyleVariable::PRIMARY_PASTEL : Styling::StyleVariable::BASE_PRIMARY);
+        }
+
+        int32_t getTitleTopPadding()
+        {
+            if constexpr (platform::is_apple())
+                return Utils::scale_value(10);
+            else
+                return Utils::scale_value(8);
+        }
+
+        int32_t getDescriptionTopPadding()
+        {
+            return Utils::scale_value(4);
+        }
+
+        int32_t getLinkTopPadding()
+        {
+            return Utils::scale_value(10);
+        }
+
+        int32_t getLinkLeftPadding()
+        {
+            return Utils::scale_value(8);
+        }
+
+        int32_t getHorizontalModeLinkTopPadding()
+        {
+            return Utils::scale_value(8);
+        }
+
+        int32_t getHorizontalModeImageRightMargin()
+        {
+            return Utils::scale_value(12);
+        }
+
+        int32_t getPreviewTopPadding()
+        {
+            return Utils::scale_value(4);
+        }
+
     }
 
     namespace Quote
@@ -708,6 +833,15 @@ namespace Ui::MessageStyle
         {
             return Utils::scale_value(12);
         }
+
+        int32_t getLinkTopMargin()
+        {
+            if constexpr (platform::is_apple())
+                return Utils::scale_value(12);
+            else
+                return Utils::scale_value(8);
+        }
+
     }
 
     namespace Ptt

@@ -147,7 +147,7 @@ LocalPINWidget::LocalPINWidget(LocalPINWidget::Mode _mode, QWidget* _parent)
         mainLayout->addStretch(0);
 
     // avatar
-    d->avatar_ = new ContactAvatarWidget(this, MyInfo()->aimId(), MyInfo()->friendly(), Utils::scale_value(80), true);
+    d->avatar_ = new ContactAvatarWidget(this, MyInfo()->aimId(), MyInfo()->friendly(), Utils::scale_value(80), true, false, false);
 
     d->name_ = new Ui::TextWidget(this, MyInfo()->friendly(), Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS);
     d->name_->init(
@@ -205,14 +205,14 @@ LocalPINWidget::LocalPINWidget(LocalPINWidget::Mode _mode, QWidget* _parent)
 
     if(_mode == Mode::ChangePIN || _mode == Mode::SetPIN || _mode == Mode::RemovePIN)
     {
-        d->cancelButton_ = d->createButton(this, QT_TRANSLATE_NOOP("local_pin", "CANCEL"), DialogButtonRole::CANCEL);
+        d->cancelButton_ = d->createButton(this, QT_TRANSLATE_NOOP("local_pin", "Cancel"), DialogButtonRole::CANCEL);
         connect(d->cancelButton_, &DialogButton::clicked, this, &LocalPINWidget::onCancel);
 
         buttonsLayout->addWidget(d->cancelButton_);
         buttonsLayout->addSpacing(Utils::scale_value(16));
     }
 
-    d->okButton_ = d->createButton(this, QT_TRANSLATE_NOOP("local_pin", "APPLY"), DialogButtonRole::CONFIRM, false);
+    d->okButton_ = d->createButton(this, QT_TRANSLATE_NOOP("local_pin", "Apply"), DialogButtonRole::CONFIRM, false);
     connect(d->okButton_, &DialogButton::clicked, this, &LocalPINWidget::onOk);
 
     if (d->mode_ == Mode::VerifyPIN)
@@ -262,8 +262,8 @@ void LocalPINWidget::onLogOut()
 {
     const QString text = QT_TRANSLATE_NOOP("popup_window", "Are you sure you want to sign out?");
     auto confirm = Utils::GetConfirmationWithTwoButtons(
-        QT_TRANSLATE_NOOP("popup_window", "CANCEL"),
-        QT_TRANSLATE_NOOP("popup_window", "YES"),
+        QT_TRANSLATE_NOOP("popup_window", "Cancel"),
+        QT_TRANSLATE_NOOP("popup_window", "Yes"),
         text,
         QT_TRANSLATE_NOOP("popup_window", "Sign out"),
         nullptr);

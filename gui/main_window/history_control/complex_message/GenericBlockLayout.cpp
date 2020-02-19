@@ -12,24 +12,6 @@
 
 UI_COMPLEX_MESSAGE_NS_BEGIN
 
-GenericBlockLayout::BoxModel::BoxModel(const bool hasLeadLines, const QMargins &bubbleMargins)
-    : HasLeadLines_(hasLeadLines)
-    , BubbleMargins_(bubbleMargins)
-{
-}
-
-GenericBlockLayout::BoxModel::~BoxModel() = default;
-
-QMargins GenericBlockLayout::BoxModel::getBubbleMargins() const
-{
-    return BubbleMargins_;
-}
-
-bool GenericBlockLayout::BoxModel::hasLeadLines() const
-{
-    return HasLeadLines_;
-}
-
 GenericBlockLayout::GenericBlockLayout() = default;
 
 GenericBlockLayout::~GenericBlockLayout() = default;
@@ -101,15 +83,6 @@ QSize GenericBlockLayout::blockSizeHint() const
     return sizeHint();
 }
 
-const IItemBlockLayout::IBoxModel& GenericBlockLayout::getBlockBoxModel() const
-{
-    static BoxModel boxModel(
-        false,
-        MessageStyle::getDefaultBlockBubbleMargins());
-
-    return boxModel;
-}
-
 QRect GenericBlockLayout::getBlockGeometry() const
 {
     return BlockGeometry_;
@@ -152,6 +125,11 @@ void GenericBlockLayout::shiftHorizontally(const int _shift)
 {
     if (BlockGeometry_.isValid())
         BlockGeometry_.translate(_shift, 0);
+}
+
+void GenericBlockLayout::resizeBlock(const QSize& _size)
+{
+    BlockSize_ = _size;
 }
 
 UI_COMPLEX_MESSAGE_NS_END

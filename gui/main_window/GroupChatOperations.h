@@ -24,6 +24,7 @@ namespace GroupChatOperations
         bool approvedJoin = false;
         bool joiningByLink = false;
         bool readOnly = false;
+        bool isChannel = false;
 
         bool getJoiningByLink() const noexcept
         {
@@ -66,8 +67,14 @@ namespace Ui
         void enterPressed();
     };
 
-    void createGroupChat(const std::vector<QString>& _members_aimIds);
-    void createChannel();
+    enum class CreateChatSource
+    {
+        dots,
+        pencil,
+        profile,
+    };
+    void createGroupChat(const std::vector<QString>& _members_aimIds, const CreateChatSource _source);
+    void createChannel(const CreateChatSource _source);
     bool callChatNameEditor(QWidget* _parent, GroupChatOperations::ChatData &chatData, Out std::shared_ptr<GroupChatSettings> &groupChatSettings, bool _channel);
 
     void postCreateChatInfoToCore(const QString &_aimId, const GroupChatOperations::ChatData &chatData, const QString& avatarId = QString());

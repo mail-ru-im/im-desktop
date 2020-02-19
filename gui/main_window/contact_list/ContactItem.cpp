@@ -12,7 +12,6 @@ namespace Logic
     ContactItem::ContactItem(Data::ContactPtr _contact)
         : contact_(std::move(_contact))
         , visible_(true)
-        , input_pos_(0)
     {
     }
 
@@ -118,26 +117,6 @@ namespace Logic
     const QString& ContactItem::get_default_role() const
     {
         return default_role_;
-    }
-
-    void ContactItem::set_input_text(const QString& _inputText)
-    {
-        input_text_ = _inputText;
-    }
-
-    const QString& ContactItem::get_input_text() const
-    {
-        return input_text_;
-    }
-
-    void ContactItem::set_input_pos(int _pos)
-    {
-        input_pos_ = _pos;
-    }
-
-    int ContactItem::get_input_pos() const
-    {
-        return input_pos_;
     }
 
     void ContactItem::set_contact_profile(profile_ptr _profile)

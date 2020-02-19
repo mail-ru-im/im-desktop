@@ -34,7 +34,7 @@ namespace core
 
         public:
 
-            set_stickers_order_packet(wim_packet_params _params, const std::vector<int32_t> _values);
+            set_stickers_order_packet(wim_packet_params _params, std::vector<int32_t>&& _values);
             virtual ~set_stickers_order_packet();
         };
     }

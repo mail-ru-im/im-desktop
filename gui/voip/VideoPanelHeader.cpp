@@ -1,8 +1,5 @@
 #include "stdafx.h"
 #include "VideoPanelHeader.h"
-
-#include "VoipTools.h"
-
 #include "../utils/utils.h"
 #include "../core_dispatcher.h"
 #include "../main_window/MainPage.h"
@@ -11,38 +8,12 @@
 #define DEFAULT_BORDER Utils::scale_value(12)
 #define DEFAULT_WINDOW_ROUND_RECT Utils::scale_value(5)
 
-const QString secureCallButton =
-    qsl(" QPushButton { font-size: 15dip; text-align: center; border-style: none; background-color: transparent; } ");
-
-const QString secureCallButtonClicked =
-    qsl(" QPushButton { font-size: 15dip; text-align: center; border-style: none; background-color: #ffffff; } ");
-
 #define SECURE_BTN_BORDER_W    Utils::scale_value(24)
 #define SECURE_BTN_ICON_W      Utils::scale_value(16)
 #define SECURE_BTN_ICON_H      SECURE_BTN_ICON_W
 #define SECURE_BTN_TEXT_W      Utils::scale_value(50)
 #define SECURE_BTN_ICON2TEXT_W Utils::scale_value(12)
 #define SECURE_BTN_W           (2 * SECURE_BTN_BORDER_W + SECURE_BTN_ICON_W + SECURE_BTN_TEXT_W + SECURE_BTN_ICON2TEXT_W)
-
-
-std::string Ui::getFotmatedTime(unsigned _ts)
-{
-    int hours = _ts / (60 * 60);
-    int minutes = (_ts / 60) % 60;
-    int sec = _ts % 60;
-
-    std::stringstream timeString;
-    if (hours > 0)
-    {
-        timeString << std::setfill('0') << std::setw(2) << hours << ":";
-    }
-    timeString << std::setfill('0') << std::setw(2) << minutes << ":";
-    timeString << std::setfill('0') << std::setw(2) << sec;
-
-    return timeString.str();
-}
-
-
 
 Ui::VideoPanelHeader::VideoPanelHeader(QWidget* _parent, int offset)
     : BaseTopVideoPanel(_parent)
@@ -119,8 +90,7 @@ Ui::VideoPanelHeader::VideoPanelHeader(QWidget* _parent, int offset)
 
     auto addButton = [this](const QString& _propertyName, const char* _slot, QWidget* parentWidget)->QPushButton*
     {
-        QPushButton* btn = new voipTools::BoundBox<QPushButton>(parentWidget);
-
+        QPushButton* btn = new QPushButton(parentWidget);
         //Utils::ApplyStyle(btn, _propertyName);
         btn->setProperty(_propertyName.toLatin1().data(), true);
         btn->setSizePolicy(QSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding));
@@ -154,7 +124,6 @@ Ui::VideoPanelHeader::VideoPanelHeader(QWidget* _parent, int offset)
 
 Ui::VideoPanelHeader::~VideoPanelHeader()
 {
-
 }
 
 void Ui::VideoPanelHeader::enterEvent(QEvent* _e)
@@ -185,35 +154,24 @@ void Ui::VideoPanelHeader::_onSecureCallClicked()
 #endif
 }
 
-
 void Ui::VideoPanelHeader::setSecureWndOpened(const bool _opened)
 {
 }
 
-
 void Ui::VideoPanelHeader::updatePosition(const QWidget& parent)
 {
-    // We have code dublication here,
-    // because Mac and Qt have different coords systems.
-    // We can convert Mac coords to Qt, but we need to add
-    // special cases for multi monitor systems.
-#ifdef __APPLE__
-    QRect parentRect = platform_macos::getWidgetRect(*parentWidget());
-    platform_macos::setWindowPosition(*this,
-        QRect(parentRect.left(),
-            parentRect.top() + parentRect.height() - height() - topOffset_,
-            parentRect.width(),
-            height()));
-    //    auto rc = platform_macos::getWindowRect(*parentWidget());
-#elif defined(__linux__)
-    auto rc = parentWidget()->geometry();
-    move(0, 0);
-    setFixedWidth(rc.width());
-#else
-    auto rc = parentWidget()->geometry();
-    move(rc.x(), rc.y() + topOffset_);
-    setFixedWidth(rc.width());
-#endif
+    if (platform::is_linux())
+    {
+        auto rc = parentWidget()->geometry();
+        move(0, 0);
+        setFixedWidth(rc.width());
+    }
+    else
+    {
+        auto rc = parentWidget()->geometry();
+        move(rc.x(), rc.y() + (platform::is_windows() ? topOffset_ : 0));
+        setFixedWidth(rc.width());
+    }
 }
 
 void Ui::VideoPanelHeader::onChangeConferenceMode()
@@ -236,7 +194,6 @@ void Ui::VideoPanelHeader::changeConferenceMode(voip_manager::VideoLayout layout
 void Ui::VideoPanelHeader::onPlaybackAudioOnOffClicked()
 {
     Ui::GetDispatcher()->getVoipController().setSwitchAPlaybackMute();
-
     emit onPlaybackClick();
 }
 
@@ -284,10 +241,10 @@ void Ui::VideoPanelHeader::onAddUserClicked()
     emit addUserToConference();
 }
 
-void Ui::VideoPanelHeader::setContacts(const std::vector<voip_manager::Contact>& contacts)
+void Ui::VideoPanelHeader::setContacts(const std::vector<voip_manager::Contact>& contacts, bool active_call)
 {
     // Update button visibility.
-    addUsers_->setVisible((int32_t)contacts.size() < Ui::GetDispatcher()->getVoipController().maxVideoConferenceMembers() - 1);
+    addUsers_->setVisible(active_call);
     isVideoConference_ = contacts.size() > 2;
     updateSecurityButtonState();
 }
@@ -312,7 +269,6 @@ void Ui::VideoPanelHeader::onCreateNewCall()
     isVideoConference_ = false;
     secureCallEnabled_ = false;
     startTalking_ = false;
-
     updateSecurityButtonState();
 }
 

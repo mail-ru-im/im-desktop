@@ -6,10 +6,12 @@
 #include "../../../tools/system.h"
 #include "../../urls_cache.h"
 
+#include "../common.shared/string_utils.h"
+
 using namespace core;
 using namespace wim;
 
-request_avatar::request_avatar(wim_packet_params params, const std::string& _contact, const std::string& _avatar_type, time_t _write_time)
+request_avatar::request_avatar(wim_packet_params params, const std::string& _contact, std::string_view _avatar_type, time_t _write_time)
     : wim_packet(std::move(params))
     , avatar_type_(_avatar_type)
     , contact_(_contact)
@@ -17,41 +19,21 @@ request_avatar::request_avatar(wim_packet_params params, const std::string& _con
 {
 }
 
-
-request_avatar::~request_avatar()
-{
-}
+request_avatar::~request_avatar() = default;
 
 int32_t request_avatar::init_request(std::shared_ptr<core::http_request_simple> _request)
 {
-    std::stringstream ss_url;
+    std::string url = su::concat(urls::get_url(urls::url_type::avatars), "/get?aimsid=", escape_symbols(get_params().aimsid_), "&targetSn=", escape_symbols(contact_), "&size=", avatar_type_);
 
-    if (is_new_avatar_rapi())
-    {
-        ss_url << urls::get_url(urls::url_type::rapi_host) << "avatar/get?"
-            << "aimsid=" << escape_symbols(get_params().aimsid_)
-            << "&targetSn=" << escape_symbols(contact_)
-            << "&size=" << avatar_type_;
-
-        _request->set_normalized_url("avatarGet");
-    }
-    else
-    {
-        ss_url << "https://api.icq.net/expressions/get?"
-            << "t=" << escape_symbols(contact_)
-            << "&f=native"
-            << "&r=" << core::tools::system::generate_guid()
-            << "&type=" << avatar_type_;
-
-        _request->set_normalized_url("avatarExpressionsGet");
-    }
+    _request->set_normalized_url("avatarGet");
+    _request->set_use_curl_decompresion(true);
 
     if (write_time_ != 0)
         _request->set_modified_time_condition(write_time_ - params_.time_offset_);
 
     _request->set_need_log(params_.full_log_);
     _request->set_need_log_original_url(false);
-    _request->set_url(ss_url.str());
+    _request->set_url(url);
     _request->set_keep_alive();
     _request->set_priority(highest_priority() + increase_priority());
 

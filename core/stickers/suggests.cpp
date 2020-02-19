@@ -80,18 +80,18 @@ void suggests::serialize(coll_helper _coll) const
 
 bool suggests::unserialize(const rapidjson::Value& _node)
 {
-    auto parse_stickers = [this](const rapidjson::Value& _node_data, suggest_type _type)
+    const auto parse_stickers = [this](const rapidjson::Value& _node_data, suggest_type _type)
     {
-        for (auto iter_field = _node_data.MemberBegin(), end = _node_data.MemberEnd(); iter_field != end; ++iter_field)
+        for (const auto& field : _node_data.GetObject())
         {
-            if (!iter_field->value.IsArray())
+            if (!field.value.IsArray())
                 continue;
 
-            suggest sgst(rapidjson_get_string_view(iter_field->name));
+            suggest sgst(rapidjson_get_string_view(field.name));
 
-            sgst.info_.reserve(iter_field->value.Size());
+            sgst.info_.reserve(field.value.Size());
 
-            for (const auto& sticker : iter_field->value.GetArray())
+            for (const auto& sticker : field.value.GetArray())
                 sgst.info_.emplace_back(rapidjson_get_string(sticker), _type);
 
             content_.push_back(std::move(sgst));
@@ -109,17 +109,17 @@ bool suggests::unserialize(const rapidjson::Value& _node)
 
     if (const auto iter_alias = _node.FindMember("alias"); iter_alias != _node.MemberEnd() && iter_alias->value.IsObject())
     {
-        for (auto iter_lang = iter_alias->value.MemberBegin(), end_lang = iter_alias->value.MemberEnd(); iter_lang != end_lang; ++iter_lang)
+        for (const auto& lang : iter_alias->value.GetObject())
         {
-            if (!iter_lang->value.IsObject())
+            if (!lang.value.IsObject())
                 continue;
 
-            for (auto iter_field = iter_lang->value.MemberBegin(), end_field = iter_lang->value.MemberEnd(); iter_field != end_field; ++iter_field)
+            for (const auto& field : lang.value.GetObject())
             {
-                if (!iter_field->value.IsArray())
+                if (!field.value.IsArray())
                     continue;
 
-                const auto members_count = iter_field->value.Size();
+                const auto members_count = field.value.Size();
 
                 if (members_count <= 0)
                     continue;
@@ -127,14 +127,15 @@ bool suggests::unserialize(const rapidjson::Value& _node)
                 std::vector<std::string> emoji_list;
                 emoji_list.reserve(members_count);
 
-                for (const auto& emoji : iter_field->value.GetArray())
+                for (const auto& emoji : field.value.GetArray())
                 {
                     if (!emoji.IsString())
                         continue;
+
                     emoji_list.push_back(rapidjson_get_string(emoji));
                 }
 
-                aliases_.emplace_back(rapidjson_get_string_view(iter_field->name), std::move(emoji_list));
+                aliases_.emplace_back(rapidjson_get_string_view(field.name), std::move(emoji_list));
             }
         }
     }

@@ -537,7 +537,7 @@ namespace Ui
             vLayout->insertSpacing(0, neededHeight - curHeight);
         }
 
-        auto [okBtn, _] = dialog.addButtonsPair(QT_TRANSLATE_NOOP("popup_window", "CANCEL"), QT_TRANSLATE_NOOP("popup_window", "APPLY"), true);
+        auto [okBtn, _] = dialog.addButtonsPair(QT_TRANSLATE_NOOP("popup_window", "Cancel"), QT_TRANSLATE_NOOP("popup_window", "Apply"), true);
         QObject::connect(okBtn, &DialogButton::clicked, ws, &WallpaperSelectWidget::onOkClicked);
 
         dialog.showInCenter();

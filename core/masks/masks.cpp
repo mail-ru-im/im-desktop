@@ -18,6 +18,7 @@
 
 #include "masks.h"
 #include "../connections/urls_cache.h"
+#include "../common.shared/omicron_keys.h"
 
 #include "../../libomicron/include/omicron/omicron.h"
 
@@ -211,7 +212,7 @@ void core::masks::get_mask_id_list(int64_t _seq)
                     if (_error == loader_errors::http_error)
                     {
                         ptr_this->last_http_error_code_ = _data.response_code_;
-                        ptr_this->last_request_time_ = std::chrono::system_clock::now();
+                        ptr_this->last_request_time_ = std::chrono::steady_clock::now();
                     }
                     return;
                 }
@@ -549,7 +550,7 @@ void core::masks::on_connection_restored()
 #ifndef __linux__
     if (state_ == state::not_loaded && is_version_valid())
     {
-        if (last_http_error_code_ == 404 && ((std::chrono::system_clock::now() - last_request_time_) < std::chrono::seconds(omicronlib::_o("masks_request_timeout_on_fail", 10))))
+        if (last_http_error_code_ == 404 && ((std::chrono::steady_clock::now() - last_request_time_) < std::chrono::seconds(omicronlib::_o(omicron::keys::masks_request_timeout_on_fail, 10))))
             return;
         post_message_to_gui(0, "masks/update/retry");
     }

@@ -13,6 +13,7 @@
 
 #include "../../types/contact.h"
 #include "../../utils/utils.h"
+#include "../../utils/features.h"
 
 #include "../history_control/HistoryControlPageItem.h"
 
@@ -27,6 +28,16 @@ namespace Ui
     //////////////////////////////////////////////////////////////////////////
     // RecentItemBase
     //////////////////////////////////////////////////////////////////////////
+
+    int get_badge_size()
+    {
+        return Utils::scale_value(18);
+    }
+
+    int get_badge_mention_size()
+    {
+        return Utils::scale_value(16);
+    }
 
     QSize getPinHeaderSize()
     {
@@ -383,6 +394,7 @@ namespace Ui
                 return (_isSelected ? pixSelected : pix);
             }
             case MediaType::mediaTypeVideo:
+            case MediaType::mediaTypeFsVideo:
             {
                 static QPixmap pix = Utils::renderSvgScaled(qsl(":/message_type_video_icon"), getMediaIconSize(), getMediaIconColor());
                 static QPixmap pixSelected = Utils::renderSvgScaled(qsl(":/message_type_video_icon"), getMediaIconSize(), Qt::white);
@@ -390,6 +402,7 @@ namespace Ui
                 return (_isSelected ? pixSelected : pix);
             }
             case MediaType::mediaTypePhoto:
+            case MediaType::mediaTypeFsPhoto:
             {
                 static QPixmap pix = Utils::renderSvgScaled(qsl(":/message_type_photo_icon"), getMediaIconSize(), getMediaIconColor());
                 static QPixmap pixSelected = Utils::renderSvgScaled(qsl(":/message_type_photo_icon"), getMediaIconSize(), Qt::white);
@@ -397,6 +410,7 @@ namespace Ui
                 return (_isSelected ? pixSelected : pix);
             }
             case MediaType::mediaTypeGif:
+            case MediaType::mediaTypeFsGif:
             {
                 static QPixmap pix = Utils::renderSvgScaled(qsl(":/message_type_video_icon"), getMediaIconSize(), getMediaIconColor());
                 static QPixmap pixSelected = Utils::renderSvgScaled(qsl(":/message_type_video_icon"), getMediaIconSize(), Qt::white);
@@ -428,6 +442,22 @@ namespace Ui
             {
                 static QPixmap pix = Utils::renderSvgScaled(qsl(":/message_type_contact_icon"), getMediaIconSize(), getMediaIconColor());
                 static QPixmap pixSelected = Utils::renderSvgScaled(qsl(":/message_type_contact_icon"), getMediaIconSize(), Qt::white);
+
+                return (_isSelected ? pixSelected : pix);
+            }
+
+            case MediaType::mediaTypeGeo:
+            {
+                static QPixmap pix = Utils::renderSvgScaled(qsl(":/message_type_geo_icon"), getMediaIconSize(), getMediaIconColor());
+                static QPixmap pixSelected = Utils::renderSvgScaled(qsl(":/message_type_geo_icon"), getMediaIconSize(), Qt::white);
+
+                return (_isSelected ? pixSelected : pix);
+            }
+
+            case MediaType::mediaTypePoll:
+            {
+                static QPixmap pix = Utils::renderSvgScaled(qsl(":/message_type_poll_icon"), getMediaIconSize(), getMediaIconColor());
+                static QPixmap pixSelected = Utils::renderSvgScaled(qsl(":/message_type_poll_icon"), getMediaIconSize(), Qt::white);
 
                 return (_isSelected ? pixSelected : pix);
             }
@@ -550,10 +580,19 @@ namespace Ui
         {
             type_ = ServiceItemType::favorites;
         }
+        else if (_state.AimId_ == ql1s("~unimportant~"))
+        {
+            type_ = ServiceItemType::unimportant;
+        }
         else if (_state.AimId_ == ql1s("~unknowns~"))
         {
             type_ = ServiceItemType::unknowns;
         }
+
+        badgeTextUnit_ = TextRendering::MakeTextUnit(qsl(""));
+        badgeTextUnit_->init(Fonts::appFontScaled(11, platform::is_apple() ? Fonts::FontWeight::Medium : Fonts::FontWeight::Normal),
+            Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT), QColor(), QColor(), QColor(), TextRendering::HorAligment::CENTER);
+        badgeTextUnit_->evaluateDesiredSize();
     }
 
     RecentItemService::RecentItemService(const QString& _text)
@@ -596,9 +635,14 @@ namespace Ui
              _p.setPen(line_pen);
 
              static QPixmap pixFavorites = getPin(false, getPinHeaderSize());
+             static QPixmap pixUnimportant = Utils::renderSvg(qsl(":/unimportant_icon"), getPinHeaderSize(), Styling::getParameters().getColor(Styling::StyleVariable::BASE_TERTIARY));
              static QPixmap pixRecents = Utils::loadPixmap(qsl(":/resources/icon_recents_100.png"));
 
-             const auto& p = (type_ == ServiceItemType::favorites ? pixFavorites : pixRecents);
+             QPixmap p = pixRecents;
+             if (type_ == ServiceItemType::favorites)
+                 p = pixFavorites;
+             else if (type_ == ServiceItemType::unimportant)
+                 p = pixUnimportant;
 
              int y = height / 2;
              int xp = ItemWidth(_viewParams) / 2 - (p.width() / 2. / ratio);
@@ -608,17 +652,73 @@ namespace Ui
              _p.drawPixmap(xp, yp, p);
         }
 
-        if (type_ == ServiceItemType::favorites && !_viewParams.pictOnly_)
+        if ((type_ == ServiceItemType::favorites || type_ == ServiceItemType::unimportant) && !_viewParams.pictOnly_)
         {
-            const auto& p = getArrowIcon(Logic::getRecentsModel()->isFavoritesVisible());
+            bool visible = false;
+            if (type_ == ServiceItemType::favorites)
+                visible = Logic::getRecentsModel()->isFavoritesVisible();
+            else
+                visible = Logic::getRecentsModel()->isUnimportantVisible();
+
+            const auto& p = getArrowIcon(visible);
             QPen line_pen;
             line_pen.setColor(Styling::getParameters().getColor(Styling::StyleVariable::BASE_TERTIARY));
             _p.setPen(line_pen);
 
-            const int x = text_->cachedSize().width() + getServiceItemHorPadding() + recentParams.favoritesStatusPadding();
+            int x = text_->cachedSize().width() + getServiceItemHorPadding() + recentParams.favoritesStatusPadding();
             int y = height / 2 - (p.height() / 2. / ratio);
 
             _p.drawPixmap(x, y, p);
+
+            if (!visible && badgeTextUnit_)
+            {
+                x = _rect.width() - getUnknownHorPadding() - getUnreadsSize() / 2 + get_badge_size() / 2;
+                auto offset = 0;
+                auto unreads = type_ == ServiceItemType::favorites ? Logic::getRecentsModel()->favoritesUnreads() : Logic::getRecentsModel()->unimportantUnreads();
+
+                const auto hasFavoritesMentions = Logic::getRecentsModel()->hasMentionsInFavorites();
+                const auto hasUnimportantMentions = Logic::getRecentsModel()->hasMentionsInUnimportant();
+                const auto mutedFavoritesMentions = Logic::getRecentsModel()->getMutedFavoritesWithMentions();
+                const auto mutedUnimportantMentions = Logic::getRecentsModel()->getMutedFavoritesWithMentions();
+
+                if (unreads != 0)
+                {
+                    if (type_ == ServiceItemType::favorites)
+                        unreads += mutedFavoritesMentions;
+                    else
+                        unreads += mutedUnimportantMentions;
+
+                    badgeTextUnit_->setText(Utils::getUnreadsBadgeStr(unreads));
+                    offset += Utils::Badge::drawBadgeRight(badgeTextUnit_, _p, x, y + p.height() / 2. / ratio - get_badge_size() / 2, Utils::Badge::Color::Green);
+                    offset += recentParams.favoritesStatusPadding();
+                }
+                else if (((type_ == ServiceItemType::favorites && Logic::getRecentsModel()->hasAttentionFavorites()) || Logic::getRecentsModel()->hasAttentionUnimportant()) &&
+                         (!hasFavoritesMentions && !hasUnimportantMentions))
+                {
+                    static auto icon = Utils::renderSvgLayered(qsl(":/tab/attention"),
+                        {
+                            {qsl("border"), Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE)},
+                            {qsl("bg"), Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY)},
+                            {qsl("star"), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT)},
+                        },
+                        { get_badge_size(), get_badge_size() });
+                    _p.drawPixmap(x - get_badge_size(), y + p.height() / 2. / ratio - get_badge_size() / 2, icon);
+                }
+
+                if ((type_ == ServiceItemType::favorites && hasFavoritesMentions) || hasUnimportantMentions)
+                {
+                    if (unreads == 0)
+                    {
+                        badgeTextUnit_->setText(Utils::getUnreadsBadgeStr(type_ == ServiceItemType::favorites ? mutedFavoritesMentions : mutedUnimportantMentions));
+                        offset += Utils::Badge::drawBadgeRight(badgeTextUnit_, _p, x, y + p.height() / 2. / ratio - get_badge_size() / 2, Utils::Badge::Color::Gray);
+                        offset += recentParams.favoritesStatusPadding();
+                    }
+
+                    offset += get_badge_size();
+                    static auto icon = getMentionIcon(false, { get_badge_mention_size() , get_badge_mention_size() });
+                    _p.drawPixmap(x - offset, y + p.height() / 2. / ratio - get_badge_size() / 2 + Utils::scale_value(1), icon);
+                }
+            }
         }
     }
 
@@ -823,6 +923,7 @@ namespace Ui
         , prevWidthName_(-1)
         , prevWidthMessage_(-1)
         , muted_(Logic::getContactListModel()->isMuted(_state.AimId_))
+        , online_(Logic::getContactListModel()->isOnline(_state.AimId_))
         , pin_(_state.FavoriteTime_ != -1)
         , typersCount_(_state.typings_.size())
         , typer_(_state.getTypers())
@@ -861,7 +962,7 @@ namespace Ui
 
                 // FONT
                 messageShortName_->init(
-                    Fonts::appFont(fontSize, getNameFontWeight()),
+                    Fonts::appFontScaled(fontSize, getNameFontWeight()),
                     Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID),
                     QColor(), QColor(), QColor(),
                     TextRendering::HorAligment::LEFT,
@@ -876,7 +977,7 @@ namespace Ui
                 auto secondPath1 = TextRendering::MakeTextUnit((multichat_ ? qsl(" ") : QString()) + typingText, Data::MentionMap(), Ui::TextRendering::LinksVisible::DONT_SHOW_LINKS, Ui::TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
                 // FONT
                 secondPath1->init(
-                    Fonts::appFont(fontSize, Fonts::FontWeight::Normal),
+                    Fonts::appFontScaled(fontSize, Fonts::FontWeight::Normal),
                     Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID),
                     QColor(), QColor(), QColor(),
                     TextRendering::HorAligment::LEFT, 1, Ui::TextRendering::LineBreakType::PREFER_SPACES);
@@ -889,7 +990,7 @@ namespace Ui
                     Ui::TextRendering::ProcessLineFeeds::KEEP_LINE_FEEDS);
                 // FONT
                 messageLongName_->init(
-                    Fonts::appFont(fontSize, Fonts::FontWeight::Normal),
+                    Fonts::appFontScaled(fontSize, Fonts::FontWeight::Normal),
                     Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID),
                     QColor(), QColor(), QColor(),
                     TextRendering::HorAligment::LEFT, 1, Ui::TextRendering::LineBreakType::PREFER_SPACES);
@@ -898,7 +999,7 @@ namespace Ui
                 auto secondPath2 = TextRendering::MakeTextUnit(typingText, Data::MentionMap(), Ui::TextRendering::LinksVisible::DONT_SHOW_LINKS, Ui::TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
                 // FONT
                 secondPath2->init(
-                    Fonts::appFont(fontSize, Fonts::FontWeight::Normal),
+                    Fonts::appFontScaled(fontSize, Fonts::FontWeight::Normal),
                     Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID),
                     QColor(), QColor(), QColor(),
                     TextRendering::HorAligment::LEFT, 1, Ui::TextRendering::LineBreakType::PREFER_SPACES);
@@ -914,13 +1015,13 @@ namespace Ui
                 {
                     messageShortName_ = TextRendering::MakeTextUnit(messageText, Data::MentionMap(), Ui::TextRendering::LinksVisible::DONT_SHOW_LINKS, Ui::TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
                     // FONT
-                    messageShortName_->init(Fonts::appFont(fontSize, Fonts::FontWeight::Normal),
+                    messageShortName_->init(Fonts::appFontScaled(fontSize, Fonts::FontWeight::Normal),
                                             Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY),
                                             QColor(), QColor(), QColor(),
                                             TextRendering::HorAligment::LEFT, 2,
                                             Ui::TextRendering::LineBreakType::PREFER_SPACES);
 
-                    messageShortName_->markdown(Fonts::appFont(fontSize, Fonts::FontWeight::Normal),
+                    messageShortName_->markdown(Fonts::appFontScaled(fontSize, Fonts::FontWeight::Normal),
                                                 Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY),
                                                 Ui::TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
                     messageShortName_->setLineSpacing(getMessageLineSpacing());
@@ -939,7 +1040,7 @@ namespace Ui
                         messageShortName_ = TextRendering::MakeTextUnit(sender + QChar::LineFeed, Data::MentionMap(), Ui::TextRendering::LinksVisible::DONT_SHOW_LINKS,
                             Ui::TextRendering::ProcessLineFeeds::KEEP_LINE_FEEDS);
                         // FONT
-                        messageShortName_->init(Fonts::appFont(fontSize, getNameFontWeight()),
+                        messageShortName_->init(Fonts::appFontScaled(fontSize, getNameFontWeight()),
                                                 Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY),
                                                 QColor(), QColor(), QColor(),
                                                 TextRendering::HorAligment::LEFT, 2, Ui::TextRendering::LineBreakType::PREFER_SPACES);
@@ -949,11 +1050,11 @@ namespace Ui
 
                         // FONT
                         auto secondPath1 = TextRendering::MakeTextUnit(messageText, Data::MentionMap(), Ui::TextRendering::LinksVisible::DONT_SHOW_LINKS, Ui::TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
-                        secondPath1->init(Fonts::appFont(fontSize, Fonts::FontWeight::Normal),
+                        secondPath1->init(Fonts::appFontScaled(fontSize, Fonts::FontWeight::Normal),
                                             Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY),
                                             QColor(), QColor(), QColor(),
                                             TextRendering::HorAligment::LEFT, 1, Ui::TextRendering::LineBreakType::PREFER_SPACES);
-                        secondPath1->markdown(Fonts::appFont(fontSize, Fonts::FontWeight::Normal),
+                        secondPath1->markdown(Fonts::appFontScaled(fontSize, Fonts::FontWeight::Normal),
                                               Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY),
                                               Ui::TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
 
@@ -965,19 +1066,19 @@ namespace Ui
                             Ui::TextRendering::ProcessLineFeeds::KEEP_LINE_FEEDS);
 
                         // FONT
-                        messageLongName_->init(Fonts::appFont(fontSize, Fonts::FontWeight::Normal),
+                        messageLongName_->init(Fonts::appFontScaled(fontSize, Fonts::FontWeight::Normal),
                             Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY),
                             QColor(), QColor(), QColor(),
                             TextRendering::HorAligment::LEFT, 1, Ui::TextRendering::LineBreakType::PREFER_SPACES);
                         messageLongName_->setLineSpacing(getMessageLineSpacing());
 
                         auto secondPath2 = TextRendering::MakeTextUnit(messageText, Data::MentionMap(), Ui::TextRendering::LinksVisible::DONT_SHOW_LINKS, Ui::TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
-                        secondPath2->init(Fonts::appFont(fontSize, Fonts::FontWeight::Normal),
+                        secondPath2->init(Fonts::appFontScaled(fontSize, Fonts::FontWeight::Normal),
                             Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY),
                             QColor(), QColor(), QColor(),
                             TextRendering::HorAligment::LEFT, 1, Ui::TextRendering::LineBreakType::PREFER_SPACES);
 
-                        secondPath2->markdown(Fonts::appFont(fontSize, Fonts::FontWeight::Normal),
+                        secondPath2->markdown(Fonts::appFontScaled(fontSize, Fonts::FontWeight::Normal),
                                               Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY),
                                               Ui::TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
 
@@ -988,7 +1089,7 @@ namespace Ui
                     {
                         messageShortName_ = TextRendering::MakeTextUnit(sender, Data::MentionMap(), Ui::TextRendering::LinksVisible::DONT_SHOW_LINKS, Ui::TextRendering::ProcessLineFeeds::KEEP_LINE_FEEDS);
                         // FONT
-                        messageShortName_->init(Fonts::appFont(fontSize, getNameFontWeight()),
+                        messageShortName_->init(Fonts::appFontScaled(fontSize, getNameFontWeight()),
                             Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY),
                             QColor(), QColor(), QColor(),
                             TextRendering::HorAligment::LEFT, 1, Ui::TextRendering::LineBreakType::PREFER_SPACES);
@@ -998,11 +1099,11 @@ namespace Ui
 
                         messageLongName_ = TextRendering::MakeTextUnit(messageText, Data::MentionMap(), Ui::TextRendering::LinksVisible::DONT_SHOW_LINKS, Ui::TextRendering::ProcessLineFeeds::KEEP_LINE_FEEDS);
                         // FONT
-                        messageLongName_->init(Fonts::appFont(fontSize, Fonts::FontWeight::Normal),
+                        messageLongName_->init(Fonts::appFontScaled(fontSize, Fonts::FontWeight::Normal),
                             Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY),
                             QColor(), QColor(), QColor(),
                             TextRendering::HorAligment::LEFT, 1, Ui::TextRendering::LineBreakType::PREFER_SPACES);
-                        messageLongName_->markdown(Fonts::appFont(fontSize), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
+                        messageLongName_->markdown(Fonts::appFontScaled(fontSize), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
                         messageLongName_->evaluateDesiredSize();
                     }
                 }
@@ -1012,7 +1113,8 @@ namespace Ui
         const auto timeStr = _state.Time_ > 0 ? ::Ui::FormatTime(QDateTime::fromTime_t(_state.Time_)) : QString();
         time_ = TextRendering::MakeTextUnit(timeStr, Data::MentionMap(), Ui::TextRendering::LinksVisible::DONT_SHOW_LINKS);
         // FONT NOT FIXED
-        time_->init(Fonts::appFont(Utils::scale_value(11), Fonts::FontWeight::Normal), Styling::getParameters().getColor(Styling::StyleVariable::BASE_TERTIARY));
+        const auto timeFontSize = platform::is_apple() ? 12 : 11;
+        time_->init(Fonts::appFontScaledFixed(timeFontSize, Fonts::FontWeight::Normal), Styling::getParameters().getColor(Styling::StyleVariable::BASE_TERTIARY));
         time_->evaluateDesiredSize();
 
         //////////////////////////////////////////////////////////////////////////
@@ -1081,15 +1183,13 @@ namespace Ui
     {
         Utils::PainterSaver ps(_p);
 
+        _p.setRenderHints(QPainter::SmoothPixmapTransform | QPainter::Antialiasing);
+
         _p.setPen(Qt::NoPen);
 
         drawMouseState(_p, _rect, _isHovered, _isSelected, _isKeyboardFocused);
 
         const auto width = CorrectItemWidth(ItemWidth(_viewParams), _viewParams.fixedWidth_);
-
-        auto state = multichat_ ? QString() : Logic::getContactListModel()->getState(getAimid());
-        if (_isSelected && (state == ql1s("online") || state == ql1s("mobile")))
-            state += ql1s("_active");
 
         bool isDefaultAvatar = false;
 
@@ -1098,13 +1198,13 @@ namespace Ui
         //////////////////////////////////////////////////////////////////////////
         // render avatar
         auto avatar = Logic::GetAvatarStorage()->GetRounded(getAimid(), displayName_, Utils::scale_bitmap(contactListParams.getAvatarSize()),
-            state, isDefaultAvatar, false, compactMode_);
+            isDefaultAvatar, false, compactMode_);
 
         const auto ratio = Utils::scale_bitmap_ratio();
         const auto avatarX = _rect.left() + (_viewParams.pictOnly_ ? (_rect.width() - avatar->width() / ratio) / 2 : contactListParams.getAvatarX());
         const auto avatarY = _rect.top() + (_rect.height() - avatar->height() / ratio) / 2;
 
-        Utils::drawAvatarWithBadge(_p, QPoint(avatarX, avatarY), *avatar, official_, muted_, _isSelected);
+        Utils::drawAvatarWithBadge(_p, QPoint(avatarX, avatarY), *avatar, official_, muted_, _isSelected, online_, compactMode_);
 
         const auto isUnknown = (_viewParams.regim_ == ::Logic::MembersWidgetRegim::UNKNOWN);
 
@@ -1200,7 +1300,7 @@ namespace Ui
             {
                 bool isDefault = false;
                 auto lastReadAvatar = Logic::GetAvatarStorage()->GetRounded(aimid_, displayName_,
-                    Utils::scale_bitmap(contactListParams.getLastReadAvatarSize()), QString(), isDefault, false, false);
+                    Utils::scale_bitmap(contactListParams.getLastReadAvatarSize()), isDefault, false, false);
 
                 const auto opacityOld = _p.opacity();
 
@@ -1232,7 +1332,7 @@ namespace Ui
             }
             else if (!heads_.empty())
             {
-                _p.setRenderHint(QPainter::HighQualityAntialiasing);
+                _p.setRenderHint(QPainter::Antialiasing);
 
                 unreadsX -= avatarRightMargin;
 
@@ -1240,7 +1340,7 @@ namespace Ui
                 {
                     bool isDefault = false;
                     auto headAvatar = Logic::GetAvatarStorage()->GetRounded(_head.first, (_head.second.isEmpty() ? _head.first : _head.second),
-                        Utils::scale_bitmap(contactListParams.getLastReadAvatarSize()), QString(), isDefault, false, false);
+                        Utils::scale_bitmap(contactListParams.getLastReadAvatarSize()), isDefault, false, false);
 
                     const auto opacityOld = _p.opacity();
 
@@ -1444,7 +1544,7 @@ namespace Ui
         : RecentItemRecent(
             _state,
             _compactMode,
-            get_gui_settings()->get_value<bool>(settings_hide_message_notification, false) || LocalPIN::instance()->locked(), false)
+            !Features::showNotificationsText() || LocalPIN::instance()->locked(), false)
     {
         mention_ = _state.mentionAlert_;
     }
@@ -1464,15 +1564,13 @@ namespace Ui
     {
         Utils::PainterSaver ps(_p);
 
+        _p.setRenderHints(QPainter::SmoothPixmapTransform | QPainter::Antialiasing);
+
         _p.setPen(Qt::NoPen);
 
         drawMouseState(_p, _rect, _isHovered, _isSelected);
 
         const auto width = _rect.width();//CorrectItemWidth(ItemWidth(_viewParams), _viewParams.fixedWidth_);
-
-        auto state = multichat_ ? QString() : Logic::getContactListModel()->getState(getAimid());
-        if (_isSelected && (state == ql1s("online") || state == ql1s("mobile")))
-            state += ql1s("_active");
 
         bool isDefaultAvatar = false;
 
@@ -1481,13 +1579,13 @@ namespace Ui
         //////////////////////////////////////////////////////////////////////////
         // render avatar
         auto avatar = Logic::GetAvatarStorage()->GetRounded(getAimid(), displayName_, Utils::scale_bitmap(getAlertAvatarSize()),
-            state, isDefaultAvatar, false, compactMode_);
+            isDefaultAvatar, false, compactMode_);
 
         const auto ratio = Utils::scale_bitmap_ratio();
         const auto avatarX = _rect.left() + getAlertAvatarX();
         const auto avatarY = _rect.top() + (_rect.height() - avatar->height() / ratio) / 2;
 
-        Utils::drawAvatarWithBadge(_p, QPoint(avatarX, avatarY), *avatar, !multichat_ && official_, !mention_ && !multichat_ && muted_, _isSelected);
+        Utils::drawAvatarWithBadge(_p, QPoint(avatarX, avatarY), *avatar, !multichat_ && official_, !mention_ && !multichat_ && muted_, _isSelected, Logic::getContactListModel()->isOnline(getAimid()), false);
 
         //////////////////////////////////////////////////////////////////////////
         // render contact name
@@ -1595,7 +1693,7 @@ namespace Ui
             static QBrush normalBrush(Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE));
             _p.setPen(Qt::NoPen);
             _p.setBrush(_isHovered ? hoverBrush : normalBrush);
-            _p.setRenderHint(QPainter::HighQualityAntialiasing);
+            _p.setRenderHint(QPainter::Antialiasing);
 
             _p.drawEllipse(
                 iconX,
@@ -1652,12 +1750,12 @@ namespace Ui
 
         messageLongName_ = TextRendering::MakeTextUnit(sender + QChar::LineFeed, Data::MentionMap(), Ui::TextRendering::LinksVisible::DONT_SHOW_LINKS,
             Ui::TextRendering::ProcessLineFeeds::KEEP_LINE_FEEDS);
-        messageLongName_->init(Fonts::appFont(fontSize, Fonts::FontWeight::Normal), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID), QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, 1, Ui::TextRendering::LineBreakType::PREFER_SPACES);
+        messageLongName_->init(Fonts::appFontScaled(fontSize, Fonts::FontWeight::Normal), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID), QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, 1, Ui::TextRendering::LineBreakType::PREFER_SPACES);
         messageLongName_->setLineSpacing(getMessageLineSpacing());
 
         auto secondPath2 = TextRendering::MakeTextUnit(_state.GetText(), Data::MentionMap(), Ui::TextRendering::LinksVisible::DONT_SHOW_LINKS, Ui::TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
-        secondPath2->init(Fonts::appFont(fontSize, Fonts::FontWeight::Normal), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID), QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, 1, Ui::TextRendering::LineBreakType::PREFER_SPACES);
-        secondPath2->markdown(Fonts::appFont(fontSize, Fonts::FontWeight::Normal), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID), Ui::TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
+        secondPath2->init(Fonts::appFontScaled(fontSize, Fonts::FontWeight::Normal), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID), QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, 1, Ui::TextRendering::LineBreakType::PREFER_SPACES);
+        secondPath2->markdown(Fonts::appFontScaled(fontSize, Fonts::FontWeight::Normal), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID), Ui::TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
 
         messageLongName_->appendBlocks(std::move(secondPath2));
         messageLongName_->evaluateDesiredSize();
@@ -1678,6 +1776,8 @@ namespace Ui
     {
         const Utils::PainterSaver saver(_p);
 
+        _p.setRenderHints(QPainter::SmoothPixmapTransform | QPainter::Antialiasing);
+
         _p.setPen(Qt::NoPen);
 
         drawMouseState(_p, _rect, _isHovered, _isSelected);
@@ -1691,7 +1791,7 @@ namespace Ui
         //////////////////////////////////////////////////////////////////////////
         // render avatar
         auto avatar = Logic::GetAvatarStorage()->GetRounded(fromMail_, fromNick_, Utils::scale_bitmap(getAlertAvatarSize()),
-            QString(), isDefaultAvatar, false, false);
+            isDefaultAvatar, false, false);
 
         const auto ratio = Utils::scale_bitmap_ratio();
         const auto avatarX = _rect.left() + getAlertAvatarX();
@@ -1708,7 +1808,7 @@ namespace Ui
         static QBrush normalBrush(Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE));
         _p.setPen(Qt::NoPen);
         _p.setBrush(_isHovered ? hoverBrush : normalBrush);
-        _p.setRenderHint(QPainter::HighQualityAntialiasing);
+        _p.setRenderHint(QPainter::Antialiasing);
 
         _p.drawEllipse(
             iconX,
@@ -1857,7 +1957,7 @@ namespace Ui
         const auto recentsModel = Logic::getRecentsModel();
         if (recentsModel->isServiceItem(_i))
         {
-            if (recentsModel->isRecentsHeader(_i) && !recentsModel->getFavoritesCount())
+            if (recentsModel->isRecentsHeader(_i) && !recentsModel->getFavoritesCount() && !recentsModel->getUnimportantCount())
                 return QSize();
 
             height = recentParams.serviceItemHeight();
@@ -1919,7 +2019,7 @@ namespace Ui
         viewParams_.regim_ = _regim;
     }
 
-    void RecentItemDelegate::onContactSelected(const QString& _aimId, qint64 _msgId, qint64)
+    void RecentItemDelegate::onContactSelected(const QString& _aimId)
     {
         selectedAimId_ = _aimId;
     }

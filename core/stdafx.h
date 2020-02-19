@@ -57,6 +57,10 @@
 #include <type_traits>
 #include <assert.h>
 
+#if defined(_WIN32) || defined(__linux__)
+#include <filesystem>
+#endif
+
 #ifndef _WIN32
 #include <boost/asio.hpp>
 #endif //_WIN32
@@ -84,7 +88,6 @@
 #include <boost/property_tree/xml_parser.hpp>
 #include <boost/stacktrace.hpp>
 
-#include "product.h"
 #include "../common.shared/common.h"
 #include "../common.shared/typedefs.h"
 
@@ -98,11 +101,6 @@
 #undef max
 #undef small
 
-#ifndef _WIN32
-#define assert(e) { if (!(e)) puts("ASSERT: " #e); }
-#define RAPIDJSON_ASSERT(e) assert(e)
-#endif // _WIN32
-
 #include "rapidjson/document.h"
 #include "rapidjson/writer.h"
 #include "rapidjson/stringbuffer.h"
@@ -111,30 +109,16 @@
 
 using rapidjson_allocator = rapidjson::MemoryPoolAllocator<rapidjson::CrtAllocator>;
 
-#ifndef _RAPIDJSON_GET_STRING_
-#define _RAPIDJSON_GET_STRING_
-namespace core
-{
-    template <typename T>
-    inline std::string rapidjson_get_string(const T& value) { return std::string(value.GetString(), value.GetStringLength()); }
-
-    template <>
-    inline std::string rapidjson_get_string<rapidjson::StringBuffer>(const rapidjson::StringBuffer& value) { return std::string(value.GetString(), value.GetSize()); }
-
-    template <typename T>
-    inline std::string_view rapidjson_get_string_view(const T& value) { return std::string_view(value.GetString(), value.GetStringLength()); }
-
-    template <>
-    inline std::string_view rapidjson_get_string_view<rapidjson::StringBuffer>(const rapidjson::StringBuffer& value) { return std::string_view(value.GetString(), value.GetSize()); }
-}
-#endif // _RAPIDJSON_GET_STRING_
-
-
 #ifdef __APPLE__
 #   if defined(DEBUG) || defined(_DEBUG)
 //#       define DEBUG__OUTPUT_NET_PACKETS
 #   endif // defined(DEBUG) || defined(_DEBUG)
 #endif // __APPLE__
+
+#if !defined(_WIN32) && !defined(ABORT_ON_ASSERT) && defined(DEBUG)
+#define assert(condition) \
+do { if(!(condition)){ std::cerr << "ASSERT FAILED: " << #condition << " " << __FILE__ << ":" << __LINE__ << std::endl; } } while (0)
+#endif
 
 namespace core
 {

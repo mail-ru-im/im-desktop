@@ -24,7 +24,7 @@ namespace Ui
 
     void AvatarPreview::paintEvent(QPaintEvent* _e)
     {
-        const auto avatar = Utils::roundImage(img_, QString(), false, false);
+        const auto avatar = Utils::roundImage(img_, false, false);
         QPainter p(this);
 
         p.setRenderHint(QPainter::Antialiasing);

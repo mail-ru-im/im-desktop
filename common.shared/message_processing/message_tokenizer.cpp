@@ -20,13 +20,6 @@ common::tools::message_token::message_token(const url& _url)
 }
 
 common::tools::message_tokenizer::message_tokenizer(
-    const std::string &_message,
-    const std::string& _files_url)
-    : message_tokenizer(_message, _files_url, std::vector<url_parser::compare_item>())
-{
-}
-
-common::tools::message_tokenizer::message_tokenizer(
     const std::string& _message,
     const std::string& _files_url,
     std::vector<url_parser::compare_item>&& _items)

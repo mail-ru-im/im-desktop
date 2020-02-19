@@ -8,10 +8,6 @@
         <translation>Houstone, máme problém</translation>
     </message>
     <message>
-        <source>Failed to install ICQ</source>
-        <translation>Instalace ICQ se nezdařila</translation>
-    </message>
-    <message>
         <source>Error code: </source>
         <translation>Kód chyby: </translation>
     </message>
@@ -23,21 +19,31 @@
         <source>Close</source>
         <translation>Zavřít</translation>
     </message>
+</context>
+<context>
+    <name>installer::ui::progress_page</name>
     <message>
-        <source>Failed to install Mail.ru Agent</source>
-        <translation>Instalace Mail.ru Agent se nezdařila</translation>
-    </message>
-    <message>
-        <source>Failed to install Messenger</source>
-        <translation>Instalace Messenger se nezdařila</translation>
-    </message>
-    <message>
-        <source>Failed to install Myteam</source>
-        <translation>Instalace Myteam se nezdařila</translation>
+        <source>High-quality videocalls and screen sharing</source>
+        <translation>Vysoce kvalitní videohovory a sdílení obrazovky</translation>
     </message>
 </context>
 <context>
-    <name>installer::ui::main_window</name>
+    <name>installer::ui::start_page</name>
+    <message>
+        <source>Cloud storage of history and files</source>
+        <translation>Cloudové ukládání historie a souborů</translation>
+    </message>
+    <message>
+        <source>Full sync with mobile</source>
+        <translation>Plná synchronizace s mobilem</translation>
+    </message>
+    <message>
+        <source>Install</source>
+        <translation>Nainstalujte</translation>
+    </message>
+</context>
+<context>
+    <name>product</name>
     <message>
         <source>ICQ Setup</source>
         <translation>Nastavení ICQ</translation>
@@ -47,58 +53,44 @@
         <translation>Nastavení Mail.ru Agent</translation>
     </message>
     <message>
+        <source>Myteam Setup</source>
+        <translation>Nastavení Myteam</translation>
+    </message>
+    <message>
         <source>Messenger Setup</source>
         <translation>Nastavení Messenger</translation>
     </message>
     <message>
-        <source>Myteam Setup</source>
-        <translation>Nastavení Myteam</translation>
-    </message>
-</context>
-<context>
-    <name>installer::ui::progress_page</name>
-    <message>
-        <source>Free video and voice calls</source>
-        <translation>Obrazové a hlasové hovory zdarma</translation>
+        <source>Failed to install ICQ</source>
+        <translation>Instalace ICQ se nezdařila</translation>
     </message>
     <message>
-        <source>Hundreds of stickers are always free</source>
-        <translation>Stovky nálepek vždy zdarma</translation>
+        <source>Failed to install Mail.ru Agent</source>
+        <translation>Instalace Mail.ru Agent se nezdařila</translation>
     </message>
     <message>
-        <source>Unlimited and free group chats</source>
-        <translation>Skupinové chaty neomezeně a zdarma</translation>
-    </message>
-</context>
-<context>
-    <name>installer::ui::start_page</name>
-    <message>
-        <source>Welcome to ICQ</source>
-        <translation>Vítejte v ICQ</translation>
+        <source>Failed to install Myteam</source>
+        <translation>Instalace Myteam se nezdařila</translation>
     </message>
     <message>
-        <source>INSTALL</source>
-        <translation>INSTALOVAT</translation>
+        <source>Failed to install Messenger</source>
+        <translation>Instalace Messenger se nezdařila</translation>
     </message>
     <message>
-        <source>Make Mail.Ru my homepage and add bookmarks in the browser.</source>
-        <translation type="unfinished"></translation>
+        <source>Mail.ru Agent for desktop is</source>
+        <translation>Mail.ru Agent pro stolní počítače je</translation>
     </message>
     <message>
-        <source>Make Mail.Ru Search my default search engine.</source>
-        <translation type="unfinished"></translation>
+        <source>Myteam for desktop is</source>
+        <translation>Myteam pro stolní počítače je</translation>
     </message>
     <message>
-        <source>Welcome to Mail.ru Agent</source>
-        <translation>Vítejte v Mail.ru Agent</translation>
+        <source>Messenger for desktop is</source>
+        <translation>Messenger pro stolní počítače je</translation>
     </message>
     <message>
-        <source>Welcome to Messenger</source>
-        <translation>Vítejte v Messenger</translation>
-    </message>
-    <message>
-        <source>Welcome to Myteam</source>
-        <translation>Vítejte v Myteam</translation>
+        <source>ICQ for desktop is</source>
+        <translation>ICQ pro stolní počítače je</translation>
     </message>
 </context>
 <context>

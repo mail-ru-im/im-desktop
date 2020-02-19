@@ -5,18 +5,23 @@
 *.suo
 *.user
 *.sln.docstates
+*.autosave
+**/*.vscode
+**/*.sublime-project
+**/*.sublime-workspace
+**/*.code-workspace
+**/*.pytest_cache
 
 # Build results
 core/[Dd]ebug/*
 corelib/[Dd]ebug/*
 gui/[Dd]ebug/*
 coretest/[Dd]ebug/*
-bin/[Dd]ebug/*
-bin/[Dd]ebug32/*
-bin/[Dd]ebug64/*
+bin
 mplayer/[Dd]ebug/*
 installerpack/[Dd]ebug/*
 installerloader/[Dd]ebug/*
+.vs
 
 core/[Rr]elease/*
 corelib/[Rr]elease/*
@@ -27,6 +32,7 @@ mplayer/[Rr]elease/*
 installerpack/[Rr]elease/*
 installerloader/[Rr]elease/*
 
+gui/appicon.ico
 
 ICQReleaseDebug/
 ReleaseDebug/
@@ -66,6 +72,7 @@ BuildLog.htm
 !*Package.appxmanifest
 UpgradeReport.xslt
 AppxManifest.xml
+CMakeSettings.json
 
 # Visual C++ cache files
 ipch/
@@ -96,6 +103,7 @@ gui/*/*/ui/*.h
 core/build/core.build/Debug/core.build/*
 core/build/core.build/Debug/core.build/Objects-normal/x86_64/*
 core/build/Debug/libcore.a
+external/gigabase_377/*.user
 external/gigabase_377/Debug/*
 external/gigabase_377/Release/*
 !core/Voip/libvoip/lib/[Rr]elease/*
@@ -125,3 +133,11 @@ mac/ICQ/libqwbmp.dylib
 mac/ICQ/libqwebp.dylib
 corelib/corelib/libcore.a
 *.VC.opendb
+/common.shared/config/config_data.h
+
+# Generated components of zstd dictionaries
+/core/zstd_wrap/zstd_dicts/.md5sums
+/core/zstd_wrap/zstd_dicts/internal_request_dict.cpp
+/core/zstd_wrap/zstd_dicts/internal_request_dict.h
+/core/zstd_wrap/zstd_dicts/internal_response_dict.cpp
+/core/zstd_wrap/zstd_dicts/internal_response_dict.h

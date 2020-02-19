@@ -32,18 +32,20 @@ struct filesharing_preview_size_info
 {
     filesharing_preview_size size_;
     int32_t max_side_;
-    std::string url_path_;
+    std::string_view url_path_;
 };
 
 const std::vector<filesharing_preview_size_info>& get_available_fs_preview_sizes();
 
 std::string format_file_sharing_preview_uri(const std::string_view _id, const filesharing_preview_size _size);
 
-bool get_content_type_from_uri(const std::string& _uri, Out core::file_sharing_content_type& _type);
+bool get_content_type_from_uri(std::string_view _uri, Out core::file_sharing_content_type& _type);
 
-bool get_content_type_from_file_sharing_id(const std::string& _file_id, Out core::file_sharing_content_type& _type);
+bool get_content_type_from_file_sharing_id(std::string_view _file_id, Out core::file_sharing_content_type& _type);
 
-bool parse_new_file_sharing_uri(const std::string &_uri, Out std::string &_fileId);
+std::optional<core::file_sharing_content_type> get_content_type_from_file_sharing_id(std::string_view _file_id);
+
+std::optional<std::string_view> parse_new_file_sharing_uri(std::string_view _uri);
 
 std::string_view get_file_id(std::string_view _uri);
 

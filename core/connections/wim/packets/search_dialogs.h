@@ -25,6 +25,7 @@ namespace core::wim
         void reset_dates();
 
         bool support_async_execution() const override { return true; }
+        void set_hide_keyword(const bool _hide) { hide_keyword_ = _hide; }
 
     private:
         int32_t init_request(std::shared_ptr<core::http_request_simple> _request) override;
@@ -42,6 +43,8 @@ namespace core::wim
 
         std::string start_date_;
         std::string end_date_;
+
+        bool hide_keyword_;
 
         std::shared_ptr<core::archive::persons_map> persons_;
     };

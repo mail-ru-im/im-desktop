@@ -4,12 +4,15 @@
 #include "../../types/chat.h"
 #include "../../types/chatheads.h"
 #include "../../animation/animation.h"
+#include "history/Message.h"
 
 namespace Ui
 {
     class LastStatusAnimation;
-    typedef std::unique_ptr<class HistoryControlPageItem> HistoryControlPageItemUptr;
     enum class MediaType;
+
+    using HistoryControlPageItemUptr = std::unique_ptr<class HistoryControlPageItem>;
+    using highlightsV = std::vector<QString>;
 
     enum class LastStatus {
         None,
@@ -17,6 +20,12 @@ namespace Ui
         DeliveredToServer,
         DeliveredToPeer,
         Read
+    };
+
+    enum class MediaRequestMode
+    {
+        Chat,
+        Recents
     };
 
     class HistoryControlPageItem : public QWidget
@@ -31,7 +40,7 @@ namespace Ui
 
         explicit HistoryControlPageItem(QWidget *parent);
 
-        virtual void clearSelection();
+        virtual void clearSelection(bool _keepSingleSelection);
 
         virtual bool isOutgoing() const = 0;
 
@@ -39,13 +48,15 @@ namespace Ui
 
         virtual QString formatRecentsText() const = 0;
 
-        virtual MediaType getMediaType() const = 0;
+        virtual MediaType getMediaType(MediaRequestMode _mode  = MediaRequestMode::Chat) const = 0;
 
         bool hasAvatar() const;
 
         bool hasSenderName() const;
 
         bool hasTopMargin() const;
+
+        virtual void selectByPos(const QPoint& from, const QPoint& to, const QPoint& areaFrom, const QPoint& areaTo);
 
         virtual bool isSelected() const;
 
@@ -61,8 +72,10 @@ namespace Ui
 
         virtual void setChainedToPrev(const bool _isChained);
         virtual void setChainedToNext(const bool _isChained);
+        virtual void setPrev(const Logic::MessageKey& _key);
+        virtual void setNext(const Logic::MessageKey& _next);
 
-        virtual void select();
+        virtual void setSelected(const bool _isSelected);
 
         virtual void setTopMargin(const bool value);
 
@@ -94,6 +107,8 @@ namespace Ui
         virtual LastStatus getLastStatus() const;
 
         virtual void setQuoteSelection() = 0;
+        virtual void highlightText(const highlightsV& _highlights) {}
+        virtual void resetHighlight() {}
 
         virtual int bottomOffset() const;
 
@@ -125,11 +140,15 @@ namespace Ui
         bool isChainedToNextMessage() const;
 
         void setContextMenuEnabled(const bool _isEnabled) { isContextMenuEnabled_ = _isEnabled; }
+        void setMultiselectEnabled(const bool _isEnabled) { isMultiselectEnabled_ = _isEnabled; }
         bool isContextMenuEnabled() const noexcept { return  isContextMenuEnabled_; }
+        bool isMultiselectEnabled() const noexcept { return  isMultiselectEnabled_; }
         bool isContextMenuReplyOnly() const noexcept;
 
         virtual void updateStyle() = 0;
         virtual void updateFonts() = 0;
+
+        void setSelectionCenter(int _center);
 
     protected:
 
@@ -141,8 +160,12 @@ namespace Ui
 
         virtual void mouseReleaseEvent(QMouseEvent*) override;
 
+        virtual void enterEvent(QEvent*) override;
+
         void showMessageStatus();
         void hideMessageStatus();
+
+        virtual void drawSelection(QPainter& _p, const QRect& _rect);
 
         virtual void drawHeads(QPainter& _p) const;
 
@@ -151,6 +174,8 @@ namespace Ui
         virtual bool clickHeads(const QRect& _rc, const QPoint& _pos, bool _left);
 
         virtual void onChainsChanged() {}
+
+        virtual bool handleSelectByPos(const QPoint& from, const QPoint& to, const QPoint& areaFrom, const QPoint& areaTo);
 
     private:
         void drawLastStatusIconImpl(QPainter& _p, int _rightPadding, int _bottomPadding);
@@ -180,6 +205,18 @@ namespace Ui
 
         bool isContextMenuEnabled_;
 
+        bool isMultiselectEnabled_;
+
+        bool selectedTop_;
+
+        bool selectedBottom_;
+
+        bool hoveredTop_;
+
+        bool hoveredBottom_;
+
+        int selectionCenter_;
+
         LastStatus lastStatus_;
 
         QString aimId_;
@@ -193,6 +230,15 @@ namespace Ui
         anim::Animation heightAnimation_;
 
         QPoint pressPoint;
+        QRect selectionMarkRect_;
+
+        Logic::MessageKey prev_;
+        Logic::MessageKey next_;
+
+        QPoint prevTo_;
+        QPoint prevFrom_;
+        bool intersected_;
+        bool wasSelected_;
 
     protected:
         QuoteColorAnimation QuoteAnimation_;

@@ -1,12 +1,9 @@
-#ifndef __AVATAR_CONTAINER_WIDGET_H__
-#define __AVATAR_CONTAINER_WIDGET_H__
-
+#pragma once
 #include <string>
 #include "../cache/avatars/AvatarStorage.h"
 
 namespace Ui
 {
-
     class AvatarContainerWidget : public QWidget
     {
         Q_OBJECT
@@ -41,7 +38,4 @@ namespace Ui
         std::vector<QRect> calculateAvatarPositions(const QRect& _rcParent, QSize& _avatarsSize);
         QSize calculateAvatarSize();
     };
-
 }
-
-#endif//__AVATAR_CONTAINER_WIDGET_H__

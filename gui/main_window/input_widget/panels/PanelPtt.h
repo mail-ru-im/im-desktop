@@ -43,10 +43,13 @@ namespace Ui
         bool removeIfUnderMouse(const QString& _contact);
         void remove(const QString& _contact);
         bool canLock(const QString& _contact) const;
+        bool tryPlay(const QString& _contact);
+        bool tryPause(const QString& _contact);
 
         void pressedMouseMove(const QString& _contact);
 
         void enableCircleHover(const QString&, bool _val);
+        void setUnderLongPress(const QString&, bool _val);
 
         void setUnderQuote(const bool _underQuote);
         void setFocusOnDelete();

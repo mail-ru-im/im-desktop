@@ -9,6 +9,7 @@
 #include "../../utils/gui_coll_helper.h"
 #include "../MainPage.h"
 #include "../MainWindow.h"
+#include "../friendly/FriendlyContainer.h"
 #include "../../utils/InterConnector.h"
 #include "../../utils/stat_utils.h"
 #include "../../gui_settings.h"
@@ -31,9 +32,12 @@ namespace Logic
         : CustomAbstractListModel(parent)
         , FavoritesCount_(0)
         , FavoritesVisible_(true)
+        , UnimportantCount_(0)
+        , UnimportantVisible_(false)
         , refreshTimer_(nullptr)
     {
         FavoritesVisible_ = Ui::get_gui_settings()->get_value(settings_favorites_visible, true);
+        UnimportantVisible_ = Ui::get_gui_settings()->get_value(settings_unimportant_visible, true);
 
         connect(GetAvatarStorage(), &Logic::AvatarStorage::avatarChanged, this, &RecentsModel::contactAvatarChanged);
         connect(Ui::GetDispatcher(), &Ui::core_dispatcher::activeDialogHide, this, &RecentsModel::activeDialogHide);
@@ -59,9 +63,11 @@ namespace Logic
         if (Dialogs_.empty())
             return 0;
 
-        auto count = (int)Dialogs_.size() + getVisibleServiceItemInFavorites();
+        auto count = (int)Dialogs_.size() + getVisibleServiceItems();
         if (!FavoritesVisible_)
             count -= FavoritesCount_;
+        if (!UnimportantVisible_)
+            count -= UnimportantCount_;
 
         return count;
     }
@@ -81,6 +87,17 @@ namespace Logic
                 Data::DlgState s;
                 s.AimId_ = qsl("~favorites~");
                 s.SetText(QT_TRANSLATE_NOOP("contact_list", "FAVORITES"));
+                return s;
+            }();
+
+            return QVariant::fromValue(st);
+        }
+        else if (cur == getUnimportantHeaderIndex())
+        {
+            const static auto st = []() {
+                Data::DlgState s;
+                s.AimId_ = qsl("~unimportant~");
+                s.SetText(QT_TRANSLATE_NOOP("contact_list", "UNIMPORTANT"));
                 return s;
             }();
 
@@ -163,6 +180,9 @@ namespace Logic
         if (iter->FavoriteTime_ != -1)
             --FavoritesCount_;
 
+        if (iter->UnimportantTime_ != -1)
+            --UnimportantCount_;
+
         contactChanged(iter->AimId_);
 
         friendlyTexts_.erase(iter->AimId_);
@@ -191,6 +211,29 @@ namespace Logic
         for (const auto& _dlgState : _states)
         {
             const auto contactItem = Logic::getContactListModel()->getContactItem(_dlgState.AimId_);
+
+            if (_dlgState.noRecentsUpdate_)
+            {
+                auto iter = std::find_if(HiddenDialogs_.begin(), HiddenDialogs_.end(), isEqualDlgState(_dlgState.AimId_));
+                if (iter != HiddenDialogs_.end())
+                {
+                    auto &curDlgState = *iter;
+                    if (curDlgState.YoursLastRead_ != _dlgState.YoursLastRead_)
+                        emit readStateChanged(_dlgState.AimId_);
+
+                    curDlgState = _dlgState;
+                }
+                else
+                {
+                    HiddenDialogs_.push_back(_dlgState);
+                }
+
+                if (mainPageOpened && _dlgState.AimId_ == curSelected)
+                    sendLastRead(_dlgState.AimId_);
+
+                emit updated();
+                continue;
+            }
 
             if (!contactItem)
                 Logic::getContactListModel()->add(_dlgState.AimId_, _dlgState.Friendly_);
@@ -242,6 +285,15 @@ namespace Logic
                     else
                         --FavoritesCount_;
                 }
+
+                bool uChanged = curDlgState.UnimportantTime_ != _dlgState.UnimportantTime_;
+                if (uChanged)
+                {
+                    if (_dlgState.UnimportantTime_ != -1)
+                        ++UnimportantCount_;
+                    else
+                        --UnimportantCount_;
+                }
 #ifdef DEBUG
                 const auto prevState = curDlgState;
 #endif // DEBUG
@@ -249,6 +301,9 @@ namespace Logic
 
                 if (fChanged)
                     emit favoriteChanged(_dlgState.AimId_);
+
+                if (uChanged)
+                    emit unimportantChanged(_dlgState.AimId_);
 
                 if (curDlgState.HasLastMsgId())
                 {
@@ -273,6 +328,7 @@ namespace Logic
 
                     const auto keepPrevTime =
                         curDlgState.FavoriteTime_ == _dlgState.FavoriteTime_ &&
+                        curDlgState.UnimportantTime_ == _dlgState.UnimportantTime_ &&
                         curDlgState.LastMsgId_ == prevLastId &&
                         curDlgState.UnreadCount_ == 0 &&
                         curDlgState.GetText() == prevText;
@@ -281,7 +337,7 @@ namespace Logic
                             curDlgState.Time_ = prevTime;
                 }
             }
-            else if (!_dlgState.GetText().isEmpty() || _dlgState.FavoriteTime_ != -1)
+            else if (!_dlgState.GetText().isEmpty() || _dlgState.FavoriteTime_ != -1 || _dlgState.UnimportantTime_ != -1)
             {
                 ++updatedItems;
 
@@ -289,6 +345,12 @@ namespace Logic
                 {
                     ++FavoritesCount_;
                     emit favoriteChanged(_dlgState.AimId_);
+                }
+
+                if (_dlgState.UnimportantTime_ != -1)
+                {
+                    ++UnimportantCount_;
+                    emit unimportantChanged(_dlgState.AimId_);
                 }
 
                 Dialogs_.push_back(_dlgState);
@@ -341,13 +403,20 @@ namespace Logic
     void RecentsModel::unknownToRecents(const Data::DlgState& dlgState)
     {
         auto iter = std::find(Dialogs_.begin(), Dialogs_.end(), dlgState);
-        if (iter == Dialogs_.end() && (!dlgState.GetText().isEmpty() || dlgState.FavoriteTime_ != -1))
+        if (iter == Dialogs_.end() && (!dlgState.GetText().isEmpty() || dlgState.FavoriteTime_ != -1 || dlgState.UnimportantTime_ != -1))
         {
             if (dlgState.FavoriteTime_ != -1)
             {
                 ++FavoritesCount_;
                 emit favoriteChanged(dlgState.AimId_);
             }
+
+            if (dlgState.UnimportantTime_ != -1)
+            {
+                ++UnimportantCount_;
+                emit unimportantChanged(dlgState.AimId_);
+            }
+
             Dialogs_.push_back(dlgState);
             sortDialogs();
         }
@@ -358,7 +427,20 @@ namespace Logic
         std::sort(Dialogs_.begin(), Dialogs_.end(), [](const Data::DlgState& first, const Data::DlgState& second)
         {
             if (first.FavoriteTime_ == -1 && second.FavoriteTime_ == -1)
-                return first.Time_ > second.Time_;
+            {
+                if (first.UnimportantTime_ == -1 && second.UnimportantTime_ == -1)
+                    return first.Time_ > second.Time_;
+
+                if (first.UnimportantTime_ == -1)
+                    return false;
+                else if (second.UnimportantTime_ == -1)
+                    return true;
+
+                if (first.UnimportantTime_ == second.UnimportantTime_)
+                    return first.AimId_ > second.AimId_;
+
+                return first.UnimportantTime_ < second.UnimportantTime_;
+            }
 
             if (first.FavoriteTime_ == -1)
                 return false;
@@ -419,6 +501,8 @@ namespace Logic
         Data::DlgState state;
         if (const auto iter = std::find_if(Dialogs_.cbegin(), Dialogs_.cend(), isEqualDlgState(aimId)); iter != Dialogs_.cend())
             state = *iter;
+        else if (const auto iter = std::find_if(HiddenDialogs_.cbegin(), HiddenDialogs_.cend(), isEqualDlgState(aimId)); iter != HiddenDialogs_.cend())
+            state = *iter;
 
         if (fromDialog)
             sendLastRead(aimId);
@@ -434,6 +518,14 @@ namespace Logic
         emit updated();
     }
 
+    void RecentsModel::toggleUnimportantVisible()
+    {
+        UnimportantVisible_ = !UnimportantVisible_;
+        Ui::get_gui_settings()->set_value(settings_unimportant_visible, UnimportantVisible_);
+        refresh();
+        emit updated();
+    }
+
     void RecentsModel::unknownAppearance()
     {
         refresh();
@@ -443,7 +535,7 @@ namespace Logic
     {
         if (const auto searchedAimId = _aimId.isEmpty() ? Logic::getContactListModel()->selectedContact() : _aimId; !searchedAimId.isEmpty())
         {
-            if (force || !Ui::get_gui_settings()->get_value<bool>(settings_partial_read, settings_partial_read_deafult()))
+            if (force || !Ui::get_gui_settings()->get_value<bool>(settings_partial_read, settings_partial_read_default()))
             {
                 const auto iter = std::find_if(Dialogs_.begin(), Dialogs_.end(), isEqualDlgState(searchedAimId));
                 if (iter != Dialogs_.end() && (iter->UnreadCount_ != 0 || iter->YoursLastRead_ < iter->LastMsgId_))
@@ -462,17 +554,33 @@ namespace Logic
                     emit dataChanged(idx, idx);
                     emit updated();
                 }
+                else
+                {
+                    const auto iter = std::find_if(HiddenDialogs_.begin(), HiddenDialogs_.end(), isEqualDlgState(searchedAimId));
+                    if (iter != HiddenDialogs_.end() && (iter->UnreadCount_ != 0 || iter->YoursLastRead_ < iter->LastMsgId_))
+                    {
+                        iter->UnreadCount_ = 0;
+
+                        Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
+                        collection.set_value_as_qstring("contact", searchedAimId);
+                        collection.set_value_as_int64("message", iter->LastMsgId_);
+                        if (_mode == ReadMode::ReadAll)
+                            collection.set_value_as_bool("read_all", true);
+                        Ui::GetDispatcher()->post_message_to_core("dlg_state/set_last_read", collection.get());
+                    }
+                }
             }
         }
     }
 
-    int RecentsModel::markAllRead()
+    std::pair<int, int> RecentsModel::markAllRead()
     {
         int readCnt = 0;
+        int readChatsCnt = 0;
 
         const auto confirmed = Utils::GetConfirmationWithTwoButtons(
-            QT_TRANSLATE_NOOP("popup_window", "CANCEL"),
-            QT_TRANSLATE_NOOP("popup_window", "YES"),
+            QT_TRANSLATE_NOOP("popup_window", "Cancel"),
+            QT_TRANSLATE_NOOP("popup_window", "Yes"),
             QT_TRANSLATE_NOOP("popup_window", "Do you really want mark all as read?"),
             QT_TRANSLATE_NOOP("popup_window", "Mark all as read"),
             nullptr);
@@ -483,7 +591,8 @@ namespace Logic
             {
                 if (iter->UnreadCount_ != 0 || iter->YoursLastRead_ < iter->LastMsgId_)
                 {
-                    ++readCnt;
+                    readCnt += iter->UnreadCount_;
+                    ++readChatsCnt;
 
                     Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
                     collection.set_value_as_qstring("contact", iter->AimId_);
@@ -503,7 +612,7 @@ namespace Logic
             }
         }
 
-        return readCnt;
+        return { readChatsCnt, readCnt };
     }
 
     void RecentsModel::setAttention(const QString& _aimId, const bool _value)
@@ -549,10 +658,10 @@ namespace Logic
 
     void RecentsModel::muteChat(const QString& aimId, bool mute)
     {
-        Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
-        collection.set_value_as_qstring("contact", aimId);
-        collection.set_value_as_bool("mute", mute);
-        Ui::GetDispatcher()->post_message_to_core("dialogs/mute", collection.get());
+        Ui::gui_coll_helper collMute(Ui::GetDispatcher()->create_collection(), true);
+        collMute.set_value_as_qstring("contact", aimId);
+        collMute.set_value_as_bool("mute", mute);
+        Ui::GetDispatcher()->post_message_to_core("dialogs/mute", collMute.get());
     }
 
     bool RecentsModel::isFavorite(const QString& _aimId) const
@@ -560,6 +669,15 @@ namespace Logic
         auto iter = std::find_if(Dialogs_.begin(), Dialogs_.end(), isEqualDlgState(_aimId));
         if (iter != Dialogs_.end())
             return iter->FavoriteTime_ != -1;
+
+        return false;
+    }
+
+    bool RecentsModel::isUnimportant(const QString& _aimId) const
+    {
+        auto iter = std::find_if(Dialogs_.begin(), Dialogs_.end(), isEqualDlgState(_aimId));
+        if (iter != Dialogs_.end())
+            return iter->UnimportantTime_ != -1;
 
         return false;
     }
@@ -585,7 +703,7 @@ namespace Logic
     bool RecentsModel::isServiceItem(const QModelIndex& _index) const
     {
         auto row = _index.row();
-        return row == getFavoritesHeaderIndex() || row == getRecentsHeaderIndex();
+        return row == getFavoritesHeaderIndex() || row == getRecentsHeaderIndex() || row == getUnimportantHeaderIndex();
     }
 
     bool RecentsModel::isClickableItem(const QModelIndex& _index) const
@@ -610,6 +728,22 @@ namespace Logic
         return FavoritesCount_;
     }
 
+    bool RecentsModel::isUnimportantGroupButton(const QModelIndex& i) const
+    {
+        int r = i.row();
+        return r == getUnimportantHeaderIndex();
+    }
+
+    bool RecentsModel::isUnimportantVisible() const
+    {
+        return UnimportantVisible_;
+    }
+
+    quint16 RecentsModel::getUnimportantCount() const
+    {
+        return UnimportantCount_;
+    }
+
     bool RecentsModel::isRecentsHeader(const QModelIndex& i) const
     {
         const int r = i.row();
@@ -623,33 +757,12 @@ namespace Logic
 
     QModelIndex RecentsModel::contactIndex(const QString& _aimId) const
     {
-        int i = 0;
-        for (const auto& iter : Dialogs_)
-        {
-            if (iter.AimId_ == _aimId)
-            {
-                break;
-            }
-            ++i;
-        }
+        const auto it = std::find_if(Dialogs_.begin(), Dialogs_.end(), isEqualDlgState(_aimId));
+        if (it == Dialogs_.end())
+            return QModelIndex();
 
-        if (i < (int)Dialogs_.size())
-        {
-            if (FavoritesCount_)
-            {
-                if (i >= visibleContactsInFavorites())
-                {
-                    ++i;
-                    if (!FavoritesVisible_)
-                        i -= FavoritesCount_;
-                }
-                ++i;
-            }
-
-            return index(i);
-        }
-
-        return QModelIndex();
+        const auto dist = std::distance(Dialogs_.begin(), it);
+        return index(getVisibleIndex(dist));
     }
 
     int64_t RecentsModel::getLastMsgId(const QString& _aimId) const
@@ -697,12 +810,12 @@ namespace Logic
         return result;
     }
 
-    int RecentsModel::recentsUnreads() const
+    int RecentsModel::unimportantUnreads() const
     {
         int result = 0;
         for (const auto& dlg : Dialogs_)
         {
-            if (!Logic::getContactListModel()->isMuted(dlg.AimId_) && dlg.FavoriteTime_ == -1)
+            if (dlg.UnimportantTime_ != -1 && !Logic::getContactListModel()->isMuted(dlg.AimId_))
                 result += dlg.UnreadCount_;
         }
         return result;
@@ -711,10 +824,10 @@ namespace Logic
     int RecentsModel::favoritesUnreads() const
     {
         int result = 0;
-        for (const auto& iter : Dialogs_)
+        for (const auto& dlg : Dialogs_)
         {
-            if (!Logic::getContactListModel()->isMuted(iter.AimId_) && iter.FavoriteTime_ != -1)
-                result += iter.UnreadCount_;
+            if (dlg.FavoriteTime_ != -1 && !Logic::getContactListModel()->isMuted(dlg.AimId_))
+                result += dlg.UnreadCount_;
         }
         return result;
     }
@@ -728,6 +841,74 @@ namespace Logic
         }
 
         return false;
+    }
+
+    bool RecentsModel::hasAttentionFavorites() const
+    {
+        for (const auto& iter : Dialogs_)
+        {
+            if (iter.Attention_ && iter.FavoriteTime_ != -1)
+                return true;
+        }
+
+        return false;
+    }
+
+    bool RecentsModel::hasAttentionUnimportant() const
+    {
+        for (const auto& iter : Dialogs_)
+        {
+            if (iter.Attention_ && iter.UnimportantTime_ != -1)
+                return true;
+        }
+
+        return false;
+    }
+
+    bool RecentsModel::hasMentionsInFavorites() const
+    {
+        for (const auto& iter : Dialogs_)
+        {
+            if (iter.unreadMentionsCount_ > 0 && iter.FavoriteTime_ != -1)
+                return true;
+        }
+
+        return false;
+    }
+
+    bool RecentsModel::hasMentionsInUnimportant() const
+    {
+        for (const auto& iter : Dialogs_)
+        {
+            if (iter.unreadMentionsCount_ > 0 && iter.UnimportantTime_ != -1)
+                return true;
+        }
+
+        return false;
+    }
+
+    int RecentsModel::getMutedFavoritesWithMentions() const
+    {
+        auto result = 0;
+        for (const auto& iter : Dialogs_)
+        {
+            if (iter.unreadMentionsCount_ > 0 && iter.FavoriteTime_ != -1 && Logic::getContactListModel()->isMuted(iter.AimId_))
+                ++result;
+        }
+
+        return result;
+    }
+
+    int RecentsModel::getMutedUnimportantWithMentions() const
+    {
+        auto result = 0;
+        for (const auto& iter : Dialogs_)
+        {
+            if (iter.unreadMentionsCount_ > 0 && iter.UnimportantTime_ != -1 && Logic::getContactListModel()->isMuted(iter.AimId_))
+                ++result;
+        }
+
+        return result;
     }
 
     QString RecentsModel::nextUnreadAimId(const QString& _current) const
@@ -807,40 +988,59 @@ namespace Logic
 
     int RecentsModel::correctIndex(int i) const
     {
-        if (i == getFavoritesHeaderIndex() || i == getRecentsHeaderIndex())
+        if (i == getFavoritesHeaderIndex() || i == getRecentsHeaderIndex() || i == getUnimportantHeaderIndex())
             return i;
 
-        if (FavoritesCount_ != 0)
+        auto result = i;
+        if (FavoritesCount_ != 0 || UnimportantCount_ != 0)
         {
             if (i < getRecentsHeaderIndex())
-                return i - 1;
+            {
+                if (UnimportantCount_ != 0 && FavoritesCount_ != 0 && i > getUnimportantHeaderIndex())
+                    result = i - 2;
+                else
+                    result = i - 1;
+            }
+            else
+            {
+                result -= getVisibleServiceItems();
+            }
 
-            i -= getVisibleServiceItemInFavorites();
             if (!FavoritesVisible_)
-                i += FavoritesCount_;
+                result += FavoritesCount_;
+
+            if (!UnimportantVisible_ && i > getUnimportantHeaderIndex())
+                result += UnimportantCount_;
         }
 
-        return i;
+        return result;
     }
 
     int RecentsModel::getVisibleIndex(int i) const
     {
-        if (i < FavoritesCount_)
-        {
-            if (FavoritesVisible_)
-                return i + 1;
-
+        if (i < 0 || (size_t)i >= Dialogs_.size())
             return -1;
+
+        if (Dialogs_[i].FavoriteTime_ != -1)
+        {
+            if (!FavoritesVisible_)
+                return -1;
+            else
+                return i + 1;
         }
 
-        auto result = i;
-        if (FavoritesCount_ == 0)
-            return result;
+        if (Dialogs_[i].UnimportantTime_ != -1)
+        {
+            if (!UnimportantVisible_)
+                return -1;
 
-        result += 2;
-        if (!FavoritesVisible_)
-            result -= FavoritesCount_;
+            return (FavoritesCount_ ? i + 2 : i + 1) - (FavoritesVisible_ ? 0 : FavoritesCount_);
+        }
 
+        if (UnimportantCount_ == 0 && FavoritesCount_ == 0)
+            return i;
+
+        const auto result = i + getVisibleServiceItems() - (FavoritesVisible_ ? 0 : FavoritesCount_) - (UnimportantVisible_ ? 0 : UnimportantCount_);
         return result;
     }
 
@@ -849,22 +1049,53 @@ namespace Logic
         return FavoritesVisible_ ? FavoritesCount_ : 0;
     }
 
+    int RecentsModel::visibleContactsInUnimportant() const
+    {
+        return UnimportantVisible_ ? UnimportantCount_ : 0;
+    }
+
     int RecentsModel::getFavoritesHeaderIndex() const
     {
         return FavoritesCount_ ? 0 : -1;
     }
 
-    int RecentsModel::getRecentsHeaderIndex() const
+    int RecentsModel::getUnimportantHeaderIndex() const
     {
-        if (!FavoritesCount_)
+        if (!UnimportantCount_)
             return -1;
+
+        if (!FavoritesCount_)
+            return 0;
 
         return visibleContactsInFavorites() + 1;
     }
 
-    int RecentsModel::getVisibleServiceItemInFavorites() const
+    int RecentsModel::getRecentsHeaderIndex() const
     {
-        return FavoritesCount_ ? 2 : 0;
+        if (!FavoritesCount_ && !UnimportantCount_)
+            return -1;
+
+        auto i = 0;
+        if (FavoritesCount_)
+            ++i;
+        if (UnimportantCount_)
+            ++i;
+
+        return visibleContactsInFavorites() + visibleContactsInUnimportant() + i;
+    }
+
+    int RecentsModel::getVisibleServiceItems() const
+    {
+        auto result = 0;
+
+        if (FavoritesCount_)
+            ++result;
+        if (UnimportantCount_)
+            ++result;
+        if (result > 0)
+            ++result;
+
+        return result;
     }
 
     bool RecentsModel::isServiceAimId(const QString& _aimId) const
@@ -888,10 +1119,10 @@ namespace Logic
         if (it == Dialogs_.end())
             return;
 
-        if (it->FavoriteTime_ != -1)
+        if (it->FavoriteTime_ != -1 || it->UnimportantTime_ != -1)
             return;
 
-        std::rotate(Dialogs_.begin() + getFavoritesCount(), it, it + 1);
+        std::rotate(Dialogs_.begin() + getFavoritesCount() + getUnimportantCount(), it, it + 1);
 
         const auto dist = std::distance(Dialogs_.begin(), it);
         emit dataChanged(index(0), index(getVisibleIndex(dist)));

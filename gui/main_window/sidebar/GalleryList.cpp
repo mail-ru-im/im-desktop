@@ -77,7 +77,7 @@ namespace Ui
 
         if (command == ql1s("go_to"))
         {
-            emit Logic::getContactListModel()->select(aimId_, msg, msg, Logic::UpdateChatSelection::No);
+            emit Logic::getContactListModel()->select(aimId_, msg, Logic::UpdateChatSelection::No);
             props.emplace_back("Event", "Go_to_message");
 
             Ui::GetDispatcher()->post_stats_to_core(event_by_type(type_), { { "chat_type", Utils::chatTypeByAimId(aimId_) }, { "do", "go_to_message" } });
@@ -111,8 +111,8 @@ namespace Ui
             QString text = QT_TRANSLATE_NOOP("popup_window", "Are you sure you want to delete message?");
 
             auto confirm = Utils::GetConfirmationWithTwoButtons(
-                QT_TRANSLATE_NOOP("popup_window", "CANCEL"),
-                QT_TRANSLATE_NOOP("popup_window", "YES"),
+                QT_TRANSLATE_NOOP("popup_window", "Cancel"),
+                QT_TRANSLATE_NOOP("popup_window", "Yes"),
                 text,
                 QT_TRANSLATE_NOOP("popup_window", "Delete message"),
                 nullptr
@@ -123,7 +123,7 @@ namespace Ui
             props.emplace_back("Event", (is_shared ? "Remove_from_all" : "Remove_from_myself"));
 
             if (confirm)
-                GetDispatcher()->deleteMessage(msg, QString(), aimId_, is_shared);
+                GetDispatcher()->deleteMessages(aimId_, { DeleteMessageInfo(msg, QString(), is_shared) });
         }
 
         if (props.size())
@@ -284,8 +284,8 @@ namespace Ui
         exhausted_ = _exhausted;
         if (!_entries.empty())
         {
-            lastMsgId_ = _entries.last().msg_id_;
-            lastSeq_ = _entries.last().seq_;
+            lastMsgId_ = _entries.back().msg_id_;
+            lastSeq_ = _entries.back().seq_;
         }
 
         contentWidget_->processItems(_entries);

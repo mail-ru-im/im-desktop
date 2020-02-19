@@ -14,10 +14,10 @@ namespace
     void applyFontFamily(const FontFamily _fontFamily, Out QFont &_font);
 
     void applyFontWeight(
-        const FontFamily _fontFamily,
-        const FontWeight _fontWeight,
-        const int32_t _sizePx,
-        Out QFont &_font);
+            const FontFamily _fontFamily,
+            const FontWeight _fontWeight,
+            const int32_t _sizePx,
+            Out QFont &_font);
 
     const QssWeightsMapT& getCurrentWeightsMap();
 
@@ -33,22 +33,22 @@ namespace
 
 }
 
-QFont appFont(const int32_t _sizePx)
+QFont appFont(const int32_t _sizePx, const FontAdjust _adjust)
 {
-    return appFont(_sizePx, defaultAppFontFamily(), defaultAppFontWeight());
+    return appFont(_sizePx, defaultAppFontFamily(), defaultAppFontWeight(), _adjust);
 }
 
-QFont appFont(const int32_t _sizePx, const FontFamily _family)
+QFont appFont(const int32_t _sizePx, const FontFamily _family, const FontAdjust _adjust)
 {
-    return appFont(_sizePx, _family, defaultAppFontWeight());
+    return appFont(_sizePx, _family, defaultAppFontWeight(), _adjust);
 }
 
-QFont appFont(const int32_t _sizePx, const FontWeight _weight)
+QFont appFont(const int32_t _sizePx, const FontWeight _weight, const FontAdjust _adjust)
 {
-    return appFont(_sizePx, defaultAppFontFamily(), _weight);
+    return appFont(_sizePx, defaultAppFontFamily(), _weight, _adjust);
 }
 
-QFont appFont(const int32_t _sizePx, const FontFamily _family, const FontWeight _weight)
+QFont appFont(const int32_t _sizePx, const FontFamily _family, const FontWeight _weight, const FontAdjust _adjust)
 {
     assert(_sizePx > 0);
     assert(_sizePx < 500);
@@ -59,10 +59,11 @@ QFont appFont(const int32_t _sizePx, const FontFamily _family, const FontWeight 
 
     QFont result;
 
-    result.setPixelSize(_sizePx);
+    const auto _fSize = (_adjust == FontAdjust::Adjust && platform::is_apple())? _sizePx - 1 : _sizePx;
+    result.setPixelSize(_fSize);
 
     applyFontFamily(_family, Out result);
-    applyFontWeight(_family, _weight, _sizePx, Out result);
+    applyFontWeight(_family, _weight, _fSize, Out result);
 
     return result;
 }
@@ -87,6 +88,26 @@ QFont appFontScaled(const int32_t _sizePx, const FontFamily _family, const FontW
     return appFont(Utils::scale_value(_sizePx), _family, _weight);
 }
 
+QFont appFontScaledFixed(const int32_t _sizePx)
+{
+    return appFont(Utils::scale_value(_sizePx), FontAdjust::NoAdjust);
+}
+
+QFont appFontScaledFixed(const int32_t _sizePx, const FontWeight _weight)
+{
+    return appFont(Utils::scale_value(_sizePx), _weight, FontAdjust::NoAdjust);
+}
+
+QFont appFontScaledFixed(const int32_t _sizePx, const FontFamily _family)
+{
+    return appFont(Utils::scale_value(_sizePx), _family, FontAdjust::NoAdjust);
+}
+
+QFont appFontScaledFixed(const int32_t _sizePx, const FontFamily _family, const FontWeight _weight)
+{
+    return appFont(Utils::scale_value(_sizePx), _family, _weight, FontAdjust::NoAdjust);
+}
+
 FontFamily defaultAppFontFamily()
 {
     if constexpr (platform::is_apple())
@@ -109,20 +130,17 @@ QString appFontFullQss(const int32_t _sizePx, const FontFamily _fontFamily, cons
     assert(_fontWeight > FontWeight::Min);
     assert(_fontWeight < FontWeight::Max);
 
-    QString result;
-    result.reserve(512);
 
-    result = ql1s("font-size: ")
+    const auto weight = evalQssFontWeight(_fontFamily, _fontWeight);
+    const auto weight_qss = weight.isEmpty() ? QLatin1String() : ql1s("; font-weight: ");
+
+    return ql1s("font-size: ")
         % QString::number(_sizePx)
         % ql1s("px; font-family: \"")
         % appFontFamilyNameQss(_fontFamily, _fontWeight)
-        % ql1c('"');
-
-    const auto weight = evalQssFontWeight(_fontFamily, _fontWeight);
-    if (!weight.isEmpty())
-        result += (ql1s("; font-weight: ") % weight);
-
-    return result;
+        % ql1c('"')
+        % weight_qss
+        % weight;
 }
 
 QString appFontFamilyNameQss(const FontFamily _fontFamily, const FontWeight _fontWeight)
@@ -207,14 +225,14 @@ int adjustFontSize(const int _size)
 {
     switch (getFontSizeSetting())
     {
-    case FontSize::Large:
-        return _size + 2;
+        case FontSize::Large:
+            return _size + 2;
 
-    case FontSize::Small:
-        return _size - 1;
+        case FontSize::Small:
+            return _size - 1;
 
-    default:
-        break;
+        default:
+            break;
     }
 
     return _size;
@@ -228,20 +246,20 @@ FontWeight adjustFontWeight(const FontWeight _weight)
 
         switch (_weight)
         {
-        case FontWeight::Light:
-            return FontWeight::Normal;
+            case FontWeight::Light:
+                return FontWeight::Normal;
 
-        case FontWeight::Normal:
-            return FontWeight::Medium;
+            case FontWeight::Normal:
+                return FontWeight::Medium;
 
-        case FontWeight::Medium:
-            return FontWeight::SemiBold;
+            case FontWeight::Medium:
+                return FontWeight::SemiBold;
 
-        case FontWeight::SemiBold:
-            return FontWeight::Bold;
+            case FontWeight::SemiBold:
+                return FontWeight::Bold;
 
-        default:
-            break;
+            default:
+                break;
         }
     }
     return _weight;
@@ -277,12 +295,12 @@ namespace
     const QssWeightsMapT& getSourceSansProWeightsMap()
     {
         static const QssWeightsMapT weightMap =
-        {
-            { FontWeight::Light, qsl("300") },
-            { FontWeight::Normal, qsl("400") },
-            { FontWeight::SemiBold, qsl("600") },
-            { FontWeight::Bold, qsl("700") },
-        };
+                {
+                        { FontWeight::Light, qsl("300") },
+                        { FontWeight::Normal, qsl("400") },
+                        { FontWeight::SemiBold, qsl("600") },
+                        { FontWeight::Bold, qsl("700") },
+                };
 
         return weightMap;
     }
@@ -290,12 +308,12 @@ namespace
     const QssWeightsMapT& getSegoeUIWeightsMap()
     {
         static const QssWeightsMapT weightMap =
-        {
-            { FontWeight::Light, qsl("200") },
-            { FontWeight::Normal, qsl("400") },
-            { FontWeight::SemiBold, qsl("450") },
-            { FontWeight::Bold, qsl("700") }
-        };
+                {
+                        { FontWeight::Light, qsl("200") },
+                        { FontWeight::Normal, qsl("400") },
+                        { FontWeight::SemiBold, qsl("450") },
+                        { FontWeight::Bold, qsl("700") }
+                };
 
         return weightMap;
     }
@@ -409,10 +427,10 @@ namespace
     }
 
     void applyFontWeight(
-        const FontFamily _fontFamily,
-        const FontWeight _fontWeight,
-        int32_t _sizePx,
-        Out QFont &_font)
+            const FontFamily _fontFamily,
+            const FontWeight _fontWeight,
+            int32_t _sizePx,
+            Out QFont &_font)
     {
         assert(_fontFamily > FontFamily::MIN);
         assert(_fontFamily < FontFamily::MAX);

@@ -1,6 +1,4 @@
-#ifndef __VIDEO_SETTINGS_H__
-#define __VIDEO_SETTINGS_H__
-
+#pragma once
 #include "../voip/VoipProxy.h"
 
 namespace Ui
@@ -35,5 +33,3 @@ namespace Ui
         QPushButton *buttonAudioCaptureSet_;
     };
 }
-
-#endif//__VIDEO_SETTINGS_H__

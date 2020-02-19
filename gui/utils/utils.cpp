@@ -3,12 +3,14 @@
 #include "exif.h"
 #include "utils.h"
 #include "features.h"
+#include "url_config.h"
 
 #include "gui_coll_helper.h"
 #include "InterConnector.h"
 #include "SChar.h"
 #include "profiling/auto_stop_watch.h"
 #include "translit.h"
+#include "PhoneFormatter.h"
 #include "../gui_settings.h"
 #include "../core_dispatcher.h"
 #include "../cache/countries.h"
@@ -18,7 +20,7 @@
 #include "../controls/DpiAwareImage.h"
 #include "../controls/GeneralDialog.h"
 #include "../controls/TextEditEx.h"
-#include "../controls/TextUnit.h"
+#include "../controls/CheckboxList.h"
 #include "../main_window/ContactDialog.h"
 #include "../main_window/MainPage.h"
 #include "../main_window/MainWindow.h"
@@ -27,10 +29,13 @@
 #include "../main_window/contact_list/RecentsModel.h"
 #include "../main_window/contact_list/UnknownsModel.h"
 #include "../main_window/history_control/MessageStyle.h"
+#include "../main_window/history_control/MessagesScrollArea.h"
 #include "../main_window/friendly/FriendlyContainer.h"
 #include "../styles/ThemesContainer.h"
 #include "../styles/ThemeParameters.h"
 #include "../../common.shared/version_info.h"
+#include "../../common.shared/config/config.h"
+#include "previewer/toast.h"
 #include "UrlCommand.h"
 #include "log/log.h"
 #include "../app_config.h"
@@ -59,6 +64,14 @@ namespace
 
     const int drag_preview_max_width = 320;
     const int drag_preview_max_height = 240;
+
+    const int delete_messages_hor_offset = 16;
+    const int delete_messages_top_offset = 16;
+    const int delete_messages_bottom_offset = 36;
+
+    const int big_online_size = 20;
+    const int online_size = 16;
+    const int small_online_size = 12;
 
     const QColor colorTable3[][3] =
     {
@@ -241,51 +254,38 @@ namespace
 
     const QString redirect = qsl("&noredirecttologin=1");
 
-    const QString& getPage()
+    QString getPage()
     {
-        static const QString r_mail_ru = QString::fromStdString(Ui::GetAppConfig().getUrlRMailRu()).trimmed();
-        static const QString page = qsl("https://") % (r_mail_ru.isEmpty() ? QString() : r_mail_ru  % qsl(":443/cls3564/")) % QString::fromStdString(Ui::GetAppConfig().getUrlWinMailRu());
-
-        return page;
+        const QString& r_mail_ru = Ui::getUrlConfig().getUrlMailRedirect();
+        return qsl("https://") % (r_mail_ru.isEmpty() ? QString() : r_mail_ru  % qsl(":443/cls3564/")) % Ui::getUrlConfig().getUrlMailWin();
     }
 
-    const QString& getFailPage()
+    QString getFailPage()
     {
-        static const QString r_mail_ru = QString::fromStdString(Ui::GetAppConfig().getUrlRMailRu()).trimmed();
-        static const QString page = qsl("https://") % (r_mail_ru.isEmpty() ? QString() : r_mail_ru % qsl(":443/cls3564/")) % QString::fromStdString(Ui::GetAppConfig().getUrlWinMailRu());
-
-        return page;
+        const QString& r_mail_ru = Ui::getUrlConfig().getUrlMailRedirect();
+        return qsl("https://") % (r_mail_ru.isEmpty() ? QString() : r_mail_ru % qsl(":443/cls3564/")) % Ui::getUrlConfig().getUrlMailWin();
     }
 
-    const QString& getReadMsgPage()
+    QString getReadMsgPage()
     {
-        static const QString r_mail_ru = QString::fromStdString(Ui::GetAppConfig().getUrlRMailRu()).trimmed();
-        static const QString page = qsl("https://") % (r_mail_ru.isEmpty() ? QString() : r_mail_ru % qsl(":443/cln8791/")) % QString::fromStdString(Ui::GetAppConfig().getUrlReadMsg()) % qsl("?id=");
-
-        return page;
+        const QString& r_mail_ru = Ui::getUrlConfig().getUrlMailRedirect();
+        return qsl("https://") % (r_mail_ru.isEmpty() ? QString() : r_mail_ru % qsl(":443/cln8791/")) % Ui::getUrlConfig().getUrlMailRead() % qsl("?id=");
     }
 
-    const QString& getBaseMailUrl()
+    QString getBaseMailUrl()
     {
-        static const QString base_mail_url = qsl("https://") % QString::fromStdString(Ui::GetAppConfig().getUrlAuthMailRu()) % qsl("?Login=%1&agent=%2&ver=%3&agentlang=%4");
-
-        return base_mail_url;
+        return qsl("https://") % Ui::getUrlConfig().getUrlMailAuth() % qsl("?Login=%1&agent=%2&ver=%3&agentlang=%4");
     }
 
-    const QString& getMailUrl()
+    QString getMailUrl()
     {
-        static const QString mail_url = getBaseMailUrl() % redirect % ql1s("&page=") % getPage() % ql1s("&FailPage=") % getFailPage();
-
-        return mail_url;
+        return getBaseMailUrl() % redirect % ql1s("&page=") % getPage() % ql1s("&FailPage=") % getFailPage();
     }
 
-    const QString& getMailOpenUrl()
+    QString getMailOpenUrl()
     {
-        static const QString mail_open_url = getBaseMailUrl() % redirect % ql1s("&page=") % getReadMsgPage() % ql1s("%5&lang=%4") % ql1s("&FailPage=") % getReadMsgPage() % ql1s("%5&lang=%4");
-
-        return mail_open_url;
+        return getBaseMailUrl() % redirect % ql1s("&page=") % getReadMsgPage() % ql1s("%5&lang=%4") % ql1s("&FailPage=") % getReadMsgPage() % ql1s("%5&lang=%4");
     }
-
 
 
 
@@ -350,9 +350,13 @@ namespace
         QPoint offset_;
         QPixmap officialIcon_;
         QPixmap muteIcon_;
+        QPixmap smallOnlineIcon_;
+        QPixmap smallSelectedOnlineIcon_;
+        QPixmap onlineIcon_;
+        QPixmap onlineSelectedIcon_;
         int cutWidth_;
 
-        AvatarBadge(const int _size, const int _offsetX, const int _offsetY, const int _cutWidth, const QString& _officialPath, const QString& _mutedPath)
+        AvatarBadge(const int _size, const int _offsetX, const int _offsetY, const int _cutWidth, const QString& _officialPath, const QString& _mutedPath, const QString& _smallOnlinePath, const QString& _onlinePath, const QString& _onlineSelectedPath)
             : size_(Utils::scale_value(QSize(_size, _size)))
             , offset_(Utils::scale_value(_offsetX), Utils::scale_value(_offsetY))
             , cutWidth_(Utils::scale_value(_cutWidth))
@@ -362,6 +366,32 @@ namespace
 
             if (!_mutedPath.isEmpty())
                 muteIcon_ = Utils::renderSvg(_mutedPath, size_);
+
+            if (!_onlinePath.isEmpty())
+            {
+                onlineIcon_ = Utils::parse_image_name(_onlinePath);
+                if (platform::is_windows())
+                {
+                    if (onlineIcon_.width() != Utils::scale_value(online_size) && onlineIcon_.width() != Utils::scale_value(big_online_size))
+                        onlineIcon_ = onlineIcon_.scaledToWidth(Utils::scale_value(online_size));
+                }
+                Utils::check_pixel_ratio(onlineIcon_);
+
+                onlineSelectedIcon_ = Utils::renderSvg(_onlineSelectedPath, onlineIcon_.size() / Utils::scale_bitmap(1));
+            }
+
+            if (!_smallOnlinePath.isEmpty())
+            {
+                smallOnlineIcon_ = Utils::parse_image_name(_smallOnlinePath);
+                if (platform::is_windows())
+                {
+                    if (smallOnlineIcon_.width() != Utils::scale_value(small_online_size))
+                        smallOnlineIcon_ = smallOnlineIcon_.scaledToWidth(Utils::scale_value(small_online_size));
+                }
+                Utils::check_pixel_ratio(smallOnlineIcon_);
+
+                smallSelectedOnlineIcon_ = Utils::renderSvg(_onlineSelectedPath, smallOnlineIcon_.size() / Utils::scale_bitmap(1));
+            }
         }
     };
 
@@ -370,37 +400,38 @@ namespace
     {
         static const badgeDataMap badges =
         {
-            { Utils::scale_bitmap_with_value(32),  AvatarBadge(12, 22 , 20 , 2, qsl(":/avatar_badges/official_32"), qsl(":/avatar_badges/mute_32")) },
-            { Utils::scale_bitmap_with_value(44),  AvatarBadge(14, 30 , 30 , 2, qsl(":/avatar_badges/official_44"), QString()) },
-            { Utils::scale_bitmap_with_value(52),  AvatarBadge(16, 35 , 35 , 2, qsl(":/avatar_badges/official_52"), qsl(":/avatar_badges/mute_52")) },
-            { Utils::scale_bitmap_with_value(60),  AvatarBadge(20, 42 , 40 , 4, qsl(":/avatar_badges/official_60"), QString()) },
-            { Utils::scale_bitmap_with_value(80),  AvatarBadge(20, 57 , 57 , 2, qsl(":/avatar_badges/official_60"), QString()) },
-            { Utils::scale_bitmap_with_value(138), AvatarBadge(24, 106, 106, 2, qsl(":/avatar_badges/official_138"),QString()) },
+            { Utils::scale_bitmap_with_value(32),  AvatarBadge(12, 22 , 20 , 2, qsl(":/avatar_badges/official_32"), qsl(":/avatar_badges/mute_32"), qsl(":/online_small_100"), qsl(":/online_100"), qsl(":/online_selected")) },
+            { Utils::scale_bitmap_with_value(44),  AvatarBadge(14, 30 , 30 , 2, qsl(":/avatar_badges/official_44"), QString(), QString(), QString(), QString()) },
+            { Utils::scale_bitmap_with_value(52),  AvatarBadge(16, 35 , 35 , 2, qsl(":/avatar_badges/official_52"), qsl(":/avatar_badges/mute_52"), qsl(":/online_small_100"), qsl(":/online_100"), qsl(":/online_selected")) },
+            { Utils::scale_bitmap_with_value(60),  AvatarBadge(20, 42 , 40 , 4, qsl(":/avatar_badges/official_60"), qsl(":/avatar_badges/mute_52"), qsl(":/online_small_100"), qsl(":/online_big_100"), qsl(":/online_selected")) },
+            { Utils::scale_bitmap_with_value(80),  AvatarBadge(20, 57 , 57 , 2, qsl(":/avatar_badges/official_60"), QString(), QString(), QString(), QString()) },
+            { Utils::scale_bitmap_with_value(138), AvatarBadge(24, 106, 106, 2, qsl(":/avatar_badges/official_138"),QString(), QString(), QString(), QString()) },
         };
         return badges;
     };
+
+    constexpr auto getToastVisibilityDuration() noexcept
+    {
+        return std::chrono::milliseconds(1000);
+    }
 }
 
 namespace Utils
 {
     QString getAppTitle()
     {
-        return build::GetProductVariant(QT_TRANSLATE_NOOP("title", "ICQ"),
-                                        QT_TRANSLATE_NOOP("title", "Mail.ru Agent"),
-                                        QT_TRANSLATE_NOOP("title", "Myteam"),
-                                        QT_TRANSLATE_NOOP("title", "Messenger"));
+        const auto str = config::get().translation(config::translations::app_title);
+        return QApplication::translate("title", str.data());
     }
 
     QString getVersionLabel()
     {
-        core::tools::version_info infoCurrent;
-        return getAppTitle() % ql1s(" (") % QString::fromUtf8(infoCurrent.get_version().c_str()) % ql1c(')');
+        return getAppTitle() % ql1s(" (") % QString::fromStdString(core::tools::version_info().get_version()) % ql1c(')');
     }
 
     QString getVersionPrintable()
     {
-        core::tools::version_info infoCurrent;
-        return getAppTitle() % ql1c(' ') % QString::fromUtf8(infoCurrent.get_version().c_str());
+        return getAppTitle() % ql1c(' ') % QString::fromStdString(core::tools::version_info().get_version());
     }
 
     void drawText(QPainter& _painter, const QPointF& _point, int _flags,
@@ -535,6 +566,27 @@ namespace Utils
         return !_aimId.isEmpty() && std::all_of(_aimId.begin(), _aimId.end(), [](auto c) { return c.isDigit(); });
     }
 
+    const std::vector<QString>& urlSchemes()
+    {
+        const static auto schemes = []() {
+            const auto scheme_csv = config::get().string(config::values::register_url_scheme_csv); //url1,descr1,url2,desc2,..
+            const auto splitted = QString::fromUtf8(scheme_csv.data(), scheme_csv.size()).split(QLatin1Char(','));
+            std::vector<QString> res;
+            res.reserve(splitted.size() / 2);
+            for (int i = 0; i < splitted.size(); i += 2)
+                res.push_back(splitted.at(i));
+            return res;
+        }();
+
+        return schemes;
+    }
+
+    bool isInternalScheme(const QString& scheme)
+    {
+        const auto& schemes = urlSchemes();
+        return std::any_of(schemes.begin(), schemes.end(), [&scheme](const auto& x) { return x.compare(scheme, Qt::CaseInsensitive) == 0; });
+    }
+
     QString getCountryNameByCode(const QString& _isoCode)
     {
         const auto &countries = Ui::countries::get();
@@ -545,6 +597,19 @@ namespace Utils
         });
         if (i != countries.end())
             return i->name_;
+        return QString();
+    }
+
+    QString getCountryCodeByName(const QString & _name)
+    {
+        const auto &countries = Ui::countries::get();
+        const auto i = std::find_if(
+            countries.begin(), countries.end(), [_name](const Ui::countries::country &v)
+        {
+            return v.name_.toLower() == _name.toLower();
+        });
+        if (i != countries.end())
+            return i->iso_code_;
         return QString();
     }
 
@@ -692,9 +757,7 @@ namespace Utils
 
         QPainter painter(&bigResult);
 
-        painter.setRenderHint(QPainter::Antialiasing);
-        painter.setRenderHint(QPainter::TextAntialiasing);
-        painter.setRenderHint(QPainter::SmoothPixmapTransform);
+        painter.setRenderHints(QPainter::Antialiasing | QPainter::TextAntialiasing | QPainter::SmoothPixmapTransform);
 
         // set pen
 
@@ -705,7 +768,7 @@ namespace Utils
 
         QPen filledAvatarPen(Qt::white);
 
-        const QPen &avatarPen = isMailIcon ? hollowAvatarPen : filledAvatarPen;
+        QPen &avatarPen = isMailIcon ? hollowAvatarPen : filledAvatarPen;
         painter.setPen(avatarPen);
 
         // draw
@@ -719,7 +782,7 @@ namespace Utils
             const auto ellipseRadius = (bigSizePx - (correction * 2));
             painter.drawEllipse(correction, correction, ellipseRadius, ellipseRadius);
         }
-        else
+        else if (!_uin.isEmpty())
         {
             painter.setPen(Qt::NoPen);
 
@@ -730,7 +793,7 @@ namespace Utils
             painter.fillRect(QRect(0, 0, bigSizePx, bigSizePx), radialGrad);
         }
 
-        if (const auto overlay = Styling::getParameters().getColor(Styling::StyleVariable::GHOST_OVERLAY); overlay.isValid() && overlay.alpha() > 0)
+        if (const auto overlay = Styling::getParameters().getColor(Styling::StyleVariable::GHOST_OVERLAY); !_uin.isEmpty() && overlay.isValid() && overlay.alpha() > 0)
         {
             Utils::PainterSaver ps(painter);
             painter.setCompositionMode(QPainter::CompositionMode_Overlay);
@@ -749,18 +812,45 @@ namespace Utils
             return QPixmap::fromImage(std::move(scaledBigResult));
         }
 
+        auto fillDefault = [_sizePx](QImage& _result)
+        {
+            _result.fill(Qt::transparent);
+            QPainter p(&_result);
+            p.setRenderHints(QPainter::Antialiasing | QPainter::TextAntialiasing | QPainter::SmoothPixmapTransform);
+
+            auto c = Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY);
+            c.setAlpha(20);
+
+            p.fillRect(QRect(0, 0, _sizePx, _sizePx), c);
+
+            QPen pen;
+            pen.setWidth(Utils::scale_bitmap(Utils::scale_value(1)));
+            pen.setBrush(Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY));
+            pen.setStyle(Qt::PenStyle::SolidLine);
+            p.setPen(pen);
+
+            auto start = 0;
+            auto span = 9;
+            while (start < 360)
+            {
+                p.drawArc(QRect(Utils::scale_value(1), Utils::scale_value(1), _sizePx - Utils::scale_value(2), _sizePx - Utils::scale_value(2)), start * 16, span * 16);
+                start += span * 2;
+            }
+        };
+
         const auto trimmedDisplayName = QStringRef(&_displayName).trimmed();
         if (trimmedDisplayName.isEmpty())
         {
-            QPainter scaled(&scaledBigResult);
-            scaled.setRenderHint(QPainter::Antialiasing);
-            scaled.setRenderHint(QPainter::TextAntialiasing);
-            scaled.setRenderHint(QPainter::SmoothPixmapTransform);
-            static const QPixmap img(Utils::loadPixmap(qsl(":/resources/photo_100.png")));
-            const auto off = scaledBigResult.width() * 0.25;
-            scaled.drawPixmap(QRectF(off, off, scaledBigResult.width() - off * 2., scaledBigResult.height() - off * 2.), img, img.rect());
-            return QPixmap::fromImage(std::move(scaledBigResult));
+            QImage result(QSize(_sizePx, _sizePx), QImage::Format_ARGB32);
+            fillDefault(result);
+            QPainter p(&result);
+            const auto icon_size = Utils::scale_value(32) * Utils::scale_bitmap(1);
+            p.drawPixmap((_sizePx - icon_size) / 2, (_sizePx - icon_size) / 2, renderSvg(qsl(":/cam_icon"), QSize(icon_size, icon_size), Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY)));
+            return QPixmap::fromImage(std::move(result));
         }
+
+        if (_uin.isEmpty())
+            fillDefault(scaledBigResult);
 
         const auto percent = _sizePx / scale_bitmap_ratio() <= Ui::MessageStyle::getLastReadAvatarSize() ? 0.64 : 0.54;
         const auto fontSize = _sizePx * percent;
@@ -780,6 +870,8 @@ namespace Utils
             QPainter letterPainter(&scaledBigResult);
             letterPainter.setRenderHint(QPainter::Antialiasing);
             letterPainter.setFont(font);
+            if (_uin.isEmpty())
+                avatarPen.setColor(Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY));
             letterPainter.setPen(avatarPen);
 
             const auto toDisplay = trimmedDisplayName.at(0).toUpper();
@@ -951,7 +1043,7 @@ namespace Utils
         return result;
     }
 
-    QPixmap roundImage(const QPixmap& _img, const QString& _state, bool /*isDefault*/, bool _miniIcons)
+    QPixmap roundImage(const QPixmap& _img, bool /*isDefault*/, bool _miniIcons)
     {
         const int scale = std::min(_img.height(), _img.width());
         QPixmap imageOut(scale, scale);
@@ -966,112 +1058,8 @@ namespace Utils
 
         QPainterPath path;
         path.addEllipse(0, 0, scale, scale);
-
-        const auto xRnd = 50;
-        const auto yRnd = 36;
-
-        if (_state == ql1s("mobile") || _state == ql1s("mobile_active"))
-        {
-            QPainterPath stPath(QPointF(0, 0));
-            if (_miniIcons)
-                stPath.addRoundRect(
-                    QRect(
-                        scale - scale_bitmap_with_value(mobile_rect_width_mini),
-                        scale - scale_bitmap_with_value(mobile_rect_height_mini),
-                        scale_bitmap_with_value(mobile_rect_width_mini),
-                        scale_bitmap_with_value(mobile_rect_height_mini)
-                    ),
-                    xRnd,
-                    yRnd
-                );
-            else
-                stPath.addRoundRect(
-                    QRect(
-                        scale - scale_bitmap_with_value(mobile_rect_width),
-                        scale - scale_bitmap_with_value(mobile_rect_height),
-                        scale_bitmap_with_value(mobile_rect_width),
-                        scale_bitmap_with_value(mobile_rect_height)
-                    ),
-                    xRnd,
-                    yRnd
-                );
-            path -= stPath;
-        }
-
-        auto addedRadius = Utils::scale_value(8);
-        if (_state == ql1s("photo enter") || _state == ql1s("photo leave"))
-        {
-            QPixmap p(Utils::parse_image_name(qsl(":/resources/addphoto_100.png")));
-            int x = (scale - p.width());
-            int y = (scale - p.height());
-            QPainterPath stPath(QPointF(0, 0));
-            stPath.addEllipse(x - addedRadius / 2, y - addedRadius / 2, p.width() + addedRadius, p.height() + addedRadius);
-            path -= stPath;
-        }
-
         painter.setClipPath(path);
         painter.drawPixmap(0, 0, _img);
-
-        if (_state == ql1s("photo enter"))
-        {
-            QColor photoEnterColor(ql1s("#000000"));
-            photoEnterColor.setAlphaF(0.3);
-            painter.setBrush(QBrush(photoEnterColor));
-            painter.drawEllipse(0, 0, scale, scale);
-            painter.setBrush(Qt::NoBrush);
-
-            const auto fontSize = Utils::scale_bitmap(18);
-            painter.setFont(Fonts::appFontScaled(fontSize));
-            painter.setPen(QPen(QColor(ql1s("#ffffff"))));
-
-            painter.drawText(QRectF(0, 0, scale, scale), Qt::AlignCenter, QT_TRANSLATE_NOOP("avatar_upload", "Edit\nphoto"));
-            painter.setPen(Qt::NoPen);
-        }
-
-        if (_state == ql1s("online") || _state == ql1s("dnd") || _state == ql1s("online_active"))
-        {
-            QPainterPath stPath(QPointF(0,0));
-            stPath.addRect(0, 0, scale, scale);
-            painter.setClipPath(stPath);
-            QPixmap p;
-            if (_state == ql1s("online_active"))
-                p = QPixmap(Utils::parse_image_name(_miniIcons ? qsl(":/cl_status/online_mini_100_active") : qsl(":/cl_status/online_100_active")));
-            else
-                p = QPixmap(Utils::parse_image_name(_miniIcons ? qsl(":/cl_status/online_mini_100") : qsl(":/cl_status/online_100")));
-            int x = (scale - p.width());
-            int y = (scale - p.height());
-            painter.drawPixmap(x, y, p);
-        }
-        else if (_state == ql1s("mobile") || _state == ql1s("mobile_active"))
-        {
-            QPainterPath stPath(QPointF(0,0));
-            stPath.addRect(0, 0, scale, scale);
-            painter.setClipPath(stPath);
-            QPixmap p;
-            if (_state == ql1s("mobile"))
-                p = QPixmap(Utils::parse_image_name(_miniIcons ? qsl(":/cl_status/mobile_mini_100") : qsl(":/cl_status/mobile_100")));
-            else
-                p = QPixmap(Utils::parse_image_name(_miniIcons ? qsl(":/cl_status/mobile_mini_100_active") : qsl(":/cl_status/mobile_100_active")));
-            int x = (scale - p.width());
-            int y = (scale - p.height());
-            painter.drawPixmap(x, y, p);
-        }
-        else if (_state == ql1s("photo enter") || _state == ql1s("photo leave"))
-        {
-            QPixmap p(Utils::parse_image_name(qsl(":/resources/addphoto_100.png")));
-            int x = (scale - p.width());
-            int y = (scale - p.height());
-
-            painter.setPen(Qt::NoPen);
-            painter.setBrush(Qt::NoBrush);
-            QPainterPath stPath(QPointF(0, 0));
-            stPath.addRect(0, 0, scale, scale);
-            painter.setClipPath(stPath);
-
-            painter.setBrush(Qt::transparent);
-            painter.drawEllipse(x - addedRadius / 2, y - addedRadius / 2, p.width() + addedRadius, p.height() + addedRadius);
-            painter.drawPixmap(x, y, p);
-        }
 
         Utils::check_pixel_ratio(imageOut);
 
@@ -1123,19 +1111,24 @@ namespace Utils
         return int(getScaleCoefficient() * _px);
     }
 
-    QSize scale_value(const QSize _px) noexcept
+    QSize scale_value(const QSize& _px) noexcept
     {
         return _px * getScaleCoefficient();
     }
 
-    QSizeF scale_value(const QSizeF _px) noexcept
+    QSizeF scale_value(const QSizeF& _px) noexcept
     {
         return _px * getScaleCoefficient();
     }
 
-    QRect scale_value(const QRect _px) noexcept
+    QRect scale_value(const QRect& _px) noexcept
     {
         return QRect(_px.topLeft(), scale_value(_px.size()));
+    }
+
+    QPoint scale_value(const QPoint& _px) noexcept
+    {
+        return QPoint(scale_value(_px.x()), scale_value(_px.y()));
     }
 
     int unscale_value(const int _px) noexcept
@@ -1152,6 +1145,11 @@ namespace Utils
     QRect unscale_value(const QRect& _px) noexcept
     {
         return QRect(_px.topLeft(), unscale_value(_px.size()));
+    }
+
+    QPoint unscale_value(const QPoint& _px) noexcept
+    {
+        return QPoint(unscale_value(_px.x()), unscale_value(_px.y()));
     }
 
     int scale_bitmap_ratio() noexcept
@@ -1271,7 +1269,7 @@ namespace Utils
 
     QPixmap renderSvg(const QString& _filePath, const QSize& _scaledSize, const QColor& _tintColor, const KeepRatio _keepRatio)
     {
-        if (_filePath.isEmpty())
+        if (Q_UNLIKELY(_filePath.isEmpty()))
             return QPixmap();
 
         if (Q_UNLIKELY(!QFile::exists(_filePath)))
@@ -1332,7 +1330,7 @@ namespace Utils
 
     QPixmap renderSvgLayered(const QString& _filePath, const SvgLayers& _layers, const QSize& _scaledSize)
     {
-        if (_filePath.isEmpty())
+        if (Q_UNLIKELY(_filePath.isEmpty()))
             return QPixmap();
 
         if (Q_UNLIKELY(!QFile::exists(_filePath)))
@@ -1539,7 +1537,25 @@ namespace Utils
     {
         static bool isInitBasicScaleCoefficient = false;
         if (!isInitBasicScaleCoefficient)
-            basicScaleCoefficient = _coefficient;
+        {
+            constexpr double epsilon = std::numeric_limits<double>::epsilon();
+
+            if (
+                std::fabs(_coefficient - 1.0) < epsilon ||
+                std::fabs(_coefficient - 1.25) < epsilon ||
+                std::fabs(_coefficient - 1.5) < epsilon ||
+                std::fabs(_coefficient - 2.0) < epsilon ||
+                std::fabs(_coefficient - 2.5) < epsilon ||
+                std::fabs(_coefficient - 3.0) < epsilon
+                )
+            {
+                basicScaleCoefficient = _coefficient;
+                return;
+            }
+
+            assert(!"unexpected scale value");
+            basicScaleCoefficient = 1.0;
+        }
         else
             assert(!"initBasicScaleCoefficient should be called once.");
     }
@@ -1549,11 +1565,15 @@ namespace Utils
 #ifdef _WIN32
         if (QSysInfo().windowsVersion() >= QSysInfo::WV_WINDOWS7)
         {
+            typedef HRESULT(__stdcall * SetCurrentProcessExplicitAppUserModelID_Type)(PCWSTR);
+
             HMODULE libShell32 = ::GetModuleHandle(L"shell32.dll");
-            typedef HRESULT  (__stdcall * SetCurrentProcessExplicitAppUserModelID_Type)(PCWSTR);
-            SetCurrentProcessExplicitAppUserModelID_Type SetCurrentProcessExplicitAppUserModelID_Func;
-            SetCurrentProcessExplicitAppUserModelID_Func = (SetCurrentProcessExplicitAppUserModelID_Type)::GetProcAddress(libShell32,"SetCurrentProcessExplicitAppUserModelID");
-            SetCurrentProcessExplicitAppUserModelID_Func(_enabled ? (build::GetProductVariant(application_user_model_id_icq, application_user_model_id_agent, application_user_model_id_biz, application_user_model_id_dit)) : L"");
+            auto func = reinterpret_cast<SetCurrentProcessExplicitAppUserModelID_Type>(::GetProcAddress(libShell32, "SetCurrentProcessExplicitAppUserModelID"));
+            if (func)
+            {
+                const auto model = config::get().string(config::values::app_user_model_win);
+                func(_enabled ? QString::fromUtf8(model.data(), model.size()).toStdWString().c_str() : L"");
+            }
         }
 #endif //_WIN32
     }
@@ -1891,15 +1911,15 @@ namespace Utils
         props.emplace_back("Settings_Alerts", std::to_string(Ui::get_gui_settings()->get_value<bool>(settings_notify_new_messages, true)));
         props.emplace_back("Settings_Mail_Alerts", std::to_string(Ui::get_gui_settings()->get_value<bool>(settings_notify_new_mail_messages, true)));
 
-        props.emplace_back("SettingsMain_ReadAll_Type", std::to_string(Ui::get_gui_settings()->get_value<bool>(settings_partial_read, settings_partial_read_deafult())));
+        props.emplace_back("SettingsMain_ReadAll_Type", std::to_string(Ui::get_gui_settings()->get_value<bool>(settings_partial_read, settings_partial_read_default())));
 
         props.emplace_back("Proxy_Type", ProxySettings::proxyTypeStr(Utils::get_proxy_settings()->type_).toStdString());
 
 
         props.emplace_back("Settings_Suggest_Emoji", std::to_string(Ui::get_gui_settings()->get_value<bool>(settings_show_suggests_emoji, true)));
         props.emplace_back("Settings_Suggest_Words", std::to_string(Ui::get_gui_settings()->get_value<bool>(settings_show_suggests_words, true)));
-        props.emplace_back("Settings_Autoreplace_Emoji", std::to_string(Ui::get_gui_settings()->get_value<bool>(settings_autoreplace_emoji, settings_autoreplace_emoji_deafult())));
-        props.emplace_back("Settings_Allow_Big_Emoji", std::to_string(Ui::get_gui_settings()->get_value<bool>(settings_allow_big_emoji, settings_allow_big_emoji_deafult())));
+        props.emplace_back("Settings_Autoreplace_Emoji", std::to_string(Ui::get_gui_settings()->get_value<bool>(settings_autoreplace_emoji, settings_autoreplace_emoji_default())));
+        props.emplace_back("Settings_Allow_Big_Emoji", std::to_string(Ui::get_gui_settings()->get_value<bool>(settings_allow_big_emoji, settings_allow_big_emoji_default())));
         props.emplace_back("Settings_AutoPlay_Gif", std::to_string(Ui::get_gui_settings()->get_value<bool>(settings_autoplay_gif, true)));
 
         Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::client_settings, props);
@@ -1987,7 +2007,7 @@ namespace Utils
         textEdit->setAutoFillBackground(false);
         textEdit->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
         textEdit->setTextInteractionFlags(Qt::TextEditable | Qt::TextEditorInteraction);
-        textEdit->setCatchEnter(acceptEnter);
+        textEdit->setEnterKeyPolicy(acceptEnter ? Ui::TextEditEx::EnterKeyPolicy::CatchEnter : Ui::TextEditEx::EnterKeyPolicy::None);
         textEdit->setMinimumWidth(Utils::scale_value(300));
         Utils::ApplyStyle(textEdit, qsl("padding: 0; margin: 0;"));
         Testing::setAccessibleName(textEdit, qsl("AS utils textEdit"));
@@ -2001,7 +2021,7 @@ namespace Utils
 
         auto generalDialog = new Ui::GeneralDialog(mainWidget, Utils::InterConnector::instance().getMainWindow());
         generalDialog->addLabel(_headerText);
-        generalDialog->addButtonsPair(QT_TRANSLATE_NOOP("popup_window", "CANCEL"), _buttonText, true);
+        generalDialog->addButtonsPair(QT_TRANSLATE_NOOP("popup_window", "Cancel"), _buttonText, true);
 
         if (acceptEnter)
             QObject::connect(textEdit, &Ui::TextEditEx::enter, generalDialog, &Ui::GeneralDialog::accept);
@@ -2045,8 +2065,12 @@ namespace Utils
         QWidget* _mainWindow,
         bool _withSemiwindow)
     {
-        Ui::GeneralDialog dialog(nullptr, _mainWindow ? _mainWindow : Utils::InterConnector::instance().getMainWindow(), false, true, true, _withSemiwindow);
-        dialog.addLabel(_labelText);
+        auto parent = _parent ? _parent : (_mainWindow ? _mainWindow : Utils::InterConnector::instance().getMainWindow());
+
+        Ui::GeneralDialog dialog(nullptr, parent, false, true, true, _withSemiwindow);
+        if (!_labelText.isEmpty())
+            dialog.addLabel(_labelText);
+
         dialog.addText(_messageText, Utils::scale_value(12));
         dialog.addButtonsPair(_buttonLeftText, _buttonRightText, true);
 
@@ -2061,7 +2085,9 @@ namespace Utils
         QWidget* _mainWindow,
         bool _withSemiwindow)
     {
-        Ui::GeneralDialog dialog(nullptr, _mainWindow ? _mainWindow : Utils::InterConnector::instance().getMainWindow(), false, true, true, _withSemiwindow);
+        auto parent = _parent ? _parent : (_mainWindow ? _mainWindow : Utils::InterConnector::instance().getMainWindow());
+
+        Ui::GeneralDialog dialog(nullptr, parent, false, true, true, _withSemiwindow);
         dialog.addLabel(_labelText);
         dialog.addText(_messageText, Utils::scale_value(12));
         dialog.addAcceptButton(_buttonText, true);
@@ -2077,7 +2103,9 @@ namespace Utils
         const QString& _errorText,
         QWidget* _parent)
     {
-        Ui::GeneralDialog dialog(nullptr, Utils::InterConnector::instance().getMainWindow());
+        auto parent = _parent ? _parent : Utils::InterConnector::instance().getMainWindow();
+
+        Ui::GeneralDialog dialog(nullptr, parent);
         dialog.addLabel(_labelText);
         dialog.addError(_errorText);
         dialog.addButtonsPair(_buttonLeftText, _buttonRightText, true);
@@ -2169,6 +2197,19 @@ namespace Utils
         return QSize(std::max(sz.width(), sz.height()), std::max(sz.width(), sz.height()));
     }
 
+    QScreen* mainWindowScreen()
+    {
+        if (auto mw = Utils::InterConnector::instance().getMainWindow())
+        {
+            if (auto wh = mw->windowHandle())
+            {
+                if (auto s = wh->screen())
+                    return s;
+            }
+        }
+        return QApplication::primaryScreen();
+    }
+
     QPixmap loadPixmap(const QString& _resource)
     {
         QPixmap p(parse_image_name(_resource));
@@ -2212,7 +2253,7 @@ namespace Utils
 
         _originalSize = imageSize;
 
-        if (const auto tr = reader.transformation(); tr & QImageIOHandler::TransformationRotate90 || tr & QImageIOHandler::TransformationRotate270)
+        if (const auto tr = reader.transformation(); tr == QImageIOHandler::TransformationRotate90 || tr == QImageIOHandler::TransformationRotate270)
             _originalSize.transpose();
 
         const auto needRescale = _maxSize.isValid() && (_maxSize.width() < imageSize.width() || _maxSize.height() < imageSize.height());
@@ -2383,9 +2424,9 @@ namespace Utils
         return _link.trimmed();
     }
 
-    const wchar_t* get_crossprocess_mutex_name()
+    std::string_view get_crossprocess_mutex_name()
     {
-        return build::GetProductVariant(crossprocess_mutex_name_icq, crossprocess_mutex_name_agent, crossprocess_mutex_name_biz, crossprocess_mutex_name_dit);
+        return config::get().string(config::values::main_instance_mutex_win);
     }
 
     template<typename T>
@@ -2443,6 +2484,20 @@ namespace Utils
         emit Utils::InterConnector::instance().mailBoxOpened();
     }
 
+    void openAttachUrl(const QString& _email, const QString& _mrimKey, bool _canCancel)
+    {
+        QString url = Features::attachPhoneUrl();
+        url += qsl("?nocancel=%1").arg(_canCancel ? 0 : 1);
+        url += qsl("&client_code=%1").arg(getProductName());
+        url += qsl("&back_url=%1").arg((*urlSchemes().begin()) % qsl("://attach_phone_result"));
+
+        core::tools::version_info infoCurrent;
+        const QString signed_url = getBaseMailUrl() % redirect % ql1s("&page=") % url;
+        const QString final_url = signed_url.arg(_email, _mrimKey, QString::number(infoCurrent.get_build()), Utils::GetTranslator()->getLang());
+
+        QDesktopServices::openUrl(final_url);
+    }
+
     void openAgentUrl(
         const QString& _url,
         const QString& _fail_url,
@@ -2461,12 +2516,14 @@ namespace Utils
 
     QString getProductName()
     {
-        return build::GetProductVariant(product_name_icq, product_name_agent, product_name_biz, product_name_dit);
+        const auto product = config::get().string(config::values::product_name_short);
+        return QString::fromUtf8(product.data(), product.size()) % ql1s(".desktop");
     }
 
     QString getInstallerName()
     {
-        return build::GetProductVariant(installer_exe_name_icq, installer_exe_name_agent, installer_exe_name_biz, installer_exe_name_dit);
+        const auto exe = config::get().string(config::values::installer_exe_win);
+        return QString::fromUtf8(exe.data(), exe.size());
     }
 
     QString getUnreadsBadgeStr(const int _unreads)
@@ -2602,12 +2659,13 @@ namespace Utils
                 std::vector<QPixmap> result;
                 result.reserve(maxTextSize());
 
-                auto bgColor = Styling::getParameters().getColor((_color == Color::Red) ? Styling::StyleVariable::SECONDARY_ATTENTION : Styling::StyleVariable::PRIMARY);
+
+                auto bgColor = Styling::getParameters().getColor((_color == Color::Red) ? Styling::StyleVariable::SECONDARY_ATTENTION : (_color == Color::Gray ? Styling::StyleVariable::BASE_TERTIARY : Styling::StyleVariable::PRIMARY));
                 auto borderColor =  Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE);
 
 
                 for (int i = minTextSize(); i <= maxTextSize(); ++i)
-                    result.push_back(Utils::renderSvgLayered(_basePath + QString::number(i), {
+                    result.push_back(Utils::renderSvgLayered(_basePath % QString::number(i), {
                                                             { qsl("border"), borderColor },
                                                             { qsl("bg"), bgColor },
                                                         }));
@@ -2621,9 +2679,15 @@ namespace Utils
                     assert(!"unsupported length");
                     return QPixmap();
                 }
+
                 if (_color == Color::Red)
                 {
                     static const std::vector<QPixmap> v = generatePixmaps(ql1s(":/controls/badge_"), Color::Red);
+                    return v[_textLength - 1];
+                }
+                else if (_color == Color::Gray)
+                {
+                    static const std::vector<QPixmap> v = generatePixmaps(ql1s(":/controls/badge_"), Color::Gray);
                     return v[_textLength - 1];
                 }
                 else
@@ -2634,14 +2698,14 @@ namespace Utils
             }
         }
 
-        void drawBadge(const std::unique_ptr<Ui::TextRendering::TextUnit>& _textUnit, QPainter& _p, int _x, int _y, Color _color)
+        int drawBadge(const std::unique_ptr<Ui::TextRendering::TextUnit>& _textUnit, QPainter& _p, int _x, int _y, Color _color)
         {
             const auto textLength = _textUnit->getSourceText().size();
 
             if (textLength < minTextSize() || textLength > maxTextSize())
             {
                 assert(!"unsupported length");
-                return;
+                return 0;
             }
 
             Utils::PainterSaver saver(_p);
@@ -2652,7 +2716,7 @@ namespace Utils
             _p.setRenderHint(QPainter::SmoothPixmapTransform);
             const auto size = getSize(textLength);
 
-            auto additionalTopOffset = 0; //!HACK until TextUnit fixed
+            auto additionalTopOffset = -1; //!HACK until TextUnit fixed
             auto additionalLeftOffset = 0.4; //!HACK
             if (platform::is_linux() || platform::is_windows())
                 additionalTopOffset = 1;
@@ -2661,6 +2725,20 @@ namespace Utils
                                   _y + (size.height() + additionalTopOffset) / 2);
             _p.drawPixmap(_x, _y, getBadgeBackground(textLength, _color));
             _textUnit->draw(_p, Ui::TextRendering::VerPosition::MIDDLE);
+            return size.width();
+        }
+
+        int drawBadgeRight(const std::unique_ptr<Ui::TextRendering::TextUnit>& _textUnit, QPainter& _p, int _x, int _y, Color _color)
+        {
+            const auto textLength = _textUnit->getSourceText().size();
+            if (textLength < minTextSize() || textLength > maxTextSize())
+            {
+                assert(!"unsupported length");
+                return 0;
+            }
+
+            const auto size = getSize(textLength);
+            return drawBadge(_textUnit, _p, _x - size.width(), _y, _color);
         }
     }
 
@@ -2753,7 +2831,7 @@ namespace Utils
         result.fill({ Qt::transparent });
 
         QPainter p(&result);
-        p.setRenderHint(QPainter::HighQualityAntialiasing);
+        p.setRenderHint(QPainter::Antialiasing);
 
         p.drawPixmap(0, 0, _original.width(), _original.height(), _original);
 
@@ -2801,7 +2879,7 @@ namespace Utils
 
         p->save();
         p->setPen(Qt::NoPen);
-        p->setRenderHint(QPainter::HighQualityAntialiasing);
+        p->setRenderHint(QPainter::Antialiasing);
 
         auto mode = p->compositionMode();
         int borderWidth = 0;
@@ -2878,7 +2956,6 @@ namespace Utils
             p.setPen(Qt::NoPen);
             p.setRenderHint(QPainter::Antialiasing);
             p.setRenderHint(QPainter::TextAntialiasing);
-            p.setRenderHint(QPainter::HighQualityAntialiasing);
 
             //don't try to understand it. just walk away. really.
             int32_t top = 0;
@@ -2975,15 +3052,14 @@ namespace Utils
                     break;
                 }
                 assert(!resStr.empty());
-                Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::mentions_click_in_chat, { { "Result", std::move(resStr) } });
+                if (!resStr.empty())
+                    Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::mentions_click_in_chat, { { "Result", std::move(resStr) } });
                 return;
             }
         }
 
-        QString url = _url.toString();
-
+        const auto url = _url.toString();
         auto command = UrlCommandBuilder::makeCommand(url, UrlCommandBuilder::Context::Internal);
-
         if (command->isValid())
             command->execute();
         else
@@ -2994,7 +3070,12 @@ namespace Utils
     {
         const auto dialog = Utils::InterConnector::instance().getContactDialog();
         const auto chatAimId = dialog ? dialog->currentAimId() : QString();
-        const auto isPublic = !chatAimId.isEmpty() ? Logic::getContactListModel()->getContactItem(chatAimId)->is_public() : true;
+        auto isPublic = true;
+
+        if (!chatAimId.isEmpty())
+            if (const auto& contactItem = Logic::getContactListModel()->getContactItem(chatAimId); contactItem)
+                isPublic = contactItem->is_public();
+
         const auto isStranger = chatAimId.isEmpty()
                                 ? true
                                 : (Logic::getRecentsModel()->isStranger(chatAimId)
@@ -3040,12 +3121,13 @@ namespace Utils
         if (_mentions.empty())
             return _source;
 
-        QString result;
-
         static const auto mentionMarker = ql1s("@[");
         auto ndxStart = _source.indexOf(mentionMarker);
         if (ndxStart == -1)
             return _source;
+
+        QString result;
+        result.reserve(_source.size());
 
         auto ndxEnd = -1;
 
@@ -3072,9 +3154,59 @@ namespace Utils
         result += _source.rightRef(_source.size() - ndxEnd - 1);
 
         if (!result.isEmpty())
-            return result;
+            return result; // if we ocasionally replace with smth empty
 
         return _source;
+    }
+
+    QString convertFilesPlaceholders(const QString& _source, const Data::FilesPlaceholderMap& _files)
+    {
+        if (_files.empty())
+            return _source;
+
+        static const auto filePlaceholderMarker = ql1c('[');
+        auto ndxStart = _source.indexOf(filePlaceholderMarker);
+        if (ndxStart == -1)
+            return _source;
+
+        QString result;
+        result.reserve(_source.size());
+
+        auto ndxEnd = -1;
+
+        while (ndxStart != -1)
+        {
+            result += _source.midRef(ndxEnd + 1, ndxStart - (ndxEnd + 1));
+            ndxEnd = _source.indexOf(ql1c(']'), ndxStart + 2);
+            if (ndxEnd != -1)
+            {
+                const auto it = _files.find(_source.midRef(ndxStart + 2, ndxEnd - ndxStart - 2));
+                if (it != _files.end())
+                    result += it->second;
+                else
+                    result += _source.midRef(ndxStart, ndxEnd + 1 - ndxStart);
+
+                ndxStart = _source.indexOf(filePlaceholderMarker, ndxEnd + 1);
+            }
+            else
+            {
+                result += _source.rightRef(_source.size() - ndxStart);
+                return result;
+            }
+        }
+        result += _source.rightRef(_source.size() - ndxEnd - 1);
+
+        if (!result.isEmpty())
+            return result; // if we ocasionally replace with smth empty
+
+        return _source;
+    }
+
+    QString setFilesPlaceholders(QString _text, const Data::FilesPlaceholderMap & _files)
+    {
+        for (const auto& p : _files)
+            _text.replace(p.first, p.second);
+        return _text;
     }
 
     bool isNick(const QStringRef& _text)
@@ -3086,7 +3218,7 @@ namespace Utils
 
     QString makeNick(const QString& _text)
     {
-        return _text.contains(ql1c('@')) ? _text : (ql1c('@') % _text);
+        return (_text.isEmpty() || _text.contains(ql1c('@'))) ? _text : (ql1c('@') % _text);
     }
 
     bool isMentionLink(const QStringRef& _url)
@@ -3104,10 +3236,27 @@ namespace Utils
         return false;
     }
 
+    OpenDOPResult openChatDialog(const QString& _stamp, const QString& _aimid, bool _joinApproval, bool _public)
+    {
+        if (!_aimid.isEmpty())
+        {
+            if (Logic::getContactListModel()->contains(_aimid) || (!_joinApproval && _public))
+            {
+                openDialogWithContact(_aimid, -1, true);
+                return OpenDOPResult::dialog;
+            }
+        }
+
+        emit Utils::InterConnector::instance().needJoinLiveChatByStamp(_stamp);
+        return OpenDOPResult::chat_popup;
+    }
+
     OpenDOPResult openDialogOrProfile(const QString& _contact, const OpenDOPParam _paramType)
     {
         assert(!_contact.isEmpty());
 
+        if (Ui::get_gui_settings()->get_value<bool>(settings_fast_drop_search_results, settings_fast_drop_search_default()))
+            emit Utils::InterConnector::instance().searchEnd();
         emit Utils::InterConnector::instance().closeAnySemitransparentWindow({ Utils::CloseWindowInfo::Initiator::Unknown, Utils::CloseWindowInfo::Reason::Keep_Sidebar });
 
         if (_paramType == OpenDOPParam::stamp)
@@ -3201,7 +3350,7 @@ namespace Utils
         return Utils::scale_value(2);
     }
 
-    void drawBubbleShadow(QPainter& _p, const QPainterPath& _bubble, const int _clipLength)
+    void drawBubbleShadow(QPainter& _p, const QPainterPath& _bubble, const int _clipLength, const int _shadowMargin, const QColor _shadowColor)
     {
         Utils::PainterSaver saver(_p);
 
@@ -3209,12 +3358,15 @@ namespace Utils
 
         auto clip = _bubble.boundingRect();
         const auto clipLen = _clipLength == -1 ? Ui::MessageStyle::getBorderRadius() : _clipLength;
-        clip.adjust(0, clip.height() - clipLen, 0, Utils::getShadowMargin());
+        const auto shadowMargin = _shadowMargin == -1 ? Utils::getShadowMargin() : _shadowMargin;
+        const auto shadowColor = _shadowColor.isValid() ? _shadowColor : QColor(0, 0, 0, 255 * 0.01);
+
+        clip.adjust(0, clip.height() - clipLen, 0, shadowMargin);
 
         _p.setClipRect(clip);
 
-        _p.fillPath(_bubble.translated(0, Utils::getShadowMargin()), QColor(0, 0, 0, 255 * 0.01));
-        _p.fillPath(_bubble.translated(0, Utils::getShadowMargin() / 2), QColor(0, 0, 0, 255 * 0.08));
+        _p.fillPath(_bubble.translated(0, shadowMargin), shadowColor);
+        _p.fillPath(_bubble.translated(0, shadowMargin/2), QColor(0, 0, 0, 255 * 0.08));
     }
 
     QSize avatarWithBadgeSize(const int _avatarWidthScaled)
@@ -3233,15 +3385,15 @@ namespace Utils
         return QSize(w, h);
     }
 
-    void drawAvatarWithBadge(QPainter& _p, const QPoint& _topLeft, const QPixmap& _avatar, const bool _isOfficial, const bool _isMuted, const bool _isSelected)
+    void drawAvatarWithBadge(QPainter& _p, const QPoint& _topLeft, const QPixmap& _avatar, const bool _isOfficial, const bool _isMuted, const bool _isSelected, const bool _isOnline, const bool _small_online)
     {
         assert(!_avatar.isNull());
 
         auto& badges = getBadgesData();
         const auto it = badges.find(_avatar.width());
-        if ((!_isMuted && !_isOfficial) || it == badges.end())
+        if ((!_isMuted && !_isOfficial && !_isOnline) || it == badges.end())
         {
-            if ((_isMuted || _isOfficial) && it == badges.end())
+            if ((_isMuted || _isOfficial || _isOnline) && it == badges.end())
                 assert(!"unknown size");
 
             _p.drawPixmap(_topLeft, _avatar);
@@ -3271,11 +3423,11 @@ namespace Utils
         static const auto muted = Styling::getParameters().getColor(Styling::StyleVariable::BASE_TERTIARY);
         static const auto selMuted = Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY);
         static const auto official = QColor(qsl("#2594ff"));
-        const auto& badgeColor = _isMuted ? (_isSelected ? selMuted : muted) : official;
+        const auto& badgeColor = _isMuted ? (_isSelected ? selMuted : muted) : (_isOfficial ? official : Qt::transparent);
         _p.setBrush(badgeColor);
         _p.drawEllipse(badgeRect.translated(_topLeft));
 
-        const auto& icon = _isMuted ? badge.muteIcon_ : badge.officialIcon_;
+        const auto& icon = _isMuted ? badge.muteIcon_ : (_isOfficial ? badge.officialIcon_ : (_small_online ? (_isSelected ? badge.smallSelectedOnlineIcon_ : badge.smallOnlineIcon_) : (_isSelected ? badge.onlineSelectedIcon_ : badge.onlineIcon_)));
         if (!icon.isNull())
         {
             const auto ratio = Utils::scale_bitmap_ratio();
@@ -3286,20 +3438,21 @@ namespace Utils
         }
     }
 
-    void drawAvatarWithBadge(QPainter& _p, const QPoint& _topLeft, const QPixmap& _avatar, const QString& _aimid, const bool _officialOnly, const bool _isSelected)
+    void drawAvatarWithBadge(QPainter& _p, const QPoint& _topLeft, const QPixmap& _avatar, const QString& _aimid, const bool _officialOnly, const bool _isSelected, const bool _small_online)
     {
         assert(!_avatar.isNull());
 
         const auto isMuted = _aimid.isEmpty() ? false : !_officialOnly && Logic::getContactListModel()->isMuted(_aimid);
         const auto isOfficial = _aimid.isEmpty() ? false : !isMuted && Logic::GetFriendlyContainer()->getOfficial(_aimid);
-        drawAvatarWithBadge(_p, _topLeft, _avatar, isOfficial, isMuted, _isSelected);
+        const auto isOnline = _aimid.isEmpty() ? false : !_officialOnly && Logic::getContactListModel()->isOnline(_aimid);
+        drawAvatarWithBadge(_p, _topLeft, _avatar, isOfficial, isMuted, _isSelected, isOnline, _small_online);
     }
 
     void drawAvatarWithoutBadge(QPainter& _p, const QPoint& _topLeft, const QPixmap& _avatar)
     {
         assert(!_avatar.isNull());
 
-        drawAvatarWithBadge(_p, _topLeft, _avatar, false, false, false);
+        drawAvatarWithBadge(_p, _topLeft, _avatar, false, false, false, false, false);
     }
 
     QPixmap mirrorPixmap(const QPixmap& _pixmap, const MirrorDirection _direction)
@@ -3312,7 +3465,7 @@ namespace Utils
     void drawUpdatePoint(QPainter &_p, const QPoint& _center, int _radius, int _borderRadius)
     {
         Utils::PainterSaver ps(_p);
-        _p.setRenderHint(QPainter::HighQualityAntialiasing);
+        _p.setRenderHint(QPainter::Antialiasing);
         _p.setPen(Qt::NoPen);
 
         if (_borderRadius)
@@ -3327,49 +3480,158 @@ namespace Utils
 
     void restartApplication()
     {
-#ifdef _WIN32
-        auto mainWindow = Utils::InterConnector::instance().getMainWindow();
-        if (mainWindow)
-            ShowWindow(mainWindow->getParentWindow(), SW_HIDE);
-#endif
         qApp->setProperty("restarting", true);
         qApp->quit();
     }
 
-    bool isServiceLink(const QString &_url)
+    bool isServiceLink(const QString& _url)
     {
         QUrl url(_url);
         if (url.isEmpty())
             return false;
 
-        const QString scheme = url.scheme();
         const QString host = url.host();
         const QString path = url.path();
 
-        return (scheme.compare(qsl(url_scheme_icq), Qt::CaseInsensitive) == 0 &&
-                host.compare(qsl(url_command_service), Qt::CaseInsensitive) == 0 &&
-                (path.startsWith(qsl("/").append(qsl(url_commandpath_service_getlogs)), Qt::CaseInsensitive) ||
-                 path.startsWith(qsl("/").append(qsl(url_commandpath_service_getlogs_with_rtp)), Qt::CaseInsensitive)));
+        auto startWithServicePath = [](const QStringRef& _path)
+        {
+            return _path.startsWith(qsl(url_commandpath_service_getlogs), Qt::CaseInsensitive)
+                    || _path.startsWith(qsl(url_commandpath_service_getlogs_with_rtp), Qt::CaseInsensitive)
+                    || _path.startsWith(qsl(url_commandpath_service_clear_avatars), Qt::CaseInsensitive)
+                    || _path.startsWith(qsl(url_commandpath_service_clear_cache), Qt::CaseInsensitive)
+                    || _path.startsWith(qsl(url_commandpath_service_update), Qt::CaseInsensitive)
+                    || _path.startsWith(qsl(url_commandpath_service_debug), Qt::CaseInsensitive)
+            ;
+        };
+
+        return isInternalScheme(url.scheme())
+            && host.compare(qsl(url_command_service), Qt::CaseInsensitive) == 0
+            && path.size() > 1
+            && path.at(0) == ql1c('/')
+            && startWithServicePath(path.midRef(1));
     }
 
-    PhoneValidator::PhoneValidator(QWidget* _parent, bool _isCode)
+    void clearContentCache()
+    {
+        Ui::GetDispatcher()->post_message_to_core("remove_content_cache", nullptr, nullptr,
+            [](core::icollection* _coll)
+            {
+
+                Ui::gui_coll_helper coll(_coll, false);
+                auto last_error = coll.get_value_as_int("last_error");
+                assert(!last_error);
+                Q_UNUSED(last_error);
+            }
+        );
+    }
+
+    void clearAvatarsCache()
+    {
+        Ui::GetDispatcher()->post_message_to_core("clear_avatars", nullptr, nullptr,
+            [](core::icollection* _coll)
+            {
+
+                Ui::gui_coll_helper coll(_coll, false);
+                auto last_error = coll.get_value_as_int("last_error");
+                assert(!last_error);
+                Q_UNUSED(last_error);
+            }
+        );
+    }
+
+    void removeOmicronFile()
+    {
+        Ui::GetDispatcher()->post_message_to_core("remove_ominron_stg", nullptr, nullptr,
+            [](core::icollection* _coll)
+            {
+
+                Ui::gui_coll_helper coll(_coll, false);
+                auto last_error = coll.get_value_as_int("last_error");
+                assert(!last_error);
+                Q_UNUSED(last_error);
+            }
+        );
+    }
+
+    void checkForUpdates()
+    {
+        Ui::GetDispatcher()->post_message_to_core("update/check", nullptr);
+    }
+
+    PhoneValidator::PhoneValidator(QWidget* _parent, bool _isCode, bool _isParseFullNumber)
         : QValidator(_parent)
         , isCode_(_isCode)
+        , isParseFullNumber_(_isParseFullNumber)
     {
     }
 
     QValidator::State PhoneValidator::validate(QString& s, int&) const
     {
+        QString code;
+        QString number;
+        if (isParseFullNumber_ && PhoneFormatter::parse(s, code, number))
+        {
+            emit Utils::InterConnector::instance().fullPhoneNumber(code, number);
+            return QValidator::Invalid;
+        }
+
+        static const QRegularExpression reg(qsl("[\\s\\-\\(\\)]*"), QRegularExpression::UseUnicodePropertiesOption | QRegularExpression::OptimizeOnFirstUsageOption);
+        s.replace(reg, QString());
+        if (!isCode_)
+            s.replace(ql1c('+'), QString());
+
         auto i = 0;
         for (const auto& ch : std::as_const(s))
         {
-            if (!ch.isDigit() && !(isCode_ && i == 0 && ch == ql1c('+') ))
+            if (!ch.isDigit() && !(isCode_ && i == 0 && ch == ql1c('+')))
                 return QValidator::Invalid;
 
             ++i;
         }
 
         return QValidator::Acceptable;
+    }
+
+    DeleteMessagesWidget::DeleteMessagesWidget(QWidget* _parent, int _deleteForYou, int _deleteForAll)
+        : QWidget(_parent)
+    {
+        checkbox_ = new Ui::CheckBox(this);
+        checkbox_->setText(QT_TRANSLATE_NOOP("context_menu", "Delete for all"));
+        checkbox_->setChecked(true);
+        checkbox_->move(Utils::scale_value(delete_messages_hor_offset), Utils::scale_value(delete_messages_top_offset));
+
+        deleteForAll_ = _deleteForAll != 0;
+        checkbox_->setVisible(deleteForAll_);
+        if (deleteForAll_)
+            return;
+
+        label_ = Ui::TextRendering::MakeTextUnit(QT_TRANSLATE_NOOP("delete_messages", "Messages will be deleted only for you"));
+        label_->init(Fonts::appFontScaled(15), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
+    }
+
+    void DeleteMessagesWidget::paintEvent(QPaintEvent* _event)
+    {
+        if (!deleteForAll_)
+        {
+            QPainter p(this);
+            label_->setOffsets(Utils::scale_value(delete_messages_hor_offset), Utils::scale_value(delete_messages_top_offset));
+            label_->draw(p);
+        }
+
+        return QWidget::paintEvent(_event);
+    }
+
+    bool DeleteMessagesWidget::isDeleteForAll() const
+    {
+        return deleteForAll_ && checkbox_->isChecked();
+    }
+
+    void DeleteMessagesWidget::resizeEvent(QResizeEvent* _event)
+    {
+        const auto maxWidth = _event->size().width() - Utils::scale_value(delete_messages_hor_offset * 2);
+        checkbox_->setFixedWidth(maxWidth);
+        setFixedHeight((deleteForAll_ ? checkbox_->height() : label_->getHeight(maxWidth)) + Utils::scale_value(delete_messages_top_offset + delete_messages_bottom_offset));
+        return QWidget::resizeEvent(_event);
     }
 
     QString formatFileSize(const int64_t size)
@@ -3402,6 +3664,16 @@ namespace Utils
         }
 
         return qsl("%1 B").arg(size);
+    }
+
+    void SetProxyStyle(QWidget* _widget, QStyle* _style)
+    {
+        assert(_widget);
+        if (_widget)
+        {
+            _style->setParent(_widget);
+            _widget->setStyle(_style);
+        }
     }
 
     void logMessage(const QString &_message)
@@ -3477,19 +3749,12 @@ namespace Utils
     void registerCustomScheme()
     {
 #ifdef __linux__
-
         const QString home = QDir::homePath() + ql1c('/');
         const auto executableInfo = QFileInfo(QCoreApplication::applicationFilePath());
         const QString executableName = executableInfo.fileName();
         const QString executableDir = executableInfo.absoluteDir().absolutePath() + ql1c('/');
 
-        QByteArray urlSchemeName = url_scheme_icq;
-        if (build::is_biz())
-            urlSchemeName = url_scheme_biz;
-        else if (build::is_dit())
-            urlSchemeName = url_scheme_dit;
-        else if (build::is_agent())
-            urlSchemeName = url_scheme_agent;
+        const QByteArray urlSchemeName = urlSchemes().front().toUtf8();
 
         if (QDir(home + ql1s(".local/")).exists())
         {
@@ -3514,7 +3779,7 @@ namespace Utils
 
                 QFile(icon).remove();
 
-                const auto iconName = build::GetProductVariant(qsl(":/logo/logo_icq"), qsl(":/logo/logo_agent"), qsl(":/logo/logo_biz"), qsl(":/logo/logo_dit"));
+                const auto iconName = qsl(":/logo/logo");
                 const auto image = Utils::renderSvg(iconName, (QSize(256, 256))).toImage();
                 image.save(icon);
 
@@ -3699,7 +3964,18 @@ namespace Utils
 
     QString getDomainUrl()
     {
-        return build::is_icq() ? Features::getProfileDomain() : Features::getProfileDomainAgent();
+        const bool useProfileAgent = config::get().is_on(config::features::profile_agent_as_domain_url);
+        return useProfileAgent ? Features::getProfileDomainAgent() : Features::getProfileDomain();
+    }
+
+    QString getStickerBotAimId()
+    {
+        return qsl("100500");
+    }
+
+    QString msgIdLogStr(qint64 _msgId)
+    {
+        return qsl("msg id: %1").arg(_msgId);
     }
 }
 
@@ -3727,13 +4003,323 @@ void Logic::updatePlaceholders(const std::vector<Placeholder>& _locations)
             else
                 emit Utils::InterConnector::instance().hideRecentsPlaceholder();
         }
-        else if (location == Placeholder::Dialog)
+    }
+}
+
+QString Utils::replaceFilesPlaceholders(QString _text, const Data::FilesPlaceholderMap& _files)
+{
+    std::map<QString, QString, StringComparator> allFiles;
+    for (const auto& [link, ph] : _files)
+        allFiles[ph] = link;
+
+    const auto& placeholders = MimeData::getFilesPlaceholderList();
+
+    const QString filesHost = ql1s("https://") % Ui::getUrlConfig().getUrlFilesParser() % ql1c('/');
+    int idx = 0;
+    while (idx != -1)
+    {
+        const auto next = _text.midRef(idx).indexOf(ql1c('['));
+        if (next == -1)
+            break;
+
+        idx += next;
+        const auto idxSpace = _text.midRef(idx).indexOf(QChar::Space);
+        if (idxSpace == -1)
+            break;
+
+        const auto idxEnd = _text.midRef(idx + idxSpace).indexOf(ql1c(']'));
+        if (idxEnd == -1)
+            break;
+
+        const auto tmpText = _text.midRef(idx, idxSpace + 1);
+        if (std::any_of(placeholders.begin(), placeholders.end(), [&tmpText](const auto& ph){ return ph == tmpText; }))
         {
-            const auto needDialogPlaceholder = contactListModel->contactsCount() == 0 && unknownsModel->itemsCount() == 0;
-            if (needDialogPlaceholder)
-                emit Utils::InterConnector::instance().showDialogPlaceholder();
-            else
-                emit Utils::InterConnector::instance().hideDialogPlaceholder();
+            auto id = _text.midRef(idx + idxSpace + 1, idxEnd - 1);
+            const auto hasSpaces = std::any_of(id.begin(), id.end(), [](const auto &c){return c.isSpace();});
+            if (!hasSpaces && !id.isEmpty())
+            {
+                if (id.size() == Features::getFsIDLength())
+                {
+                    auto fileText = _text.midRef(idx, idxSpace + idxEnd + 1).toString();
+                    allFiles[std::move(fileText)] = filesHost % id;
+                }
+            }
+            idx += idxSpace + idxEnd;
         }
+        else
+        {
+            ++idx;
+        }
+    }
+
+    for (const auto& [ph, link] : allFiles)
+    {
+        if (link.isEmpty() || ph.isEmpty())
+            continue;
+
+        auto idxPl = _text.indexOf(ph);
+        if (idxPl == -1)
+            continue;
+
+        auto isMarkdown = [_text](const int idxPl)
+        {
+            static const auto M_MARK = qsl("```");
+            static const auto S_MARK = qsl("`");
+
+            const auto partBefore = _text.leftRef(idxPl);
+            const auto partAfter = _text.midRef(idxPl);
+
+            const auto idxSMLast = partBefore.lastIndexOf(S_MARK);
+            const auto idxSMFirstAfter = partAfter.indexOf(S_MARK);
+            const auto hasLineFeed = partBefore.mid(idxSMLast).contains(QChar::LineFeed)
+                                     || (idxSMFirstAfter != -1 && partAfter.left(idxSMFirstAfter).contains(QChar::LineFeed));
+
+            const auto countSMBefore = partBefore.count(S_MARK);
+            const auto countSMAfter = partAfter.count(S_MARK);
+            const auto countMMBefore = partBefore.count(M_MARK);
+            const auto countMMAfter = partAfter.count(M_MARK);
+
+            const auto smClosed = countSMBefore % 2 == 0 || countSMAfter == 0 || hasLineFeed;
+            const auto mmClosed = countMMBefore % 2 == 0 || countMMAfter == 0;
+
+            const auto closedMD = smClosed && mmClosed;
+
+            return !closedMD;
+        };
+
+        while (idxPl != -1 && idxPl < _text.size())
+        {
+            const auto isMD = isMarkdown(idxPl);
+            if (!isMD)
+            {
+                if (idxPl > 0 && !_text.at(idxPl - 1).isSpace())
+                {
+                    _text.insert(idxPl, QChar::LineFeed);
+                    ++idxPl;
+                }
+
+                _text.replace(idxPl, ph.size(), link);
+                if (const auto pos = idxPl + link.size(); pos < _text.size() && !_text.at(pos).isSpace())
+                    _text.insert(pos, QChar::LineFeed);
+                idxPl = _text.indexOf(ph);
+            }
+            else
+            {
+                const auto idx = _text.midRef(idxPl + ph.size()).indexOf(ph);
+                if (idx > 0)
+                    idxPl += idx;
+                else
+                    break;
+            }
+        }
+    }
+
+    return _text;
+}
+
+namespace MimeData
+{
+    QByteArray convertMapToArray(const std::map<QString, QString, StringComparator>& _map)
+    {
+        QByteArray res;
+        if (!_map.empty())
+        {
+            res.reserve(512);
+            for (const auto& [key, value] : _map)
+            {
+                res += key.toUtf8();
+                res += ": ";
+                res += value.toUtf8();
+                res += '\0';
+            }
+            res.chop(1);
+        }
+
+        return res;
+    }
+
+    std::map<QString, QString, StringComparator> convertArrayToMap(const QByteArray& _array)
+    {
+        std::map<QString, QString, StringComparator> res;
+
+        if (!_array.isEmpty())
+        {
+            if (const auto items = _array.split('\0'); !items.isEmpty())
+            {
+                for (const auto& item : items)
+                {
+                    const auto ndx = item.indexOf(": ");
+                    if (ndx != -1)
+                    {
+                        auto key = QString::fromUtf8(item.mid(0, ndx));
+                        auto value = QString::fromUtf8(item.mid(ndx + 1).trimmed());
+
+                        res.emplace(std::move(key), std::move(value));
+                    }
+                }
+            }
+        }
+
+        return res;
+    }
+
+    void copyMimeData(const Ui::MessagesScrollArea &_area)
+    {
+        if (auto rawText = _area.getSelectedText(Ui::MessagesScrollArea::TextFormat::Raw); !rawText.isEmpty())
+        {
+            const auto placeholders = _area.getFilesPlaceholders();
+            const auto mentions = _area.getMentions();
+            const auto text = _area.getSelectedText();
+
+            auto dt = new QMimeData();
+            dt->setText(text);
+            dt->setData(getRawMimeType(), std::move(rawText).toUtf8());
+            dt->setData(getFileMimeType(), convertMapToArray(placeholders));
+            dt->setData(getMentionMimeType(), convertMapToArray(mentions));
+
+            QApplication::clipboard()->setMimeData(dt);
+
+            Utils::showCopiedToast(getToastVisibilityDuration());
+        }
+    }
+
+    const std::vector<QString>& getFilesPlaceholderList()
+    {
+        static const std::vector<QString> placeholders =
+        {
+            qsl("[GIF: "),
+            qsl("[Video: "),
+            qsl("[Photo: "),
+            qsl("[Voice: "),
+            qsl("[Sticker: "),
+            qsl("[Audio: "),
+            qsl("[Word: "),
+            qsl("[Excel: "),
+            qsl("[Presentation: "),
+            qsl("[APK: "),
+            qsl("[PDF: "),
+            qsl("[Numbers: "),
+            qsl("[Pages: "),
+            qsl("[File: ")
+        };
+        return placeholders;
+    }
+
+    QString getMentionMimeType()
+    {
+        return qsl("icq/mentions");
+    }
+
+    QString getRawMimeType()
+    {
+        return qsl("icq/rawText");
+    }
+
+    QString getFileMimeType()
+    {
+        return qsl("icq/files");
+    }
+}
+
+namespace FileSharing
+{
+    FileType getFSType(const QString & _filename)
+    {
+        static const std::map<QLatin1String, FileType, StringComparator> knownTypes
+        {
+            { ql1s("zip"), FileType::archive },
+            { ql1s("rar"), FileType::archive },
+            { ql1s("tar"), FileType::archive },
+            { ql1s("xz"),  FileType::archive },
+            { ql1s("gz"),  FileType::archive },
+            { ql1s("7z"),  FileType::archive },
+            { ql1s("bz2"),  FileType::archive },
+
+            { ql1s("xls"),  FileType::xls },
+            { ql1s("xlsx"), FileType::xls },
+            { ql1s("xlsm"), FileType::xls },
+            { ql1s("csv"),  FileType::xls },
+            { ql1s("xltx"),  FileType::xls },
+            { ql1s("ods"),  FileType::xls },
+
+            { ql1s("html"), FileType::html },
+            { ql1s("htm"),  FileType::html },
+
+            { ql1s("key"),  FileType::keynote },
+
+            { ql1s("numbers"),  FileType::numbers },
+
+            { ql1s("pages"),  FileType::pages },
+
+            { ql1s("pdf"),  FileType::pdf },
+
+            { ql1s("ppt"),  FileType::ppt },
+            { ql1s("pptx"), FileType::ppt },
+            { ql1s("odp"), FileType::ppt },
+
+            { ql1s("wav"),  FileType::audio },
+            { ql1s("mp3"),  FileType::audio },
+            { ql1s("ogg"),  FileType::audio },
+            { ql1s("flac"), FileType::audio },
+            { ql1s("aac"),  FileType::audio },
+            { ql1s("m4a"),  FileType::audio },
+            { ql1s("aiff"), FileType::audio },
+            { ql1s("ape"),  FileType::audio },
+            { ql1s("midi"),  FileType::audio },
+
+            { ql1s("log"), FileType::txt },
+            { ql1s("txt"), FileType::txt },
+            { ql1s("md"), FileType::txt },
+
+            { ql1s("doc"),  FileType::doc },
+            { ql1s("docx"), FileType::doc },
+            { ql1s("rtf"),  FileType::doc },
+            { ql1s("odf"),  FileType::doc },
+
+            { ql1s("apk"),  FileType::apk },
+        };
+
+        if (const auto ext = QFileInfo(_filename).suffix(); !ext.isEmpty())
+        {
+            const auto it = knownTypes.find(ext);
+            if (it != knownTypes.end())
+                return it->second;
+        }
+
+        return FileType::unknown;
+    }
+
+    using FileTypesArray = std::array<std::pair<FileType, QString>, static_cast<size_t>(FileType::max_val)>;
+    static FileTypesArray getTypes()
+    {
+        FileTypesArray types =
+        {
+            std::pair(FileType::audio,   qsl("Audio")),
+            std::pair(FileType::doc,     qsl("Word")),
+            std::pair(FileType::xls,     qsl("Excel")),
+            std::pair(FileType::ppt,     qsl("Presentation")),
+            std::pair(FileType::apk,     qsl("APK")),
+            std::pair(FileType::pdf,     qsl("PDF")),
+            std::pair(FileType::numbers, qsl("Numbers")),
+            std::pair(FileType::pages,   qsl("Pages")),
+
+            std::pair(FileType::archive, qsl("File")),
+            std::pair(FileType::html,    qsl("File")),
+            std::pair(FileType::keynote, qsl("File")),
+            std::pair(FileType::txt,     qsl("File")),
+
+            std::pair(FileType::unknown, qsl("File")),
+        };
+
+        if (!std::is_sorted(std::cbegin(types), std::cend(types), Utils::is_less_by_first<FileType, QString>))
+            std::sort(std::begin(types), std::end(types), Utils::is_less_by_first<FileType, QString>);
+
+        return types;
+    }
+
+    QString getPlaceholderForType(FileType _fileType)
+    {
+        static const auto types = getTypes();
+        return types[static_cast<size_t>(_fileType)].second;
     }
 }

@@ -1,5 +1,4 @@
 #pragma once
-
 #include "../main_window/contact_list/SelectionContactsForGroupChat.h"
 #include "../main_window/contact_list/ChatMembersModel.h"
 #include "../../core/Voip/VoipManagerDefines.h"
@@ -117,8 +116,6 @@ namespace Ui
     private:
         ::Ui::ViewParams viewParams_;
     };
-
-
 
     class ConferenceSearchMember : public ::Logic::SearchMembersModel
     {

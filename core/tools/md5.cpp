@@ -64,9 +64,9 @@ namespace core
         }
 
 
-        std::string md5(const void* _data, int32_t _size)
+        std::string md5(const void* _data, size_t _size)
         {
-            std::stringstream ss_hash;
+            std::string ss_hash;
 
             MD5_CTX md5handler;
             unsigned char md5digest[MD5_DIGEST_LENGTH];
@@ -77,7 +77,7 @@ namespace core
 
             char format_buffer[10];
 
-            for (int32_t i = 0; i < MD5_DIGEST_LENGTH; ++i)
+            for (size_t i = 0; i < MD5_DIGEST_LENGTH; ++i)
             {
 #ifdef _WIN32
                 sprintf_s(format_buffer, 10, "%02x", md5digest[i]);
@@ -85,10 +85,10 @@ namespace core
                 sprintf(format_buffer, "%02x", md5digest[i]);
 #endif
 
-                ss_hash << format_buffer;
+                ss_hash += format_buffer;
             }
 
-            return ss_hash.str();
+            return ss_hash;
         }
     }
 }

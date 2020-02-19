@@ -110,6 +110,7 @@ namespace Ui
         {
             QStandardItem* firstCol = new QStandardItem(it.key());
             QStandardItem* secondCol = new QStandardItem(it.value());
+
             secondCol->setTextAlignment(Qt::AlignRight);
             model->setItem(i, 0, firstCol);
             model->setItem(i, 1, secondCol);

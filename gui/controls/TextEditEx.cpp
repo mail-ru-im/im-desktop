@@ -1,5 +1,6 @@
 #include "stdafx.h"
 
+#include "gui_settings.h"
 #include "../cache/emoji/Emoji.h"
 #include "../fonts.h"
 #include "../utils/log/log.h"
@@ -9,58 +10,6 @@
 #include "../main_window/history_control/MessageStyle.h"
 
 #include "TextEditEx.h"
-
-namespace
-{
-    const QString mentionMimeType = qsl("icq/mentions");
-    const QString rawMimeType = qsl("icq/rawText");
-
-    QByteArray convertMentionsToArray(const Data::MentionMap& _mentions)
-    {
-        QByteArray res;
-        if (!_mentions.empty())
-        {
-            res.reserve(512);
-            for (const auto& [aimId, friendly] : _mentions)
-            {
-                res += aimId.toUtf8();
-                res += ':';
-                res += friendly.toUtf8();
-                res += '\0';
-            }
-            res.chop(1);
-        }
-
-        return res;
-    }
-
-    Data::MentionMap convertArrayToMentions(const QByteArray& _array)
-    {
-        Data::MentionMap res;
-
-        if (!_array.isEmpty())
-        {
-            const auto items = _array.split('\0');
-            if (!items.isEmpty())
-            {
-                for (const auto& item : items)
-                {
-                    const auto ndx = item.indexOf(':');
-                    if (ndx != -1)
-                    {
-                        auto aimId = QString::fromUtf8(item.mid(0, ndx));
-                        auto friendly = QString::fromUtf8(item.mid(ndx + 1));
-
-                        res.emplace(std::move(aimId), std::move(friendly));
-                    }
-                }
-            }
-        }
-
-        return res;
-    }
-}
-
 
 namespace Ui
 {
@@ -80,8 +29,6 @@ namespace Ui
         , add_(0)
         , limit_(-1)
         , prevCursorPos_(0)
-        , isCatchEnter_(false)
-        , isCatchNewLine_(false)
         , maxHeight_(Utils::scale_value(250))
     {
         setAttribute(Qt::WA_InputMethodEnabled);
@@ -337,11 +284,18 @@ namespace Ui
         auto dt = new QMimeData();
 
         auto rawText = getPlainText(textCursor().selectionStart(), textCursor().selectionEnd());
-        if (!mentions_.empty())
+        if (!mentions_.empty() || !files_.empty())
         {
-            dt->setText(Utils::convertMentions(rawText, mentions_));
-            dt->setData(rawMimeType, std::move(rawText).toUtf8());
-            dt->setData(mentionMimeType, convertMentionsToArray(mentions_));
+            auto text = !mentions_.empty() ? Utils::convertMentions(rawText, mentions_) : rawText;
+            text = !files_.empty() ? Utils::convertFilesPlaceholders(text, files_) : text;
+
+            dt->setText(text);
+            dt->setData(MimeData::getRawMimeType(), std::move(rawText).toUtf8());
+
+            if (!mentions_.empty())
+                dt->setData(MimeData::getMentionMimeType(), MimeData::convertMapToArray(mentions_));
+            if (!files_.empty())
+                dt->setData(MimeData::getFileMimeType(), MimeData::convertMapToArray(files_));
         }
         else
         {
@@ -381,19 +335,28 @@ namespace Ui
         QString text;
         bool withMentions = false;
 
-        if (_source->hasFormat(rawMimeType))
+        if (_source->hasFormat(MimeData::getRawMimeType()))
         {
-            if (const auto rawText = _source->data(rawMimeType); !rawText.isEmpty())
+            if (const auto rawText = _source->data(MimeData::getRawMimeType()); !rawText.isEmpty())
             {
                 withMentions = true;
                 text = QString::fromUtf8(rawText);
 
-                if (_source->hasFormat(mentionMimeType))
+                if (_source->hasFormat(MimeData::getMentionMimeType()))
                 {
-                    if (const auto mentionsArray = _source->data(mentionMimeType); !mentionsArray.isEmpty())
+                    if (const auto mentionsArray = _source->data(MimeData::getMentionMimeType()); !mentionsArray.isEmpty())
                     {
-                        auto m = convertArrayToMentions(mentionsArray);
+                        auto m = MimeData::convertArrayToMap(mentionsArray);
                         mentions_.insert(std::make_move_iterator(m.begin()), std::make_move_iterator(m.end()));
+                    }
+                }
+
+                if (_source->hasFormat(MimeData::getFileMimeType()))
+                {
+                    if (const auto filesArray = _source->data(MimeData::getFileMimeType()); !filesArray.isEmpty())
+                    {
+                        auto f = MimeData::convertArrayToMap(filesArray);
+                        files_.insert(std::make_move_iterator(f.begin()), std::make_move_iterator(f.end()));
                     }
                 }
             }
@@ -500,16 +463,6 @@ namespace Ui
         }
     }
 
-    bool TextEditEx::catchEnter(const int /*_modifiers*/)
-    {
-        return isCatchEnter_;
-    }
-
-    bool TextEditEx::catchNewLine(const int _modifiers)
-    {
-        return isCatchNewLine_;
-    }
-
     void TextEditEx::keyPressEvent(QKeyEvent* _event)
     {
         emit keyPressed(_event->key());
@@ -517,11 +470,14 @@ namespace Ui
         if (_event->key() == Qt::Key_Backspace || _event->key() == Qt::Key_Delete)
         {
             const auto canDeleteMention =
-                (!textCursor().atStart() && _event->key() == Qt::Key_Backspace) ||
-                (!textCursor().atEnd() && _event->key() == Qt::Key_Delete);
+                textCursor().selectedText().isEmpty()
+                && ((!textCursor().atStart() && _event->key() == Qt::Key_Backspace)
+                    || (!textCursor().atEnd() && _event->key() == Qt::Key_Delete));
 
             if (toPlainText().isEmpty())
+            {
                 emit emptyTextBackspace();
+            }
             else if (canDeleteMention)
             {
                 auto cursor = textCursor();
@@ -642,12 +598,27 @@ namespace Ui
         QTextBrowser::setPlaceholderText(e->preeditString().isEmpty() ? placeholderText_ : QString());
 
 #ifdef __APPLE__
-        auto emoji = Emoji::EmojiCode::fromQString(e->commitString());
+        const auto& s = e->commitString();
+        int i = 0;
+        auto emoji = Emoji::getEmoji(QStringRef(&s), i);
         if (!emoji.isNull())
             insertEmoji(emoji);
         else
 #endif //__APPLE__
             QTextBrowser::inputMethodEvent(e);
+    }
+
+    QMenu* TextEditEx::getContextMenu()
+    {
+        if (auto menu = createStandardContextMenu(); menu)
+        {
+            ContextMenu::applyStyle(menu, false, Utils::scale_value(15), Utils::scale_value(36));
+
+            // The value (212) was taken from UI design.
+            menu->setMinimumWidth(Utils::scale_value(212));
+            return menu;
+        }
+        return nullptr;
     }
 
     QString TextEditEx::getPlainText() const
@@ -684,6 +655,16 @@ namespace Ui
     const Data::MentionMap& TextEditEx::getMentions() const
     {
         return mentions_;
+    }
+
+    void TextEditEx::setFiles(Data::FilesPlaceholderMap _files)
+    {
+        files_ = std::move(_files);
+    }
+
+    const Data::FilesPlaceholderMap & TextEditEx::getFiles() const
+    {
+        return files_;
     }
 
     void TextEditEx::insertMention(const QString& _aimId, const QString& _friendly)
@@ -857,20 +838,51 @@ namespace Ui
         placeholderText_ = _text;
     }
 
-    void TextEditEx::setCatchEnter(bool _isCatchEnter)
+    void TextEditEx::setEnterKeyPolicy(TextEditEx::EnterKeyPolicy _policy)
     {
-        isCatchEnter_ = _isCatchEnter;
+        enterPolicy_ = _policy;
     }
 
-    void TextEditEx::setCatchNewLine(bool _isCatchNewLine)
+    bool TextEditEx::catchEnter(const int _modifiers)
     {
-        isCatchNewLine_ = _isCatchNewLine;
+        switch (enterPolicy_)
+        {
+            case EnterKeyPolicy::CatchEnter:
+            case EnterKeyPolicy::CatchEnterAndNewLine:
+                return true;
+            case EnterKeyPolicy::FollowSettingsRules:
+                return catchEnterWithSettingsPolicy(_modifiers);
+            default:
+                break;
+        }
+
+        return false;
+    }
+
+    bool TextEditEx::catchNewLine(const int _modifiers)
+    {
+        switch (enterPolicy_)
+        {
+            case EnterKeyPolicy::CatchNewLine:
+            case EnterKeyPolicy::CatchEnterAndNewLine:
+                return true;
+            case EnterKeyPolicy::FollowSettingsRules:
+                return catchNewLineWithSettingsPolicy(_modifiers);
+            default:
+                break;
+        }
+
+        return false;
     }
 
     int TextEditEx::adjustHeight(int _width)
     {
-        setFixedWidth(_width);
-        document()->setTextWidth(_width);
+        if (_width)
+        {
+            setFixedWidth(_width);
+            document()->setTextWidth(_width);
+        }
+
         int height = getTextSize().height();
         setFixedHeight(height + add_);
 
@@ -895,17 +907,64 @@ namespace Ui
 
     void TextEditEx::contextMenuEvent(QContextMenuEvent *e)
     {
-        auto menu = createStandardContextMenu();
-        if (!menu)
-            return;
+        if (auto menu = getContextMenu(); menu)
+        {
+            menu->exec(e->globalPos());
+            menu->deleteLater();
+        }
+    }
 
-        ContextMenu::applyStyle(menu, false, Utils::scale_value(15), Utils::scale_value(36));
+    bool TextEditEx::catchEnterWithSettingsPolicy(const int _modifiers) const
+    {
+        auto key1_to_send = get_gui_settings()->get_value<int>(settings_key1_to_send_message, KeyToSendMessage::Enter);
 
-        // The value (212) was taken from UI design.
-        menu->setMinimumWidth(Utils::scale_value(212));
+        // spike for fix invalid setting
+        if (key1_to_send == KeyToSendMessage::Enter_Old)
+            key1_to_send = KeyToSendMessage::Enter;
 
-        menu->exec(e->globalPos());
-        menu->deleteLater();
+        switch (key1_to_send)
+        {
+        case Ui::KeyToSendMessage::Enter:
+            return _modifiers == Qt::NoModifier || _modifiers == Qt::KeypadModifier;
+        case Ui::KeyToSendMessage::Shift_Enter:
+            return _modifiers & Qt::ShiftModifier;
+        case Ui::KeyToSendMessage::Ctrl_Enter:
+            return _modifiers & Qt::ControlModifier;
+        case Ui::KeyToSendMessage::CtrlMac_Enter:
+            return _modifiers & Qt::MetaModifier;
+        default:
+            break;
+        }
+        return false;
+    }
+
+    bool TextEditEx::catchNewLineWithSettingsPolicy(const int _modifiers) const
+    {
+        auto key1_to_send = get_gui_settings()->get_value<int>(settings_key1_to_send_message, KeyToSendMessage::Enter);
+
+        // spike for fix invalid setting
+        if (key1_to_send == KeyToSendMessage::Enter_Old)
+            key1_to_send = KeyToSendMessage::Enter;
+
+        const auto ctrl = _modifiers & Qt::ControlModifier;
+        const auto shift = _modifiers & Qt::ShiftModifier;
+        const auto meta = _modifiers & Qt::MetaModifier;
+        const auto enter = (_modifiers == Qt::NoModifier || _modifiers == Qt::KeypadModifier);
+
+        switch (key1_to_send)
+        {
+        case Ui::KeyToSendMessage::Enter:
+            return shift || ctrl || meta;
+        case Ui::KeyToSendMessage::Shift_Enter:
+            return  ctrl || meta || enter;
+        case Ui::KeyToSendMessage::Ctrl_Enter:
+            return shift || meta || enter;
+        case Ui::KeyToSendMessage::CtrlMac_Enter:
+            return shift || ctrl || enter;
+        default:
+            break;
+        }
+        return false;
     }
 }
 

@@ -8,6 +8,7 @@
 #include "../../cache/avatars/AvatarStorage.h"
 #include "../../search/ContactSearcher.h"
 #include "../../utils/gui_coll_helper.h"
+#include "../../utils/InterConnector.h"
 #include "../../core_dispatcher.h"
 
 Q_LOGGING_CATEGORY(mentionsModel, "mentionsModel")
@@ -51,6 +52,8 @@ namespace Logic
         connect(Ui::GetDispatcher(), &Ui::core_dispatcher::messageBuddies, this, &MentionModel::messageBuddies);
         connect(Ui::GetDispatcher(), &Ui::core_dispatcher::mentionsSuggestResults, this, &MentionModel::onServerResults);
 
+        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::dialogClosed, this, &MentionModel::onDialogClosed);
+
         responseTimer_->setSingleShot(true);
         responseTimer_->setInterval(serverTimeout.count());
         connect(responseTimer_, &QTimer::timeout, this, &MentionModel::onServerTimeout);
@@ -83,22 +86,25 @@ namespace Logic
 
     void MentionModel::filterLocal()
     {
-        const auto& curSenders = chatSenders_[dialogAimId_];
-
-        if (searchPattern_.isEmpty())
+        if (!dialogAimId_.isEmpty())
         {
-            localResults_ = curSenders;
-        }
-        else
-        {
-            localResults_.clear();
+            const auto& curSenders = chatSenders_[dialogAimId_];
 
-            std::copy_if(curSenders.cbegin(), curSenders.cend(), std::back_inserter(localResults_),
-                [this](const auto& item)
+            if (searchPattern_.isEmpty())
             {
-                return item.aimId_.contains(searchPattern_, Qt::CaseInsensitive)
-                    || item.friendlyName_.contains(searchPattern_, Qt::CaseInsensitive);
-            });
+                localResults_ = curSenders;
+            }
+            else
+            {
+                localResults_.clear();
+
+                std::copy_if(curSenders.cbegin(), curSenders.cend(), std::back_inserter(localResults_),
+                    [this](const auto& item)
+                {
+                    return item.aimId_.contains(searchPattern_, Qt::CaseInsensitive)
+                        || item.friendlyName_.contains(searchPattern_, Qt::CaseInsensitive);
+                });
+            }
         }
         curChatSendersCount_ = localResults_.size();
     }
@@ -251,7 +257,7 @@ namespace Logic
         {
             if (msg && !msg->IsChatEvent() && !msg->IsOutgoing())
             {
-                const auto sender = hist::normalizeAimId(msg->Chat_ ? msg->GetChatSender() : msg->AimId_);
+                const auto sender = Data::normalizeAimId(msg->Chat_ ? msg->GetChatSender() : msg->AimId_);
                 const auto end = senders.end();
                 auto it = std::find_if(senders.begin(), end, [&sender](const auto &x) { return x.aimId_ == sender; });
                 if (it != end)
@@ -277,7 +283,7 @@ namespace Logic
             setDialogAimId(_aimid);
     }
 
-    void MentionModel::avatarLoaded(const QString & _aimid)
+    void MentionModel::avatarLoaded(const QString& _aimid)
     {
         if (_aimid.isEmpty())
             return;
@@ -324,6 +330,11 @@ namespace Logic
                 }
             }
         }
+    }
+
+    void MentionModel::onDialogClosed(const QString& _aimId)
+    {
+        chatSenders_.erase(_aimId);
     }
 
     void MentionModel::onServerTimeout()

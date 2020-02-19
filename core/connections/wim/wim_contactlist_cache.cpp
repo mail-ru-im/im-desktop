@@ -16,7 +16,6 @@ using namespace wim;
 void cl_presence::serialize(icollection* _coll)
 {
     coll_helper cl(_coll, false);
-    cl.set_value_as_string("state", state_);
     cl.set_value_as_string("userType", usertype_);
     cl.set_value_as_string("statusMsg", status_msg_);
     cl.set_value_as_string("otherNumber", other_number_);
@@ -41,7 +40,6 @@ void cl_presence::serialize(icollection* _coll)
 
 void cl_presence::serialize(rapidjson::Value& _node, rapidjson_allocator& _a)
 {
-    _node.AddMember("state",  state_, _a);
     _node.AddMember("userType",  usertype_, _a);
     _node.AddMember("statusMsg",  status_msg_, _a);
     _node.AddMember("otherNumber",  other_number_, _a);
@@ -90,7 +88,6 @@ void cl_presence::unserialize(const rapidjson::Value& _node)
 {
     search_cache_.clear();
 
-    tools::unserialize_value(_node, "state", state_);
     tools::unserialize_value(_node, "userType", usertype_);
     tools::unserialize_value(_node, "statusMsg", status_msg_);
     tools::unserialize_value(_node, "otherNumber", other_number_);
@@ -254,7 +251,6 @@ void contactlist::update_presence(const std::string& _aimid, const std::shared_p
         contact_presence->search_cache_.clear();
     }
 
-    contact_presence->state_ = _presence->state_;
     contact_presence->usertype_ = _presence->usertype_;
     contact_presence->status_msg_ = _presence->status_msg_;
     contact_presence->other_number_ = _presence->other_number_;
@@ -960,22 +956,24 @@ int32_t contactlist::unserialize(const rapidjson::Value& _node)
 
     for (const auto& grp : iter_groups->value.GetArray())
     {
-        auto group = std::make_shared<core::wim::cl_group>();
-
-        if (!tools::unserialize_value(grp, "name", group->name_))
-            assert(false);
-
-        if (!tools::unserialize_value(grp, "id", group->id_))
+        int grp_id;
+        if (!tools::unserialize_value(grp, "id", grp_id))
         {
             assert(false);
             continue;
         }
 
+        auto group = std::make_shared<core::wim::cl_group>();
+        group->id_ = grp_id;
+        if (!tools::unserialize_value(grp, "name", group->name_))
+            assert(false);
+
         if (const auto iter_buddies = grp.FindMember("buddies"); iter_buddies != grp.MemberEnd() && iter_buddies->value.IsArray())
         {
+            group->buddies_.reserve(iter_buddies->value.Size());
             for (const auto& bd : iter_buddies->value.GetArray())
             {
-                std::string aimid;
+                std::string_view aimid;
                 if (!tools::unserialize_value(bd, "aimId", aimid))
                 {
                     assert(false);
@@ -987,7 +985,7 @@ int32_t contactlist::unserialize(const rapidjson::Value& _node)
                 buddy->aimid_ = aimid;
                 buddy->presence_->unserialize(bd);
 
-                if (buddy->aimid_.length() > chat_domain.length() && std::string_view(buddy->aimid_).substr(buddy->aimid_.length() - chat_domain.length(), chat_domain.length()) == chat_domain)
+                if (buddy->aimid_.length() > chat_domain.length() && aimid.substr(aimid.length() - chat_domain.length(), chat_domain.length()) == chat_domain)
                     buddy->presence_->is_chat_ = true;
 
                 add_to_persons(buddy);
@@ -1022,13 +1020,15 @@ int32_t contactlist::unserialize_from_diff(const rapidjson::Value& _node)
 
     for (const auto& grp : _node.GetArray())
     {
-        auto group = std::make_shared<core::wim::cl_group>();
-
-        if (!tools::unserialize_value(grp, "id", group->id_))
+        int grp_id;
+        if (!tools::unserialize_value(grp, "id", grp_id))
         {
             assert(false);
             continue;
         }
+
+        auto group = std::make_shared<core::wim::cl_group>();
+        group->id_ = grp_id;
 
         if (!tools::unserialize_value(grp, "name", group->name_))
             assert(false);
@@ -1044,21 +1044,22 @@ int32_t contactlist::unserialize_from_diff(const rapidjson::Value& _node)
 
         if (const auto iter_buddies = grp.FindMember("buddies"); iter_buddies != iter_grp_end && iter_buddies->value.IsArray())
         {
+            group->buddies_.reserve(iter_buddies->value.Size());
             for (const auto& bd : iter_buddies->value.GetArray())
             {
-                auto buddy = std::make_shared<wim::cl_buddy>();
-
-                buddy->id_ = (uint32_t)++buddy_id;
-
-                if (!tools::unserialize_value(bd, "aimId", buddy->aimid_))
+                std::string_view aimid;
+                if (!tools::unserialize_value(bd, "aimId", aimid))
                 {
                     assert(false);
                     continue;
                 }
 
+                auto buddy = std::make_shared<wim::cl_buddy>();
+                buddy->id_ = (uint32_t)++buddy_id;
+                buddy->aimid_ = aimid;
                 buddy->presence_->unserialize(bd);
 
-                if (buddy->aimid_.length() > chat_domain.length() && std::string_view(buddy->aimid_).substr(buddy->aimid_.length() - chat_domain.length(), chat_domain.length()) == chat_domain)
+                if (buddy->aimid_.length() > chat_domain.length() && aimid.substr(aimid.length() - chat_domain.length(), chat_domain.length()) == chat_domain)
                     buddy->presence_->is_chat_ = true;
 
                 add_to_persons(buddy);
@@ -1235,6 +1236,11 @@ void contactlist::remove_from_ignorelist(const std::string& _aimid)
     }
 }
 
+bool contactlist::contains(const std::string& _aimid) const
+{
+    return contacts_index_.find(_aimid) != contacts_index_.end();
+}
+
 std::shared_ptr<cl_presence> core::wim::contactlist::get_presence(const std::string & _aimid) const
 {
     auto it = contacts_index_.find(_aimid);
@@ -1286,6 +1292,17 @@ void contactlist::set_need_update_cache(bool _need_update_search_cache)
 bool contactlist::is_empty() const
 {
     return contacts_index_.empty();
+}
+
+std::vector<std::string> core::wim::contactlist::get_ignored_aimids() const
+{
+    std::vector<std::string> result;
+    result.reserve(ignorelist_.size());
+
+    for (const auto& item : ignorelist_)
+        result.push_back(item);
+
+    return result;
 }
 
 std::vector<std::string> contactlist::get_aimids() const

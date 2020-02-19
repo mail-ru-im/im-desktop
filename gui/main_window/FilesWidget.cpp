@@ -62,66 +62,7 @@ namespace
 }
 
 namespace Ui
-{
-    InputEdit::InputEdit(QWidget* _parent, const QFont& _font, const QColor& _color, bool _input, bool _isFitToText)
-        : TextEditEx(_parent, _font, _color, _input, _isFitToText)
-    {
-
-    }
-
-    bool InputEdit::catchEnter(int _modifiers)
-    {
-        auto key1_to_send = get_gui_settings()->get_value<int>(settings_key1_to_send_message, KeyToSendMessage::Enter);
-
-        // spike for fix invalid setting
-        if (key1_to_send == KeyToSendMessage::Enter_Old)
-            key1_to_send = KeyToSendMessage::Enter;
-
-        switch (key1_to_send)
-        {
-        case Ui::KeyToSendMessage::Enter:
-            return _modifiers == Qt::NoModifier || _modifiers == Qt::KeypadModifier;
-        case Ui::KeyToSendMessage::Shift_Enter:
-            return _modifiers & Qt::ShiftModifier;
-        case Ui::KeyToSendMessage::Ctrl_Enter:
-            return _modifiers & Qt::ControlModifier;
-        case Ui::KeyToSendMessage::CtrlMac_Enter:
-            return _modifiers & Qt::MetaModifier;
-        default:
-            break;
-        }
-        return false;
-    }
-
-    bool InputEdit::catchNewLine(const int _modifiers)
-    {
-        auto key1_to_send = get_gui_settings()->get_value<int>(settings_key1_to_send_message, KeyToSendMessage::Enter);
-
-        // spike for fix invalid setting
-        if (key1_to_send == KeyToSendMessage::Enter_Old)
-            key1_to_send = KeyToSendMessage::Enter;
-
-        const auto ctrl = _modifiers & Qt::ControlModifier;
-        const auto shift = _modifiers & Qt::ShiftModifier;
-        const auto meta = _modifiers & Qt::MetaModifier;
-        const auto enter = (_modifiers == Qt::NoModifier || _modifiers == Qt::KeypadModifier);
-
-        switch (key1_to_send)
-        {
-        case Ui::KeyToSendMessage::Enter:
-            return shift || ctrl || meta;
-        case Ui::KeyToSendMessage::Shift_Enter:
-            return  ctrl || meta || enter;
-        case Ui::KeyToSendMessage::Ctrl_Enter:
-            return shift || meta || enter;
-        case Ui::KeyToSendMessage::CtrlMac_Enter:
-            return shift || ctrl || enter;
-        default:
-            break;
-        }
-        return false;
-    }
-
+{    
     FilesAreaItem::FilesAreaItem(const QString& _filepath, int _width)
         : path_(_filepath)
         , iconPreview_(false)
@@ -501,7 +442,7 @@ namespace Ui
         title_->init(Fonts::appFontScaled(23), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
         title_->evaluateDesiredSize();
 
-        description_ = new InputEdit(this, Fonts::appFontScaled(15), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID), true, false);
+        description_ = new TextEditEx(this, Fonts::appFontScaled(15), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID), true, false);
         Utils::ApplyStyle(description_, Styling::getParameters().getTextEditCommonQss(true));
         description_->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Preferred);
         description_->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
@@ -511,6 +452,7 @@ namespace Ui
         description_->setContentsMargins(0, 0, 0, 0);
         description_->setPlaceholderText(QT_TRANSLATE_NOOP("files_widget", "Add caption"));
         description_->setAcceptDrops(false);
+        description_->setEnterKeyPolicy(TextEditEx::EnterKeyPolicy::FollowSettingsRules);
 
         description_->setFixedWidth(Utils::scale_value(DIALOG_WIDTH - HOR_OFFSET * 2));
         description_->setFixedHeight(Utils::scale_value(DEFAULT_INPUT_HEIGHT));
@@ -583,6 +525,7 @@ namespace Ui
     void FilesWidget::setDescription(const QString& _text, const Data::MentionMap& _mentions)
     {
         description_->setMentions(_mentions);
+        description_->document()->setTextWidth(description_->width());
         description_->setPlainText(_text, false);
     }
 
@@ -756,7 +699,7 @@ namespace Ui
         {
             durationLabel_ = TextRendering::MakeTextUnit(QString());
             static const auto fontSize = platform::is_apple() ? 11 : 13;
-            durationLabel_->init(Fonts::appFontScaled(fontSize, Fonts::FontWeight::Normal), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT), QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, 1);
+            durationLabel_->init(Fonts::appFontScaledFixed(fontSize, Fonts::FontWeight::Normal), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT), QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, 1);
         }
 
         durationLabel_->setText(_duration);

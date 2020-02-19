@@ -6,7 +6,6 @@
 #include "contact_list/CustomAbstractListModel.h"
 #include "contact_list/RecentsModel.h"
 #include "friendly/FriendlyContainer.h"
-#include "../utils/utils.h"
 #include "../my_info.h"
 #include "../utils/gui_coll_helper.h"
 #include "MainPage.h"
@@ -17,6 +16,7 @@
 #include "history_control/MessageStyle.h"
 #include "../utils/InterConnector.h"
 #include "../utils/gui_metrics.h"
+#include "../utils/utils.h"
 
 #include "../controls/GeneralDialog.h"
 #include "../controls/TextEditEx.h"
@@ -65,6 +65,7 @@ namespace Ui
             photo_->SetMode(ContactAvatarWidget::Mode::CreateChat);
             photo_->SetVisibleShadow(false);
             photo_->SetVisibleSpinner(false);
+            photo_->UpdateParams(QString(), QString());
             Testing::setAccessibleName(photo_, qsl("AS gco photo_"));
             subLayout->addWidget(photo_);
 
@@ -79,7 +80,7 @@ namespace Ui
             chatName_->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
             chatName_->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
             chatName_->setTextInteractionFlags(Qt::TextEditable | Qt::TextEditorInteraction);
-            chatName_->setCatchEnter(true);
+            chatName_->setEnterKeyPolicy(TextEditEx::EnterKeyPolicy::CatchEnter);
             chatName_->setMinimumWidth(Utils::scale_value(200));
             chatName_->document()->setDocumentMargin(0);
             chatName_->addSpace(Utils::scale_value(4));
@@ -161,23 +162,33 @@ namespace Ui
             chatData.publicChat = true;
         }
 
-        SwitcherCheckbox *publicChat;
-        const auto publicText = _channel
-            ? QT_TRANSLATE_NOOP("groupchats", "The channel will appear in the app's showcase and any user can find it in the list")
-            : QT_TRANSLATE_NOOP("groupchats", "The chat will appear in the app's showcase and any user can find it in the list");
-        layout->addWidget(createItem(content_,
-            _channel ? QT_TRANSLATE_NOOP("groupchats", "Public channel") : QT_TRANSLATE_NOOP("groupchats", "Public chat"),
-            publicText,
-            publicChat));
-        publicChat->setChecked(chatData.publicChat);
-        connect(publicChat, &SwitcherCheckbox::toggled, publicChat, [&chatData](bool checked) { chatData.publicChat = checked; });
+        if (channel_)
+        {
+            auto t = new TextEmojiWidget(content_, Fonts::appFontScaled(13), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY), Utils::scale_value(16));
+            t->setText(QT_TRANSLATE_NOOP("groupchats", "Channels are public by default, but you can change it after in settings"));
+            t->setContentsMargins(0, 0, 0, 0);
+            t->setContextMenuPolicy(Qt::NoContextMenu);
+            t->setMultiline(true);
+            layout->addWidget(t);
+        }
+        else
+        {
+
+            SwitcherCheckbox *publicChat;
+            layout->addWidget(createItem(content_, QT_TRANSLATE_NOOP("groupchats", "Public chat"),
+                QT_TRANSLATE_NOOP("groupchats", "Public group can be found in the search"),
+                publicChat));
+            publicChat->setChecked(chatData.publicChat);
+            connect(publicChat, &SwitcherCheckbox::toggled, publicChat, [&chatData](bool checked) { chatData.publicChat = checked; });
+            Testing::setAccessibleName(publicChat, qsl("AS publicChat"));
+        }
 
 
         // general dialog
         dialog_ = std::make_unique<Ui::GeneralDialog>(content_, Utils::InterConnector::instance().getMainWindow());
         dialog_->setObjectName(qsl("chat.creation.settings"));
         dialog_->addLabel(headerText);
-        dialog_->addButtonsPair(QT_TRANSLATE_NOOP("popup_window", "CANCEL"), buttonText, true);
+        dialog_->addButtonsPair(QT_TRANSLATE_NOOP("popup_window", "Cancel"), buttonText, true);
         if (channel_)
             dialog_->setButtonActive(false);
 
@@ -257,7 +268,6 @@ namespace Ui
 
         Testing::setAccessibleName(content_, qsl("AS content_"));
         Testing::setAccessibleName(subContent, qsl("AS subContent"));
-        Testing::setAccessibleName(publicChat, qsl("AS publicChat"));
         Testing::setAccessibleName(chatName_, qsl("AS chatName_"));
         Testing::setAccessibleName(hollow, qsl("AS hollow"));
     }
@@ -343,7 +353,9 @@ namespace Ui
         if (!channel_)
             return;
 
-        dialog_->setButtonActive(!chatName_->getPlainText().isEmpty());
+        auto text = chatName_->getPlainText();
+        dialog_->setButtonActive(!text.isEmpty());
+        photo_->UpdateParams(QString(), text);
     }
 
     void GroupChatSettings::enterPressed()
@@ -352,65 +364,81 @@ namespace Ui
             dialog_->accept();
     }
 
-    void createGroupChat(const std::vector<QString>& _members_aimIds)
+    void createGroupChat(const std::vector<QString>& _members_aimIds, const CreateChatSource _source)
     {
-        GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::chats_create_open);
+        if (_source != CreateChatSource::profile)
+            GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::chats_create_open, {{ "from", _source == CreateChatSource::dots ? "dots" : "pencil" }});
 
-        SelectContactsWidget select_members_dialog(nullptr, Logic::MembersWidgetRegim::SELECT_MEMBERS, QT_TRANSLATE_NOOP("groupchats", "Select members"), QT_TRANSLATE_NOOP("popup_window", "NEXT"), Ui::MainPage::instance());
+        SelectContactsWidget select_members_dialog(nullptr, Logic::MembersWidgetRegim::SELECT_MEMBERS, QT_TRANSLATE_NOOP("contact_list", "Create group"), QT_TRANSLATE_NOOP("popup_window", "Create"), Ui::MainPage::instance(), true, nullptr, false, true, false);
 
         for (const auto& member_aimId : _members_aimIds)
             Logic::getContactListModel()->setChecked(member_aimId, true /* is_checked */);
 
         if (select_members_dialog.show() == QDialog::Accepted)
         {
-            std::shared_ptr<GroupChatSettings> groupChatSettings;
-
-            GroupChatOperations::ChatData chatData;
-
-            if (callChatNameEditor(Ui::MainPage::instance(), chatData, groupChatSettings, false))
+            const auto selectedContacts = Logic::getContactListModel()->GetCheckedContacts();
+            if (selectedContacts.empty())
             {
-                const auto cropped = groupChatSettings->lastCroppedImage();
-                if (!cropped.isNull())
+                auto confirm = Utils::GetConfirmationWithTwoButtons(
+                    QT_TRANSLATE_NOOP("popup_window", "Cancel"),
+                    QT_TRANSLATE_NOOP("popup_window", "Create"),
+                    QT_TRANSLATE_NOOP("groupchats", "You have chosen no one from the list. Are you sure you want to create a group with no participants?"),
+                    QString(),
+                    nullptr
+                );
+
+                if (!confirm)
+                    return;
+            }
+            GroupChatOperations::ChatData chatData;
+            const auto& cropped = select_members_dialog.lastCroppedImage();
+            chatData.name = select_members_dialog.getName();
+            if (chatData.name.isEmpty())
+            {
+                chatData.name = MyInfo()->friendly();
+                if (chatData.name.isEmpty())
+                    chatData.name = MyInfo()->aimId();
+                for (int i = 0, contactsSize = std::min((int)selectedContacts.size(), 2); i < contactsSize; ++i)
+                    chatData.name += ql1s(", ") % Logic::GetFriendlyContainer()->getFriendly(selectedContacts[i]);
+            }
+
+            if (!cropped.isNull())
+            {
+                auto connection = std::make_shared<QMetaObject::Connection>();
+
+                *connection = QObject::connect(&Utils::InterConnector::instance(), &Utils::InterConnector::setAvatarId, [connection, chatData](QString avatarId)
                 {
-                    auto connection = std::make_shared<QMetaObject::Connection>();
+                    if (!avatarId.isEmpty())
+                        GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::chats_create_avatar);
 
-                    *connection = QObject::connect(&Utils::InterConnector::instance(), &Utils::InterConnector::setAvatarId, [connection, chatData](QString avatarId)
-                    {
-                        if (!avatarId.isEmpty())
-                            GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::chats_create_avatar);
-
-                        Ui::MainPage::instance()->openCreatedGroupChat();
-
-                        postCreateChatInfoToCore(MyInfo()->aimId(), chatData, avatarId);
-
-                        Logic::getContactListModel()->clearChecked();
-
-                        Ui::MainPage::instance()->clearSearchMembers();
-
-                        QObject::disconnect(*connection);
-                    });
-
-                    groupChatSettings->photo()->UpdateParams(QString(), QString());
-                    groupChatSettings->photo()->applyAvatar(cropped);
-                }
-                else
-                {
                     Ui::MainPage::instance()->openCreatedGroupChat();
-                    postCreateChatInfoToCore(MyInfo()->aimId(), chatData);
+
+                    postCreateChatInfoToCore(MyInfo()->aimId(), chatData, avatarId);
+
                     Logic::getContactListModel()->clearChecked();
+
                     Ui::MainPage::instance()->clearSearchMembers();
-                }
+
+                    QObject::disconnect(*connection);
+                });
+
+                select_members_dialog.photo()->applyAvatar(cropped);
             }
             else
             {
+                Ui::MainPage::instance()->openCreatedGroupChat();
+                postCreateChatInfoToCore(MyInfo()->aimId(), chatData);
                 Logic::getContactListModel()->clearChecked();
                 Ui::MainPage::instance()->clearSearchMembers();
             }
         }
     }
 
-    void createChannel()
+    void createChannel(const CreateChatSource _source)
     {
+        if (_source != CreateChatSource::profile)
+            GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::channel_create_open, { { "from", _source == CreateChatSource::dots ? "dots" : "pencil" } });
+
         std::shared_ptr<GroupChatSettings> groupChatSettings;
         GroupChatOperations::ChatData chatData;
         if (callChatNameEditor(Ui::MainPage::instance(), chatData, groupChatSettings, true))
@@ -443,6 +471,7 @@ namespace Ui
     {
         const auto selectedContacts = Logic::getContactListModel()->GetCheckedContacts();
         chatData.name = MyInfo()->friendly();
+        chatData.isChannel = _channel;
         if (chatData.name.isEmpty())
             chatData.name = MyInfo()->aimId();
         for (int i = 0, contactsSize = std::min((int)selectedContacts.size(), 2); i < contactsSize; ++i)
@@ -451,7 +480,7 @@ namespace Ui
         auto chat_name = chatData.name;
         {
             const auto header = _channel ? QT_TRANSLATE_NOOP("popup_window", "Channel settings") : QT_TRANSLATE_NOOP("popup_window", "Chat settings");
-            groupChatSettings = std::make_shared<GroupChatSettings>(_parent, QT_TRANSLATE_NOOP("popup_window","DONE"), header, chatData, _channel);
+            groupChatSettings = std::make_shared<GroupChatSettings>(_parent, QT_TRANSLATE_NOOP("popup_window","Done"), header, chatData, _channel);
             auto result = groupChatSettings->show();
             if (chat_name != chatData.name)
                 GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::chats_create_rename);
@@ -462,8 +491,7 @@ namespace Ui
 
     void postCreateChatInfoToCore(const QString &_aimId, const GroupChatOperations::ChatData &chatData, const QString& avatarId)
     {
-        if (chatData.publicChat)
-            GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::chats_create_public);
+
         if (chatData.approvedJoin)
             GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::chats_create_approval);
         if (chatData.readOnly)
@@ -485,6 +513,7 @@ namespace Ui
         collection.set_value_as_bool("approved", chatData.approvedJoin);
         collection.set_value_as_bool("link", chatData.getJoiningByLink());
         collection.set_value_as_bool("ro", chatData.readOnly);
+        collection.set_value_as_bool("is_channel", chatData.isChannel);
         Ui::GetDispatcher()->post_message_to_core("chats/create", collection.get());
     }
 
@@ -528,13 +557,12 @@ namespace Ui
         else if (isVideoConference)
             text = QT_TRANSLATE_NOOP("popup_window", "Are you sure you want to delete user from this call?");
 
-        auto left_button_text = QT_TRANSLATE_NOOP("popup_window", "CANCEL");
-        auto right_button_text = QT_TRANSLATE_NOOP("popup_window", "DELETE");
+        auto left_button_text = QT_TRANSLATE_NOOP("popup_window", "Cancel");
+        auto right_button_text = QT_TRANSLATE_NOOP("popup_window", "Delete");
 
         auto userName = Logic::GetFriendlyContainer()->getFriendly(_memberAimId);
 
-        if (Utils::GetConfirmationWithTwoButtons(left_button_text, right_button_text, text, userName, _parent,
-            isVideoConference ? _parent->parentWidget() : Utils::InterConnector::instance().getMainWindow()))
+        if (Utils::GetConfirmationWithTwoButtons(left_button_text, right_button_text, text, userName, isVideoConference ? _parent->parentWidget() : Utils::InterConnector::instance().getMainWindow()))
         {
             if (_regim == Logic::MembersWidgetRegim::MEMBERS_LIST || _regim == Logic::MembersWidgetRegim::SELECT_MEMBERS)
             {
@@ -551,7 +579,7 @@ namespace Ui
             }
             else if (isVideoConference)
             {
-                Ui::GetDispatcher()->getVoipController().setDecline(_memberAimId.toStdString().c_str(), false);
+                Ui::GetDispatcher()->getVoipController().setDecline(_memberAimId.toStdString().c_str(), false, true);
             }
         }
     }
@@ -570,38 +598,32 @@ namespace Ui
 
         auto buttonText = _buttonText;
         if (buttonText.isEmpty())
-            buttonText = QT_TRANSLATE_NOOP("popup_window", "FORWARD");
+            buttonText = QT_TRANSLATE_NOOP("popup_window", "Forward");
 
         auto shareDialog = std::make_unique<SelectContactsWidget>(nullptr, Logic::MembersWidgetRegim::SHARE,
                                              labelText, buttonText, Ui::MainPage::instance(), true, nullptr, _enableAuthorSetting);
 
         QString chatId = quotes.isEmpty() ? QString() : quotes.first().chatId_;
 
-        QString chatName;
-        const auto senderChat = Logic::getContactListModel()->getContactItem(chatId);
-        if (senderChat)
+        if (Utils::isChat(chatId))
         {
-            if (senderChat->is_chat())
-            {
-                const bool allSendersEqualToChat = std::all_of(quotes.begin(), quotes.end(), [&chatId](const auto & q) { return q.senderId_ == chatId; });
-                if (allSendersEqualToChat)
-                    shareDialog->setAuthorWidgetMode(AuthorWidget::Mode::Channel);
-                else
-                    shareDialog->setAuthorWidgetMode(AuthorWidget::Mode::Group);
-            }
+            const bool allSendersEqualToChat = std::all_of(quotes.begin(), quotes.end(), [&chatId](const auto & q) { return q.senderId_ == chatId; });
+            if (allSendersEqualToChat)
+                shareDialog->setAuthorWidgetMode(AuthorWidget::Mode::Channel);
             else
-            {
-                shareDialog->setAuthorWidgetMode(AuthorWidget::Mode::Contact);
-            }
-            chatName = Logic::GetFriendlyContainer()->getFriendly(senderChat->get_aimid());
-            shareDialog->setChatName(chatName);
-
-            QSet<QString> authors;
-            authors.reserve(quotes.size());
-            for (auto & quote : quotes)
-                authors << quote.senderFriendly_;
-            shareDialog->setAuthors(authors);
+                shareDialog->setAuthorWidgetMode(AuthorWidget::Mode::Group);
         }
+        else
+        {
+            shareDialog->setAuthorWidgetMode(AuthorWidget::Mode::Contact);
+        }
+        shareDialog->setChatName(Logic::GetFriendlyContainer()->getFriendly(chatId));
+
+        QSet<QString> authors;
+        authors.reserve(quotes.size());
+        for (auto & quote : quotes)
+            authors << quote.senderFriendly_;
+        shareDialog->setAuthors(authors);
 
         statistic::getGuiMetrics().eventForwardLoaded();
 
@@ -630,10 +652,6 @@ namespace Ui
                         core::ifptr<core::iarray> quotesArray(collection->create_array());
                         quotesArray->reserve(quotes.size());
 
-                        QString chatStamp;
-                        if (senderChat && senderChat->is_chat())
-                            chatStamp = senderChat->get_stamp();
-
                         Data::MentionMap mentions;
 
                         for (auto quote : quotes)
@@ -642,6 +660,7 @@ namespace Ui
 
                             core::ifptr<core::icollection> quoteCollection(collection->create_collection());
                             quote.isForward_ = true;
+                            quote.text_ = Utils::replaceFilesPlaceholders(quote.text_, quote.files_);
                             quote.serialize(quoteCollection.get());
                             core::coll_helper coll(collection->create_collection(), true);
                             core::ifptr<core::ivalue> val(collection->create_value());
@@ -711,11 +730,17 @@ namespace Ui
                         }
                         else
                         {
-                            collection.set_value_as_qstring("message", quote.text_);
+                            collection.set_value_as_qstring("message", Utils::replaceFilesPlaceholders(quote.text_, quote.files_));
                         }
 
                         if (quote.sharedContact_)
                             quote.sharedContact_->serialize(collection.get());
+
+                        if (quote.geo_)
+                            quote.geo_->serialize(collection.get());
+
+                        if (quote.poll_)
+                            quote.poll_->serialize(collection.get());
 
                         collection.set_value_as_qstring("url", quote.url_);
                         collection.set_value_as_qstring("description", quote.description_);
@@ -785,7 +810,7 @@ namespace Ui
     void sharePhone(const QString& _name, const QString& _phone, const QString& _aimid)
     {
         auto shareDialog = std::make_unique<SelectContactsWidget>(nullptr, Logic::MembersWidgetRegim::SHARE,
-                                                                  QT_TRANSLATE_NOOP("popup_window", "Share"), QT_TRANSLATE_NOOP("popup_window", "SEND"), Ui::MainPage::instance(), true, nullptr);
+                                                                  QT_TRANSLATE_NOOP("popup_window", "Share"), QT_TRANSLATE_NOOP("popup_window", "Send"), Ui::MainPage::instance(), true, nullptr);
 
         const auto action = shareDialog->show();
         if (action == QDialog::Accepted)

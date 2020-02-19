@@ -70,7 +70,6 @@ int32_t get_history_batch::init_request(std::shared_ptr<core::http_request_simpl
 {
     constexpr char method[] = "getHistoryBatch";
 
-    _request->set_gzip(true);
     _request->set_normalized_url(method);
     _request->set_keep_alive();
     _request->set_priority(priority_protocol());
@@ -143,13 +142,7 @@ int32_t get_history_batch::init_request(std::shared_ptr<core::http_request_simpl
     {
         log_replace_functor f;
         f.add_json_marker("aimsid", aimsid_range_evaluator());
-        f.add_json_marker("text");
-        f.add_json_marker("message");
-        f.add_json_marker("preview_url");
-        f.add_json_marker("url");
-        f.add_json_marker("snippet");
-        f.add_json_marker("title");
-        f.add_json_marker("caption");
+        f.add_message_markers();
         f.add_marker("a");
         _request->set_replace_log_function(std::move(f));
     }
@@ -241,6 +234,11 @@ int32_t get_history_batch::parse_results(const rapidjson::Value& _node_results)
     {
         if (!pin_block.empty())
             dlg_state_->set_pinned_message(*pin_block.front());
+    }
+
+    if (const auto iter_no_recents_update = _node_results.FindMember("noRecentsUpdate"); iter_no_recents_update != _node_results.MemberEnd() && iter_no_recents_update->value.IsBool())
+    {
+        dlg_state_->set_no_recents_update(iter_no_recents_update->value.GetBool());
     }
 
     set_last_message(*messages_, *dlg_state_);

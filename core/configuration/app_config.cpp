@@ -4,10 +4,16 @@
 
 #include "../../corelib/collection_helper.h"
 #include "../tools/system.h"
+#include "../tools/json_helper.h"
+#include "../utils.h"
+
+#include "../core.h"
 
 #include "app_config.h"
 
 #include "../../common.shared/constants.h"
+#include "../../common.shared/config/config.h"
+#include "../../common.shared/string_utils.h"
 
 CORE_CONFIGURATION_NS_BEGIN
 
@@ -20,116 +26,7 @@ namespace
     const int_set& valid_dpi_values();
     app_config::AppConfigMap parse_ptree_into_map(const pt::ptree& property_tree_);
     const char* option_name(const app_config::AppConfigOption option_);
-
-    enum class app_url_type
-    {
-        base = 0,
-        files = 1,
-        files_get = 2,
-        profile_agent = 3,
-        auth_mail_ru = 4,
-        r_mail_ru = 5,
-        win_mail_ru = 6,
-        read_msg = 7,
-        cicq_org = 8,
-        cicq_com = 9,
-
-        // add type before this place
-        url_size
-    };
-
-    using urls_array = std::array<std::pair<app_url_type, std::string_view>, static_cast<size_t>(app_url_type::url_size)>;
-
-    // use std::all_of since C++20
-    template<class InputIt, class UnaryPredicate>
-    static constexpr bool std_all_of(InputIt first, InputIt last, UnaryPredicate p)
-    {
-        for (; first != last; ++first)
-            if (!p(*first))
-                return false;
-
-        return true;
-    }
-
-    template<class InputIt>
-    static constexpr bool is_correct_order(InputIt first, InputIt last)  noexcept
-    {
-        for (int i = 0; first != last; ++first, ++i)
-            if (i != static_cast<int>(first->first))
-                return false;
-
-        return true;
-    }
-
-    constexpr urls_array dit_default_urls() noexcept
-    {
-        constexpr urls_array default_app_urls = {
-            std::pair(app_url_type::base, std::string_view("u.icxq.com")),
-            std::pair(app_url_type::files, std::string_view("files.icxq.com")),
-            std::pair(app_url_type::files_get, std::string_view("files-api.icxq.com")),
-            std::pair(app_url_type::profile_agent, std::string_view("at.www.devmail.ru")),
-            std::pair(app_url_type::auth_mail_ru, std::string_view("auth-mr.devel.email/cgi-bin/auth")),
-            std::pair(app_url_type::r_mail_ru, std::string_view("r.devel.email")),
-            std::pair(app_url_type::win_mail_ru, std::string_view("win.devel.email/cgi-bin/auth")),
-            std::pair(app_url_type::read_msg, std::string_view("mra-mail.devel.email/cgi-bin/readmsg")),
-            std::pair(app_url_type::cicq_org, std::string_view("cicq.org")),
-            std::pair(app_url_type::cicq_com, std::string_view("c.icq.com"))
-        };
-        static_assert(default_app_urls.size() == static_cast<size_t>(app_url_type::url_size));
-        static_assert(std_all_of(default_app_urls.cbegin(), default_app_urls.cend(), [](auto x) { return !x.second.empty(); }));
-        static_assert(is_correct_order(default_app_urls.cbegin(), default_app_urls.cend()));
-
-        return default_app_urls;
-    }
-
-    constexpr urls_array icq_default_urls() noexcept
-    {
-        constexpr urls_array default_app_urls = {
-            std::pair(app_url_type::base, std::string_view("u.icq.net")),
-            std::pair(app_url_type::files, std::string_view("files.icq.com")),
-            std::pair(app_url_type::files_get, std::string_view("files.icq.net")),
-            std::pair(app_url_type::profile_agent, std::string_view("agent.mail.ru/profile")),
-            std::pair(app_url_type::auth_mail_ru, std::string_view("auth.mail.ru/cgi-bin/auth")),
-            std::pair(app_url_type::r_mail_ru, std::string_view("r.mail.ru")),
-            std::pair(app_url_type::win_mail_ru, std::string_view("win.mail.ru/cgi-bin/auth")),
-            std::pair(app_url_type::read_msg, std::string_view("mra-mail.mail.ru/cgi-bin/readmsg")),
-            std::pair(app_url_type::cicq_org, std::string_view("cicq.org")),
-            std::pair(app_url_type::cicq_com, std::string_view("c.icq.com")),
-        };
-        static_assert(default_app_urls.size() == static_cast<size_t>(app_url_type::url_size));
-        static_assert(std_all_of(default_app_urls.cbegin(), default_app_urls.cend(), [](auto x) { return !x.second.empty(); }));
-        static_assert(is_correct_order(default_app_urls.cbegin(), default_app_urls.cend()));
-
-        return default_app_urls;
-    }
-
-    constexpr urls_array biz_default_urls() noexcept
-    {
-        constexpr urls_array default_app_urls = {
-            std::pair(app_url_type::base, std::string_view("u.myteam.vmailru.net")),
-            std::pair(app_url_type::files, std::string_view("files.icq.com")),
-            std::pair(app_url_type::files_get, std::string_view("files.icq.net")),
-            std::pair(app_url_type::profile_agent, std::string_view("agent.mail.ru/profile")),
-            std::pair(app_url_type::auth_mail_ru, std::string_view("auth.mail.ru/cgi-bin/auth")),
-            std::pair(app_url_type::r_mail_ru, std::string_view("r.mail.ru")),
-            std::pair(app_url_type::win_mail_ru, std::string_view("win.mail.ru/cgi-bin/auth")),
-            std::pair(app_url_type::read_msg, std::string_view("mra-mail.mail.ru/cgi-bin/readmsg")),
-            std::pair(app_url_type::cicq_org, std::string_view("myteam.mail.ru")),
-            std::pair(app_url_type::cicq_com, std::string_view("c.icq.com")),
-        };
-        static_assert(default_app_urls.size() == static_cast<size_t>(app_url_type::url_size));
-        static_assert(std_all_of(default_app_urls.cbegin(), default_app_urls.cend(), [](auto x) { return !x.second.empty(); }));
-        static_assert(is_correct_order(default_app_urls.cbegin(), default_app_urls.cend()));
-
-        return default_app_urls;
-    }
-
-    constexpr std::string_view get_default_app_url(app_url_type _type) noexcept
-    {
-        constexpr auto urls = build::is_dit() ? dit_default_urls() : (build::is_biz() ? biz_default_urls() : icq_default_urls());
-
-        return urls[static_cast<size_t>(_type)].second;
-    }
+    bool external_config = false;
 }
 
 app_config::app_config()
@@ -205,35 +102,14 @@ pt::ptree app_config::as_ptree() const
         case app_config::AppConfigOption::curl_log:
             result.add(option_name(key), is_curl_log_enabled());
             break;
-        case app_config::AppConfigOption::url_base:
-            result.add(option_name(key), get_url_base());
+        case app_config::AppConfigOption::task_trace:
+            result.add(option_name(key), is_task_trace_enabled());
             break;
-        case app_config::AppConfigOption::url_files:
-            result.add(option_name(key), get_url_files());
+        case app_config::AppConfigOption::hide_keyword_pattern:
+            result.add(option_name(key), is_hide_keyword_pattern());
             break;
-        case app_config::AppConfigOption::url_files_get:
-            result.add(option_name(key), get_url_files_get());
-            break;
-        case app_config::AppConfigOption::url_profile_agent:
-            result.add(option_name(key), get_url_profile_agent());
-            break;
-        case app_config::AppConfigOption::url_auth_mail_ru:
-            result.add(option_name(key), get_url_auth_mail_ru());
-            break;
-        case app_config::AppConfigOption::url_r_mail_ru:
-            result.add(option_name(key), get_url_r_mail_ru());
-            break;
-        case app_config::AppConfigOption::url_win_mail_ru:
-            result.add(option_name(key), get_url_win_mail_ru());
-            break;
-        case app_config::AppConfigOption::url_read_msg:
-            result.add(option_name(key), get_url_read_msg());
-            break;
-        case app_config::AppConfigOption::url_cicq_org:
-            result.add(option_name(key), get_url_cicq_org());
-            break;
-        case app_config::AppConfigOption::url_cicq_com:
-            result.add(option_name(key), get_url_cicq_com());
+        case app_config::AppConfigOption::show_hidden_themes:
+            result.add(option_name(key), is_show_hidden_themes());
             break;
         default:
             assert(!"unhandled option for as_ptree");
@@ -300,6 +176,27 @@ bool app_config::unlock_context_menu_features() const
                                            : boost::any_cast<bool>(it->second);
 }
 
+bool app_config::is_task_trace_enabled() const
+{
+    auto it = app_config_options_.find(app_config::AppConfigOption::task_trace);
+    return it == app_config_options_.end() ? false
+                                           : boost::any_cast<bool>(it->second);
+}
+
+bool app_config::is_hide_keyword_pattern() const
+{
+    auto it = app_config_options_.find(app_config::AppConfigOption::hide_keyword_pattern);
+    return it == app_config_options_.end() ? false
+                                           : boost::any_cast<bool>(it->second);
+}
+
+bool app_config::is_show_hidden_themes() const
+{
+    auto it = app_config_options_.find(app_config::AppConfigOption::show_hidden_themes);
+    return it == app_config_options_.end() ? false
+                                           : boost::any_cast<bool>(it->second);
+}
+
 bool app_config::gdpr_user_has_agreed() const
 {
     auto it = app_config_options_.find(app_config::AppConfigOption::gdpr_user_has_agreed);
@@ -357,85 +254,119 @@ std::string app_config::device_id() const
         : boost::any_cast<std::string>(it->second);
 }
 
-std::string app_config::get_url_base() const
+std::string_view app_config::get_update_win_alpha_url() const
 {
-    auto it = app_config_options_.find(app_config::AppConfigOption::url_base);
-    return it == app_config_options_.end() ? std::string(get_default_app_url(app_url_type::base))
-        : boost::any_cast<std::string>(it->second);
+    return config::get().url(config::urls::update_win_alpha);
 }
 
-std::string app_config::get_url_files() const
+std::string_view app_config::get_update_win_beta_url() const
 {
-    auto it = app_config_options_.find(app_config::AppConfigOption::url_files);
-    return it == app_config_options_.end() ? std::string(get_default_app_url(app_url_type::files))
-        : boost::any_cast<std::string>(it->second);
+    return config::get().url(config::urls::update_win_beta);
 }
 
-std::string app_config::get_url_files_get() const
+std::string_view app_config::get_update_win_release_url() const
 {
-    auto it = app_config_options_.find(app_config::AppConfigOption::url_files_get);
-    return it == app_config_options_.end() ? std::string(get_default_app_url(app_url_type::files_get))
-        : boost::any_cast<std::string>(it->second);
+    return config::get().url(config::urls::update_win_release);
 }
 
-std::string app_config::get_url_profile_agent() const
+std::string_view app_config::get_update_mac_alpha_url() const
 {
-    auto it = app_config_options_.find(app_config::AppConfigOption::url_profile_agent);
-    return it == app_config_options_.end() ? std::string(get_default_app_url(app_url_type::profile_agent))
-        : boost::any_cast<std::string>(it->second);
+    return config::get().url(config::urls::update_mac_alpha);
 }
 
-std::string app_config::get_url_auth_mail_ru() const
+std::string_view app_config::get_update_mac_beta_url() const
 {
-    auto it = app_config_options_.find(app_config::AppConfigOption::url_auth_mail_ru);
-    return it == app_config_options_.end() ? std::string(get_default_app_url(app_url_type::auth_mail_ru))
-        : boost::any_cast<std::string>(it->second);
+    return config::get().url(config::urls::update_mac_beta);
 }
 
-std::string app_config::get_url_r_mail_ru() const
+std::string_view app_config::get_update_mac_release_url() const
 {
-    auto it = app_config_options_.find(app_config::AppConfigOption::url_r_mail_ru);
-    return it == app_config_options_.end() ? std::string(get_default_app_url(app_url_type::r_mail_ru))
-        : boost::any_cast<std::string>(it->second);
+    return config::get().url(config::urls::update_mac_release);
 }
 
-std::string app_config::get_url_win_mail_ru() const
+std::string_view app_config::get_update_linux_alpha_32_url() const
 {
-    auto it = app_config_options_.find(app_config::AppConfigOption::url_win_mail_ru);
-    return it == app_config_options_.end() ? std::string(get_default_app_url(app_url_type::win_mail_ru))
-        : boost::any_cast<std::string>(it->second);
+    return config::get().url(config::urls::update_linux_alpha_32);
 }
 
-std::string app_config::get_url_read_msg() const
+std::string_view app_config::get_update_linux_alpha_64_url() const
 {
-    auto it = app_config_options_.find(app_config::AppConfigOption::url_read_msg);
-    return it == app_config_options_.end() ? std::string(get_default_app_url(app_url_type::read_msg))
-        : boost::any_cast<std::string>(it->second);
+    return config::get().url(config::urls::update_linux_alpha_64);
 }
 
-std::string app_config::get_url_cicq_org() const
+std::string_view app_config::get_update_linux_beta_32_url() const
 {
-    auto it = app_config_options_.find(app_config::AppConfigOption::url_cicq_org);
-    return it == app_config_options_.end() ? std::string(get_default_app_url(app_url_type::cicq_org))
-        : boost::any_cast<std::string>(it->second);
+    return config::get().url(config::urls::update_linux_beta_32);
 }
 
-std::string app_config::get_url_cicq_com() const
+std::string_view app_config::get_update_linux_beta_64_url() const
 {
-    auto it = app_config_options_.find(app_config::AppConfigOption::url_cicq_com);
-    return it == app_config_options_.end() ? std::string(get_default_app_url(app_url_type::cicq_com))
-        : boost::any_cast<std::string>(it->second);
+    return config::get().url(config::urls::update_linux_beta_64);
 }
 
-std::string app_config::get_url_files_if_not_default() const
+std::string_view app_config::get_update_linux_release_32_url() const
 {
-    auto url_files = get_url_files();
-    if (url_files != get_default_app_url(app_url_type::files))
-        return url_files;
-
-    return std::string();
+    return config::get().url(config::urls::update_linux_release_32);
 }
 
+std::string_view app_config::get_update_linux_release_64_url() const
+{
+    return config::get().url(config::urls::update_linux_release_64);
+}
+
+std::string_view app_config::get_stat_base_url() const
+{
+    return config::get().url(config::urls::stat_base);
+}
+
+std::string_view app_config::get_url_omicron_data() const
+{
+    return config::get().url(config::urls::omicron);
+}
+
+std::string_view app_config::get_url_attach_phone() const
+{
+    return config::get().url(config::urls::attach_phone);
+}
+
+std::string app_config::get_update_url(std::string_view _updateble_build_version) const
+{
+    const auto make_url = [version = _updateble_build_version](std::string_view url)
+    {
+        return su::concat("https://", url, version);
+    };
+
+    if constexpr (platform::is_windows())
+    {
+        if constexpr (environment::is_alpha())
+            return make_url(get_update_win_alpha_url());
+
+        if (g_core && g_core->get_install_beta_updates())
+            return make_url(get_update_win_beta_url());
+
+        return make_url(get_update_win_release_url());
+    }
+    else if constexpr (platform::is_x86_64())
+    {
+        if (environment::is_alpha())
+            return make_url(get_update_linux_alpha_64_url());
+
+        if (g_core && g_core->get_install_beta_updates())
+            return make_url(get_update_linux_beta_64_url());
+
+        return make_url(get_update_linux_release_64_url());
+    }
+    else
+    {
+        if constexpr (environment::is_alpha())
+            return make_url(get_update_linux_alpha_32_url());
+
+        if (g_core && g_core->get_install_beta_updates())
+            return make_url(get_update_linux_beta_32_url());
+
+        return make_url(get_update_linux_release_32_url());
+    }
+}
 
 uint32_t app_config::update_interval() const
 {
@@ -453,14 +384,14 @@ void app_config::set_config_option(app_config::AppConfigOption option, ValueType
 void app_config::serialize(Out core::coll_helper &_collection) const
 {
     _collection.set<bool>("history.is_server_history_enabled", is_server_history_enabled());
-    _collection.set<bool>("dev.unlock_context_menu_features", unlock_context_menu_features());
-    _collection.set<bool>("enable_crash", is_crash_enabled());
-    _collection.set<bool>("enable_testing", is_testing_enabled());
-    _collection.set<bool>("fulllog", is_full_log_enabled());
-    _collection.set<bool>("dev.show_message_ids", is_show_msg_ids_enabled());
-    _collection.set<int>("dev.cache_history_pages_secs", cache_history_pages_secs());
-    _collection.set<bool>("dev.save_rtp_dumps", is_save_rtp_dumps_enabled());
-    _collection.set<bool>("dev.server_search", is_server_search_enabled());
+    _collection.set<bool>(option_name(app_config::AppConfigOption::unlock_context_menu_features), unlock_context_menu_features());
+    _collection.set<bool>(option_name(app_config::AppConfigOption::is_crash_enabled), is_crash_enabled());
+    _collection.set<bool>(option_name(app_config::AppConfigOption::is_testing_enabled), is_testing_enabled());
+    _collection.set<bool>(option_name(app_config::AppConfigOption::full_log), is_full_log_enabled());
+    _collection.set<bool>(option_name(app_config::AppConfigOption::show_msg_ids), is_show_msg_ids_enabled());
+    _collection.set<int>(option_name(app_config::AppConfigOption::cache_history_pages_secs), cache_history_pages_secs());
+    _collection.set<bool>(option_name(app_config::AppConfigOption::save_rtp_dumps), is_save_rtp_dumps_enabled());
+    _collection.set<bool>(option_name(app_config::AppConfigOption::is_server_search_enabled), is_server_search_enabled());
     _collection.set<bool>(option_name(app_config::AppConfigOption::gdpr_user_has_agreed), gdpr_user_has_agreed());
     _collection.set<int32_t>(option_name(app_config::AppConfigOption::gdpr_agreement_reported_to_server),
                              static_cast<int32_t>(gdpr_agreement_reported_to_server()));
@@ -469,18 +400,16 @@ void app_config::serialize(Out core::coll_helper &_collection) const
     _collection.set<std::string>(option_name(app_config::AppConfigOption::dev_id), device_id());
     _collection.set<uint32_t>(option_name(app_config::AppConfigOption::update_interval), update_interval());
     _collection.set<bool>(option_name(app_config::AppConfigOption::curl_log), is_curl_log_enabled());
+    _collection.set<bool>(option_name(app_config::AppConfigOption::task_trace), is_task_trace_enabled());
+    _collection.set<bool>(option_name(app_config::AppConfigOption::hide_keyword_pattern), is_hide_keyword_pattern());
+    _collection.set<bool>(option_name(app_config::AppConfigOption::show_hidden_themes), is_show_hidden_themes());
 
     // urls
-    _collection.set<std::string>(option_name(app_config::AppConfigOption::url_base), get_url_base());
-    _collection.set<std::string>(option_name(app_config::AppConfigOption::url_files), get_url_files());
-    _collection.set<std::string>(option_name(app_config::AppConfigOption::url_files_get), get_url_files_get());
-    _collection.set<std::string>(option_name(app_config::AppConfigOption::url_profile_agent), get_url_profile_agent());
-    _collection.set<std::string>(option_name(app_config::AppConfigOption::url_auth_mail_ru), get_url_auth_mail_ru());
-    _collection.set<std::string>(option_name(app_config::AppConfigOption::url_r_mail_ru), get_url_r_mail_ru());
-    _collection.set<std::string>(option_name(app_config::AppConfigOption::url_win_mail_ru), get_url_win_mail_ru());
-    _collection.set<std::string>(option_name(app_config::AppConfigOption::url_read_msg), get_url_read_msg());
-    _collection.set<std::string>(option_name(app_config::AppConfigOption::url_cicq_org), get_url_cicq_org());
-    _collection.set<std::string>(option_name(app_config::AppConfigOption::url_cicq_com), get_url_cicq_com());
+    _collection.set<std::string_view>("urls.url_update_mac_alpha", get_update_mac_alpha_url());
+    _collection.set<std::string_view>("urls.url_update_mac_beta", get_update_mac_beta_url());
+    _collection.set<std::string_view>("urls.url_update_mac_release", get_update_mac_release_url());
+    _collection.set<std::string_view>("urls.url_omicron_data", get_url_omicron_data());
+    _collection.set<std::string_view>("urls.url_attach_phone", get_url_attach_phone());
 
     auto _forced_dpi = forced_dpi();
     if (_forced_dpi != 0)
@@ -553,6 +482,7 @@ void set_config_option(app_config::AppConfigOption option, ValueType&& value)
 
 template void set_config_option<bool>(app_config::AppConfigOption, bool&&);
 template void set_config_option<int32_t>(app_config::AppConfigOption, int32_t&&);
+template void set_config_option<std::string>(app_config::AppConfigOption, std::string&&);
 
 namespace
 {
@@ -637,44 +567,16 @@ namespace
                 property_tree_.get<bool>(option_name(app_config::AppConfigOption::curl_log), false)
             },
             {
-                app_config::AppConfigOption::url_base,
-                property_tree_.get<std::string>(option_name(app_config::AppConfigOption::url_base), std::string(get_default_app_url(app_url_type::base)))
+                app_config::AppConfigOption::task_trace,
+                property_tree_.get<bool>(option_name(app_config::AppConfigOption::task_trace), false)
             },
             {
-                app_config::AppConfigOption::url_files,
-                property_tree_.get<std::string>(option_name(app_config::AppConfigOption::url_files), std::string(get_default_app_url(app_url_type::files)))
+                app_config::AppConfigOption::hide_keyword_pattern,
+                property_tree_.get<bool>(option_name(app_config::AppConfigOption::hide_keyword_pattern), false)
             },
             {
-                app_config::AppConfigOption::url_files_get,
-                property_tree_.get<std::string>(option_name(app_config::AppConfigOption::url_files_get), std::string(get_default_app_url(app_url_type::files_get)))
-            },
-            {
-                app_config::AppConfigOption::url_profile_agent,
-                property_tree_.get<std::string>(option_name(app_config::AppConfigOption::url_profile_agent), std::string(get_default_app_url(app_url_type::profile_agent)))
-            },
-            {
-                app_config::AppConfigOption::url_auth_mail_ru,
-                property_tree_.get<std::string>(option_name(app_config::AppConfigOption::url_auth_mail_ru), std::string(get_default_app_url(app_url_type::auth_mail_ru)))
-            },
-            {
-                app_config::AppConfigOption::url_r_mail_ru,
-                property_tree_.get<std::string>(option_name(app_config::AppConfigOption::url_r_mail_ru), std::string(get_default_app_url(app_url_type::r_mail_ru)))
-            },
-            {
-                app_config::AppConfigOption::url_win_mail_ru,
-                property_tree_.get<std::string>(option_name(app_config::AppConfigOption::url_win_mail_ru), std::string(get_default_app_url(app_url_type::win_mail_ru)))
-            },
-            {
-                app_config::AppConfigOption::url_read_msg,
-                property_tree_.get<std::string>(option_name(app_config::AppConfigOption::url_read_msg), std::string(get_default_app_url(app_url_type::read_msg)))
-            },
-            {
-                app_config::AppConfigOption::url_cicq_org,
-                property_tree_.get<std::string>(option_name(app_config::AppConfigOption::url_cicq_org), std::string(get_default_app_url(app_url_type::cicq_org)))
-            },
-            {
-                app_config::AppConfigOption::url_cicq_com,
-                property_tree_.get<std::string>(option_name(app_config::AppConfigOption::url_cicq_com), std::string(get_default_app_url(app_url_type::cicq_com)))
+                app_config::AppConfigOption::show_hidden_themes,
+                property_tree_.get<bool>(option_name(app_config::AppConfigOption::show_hidden_themes), false)
             }
         };
     }
@@ -717,26 +619,12 @@ namespace
             return "update_interval";
         case app_config::AppConfigOption::curl_log:
             return "curl_log";
-        case app_config::AppConfigOption::url_base:
-            return "urls.url_base";
-        case app_config::AppConfigOption::url_files:
-            return "urls.url_files";
-        case app_config::AppConfigOption::url_files_get:
-            return "urls.url_files_get";
-        case app_config::AppConfigOption::url_profile_agent:
-            return "urls.url_profile_agent";
-        case app_config::AppConfigOption::url_auth_mail_ru:
-            return "urls.url_auth_mail_ru";
-        case app_config::AppConfigOption::url_r_mail_ru:
-            return "urls.url_r_mail_ru";
-        case app_config::AppConfigOption::url_win_mail_ru:
-            return "urls.url_win_mail_ru";
-        case app_config::AppConfigOption::url_read_msg:
-            return "urls.url_read_msg";
-        case app_config::AppConfigOption::url_cicq_org:
-            return "urls.url_cicq_org";
-        case app_config::AppConfigOption::url_cicq_com:
-            return "urls.url_cicq_com";
+        case app_config::AppConfigOption::task_trace:
+            return "task_trace";
+        case app_config::AppConfigOption::hide_keyword_pattern:
+            return "dev.hide_keyword_pattern";
+        case app_config::AppConfigOption::show_hidden_themes:
+            return "show_hidden_themes";
         default:
             assert(!"unhandled option for option_name");
             return "";

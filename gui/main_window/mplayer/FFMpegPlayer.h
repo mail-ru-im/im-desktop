@@ -48,7 +48,10 @@ namespace Ui
         tmt_close_streams = 14,
         tmt_wake_up = 15,
         tmt_get_first_frame = 16,
-        tmt_reinit_audio = 17
+        tmt_reinit_audio = 17,
+        tmt_empty_frame = 18,
+
+        last = 19
     };
 
     struct ThreadMessage
@@ -60,12 +63,19 @@ namespace Ui
         uint32_t videoId_;
         QString str_;
 
+        QImage emptyFrame_;
+
         ThreadMessage(uint32_t _videoId = std::numeric_limits<uint32_t>::max(), const thread_message_type _message = thread_message_type::tmt_unknown)
             : message_(_message)
             , x_(0)
             , y_(0)
             , videoId_(_videoId)
         {
+        }
+
+        void setEmptyFrame(QImage&& _image)
+        {
+            emptyFrame_ = std::move(_image);
         }
     };
 
@@ -80,6 +90,7 @@ namespace Ui
         QSemaphore condition_;
 
         std::list<ThreadMessage> messages_;
+        std::array<bool, thread_message_type::last + 1> compressed_messages_ = {};
 
     public:
 
@@ -240,6 +251,7 @@ namespace Ui
         decode_thread_state current_state_;
         bool eof_;
         bool stream_finished_;
+        std::list<QImage> emptyFrames_;
 
         VideoData() : current_state_(dts_none), eof_(false), stream_finished_(false)  {}
     };
@@ -289,6 +301,8 @@ namespace Ui
         void onDemuxQuit(uint32_t _videoId);
         void onStreamsClosed(uint32_t _videoId);
 
+    public:
+        ThreadMessagesQueue videoThreadMessagesQueue_;
     private:
 
         std::atomic<bool> quit_;
@@ -300,7 +314,6 @@ namespace Ui
         mutable std::unordered_map<uint32_t, bool> activeVideos_;
         mutable std::mutex activeVideosMutex_;
 
-        ThreadMessagesQueue videoThreadMessagesQueue_;
         ThreadMessagesQueue demuxThreadMessageQueue_;
         ThreadMessagesQueue audioThreadMessageQueue_;
 
@@ -358,7 +371,8 @@ namespace Ui
         int32_t getRotation(MediaData& _media) const;
         int64_t getDuration(MediaData& _media) const;
 
-        QSize getScaledSize(MediaData& _media) const;
+        QSize getSourceSize(MediaData& _media) const;
+        QSize getTargetSize(MediaData& _media) const;
         bool enableAudio(MediaData& _media) const;
         bool enableVideo(MediaData& _media) const;
 
@@ -476,8 +490,6 @@ namespace Ui
     public:
 
         explicit VideoDecodeThread(VideoContext& _ctx);
-
-        void prepareCtx(MediaData& _media);
     };
 
 
@@ -496,104 +508,7 @@ namespace Ui
     public:
 
         explicit AudioDecodeThread(VideoContext& _ctx);
-    };
-
-    class FrameRenderer
-    {
-        QColor fillColor_;
-
-        std::function<void(const QSize _sz)> sizeCallback_;
-
-    protected:
-        QPixmap activeImage_;
-
-        QPainterPath clippingPath_;
-        bool fullScreen_;
-        bool fillClient_;
-
-    protected:
-
-        void renderFrame(QPainter& _painter, const QRect& _clientRect);
-
-        void onSize(const QSize _sz);
-
-    public:
-
-        virtual ~FrameRenderer();
-
-        virtual void updateFrame(QPixmap _image);
-        QPixmap getActiveImage() const;
-
-        bool isActiveImageNull() const;
-
-        virtual QWidget* getWidget() = 0;
-
-        virtual void redraw() = 0;
-
-        virtual void filterEvents(QObject* _parent) = 0;
-
-        void setClippingPath(QPainterPath _clippingPath);
-
-        void setFullScreen(bool _fullScreen);
-
-        void setFillColor(const QColor& _color);
-
-        void setFillClient(bool _fill);
-
-        virtual void setWidgetVisible(bool _visible) = 0;
-
-        void setSizeCallback(std::function<void(const QSize)> _callback);
-
-        FrameRenderer()
-            : fullScreen_(false)
-            , fillClient_(false)
-        {
-        }
-    };
-
-    class GDIRenderer : public QWidget, public FrameRenderer
-    {
-        virtual QWidget* getWidget() override;
-
-        virtual void redraw() override;
-
-        virtual void paintEvent(QPaintEvent* _e) override;
-
-        virtual void filterEvents(QObject* _parent) override;
-
-        virtual void setWidgetVisible(bool _visible) override;
-
-        virtual void resizeEvent(QResizeEvent *_event) override;
-
-    public:
-
-        GDIRenderer(QWidget* _parent);
-    };
-
-#ifndef __linux__
-    class OpenGLRenderer : public QOpenGLWidget, public FrameRenderer
-    {
-        virtual QWidget* getWidget() override;
-
-        virtual void redraw() override;
-
-        void paint();
-
-        virtual void paintEvent(QPaintEvent* _e) override;
-
-        virtual void paintGL() override;
-
-        virtual void filterEvents(QObject* _parent) override;
-
-        virtual void setWidgetVisible(bool _visible) override;
-
-        virtual void resizeEvent(QResizeEvent *_event) override;
-
-    public:
-        OpenGLRenderer(QWidget* _parent);
-
-    };
-#endif //__linux__
+    };    
 
     class MediaContainer : public QObject
     {
@@ -665,6 +580,9 @@ namespace Ui
 
     MediaContainer* getMediaPreview(const QString& _media);
 
+
+    class FrameRenderer;
+
     //////////////////////////////////////////////////////////////////////////
     // FFMpegPlayer
     //////////////////////////////////////////////////////////////////////////
@@ -691,13 +609,13 @@ namespace Ui
 
         struct DecodedFrame
         {
-            QPixmap image_;
+            QImage image_;
 
             double pts_;
 
             bool eof_;
 
-            DecodedFrame(const QPixmap& _image, const double _pts) : image_(_image), pts_(_pts), eof_(false) {}
+            DecodedFrame(const QImage& _image, const double _pts) : image_(_image), pts_(_pts), eof_(false) {}
             DecodedFrame(bool _eof) : eof_(_eof) {}
         };
 

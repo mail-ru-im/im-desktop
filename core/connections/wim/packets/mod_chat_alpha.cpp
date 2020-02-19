@@ -33,9 +33,8 @@ void mod_chat_alpha::set_chat_params(chat_params _chat_params)
 
 int32_t mod_chat_alpha::init_request(std::shared_ptr<core::http_request_simple> _request)
 {
-    constexpr char method[] = "modChatAlpha";
+    constexpr char method[] = "modChat";
 
-    _request->set_gzip(true);
     _request->set_url(urls::get_url(urls::url_type::rapi_host));
     _request->set_normalized_url(method);
     _request->set_keep_alive();
@@ -62,6 +61,9 @@ int32_t mod_chat_alpha::init_request(std::shared_ptr<core::http_request_simple> 
         node_params.AddMember("live", *chat_params_.get_joiningByLink(), a);
     if (chat_params_.get_readOnly())
         node_params.AddMember("defaultRole", std::string(*chat_params_.get_readOnly() ? "readonly" : "member"), a);
+    if (chat_params_.get_stamp())
+        node_params.AddMember("stamp", *chat_params_.get_stamp(), a);
+
     doc.AddMember("params", std::move(node_params), a);
 
     sign_packet(doc, a, _request);

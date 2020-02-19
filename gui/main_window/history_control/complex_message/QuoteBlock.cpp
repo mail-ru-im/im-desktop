@@ -15,7 +15,6 @@
 #include "../../friendly/FriendlyContainer.h"
 
 #include "QuoteBlockLayout.h"
-#include "Selection.h"
 
 #include "QuoteBlock.h"
 #include "TextBlock.h"
@@ -45,7 +44,6 @@ QuoteBlock::QuoteBlock(ComplexMessageItem *parent, const Data::Quote& quote)
     , Quote_(std::move(quote))
     , Layout_(new QuoteBlockLayout())
     , desiredSenderWidth_(0)
-    , Selection_(BlockSelectionType::None)
     , Parent_(parent)
     , ReplyBlock_(nullptr)
     , MessagesCount_(0)
@@ -119,14 +117,27 @@ QString QuoteBlock::getSelectedText(const bool _isFullSelect, const TextDestinat
     QString result;
     for (auto b : Blocks_)
     {
-        if (!b->isSelected())
-            continue;
-
-        if (_isFullSelect)
-            result += getQuoteHeader();
-
-        result += b->getSelectedText(false, _dest) % QChar::LineFeed;
+        if (b->isSelected())
+            result += b->getSelectedText(false, _dest) % QChar::LineFeed;
     }
+
+    if (_isFullSelect && !result.isEmpty())
+        return getQuoteHeader() % result;
+
+    return result;
+}
+
+QString QuoteBlock::getTextForCopy() const
+{
+    QString result;
+    for (auto b : Blocks_)
+    {
+        result += b->getTextForCopy();
+        result += QChar::LineFeed;
+    }
+
+    if (!result.isEmpty())
+        return getQuoteHeader() % result;
 
     return result;
 }
@@ -135,7 +146,13 @@ QString QuoteBlock::getSourceText() const
 {
     QString result;
     for (auto b : Blocks_)
-        result += getQuoteHeader() % b->getTextForCopy() % QChar::LineFeed;
+    {
+        result += b->getSourceText();
+        result += QChar::LineFeed;
+    }
+
+    if (!result.isEmpty())
+        return getQuoteHeader() % result;
 
     return result;
 }
@@ -177,11 +194,7 @@ IItemBlock* QuoteBlock::findBlockUnder(const QPoint &pos) const
         if (!block)
             continue;
 
-        const auto blockLayout = block->getBlockLayout();
-        if (!blockLayout)
-            continue;
-
-        auto rc = blockLayout->getBlockGeometry();
+        auto rc = block->getBlockGeometry();
         if (block->isSharingEnabled())
         {
             const auto add = getParentComplexMessage()->getSharingAdditionalWidth();
@@ -208,10 +221,16 @@ bool QuoteBlock::isAllSelected() const
     return std::all_of(Blocks_.begin(), Blocks_.end(), [](const auto& b) { return b->isAllSelected() && !b->getSelectedText().isEmpty(); });
 }
 
-void QuoteBlock::selectByPos(const QPoint& from, const QPoint& to, const BlockSelectionType selection)
+void QuoteBlock::selectByPos(const QPoint& from, const QPoint& to, bool topToBottom)
 {
     for (auto b : Blocks_)
-        b->selectByPos(from, to, selection);
+        b->selectByPos(from, to, topToBottom);
+}
+
+void QuoteBlock::selectAll()
+{
+    for (auto b : Blocks_)
+        b->selectAll();
 }
 
 void QuoteBlock::setReplyBlock(GenericBlock* block)
@@ -226,6 +245,12 @@ void QuoteBlock::onVisibilityChanged(const bool isVisible)
 
     for (auto block : Blocks_)
         block->onVisibilityChanged(isVisible);
+}
+
+void QuoteBlock::onSelectionStateChanged(const bool isSelected)
+{
+    for (auto block : Blocks_)
+        block->onSelectionStateChanged(isSelected);
 }
 
 void QuoteBlock::onDistanceToViewportChanged(const QRect& _widgetAbsGeometry, const QRect& _viewportVisibilityAbsRect)
@@ -246,25 +271,17 @@ QRect QuoteBlock::setBlockGeometry(const QRect& _boundingRect)
     contentRect.translate(0, senderRect.height());
     for (auto childBlock : Blocks_)
     {
-        childBlock->setMaxPreviewWidth(MessageStyle::Quote::getMaxImageWidthInQuote());
-
-        QRect childRect;
-        if (childBlock->isSizeLimited())
-        {
-            const auto childSize = childBlock->getBlockLayout()->blockSizeForMaxWidth(contentRect.width());
-
-            auto r = contentRect;
-            r.setWidth(childSize.width());
-            childRect = childBlock->setBlockGeometry(r);
-        }
-        else
-        {
-            childRect = childBlock->setBlockGeometry(contentRect);
-        }
+        QRect childRect = childBlock->setBlockGeometry(contentRect);
 
         const auto childHeight = childRect.height() + MessageStyle::Quote::getQuoteBlockInsideSpacing();
         totalHeight += childHeight;
         contentRect.translate(0, childHeight);
+    }
+
+    for (auto block : Blocks_)
+    {
+        if (block->needStretchToOthers())
+            block->stretchToWidth(contentRect.width());
     }
 
     const auto availableWidth = contentRect.width();
@@ -407,7 +424,7 @@ void QuoteBlock::blockClicked()
             if (selectedContact != Quote_.chatId_)
                 emit Utils::InterConnector::instance().addPageToDialogHistory(selectedContact);
 
-            emit Logic::getContactListModel()->select(Quote_.chatId_, Quote_.msgId_, Quote_.msgId_, Logic::UpdateChatSelection::Yes);
+            emit Logic::getContactListModel()->select(Quote_.chatId_, Quote_.msgId_, Logic::UpdateChatSelection::Yes);
         }
         else if (!Quote_.chatStamp_.isEmpty())
         {
@@ -416,7 +433,7 @@ void QuoteBlock::blockClicked()
     }
     else
     {
-        Logic::getContactListModel()->setCurrent(Logic::getContactListModel()->selectedContact(), Quote_.msgId_, true, nullptr, Quote_.msgId_);
+        Logic::getContactListModel()->setCurrent(Logic::getContactListModel()->selectedContact(), Quote_.msgId_, true, nullptr);
     }
 }
 
@@ -476,7 +493,11 @@ void QuoteBlock::initialize()
 
 void QuoteBlock::mouseMoveEvent(QMouseEvent * _e)
 {
-    if (!Quote_.isInteractive())
+    if (Utils::InterConnector::instance().isMultiselect() || Quote_.isInteractive())
+    {
+        setCursor(Qt::PointingHandCursor);
+    }
+    else
     {
         const auto mousePos = _e->pos();
         const auto showHand =
@@ -536,7 +557,7 @@ bool QuoteBlock::isSharingEnabled() const
     return false;
 }
 
-bool QuoteBlock::containSharingBlock() const
+bool QuoteBlock::containsSharingBlock() const
 {
     return std::any_of(Blocks_.begin(), Blocks_.end(), [](const auto& b) { return b->isSharingEnabled(); });
 }
@@ -629,7 +650,7 @@ void QuoteBlock::doubleClicked(const QPoint & _p, std::function<void(bool)> _cal
     {
         const auto hoveredBlock = getParentComplexMessage()->getHoveredBlock();
         const auto isChildBlock = std::any_of(Blocks_.begin(), Blocks_.end(), [hoveredBlock](const auto _block) { return hoveredBlock == _block; });
-        if (isChildBlock && hoveredBlock->getBlockLayout()->getBlockGeometry().contains(_p))
+        if (isChildBlock && hoveredBlock->getBlockGeometry().contains(_p))
             hoveredBlock->doubleClicked(_p, _callback);
     }
     else
@@ -665,6 +686,52 @@ bool QuoteBlock::isNeedCheckTimeShift() const
         return Blocks_.back()->getContentType() != IItemBlock::ContentType::Link;
 
     return false;
+}
+
+void QuoteBlock::highlight(const highlightsV& _hl)
+{
+    for (auto b : Blocks_)
+        b->highlight(_hl);
+}
+
+void QuoteBlock::removeHighlight()
+{
+    for (auto b : Blocks_)
+        b->removeHighlight();
+}
+
+Data::FilesPlaceholderMap QuoteBlock::getFilePlaceholders()
+{
+    Data::FilesPlaceholderMap files;
+    for (const auto& b : Blocks_)
+    {
+        if (const auto bf = b->getFilePlaceholders(); !bf.empty())
+            files.insert(bf.begin(), bf.end());
+    }
+    return files;
+}
+
+bool QuoteBlock::containsText() const
+{
+    for (auto b : Blocks_)
+    {
+        if (b->getContentType() != IItemBlock::ContentType::Text && b->getContentType() != IItemBlock::ContentType::DebugText)
+            return false;
+    }
+
+    return true;
+}
+
+int QuoteBlock::getMaxWidth() const
+{
+    auto maxWidth = 0;
+    for (auto block : Blocks_)
+        maxWidth = std::max(block->getMaxWidth(), maxWidth);
+
+    if (maxWidth)
+        return maxWidth + (getLeftOffset() - getLeftAdditional()) + Ui::MessageStyle::Quote::getQuoteOffsetRight();
+    else
+        return 0;
 }
 
 const std::vector<GenericBlock *>& QuoteBlock::getBlocks() const

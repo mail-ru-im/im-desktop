@@ -71,14 +71,17 @@
     </message>
 </context>
 <context>
+    <name>UpdaterButton</name>
+    <message>
+        <source>Update %1</source>
+        <translation>CẬP NHẬT %1</translation>
+    </message>
+</context>
+<context>
     <name>about_us</name>
     <message>
         <source>This product includes software developed by the OpenSSL project for use in the OpenSSL Toolkit</source>
         <translation>Sản phẩm này bao gồm phần mềm được dự án OpenSSL phát triển để sử dụng trong Bộ công cụ OpenSSL</translation>
-    </message>
-    <message>
-        <source>https://openssl.org</source>
-        <translation>https://openssl.org</translation>
     </message>
     <message>
         <source>Copyright © 2012, the WebRTC project authors. All rights reserved.</source>
@@ -89,24 +92,42 @@
         <translation>Emoji được Emoji One cung cấp miễn phí</translation>
     </message>
     <message>
-        <source>Presented by Mail.ru</source>
-        <translation>Trình bày bởi Mail.ru</translation>
+        <source>https://openssl.org</source>
+        <translation>https://openssl.org</translation>
     </message>
     <message>
         <source>© Mail.ru LLC</source>
         <translation>© Mail.ru LLC</translation>
     </message>
+    <message>
+        <source>Beta version contains new features, but it is not complete yet.
+You can leave your feedback or report an error here:</source>
+        <translation>Phiên bản Beta chứa các tính năng mới, nhưng nó chưa hoàn thành.
+Bạn có thể để lại phản hồi hoặc báo cáo lỗi tại đây:</translation>
+    </message>
+    <message>
+        <source>https://icq.im/desktopbeta</source>
+        <translation>https://icq.im/desktopbeta</translation>
+    </message>
+    <message>
+        <source>Check for updates</source>
+        <translation>Kiểm tra cập nhật</translation>
+    </message>
+    <message>
+        <source>You have the latest version</source>
+        <translation>Bạn có phiên bản mới nhất</translation>
+    </message>
+    <message>
+        <source>Update required</source>
+        <translation>Yêu cầu cập nhật</translation>
+    </message>
+    <message>
+        <source>Server error</source>
+        <translation>Lỗi máy chủ</translation>
+    </message>
 </context>
 <context>
     <name>add_new_contact_dialogs</name>
-    <message>
-        <source>ADD</source>
-        <translation>THÊM</translation>
-    </message>
-    <message>
-        <source>ADD ANOTHER ONE</source>
-        <translation>THÊM NGƯỜI KHÁC</translation>
-    </message>
     <message>
         <source>New contact</source>
         <translation>Liên hệ mới</translation>
@@ -167,20 +188,82 @@
         <source>Phone number</source>
         <translation>Số điện thoại</translation>
     </message>
+    <message>
+        <source>Add</source>
+        <translation>Thêm</translation>
+    </message>
+    <message>
+        <source>Add another one</source>
+        <translation>Thêm một cái khác</translation>
+    </message>
+</context>
+<context>
+    <name>add_widget</name>
+    <message>
+        <source>Phone number</source>
+        <translation>Số điện thoại</translation>
+    </message>
+    <message>
+        <source>Nickname</source>
+        <translation>Biệt danh</translation>
+    </message>
+    <message>
+        <source>Enter nickname</source>
+        <translation>Nhập tên hiệu</translation>
+    </message>
+    <message>
+        <source>Email</source>
+        <translation>Email</translation>
+    </message>
+    <message>
+        <source>Enter email</source>
+        <translation>Nhập email</translation>
+    </message>
+    <message>
+        <source>Add contact by phone or nickname?</source>
+        <translation>Thêm liên lạc bằng số điện thoại hoặc biệt danh?</translation>
+    </message>
+    <message>
+        <source>Add contact by phone or email?</source>
+        <translation>Thêm liên lạc qua điện thoại hoặc email?</translation>
+    </message>
 </context>
 <context>
     <name>appearance</name>
-    <message>
-        <source>Default</source>
-        <translation>Theo mặc định</translation>
-    </message>
     <message>
         <source>Blue</source>
         <translation>Xanh</translation>
     </message>
     <message>
-        <source>Night</source>
-        <translation>Đêm</translation>
+        <source>Green</source>
+        <translation>Màu xanh lá</translation>
+    </message>
+    <message>
+        <source>Dark Green</source>
+        <translation>Màu xanh đậm</translation>
+    </message>
+    <message>
+        <source>Violet</source>
+        <translation>Lilac</translation>
+    </message>
+    <message>
+        <source>Orange</source>
+        <translation>Cam</translation>
+    </message>
+    <message>
+        <source>Dark blue</source>
+        <translation>Xanh đậm</translation>
+    </message>
+</context>
+<context>
+    <name>attach_phone_number</name>
+    <message>
+        <source>For security reasons you need to confirm your phone number. This number will not appear on your profile.</source>
+        <translation>Vì lý do bảo mật, bạn cần xác nhận số điện thoại của mình.</translation>
+    </message>
+    <message>
+        <source>Security alert</source>
+        <translation>Thận trọng</translation>
     </message>
 </context>
 <context>
@@ -193,78 +276,70 @@
 <context>
     <name>avatar_upload</name>
     <message>
-        <source>Images (*.jpg *.jpeg *.png *.bmp)</source>
-        <translation>Ảnh (* .jpg * .jpeg * .png * .bmp)</translation>
-    </message>
-    <message>
-        <source>CHOOSE FILE</source>
-        <translation>CHỌN TỆP</translation>
-    </message>
-    <message>
-        <source>Upload photo</source>
-        <translation>Tải lên ảnh</translation>
-    </message>
-    <message>
-        <source>Image should be at least 200x200 px</source>
-        <translation>Ảnh phải có kích cỡ ít nhất là 200x200 px</translation>
-    </message>
-    <message>
-        <source>Edit photo</source>
-        <translation>Chỉnh sửa ảnh</translation>
-    </message>
-    <message>
         <source>Preview</source>
         <translation>Xem trước</translation>
+    </message>
+    <message>
+        <source>Images (*.jpg *.jpeg *.png *.bmp)</source>
+        <translation>Ảnh (* .jpg * .jpeg * .png * .bmp)</translation>
     </message>
     <message>
         <source>Avatar was not uploaded due to server error</source>
         <translation>Không tải lên được hình đại diện do lỗi máy chủ</translation>
     </message>
     <message>
-        <source>Edit
-photo</source>
-        <translation>Chỉnh
-sửa ảnh</translation>
+        <source>Upload photo</source>
+        <translation>Tải lên ảnh</translation>
+    </message>
+    <message>
+        <source>Edit photo</source>
+        <translation>Chỉnh sửa ảnh</translation>
+    </message>
+    <message>
+        <source>Image should be at least 200x200 px</source>
+        <translation>Ảnh phải có kích cỡ ít nhất là 200x200 px</translation>
+    </message>
+    <message>
+        <source>Choose file</source>
+        <translation>Chọn tập tin</translation>
+    </message>
+    <message>
+        <source>Select a file</source>
+        <translation>Chọn tập tin</translation>
     </message>
 </context>
 <context>
-    <name>burger_menu</name>
+    <name>block_and_delete</name>
     <message>
-        <source>Update is available</source>
-        <translation>Đã có cập nhật</translation>
+        <source>Delete messages</source>
+        <translation>Xóa tin nhắn</translation>
     </message>
     <message>
-        <source>Restart application, 
-so update could take effect</source>
-        <translation>Hãy khởi động lại ứng dụng
-để việc cập nhật có hiệu lực</translation>
+        <source>Block and delete?</source>
+        <translation>Chặn và xóa?</translation>
     </message>
     <message>
-        <source>RESTART</source>
-        <translation>KHỞI ĐỘNG LẠI</translation>
+        <source>Cancel</source>
+        <translation>Hủy bỏ</translation>
+    </message>
+    <message>
+        <source>Yes</source>
+        <translation>Vâng</translation>
+    </message>
+    <message>
+        <source>This member won&apos;t be able to join the channel again. You could also delete his messages</source>
+        <translation>Người tham gia sẽ không thể quay lại kênh. Bạn cũng có thể xóa tin nhắn của anh ấy</translation>
+    </message>
+    <message>
+        <source>This member won&apos;t be able to join the group again. You could also delete his messages</source>
+        <translation>Thành viên sẽ không thể trở lại nhóm. Bạn cũng có thể xóa tin nhắn của anh ấy</translation>
     </message>
 </context>
 <context>
     <name>chat_event</name>
     <message>
-        <source>You changed picture of group</source>
-        <translation>Bạn đã thay đổi ảnh của nhóm</translation>
-    </message>
-    <message>
-        <source> has birthday!</source>
-        <translation> có sinh nhật!</translation>
-    </message>
-    <message>
-        <source>Your friend is now available for chat and calls. You can say hi now!</source>
-        <translation>Bạn bè của bạn bây giờ đã sẵn sàng để trò chuyện và gọi điện. Bây giờ thì bạn có thể nói lời xin chào!</translation>
-    </message>
-    <message>
-        <source>You deleted chat description</source>
-        <translation>Bạn đã xóa mô tả trò chuyện</translation>
-    </message>
-    <message>
-        <source>You have joined group</source>
-        <translation>Bạn đã tham gia nhóm</translation>
+        <source> and </source>
+        <translation> và </translation>
     </message>
     <message>
         <source>You</source>
@@ -277,10 +352,6 @@ so update could take effect</source>
         <translation>bạn</translation>
     </message>
     <message>
-        <source> and </source>
-        <translation> và </translation>
-    </message>
-    <message>
         <source>Missed call</source>
         <translation>Cuộc gọi nhỡ</translation>
     </message>
@@ -291,6 +362,22 @@ so update could take effect</source>
     <message>
         <source>Incoming call</source>
         <translation>Cuộc gọi đến</translation>
+    </message>
+    <message>
+        <source>You changed picture of group</source>
+        <translation>Bạn đã thay đổi ảnh của nhóm</translation>
+    </message>
+    <message>
+        <source> has birthday!</source>
+        <translation> có sinh nhật!</translation>
+    </message>
+    <message>
+        <source>You have joined group</source>
+        <translation>Bạn đã tham gia nhóm</translation>
+    </message>
+    <message>
+        <source>You deleted chat description</source>
+        <translation>Bạn đã xóa mô tả trò chuyện</translation>
     </message>
     <message>
         <source>Message was deleted</source>
@@ -353,16 +440,6 @@ so update could take effect</source>
         <translation>%1 đã xóa bỏ %2</translation>
     </message>
     <message>
-        <source>%1 have left group</source>
-        <comment>many</comment>
-        <translation>%1 đã rời nhóm</translation>
-    </message>
-    <message>
-        <source>%1 has left group</source>
-        <comment>one</comment>
-        <translation>%1 đã rời nhóm</translation>
-    </message>
-    <message>
         <source>%1 changed chat rules to &quot;%2&quot;</source>
         <translation>%1 đã thay đổi quy tắc trò chuyện thành &quot;%2&quot;</translation>
     </message>
@@ -410,29 +487,73 @@ so update could take effect</source>
         <source>You declined a call from %1</source>
         <translation>Bạn đã không trả lời cuộc gọi từ %1</translation>
     </message>
+    <message>
+        <source>Theme was changed to &quot;%1&quot;</source>
+        <translation>Chủ đề đã thay đổi thành %1</translation>
+    </message>
+    <message>
+        <source>%1 was added</source>
+        <translation>%1 đã được thêm</translation>
+    </message>
+    <message>
+        <source>%1 were added</source>
+        <translation>%1 đã được thêm vào</translation>
+    </message>
+    <message>
+        <source>Chat description was deleted</source>
+        <translation>Mô tả trò chuyện đã xóa</translation>
+    </message>
+    <message>
+        <source>%1 was removed</source>
+        <translation>%1 đã bị xóa</translation>
+    </message>
+    <message>
+        <source>%1 were removed</source>
+        <translation>%1 đã bị xóa</translation>
+    </message>
+    <message>
+        <source>Channel avatar was changed</source>
+        <translation>Hình đại diện kênh đã được thay đổi</translation>
+    </message>
+    <message>
+        <source>Description was changed to &quot;%1&quot;</source>
+        <translation>Mô tả đã thay đổi thành %1</translation>
+    </message>
+    <message>
+        <source>Channel rules were changed to &quot;%1&quot;</source>
+        <translation>Quy tắc kênh đã thay đổi thành %1</translation>
+    </message>
+    <message>
+        <source>You have recently added %1 to your phone contacts. Write a new message or make a call %2</source>
+        <translation>Gần đây bạn đã thêm %1 vào danh bạ điện thoại của mình. Viết tin nhắn mới hoặc thực hiện cuộc gọi %2</translation>
+    </message>
+    <message>
+        <source>So %1 is here now! Write, call %2</source>
+        <translation>Vì vậy, %1 ở đây ngay bây giờ! Viết, gọi %2</translation>
+    </message>
+    <message>
+        <source>You changed chat link to %1</source>
+        <translation>Bạn đã thay đổi liên kết thành %1</translation>
+    </message>
+    <message>
+        <source>Channel link was changed to %1</source>
+        <translation>Liên kết đã thay đổi thành %1</translation>
+    </message>
+    <message>
+        <source>%1 changed chat link to %2</source>
+        <translation>%1 đã thay đổi liên kết thành %2</translation>
+    </message>
+    <message>
+        <source>Add avatar</source>
+        <translation>Thêm hình đại diện</translation>
+    </message>
+    <message>
+        <source>Add description</source>
+        <translation>Thêm mô tả</translation>
+    </message>
 </context>
 <context>
     <name>chat_page</name>
-    <message>
-        <source>edited</source>
-        <translation>đã chỉnh sửa</translation>
-    </message>
-    <message>
-        <source>Show in folder</source>
-        <translation>Hiển thị trong thư mục</translation>
-    </message>
-    <message>
-        <source> of </source>
-        <translation> của </translation>
-    </message>
-    <message>
-        <source>is typing</source>
-        <translation>Đang nhập</translation>
-    </message>
-    <message>
-        <source>are typing</source>
-        <translation>Đang nhập</translation>
-    </message>
     <message>
         <source>member</source>
         <comment>1</comment>
@@ -454,18 +575,6 @@ so update could take effect</source>
         <translation>các thành viên</translation>
     </message>
     <message>
-        <source>CANCEL</source>
-        <translation>HỦY BỎ</translation>
-    </message>
-    <message>
-        <source>FORWARD</source>
-        <translation>CHUYỂN TIẾP</translation>
-    </message>
-    <message>
-        <source>COPY</source>
-        <translation>SAO CHÉP</translation>
-    </message>
-    <message>
         <source>Today</source>
         <translation>Ngày hôm nay</translation>
     </message>
@@ -478,8 +587,28 @@ so update could take effect</source>
         <translation>Tin nhắn mới</translation>
     </message>
     <message>
+        <source> of </source>
+        <translation> của </translation>
+    </message>
+    <message>
+        <source>Show in folder</source>
+        <translation>Hiển thị trong thư mục</translation>
+    </message>
+    <message>
         <source>File</source>
         <translation>Tập tin</translation>
+    </message>
+    <message>
+        <source>are typing</source>
+        <translation>Đang nhập</translation>
+    </message>
+    <message>
+        <source>edited</source>
+        <translation>đã chỉnh sửa</translation>
+    </message>
+    <message>
+        <source>is typing</source>
+        <translation>Đang nhập</translation>
     </message>
     <message>
         <source>Quick send</source>
@@ -512,20 +641,16 @@ so update could take effect</source>
         <translation>Xin chào. Xin vui lòng thêm tôi vào danh sách liên hệ của bạn</translation>
     </message>
     <message>
-        <source>Add contact</source>
-        <translation>Thêm liên lạc</translation>
+        <source>Sticker</source>
+        <translation>Dán thông báo</translation>
     </message>
     <message>
-        <source>TOP CONTACTS</source>
-        <translation>CÁC LIÊN HỆ HÀNG ĐẦU</translation>
+        <source>Photo</source>
+        <translation>Ảnh</translation>
     </message>
     <message>
-        <source>ALL CONTACTS</source>
-        <translation>MỌI LIÊN HỆ</translation>
-    </message>
-    <message>
-        <source>New contacts</source>
-        <translation>Liên hệ mới</translation>
+        <source>Voice message</source>
+        <translation>Tin nhắn thoại</translation>
     </message>
     <message>
         <source>FAVORITES</source>
@@ -536,36 +661,40 @@ so update could take effect</source>
         <translation>GẦN ĐÂY</translation>
     </message>
     <message>
-        <source>CLOSE ALL</source>
-        <translation>ĐÓNG LẠI TẤT CẢ</translation>
-    </message>
-    <message>
-        <source>NEW CONTACTS</source>
-        <translation>LIÊN HỆ MỚI</translation>
-    </message>
-    <message>
-        <source>Sticker</source>
-        <translation>Dán thông báo</translation>
+        <source>Video</source>
+        <translation>Hình ảnh video</translation>
     </message>
     <message>
         <source>File</source>
         <translation>Tập tin</translation>
     </message>
     <message>
+        <source>New contacts</source>
+        <translation>Liên hệ mới</translation>
+    </message>
+    <message>
         <source>GIF</source>
         <translation>GIF</translation>
     </message>
     <message>
-        <source>Photo</source>
-        <translation>Ảnh</translation>
+        <source>TOP CONTACTS</source>
+        <translation>CÁC LIÊN HỆ HÀNG ĐẦU</translation>
     </message>
     <message>
-        <source>Video</source>
-        <translation>Hình ảnh video</translation>
+        <source>ALL CONTACTS</source>
+        <translation>MỌI LIÊN HỆ</translation>
     </message>
     <message>
-        <source>Voice message</source>
-        <translation>Tin nhắn thoại</translation>
+        <source>NEW CONTACTS</source>
+        <translation>LIÊN HỆ MỚI</translation>
+    </message>
+    <message>
+        <source>CLOSE ALL</source>
+        <translation>ĐÓNG LẠI TẤT CẢ</translation>
+    </message>
+    <message>
+        <source>Add contact</source>
+        <translation>Thêm liên lạc</translation>
     </message>
     <message>
         <source>Me</source>
@@ -584,16 +713,28 @@ so update could take effect</source>
         <translation>Hủy bỏ</translation>
     </message>
     <message>
-        <source>New group</source>
-        <translation>Nhóm mới</translation>
-    </message>
-    <message>
-        <source>New channel</source>
-        <translation>Kênh mới</translation>
-    </message>
-    <message>
         <source>Contact</source>
         <translation>Liên hệ</translation>
+    </message>
+    <message>
+        <source>UNIMPORTANT</source>
+        <translation>KHÔNG GIỚI HẠN</translation>
+    </message>
+    <message>
+        <source>Location</source>
+        <translation>Vị trí</translation>
+    </message>
+    <message>
+        <source>Poll</source>
+        <translation>Thăm dò ý kiến</translation>
+    </message>
+    <message>
+        <source>Create group</source>
+        <translation>Tạo nhóm</translation>
+    </message>
+    <message>
+        <source>Create channel</source>
+        <translation>Tạo kênh</translation>
     </message>
 </context>
 <context>
@@ -630,12 +771,51 @@ so update could take effect</source>
         <comment>21</comment>
         <translation>%1 các thành viên</translation>
     </message>
+    <message>
+        <source>%1 messages selected</source>
+        <comment>2</comment>
+        <translation>%1 tin nhắn được chọn</translation>
+    </message>
+    <message>
+        <source>%1 messages selected</source>
+        <comment>5</comment>
+        <translation>%1 tin nhắn được chọn</translation>
+    </message>
+    <message>
+        <source>%1 messages selected</source>
+        <comment>21</comment>
+        <translation>%1 tin nhắn được chọn</translation>
+    </message>
 </context>
 <context>
     <name>contactus_page</name>
     <message>
-        <source>Your comments or suggestions...</source>
-        <translation>Ý kiến ​​hoặc đề xuất của bạn...</translation>
+        <source>Attachments size exceeds 25 MB</source>
+        <translation>Kích thước tệp đính kèm vượt quá 25 MB</translation>
+    </message>
+    <message>
+        <source>KB</source>
+        <translation>KB</translation>
+    </message>
+    <message>
+        <source>MB</source>
+        <translation>MB</translation>
+    </message>
+    <message>
+        <source>Your Email</source>
+        <translation>Email của bạn</translation>
+    </message>
+    <message>
+        <source>Please enter a valid email address</source>
+        <translation>Hãy nhập địa chỉ email hợp lệ</translation>
+    </message>
+    <message>
+        <source>Sending...</source>
+        <translation>Đang gửi...</translation>
+    </message>
+    <message>
+        <source>Send another review</source>
+        <translation>Gửi nhận xét khác</translation>
     </message>
     <message>
         <source>Message is too short</source>
@@ -650,44 +830,16 @@ so update could take effect</source>
         <translation>Kích thước tệp vượt quá 1 MB</translation>
     </message>
     <message>
-        <source>Attachments size exceeds 25 MB</source>
-        <translation>Kích thước tệp đính kèm vượt quá 25 MB</translation>
-    </message>
-    <message>
         <source>Images (*.jpg *.jpeg *.png *.bmp)</source>
         <translation>Ảnh (* .jpg * .jpeg * .png * .bmp)</translation>
-    </message>
-    <message>
-        <source>KB</source>
-        <translation>KB</translation>
-    </message>
-    <message>
-        <source>MB</source>
-        <translation>MB</translation>
     </message>
     <message>
         <source>Attach screenshot</source>
         <translation>Đính kèm ảnh chụp màn hình</translation>
     </message>
     <message>
-        <source>Your Email</source>
-        <translation>Email của bạn</translation>
-    </message>
-    <message>
-        <source>Please enter a valid email address</source>
-        <translation>Hãy nhập địa chỉ email hợp lệ</translation>
-    </message>
-    <message>
-        <source>SEND</source>
-        <translation>GỬI THÔNG TIN</translation>
-    </message>
-    <message>
-        <source>Sending...</source>
-        <translation>Đang gửi...</translation>
-    </message>
-    <message>
-        <source>Send another review</source>
-        <translation>Gửi nhận xét khác</translation>
+        <source>Your comments or suggestions...</source>
+        <translation>Ý kiến ​​hoặc đề xuất của bạn...</translation>
     </message>
     <message>
         <source>Error occurred, try again later</source>
@@ -699,23 +851,23 @@ so update could take effect</source>
     </message>
     <message>
         <source>VOIP</source>
-        <translation></translation>
+        <translation>Các cuộc gọi</translation>
     </message>
     <message>
         <source>Nothing selected</source>
-        <translation></translation>
+        <translation>Không được chọn</translation>
     </message>
     <message>
         <source>Emoji and stickers</source>
-        <translation></translation>
+        <translation>Biểu tượng cảm xúc và nhãn dán</translation>
     </message>
     <message>
         <source>Avatars</source>
-        <translation></translation>
+        <translation>Hình đại diện</translation>
     </message>
     <message>
         <source>Videoplayer</source>
-        <translation></translation>
+        <translation>Trình phát video</translation>
     </message>
     <message>
         <source>Gallery</source>
@@ -723,15 +875,15 @@ so update could take effect</source>
     </message>
     <message>
         <source>Ptt</source>
-        <translation></translation>
+        <translation>Tin nhắn thoại</translation>
     </message>
     <message>
         <source>Hotkeys</source>
-        <translation></translation>
+        <translation>Phím nóng</translation>
     </message>
     <message>
         <source>Crash</source>
-        <translation></translation>
+        <translation>Tắt ứng dụng</translation>
     </message>
     <message>
         <source>Pinned message</source>
@@ -739,23 +891,23 @@ so update could take effect</source>
     </message>
     <message>
         <source>Decelerations</source>
-        <translation></translation>
+        <translation>Làm chậm ứng dụng</translation>
     </message>
     <message>
         <source>Sounds</source>
-        <translation></translation>
+        <translation>Âm thanh</translation>
     </message>
     <message>
         <source>History</source>
-        <translation></translation>
+        <translation>Lịch sử trò chuyện</translation>
     </message>
     <message>
         <source>Channels</source>
-        <translation></translation>
+        <translation>Kênh</translation>
     </message>
     <message>
         <source>Contact list</source>
-        <translation></translation>
+        <translation>Chi tiết liên lạc</translation>
     </message>
     <message>
         <source>Settings</source>
@@ -763,7 +915,7 @@ so update could take effect</source>
     </message>
     <message>
         <source>Nick</source>
-        <translation></translation>
+        <translation>Biệt danh</translation>
     </message>
     <message>
         <source>Search</source>
@@ -771,23 +923,23 @@ so update could take effect</source>
     </message>
     <message>
         <source>Mail for domains</source>
-        <translation></translation>
+        <translation>Mail cho tên miền</translation>
     </message>
     <message>
         <source>Previews</source>
-        <translation></translation>
+        <translation>Xem trước hình ảnh và liên kết</translation>
     </message>
     <message>
         <source>Connection</source>
-        <translation></translation>
+        <translation>Kết nối mạng</translation>
     </message>
     <message>
         <source>Messages</source>
-        <translation></translation>
+        <translation>Tin nhắn</translation>
     </message>
     <message>
         <source>Statuses</source>
-        <translation></translation>
+        <translation>Trạng thái</translation>
     </message>
     <message>
         <source>Notifications</source>
@@ -795,46 +947,50 @@ so update could take effect</source>
     </message>
     <message>
         <source>Mentions</source>
-        <translation></translation>
+        <translation>Trò chuyện</translation>
     </message>
     <message>
         <source>Install</source>
-        <translation></translation>
+        <translation>Cài đặt ứng dụng</translation>
     </message>
     <message>
         <source>File sharing</source>
-        <translation></translation>
+        <translation>Tập tin</translation>
     </message>
     <message>
         <source>Wallpapers</source>
-        <translation></translation>
+        <translation>Nền trò chuyện</translation>
     </message>
     <message>
         <source>Group chats</source>
-        <translation></translation>
+        <translation>Trò chuyện</translation>
     </message>
     <message>
         <source>Different problem</source>
-        <translation></translation>
+        <translation>Một vấn đề khác</translation>
+    </message>
+    <message>
+        <source>Get debug information</source>
+        <translation>Nhận lưu trữ nhật ký</translation>
+    </message>
+    <message>
+        <source>Send</source>
+        <translation>Gửi</translation>
     </message>
 </context>
 <context>
     <name>context_menu</name>
     <message>
+        <source>Call</source>
+        <translation>Gọi</translation>
+    </message>
+    <message>
+        <source>Profile</source>
+        <translation>Hồ sơ</translation>
+    </message>
+    <message>
         <source>Mark as read</source>
         <translation>Đánh dấu là đã đọc</translation>
-    </message>
-    <message>
-        <source>Mark as unread</source>
-        <translation>Đánh dấu là chưa đọc</translation>
-    </message>
-    <message>
-        <source>Unpin</source>
-        <translation>Bỏ ghim</translation>
-    </message>
-    <message>
-        <source>Pin</source>
-        <translation>Ghim</translation>
     </message>
     <message>
         <source>Turn on notifications</source>
@@ -845,44 +1001,16 @@ so update could take effect</source>
         <translation>Tắt thông báo</translation>
     </message>
     <message>
-        <source>Call</source>
-        <translation>Gọi</translation>
-    </message>
-    <message>
-        <source>Profile</source>
-        <translation>Hồ sơ</translation>
-    </message>
-    <message>
-        <source>Leave and delete</source>
-        <translation>Xóa và thoát</translation>
-    </message>
-    <message>
-        <source>Reply</source>
-        <translation>Trả lời</translation>
-    </message>
-    <message>
-        <source>Copy link</source>
-        <translation>Sao chép liên kết</translation>
-    </message>
-    <message>
-        <source>Copy to clipboard</source>
-        <translation>Sao chép vào bảng tạm</translation>
-    </message>
-    <message>
-        <source>Forward</source>
-        <translation>Chuyển tiếp</translation>
-    </message>
-    <message>
         <source>Save as...</source>
         <translation>Lưu thành...</translation>
     </message>
     <message>
-        <source>Open in browser</source>
-        <translation>Mở trong trình duyệt</translation>
+        <source>Copy</source>
+        <translation>Sao chép</translation>
     </message>
     <message>
-        <source>Edit</source>
-        <translation>Chỉnh sửa</translation>
+        <source>Copy link</source>
+        <translation>Sao chép liên kết</translation>
     </message>
     <message>
         <source>Delete for me</source>
@@ -893,12 +1021,44 @@ so update could take effect</source>
         <translation>Xóa cho tất cả</translation>
     </message>
     <message>
+        <source>Leave and delete</source>
+        <translation>Xóa và thoát</translation>
+    </message>
+    <message>
+        <source>Forward</source>
+        <translation>Chuyển tiếp</translation>
+    </message>
+    <message>
+        <source>Open in browser</source>
+        <translation>Mở trong trình duyệt</translation>
+    </message>
+    <message>
+        <source>Reply</source>
+        <translation>Trả lời</translation>
+    </message>
+    <message>
+        <source>Copy to clipboard</source>
+        <translation>Sao chép vào bảng tạm</translation>
+    </message>
+    <message>
         <source>Mention</source>
         <translation>Đề cập</translation>
     </message>
     <message>
-        <source>Copy</source>
-        <translation>Sao chép</translation>
+        <source>Unpin</source>
+        <translation>Bỏ ghim</translation>
+    </message>
+    <message>
+        <source>Pin</source>
+        <translation>Ghim</translation>
+    </message>
+    <message>
+        <source>Edit</source>
+        <translation>Chỉnh sửa</translation>
+    </message>
+    <message>
+        <source>Mark as unread</source>
+        <translation>Đánh dấu là chưa đọc</translation>
     </message>
     <message>
         <source>Show in folder</source>
@@ -937,16 +1097,56 @@ so update could take effect</source>
         <translation>Báo cáo khiếu nại và chặn</translation>
     </message>
     <message>
-        <source>Delete and leave</source>
-        <translation>Xóa và đăng xuất</translation>
-    </message>
-    <message>
         <source>Hide</source>
         <translation>Ẩn</translation>
     </message>
     <message>
         <source>Go to profile</source>
         <translation>Đi đến hồ sơ</translation>
+    </message>
+    <message>
+        <source>Remove</source>
+        <translation>Xóa bỏ</translation>
+    </message>
+    <message>
+        <source>Delete</source>
+        <translation>Xóa</translation>
+    </message>
+    <message>
+        <source>Select</source>
+        <translation>Lựa chọn</translation>
+    </message>
+    <message>
+        <source>Remove from Unimportant</source>
+        <translation>Xóa khỏi không quan trọng</translation>
+    </message>
+    <message>
+        <source>Move to Unimportant</source>
+        <translation>Di chuyển đến không quan trọng</translation>
+    </message>
+    <message>
+        <source>Share channel link</source>
+        <translation>Chia sẻ liên kết kênh</translation>
+    </message>
+    <message>
+        <source>Copy channel link</source>
+        <translation>Sao chép liên kết kênh</translation>
+    </message>
+    <message>
+        <source>Share group link</source>
+        <translation>Chia sẻ liên kết nhóm</translation>
+    </message>
+    <message>
+        <source>Copy group link</source>
+        <translation>Sao chép liên kết vào nhóm</translation>
+    </message>
+    <message>
+        <source>Revoke vote</source>
+        <translation>Thu hồi phiếu bầu</translation>
+    </message>
+    <message>
+        <source>Stop poll</source>
+        <translation>Dừng thăm dò ý kiến</translation>
     </message>
 </context>
 <context>
@@ -1964,6 +2164,25 @@ so update could take effect</source>
     </message>
 </context>
 <context>
+    <name>delete_messages</name>
+    <message>
+        <source>Delete messages</source>
+        <translation>Xóa tin nhắn</translation>
+    </message>
+    <message>
+        <source>OK</source>
+        <translation>Được rồi</translation>
+    </message>
+    <message>
+        <source>Messages will be deleted only for you</source>
+        <translation>Tin nhắn sẽ chỉ bị xóa cho bạn</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>Hủy bỏ</translation>
+    </message>
+</context>
+<context>
     <name>files_widget</name>
     <message>
         <source>Send with caption</source>
@@ -2002,14 +2221,6 @@ so update could take effect</source>
         <translation>tệp</translation>
     </message>
     <message>
-        <source>CANCEL</source>
-        <translation>HỦY BỎ</translation>
-    </message>
-    <message>
-        <source>SEND</source>
-        <translation>GỬI THÔNG TIN</translation>
-    </message>
-    <message>
         <source>Send files</source>
         <translation>Gửi tệp đi</translation>
     </message>
@@ -2021,6 +2232,14 @@ so update could take effect</source>
         <source>Quick send</source>
         <translation>Gửi nhanh</translation>
     </message>
+    <message>
+        <source>Cancel</source>
+        <translation>Hủy bỏ</translation>
+    </message>
+    <message>
+        <source>Send</source>
+        <translation>Gửi</translation>
+    </message>
 </context>
 <context>
     <name>gallery</name>
@@ -2030,7 +2249,53 @@ so update could take effect</source>
     </message>
 </context>
 <context>
+    <name>generic_block</name>
+    <message>
+        <source>Copied to clipboard</source>
+        <translation>Sao chép vào clipboard</translation>
+    </message>
+</context>
+<context>
+    <name>geolocation_block</name>
+    <message>
+        <source>Location</source>
+        <translation>Vị trí</translation>
+    </message>
+</context>
+<context>
     <name>groupchats</name>
+    <message>
+        <source>Public chat</source>
+        <translation>Trò chuyện công cộng</translation>
+    </message>
+    <message>
+        <source>Join with Approval</source>
+        <translation>Tham gia có sự phê duyệt</translation>
+    </message>
+    <message>
+        <source>New members are waiting for admin approval</source>
+        <translation>Thành viên mới đang chờ được quản trị phê duyệt</translation>
+    </message>
+    <message>
+        <source>Add to chat</source>
+        <translation>Thêm để trò chuyện</translation>
+    </message>
+    <message>
+        <source>You are not a member of this chat</source>
+        <translation>Bạn không phải là thành viên của cuộc trò chuyện này</translation>
+    </message>
+    <message>
+        <source>Chat name</source>
+        <translation>Tên trò chuyện</translation>
+    </message>
+    <message>
+        <source>Chat information is unavailable now, please try again later</source>
+        <translation>Thông tin trò chuyện hiện không khả dụng, hãy thử lại sau</translation>
+    </message>
+    <message>
+        <source>Chat does not exist or it is hidden by privacy settings</source>
+        <translation>Trò chuyện không tồn tại hoặc bị ẩn do cài đặt riêng tư</translation>
+    </message>
     <message>
         <source>member</source>
         <comment>1</comment>
@@ -2050,46 +2315,6 @@ so update could take effect</source>
         <source>members</source>
         <comment>21</comment>
         <translation>các thành viên</translation>
-    </message>
-    <message>
-        <source>Chat name</source>
-        <translation>Tên trò chuyện</translation>
-    </message>
-    <message>
-        <source>Join with Approval</source>
-        <translation>Tham gia có sự phê duyệt</translation>
-    </message>
-    <message>
-        <source>New members are waiting for admin approval</source>
-        <translation>Thành viên mới đang chờ được quản trị phê duyệt</translation>
-    </message>
-    <message>
-        <source>Public chat</source>
-        <translation>Trò chuyện công cộng</translation>
-    </message>
-    <message>
-        <source>The chat will appear in the app&apos;s showcase and any user can find it in the list</source>
-        <translation>Khi được bật, trò chuyện sẽ hiển thị cho mọi người</translation>
-    </message>
-    <message>
-        <source>Select members</source>
-        <translation>Chọn thành viên</translation>
-    </message>
-    <message>
-        <source>You are not a member of this chat</source>
-        <translation>Bạn không phải là thành viên của cuộc trò chuyện này</translation>
-    </message>
-    <message>
-        <source>Add to chat</source>
-        <translation>Thêm để trò chuyện</translation>
-    </message>
-    <message>
-        <source>Chat information is unavailable now, please try again later</source>
-        <translation>Thông tin trò chuyện hiện không khả dụng, hãy thử lại sau</translation>
-    </message>
-    <message>
-        <source>Chat does not exist or it is hidden by privacy settings</source>
-        <translation>Trò chuyện không tồn tại hoặc bị ẩn do cài đặt riêng tư</translation>
     </message>
     <message>
         <source>friend</source>
@@ -2112,24 +2337,52 @@ so update could take effect</source>
         <translation>bạn</translation>
     </message>
     <message>
-        <source>Link to chat</source>
-        <translation>Liên kết vào phòng trò chuyện</translation>
-    </message>
-    <message>
-        <source>Ability to join chat by link</source>
-        <translation>Khả năng tham gia phòng trò chuyện qua liên kết</translation>
-    </message>
-    <message>
         <source>Channel name</source>
         <translation>Tên kênh</translation>
     </message>
     <message>
-        <source>The channel will appear in the app&apos;s showcase and any user can find it in the list</source>
-        <translation>Tên kênh sẽ xuất hiện trong phần hiển thị của ứng dụng và bất kỳ người dùng nào cũng có thể thấy nó trong danh sách</translation>
-    </message>
-    <message>
         <source>Public channel</source>
         <translation>Kênh công cộng</translation>
+    </message>
+    <message>
+        <source>Make new link</source>
+        <translation>Tạo liên kết mới</translation>
+    </message>
+    <message>
+        <source>Apply</source>
+        <translation>Để áp dụng</translation>
+    </message>
+    <message>
+        <source>Public group can be found in the search</source>
+        <translation>Nhóm công khai có thể được tìm thấy trong tìm kiếm</translation>
+    </message>
+    <message>
+        <source>Channels are public by default, but you can change it after in settings</source>
+        <translation>Các kênh được công khai theo mặc định, nhưng bạn có thể thay đổi nó sau trong cài đặt</translation>
+    </message>
+    <message>
+        <source>The link will open the group in %1</source>
+        <translation>Liên kết này sẽ mở nhóm trong %1</translation>
+    </message>
+    <message>
+        <source>The link will open the channel in %1</source>
+        <translation>Liên kết này sẽ mở kênh trong %1</translation>
+    </message>
+    <message>
+        <source>The public channel can be found in the search and its link will be available to all members</source>
+        <translation>Kênh công khai có thể được tìm thấy trong tìm kiếm và liên kết của nó sẽ có sẵn cho tất cả người tham gia</translation>
+    </message>
+    <message>
+        <source>The public group can be found in the search and its link will be available to all members</source>
+        <translation>Nhóm công khai có thể được tìm thấy trong tìm kiếm và liên kết của nó sẽ có sẵn cho tất cả những người tham gia</translation>
+    </message>
+    <message>
+        <source>You have chosen no one from the list. Are you sure you want to create a group with no participants?</source>
+        <translation>Bạn chưa chọn ai trong danh sách, bạn có chắc chắn muốn tạo một nhóm không có thành viên không?</translation>
+    </message>
+    <message>
+        <source>Group name</source>
+        <translation>Tên nhóm</translation>
     </message>
 </context>
 <context>
@@ -2161,20 +2414,20 @@ so update could take effect</source>
 <context>
     <name>input_widget</name>
     <message>
-        <source>Edit message</source>
-        <translation>Chỉnh sửa tin nhắn</translation>
-    </message>
-    <message>
-        <source>Message</source>
-        <translation>Tin nhắn</translation>
-    </message>
-    <message>
         <source>EMOJI</source>
         <translation>EMOJI</translation>
     </message>
     <message>
         <source>RECENTS</source>
         <translation>GẦN ĐÂY</translation>
+    </message>
+    <message>
+        <source>Message</source>
+        <translation>Tin nhắn</translation>
+    </message>
+    <message>
+        <source>Edit message</source>
+        <translation>Chỉnh sửa tin nhắn</translation>
     </message>
     <message>
         <source>Photo or Video</source>
@@ -2187,30 +2440,6 @@ so update could take effect</source>
     <message>
         <source>Voice Message</source>
         <translation>Tin nhắn thoại</translation>
-    </message>
-    <message>
-        <source>SUBSCRIBE</source>
-        <translation>ĐĂNG KÝ</translation>
-    </message>
-    <message>
-        <source>JOIN</source>
-        <translation>THAM GIA</translation>
-    </message>
-    <message>
-        <source>ENABLE NOTIFICATIONS</source>
-        <translation>BẬT THÔNG BÁO</translation>
-    </message>
-    <message>
-        <source>DISABLE NOTIFICATIONS</source>
-        <translation>VÔ HIỆU HÓA THÔNG BÁO</translation>
-    </message>
-    <message>
-        <source>DELETE AND LEAVE</source>
-        <translation>XÓA VÀ ĐĂNG XUẤT</translation>
-    </message>
-    <message>
-        <source>UNBLOCK</source>
-        <translation>MỞ KHÓA</translation>
     </message>
     <message>
         <source>Voice message</source>
@@ -2245,12 +2474,12 @@ so update could take effect</source>
         <translation>ĐƯỢC</translation>
     </message>
     <message>
-        <source>Contact</source>
-        <translation>Liên hệ</translation>
-    </message>
-    <message>
         <source>Lock</source>
         <translation>Khóa</translation>
+    </message>
+    <message>
+        <source>Contact</source>
+        <translation>Liên hệ</translation>
     </message>
     <message>
         <source>You was banned to write in this group</source>
@@ -2259,6 +2488,14 @@ so update could take effect</source>
     <message>
         <source>The join request has been sent to administrator</source>
         <translation>Yêu cầu tham gia đã được gửi đến quản trị viên</translation>
+    </message>
+    <message>
+        <source>Play record</source>
+        <translation>Chơi ghi</translation>
+    </message>
+    <message>
+        <source>Pause record</source>
+        <translation>Tạm dừng hồ sơ</translation>
     </message>
     <message>
         <source>Convert error</source>
@@ -2271,14 +2508,6 @@ so update could take effect</source>
     <message>
         <source>BufferOOM error</source>
         <translation>Không ghi nhận kỷ lục. Không đủ bộ nhớ</translation>
-    </message>
-    <message>
-        <source>Play record</source>
-        <translation>Chơi ghi</translation>
-    </message>
-    <message>
-        <source>Pause record</source>
-        <translation>Tạm dừng hồ sơ</translation>
     </message>
     <message>
         <source>Cancel</source>
@@ -2296,6 +2525,34 @@ so update could take effect</source>
         <source>To record a voice message, you need to allow access to the microphone in the system settings</source>
         <translation>Để ghi âm tin nhắn thoại, bạn cần cho phép truy cập micrô trong cài đặt hệ thống</translation>
     </message>
+    <message>
+        <source>Join</source>
+        <translation>Tham gia</translation>
+    </message>
+    <message>
+        <source>Poll</source>
+        <translation>Thăm dò ý kiến</translation>
+    </message>
+    <message>
+        <source>Subscribe</source>
+        <translation>Theo dõi</translation>
+    </message>
+    <message>
+        <source>Enable notifications</source>
+        <translation>Bật thông báo</translation>
+    </message>
+    <message>
+        <source>Disable notifications</source>
+        <translation>Tắt thông báo</translation>
+    </message>
+    <message>
+        <source>Delete and leave</source>
+        <translation>Xóa và để lại</translation>
+    </message>
+    <message>
+        <source>Unblock</source>
+        <translation>Mở khóa</translation>
+    </message>
 </context>
 <context>
     <name>linux_desktop_file</name>
@@ -2306,10 +2563,6 @@ so update could take effect</source>
 </context>
 <context>
     <name>local_pin</name>
-    <message>
-        <source>CANCEL</source>
-        <translation>HỦY BỎ</translation>
-    </message>
     <message>
         <source>log out</source>
         <translation>thoát</translation>
@@ -2343,24 +2596,16 @@ so update could take effect</source>
         <translation>Nếu bạn quên mã của mình, bạn có thể </translation>
     </message>
     <message>
-        <source>APPLY</source>
-        <translation>ÁP DỤNG</translation>
+        <source>Cancel</source>
+        <translation>Hủy bỏ</translation>
+    </message>
+    <message>
+        <source>Apply</source>
+        <translation>Ứng dụng</translation>
     </message>
 </context>
 <context>
     <name>login_page</name>
-    <message>
-        <source>Change</source>
-        <translation>Thay đổi</translation>
-    </message>
-    <message>
-        <source>UIN or Email</source>
-        <translation>UIN hoặc email</translation>
-    </message>
-    <message>
-        <source>Email</source>
-        <translation>Email</translation>
-    </message>
     <message>
         <source>Password</source>
         <translation>Mật khẩu</translation>
@@ -2370,72 +2615,28 @@ so update could take effect</source>
         <translation>Để tôi luôn đăng nhập</translation>
     </message>
     <message>
-        <source>NEXT</source>
-        <translation>TIẾP THEO</translation>
-    </message>
-    <message>
-        <source>Type country or code</source>
-        <translation>Nhập quốc gia hoặc mã</translation>
-    </message>
-    <message>
-        <source>phone number</source>
-        <translation>số điện thoại</translation>
-    </message>
-    <message>
-        <source>Login via phone</source>
-        <translation>Đăng nhập qua điện thoại</translation>
-    </message>
-    <message>
-        <source>Login with UIN/Email</source>
-        <translation>Đăng nhập bằng UIN/Email</translation>
-    </message>
-    <message>
-        <source>Login with Email</source>
-        <translation>Đăng nhập bằng email</translation>
-    </message>
-    <message>
-        <source>Enter phone number</source>
-        <translation>Nhập số điện thoại</translation>
-    </message>
-    <message>
-        <source>Enter code from SMS</source>
-        <translation>Nhập mã từ SMS</translation>
-    </message>
-    <message>
-        <source>Enter UIN or Email</source>
-        <translation>Đăng nhập vào UIN hoặc thư điện tử</translation>
-    </message>
-    <message>
-        <source>Enter your Email</source>
-        <translation>Nhập email của bạn</translation>
-    </message>
-    <message>
-        <source>Forgot password?</source>
-        <translation>Quên mật khẩu?</translation>
-    </message>
-    <message>
         <source>Resend code</source>
         <translation>Gửi lại mã</translation>
-    </message>
-    <message>
-        <source>Wrong UIN/Email or password. Please try again.</source>
-        <translation>UIN/Email hoặc mật khẩu không đúng Vui lòng thử lại.</translation>
     </message>
     <message>
         <source>You have entered an invalid code. Please try again.</source>
         <translation>Bạn vừa nhập mã không hợp lệ. Vui lòng thử lại.</translation>
     </message>
     <message>
+        <source>Forgot password?</source>
+        <translation>Quên mật khẩu?</translation>
+    </message>
+    <message>
         <source>Two-factor authentication is on, please create an app password &lt;a href=&quot;https://e.mail.ru/settings/2-step-auth&quot;&gt;here&lt;/a&gt; to login</source>
         <translation>Xác thực hai yếu tố được bật.&lt;br&gt;Hãy tạo &lt;a href=&quot;https://e.mail.ru/settings/2-step-auth&quot;&gt;ở đây&lt;/a&gt; một ứng dụng mật khẩu để đăng nhập</translation>
     </message>
     <message>
-        <source>Invalid phone number. Please try again.</source>
-        <translation>Số điện thoại không hợp lệ Vui lòng thử lại.</translation>
+        <source>Enter your Email</source>
+        <translation>Nhập email của bạn</translation>
     </message>
     <message>
-        <source>Welcome to ICQ</source>
-        <translation>Chào mừng bạn đến với ICQ</translation>
+        <source>Change</source>
+        <translation>Thay đổi</translation>
     </message>
     <message>
         <source>Error occurred, try again later</source>
@@ -2451,55 +2652,95 @@ so update could take effect</source>
     </message>
     <message>
         <source>Recall in %1</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Enter last %1 digit</source>
-        <comment>1</comment>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Enter last %1 digits</source>
-        <comment>2</comment>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Enter last %1 digits</source>
-        <comment>5</comment>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Enter last %1 digits</source>
-        <comment>21</comment>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Login by phone call</source>
-        <translation>Đăng nhập bằng cuộc gọi điện thoại</translation>
-    </message>
-    <message>
-        <source>Welcome to Mail.ru Agent</source>
-        <translation>Chào mừng bạn đến với Mail.ru Agent</translation>
-    </message>
-    <message>
-        <source>Welcome to Messenger</source>
-        <translation>Chào mừng bạn đến với Messenger</translation>
-    </message>
-    <message>
-        <source>Wrong Email or password. Please try again.</source>
-        <translation>Email hoặc mật khẩu không đúng Vui lòng thử lại.</translation>
-    </message>
-    <message>
-        <source>Welcome to Myteam</source>
-        <translation>Chào mừng bạn đến với Myteam</translation>
-    </message>
-    <message>
-        <source>I don&apos;t have an account</source>
-        <translation>Tôi không có tài khoản</translation>
+        <translation>Nhớ lại trong %1</translation>
     </message>
     <message>
         <source>Enter one-time password received by email</source>
         <translation>Nhập mật khẩu một lần nhận được qua email</translation>
+    </message>
+    <message>
+        <source>Enter your login and password</source>
+        <translation>Hay nhập tên đăng nhập va mật khẩu của bạn</translation>
+    </message>
+    <message>
+        <source>To login use you corporative account created at</source>
+        <translation>Để đăng nhập, sử dụng tài khoản công ty được tạo trong</translation>
+    </message>
+    <message>
+        <source>Check the country code and enter your phone number</source>
+        <translation>Kiểm tra mã quốc gia và nhập số điện thoại của bạn</translation>
+    </message>
+    <message>
+        <source>Phone</source>
+        <translation>Số điện thoại</translation>
+    </message>
+    <message>
+        <source>SMS code</source>
+        <translation>Mã từ SMS</translation>
+    </message>
+    <message>
+        <source>Enter last 6 digits of number that called you</source>
+        <translation>Nhập 6 chữ số cuối của số gọi bạn</translation>
+    </message>
+    <message>
+        <source>Login</source>
+        <translation>Tên đăng nhập</translation>
+    </message>
+    <message>
+        <source>Mail.ru for business</source>
+        <translation>Mail.ru cho doanh nghiệp</translation>
+    </message>
+    <message>
+        <source>Invalid phone number</source>
+        <translation>Số điện thoại không hợp lệ</translation>
+    </message>
+    <message>
+        <source>Sign in</source>
+        <translation>Để đăng nhập</translation>
+    </message>
+    <message>
+        <source>Incorrect code</source>
+        <translation>Mã không hợp lệ</translation>
+    </message>
+    <message>
+        <source>Sign in by password</source>
+        <translation>Đăng nhập bằng mật khẩu</translation>
+    </message>
+    <message>
+        <source>Sign in via phone</source>
+        <translation>Đăng nhập qua điện thoại</translation>
+    </message>
+    <message>
+        <source>We called the number</source>
+        <translation>Chúng tôi đã gọi số</translation>
+    </message>
+    <message>
+        <source>Wrong login or password</source>
+        <translation>Tên người dùng hoặc mật khẩu không hợp lệ</translation>
+    </message>
+    <message>
+        <source>Wrong Email or password</source>
+        <translation>Email hoặc mật khẩu không hợp lệ</translation>
+    </message>
+    <message>
+        <source>To log in use you corporate account created in</source>
+        <translation>Để đăng nhập, sử dụng tài khoản công ty được tạo trong</translation>
+    </message>
+    <message>
+        <source>Verification code was sent to number</source>
+        <translation>Mã xác minh đã được gửi tới</translation>
+    </message>
+    <message>
+        <source>Send code</source>
+        <translation>Gửi mã</translation>
+    </message>
+    <message>
+        <source>Dictate over the phone</source>
+        <translation>Đọc chính tả qua điện thoại</translation>
+    </message>
+    <message>
+        <source>Phone code</source>
+        <translation>Mã số cuộc gọi</translation>
     </message>
 </context>
 <context>
@@ -2598,7 +2839,7 @@ so update could take effect</source>
     </message>
     <message>
         <source>Emoji &amp;&amp; Symbols</source>
-        <translation type="unfinished"></translation>
+        <translation>Biểu tượng cảm xúc &amp; biểu tượng</translation>
     </message>
     <message>
         <source>Zoom</source>
@@ -2620,14 +2861,6 @@ so update could take effect</source>
         <translation>Hồ sơ của tôi</translation>
     </message>
     <message>
-        <source>About app</source>
-        <translation>Giới thiệu ứng dụng</translation>
-    </message>
-    <message>
-        <source>Contact Us</source>
-        <translation>Liên hệ</translation>
-    </message>
-    <message>
         <source>General settings</source>
         <translation>Cài đặt chung</translation>
     </message>
@@ -2638,6 +2871,14 @@ so update could take effect</source>
     <message>
         <source>Notifications</source>
         <translation>Các thông báo</translation>
+    </message>
+    <message>
+        <source>Contact Us</source>
+        <translation>Liên hệ</translation>
+    </message>
+    <message>
+        <source>About app</source>
+        <translation>Giới thiệu ứng dụng</translation>
     </message>
     <message>
         <source>Language</source>
@@ -2664,50 +2905,10 @@ so update could take effect</source>
     </message>
 </context>
 <context>
-    <name>merge_accounts</name>
+    <name>message</name>
     <message>
-        <source>Now Mail.Ru Agent supports only one account. You can merge it with ICQ one.</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Choose Mail.Ru Agent account</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Choose ICQ account</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Account settings</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>ICQ</source>
-        <translation>ICQ</translation>
-    </message>
-    <message>
-        <source>Back</source>
-        <translation>Quay lại</translation>
-    </message>
-    <message>
-        <source>Next</source>
-        <translation>Tiếp theo</translation>
-    </message>
-    <message>
-        <source>Skip</source>
-        <translation>ข้าม</translation>
-    </message>
-    <message>
-        <source>Now Mail.ru Agent supports only one account. You can merge it with ICQ one.</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Mail.ru Agent</source>
-        <translation>Mail.ru Agent</translation>
-    </message>
-    <message>
-        <source>Choose Mail.ru Agent account</source>
-        <translation></translation>
+        <source>Sticker</source>
+        <translation>Nhãn dán</translation>
     </message>
 </context>
 <context>
@@ -2722,7 +2923,7 @@ so update could take effect</source>
     </message>
     <message>
         <source>For agent account nickname is not allowed</source>
-        <translation></translation>
+        <translation>Biệt danh bị cấm đối với tài khoản đại lý</translation>
     </message>
     <message>
         <source>Server error</source>
@@ -2791,48 +2992,16 @@ so update could take effect</source>
         <translation>Số điện thoại của bạn</translation>
     </message>
     <message>
-        <source>Change number</source>
-        <translation>Thay đổi số điện thoại</translation>
-    </message>
-    <message>
-        <source>Your account, contact details, chats and messages will be moved to your new number.</source>
-        <translation>Tài khoản, chi tiết liên lạc, cuộc trò chuyện và tin nhắn của bạn sẽ được di chuyển đến số mới của bạn.</translation>
-    </message>
-    <message>
-        <source>Before starting the transfer, ensure that you can receive SMS messages or calls to your new number.</source>
-        <translation>Trước khi bắt đầu chuyển, đảm bảo rằng bạn có thể nhận tin nhắn SMS hoặc cuộc gọi đến số mới của bạn.</translation>
-    </message>
-    <message>
-        <source>phone number</source>
-        <translation>số điện thoại</translation>
+        <source>Change</source>
+        <translation>Thay đổi</translation>
     </message>
     <message>
         <source>Code from SMS</source>
         <translation>Mã từ SMS</translation>
     </message>
     <message>
-        <source>Change</source>
-        <translation>Thay đổi</translation>
-    </message>
-    <message>
-        <source>Enter your new number</source>
-        <translation>Nhập số mới của bạn</translation>
-    </message>
-    <message>
         <source>Resend code</source>
         <translation>Gửi lại mã</translation>
-    </message>
-    <message>
-        <source>Dictate over the phone</source>
-        <translation>Đọc chính tả qua điện thoại</translation>
-    </message>
-    <message>
-        <source>Incorrect code</source>
-        <translation>Mã không chính xác</translation>
-    </message>
-    <message>
-        <source>Your new account number is</source>
-        <translation>Số tài khoản mới của bạn là</translation>
     </message>
     <message>
         <source>%1 EXTRA DIGIT</source>
@@ -2855,12 +3024,44 @@ so update could take effect</source>
         <translation>THÊM %1 CHỮ SỐ</translation>
     </message>
     <message>
+        <source>Change number</source>
+        <translation>Thay đổi số điện thoại</translation>
+    </message>
+    <message>
+        <source>Your account, contact details, chats and messages will be moved to your new number.</source>
+        <translation>Tài khoản, chi tiết liên lạc, cuộc trò chuyện và tin nhắn của bạn sẽ được di chuyển đến số mới của bạn.</translation>
+    </message>
+    <message>
+        <source>Before starting the transfer, ensure that you can receive SMS messages or calls to your new number.</source>
+        <translation>Trước khi bắt đầu chuyển, đảm bảo rằng bạn có thể nhận tin nhắn SMS hoặc cuộc gọi đến số mới của bạn.</translation>
+    </message>
+    <message>
+        <source>Enter your new number</source>
+        <translation>Nhập số mới của bạn</translation>
+    </message>
+    <message>
+        <source>Dictate over the phone</source>
+        <translation>Đọc chính tả qua điện thoại</translation>
+    </message>
+    <message>
+        <source>Incorrect code</source>
+        <translation>Mã không chính xác</translation>
+    </message>
+    <message>
+        <source>Your new account number is</source>
+        <translation>Số tài khoản mới của bạn là</translation>
+    </message>
+    <message>
         <source>Check that number is correct</source>
         <translation>Kiểm tra để đảm bảo đúng số</translation>
     </message>
     <message>
         <source>Number changed</source>
         <translation>Số đã thay đổi</translation>
+    </message>
+    <message>
+        <source>phone number</source>
+        <translation>số điện thoại</translation>
     </message>
     <message>
         <source>Sign out</source>
@@ -2910,6 +3111,10 @@ so update could take effect</source>
         <comment>21</comment>
         <translation></translation>
     </message>
+    <message>
+        <source>Enter your number</source>
+        <translation>Nhập số của bạn</translation>
+    </message>
 </context>
 <context>
     <name>pin</name>
@@ -2933,36 +3138,16 @@ so update could take effect</source>
 <context>
     <name>placeholders</name>
     <message>
-        <source>You have no opened chats yet</source>
-        <translation>Bạn không có cuộc trò chuyện nào đang mở</translation>
+        <source>Install ICQ on mobile</source>
+        <translation>Cài đặt ICQ trên di động</translation>
     </message>
     <message>
         <source>Nothing found</source>
         <translation>Không tìm thấy gì</translation>
     </message>
     <message>
-        <source>CONTINUE</source>
-        <translation>TIẾP TỤC</translation>
-    </message>
-    <message>
-        <source>Install ICQ on mobile</source>
-        <translation>Cài đặt ICQ trên di động</translation>
-    </message>
-    <message>
-        <source>to synchronize your contacts</source>
-        <translation>để đồng bộ các liên hệ của bạn</translation>
-    </message>
-    <message>
         <source>Error occurred, try again later</source>
         <translation>Xảy ra lỗi, hãy thử lại sau</translation>
-    </message>
-    <message>
-        <source>Looks like you have no contacts yet</source>
-        <translation>Có vẻ như bạn chưa có địa chỉ liên hệ</translation>
-    </message>
-    <message>
-        <source>First name</source>
-        <translation>Tên</translation>
     </message>
     <message>
         <source>Last name</source>
@@ -2984,60 +3169,182 @@ so update could take effect</source>
         <source>Install Myteam on mobile</source>
         <translation>Cài đặt Myteam trên di động</translation>
     </message>
+    <message>
+        <source>First name*</source>
+        <translation>Tên đầu tiên*</translation>
+    </message>
+    <message>
+        <source>your contacts will see them</source>
+        <translation>địa chỉ liên lạc của bạn sẽ nhìn thấy chúng</translation>
+    </message>
+    <message>
+        <source>Continue</source>
+        <translation>Tiếp tục</translation>
+    </message>
+    <message>
+        <source>Chat list is empty</source>
+        <translation>Danh sách trò chuyện trống</translation>
+    </message>
+    <message>
+        <source>Contact list is empty</source>
+        <translation>Danh sách liên lạc trống</translation>
+    </message>
+    <message>
+        <source>Copy</source>
+        <translation>Sao chép</translation>
+    </message>
+    <message>
+        <source>Share the link %1 so people can write you</source>
+        <translation>Chia sẻ liên kết %1 để bạn có thể viết</translation>
+    </message>
+    <message>
+        <source>Add a name and avatar</source>
+        <translation>Thêm tên và hình đại diện</translation>
+    </message>
+    <message>
+        <source>Failed to download file or media</source>
+        <translation>Không thể tải lên tập tin hoặc phương tiện truyền thông</translation>
+    </message>
+</context>
+<context>
+    <name>poll</name>
+    <message>
+        <source>Create poll</source>
+        <translation>Tạo bình chọn</translation>
+    </message>
+    <message>
+        <source>Ask your question</source>
+        <translation>Đặt câu hỏi của bạn</translation>
+    </message>
+    <message>
+        <source>Add another option</source>
+        <translation>Thêm tùy chọn khác</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>Hủy bỏ</translation>
+    </message>
+    <message>
+        <source>Send</source>
+        <translation>Gửi</translation>
+    </message>
+    <message>
+        <source>Answer</source>
+        <translation>Tùy chọn trả lời</translation>
+    </message>
+</context>
+<context>
+    <name>poll_block</name>
+    <message>
+        <source>Public</source>
+        <translation>Công cộng</translation>
+    </message>
+    <message>
+        <source>Anonymous</source>
+        <translation>Khuyết danh</translation>
+    </message>
+    <message>
+        <source>%1 poll - %2 vote</source>
+        <comment>1</comment>
+        <translation>Cuộc thăm dò%1 - %2 phiếu bầu</translation>
+    </message>
+    <message>
+        <source>%1 poll - %2 votes</source>
+        <comment>2</comment>
+        <translation>Cuộc thăm dò %1 - %2 phiếu</translation>
+    </message>
+    <message>
+        <source>%1 poll - %2 votes</source>
+        <comment>5</comment>
+        <translation>Cuộc thăm dò %1 - %2 phiếu</translation>
+    </message>
+    <message>
+        <source>Poll</source>
+        <translation>Thăm dò ý kiến</translation>
+    </message>
+    <message>
+        <source>Poll: %1</source>
+        <translation>Thăm dò ý kiến: %1</translation>
+    </message>
+    <message>
+        <source>%1 poll - %2 votes</source>
+        <comment>21</comment>
+        <translation>Cuộc thăm dò %1 - %2 phiếu bầu</translation>
+    </message>
+    <message>
+        <source>Poll: </source>
+        <translation>Thăm dò ý kiến: </translation>
+    </message>
+    <message>
+        <source>Sticker</source>
+        <translation>Nhãn dán</translation>
+    </message>
+    <message>
+        <source>GIF</source>
+        <translation>QUÀ TẶNG</translation>
+    </message>
+    <message>
+        <source>Video</source>
+        <translation>Video</translation>
+    </message>
+    <message>
+        <source>Poll Id copied to clipboard</source>
+        <translation>Thăm dò ý kiến id</translation>
+    </message>
+    <message>
+        <source>Photo</source>
+        <translation>Ảnh</translation>
+    </message>
+    <message>
+        <source>Vote: an error occurred</source>
+        <translation>Bỏ phiếu: đã xảy ra lỗi</translation>
+    </message>
+    <message>
+        <source>Revoke vote: an error occurred</source>
+        <translation>Hủy giọng nói: đã xảy ra lỗi</translation>
+    </message>
+    <message>
+        <source>Stop poll: an error occurred</source>
+        <translation>Dừng thăm dò ý kiến: một lỗi đã xảy ra</translation>
+    </message>
+    <message>
+        <source>Voice message</source>
+        <translation>Tin nhắn thoại</translation>
+    </message>
+    <message>
+        <source>File</source>
+        <translation>Tập tin</translation>
+    </message>
 </context>
 <context>
     <name>popup_window</name>
     <message>
-        <source>CANCEL</source>
-        <translation>HỦY BỎ</translation>
-    </message>
-    <message>
-        <source>DONE</source>
-        <translation>ĐÃ THỰC HIỆN XONG</translation>
-    </message>
-    <message>
-        <source>BACK</source>
-        <translation>QUAY LẠI</translation>
-    </message>
-    <message>
-        <source>CONTINUE</source>
-        <translation>TIẾP TỤC</translation>
-    </message>
-    <message>
-        <source>SAVE</source>
-        <translation>LƯU</translation>
-    </message>
-    <message>
-        <source>Unfortunately, an error occurred:</source>
-        <translation>Thật không may, xảy ra lỗi:</translation>
-    </message>
-    <message>
-        <source>YES</source>
-        <translation>ĐỒNG Ý</translation>
+        <source>Are you sure you want to sign out?</source>
+        <translation>Bạn có chắc muốn thoát?</translation>
     </message>
     <message>
         <source>Are you sure you want to move contact to ignore list?</source>
         <translation>Bạn có chắc chắn muốn di chuyển liên lạc vào danh sách từ chối?</translation>
     </message>
     <message>
-        <source>FORWARD</source>
-        <translation>CHUYỂN TIẾP</translation>
+        <source>Are you sure you want to leave chat?</source>
+        <translation>Bạn có chắc muốn rời trò chuyện?</translation>
     </message>
     <message>
-        <source>show author</source>
-        <translation>hiển thị tác giả</translation>
+        <source>Contact name</source>
+        <translation>Tên liên hệ</translation>
     </message>
     <message>
-        <source>CLOSE</source>
-        <translation>ĐÓNG</translation>
+        <source>Sign out</source>
+        <translation>Thoát đăng nhập</translation>
     </message>
     <message>
-        <source>NEXT</source>
-        <translation>TIẾP THEO</translation>
+        <source>Are you sure you want to erase chat history?</source>
+        <translation>Bạn có chắc muốn xóa lịch sử trò chuyện?</translation>
     </message>
     <message>
-        <source>Chat settings</source>
-        <translation>Cài đặt trò chuyện</translation>
+        <source>Unfortunately, an error occurred:</source>
+        <translation>Thật không may, xảy ra lỗi:</translation>
     </message>
     <message>
         <source>Are you sure you want to delete user from this chat?</source>
@@ -3046,34 +3353,6 @@ so update could take effect</source>
     <message>
         <source>Are you sure you want to delete user from ignore list?</source>
         <translation>Bạn có chắc muốn xóa người dùng khỏi danh sách bỏ qua?</translation>
-    </message>
-    <message>
-        <source>Are you sure you want to delete user from this call?</source>
-        <translation>Bạn có chắc muốn xóa người dùng khỏi cuộc gọi này?</translation>
-    </message>
-    <message>
-        <source>DELETE</source>
-        <translation>XÓA</translation>
-    </message>
-    <message>
-        <source>Forward</source>
-        <translation>Chuyển tiếp</translation>
-    </message>
-    <message>
-        <source>Are you sure you want to delete message?</source>
-        <translation>Bạn có chắc muốn xóa tin nhắn?</translation>
-    </message>
-    <message>
-        <source>Delete message</source>
-        <translation>Xóa tin nhắn</translation>
-    </message>
-    <message>
-        <source>Contact name</source>
-        <translation>Tên liên hệ</translation>
-    </message>
-    <message>
-        <source>Are you sure you want to block user in this chat?</source>
-        <translation>Bạn có chắc muốn chặn người dùng trong trò chuyện này?</translation>
     </message>
     <message>
         <source>Are you sure you want to unblock user?</source>
@@ -3088,6 +3367,22 @@ so update could take effect</source>
         <translation>Bạn có chắc muốn lấy lại vai trò admin?</translation>
     </message>
     <message>
+        <source>Are you sure you want to delete message?</source>
+        <translation>Bạn có chắc muốn xóa tin nhắn?</translation>
+    </message>
+    <message>
+        <source>Delete message</source>
+        <translation>Xóa tin nhắn</translation>
+    </message>
+    <message>
+        <source>Forward</source>
+        <translation>Chuyển tiếp</translation>
+    </message>
+    <message>
+        <source>Chat settings</source>
+        <translation>Cài đặt trò chuyện</translation>
+    </message>
+    <message>
         <source>Are you sure you want to ban user to write in this chat?</source>
         <translation>Bạn có chắc muốn cấm người dùng viết trong trò chuyện này?</translation>
     </message>
@@ -3096,36 +3391,24 @@ so update could take effect</source>
         <translation>Bạn có chắc muốn cho phép người dùng viết trong trò chuyện này?</translation>
     </message>
     <message>
-        <source>WAITING</source>
-        <translation>ĐANG CHỜ</translation>
-    </message>
-    <message>
-        <source>JOIN</source>
-        <translation>THAM GIA</translation>
-    </message>
-    <message>
-        <source>OPEN</source>
-        <translation>MỞ</translation>
-    </message>
-    <message>
-        <source>Are you sure you want to sign out?</source>
-        <translation>Bạn có chắc muốn thoát?</translation>
-    </message>
-    <message>
-        <source>Sign out</source>
-        <translation>Thoát đăng nhập</translation>
+        <source>Are you sure you want to delete user from this call?</source>
+        <translation>Bạn có chắc muốn xóa người dùng khỏi cuộc gọi này?</translation>
     </message>
     <message>
         <source>Contacts</source>
         <translation>Các liên hệ</translation>
     </message>
     <message>
-        <source>Advanced Settings</source>
-        <translation>Cài đặt nâng cao</translation>
+        <source>Are you sure you want to remove this sticker pack?</source>
+        <translation>Bạn có chắc bạn muốn xóa bỏ gói nhãn dán này?</translation>
     </message>
     <message>
-        <source>OK</source>
-        <translation>ĐƯỢC</translation>
+        <source>Remove sticker pack</source>
+        <translation>Xóa gói nhãn dán</translation>
+    </message>
+    <message>
+        <source>show author</source>
+        <translation>hiển thị tác giả</translation>
     </message>
     <message>
         <source>Open logs path</source>
@@ -3140,40 +3423,16 @@ so update could take effect</source>
         <translation>Xóa hình đại diện</translation>
     </message>
     <message>
+        <source>OK</source>
+        <translation>ĐƯỢC</translation>
+    </message>
+    <message>
         <source>Enable full log mode</source>
         <translation>Chế độ nhật ký mở rộng</translation>
     </message>
     <message>
         <source>Display message IDs</source>
         <translation>Hiển thị ID tin nhắn</translation>
-    </message>
-    <message>
-        <source>Are you sure you want to erase chat history?</source>
-        <translation>Bạn có chắc muốn xóa lịch sử trò chuyện?</translation>
-    </message>
-    <message>
-        <source>Are you sure you want to leave chat?</source>
-        <translation>Bạn có chắc muốn rời trò chuyện?</translation>
-    </message>
-    <message>
-        <source>ADD</source>
-        <translation>THÊM</translation>
-    </message>
-    <message>
-        <source>REMOVE</source>
-        <translation>XÓA BỎ</translation>
-    </message>
-    <message>
-        <source>SEND</source>
-        <translation>GỬI THÔNG TIN</translation>
-    </message>
-    <message>
-        <source>Are you sure you want to remove this sticker pack?</source>
-        <translation>Bạn có chắc bạn muốn xóa bỏ gói nhãn dán này?</translation>
-    </message>
-    <message>
-        <source>Remove sticker pack</source>
-        <translation>Xóa gói nhãn dán</translation>
     </message>
     <message>
         <source>Ignore list</source>
@@ -3204,76 +3463,16 @@ so update could take effect</source>
         <translation></translation>
     </message>
     <message>
-        <source>Stick memory usage widget</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Cache dialogs for (milliseconds)</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Current memory usage: </source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Memory: </source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Real memory: </source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Copy text</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Refresh</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Total accounted for: </source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Cached avatars</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Cached themes</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Cached emojis</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Cached previews</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Cached stickers</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>VOIP initialization</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Video players</source>
-        <translation></translation>
-    </message>
-    <message>
         <source>Restart</source>
         <translation>Khởi động lại</translation>
     </message>
     <message>
         <source>Server search</source>
-        <translation></translation>
+        <translation>Tìm kiếm máy chủ</translation>
     </message>
     <message>
         <source>Log messagesModel</source>
-        <translation></translation>
+        <translation>Đăng nhập tin nhắnModel</translation>
     </message>
     <message>
         <source>Do you really want mark all as read?</source>
@@ -3300,16 +3499,8 @@ so update could take effect</source>
         <translation></translation>
     </message>
     <message>
-        <source>CHECK</source>
-        <translation></translation>
-    </message>
-    <message>
         <source>Block</source>
         <translation>Khóa</translation>
-    </message>
-    <message>
-        <source>APPLY</source>
-        <translation>ÁP DỤNG</translation>
     </message>
     <message>
         <source>Share</source>
@@ -3319,6 +3510,154 @@ so update could take effect</source>
         <source>REPEAT</source>
         <translation>LẶP LẠI</translation>
     </message>
+    <message>
+        <source>Remove %1 from your contacts?</source>
+        <translation>Xóa %1 khỏi danh bạ của bạn?</translation>
+    </message>
+    <message>
+        <source>Remove contact</source>
+        <translation>Xóa liên lạc</translation>
+    </message>
+    <message>
+        <source>You can delete for all only your messages (%1 from %2). Are you sure you want to continue?</source>
+        <translation>Bạn chỉ có thể xóa tin nhắn của mình cho mọi người (%1 trên %2). Tiếp tục?</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to mark the chat as unimportant? The chat won&apos;t jump to the top of the list when you receive a new message</source>
+        <translation>Bạn có chắc chắn muốn đánh dấu cuộc trò chuyện là không quan trọng? Trò chuyện sẽ không nhảy lên đầu danh sách khi bạn nhận được tin nhắn mới</translation>
+    </message>
+    <message>
+        <source>Choose country</source>
+        <translation>Chọn quốc gia</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>Hủy bỏ</translation>
+    </message>
+    <message>
+        <source>Done</source>
+        <translation>Xong</translation>
+    </message>
+    <message>
+        <source>Back</source>
+        <translation>Quay lại</translation>
+    </message>
+    <message>
+        <source>Continue</source>
+        <translation>Tiếp tục</translation>
+    </message>
+    <message>
+        <source>Save</source>
+        <translation>Lưu lại</translation>
+    </message>
+    <message>
+        <source>Add</source>
+        <translation>Thêm</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation>Đóng</translation>
+    </message>
+    <message>
+        <source>Yes</source>
+        <translation>Vâng</translation>
+    </message>
+    <message>
+        <source>Delete</source>
+        <translation>Xóa</translation>
+    </message>
+    <message>
+        <source>Send</source>
+        <translation>Gửi</translation>
+    </message>
+    <message>
+        <source>Next</source>
+        <translation>Kế tiếp</translation>
+    </message>
+    <message>
+        <source>Check</source>
+        <translation>Kiểm tra</translation>
+    </message>
+    <message>
+        <source>Apply</source>
+        <translation>Để áp dụng</translation>
+    </message>
+    <message>
+        <source>Remove</source>
+        <translation>Xóa</translation>
+    </message>
+    <message>
+        <source>Waiting</source>
+        <translation>Đang chờ đợi</translation>
+    </message>
+    <message>
+        <source>Join</source>
+        <translation>Nhập</translation>
+    </message>
+    <message>
+        <source>If you stop the poll, nobody will be able to vote anymore. This action can not be undone</source>
+        <translation>Nếu bạn dừng cuộc thăm dò, không ai có thể bỏ phiếu nữa. Hành động này không thể được hoàn tác</translation>
+    </message>
+    <message>
+        <source>Stop</source>
+        <translation>Dừng lại</translation>
+    </message>
+    <message>
+        <source>Stop this poll?</source>
+        <translation>Dừng cuộc thăm dò này?</translation>
+    </message>
+    <message>
+        <source>Open</source>
+        <translation>Mở</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to leave channel?</source>
+        <translation>Bạn có chắc chắn muốn rời khỏi kênh?</translation>
+    </message>
+    <message>
+        <source>If you change group type to a private link to the group will be changed, and the old one will stop working</source>
+        <translation>Nếu bạn thay đổi loại nhóm thành riêng tư, liên kết nhóm sẽ thay đổi và liên kết cũ sẽ ngừng hoạt động</translation>
+    </message>
+    <message>
+        <source>Make private</source>
+        <translation>Làm cho riêng tư</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to clear the chat history?</source>
+        <translation>Bạn có chắc chắn muốn xóa lịch sử trò chuyện?</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to clear the channel history?</source>
+        <translation>Bạn có chắc chắn muốn xóa lịch sử trò chuyện?</translation>
+    </message>
+    <message>
+        <source>If you generate a new link to the channel the old one will stop working</source>
+        <translation>Nếu bạn tạo một liên kết mới tới kênh, thì bạn chỉ có thể vào kênh thông qua kênh đó</translation>
+    </message>
+    <message>
+        <source>If you generate a new link to the group the old one will stop working</source>
+        <translation>Nếu bạn tạo một liên kết mới cho nhóm, thì bạn chỉ có thể vào nhóm trên đó</translation>
+    </message>
+    <message>
+        <source>Generate</source>
+        <translation>Tạo</translation>
+    </message>
+    <message>
+        <source>The old link will stop working</source>
+        <translation>Liên kết cũ sẽ ngừng hoạt động</translation>
+    </message>
+    <message>
+        <source>Public link will stop working</source>
+        <translation>Liên kết công khai sẽ ngừng hoạt động</translation>
+    </message>
+    <message>
+        <source>Set dev_id</source>
+        <translation>Đặt dev_id</translation>
+    </message>
+    <message>
+        <source>Create</source>
+        <translation>Tạo</translation>
+    </message>
 </context>
 <context>
     <name>previewer</name>
@@ -3327,12 +3666,12 @@ so update could take effect</source>
         <translation>Không thể tải xuống hình ảnh</translation>
     </message>
     <message>
-        <source>Loading...</source>
-        <translation>Đang tải…</translation>
-    </message>
-    <message>
         <source>%1 of %2</source>
         <translation>%1 của %2</translation>
+    </message>
+    <message>
+        <source>Loading...</source>
+        <translation>Đang tải…</translation>
     </message>
     <message>
         <source>Copied to clipboard</source>
@@ -3378,16 +3717,16 @@ so update could take effect</source>
         <source>File %1 downloaded to %2</source>
         <translation>Tệp %1 được tải xuống %2</translation>
     </message>
+    <message>
+        <source>Error file downloading</source>
+        <translation>Lỗi tải lên tập tin</translation>
+    </message>
 </context>
 <context>
     <name>profile_block</name>
     <message>
         <source>Contact was saved. Phone is visible in profile.</source>
         <translation>Liên lạc đã được lưu. Điện thoại có thể nhìn thấy trong hồ sơ.</translation>
-    </message>
-    <message>
-        <source>CANCEL</source>
-        <translation>HỦY BỎ</translation>
     </message>
     <message>
         <source>Contact</source>
@@ -3424,6 +3763,10 @@ so update could take effect</source>
     <message>
         <source>WRITE</source>
         <translation>VIẾT</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>Hủy bỏ</translation>
     </message>
 </context>
 <context>
@@ -3480,18 +3823,6 @@ so update could take effect</source>
         <translation>Chia sẻ liên hệ</translation>
     </message>
     <message>
-        <source>BACK</source>
-        <translation>QUAY LẠI</translation>
-    </message>
-    <message>
-        <source>OPEN CHAT</source>
-        <translation>MỞ CHAT</translation>
-    </message>
-    <message>
-        <source>SEND</source>
-        <translation>GỬI THÔNG TIN</translation>
-    </message>
-    <message>
         <source>To share contact add phone number or ask contact to add nickname.</source>
         <translation>Để chia sẻ liên lạc, thêm số điện thoại hoặc yêu cầu thêm biệt hiệu.</translation>
     </message>
@@ -3510,6 +3841,18 @@ so update could take effect</source>
     <message>
         <source>No phone number and nickname</source>
         <translation>Không có số điện thoại và biệt danh</translation>
+    </message>
+    <message>
+        <source>Back</source>
+        <translation>Quay lại</translation>
+    </message>
+    <message>
+        <source>Open chat</source>
+        <translation>Mở trò chuyện</translation>
+    </message>
+    <message>
+        <source>Send</source>
+        <translation>Gửi</translation>
     </message>
 </context>
 <context>
@@ -3544,28 +3887,6 @@ so update could take effect</source>
         <source>OK</source>
         <translation>ĐƯỢC</translation>
     </message>
-    <message>
-        <source> ﻿* Reply on messages by photos, files and voice messages;
- * Navigation with Tab on the main elements of the application instead of using mouse;
- * Voice message recording improvements;
- * The maximum interface scale increased up to 300%;
- * Aero Snap support;
- * Chat history scrolling improvements;
- 
- And:
- * List of hotkeys to the settings page update;
- * Lots of other improvements and fixes. </source>
-        <translation> * Trả lời tin nhắn bằng hình ảnh, tập tin và tin nhắn thoại;
- * Điều hướng với Tab trên các thành phần chính của ứng dụng thay vì sử dụng chuột;
- * Cải thiện ghi âm tin nhắn thoại;
- * Tỷ lệ giao diện tối đa tăng lên tới 300%;
- * Hỗ trợ Aero Snap;
- * Cải tiến cuộn lịch sử trò chuyện;
-&#xa0;
- Và:
- * Danh sách các phím nóng để cập nhật trang cài đặt;
- * Rất nhiều cải tiến và sửa lỗi khác. </translation>
-    </message>
 </context>
 <context>
     <name>report_widget</name>
@@ -3584,10 +3905,6 @@ so update could take effect</source>
     <message>
         <source>Other</source>
         <translation>Khác</translation>
-    </message>
-    <message>
-        <source>CANCEL</source>
-        <translation>HỦY BỎ</translation>
     </message>
     <message>
         <source>OK</source>
@@ -3609,6 +3926,10 @@ so update could take effect</source>
         <source>Block</source>
         <translation>Khóa</translation>
     </message>
+    <message>
+        <source>Cancel</source>
+        <translation>Hủy bỏ</translation>
+    </message>
 </context>
 <context>
     <name>search</name>
@@ -3626,6 +3947,18 @@ so update could take effect</source>
     <message>
         <source>Search</source>
         <translation>Tìm kiếm</translation>
+    </message>
+</context>
+<context>
+    <name>selection</name>
+    <message>
+        <source>Cancel</source>
+        <translation>Hủy bỏ</translation>
+    </message>
+    <message>
+        <source>%1 message selected</source>
+        <comment>1</comment>
+        <translation>Đã chọn %1 tin nhắn</translation>
     </message>
 </context>
 <context>
@@ -3687,8 +4020,8 @@ so update could take effect</source>
         <translation>Trò chuyện</translation>
     </message>
     <message>
-        <source>Preview images and links</source>
-        <translation>Xem trước hình ảnh và liên kết</translation>
+        <source>Preview links</source>
+        <translation>Xem trước liên kết</translation>
     </message>
     <message>
         <source>Auto play videos</source>
@@ -3984,7 +4317,7 @@ so update could take effect</source>
     </message>
     <message>
         <source>Problem</source>
-        <translation></translation>
+        <translation>Vấn đề</translation>
     </message>
     <message>
         <source>Main window</source>
@@ -4005,6 +4338,30 @@ so update could take effect</source>
     <message>
         <source>History in chat</source>
         <translation>Lịch sử trong trò chuyện</translation>
+    </message>
+    <message>
+        <source>Animate taskbar icon</source>
+        <translation>Biểu tượng thanh tác vụ</translation>
+    </message>
+    <message>
+        <source>Turn on video sound on hover</source>
+        <translation>Bật âm thanh video khi di chuột</translation>
+    </message>
+    <message>
+        <source>Install beta updates</source>
+        <translation>Cài đặt phiên bản beta</translation>
+    </message>
+    <message>
+        <source>Show smart reply</source>
+        <translation>Hiển thị câu trả lời thông minh</translation>
+    </message>
+    <message>
+        <source>Close search after result selection</source>
+        <translation>Đóng tìm kiếm khi chọn kết quả</translation>
+    </message>
+    <message>
+        <source>Advanced Settings</source>
+        <translation>Cài đặt nâng cao</translation>
     </message>
 </context>
 <context>
@@ -4192,55 +4549,17 @@ so update could take effect</source>
         <source>Scroll history in chat</source>
         <translation>Lịch sử cuộn trong trò chuyện</translation>
     </message>
+    <message>
+        <source>Enter multiselect mode</source>
+        <translation>Bật chế độ đa lựa chọn</translation>
+    </message>
+    <message>
+        <source>Mark all dialogs as read</source>
+        <translation>Đánh dấu tất cả các hộp thoại là đã đọc</translation>
+    </message>
 </context>
 <context>
     <name>sidebar</name>
-    <message>
-        <source>You have no ignored contacts</source>
-        <translation>Bạn không có liên hệ nào bị bỏ qua</translation>
-    </message>
-    <message>
-        <source>Revoke admin role</source>
-        <translation>Hủy bỏ vai trò quản trị</translation>
-    </message>
-    <message>
-        <source>Ban to write</source>
-        <translation>Cấm viết</translation>
-    </message>
-    <message>
-        <source>Allow to write</source>
-        <translation>Cho phép viết</translation>
-    </message>
-    <message>
-        <source>Profile</source>
-        <translation>Hồ sơ</translation>
-    </message>
-    <message>
-        <source>Block</source>
-        <translation>Khóa</translation>
-    </message>
-    <message>
-        <source>This phone number is already attached to another account.
-Please edit phone number and try again.</source>
-        <translation>Số điện thoại này đã được gắn với tài khoản khác.
-Hãy chỉnh sửa số điện thoại và thử lại.</translation>
-    </message>
-    <message>
-        <source>Attach phone</source>
-        <translation>Đính kèm điện thoại</translation>
-    </message>
-    <message>
-        <source>Unpin</source>
-        <translation>Bỏ ghim</translation>
-    </message>
-    <message>
-        <source>Pin</source>
-        <translation>Ghim</translation>
-    </message>
-    <message>
-        <source>Share contact</source>
-        <translation>Chia sẻ liên hệ</translation>
-    </message>
     <message>
         <source>Add to chat</source>
         <translation>Thêm để trò chuyện</translation>
@@ -4254,44 +4573,82 @@ Hãy chỉnh sửa số điện thoại và thử lại.</translation>
         <translation>Hình nền</translation>
     </message>
     <message>
-        <source>Chat settings</source>
-        <translation>Cài đặt trò chuyện</translation>
-    </message>
-    <message>
-        <source>Members</source>
-        <translation>Thành viên</translation>
-    </message>
-    <message>
-        <source>Waiting for approval</source>
-        <translation>Đang chờ phê duyệt</translation>
+        <source>Nickname</source>
+        <translation>Biệt danh</translation>
     </message>
     <message>
         <source>Blocked people</source>
         <translation>Người bị chặn</translation>
     </message>
     <message>
+        <source>Phone number</source>
+        <translation>Số điện thoại</translation>
+    </message>
+    <message>
         <source>Clear history</source>
         <translation>Xóa bỏ lịch sử</translation>
+    </message>
+    <message>
+        <source>Profile</source>
+        <translation>Hồ sơ</translation>
+    </message>
+    <message>
+        <source>Attach phone</source>
+        <translation>Đính kèm điện thoại</translation>
+    </message>
+    <message>
+        <source>Revoke admin role</source>
+        <translation>Hủy bỏ vai trò quản trị</translation>
+    </message>
+    <message>
+        <source>Block</source>
+        <translation>Khóa</translation>
+    </message>
+    <message>
+        <source>You have no ignored contacts</source>
+        <translation>Bạn không có liên hệ nào bị bỏ qua</translation>
+    </message>
+    <message>
+        <source>This phone number is already attached to another account.
+Please edit phone number and try again.</source>
+        <translation>Số điện thoại này đã được gắn với tài khoản khác.
+Hãy chỉnh sửa số điện thoại và thử lại.</translation>
     </message>
     <message>
         <source>Approve All</source>
         <translation>Thêm tất cả</translation>
     </message>
     <message>
-        <source>Phone number</source>
-        <translation>Số điện thoại</translation>
+        <source>Waiting for approval</source>
+        <translation>Đang chờ phê duyệt</translation>
     </message>
     <message>
-        <source>Nickname</source>
-        <translation>Biệt danh</translation>
+        <source>Members</source>
+        <translation>Thành viên</translation>
+    </message>
+    <message>
+        <source>Ban to write</source>
+        <translation>Cấm viết</translation>
+    </message>
+    <message>
+        <source>Allow to write</source>
+        <translation>Cho phép viết</translation>
+    </message>
+    <message>
+        <source>Share contact</source>
+        <translation>Chia sẻ liên hệ</translation>
+    </message>
+    <message>
+        <source>Unpin</source>
+        <translation>Bỏ ghim</translation>
+    </message>
+    <message>
+        <source>Pin</source>
+        <translation>Ghim</translation>
     </message>
     <message>
         <source>Assign admin role</source>
         <translation>Giao vài trò quản trị</translation>
-    </message>
-    <message>
-        <source>Remove from chat</source>
-        <translation>Thoát khỏi mục trò chuyện</translation>
     </message>
     <message>
         <source>Information</source>
@@ -4340,10 +4697,6 @@ Hãy chỉnh sửa số điện thoại và thử lại.</translation>
     <message>
         <source>Unblock</source>
         <translation>Mở khóa</translation>
-    </message>
-    <message>
-        <source>Join</source>
-        <translation>tham gia</translation>
     </message>
     <message>
         <source>Add to channel</source>
@@ -4418,10 +4771,6 @@ Hãy chỉnh sửa số điện thoại và thử lại.</translation>
         <translation>Chia sẻ</translation>
     </message>
     <message>
-        <source>SEARCH</source>
-        <translation>TÌM KIẾM</translation>
-    </message>
-    <message>
         <source>Description</source>
         <translation>Mô tả</translation>
     </message>
@@ -4486,10 +4835,6 @@ Hãy chỉnh sửa số điện thoại và thử lại.</translation>
         <translation>Báo cáo khiếu nại và chặn</translation>
     </message>
     <message>
-        <source>Delete and leave</source>
-        <translation>Xóa và đăng xuất</translation>
-    </message>
-    <message>
         <source>Admins</source>
         <translation>Quản trị</translation>
     </message>
@@ -4517,6 +4862,50 @@ Hãy chỉnh sửa số điện thoại và thử lại.</translation>
         <source>The join request has been sent to administrator</source>
         <translation>Yêu cầu tham gia đã được gửi đến quản trị viên</translation>
     </message>
+    <message>
+        <source>Remove</source>
+        <translation>Xóa bỏ</translation>
+    </message>
+    <message>
+        <source>Leave and delete</source>
+        <translation>Xóa và thoát</translation>
+    </message>
+    <message>
+        <source>Block and delete</source>
+        <translation>Chặn và xóa</translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation>Tìm kiếm</translation>
+    </message>
+    <message>
+        <source>Join</source>
+        <translation>tham gia</translation>
+    </message>
+    <message>
+        <source>Share channel</source>
+        <translation>Kênh chia sẻ</translation>
+    </message>
+    <message>
+        <source>Channel settings</source>
+        <translation>Cài đặt kênh</translation>
+    </message>
+    <message>
+        <source>Block and delete from group</source>
+        <translation>Chặn và xóa khỏi nhóm</translation>
+    </message>
+    <message>
+        <source>Group settings</source>
+        <translation>Cài đặt nhóm</translation>
+    </message>
+    <message>
+        <source>Add to group</source>
+        <translation>Thêm vào nhóm</translation>
+    </message>
+    <message>
+        <source>Public group</source>
+        <translation>Nhóm công cộng</translation>
+    </message>
 </context>
 <context>
     <name>siderbar</name>
@@ -4535,6 +4924,28 @@ Hãy chỉnh sửa số điện thoại và thử lại.</translation>
     <message>
         <source>About the group</source>
         <translation>Giới thiệu về nhóm</translation>
+    </message>
+</context>
+<context>
+    <name>smartreply</name>
+    <message>
+        <source>Show smart replies</source>
+        <translation>Hiển thị câu trả lời thông minh</translation>
+    </message>
+    <message>
+        <source>Hide smart replies</source>
+        <translation>Ẩn câu trả lời thông minh</translation>
+    </message>
+</context>
+<context>
+    <name>snippet_block</name>
+    <message>
+        <source>File</source>
+        <translation>Tập tin</translation>
+    </message>
+    <message>
+        <source>Copied to clipboard</source>
+        <translation>Sao chép vào clipboard</translation>
     </message>
 </context>
 <context>
@@ -4571,10 +4982,6 @@ Hãy chỉnh sửa số điện thoại và thử lại.</translation>
         <translation>Chia sẻ</translation>
     </message>
     <message>
-        <source>Stickerpack: </source>
-        <translation>Gói nhãn dán: </translation>
-    </message>
-    <message>
         <source>You have not added stickers yet</source>
         <translation>Bạn chưa thêm nhãn dán nào</translation>
     </message>
@@ -4591,20 +4998,16 @@ Hãy chỉnh sửa số điện thoại và thử lại.</translation>
         <translation>MY</translation>
     </message>
     <message>
-        <source>Stickers</source>
-        <translation>Dán</translation>
-    </message>
-    <message>
         <source>Search</source>
         <translation>Tìm kiếm</translation>
     </message>
     <message>
-        <source>SEARCH</source>
-        <translation>TÌM KIẾM</translation>
+        <source>Stickers</source>
+        <translation>Dán</translation>
     </message>
     <message>
-        <source>CANCEL</source>
-        <translation>HỦY BỎ</translation>
+        <source>Stickerpack: </source>
+        <translation>Gói nhãn dán: </translation>
     </message>
     <message>
         <source>This sticker pack was deleted or no longer exists.</source>
@@ -4613,6 +5016,10 @@ Hãy chỉnh sửa số điện thoại và thử lại.</translation>
     <message>
         <source>Nothing found</source>
         <translation>Không tìm thấy gì</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>Hủy bỏ</translation>
     </message>
 </context>
 <context>
@@ -4660,20 +5067,32 @@ Hãy chỉnh sửa số điện thoại và thử lại.</translation>
 <context>
     <name>terms_privacy_widget</name>
     <message>
-        <source>Terms and Privacy Policy</source>
-        <translation>Điều khoản và Chính sách bảo mật</translation>
+        <source>Accept and agree</source>
+        <translation>Chấp nhận và đồng ý</translation>
     </message>
     <message>
-        <source>I AGREE</source>
-        <translation>Tôi đồng ý</translation>
+        <source>By clicking &quot;Accept and agree&quot;, you confirm that you have read carefully and agree to our &lt;a href=&quot;%1&quot;&gt;Terms&lt;/a&gt; and &lt;a href=&quot;%2&quot;&gt;Privacy Policy&lt;/a&gt;</source>
+        <translation>Bằng cách nhấp vào &quot;Chấp nhận và đồng ý&quot;, bạn xác nhận rằng bạn đã đọc kỹ và đồng ý với &lt;a href=&quot;%1&quot;&gt; Điều khoản &lt;/a&gt; và &lt;a href=&quot;%2&quot;&gt; Chính sách bảo mật &lt;/a&gt; của chúng tôi</translation>
     </message>
     <message>
-        <source>By clicking &quot;I Agree&quot;, you confirm that you have read carefully and agree to our &lt;a href=&quot;%1&quot;&gt;Terms&lt;/a&gt; and &lt;a href=&quot;%2&quot;&gt;Privacy Policy&lt;/a&gt;.</source>
-        <translation>Bằng cách nhấp vào Tôi đồng ý, bạn xác nhận rằng bạn đã đọc kỹ và đồng ý với &lt;a href=&quot;%1&quot;&gt;Điều khoản&lt;/a&gt; và &lt;a href=&quot;%2&quot;&gt;Chính sách bảo mật&lt;/a&gt; của chúng tôi.</translation>
+        <source>Welcome to Mail.ru Agent</source>
+        <translation>Chào mừng bạn đến với Đại lý Mail.ru</translation>
     </message>
     <message>
-        <source>Please pay your attention that we have updated our &lt;a href=&quot;%1&quot;&gt;Terms&lt;/a&gt; and &lt;a href=&quot;%2&quot;&gt;Privacy Policy&lt;/a&gt;. By clicking &quot;I Agree&quot;, you confirm that you have read updated documents carefully and agree to them.</source>
-        <translation>Hãy chú ý rằng chúng tôi đã cập nhật &lt;a href=&quot;%1&quot;&gt;Điều khoản&lt;/a&gt; và &lt;a href=&quot;%2&quot;&gt;Chính sách bảo mật&lt;/a&gt; của chúng tôi. Bằng cách nhấp vào Tôi đồng ý, bạn xác nhận rằng bạn đã đọc kỹ các tài liệu và đồng ý với chúng.</translation>
+        <source>Welcome to Myteam</source>
+        <translation>Chào mừng đến với myteam</translation>
+    </message>
+    <message>
+        <source>Welcome to Messenger</source>
+        <translation>Chào mừng đến với sứ giả</translation>
+    </message>
+    <message>
+        <source>ICQ New - the evolution of communication</source>
+        <translation>ICQ New — sự phát triển của truyền thông</translation>
+    </message>
+    <message>
+        <source>Welcome to ICQ</source>
+        <translation>Chào mừng đến với ICQ</translation>
     </message>
 </context>
 <context>
@@ -4710,24 +5129,20 @@ Hãy chỉnh sửa số điện thoại và thử lại.</translation>
         <translation>Liên kết đã được sao chép</translation>
     </message>
     <message>
-        <source>There are no profiles with this email address</source>
-        <translation>Không có hồ sơ với hộp thư như vậy</translation>
-    </message>
-    <message>
         <source>There are no profiles or groups with this nickname</source>
         <translation>Không có hồ sơ hoặc nhóm với tên hiệu như thế này</translation>
+    </message>
+    <message>
+        <source>Copied to clipboard</source>
+        <translation>Sao chép vào clipboard</translation>
+    </message>
+    <message>
+        <source>There are no profiles with this email</source>
+        <translation>Không có hồ sơ với email này</translation>
     </message>
 </context>
 <context>
     <name>tooltips</name>
-    <message>
-        <source>Search for messages</source>
-        <translation>Tìm kiếm tin nhắn</translation>
-    </message>
-    <message>
-        <source>Call</source>
-        <translation>Gọi</translation>
-    </message>
     <message>
         <source>Video call</source>
         <translation>Cuộc gọi hình ảnh</translation>
@@ -4735,10 +5150,6 @@ Hãy chỉnh sửa số điện thoại và thử lại.</translation>
     <message>
         <source>Add member</source>
         <translation>Thêm thành viên</translation>
-    </message>
-    <message>
-        <source>Chat options</source>
-        <translation>Tùy chọn trò chuyện</translation>
     </message>
     <message>
         <source>Smileys and stickers</source>
@@ -4749,20 +5160,20 @@ Hãy chỉnh sửa số điện thoại và thử lại.</translation>
         <translation>Mở trang trò chuyện</translation>
     </message>
     <message>
-        <source>Exit full screen</source>
-        <translation>Thoát toàn màn hình</translation>
-    </message>
-    <message>
-        <source>Full screen</source>
-        <translation>Toàn màn hình</translation>
-    </message>
-    <message>
         <source>Turn off camera</source>
         <translation>Tắt máy ảnh</translation>
     </message>
     <message>
         <source>Turn on camera</source>
         <translation>Bật máy ảnh</translation>
+    </message>
+    <message>
+        <source>Turn off microphone</source>
+        <translation>Tắt micrô</translation>
+    </message>
+    <message>
+        <source>Turn on microphone</source>
+        <translation>Bật micrô</translation>
     </message>
     <message>
         <source>Turn off screen sharing</source>
@@ -4773,12 +5184,20 @@ Hãy chỉnh sửa số điện thoại và thử lại.</translation>
         <translation>Bật chia sẻ màn hình</translation>
     </message>
     <message>
-        <source>Turn off microphone</source>
-        <translation>Tắt micrô</translation>
+        <source>Call</source>
+        <translation>Gọi</translation>
     </message>
     <message>
-        <source>Turn on microphone</source>
-        <translation>Bật micrô</translation>
+        <source>Search for messages</source>
+        <translation>Tìm kiếm tin nhắn</translation>
+    </message>
+    <message>
+        <source>Exit full screen</source>
+        <translation>Thoát toàn màn hình</translation>
+    </message>
+    <message>
+        <source>Full screen</source>
+        <translation>Toàn màn hình</translation>
     </message>
     <message>
         <source>End call</source>
@@ -4792,9 +5211,21 @@ Hãy chỉnh sửa số điện thoại và thử lại.</translation>
         <source>Attach</source>
         <translation>Đính kèm</translation>
     </message>
+    <message>
+        <source>Information</source>
+        <translation>Thông tin</translation>
+    </message>
 </context>
 <context>
     <name>tray_menu</name>
+    <message>
+        <source>Quit</source>
+        <translation>Thoát</translation>
+    </message>
+    <message>
+        <source>Open</source>
+        <translation>Mở</translation>
+    </message>
     <message>
         <source>New email</source>
         <translation>Email mới</translation>
@@ -4819,14 +5250,6 @@ Hãy chỉnh sửa số điện thoại và thử lại.</translation>
         <comment>21</comment>
         <translation> email mới</translation>
     </message>
-    <message>
-        <source>Open</source>
-        <translation>Mở</translation>
-    </message>
-    <message>
-        <source>Quit</source>
-        <translation>Thoát</translation>
-    </message>
 </context>
 <context>
     <name>videoplayer</name>
@@ -4838,20 +5261,16 @@ Hãy chỉnh sửa số điện thoại và thử lại.</translation>
 <context>
     <name>voip_pages</name>
     <message>
-        <source>Add to call</source>
-        <translation>Thêm vào cuộc gọi</translation>
-    </message>
-    <message>
-        <source>Screen</source>
-        <translation>Màn hình</translation>
+        <source>and</source>
+        <translation>và</translation>
     </message>
     <message>
         <source>Incoming call</source>
         <translation>Cuộc gọi đến</translation>
     </message>
     <message>
-        <source>and</source>
-        <translation>và</translation>
+        <source>Settings</source>
+        <translation>Cài đặt</translation>
     </message>
     <message>
         <source>Call is secured</source>
@@ -4866,8 +5285,8 @@ Hãy chỉnh sửa số điện thoại và thử lại.</translation>
         <translation>Cách hoạt động</translation>
     </message>
     <message>
-        <source>OK</source>
-        <translation>ĐƯỢC</translation>
+        <source>Add to call</source>
+        <translation>Thêm vào cuộc gọi</translation>
     </message>
     <message>
         <source>MEMBERS</source>
@@ -4878,8 +5297,12 @@ Hãy chỉnh sửa số điện thoại và thử lại.</translation>
         <translation>KHÁC</translation>
     </message>
     <message>
-        <source>Settings</source>
-        <translation>Cài đặt</translation>
+        <source>Screen</source>
+        <translation>Màn hình</translation>
+    </message>
+    <message>
+        <source>OK</source>
+        <translation>ĐƯỢC</translation>
     </message>
     <message>
         <source>DECLINE</source>
@@ -4892,6 +5315,14 @@ Hãy chỉnh sửa số điện thoại và thử lại.</translation>
     <message>
         <source>VIDEO</source>
         <translation>HÌNH ẢNH VIDEO</translation>
+    </message>
+    <message>
+        <source>Screen recording permissions</source>
+        <translation>Quyền ghi màn hình</translation>
+    </message>
+    <message>
+        <source>To share screen you need to allow access to the screen recording in the system settings</source>
+        <translation>Để chia sẻ màn hình, bạn cần cho phép truy cập vào bản ghi màn hình trong cài đặt hệ thống</translation>
     </message>
 </context>
 <context>

@@ -279,7 +279,7 @@ namespace Ui
 
         QLinearGradient overlay(bottomRect.x(), bottomRect.y(), bottomRect.x(), bottomRect.y() + bottomRect.height());
 
-        overlay.setColorAt(0, Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE));
+        overlay.setColorAt(0, Qt::transparent);
         overlay.setColorAt(1, Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE));
 
         _p.fillRect(bottomRect, overlay);
@@ -391,9 +391,10 @@ namespace Ui
         drawOverlayGradientIfNeeded(p);
     }
 
-    CheckBox::CheckBox(QWidget* _parent)
+    CheckBox::CheckBox(QWidget* _parent, Qt::Alignment _align)
         : QCheckBox(_parent)
         , state_(Activity::NORMAL)
+        , align_(_align)
     {
         setFixedHeight(Utils::scale_value(40));
         setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
@@ -437,11 +438,19 @@ namespace Ui
         p.setRenderHint(QPainter::SmoothPixmapTransform);
 
         const auto indSize = Utils::scale_value(buttonSize);
+        const auto textPadding = Utils::scale_value(12);
 
-        const QRect indicatorRect(QPoint(0, (height() - indSize.height()) / 2), indSize);
+        auto leftMargin = 0;
+        if (align_ == Qt::AlignHCenter)
+        {
+            auto fm = fontMetrics();
+            auto textWidth = fm.width(text());
+            leftMargin = (width() - (textWidth + indSize.width() + textPadding)) / 2;
+        }
+
+        const QRect indicatorRect(QPoint(leftMargin, (height() - indSize.height()) / 2), indSize);
         p.drawPixmap(indicatorRect, getCheckBoxIcon(state_));
 
-        const auto textPadding = Utils::scale_value(12);
         const auto textLeft = indicatorRect.right() + 1 + textPadding;
         const QRect textRect(textLeft, 0, width() - textLeft, height());
         p.drawText(textRect, text(), Qt::AlignVCenter | Qt::AlignLeft);

@@ -208,22 +208,41 @@ void TopPacksView::paintEvent(QPaintEvent* _e)
         {
             const QRect imageRect(stickerRect.left(), stickerRect.top(), getPackIconSize(), getPackIconSize());
 
-            if ((int) i == hoveredPack_)
+            if ((int)i == hoveredPack_)
             {
                 Utils::PainterSaver ps(p);
 
                 p.setBrush(hoveredBrush);
                 p.setPen(Qt::PenStyle::NoPen);
-                p.setRenderHint(QPainter::HighQualityAntialiasing);
+                p.setRenderHint(QPainter::Antialiasing);
 
                 const qreal radius = qreal(Utils::scale_value(8));
 
                 p.drawRoundedRect(imageRect, radius, radius);
             }
 
+            if (!packs_[i].iconRequested_)
+            {
+                const auto stickersSet = Stickers::getStoreSet(packs_[i].id_);
+                packs_[i].icon_ = stickersSet->getBigIcon();
+                packs_[i].iconRequested_ = true;
+            }
+
             if (!packs_[i].icon_.isNull())
             {
                 p.drawPixmap(imageRect, packs_[i].icon_);
+            }
+            else
+            {
+                Utils::PainterSaver ps(p);
+
+                p.setBrush(hoveredBrush);
+                p.setPen(Qt::PenStyle::NoPen);
+                p.setRenderHint(QPainter::Antialiasing);
+
+                const qreal radius = qreal(Utils::scale_value(8));
+
+                p.drawRoundedRect(imageRect, radius, radius);
             }
 
             auto & nameUnit = nameUnits_[packs_[i].id_];
@@ -325,43 +344,31 @@ void TopPacksView::scrollStep(direction _direction)
     QRect viewRect = parent_->viewport()->geometry();
     auto scrollbar = parent_->horizontalScrollBar();
 
-    int maxVal = scrollbar->maximum();
-    int minVal = scrollbar->minimum();
-    int curVal = scrollbar->value();
+    const int maxVal = scrollbar->maximum();
+    const int minVal = scrollbar->minimum();
+    const int curVal = scrollbar->value();
 
-    int step = viewRect.width() / 2;
+    const int step = viewRect.width() / 2;
 
     int to = 0;
 
     if (_direction == TopPacksView::direction::right)
-    {
-        to = curVal + step;
-        if (to > maxVal)
-        {
-            to = maxVal;
-        }
-    }
+        to = std::min(curVal + step, maxVal);
     else
-    {
-        to = curVal - step;
-        if (to < minVal)
-        {
-            to = minVal;
-        }
-
-    }
-
-    QEasingCurve easing_curve = QEasingCurve::InQuad;
-    int duration = 300;
+        to = std::max(curVal - step, minVal);
 
     if (!animScroll_)
+    {
+        constexpr auto duration = std::chrono::milliseconds(300);
+
         animScroll_ = new QPropertyAnimation(scrollbar, QByteArrayLiteral("value"), this);
+        animScroll_->setEasingCurve(QEasingCurve::InQuad);
+        animScroll_->setDuration(duration.count());
+    }
 
     animScroll_->stop();
-    animScroll_->setDuration(duration);
     animScroll_->setStartValue(curVal);
     animScroll_->setEndValue(to);
-    animScroll_->setEasingCurve(easing_curve);
     animScroll_->start();
 }
 
@@ -496,8 +503,8 @@ void PacksWidget::init(const bool _fromServer)
                 stickersSet->getName(),
                 stickersSet->getSubtitle(),
                 stickersSet->getStoreId(),
-                scaleIcon(stickersSet->getBigIcon(), getPackIconSize()),
-                stickersSet->isPurchased()));
+                scaleIcon(QPixmap(), getPackIconSize()),
+                stickersSet->isPurchased(), false));
         }
     }
 
@@ -699,7 +706,7 @@ void drawButton(QPainter& _p, const QPixmap& _image, const QRect& _buttonRect)
     _p.drawPixmap(imageRect, _image);
 }
 
-void PacksView::drawStickerPack(QPainter& _p, const QRect& _stickerRect, const PackInfo& _pack, bool _hovered, bool _selected)
+void PacksView::drawStickerPack(QPainter& _p, const QRect& _stickerRect, PackInfo& _pack, bool _hovered, bool _selected)
 {
     bool highlight = _hovered || _selected;
     if (highlight)
@@ -712,6 +719,13 @@ void PacksView::drawStickerPack(QPainter& _p, const QRect& _stickerRect, const P
 
     const QRect iconRect(_stickerRect.left() + getMarginLeft(), _stickerRect.top() + getMyPackIconTopMargin(), getMyPackIconSize(), getMyPackIconSize());
 
+    if (!_pack.iconRequested_)
+    {
+        const auto stickersSet = Stickers::getStoreSet(_pack.id_);
+        _pack.icon_ = stickersSet->getBigIcon();
+        _pack.iconRequested_ = true;
+    }
+
     if (!_pack.icon_.isNull())
     {
         _p.drawPixmap(iconRect, _pack.icon_);
@@ -719,7 +733,7 @@ void PacksView::drawStickerPack(QPainter& _p, const QRect& _stickerRect, const P
     else
     {
         Utils::PainterSaver ps(_p);
-        auto fillColor = Styling::getParameters().getColor( highlight ? Styling::StyleVariable::BASE_BRIGHT_INVERSE : Styling::StyleVariable::BASE_GLOBALWHITE);
+        auto fillColor = Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT_INVERSE);
         _p.setBrush(fillColor);
         _p.setPen(Qt::transparent);
         _p.drawRoundedRect(iconRect, getPackIconPlaceholderRadius(), getPackIconPlaceholderRadius());
@@ -834,8 +848,8 @@ void PacksView::mousePressEvent(QMouseEvent* _e)
                 {
                     const auto packId = packs_[i].id_;
                     const auto confirm = Utils::GetConfirmationWithTwoButtons(
-                        QT_TRANSLATE_NOOP("popup_window", "CANCEL"),
-                        QT_TRANSLATE_NOOP("popup_window", "YES"),
+                        QT_TRANSLATE_NOOP("popup_window", "Cancel"),
+                        QT_TRANSLATE_NOOP("popup_window", "Yes"),
                         QT_TRANSLATE_NOOP("popup_window", "Are you sure you want to remove this sticker pack?"),
                         QT_TRANSLATE_NOOP("popup_window", "Remove sticker pack"),
                         nullptr);
@@ -1204,8 +1218,8 @@ void MyPacksWidget::init(const bool _fromServer)
                 Utils::replaceLine(stickersSet->getName()),
                 Utils::replaceLine(stickersSet->getSubtitle()),
                 stickersSet->getStoreId(),
-                scaleIcon(stickersSet->getBigIcon(), Utils::scale_value(52)),
-                stickersSet->isPurchased()));
+                scaleIcon(QPixmap(), Utils::scale_value(52)),
+                stickersSet->isPurchased(), false));
         }
     }
 
@@ -1289,18 +1303,23 @@ void MyPacksWidget::createPackButtonClicked()
 {
     std::weak_ptr<bool> wr_ref = ref_;
 
-    const auto bot = Stickers::getBotUin();
+    const auto bot = Utils::getStickerBotAimId();
 
-    Logic::getContactListModel()->setCurrent(bot, -1, true);
-
-    Logic::getContactListModel()->addContactToCL(bot, [wr_ref, bot](bool _res)
+    if (Logic::getContactListModel()->contains(bot))
     {
-        auto ref = wr_ref.lock();
-        if (!ref)
-            return;
-
         Logic::getContactListModel()->setCurrent(bot, -1, true);
-    });
+    }
+    else
+    {
+        Logic::getContactListModel()->addContactToCL(bot, [wr_ref, bot](bool _res)
+        {
+            auto ref = wr_ref.lock();
+            if (!ref)
+                return;
+
+            Logic::getContactListModel()->setCurrent(bot, -1, true);
+        });
+    }
 
     GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::stickers_discover_addbot_bottom_tap);
 }
@@ -1655,14 +1674,14 @@ StickersPageHeader::StickersPageHeader(QWidget *_parent)
     searchLayout->addWidget(searchInput_);
     searchLayout->addSpacing(Utils::scale_value(back_spacing));
 
-    searchButton_ = new DialogButton(this, QT_TRANSLATE_NOOP("stickers", "SEARCH"), DialogButtonRole::CONFIRM);
+    searchButton_ = new DialogButton(this, QT_TRANSLATE_NOOP("stickers", "Search"), DialogButtonRole::CONFIRM);
     searchButton_->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     searchButton_->setEnabled(false);
     searchButton_->adjustSize();
     searchLayout->addWidget(searchButton_);
     searchLayout->addSpacing(Utils::scale_value(back_spacing));
 
-    auto cancelButton = new DialogButton(this, QT_TRANSLATE_NOOP("stickers", "CANCEL"), DialogButtonRole::CANCEL);
+    auto cancelButton = new DialogButton(this, QT_TRANSLATE_NOOP("stickers", "Cancel"), DialogButtonRole::CANCEL);
     cancelButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     cancelButton->adjustSize();
     searchLayout->addWidget(cancelButton);
@@ -1847,7 +1866,7 @@ void SearchPacksWidget::init(const bool _fromServer)
                     Utils::replaceLine(stickersSet->getSubtitle()),
                     stickersSet->getStoreId(),
                     scaleIcon(stickersSet->getBigIcon(), Utils::scale_value(52)),
-                    stickersSet->isPurchased()));
+                    stickersSet->isPurchased(), true));
            }
         }
     };

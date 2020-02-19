@@ -32,6 +32,7 @@ namespace core
 
             attach_phone(wim_packet_params _params, const phone_info& _info);
             int32_t get_response_error_code();
+            bool is_valid() const override { return true; }
             virtual ~attach_phone();
         };
 

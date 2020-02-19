@@ -26,7 +26,7 @@ namespace Ui
 
     WallpaperPreviewWidget::WallpaperPreviewWidget(QWidget* _parent, const PreviewMessagesVector& _messages)
         : QWidget(_parent)
-        , bg_(new BackgroundWidget(this))
+        , bg_(new BackgroundWidget(this, false))
     {
         auto rootLayout = Utils::emptyHLayout(this);
         rootLayout->addWidget(bg_);
@@ -35,39 +35,27 @@ namespace Ui
 
         for (const auto& i: _messages)
         {
-            auto msg = ComplexMessageItemBuilder::makeComplexItem(
-                this,
-                -1,
-                QString(),
-                QDate::currentDate(),
-                -1,
-                i.text_,
-                Styling::getTryOnAccount(),
-                Styling::getTryOnAccount(),
-                i.senderFriendly_,
-                {},
-                {},
-                {},
-                {},
-                i.senderFriendly_.isEmpty(),
-                false,
-                false,
-                QString(),
-                QString(),
-                Data::SharedContact());
-            msg->setEdited(i.isEdited_);
-            msg->setTime(QDateTime(QDate::currentDate(), i.time_).toTime_t());
-            msg->setHasAvatar(false);
-            msg->setMchatSender(i.senderFriendly_);
-            msg->setHasSenderName(!msg->isOutgoing());
-            msg->setContextMenuEnabled(false);
+            Data::MessageBuddy msg;
+            msg.SetText(i.text_);
+            msg.SetDate(QDate::currentDate());
+            msg.AimId_ = Styling::getTryOnAccount();
+            msg.SetOutgoing(i.senderFriendly_.isEmpty());
+            auto item = ComplexMessageItemBuilder::makeComplexItem(this, msg, ComplexMessageItemBuilder::ForcePreview::No);
 
-            msg->onActivityChanged(true);
-            msg->onVisibilityChanged(true);
+            item->setEdited(i.isEdited_);
+            item->setTime(QDateTime(QDate::currentDate(), i.time_).toTime_t());
+            item->setHasAvatar(false);
+            item->setMchatSender(i.senderFriendly_);
+            item->setHasSenderName(!item->isOutgoing());
+            item->setContextMenuEnabled(false);
+            item->setMultiselectEnabled(false);
 
-            msg->setAttribute(Qt::WA_TransparentForMouseEvents);
+            item->onActivityChanged(true);
+            item->onVisibilityChanged(true);
 
-            pageLayout->addWidget(msg.release());
+            item->setAttribute(Qt::WA_TransparentForMouseEvents);
+
+            pageLayout->addWidget(item.release());
         }
 
         connect(&Styling::getThemesContainer(), &Styling::ThemesContainer::wallpaperImageAvailable, this, &WallpaperPreviewWidget::onWallpaperAvailable);

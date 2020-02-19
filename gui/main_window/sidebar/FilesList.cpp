@@ -15,6 +15,7 @@
 #include "../history_control/FileSizeFormatter.h"
 #include "utils/stat_utils.h"
 #include "../../styles/ThemeParameters.h"
+#include "previewer/toast.h"
 
 #ifdef __APPLE__
 #   include "../../utils/macos/mac_support.h"
@@ -123,7 +124,6 @@ namespace Ui
     void FileItem::draw(QPainter& _p, const QRect& _rect, double _progress)
     {
         _p.setRenderHints(QPainter::Antialiasing);
-        _p.setRenderHints(QPainter::HighQualityAntialiasing);
         if (!more_.isNull())
             _p.drawPixmap(width_ - Utils::scale_value(RIGHT_OFFSET) / 2 - Utils::scale_value(MORE_BUTTON_SIZE) / 2, height_ / 2 - Utils::scale_value(MORE_BUTTON_SIZE) / 2 + _rect.y(), more_);
 
@@ -201,6 +201,9 @@ namespace Ui
 
     void FileItem::setWidth(int _width)
     {
+        if (width_ == _width)
+            return;
+
         width_ = _width;
         if (name_)
             name_->elide(width_ - Utils::scale_value(HOR_OFFSET + RIGHT_OFFSET + PREVIEW_SIZE + PREVIEW_RIGHT_OFFSET));
@@ -504,7 +507,7 @@ namespace Ui
     void FilesList::resizeEvent(QResizeEvent* _event)
     {
         for (auto& i : Items_)
-            i->setWidth(_event->size().width());
+            i->setWidth(width());
 
         MediaContentWidget::resizeEvent(_event);
     }
@@ -598,7 +601,7 @@ namespace Ui
                 }
                 if (i->isOverDate(_event->pos()))
                 {
-                    emit Logic::getContactListModel()->select(aimId_, i->getMsg(), i->getMsg(), Logic::UpdateChatSelection::No);
+                    emit Logic::getContactListModel()->select(aimId_, i->getMsg(), Logic::UpdateChatSelection::No);
                     i->setDateState(true, false);
                 }
                 else

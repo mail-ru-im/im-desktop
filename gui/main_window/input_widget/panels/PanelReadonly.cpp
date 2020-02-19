@@ -22,16 +22,6 @@ namespace
         return QSize(32, 32);
     }
 
-    QSize buttonIconSize()
-    {
-        return QSize(32, 32);
-    }
-
-    int textIconSpacing()
-    {
-        return Utils::scale_value(4);
-    }
-
     bool isShareButtonEnabled(const Ui::ReadonlyPanelState _state)
     {
         return _state != Ui::ReadonlyPanelState::DeleteAndLeave && _state != Ui::ReadonlyPanelState::Unblock;
@@ -40,123 +30,9 @@ namespace
 
 namespace Ui
 {
-    PanelButton::PanelButton(QWidget* _parent)
-        : ClickableWidget(_parent)
-    {
-        connect(this, &PanelButton::hoverChanged, this, Utils::QOverload<>::of(&PanelButton::update));
-        connect(this, &PanelButton::pressChanged, this, Utils::QOverload<>::of(&PanelButton::update));
-
-        setFocusPolicy(Qt::TabFocus);
-    }
-
-    void PanelButton::setColors(const QColor& _bgNormal, const QColor& _bgHover, const QColor& _bgActive)
-    {
-        bgNormal_ = _bgNormal;
-        bgHover_ = _bgHover;
-        bgActive_ = _bgActive;
-        update();
-    }
-
-    void PanelButton::setTextColor(const QColor& _color)
-    {
-        textColor_ = _color;
-
-        if (text_)
-            text_->setColor(_color);
-
-        update();
-    }
-
-    void PanelButton::setText(const QString& _text)
-    {
-        if (_text.isEmpty())
-        {
-            text_.reset();
-        }
-        else
-        {
-            text_ = TextRendering::MakeTextUnit(_text, {}, TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
-            text_->init(Fonts::appFontScaled(12, Fonts::FontWeight::Medium), textColor_);
-            text_->evaluateDesiredSize();
-        }
-
-        update();
-    }
-
-    void PanelButton::setIcon(const QString& _iconPath)
-    {
-        icon_ = Utils::renderSvgScaled(_iconPath, buttonIconSize(), textColor_);
-        update();
-    }
-
-    void PanelButton::paintEvent(QPaintEvent*)
-    {
-        QPainter p(this);
-        p.setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
-
-        if (const auto bg = getBgColor(); bg.isValid())
-            drawInputBubble(p, rect(), bg, getVerMargin(), getVerMargin());
-
-        const auto hasIcon = !icon_.isNull();
-        const auto hasText = !!text_;
-
-        if (!hasIcon && !hasText)
-            return;
-
-        const auto r = Utils::scale_bitmap_ratio();
-        const auto iconWidth = hasIcon ? icon_.width() / r : 0;
-        const auto textWidth = hasText ? text_->desiredWidth() : 0;
-        const auto fullWidth = iconWidth + textWidth + ((hasText && hasIcon) ? textIconSpacing() : 0);
-
-        if (hasIcon)
-        {
-            const auto x = (width() - fullWidth) / 2;
-            const auto y = (height() - icon_.height() / r) / 2;
-            p.drawPixmap(x, y, icon_);
-        }
-
-        if (hasText)
-        {
-            const auto x = (width() - fullWidth) / 2 + (fullWidth - textWidth);
-            const auto y = height() / 2;
-            text_->setOffsets(x, y);
-
-            text_->draw(p, TextRendering::VerPosition::MIDDLE);
-        }
-    }
-
-    void PanelButton::resizeEvent(QResizeEvent* _event)
-    {
-        bubblePath_ = QPainterPath();
-        update();
-    }
-
-    void PanelButton::focusInEvent(QFocusEvent* _event)
-    {
-        update();
-    }
-
-    void PanelButton::focusOutEvent(QFocusEvent* _event)
-    {
-        update();
-    }
-
-    QColor PanelButton::getBgColor() const
-    {
-        QColor bg;
-        if ((isPressed() || hasFocus()) && bgActive_.isValid())
-            bg = bgActive_;
-        else if (isHovered() && bgHover_.isValid())
-            bg = bgHover_;
-        else
-            bg = bgNormal_;
-
-        return bg;
-    }
-
     InputPanelReadonly::InputPanelReadonly(QWidget* _parent)
         : QWidget(_parent)
-        , mainButton_(new PanelButton(this))
+        , mainButton_(new RoundButton(this))
         , shareButton_(new CustomButton(this, qsl(":/input/share"), shareButtonSize()))
     {
         setFixedHeight(getDefaultInputHeight());
@@ -184,7 +60,7 @@ namespace Ui
         Testing::setAccessibleName(mainButton_, qsl("AS inputwidget mainButton_"));
         Testing::setAccessibleName(shareHost, qsl("AS inputwidget shareHost"));
 
-        connect(mainButton_, &PanelButton::clicked, this, &InputPanelReadonly::onButtonClicked);
+        connect(mainButton_, &RoundButton::clicked, this, &InputPanelReadonly::onButtonClicked);
         connect(shareButton_, &CustomButton::clicked, this, &InputPanelReadonly::onShareClicked);
 
         connect(Ui::GetDispatcher(), &Ui::core_dispatcher::chatInfo, this, [this](const auto, const auto& _chatInfo){ updateFromChatInfo(_chatInfo); });
@@ -241,27 +117,27 @@ namespace Ui
         case ReadonlyPanelState::AddToContactList:
             mainButton_->setTextColor(Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT));
             mainButton_->setIcon(qsl(":/input/add"));
-            mainButton_->setText(isChannel_ ? QT_TRANSLATE_NOOP("input_widget", "SUBSCRIBE") : QT_TRANSLATE_NOOP("input_widget", "JOIN"));
+            mainButton_->setText(isChannel_ ? QT_TRANSLATE_NOOP("input_widget", "Subscribe") : QT_TRANSLATE_NOOP("input_widget", "Join"), platform::is_apple() ? 15 : 16);
             break;
         case ReadonlyPanelState::EnableNotifications:
             mainButton_->setTextColor(Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY));
             mainButton_->setIcon(qsl(":/input/unmute"));
-            mainButton_->setText(QT_TRANSLATE_NOOP("input_widget", "ENABLE NOTIFICATIONS"));
+            mainButton_->setText(QT_TRANSLATE_NOOP("input_widget", "Enable notifications"), platform::is_apple() ? 15 : 16);
             break;
         case ReadonlyPanelState::DisableNotifications:
             mainButton_->setTextColor(Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
             mainButton_->setIcon(qsl(":/input/mute"));
-            mainButton_->setText(QT_TRANSLATE_NOOP("input_widget", "DISABLE NOTIFICATIONS"));
+            mainButton_->setText(QT_TRANSLATE_NOOP("input_widget", "Disable notifications"), platform::is_apple() ? 15 : 16);
             break;
         case ReadonlyPanelState::DeleteAndLeave:
             mainButton_->setTextColor(Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_ATTENTION));
             mainButton_->setIcon(qsl(":/input/delete"));
-            mainButton_->setText(QT_TRANSLATE_NOOP("input_widget", "DELETE AND LEAVE"));
+            mainButton_->setText(QT_TRANSLATE_NOOP("input_widget", "Delete and leave"), platform::is_apple() ? 15 : 16);
             break;
         case ReadonlyPanelState::Unblock:
             mainButton_->setTextColor(Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_ATTENTION));
             mainButton_->setIcon(qsl(":/input/unlock"));
-            mainButton_->setText(QT_TRANSLATE_NOOP("input_widget", "UNBLOCK"));
+            mainButton_->setText(QT_TRANSLATE_NOOP("input_widget", "Unblock"), platform::is_apple() ? 15 : 16);
             break;
 
         default:
@@ -318,10 +194,7 @@ namespace Ui
     {
         assert(!stamp_.isEmpty());
         if (!stamp_.isEmpty())
-        {
             Logic::getContactListModel()->joinLiveChat(stamp_, true);
-            Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::chatscr_join_action, { {"chat_type", getStatsChatTypeReadonly() } });
-        }
     }
 
     void InputPanelReadonly::notifClicked()
@@ -338,8 +211,8 @@ namespace Ui
     void InputPanelReadonly::unblockClicked()
     {
         const auto confirmed = Utils::GetConfirmationWithTwoButtons(
-            QT_TRANSLATE_NOOP("popup_window", "CANCEL"),
-            QT_TRANSLATE_NOOP("popup_window", "YES"),
+            QT_TRANSLATE_NOOP("popup_window", "Cancel"),
+            QT_TRANSLATE_NOOP("popup_window", "Yes"),
             QT_TRANSLATE_NOOP("popup_window", "Are you sure you want to delete user from ignore list?"),
             Logic::GetFriendlyContainer()->getFriendly(aimId_),
             nullptr);
@@ -354,8 +227,8 @@ namespace Ui
     void InputPanelReadonly::leaveClicked()
     {
         auto confirmed = Utils::GetConfirmationWithTwoButtons(
-            QT_TRANSLATE_NOOP("popup_window", "CANCEL"),
-            QT_TRANSLATE_NOOP("popup_window", "YES"),
+            QT_TRANSLATE_NOOP("popup_window", "Cancel"),
+            QT_TRANSLATE_NOOP("popup_window", "Yes"),
             QT_TRANSLATE_NOOP("popup_window", "Are you sure you want to leave chat?"),
             Logic::GetFriendlyContainer()->getFriendly(aimId_),
             nullptr);

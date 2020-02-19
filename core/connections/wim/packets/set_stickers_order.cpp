@@ -10,16 +10,14 @@
 using namespace core;
 using namespace wim;
 
-set_stickers_order_packet::set_stickers_order_packet(wim_packet_params _params, const std::vector<int32_t> _values)
+set_stickers_order_packet::set_stickers_order_packet(wim_packet_params _params, std::vector<int32_t>&& _values)
     :   wim_packet(std::move(_params)),
-        values_(_values)
+        values_(std::move(_values))
 {
 }
 
 
-set_stickers_order_packet::~set_stickers_order_packet()
-{
-}
+set_stickers_order_packet::~set_stickers_order_packet() = default;
 
 int32_t set_stickers_order_packet::init_request(std::shared_ptr<core::http_request_simple> _request)
 {
@@ -27,17 +25,17 @@ int32_t set_stickers_order_packet::init_request(std::shared_ptr<core::http_reque
 
     const time_t ts = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()) - params_.time_offset_;
 
-    const std::string host(urls::get_url(urls::url_type::stickers_store_host));
+    const std::string_view host = urls::get_url(urls::url_type::stickers_store_host);
 
     params["a"] = escape_symbols(params_.a_token_);
     params["f"] = "json";
     params["k"] = params_.dev_id_;
     params["platform"] = utils::get_protocol_platform_string();
 
-    for (unsigned int i = 0; i < values_.size(); ++i)
+    for (size_t i = 0; i < values_.size(); ++i)
     {
         std::stringstream ss_value;
-        ss_value << "priority[" << values_[i] << "]";
+        ss_value << "priority[" << values_[i] << ']';
 
         params[escape_symbols(ss_value.str())] = std::to_string(i + 1);
     }
@@ -49,16 +47,15 @@ int32_t set_stickers_order_packet::init_request(std::shared_ptr<core::http_reque
 
     params["client"] = core::utils::get_client_string();
 
-    params["lang"] = g_core->get_locale();
+    params["lang"] = params_.locale_;
 
-    std::stringstream ss_url;
-    ss_url << host << "/store/order_set";
+    const std::string ss_url = std::string(host) + "/store/order_set";
 
-    auto sha256 = escape_symbols(get_url_sign(ss_url.str(), params, params_, false));
+    auto sha256 = escape_symbols(get_url_sign(ss_url, params, params_, false));
     params["sig_sha256"] = std::move(sha256);
 
     std::stringstream ss_url_signed;
-    ss_url_signed << ss_url.str() << '?' << format_get_params(params);
+    ss_url_signed << ss_url << '?' << format_get_params(params);
 
     _request->set_url(ss_url_signed.str());
     _request->set_normalized_url("stickersStoreOrderSet");

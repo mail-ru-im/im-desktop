@@ -4,12 +4,17 @@
 #include <qnamespace.h>
 #include <QSize>
 #include "../utils/utils.h"
+#include "DialogButton.h"
 
 namespace Ui
 {
+    namespace TextRendering
+    {
+        class TextUnit;
+    }
+
     class qt_gui_settings;
     class SemitransparentWindowAnimated;
-    class DialogButton;
 
     class GeneralDialog : public QDialog
     {
@@ -63,7 +68,7 @@ namespace Ui
         DialogButton* addAcceptButton(const QString& _buttonText, const bool _isEnabled);
         DialogButton* addCancelButton(const QString& _buttonText, const bool _setActive = false);
         QPair<DialogButton* /* ok (right) button */, DialogButton* /* cancel (left) button */>
-        addButtonsPair(const QString& _buttonTextLeft, const QString& _buttonTextRight, bool _isActive, bool _rejectable = true, bool _acceptable = true, QWidget* _area = nullptr);
+        addButtonsPair(const QString& _buttonTextLeft, const QString& _buttonTextRight, bool _isActive, bool _rejectable = true, bool _acceptable = true, QWidget* _area = nullptr, const DialogButtonShape _shape = DialogButtonShape::DEFAULT);
         void setButtonsAreaMargins(const QMargins& _margins);
 
         DialogButton* takeAcceptButton();
@@ -97,7 +102,6 @@ namespace Ui
         void mousePressEvent(QMouseEvent* _e) override;
         void keyPressEvent(QKeyEvent* _e) override;
         bool eventFilter(QObject* _obj, QEvent* _event) override;
-        bool focusNextPrevChild(bool) override { return false; }
 
     private:
         QHBoxLayout* getBottomLayout();
@@ -126,5 +130,35 @@ namespace Ui
         Options options_;
 
         static bool inExec_;
+    };
+
+    class TwoOptionsWidget : public QWidget
+    {
+        Q_OBJECT
+
+    public:
+        TwoOptionsWidget(QWidget* _parent, const QString& _firstOptionIcon, const QString& _firstOption, const QString& _secondOptionIcon, const QString& _secondOption);
+
+        bool isFirstSelected() const;
+        bool isSecondSelected() const;
+
+    protected:
+        void paintEvent(QPaintEvent* _event) override;
+        void resizeEvent(QResizeEvent* _event) override;
+        void mouseMoveEvent(QMouseEvent* _event) override;
+        void mousePressEvent(QMouseEvent* _event) override;
+        void mouseReleaseEvent(QMouseEvent* _event) override;
+        void leaveEvent(QEvent* _event) override;
+
+    private:
+        TextRendering::TextUnitPtr firstOption_;
+        TextRendering::TextUnitPtr secondOption_;
+        QPixmap firstOptionIcon_;
+        QPixmap secondOptionIcon_;
+        bool firstHovered_;
+        bool firstSelected_;
+        bool secondHovered_;
+        bool secondSelected_;
+        QPoint pos_;
     };
 }

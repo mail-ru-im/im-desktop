@@ -2,7 +2,7 @@
 
 namespace Ui
 {
-    class InputEdit;
+    class TextEditEx;
     class TextBrowserEx;
     class DialogButton;
 
@@ -50,7 +50,7 @@ namespace Ui
         std::unique_ptr<TextRendering::TextUnit> headerUnit_;
         std::unique_ptr<TextRendering::TextUnit> hintUnit_;
         std::unique_ptr<TextRendering::TextUnit> counterUnit_;
-        InputEdit* description_;
+        TextEditEx* description_;
         DialogButton* okButton_;
         DialogButton* cancelButton_;
         int descriptionHeight_;

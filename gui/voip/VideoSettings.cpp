@@ -66,17 +66,14 @@ void Ui::VideoSettings::onVoipDeviceListUpdated(const voip_proxy::device_desc_ve
             comboBox = cbAudioCapture_;
             flagPtr = &audioCaUpd;
             break;
-
         case kvoipDevTypeAudioPlayback:
             comboBox = cbAudioPlayback_;
             flagPtr = &audioPlUpd;
             break;
-
         case  kvoipDevTypeVideoCapture:
             comboBox = cbVideoCapture_;
             flagPtr = &videoCaUpd;
             break;
-
         case kvoipDevTypeUndefined:
         default:
             assert(false);
@@ -85,16 +82,14 @@ void Ui::VideoSettings::onVoipDeviceListUpdated(const voip_proxy::device_desc_ve
 
         assert(comboBox && flagPtr);
         if (!comboBox || !flagPtr)
-        {
             continue;
-        }
 
         if (!*flagPtr)
         {
             *flagPtr = true;
             comboBox->clear();
         }
-        comboBox->addItem(QIcon(build::GetProductVariant(qsl(":/logo/ico_icq"), qsl(":/logo/ico_agent"), qsl(":/logo/ico_biz"), qsl(":/logo/ico_dit"))),
+        comboBox->addItem(QIcon(qsl(":/logo/ico")),
             QString::fromStdString(desc.name), QString::fromStdString(desc.uid));
     }
 }
@@ -119,8 +114,6 @@ void Ui::VideoSettings::audioPlaybackSettings()
     {
         assert(ret);
     }
-#else//WIN32
-    #warning audioPlaybackSettings
 #endif//WIN32
 }
 
@@ -144,9 +137,6 @@ void Ui::VideoSettings::audioCaptureSettings()
     {
         assert(false);
     }
-
-#else//WIN32
-    #warning audioPlaybackSettings
 #endif//WIN32
 }
 
@@ -154,23 +144,17 @@ void Ui::VideoSettings::_onComboBoxItemChanged(QComboBox& _cb, int _ix, const st
 {
     assert(_ix >= 0 && _ix < _cb.count());
     if (_ix < 0 || _ix >= _cb.count())
-    {
         return;
-    }
 
     auto var = _cb.itemData(_ix);
     assert(var.type() == QVariant::String);
     if ((var.type() != QVariant::String))
-    {
         return;
-    }
 
     std::string uid = var.toString().toUtf8().constData();
     assert(!uid.empty());
     if (uid.empty())
-    {
         return;
-    }
 
     Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
     collection.set_value_as_string("type", "device_change");
@@ -184,25 +168,19 @@ void Ui::VideoSettings::audioCaptureDevChanged(int _ix)
 {
     assert(cbAudioCapture_);
     if (cbAudioCapture_)
-    {
         _onComboBoxItemChanged(*cbAudioCapture_, _ix, "audio_capture");
-    }
 }
 
 void Ui::VideoSettings::audioPlaybackDevChanged(int _ix)
 {
     assert(cbAudioPlayback_);
     if (cbAudioPlayback_)
-    {
         _onComboBoxItemChanged(*cbAudioPlayback_, _ix, "audio_playback");
-    }
 }
 
 void Ui::VideoSettings::videoCaptureDevChanged(int _ix)
 {
     assert(cbVideoCapture_);
     if (cbVideoCapture_)
-    {
         _onComboBoxItemChanged(*cbVideoCapture_, _ix, "video_capture");
-    }
 }

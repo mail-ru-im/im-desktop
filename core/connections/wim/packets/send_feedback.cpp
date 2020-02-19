@@ -7,6 +7,7 @@
 #include "../../../corelib/enumerations.h"
 #include "../../../tools/system.h"
 #include "../../../tools/strings.h"
+#include "../common.shared/config/config.h"
 
 #include "zip.h"
 
@@ -24,12 +25,10 @@ send_feedback::send_feedback(wim_packet_params _params, const std::string &url, 
     if (fields_.find("fb.user_name") == fields_.end() || fields_["fb.user_name"].empty())
         fields_["fb.user_name"] = _params.aimid_;
 
-    fields_[build::get_product_variant("fb.question.3003", "fb.question.3003", "fb.question.53730", "fb.question.53741")] = _params.aimid_;
+    fields_[std::string(config::get().string(config::values::feedback_aimid_id))] = _params.aimid_;
 }
 
-send_feedback::~send_feedback()
-{
-}
+send_feedback::~send_feedback() = default;
 
 int32_t send_feedback::init_request(std::shared_ptr<core::http_request_simple> _request)
 {

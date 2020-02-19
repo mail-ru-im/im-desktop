@@ -1,12 +1,9 @@
-
 #include "stdafx.h"
 #include "MaskPanel.h"
 #include "DetachedVideoWnd.h"
 #include "../utils/utils.h"
 #include "../core_dispatcher.h"
 #include "MaskManager.h"
-#include "VoipTools.h"
-
 
 // Items view settings.
 enum {
@@ -59,13 +56,10 @@ Ui::MaskWidget::MaskWidget(const voip_masks::Mask* mask) : mask_(mask), loadingP
 void Ui::MaskWidget::paintEvent(QPaintEvent * /*event*/)
 {
     QPainter painter(this);
-
     painter.setRenderHint(QPainter::Antialiasing);
     painter.setRenderHint(QPainter::SmoothPixmapTransform);
-
     painter.setPen(Qt::NoPen);
     painter.setBrush(Qt::NoBrush);
-
     painter.fillRect(contentsRect(), Qt::transparent);
 
     int border = Utils::scale_value(SELECTED_ITEM_BORDER) * 2;
@@ -198,18 +192,11 @@ void Ui::MaskWidget::setChecked(bool check)
     if (check)
     {
         if (isEnabled())
-        {
             Ui::GetDispatcher()->getVoipController().loadMask(maskPath().toStdString());
-        }
         else
-        {
             applyWhenEnebled_ = true;
-        }
-    }
-    else
-    {
+    } else
         applyWhenEnebled_ = false;
-    }
 }
 
 void Ui::MaskWidget::updatePreview()
@@ -253,7 +240,6 @@ void Ui::MaskWidget::changeEvent(QEvent * event)
         Ui::GetDispatcher()->getVoipController().loadMask(maskPath().toStdString());
         applyWhenEnebled_ = false;
     }
-
     QPushButton::changeEvent(event);
 }
 
@@ -327,7 +313,6 @@ void Ui::MaskWidget::moveEvent(QMoveEvent *event)
     }
 }
 
-
 Ui::MaskPanel::MaskPanel(QWidget* _parent, QWidget* _container, int topOffset, int bottomOffset) :
 #ifdef __APPLE__
     // We use Qt::WindowDoesNotAcceptFocus for mac, bcause it fix ghost window after call stop on Sierra
@@ -358,7 +343,6 @@ Ui::MaskPanel::MaskPanel(QWidget* _parent, QWidget* _container, int topOffset, i
     //
 
     setContentsMargins(0, 0, 0, 0);
-
     setObjectName(qsl("MaskPanel"));
 
 #ifndef __linux__
@@ -368,7 +352,6 @@ Ui::MaskPanel::MaskPanel(QWidget* _parent, QWidget* _container, int topOffset, i
 #else
     setStyleSheet(Utils::LoadStyle(qsl(":/qss/mask_panel_linux")));
 #endif
-
 
 #ifndef __APPLE__
     backgroundWidget_ = new PanelBackground(this);
@@ -430,11 +413,9 @@ Ui::MaskPanel::~MaskPanel()
 {
 }
 
-
 void Ui::MaskPanel::changeEvent(QEvent* _e)
 {
     QWidget::changeEvent(_e);
-
     if (_e->type() == QEvent::ActivationChange)
     {
         if (isActiveWindow() || (rootWidget_ && rootWidget_->isActiveWindow()))
@@ -528,11 +509,9 @@ Ui::MaskWidget* Ui::MaskPanel::appendItem(const voip_masks::Mask* mask)
     if (mask)
     {
         icon->setMaskEngineReady(Ui::GetDispatcher()->getVoipController().isMaskEngineEnabled());
-
         connect(&Ui::GetDispatcher()->getVoipController(), SIGNAL(onVoipMaskEngineEnable(bool)),
             icon, SLOT(setMaskEngineReady(bool)), Qt::DirectConnection);
-    }
-    else
+    } else
     {
         icon->setMaskEngineReady(true);
     }
@@ -541,26 +520,22 @@ Ui::MaskWidget* Ui::MaskPanel::appendItem(const voip_masks::Mask* mask)
     connect(icon, &MaskWidget::loaded, this, &MaskPanel::onMaskLoaded);
 
     maskLayout_->addWidget(icon, 0, Qt::AlignTop);
-
     return icon;
 }
 
 void Ui::MaskPanel::changedMask()
 {
     MaskWidget* mask = qobject_cast<MaskWidget*>(sender());
-
     if (mask)
     {
         if (mask->isChecked())
         {
             sendSelectMaskStatistic(mask);
             selectMask(mask);
-        }
-        else
+        } else
         {
             selectMask(nullptr);
         }
-
         hidePreviewPrimaryTimer_->start();
     }
 }
@@ -611,8 +586,7 @@ void Ui::MaskPanel::selectMask(MaskWidget* mask)
         //    auto pixmap = mask ? mask->pixmap() : QPixmap();
         //    currentMaskButton_->setPixmap(pixmap);
         //}
-    }
-    else
+    } else
     {
         Ui::GetDispatcher()->getVoipController().loadMask("");
 
@@ -634,11 +608,11 @@ QWidget* Ui::MaskPanel::createMaskListWidget()
     maskLayout_->setAlignment(Qt::AlignTop);
     //maskLayout_->setAlignment(Qt::AlignHCenter | Qt::AlignTop);
 
-    scrollWidget_ = new voipTools::BoundBox<QWidget>();
+    scrollWidget_ = new QWidget();
     scrollWidget_->setObjectName(qsl("MaskList"));
     scrollWidget_->setContentsMargins(0, 0, 0, 0);
 
-    QWidget* res = new voipTools::BoundBox<QWidget>(QColor(255, 0, 0));
+    QWidget* res = new QWidget();
     res->setLayout(layoutMaskListWidget_);
     res->setContentsMargins(0, 0, 0, 0);
 
@@ -791,7 +765,6 @@ Ui::MaskWidget* Ui::MaskPanel::getFirstMask()
     {
         return maskButtons[0];
     }
-
     return nullptr;
 }
 
@@ -836,16 +809,13 @@ void Ui::MaskPanel::wheelEvent(QWheelEvent * event)
             {
                 maskList_->horizontalScrollBar()->triggerAction(QAbstractSlider::SliderSingleStepAdd);
                 maskList_->verticalScrollBar()->triggerAction(QAbstractSlider::SliderSingleStepAdd);
-            }
-            else
+            } else
             {
                 maskList_->horizontalScrollBar()->triggerAction(QAbstractSlider::SliderSingleStepSub);
                 maskList_->verticalScrollBar()->triggerAction(QAbstractSlider::SliderSingleStepSub);
             }
-
             (mouseWheelValue > 0 ? mouseWheelValue-- : mouseWheelValue++);
         }
-
         hidePreviewPrimaryTimer_->start();
     }
 }
@@ -870,19 +840,17 @@ void Ui::MaskPanel::sendOpenStatistic()
 void Ui::MaskPanel::enumerateMask(std::function<void(MaskWidget* mask)> func)
 {
     auto maskButtons = maskList_->widget()->findChildren<MaskWidget*>();
-
     std::for_each(maskButtons.begin(), maskButtons.end(), func);
 }
 
 void Ui::MaskPanel::sendSelectMaskStatistic(MaskWidget* mask)
 {
-    core::stats::event_props_type props;
-
     if (mask && !mask->name().isEmpty())
     {
         bool isAccepted = false;
         getCallStatus(isAccepted);
 
+        core::stats::event_props_type props;
         props.emplace_back("name", mask->name().toUtf8().data());
         props.emplace_back("when", isAccepted ? "call_started" : "call_outgoing");
 
@@ -896,15 +864,10 @@ void Ui::MaskPanel::scrollToWidget(QString maskName)
     enumerateMask([&](MaskWidget* mask)
     {
         if (maskName == mask->name())
-        {
             selectedMask = mask;
-        }
     });
-
     if (selectedMask)
-    {
         maskList_->ensureWidgetVisible(selectedMask, 0, 0);
-    }
 }
 
 bool Ui::MaskPanel::isOpened()
@@ -916,7 +879,6 @@ void Ui::MaskPanel::showEvent(QShowEvent* event)
 {
     //showMaskList();
     sendOpenStatistic();
-
     Ui::GetDispatcher()->getVoipController().initMaskEngine();
 }
 
@@ -954,7 +916,6 @@ void Ui::MaskPanel::fadeOut(unsigned int duration)
 void Ui::MaskPanel::updatePosition(const QWidget& parent)
 {
     BaseBottomVideoPanel::updatePosition(parent);
-
     rootWidget_->setFixedWidth(width());
 
     //if (!rootEffect_->isGeometryRunning())

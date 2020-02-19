@@ -4,17 +4,6 @@
 
 namespace Ui
 {
-    class TextEditEx;
-
-    class InputEdit : public TextEditEx
-    {
-    public:
-        InputEdit(QWidget* _parent, const QFont& _font, const QColor& _color, bool _input, bool _isFitToText);
-
-        bool catchEnter(const int _modifiers) override;
-        bool catchNewLine(const int _modifiers) override;
-    };
-
     class FilesAreaItem : public QWidget
     {
         Q_OBJECT
@@ -132,7 +121,7 @@ namespace Ui
     private:
         std::unique_ptr<TextRendering::TextUnit> title_;
         std::unique_ptr<TextRendering::TextUnit> durationLabel_;
-        InputEdit* description_;
+        TextEditEx* description_;
         QPixmap preview_;
         QString previewPath_;
         FilesScroll* area_;

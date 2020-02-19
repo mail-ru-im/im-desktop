@@ -26,8 +26,8 @@
 
 namespace Logic
 {
-    const MessageKey MessageKey::MAX(std::numeric_limits<qint64>::max(), std::numeric_limits<qint64>::max() - 1, QString(), -1, 0, core::message_type::base, false, preview_type::none, control_type::ct_message, QDate());
-    const MessageKey MessageKey::MIN(2, 1, QString(), -1, 0, core::message_type::base, false, preview_type::none, control_type::ct_message, QDate());
+    const MessageKey MessageKey::MAX(std::numeric_limits<qint64>::max(), std::numeric_limits<qint64>::max() - 1, QString(), -1, 0, core::message_type::base, false, control_type::ct_message, QDate());
+    const MessageKey MessageKey::MIN(2, 1, QString(), -1, 0, core::message_type::base, false, control_type::ct_message, QDate());
 
     MessageKey::MessageKey()
         : MessageKey(-1, control_type::ct_message)
@@ -43,7 +43,6 @@ namespace Logic
             -1,
             core::message_type::base,
             false,
-            preview_type::none,
             control_type::ct_message,
             QDate())
     {
@@ -59,7 +58,6 @@ namespace Logic
             -1,
             core::message_type::base,
             false,
-            preview_type::none,
             _control_type,
             QDate())
     {
@@ -73,7 +71,6 @@ namespace Logic
         const qint32 _time,
         const core::message_type _type,
         const bool _outgoing,
-        const preview_type _previewType,
         const control_type _control_type,
         const QDate _date)
         : id_(_id)
@@ -83,14 +80,11 @@ namespace Logic
         , controlType_(_control_type)
         , time_(_time)
         , pendingId_(_pendingId)
-        , previewType_(_previewType)
         , outgoing_(_outgoing)
         , date_(_date)
     {
         assert(type_ > core::message_type::min);
         assert(type_ < core::message_type::max);
-        assert(previewType_ > preview_type::min);
-        assert(previewType_ < preview_type::max);
     }
 
     bool MessageKey::operator<(const MessageKey& _other) const noexcept
@@ -185,6 +179,11 @@ namespace Logic
         return controlType_ == control_type::ct_date;
     }
 
+    bool MessageKey::isNewMessagesPlate() const noexcept
+    {
+        return controlType_ == control_type::ct_new_messages;
+    }
+
     bool MessageKey::iNewPlate() const noexcept
     {
         return controlType_ == control_type::ct_new_messages;
@@ -211,11 +210,6 @@ namespace Logic
     void MessageKey::setType(core::message_type _type) noexcept
     {
         type_ = _type;
-    }
-
-    preview_type MessageKey::getPreviewType() const noexcept
-    {
-        return previewType_;
     }
 
     qint64 MessageKey::getPrev() const noexcept
@@ -329,6 +323,11 @@ namespace Logic
         return key_.isDate();
     }
 
+    bool Message::isNewMessagesPlate() const noexcept
+    {
+        return key_.isNewMessagesPlate();
+    }
+
     bool Message::isDeleted() const noexcept
     {
         return deleted_;
@@ -384,11 +383,6 @@ namespace Logic
         assert((key_.getType() != core::message_type::voip_event) || voipEvent_);
 
         return (key_.getType() == core::message_type::voip_event);
-    }
-
-    bool Message::isPreview() const noexcept
-    {
-        return (key_.getPreviewType() != preview_type::none);
     }
 
     const HistoryControl::ChatEventInfoSptr& Message::getChatEvent() const

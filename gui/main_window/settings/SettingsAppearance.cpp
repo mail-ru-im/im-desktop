@@ -167,8 +167,8 @@ void GeneralSettingsWidget::Creator::initAppearance(QWidget* _parent)
                 const QString text = QT_TRANSLATE_NOOP("popup_window", "To change the scale you must restart the application. Continue?");
 
                 const auto confirmed = Utils::GetConfirmationWithTwoButtons(
-                    QT_TRANSLATE_NOOP("popup_window", "CANCEL"),
-                    QT_TRANSLATE_NOOP("popup_window", "YES"),
+                    QT_TRANSLATE_NOOP("popup_window", "Cancel"),
+                    QT_TRANSLATE_NOOP("popup_window", "Yes"),
                     text,
                     QT_TRANSLATE_NOOP("popup_window", "Restart"),
                     nullptr
@@ -238,8 +238,8 @@ void GeneralSettingsWidget::Creator::initAppearance(QWidget* _parent)
                 const QString text = QT_TRANSLATE_NOOP("popup_window", "To change the appearance you must restart the application. Continue?");
 
                 const auto confirmed = Utils::GetConfirmationWithTwoButtons(
-                    QT_TRANSLATE_NOOP("popup_window", "CANCEL"),
-                    QT_TRANSLATE_NOOP("popup_window", "YES"),
+                    QT_TRANSLATE_NOOP("popup_window", "Cancel"),
+                    QT_TRANSLATE_NOOP("popup_window", "Yes"),
                     text,
                     QT_TRANSLATE_NOOP("popup_window", "Restart"),
                     nullptr

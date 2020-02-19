@@ -32,12 +32,6 @@ namespace Ui
 
 namespace hist
 {
-    inline QString normalizeAimId(const QString& _aimId)
-    {
-        const int pos = _aimId.indexOf(ql1s("@uin.icq"));
-        return pos == -1 ? _aimId : _aimId.left(pos);
-    }
-
     Data::DlgState getDlgState(const QString& _contact);
 
     enum class scroll_mode_type
@@ -46,7 +40,8 @@ namespace hist
         search,
         unread,
         to_deleted,
-        background
+        background,
+        multiselect
     };
 
     enum class FetchDirection
@@ -154,6 +149,8 @@ namespace hist
         void setBottomBound(const Logic::MessageKey&, CheckViewLock _mode = CheckViewLock::Yes);
 
         bool isVisibleHoleBetween(qint64 _older, qint64 _newer) const;
+
+        qint64 lastMessageId() const;
 
     signals:
         void fetchedToNew(QPrivateSignal) const;

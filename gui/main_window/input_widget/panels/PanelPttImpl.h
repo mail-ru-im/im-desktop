@@ -38,7 +38,9 @@ namespace Ui
         void pauseRecord();
 
         void play();
+        bool tryPlay();
         void pausePlay();
+        bool tryPausePlay();
 
         void getData(ptt::StatInfo&&);
 
@@ -47,6 +49,7 @@ namespace Ui
         void pressedMouseMove();
 
         void enableCircleHover(bool _val);
+        void setUnderLongPress(bool _val);
 
         bool canLock() const;
 

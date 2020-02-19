@@ -9,6 +9,11 @@
 
 namespace core
 {
+    namespace smartreply
+    {
+        enum class type;
+    }
+
     namespace wim
     {
         class fetch_event;
@@ -50,6 +55,7 @@ namespace core
             int32_t events_count_;
             std::string my_aimid_;
             std::chrono::seconds next_fetch_timeout_;
+            const std::vector<smartreply::type> suggest_types_;
 
         public:
 
@@ -73,11 +79,10 @@ namespace core
 
             fetch(
                 wim_packet_params params,
-                const std::string& fetch_url,
-                std::chrono::milliseconds timeout,
-                const timepoint _fetch_time,
+                const fetch_parameters& _fetch_params,
+                std::chrono::milliseconds _timeout,
                 const bool _hidden,
-                std::function<bool(std::chrono::milliseconds)> wait_function);
+                std::function<bool(std::chrono::milliseconds)> _wait_function);
             virtual ~fetch();
         };
 

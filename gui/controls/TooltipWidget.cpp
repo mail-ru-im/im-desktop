@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "TooltipWidget.h"
 #include "CustomButton.h"
+#include "GradientWidget.h"
 #include "../fonts.h"
 #include "../utils/utils.h"
 #include "../utils/InterConnector.h"
@@ -286,31 +287,6 @@ namespace Tooltip
 
 namespace Ui
 {
-    GradientWidget::GradientWidget(QWidget* _parent, const QColor& _left, const QColor& _right)
-        : QWidget(_parent)
-        , left_(_left)
-        , right_(_right)
-    {
-        setAttribute(Qt::WA_TransparentForMouseEvents);
-    }
-
-    void GradientWidget::updateColors(const QColor& _left, const QColor& _right)
-    {
-        left_ = _left;
-        right_ = _right;
-        update();
-    }
-
-    void GradientWidget::paintEvent(QPaintEvent* _event)
-    {
-        QLinearGradient gradient(rect().topLeft(), rect().topRight());
-        gradient.setColorAt(0, left_);
-        gradient.setColorAt(1, right_);
-
-        QPainter p(this);
-        p.fillRect(rect(), gradient);
-    }
-
     TooltipWidget::TooltipWidget(QWidget* _parent, QWidget* _content, int _pointWidth, const QMargins& _margins, bool _canClose, bool _bigArrow, bool _horizontalScroll)
         : QWidget(_parent)
         , contentWidget_(_content)
@@ -415,43 +391,31 @@ namespace Ui
         QRect viewRect = scrollArea_->viewport()->geometry();
         auto scrollbar = scrollArea_->horizontalScrollBar();
 
-        int maxVal = scrollbar->maximum();
-        int minVal = scrollbar->minimum();
-        int curVal = scrollbar->value();
+        const int maxVal = scrollbar->maximum();
+        const int minVal = scrollbar->minimum();
+        const int curVal = scrollbar->value();
 
-        int step = viewRect.width() / 2;
+        const int step = viewRect.width() / 2;
 
         int to = 0;
 
         if (_direction == TooltipWidget::Direction::right)
-        {
-            to = curVal + step;
-            if (to > maxVal)
-            {
-                to = maxVal;
-            }
-        }
+            to = std::min(curVal + step, maxVal);
         else
-        {
-            to = curVal - step;
-            if (to < minVal)
-            {
-                to = minVal;
-            }
-
-        }
-
-        QEasingCurve easing_curve = QEasingCurve::InQuad;
-        int duration = 300;
+            to = std::max(curVal - step, minVal);
 
         if (!animScroll_)
+        {
+            constexpr auto duration = std::chrono::milliseconds(300);
+
             animScroll_ = new QPropertyAnimation(scrollbar, QByteArrayLiteral("value"), this);
+            animScroll_->setEasingCurve(QEasingCurve::InQuad);
+            animScroll_->setDuration(duration.count());
+        }
 
         animScroll_->stop();
-        animScroll_->setDuration(duration);
         animScroll_->setStartValue(curVal);
         animScroll_->setEndValue(to);
-        animScroll_->setEasingCurve(easing_curve);
         animScroll_->start();
     }
 
@@ -486,21 +450,7 @@ namespace Ui
         update();
     }
 
-    void TooltipWidget::showAnimated(const QPoint _pos, const QSize& _maxSize, const QRect& _rect, Tooltip::ArrowDirection _direction)
-    {
-        opacityEffect_->setOpacity(0.0);
-
-        opacityAnimation_.finish();
-        opacityAnimation_.start(
-            [this]() { opacityEffect_->setOpacity(opacityAnimation_.current()); },
-            0.0,
-            1.0,
-            getDurationAppear().count());
-
-        showUsual(_pos, _maxSize, _rect, _direction);
-    }
-
-    void TooltipWidget::showUsual(const QPoint _pos, const QSize& _maxSize, const QRect& _rect, Tooltip::ArrowDirection _direction)
+    QRect TooltipWidget::updateTooltip(const QPoint _pos, const QSize& _maxSize, const QRect& _rect, Tooltip::ArrowDirection _direction)
     {
         const int margin_left = getOutSpace();
         const int margin_right = getOutSpace();
@@ -552,10 +502,10 @@ namespace Ui
 
         int xPos = pointCenterX - w / 2;
 
-        if (xPos < margin_left)
+        if (std::abs(xPos) < margin_left)
             xPos = margin_left;
 
-        if (_maxSize.width() != -1 && w > _maxSize.width() - 2 * margin_right - 1 && xPos + w > _maxSize.width() - margin_right)
+        if (_maxSize.width() != -1 && w > _maxSize.width() - (2 * margin_right) - 1 && xPos + w > _maxSize.width() - margin_right)
             xPos = std::abs(parentWidget()->width() - w) / 2;
 
         if (_rect.isValid())
@@ -568,9 +518,7 @@ namespace Ui
             auto topR = _rect.topRight();
             const auto rightEdge = topR.x();
             if (xPos + w > rightEdge)
-            {
                 xPos -= (xPos + w - rightEdge);
-            }
 
             if (_direction == Tooltip::ArrowDirection::Up || (_direction == Tooltip::ArrowDirection::Auto && (_pos.y() - height() < topR.y())))
             {
@@ -581,16 +529,45 @@ namespace Ui
 
         arrowOffset_ = pointCenterX - xPos - getMinArrowOffset(bigArrow_);
 
-        move(QPoint(xPos, _pos.y() - height() + yOffset));
-
         gradientRight_->setVisible(showGradient);
 
         if (showGradient)
+        {
+            const auto rcArea = scrollArea_->geometry();
+            gradientRight_->setGeometry(rcArea.right() + 1 - getGradientWidth(), rcArea.top(), getGradientWidth(), rcArea.height());
             gradientRight_->raise();
+        }
 
         gradientLeft_->setVisible(false);
+        move(QPoint(xPos, _pos.y() - height() + yOffset));
+        return geometry();
+    }
+
+    void TooltipWidget::showAnimated(const QPoint _pos, const QSize& _maxSize, const QRect& _rect, Tooltip::ArrowDirection _direction)
+    {
+        opacityEffect_->setOpacity(0.0);
+
+        opacityAnimation_.finish();
+        opacityAnimation_.start(
+            [this]() { opacityEffect_->setOpacity(opacityAnimation_.current()); },
+            0.0,
+            1.0,
+            getDurationAppear().count());
+
+        showUsual(_pos, _maxSize, _rect, _direction);
+    }
+
+    void TooltipWidget::showUsual(const QPoint _pos, const QSize& _maxSize, const QRect& _rect, Tooltip::ArrowDirection _direction)
+    {
+        const auto desired = updateTooltip(_pos, _maxSize, _rect, _direction);
 
         show();
+
+        if (desired != geometry())
+        {
+            setGeometry(desired);
+            update();
+        }
     }
 
     void TooltipWidget::hideAnimated()
@@ -622,6 +599,7 @@ namespace Ui
     void TooltipWidget::onScroll(int _value)
     {
         int maximum = scrollArea_->horizontalScrollBar()->maximum();
+        const int step = scrollArea_->horizontalScrollBar()->pageStep() / 8;
 
         bool gradientLeftVisible = true;
         bool gradientRightVisible = true;
@@ -630,9 +608,11 @@ namespace Ui
         {
             gradientLeftVisible = false;
         }
-        else if (_value == maximum)
+        else if (_value >= maximum - step)
         {
-            gradientRightVisible = false;
+            emit scrolledToLastItem();
+            if (_value == maximum)
+                gradientRightVisible = false;
         }
 
         if (gradientLeftVisible != gradientLeft_->isVisible())
@@ -679,6 +659,16 @@ namespace Ui
         update();
     }
 
+    void TextWidget::setColor(const QColor& _color)
+    {
+        text_->setColor(_color);
+    }
+
+    void TextWidget::setAlignment(const TextRendering::HorAligment _align)
+    {
+        text_->setAlign(_align);
+    }
+
     QString TextWidget::getText() const
     {
         return text_->getText();
@@ -691,6 +681,20 @@ namespace Ui
         text_->draw(p);
     }
 
+    void TextWidget::mouseMoveEvent(QMouseEvent* _e)
+    {
+        if (text_->isOverLink(_e->pos()))
+            setCursor(Qt::PointingHandCursor);
+        else
+            setCursor(Qt::ArrowCursor);
+    }
+
+    void TextWidget::mouseReleaseEvent(QMouseEvent* _e)
+    {
+        if (const auto pos = _e->pos(); text_->isOverLink(pos))
+            emit linkActivated(text_->getLink(pos), QPrivateSignal());
+    }
+
     TextTooltip::TextTooltip(QWidget* _parent, bool _general)
         : QWidget(_parent)
         , text_(nullptr)
@@ -700,7 +704,7 @@ namespace Ui
         text_ = new TextWidget(_parent, QString(), Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS,
                                                                        TextRendering::ProcessLineFeeds::KEEP_LINE_FEEDS,
                                                                        TextRendering::EmojiSizeType::TOOLTIP);
-        text_->init(Fonts::appFontScaled(11), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
+        text_->init(Fonts::appFontScaledFixed(11), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
         tooltip_ = new TooltipWidget(_parent, text_, 0, QMargins(Utils::scale_value(8), Utils::scale_value(4), Utils::scale_value(8), Utils::scale_value(4)), false, false);
         if (_general)
         {

@@ -64,7 +64,7 @@ namespace
         return Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_ATTENTION);
     }
 
-    QPixmap getIcon(const bool _isVideoCall, const bool _isMissed, const bool _isSelected, const bool _isOutgoing)
+    QPixmap getIcon(const bool _isVideoCall, const bool _isMissed, const bool _isOutgoing)
     {
         const auto circle = [](const QColor& _color)
         {
@@ -118,7 +118,7 @@ namespace
 
         const auto& set = _isVideoCall ? video : audio;
         const auto _idxOut = _isOutgoing ? 1 : 0;
-        return _isSelected ? set[_idxOut][2] : (_isMissed ? set[_idxOut][1] : set[_idxOut][0]);
+        return _isMissed ? set[_idxOut][1] : set[_idxOut][0];
     }
 
     QPixmap getAvatar(const QString& _aimId, const QString& _friendly, const int _size)
@@ -128,7 +128,6 @@ namespace
             _aimId,
             _friendly,
             _size,
-            QString(),
             def,
             false,
             false
@@ -178,7 +177,6 @@ namespace Ui
 {
     CallButton::CallButton(QWidget* _parent, const QString& _aimId, const bool _isOutgoing)
         : ClickableTextWidget(_parent, getButtonFont(), callButtonDefTextColor(), TextRendering::HorAligment::CENTER)
-        , isSelected_(false)
         , isPressed_(false)
         , isOutgoing_(_isOutgoing)
         , aimId_(_aimId)
@@ -188,16 +186,6 @@ namespace Ui
         setMouseTracking(true);
         setCursor(Qt::PointingHandCursor);
         setAttribute(Qt::WA_Hover);
-    }
-
-    void CallButton::setSelected(const bool _isSelected)
-    {
-        if (isSelected_ != _isSelected)
-        {
-            isSelected_ = _isSelected;
-            setColor(isSelected_ ? Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT) : callButtonDefTextColor());
-            update();
-        }
     }
 
     bool CallButton::isPressed() const
@@ -213,7 +201,10 @@ namespace Ui
         const auto active = isOutgoing ? Styling::StyleVariable::PRIMARY_BRIGHT_ACTIVE : Styling::StyleVariable::BASE_BRIGHT_ACTIVE;
         const auto select = Styling::StyleVariable::GHOST_SECONDARY;
 
-        const auto bgVariable = isSelected_ ? select : (isHovered() ? (isPressed_ ? active : hover) : normal);
+        auto bgVariable = isHovered() ? (isPressed_ ? active : hover) : normal;
+        if (Utils::InterConnector::instance().isMultiselect())
+            bgVariable = normal;
+
         const auto bgColor = Styling::getParameters(aimId_).getColor(bgVariable);
         {
             QPainter p(this);
@@ -252,9 +243,6 @@ namespace Ui
         , isAvatarHovered_(false)
         , id_(-1)
         , friendlyName_(Logic::GetFriendlyContainer()->getFriendly(eventInfo->getContactAimid()))
-        , Direction_(SelectDirection::NONE)
-        , startSelectY_(0)
-        , isSelection_(false)
         , callButton_(new CallButton(this, eventInfo->getContactAimid(), isOutgoing()))
         , timeWidget_(new MessageTimeWidget(this))
     {
@@ -277,16 +265,25 @@ namespace Ui
 
         init();
 
+        Utils::InterConnector::instance().disableInMultiselect(callButton_);
+
         connect(Logic::GetAvatarStorage(), &Logic::AvatarStorage::avatarChanged, this, &VoipEventItem::onAvatarChanged);
         connect(Logic::GetFriendlyContainer(), &Logic::FriendlyContainer::friendlyChanged, this, &VoipEventItem::onContactNameChanged);
         connect(callButton_, &CallButton::clicked, this, &VoipEventItem::onCallButtonClicked);
         connect(this, &VoipEventItem::selectionChanged, this, &VoipEventItem::updateColors);
+
+        auto updateFunc = [this]() { updateSize(size(), true); update(); };
+        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::multiselectChanged, this, updateFunc);
+        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::multiSelectCurrentMessageChanged, this, updateFunc);
+        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::multiselectAnimationUpdate, this, updateFunc);
     }
 
     VoipEventItem::~VoipEventItem()
     {
         if (callButton_->isPressed() || !pressPoint_.isNull())
             emit pressedDestroyed();
+
+        Utils::InterConnector::instance().detachFromMultiselect(callButton_);
     }
 
     QString VoipEventItem::formatRecentsText() const
@@ -300,7 +297,7 @@ namespace Ui
         return header % formatRecentsText();
     }
 
-    MediaType VoipEventItem::getMediaType() const
+    MediaType VoipEventItem::getMediaType(MediaRequestMode) const
     {
         return MediaType::mediaTypeVoip;
     }
@@ -437,13 +434,13 @@ namespace Ui
 
     void VoipEventItem::mouseDoubleClickEvent(QMouseEvent* _e)
     {
-        if (_e->button() == Qt::LeftButton)
+        if (!Utils::InterConnector::instance().isMultiselect() && _e->button() == Qt::LeftButton)
         {
             auto emitQuote = true;
             if (BubbleRect_.contains(_e->pos()))
             {
                 const auto fixPos = _e->pos() - BubbleRect_.topLeft();
-                const auto icon = getIcon(EventInfo_->isVideoCall(), EventInfo_->isMissed(), isSelected(), !EventInfo_->isIncomingCall());
+                const auto icon = getIcon(EventInfo_->isVideoCall(), EventInfo_->isMissed(), !EventInfo_->isIncomingCall());
                 const auto iconArea = Utils::unscale_bitmap(icon.rect().translated(MessageStyle::getBubbleHorPadding(), MessageStyle::getBubbleVerPadding()));
 
                 if (iconArea.contains(fixPos) || text_->contains(fixPos) || (duration_ && duration_->contains(fixPos)))
@@ -485,6 +482,8 @@ namespace Ui
         p.setRenderHint(QPainter::Antialiasing);
         p.setRenderHint(QPainter::TextAntialiasing);
 
+        drawSelection(p, BubbleRect_);
+
         if (const auto st = getLastStatus(); st != LastStatus::None)
             drawLastStatusIcon(p, st, getContact(), friendlyName_, 0);
 
@@ -493,7 +492,7 @@ namespace Ui
         const auto bodyBrush = drawBubble(p);
         p.translate(BubbleRect_.topLeft());
 
-        const auto icon = getIcon(EventInfo_->isVideoCall(), EventInfo_->isMissed(), isSelected(), !EventInfo_->isIncomingCall());
+        const auto icon = getIcon(EventInfo_->isVideoCall(), EventInfo_->isMissed(), !EventInfo_->isIncomingCall());
         p.drawPixmap(MessageStyle::getBubbleHorPadding(), MessageStyle::getBubbleVerPadding(), icon);
 
         text_->draw(p);
@@ -516,10 +515,10 @@ namespace Ui
         }
     }
 
-    void VoipEventItem::resizeEvent(QResizeEvent* _event)
+    void VoipEventItem::updateSize(const QSize& _size, bool _force)
     {
         const auto outgoing = isOutgoing();
-        auto w = _event->size().width();
+        auto w = _size.width();
 
         auto left = MessageStyle::getLeftMargin(outgoing, w);
         if (!outgoing)
@@ -549,13 +548,13 @@ namespace Ui
                 margins.setRight(margins.right() + margin);
         }
 
-        QRect newBubbleRect(QPoint(), _event->size());
+        QRect newBubbleRect(QPoint(), _size);
         newBubbleRect = newBubbleRect.marginsRemoved(margins);
         newBubbleRect.setHeight(newBubbleRect.height() - bottomOffset());
 
-        if (BubbleRect_ != newBubbleRect)
+        if (BubbleRect_ != newBubbleRect || _force)
         {
-            const bool widthChanged = newBubbleRect.width() != BubbleRect_.width();
+            const bool widthChanged = newBubbleRect.width() != BubbleRect_.width() || _force;
             BubbleRect_ = (newBubbleRect.isValid() ? newBubbleRect : QRect());
             resetBubblePath();
 
@@ -577,7 +576,11 @@ namespace Ui
 
         updateTimePosition();
         updateCallButton();
+    }
 
+    void VoipEventItem::resizeEvent(QResizeEvent* _event)
+    {
+        updateSize(_event->size());
         HistoryControlPageItem::resizeEvent(_event);
     }
 
@@ -664,64 +667,43 @@ namespace Ui
         return id_;
     }
 
-    void VoipEventItem::selectByPos(const QPoint& _from, const QPoint& _to)
+    void VoipEventItem::selectByPos(const QPoint& _from, const QPoint& _to, const QPoint& _areaFrom, const QPoint& _areaTo)
     {
-        if (!isSelection_)
+        if (handleSelectByPos(_from, _to, _areaFrom, _areaTo))
         {
-            isSelection_ = true;
-            startSelectY_ = _from.y();
-        }
-
-        const QRect widgetRect = QRect(mapToGlobal(rect().topLeft()), mapToGlobal(rect().bottomRight()));
-        const auto isCursorOverWidget =
-            (widgetRect.top() <= _from.y() && widgetRect.bottom() >= _to.y()) ||
-            (widgetRect.top() >= _from.y() && widgetRect.bottom() <= _to.y());
-
-        if (isCursorOverWidget)
-        {
-            if (!isSelected())
-                select();
+            updateColors();
             return;
         }
 
-        const auto distanceToWidgetTop = std::abs(_from.y() - widgetRect.top());
-        const auto distanceToWidgetBottom = std::abs(_from.y() - widgetRect.bottom());
-        const auto isCursorCloserToTop = (distanceToWidgetTop < distanceToWidgetBottom);
+        const QRect globalWidgetRect(
+            mapToGlobal(rect().topLeft()),
+            mapToGlobal(rect().bottomRight()));
 
-        if (Direction_ == SelectDirection::NONE)
-            Direction_ = (isCursorCloserToTop ? SelectDirection::DOWN : SelectDirection::UP);
+        auto selectionArea(globalWidgetRect);
+        selectionArea.setTop(_from.y());
+        selectionArea.setBottom(_to.y());
+        selectionArea = selectionArea.normalized();
 
-        const auto isDirectionDown = (Direction_ == SelectDirection::DOWN);
-        const auto isDirectionUp = (Direction_ == SelectDirection::UP);
+        const auto selectionOverlap = globalWidgetRect.intersected(selectionArea);
+        assert(selectionOverlap.height() >= 0);
 
-        if (isSelected())
+        const auto widgetHeight = std::max(globalWidgetRect.height(), 1);
+        const auto overlappedHeight = selectionOverlap.height();
+        const auto overlapRatePercents = ((overlappedHeight * 100) / widgetHeight);
+        assert(overlapRatePercents >= 0);
+
+        const auto isSelected = (overlapRatePercents > 50);
+        if (isSelected)
         {
-            const auto needToClear =
-                (isCursorCloserToTop && isDirectionDown) ||
-                (!isCursorCloserToTop && isDirectionUp);
-
-            if (needToClear && (startSelectY_ < widgetRect.top() || startSelectY_ > widgetRect.bottom()))
-            {
-                clearSelection();
-                isSelection_ = true;
-            }
-            return;
+            Utils::InterConnector::instance().setMultiselect(true);
+            const auto isSelectionTopToBottom = (_from.y() <= _to.y());
+            const auto &topPoint = (isSelectionTopToBottom ? _from : _to);
+            const auto &bottomPoint = (isSelectionTopToBottom ? _to : _from);
+            setSelectionCenter(isSelectionTopToBottom ? (mapFromGlobal(bottomPoint).y() - 2) : (mapFromGlobal(topPoint).y() + 2));
+            handleSelectByPos(_from, _to, _areaFrom, _areaTo);
         }
 
-        const auto needToSelect =
-            (isCursorCloserToTop && isDirectionUp) ||
-            (!isCursorCloserToTop && isDirectionDown);
-
-        if (needToSelect)
-            select();
-    }
-
-    void VoipEventItem::clearSelection()
-    {
-        isSelection_ = false;
-        Direction_ = SelectDirection::NONE;
-
-        HistoryControlPageItem::clearSelection();
+        updateColors();
     }
 
     void VoipEventItem::updateStyle()
@@ -823,14 +805,10 @@ namespace Ui
 
     void VoipEventItem::updateColors()
     {
-        const auto sel = isSelected();
-        text_->setColor(sel ? Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT) : (EventInfo_->isMissed() ? missedColor() : MessageStyle::getTextColor()));
+        text_->setColor(EventInfo_->isMissed() ? missedColor() : MessageStyle::getTextColor());
 
         if (duration_)
-            duration_->setColor(sel ? Styling::StyleVariable::TEXT_SOLID_PERMANENT : (isOutgoing() ? Styling::StyleVariable::PRIMARY_PASTEL : Styling::StyleVariable::BASE_PRIMARY), getContact());
-
-        callButton_->setSelected(sel);
-        timeWidget_->setSelected(sel);
+            duration_->setColor(isOutgoing() ? Styling::StyleVariable::PRIMARY_PASTEL : Styling::StyleVariable::BASE_PRIMARY, getContact());
 
         update();
     }
@@ -875,7 +853,7 @@ namespace Ui
 
         assert(BubbleRect_.width() > 0);
 
-        auto bodyBrush = Ui::MessageStyle::getBodyBrush(outgoing, isSelected(), getContact());
+        auto bodyBrush = Ui::MessageStyle::getBodyBrush(outgoing, getContact());
 
         const auto needBorder = !outgoing && Styling::getParameters(getContact()).isBorderNeeded();
         if (!needBorder)
@@ -998,8 +976,8 @@ namespace Ui
             QString text = QT_TRANSLATE_NOOP("popup_window", "Are you sure you want to delete message?");
 
             auto confirm = Utils::GetConfirmationWithTwoButtons(
-                QT_TRANSLATE_NOOP("popup_window", "CANCEL"),
-                QT_TRANSLATE_NOOP("popup_window", "YES"),
+                QT_TRANSLATE_NOOP("popup_window", "Cancel"),
+                QT_TRANSLATE_NOOP("popup_window", "Yes"),
                 text,
                 QT_TRANSLATE_NOOP("popup_window", "Delete message"),
                 nullptr
@@ -1008,7 +986,7 @@ namespace Ui
             if (confirm)
             {
                 const auto is_shared = (command == ql1s("delete_all"));
-                GetDispatcher()->deleteMessage(getId(), internalId_, getContact(), is_shared);
+                GetDispatcher()->deleteMessages(getContact(), { DeleteMessageInfo(getId(), internalId_, is_shared) });
             }
         }
     }

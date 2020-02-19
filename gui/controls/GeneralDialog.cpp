@@ -11,6 +11,7 @@
 #include "../utils/InterConnector.h"
 #include "styles/ThemeParameters.h"
 #include "../controls/DialogButton.h"
+#include "../controls/TextUnit.h"
 
 namespace
 {
@@ -23,6 +24,21 @@ namespace
     int getMargin()
     {
         return Utils::scale_value(16);
+    }
+
+    int getTopMargin()
+    {
+        return Utils::scale_value(8);
+    }
+
+    int getIconSize()
+    {
+        return Utils::scale_value(20);
+    }
+
+    int getOptionHeight()
+    {
+        return Utils::scale_value(44);
     }
 }
 
@@ -115,7 +131,7 @@ namespace Ui
         Testing::setAccessibleName(bottomWidget_, qsl("AS bottomWidget_"));
         globalLayout->addWidget(bottomWidget_);
 
-        setWindowFlags(Qt::FramelessWindowHint | Qt::NoDropShadowWindowHint | Qt::WindowSystemMenuHint);
+        setWindowFlags(Qt::FramelessWindowHint | Qt::NoDropShadowWindowHint | Qt::WindowSystemMenuHint | Qt::SubWindow);
         setSizePolicy(QSizePolicy::Policy::Fixed, QSizePolicy::Policy::Preferred);
 
         if (rejectable_)
@@ -193,12 +209,16 @@ namespace Ui
     {
         headerLabelHost_->setVisible(true);
         auto hostLayout = Utils::emptyHLayout(headerLabelHost_);
-        hostLayout->setContentsMargins(getMargin(), 0, 0, 0);
+        hostLayout->setContentsMargins(getMargin(), getTopMargin(), 0, 0);
         hostLayout->setAlignment(Qt::AlignLeft | Qt::AlignTop);
 
-        auto label = new TextEmojiWidget(headerLabelHost_, Fonts::appFontScaled(22), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID), Utils::scale_value(32));
-        label->setText(_text);
-        label->setEllipsis(true);
+        auto text = Ui::TextRendering::MakeTextUnit(_text);
+        text->init(Fonts::appFontScaled(22), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
+
+        const auto maxWidth = mainHost_->maximumWidth() - 2 * getMargin();
+        auto label = new TextUnitLabel(textHost_, std::move(text), Ui::TextRendering::VerPosition::TOP, maxWidth);
+        label->setFixedWidth(maxWidth);
+        label->sizeHint();
 
         Testing::setAccessibleName(label, qsl("AS addlabel label ") + _text);
         hostLayout->addWidget(label);
@@ -263,11 +283,11 @@ namespace Ui
         return nextButton_;
     }
 
-    QPair<DialogButton*, DialogButton*> GeneralDialog::addButtonsPair(const QString& _buttonTextLeft, const QString& _buttonTextRight, bool _isActive, bool _rejectable, bool _acceptable, QWidget* _area)
+    QPair<DialogButton*, DialogButton*> GeneralDialog::addButtonsPair(const QString& _buttonTextLeft, const QString& _buttonTextRight, bool _isActive, bool _rejectable, bool _acceptable, QWidget* _area, const DialogButtonShape _shape)
     {
         QPair<DialogButton*, DialogButton*> result;
         {
-            auto cancelButton = new DialogButton(bottomWidget_, _buttonTextLeft, DialogButtonRole::CANCEL);
+            auto cancelButton = new DialogButton(bottomWidget_, _buttonTextLeft, DialogButtonRole::CANCEL, _shape);
             cancelButton->setObjectName(qsl("left_button"));
             cancelButton->setSizePolicy(QSizePolicy::Policy::Minimum, QSizePolicy::Policy::Preferred);
             connect(cancelButton, &DialogButton::clicked, this, &GeneralDialog::leftButtonClick, Qt::QueuedConnection);
@@ -275,7 +295,7 @@ namespace Ui
                 connect(cancelButton, &DialogButton::clicked, this, &GeneralDialog::reject, Qt::QueuedConnection);
             Testing::setAccessibleName(nextButton_, qsl("AS addbuttonpair cancelButton"));
 
-            nextButton_ = new DialogButton(bottomWidget_, _buttonTextRight, DialogButtonRole::CONFIRM);
+            nextButton_ = new DialogButton(bottomWidget_, _buttonTextRight, DialogButtonRole::CONFIRM, _shape);
             setButtonActive(_isActive);
             nextButton_->setSizePolicy(QSizePolicy::Policy::Minimum, QSizePolicy::Policy::Preferred);
             connect(nextButton_, &DialogButton::clicked, this, &GeneralDialog::rightButtonClick, Qt::QueuedConnection);
@@ -553,5 +573,105 @@ namespace Ui
     int GeneralDialog::getHeaderHeight() const
     {
         return headerLabelHost_ ? headerLabelHost_->sizeHint().height() : 0;
+    }
+
+    TwoOptionsWidget::TwoOptionsWidget(QWidget* _parent, const QString& _firstOptionIcon, const QString& _firstOption, const QString& _secondOptionIcon, const QString& _secondOption)
+        : QWidget(_parent)
+        , firstHovered_(false)
+        , firstSelected_(false)
+        , secondHovered_(false)
+        , secondSelected_(false)
+    {
+        firstOption_ = TextRendering::MakeTextUnit(_firstOption, Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS);
+        firstOption_->init(Fonts::appFontScaled(16), Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY));
+        firstOptionIcon_ = Utils::renderSvg(_firstOptionIcon, QSize(getIconSize(), getIconSize()), Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY));
+
+        secondOption_ = TextRendering::MakeTextUnit(_secondOption, Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS);
+        secondOption_->init(Fonts::appFontScaled(16), Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY));
+        secondOptionIcon_ = Utils::renderSvg(_secondOptionIcon, QSize(getIconSize(), getIconSize()), Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY));
+
+        setFixedHeight(getOptionHeight() * 2 + getMargin());
+        setMouseTracking(true);
+    }
+
+    bool TwoOptionsWidget::isFirstSelected() const
+    {
+        return firstSelected_;
+    }
+
+    bool TwoOptionsWidget::isSecondSelected() const
+    {
+        return secondSelected_;
+    }
+
+    void TwoOptionsWidget::paintEvent(QPaintEvent* _event)
+    {
+        QPainter p(this);
+
+        if (firstHovered_)
+            p.fillRect(0, getMargin(), width(), getOptionHeight(), Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT_INVERSE));
+        if (secondHovered_)
+            p.fillRect(0, getOptionHeight() + getMargin(), width(), getOptionHeight(), Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT_INVERSE));
+
+        p.drawPixmap(getMargin(), getOptionHeight() / 2 - getIconSize() / 2 + getMargin(), firstOptionIcon_);
+        firstOption_->setOffsets(getMargin() * 2 + getIconSize(), getOptionHeight() / 2 + getMargin());
+        firstOption_->draw(p, TextRendering::VerPosition::MIDDLE);
+
+        p.drawPixmap(getMargin(), (getOptionHeight() / 2) * 3 - getIconSize() / 2 + getMargin(), secondOptionIcon_);
+        secondOption_->setOffsets(getMargin() * 2 + getIconSize(), (getOptionHeight() / 2) * 3 + getMargin());
+        secondOption_->draw(p, TextRendering::VerPosition::MIDDLE);
+    }
+
+    void TwoOptionsWidget::resizeEvent(QResizeEvent* _event)
+    {
+        firstOption_->elide(width() - getMargin() * 3 - getIconSize());
+        secondOption_->elide(width() - getMargin() * 3 - getIconSize());
+
+        QWidget::resizeEvent(_event);
+    }
+
+    void TwoOptionsWidget::mouseMoveEvent(QMouseEvent* _event)
+    {
+        firstHovered_ = false;
+        secondHovered_ = false;
+
+        if (QRect(0, getMargin(), width(), getOptionHeight()).contains(_event->pos()))
+            firstHovered_ = true;
+        else if (QRect(0, getOptionHeight() + getMargin(), width(), getOptionHeight()).contains(_event->pos()))
+            secondHovered_ = true;
+
+        setCursor((firstHovered_ || secondHovered_) ? Qt::PointingHandCursor : Qt::ArrowCursor);
+
+        update();
+        QWidget::mouseMoveEvent(_event);
+    }
+
+    void TwoOptionsWidget::mousePressEvent(QMouseEvent* _event)
+    {
+        pos_ = _event->pos();
+        QWidget::mousePressEvent(_event);
+    }
+
+    void TwoOptionsWidget::mouseReleaseEvent(QMouseEvent* _event)
+    {
+        if (Utils::clicked(pos_, _event->pos()))
+        {
+            if (QRect(0, getMargin(), width(), getOptionHeight()).contains(_event->pos()))
+                firstSelected_ = true;
+            else if (QRect(0, getOptionHeight() + getMargin(), width(), getOptionHeight()).contains(_event->pos()))
+                secondSelected_ = true;
+
+            emit Utils::InterConnector::instance().acceptGeneralDialog();
+        }
+        QWidget::mouseReleaseEvent(_event);
+    }
+
+    void TwoOptionsWidget::leaveEvent(QEvent* _event)
+    {
+        firstHovered_ = false;
+        secondHovered_ = false;
+        setCursor(Qt::ArrowCursor);
+        update();
+        QWidget::leaveEvent(_event);
     }
 }

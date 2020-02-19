@@ -49,6 +49,17 @@ private:
     QString id_;
 };
 
+class PhoneAttachedCommand : public UrlCommand
+{
+public:
+    PhoneAttachedCommand(const bool _success, const bool _cancel);
+    void execute() override;
+
+private:
+    bool success_;
+    bool cancel_;
+};
+
 class ShowStickerpackCommand : public UrlCommand
 {
 public:

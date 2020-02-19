@@ -18,9 +18,7 @@ load_file::load_file(const wim_packet_params& _params, const web_file_info& _inf
 }
 
 
-load_file::~load_file()
-{
-}
+load_file::~load_file() = default;
 
 
 int32_t load_file::init_request(std::shared_ptr<core::http_request_simple> _request)

@@ -155,7 +155,7 @@ namespace installer
             installer::error err;
 
 #ifdef _WIN32
-            HANDLE mutex = ::CreateSemaphore(NULL, 0, 1, get_crossprocess_mutex_name());
+            HANDLE mutex = ::CreateSemaphoreA(NULL, 0, 1, std::string(get_crossprocess_mutex_name()).c_str());
             if (ERROR_ALREADY_EXISTS == ::GetLastError())
             {
                 const auto connectErr = connect_to_process_exit_it();

@@ -1,6 +1,6 @@
+#include "stdafx.h"
 #include "RatingIssuesWidget.h"
 
-#include <QVBoxLayout>
 #include "utils/utils.h"
 #include "utils/Text.h"
 #include "controls/CheckboxList.h"
@@ -9,6 +9,7 @@
 #include "controls/LabelEx.h"
 #include "controls/TextBrowserEx.h"
 #include "fonts.h"
+#include "styles/ThemeParameters.h"
 
 namespace
 {
@@ -16,7 +17,6 @@ constexpr auto REASON_HEIGHT = 44;
 constexpr auto HOR_OFFSET = 16;
 constexpr auto SEPARATOR_HEIGHT = 1;
 constexpr auto GRADIENT_HEIGHT = 40;
-
 constexpr auto DIALOG_WIDTH = 380;
 }
 
@@ -24,8 +24,8 @@ namespace Ui
 {
 
 RatingIssuesWidget::RatingIssuesWidget(const ShowQualityReasonsPopupConfig& _config, QWidget *_parent)
-    : QWidget(_parent),
-      config_(_config)
+    : QWidget(_parent)
+    , config_(_config)
 {
     setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     setFixedWidth(Utils::scale_value(DIALOG_WIDTH));
@@ -111,6 +111,3 @@ void RatingIssuesWidget::paintEvent(QPaintEvent *_event)
 }
 
 }
-
-
-

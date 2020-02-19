@@ -25,13 +25,19 @@ namespace core
     {
     public:
         curl_task(std::weak_ptr<curl_context> _context, curl_easy::completion_function _completion_func);
-        curl_task(std::weak_ptr<curl_context> _context, curl_easy::promise_t& _promise);
+        curl_task(std::weak_ptr<curl_context> _context, curl_easy::promise_t&& _promise);
 
         void execute(CURL* _curl);
         void cancel();
 
-        CURL* init_handler();
-        bool execute_multi(CURLM* _multi, CURL* _curl);
+        struct init_result
+        {
+            CURL* handler;
+            CURLcode code;
+        };
+
+        init_result init_handler();
+        CURLcode execute_multi(CURLM* _multi, CURL* _curl);
         void finish_multi(CURLM* _multi, CURL* _curl, CURLcode _res);
 
         priority_t get_priority() const;
@@ -40,11 +46,18 @@ namespace core
         static curl_easy::completion_code get_completion_code(CURLcode _err);
 
         bool is_stopped() const;
+        std::string normalized_url() const;
+
+        void set_socket(const curl_socket_t _socket) { socket_ = _socket; }
+        curl_socket_t get_socket() const noexcept { return socket_; }
+
 
     private:
         std::weak_ptr<curl_context> context_;
         curl_easy::completion_function completion_func_;
         curl_easy::promise_t promise_;
+
+        curl_socket_t socket_ = CURL_SOCKET_BAD;
 
         bool async_;
     };

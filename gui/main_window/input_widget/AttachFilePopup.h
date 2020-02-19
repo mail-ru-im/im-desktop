@@ -60,6 +60,7 @@ namespace Ui
         void geoClicked(QPrivateSignal) const;
         void contactClicked(QPrivateSignal) const;
         void pttClicked(QPrivateSignal) const;
+        void pollClicked(QPrivateSignal) const;
 
     public:
         static AttachFilePopup& instance();
@@ -103,7 +104,6 @@ namespace Ui
         QRect getPlusButtonRect() const;
         QPolygon getMouseAreaPoly() const;
 
-    private:
         SimpleListWidget* listWidget_ = nullptr;
         AttachPopupBackground* widget_ = nullptr;
 
@@ -126,6 +126,7 @@ namespace Ui
             file,
             camera,
             contact,
+            poll,
             ptt,
             geo,
         };

@@ -104,10 +104,10 @@ namespace omicronlib
         return update_data();
     }
 
-    bool omicron_impl::star_auto_updater()
+    bool omicron_impl::start_auto_updater()
     {
         std::weak_ptr<omicron_impl> wr_this = shared_from_this();
-        constexpr auto tick_timeout = std::chrono::seconds(internal_tick_timeout());
+        constexpr auto tick_timeout = internal_tick_timeout();
 
         schedule_thread_ = make_unique<std::thread>([wr_this, tick_timeout]()
         {
@@ -128,7 +128,7 @@ namespace omicronlib
                 std::unique_lock<std::mutex> lock(ptr_this->schedule_mutex_);
                 const auto wait_res = ptr_this->schedule_condition_.wait_for(lock, tick_timeout);
                 const auto current_time = std::chrono::system_clock::now();
-                const auto update_interval = std::chrono::seconds(ptr_this->config_->get_update_interval());
+                const auto update_interval = ptr_this->config_->get_update_interval();
 
                 if (ptr_this->is_schedule_stop_)
                     return;
@@ -214,8 +214,8 @@ namespace omicronlib
     {
         if (is_json_data_init_)
         {
-            auto json_data = get_json_data();
-            auto it = json_data->FindMember(_key_name);
+            const auto json_data = get_json_data();
+            const auto it = json_data->FindMember(_key_name);
             if (it != json_data->MemberEnd() && it->value.IsBool())
                 return it->value.GetBool();
         }
@@ -227,8 +227,8 @@ namespace omicronlib
     {
         if (is_json_data_init_)
         {
-            auto json_data = get_json_data();
-            auto it = json_data->FindMember(_key_name);
+            const auto json_data = get_json_data();
+            const auto it = json_data->FindMember(_key_name);
             if (it != json_data->MemberEnd() && it->value.IsInt())
                 return it->value.GetInt();
         }
@@ -240,8 +240,8 @@ namespace omicronlib
     {
         if (is_json_data_init_)
         {
-            auto json_data = get_json_data();
-            auto it = json_data->FindMember(_key_name);
+            const auto json_data = get_json_data();
+            const auto it = json_data->FindMember(_key_name);
             if (it != json_data->MemberEnd() && it->value.IsInt())
                 return it->value.GetUint();
         }
@@ -253,8 +253,8 @@ namespace omicronlib
     {
         if (is_json_data_init_)
         {
-            auto json_data = get_json_data();
-            auto it = json_data->FindMember(_key_name);
+            const auto json_data = get_json_data();
+            const auto it = json_data->FindMember(_key_name);
             if (it != json_data->MemberEnd() && it->value.IsInt64())
                 return it->value.GetInt64();
         }
@@ -266,8 +266,8 @@ namespace omicronlib
     {
         if (is_json_data_init_)
         {
-            auto json_data = get_json_data();
-            auto it = json_data->FindMember(_key_name);
+            const auto json_data = get_json_data();
+            const auto it = json_data->FindMember(_key_name);
             if (it != json_data->MemberEnd() && it->value.IsInt64())
                 return it->value.GetUint64();
         }
@@ -279,8 +279,8 @@ namespace omicronlib
     {
         if (is_json_data_init_)
         {
-            auto json_data = get_json_data();
-            auto it = json_data->FindMember(_key_name);
+            const auto json_data = get_json_data();
+            const auto it = json_data->FindMember(_key_name);
             if (it != json_data->MemberEnd() && it->value.IsDouble())
                 return it->value.GetDouble();
         }
@@ -292,8 +292,8 @@ namespace omicronlib
     {
         if (is_json_data_init_)
         {
-            auto json_data = get_json_data();
-            auto it = json_data->FindMember(_key_name);
+            const auto json_data = get_json_data();
+            const auto it = json_data->FindMember(_key_name);
             if (it != json_data->MemberEnd() && it->value.IsString())
                 return std::string(it->value.GetString(), it->value.GetStringLength());
         }
@@ -305,8 +305,8 @@ namespace omicronlib
     {
         if (is_json_data_init_)
         {
-            auto json_data = get_json_data();
-            auto it = json_data->FindMember(_key_name);
+            const auto json_data = get_json_data();
+            const auto it = json_data->FindMember(_key_name);
             if (it != json_data->MemberEnd() && (it->value.IsObject() || it->value.IsArray()))
             {
                 rapidjson::StringBuffer buffer;
@@ -347,10 +347,10 @@ namespace omicronlib
         if (!parse_json(data.str()))
             return false;
 
-        std::stringstream log;
-        log << "loaded data from the cache:\n";
-        log << data.str();
-        write_to_log(log.str());
+        std::string log;
+        log += "loaded data from the cache:\n";
+        log += data.str();
+        write_to_log(log);
 
         return true;
     }
@@ -387,7 +387,7 @@ namespace omicronlib
     {
         if (is_json_data_init_)
         {
-            auto json_data = get_json_data();
+            const auto json_data = get_json_data();
 
             rapidjson::StringBuffer buffer;
             rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
@@ -465,20 +465,20 @@ namespace omicronlib
 
         auto new_config = make_unique<omicron_config>(*config_);
 
-        auto it_version = doc.FindMember("config_v");
+        const auto it_version = doc.FindMember("config_v");
         if (it_version == doc.MemberEnd() || !it_version->value.IsInt())
             return false;
 
         new_config->set_config_v(it_version->value.GetInt());
 
-        auto it_condition = doc.FindMember("cond_s");
+        const auto it_condition = doc.FindMember("cond_s");
         if (it_condition == doc.MemberEnd() || !it_condition->value.IsString())
             return false;
 
         new_config->set_cond_s(std::string(it_condition->value.GetString(), it_condition->value.GetStringLength()));
 
         new_config->reset_segments();
-        auto it_segments = doc.FindMember("segments");
+        const auto it_segments = doc.FindMember("segments");
         if (it_segments != doc.MemberEnd() && it_segments->value.IsObject())
         {
             for (auto it = it_segments->value.MemberBegin(), end = it_segments->value.MemberEnd(); it != end; ++it)
@@ -489,7 +489,7 @@ namespace omicronlib
             }
         }
 
-        auto it_config = doc.FindMember("config");
+        const auto it_config = doc.FindMember("config");
         if (it_config == doc.MemberEnd() || !it_config->value.IsObject())
             return false;
 
@@ -513,9 +513,11 @@ namespace omicronlib
     {
         if (logger_func_)
         {
-            std::stringstream log;
-            log << "omicron: " << _text << "\r\n";
-            logger_func_(log.str());
+            std::string log;
+            log += "omicron: ";
+            log += _text;
+            log += "\r\n";
+            logger_func_(log);
         }
     }
 

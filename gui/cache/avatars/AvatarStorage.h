@@ -28,7 +28,7 @@ namespace Logic
 
         const QPixmapSCptr& Get(const QString& _aimId, const QString& _displayName, const int _sizePx, bool& _isDefault, bool _regenerate);
 
-        const QPixmapSCptr& GetRounded(const QString& _aimId, const QString& _displayName, const int _sizePx, const QString& _state, bool& _isDefault, bool _regenerate, bool mini_icons);
+        const QPixmapSCptr& GetRounded(const QString& _aimId, const QString& _displayName, const int _sizePx, bool& _isDefault, bool _regenerate, bool mini_icons);
 
         QString GetLocal(const QString& _aimId, const QString& _displayName, const int _sizePx);
 
@@ -42,12 +42,14 @@ namespace Logic
         const CacheMap& GetByAimId() const;
         const CacheMap& GetRoundedByAimId() const;
 
+        bool isDefaultAvatar(const QString& _aimId) const;
+
     private:
         AvatarStorage();
 
         void CleanupSecondaryCaches(const QString& _aimId, bool _isRoundedAvatarsClean = true);
 
-        const QPixmapSCptr& GetRounded(const QPixmap& _avatar, const QString& _aimId, const QString& _state, bool mini_icons, bool _isDefault);
+        const QPixmapSCptr& GetRounded(const QPixmap& _avatar, const QString& _aimId, bool mini_icons, bool _isDefault);
 
         CacheMap AvatarsByAimIdAndSize_;
 

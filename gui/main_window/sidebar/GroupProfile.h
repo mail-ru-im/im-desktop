@@ -25,6 +25,8 @@ namespace Ui
     class ColoredButton;
     class ContactListWidget;
     class GalleryPopup;
+    class EditNicknameWidget;
+    class DialogButton;
 
     enum class ActionType
     {
@@ -52,11 +54,11 @@ namespace Ui
         QWidget* initSettings(QWidget* _parent);
         QWidget* initContactList(QWidget* _parent);
         QWidget* initGallery(QWidget* _parent);
+        void initTexts();
 
         void updateCloseIcon();
         void updatePinButton();
 
-        void loadChatInfo();
         void closeGallery();
 
         void changeTab(int _tab);
@@ -71,8 +73,13 @@ namespace Ui
 
     private Q_SLOTS:
         void chatInfo(qint64, const std::shared_ptr<Data::ChatInfo>&, const int _requestMembersLimit);
+        void chatInfoFailed(qint64 _seq, core::group_chat_info_errors _errorCode, const QString& _aimId);
         void dialogGalleryState(const QString& _aimId, const Data::DialogGalleryState& _state);
         void favoriteChanged(const QString _aimid);
+        void unimportantChanged(const QString _aimid);
+        void modChatParamsResult(int _error);
+        void suggestGroupNickResult(const QString& _nick);
+        void loadChatInfo();
 
         void share();
         void shareClicked();
@@ -98,18 +105,16 @@ namespace Ui
         void reportCliked();
         void leaveClicked();
         void linkClicked();
-        void linkCopy(const QString&);
+        void aboutLinkClicked();
+        void linkCopy();
         void linkShare();
         void mainActionClicked();
+        void makeNewLink();
 
         void contactSelected(const QString& _aimid);
         void contactRemoved(const QString& _aimid);
         void contactMenuRequested(const QString& _aimid);
         void contactMenuApproved(const QString& _aimid, bool _approve);
-
-        void linkToChatChecked(bool);
-        void publicChecked(bool);
-        void joinModerationChecked(bool);
 
         void closeClicked();
         void editButtonClicked();
@@ -124,6 +129,9 @@ namespace Ui
 
         void avatarClicked();
         void titleArrowClicked();
+        void applyChatSettings();
+        void checkApplyButton();
+        void publicClicked();
 
     private:
         QStackedWidget* stackedWidget_;
@@ -172,9 +180,15 @@ namespace Ui
         SidebarButton* leave_;
         ContactListWidget* cl_;
 
-        SidebarCheckboxButton* linkToChat_;
         SidebarCheckboxButton* public_;
         SidebarCheckboxButton* joinModeration_;
+        TextLabel* publicLabel_;
+
+        std::unique_ptr<InfoBlock> aboutLinkToChat_;
+        QWidget* aboutLinkToChatBlock_;
+        EditNicknameWidget* editGroupLinkWidget_;
+        TextLabel* makeNewLink_;
+        DialogButton* applyChatSettings_;
 
         GalleryList* gallery_;
 
@@ -194,5 +208,6 @@ namespace Ui
 
         bool galleryIsEmpty_;
         bool forceMembersRefresh_;
+        bool invalidNick_;
     };
 }

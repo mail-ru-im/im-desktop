@@ -42,7 +42,7 @@ int32_t remove_stickers_pack_packet::init_request(std::shared_ptr<core::http_req
 
     params["client"] = core::utils::get_client_string();
 
-    params["lang"] = g_core->get_locale();
+    params["lang"] = params_.locale_;
 
     std::stringstream ss_url;
     ss_url << urls::get_url(urls::url_type::stickers_store_host) << std::string_view("/store/deletepurchase");

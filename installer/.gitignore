@@ -1,4 +1,5 @@
 resources/resource.cpp
+resources/resource_product.cpp
 resources/*.7z
 [Rr]elease/*
 [Dd]ebug/*

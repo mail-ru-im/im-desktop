@@ -34,9 +34,7 @@ namespace Ui
         setFixedHeight(Utils::scale_value(38));
     }
 
-    RestartLabel::~RestartLabel()
-    {
-    }
+    RestartLabel::~RestartLabel() = default;
 
     void RestartLabel::paintEvent(QPaintEvent* _event)
     {

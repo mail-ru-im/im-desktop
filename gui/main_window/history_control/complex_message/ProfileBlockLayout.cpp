@@ -27,7 +27,7 @@ QSize ProfileBlockLayout::setBlockGeometryInternal(const QRect& widgetGeometry)
 {
     auto &block = *blockWidget<ProfileBlockBase>();
 
-    auto width = widgetGeometry.width();
+    auto width = std::min(widgetGeometry.width(), block.desiredWidth());
     contentRect_ = QRect(widgetGeometry.topLeft(), QSize(width, block.getHeightForWidth(width)));
 
     return contentRect_.size();

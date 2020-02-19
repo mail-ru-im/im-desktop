@@ -1,5 +1,7 @@
 #pragma once
 
+#include <unordered_map>
+#include "../animation/animation.h"
 #include "../utils/keyboard.h"
 #include "../utils/utils.h"
 
@@ -42,6 +44,7 @@ namespace Utils
         CommonSettingsType_Updater,
         CommonSettingsType_Shortcuts,
         CommonSettingsType_Stickers,
+        CommonSettingsType_Debug,
 
         max
     };
@@ -55,6 +58,16 @@ namespace Utils
         PlaceholdersType_SetExistanseOffIntroduceYourself,
 
         max
+    };
+
+    enum class MultiselectCurrentElement
+    {
+        Cancel = 0,
+        Message,
+        Delete,
+        Copy,
+        Reply,
+        Forward
     };
 
     class InterConnector : public QObject
@@ -92,9 +105,6 @@ Q_SIGNALS:
 
         void showRecentsPlaceholder();
         void hideRecentsPlaceholder();
-
-        void showDialogPlaceholder();
-        void hideDialogPlaceholder();
 
         void disableSearchInDialog();
         void repeatSearch();
@@ -141,6 +151,7 @@ Q_SIGNALS:
 
         void startSearchInDialog(const QString&);
         void setSearchFocus();
+        void setContactSearchFocus();
 
         void searchEnd();
         void searchClosed();
@@ -169,6 +180,9 @@ Q_SIGNALS:
 
         void hideMentionCompleter();
         void showStickersStore();
+        void showSmartreplies();
+        void hideSmartReplies(const QString& _aimId);
+        void smartReplySettingShowChanged();
 
         void hideSearchDropdown();
         void showSearchDropdownAddContact();
@@ -198,10 +212,40 @@ Q_SIGNALS:
         void stopPttRecord();
 
         void openDialogOrProfileById(const QString& _id);
+        void phoneAttached(bool);
+        void phoneAttachmentCancelled();
 
         void loaderOverlayShow();
         void loaderOverlayHide();
         void loaderOverlayCancelled();
+        void multiselectChanged();
+
+        void multiselectDelete();
+        void multiselectCopy();
+        void multiselectReply();
+        void multiselectForward(QString);
+
+        void multiSelectCurrentElementChanged();
+        void multiSelectCurrentMessageChanged();
+
+        void multiSelectCurrentMessageUp(bool);
+        void multiSelectCurrentMessageDown(bool);
+
+        void multiselectSpaceClicked();
+
+        void updateSelectedCount();
+        void messageSelected(qint64, const QString&);
+        void selectedCount(int);
+        void multiselectAnimationUpdate();
+        void selectionStateChanged(qint64, const QString&, bool);
+
+        void clearInputText();
+        void showPendingMembers();
+
+        void fullPhoneNumber(const QString& _code, const QString& _number);
+        void addByNick();
+
+        void showDebugSettings();
 
     public:
         static InterConnector& instance();
@@ -233,6 +277,30 @@ Q_SIGNALS:
         void registerKeyCombinationPress(KeyCombination keyComb, qint64 time = QDateTime::currentMSecsSinceEpoch());
         qint64 lastKeyEventMsecsSinceEpoch(KeyCombination keyCombination) const;
 
+        void setMultiselect(bool _enable, const QString& _contact = QString(), bool _fromKeyboard = false);
+        bool isMultiselect(const QString& _contact = QString()) const;
+
+        MultiselectCurrentElement currentMultiselectElement() const;
+        void multiselectNextElementTab();
+        void multiselectNextElementRight();
+        void multiselectNextElementLeft();
+
+        void multiselectNextElementUp(bool _shift);
+        void multiselectNextElementDown(bool _shift);
+
+        void multiselectSpace();
+        void multiselectEnter();
+
+        qint64 currentMultiselectMessage() const;
+        void setCurrentMultiselectMessage(qint64 _id);
+
+        double multiselectAnimationCurrent() const;
+
+        void disableInMultiselect(QWidget* _w, const QString& _aimid = QString());
+        void detachFromMultiselect(QWidget* _w);
+
+        void clearPartialSelection(const QString& _aimid);
+
     private:
         InterConnector();
 
@@ -244,5 +312,12 @@ Q_SIGNALS:
         Ui::MainWindow* MainWindow_;
         bool dragOverlay_;
         bool destroying_;
+
+        std::map<QString, bool> multiselectStates_;
+        MultiselectCurrentElement currentElement_;
+        qint64 currentMessage_;
+        anim::Animation multiselectAnimation_;
+
+        std::map<QWidget*, QString> disabledWidgets_;
     };
 }

@@ -18,11 +18,6 @@
 #include "../../../utils/gui_metrics.h"
 #include "../../mediatype.h"
 
-#include <boost/range/adaptor/map.hpp>
-#include <boost/range/adaptor/reversed.hpp>
-#include <boost/range.hpp>
-#include <boost/range/algorithm.hpp>
-
 Q_LOGGING_CATEGORY(history, "history")
 
 namespace
@@ -585,6 +580,11 @@ namespace hist
             return false;
         }
         return true;
+    }
+
+    qint64 History::lastMessageId() const
+    {
+        return lastMessageId_;
     }
 
     void History::initForImpl(qint64 _messageId, hist::scroll_mode_type _type, ServerResultsOnly _serverResultsOnly)
@@ -1359,10 +1359,9 @@ namespace hist
                 viewBounds_.bottomPending = std::max(bottomInsertedKey, viewBounds_.bottomPending.value_or(bottomInsertedKey));
             }
 
-            std::sort(needToInsert.begin(), needToInsert.end());
-
             if (!needToInsert.isEmpty())
             {
+                std::sort(needToInsert.begin(), needToInsert.end(), msgComparator);
                 const auto newIds = incomingIdsGreaterThan(needToInsert, _prevLastId);
                 if (!newIds.isEmpty())
                     emit newMessagesReceived(newIds, QPrivateSignal());

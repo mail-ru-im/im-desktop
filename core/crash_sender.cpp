@@ -1,19 +1,16 @@
 #include "stdafx.h"
 
-#ifdef _WIN32
-
-#include <fstream>
-#include <sys/types.h>
-#include <sys/stat.h>
+#if defined _WIN32 || defined __linux__
 
 #include "crash_sender.h"
-#include "log/log.h"
 #include "utils.h"
 #include "core.h"
 #include "http_request.h"
 #include "async_task.h"
-#include "../common.shared/keys.h"
+#include "../common.shared/config/config.h"
+#include "../common.shared/crash_report/crash_reporter.h"
 #include "tools/system.h"
+#include "proxy_settings.h"
 
 namespace core
 {
@@ -21,46 +18,54 @@ namespace core
     {
         constexpr auto max_crash_stat_interval = 24;
 
-        const std::string& get_hockeyapp_url()
+        bool report_sender::send(std::string_view _login, const proxy_settings& _proxy)
         {
-            const auto& app_id = build::get_product_variant(hockey_app_id, agent_hockey_app_id, biz_hokey_app_id, dit_hokey_app_id);
-            static std::string hockeyapp_url = "https://rink.hockeyapp.net/api/2/apps/" + app_id + "/crashes/upload";
-            return hockeyapp_url;
-        }
-
-        bool report_sender::send_to_hockey_app(const std::string& _login, const proxy_settings& _proxy)
-        {
-            // http://support.hockeyapp.net/kb/api/api-crashes
             core::http_request_simple post_request(_proxy, utils::get_user_agent());
-            post_request.set_url(get_hockeyapp_url());
-            post_request.set_normalized_url("https___rink_hockeyapp_net_api_2_apps_crashes_upload");
+            post_request.set_url(crash_system::reporter::submit_url(_login));
             post_request.set_post_form(true);
-            post_request.push_post_form_parameter("contact", _login);
-            post_request.push_post_form_filedata(L"log", utils::get_report_log_path());
-            post_request.set_need_log(false);
+            post_request.set_need_log(true);
             post_request.set_send_im_stats(false);
 
-            auto dump_name = utils::get_report_mini_dump_path();
-            try
+            std::error_code ec;
+            auto it = std::filesystem::recursive_directory_iterator(utils::get_report_path(), ec);
+            auto end = std::filesystem::recursive_directory_iterator();
+            for (; it != end && !ec; it.increment(ec))
             {
-                boost::system::error_code e;
-                auto size = boost::filesystem::file_size(dump_name, e);
-                if (size < 10 * 1024 * 1024) // 10 mb
-                    post_request.push_post_form_filedata(L"attachment0", dump_name);
-                return post_request.post();
+                if (it->status().type() != std::filesystem::file_type::regular)
+                    continue;
+
+                if (const auto& path = it->path(); path.extension().wstring() == L".dmp")
+                {
+                    try
+                    {
+                        std::error_code e;
+                        const auto size = std::filesystem::file_size(path, e);
+                        if (size < 10 * 1024 * 1024) // 10 mb
+                            post_request.push_post_form_filedata(L"upload_file_minidump", path.wstring());
+                        if (post_request.post() && post_request.get_response_code() == 200)
+                        {
+                            std::filesystem::remove(path, e);
+                            continue;
+                        }
+                        return false;
+                    }
+                    catch (const std::exception& /*exp*/)
+                    {
+                        // if error - delete folder
+                        return true;
+                    };
+                }
             }
-            catch (const std::exception& /*exp*/)
-            {
-                // if error - delete folder
-                return true;
-            };
+
+            return true;
         }
 
         void report_sender::insert_imstat_event()
         {
-            boost::system::error_code e;
-            auto last_modified = boost::filesystem::last_write_time(utils::get_report_path(), e);
-            auto crash_interval = std::min<time_t>(core::stats::round_to_hours(std::time(nullptr) - last_modified), max_crash_stat_interval);
+            std::error_code e;
+            const auto last_modified = std::filesystem::last_write_time(utils::get_report_path(), e);
+            const auto diff = std::chrono::duration_cast<std::chrono::seconds>(std::filesystem::file_time_type::clock::now() - last_modified);
+            auto crash_interval = std::min<time_t>(core::stats::round_to_hours(diff.count()), max_crash_stat_interval);
 
             core::stats::event_props_type props;
             props.emplace_back("time", std::to_string(crash_interval));
@@ -68,19 +73,19 @@ namespace core
             g_core->insert_im_stats_event(core::stats::im_stat_event_names::crash, std::move(props));
         }
 
-        bool report_sender::is_report_existed()
+        bool report_sender::is_report_existed() const
         {
-            return tools::system::is_exist(utils::get_report_path());
+            const auto p = utils::get_report_path();
+            return tools::system::is_exist(p) && !tools::system::is_empty(p);
         }
 
         void report_sender::clear_report_folder()
         {
-            boost::system::error_code e;
-            boost::filesystem::remove_all(utils::get_report_path(), e);
+            tools::system::clean_directory(utils::get_report_path());
         }
 
-        report_sender::report_sender(const std::string& _login)
-            : login_(_login)
+        report_sender::report_sender(std::string _login)
+            : login_(std::move(_login))
         {
         }
 
@@ -103,7 +108,7 @@ namespace core
                     if (!ptr_this)
                         return 0;
 
-                    if (ptr_this->send_to_hockey_app(ptr_this->login_, user_proxy))
+                    if (ptr_this->send(ptr_this->login_, user_proxy))
                         ptr_this->clear_report_folder();
                     return 0;
                 });
@@ -112,4 +117,4 @@ namespace core
     }
 }
 
-#endif // _WIN32
+#endif // defined _WIN32 || defined __linux__

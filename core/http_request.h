@@ -15,7 +15,24 @@ namespace core
 
     class hosts_map;
 
-    class ithread_callback;
+    enum class data_compression_method
+    {
+        none,
+        gzip,
+        zstd
+    };
+
+    constexpr std::string_view get_data_compression_method_name(data_compression_method _method) noexcept
+    {
+        switch (_method)
+        {
+        case data_compression_method::none: return std::string_view();
+        case data_compression_method::gzip: return std::string_view("gzip");
+        case data_compression_method::zstd: return std::string_view("zstd");
+        default:
+            return std::string_view("unknown");
+        }
+    }
 
     typedef std::function<void(tools::binary_stream&)> replace_log_function;
 
@@ -29,6 +46,11 @@ namespace core
         std::wstring file_name_;
         tools::binary_stream file_stream_;
     };
+
+    namespace http_header
+    {
+        std::string get_attribute(const std::shared_ptr<tools::binary_stream>& _header, std::string_view _name);
+    }
 
     class http_request_simple
     {
@@ -85,7 +107,8 @@ namespace core
         int64_t id_;
         bool is_send_im_stats_;
         bool multi_;
-        bool gzip_;
+        bool use_curl_decompression_;
+        data_compression_method compression_method_;
 
     public:
         http_request_simple(proxy_settings _proxy_settings, std::string _user_agent, stop_function _stop_func = nullptr, progress_function _progress_func = nullptr);
@@ -99,7 +122,6 @@ namespace core
 
         std::shared_ptr<tools::stream> get_response() const;
         std::shared_ptr<tools::binary_stream> get_header() const;
-        std::string get_header_attribute(std::string_view _name) const;
         long get_response_code() const;
 
         void set_modified_time_condition(time_t _modified_time);
@@ -126,12 +148,15 @@ namespace core
         void set_keep_alive();
         void set_priority(priority_t _priority);
         void set_multi(bool _multi);
-        void set_gzip(bool _gzip);
+        void set_compression_method(data_compression_method _method);
+        void set_compression_auto();
         void set_etag(std::string_view etag);
         void set_replace_log_function(replace_log_function _func);
         void set_post_data(char* _data, int32_t _size, bool _copy);
         void set_id(int64_t _id);
         void set_send_im_stats(bool _value);
+
+        bool is_compressed() const;
 
         const std::map<std::string, std::string>& get_post_parameters() const;
 
@@ -150,7 +175,9 @@ namespace core
         void set_connect_timeout(std::chrono::milliseconds _timeout);
         void set_timeout(std::chrono::milliseconds _timeout);
 
-        static std::vector<std::mutex*> ssl_sync_objects;
+        void set_use_curl_decompresion(bool _enable);
+
+        static std::vector<std::unique_ptr<std::mutex>> ssl_sync_objects;
         proxy_settings get_user_proxy() const;
     };
 }

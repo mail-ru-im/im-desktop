@@ -23,11 +23,13 @@ namespace Ui
         explicit SearchEdit(QWidget* _parent);
         ~SearchEdit();
 
-        void setPlaceholderTextEx(const QString& _text);
+        void setPlaceholderTextEx(const QString& _text, bool _drawAnyway = false);
+        QString getPlaceholder() const;
 
     private:
         QString placeHolderText_;
         std::unique_ptr<TextRendering::TextUnit> placeholderTextUnit_;
+        bool drawPlaceholderAnyway_;
     };
 
     class SearchWidget : public QWidget
@@ -68,9 +70,12 @@ namespace Ui
         bool isActive() const;
 
         void setDefaultPlaceholder();
+        void setTempPlaceholderText(const QString& _text);
         void setPlaceholderText(const QString& _text);
 
         void setEditEventFilter(QObject* _obj);
+        void setNeedClear(const bool _clear) { needsClear_ = _clear; }
+        void clearSearch(const bool _force);
 
     protected:
         void enterEvent(QEvent* _event) override;
@@ -112,5 +117,8 @@ namespace Ui
         QLabel *searchIcon_;
 
         QString searchedText_;
+        bool needsClear_;
+
+        QString savedPlaceholder_;
     };
 }

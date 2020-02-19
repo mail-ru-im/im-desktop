@@ -25,6 +25,7 @@ namespace Logic
         void onContactSelected(const QString&);
         void avatarLoaded(const QString& _aimid);
         void friendlyChanged(const QString& _aimId, const QString& _friendlyName);
+        void onDialogClosed(const QString& _aimId);
 
         void onServerTimeout();
         void onServerResults(const int64_t _seq, const MentionsSuggests& _suggests);

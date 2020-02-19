@@ -1,5 +1,4 @@
 #pragma once
-
 #include <QObject>
 #include "controls/TextUnit.h"
 
@@ -52,5 +51,3 @@ private:
 };
 
 }
-
-

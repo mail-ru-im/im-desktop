@@ -189,4 +189,12 @@ namespace translate
     {
         return QLocale(getLang());
     }
+
+    QString translator_base::getLocaleStr() const
+    {
+        QString localeStr = getLocale().name();
+        localeStr.replace(ql1c('_'), ql1c('-'));
+
+        return std::move(localeStr).toLower();
+    }
 }

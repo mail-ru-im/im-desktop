@@ -6,6 +6,7 @@
 #include "../../common.shared/patch_version.h"
 
 #include "../connections/wim/persons.h"
+#include "poll.h"
 
 namespace core
 {
@@ -47,6 +48,20 @@ namespace core
         };
         using shared_contact = std::optional<shared_contact_data>;
 
+        struct geo_data
+        {
+            std::string name_;
+            double lat_;
+            double long_;
+
+            void serialize(icollection* _collection) const;
+            void serialize(core::tools::tlvpack& _pack) const;
+            bool unserialize(icollection* _coll);
+            bool unserialize(const rapidjson::Value& _node);
+            bool unserialize(const core::tools::tlvpack& _pack);
+        };
+        using geo = std::optional<geo_data>;
+
         //////////////////////////////////////////////////////////////////////////
         // message_header class
         //////////////////////////////////////////////////////////////////////////
@@ -73,6 +88,8 @@ namespace core
 
             bool has_shared_contact_with_sn_;
 
+            bool has_poll_with_id_;
+
             message_header_vec modifications_;
 
             uint32_t min_data_sizeof(uint8_t _version) const;
@@ -87,7 +104,8 @@ namespace core
                 int64_t _data_offset,
                 uint32_t _data_size,
                 common::tools::patch_version patch_,
-                bool _shared_contact_with_sn);
+                bool _shared_contact_with_sn,
+                bool _has_poll_with_id);
 
             message_header(message_header&&) = default;
             message_header(const message_header&) = default;
@@ -137,6 +155,7 @@ namespace core
             void increment_offline_version() { update_patch_version_.increment_offline(); }
 
             bool has_shared_contact_with_sn() const;
+            bool has_poll_with_id() const;
 
             friend bool operator<(const message_header& _header1, const message_header& _header2) noexcept
             {
@@ -345,6 +364,8 @@ namespace core
 
             bool is_captcha_present_;
 
+            bool is_channel_;
+
             std::string sender_aimid_;
 
             std::string sender_friendly_;
@@ -360,6 +381,7 @@ namespace core
                 std::string new_name_;
                 std::string new_description_;
                 std::string new_rules_;
+                std::string new_stamp_;
             } chat_;
 
             std::string generic_;
@@ -376,7 +398,6 @@ namespace core
             std::string text_;
             int64_t data_offset_;
             uint32_t data_size_;
-            std::string wimid_;
             std::string internal_id_;
             std::string sender_friendly_;
             common::tools::patch_version update_patch_version_;
@@ -393,6 +414,8 @@ namespace core
             std::string description_;
             std::string url_;
             shared_contact shared_contact_;
+            geo geo_;
+            poll poll_;
 
             void copy(const history_message& _message);
 
@@ -436,6 +459,7 @@ namespace core
             static void jump_to_text_field(core::tools::binary_stream& _stream, uint32_t& length);
             static int64_t get_id_field(core::tools::binary_stream& _stream);
             static bool is_sticker(core::tools::binary_stream& _stream);
+            static bool is_chat_event(core::tools::binary_stream& _stream);
 
             void set_msgid(const int64_t _msgid) noexcept { msgid_ = _msgid; }
             int64_t get_msgid() const noexcept { return msgid_; }
@@ -461,9 +485,6 @@ namespace core
             const std::string& get_text() const noexcept;
             void set_text(std::string _text) noexcept;
             bool has_text() const noexcept;
-
-            void set_wimid(const std::string& _wimid) { wimid_ = _wimid; }
-            const std::string& get_wimid() const noexcept { return wimid_; }
 
             archive::chat_data* get_chat_data() noexcept;
             const archive::chat_data* get_chat_data() const noexcept;
@@ -534,7 +555,16 @@ namespace core
             void set_shared_contact(const shared_contact& _contact);
             const shared_contact& get_shared_contact() const;
 
+            void set_geo(const geo& _geo);
+            const geo& get_geo() const;
+
+            void set_poll(const poll& _poll);
+            const poll& get_poll() const;
+
+            void set_poll_id(const std::string& _poll_id);
+
             bool has_shared_contact_with_sn() const;
+            bool has_poll_with_id() const;
         };
 
         class quote
@@ -553,6 +583,8 @@ namespace core
             int64_t msg_id_;
             bool is_forward_;
             shared_contact shared_contact_;
+            geo geo_;
+            poll poll_;
 
         public:
             quote();
@@ -579,6 +611,8 @@ namespace core
             const std::string& get_url() const { return url_; }
             const std::string& get_description() const { return description_; }
             const shared_contact& get_shared_contact() const { return shared_contact_; }
+            const geo& get_geo() const { return geo_; }
+            const poll& get_poll() const { return poll_; }
         };
 
         class url_snippet

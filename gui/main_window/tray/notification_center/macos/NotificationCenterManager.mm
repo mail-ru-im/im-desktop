@@ -178,7 +178,8 @@ namespace Ui
         Utils::check_pixel_ratio(avatar);
         {
             QPainter p(&avatar);
-            auto a = *Logic::GetAvatarStorage()->GetRounded(aimId, displayName, Utils::scale_bitmap(avaHeight), QString(), isDefault, false, false);
+            p.setRenderHints(QPainter::SmoothPixmapTransform | QPainter::Antialiasing | QPainter::TextAntialiasing);
+            auto a = *Logic::GetAvatarStorage()->GetRounded(aimId, displayName, Utils::scale_bitmap(avaHeight), isDefault, false, false);
             if (a.isNull())
                 return;
             Utils::check_pixel_ratio(a);
@@ -407,5 +408,10 @@ namespace Ui
     {
         NSUserNotificationCenter* center = [NSUserNotificationCenter defaultUserNotificationCenter];
         [center removeAllDeliveredNotifications];
+    }
+
+    void NotificationCenterManager::animateDockIcon()
+    {
+        [NSApp requestUserAttention:NSInformationalRequest];
     }
 }

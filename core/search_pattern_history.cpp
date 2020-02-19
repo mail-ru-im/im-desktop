@@ -15,9 +15,7 @@ search_pattern_history::search_pattern_history(const std::wstring & _path)
 
 void search_pattern_history::add_pattern(const std::string_view _pattern, const std::string_view _contact)
 {
-    auto wr_this = weak_from_this();
-
-    get_thread()->run_async_function([wr_this, contact = std::string(_contact), pattern = std::string(_pattern)]()->int32_t
+    get_thread()->run_async_function([wr_this = weak_from_this(), contact = std::string(_contact), pattern = std::string(_pattern)]()->int32_t
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -31,9 +29,7 @@ void search_pattern_history::add_pattern(const std::string_view _pattern, const 
 
 void search_pattern_history::remove_pattern(const std::string_view _pattern, const std::string_view _contact)
 {
-    auto wr_this = weak_from_this();
-
-    get_thread()->run_async_function([wr_this, contact = std::string(_contact), pattern = std::string(_pattern)]()->int32_t
+    get_thread()->run_async_function([wr_this = weak_from_this(), contact = std::string(_contact), pattern = std::string(_pattern)]()->int32_t
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -72,6 +68,19 @@ std::shared_ptr<get_patterns_handler> search_pattern_history::get_patterns(const
     };
 
     return handler;
+}
+
+void search_pattern_history::free_dialog(const std::string_view _contact)
+{
+    get_thread()->run_async_function([wr_this = weak_from_this(), contact = std::string(_contact)]()->int32_t
+    {
+        auto ptr_this = wr_this.lock();
+        if (!ptr_this)
+            return 0;
+
+        ptr_this->contact_patterns_.erase(contact);
+        return 0;
+    });
 }
 
 void search_pattern_history::save_all()

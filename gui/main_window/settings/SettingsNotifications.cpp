@@ -6,6 +6,7 @@
 #include "../../controls/TextEmojiWidget.h"
 #include "../../controls/TransparentScrollBar.h"
 #include "../../utils/utils.h"
+#include "../../utils/features.h"
 #include "../../my_info.h"
 #include "../../styles/ThemeParameters.h"
 
@@ -99,17 +100,35 @@ void GeneralSettingsWidget::Creator::initNotifications(NotificationSettings* _pa
                     });
         }
 
-        GeneralCreator::addSwitcher(
+        if (Features::showNotificationsTextSettings())
+        {
+            GeneralCreator::addSwitcher(
                 scrollArea,
                 mainLayout,
                 QT_TRANSLATE_NOOP("settings", "Hide message text in notifications"),
                 get_gui_settings()->get_value<bool>(settings_hide_message_notification, false),
                 [](bool enabled) -> QString {
-                    if (get_gui_settings()->get_value<bool>(settings_hide_message_notification, false) != enabled)
-                        get_gui_settings()->set_value<bool>(settings_hide_message_notification, enabled);
+                if (get_gui_settings()->get_value<bool>(settings_hide_message_notification, false) != enabled)
+                    get_gui_settings()->set_value<bool>(settings_hide_message_notification, enabled);
 
-                    return QString();
-                });
+                return QString();
+            });
+        }
+
+        if constexpr (!platform::is_linux())
+        {
+            GeneralCreator::addSwitcher(
+                scrollArea,
+                mainLayout,
+                QT_TRANSLATE_NOOP("settings", "Animate taskbar icon"),
+                get_gui_settings()->get_value<bool>(settings_alert_tray_icon, false),
+                [](bool enabled) -> QString {
+                if (get_gui_settings()->get_value<bool>(settings_alert_tray_icon, false) != enabled)
+                    get_gui_settings()->set_value<bool>(settings_alert_tray_icon, enabled);
+
+                return QString();
+            });
+        }
     }
 }
 

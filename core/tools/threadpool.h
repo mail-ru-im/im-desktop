@@ -13,7 +13,7 @@ namespace core
         public:
             task();
 
-            task(std::function<void()> _action, const int64_t _id);
+            task(std::function<void()> _action, const int64_t _id, std::string_view _name, std::chrono::steady_clock::time_point _time_stamp, std::function<bool()> _cancel);
 
             task(task&&) = default;
             task& operator=(task&&) = default;
@@ -24,6 +24,8 @@ namespace core
             void execute();
 
             int64_t get_id() const noexcept;
+            std::string_view get_name() const noexcept;
+            std::chrono::steady_clock::time_point get_time_stamp() const noexcept;
 
             operator bool() const noexcept;
 
@@ -32,10 +34,14 @@ namespace core
         private:
 
             std::function<void()> action_;
+            std::function<bool()> cancel_;
 
             int64_t id_;
 
             core_stacktrace st_;
+
+            std::string_view name_;
+            std::chrono::steady_clock::time_point time_stamp_;
         };
 
         typedef std::function<void(const std::chrono::milliseconds, const core_stacktrace&)> finish_action;
@@ -53,12 +59,13 @@ namespace core
             explicit threadpool(
                 const std::string_view _name,
                 const size_t _count,
-                std::function<void()> _on_thread_exit = std::function<void()>());
+                std::function<void()> _on_thread_exit = std::function<void()>(),
+                bool _task_trace = false);
 
             virtual ~threadpool();
 
-            bool push_back(task_action _task, int64_t _id = -1);
-            bool push_front(task_action _task, int64_t _id = -1);
+            bool push_back(task_action _task, int64_t _id = -1, std::string_view _name = {}, std::function<bool()> _cancel = []() { return false; });
+            bool push_front(task_action _task, int64_t _id = -1, std::string_view _name = {}, std::function<bool()> _cancel = []() { return false; });
 
             void raise_task(int64_t _id);
 
@@ -73,6 +80,8 @@ namespace core
             std::deque<task> tasks_;
 
             std::atomic<bool> stop_;
+
+            bool task_trace_;
 
             bool run_task_impl();
             bool run_task();

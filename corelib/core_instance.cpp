@@ -36,13 +36,13 @@ int32_t core::core_instance::addref()
 
 int32_t core::core_instance::release()
 {
-    if (0 == (--ref_count_))
+    int32_t r = (--ref_count_);
+    if (0 == r)
     {
         delete this;
         return 0;
     }
-
-    return ref_count_;
+    return r;
 }
 
 iconnector* core::core_instance::get_core_connector()

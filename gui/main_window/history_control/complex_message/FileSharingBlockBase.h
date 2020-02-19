@@ -43,19 +43,19 @@ public:
 
     virtual QString getSourceText() const override;
 
+    virtual QString getPlaceholderText() const override;
+
     virtual QString getSelectedText(const bool _isFullSelect = false, const TextDestination _dest = TextDestination::selection) const override;
 
     virtual void initialize() final override;
 
     virtual bool isBubbleRequired() const override;
 
+    virtual bool isMarginRequired() const override;
+
     virtual bool isSelected() const override;
 
     virtual bool isAllSelected() const override { return isSelected(); }
-
-    virtual void setMaxPreviewWidth(int width) override;
-
-    virtual int getMaxPreviewWidth() const override { return MaxPreviewWidth_; }
 
     virtual ContentType getContentType() const override { return ContentType::FileSharing; }
 
@@ -72,7 +72,7 @@ public:
     int64_t getFileSize() const;
     int64_t getBytesTransferred() const;
 
-    const QString& getLink() const;
+    const QString& getLink() const override;
 
     const QString& getDirectUri() const;
 
@@ -90,9 +90,11 @@ public:
 
     bool isPlainFile() const;
 
-    bool isPreviewable() const;
+    bool isPreviewable() const override;
 
     bool isVideo() const;
+
+    Data::FilesPlaceholderMap getFilePlaceholders() override;
 
 Q_SIGNALS:
     void uploaded(QPrivateSignal) const;
@@ -167,6 +169,8 @@ private:
 
     bool isDownload(const Data::FileSharingDownloadResult& _result) const;
 
+    QString getPlaceholderFormatText() const;
+
     int64_t BytesTransferred_;
 
     bool CopyFile_;
@@ -198,8 +202,6 @@ private:
     std::unique_ptr<core::file_sharing_content_type> Type_;
 
     QString directUri_;
-
-    int MaxPreviewWidth_;
 
     std::shared_ptr<bool> ref_;
 

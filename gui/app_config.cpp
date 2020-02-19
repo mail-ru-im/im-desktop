@@ -1,5 +1,7 @@
 #include "stdafx.h"
 
+#include "../common.shared/config/config.h"
+
 #include "../corelib/collection_helper.h"
 #include "../gui/core_dispatcher.h"
 #include "utils/gui_coll_helper.h"
@@ -23,29 +25,25 @@ AppConfig::AppConfig(const core::coll_helper &collection)
     , IsShowMsgIdsEnabled_(collection.get<bool>("dev.show_message_ids"))
     , IsSaveCallRTPEnabled_(collection.get<bool>("dev.save_rtp_dumps", false))
     , IsServerSearchEnabled_(collection.get<bool>("dev.server_search", true))
+    , IsShowHiddenThemes_(collection.get<bool>("show_hidden_themes", false))
     , WatchGuiMemoryEnabled_(false)
     , ShowMsgOptionHasChanged_(false)
-    , GDPR_UserHasAgreed_(collection.get<bool>("gdpr.user_has_agreed") || build::is_dit() || build::is_biz())
-    , GDPR_AgreementReportedToServer_(collection.get<int32_t>("gdpr.agreement_reported_to_server") || build::is_dit() || build::is_biz())
-    , GDPR_UserHasLoggedInEver_(collection.get<bool>("gdpr.user_has_logged_in_ever") || build::is_dit() || build::is_biz())
+    , GDPR_UserHasAgreed_(collection.get<bool>("gdpr.user_has_agreed") || config::get().is_on(config::features::auto_accepted_gdpr))
+    , GDPR_AgreementReportedToServer_(collection.get<int32_t>("gdpr.agreement_reported_to_server") || config::get().is_on(config::features::auto_accepted_gdpr))
+    , GDPR_UserHasLoggedInEver_(collection.get<bool>("gdpr.user_has_logged_in_ever") || config::get().is_on(config::features::auto_accepted_gdpr))
     , CacheHistoryContolPagesFor_(collection.get<int>("dev.cache_history_pages_secs"))
-    , urlBase_(collection.get<std::string>("urls.url_base"))
-    , urlFiles_(collection.get<std::string>("urls.url_files"))
-    , urlFilesGet_(collection.get<std::string>("urls.url_files_get"))
-    , urlAgentProfile_(collection.get<std::string>("urls.url_profile_agent"))
-    , urlAuthMailRu_(collection.get<std::string>("urls.url_auth_mail_ru"))
-    , urlRMailRu_(collection.get<std::string>("urls.url_r_mail_ru"))
-    , urlWinMailRu_(collection.get<std::string>("urls.url_win_mail_ru"))
-    , urlReadMsg_(collection.get<std::string>("urls.url_read_msg"))
-    , urlCICQOrg_(collection.get<std::string>("urls.url_cicq_org"))
-    , urlCICQCom_(collection.get<std::string>("urls.url_cicq_com"))
+    , deviceId_(collection.get<std::string>("dev_id"))
+    , urlMacUpdateAlpha_(collection.get<std::string>("urls.url_update_mac_alpha"))
+    , urlMacUpdateBeta_(collection.get<std::string>("urls.url_update_mac_beta"))
+    , urlMacUpdateRelease_(collection.get<std::string>("urls.url_update_mac_release"))
+    , urlAttachPhone_(collection.get<std::string>("urls.url_attach_phone"))
 {
 
 }
 
 bool AppConfig::IsContextMenuFeaturesUnlocked() const noexcept
 {
-    return IsContextMenuFeaturesUnlocked_;
+    return environment::is_develop() || IsContextMenuFeaturesUnlocked_;
 }
 
 bool AppConfig::IsServerHistoryEnabled() const noexcept
@@ -88,6 +86,11 @@ bool AppConfig::IsServerSearchEnabled() const noexcept
     return IsServerSearchEnabled_;
 }
 
+bool AppConfig::IsShowHiddenThemes() const noexcept
+{
+    return IsShowHiddenThemes_;
+}
+
 bool AppConfig::WatchGuiMemoryEnabled() const noexcept
 {
     return WatchGuiMemoryEnabled_;
@@ -127,44 +130,29 @@ bool AppConfig::GDPR_UserHasLoggedInEver() const noexcept
     return GDPR_UserHasLoggedInEver_;
 }
 
-const std::string& AppConfig::getUrlFilesGet() const noexcept
+const std::string& AppConfig::getMacUpdateAlpha() const noexcept
 {
-    return urlFilesGet_;
+    return urlMacUpdateAlpha_;
 }
 
-const std::string& AppConfig::getUrlAgentProfile() const noexcept
+const std::string& AppConfig::getMacUpdateBeta() const noexcept
 {
-    return urlAgentProfile_;
+    return urlMacUpdateBeta_;
 }
 
-const std::string& AppConfig::getUrlAuthMailRu() const noexcept
+const std::string& AppConfig::getMacUpdateRelease() const noexcept
 {
-    return urlAuthMailRu_;
+    return urlMacUpdateRelease_;
 }
 
-const std::string& AppConfig::getUrlRMailRu() const noexcept
+const std::string& AppConfig::getUrlAttachPhone() const noexcept
 {
-    return urlRMailRu_;
+    return urlAttachPhone_;
 }
 
-const std::string& AppConfig::getUrlWinMailRu() const noexcept
+const std::string& AppConfig::getDevId() const noexcept
 {
-    return urlWinMailRu_;
-}
-
-const std::string& AppConfig::getUrlReadMsg() const noexcept
-{
-    return urlReadMsg_;
-}
-
-const std::string& AppConfig::getUrlCICQOrg() const noexcept
-{
-    return urlCICQOrg_;
-}
-
-const std::string& AppConfig::getUrlCICQCom() const noexcept
-{
-    return urlCICQCom_;
+    return deviceId_;
 }
 
 int AppConfig::CacheHistoryControlPagesFor() const noexcept
@@ -190,6 +178,11 @@ void AppConfig::SetSaveCallRTPEnabled(bool enabled) noexcept
 void AppConfig::SetServerSearchEnabled(bool enabled) noexcept
 {
     IsServerSearchEnabled_ = enabled;
+}
+
+void AppConfig::SetShowHiddenThemes(bool enabled) noexcept
+{
+    IsShowHiddenThemes_ = enabled;
 }
 
 void AppConfig::SetContextMenuFeaturesUnlocked(bool unlocked) noexcept
@@ -227,6 +220,19 @@ void AppConfig::SetWatchGuiMemoryEnabled(bool _watch) noexcept
     WatchGuiMemoryEnabled_ = _watch;
 }
 
+void AppConfig::SetCustomDeviceId(bool _custom) noexcept
+{
+    if (_custom)
+        deviceId_ = feature::default_dev_id();
+    else
+        deviceId_.clear();
+}
+
+bool AppConfig::hasCustomDeviceId() const
+{
+    return !deviceId_.empty() && deviceId_ != common::get_dev_id();
+}
+
 const AppConfig& GetAppConfig()
 {
     assert(AppConfig_);
@@ -260,6 +266,7 @@ void ModifyAppConfig(AppConfig _appConfig, message_processed_callback _callback,
     collection.set_value_as_bool("gdpr.user_has_logged_in_ever", _appConfig.GDPR_UserHasLoggedInEver());
     collection.set_value_as_int("dev.cache_history_pages_secs", _appConfig.CacheHistoryControlPagesFor());
     collection.set_value_as_bool("dev.server_search", _appConfig.IsServerSearchEnabled());
+    collection.set_value_as_string("dev_id", _appConfig.getDevId());
 
     if (!postToCore)
     {

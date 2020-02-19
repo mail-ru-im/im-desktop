@@ -12,7 +12,6 @@ namespace core
 
 
 UI_STICKERS_NS_BEGIN
-
 class Sticker
 {
 public:
@@ -178,7 +177,7 @@ struct StickerInfo
     const QString fsId_;
     const SuggestType type_;
 
-    StickerInfo(QString&& _fsId, const SuggestType& _type)
+    StickerInfo(QString _fsId, const SuggestType _type)
         : fsId_(std::move(_fsId))
         , type_(_type)
     {
@@ -227,6 +226,7 @@ public:
     setSptr getStoreSet(int32_t _setId) const;
 
     void addSet(std::shared_ptr<Set> _set);
+    void addStickerByFsId(const std::vector<QString> &_fsIds, const QString &_keyword, const SuggestType _type);
 
     setSptr insertSet(int32_t _setId);
     stickerSptr insertSticker(const QString& _fsId);
@@ -240,8 +240,8 @@ public:
     const setsMap& getSetsTree() const;
     const setsMap& getStoreTree() const;
 
-    QString getTemplatePreviewBaseUrl() const;
-    QString getTemplateOriginalBaseUrl() const;
+    const QString& getTemplatePreviewBaseUrl() const;
+    const QString& getTemplateOriginalBaseUrl() const;
 
     QString getTemplateSendBaseUrl() const;
 
@@ -317,6 +317,7 @@ void showStickersPackByFileId(const QString& _file_id, StatContext context);
 std::shared_ptr<Set> parseSet(core::coll_helper _coll_set);
 
 void addSet(std::shared_ptr<Set> _set);
+void addStickers(const std::vector<QString> &_fsIds, const QString &_text, const Stickers::SuggestType _type);
 
 bool isUserSet(const int32_t _setId);
 bool isPurchasedSet(const int32_t _setId);
@@ -331,9 +332,5 @@ void resetCache();
 
 bool getSuggest(const QString& _keyword, Suggest& _suggest, const std::set<SuggestType>& _types);
 bool getSuggestWithSettings(const QString& _keyword, Suggest& _suggest);
-
-QString getBotUin();
-
-
 
 UI_STICKERS_NS_END

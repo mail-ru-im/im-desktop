@@ -1,6 +1,7 @@
+#include "stdafx.h"
+
 #include "MemoryStatsResponse.h"
 #include "../corelib/collection_helper.h"
-#include <iostream>
 
 MEMSTATS_NS_BEGIN
 

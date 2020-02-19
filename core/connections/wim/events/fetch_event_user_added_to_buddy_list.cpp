@@ -4,6 +4,7 @@
 #include "../wim_packet.h"
 
 #include "../../../log/log.h"
+#include "../../../tools/json_helper.h"
 
 #include "fetch_event_user_added_to_buddy_list.h"
 

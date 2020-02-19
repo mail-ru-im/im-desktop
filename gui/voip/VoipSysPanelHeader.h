@@ -1,5 +1,4 @@
-#ifndef __VOIP_SYS_PANEL_HEADER_H__
-#define __VOIP_SYS_PANEL_HEADER_H__
+#pragma once
 #include "VideoPanelHeader.h"
 #include "AvatarContainerWidget.h"
 #include "NameAndStatusWidget.h"
@@ -57,7 +56,4 @@ namespace Ui
         void enterEvent(QEvent* _e) override;
         void leaveEvent(QEvent* _e) override;
     };
-
 }
-
-#endif

@@ -1,15 +1,20 @@
+#include "stdafx.h"
 #include "TermsPrivacyWidget.h"
 
 #include "controls/TextBrowserEx.h"
 #include "controls/PictureWidget.h"
+#include "controls/TransparentScrollBar.h"
 
 #include "controls/DialogButton.h"
 #include "utils/utils.h"
 #include "utils/Text.h"
 #include "utils/gui_coll_helper.h"
 #include "fonts.h"
+#include "styles/ThemeParameters.h"
 #include "core_dispatcher.h"
 #include "AcceptAgreementInfo.h"
+#include "../gui_settings.h"
+#include "../../common.shared/config/config.h"
 #if defined(__APPLE__)
 #include "utils/macos/mac_support.h"
 #endif
@@ -20,122 +25,173 @@ UI_NS_BEGIN
 
 namespace
 {
-    constexpr int DIALOG_WIDTH = 380;
-//    constexpr int DIALOG_HEIGHT = 390;
+    constexpr int DIALOG_WIDTH = 340;
 
-//    constexpr int ICON_WIDTH = 78;
-//    constexpr int ICON_HEIGHT = 80;
+    constexpr int ICON_WIDTH = 380;
+    constexpr int ICON_HEIGHT = 280;
+
+    QString getGDPRImagePath()
+    {
+        if (get_gui_settings()->get_value(settings_language, QString()) == ql1s("ru"))
+            return ql1s(":/gdpr/gdpr_100");
+
+        return ql1s(":/gdpr/gdpr_100_en");
+    }
+}
+
+const QString& legalTermsUrl()
+{
+    static const QString termsUrl = []() -> QString
+    {
+        const auto url = config::get().url(config::urls::legal_terms);
+        return ql1s("https://") % QString::fromUtf8(url.data(), url.size());
+    }();
+
+    return termsUrl;
+}
+
+const QString& privacyPolicyUrl()
+{
+    static const QString ppUrl = []() -> QString
+    {
+        const auto url = config::get().url(config::urls::legal_privacy_policy);
+        return ql1s("https://") % QString::fromUtf8(url.data(), url.size());
+    }();
+
+    return ppUrl;
 }
 
 TermsPrivacyWidget::TermsPrivacyWidget(const QString& _titleHtml,
-                                       const QString& _descriptionHtml,
-                                       const Options &_options,
-                                       QWidget *_parent)
+    const QString& _descriptionHtml,
+    const Options &_options,
+    QWidget *_parent)
     : QWidget(_parent),
-      layout_(new QVBoxLayout(this)),
-      options_(_options)
+    layout_(new QVBoxLayout(this)),
+    options_(_options)
 {
-    setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
-    setFixedWidth(Utils::scale_value(DIALOG_WIDTH));
-    //setFixedSize(Utils::scale_value(DIALOG_WIDTH), Utils::scale_value(DIALOG_HEIGHT));
+    QWidget* mainWidget = new QWidget();
+    mainWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    QVBoxLayout* verticalLayout = Utils::emptyVLayout(mainWidget);
+    verticalLayout->setAlignment(Qt::AlignCenter);
 
-    //iconPixmap_ = Utils::renderSvg(build::is_icq() ? qsl(":/logo/logo_icq")
-    //                                               : qsl(":/logo/logo_agent"),
-    //                               QSize(Utils::scale_value(ICON_WIDTH), Utils::scale_value(ICON_HEIGHT)));
+    auto scrollArea = CreateScrollAreaAndSetTrScrollBarV(this);
+    scrollArea->setWidgetResizable(true);
+    scrollArea->setStyleSheet(qsl("background: transparent; border: none;"));
+    scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    Utils::grabTouchWidget(scrollArea->viewport(), true);
+    Testing::setAccessibleName(scrollArea, qsl("AS settings appearance scrollArea"));
+    layout_->addWidget(scrollArea);
+    scrollArea->setWidget(mainWidget);
 
-    //icon_ = new PictureWidget(this);
-    //icon_->setImage(iconPixmap_, -1 /* no radius */);
-    //icon_->setIconAlignment(Qt::AlignLeft | Qt::AlignTop);
-    //icon_->setFixedSize(Utils::scale_value(ICON_WIDTH), Utils::scale_value(ICON_HEIGHT));
-    //icon_->setSizePolicy(QSizePolicy::Policy::Fixed, QSizePolicy::Policy::Fixed);
-    //icon_->setContentsMargins(Utils::scale_value(0), Utils::scale_value(0), Utils::scale_value(0), Utils::scale_value(0));
+    QWidget *iconWidget = new QWidget(mainWidget);
+    iconWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    Utils::ApplyStyle(iconWidget, qsl("background-color: %1;").arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_BRIGHT_INVERSE)));
+
+    auto iconLayout = Utils::emptyVLayout(iconWidget);
+
+    icon_ = new PictureWidget(iconWidget, getGDPRImagePath());
+    icon_->setFixedSize(Utils::scale_value(QSize(ICON_WIDTH, ICON_HEIGHT)));
+    iconLayout->setAlignment(Qt::AlignBottom | Qt::AlignHCenter);
+    iconLayout->addItem(new QSpacerItem(0, 0, QSizePolicy::Fixed, QSizePolicy::Expanding));
+    Testing::setAccessibleName(icon_, qsl("AS tpw icon_"));
+    iconLayout->addWidget(icon_);
 
     TextBrowserEx::Options titleOptions;
-    titleOptions.font_ = Fonts::appFontScaled(23);
+    titleOptions.font_ = Fonts::appFontScaled(23, Fonts::FontWeight::Medium);
     titleOptions.useDocumentMargin_ = true;
 
-    title_ = new TextBrowserEx(titleOptions, this);
+    title_ = new TextBrowserEx(titleOptions, mainWidget);
     title_->setHtml(_titleHtml);
-    title_->setFixedWidth(Utils::scale_value(308));
-    title_->setContentsMargins(Utils::scale_value(0), Utils::scale_value(0), Utils::scale_value(0), Utils::scale_value(0));
-    title_->setSizePolicy(QSizePolicy::Policy::Fixed, QSizePolicy::Policy::Fixed);
+    title_->setFixedWidth(Utils::scale_value(ICON_WIDTH));
+    title_->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Minimum);
     title_->setPlaceholderText(QString());
     title_->setAutoFillBackground(false);
     title_->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     title_->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     title_->setAlignment(Qt::AlignCenter);
     title_->setContextMenuPolicy(Qt::ContextMenuPolicy::NoContextMenu);
+    title_->setTextInteractionFlags(Qt::LinksAccessibleByMouse);
     TextBrowserExUtils::setAppropriateHeight(*title_);
 
     TextBrowserEx::Options descriptionOptions;
     descriptionOptions.font_ = Fonts::appFontScaled(15);
-    descriptionOptions.noTextDecoration_ = Styling::getThemesContainer().getCurrentTheme()->linksUnderlined() == Ui::TextRendering::LinksStyle::PLAIN;
+    descriptionOptions.noTextDecoration_ = !Styling::getThemesContainer().getCurrentTheme()->isLinksUnderlined();
     descriptionOptions.useDocumentMargin_ = true;
+    descriptionOptions.openExternalLinks_ = false;
 
-    description_ = new TextBrowserEx(descriptionOptions, this);
+    auto descriptionWidget = new QWidget();
+    descriptionWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
+    auto descLayout = Utils::emptyHLayout(descriptionWidget);
+    descLayout->setContentsMargins(Utils::scale_value(24), 0, Utils::scale_value(24), 0);
+
+    description_ = new TextBrowserEx(descriptionOptions, descriptionWidget);
     description_->setHtml(_descriptionHtml);
-    description_->setFixedWidth(Utils::scale_value(308));
-    description_->setContentsMargins(Utils::scale_value(0), Utils::scale_value(0), Utils::scale_value(0), Utils::scale_value(0));
-    description_->setSizePolicy(QSizePolicy::Policy::Fixed, QSizePolicy::Policy::Fixed);
+    description_->setMinimumWidth(Utils::scale_value(DIALOG_WIDTH));
+    description_->setMaximumWidth(Utils::scale_value(460));
+    description_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
     description_->setPlaceholderText(QString());
     description_->setAutoFillBackground(false);
     description_->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     description_->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     description_->setAlignment(Qt::AlignCenter);
     description_->setContextMenuPolicy(Qt::ContextMenuPolicy::NoContextMenu);
+    description_->setTextInteractionFlags(Qt::LinksAccessibleByMouse);
     TextBrowserExUtils::setAppropriateHeight(*description_);
-
-    agreeButton_ = new DialogButton(this, QT_TRANSLATE_NOOP("terms_privacy_widget", "I AGREE"), DialogButtonRole::CONFIRM);
-    agreeButton_->setFixedHeight(Utils::scale_value(32));
-    agreeButton_->setMinimumWidth(Utils::scale_value(100));
-    agreeButton_->setSizePolicy(QSizePolicy::Policy::Expanding, QSizePolicy::Policy::Fixed);
-    agreeButton_->setContentsMargins(Utils::scale_value(0), Utils::scale_value(0), Utils::scale_value(0), Utils::scale_value(0));
-    agreeButton_->setCursor(QCursor(Qt::PointingHandCursor));
-    agreeButton_->setEnabled(true);
-
-    layout_->setSpacing(0);
-    layout_->setContentsMargins(0, 0, 0, 0);
-    layout_->addSpacerItem(new QSpacerItem(0, Utils::scale_value(44), QSizePolicy::Fixed, QSizePolicy::Fixed));
-    //Testing::setAccessibleName(icon_, qsl("AS tpw icon_"));
-    //layout_->addWidget(icon_);
-    //layout_->addSpacerItem(new QSpacerItem(0, Utils::scale_value(28), QSizePolicy::Fixed, QSizePolicy::Fixed));
-    Testing::setAccessibleName(title_, qsl("AS tpw title_"));
-    layout_->addWidget(title_);
-    layout_->addSpacerItem(new QSpacerItem(0, Utils::scale_value(28), QSizePolicy::Fixed, QSizePolicy::Fixed));
-
-    auto bottomLayout = Utils::emptyVLayout();
-    bottomLayout->setContentsMargins(0, -1, 0, Utils::scale_value(16));
-    bottomLayout->setAlignment(Qt::AlignBottom);
-
     Testing::setAccessibleName(description_, qsl("AS tpw description_"));
-    bottomLayout->addWidget(description_);
-    bottomLayout->addSpacerItem(new QSpacerItem(0, Utils::scale_value(32), QSizePolicy::Fixed, QSizePolicy::Fixed));
+    descLayout->addWidget(description_);
+    descLayout->setAlignment(description_, Qt::AlignCenter);
+
+    connect(description_, &QTextBrowser::anchorClicked, this, &TermsPrivacyWidget::onAnchorClicked);
+
+    const auto text_ = QT_TRANSLATE_NOOP("terms_privacy_widget", "Accept and agree");
+    Testing::setAccessibleName(mainWidget, qsl("AS terms_privacy_widget"));
+    agreeButton_ = new DialogButton(mainWidget, text_, DialogButtonRole::CONFIRM, DialogButtonShape::ROUNDED);
+    agreeButton_->setFixedHeight(Utils::scale_value(40));
+    agreeButton_->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    agreeButton_->setContentsMargins(Utils::scale_value(32), Utils::scale_value(8), Utils::scale_value(32), Utils::scale_value(12));
+    agreeButton_->setCursor(QCursor(Qt::PointingHandCursor));
+    agreeButton_->setFont(Fonts::appFontScaled(18, Fonts::FontWeight::Medium));
+    agreeButton_->setEnabled(true);
+    agreeButton_->updateWidth();
+
+    layout_->setContentsMargins(QMargins());
+
+    auto bottomWidget = new QWidget(mainWidget);
+    auto bottomLayout = Utils::emptyVLayout(bottomWidget);
+    bottomWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+
+    Testing::setAccessibleName(iconWidget, qsl("AS tpw iconWidget"));
+    verticalLayout->addWidget(iconWidget);
+    bottomLayout->addSpacerItem(new QSpacerItem(0, Utils::scale_value(20), QSizePolicy::Fixed, QSizePolicy::Fixed));
+    Testing::setAccessibleName(title_, qsl("AS tpw title_"));
+    bottomLayout->addWidget(title_);
+    bottomLayout->addSpacerItem(new QSpacerItem(0, Utils::scale_value(16), QSizePolicy::Fixed, QSizePolicy::Fixed));
+    Testing::setAccessibleName(descriptionWidget, qsl("AS tpw descriptionWidget"));
+    bottomLayout->addWidget(descriptionWidget);
+    bottomLayout->addSpacerItem(new QSpacerItem(0, Utils::scale_value(20), QSizePolicy::Fixed, QSizePolicy::Fixed));
     Testing::setAccessibleName(agreeButton_, qsl("AS tpw agreeButton_"));
     bottomLayout->addWidget(agreeButton_);
-    bottomLayout->setAlignment(description_, Qt::AlignCenter);
-    bottomLayout->setAlignment(agreeButton_, Qt::AlignCenter);
+    bottomLayout->setAlignment(title_, Qt::AlignHCenter | Qt::AlignTop);
+    bottomLayout->setAlignment(descriptionWidget, Qt::AlignHCenter | Qt::AlignTop);
+    bottomLayout->setAlignment(agreeButton_, Qt::AlignHCenter | Qt::AlignTop);
+    bottomLayout->addSpacerItem(new QSpacerItem(0, 0, QSizePolicy::Fixed, QSizePolicy::Expanding));
+    Testing::setAccessibleName(bottomWidget, qsl("AS tpw bottomWidget"));
+    verticalLayout->addWidget(bottomWidget);
 
-    layout_->addLayout(bottomLayout);
-
-    //layout_->setAlignment(icon_, Qt::AlignCenter);
-    layout_->setAlignment(title_, Qt::AlignCenter);
-    layout_->setAlignment(description_, Qt::AlignCenter);
-
-    //icon_->show();
+    icon_->show();
     title_->show();
     description_->show();
     agreeButton_->show();
 
     connect(agreeButton_, &QPushButton::clicked, this, &TermsPrivacyWidget::onAgreeClicked);
 
-    if (options_.blockUntilAccepted_)
+    if (options_.isGdprUpdate_)
     {
         connect(this, &TermsPrivacyWidget::agreementAccepted,
-                this, &TermsPrivacyWidget::reportAgreementAccepted);
+            this, &TermsPrivacyWidget::reportAgreementAccepted);
     }
-
-    connect(qApp, &QApplication::focusChanged, this, &TermsPrivacyWidget::onFocusChanged);
 
 #if defined(__APPLE__)
     macMenuBlocker_ = std::make_unique<MacMenuBlocker>();
@@ -143,21 +199,20 @@ TermsPrivacyWidget::TermsPrivacyWidget(const QString& _titleHtml,
     setFocus();
 }
 
-TermsPrivacyWidget::~TermsPrivacyWidget()
-{
-}
-
-void TermsPrivacyWidget::setContainingDialog(QDialog *_containingDialog)
-{
-    options_.containingDialog_ = _containingDialog;
-}
+TermsPrivacyWidget::~TermsPrivacyWidget() = default;
 
 void TermsPrivacyWidget::onAgreeClicked()
 {
     AcceptParams params;
     params.accepted_ = true;
 
+    GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::gdpr_accept_start);
+
     emit agreementAccepted(params);
+
+#if defined(__APPLE__)
+    macMenuBlocker_->unblock();
+#endif
 }
 
 void TermsPrivacyWidget::reportAgreementAccepted(const TermsPrivacyWidget::AcceptParams &_acceptParams)
@@ -165,26 +220,11 @@ void TermsPrivacyWidget::reportAgreementAccepted(const TermsPrivacyWidget::Accep
     // report to core
     gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
     collection.set_value_as_int("accept_flag", static_cast<int32_t>(_acceptParams.accepted_ ? AcceptAgreementInfo::AgreementAction::Accept
-                                                                                            : AcceptAgreementInfo::AgreementAction::Ignore));
+        : AcceptAgreementInfo::AgreementAction::Ignore));
     collection.set_value_as_bool("reset", false);
 
     GetDispatcher()->post_message_to_core("agreement/gdpr", collection.get());
-
-    if (options_.controlContainingDialog_ && options_.containingDialog_)
-    {
-        // containing dialog is controlled for current users (gdpr "update")
-        GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::gdpr_accept_update);
-        options_.containingDialog_->close();
-    }
-}
-
-void TermsPrivacyWidget::onFocusChanged(QWidget *_from, QWidget *_to)
-{
-    Q_UNUSED(_from);
-    if (!_to || isAncestorOf(_to))
-        return;
-
-    _to->clearFocus();
+    GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::gdpr_accept_update);
 }
 
 void TermsPrivacyWidget::keyPressEvent(QKeyEvent *_event)
@@ -200,8 +240,27 @@ void TermsPrivacyWidget::keyPressEvent(QKeyEvent *_event)
 
 void TermsPrivacyWidget::showEvent(QShowEvent *_event)
 {
+#if defined(__APPLE__)
+    macMenuBlocker_->block();
+#endif
     QWidget::showEvent(_event);
     setFocus();
+}
+
+void TermsPrivacyWidget::onAnchorClicked(const QUrl& _link) const
+{
+    if (!_link.isValid())
+        return;
+
+    if (const auto linkStr = _link.toString(); !linkStr.isEmpty())
+    {
+        if (linkStr == legalTermsUrl())
+            GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::reg_click_eula);
+        else if (linkStr == privacyPolicyUrl())
+            GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::reg_click_privacypolicy);
+
+        Utils::openUrl(linkStr);
+    }
 }
 
 UI_NS_END

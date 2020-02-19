@@ -5,6 +5,7 @@
 #include "search_dialog_result.h"
 #include "../tools/system.h"
 #include "../../common.shared/common_defs.h"
+#include "../../common.shared/constants.h"
 
 using namespace core;
 using namespace archive;
@@ -152,7 +153,7 @@ bool messages_data::get_history_archive(const std::wstring& _file_name, core::to
 
     if (*_mode == 0)
     {
-        auto limit = 1024 * 1024 * 10;
+        constexpr int64_t limit = search::archive_block_size();
 
         if (init_size > limit  && *_offset + limit < init_size)
         {
@@ -251,6 +252,11 @@ void messages_data::search_in_archive(std::shared_ptr<contact_and_offsets_v> _co
             _data->set_output(begin_of_block);
 
             if (history_message::is_sticker(*_data))
+                continue;
+
+            _data->set_output(begin_of_block);
+
+            if (history_message::is_chat_event(*_data))
                 continue;
 
             _data->set_output(begin_of_block);

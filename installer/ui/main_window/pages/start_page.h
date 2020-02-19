@@ -6,6 +6,15 @@ namespace installer
 	{
         class BundleCheckBox;
 
+        class list_item : public QWidget
+        {
+        public:
+            list_item(QWidget* _parent, const QString& _text);
+        private:
+            QLabel* dot_;
+            QLabel* textLabel_;
+        };
+
 		class start_page : public QWidget
 		{
 			Q_OBJECT
@@ -14,14 +23,7 @@ namespace installer
 			void start_install();
 
 		public:
-            start_page(QWidget* _parent, const bool _offerBundle);
-
-            bool isHomePageSelected() const;
-            bool isSearchSelected() const;
-
-        private:
-            BundleCheckBox* cbHomePage_;
-            BundleCheckBox* cbSearch_;
+            explicit start_page(QWidget* _parent);
 		};
 	}
 }

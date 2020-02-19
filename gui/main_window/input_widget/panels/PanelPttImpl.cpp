@@ -248,10 +248,30 @@ namespace Ui
         playButtonWasClicked_ = true;
     }
 
+    bool InputPanelPttImpl::tryPlay()
+    {
+        if (player_ && histogram_->hasPlayButton())
+        {
+            play();
+            return true;
+        }
+        return false;
+    }
+
     void InputPanelPttImpl::pausePlay()
     {
         if (player_)
             player_->pause();
+    }
+
+    bool InputPanelPttImpl::tryPausePlay()
+    {
+        if (player_ && histogram_->hasPauseButton())
+        {
+            pausePlay();
+            return true;
+        }
+        return false;
     }
 
     void InputPanelPttImpl::getData(ptt::StatInfo&& _statInfo)
@@ -294,6 +314,12 @@ namespace Ui
         histogram_->enableCircleHover(_val);
     }
 
+    void InputPanelPttImpl::setUnderLongPress(bool _val)
+    {
+        deleteButton_->setUnderLongPress(_val);
+        histogram_->setUnderLongPress(_val);
+    }
+
     bool InputPanelPttImpl::canLock() const
     {
         const auto p = QCursor::pos();
@@ -334,8 +360,8 @@ namespace Ui
 
     void InputPanelPttImpl::setButtonsTabOrder()
     {
-        const std::vector<QWidget*> widgets = { deleteButton_, histogram_->getButtonWidget(), buttonSubmit_ };
-        for (int i = 0; i < int(widgets.size()) - 1; ++i)
+        QWidget* widgets[] = { deleteButton_, histogram_->getButtonWidget(), buttonSubmit_ };
+        for (size_t i = 0; i < std::size(widgets) - 1; ++i)
         {
             assert(widgets[i]);
             assert(widgets[i + 1]);

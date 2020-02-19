@@ -2,7 +2,9 @@
 
 #include "../../../namespaces.h"
 #include "../../../types/message.h"
+#include "../../../types/link_metadata.h"
 #include "../../../controls/TextUnit.h"
+#include "SnippetBlock.h"
 
 #include "../MessageItemBase.h"
 
@@ -14,6 +16,13 @@ class HistoryControlPage;
 class MessageTimeWidget;
 class CustomButton;
 enum class MediaType;
+
+
+enum class ReplaceReason
+{
+    NoMeta,
+    OtherReason,
+};
 
 UI_NS_END
 
@@ -56,7 +65,11 @@ Q_SIGNALS:
         const QString& _internalId,
         const common::tools::patch_version& _patchVersion,
         const QString& _url,
-        const QString& _description);
+        const QString& _description,
+        const Data::QuotesVec& _quotes,
+        qint32 _time,
+        const Data::FilesPlaceholderMap& _files,
+        MediaType _mediaType);
 
     void edit(
         const int64_t _msgId,
@@ -65,7 +78,9 @@ Q_SIGNALS:
         const QString& _text,
         const Data::MentionMap& _mentions,
         const Data::QuotesVec& _quotes,
-        qint32 _time);
+        qint32 _time,
+        const Data::FilesPlaceholderMap& _files,
+        MediaType _mediaType);
 
     void pinPreview(const QPixmap& _preview);
 
@@ -77,26 +92,15 @@ Q_SIGNALS:
     void removeMe();
 
 public:
-    ComplexMessageItem(
-        QWidget *parent,
-        const int64_t id,
-        const int64_t prevId,
-        const QString &_internalId,
-        const QDate date,
-        const QString &chatAimid,
-        const QString &senderAimid,
-        const QString &senderFriendly,
-        const QString &sourceText,
-        const Data::MentionMap& _mentions,
-        const bool isOutgoing);
+    ComplexMessageItem(QWidget *parent, const Data::MessageBuddy& _msg);
 
     ~ComplexMessageItem();
 
-    void clearSelection() override;
+    void clearSelection(bool _keepSingleSelection) override;
 
     QString formatRecentsText() const override;
 
-    MediaType getMediaType() const override;
+    MediaType getMediaType(MediaRequestMode _mode = MediaRequestMode::Chat) const override;
 
     void updateFriendly(const QString& _aimId, const QString& _friendly) override;
 
@@ -112,7 +116,13 @@ public:
 
     QString getQuoteHeader() const;
 
-    QString getSelectedText(const bool isQuote) const;
+    enum class TextFormat
+    {
+        Raw,
+        Formatted
+    };
+
+    QString getSelectedText(const bool _isQuote, TextFormat _format = TextFormat::Formatted) const;
 
     const QString& getChatAimid() const;
 
@@ -124,6 +134,7 @@ public:
 
     bool isOutgoing() const override;
     bool isEditable() const override;
+    bool isMediaOnly() const;
 
     int32_t getTime() const override;
 
@@ -133,6 +144,7 @@ public:
     bool isSingleSticker() const;
 
     void onHoveredBlockChanged(IItemBlock *newHoveredBlock);
+    void onSharingBlockHoverChanged(IItemBlock *newHoveredBlock);
 
     void updateStyle() override;
     void updateFonts() override;
@@ -143,13 +155,13 @@ public:
 
     virtual void onDistanceToViewportChanged(const QRect& _widgetAbsGeometry, const QRect& _viewportVisibilityAbsRect) override;
 
-    void replaceBlockWithSourceText(IItemBlock *block);
+    void replaceBlockWithSourceText(IItemBlock *block, ReplaceReason _reason = ReplaceReason::OtherReason);
 
     void removeBlock(IItemBlock *block);
 
     void cleanupBlock(IItemBlock *block);
 
-    void selectByPos(const QPoint& from, const QPoint& to);
+    void selectByPos(const QPoint& from, const QPoint& to, const QPoint& areaFrom, const QPoint& areaTo) override;
 
     void setHasAvatar(const bool value) override;
     void setHasSenderName(const bool value) override;
@@ -172,14 +184,14 @@ public:
 
     bool isAllSelected() const;
 
-    void setDrawFullBubbleSelected(const bool _selected);
-
     Data::QuotesVec getQuotes(const bool _selectedTextOnly = true, const bool _isForward = false) const;
     Data::QuotesVec getQuotesForEdit() const;
 
     void setSourceText(QString text);
 
-    virtual void setQuoteSelection() override;
+    void setQuoteSelection() override;
+    void highlightText(const highlightsV& _highlights) override;
+    void resetHighlight() override;
 
     void setDeliveredToServer(const bool _isDeliveredToServer) override;
 
@@ -196,6 +208,8 @@ public:
 
     const Data::MentionMap& getMentions() const;
 
+    const Data::FilesPlaceholderMap& getFilesPlaceholders() const;
+
     QString getEditableText() const;
 
     int desiredWidth() const;
@@ -205,6 +219,8 @@ public:
     void callEditing() override;
 
     void setHasTrailingLink(const bool _hasLink);
+
+    void setHasLinkInText(const bool _hasLinkInText);
 
     int getBlockCount() const;
 
@@ -223,6 +239,7 @@ public:
     bool isLastBlock(const IItemBlock* _block) const;
     bool isHeaderRequired() const;
     bool isSmallPreview() const;
+    bool canStretchWithSender() const;
     bool containsShareableBlocks() const;
 
     MessageTimeWidget* getTimeWidget() const;
@@ -241,6 +258,14 @@ public:
 
     bool hasSharedContact() const;
 
+    GenericBlock* addSnippetBlock(const QString& _link, const bool _linkInText, SnippetBlock::EstimatedType _estimatedType, size_t _insertAt, bool _quoteOrForward = false);
+
+    virtual void setSelected(bool _selected) override;
+
+    bool containsText() const;
+
+    void updateTimeWidgetUnderlay();
+
 protected:
 
     void leaveEvent(QEvent *event) override;
@@ -257,6 +282,7 @@ protected:
 private Q_SLOTS:
     void onAvatarChanged(const QString& aimId);
     void onMenuItemTriggered(QAction *action);
+    void onLinkMetainfoMetaDownloaded(int64_t _seq, bool _success, Data::LinkMetadata _meta);
 
 public Q_SLOTS:
     void trackMenu(const QPoint &globalPos);
@@ -265,6 +291,7 @@ public Q_SLOTS:
     void onObserveToSize();
 
 private:
+    void fillFilesPlaceholderMap();
 
     void cleanupMenu();
 
@@ -274,11 +301,17 @@ private:
 
     void drawBubble(QPainter &p, const QColor& quote_color);
 
-    QString getBlocksText(const IItemBlocksVec& _items, const bool _isSelected) const;
+    QString getBlocksText(const IItemBlocksVec& _items, const bool _isSelected, TextFormat _format = TextFormat::Formatted) const;
 
     void drawGrid(QPainter &p);
 
-    IItemBlock* findBlockUnder(const QPoint &pos) const;
+    enum class FindForSharing
+    {
+        No,
+        Yes
+    };
+
+    IItemBlock* findBlockUnder(const QPoint& _pos, FindForSharing _findFor = FindForSharing::No) const;
 
     void initialize();
     void initializeShareButton();
@@ -286,6 +319,7 @@ private:
     void initSender();
 
     bool isBubbleRequired() const;
+    bool isMarginRequired() const;
 
     bool isOverAvatar(const QPoint &pos) const;
     bool isOverSender(const QPoint &pos) const;
@@ -310,6 +344,8 @@ private:
     void hideTimeAnimated();
     int getTimeAnimationDistance() const;
 
+    void clearBlockSelection();
+
     enum class WidgetAnimationType
     {
         show,
@@ -320,9 +356,10 @@ private:
 
     Data::Quote getQuoteFromBlock(IItemBlock* _block, const bool _selectedTextOnly) const;
 
-    void updateTimeWidgetUnderlay();
     void setTimeWidgetVisible(const bool _visible);
     bool isNeedAvatar() const;
+
+    void loadSnippetsMetaInfo();
 
     QPixmapSCptr Avatar_;
 
@@ -336,8 +373,6 @@ private:
 
     QDate Date_;
 
-    BlockSelectionType FullSelectionType_;
-
     IItemBlock* hoveredBlock_;
     IItemBlock* hoveredSharingBlock_;
 
@@ -350,7 +385,7 @@ private:
 
     bool IsOutgoing_;
 
-    bool IsDeliveredToServer_;
+    bool deliveredToServer_;
 
     ComplexMessageItemLayout *Layout_;
 
@@ -384,13 +419,27 @@ private:
     bool bObserveToSize_;
     bool bubbleHovered_;
     bool hasTrailingLink_;
+    bool hasLinkInText_;
 
     Data::MentionMap mentions_;
+    Data::FilesPlaceholderMap files_;
 
     QPoint PressPoint_;
-    bool isDrawFullBubbleSelected_;
     QString Url_;
     QString Description_;
+    bool isMediaOnly_;
+
+    struct SnippetData
+    {
+        QString link_;
+        bool linkInText_;
+        IItemBlock* textBlock_;
+        SnippetBlock::EstimatedType estimatedType_;
+        size_t insertAt_;
+    };
+
+    std::vector<SnippetData> snippetsWaitingForInitialization_;
+    std::map<int64_t, SnippetData> snippetsWaitingForMeta_;
 };
 
 UI_COMPLEX_MESSAGE_NS_END

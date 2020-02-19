@@ -17,7 +17,6 @@ namespace Ui
 
     public:
         CallButton(QWidget* _parent, const QString& _aimId, const bool _isOutgoing);
-        void setSelected(const bool _isSelected);
 
         bool isPressed() const;
 
@@ -28,7 +27,6 @@ namespace Ui
         void mouseReleaseEvent(QMouseEvent* _e) override;
 
     private:
-        bool isSelected_;
         bool isPressed_;
         bool isOutgoing_;
         QString aimId_;
@@ -58,7 +56,7 @@ namespace Ui
 
         QString formatRecentsText() const override;
         QString formatCopyText() const;
-        MediaType getMediaType() const override;
+        MediaType getMediaType(MediaRequestMode _mode = MediaRequestMode::Chat) const override;
         Data::Quote getQuote() const;
 
         void setTopMargin(const bool value) override;
@@ -72,8 +70,7 @@ namespace Ui
         qint64 getId() const override;
         void setId(const qint64 _id, const QString& _internalId);
 
-        void selectByPos(const QPoint& _from, const QPoint& _to);
-        void clearSelection() override;
+        void selectByPos(const QPoint& _from, const QPoint& _to, const QPoint& _areaFrom, const QPoint& _areaTo) override;
 
         void updateStyle() override;
         void updateFonts() override;
@@ -96,6 +93,7 @@ namespace Ui
 
     private:
         void init();
+        void updateSize(const QSize& _size, bool _force = false);
 
         QRect getAvatarRect() const;
         bool isAvatarHovered(const QPoint &mousePos) const;
@@ -136,16 +134,6 @@ namespace Ui
         qint64 id_;
         QString internalId_;
         QString friendlyName_;
-
-        enum class SelectDirection
-        {
-            NONE = 0,
-            DOWN,
-            UP,
-        };
-        SelectDirection Direction_;
-        int startSelectY_;
-        bool isSelection_;
 
         std::map<QString, QPixmap> confMembers_;
 

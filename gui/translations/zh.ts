@@ -71,14 +71,17 @@
     </message>
 </context>
 <context>
+    <name>UpdaterButton</name>
+    <message>
+        <source>Update %1</source>
+        <translation>更新%1</translation>
+    </message>
+</context>
+<context>
     <name>about_us</name>
     <message>
         <source>This product includes software developed by the OpenSSL project for use in the OpenSSL Toolkit</source>
         <translation>本产品包含由 OpenSSL 项目为 OpenSSL Toolkit 使用而开发的软件</translation>
-    </message>
-    <message>
-        <source>https://openssl.org</source>
-        <translation>https://openssl.org</translation>
     </message>
     <message>
         <source>Copyright © 2012, the WebRTC project authors. All rights reserved.</source>
@@ -89,24 +92,42 @@
         <translation>表情符号由 Emoji One 免费提供</translation>
     </message>
     <message>
-        <source>Presented by Mail.ru</source>
-        <translation>由 Mail.ru 出品</translation>
+        <source>https://openssl.org</source>
+        <translation>https://openssl.org</translation>
     </message>
     <message>
         <source>© Mail.ru LLC</source>
         <translation>© Mail.ru LLC</translation>
     </message>
+    <message>
+        <source>Beta version contains new features, but it is not complete yet.
+You can leave your feedback or report an error here:</source>
+        <translation>Beta版包含新功能，但尚未完成。
+您可以在此处留下您的反馈或报告错误:</translation>
+    </message>
+    <message>
+        <source>https://icq.im/desktopbeta</source>
+        <translation>https://icq.im/desktopbeta</translation>
+    </message>
+    <message>
+        <source>Check for updates</source>
+        <translation>检查更新</translation>
+    </message>
+    <message>
+        <source>You have the latest version</source>
+        <translation>您有最新版本</translation>
+    </message>
+    <message>
+        <source>Update required</source>
+        <translation>需要更新</translation>
+    </message>
+    <message>
+        <source>Server error</source>
+        <translation>服务器错误</translation>
+    </message>
 </context>
 <context>
     <name>add_new_contact_dialogs</name>
-    <message>
-        <source>ADD</source>
-        <translation>添加</translation>
-    </message>
-    <message>
-        <source>ADD ANOTHER ONE</source>
-        <translation>添加其他</translation>
-    </message>
     <message>
         <source>New contact</source>
         <translation>新联系方式</translation>
@@ -167,20 +188,82 @@
         <source>Phone number</source>
         <translation>手机号码</translation>
     </message>
+    <message>
+        <source>Add</source>
+        <translation>新增</translation>
+    </message>
+    <message>
+        <source>Add another one</source>
+        <translation>再加一个</translation>
+    </message>
+</context>
+<context>
+    <name>add_widget</name>
+    <message>
+        <source>Phone number</source>
+        <translation>电话号码</translation>
+    </message>
+    <message>
+        <source>Nickname</source>
+        <translation>昵称</translation>
+    </message>
+    <message>
+        <source>Enter nickname</source>
+        <translation>输入昵称</translation>
+    </message>
+    <message>
+        <source>Email</source>
+        <translation>电邮地址</translation>
+    </message>
+    <message>
+        <source>Enter email</source>
+        <translation>输入电子邮件</translation>
+    </message>
+    <message>
+        <source>Add contact by phone or nickname?</source>
+        <translation>通过电话号码或昵称添加联系人？</translation>
+    </message>
+    <message>
+        <source>Add contact by phone or email?</source>
+        <translation>通过电话或电子邮件添加联系人？</translation>
+    </message>
 </context>
 <context>
     <name>appearance</name>
-    <message>
-        <source>Default</source>
-        <translation>默认</translation>
-    </message>
     <message>
         <source>Blue</source>
         <translation>蓝色</translation>
     </message>
     <message>
-        <source>Night</source>
-        <translation>夜</translation>
+        <source>Green</source>
+        <translation>绿色</translation>
+    </message>
+    <message>
+        <source>Dark Green</source>
+        <translation>深绿色</translation>
+    </message>
+    <message>
+        <source>Violet</source>
+        <translation>紫丁香</translation>
+    </message>
+    <message>
+        <source>Orange</source>
+        <translation>橘色</translation>
+    </message>
+    <message>
+        <source>Dark blue</source>
+        <translation>深蓝</translation>
+    </message>
+</context>
+<context>
+    <name>attach_phone_number</name>
+    <message>
+        <source>For security reasons you need to confirm your phone number. This number will not appear on your profile.</source>
+        <translation>出于安全原因，您需要确认您的电话号码。</translation>
+    </message>
+    <message>
+        <source>Security alert</source>
+        <translation>警告</translation>
     </message>
 </context>
 <context>
@@ -193,77 +276,70 @@
 <context>
     <name>avatar_upload</name>
     <message>
-        <source>Images (*.jpg *.jpeg *.png *.bmp)</source>
-        <translation>图像 (*.jpg *.jpeg *.png *.bmp)</translation>
-    </message>
-    <message>
-        <source>CHOOSE FILE</source>
-        <translation>选择文件</translation>
-    </message>
-    <message>
-        <source>Upload photo</source>
-        <translation>上传照片</translation>
-    </message>
-    <message>
-        <source>Image should be at least 200x200 px</source>
-        <translation>图像大小至少应为 200x200 像素</translation>
-    </message>
-    <message>
-        <source>Edit photo</source>
-        <translation>编辑照片</translation>
-    </message>
-    <message>
         <source>Preview</source>
         <translation>预览</translation>
+    </message>
+    <message>
+        <source>Images (*.jpg *.jpeg *.png *.bmp)</source>
+        <translation>图像 (*.jpg *.jpeg *.png *.bmp)</translation>
     </message>
     <message>
         <source>Avatar was not uploaded due to server error</source>
         <translation>由于服务器错误，头像未上传</translation>
     </message>
     <message>
-        <source>Edit
-photo</source>
+        <source>Upload photo</source>
+        <translation>上传照片</translation>
+    </message>
+    <message>
+        <source>Edit photo</source>
         <translation>编辑照片</translation>
+    </message>
+    <message>
+        <source>Image should be at least 200x200 px</source>
+        <translation>图像大小至少应为 200x200 像素</translation>
+    </message>
+    <message>
+        <source>Choose file</source>
+        <translation>选择档案</translation>
+    </message>
+    <message>
+        <source>Select a file</source>
+        <translation>选择档案</translation>
     </message>
 </context>
 <context>
-    <name>burger_menu</name>
+    <name>block_and_delete</name>
     <message>
-        <source>Update is available</source>
-        <translation>有可用更新</translation>
+        <source>Delete messages</source>
+        <translation>删除讯息</translation>
     </message>
     <message>
-        <source>RESTART</source>
-        <translation>重新启动</translation>
+        <source>Block and delete?</source>
+        <translation>阻止并删除？</translation>
     </message>
     <message>
-        <source>Restart application, 
-so update could take effect</source>
-        <translation>重启程序，
-使更新生效</translation>
+        <source>Cancel</source>
+        <translation>取消</translation>
+    </message>
+    <message>
+        <source>Yes</source>
+        <translation>是的</translation>
+    </message>
+    <message>
+        <source>This member won&apos;t be able to join the channel again. You could also delete his messages</source>
+        <translation>参与者将无法返回该频道。您也可以删除他的消息</translation>
+    </message>
+    <message>
+        <source>This member won&apos;t be able to join the group again. You could also delete his messages</source>
+        <translation>该成员将无法返回该群组。您也可以删除他的消息</translation>
     </message>
 </context>
 <context>
     <name>chat_event</name>
     <message>
-        <source>You changed picture of group</source>
-        <translation>您更改了群组图片</translation>
-    </message>
-    <message>
-        <source> has birthday!</source>
-        <translation> 生日到了！</translation>
-    </message>
-    <message>
-        <source>Your friend is now available for chat and calls. You can say hi now!</source>
-        <translation>您的好友现在可以聊天和通话。您现在可以打声招呼！</translation>
-    </message>
-    <message>
-        <source>You deleted chat description</source>
-        <translation>您删除了聊天描述</translation>
-    </message>
-    <message>
-        <source>You have joined group</source>
-        <translation>您已加入群组</translation>
+        <source> and </source>
+        <translation> 和 </translation>
     </message>
     <message>
         <source>You</source>
@@ -276,10 +352,6 @@ so update could take effect</source>
         <translation>了您</translation>
     </message>
     <message>
-        <source> and </source>
-        <translation> 和 </translation>
-    </message>
-    <message>
         <source>Missed call</source>
         <translation>未接来电</translation>
     </message>
@@ -290,6 +362,22 @@ so update could take effect</source>
     <message>
         <source>Incoming call</source>
         <translation>来电</translation>
+    </message>
+    <message>
+        <source>You changed picture of group</source>
+        <translation>您更改了群组图片</translation>
+    </message>
+    <message>
+        <source> has birthday!</source>
+        <translation> 生日到了！</translation>
+    </message>
+    <message>
+        <source>You have joined group</source>
+        <translation>您已加入群组</translation>
+    </message>
+    <message>
+        <source>You deleted chat description</source>
+        <translation>您删除了聊天描述</translation>
     </message>
     <message>
         <source>Message was deleted</source>
@@ -352,16 +440,6 @@ so update could take effect</source>
         <translation>%1 删除了 %2</translation>
     </message>
     <message>
-        <source>%1 have left group</source>
-        <comment>many</comment>
-        <translation>%1 已退出群组</translation>
-    </message>
-    <message>
-        <source>%1 has left group</source>
-        <comment>one</comment>
-        <translation>%1 已退出群组</translation>
-    </message>
-    <message>
         <source>%1 changed chat rules to &quot;%2&quot;</source>
         <translation>%1 将聊天规则更改为 &quot;%2&quot;</translation>
     </message>
@@ -409,29 +487,83 @@ so update could take effect</source>
         <source>You declined a call from %1</source>
         <translation>你没有接听来自%1的电话</translation>
     </message>
+    <message>
+        <source>Theme was changed to &quot;%1&quot;</source>
+        <translation>线程已更改为 %1</translation>
+    </message>
+    <message>
+        <source>%1 was added</source>
+        <translation>添加了%1</translation>
+    </message>
+    <message>
+        <source>%1 were added</source>
+        <translation>已添加 %1</translation>
+    </message>
+    <message>
+        <source>Chat description was deleted</source>
+        <translation>聊天说明已删除</translation>
+    </message>
+    <message>
+        <source>%1 was removed</source>
+        <translation>%1 已被删除</translation>
+    </message>
+    <message>
+        <source>%1 were removed</source>
+        <translation>%1 已被删除</translation>
+    </message>
+    <message>
+        <source>Channel avatar was changed</source>
+        <translation>频道头像已更改</translation>
+    </message>
+    <message>
+        <source>Description was changed to &quot;%1&quot;</source>
+        <translation>说明已更改为 %1</translation>
+    </message>
+    <message>
+        <source>Channel rules were changed to &quot;%1&quot;</source>
+        <translation>渠道规则已更改为 %1</translation>
+    </message>
+    <message>
+        <source>You have recently added %1 to your phone contacts. Write a new message or make a call %2</source>
+        <translation>您最近已将 %1 添加到电话联系人中。写新消息或打电话 %2</translation>
+    </message>
+    <message>
+        <source>So %1 is here now! Write, call %2</source>
+        <translation>所以 %1 现在在这里！写入，呼叫 %2</translation>
+    </message>
+    <message>
+        <source>%1 have left group (this message is visible only to group admins)</source>
+        <comment>many</comment>
+        <translation>%1 已离开群组（此消息仅对群组管理员可见）</translation>
+    </message>
+    <message>
+        <source>%1 has left group (this message is visible only to group admins)</source>
+        <comment>one</comment>
+        <translation>%1 已离开群组（此消息仅对群组管理员可见）</translation>
+    </message>
+    <message>
+        <source>You changed chat link to %1</source>
+        <translation>您已将链接更改为%1</translation>
+    </message>
+    <message>
+        <source>Channel link was changed to %1</source>
+        <translation>链接已更改为%1</translation>
+    </message>
+    <message>
+        <source>%1 changed chat link to %2</source>
+        <translation>%1已将链接更改为%2</translation>
+    </message>
+    <message>
+        <source>Add avatar</source>
+        <translation>添加头像</translation>
+    </message>
+    <message>
+        <source>Add description</source>
+        <translation>添加描述</translation>
+    </message>
 </context>
 <context>
     <name>chat_page</name>
-    <message>
-        <source>edited</source>
-        <translation>新编辑</translation>
-    </message>
-    <message>
-        <source>Show in folder</source>
-        <translation>在文件夹中显示</translation>
-    </message>
-    <message>
-        <source> of </source>
-        <translation> 个，共  个 </translation>
-    </message>
-    <message>
-        <source>is typing</source>
-        <translation>输入中</translation>
-    </message>
-    <message>
-        <source>are typing</source>
-        <translation>正在键入</translation>
-    </message>
     <message>
         <source>member</source>
         <comment>1</comment>
@@ -453,18 +585,6 @@ so update could take effect</source>
         <translation>名成员</translation>
     </message>
     <message>
-        <source>CANCEL</source>
-        <translation>取消</translation>
-    </message>
-    <message>
-        <source>FORWARD</source>
-        <translation>转发</translation>
-    </message>
-    <message>
-        <source>COPY</source>
-        <translation>复制</translation>
-    </message>
-    <message>
         <source>Today</source>
         <translation>今天</translation>
     </message>
@@ -477,8 +597,28 @@ so update could take effect</source>
         <translation>新讯息</translation>
     </message>
     <message>
+        <source> of </source>
+        <translation> 个，共  个 </translation>
+    </message>
+    <message>
+        <source>Show in folder</source>
+        <translation>在文件夹中显示</translation>
+    </message>
+    <message>
         <source>File</source>
         <translation>文件</translation>
+    </message>
+    <message>
+        <source>are typing</source>
+        <translation>正在键入</translation>
+    </message>
+    <message>
+        <source>edited</source>
+        <translation>新编辑</translation>
+    </message>
+    <message>
+        <source>is typing</source>
+        <translation>输入中</translation>
     </message>
     <message>
         <source>Quick send</source>
@@ -511,20 +651,16 @@ so update could take effect</source>
         <translation>您好。请将我添加到您的联系人列表</translation>
     </message>
     <message>
-        <source>Add contact</source>
-        <translation>添加联系人</translation>
+        <source>Sticker</source>
+        <translation>贴图</translation>
     </message>
     <message>
-        <source>TOP CONTACTS</source>
-        <translation>常用联系人</translation>
+        <source>Photo</source>
+        <translation>照片</translation>
     </message>
     <message>
-        <source>ALL CONTACTS</source>
-        <translation>所有联系人</translation>
-    </message>
-    <message>
-        <source>New contacts</source>
-        <translation>新联系人</translation>
+        <source>Voice message</source>
+        <translation>语音讯息</translation>
     </message>
     <message>
         <source>FAVORITES</source>
@@ -535,36 +671,40 @@ so update could take effect</source>
         <translation>最近</translation>
     </message>
     <message>
-        <source>CLOSE ALL</source>
-        <translation>关闭全部</translation>
-    </message>
-    <message>
-        <source>NEW CONTACTS</source>
-        <translation>新联系人</translation>
-    </message>
-    <message>
-        <source>Sticker</source>
-        <translation>贴图</translation>
+        <source>Video</source>
+        <translation>视频</translation>
     </message>
     <message>
         <source>File</source>
         <translation>文件</translation>
     </message>
     <message>
+        <source>New contacts</source>
+        <translation>新联系人</translation>
+    </message>
+    <message>
         <source>GIF</source>
         <translation>GIF</translation>
     </message>
     <message>
-        <source>Photo</source>
-        <translation>照片</translation>
+        <source>TOP CONTACTS</source>
+        <translation>常用联系人</translation>
     </message>
     <message>
-        <source>Video</source>
-        <translation>视频</translation>
+        <source>ALL CONTACTS</source>
+        <translation>所有联系人</translation>
     </message>
     <message>
-        <source>Voice message</source>
-        <translation>语音讯息</translation>
+        <source>NEW CONTACTS</source>
+        <translation>新联系人</translation>
+    </message>
+    <message>
+        <source>CLOSE ALL</source>
+        <translation>关闭全部</translation>
+    </message>
+    <message>
+        <source>Add contact</source>
+        <translation>添加联系人</translation>
     </message>
     <message>
         <source>Me</source>
@@ -583,16 +723,28 @@ so update could take effect</source>
         <translation>取消</translation>
     </message>
     <message>
-        <source>New group</source>
-        <translation>新群</translation>
-    </message>
-    <message>
-        <source>New channel</source>
-        <translation>新频道</translation>
-    </message>
-    <message>
         <source>Contact</source>
         <translation>联系人</translation>
+    </message>
+    <message>
+        <source>UNIMPORTANT</source>
+        <translation>不重要</translation>
+    </message>
+    <message>
+        <source>Location</source>
+        <translation>地点</translation>
+    </message>
+    <message>
+        <source>Poll</source>
+        <translation>投票</translation>
+    </message>
+    <message>
+        <source>Create group</source>
+        <translation>建立群组</translation>
+    </message>
+    <message>
+        <source>Create channel</source>
+        <translation>建立频道</translation>
     </message>
 </context>
 <context>
@@ -629,12 +781,51 @@ so update could take effect</source>
         <comment>21</comment>
         <translation>%1 名成员</translation>
     </message>
+    <message>
+        <source>%1 messages selected</source>
+        <comment>2</comment>
+        <translation>已选择 %1 条消息</translation>
+    </message>
+    <message>
+        <source>%1 messages selected</source>
+        <comment>5</comment>
+        <translation>已选择 %1 条消息</translation>
+    </message>
+    <message>
+        <source>%1 messages selected</source>
+        <comment>21</comment>
+        <translation>已选择 %1 条消息</translation>
+    </message>
 </context>
 <context>
     <name>contactus_page</name>
     <message>
-        <source>Your comments or suggestions...</source>
-        <translation>您的评论或建议...</translation>
+        <source>Attachments size exceeds 25 MB</source>
+        <translation>附件大小超过 25 MB</translation>
+    </message>
+    <message>
+        <source>KB</source>
+        <translation>KB</translation>
+    </message>
+    <message>
+        <source>MB</source>
+        <translation>MB</translation>
+    </message>
+    <message>
+        <source>Your Email</source>
+        <translation>您的电子邮件</translation>
+    </message>
+    <message>
+        <source>Please enter a valid email address</source>
+        <translation>请输入有效的电子邮件地址</translation>
+    </message>
+    <message>
+        <source>Sending...</source>
+        <translation>正在发送...</translation>
+    </message>
+    <message>
+        <source>Send another review</source>
+        <translation>发送另一条审核</translation>
     </message>
     <message>
         <source>Message is too short</source>
@@ -649,44 +840,16 @@ so update could take effect</source>
         <translation>文件大小超过 1 MB</translation>
     </message>
     <message>
-        <source>Attachments size exceeds 25 MB</source>
-        <translation>附件大小超过 25 MB</translation>
-    </message>
-    <message>
         <source>Images (*.jpg *.jpeg *.png *.bmp)</source>
         <translation>图像 (*.jpg *.jpeg *.png *.bmp)</translation>
-    </message>
-    <message>
-        <source>KB</source>
-        <translation>KB</translation>
-    </message>
-    <message>
-        <source>MB</source>
-        <translation>MB</translation>
     </message>
     <message>
         <source>Attach screenshot</source>
         <translation>随附截屏</translation>
     </message>
     <message>
-        <source>Your Email</source>
-        <translation>您的电子邮件</translation>
-    </message>
-    <message>
-        <source>Please enter a valid email address</source>
-        <translation>请输入有效的电子邮件地址</translation>
-    </message>
-    <message>
-        <source>SEND</source>
-        <translation>发送</translation>
-    </message>
-    <message>
-        <source>Sending...</source>
-        <translation>正在发送...</translation>
-    </message>
-    <message>
-        <source>Send another review</source>
-        <translation>发送另一条审核</translation>
+        <source>Your comments or suggestions...</source>
+        <translation>您的评论或建议...</translation>
     </message>
     <message>
         <source>Error occurred, try again later</source>
@@ -698,23 +861,23 @@ so update could take effect</source>
     </message>
     <message>
         <source>VOIP</source>
-        <translation></translation>
+        <translation>电话</translation>
     </message>
     <message>
         <source>Nothing selected</source>
-        <translation></translation>
+        <translation>未选择</translation>
     </message>
     <message>
         <source>Emoji and stickers</source>
-        <translation></translation>
+        <translation>表情符号和贴纸</translation>
     </message>
     <message>
         <source>Avatars</source>
-        <translation></translation>
+        <translation>头像</translation>
     </message>
     <message>
         <source>Videoplayer</source>
-        <translation></translation>
+        <translation>影片播放器</translation>
     </message>
     <message>
         <source>Gallery</source>
@@ -722,15 +885,15 @@ so update could take effect</source>
     </message>
     <message>
         <source>Ptt</source>
-        <translation></translation>
+        <translation>语音留言</translation>
     </message>
     <message>
         <source>Hotkeys</source>
-        <translation></translation>
+        <translation>快捷键</translation>
     </message>
     <message>
         <source>Crash</source>
-        <translation></translation>
+        <translation>应用程序关闭</translation>
     </message>
     <message>
         <source>Pinned message</source>
@@ -738,23 +901,23 @@ so update could take effect</source>
     </message>
     <message>
         <source>Decelerations</source>
-        <translation></translation>
+        <translation>应用程序减慢</translation>
     </message>
     <message>
         <source>Sounds</source>
-        <translation></translation>
+        <translation>声音</translation>
     </message>
     <message>
         <source>History</source>
-        <translation></translation>
+        <translation>聊天记录</translation>
     </message>
     <message>
         <source>Channels</source>
-        <translation></translation>
+        <translation>渠道</translation>
     </message>
     <message>
         <source>Contact list</source>
-        <translation></translation>
+        <translation>联络资料</translation>
     </message>
     <message>
         <source>Settings</source>
@@ -762,7 +925,7 @@ so update could take effect</source>
     </message>
     <message>
         <source>Nick</source>
-        <translation></translation>
+        <translation>绰号</translation>
     </message>
     <message>
         <source>Search</source>
@@ -770,23 +933,23 @@ so update could take effect</source>
     </message>
     <message>
         <source>Mail for domains</source>
-        <translation></translation>
+        <translation>域邮件</translation>
     </message>
     <message>
         <source>Previews</source>
-        <translation></translation>
+        <translation>预览图像和链接</translation>
     </message>
     <message>
         <source>Connection</source>
-        <translation></translation>
+        <translation>网络连接</translation>
     </message>
     <message>
         <source>Messages</source>
-        <translation></translation>
+        <translation>消息</translation>
     </message>
     <message>
         <source>Statuses</source>
-        <translation></translation>
+        <translation>状态</translation>
     </message>
     <message>
         <source>Notifications</source>
@@ -794,46 +957,50 @@ so update could take effect</source>
     </message>
     <message>
         <source>Mentions</source>
-        <translation></translation>
+        <translation>聊天提及</translation>
     </message>
     <message>
         <source>Install</source>
-        <translation></translation>
+        <translation>应用程序安装</translation>
     </message>
     <message>
         <source>File sharing</source>
-        <translation></translation>
+        <translation>档</translation>
     </message>
     <message>
         <source>Wallpapers</source>
-        <translation></translation>
+        <translation>聊天背景</translation>
     </message>
     <message>
         <source>Group chats</source>
-        <translation></translation>
+        <translation>聊天</translation>
     </message>
     <message>
         <source>Different problem</source>
-        <translation></translation>
+        <translation>另一个问题</translation>
+    </message>
+    <message>
+        <source>Get debug information</source>
+        <translation>获取日志存档</translation>
+    </message>
+    <message>
+        <source>Send</source>
+        <translation>发送</translation>
     </message>
 </context>
 <context>
     <name>context_menu</name>
     <message>
+        <source>Call</source>
+        <translation>致电</translation>
+    </message>
+    <message>
+        <source>Profile</source>
+        <translation>个人资料</translation>
+    </message>
+    <message>
         <source>Mark as read</source>
         <translation>标记为已读</translation>
-    </message>
-    <message>
-        <source>Mark as unread</source>
-        <translation>标记为未读</translation>
-    </message>
-    <message>
-        <source>Unpin</source>
-        <translation>取消钉住</translation>
-    </message>
-    <message>
-        <source>Pin</source>
-        <translation>固定</translation>
     </message>
     <message>
         <source>Turn on notifications</source>
@@ -844,44 +1011,16 @@ so update could take effect</source>
         <translation>关闭通知</translation>
     </message>
     <message>
-        <source>Call</source>
-        <translation>致电</translation>
-    </message>
-    <message>
-        <source>Profile</source>
-        <translation>个人资料</translation>
-    </message>
-    <message>
-        <source>Leave and delete</source>
-        <translation>退出并删除</translation>
-    </message>
-    <message>
-        <source>Reply</source>
-        <translation>引用</translation>
-    </message>
-    <message>
-        <source>Copy link</source>
-        <translation>复制链接</translation>
-    </message>
-    <message>
-        <source>Copy to clipboard</source>
-        <translation>复制到剪贴板</translation>
-    </message>
-    <message>
-        <source>Forward</source>
-        <translation>转发</translation>
-    </message>
-    <message>
         <source>Save as...</source>
         <translation>保存为...</translation>
     </message>
     <message>
-        <source>Open in browser</source>
-        <translation>在浏览器中打开</translation>
+        <source>Copy</source>
+        <translation>复制</translation>
     </message>
     <message>
-        <source>Edit</source>
-        <translation>编辑</translation>
+        <source>Copy link</source>
+        <translation>复制链接</translation>
     </message>
     <message>
         <source>Delete for me</source>
@@ -892,12 +1031,44 @@ so update could take effect</source>
         <translation>全部删除</translation>
     </message>
     <message>
+        <source>Leave and delete</source>
+        <translation>退出并删除</translation>
+    </message>
+    <message>
+        <source>Forward</source>
+        <translation>转发</translation>
+    </message>
+    <message>
+        <source>Open in browser</source>
+        <translation>在浏览器中打开</translation>
+    </message>
+    <message>
+        <source>Reply</source>
+        <translation>引用</translation>
+    </message>
+    <message>
+        <source>Copy to clipboard</source>
+        <translation>复制到剪贴板</translation>
+    </message>
+    <message>
         <source>Mention</source>
         <translation>提及</translation>
     </message>
     <message>
-        <source>Copy</source>
-        <translation>复制</translation>
+        <source>Unpin</source>
+        <translation>取消钉住</translation>
+    </message>
+    <message>
+        <source>Pin</source>
+        <translation>固定</translation>
+    </message>
+    <message>
+        <source>Edit</source>
+        <translation>编辑</translation>
+    </message>
+    <message>
+        <source>Mark as unread</source>
+        <translation>标记为未读</translation>
     </message>
     <message>
         <source>Show in folder</source>
@@ -936,16 +1107,56 @@ so update could take effect</source>
         <translation>申述和锁定</translation>
     </message>
     <message>
-        <source>Delete and leave</source>
-        <translation>删除和退出</translation>
-    </message>
-    <message>
         <source>Hide</source>
         <translation>隐藏</translation>
     </message>
     <message>
         <source>Go to profile</source>
         <translation>转到个人主页</translation>
+    </message>
+    <message>
+        <source>Remove</source>
+        <translation>移除</translation>
+    </message>
+    <message>
+        <source>Delete</source>
+        <translation>删除</translation>
+    </message>
+    <message>
+        <source>Select</source>
+        <translation>选择</translation>
+    </message>
+    <message>
+        <source>Remove from Unimportant</source>
+        <translation>从不重要的地方删除</translation>
+    </message>
+    <message>
+        <source>Move to Unimportant</source>
+        <translation>移至不重要</translation>
+    </message>
+    <message>
+        <source>Share channel link</source>
+        <translation>分享频道连结</translation>
+    </message>
+    <message>
+        <source>Copy channel link</source>
+        <translation>复制频道链接</translation>
+    </message>
+    <message>
+        <source>Share group link</source>
+        <translation>分享群组连结</translation>
+    </message>
+    <message>
+        <source>Copy group link</source>
+        <translation>复制链接到组</translation>
+    </message>
+    <message>
+        <source>Revoke vote</source>
+        <translation>撤销投票</translation>
+    </message>
+    <message>
+        <source>Stop poll</source>
+        <translation>停止投票</translation>
     </message>
 </context>
 <context>
@@ -996,7 +1207,7 @@ so update could take effect</source>
     </message>
     <message>
         <source>Australia</source>
-        <translation></translation>
+        <translation>澳大利亚</translation>
     </message>
     <message>
         <source>Austria</source>
@@ -1963,6 +2174,25 @@ so update could take effect</source>
     </message>
 </context>
 <context>
+    <name>delete_messages</name>
+    <message>
+        <source>Delete messages</source>
+        <translation>删除讯息</translation>
+    </message>
+    <message>
+        <source>OK</source>
+        <translation>行</translation>
+    </message>
+    <message>
+        <source>Messages will be deleted only for you</source>
+        <translation>邮件将只为您删除</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>取消</translation>
+    </message>
+</context>
+<context>
     <name>files_widget</name>
     <message>
         <source>Send with caption</source>
@@ -2001,14 +2231,6 @@ so update could take effect</source>
         <translation>文件</translation>
     </message>
     <message>
-        <source>CANCEL</source>
-        <translation>取消</translation>
-    </message>
-    <message>
-        <source>SEND</source>
-        <translation>发送</translation>
-    </message>
-    <message>
         <source>Send files</source>
         <translation>发送文件</translation>
     </message>
@@ -2020,6 +2242,14 @@ so update could take effect</source>
         <source>Quick send</source>
         <translation>快速发送</translation>
     </message>
+    <message>
+        <source>Cancel</source>
+        <translation>取消</translation>
+    </message>
+    <message>
+        <source>Send</source>
+        <translation>发送</translation>
+    </message>
 </context>
 <context>
     <name>gallery</name>
@@ -2029,7 +2259,53 @@ so update could take effect</source>
     </message>
 </context>
 <context>
+    <name>generic_block</name>
+    <message>
+        <source>Copied to clipboard</source>
+        <translation>复制到剪贴板</translation>
+    </message>
+</context>
+<context>
+    <name>geolocation_block</name>
+    <message>
+        <source>Location</source>
+        <translation>地点</translation>
+    </message>
+</context>
+<context>
     <name>groupchats</name>
+    <message>
+        <source>Public chat</source>
+        <translation>公共聊天</translation>
+    </message>
+    <message>
+        <source>Join with Approval</source>
+        <translation>透过批准后加入</translation>
+    </message>
+    <message>
+        <source>New members are waiting for admin approval</source>
+        <translation>新成员正待管理员批准</translation>
+    </message>
+    <message>
+        <source>Add to chat</source>
+        <translation>添加至聊天</translation>
+    </message>
+    <message>
+        <source>You are not a member of this chat</source>
+        <translation>您不是此聊天的成员</translation>
+    </message>
+    <message>
+        <source>Chat name</source>
+        <translation>聊天昵称</translation>
+    </message>
+    <message>
+        <source>Chat information is unavailable now, please try again later</source>
+        <translation>聊天信息暂时不可用，请稍后再试</translation>
+    </message>
+    <message>
+        <source>Chat does not exist or it is hidden by privacy settings</source>
+        <translation>聊天不存在或在隐私设置下被隐藏</translation>
+    </message>
     <message>
         <source>member</source>
         <comment>1</comment>
@@ -2049,46 +2325,6 @@ so update could take effect</source>
         <source>members</source>
         <comment>21</comment>
         <translation>名成员</translation>
-    </message>
-    <message>
-        <source>Chat name</source>
-        <translation>聊天昵称</translation>
-    </message>
-    <message>
-        <source>Join with Approval</source>
-        <translation>透过批准后加入</translation>
-    </message>
-    <message>
-        <source>New members are waiting for admin approval</source>
-        <translation>新成员正待管理员批准</translation>
-    </message>
-    <message>
-        <source>Public chat</source>
-        <translation>公共聊天</translation>
-    </message>
-    <message>
-        <source>The chat will appear in the app&apos;s showcase and any user can find it in the list</source>
-        <translation>聊天可在启用下对所有人可见</translation>
-    </message>
-    <message>
-        <source>Select members</source>
-        <translation>选择成员</translation>
-    </message>
-    <message>
-        <source>You are not a member of this chat</source>
-        <translation>您不是此聊天的成员</translation>
-    </message>
-    <message>
-        <source>Add to chat</source>
-        <translation>添加至聊天</translation>
-    </message>
-    <message>
-        <source>Chat information is unavailable now, please try again later</source>
-        <translation>聊天信息暂时不可用，请稍后再试</translation>
-    </message>
-    <message>
-        <source>Chat does not exist or it is hidden by privacy settings</source>
-        <translation>聊天不存在或在隐私设置下被隐藏</translation>
     </message>
     <message>
         <source>friend</source>
@@ -2111,24 +2347,52 @@ so update could take effect</source>
         <translation>好友</translation>
     </message>
     <message>
-        <source>Link to chat</source>
-        <translation>连接至聊天室</translation>
-    </message>
-    <message>
-        <source>Ability to join chat by link</source>
-        <translation>透过链接可加入聊天室</translation>
-    </message>
-    <message>
         <source>Channel name</source>
         <translation>频道名称</translation>
     </message>
     <message>
-        <source>The channel will appear in the app&apos;s showcase and any user can find it in the list</source>
-        <translation>频道会出现在应用的展示中，任何用户都可以在列表中找到</translation>
-    </message>
-    <message>
         <source>Public channel</source>
         <translation>公共频道</translation>
+    </message>
+    <message>
+        <source>Make new link</source>
+        <translation>产生新连结</translation>
+    </message>
+    <message>
+        <source>Apply</source>
+        <translation>申请</translation>
+    </message>
+    <message>
+        <source>Public group can be found in the search</source>
+        <translation>可以在搜索中找到公共组</translation>
+    </message>
+    <message>
+        <source>Channels are public by default, but you can change it after in settings</source>
+        <translation>频道默认为公开频道，但您可以在设置后进行更改</translation>
+    </message>
+    <message>
+        <source>The link will open the group in %1</source>
+        <translation>该链接将在%1打开组</translation>
+    </message>
+    <message>
+        <source>The link will open the channel in %1</source>
+        <translation>此链接将打开%1的频道</translation>
+    </message>
+    <message>
+        <source>The public channel can be found in the search and its link will be available to all members</source>
+        <translation>可以在搜索中找到公共频道，所有参与者都可以使用其链接</translation>
+    </message>
+    <message>
+        <source>The public group can be found in the search and its link will be available to all members</source>
+        <translation>可以在搜索中找到该公共组，其链接将对所有参与者可用</translation>
+    </message>
+    <message>
+        <source>You have chosen no one from the list. Are you sure you want to create a group with no participants?</source>
+        <translation>您尚未从列表中选择任何人，确定要创建没有成员的组吗？</translation>
+    </message>
+    <message>
+        <source>Group name</source>
+        <translation>组名</translation>
     </message>
 </context>
 <context>
@@ -2160,20 +2424,20 @@ so update could take effect</source>
 <context>
     <name>input_widget</name>
     <message>
-        <source>Edit message</source>
-        <translation>编辑讯息</translation>
-    </message>
-    <message>
-        <source>Message</source>
-        <translation>讯息</translation>
-    </message>
-    <message>
         <source>EMOJI</source>
         <translation>表情符号</translation>
     </message>
     <message>
         <source>RECENTS</source>
         <translation>最近</translation>
+    </message>
+    <message>
+        <source>Message</source>
+        <translation>讯息</translation>
+    </message>
+    <message>
+        <source>Edit message</source>
+        <translation>编辑讯息</translation>
     </message>
     <message>
         <source>Photo or Video</source>
@@ -2186,30 +2450,6 @@ so update could take effect</source>
     <message>
         <source>Voice Message</source>
         <translation>语音讯息</translation>
-    </message>
-    <message>
-        <source>SUBSCRIBE</source>
-        <translation>订阅</translation>
-    </message>
-    <message>
-        <source>JOIN</source>
-        <translation>加入</translation>
-    </message>
-    <message>
-        <source>ENABLE NOTIFICATIONS</source>
-        <translation>启用通知</translation>
-    </message>
-    <message>
-        <source>DISABLE NOTIFICATIONS</source>
-        <translation>禁用通知</translation>
-    </message>
-    <message>
-        <source>DELETE AND LEAVE</source>
-        <translation>删除和退出</translation>
-    </message>
-    <message>
-        <source>UNBLOCK</source>
-        <translation>解除屏蔽</translation>
     </message>
     <message>
         <source>Voice message</source>
@@ -2244,12 +2484,12 @@ so update could take effect</source>
         <translation>行</translation>
     </message>
     <message>
-        <source>Contact</source>
-        <translation>联系人</translation>
-    </message>
-    <message>
         <source>Lock</source>
         <translation>锁</translation>
+    </message>
+    <message>
+        <source>Contact</source>
+        <translation>联系人</translation>
     </message>
     <message>
         <source>You was banned to write in this group</source>
@@ -2258,6 +2498,14 @@ so update could take effect</source>
     <message>
         <source>The join request has been sent to administrator</source>
         <translation>加入请求已发送给管理员</translation>
+    </message>
+    <message>
+        <source>Play record</source>
+        <translation>播放记录</translation>
+    </message>
+    <message>
+        <source>Pause record</source>
+        <translation>暂停记录</translation>
     </message>
     <message>
         <source>Convert error</source>
@@ -2270,14 +2518,6 @@ so update could take effect</source>
     <message>
         <source>BufferOOM error</source>
         <translation>记录错误。 内存不足</translation>
-    </message>
-    <message>
-        <source>Play record</source>
-        <translation>播放记录</translation>
-    </message>
-    <message>
-        <source>Pause record</source>
-        <translation>暂停记录</translation>
     </message>
     <message>
         <source>Cancel</source>
@@ -2295,6 +2535,34 @@ so update could take effect</source>
         <source>To record a voice message, you need to allow access to the microphone in the system settings</source>
         <translation>要录制语音留言，您需要允许在系统设置中访问麦克风</translation>
     </message>
+    <message>
+        <source>Join</source>
+        <translation>加入</translation>
+    </message>
+    <message>
+        <source>Poll</source>
+        <translation>投票</translation>
+    </message>
+    <message>
+        <source>Subscribe</source>
+        <translation>订阅</translation>
+    </message>
+    <message>
+        <source>Enable notifications</source>
+        <translation>启用通知</translation>
+    </message>
+    <message>
+        <source>Disable notifications</source>
+        <translation>关闭通知</translation>
+    </message>
+    <message>
+        <source>Delete and leave</source>
+        <translation>删除并退出</translation>
+    </message>
+    <message>
+        <source>Unblock</source>
+        <translation>解锁</translation>
+    </message>
 </context>
 <context>
     <name>linux_desktop_file</name>
@@ -2305,10 +2573,6 @@ so update could take effect</source>
 </context>
 <context>
     <name>local_pin</name>
-    <message>
-        <source>CANCEL</source>
-        <translation>取消</translation>
-    </message>
     <message>
         <source>log out</source>
         <translation>退出</translation>
@@ -2342,24 +2606,16 @@ so update could take effect</source>
         <translation>如果您忘记了代码，可以 </translation>
     </message>
     <message>
-        <source>APPLY</source>
-        <translation>使用</translation>
+        <source>Cancel</source>
+        <translation>取消</translation>
+    </message>
+    <message>
+        <source>Apply</source>
+        <translation>申请</translation>
     </message>
 </context>
 <context>
     <name>login_page</name>
-    <message>
-        <source>Change</source>
-        <translation>更改</translation>
-    </message>
-    <message>
-        <source>UIN or Email</source>
-        <translation>UIN 或电子邮件</translation>
-    </message>
-    <message>
-        <source>Email</source>
-        <translation>电子邮件</translation>
-    </message>
     <message>
         <source>Password</source>
         <translation>密码</translation>
@@ -2369,72 +2625,28 @@ so update could take effect</source>
         <translation>保持登录状态</translation>
     </message>
     <message>
-        <source>NEXT</source>
-        <translation>下一页</translation>
-    </message>
-    <message>
-        <source>Type country or code</source>
-        <translation>输入国家或代码</translation>
-    </message>
-    <message>
-        <source>phone number</source>
-        <translation>手机号码</translation>
-    </message>
-    <message>
-        <source>Login via phone</source>
-        <translation>通过手机登录</translation>
-    </message>
-    <message>
-        <source>Login with UIN/Email</source>
-        <translation>使用 UIN/电子邮件登录</translation>
-    </message>
-    <message>
-        <source>Login with Email</source>
-        <translation>使用电子邮件登录</translation>
-    </message>
-    <message>
-        <source>Enter phone number</source>
-        <translation>输入电话号码</translation>
-    </message>
-    <message>
-        <source>Enter code from SMS</source>
-        <translation>输入手机短信中的代码</translation>
-    </message>
-    <message>
-        <source>Enter UIN or Email</source>
-        <translation>输入 UIN 或电子邮件</translation>
-    </message>
-    <message>
-        <source>Enter your Email</source>
-        <translation>输入您的电子邮件</translation>
-    </message>
-    <message>
-        <source>Forgot password?</source>
-        <translation>忘记密码？</translation>
-    </message>
-    <message>
         <source>Resend code</source>
         <translation>重新发送代码</translation>
-    </message>
-    <message>
-        <source>Wrong UIN/Email or password. Please try again.</source>
-        <translation>UIN/电子邮件或密码错误。请重试。</translation>
     </message>
     <message>
         <source>You have entered an invalid code. Please try again.</source>
         <translation>您输入的代码无效。请重试。</translation>
     </message>
     <message>
+        <source>Forgot password?</source>
+        <translation>忘记密码？</translation>
+    </message>
+    <message>
         <source>Two-factor authentication is on, please create an app password &lt;a href=&quot;https://e.mail.ru/settings/2-step-auth&quot;&gt;here&lt;/a&gt; to login</source>
         <translation>双因子验证已开启。&lt;br&gt;请在&lt;a href=&quot;https://e.mail.ru/settings/2-step-auth&quot;&gt;此处&lt;/a&gt;创建用于登录的应用密码</translation>
     </message>
     <message>
-        <source>Invalid phone number. Please try again.</source>
-        <translation>手机号码无效。请重试。</translation>
+        <source>Enter your Email</source>
+        <translation>输入您的电子邮件</translation>
     </message>
     <message>
-        <source>Welcome to ICQ</source>
-        <translation>欢迎使用 ICQ</translation>
+        <source>Change</source>
+        <translation>更改</translation>
     </message>
     <message>
         <source>Error occurred, try again later</source>
@@ -2450,55 +2662,95 @@ so update could take effect</source>
     </message>
     <message>
         <source>Recall in %1</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Enter last %1 digit</source>
-        <comment>1</comment>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Enter last %1 digits</source>
-        <comment>2</comment>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Enter last %1 digits</source>
-        <comment>5</comment>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Enter last %1 digits</source>
-        <comment>21</comment>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Login by phone call</source>
-        <translation>通过电话登录</translation>
-    </message>
-    <message>
-        <source>Welcome to Mail.ru Agent</source>
-        <translation>欢迎使用 Mail.ru Agent</translation>
-    </message>
-    <message>
-        <source>Welcome to Messenger</source>
-        <translation>欢迎使用 Messenger</translation>
-    </message>
-    <message>
-        <source>Wrong Email or password. Please try again.</source>
-        <translation>电子邮件或密码错误。请重试。</translation>
-    </message>
-    <message>
-        <source>Welcome to Myteam</source>
-        <translation>欢迎使用 Myteam</translation>
-    </message>
-    <message>
-        <source>I don&apos;t have an account</source>
-        <translation>我没有帐户</translation>
+        <translation>召回 %1</translation>
     </message>
     <message>
         <source>Enter one-time password received by email</source>
         <translation>输入通过电子邮件收到的一次性密码</translation>
+    </message>
+    <message>
+        <source>Enter your login and password</source>
+        <translation>输入您的登录名和密码</translation>
+    </message>
+    <message>
+        <source>To login use you corporative account created at</source>
+        <translation>要登录，请使用在中创建的公司帐户</translation>
+    </message>
+    <message>
+        <source>Check the country code and enter your phone number</source>
+        <translation>检查国家代码并输入您的电话号码</translation>
+    </message>
+    <message>
+        <source>Phone</source>
+        <translation>电话号码</translation>
+    </message>
+    <message>
+        <source>SMS code</source>
+        <translation>来自短信的代码</translation>
+    </message>
+    <message>
+        <source>Enter last 6 digits of number that called you</source>
+        <translation>输入打给您电话号码的最后6位数字</translation>
+    </message>
+    <message>
+        <source>Login</source>
+        <translation>用户名</translation>
+    </message>
+    <message>
+        <source>Mail.ru for business</source>
+        <translation>Mail.ru商业</translation>
+    </message>
+    <message>
+        <source>Invalid phone number</source>
+        <translation>无效的电话号码</translation>
+    </message>
+    <message>
+        <source>Sign in</source>
+        <translation>登录</translation>
+    </message>
+    <message>
+        <source>Incorrect code</source>
+        <translation>无效的代码</translation>
+    </message>
+    <message>
+        <source>Sign in by password</source>
+        <translation>通过密码登录</translation>
+    </message>
+    <message>
+        <source>Sign in via phone</source>
+        <translation>通过电话登录</translation>
+    </message>
+    <message>
+        <source>We called the number</source>
+        <translation>我们打了电话</translation>
+    </message>
+    <message>
+        <source>Wrong login or password</source>
+        <translation>用户名或密码无效</translation>
+    </message>
+    <message>
+        <source>Wrong Email or password</source>
+        <translation>无效的电子邮件或密码</translation>
+    </message>
+    <message>
+        <source>To log in use you corporate account created in</source>
+        <translation>要登录，请使用在中创建的公司帐户</translation>
+    </message>
+    <message>
+        <source>Verification code was sent to number</source>
+        <translation>验证码已发送至</translation>
+    </message>
+    <message>
+        <source>Send code</source>
+        <translation>提交验证码</translation>
+    </message>
+    <message>
+        <source>Dictate over the phone</source>
+        <translation>通过电话听写</translation>
+    </message>
+    <message>
+        <source>Phone code</source>
+        <translation>通话代码</translation>
     </message>
 </context>
 <context>
@@ -2597,7 +2849,7 @@ so update could take effect</source>
     </message>
     <message>
         <source>Emoji &amp;&amp; Symbols</source>
-        <translation type="unfinished"></translation>
+        <translation>表情符号和符号</translation>
     </message>
     <message>
         <source>Zoom</source>
@@ -2619,14 +2871,6 @@ so update could take effect</source>
         <translation>我的个人资料</translation>
     </message>
     <message>
-        <source>About app</source>
-        <translation>关于应用</translation>
-    </message>
-    <message>
-        <source>Contact Us</source>
-        <translation>联系我们</translation>
-    </message>
-    <message>
         <source>General settings</source>
         <translation>一般设置</translation>
     </message>
@@ -2637,6 +2881,14 @@ so update could take effect</source>
     <message>
         <source>Notifications</source>
         <translation>通知</translation>
+    </message>
+    <message>
+        <source>Contact Us</source>
+        <translation>联系我们</translation>
+    </message>
+    <message>
+        <source>About app</source>
+        <translation>关于应用</translation>
     </message>
     <message>
         <source>Language</source>
@@ -2663,50 +2915,10 @@ so update could take effect</source>
     </message>
 </context>
 <context>
-    <name>merge_accounts</name>
+    <name>message</name>
     <message>
-        <source>Now Mail.Ru Agent supports only one account. You can merge it with ICQ one.</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Choose Mail.Ru Agent account</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Choose ICQ account</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Account settings</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>ICQ</source>
-        <translation>ICQ</translation>
-    </message>
-    <message>
-        <source>Back</source>
-        <translation>返回</translation>
-    </message>
-    <message>
-        <source>Next</source>
-        <translation>下一页</translation>
-    </message>
-    <message>
-        <source>Skip</source>
-        <translation>跳过</translation>
-    </message>
-    <message>
-        <source>Now Mail.ru Agent supports only one account. You can merge it with ICQ one.</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Mail.ru Agent</source>
-        <translation>Mail.ru Agent</translation>
-    </message>
-    <message>
-        <source>Choose Mail.ru Agent account</source>
-        <translation></translation>
+        <source>Sticker</source>
+        <translation>贴图</translation>
     </message>
 </context>
 <context>
@@ -2721,7 +2933,7 @@ so update could take effect</source>
     </message>
     <message>
         <source>For agent account nickname is not allowed</source>
-        <translation></translation>
+        <translation>代理商帐户禁止使用昵称</translation>
     </message>
     <message>
         <source>Server error</source>
@@ -2790,48 +3002,16 @@ so update could take effect</source>
         <translation>您的手机号码</translation>
     </message>
     <message>
-        <source>Change number</source>
-        <translation>更改号码</translation>
-    </message>
-    <message>
-        <source>Your account, contact details, chats and messages will be moved to your new number.</source>
-        <translation>您的帐户、联系人详情、聊天和讯息将移动到您的新号码。</translation>
-    </message>
-    <message>
-        <source>Before starting the transfer, ensure that you can receive SMS messages or calls to your new number.</source>
-        <translation>开始传输之前，请确保您的新号码能够接收手机短信或通话。</translation>
-    </message>
-    <message>
-        <source>phone number</source>
-        <translation>手机号码</translation>
+        <source>Change</source>
+        <translation>更改</translation>
     </message>
     <message>
         <source>Code from SMS</source>
         <translation>手机短信中的代码</translation>
     </message>
     <message>
-        <source>Change</source>
-        <translation>更改</translation>
-    </message>
-    <message>
-        <source>Enter your new number</source>
-        <translation>输入您的新号码</translation>
-    </message>
-    <message>
         <source>Resend code</source>
         <translation>重新发送代码</translation>
-    </message>
-    <message>
-        <source>Dictate over the phone</source>
-        <translation>从手机上收听</translation>
-    </message>
-    <message>
-        <source>Incorrect code</source>
-        <translation>代码不正确</translation>
-    </message>
-    <message>
-        <source>Your new account number is</source>
-        <translation>您的新帐号为</translation>
     </message>
     <message>
         <source>%1 EXTRA DIGIT</source>
@@ -2854,12 +3034,44 @@ so update could take effect</source>
         <translation>%1 位额外数字</translation>
     </message>
     <message>
+        <source>Change number</source>
+        <translation>更改号码</translation>
+    </message>
+    <message>
+        <source>Your account, contact details, chats and messages will be moved to your new number.</source>
+        <translation>您的帐户、联系人详情、聊天和讯息将移动到您的新号码。</translation>
+    </message>
+    <message>
+        <source>Before starting the transfer, ensure that you can receive SMS messages or calls to your new number.</source>
+        <translation>开始传输之前，请确保您的新号码能够接收手机短信或通话。</translation>
+    </message>
+    <message>
+        <source>Enter your new number</source>
+        <translation>输入您的新号码</translation>
+    </message>
+    <message>
+        <source>Dictate over the phone</source>
+        <translation>从手机上收听</translation>
+    </message>
+    <message>
+        <source>Incorrect code</source>
+        <translation>代码不正确</translation>
+    </message>
+    <message>
+        <source>Your new account number is</source>
+        <translation>您的新帐号为</translation>
+    </message>
+    <message>
         <source>Check that number is correct</source>
         <translation>检查确保号码正确</translation>
     </message>
     <message>
         <source>Number changed</source>
         <translation>号码已更改</translation>
+    </message>
+    <message>
+        <source>phone number</source>
+        <translation>手机号码</translation>
     </message>
     <message>
         <source>Sign out</source>
@@ -2892,7 +3104,7 @@ so update could take effect</source>
     <message>
         <source>Enter last %1 digit</source>
         <comment>1</comment>
-        <translation></translation>
+        <translation>输入 %1 您拨打电话的号码%1最后一位</translation>
     </message>
     <message>
         <source>Enter last %1 digits</source>
@@ -2902,12 +3114,16 @@ so update could take effect</source>
     <message>
         <source>Enter last %1 digits</source>
         <comment>5</comment>
-        <translation></translation>
+        <translation>输入您拨打的电话号码的最后一位数字的 %1</translation>
     </message>
     <message>
         <source>Enter last %1 digits</source>
         <comment>21</comment>
-        <translation></translation>
+        <translation>输入 %1 您拨打的电话号码的最后一位</translation>
+    </message>
+    <message>
+        <source>Enter your number</source>
+        <translation>输入您的电话号码</translation>
     </message>
 </context>
 <context>
@@ -2932,36 +3148,16 @@ so update could take effect</source>
 <context>
     <name>placeholders</name>
     <message>
-        <source>You have no opened chats yet</source>
-        <translation>您尚无开启的聊天</translation>
+        <source>Install ICQ on mobile</source>
+        <translation>在移动设备上安装 ICQ</translation>
     </message>
     <message>
         <source>Nothing found</source>
         <translation>未找到</translation>
     </message>
     <message>
-        <source>CONTINUE</source>
-        <translation>继续</translation>
-    </message>
-    <message>
-        <source>Install ICQ on mobile</source>
-        <translation>在移动设备上安装 ICQ</translation>
-    </message>
-    <message>
-        <source>to synchronize your contacts</source>
-        <translation>以同步您的联系人</translation>
-    </message>
-    <message>
         <source>Error occurred, try again later</source>
         <translation>发生错误，请稍后重试</translation>
-    </message>
-    <message>
-        <source>Looks like you have no contacts yet</source>
-        <translation>看起来你还没有联系人</translation>
-    </message>
-    <message>
-        <source>First name</source>
-        <translation>名</translation>
     </message>
     <message>
         <source>Last name</source>
@@ -2983,60 +3179,182 @@ so update could take effect</source>
         <source>Install Myteam on mobile</source>
         <translation>在移动设备上安装 Myteam</translation>
     </message>
+    <message>
+        <source>First name*</source>
+        <translation>名字*</translation>
+    </message>
+    <message>
+        <source>your contacts will see them</source>
+        <translation>您的联系人将看到他们</translation>
+    </message>
+    <message>
+        <source>Continue</source>
+        <translation>继续</translation>
+    </message>
+    <message>
+        <source>Chat list is empty</source>
+        <translation>聊天列表为空</translation>
+    </message>
+    <message>
+        <source>Contact list is empty</source>
+        <translation>联系人列表为空</translation>
+    </message>
+    <message>
+        <source>Copy</source>
+        <translation>复制</translation>
+    </message>
+    <message>
+        <source>Share the link %1 so people can write you</source>
+        <translation>分享%1链接，以便您可以编写</translation>
+    </message>
+    <message>
+        <source>Add a name and avatar</source>
+        <translation>添加名称和头像</translation>
+    </message>
+    <message>
+        <source>Failed to download file or media</source>
+        <translation>无法上传文件或媒体</translation>
+    </message>
+</context>
+<context>
+    <name>poll</name>
+    <message>
+        <source>Create poll</source>
+        <translation>建立意见调查</translation>
+    </message>
+    <message>
+        <source>Ask your question</source>
+        <translation>问你的问题</translation>
+    </message>
+    <message>
+        <source>Add another option</source>
+        <translation>添加其他选项</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>取消</translation>
+    </message>
+    <message>
+        <source>Send</source>
+        <translation>发送</translation>
+    </message>
+    <message>
+        <source>Answer</source>
+        <translation>答案选项</translation>
+    </message>
+</context>
+<context>
+    <name>poll_block</name>
+    <message>
+        <source>Public</source>
+        <translation>公开的</translation>
+    </message>
+    <message>
+        <source>Anonymous</source>
+        <translation>无名氏</translation>
+    </message>
+    <message>
+        <source>%1 poll - %2 vote</source>
+        <comment>1</comment>
+        <translation>%1 民意调查 - %2票</translation>
+    </message>
+    <message>
+        <source>%1 poll - %2 votes</source>
+        <comment>2</comment>
+        <translation>%1 调查 - %2 票</translation>
+    </message>
+    <message>
+        <source>%1 poll - %2 votes</source>
+        <comment>5</comment>
+        <translation>%1 调查 - %2 票</translation>
+    </message>
+    <message>
+        <source>Poll</source>
+        <translation>投票</translation>
+    </message>
+    <message>
+        <source>Poll: %1</source>
+        <translation>意见调查： %1</translation>
+    </message>
+    <message>
+        <source>%1 poll - %2 votes</source>
+        <comment>21</comment>
+        <translation>%1 调查- %2 票</translation>
+    </message>
+    <message>
+        <source>Poll: </source>
+        <translation>轮询： </translation>
+    </message>
+    <message>
+        <source>Sticker</source>
+        <translation>贴图</translation>
+    </message>
+    <message>
+        <source>GIF</source>
+        <translation>GIF</translation>
+    </message>
+    <message>
+        <source>Video</source>
+        <translation>影片</translation>
+    </message>
+    <message>
+        <source>Poll Id copied to clipboard</source>
+        <translation>投票ID已复制</translation>
+    </message>
+    <message>
+        <source>Photo</source>
+        <translation>相片</translation>
+    </message>
+    <message>
+        <source>Vote: an error occurred</source>
+        <translation>投票：发生错误</translation>
+    </message>
+    <message>
+        <source>Revoke vote: an error occurred</source>
+        <translation>取消语音：发生错误</translation>
+    </message>
+    <message>
+        <source>Stop poll: an error occurred</source>
+        <translation>停止轮询：发生错误</translation>
+    </message>
+    <message>
+        <source>Voice message</source>
+        <translation>语音留言</translation>
+    </message>
+    <message>
+        <source>File</source>
+        <translation>档案文件</translation>
+    </message>
 </context>
 <context>
     <name>popup_window</name>
     <message>
-        <source>CANCEL</source>
-        <translation>取消</translation>
-    </message>
-    <message>
-        <source>DONE</source>
-        <translation>完成</translation>
-    </message>
-    <message>
-        <source>BACK</source>
-        <translation>返回</translation>
-    </message>
-    <message>
-        <source>CONTINUE</source>
-        <translation>继续</translation>
-    </message>
-    <message>
-        <source>SAVE</source>
-        <translation>保存</translation>
-    </message>
-    <message>
-        <source>Unfortunately, an error occurred:</source>
-        <translation>很遗憾，发生了一个错误：</translation>
-    </message>
-    <message>
-        <source>YES</source>
-        <translation>是</translation>
+        <source>Are you sure you want to sign out?</source>
+        <translation>您确定要注销吗？</translation>
     </message>
     <message>
         <source>Are you sure you want to move contact to ignore list?</source>
         <translation>确定要将联系人移至忽略黑名单？</translation>
     </message>
     <message>
-        <source>FORWARD</source>
-        <translation>转发</translation>
+        <source>Are you sure you want to leave chat?</source>
+        <translation>您确定要退出聊天吗？</translation>
     </message>
     <message>
-        <source>show author</source>
-        <translation>显示作者</translation>
+        <source>Contact name</source>
+        <translation>联系人名字</translation>
     </message>
     <message>
-        <source>CLOSE</source>
-        <translation>关闭</translation>
+        <source>Sign out</source>
+        <translation>登出</translation>
     </message>
     <message>
-        <source>NEXT</source>
-        <translation>下一页</translation>
+        <source>Are you sure you want to erase chat history?</source>
+        <translation>您确定要删除聊天记录吗？</translation>
     </message>
     <message>
-        <source>Chat settings</source>
-        <translation>聊天室设置</translation>
+        <source>Unfortunately, an error occurred:</source>
+        <translation>很遗憾，发生了一个错误：</translation>
     </message>
     <message>
         <source>Are you sure you want to delete user from this chat?</source>
@@ -3045,34 +3363,6 @@ so update could take effect</source>
     <message>
         <source>Are you sure you want to delete user from ignore list?</source>
         <translation>您确定要从忽略列表中删除用户吗？</translation>
-    </message>
-    <message>
-        <source>Are you sure you want to delete user from this call?</source>
-        <translation>您确定要从此通话中删除用户吗？</translation>
-    </message>
-    <message>
-        <source>DELETE</source>
-        <translation>删除</translation>
-    </message>
-    <message>
-        <source>Forward</source>
-        <translation>转发</translation>
-    </message>
-    <message>
-        <source>Are you sure you want to delete message?</source>
-        <translation>您确定要删除讯息吗？</translation>
-    </message>
-    <message>
-        <source>Delete message</source>
-        <translation>删除讯息</translation>
-    </message>
-    <message>
-        <source>Contact name</source>
-        <translation>联系人名字</translation>
-    </message>
-    <message>
-        <source>Are you sure you want to block user in this chat?</source>
-        <translation>您确定要在此聊天中屏蔽用户吗？</translation>
     </message>
     <message>
         <source>Are you sure you want to unblock user?</source>
@@ -3087,6 +3377,22 @@ so update could take effect</source>
         <translation>您确定要撤回管理员角色吗？</translation>
     </message>
     <message>
+        <source>Are you sure you want to delete message?</source>
+        <translation>您确定要删除讯息吗？</translation>
+    </message>
+    <message>
+        <source>Delete message</source>
+        <translation>删除讯息</translation>
+    </message>
+    <message>
+        <source>Forward</source>
+        <translation>转发</translation>
+    </message>
+    <message>
+        <source>Chat settings</source>
+        <translation>聊天室设置</translation>
+    </message>
+    <message>
         <source>Are you sure you want to ban user to write in this chat?</source>
         <translation>您确定要禁止用户在此聊天中发言吗？</translation>
     </message>
@@ -3095,36 +3401,24 @@ so update could take effect</source>
         <translation>您确定要允许用户在此聊天中发言吗？</translation>
     </message>
     <message>
-        <source>WAITING</source>
-        <translation>等待中</translation>
-    </message>
-    <message>
-        <source>JOIN</source>
-        <translation>加入</translation>
-    </message>
-    <message>
-        <source>OPEN</source>
-        <translation>打开</translation>
-    </message>
-    <message>
-        <source>Are you sure you want to sign out?</source>
-        <translation>您确定要注销吗？</translation>
-    </message>
-    <message>
-        <source>Sign out</source>
-        <translation>登出</translation>
+        <source>Are you sure you want to delete user from this call?</source>
+        <translation>您确定要从此通话中删除用户吗？</translation>
     </message>
     <message>
         <source>Contacts</source>
         <translation>联系人</translation>
     </message>
     <message>
-        <source>Advanced Settings</source>
-        <translation>高级设置</translation>
+        <source>Are you sure you want to remove this sticker pack?</source>
+        <translation>您确定要移除此表情贴纸包吗？</translation>
     </message>
     <message>
-        <source>OK</source>
-        <translation>行</translation>
+        <source>Remove sticker pack</source>
+        <translation>移除此表情贴纸包</translation>
+    </message>
+    <message>
+        <source>show author</source>
+        <translation>显示作者</translation>
     </message>
     <message>
         <source>Open logs path</source>
@@ -3139,40 +3433,16 @@ so update could take effect</source>
         <translation>清存头像</translation>
     </message>
     <message>
+        <source>OK</source>
+        <translation>行</translation>
+    </message>
+    <message>
         <source>Enable full log mode</source>
         <translation>拓展日志模式</translation>
     </message>
     <message>
         <source>Display message IDs</source>
         <translation>显示讯息 ID</translation>
-    </message>
-    <message>
-        <source>Are you sure you want to erase chat history?</source>
-        <translation>您确定要删除聊天记录吗？</translation>
-    </message>
-    <message>
-        <source>Are you sure you want to leave chat?</source>
-        <translation>您确定要退出聊天吗？</translation>
-    </message>
-    <message>
-        <source>ADD</source>
-        <translation>添加</translation>
-    </message>
-    <message>
-        <source>REMOVE</source>
-        <translation>移除</translation>
-    </message>
-    <message>
-        <source>SEND</source>
-        <translation>发送</translation>
-    </message>
-    <message>
-        <source>Are you sure you want to remove this sticker pack?</source>
-        <translation>您确定要移除此表情贴纸包吗？</translation>
-    </message>
-    <message>
-        <source>Remove sticker pack</source>
-        <translation>移除此表情贴纸包</translation>
     </message>
     <message>
         <source>Ignore list</source>
@@ -3192,74 +3462,14 @@ so update could take effect</source>
     </message>
     <message>
         <source>Are you sure you want to send the app logs?</source>
-        <translation></translation>
+        <translation>您确定要发送日志吗？</translation>
     </message>
     <message>
         <source>Send logs</source>
-        <translation></translation>
+        <translation>发送日志</translation>
     </message>
     <message>
         <source>Save call RTP dumps</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Stick memory usage widget</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Cache dialogs for (milliseconds)</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Current memory usage: </source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Memory: </source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Real memory: </source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Copy text</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Refresh</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Total accounted for: </source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Cached avatars</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Cached themes</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Cached emojis</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Cached previews</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Cached stickers</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>VOIP initialization</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Video players</source>
         <translation></translation>
     </message>
     <message>
@@ -3268,11 +3478,11 @@ so update could take effect</source>
     </message>
     <message>
         <source>Server search</source>
-        <translation></translation>
+        <translation>服务器搜索</translation>
     </message>
     <message>
         <source>Log messagesModel</source>
-        <translation></translation>
+        <translation>日志消息模型</translation>
     </message>
     <message>
         <source>Do you really want mark all as read?</source>
@@ -3299,16 +3509,8 @@ so update could take effect</source>
         <translation></translation>
     </message>
     <message>
-        <source>CHECK</source>
-        <translation></translation>
-    </message>
-    <message>
         <source>Block</source>
         <translation>屏蔽</translation>
-    </message>
-    <message>
-        <source>APPLY</source>
-        <translation>使用</translation>
     </message>
     <message>
         <source>Share</source>
@@ -3318,6 +3520,154 @@ so update could take effect</source>
         <source>REPEAT</source>
         <translation>重试</translation>
     </message>
+    <message>
+        <source>Remove %1 from your contacts?</source>
+        <translation>从联系人中删除 %1？</translation>
+    </message>
+    <message>
+        <source>Remove contact</source>
+        <translation>删除联系人</translation>
+    </message>
+    <message>
+        <source>You can delete for all only your messages (%1 from %2). Are you sure you want to continue?</source>
+        <translation>您只能删除所有人的消息（%2，%1）。继续吗</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to mark the chat as unimportant? The chat won&apos;t jump to the top of the list when you receive a new message</source>
+        <translation>您确定要将聊天标记为不重要吗？收到新消息时，聊天不会跳到列表顶部</translation>
+    </message>
+    <message>
+        <source>Choose country</source>
+        <translation>选择国家</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>取消</translation>
+    </message>
+    <message>
+        <source>Done</source>
+        <translation>完成</translation>
+    </message>
+    <message>
+        <source>Back</source>
+        <translation>回去</translation>
+    </message>
+    <message>
+        <source>Continue</source>
+        <translation>继续</translation>
+    </message>
+    <message>
+        <source>Save</source>
+        <translation>保存到</translation>
+    </message>
+    <message>
+        <source>Add</source>
+        <translation>新增</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation>关门</translation>
+    </message>
+    <message>
+        <source>Yes</source>
+        <translation>是的</translation>
+    </message>
+    <message>
+        <source>Delete</source>
+        <translation>删掉</translation>
+    </message>
+    <message>
+        <source>Send</source>
+        <translation>发送</translation>
+    </message>
+    <message>
+        <source>Next</source>
+        <translation>下一个</translation>
+    </message>
+    <message>
+        <source>Check</source>
+        <translation>检查一下</translation>
+    </message>
+    <message>
+        <source>Apply</source>
+        <translation>申请</translation>
+    </message>
+    <message>
+        <source>Remove</source>
+        <translation>删掉</translation>
+    </message>
+    <message>
+        <source>Waiting</source>
+        <translation>等待中</translation>
+    </message>
+    <message>
+        <source>Join</source>
+        <translation>进入</translation>
+    </message>
+    <message>
+        <source>If you stop the poll, nobody will be able to vote anymore. This action can not be undone</source>
+        <translation>如果您停止投票，则没有人可以投票了。此操作无法撤消</translation>
+    </message>
+    <message>
+        <source>Stop</source>
+        <translation>停下</translation>
+    </message>
+    <message>
+        <source>Stop this poll?</source>
+        <translation>停止投票吗？</translation>
+    </message>
+    <message>
+        <source>Open</source>
+        <translation>开门</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to leave channel?</source>
+        <translation>您确定要离开频道吗？</translation>
+    </message>
+    <message>
+        <source>If you change group type to a private link to the group will be changed, and the old one will stop working</source>
+        <translation>如果您将群组类型更改为私人，则群组链接将更改，旧的链接将停止工作</translation>
+    </message>
+    <message>
+        <source>Make private</source>
+        <translation>设为私人</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to clear the chat history?</source>
+        <translation>您确定要删除聊天记录吗？</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to clear the channel history?</source>
+        <translation>您确定要删除聊天记录吗？</translation>
+    </message>
+    <message>
+        <source>If you generate a new link to the channel the old one will stop working</source>
+        <translation>如果您生成到该频道的新链接，则只能通过该频道进入该频道</translation>
+    </message>
+    <message>
+        <source>If you generate a new link to the group the old one will stop working</source>
+        <translation>如果您生成指向该群组的新链接，则只能在该群组上进入该群组</translation>
+    </message>
+    <message>
+        <source>Generate</source>
+        <translation>产生</translation>
+    </message>
+    <message>
+        <source>The old link will stop working</source>
+        <translation>旧链接将停止工作</translation>
+    </message>
+    <message>
+        <source>Public link will stop working</source>
+        <translation>公共链接将停止工作</translation>
+    </message>
+    <message>
+        <source>Set dev_id</source>
+        <translation>设置dev_id</translation>
+    </message>
+    <message>
+        <source>Create</source>
+        <translation>建立</translation>
+    </message>
 </context>
 <context>
     <name>previewer</name>
@@ -3326,12 +3676,12 @@ so update could take effect</source>
         <translation>无法下载图像</translation>
     </message>
     <message>
-        <source>Loading...</source>
-        <translation>加载中...</translation>
-    </message>
-    <message>
         <source>%1 of %2</source>
         <translation>%1 个，共 %2 个</translation>
+    </message>
+    <message>
+        <source>Loading...</source>
+        <translation>加载中...</translation>
     </message>
     <message>
         <source>Copied to clipboard</source>
@@ -3377,16 +3727,16 @@ so update could take effect</source>
         <source>File %1 downloaded to %2</source>
         <translation>文件 %1 已下载到 %2</translation>
     </message>
+    <message>
+        <source>Error file downloading</source>
+        <translation>文件上传错误</translation>
+    </message>
 </context>
 <context>
     <name>profile_block</name>
     <message>
         <source>Contact was saved. Phone is visible in profile.</source>
         <translation>联系人已保存。电话在个人资料中可见。</translation>
-    </message>
-    <message>
-        <source>CANCEL</source>
-        <translation>取消</translation>
     </message>
     <message>
         <source>Contact</source>
@@ -3423,6 +3773,10 @@ so update could take effect</source>
     <message>
         <source>WRITE</source>
         <translation>编写</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>取消</translation>
     </message>
 </context>
 <context>
@@ -3479,18 +3833,6 @@ so update could take effect</source>
         <translation>分享联系人</translation>
     </message>
     <message>
-        <source>BACK</source>
-        <translation>返回</translation>
-    </message>
-    <message>
-        <source>OPEN CHAT</source>
-        <translation>打开聊天</translation>
-    </message>
-    <message>
-        <source>SEND</source>
-        <translation>发送</translation>
-    </message>
-    <message>
         <source>To share contact add phone number or ask contact to add nickname.</source>
         <translation>要分享联系人，请添加电话号码或要求添加昵称。</translation>
     </message>
@@ -3509,6 +3851,18 @@ so update could take effect</source>
     <message>
         <source>No phone number and nickname</source>
         <translation>没有电话号码和昵称</translation>
+    </message>
+    <message>
+        <source>Back</source>
+        <translation>回去</translation>
+    </message>
+    <message>
+        <source>Open chat</source>
+        <translation>开启即时通讯</translation>
+    </message>
+    <message>
+        <source>Send</source>
+        <translation>发送</translation>
     </message>
 </context>
 <context>
@@ -3543,28 +3897,6 @@ so update could take effect</source>
         <source>OK</source>
         <translation>行</translation>
     </message>
-    <message>
-        <source> ﻿* Reply on messages by photos, files and voice messages;
- * Navigation with Tab on the main elements of the application instead of using mouse;
- * Voice message recording improvements;
- * The maximum interface scale increased up to 300%;
- * Aero Snap support;
- * Chat history scrolling improvements;
- 
- And:
- * List of hotkeys to the settings page update;
- * Lots of other improvements and fixes. </source>
-        <translation> *通过照片，文件和语音消息回复消息;
- *使用Tab在应用程序的主要元素上导航而不是使用鼠标;
- *语音留言录音改进;
- *最大界面规模增加至300％;
- * Aero Snap支持;
- *聊天记录滚动改进;
-&#xa0;
-  和：
- *设置页面更新的热键列表;
- *许多其他改进和修复。 </translation>
-    </message>
 </context>
 <context>
     <name>report_widget</name>
@@ -3583,10 +3915,6 @@ so update could take effect</source>
     <message>
         <source>Other</source>
         <translation>其他</translation>
-    </message>
-    <message>
-        <source>CANCEL</source>
-        <translation>取消</translation>
     </message>
     <message>
         <source>OK</source>
@@ -3608,6 +3936,10 @@ so update could take effect</source>
         <source>Block</source>
         <translation>屏蔽</translation>
     </message>
+    <message>
+        <source>Cancel</source>
+        <translation>取消</translation>
+    </message>
 </context>
 <context>
     <name>search</name>
@@ -3625,6 +3957,18 @@ so update could take effect</source>
     <message>
         <source>Search</source>
         <translation>搜索</translation>
+    </message>
+</context>
+<context>
+    <name>selection</name>
+    <message>
+        <source>Cancel</source>
+        <translation>消除</translation>
+    </message>
+    <message>
+        <source>%1 message selected</source>
+        <comment>1</comment>
+        <translation>已选择 %1 条消息</translation>
     </message>
 </context>
 <context>
@@ -3686,8 +4030,8 @@ so update could take effect</source>
         <translation>聊天</translation>
     </message>
     <message>
-        <source>Preview images and links</source>
-        <translation>预览图像和链接</translation>
+        <source>Preview links</source>
+        <translation>预览链接</translation>
     </message>
     <message>
         <source>Auto play videos</source>
@@ -3983,7 +4327,7 @@ so update could take effect</source>
     </message>
     <message>
         <source>Problem</source>
-        <translation></translation>
+        <translation>问题所在</translation>
     </message>
     <message>
         <source>Main window</source>
@@ -4004,6 +4348,30 @@ so update could take effect</source>
     <message>
         <source>History in chat</source>
         <translation>聊天中的历史</translation>
+    </message>
+    <message>
+        <source>Animate taskbar icon</source>
+        <translation>动画任务栏图标</translation>
+    </message>
+    <message>
+        <source>Turn on video sound on hover</source>
+        <translation>在悬停时打开视频声音</translation>
+    </message>
+    <message>
+        <source>Install beta updates</source>
+        <translation>安装测试版</translation>
+    </message>
+    <message>
+        <source>Show smart reply</source>
+        <translation>显示聪明的答案</translation>
+    </message>
+    <message>
+        <source>Close search after result selection</source>
+        <translation>选择结果时关闭搜索</translation>
+    </message>
+    <message>
+        <source>Advanced Settings</source>
+        <translation>进阶设定</translation>
     </message>
 </context>
 <context>
@@ -4191,55 +4559,17 @@ so update could take effect</source>
         <source>Scroll history in chat</source>
         <translation>在聊天中滚动历史记录</translation>
     </message>
+    <message>
+        <source>Enter multiselect mode</source>
+        <translation>启用多选模式</translation>
+    </message>
+    <message>
+        <source>Mark all dialogs as read</source>
+        <translation>将所有对话框标记为已读</translation>
+    </message>
 </context>
 <context>
     <name>sidebar</name>
-    <message>
-        <source>You have no ignored contacts</source>
-        <translation>您尚无忽略联系人</translation>
-    </message>
-    <message>
-        <source>Revoke admin role</source>
-        <translation>撤销管理员角色</translation>
-    </message>
-    <message>
-        <source>Ban to write</source>
-        <translation>禁止发言</translation>
-    </message>
-    <message>
-        <source>Allow to write</source>
-        <translation>允许发言</translation>
-    </message>
-    <message>
-        <source>Profile</source>
-        <translation>个人资料</translation>
-    </message>
-    <message>
-        <source>Block</source>
-        <translation>屏蔽</translation>
-    </message>
-    <message>
-        <source>This phone number is already attached to another account.
-Please edit phone number and try again.</source>
-        <translation>此手机号码已连接到另一个帐户。
-请编辑手机号码并重试。</translation>
-    </message>
-    <message>
-        <source>Attach phone</source>
-        <translation>连接电话</translation>
-    </message>
-    <message>
-        <source>Unpin</source>
-        <translation>取消钉住</translation>
-    </message>
-    <message>
-        <source>Pin</source>
-        <translation>固定</translation>
-    </message>
-    <message>
-        <source>Share contact</source>
-        <translation>分享联系人</translation>
-    </message>
     <message>
         <source>Add to chat</source>
         <translation>添加至聊天</translation>
@@ -4253,44 +4583,82 @@ Please edit phone number and try again.</source>
         <translation>壁纸</translation>
     </message>
     <message>
-        <source>Chat settings</source>
-        <translation>聊天室设置</translation>
-    </message>
-    <message>
-        <source>Members</source>
-        <translation>成员</translation>
-    </message>
-    <message>
-        <source>Waiting for approval</source>
-        <translation>待批准中</translation>
+        <source>Nickname</source>
+        <translation>昵称</translation>
     </message>
     <message>
         <source>Blocked people</source>
         <translation>被屏蔽用户</translation>
     </message>
     <message>
+        <source>Phone number</source>
+        <translation>手机号码</translation>
+    </message>
+    <message>
         <source>Clear history</source>
         <translation>清除历史记录</translation>
+    </message>
+    <message>
+        <source>Profile</source>
+        <translation>个人资料</translation>
+    </message>
+    <message>
+        <source>Attach phone</source>
+        <translation>连接电话</translation>
+    </message>
+    <message>
+        <source>Revoke admin role</source>
+        <translation>撤销管理员角色</translation>
+    </message>
+    <message>
+        <source>Block</source>
+        <translation>屏蔽</translation>
+    </message>
+    <message>
+        <source>You have no ignored contacts</source>
+        <translation>您尚无忽略联系人</translation>
+    </message>
+    <message>
+        <source>This phone number is already attached to another account.
+Please edit phone number and try again.</source>
+        <translation>此手机号码已连接到另一个帐户。
+请编辑手机号码并重试。</translation>
     </message>
     <message>
         <source>Approve All</source>
         <translation>添加全部</translation>
     </message>
     <message>
-        <source>Phone number</source>
-        <translation>手机号码</translation>
+        <source>Waiting for approval</source>
+        <translation>待批准中</translation>
     </message>
     <message>
-        <source>Nickname</source>
-        <translation>昵称</translation>
+        <source>Members</source>
+        <translation>成员</translation>
+    </message>
+    <message>
+        <source>Ban to write</source>
+        <translation>禁止发言</translation>
+    </message>
+    <message>
+        <source>Allow to write</source>
+        <translation>允许发言</translation>
+    </message>
+    <message>
+        <source>Share contact</source>
+        <translation>分享联系人</translation>
+    </message>
+    <message>
+        <source>Unpin</source>
+        <translation>取消钉住</translation>
+    </message>
+    <message>
+        <source>Pin</source>
+        <translation>固定</translation>
     </message>
     <message>
         <source>Assign admin role</source>
         <translation>指派管理员角色</translation>
-    </message>
-    <message>
-        <source>Remove from chat</source>
-        <translation>从聊天删除</translation>
     </message>
     <message>
         <source>Information</source>
@@ -4339,10 +4707,6 @@ Please edit phone number and try again.</source>
     <message>
         <source>Unblock</source>
         <translation>解除屏蔽</translation>
-    </message>
-    <message>
-        <source>Join</source>
-        <translation>加入</translation>
     </message>
     <message>
         <source>Add to channel</source>
@@ -4417,10 +4781,6 @@ Please edit phone number and try again.</source>
         <translation>分享</translation>
     </message>
     <message>
-        <source>SEARCH</source>
-        <translation>搜索</translation>
-    </message>
-    <message>
         <source>Description</source>
         <translation>描述</translation>
     </message>
@@ -4485,10 +4845,6 @@ Please edit phone number and try again.</source>
         <translation>申述和锁定</translation>
     </message>
     <message>
-        <source>Delete and leave</source>
-        <translation>删除和退出</translation>
-    </message>
-    <message>
         <source>Admins</source>
         <translation>管理员</translation>
     </message>
@@ -4516,6 +4872,50 @@ Please edit phone number and try again.</source>
         <source>The join request has been sent to administrator</source>
         <translation>加入请求已发送给管理员</translation>
     </message>
+    <message>
+        <source>Remove</source>
+        <translation>移除</translation>
+    </message>
+    <message>
+        <source>Leave and delete</source>
+        <translation>退出并删除</translation>
+    </message>
+    <message>
+        <source>Block and delete</source>
+        <translation>阻止并删除</translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation>搜寻</translation>
+    </message>
+    <message>
+        <source>Join</source>
+        <translation>加入</translation>
+    </message>
+    <message>
+        <source>Share channel</source>
+        <translation>分享频道</translation>
+    </message>
+    <message>
+        <source>Channel settings</source>
+        <translation>频道设定</translation>
+    </message>
+    <message>
+        <source>Block and delete from group</source>
+        <translation>阻止并从群组中删除</translation>
+    </message>
+    <message>
+        <source>Group settings</source>
+        <translation>组设置</translation>
+    </message>
+    <message>
+        <source>Add to group</source>
+        <translation>新增至群组</translation>
+    </message>
+    <message>
+        <source>Public group</source>
+        <translation>公众团体</translation>
+    </message>
 </context>
 <context>
     <name>siderbar</name>
@@ -4534,6 +4934,28 @@ Please edit phone number and try again.</source>
     <message>
         <source>About the group</source>
         <translation>关于群组</translation>
+    </message>
+</context>
+<context>
+    <name>smartreply</name>
+    <message>
+        <source>Show smart replies</source>
+        <translation>显示聪明的答案</translation>
+    </message>
+    <message>
+        <source>Hide smart replies</source>
+        <translation>隐藏聪明的答案</translation>
+    </message>
+</context>
+<context>
+    <name>snippet_block</name>
+    <message>
+        <source>File</source>
+        <translation>档案文件</translation>
+    </message>
+    <message>
+        <source>Copied to clipboard</source>
+        <translation>复制到剪贴板</translation>
     </message>
 </context>
 <context>
@@ -4570,10 +4992,6 @@ Please edit phone number and try again.</source>
         <translation>分享</translation>
     </message>
     <message>
-        <source>Stickerpack: </source>
-        <translation>表情贴纸包： </translation>
-    </message>
-    <message>
         <source>You have not added stickers yet</source>
         <translation>您尚未添加表情贴纸</translation>
     </message>
@@ -4590,20 +5008,16 @@ Please edit phone number and try again.</source>
         <translation>我的</translation>
     </message>
     <message>
-        <source>Stickers</source>
-        <translation>贴图</translation>
-    </message>
-    <message>
         <source>Search</source>
         <translation>搜索</translation>
     </message>
     <message>
-        <source>SEARCH</source>
-        <translation>搜索</translation>
+        <source>Stickers</source>
+        <translation>贴图</translation>
     </message>
     <message>
-        <source>CANCEL</source>
-        <translation>取消</translation>
+        <source>Stickerpack: </source>
+        <translation>表情贴纸包： </translation>
     </message>
     <message>
         <source>This sticker pack was deleted or no longer exists.</source>
@@ -4612,6 +5026,10 @@ Please edit phone number and try again.</source>
     <message>
         <source>Nothing found</source>
         <translation>未找到</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>取消</translation>
     </message>
 </context>
 <context>
@@ -4659,20 +5077,32 @@ Please edit phone number and try again.</source>
 <context>
     <name>terms_privacy_widget</name>
     <message>
-        <source>Terms and Privacy Policy</source>
-        <translation>条款 和 隐私政策</translation>
+        <source>Accept and agree</source>
+        <translation>接受并同意</translation>
     </message>
     <message>
-        <source>I AGREE</source>
-        <translation>我同意</translation>
+        <source>By clicking &quot;Accept and agree&quot;, you confirm that you have read carefully and agree to our &lt;a href=&quot;%1&quot;&gt;Terms&lt;/a&gt; and &lt;a href=&quot;%2&quot;&gt;Privacy Policy&lt;/a&gt;</source>
+        <translation>点击“接受并同意”，即表示您已仔细阅读并同意我们的&lt;a href=&quot;%1&quot;&gt;条款&lt;/a&gt;和&lt;a href=&quot;%2&quot;&gt;隐私政策&lt;/a&gt;</translation>
     </message>
     <message>
-        <source>By clicking &quot;I Agree&quot;, you confirm that you have read carefully and agree to our &lt;a href=&quot;%1&quot;&gt;Terms&lt;/a&gt; and &lt;a href=&quot;%2&quot;&gt;Privacy Policy&lt;/a&gt;.</source>
-        <translation>点击 &quot;我同意&quot;，即表示您确认已仔细阅读并同意我们的 &lt;a href=&quot;%1&quot;&gt;条款&lt;/a&gt; 和 &lt;a href=&quot;%2&quot;&gt;隐私政策&lt;/a&gt;。</translation>
+        <source>Welcome to Mail.ru Agent</source>
+        <translation>欢迎使用Mail.ru代理</translation>
     </message>
     <message>
-        <source>Please pay your attention that we have updated our &lt;a href=&quot;%1&quot;&gt;Terms&lt;/a&gt; and &lt;a href=&quot;%2&quot;&gt;Privacy Policy&lt;/a&gt;. By clicking &quot;I Agree&quot;, you confirm that you have read updated documents carefully and agree to them.</source>
-        <translation>请注意我们已更新&lt;a href=&quot;%1&quot;&gt;条款&lt;/a&gt;和&lt;a href=&quot;%2&quot;&gt;隐私政策&lt;/a&gt;。点击 &quot;我同意&quot;，即表示您确认已仔细阅读并同意更新文档。</translation>
+        <source>Welcome to Myteam</source>
+        <translation>欢迎来到我的团队</translation>
+    </message>
+    <message>
+        <source>Welcome to Messenger</source>
+        <translation>欢迎使用Messenger</translation>
+    </message>
+    <message>
+        <source>ICQ New - the evolution of communication</source>
+        <translation>ICQ New — 通讯的发展</translation>
+    </message>
+    <message>
+        <source>Welcome to ICQ</source>
+        <translation>欢迎来到ICQ</translation>
     </message>
 </context>
 <context>
@@ -4709,24 +5139,20 @@ Please edit phone number and try again.</source>
         <translation>链接已复制</translation>
     </message>
     <message>
-        <source>There are no profiles with this email address</source>
-        <translation>此类邮件无个人资料</translation>
-    </message>
-    <message>
         <source>There are no profiles or groups with this nickname</source>
         <translation>该昵称无个人资料或群组</translation>
+    </message>
+    <message>
+        <source>Copied to clipboard</source>
+        <translation>复制到剪贴板</translation>
+    </message>
+    <message>
+        <source>There are no profiles with this email</source>
+        <translation>该电子邮件没有个人资料</translation>
     </message>
 </context>
 <context>
     <name>tooltips</name>
-    <message>
-        <source>Search for messages</source>
-        <translation>搜索讯息</translation>
-    </message>
-    <message>
-        <source>Call</source>
-        <translation>致电</translation>
-    </message>
     <message>
         <source>Video call</source>
         <translation>聊天室</translation>
@@ -4734,10 +5160,6 @@ Please edit phone number and try again.</source>
     <message>
         <source>Add member</source>
         <translation>添加成员</translation>
-    </message>
-    <message>
-        <source>Chat options</source>
-        <translation>聊天选项</translation>
     </message>
     <message>
         <source>Smileys and stickers</source>
@@ -4748,20 +5170,20 @@ Please edit phone number and try again.</source>
         <translation>打开聊天页面</translation>
     </message>
     <message>
-        <source>Exit full screen</source>
-        <translation>退出全屏</translation>
-    </message>
-    <message>
-        <source>Full screen</source>
-        <translation>全屏</translation>
-    </message>
-    <message>
         <source>Turn off camera</source>
         <translation>关闭摄像头</translation>
     </message>
     <message>
         <source>Turn on camera</source>
         <translation>开启摄像头</translation>
+    </message>
+    <message>
+        <source>Turn off microphone</source>
+        <translation>关闭话筒</translation>
+    </message>
+    <message>
+        <source>Turn on microphone</source>
+        <translation>开启话筒</translation>
     </message>
     <message>
         <source>Turn off screen sharing</source>
@@ -4772,12 +5194,20 @@ Please edit phone number and try again.</source>
         <translation>开启屏幕分享</translation>
     </message>
     <message>
-        <source>Turn off microphone</source>
-        <translation>关闭话筒</translation>
+        <source>Call</source>
+        <translation>致电</translation>
     </message>
     <message>
-        <source>Turn on microphone</source>
-        <translation>开启话筒</translation>
+        <source>Search for messages</source>
+        <translation>搜索讯息</translation>
+    </message>
+    <message>
+        <source>Exit full screen</source>
+        <translation>退出全屏</translation>
+    </message>
+    <message>
+        <source>Full screen</source>
+        <translation>全屏</translation>
     </message>
     <message>
         <source>End call</source>
@@ -4791,9 +5221,21 @@ Please edit phone number and try again.</source>
         <source>Attach</source>
         <translation>连接</translation>
     </message>
+    <message>
+        <source>Information</source>
+        <translation>信息</translation>
+    </message>
 </context>
 <context>
     <name>tray_menu</name>
+    <message>
+        <source>Quit</source>
+        <translation>退出</translation>
+    </message>
+    <message>
+        <source>Open</source>
+        <translation>打开</translation>
+    </message>
     <message>
         <source>New email</source>
         <translation>新邮件</translation>
@@ -4818,14 +5260,6 @@ Please edit phone number and try again.</source>
         <comment>21</comment>
         <translation> 新电子邮件</translation>
     </message>
-    <message>
-        <source>Open</source>
-        <translation>打开</translation>
-    </message>
-    <message>
-        <source>Quit</source>
-        <translation>退出</translation>
-    </message>
 </context>
 <context>
     <name>videoplayer</name>
@@ -4837,20 +5271,16 @@ Please edit phone number and try again.</source>
 <context>
     <name>voip_pages</name>
     <message>
-        <source>Add to call</source>
-        <translation>添加到通话</translation>
-    </message>
-    <message>
-        <source>Screen</source>
-        <translation>屏幕</translation>
+        <source>and</source>
+        <translation>和</translation>
     </message>
     <message>
         <source>Incoming call</source>
         <translation>来电</translation>
     </message>
     <message>
-        <source>and</source>
-        <translation>和</translation>
+        <source>Settings</source>
+        <translation>设置</translation>
     </message>
     <message>
         <source>Call is secured</source>
@@ -4865,8 +5295,8 @@ Please edit phone number and try again.</source>
         <translation>如何运作</translation>
     </message>
     <message>
-        <source>OK</source>
-        <translation>行</translation>
+        <source>Add to call</source>
+        <translation>添加到通话</translation>
     </message>
     <message>
         <source>MEMBERS</source>
@@ -4877,8 +5307,12 @@ Please edit phone number and try again.</source>
         <translation>其他</translation>
     </message>
     <message>
-        <source>Settings</source>
-        <translation>设置</translation>
+        <source>Screen</source>
+        <translation>屏幕</translation>
+    </message>
+    <message>
+        <source>OK</source>
+        <translation>行</translation>
     </message>
     <message>
         <source>DECLINE</source>
@@ -4891,6 +5325,14 @@ Please edit phone number and try again.</source>
     <message>
         <source>VIDEO</source>
         <translation>视频</translation>
+    </message>
+    <message>
+        <source>Screen recording permissions</source>
+        <translation>屏幕录像权限</translation>
+    </message>
+    <message>
+        <source>To share screen you need to allow access to the screen recording in the system settings</source>
+        <translation>要共享屏幕，您需要允许访问系统设置中的屏幕录像</translation>
     </message>
 </context>
 <context>

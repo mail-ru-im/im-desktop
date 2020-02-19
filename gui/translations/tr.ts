@@ -71,14 +71,17 @@
     </message>
 </context>
 <context>
+    <name>UpdaterButton</name>
+    <message>
+        <source>Update %1</source>
+        <translation>%1 GÜNCELLEME</translation>
+    </message>
+</context>
+<context>
     <name>about_us</name>
     <message>
         <source>This product includes software developed by the OpenSSL project for use in the OpenSSL Toolkit</source>
         <translation>Bu ürün, OpenSSL Toolkit&apos;te kullanılması için OpenSSL projesi tarafından geliştirilen yazılım içermektedir</translation>
-    </message>
-    <message>
-        <source>https://openssl.org</source>
-        <translation>https://openssl.org</translation>
     </message>
     <message>
         <source>Copyright © 2012, the WebRTC project authors. All rights reserved.</source>
@@ -89,24 +92,42 @@
         <translation>Emoji&apos;ler ücretsiz olarak Emoji One tarafından sağlanmıştır</translation>
     </message>
     <message>
-        <source>Presented by Mail.ru</source>
-        <translation>Mail.ru sunar</translation>
+        <source>https://openssl.org</source>
+        <translation>https://openssl.org</translation>
     </message>
     <message>
         <source>© Mail.ru LLC</source>
         <translation>© Mail.ru LLC</translation>
     </message>
+    <message>
+        <source>Beta version contains new features, but it is not complete yet.
+You can leave your feedback or report an error here:</source>
+        <translation>Beta sürümü yeni özellikler içeriyor, ancak henüz tamamlanmadı.
+Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</translation>
+    </message>
+    <message>
+        <source>https://icq.im/desktopbeta</source>
+        <translation>https://icq.im/desktopbeta</translation>
+    </message>
+    <message>
+        <source>Check for updates</source>
+        <translation>Güncellemeleri Kontrol Et</translation>
+    </message>
+    <message>
+        <source>You have the latest version</source>
+        <translation>En son sürüme sahipsiniz</translation>
+    </message>
+    <message>
+        <source>Update required</source>
+        <translation>Güncelleme gerekli</translation>
+    </message>
+    <message>
+        <source>Server error</source>
+        <translation>Sunucu hatası</translation>
+    </message>
 </context>
 <context>
     <name>add_new_contact_dialogs</name>
-    <message>
-        <source>ADD</source>
-        <translation>EKLE</translation>
-    </message>
-    <message>
-        <source>ADD ANOTHER ONE</source>
-        <translation>BAŞKA BİR TANE EKLE</translation>
-    </message>
     <message>
         <source>New contact</source>
         <translation>Yeni kişi ekle</translation>
@@ -167,20 +188,82 @@
         <source>Phone number</source>
         <translation>Telefon numarası</translation>
     </message>
+    <message>
+        <source>Add</source>
+        <translation>eklemek</translation>
+    </message>
+    <message>
+        <source>Add another one</source>
+        <translation>Başka bir tane ekle</translation>
+    </message>
+</context>
+<context>
+    <name>add_widget</name>
+    <message>
+        <source>Phone number</source>
+        <translation>Telefon numarası</translation>
+    </message>
+    <message>
+        <source>Nickname</source>
+        <translation>rumuz</translation>
+    </message>
+    <message>
+        <source>Enter nickname</source>
+        <translation>Bir takma ad girin</translation>
+    </message>
+    <message>
+        <source>Email</source>
+        <translation>E-posta</translation>
+    </message>
+    <message>
+        <source>Enter email</source>
+        <translation>E-posta Gir</translation>
+    </message>
+    <message>
+        <source>Add contact by phone or nickname?</source>
+        <translation>Telefon numarası veya takma adla kişi eklensin mi?</translation>
+    </message>
+    <message>
+        <source>Add contact by phone or email?</source>
+        <translation>Telefon veya e-posta ile kişi eklensin mi?</translation>
+    </message>
 </context>
 <context>
     <name>appearance</name>
-    <message>
-        <source>Default</source>
-        <translation>Varsayilan olarak</translation>
-    </message>
     <message>
         <source>Blue</source>
         <translation>Mavi</translation>
     </message>
     <message>
-        <source>Night</source>
-        <translation>Gece</translation>
+        <source>Green</source>
+        <translation>Yeşil</translation>
+    </message>
+    <message>
+        <source>Dark Green</source>
+        <translation>Koyu yeşil</translation>
+    </message>
+    <message>
+        <source>Violet</source>
+        <translation>leylak</translation>
+    </message>
+    <message>
+        <source>Orange</source>
+        <translation>turuncu</translation>
+    </message>
+    <message>
+        <source>Dark blue</source>
+        <translation>Koyu mavi</translation>
+    </message>
+</context>
+<context>
+    <name>attach_phone_number</name>
+    <message>
+        <source>For security reasons you need to confirm your phone number. This number will not appear on your profile.</source>
+        <translation>Güvenlik nedeniyle telefon numaranızı onaylamanız gerekir.</translation>
+    </message>
+    <message>
+        <source>Security alert</source>
+        <translation>Dikkat</translation>
     </message>
 </context>
 <context>
@@ -193,78 +276,70 @@
 <context>
     <name>avatar_upload</name>
     <message>
-        <source>Images (*.jpg *.jpeg *.png *.bmp)</source>
-        <translation>Görseller (*.jpg *.jpeg *.png *.bmp)</translation>
-    </message>
-    <message>
-        <source>CHOOSE FILE</source>
-        <translation>DOSYA SEÇ</translation>
-    </message>
-    <message>
-        <source>Upload photo</source>
-        <translation>Fotoğraf yükle</translation>
-    </message>
-    <message>
-        <source>Image should be at least 200x200 px</source>
-        <translation>Görsel en az 200x200 px boyutunda olmalıdır</translation>
-    </message>
-    <message>
-        <source>Edit photo</source>
-        <translation>Fotoğrafı düzenle</translation>
-    </message>
-    <message>
         <source>Preview</source>
         <translation>Gözden geçirme</translation>
+    </message>
+    <message>
+        <source>Images (*.jpg *.jpeg *.png *.bmp)</source>
+        <translation>Görseller (*.jpg *.jpeg *.png *.bmp)</translation>
     </message>
     <message>
         <source>Avatar was not uploaded due to server error</source>
         <translation>Sunucu hatası nedeniyle avatar yüklenemedi</translation>
     </message>
     <message>
-        <source>Edit
-photo</source>
-        <translation>Fotoğrafı
-düzenle</translation>
+        <source>Upload photo</source>
+        <translation>Fotoğraf yükle</translation>
+    </message>
+    <message>
+        <source>Edit photo</source>
+        <translation>Fotoğrafı düzenle</translation>
+    </message>
+    <message>
+        <source>Image should be at least 200x200 px</source>
+        <translation>Görsel en az 200x200 px boyutunda olmalıdır</translation>
+    </message>
+    <message>
+        <source>Choose file</source>
+        <translation>Dosya seç</translation>
+    </message>
+    <message>
+        <source>Select a file</source>
+        <translation>Dosya seç</translation>
     </message>
 </context>
 <context>
-    <name>burger_menu</name>
+    <name>block_and_delete</name>
     <message>
-        <source>Update is available</source>
-        <translation>Güncelleme mevcut</translation>
+        <source>Delete messages</source>
+        <translation>Mesajları sil</translation>
     </message>
     <message>
-        <source>Restart application, 
-so update could take effect</source>
-        <translation>Uygulamayı yeniden başlatın
-güncellemenin etkin olması için</translation>
+        <source>Block and delete?</source>
+        <translation>Engelle ve sil?</translation>
     </message>
     <message>
-        <source>RESTART</source>
-        <translation>YENİDEN BAŞLAT</translation>
+        <source>Cancel</source>
+        <translation>iptal</translation>
+    </message>
+    <message>
+        <source>Yes</source>
+        <translation>evet</translation>
+    </message>
+    <message>
+        <source>This member won&apos;t be able to join the channel again. You could also delete his messages</source>
+        <translation>Katılımcı kanala geri dönemeyecek. Ayrıca mesajlarını silebilirsiniz</translation>
+    </message>
+    <message>
+        <source>This member won&apos;t be able to join the group again. You could also delete his messages</source>
+        <translation>Üye gruba geri dönemez. Ayrıca mesajlarını silebilirsiniz</translation>
     </message>
 </context>
 <context>
     <name>chat_event</name>
     <message>
-        <source>You changed picture of group</source>
-        <translation>Grubun fotoğrafını değiştirdiniz</translation>
-    </message>
-    <message>
-        <source> has birthday!</source>
-        <translation> kullanıcısının doğum günü!</translation>
-    </message>
-    <message>
-        <source>Your friend is now available for chat and calls. You can say hi now!</source>
-        <translation>Arkadaşınız şu an sohbet ve aramalara uygun. Şu an selam verebilirsiniz!</translation>
-    </message>
-    <message>
-        <source>You deleted chat description</source>
-        <translation>Sohbet açıklamasını sildiniz</translation>
-    </message>
-    <message>
-        <source>You have joined group</source>
-        <translation>Gruba katıldınız</translation>
+        <source> and </source>
+        <translation> ve </translation>
     </message>
     <message>
         <source>You</source>
@@ -277,10 +352,6 @@ güncellemenin etkin olması için</translation>
         <translation>seni</translation>
     </message>
     <message>
-        <source> and </source>
-        <translation> ve </translation>
-    </message>
-    <message>
         <source>Missed call</source>
         <translation>Cevapsız arama</translation>
     </message>
@@ -291,6 +362,22 @@ güncellemenin etkin olması için</translation>
     <message>
         <source>Incoming call</source>
         <translation>Gelen çağrı</translation>
+    </message>
+    <message>
+        <source>You changed picture of group</source>
+        <translation>Grubun fotoğrafını değiştirdiniz</translation>
+    </message>
+    <message>
+        <source> has birthday!</source>
+        <translation> kullanıcısının doğum günü!</translation>
+    </message>
+    <message>
+        <source>You have joined group</source>
+        <translation>Gruba katıldınız</translation>
+    </message>
+    <message>
+        <source>You deleted chat description</source>
+        <translation>Sohbet açıklamasını sildiniz</translation>
     </message>
     <message>
         <source>Message was deleted</source>
@@ -353,16 +440,6 @@ güncellemenin etkin olması için</translation>
         <translation>%1, %2 kullanıcısını çıkardı</translation>
     </message>
     <message>
-        <source>%1 have left group</source>
-        <comment>many</comment>
-        <translation>%1, gruptan ayrıldılar</translation>
-    </message>
-    <message>
-        <source>%1 has left group</source>
-        <comment>one</comment>
-        <translation>%1, gruptan ayrıldı</translation>
-    </message>
-    <message>
         <source>%1 changed chat rules to &quot;%2&quot;</source>
         <translation>%1, sohbet kurallarını &quot;%2&quot; olarak değiştirdi</translation>
     </message>
@@ -410,29 +487,83 @@ güncellemenin etkin olması için</translation>
         <source>You declined a call from %1</source>
         <translation>%1&apos;den gelen aramaya cevap vermediniz</translation>
     </message>
+    <message>
+        <source>Theme was changed to &quot;%1&quot;</source>
+        <translation>%1 olarak değiştirildi</translation>
+    </message>
+    <message>
+        <source>%1 was added</source>
+        <translation>%1 eklendi</translation>
+    </message>
+    <message>
+        <source>%1 were added</source>
+        <translation>%1 eklendi</translation>
+    </message>
+    <message>
+        <source>Chat description was deleted</source>
+        <translation>Sohbet Açıklaması Silinen</translation>
+    </message>
+    <message>
+        <source>%1 was removed</source>
+        <translation>%1 silindi</translation>
+    </message>
+    <message>
+        <source>%1 were removed</source>
+        <translation>%1 silindi</translation>
+    </message>
+    <message>
+        <source>Channel avatar was changed</source>
+        <translation>Kanal avatarı değiştirildi</translation>
+    </message>
+    <message>
+        <source>Description was changed to &quot;%1&quot;</source>
+        <translation>Açıklama %1 olarak değiştirildi</translation>
+    </message>
+    <message>
+        <source>Channel rules were changed to &quot;%1&quot;</source>
+        <translation>Kanal kuralları %1 olarak değiştirildi</translation>
+    </message>
+    <message>
+        <source>You have recently added %1 to your phone contacts. Write a new message or make a call %2</source>
+        <translation>Yakın zamanda telefon rehberine %1 eklediniz. Yeni bir mesaj yaz veya bir arama yap %2</translation>
+    </message>
+    <message>
+        <source>So %1 is here now! Write, call %2</source>
+        <translation>%1 şimdi burada! Yaz, %2 ara</translation>
+    </message>
+    <message>
+        <source>%1 have left group (this message is visible only to group admins)</source>
+        <comment>many</comment>
+        <translation>%1 gruptan ayrıldı (bu mesaj yalnızca grup yöneticileri tarafından görülebilir)</translation>
+    </message>
+    <message>
+        <source>%1 has left group (this message is visible only to group admins)</source>
+        <comment>one</comment>
+        <translation>%1 gruptan ayrıldı (yalnızca grup yöneticileri bu mesajı görür)</translation>
+    </message>
+    <message>
+        <source>You changed chat link to %1</source>
+        <translation>Bağlantıyı %1 değiştirdin</translation>
+    </message>
+    <message>
+        <source>Channel link was changed to %1</source>
+        <translation>Bağlantı %1 değiştirildi</translation>
+    </message>
+    <message>
+        <source>%1 changed chat link to %2</source>
+        <translation>%1 bağlantıyı %2 değiştirdi</translation>
+    </message>
+    <message>
+        <source>Add avatar</source>
+        <translation>Avatar ekle</translation>
+    </message>
+    <message>
+        <source>Add description</source>
+        <translation>Açıklama ekle</translation>
+    </message>
 </context>
 <context>
     <name>chat_page</name>
-    <message>
-        <source>edited</source>
-        <translation>düzenlendi</translation>
-    </message>
-    <message>
-        <source>Show in folder</source>
-        <translation>Klasörde göster</translation>
-    </message>
-    <message>
-        <source> of </source>
-        <translation> / </translation>
-    </message>
-    <message>
-        <source>is typing</source>
-        <translation>yazı giriliyor</translation>
-    </message>
-    <message>
-        <source>are typing</source>
-        <translation>yazıyorlar</translation>
-    </message>
     <message>
         <source>member</source>
         <comment>1</comment>
@@ -454,18 +585,6 @@ güncellemenin etkin olması için</translation>
         <translation>katılımcı</translation>
     </message>
     <message>
-        <source>CANCEL</source>
-        <translation>İPTAL</translation>
-    </message>
-    <message>
-        <source>FORWARD</source>
-        <translation>İLET</translation>
-    </message>
-    <message>
-        <source>COPY</source>
-        <translation>KOPYALA</translation>
-    </message>
-    <message>
         <source>Today</source>
         <translation>Bugün</translation>
     </message>
@@ -478,8 +597,28 @@ güncellemenin etkin olması için</translation>
         <translation>Yeni iletiler</translation>
     </message>
     <message>
+        <source> of </source>
+        <translation> / </translation>
+    </message>
+    <message>
+        <source>Show in folder</source>
+        <translation>Klasörde göster</translation>
+    </message>
+    <message>
         <source>File</source>
         <translation>Dosya</translation>
+    </message>
+    <message>
+        <source>are typing</source>
+        <translation>yazıyorlar</translation>
+    </message>
+    <message>
+        <source>edited</source>
+        <translation>düzenlendi</translation>
+    </message>
+    <message>
+        <source>is typing</source>
+        <translation>yazı giriliyor</translation>
     </message>
     <message>
         <source>Quick send</source>
@@ -512,20 +651,16 @@ güncellemenin etkin olması için</translation>
         <translation>Merhaba. Lütfen beni kişi listene ekle</translation>
     </message>
     <message>
-        <source>Add contact</source>
-        <translation>Kişi ekle</translation>
+        <source>Sticker</source>
+        <translation>Etiket</translation>
     </message>
     <message>
-        <source>TOP CONTACTS</source>
-        <translation>EN İYİ KİŞİLER</translation>
+        <source>Photo</source>
+        <translation>Fotoğraf</translation>
     </message>
     <message>
-        <source>ALL CONTACTS</source>
-        <translation>TÜM KİŞİLER</translation>
-    </message>
-    <message>
-        <source>New contacts</source>
-        <translation>Yeni kişiler</translation>
+        <source>Voice message</source>
+        <translation>Sesli ileti</translation>
     </message>
     <message>
         <source>FAVORITES</source>
@@ -536,36 +671,40 @@ güncellemenin etkin olması için</translation>
         <translation>SON ZAMANLAR</translation>
     </message>
     <message>
-        <source>CLOSE ALL</source>
-        <translation>HEPSINI KAPAT</translation>
-    </message>
-    <message>
-        <source>NEW CONTACTS</source>
-        <translation>YENİ KİŞİLER</translation>
-    </message>
-    <message>
-        <source>Sticker</source>
-        <translation>Etiket</translation>
+        <source>Video</source>
+        <translation>Görüntü</translation>
     </message>
     <message>
         <source>File</source>
         <translation>Dosya</translation>
     </message>
     <message>
+        <source>New contacts</source>
+        <translation>Yeni kişiler</translation>
+    </message>
+    <message>
         <source>GIF</source>
         <translation>GIF</translation>
     </message>
     <message>
-        <source>Photo</source>
-        <translation>Fotoğraf</translation>
+        <source>TOP CONTACTS</source>
+        <translation>EN İYİ KİŞİLER</translation>
     </message>
     <message>
-        <source>Video</source>
-        <translation>Görüntü</translation>
+        <source>ALL CONTACTS</source>
+        <translation>TÜM KİŞİLER</translation>
     </message>
     <message>
-        <source>Voice message</source>
-        <translation>Sesli ileti</translation>
+        <source>NEW CONTACTS</source>
+        <translation>YENİ KİŞİLER</translation>
+    </message>
+    <message>
+        <source>CLOSE ALL</source>
+        <translation>HEPSINI KAPAT</translation>
+    </message>
+    <message>
+        <source>Add contact</source>
+        <translation>Kişi ekle</translation>
     </message>
     <message>
         <source>Me</source>
@@ -584,16 +723,28 @@ güncellemenin etkin olması için</translation>
         <translation>İptal</translation>
     </message>
     <message>
-        <source>New group</source>
-        <translation>Yeni Grup</translation>
-    </message>
-    <message>
-        <source>New channel</source>
-        <translation>Yeni Kanal</translation>
-    </message>
-    <message>
         <source>Contact</source>
         <translation>Kişi</translation>
+    </message>
+    <message>
+        <source>UNIMPORTANT</source>
+        <translation>ÖNEMSİZ</translation>
+    </message>
+    <message>
+        <source>Location</source>
+        <translation>Yer</translation>
+    </message>
+    <message>
+        <source>Poll</source>
+        <translation>görüşme</translation>
+    </message>
+    <message>
+        <source>Create group</source>
+        <translation>Grup oluştur</translation>
+    </message>
+    <message>
+        <source>Create channel</source>
+        <translation>Kanal oluştur</translation>
     </message>
 </context>
 <context>
@@ -630,12 +781,51 @@ güncellemenin etkin olması için</translation>
         <comment>21</comment>
         <translation>%1 katılımcı</translation>
     </message>
+    <message>
+        <source>%1 messages selected</source>
+        <comment>2</comment>
+        <translation>%1 gönderi seçildi</translation>
+    </message>
+    <message>
+        <source>%1 messages selected</source>
+        <comment>5</comment>
+        <translation>%1 gönderi seçildi</translation>
+    </message>
+    <message>
+        <source>%1 messages selected</source>
+        <comment>21</comment>
+        <translation>%1 mesaj seçildi</translation>
+    </message>
 </context>
 <context>
     <name>contactus_page</name>
     <message>
-        <source>Your comments or suggestions...</source>
-        <translation>Yorumlarınız veya tavsiyeleriniz...</translation>
+        <source>Attachments size exceeds 25 MB</source>
+        <translation>Eklerin boyutu 25 MB&apos;yi aşıyor</translation>
+    </message>
+    <message>
+        <source>KB</source>
+        <translation>KB</translation>
+    </message>
+    <message>
+        <source>MB</source>
+        <translation>MB</translation>
+    </message>
+    <message>
+        <source>Your Email</source>
+        <translation>E-Postanız</translation>
+    </message>
+    <message>
+        <source>Please enter a valid email address</source>
+        <translation>Lütfen geçerli bir e-posta adresi girin</translation>
+    </message>
+    <message>
+        <source>Sending...</source>
+        <translation>Gönderiliyor...</translation>
+    </message>
+    <message>
+        <source>Send another review</source>
+        <translation>Başka bir inceleme gönder</translation>
     </message>
     <message>
         <source>Message is too short</source>
@@ -650,44 +840,16 @@ güncellemenin etkin olması için</translation>
         <translation>Dosya boyutu 1 MB&apos;yi aşıyor</translation>
     </message>
     <message>
-        <source>Attachments size exceeds 25 MB</source>
-        <translation>Eklerin boyutu 25 MB&apos;yi aşıyor</translation>
-    </message>
-    <message>
         <source>Images (*.jpg *.jpeg *.png *.bmp)</source>
         <translation>Görseller (*.jpg *.jpeg *.png *.bmp)</translation>
-    </message>
-    <message>
-        <source>KB</source>
-        <translation>KB</translation>
-    </message>
-    <message>
-        <source>MB</source>
-        <translation>MB</translation>
     </message>
     <message>
         <source>Attach screenshot</source>
         <translation>Ekran görüntüsü ekle</translation>
     </message>
     <message>
-        <source>Your Email</source>
-        <translation>E-Postanız</translation>
-    </message>
-    <message>
-        <source>Please enter a valid email address</source>
-        <translation>Lütfen geçerli bir e-posta adresi girin</translation>
-    </message>
-    <message>
-        <source>SEND</source>
-        <translation>GÖNDER</translation>
-    </message>
-    <message>
-        <source>Sending...</source>
-        <translation>Gönderiliyor...</translation>
-    </message>
-    <message>
-        <source>Send another review</source>
-        <translation>Başka bir inceleme gönder</translation>
+        <source>Your comments or suggestions...</source>
+        <translation>Yorumlarınız veya tavsiyeleriniz...</translation>
     </message>
     <message>
         <source>Error occurred, try again later</source>
@@ -699,23 +861,23 @@ güncellemenin etkin olması için</translation>
     </message>
     <message>
         <source>VOIP</source>
-        <translation></translation>
+        <translation>aramalar</translation>
     </message>
     <message>
         <source>Nothing selected</source>
-        <translation></translation>
+        <translation>Seçilmedi</translation>
     </message>
     <message>
         <source>Emoji and stickers</source>
-        <translation></translation>
+        <translation>Emoji ve çıkartmalar</translation>
     </message>
     <message>
         <source>Avatars</source>
-        <translation></translation>
+        <translation>Avatarlar</translation>
     </message>
     <message>
         <source>Videoplayer</source>
-        <translation></translation>
+        <translation>Video oynatıcı</translation>
     </message>
     <message>
         <source>Gallery</source>
@@ -723,15 +885,15 @@ güncellemenin etkin olması için</translation>
     </message>
     <message>
         <source>Ptt</source>
-        <translation></translation>
+        <translation>Sesli mesajlar</translation>
     </message>
     <message>
         <source>Hotkeys</source>
-        <translation></translation>
+        <translation>Kısayollar</translation>
     </message>
     <message>
         <source>Crash</source>
-        <translation></translation>
+        <translation>Uygulama kapatma</translation>
     </message>
     <message>
         <source>Pinned message</source>
@@ -739,23 +901,23 @@ güncellemenin etkin olması için</translation>
     </message>
     <message>
         <source>Decelerations</source>
-        <translation></translation>
+        <translation>Uygulama Yavaşlamaları</translation>
     </message>
     <message>
         <source>Sounds</source>
-        <translation></translation>
+        <translation>sesleri</translation>
     </message>
     <message>
         <source>History</source>
-        <translation></translation>
+        <translation>Sohbet Geçmişi</translation>
     </message>
     <message>
         <source>Channels</source>
-        <translation></translation>
+        <translation>kanallar</translation>
     </message>
     <message>
         <source>Contact list</source>
-        <translation></translation>
+        <translation>İletişim bilgileri</translation>
     </message>
     <message>
         <source>Settings</source>
@@ -763,7 +925,7 @@ güncellemenin etkin olması için</translation>
     </message>
     <message>
         <source>Nick</source>
-        <translation></translation>
+        <translation>Rumuz</translation>
     </message>
     <message>
         <source>Search</source>
@@ -771,23 +933,23 @@ güncellemenin etkin olması için</translation>
     </message>
     <message>
         <source>Mail for domains</source>
-        <translation></translation>
+        <translation>Etki alanı için posta</translation>
     </message>
     <message>
         <source>Previews</source>
-        <translation></translation>
+        <translation>Görüntüleri ve bağlantıları önizleme</translation>
     </message>
     <message>
         <source>Connection</source>
-        <translation></translation>
+        <translation>Ağ bağlantısı</translation>
     </message>
     <message>
         <source>Messages</source>
-        <translation></translation>
+        <translation>mesajları</translation>
     </message>
     <message>
         <source>Statuses</source>
-        <translation></translation>
+        <translation>durumları</translation>
     </message>
     <message>
         <source>Notifications</source>
@@ -795,46 +957,50 @@ güncellemenin etkin olması için</translation>
     </message>
     <message>
         <source>Mentions</source>
-        <translation></translation>
+        <translation>Sohbet Mentions</translation>
     </message>
     <message>
         <source>Install</source>
-        <translation></translation>
+        <translation>Uygulama yükleme</translation>
     </message>
     <message>
         <source>File sharing</source>
-        <translation></translation>
+        <translation>dosyalar</translation>
     </message>
     <message>
         <source>Wallpapers</source>
-        <translation></translation>
+        <translation>Sohbet arka plan</translation>
     </message>
     <message>
         <source>Group chats</source>
-        <translation></translation>
+        <translation>Sohbetler</translation>
     </message>
     <message>
         <source>Different problem</source>
-        <translation></translation>
+        <translation>Başka bir sorun</translation>
+    </message>
+    <message>
+        <source>Get debug information</source>
+        <translation>Günlük arşivini al</translation>
+    </message>
+    <message>
+        <source>Send</source>
+        <translation>Gönder</translation>
     </message>
 </context>
 <context>
     <name>context_menu</name>
     <message>
+        <source>Call</source>
+        <translation>Arama yap</translation>
+    </message>
+    <message>
+        <source>Profile</source>
+        <translation>Profil</translation>
+    </message>
+    <message>
         <source>Mark as read</source>
         <translation>Okunmuş işaretle</translation>
-    </message>
-    <message>
-        <source>Mark as unread</source>
-        <translation>Okunmadı olarak işaretle</translation>
-    </message>
-    <message>
-        <source>Unpin</source>
-        <translation>Sabitliği geri al</translation>
-    </message>
-    <message>
-        <source>Pin</source>
-        <translation>Sabitle</translation>
     </message>
     <message>
         <source>Turn on notifications</source>
@@ -845,44 +1011,16 @@ güncellemenin etkin olması için</translation>
         <translation>Bildirimleri kapat</translation>
     </message>
     <message>
-        <source>Call</source>
-        <translation>Arama yap</translation>
-    </message>
-    <message>
-        <source>Profile</source>
-        <translation>Profil</translation>
-    </message>
-    <message>
-        <source>Leave and delete</source>
-        <translation>Çık ve sil</translation>
-    </message>
-    <message>
-        <source>Reply</source>
-        <translation>Yanıtla</translation>
-    </message>
-    <message>
-        <source>Copy link</source>
-        <translation>Bağlantıyı kopyala</translation>
-    </message>
-    <message>
-        <source>Copy to clipboard</source>
-        <translation>Panoya kopyala</translation>
-    </message>
-    <message>
-        <source>Forward</source>
-        <translation>İlet</translation>
-    </message>
-    <message>
         <source>Save as...</source>
         <translation>Farklı kaydet...</translation>
     </message>
     <message>
-        <source>Open in browser</source>
-        <translation>Tarayıcıda aç</translation>
+        <source>Copy</source>
+        <translation>Kopyala</translation>
     </message>
     <message>
-        <source>Edit</source>
-        <translation>Düzenle</translation>
+        <source>Copy link</source>
+        <translation>Bağlantıyı kopyala</translation>
     </message>
     <message>
         <source>Delete for me</source>
@@ -893,12 +1031,44 @@ güncellemenin etkin olması için</translation>
         <translation>Hepsi için sil</translation>
     </message>
     <message>
+        <source>Leave and delete</source>
+        <translation>Çık ve sil</translation>
+    </message>
+    <message>
+        <source>Forward</source>
+        <translation>İlet</translation>
+    </message>
+    <message>
+        <source>Open in browser</source>
+        <translation>Tarayıcıda aç</translation>
+    </message>
+    <message>
+        <source>Reply</source>
+        <translation>Yanıtla</translation>
+    </message>
+    <message>
+        <source>Copy to clipboard</source>
+        <translation>Panoya kopyala</translation>
+    </message>
+    <message>
         <source>Mention</source>
         <translation>Bahset</translation>
     </message>
     <message>
-        <source>Copy</source>
-        <translation>Kopyala</translation>
+        <source>Unpin</source>
+        <translation>Sabitliği geri al</translation>
+    </message>
+    <message>
+        <source>Pin</source>
+        <translation>Sabitle</translation>
+    </message>
+    <message>
+        <source>Edit</source>
+        <translation>Düzenle</translation>
+    </message>
+    <message>
+        <source>Mark as unread</source>
+        <translation>Okunmadı olarak işaretle</translation>
     </message>
     <message>
         <source>Show in folder</source>
@@ -937,16 +1107,56 @@ güncellemenin etkin olması için</translation>
         <translation>Şikayet et ve engelle</translation>
     </message>
     <message>
-        <source>Delete and leave</source>
-        <translation>Sil ve çık</translation>
-    </message>
-    <message>
         <source>Hide</source>
         <translation>Gizle</translation>
     </message>
     <message>
         <source>Go to profile</source>
         <translation>Profile git</translation>
+    </message>
+    <message>
+        <source>Remove</source>
+        <translation>Kaldir</translation>
+    </message>
+    <message>
+        <source>Delete</source>
+        <translation>silmek</translation>
+    </message>
+    <message>
+        <source>Select</source>
+        <translation>seçmek</translation>
+    </message>
+    <message>
+        <source>Remove from Unimportant</source>
+        <translation>Önemsizden kaldır</translation>
+    </message>
+    <message>
+        <source>Move to Unimportant</source>
+        <translation>Önemsize taşı</translation>
+    </message>
+    <message>
+        <source>Share channel link</source>
+        <translation>Kanal bağlantısını paylaş</translation>
+    </message>
+    <message>
+        <source>Copy channel link</source>
+        <translation>Kanal bağlantısını kopyala</translation>
+    </message>
+    <message>
+        <source>Share group link</source>
+        <translation>Grup bağlantısını paylaş</translation>
+    </message>
+    <message>
+        <source>Copy group link</source>
+        <translation>Bağlantıyı gruba kopyala</translation>
+    </message>
+    <message>
+        <source>Revoke vote</source>
+        <translation>Oylamayı iptal et</translation>
+    </message>
+    <message>
+        <source>Stop poll</source>
+        <translation>Anketi durdur</translation>
     </message>
 </context>
 <context>
@@ -1964,6 +2174,25 @@ güncellemenin etkin olması için</translation>
     </message>
 </context>
 <context>
+    <name>delete_messages</name>
+    <message>
+        <source>Delete messages</source>
+        <translation>Mesajları sil</translation>
+    </message>
+    <message>
+        <source>OK</source>
+        <translation>tamam</translation>
+    </message>
+    <message>
+        <source>Messages will be deleted only for you</source>
+        <translation>Mesajlar sadece sizin için silinecek</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>iptal</translation>
+    </message>
+</context>
+<context>
     <name>files_widget</name>
     <message>
         <source>Send with caption</source>
@@ -2002,14 +2231,6 @@ güncellemenin etkin olması için</translation>
         <translation>dosya</translation>
     </message>
     <message>
-        <source>CANCEL</source>
-        <translation>İPTAL</translation>
-    </message>
-    <message>
-        <source>SEND</source>
-        <translation>GÖNDER</translation>
-    </message>
-    <message>
         <source>Send files</source>
         <translation>Dosyayı gönder</translation>
     </message>
@@ -2021,6 +2242,14 @@ güncellemenin etkin olması için</translation>
         <source>Quick send</source>
         <translation>Hızlı gönder</translation>
     </message>
+    <message>
+        <source>Cancel</source>
+        <translation>iptal</translation>
+    </message>
+    <message>
+        <source>Send</source>
+        <translation>Gönder</translation>
+    </message>
 </context>
 <context>
     <name>gallery</name>
@@ -2030,7 +2259,53 @@ güncellemenin etkin olması için</translation>
     </message>
 </context>
 <context>
+    <name>generic_block</name>
+    <message>
+        <source>Copied to clipboard</source>
+        <translation>Panoya kopyalandı</translation>
+    </message>
+</context>
+<context>
+    <name>geolocation_block</name>
+    <message>
+        <source>Location</source>
+        <translation>Yer</translation>
+    </message>
+</context>
+<context>
     <name>groupchats</name>
+    <message>
+        <source>Public chat</source>
+        <translation>Genel sohbet</translation>
+    </message>
+    <message>
+        <source>Join with Approval</source>
+        <translation>Onayla katıl</translation>
+    </message>
+    <message>
+        <source>New members are waiting for admin approval</source>
+        <translation>Yeni üyeler yönetici onayını bekliyor</translation>
+    </message>
+    <message>
+        <source>Add to chat</source>
+        <translation>Sohbete ekle</translation>
+    </message>
+    <message>
+        <source>You are not a member of this chat</source>
+        <translation>Bu sohbetin üyesi değilsiniz</translation>
+    </message>
+    <message>
+        <source>Chat name</source>
+        <translation>Sohbet adı</translation>
+    </message>
+    <message>
+        <source>Chat information is unavailable now, please try again later</source>
+        <translation>Sohbet bilgisine şu an ulaşılamıyor, lütfen daha sonra tekrar deneyin</translation>
+    </message>
+    <message>
+        <source>Chat does not exist or it is hidden by privacy settings</source>
+        <translation>Sohbet mevcut değil veya gizlilik ayarlarından dolayı gizli</translation>
+    </message>
     <message>
         <source>member</source>
         <comment>1</comment>
@@ -2050,46 +2325,6 @@ güncellemenin etkin olması için</translation>
         <source>members</source>
         <comment>21</comment>
         <translation>katılımcı</translation>
-    </message>
-    <message>
-        <source>Chat name</source>
-        <translation>Sohbet adı</translation>
-    </message>
-    <message>
-        <source>Join with Approval</source>
-        <translation>Onayla katıl</translation>
-    </message>
-    <message>
-        <source>New members are waiting for admin approval</source>
-        <translation>Yeni üyeler yönetici onayını bekliyor</translation>
-    </message>
-    <message>
-        <source>Public chat</source>
-        <translation>Genel sohbet</translation>
-    </message>
-    <message>
-        <source>The chat will appear in the app&apos;s showcase and any user can find it in the list</source>
-        <translation>Etkinleştirildiğinde sohbet herkes için gösterilir</translation>
-    </message>
-    <message>
-        <source>Select members</source>
-        <translation>Üye seç</translation>
-    </message>
-    <message>
-        <source>You are not a member of this chat</source>
-        <translation>Bu sohbetin üyesi değilsiniz</translation>
-    </message>
-    <message>
-        <source>Add to chat</source>
-        <translation>Sohbete ekle</translation>
-    </message>
-    <message>
-        <source>Chat information is unavailable now, please try again later</source>
-        <translation>Sohbet bilgisine şu an ulaşılamıyor, lütfen daha sonra tekrar deneyin</translation>
-    </message>
-    <message>
-        <source>Chat does not exist or it is hidden by privacy settings</source>
-        <translation>Sohbet mevcut değil veya gizlilik ayarlarından dolayı gizli</translation>
     </message>
     <message>
         <source>friend</source>
@@ -2112,24 +2347,52 @@ güncellemenin etkin olması için</translation>
         <translation>arkadaş</translation>
     </message>
     <message>
-        <source>Link to chat</source>
-        <translation>Sohbet Bağlantısı</translation>
-    </message>
-    <message>
-        <source>Ability to join chat by link</source>
-        <translation>Sohbete bağlantıyla bağlanabilme</translation>
-    </message>
-    <message>
         <source>Channel name</source>
         <translation>Kanal adı</translation>
     </message>
     <message>
-        <source>The channel will appear in the app&apos;s showcase and any user can find it in the list</source>
-        <translation>Kanal, uygulamanın vitrininde görünecek ve tüm kullanıcılar listede bu kanalı bulabilir</translation>
-    </message>
-    <message>
         <source>Public channel</source>
         <translation>Genel kanal</translation>
+    </message>
+    <message>
+        <source>Make new link</source>
+        <translation>Yeni bağlantı oluştur</translation>
+    </message>
+    <message>
+        <source>Apply</source>
+        <translation>Başvurmak</translation>
+    </message>
+    <message>
+        <source>Public group can be found in the search</source>
+        <translation>Genel grup aramada bulunabilir</translation>
+    </message>
+    <message>
+        <source>Channels are public by default, but you can change it after in settings</source>
+        <translation>Kanallar varsayılan olarak herkese açıktır, ancak daha sonra ayarlarda değiştirebilirsiniz</translation>
+    </message>
+    <message>
+        <source>The link will open the group in %1</source>
+        <translation>Bu bağlantı grubu %1 içinde açacak</translation>
+    </message>
+    <message>
+        <source>The link will open the channel in %1</source>
+        <translation>Bu bağlantı kanalı %1 içinde açacak</translation>
+    </message>
+    <message>
+        <source>The public channel can be found in the search and its link will be available to all members</source>
+        <translation>Herkese açık kanal aramada bulunabilir ve bağlantısı tüm katılımcılar tarafından kullanılabilir</translation>
+    </message>
+    <message>
+        <source>The public group can be found in the search and its link will be available to all members</source>
+        <translation>Herkese açık grup aramada bulunabilir ve bağlantısı tüm katılımcılar tarafından kullanılabilir</translation>
+    </message>
+    <message>
+        <source>You have chosen no one from the list. Are you sure you want to create a group with no participants?</source>
+        <translation>Listeden kimseyi seçmediniz, üyesi olmayan bir grup oluşturmak istediğinizden emin misiniz?</translation>
+    </message>
+    <message>
+        <source>Group name</source>
+        <translation>Grup adı</translation>
     </message>
 </context>
 <context>
@@ -2161,20 +2424,20 @@ güncellemenin etkin olması için</translation>
 <context>
     <name>input_widget</name>
     <message>
-        <source>Edit message</source>
-        <translation>İletiyi düzenle</translation>
-    </message>
-    <message>
-        <source>Message</source>
-        <translation>İleti</translation>
-    </message>
-    <message>
         <source>EMOJI</source>
         <translation>EMOJI</translation>
     </message>
     <message>
         <source>RECENTS</source>
         <translation>SON ZAMANLAR</translation>
+    </message>
+    <message>
+        <source>Message</source>
+        <translation>İleti</translation>
+    </message>
+    <message>
+        <source>Edit message</source>
+        <translation>İletiyi düzenle</translation>
     </message>
     <message>
         <source>Photo or Video</source>
@@ -2187,30 +2450,6 @@ güncellemenin etkin olması için</translation>
     <message>
         <source>Voice Message</source>
         <translation>Sesli ileti</translation>
-    </message>
-    <message>
-        <source>SUBSCRIBE</source>
-        <translation>ABONE OL</translation>
-    </message>
-    <message>
-        <source>JOIN</source>
-        <translation>KATIL</translation>
-    </message>
-    <message>
-        <source>ENABLE NOTIFICATIONS</source>
-        <translation>ETKİNLİK BİLDİRİMLERİ</translation>
-    </message>
-    <message>
-        <source>DISABLE NOTIFICATIONS</source>
-        <translation>BİLDİRİMLERİ DEVRE DIŞI BIRAK</translation>
-    </message>
-    <message>
-        <source>DELETE AND LEAVE</source>
-        <translation>SIL VE ÇIK</translation>
-    </message>
-    <message>
-        <source>UNBLOCK</source>
-        <translation>ENGEL KALDIR</translation>
     </message>
     <message>
         <source>Voice message</source>
@@ -2245,12 +2484,12 @@ güncellemenin etkin olması için</translation>
         <translation>OK</translation>
     </message>
     <message>
-        <source>Contact</source>
-        <translation>Kişi</translation>
-    </message>
-    <message>
         <source>Lock</source>
         <translation>Kilit</translation>
+    </message>
+    <message>
+        <source>Contact</source>
+        <translation>Kişi</translation>
     </message>
     <message>
         <source>You was banned to write in this group</source>
@@ -2259,6 +2498,14 @@ güncellemenin etkin olması için</translation>
     <message>
         <source>The join request has been sent to administrator</source>
         <translation>Katılma isteği yöneticiye gönderildi</translation>
+    </message>
+    <message>
+        <source>Play record</source>
+        <translation>Kayıt oyna</translation>
+    </message>
+    <message>
+        <source>Pause record</source>
+        <translation>Kaydı duraklat</translation>
     </message>
     <message>
         <source>Convert error</source>
@@ -2271,14 +2518,6 @@ güncellemenin etkin olması için</translation>
     <message>
         <source>BufferOOM error</source>
         <translation>Kayıt hatası. Yeterli hafıza yok</translation>
-    </message>
-    <message>
-        <source>Play record</source>
-        <translation>Kayıt oyna</translation>
-    </message>
-    <message>
-        <source>Pause record</source>
-        <translation>Kaydı duraklat</translation>
     </message>
     <message>
         <source>Cancel</source>
@@ -2296,6 +2535,34 @@ güncellemenin etkin olması için</translation>
         <source>To record a voice message, you need to allow access to the microphone in the system settings</source>
         <translation>Sesli mesaj kaydetmek için, sistem ayarlarında mikrofona erişime izin vermeniz gerekir</translation>
     </message>
+    <message>
+        <source>Join</source>
+        <translation>Katılmak</translation>
+    </message>
+    <message>
+        <source>Poll</source>
+        <translation>görüşme</translation>
+    </message>
+    <message>
+        <source>Subscribe</source>
+        <translation>Abone</translation>
+    </message>
+    <message>
+        <source>Enable notifications</source>
+        <translation>Bildirimleri etkinleştir</translation>
+    </message>
+    <message>
+        <source>Disable notifications</source>
+        <translation>Bildirimleri kapat</translation>
+    </message>
+    <message>
+        <source>Delete and leave</source>
+        <translation>Sil ve ayrıl</translation>
+    </message>
+    <message>
+        <source>Unblock</source>
+        <translation>salıverme</translation>
+    </message>
 </context>
 <context>
     <name>linux_desktop_file</name>
@@ -2306,10 +2573,6 @@ güncellemenin etkin olması için</translation>
 </context>
 <context>
     <name>local_pin</name>
-    <message>
-        <source>CANCEL</source>
-        <translation>İPTAL</translation>
-    </message>
     <message>
         <source>log out</source>
         <translation>çıkış</translation>
@@ -2343,24 +2606,16 @@ güncellemenin etkin olması için</translation>
         <translation>Kodunuzu unuttuysanız </translation>
     </message>
     <message>
-        <source>APPLY</source>
-        <translation>Uygula</translation>
+        <source>Cancel</source>
+        <translation>iptal</translation>
+    </message>
+    <message>
+        <source>Apply</source>
+        <translation>Uygulamak</translation>
     </message>
 </context>
 <context>
     <name>login_page</name>
-    <message>
-        <source>Change</source>
-        <translation>Değiştir</translation>
-    </message>
-    <message>
-        <source>UIN or Email</source>
-        <translation>UIN veya E-posta</translation>
-    </message>
-    <message>
-        <source>Email</source>
-        <translation>Email</translation>
-    </message>
     <message>
         <source>Password</source>
         <translation>Parola</translation>
@@ -2370,72 +2625,28 @@ güncellemenin etkin olması için</translation>
         <translation>Oturumu açık tut</translation>
     </message>
     <message>
-        <source>NEXT</source>
-        <translation>SONRAKI</translation>
-    </message>
-    <message>
-        <source>Type country or code</source>
-        <translation>Ülke veya kodu girin</translation>
-    </message>
-    <message>
-        <source>phone number</source>
-        <translation>telefon numarası</translation>
-    </message>
-    <message>
-        <source>Login via phone</source>
-        <translation>Telefonla giriş yap</translation>
-    </message>
-    <message>
-        <source>Login with UIN/Email</source>
-        <translation>UIN/E-posta ile giriş yap</translation>
-    </message>
-    <message>
-        <source>Login with Email</source>
-        <translation>E-posta ile giriş yap</translation>
-    </message>
-    <message>
-        <source>Enter phone number</source>
-        <translation>Telefon numarasını tuşla</translation>
-    </message>
-    <message>
-        <source>Enter code from SMS</source>
-        <translation>SMS&apos;teki kodu girin</translation>
-    </message>
-    <message>
-        <source>Enter UIN or Email</source>
-        <translation>UIN veya E-mail tuşla</translation>
-    </message>
-    <message>
-        <source>Enter your Email</source>
-        <translation>E-postanızı girin</translation>
-    </message>
-    <message>
-        <source>Forgot password?</source>
-        <translation>şifrenizi unuttunuz mu?</translation>
-    </message>
-    <message>
         <source>Resend code</source>
         <translation>Kodu yeniden gönder</translation>
-    </message>
-    <message>
-        <source>Wrong UIN/Email or password. Please try again.</source>
-        <translation>Yanlış UIN/E-posta veya parola. Lütfen tekrar deneyin.</translation>
     </message>
     <message>
         <source>You have entered an invalid code. Please try again.</source>
         <translation>Geçersiz bir kod girdiniz. Lütfen tekrar deneyin.</translation>
     </message>
     <message>
+        <source>Forgot password?</source>
+        <translation>şifrenizi unuttunuz mu?</translation>
+    </message>
+    <message>
         <source>Two-factor authentication is on, please create an app password &lt;a href=&quot;https://e.mail.ru/settings/2-step-auth&quot;&gt;here&lt;/a&gt; to login</source>
         <translation>İki aşamalı doğrulama açık.&lt;br&gt;Lütfen giriş yapmak için &lt;a href=&quot;https://e.mail.ru/settings/2-step-auth&quot;&gt;buradan&lt;/a&gt; bir uygulama şifresi oluşturun</translation>
     </message>
     <message>
-        <source>Invalid phone number. Please try again.</source>
-        <translation>Telefon numarası geçersiz. Lütfen tekrar deneyin.</translation>
+        <source>Enter your Email</source>
+        <translation>E-postanızı girin</translation>
     </message>
     <message>
-        <source>Welcome to ICQ</source>
-        <translation>ICQ&apos;ya hoş geldiniz</translation>
+        <source>Change</source>
+        <translation>Değiştir</translation>
     </message>
     <message>
         <source>Error occurred, try again later</source>
@@ -2451,55 +2662,95 @@ güncellemenin etkin olması için</translation>
     </message>
     <message>
         <source>Recall in %1</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Enter last %1 digit</source>
-        <comment>1</comment>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Enter last %1 digits</source>
-        <comment>2</comment>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Enter last %1 digits</source>
-        <comment>5</comment>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Enter last %1 digits</source>
-        <comment>21</comment>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Login by phone call</source>
-        <translation>Telefonla giriş yap</translation>
-    </message>
-    <message>
-        <source>Welcome to Mail.ru Agent</source>
-        <translation>Mail.ru Agent&apos;ya hoş geldiniz</translation>
-    </message>
-    <message>
-        <source>Welcome to Messenger</source>
-        <translation>Messenger&apos;ya hoş geldiniz</translation>
-    </message>
-    <message>
-        <source>Wrong Email or password. Please try again.</source>
-        <translation>Yanlış E-posta veya parola. Lütfen tekrar deneyin.</translation>
-    </message>
-    <message>
-        <source>Welcome to Myteam</source>
-        <translation>Myteam&apos;ya hoş geldiniz</translation>
-    </message>
-    <message>
-        <source>I don&apos;t have an account</source>
-        <translation>Hesabım yok</translation>
+        <translation>Recall in %1</translation>
     </message>
     <message>
         <source>Enter one-time password received by email</source>
         <translation>E-posta ile alınan tek seferlik şifreyi girin</translation>
+    </message>
+    <message>
+        <source>Enter your login and password</source>
+        <translation>Giriş bilgilerinizi ve şifrenizi girin</translation>
+    </message>
+    <message>
+        <source>To login use you corporative account created at</source>
+        <translation>Giriş yapmak için içinde oluşturulan şirket hesabını kullanın.</translation>
+    </message>
+    <message>
+        <source>Check the country code and enter your phone number</source>
+        <translation>Ülke kodunu kontrol edin ve telefon numaranızı girin</translation>
+    </message>
+    <message>
+        <source>Phone</source>
+        <translation>Telefon numarası</translation>
+    </message>
+    <message>
+        <source>SMS code</source>
+        <translation>SMS’ten gelen kod</translation>
+    </message>
+    <message>
+        <source>Enter last 6 digits of number that called you</source>
+        <translation>Sizi arayan numaranın son 6 hanesini girin</translation>
+    </message>
+    <message>
+        <source>Login</source>
+        <translation>giriş</translation>
+    </message>
+    <message>
+        <source>Mail.ru for business</source>
+        <translation>İş için Mail.ru</translation>
+    </message>
+    <message>
+        <source>Invalid phone number</source>
+        <translation>Geçersiz telefon numarası</translation>
+    </message>
+    <message>
+        <source>Sign in</source>
+        <translation>Giriş yapmak</translation>
+    </message>
+    <message>
+        <source>Incorrect code</source>
+        <translation>Geçersiz kod</translation>
+    </message>
+    <message>
+        <source>Sign in by password</source>
+        <translation>Şifre ile giriş yap</translation>
+    </message>
+    <message>
+        <source>Sign in via phone</source>
+        <translation>Telefonla giriş yap</translation>
+    </message>
+    <message>
+        <source>We called the number</source>
+        <translation>Numarayı aradık</translation>
+    </message>
+    <message>
+        <source>Wrong login or password</source>
+        <translation>Geçersiz kullanıcı adı veya şifre</translation>
+    </message>
+    <message>
+        <source>Wrong Email or password</source>
+        <translation>Geçersiz E-posta veya Şifre</translation>
+    </message>
+    <message>
+        <source>To log in use you corporate account created in</source>
+        <translation>Giriş yapmak için, içinde oluşturulan şirket hesabını kullanın.</translation>
+    </message>
+    <message>
+        <source>Verification code was sent to number</source>
+        <translation>Doğrulama kodu adresine gönderildi.</translation>
+    </message>
+    <message>
+        <source>Send code</source>
+        <translation>Kodu gönder</translation>
+    </message>
+    <message>
+        <source>Dictate over the phone</source>
+        <translation>Telefonla dikte etme</translation>
+    </message>
+    <message>
+        <source>Phone code</source>
+        <translation>Telefon Kodu</translation>
     </message>
 </context>
 <context>
@@ -2598,7 +2849,7 @@ güncellemenin etkin olması için</translation>
     </message>
     <message>
         <source>Emoji &amp;&amp; Symbols</source>
-        <translation type="unfinished"></translation>
+        <translation>Emoji ve Semboller</translation>
     </message>
     <message>
         <source>Zoom</source>
@@ -2620,14 +2871,6 @@ güncellemenin etkin olması için</translation>
         <translation>Profilim</translation>
     </message>
     <message>
-        <source>About app</source>
-        <translation>Uygulama hakkında</translation>
-    </message>
-    <message>
-        <source>Contact Us</source>
-        <translation>Bize Ulaşın</translation>
-    </message>
-    <message>
         <source>General settings</source>
         <translation>Genel ayarlar</translation>
     </message>
@@ -2638,6 +2881,14 @@ güncellemenin etkin olması için</translation>
     <message>
         <source>Notifications</source>
         <translation>Uyarılar</translation>
+    </message>
+    <message>
+        <source>Contact Us</source>
+        <translation>Bize Ulaşın</translation>
+    </message>
+    <message>
+        <source>About app</source>
+        <translation>Uygulama hakkında</translation>
     </message>
     <message>
         <source>Language</source>
@@ -2664,50 +2915,10 @@ güncellemenin etkin olması için</translation>
     </message>
 </context>
 <context>
-    <name>merge_accounts</name>
+    <name>message</name>
     <message>
-        <source>Now Mail.Ru Agent supports only one account. You can merge it with ICQ one.</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Choose Mail.Ru Agent account</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Choose ICQ account</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Account settings</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>ICQ</source>
-        <translation>ICQ</translation>
-    </message>
-    <message>
-        <source>Back</source>
-        <translation>Geri</translation>
-    </message>
-    <message>
-        <source>Next</source>
-        <translation>Sonraki</translation>
-    </message>
-    <message>
-        <source>Skip</source>
-        <translation>Atla</translation>
-    </message>
-    <message>
-        <source>Now Mail.ru Agent supports only one account. You can merge it with ICQ one.</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Mail.ru Agent</source>
-        <translation>Mail.ru Agent</translation>
-    </message>
-    <message>
-        <source>Choose Mail.ru Agent account</source>
-        <translation></translation>
+        <source>Sticker</source>
+        <translation>etiket</translation>
     </message>
 </context>
 <context>
@@ -2722,7 +2933,7 @@ güncellemenin etkin olması için</translation>
     </message>
     <message>
         <source>For agent account nickname is not allowed</source>
-        <translation></translation>
+        <translation>Ajan hesapları için takma takma adlar</translation>
     </message>
     <message>
         <source>Server error</source>
@@ -2791,48 +3002,16 @@ güncellemenin etkin olması için</translation>
         <translation>Telefon numaranız</translation>
     </message>
     <message>
-        <source>Change number</source>
-        <translation>Numarayı değiştir</translation>
-    </message>
-    <message>
-        <source>Your account, contact details, chats and messages will be moved to your new number.</source>
-        <translation>Hesabınız, iletişim bilgileriniz, sohbetleriniz ve mesajlarınız yeni numaranıza taşınacaktır.</translation>
-    </message>
-    <message>
-        <source>Before starting the transfer, ensure that you can receive SMS messages or calls to your new number.</source>
-        <translation>Aktarımı başlatmadan önce, yeni numaranıza SMS mesajı veya çağrı alabildiğinizden emin olun.</translation>
-    </message>
-    <message>
-        <source>phone number</source>
-        <translation>telefon numarası</translation>
+        <source>Change</source>
+        <translation>Değiştir</translation>
     </message>
     <message>
         <source>Code from SMS</source>
         <translation>SMS ile kod</translation>
     </message>
     <message>
-        <source>Change</source>
-        <translation>Değiştir</translation>
-    </message>
-    <message>
-        <source>Enter your new number</source>
-        <translation>Yeni numaranızı girin</translation>
-    </message>
-    <message>
         <source>Resend code</source>
         <translation>Kodu yeniden gönder</translation>
-    </message>
-    <message>
-        <source>Dictate over the phone</source>
-        <translation>Telefonu dikte edin</translation>
-    </message>
-    <message>
-        <source>Incorrect code</source>
-        <translation>Yanlış kod</translation>
-    </message>
-    <message>
-        <source>Your new account number is</source>
-        <translation>Yeni numaranız</translation>
     </message>
     <message>
         <source>%1 EXTRA DIGIT</source>
@@ -2855,12 +3034,44 @@ güncellemenin etkin olması için</translation>
         <translation>FAZLADAN %1 RAKAM</translation>
     </message>
     <message>
+        <source>Change number</source>
+        <translation>Numarayı değiştir</translation>
+    </message>
+    <message>
+        <source>Your account, contact details, chats and messages will be moved to your new number.</source>
+        <translation>Hesabınız, iletişim bilgileriniz, sohbetleriniz ve mesajlarınız yeni numaranıza taşınacaktır.</translation>
+    </message>
+    <message>
+        <source>Before starting the transfer, ensure that you can receive SMS messages or calls to your new number.</source>
+        <translation>Aktarımı başlatmadan önce, yeni numaranıza SMS mesajı veya çağrı alabildiğinizden emin olun.</translation>
+    </message>
+    <message>
+        <source>Enter your new number</source>
+        <translation>Yeni numaranızı girin</translation>
+    </message>
+    <message>
+        <source>Dictate over the phone</source>
+        <translation>Telefonu dikte edin</translation>
+    </message>
+    <message>
+        <source>Incorrect code</source>
+        <translation>Yanlış kod</translation>
+    </message>
+    <message>
+        <source>Your new account number is</source>
+        <translation>Yeni numaranız</translation>
+    </message>
+    <message>
         <source>Check that number is correct</source>
         <translation>Numaranın doğruluğunu kontrol edin</translation>
     </message>
     <message>
         <source>Number changed</source>
         <translation>Numara değiştirildi</translation>
+    </message>
+    <message>
+        <source>phone number</source>
+        <translation>telefon numarası</translation>
     </message>
     <message>
         <source>Sign out</source>
@@ -2893,7 +3104,7 @@ güncellemenin etkin olması için</translation>
     <message>
         <source>Enter last %1 digit</source>
         <comment>1</comment>
-        <translation></translation>
+        <translation>%1 aradığınız numaranın son basamağını girin</translation>
     </message>
     <message>
         <source>Enter last %1 digits</source>
@@ -2903,12 +3114,16 @@ güncellemenin etkin olması için</translation>
     <message>
         <source>Enter last %1 digits</source>
         <comment>5</comment>
-        <translation></translation>
+        <translation>Aradığınız numaranın son rakamının %1 &apos;ini girin</translation>
     </message>
     <message>
         <source>Enter last %1 digits</source>
         <comment>21</comment>
-        <translation></translation>
+        <translation>%1 aradığınız numaranın son basamağını girin</translation>
+    </message>
+    <message>
+        <source>Enter your number</source>
+        <translation>Numaranı gir</translation>
     </message>
 </context>
 <context>
@@ -2933,36 +3148,16 @@ güncellemenin etkin olması için</translation>
 <context>
     <name>placeholders</name>
     <message>
-        <source>You have no opened chats yet</source>
-        <translation>Henüz hiçbir sohbet açmamışsınız</translation>
+        <source>Install ICQ on mobile</source>
+        <translation>ICQ&apos;yu mobil cihazınıza yükleyin</translation>
     </message>
     <message>
         <source>Nothing found</source>
         <translation>Hiçbir şey bulunamadı</translation>
     </message>
     <message>
-        <source>CONTINUE</source>
-        <translation>DEVAM ET</translation>
-    </message>
-    <message>
-        <source>Install ICQ on mobile</source>
-        <translation>ICQ&apos;yu mobil cihazınıza yükleyin</translation>
-    </message>
-    <message>
-        <source>to synchronize your contacts</source>
-        <translation>Kişilerinizi senkronize etmek için</translation>
-    </message>
-    <message>
         <source>Error occurred, try again later</source>
         <translation>Bir hata oluştu, daha sonra tekrar deneyin</translation>
-    </message>
-    <message>
-        <source>Looks like you have no contacts yet</source>
-        <translation>Henüz hiç kişiniz yok gibi görünüyor</translation>
-    </message>
-    <message>
-        <source>First name</source>
-        <translation>Adı</translation>
     </message>
     <message>
         <source>Last name</source>
@@ -2984,60 +3179,182 @@ güncellemenin etkin olması için</translation>
         <source>Install Myteam on mobile</source>
         <translation>Myteam&apos;yu mobil cihazınıza yükleyin</translation>
     </message>
+    <message>
+        <source>First name*</source>
+        <translation>İsim*</translation>
+    </message>
+    <message>
+        <source>your contacts will see them</source>
+        <translation>kişileriniz onları görecek</translation>
+    </message>
+    <message>
+        <source>Continue</source>
+        <translation>Devam et</translation>
+    </message>
+    <message>
+        <source>Chat list is empty</source>
+        <translation>Sohbet listesi boş</translation>
+    </message>
+    <message>
+        <source>Contact list is empty</source>
+        <translation>Kişi listesi boş</translation>
+    </message>
+    <message>
+        <source>Copy</source>
+        <translation>repins</translation>
+    </message>
+    <message>
+        <source>Share the link %1 so people can write you</source>
+        <translation>%1 bağlantısını paylaşın böylece yazabilirsiniz</translation>
+    </message>
+    <message>
+        <source>Add a name and avatar</source>
+        <translation>Bir isim ve avatar ekleyin</translation>
+    </message>
+    <message>
+        <source>Failed to download file or media</source>
+        <translation>Dosya veya medya yüklenemedi</translation>
+    </message>
+</context>
+<context>
+    <name>poll</name>
+    <message>
+        <source>Create poll</source>
+        <translation>Anket yarat</translation>
+    </message>
+    <message>
+        <source>Ask your question</source>
+        <translation>Sorunuzu sorun</translation>
+    </message>
+    <message>
+        <source>Add another option</source>
+        <translation>Başka bir seçenek ekle</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>iptal</translation>
+    </message>
+    <message>
+        <source>Send</source>
+        <translation>Gönderen</translation>
+    </message>
+    <message>
+        <source>Answer</source>
+        <translation>Cevap seçeneği</translation>
+    </message>
+</context>
+<context>
+    <name>poll_block</name>
+    <message>
+        <source>Public</source>
+        <translation>kamu</translation>
+    </message>
+    <message>
+        <source>Anonymous</source>
+        <translation>Anonim</translation>
+    </message>
+    <message>
+        <source>%1 poll - %2 vote</source>
+        <comment>1</comment>
+        <translation>%1 anket - %2 oy</translation>
+    </message>
+    <message>
+        <source>%1 poll - %2 votes</source>
+        <comment>2</comment>
+        <translation>%1 anket - %2 oy</translation>
+    </message>
+    <message>
+        <source>%1 poll - %2 votes</source>
+        <comment>5</comment>
+        <translation>%1 anket - %2 oy</translation>
+    </message>
+    <message>
+        <source>Poll</source>
+        <translation>görüşme</translation>
+    </message>
+    <message>
+        <source>Poll: %1</source>
+        <translation>Anket: %1</translation>
+    </message>
+    <message>
+        <source>%1 poll - %2 votes</source>
+        <comment>21</comment>
+        <translation>%1 anket - %2 oy</translation>
+    </message>
+    <message>
+        <source>Poll: </source>
+        <translation>Anket: </translation>
+    </message>
+    <message>
+        <source>Sticker</source>
+        <translation>etiket</translation>
+    </message>
+    <message>
+        <source>GIF</source>
+        <translation>GIF</translation>
+    </message>
+    <message>
+        <source>Video</source>
+        <translation>video</translation>
+    </message>
+    <message>
+        <source>Poll Id copied to clipboard</source>
+        <translation>Anket kimliği kopyalandı</translation>
+    </message>
+    <message>
+        <source>Photo</source>
+        <translation>fotoğraf</translation>
+    </message>
+    <message>
+        <source>Vote: an error occurred</source>
+        <translation>Oylama: bir hata oluştu</translation>
+    </message>
+    <message>
+        <source>Revoke vote: an error occurred</source>
+        <translation>Sesi iptal et: bir hata oluştu</translation>
+    </message>
+    <message>
+        <source>Stop poll: an error occurred</source>
+        <translation>Anketi durdur: bir hata oluştu</translation>
+    </message>
+    <message>
+        <source>Voice message</source>
+        <translation>Sesli mesaj</translation>
+    </message>
+    <message>
+        <source>File</source>
+        <translation>dosya</translation>
+    </message>
 </context>
 <context>
     <name>popup_window</name>
     <message>
-        <source>CANCEL</source>
-        <translation>İPTAL</translation>
-    </message>
-    <message>
-        <source>DONE</source>
-        <translation>TAMAM</translation>
-    </message>
-    <message>
-        <source>BACK</source>
-        <translation>GERI</translation>
-    </message>
-    <message>
-        <source>CONTINUE</source>
-        <translation>DEVAM ET</translation>
-    </message>
-    <message>
-        <source>SAVE</source>
-        <translation>KAYDET</translation>
-    </message>
-    <message>
-        <source>Unfortunately, an error occurred:</source>
-        <translation>Maalesef bir hata oluştu:</translation>
-    </message>
-    <message>
-        <source>YES</source>
-        <translation>EVET</translation>
+        <source>Are you sure you want to sign out?</source>
+        <translation>Çıkış yapmak istediğinizden emin misiniz?</translation>
     </message>
     <message>
         <source>Are you sure you want to move contact to ignore list?</source>
         <translation>Kişiyi görmezden gelmek istediğinizden emin misiniz?</translation>
     </message>
     <message>
-        <source>FORWARD</source>
-        <translation>İLET</translation>
+        <source>Are you sure you want to leave chat?</source>
+        <translation>Sohbetten ayrılmak istediğinizden emin misiniz?</translation>
     </message>
     <message>
-        <source>show author</source>
-        <translation>yazarı göster</translation>
+        <source>Contact name</source>
+        <translation>Adı</translation>
     </message>
     <message>
-        <source>CLOSE</source>
-        <translation>KAPAT</translation>
+        <source>Sign out</source>
+        <translation>Çıkış</translation>
     </message>
     <message>
-        <source>NEXT</source>
-        <translation>SONRAKI</translation>
+        <source>Are you sure you want to erase chat history?</source>
+        <translation>Sohbet geçmişini silmek istediğinizden emin misiniz?</translation>
     </message>
     <message>
-        <source>Chat settings</source>
-        <translation>Sohbet ayarları</translation>
+        <source>Unfortunately, an error occurred:</source>
+        <translation>Maalesef bir hata oluştu:</translation>
     </message>
     <message>
         <source>Are you sure you want to delete user from this chat?</source>
@@ -3046,34 +3363,6 @@ güncellemenin etkin olması için</translation>
     <message>
         <source>Are you sure you want to delete user from ignore list?</source>
         <translation>Kullanıcıyı görmezden gelme listenizden silmek istediğinizden emin misiniz?</translation>
-    </message>
-    <message>
-        <source>Are you sure you want to delete user from this call?</source>
-        <translation>Kullanıcıyı bu aramadan silmek istediğinizden emin misiniz?</translation>
-    </message>
-    <message>
-        <source>DELETE</source>
-        <translation>SIL</translation>
-    </message>
-    <message>
-        <source>Forward</source>
-        <translation>İlet</translation>
-    </message>
-    <message>
-        <source>Are you sure you want to delete message?</source>
-        <translation>İletiyi silmek istediğinizden emin misiniz?</translation>
-    </message>
-    <message>
-        <source>Delete message</source>
-        <translation>İletiyi sil</translation>
-    </message>
-    <message>
-        <source>Contact name</source>
-        <translation>Adı</translation>
-    </message>
-    <message>
-        <source>Are you sure you want to block user in this chat?</source>
-        <translation>Kullanıcıyı bu sohbette engellemek istediğinizden emin misiniz?</translation>
     </message>
     <message>
         <source>Are you sure you want to unblock user?</source>
@@ -3088,6 +3377,22 @@ güncellemenin etkin olması için</translation>
         <translation>Yönetici yetkisini kaldırmak istediğinizden emin misiniz?</translation>
     </message>
     <message>
+        <source>Are you sure you want to delete message?</source>
+        <translation>İletiyi silmek istediğinizden emin misiniz?</translation>
+    </message>
+    <message>
+        <source>Delete message</source>
+        <translation>İletiyi sil</translation>
+    </message>
+    <message>
+        <source>Forward</source>
+        <translation>İlet</translation>
+    </message>
+    <message>
+        <source>Chat settings</source>
+        <translation>Sohbet ayarları</translation>
+    </message>
+    <message>
         <source>Are you sure you want to ban user to write in this chat?</source>
         <translation>Kullanıcının bu sohbete yazmasını yasaklamak istediğinizden emin misiniz?</translation>
     </message>
@@ -3096,36 +3401,24 @@ güncellemenin etkin olması için</translation>
         <translation>Kullanıcının bu sohbete yazmasına izin vermek istediğinizden emin misiniz?</translation>
     </message>
     <message>
-        <source>WAITING</source>
-        <translation>BEKLENİYOR</translation>
-    </message>
-    <message>
-        <source>JOIN</source>
-        <translation>KATIL</translation>
-    </message>
-    <message>
-        <source>OPEN</source>
-        <translation>AÇ</translation>
-    </message>
-    <message>
-        <source>Are you sure you want to sign out?</source>
-        <translation>Çıkış yapmak istediğinizden emin misiniz?</translation>
-    </message>
-    <message>
-        <source>Sign out</source>
-        <translation>Çıkış</translation>
+        <source>Are you sure you want to delete user from this call?</source>
+        <translation>Kullanıcıyı bu aramadan silmek istediğinizden emin misiniz?</translation>
     </message>
     <message>
         <source>Contacts</source>
         <translation>Kişiler</translation>
     </message>
     <message>
-        <source>Advanced Settings</source>
-        <translation>Gelişmiş ayarlar</translation>
+        <source>Are you sure you want to remove this sticker pack?</source>
+        <translation>Bu çıkartma paketini kaldırmak istediğinizden emin misiniz?</translation>
     </message>
     <message>
-        <source>OK</source>
-        <translation>OK</translation>
+        <source>Remove sticker pack</source>
+        <translation>Çıkartma paketini kaldır</translation>
+    </message>
+    <message>
+        <source>show author</source>
+        <translation>yazarı göster</translation>
     </message>
     <message>
         <source>Open logs path</source>
@@ -3140,40 +3433,16 @@ güncellemenin etkin olması için</translation>
         <translation>Avatarları temizle</translation>
     </message>
     <message>
+        <source>OK</source>
+        <translation>OK</translation>
+    </message>
+    <message>
         <source>Enable full log mode</source>
         <translation>Genişletilmiş günlük modu</translation>
     </message>
     <message>
         <source>Display message IDs</source>
         <translation>İleti ID&apos;lerini göster</translation>
-    </message>
-    <message>
-        <source>Are you sure you want to erase chat history?</source>
-        <translation>Sohbet geçmişini silmek istediğinizden emin misiniz?</translation>
-    </message>
-    <message>
-        <source>Are you sure you want to leave chat?</source>
-        <translation>Sohbetten ayrılmak istediğinizden emin misiniz?</translation>
-    </message>
-    <message>
-        <source>ADD</source>
-        <translation>EKLE</translation>
-    </message>
-    <message>
-        <source>REMOVE</source>
-        <translation>KALDIR</translation>
-    </message>
-    <message>
-        <source>SEND</source>
-        <translation>GÖNDER</translation>
-    </message>
-    <message>
-        <source>Are you sure you want to remove this sticker pack?</source>
-        <translation>Bu çıkartma paketini kaldırmak istediğinizden emin misiniz?</translation>
-    </message>
-    <message>
-        <source>Remove sticker pack</source>
-        <translation>Çıkartma paketini kaldır</translation>
     </message>
     <message>
         <source>Ignore list</source>
@@ -3204,76 +3473,16 @@ güncellemenin etkin olması için</translation>
         <translation></translation>
     </message>
     <message>
-        <source>Stick memory usage widget</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Cache dialogs for (milliseconds)</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Current memory usage: </source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Memory: </source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Real memory: </source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Copy text</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Refresh</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Total accounted for: </source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Cached avatars</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Cached themes</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Cached emojis</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Cached previews</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Cached stickers</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>VOIP initialization</source>
-        <translation></translation>
-    </message>
-    <message>
-        <source>Video players</source>
-        <translation></translation>
-    </message>
-    <message>
         <source>Restart</source>
         <translation>Yeni̇den başlat</translation>
     </message>
     <message>
         <source>Server search</source>
-        <translation></translation>
+        <translation>Sunucu araması</translation>
     </message>
     <message>
         <source>Log messagesModel</source>
-        <translation></translation>
+        <translation>Günlük mesajlarıModel</translation>
     </message>
     <message>
         <source>Do you really want mark all as read?</source>
@@ -3300,16 +3509,8 @@ güncellemenin etkin olması için</translation>
         <translation></translation>
     </message>
     <message>
-        <source>CHECK</source>
-        <translation></translation>
-    </message>
-    <message>
         <source>Block</source>
         <translation>Bloke et</translation>
-    </message>
-    <message>
-        <source>APPLY</source>
-        <translation>Uygula</translation>
     </message>
     <message>
         <source>Share</source>
@@ -3319,6 +3520,154 @@ güncellemenin etkin olması için</translation>
         <source>REPEAT</source>
         <translation>TEKRAR</translation>
     </message>
+    <message>
+        <source>Remove %1 from your contacts?</source>
+        <translation>%1, kişilerinden kaldırılsın mı?</translation>
+    </message>
+    <message>
+        <source>Remove contact</source>
+        <translation>Kişiyi kaldırmak</translation>
+    </message>
+    <message>
+        <source>You can delete for all only your messages (%1 from %2). Are you sure you want to continue?</source>
+        <translation>Sadece mesajlarınızı herkes için silebilirsiniz (%1 / %2). Devam?</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to mark the chat as unimportant? The chat won&apos;t jump to the top of the list when you receive a new message</source>
+        <translation>Sohbeti önemsiz olarak işaretlemek istediğinizden emin misiniz? Yeni bir mesaj aldığınızda sohbet listenin en üstüne atlamaz</translation>
+    </message>
+    <message>
+        <source>Choose country</source>
+        <translation>Ülke seç</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>iptal</translation>
+    </message>
+    <message>
+        <source>Done</source>
+        <translation>Bitti</translation>
+    </message>
+    <message>
+        <source>Back</source>
+        <translation>önce</translation>
+    </message>
+    <message>
+        <source>Continue</source>
+        <translation>ilerlemek</translation>
+    </message>
+    <message>
+        <source>Save</source>
+        <translation>tutmak</translation>
+    </message>
+    <message>
+        <source>Add</source>
+        <translation>eklemek</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation>yakın</translation>
+    </message>
+    <message>
+        <source>Yes</source>
+        <translation>evet</translation>
+    </message>
+    <message>
+        <source>Delete</source>
+        <translation>Sil</translation>
+    </message>
+    <message>
+        <source>Send</source>
+        <translation>Gönder</translation>
+    </message>
+    <message>
+        <source>Next</source>
+        <translation>Sonraki</translation>
+    </message>
+    <message>
+        <source>Check</source>
+        <translation>doğrulamak</translation>
+    </message>
+    <message>
+        <source>Apply</source>
+        <translation>Uygulamak için</translation>
+    </message>
+    <message>
+        <source>Remove</source>
+        <translation>Sil</translation>
+    </message>
+    <message>
+        <source>Waiting</source>
+        <translation>Bekleme</translation>
+    </message>
+    <message>
+        <source>Join</source>
+        <translation>başlangıç</translation>
+    </message>
+    <message>
+        <source>If you stop the poll, nobody will be able to vote anymore. This action can not be undone</source>
+        <translation>Anketi durdurursanız artık kimse oy kullanamayacak. Bu işlem geri alınamaz</translation>
+    </message>
+    <message>
+        <source>Stop</source>
+        <translation>Dur</translation>
+    </message>
+    <message>
+        <source>Stop this poll?</source>
+        <translation>Bu anketi durdurdun mu?</translation>
+    </message>
+    <message>
+        <source>Open</source>
+        <translation>açık</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to leave channel?</source>
+        <translation>Kanaldan ayrılmak istediğinizden emin misiniz?</translation>
+    </message>
+    <message>
+        <source>If you change group type to a private link to the group will be changed, and the old one will stop working</source>
+        <translation>Grup türünü özel olarak değiştirirseniz, grup bağlantısı değişir ve eskisi çalışmayı durdurur</translation>
+    </message>
+    <message>
+        <source>Make private</source>
+        <translation>Özel yap</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to clear the chat history?</source>
+        <translation>Sohbet geçmişini silmek istediğinizden emin misiniz?</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to clear the channel history?</source>
+        <translation>Sohbet geçmişini silmek istediğinizden emin misiniz?</translation>
+    </message>
+    <message>
+        <source>If you generate a new link to the channel the old one will stop working</source>
+        <translation>Kanala yeni bir bağlantı oluşturursanız, kanala yalnızca kanal üzerinden girebilirsiniz.</translation>
+    </message>
+    <message>
+        <source>If you generate a new link to the group the old one will stop working</source>
+        <translation>Gruba yeni bir bağlantı oluşturursanız, yalnızca gruba girebilirsiniz</translation>
+    </message>
+    <message>
+        <source>Generate</source>
+        <translation>üretmek</translation>
+    </message>
+    <message>
+        <source>The old link will stop working</source>
+        <translation>Eski bağlantı çalışmayı durduracak</translation>
+    </message>
+    <message>
+        <source>Public link will stop working</source>
+        <translation>Genel bağlantı çalışmayı durduracak</translation>
+    </message>
+    <message>
+        <source>Set dev_id</source>
+        <translation>Dev_id olarak ayarla</translation>
+    </message>
+    <message>
+        <source>Create</source>
+        <translation>oluşturmak</translation>
+    </message>
 </context>
 <context>
     <name>previewer</name>
@@ -3327,12 +3676,12 @@ güncellemenin etkin olması için</translation>
         <translation>Görsel indirilemiyor</translation>
     </message>
     <message>
-        <source>Loading...</source>
-        <translation>Yükleniyor…</translation>
-    </message>
-    <message>
         <source>%1 of %2</source>
         <translation>%1 / %2</translation>
+    </message>
+    <message>
+        <source>Loading...</source>
+        <translation>Yükleniyor…</translation>
     </message>
     <message>
         <source>Copied to clipboard</source>
@@ -3378,16 +3727,16 @@ güncellemenin etkin olması için</translation>
         <source>File %1 downloaded to %2</source>
         <translation>%1 dosyası %2 ye indirildi</translation>
     </message>
+    <message>
+        <source>Error file downloading</source>
+        <translation>Dosya yükleme hatası</translation>
+    </message>
 </context>
 <context>
     <name>profile_block</name>
     <message>
         <source>Contact was saved. Phone is visible in profile.</source>
         <translation>Kişi kaydedildi. Telefon profilde görülebilir.</translation>
-    </message>
-    <message>
-        <source>CANCEL</source>
-        <translation>İPTAL</translation>
     </message>
     <message>
         <source>Contact</source>
@@ -3424,6 +3773,10 @@ güncellemenin etkin olması için</translation>
     <message>
         <source>WRITE</source>
         <translation>YENI MESAJ OLUŞTUR</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>iptal</translation>
     </message>
 </context>
 <context>
@@ -3480,18 +3833,6 @@ güncellemenin etkin olması için</translation>
         <translation>Kişiyi paylaş</translation>
     </message>
     <message>
-        <source>BACK</source>
-        <translation>GERI</translation>
-    </message>
-    <message>
-        <source>OPEN CHAT</source>
-        <translation>AÇIK SOHBET</translation>
-    </message>
-    <message>
-        <source>SEND</source>
-        <translation>GÖNDER</translation>
-    </message>
-    <message>
         <source>To share contact add phone number or ask contact to add nickname.</source>
         <translation>Kartviziti paylaşmak için telefon numarası ekleyin veya takma ad eklemenizi isteyin.</translation>
     </message>
@@ -3510,6 +3851,18 @@ güncellemenin etkin olması için</translation>
     <message>
         <source>No phone number and nickname</source>
         <translation>Telefon numarası ve takma isim yok</translation>
+    </message>
+    <message>
+        <source>Back</source>
+        <translation>önce</translation>
+    </message>
+    <message>
+        <source>Open chat</source>
+        <translation>Sohbeti aç</translation>
+    </message>
+    <message>
+        <source>Send</source>
+        <translation>Gönder</translation>
     </message>
 </context>
 <context>
@@ -3544,28 +3897,6 @@ güncellemenin etkin olması için</translation>
         <source>OK</source>
         <translation>OK</translation>
     </message>
-    <message>
-        <source> ﻿* Reply on messages by photos, files and voice messages;
- * Navigation with Tab on the main elements of the application instead of using mouse;
- * Voice message recording improvements;
- * The maximum interface scale increased up to 300%;
- * Aero Snap support;
- * Chat history scrolling improvements;
- 
- And:
- * List of hotkeys to the settings page update;
- * Lots of other improvements and fixes. </source>
-        <translation> * Fotoğraflar, dosyalar ve sesli mesajlarla mesajlara cevap verin;
- * Fareyi kullanmak yerine uygulamanın ana unsurlarında Sekme ile gezinme;
- * Sesli mesaj kaydı iyileştirmeleri;
- * Maksimum arayüz ölçeği% 300&apos;e kadar yükselmiştir;
- * Aero Snap desteği;
- * Sohbet geçmişi kaydırma geliştirmeleri;
-&#xa0;
- Ve:
- * Ayarlar sayfasındaki güncelleme kısayol tuşlarının listesi;
- * Diğer iyileştirmeler ve düzeltmeler bir sürü. </translation>
-    </message>
 </context>
 <context>
     <name>report_widget</name>
@@ -3584,10 +3915,6 @@ güncellemenin etkin olması için</translation>
     <message>
         <source>Other</source>
         <translation>Diğer</translation>
-    </message>
-    <message>
-        <source>CANCEL</source>
-        <translation>İPTAL</translation>
     </message>
     <message>
         <source>OK</source>
@@ -3609,6 +3936,10 @@ güncellemenin etkin olması için</translation>
         <source>Block</source>
         <translation>Bloke et</translation>
     </message>
+    <message>
+        <source>Cancel</source>
+        <translation>iptal</translation>
+    </message>
 </context>
 <context>
     <name>search</name>
@@ -3626,6 +3957,18 @@ güncellemenin etkin olması için</translation>
     <message>
         <source>Search</source>
         <translation>Arama</translation>
+    </message>
+</context>
+<context>
+    <name>selection</name>
+    <message>
+        <source>Cancel</source>
+        <translation>iptal</translation>
+    </message>
+    <message>
+        <source>%1 message selected</source>
+        <comment>1</comment>
+        <translation>%1 mesaj seçildi</translation>
     </message>
 </context>
 <context>
@@ -3687,8 +4030,8 @@ güncellemenin etkin olması için</translation>
         <translation>Sohbet</translation>
     </message>
     <message>
-        <source>Preview images and links</source>
-        <translation>Görseller ve bağlantıları önizle</translation>
+        <source>Preview links</source>
+        <translation>Bağlantıları önizle</translation>
     </message>
     <message>
         <source>Auto play videos</source>
@@ -3984,7 +4327,7 @@ güncellemenin etkin olması için</translation>
     </message>
     <message>
         <source>Problem</source>
-        <translation></translation>
+        <translation>Problem</translation>
     </message>
     <message>
         <source>Main window</source>
@@ -4005,6 +4348,30 @@ güncellemenin etkin olması için</translation>
     <message>
         <source>History in chat</source>
         <translation>Sohbette tarihçe</translation>
+    </message>
+    <message>
+        <source>Animate taskbar icon</source>
+        <translation>Görev çubuğu simgesini canlandırın</translation>
+    </message>
+    <message>
+        <source>Turn on video sound on hover</source>
+        <translation>Vurgulu video sesini aç</translation>
+    </message>
+    <message>
+        <source>Install beta updates</source>
+        <translation>Beta sürümlerini yükle</translation>
+    </message>
+    <message>
+        <source>Show smart reply</source>
+        <translation>Akıllı cevapları göster</translation>
+    </message>
+    <message>
+        <source>Close search after result selection</source>
+        <translation>Bir sonuç seçerken aramayı kapat</translation>
+    </message>
+    <message>
+        <source>Advanced Settings</source>
+        <translation>Gelişmiş ayarlar</translation>
     </message>
 </context>
 <context>
@@ -4192,55 +4559,17 @@ güncellemenin etkin olması için</translation>
         <source>Scroll history in chat</source>
         <translation>Sohbette geçmişi kaydır</translation>
     </message>
+    <message>
+        <source>Enter multiselect mode</source>
+        <translation>Çoklu seçim modunu etkinleştir</translation>
+    </message>
+    <message>
+        <source>Mark all dialogs as read</source>
+        <translation>Tüm iletişim kutularını okundu olarak işaretle</translation>
+    </message>
 </context>
 <context>
     <name>sidebar</name>
-    <message>
-        <source>You have no ignored contacts</source>
-        <translation>Görmezden gelinen kişiniz yok</translation>
-    </message>
-    <message>
-        <source>Revoke admin role</source>
-        <translation>Adminin haklarını geri al</translation>
-    </message>
-    <message>
-        <source>Ban to write</source>
-        <translation>Yazma engeli koy</translation>
-    </message>
-    <message>
-        <source>Allow to write</source>
-        <translation>Yazma izni ver</translation>
-    </message>
-    <message>
-        <source>Profile</source>
-        <translation>Profil</translation>
-    </message>
-    <message>
-        <source>Block</source>
-        <translation>Bloke et</translation>
-    </message>
-    <message>
-        <source>This phone number is already attached to another account.
-Please edit phone number and try again.</source>
-        <translation>Bu telefon numarası zaten başka bir hesaba eklenmiş.
-Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
-    </message>
-    <message>
-        <source>Attach phone</source>
-        <translation>Telefon numarası ekle</translation>
-    </message>
-    <message>
-        <source>Unpin</source>
-        <translation>Sabitliği geri al</translation>
-    </message>
-    <message>
-        <source>Pin</source>
-        <translation>Sabitle</translation>
-    </message>
-    <message>
-        <source>Share contact</source>
-        <translation>Kişiyi paylaş</translation>
-    </message>
     <message>
         <source>Add to chat</source>
         <translation>Sohbete ekle</translation>
@@ -4254,44 +4583,82 @@ Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
         <translation>Duvar kağıdını seç</translation>
     </message>
     <message>
-        <source>Chat settings</source>
-        <translation>Sohbet ayarları</translation>
-    </message>
-    <message>
-        <source>Members</source>
-        <translation>Üyeler</translation>
-    </message>
-    <message>
-        <source>Waiting for approval</source>
-        <translation>Onay Bekleniyor</translation>
+        <source>Nickname</source>
+        <translation>Takma ad</translation>
     </message>
     <message>
         <source>Blocked people</source>
         <translation>Engellenmiş kişiler</translation>
     </message>
     <message>
+        <source>Phone number</source>
+        <translation>Telefon numarası</translation>
+    </message>
+    <message>
         <source>Clear history</source>
         <translation>Geçmişi temizle</translation>
+    </message>
+    <message>
+        <source>Profile</source>
+        <translation>Profil</translation>
+    </message>
+    <message>
+        <source>Attach phone</source>
+        <translation>Telefon numarası ekle</translation>
+    </message>
+    <message>
+        <source>Revoke admin role</source>
+        <translation>Adminin haklarını geri al</translation>
+    </message>
+    <message>
+        <source>Block</source>
+        <translation>Bloke et</translation>
+    </message>
+    <message>
+        <source>You have no ignored contacts</source>
+        <translation>Görmezden gelinen kişiniz yok</translation>
+    </message>
+    <message>
+        <source>This phone number is already attached to another account.
+Please edit phone number and try again.</source>
+        <translation>Bu telefon numarası zaten başka bir hesaba eklenmiş.
+Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
     </message>
     <message>
         <source>Approve All</source>
         <translation>Tümünü Ekle</translation>
     </message>
     <message>
-        <source>Phone number</source>
-        <translation>Telefon numarası</translation>
+        <source>Waiting for approval</source>
+        <translation>Onay Bekleniyor</translation>
     </message>
     <message>
-        <source>Nickname</source>
-        <translation>Takma ad</translation>
+        <source>Members</source>
+        <translation>Üyeler</translation>
+    </message>
+    <message>
+        <source>Ban to write</source>
+        <translation>Yazma engeli koy</translation>
+    </message>
+    <message>
+        <source>Allow to write</source>
+        <translation>Yazma izni ver</translation>
+    </message>
+    <message>
+        <source>Share contact</source>
+        <translation>Kişiyi paylaş</translation>
+    </message>
+    <message>
+        <source>Unpin</source>
+        <translation>Sabitliği geri al</translation>
+    </message>
+    <message>
+        <source>Pin</source>
+        <translation>Sabitle</translation>
     </message>
     <message>
         <source>Assign admin role</source>
         <translation>Admin atama</translation>
-    </message>
-    <message>
-        <source>Remove from chat</source>
-        <translation>Sohbetten çıkar</translation>
     </message>
     <message>
         <source>Information</source>
@@ -4340,10 +4707,6 @@ Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
     <message>
         <source>Unblock</source>
         <translation>Engel Kaldır</translation>
-    </message>
-    <message>
-        <source>Join</source>
-        <translation>katil</translation>
     </message>
     <message>
         <source>Add to channel</source>
@@ -4418,10 +4781,6 @@ Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
         <translation>Paylaş</translation>
     </message>
     <message>
-        <source>SEARCH</source>
-        <translation>ARAMA</translation>
-    </message>
-    <message>
         <source>Description</source>
         <translation>Açıklama</translation>
     </message>
@@ -4486,10 +4845,6 @@ Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
         <translation>Şikayet et ve engelle</translation>
     </message>
     <message>
-        <source>Delete and leave</source>
-        <translation>Sil ve çık</translation>
-    </message>
-    <message>
         <source>Admins</source>
         <translation>Yöneticiler</translation>
     </message>
@@ -4517,6 +4872,50 @@ Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
         <source>The join request has been sent to administrator</source>
         <translation>Katılma isteği yöneticiye gönderildi</translation>
     </message>
+    <message>
+        <source>Remove</source>
+        <translation>Kaldir</translation>
+    </message>
+    <message>
+        <source>Leave and delete</source>
+        <translation>Çık ve sil</translation>
+    </message>
+    <message>
+        <source>Block and delete</source>
+        <translation>Engelle ve sil</translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation>arama</translation>
+    </message>
+    <message>
+        <source>Join</source>
+        <translation>katil</translation>
+    </message>
+    <message>
+        <source>Share channel</source>
+        <translation>Kanalı paylaş</translation>
+    </message>
+    <message>
+        <source>Channel settings</source>
+        <translation>Kanal ayarları</translation>
+    </message>
+    <message>
+        <source>Block and delete from group</source>
+        <translation>Engelle ve gruptan kaldır</translation>
+    </message>
+    <message>
+        <source>Group settings</source>
+        <translation>Grup ayarları</translation>
+    </message>
+    <message>
+        <source>Add to group</source>
+        <translation>Gruba ekle</translation>
+    </message>
+    <message>
+        <source>Public group</source>
+        <translation>Herkese açık grup</translation>
+    </message>
 </context>
 <context>
     <name>siderbar</name>
@@ -4535,6 +4934,28 @@ Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
     <message>
         <source>About the group</source>
         <translation>Grup hakkında</translation>
+    </message>
+</context>
+<context>
+    <name>smartreply</name>
+    <message>
+        <source>Show smart replies</source>
+        <translation>Akıllı yanıtları göster</translation>
+    </message>
+    <message>
+        <source>Hide smart replies</source>
+        <translation>Akıllı cevapları gizle</translation>
+    </message>
+</context>
+<context>
+    <name>snippet_block</name>
+    <message>
+        <source>File</source>
+        <translation>dosya</translation>
+    </message>
+    <message>
+        <source>Copied to clipboard</source>
+        <translation>Panoya kopyalandı</translation>
     </message>
 </context>
 <context>
@@ -4571,10 +4992,6 @@ Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
         <translation>Paylaş</translation>
     </message>
     <message>
-        <source>Stickerpack: </source>
-        <translation>Çıkartma Paketi: </translation>
-    </message>
-    <message>
         <source>You have not added stickers yet</source>
         <translation>Henüz çıkartma eklemediniz</translation>
     </message>
@@ -4591,20 +5008,16 @@ Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
         <translation>MY</translation>
     </message>
     <message>
-        <source>Stickers</source>
-        <translation>Etiketler</translation>
-    </message>
-    <message>
         <source>Search</source>
         <translation>Arama</translation>
     </message>
     <message>
-        <source>SEARCH</source>
-        <translation>ARAMA</translation>
+        <source>Stickers</source>
+        <translation>Etiketler</translation>
     </message>
     <message>
-        <source>CANCEL</source>
-        <translation>İPTAL</translation>
+        <source>Stickerpack: </source>
+        <translation>Çıkartma Paketi: </translation>
     </message>
     <message>
         <source>This sticker pack was deleted or no longer exists.</source>
@@ -4613,6 +5026,10 @@ Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
     <message>
         <source>Nothing found</source>
         <translation>Hiçbir şey bulunamadı</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>iptal</translation>
     </message>
 </context>
 <context>
@@ -4660,20 +5077,32 @@ Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
 <context>
     <name>terms_privacy_widget</name>
     <message>
-        <source>Terms and Privacy Policy</source>
-        <translation>Şartlarımız ve Gizlilik Politikamızı</translation>
+        <source>Accept and agree</source>
+        <translation>Kabul et ve kabul et</translation>
     </message>
     <message>
-        <source>I AGREE</source>
-        <translation>KABUL EDIYORUM</translation>
+        <source>By clicking &quot;Accept and agree&quot;, you confirm that you have read carefully and agree to our &lt;a href=&quot;%1&quot;&gt;Terms&lt;/a&gt; and &lt;a href=&quot;%2&quot;&gt;Privacy Policy&lt;/a&gt;</source>
+        <translation>&quot;Kabul et ve kabul et&quot; i tıklayarak, dikkatlice okuduğunuzu ve &lt;a href=&quot;%1&quot;&gt; Şartlar &lt;/a&gt; ve &lt;a href=&quot;%2&quot;&gt; Gizlilik Politikamızı &lt;/a&gt; kabul ettiğinizi onaylarsınız</translation>
     </message>
     <message>
-        <source>By clicking &quot;I Agree&quot;, you confirm that you have read carefully and agree to our &lt;a href=&quot;%1&quot;&gt;Terms&lt;/a&gt; and &lt;a href=&quot;%2&quot;&gt;Privacy Policy&lt;/a&gt;.</source>
-        <translation>&quot;Kabul Ediyorum&apos;a&quot; tıklayarak, dikkatlice okuduğunuzu ve &lt;a href=&quot;%1&quot;&gt;Şartlarımız&lt;/a&gt; ve &lt;a href=&quot;%2&quot;&gt;Gizlilik Politikamızı&lt;/a&gt; kabul ettiğinizi onaylıyorsunuz.</translation>
+        <source>Welcome to Mail.ru Agent</source>
+        <translation>Mail.ru Agent&apos;a Hoşgeldiniz</translation>
     </message>
     <message>
-        <source>Please pay your attention that we have updated our &lt;a href=&quot;%1&quot;&gt;Terms&lt;/a&gt; and &lt;a href=&quot;%2&quot;&gt;Privacy Policy&lt;/a&gt;. By clicking &quot;I Agree&quot;, you confirm that you have read updated documents carefully and agree to them.</source>
-        <translation>Lütfen &lt;a href=&quot;%1&quot;&gt;Şartlarımız&lt;/a&gt; ve &lt;a href=&quot;%2&quot;&gt;Gizlilik Politikamızı&lt;/a&gt; güncellediğimize dikkat edin. &quot;Kabul ediyorum&apos;a&quot; tıklayarak, güncellenmiş belgeleri dikkatlice okuduğunuzu ve kabul ettiğinizi onaylıyorsunuz.</translation>
+        <source>Welcome to Myteam</source>
+        <translation>Myteam hoşgeldiniz</translation>
+    </message>
+    <message>
+        <source>Welcome to Messenger</source>
+        <translation>Messenger&apos;a Hoşgeldiniz</translation>
+    </message>
+    <message>
+        <source>ICQ New - the evolution of communication</source>
+        <translation>ICQ New — iletişimin evrimi</translation>
+    </message>
+    <message>
+        <source>Welcome to ICQ</source>
+        <translation>ICQ&apos;ya Hoşgeldiniz</translation>
     </message>
 </context>
 <context>
@@ -4710,24 +5139,20 @@ Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
         <translation>Bağlantı kopyalamıştır</translation>
     </message>
     <message>
-        <source>There are no profiles with this email address</source>
-        <translation>Bu posta ile profil yok</translation>
-    </message>
-    <message>
         <source>There are no profiles or groups with this nickname</source>
         <translation>Bu kullanıcı adı ile profil veya grup yok</translation>
+    </message>
+    <message>
+        <source>Copied to clipboard</source>
+        <translation>Panoya kopyalandı</translation>
+    </message>
+    <message>
+        <source>There are no profiles with this email</source>
+        <translation>Bu e-postada profil yok</translation>
     </message>
 </context>
 <context>
     <name>tooltips</name>
-    <message>
-        <source>Search for messages</source>
-        <translation>İletilerde ara</translation>
-    </message>
-    <message>
-        <source>Call</source>
-        <translation>Arama yap</translation>
-    </message>
     <message>
         <source>Video call</source>
         <translation>Görüntülü arama</translation>
@@ -4735,10 +5160,6 @@ Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
     <message>
         <source>Add member</source>
         <translation>Üye ekle</translation>
-    </message>
-    <message>
-        <source>Chat options</source>
-        <translation>Sohbet seçenekleri</translation>
     </message>
     <message>
         <source>Smileys and stickers</source>
@@ -4749,20 +5170,20 @@ Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
         <translation>Sohbet sayfasını aç</translation>
     </message>
     <message>
-        <source>Exit full screen</source>
-        <translation>Tam ekrandan çık</translation>
-    </message>
-    <message>
-        <source>Full screen</source>
-        <translation>Tam ekran</translation>
-    </message>
-    <message>
         <source>Turn off camera</source>
         <translation>Kamerayı kapat</translation>
     </message>
     <message>
         <source>Turn on camera</source>
         <translation>Kamerayı aç</translation>
+    </message>
+    <message>
+        <source>Turn off microphone</source>
+        <translation>Mikrofonu kapat</translation>
+    </message>
+    <message>
+        <source>Turn on microphone</source>
+        <translation>Mikrofonu aç</translation>
     </message>
     <message>
         <source>Turn off screen sharing</source>
@@ -4773,12 +5194,20 @@ Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
         <translation>Ekran paylaşımını aç</translation>
     </message>
     <message>
-        <source>Turn off microphone</source>
-        <translation>Mikrofonu kapat</translation>
+        <source>Call</source>
+        <translation>Arama yap</translation>
     </message>
     <message>
-        <source>Turn on microphone</source>
-        <translation>Mikrofonu aç</translation>
+        <source>Search for messages</source>
+        <translation>İletilerde ara</translation>
+    </message>
+    <message>
+        <source>Exit full screen</source>
+        <translation>Tam ekrandan çık</translation>
+    </message>
+    <message>
+        <source>Full screen</source>
+        <translation>Tam ekran</translation>
     </message>
     <message>
         <source>End call</source>
@@ -4792,9 +5221,21 @@ Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
         <source>Attach</source>
         <translation>Iliştirmek</translation>
     </message>
+    <message>
+        <source>Information</source>
+        <translation>bilgi</translation>
+    </message>
 </context>
 <context>
     <name>tray_menu</name>
+    <message>
+        <source>Quit</source>
+        <translation>Çık</translation>
+    </message>
+    <message>
+        <source>Open</source>
+        <translation>Aç</translation>
+    </message>
     <message>
         <source>New email</source>
         <translation>Yeni e-posta</translation>
@@ -4819,14 +5260,6 @@ Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
         <comment>21</comment>
         <translation> yeni e-posta</translation>
     </message>
-    <message>
-        <source>Open</source>
-        <translation>Aç</translation>
-    </message>
-    <message>
-        <source>Quit</source>
-        <translation>Çık</translation>
-    </message>
 </context>
 <context>
     <name>videoplayer</name>
@@ -4838,20 +5271,16 @@ Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
 <context>
     <name>voip_pages</name>
     <message>
-        <source>Add to call</source>
-        <translation>Çağrıya ekle</translation>
-    </message>
-    <message>
-        <source>Screen</source>
-        <translation>Ekran</translation>
+        <source>and</source>
+        <translation>ve</translation>
     </message>
     <message>
         <source>Incoming call</source>
         <translation>Gelen çağrı</translation>
     </message>
     <message>
-        <source>and</source>
-        <translation>ve</translation>
+        <source>Settings</source>
+        <translation>Ayarlar</translation>
     </message>
     <message>
         <source>Call is secured</source>
@@ -4866,8 +5295,8 @@ Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
         <translation>Bu nasıl çalışır</translation>
     </message>
     <message>
-        <source>OK</source>
-        <translation>OK</translation>
+        <source>Add to call</source>
+        <translation>Çağrıya ekle</translation>
     </message>
     <message>
         <source>MEMBERS</source>
@@ -4878,8 +5307,12 @@ Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
         <translation>DİĞER</translation>
     </message>
     <message>
-        <source>Settings</source>
-        <translation>Ayarlar</translation>
+        <source>Screen</source>
+        <translation>Ekran</translation>
+    </message>
+    <message>
+        <source>OK</source>
+        <translation>OK</translation>
     </message>
     <message>
         <source>DECLINE</source>
@@ -4892,6 +5325,14 @@ Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
     <message>
         <source>VIDEO</source>
         <translation>GÖRÜNTÜ</translation>
+    </message>
+    <message>
+        <source>Screen recording permissions</source>
+        <translation>Ekran kayıt izinleri</translation>
+    </message>
+    <message>
+        <source>To share screen you need to allow access to the screen recording in the system settings</source>
+        <translation>Ekranı paylaşmak için, sistem ayarlarında ekran kaydına erişime izin vermeniz gerekir</translation>
     </message>
 </context>
 <context>

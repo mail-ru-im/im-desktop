@@ -4,6 +4,7 @@
 #pragma once
 
 #include "version_info_constants.h"
+#include "../common.shared/string_utils.h"
 
 namespace core
 {
@@ -12,18 +13,14 @@ namespace core
         class version_info
         {
         public:
-            const std::string& get_version() const
+            [[nodiscard]] std::string get_version() const
             {
-                static auto version = get_major_version() + '.' + get_minor_version() + '.' + get_build_version();
-
-                return version;
+                return su::concat(get_major_version(), '.', get_minor_version(), '.', get_build_version());
             }
 
-            const std::string& get_ua_version() const
+            [[nodiscard]] std::string get_ua_version() const
             {
-                static auto ua_version = get_major_version() + '.' + get_minor_version() + ".0(" + get_build_version() + ')';
-
-                return ua_version;
+                return su::concat(get_major_version(), '.', get_minor_version(), ".0(", get_build_version(), ')');
             }
 
             bool operator < (const version_info& _version_info) const
@@ -42,40 +39,40 @@ namespace core
                 return major_ != _version_info.major_ || minor_ != _version_info.minor_ || build_ != _version_info.build_;
             }
 
-            std::string get_major_version() const
+            [[nodiscard]] std::string get_major_version() const
             {
                 return std::to_string(major_);
             }
 
-            std::string get_minor_version() const
+            [[nodiscard]] std::string get_minor_version() const
             {
                 return std::to_string(minor_);
             }
 
-            std::string get_build_version() const
+            [[nodiscard]] std::string get_build_version() const
             {
                 return std::to_string(build_);
             }
 
-            int32_t get_major() const
+            [[nodiscard]] int32_t get_major() const noexcept
             {
                 return major_;
             }
 
-            int32_t get_minor() const
+            [[nodiscard]] int32_t get_minor() const noexcept
             {
                 return minor_;
             }
 
-            int32_t get_build() const
+            [[nodiscard]] int32_t get_build() const noexcept
             {
                 return build_;
             }
 
 
             version_info()
+                : version_info(VERSION_INFO_STR)
             {
-                load_version(VERSION_INFO_STR);
             }
 
             version_info(const std::string& _version)
@@ -83,7 +80,7 @@ namespace core
                 load_version(_version);
             }
 
-            version_info(int32_t _major, int32_t _minor, int32_t _build)
+            version_info(int32_t _major, int32_t _minor, int32_t _build) noexcept
                 :   major_(_major),
                 minor_(_minor),
                 build_(_build)
@@ -114,12 +111,10 @@ namespace core
                 build_ = std::stoi(*(words.begin() + 2));
             }
 
-            int32_t major_;
-            int32_t minor_;
-            int32_t build_;
+            int32_t major_ = 0;
+            int32_t minor_ = 0;
+            int32_t build_ = 0;
         };
-
-
     }
 }
 

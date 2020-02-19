@@ -99,6 +99,9 @@ int32_t fetch_event_dlg_state::parse(const rapidjson::Value& _node_event_data)
     if (bool stranger = false; tools::unserialize_value(_node_event_data, "stranger", stranger))
         state_.set_stranger(stranger);
 
+    if (bool no_recents_update = false; tools::unserialize_value(_node_event_data, "noRecentsUpdate", no_recents_update))
+        state_.set_no_recents_update(no_recents_update);
+
     if (const auto it_mchat_state = _node_event_data.FindMember("mchatState"); it_mchat_state != _node_event_data.MemberEnd() && it_mchat_state->value.IsObject())
     {
         if (std::string info_version; tools::unserialize_value(it_mchat_state->value, "infoVersion", info_version))

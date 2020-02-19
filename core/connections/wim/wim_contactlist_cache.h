@@ -18,7 +18,6 @@ namespace core
 
         struct cl_presence
         {
-            std::string state_;
             std::string usertype_;
             std::string status_msg_;
             std::string other_number_;
@@ -204,6 +203,7 @@ namespace core
             void add_to_ignorelist(const std::string& _aimid);
             void remove_from_ignorelist(const std::string& _aimid);
 
+            bool contains(const std::string& _aimid) const;
             std::shared_ptr<cl_presence> get_presence(const std::string& _aimid) const;
             void set_outgoing_msg_count(const std::string& _contact, int32_t _count);
             void reset_outgoung_counters();
@@ -214,6 +214,7 @@ namespace core
             const auto& get_persons() const { return persons_; }
             bool is_empty() const;
 
+            std::vector<std::string> get_ignored_aimids() const;
             std::vector<std::string> get_aimids() const;
         };
     }

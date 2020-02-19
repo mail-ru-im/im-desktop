@@ -1,6 +1,8 @@
 #include "stdafx.h"
 #include "PhoneFormatter.h"
 #include "phonenumbers/phonenumberutil.h"
+#include "phonenumbers/asyoutypeformatter.h"
+#include "main_window/contact_list/CountryListModel.h"
 
 namespace
 {
@@ -38,6 +40,55 @@ namespace PhoneFormatter
             FallbackFormatter::formatPhone(_phone, formatted);
 
         return formatted;
+    }
+
+    bool parse(const QString& _phone, QString& _code, QString& _number)
+    {
+        if (!_phone.isEmpty())
+        {
+            const auto phoneUtil = i18n::phonenumbers::PhoneNumberUtil::GetInstance();
+
+            i18n::phonenumbers::PhoneNumber phoneNumber;
+            const auto status = phoneUtil->ParseAndKeepRawInput(_phone.toStdString(), "ZZ", &phoneNumber);
+            if (status == i18n::phonenumbers::PhoneNumberUtil::ErrorType::NO_PARSING_ERROR)
+            {
+                if (phoneNumber.has_country_code())
+                    _code = ql1c('+') % QString::number(phoneNumber.country_code());
+
+                if (phoneNumber.has_national_number())
+                    _number = QString::number(phoneNumber.national_number());
+
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    QString getFormattedPhone(const QString& _code, const QString& _phone)
+    {
+        const auto phoneUtil = i18n::phonenumbers::PhoneNumberUtil::GetInstance();
+
+        if (_code.isEmpty() || _phone.isEmpty())
+            return _phone;
+
+        const auto country = Utils::getCountryCodeByName(Logic::getCountryModel()->getCountryByCode(_code).name_).toUpper();
+        if (country.isEmpty())
+            return _phone;
+
+        std::string result;
+        auto formatter = phoneUtil->GetAsYouTypeFormatter(country.toStdString());
+
+        for (const auto& d : _phone)
+        {
+            if (d.isDigit())
+                formatter->InputDigit(d.toLatin1(), &result);
+        }
+
+        if (result.empty())
+            return QString();
+
+        return QString::fromStdString(result).remove(_code).trimmed();
     }
 
 } // PhoneFormatter

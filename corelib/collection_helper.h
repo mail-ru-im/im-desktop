@@ -197,7 +197,7 @@ namespace core
 
         void set_value_as_string(std::string_view _name, std::string_view _value)
         {
-            set_value_as_string(_name, _value.data(), int32_t(_value.length()));
+            set_value_as_string(_name, _value.data(), int32_t(_value.size()));
         }
 
         const char* get_value_as_string(std::string_view _name) const

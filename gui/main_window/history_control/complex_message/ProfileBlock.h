@@ -3,6 +3,7 @@
 #include "GenericBlock.h"
 #include "previewer/Drawable.h"
 #include "types/idinfo.h"
+#include "types/chat.h"
 
 UI_NS_BEGIN
 class ActionButtonWidget;
@@ -74,8 +75,6 @@ protected:
 
     void loadAvatar(const QString &_sn, const QString &_name);
 
-    void setSelected(bool _selected) override;
-
     virtual QString sn() const { return QString(); }
 
     QPoint calcUndernamePos() const;
@@ -93,6 +92,7 @@ protected:
     bool loaded_ = false;
 
     int64_t seq_ = 0;
+    int64_t chatInfoSeq_ = 0;
 
     QPixmapSCptr avatar_;
     QString name_;
@@ -120,9 +120,11 @@ protected Q_SLOTS:
     void onIdInfo(const qint64 _seq, const Data::IdInfo& _idInfo);
     void onButtonPressed() override;
     void onClickAreaPressed() override;
+    void chatInfo(qint64, const std::shared_ptr<Data::ChatInfo>&, const int);
 
 private:
     Data::IdInfo info_;
+    std::shared_ptr<Data::ChatInfo> chatInfo_;
     QString link_;
 };
 

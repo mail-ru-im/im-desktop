@@ -9,10 +9,11 @@
 
 #include "../../utils/InterConnector.h"
 #include "../MainWindow.h"
-#include "../MainPage.h"
 #include "../history_control/MessageStyle.h"
 
 #include "FFMpegPlayer.h"
+#include "FrameRenderer.h"
+
 #include "../../fonts.h"
 
 #include "../gui/memory_stats/FFmpegPlayerMemMonitor.h"
@@ -23,24 +24,6 @@
 #include "utils/macos/mac_support.h"
 #include "macos/MetalRenderer.h"
 #endif
-
-
-namespace
-{
-    QString durationStr(int32_t _duration)
-    {
-        QTime t(0, 0);
-        t = t.addSecs(_duration);
-        QString durationStr;
-        if (t.hour())
-            durationStr += QString::number(t.hour()) % ql1c(':');
-        durationStr += QString::number(t.minute()) % ql1c(':');
-        if (t.second() < 10)
-            durationStr += ql1c('0');
-        durationStr += QString::number(t.second());
-        return durationStr;
-    }
-}
 
 
 namespace Ui
@@ -175,7 +158,8 @@ namespace Ui
             lastSoundMode_(_copyFrom ? _copyFrom->lastSoundMode_ : SoundMode::ActiveOff),
             gotAudio_(_copyFrom ? _copyFrom->gotAudio_ : false),
             positionSliderTimer_(new QTimer(this)),
-            fullscreen_(_mode == ql1s("full_screen"))
+            fullscreen_(_mode == ql1s("full_screen")),
+            soundOnByUser_(false)
     {
         setProperty("mode", _mode);
 
@@ -406,7 +390,7 @@ namespace Ui
 
     void VideoPlayerControlPanel::mousePressEvent(QMouseEvent* _event)
     {
-        if (isSeparateWindowMode())
+        if (isSeparateWindowMode() && _event->button() == Qt::LeftButton)
         {
             if (!isPause())
             {
@@ -421,6 +405,14 @@ namespace Ui
         }
 
         QWidget::mousePressEvent(_event);
+    }
+
+    void VideoPlayerControlPanel::mouseReleaseEvent(QMouseEvent* _event)
+    {
+        if (_event->button() == Qt::RightButton && rect().contains(_event->pos()))
+            emit mouseRightClicked();
+
+        QWidget::mouseReleaseEvent(_event);
     }
 
     QString getDurationString(const qint64& _duration, const qint64& _init_duration)
@@ -590,13 +582,11 @@ namespace Ui
         connect(soundButton_, &QPushButton::clicked, this, [this](bool _checked)
         {
             if (volumeSlider_->sliderPosition() == 0)
-            {
                 restoreVolume();
-            }
             else
-            {
                 setVolume(0, false);
-            }
+
+            soundOnByUser_ = true;
         });
 
         connect(fullscreenButton_, &QPushButton::clicked, this, [this](bool _checked)
@@ -707,6 +697,12 @@ namespace Ui
         updateSoundButtonState();
     }
 
+    void VideoPlayerControlPanel::updateVolume(const bool _hovered)
+    {
+        if (!VideoPlayerControlPanel::isFullscreen() && !soundOnByUser_ && player_->getRestoreVolume() && get_gui_settings()->get_value<bool>(settings_hoversound_video, settings_hoversound_video_default()))
+            setVolume(_hovered ? player_->getRestoreVolume() : 0, _hovered);
+    }
+
     void VideoPlayerControlPanel::setGotAudio(bool _gotAudio)
     {
         gotAudio_ = _gotAudio;
@@ -765,814 +761,16 @@ namespace Ui
         soundButton_->setHoverColor(Qt::white);
     }
 
-    //////////////////////////////////////////////////////////////////////////
-    // TextIconBase
-    //////////////////////////////////////////////////////////////////////////
-
-    class TextIconBase : public BDrawable
-    {
-    public:
-        TextIconBase()
-        {
-            label_.setVerticalPosition(TextRendering::VerPosition::MIDDLE);
-        }
-        ~TextIconBase() = default;
-        void draw(QPainter &_p) override;
-        void setRect(const QRect& _rect) override;
-
-        Label label_;
-        Icon icon_;
-
-    protected:
-        virtual int iconLeftMargin() { return Utils::scale_value(6); }
-        virtual int labelMargin() { return Utils::scale_value(4); }
-
-        virtual void setLabelRect(const QRect& _rect) = 0;
-    };
-
-    void TextIconBase::draw(QPainter &_p)
-    {
-        if (!visible_)
-            return;
-
-        BDrawable::draw(_p);
-        label_.draw(_p);
-        icon_.draw(_p);
-    }
-
-    void TextIconBase::setRect(const QRect &_rect)
-    {
-        Drawable::setRect(_rect);
-
-        auto iconSize = icon_.pixmapSize();
-        auto iconRect = _rect;
-        iconRect.setLeft(_rect.left() + iconLeftMargin());
-        iconRect.setTop(_rect.top() + (_rect.height() - iconSize.height()) / 2);
-        iconRect.setSize(iconSize);
-        icon_.setRect(iconRect);
-
-        setLabelRect(_rect);
-    }
-
-    //////////////////////////////////////////////////////////////////////////
-    // StaticTextIcon
-    //////////////////////////////////////////////////////////////////////////
-
-    class StaticTextIcon : public TextIconBase
-    {
-    private:
-        void setLabelRect(const QRect& _rect) override;
-    };
-
-    void StaticTextIcon::setLabelRect(const QRect& _rect)
-    {
-        auto iconRect = icon_.rect();
-        auto yOffset = _rect.height() / 2;
-        yOffset += 1;                       //!HACK until TextUnit fixed
-
-        auto labelRect = _rect;
-        labelRect.setLeft(iconRect.right() + labelMargin());
-        label_.setYOffset(yOffset);
-        label_.setRect(labelRect);
-    }
-
-    //////////////////////////////////////////////////////////////////////////
-    // DynamicTextIcon
-    //////////////////////////////////////////////////////////////////////////
-
-    class DynamicTextIcon : public TextIconBase
-    {
-    private:
-        void setLabelRect(const QRect& _rect) override;
-    };
-
-    void DynamicTextIcon::setLabelRect(const QRect& _rect)
-    {
-        auto textWidth = label_.desiredWidth();
-
-        auto yOffset = _rect.height() / 2;
-        yOffset += 1;                       //!HACK until TextUnit fixed
-
-        auto labelRect = _rect;
-        labelRect.setLeft(_rect.right());
-        labelRect.setRight(_rect.right() + textWidth + labelMargin());
-        label_.setYOffset(yOffset);
-        label_.setRect(labelRect);
-
-        auto rect = rect_;
-        rect.setWidth(rect_.width() + labelRect.width());
-
-        BDrawable::setRect(rect);
-    }
-
-    enum ControlType : short
-    {
-        Fullscreen,
-        Mute,
-        NoSound,
-        Duration,
-        EmptyDuration,
-        GifLabel,
-        Play
-    };
-
-    //////////////////////////////////////////////////////////////////////////
-    // DialogControls_p
-    //////////////////////////////////////////////////////////////////////////
-
-    class DialogControls_p
-    {
-    public:
-
-        enum AnimationDirection
-        {
-            None,
-            Forward,
-            Back
-        };
-
-        int commonMargin() const { return Ui::MessageStyle::getHiddenControlsShift(); }
-
-        QColor defaultBackground() const { return QColor(0, 0, 0, static_cast<int>(0.5 * 255)); }
-
-        QColor hoveredBackground() const { return QColor(0, 0, 0, static_cast<int>(0.6 * 255)); }
-
-        QColor pressedBackground() const { return QColor(0, 0, 0, static_cast<int>(0.7 * 255)); }
-
-        QSize objectSize(ControlType _type) const
-        {
-            switch (_type)
-            {
-                case Mute:
-                case Fullscreen:
-                case EmptyDuration:
-                    return Utils::scale_value(QSize(28, 20));
-
-                case NoSound: // no sound item takes rect for icon and expands it based on label size
-                    return Utils::scale_value(QSize(26, 20));
-
-                case Duration:
-                    return Utils::scale_value(QSize(55, 20));
-
-                case GifLabel:
-                    return Utils::scale_value(QSize(36, 20));
-
-                case Play:
-                    return Utils::scale_value(QSize(48, 48));
-            }
-
-            return QSize();
-        }
-
-        QPoint objectPosition(ControlType _type, const QSize& _size) const
-        {
-            switch (_type)
-            {
-                case NoSound:
-                    return {commonMargin(), _size.height() - objectSize(NoSound).height() - commonMargin()};
-                case Mute:
-                    return {commonMargin(), _size.height() - objectSize(Mute).height() - commonMargin()};
-                case Fullscreen:
-                    return {_size.width() - objectSize(Fullscreen).width() - commonMargin(), commonMargin()};
-
-                case Duration:
-                case GifLabel:
-                case EmptyDuration:
-                    return {commonMargin(), commonMargin()};
-
-                case Play:
-                    return {(_size.width() - objectSize(Play).width()) / 2, (_size.height() - objectSize(Play).height()) / 2};
-            }
-
-            return QPoint();
-        }
-
-        QPoint animationStartPosition(ControlType _type, const QSize& _size) const
-        {
-            switch (_type)
-            {
-                case Mute:
-                    return {objectPosition(Mute, _size).x(), objectPosition(Mute, _size).y() + commonMargin()};
-                case NoSound:
-                    return {objectPosition(NoSound, _size).x(), objectPosition(NoSound, _size).y() + commonMargin()};
-                case Fullscreen:
-                    return {objectPosition(Fullscreen, _size).x(), objectPosition(Fullscreen, _size).y() - commonMargin()};
-
-                case Duration:
-                case GifLabel:
-                case EmptyDuration:
-                    return {commonMargin(), 0};
-
-                case Play:
-                    return objectPosition(Play, _size);
-            }
-
-            return QPoint();
-        }
-
-        QPoint animationPosition(ControlType _type, const QSize& _size, int _progress) const // progress is from 1 to 100
-        {
-            if (_progress == 100)
-                return objectPosition(_type, _size);
-
-            auto start = animationStartPosition(_type, _size);
-            auto end = objectPosition(_type, _size);
-
-            auto dx = QPoint(end - start).x() * _progress / 100;
-            auto dy = QPoint(end - start).y() * _progress / 100;
-
-            return start + QPoint(dx, dy);
-        }
-
-        int animationProgress(int _animationDuration, int _elapsedTime) const
-        {
-            int progress = static_cast<double>(_elapsedTime) / _animationDuration * 100;
-            if (currentAnimation_ == Back)
-                progress = 100 - progress;
-
-            return progress;
-        }
-
-        void createDuration(int32_t _duration)
-        {
-            auto duration = std::make_unique<StaticTextIcon>();
-            auto durationUnit = TextRendering::MakeTextUnit(durationStr(_duration));
-            durationUnit->init(Fonts::appFontScaled(11, Fonts::FontWeight::Normal), Qt::white, QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, 1);
-            duration->label_.setTextUnit(std::move(durationUnit));
-            duration->icon_.setPixmap(Utils::renderSvgScaled(qsl(":/videoplayer/duration_time_icon"), QSize(14, 14), Qt::white));
-            duration->background_ = defaultBackground();
-            duration->setBorderRadius(Utils::scale_value(10));
-
-            objects_[Duration] = std::move(duration);
-        }
-
-        void createNoSound()
-        {
-            auto noSound = std::make_unique<DynamicTextIcon>();
-            auto noSoundUnit = TextRendering::MakeTextUnit(QT_TRANSLATE_NOOP("videoplayer", "No sound"));
-            noSoundUnit->init(Fonts::appFontScaled(11, Fonts::FontWeight::Normal), Qt::white, QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, 1);
-            noSound->label_.setTextUnit(std::move(noSoundUnit));
-            noSound->icon_.setPixmap(Utils::renderSvgScaled(qsl(":/videoplayer/mute_video_icon"), QSize(20, 20), QColor(255, 255, 255, 255 * 0.34)));
-            noSound->background_ = defaultBackground();
-            noSound->setBorderRadius(Utils::scale_value(10));
-
-            objects_[NoSound] = std::move(noSound);
-        }
-
-        void createMute()
-        {
-            auto muteButton = std::make_unique<BButton>();
-            muteButton->setDefaultPixmap(Utils::renderSvgScaled(qsl(":/videoplayer/mute_video_icon"), QSize(20, 20), Qt::white));
-            muteButton->setCheckable(true);
-            muteButton->setCheckedPixmap(Utils::renderSvgScaled(qsl(":/videoplayer/sound_on_icon"), QSize(20, 20), Qt::white));
-            muteButton->setPixmapCentered(true);
-            muteButton->setBorderRadius(Utils::scale_value(10));
-            muteButton->background_ = defaultBackground();
-            muteButton->hoveredBackground_ = hoveredBackground();
-            muteButton->pressedBackground_ = pressedBackground();
-
-            objects_[Mute] = std::move(muteButton);
-        }
-
-        void createObjects(bool _isGif, int32_t _duration)
-        {
-            auto fullscreenButton = std::make_unique<BButton>();
-            fullscreenButton->setDefaultPixmap(Utils::renderSvgScaled(qsl(":/videoplayer/full_screen_icon"), QSize(20, 20), Qt::white));
-            fullscreenButton->setPixmapCentered(true);
-            fullscreenButton->setBorderRadius(Utils::scale_value(10));
-            fullscreenButton->background_ = defaultBackground();
-            fullscreenButton->hoveredBackground_ = hoveredBackground();
-            fullscreenButton->pressedBackground_ = pressedBackground();
-
-            objects_[Fullscreen] = std::move(fullscreenButton);
-
-            if (!_isGif)
-            {
-                createMute();
-
-                if (_duration)
-                {
-                    createDuration(_duration);
-                }
-                else
-                {
-                    auto duration = std::make_unique<BButton>();
-                    duration->setDefaultPixmap(Utils::renderSvgScaled(qsl(":/videoplayer/duration_time_icon"), QSize(14, 14), Qt::white));
-                    duration->setPixmapCentered(true);
-                    duration->setBorderRadius(Utils::scale_value(10));
-                    duration->background_ = defaultBackground();
-
-                    objects_[EmptyDuration] = std::move(duration);
-                }
-            }
-            else
-            {
-                auto gifLabel = std::make_unique<BLabel>();
-                auto gifUnit = TextRendering::MakeTextUnit(qsl("GIF"));
-                gifUnit->init(Fonts::appFontScaled(13, Fonts::FontWeight::SemiBold), Qt::white, QColor(), QColor(), QColor(), TextRendering::HorAligment::CENTER, 1);
-                gifLabel->setTextUnit(std::move(gifUnit));
-                gifLabel->background_ = defaultBackground();
-                gifLabel->setBorderRadius(Utils::scale_value(10));
-                gifLabel->setVerticalPosition(TextRendering::VerPosition::MIDDLE);
-                gifLabel->setYOffset(objectSize(GifLabel).height() / 2);
-
-                objects_[GifLabel] = std::move(gifLabel);
-            }
-
-            auto playButton = std::make_unique<BButton>();
-            playButton->setDefaultPixmap(Utils::renderSvgScaled(qsl(":/videoplayer/video_pause"), QSize(28, 28)));
-            playButton->setCheckable(true);
-            playButton->setCheckedPixmap(Utils::renderSvgScaled(qsl(":/videoplayer/video_play"), QSize(28, 28)));
-            playButton->setPixmapCentered(true);
-            playButton->setBorderRadius(Utils::scale_value(24));
-            playButton->background_ = defaultBackground();
-            playButton->hoveredBackground_ = hoveredBackground();
-            playButton->pressedBackground_ = pressedBackground();
-
-            objects_[Play] = std::move(playButton);
-        }
-
-        QRect clickArea(ControlType _type)
-        {
-            switch (_type)
-            {
-                case Mute:
-                case Fullscreen:
-                    return objects_[_type]->rect().adjusted(-commonMargin(), -commonMargin(), commonMargin(), commonMargin());
-                default:
-                    return objects_[_type]->rect();
-            }
-        }
-
-        void updateObjectsPositions(const QRect &_rect, int _animationProgress = 100)
-        {
-            for (auto & [type, object] : objects_)
-            {
-                QPoint position;
-
-                if (currentlyAnimated_.count(type))
-                    position = animationPosition(type, _rect.size(), _animationProgress);
-                else
-                    position = objectPosition(type, _rect.size());
-
-                object->setRect(QRect(position, objectSize(type)));
-            }
-        }
-
-        bool visibilityForCurrentState(ControlType _type, bool _mouseOver = true)
-        {
-            switch (state_)
-            {
-                case DialogControls::Preview:
-                    switch (_type)
-                    {
-                        case Duration:
-                        case GifLabel:
-                        case EmptyDuration:
-                            return true;
-                        default:
-                            return false;
-                    }
-
-                case DialogControls::Paused:
-                    switch (_type)
-                    {
-                        case Mute:
-                        case NoSound:
-                        case Fullscreen:
-                            return _mouseOver;
-                        default:
-                            return true;
-                    }
-                case DialogControls::Playing:
-                    return _mouseOver;
-            }
-
-            return false;
-        }
-
-        void hideAnimatedObjects()
-        {
-            for (auto & [type, object] : objects_)
-            {
-                if (currentlyAnimated_.count(type))
-                    object->setVisible(false);
-            }
-        }
-
-        void updateVisibility(bool _mouseOver = true)
-        {
-            for (auto & [type, object] : objects_)
-                object->setVisible(visibilityForCurrentState(type, _mouseOver));
-        }
-
-        void showAnimated(bool _mouseOver = true)
-        {
-            if (!currentlyAnimated_.empty())
-            {
-                queuedAnimation_ = Forward;
-                return;
-            }
-
-            for (auto & [type, object] : objects_)
-            {
-                if (!object->visible())
-                    currentlyAnimated_.insert(type);
-            }
-
-            if (currentlyAnimated_.empty())
-                return;
-
-            updateVisibility(_mouseOver);
-
-            animationTimer_.start();
-            updateTimer_.start();
-            currentAnimation_ = DialogControls_p::Forward;
-        }
-
-        void hideAnimated()
-        {
-            if (!currentlyAnimated_.empty())
-            {
-                queuedAnimation_ = Back;
-                return;
-            }
-
-            for (auto & [type, object] : objects_)
-            {
-                if (object->visible() && !visibilityForCurrentState(type, false))
-                    currentlyAnimated_.insert(type);
-            }
-
-            if (currentlyAnimated_.empty())
-                return;
-
-            animationTimer_.start();
-            updateTimer_.start();
-            currentAnimation_ = DialogControls_p::Back;
-        }
-
-        QTimer animationTimer_;
-        QTimer updateTimer_;
-        QTimer hideTimer_;
-        bool doubleClick_;
-        int32_t duration_ = 0;
-        std::map<ControlType, std::unique_ptr<Drawable>> objects_;
-        AnimationDirection currentAnimation_;
-        AnimationDirection queuedAnimation_;
-        DialogControls::State state_ = DialogControls::Preview;
-        bool isGif_ = false;
-
-        std::set<ControlType> currentlyAnimated_;
-    };
-
-    static auto animationTimeout = static_cast<int>(MessageStyle::getHiddenControlsAnimationTime().count());
-    static auto updateInterval = 10;
-    static auto hideTimeout = 3200;
-
-    //////////////////////////////////////////////////////////////////////////
-    // DialogControls
-    //////////////////////////////////////////////////////////////////////////
-
-    DialogControls::DialogControls(bool _isGif, int32_t _duration, QWidget *_parent)
-        : QWidget(_parent)
-        , d(new DialogControls_p())
-    {
-        d->createObjects(_isGif, _duration);
-        d->updateObjectsPositions(rect());
-        d->isGif_ = _isGif;
-
-        d->animationTimer_.setSingleShot(true);
-        d->animationTimer_.setInterval(animationTimeout);
-
-        connect(&d->animationTimer_, &QTimer::timeout, this, [this]()
-        {
-            if (d->currentAnimation_ == DialogControls_p::Forward)
-                d->updateObjectsPositions(rect());
-            else
-                d->hideAnimatedObjects();
-
-            d->currentlyAnimated_.clear();
-            d->updateTimer_.stop();
-            update();
-
-            if (d->queuedAnimation_ == DialogControls_p::Forward)
-                d->showAnimated();
-            else if (d->queuedAnimation_ == DialogControls_p::Back)
-                d->hideAnimated();
-
-            d->queuedAnimation_ = DialogControls_p::None;
-        });
-
-        d->updateTimer_.setInterval(updateInterval);
-
-        connect(&d->updateTimer_, &QTimer::timeout, this, [this]()
-        {
-            update();
-        });
-
-        d->hideTimer_.setInterval(hideTimeout);
-        d->hideTimer_.setSingleShot(true);
-
-        connect(&d->hideTimer_, &QTimer::timeout, this, [this]()
-        {
-            if (d->state_ == Playing)
-                d->hideAnimated();
-        });
-
-        d->updateVisibility();
-
-        setMouseTracking(true);
-    }
-
-    DialogControls::~DialogControls()
-    {
-    }
-
-    void DialogControls::setState(DialogControls::State _state)
-    {
-        auto stateChanged = d->state_ != _state;
-
-        d->state_ = _state;
-
-        if (_state == Playing)
-            d->hideTimer_.start();
-
-        auto & play = d->objects_[Play];
-        if (play)
-            play->setChecked(_state != Playing);
-
-        auto mouseOver = rect().contains(mapFromGlobal(QCursor::pos()));
-
-        if (_state == Paused)
-            d->showAnimated(mouseOver);
-        else if (_state == Playing && stateChanged)
-            d->hideAnimated();
-
-        update();
-    }
-
-    void DialogControls::setRect(const QRect& _rect)
-    {
-        setGeometry(_rect);
-        d->updateObjectsPositions(_rect);
-    }
-
-    void DialogControls::setMute(bool _enable)
-    {
-        if (d->objects_.count(Mute))
-            d->objects_[Mute]->setChecked(!_enable);
-    }
-
-    void DialogControls::setDuration(int32_t _duration)
-    {
-        auto emptyDurationIt = d->objects_.find(EmptyDuration);
-        if (emptyDurationIt != d->objects_.end())
-            d->objects_.erase(emptyDurationIt);
-
-        auto durationIt = d->objects_.find(Duration);
-        if (durationIt == d->objects_.end())
-        {
-            d->createDuration(_duration);
-            d->updateObjectsPositions(rect());
-            d->duration_ = _duration;
-        }
-
-        update();
-    }
-
-    void DialogControls::setPosition(int32_t _position)
-    {
-        auto durationIt = d->objects_.find(Duration);
-        if (durationIt != d->objects_.end())
-        {
-            auto duration = dynamic_cast<TextIconBase*>(durationIt->second.get());
-            duration->label_.setText(durationStr(d->duration_ - _position));
-            update(duration->rect());
-        }
-    }
-
-    void DialogControls::setGotAudio(bool _gotAudio)
-    {
-        if (d->isGif_)
-            return;
-
-        if (_gotAudio)
-        {
-            auto noSoundIt = d->objects_.find(NoSound);
-            if (noSoundIt != d->objects_.end())
-                d->objects_.erase(noSoundIt);
-
-            auto muteIt = d->objects_.find(Mute);
-            if (muteIt == d->objects_.end())
-                d->createMute();
-        }
-        else
-        {
-            auto muteIt = d->objects_.find(Mute);
-            if (muteIt != d->objects_.end())
-                d->objects_.erase(muteIt);
-
-            auto noSoundIt = d->objects_.find(NoSound);
-            if (noSoundIt == d->objects_.end())
-                d->createNoSound();
-        }
-
-        d->updateObjectsPositions(rect());
-        d->updateVisibility();
-        update();
-    }
-
-    void DialogControls::paintEvent(QPaintEvent* _event)
-    {
-        Q_UNUSED(_event)
-
-        QPainter p(this);
-        p.setRenderHint(QPainter::Antialiasing);
-
-        auto progress = 100;
-
-        if (d->animationTimer_.isActive())
-        {
-            progress = d->animationProgress(animationTimeout, animationTimeout - d->animationTimer_.remainingTime());
-            d->updateObjectsPositions(rect(), progress);
-        }
-
-        for (auto & [type, object] : d->objects_)
-        {
-            auto drawWithOpacity = d->currentlyAnimated_.count(type);
-            if (drawWithOpacity)
-                p.setOpacity(progress / 100.);
-            else
-                p.setOpacity(1);
-
-            object->draw(p);
-        }
-    }
-
-    void DialogControls::mouseMoveEvent(QMouseEvent* _event)
-    {
-        for (auto & [type, object] : d->objects_)
-        {
-            auto overObject = d->clickArea(type).contains(_event->pos());
-            auto needUpdate = object->hovered() != overObject;
-            object->setHovered(overObject);
-
-            if (needUpdate)
-                update(object->rect());
-        }
-
-        QWidget::mouseMoveEvent(_event);
-
-        d->showAnimated(true);
-        d->hideTimer_.start();
-    }
-
-    void DialogControls::mousePressEvent(QMouseEvent* _event)
-    {
-        if (_event->button() != Qt::LeftButton)
-            return _event->ignore();
-
-        onMousePressed(_event->pos());
-
-        MainPage::instance()->setFocusOnInput();
-    }
-
-    void DialogControls::mouseReleaseEvent(QMouseEvent* _event)
-    {
-        if (_event->button() != Qt::LeftButton)
-            return _event->ignore();
-
-        auto overAnyObject = false;
-
-        for (auto & [type, object] : d->objects_)
-        {
-            auto overObject = d->clickArea(type).contains(_event->pos()) && object->clickable();
-            auto pressed = object->pressed();
-            object->setPressed(false);
-
-            if ((pressed) && overObject && object->checkable())
-                object->setChecked(!object->checked());
-
-            update(object->rect());
-
-            if (pressed && overObject)
-                 onClick(type);
-
-            overAnyObject |= overObject;
-        }
-
-        if (!overAnyObject)
-        {
-            if (!d->doubleClick_)
-                onDefaultClick();
-            else
-                onDoubleClick();
-        }
-
-        d->doubleClick_ = false;
-    }
-
-    void DialogControls::mouseDoubleClickEvent(QMouseEvent* _event)
-    {
-        if (_event->button() != Qt::LeftButton)
-            return _event->ignore();
-
-        d->doubleClick_ = true;
-
-        onMousePressed(_event->pos());
-    }
-
-    void DialogControls::enterEvent(QEvent* _event)
-    {
-        Q_UNUSED(_event)
-        d->showAnimated();
-    }
-
-    void DialogControls::leaveEvent(QEvent* _event)
-    {
-        Q_UNUSED(_event)
-        d->hideAnimated();
-    }
-
-    void DialogControls::onClick(ControlType _type)
-    {
-        switch (_type)
-        {
-            case Fullscreen:
-            {
-                emit fullscreen();
-                break;
-            }
-            case Mute:
-            {
-                auto & muteButton = d->objects_[Mute];
-                if (muteButton)
-                    emit mute(!muteButton->checked());
-                break;
-            }
-            case Play:
-            {
-                auto & playButton = d->objects_[Play];
-                if (playButton)
-                {
-                    auto enablePlay = playButton->checked();
-                    d->state_ = enablePlay ? Paused : Playing;
-                    emit play(enablePlay);
-                }
-
-                break;
-            }
-            default:
-                break;
-        }
-        d->hideTimer_.start();
-    }
-
-    void DialogControls::onDefaultClick()
-    {
-        auto & playButton = d->objects_[Play];
-        if (playButton && d->state_ != Preview)
-        {
-            auto checked = playButton->checked();
-            playButton->setChecked(!checked);
-            d->state_ = !checked ? Paused : Playing;
-            emit play(!checked);
-        }
-        else
-        {
-            emit clicked();
-        }
-    }
-
-    void DialogControls::onDoubleClick()
-    {
-        if (d->state_ != Preview)
-            emit fullscreen();
-    }
-
-    void DialogControls::onMousePressed(const QPoint& _pos)
-    {
-        for (auto & [type, object] : d->objects_)
-        {
-            auto overObject = d->clickArea(type).contains(_pos);
-            auto needUpdate = object->pressed() != overObject;
-            object->setPressed(overObject);
-
-            if (needUpdate)
-                update(object->rect());
-        }
-    }
-
     const auto unloadTimeout = 20000;
 
     //////////////////////////////////////////////////////////////////////////
     // DialogPlayer
     //////////////////////////////////////////////////////////////////////////
-    DialogPlayer::DialogPlayer(QWidget* _parent, const uint32_t _flags, const QPixmap& _preview, const int32_t _duration)
+    DialogPlayer::DialogPlayer(QWidget* _parent, const uint32_t _flags, const QPixmap& _preview)
         : QWidget(_parent)
         , attachedPlayer_(nullptr)
         , showControlPanel_(_flags & DialogPlayer::Flags::enable_control_panel)
+        , isGalleryView_(false)
         , preview_(_preview)
     {
         const QString mode = ((_flags & DialogPlayer::Flags::as_window) ? qsl("window") : qsl("dialog"));
@@ -1584,14 +782,19 @@ namespace Ui
             else
                 setWindowFlags(Qt::Tool | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint);
 
+#if defined(_WIN32)
+            winId();
+            QWindowsWindowFunctions::setHasBorderInFullScreen(windowHandle(), true);
+#endif // WIN
+
             setCursor(Qt::PointingHandCursor);
         }
 
         if (_flags & DialogPlayer::Flags::gpu_renderer && useMetalRenderer())
             setParent(nullptr);
 
-        renderer_ = createRenderer(this, _flags & DialogPlayer::Flags::gpu_renderer);
-        renderer_->updateFrame(_preview);
+        renderer_ = createRenderer(this, _flags & DialogPlayer::Flags::gpu_renderer, _flags & DialogPlayer::Flags::dialog_mode);
+        renderer_->updateFrame(_preview.toImage());
         ffplayer_ = new FFMpegPlayer(this, renderer_, false);
 
         connect(ffplayer_, &FFMpegPlayer::mediaFinished, this, [this]
@@ -1617,17 +820,15 @@ namespace Ui
         controlPanel_->hide();
 
         if (_flags & DialogPlayer::Flags::gpu_renderer && useMetalRenderer())
-        {
             controlPanel_->setSeparateWindowMode();
-            connect(&Utils::InterConnector::instance(), &Utils::InterConnector::applicationDeactivated, this, &DialogPlayer::hide);
-            connect(&Utils::InterConnector::instance(), &Utils::InterConnector::applicationActivated, this, &DialogPlayer::show);
-        }
 
         connect(controlPanel_.get(), &VideoPlayerControlPanel::signalFullscreen, this, &DialogPlayer::fullScreen);
         connect(controlPanel_.get(), &VideoPlayerControlPanel::playClicked, this, &DialogPlayer::playClicked);
+        connect(controlPanel_.get(), &VideoPlayerControlPanel::mouseRightClicked, this, &DialogPlayer::timerHide);
+        connect(controlPanel_.get(), &VideoPlayerControlPanel::mouseRightClicked, this, &DialogPlayer::mouseRightClicked);
 
-        if (_flags & DialogPlayer::Flags::enable_dialog_controls)
-            dialogControls_ = createControls(isGif_, _duration);
+        if (_flags & DialogPlayer::Flags::dialog_mode)
+            dialogControls_ = createControls(_flags);
 
         unloadTimer_.setSingleShot(true);
         unloadTimer_.setInterval(unloadTimeout);
@@ -1659,23 +860,26 @@ namespace Ui
         init(_parent, isGif_, isSticker_);
 
         ffplayer_->setParent(nullptr);
-        renderer_ = createRenderer(this, true);
+        renderer_ = createRenderer(this, true /*gpu*/, false /*dialog mode*/);
         ffplayer_->setRenderer(renderer_);
 
         rootLayout_->addWidget(renderer_->getWidget());
         isFullScreen_ = true;
 
+#if defined(_WIN32)
+        winId();
+        QWindowsWindowFunctions::setHasBorderInFullScreen(windowHandle(), true);
+#endif // WIN
+
         controlPanel_ = std::make_unique<Ui::VideoPlayerControlPanel>(_attached->controlPanel_.get(), this, ffplayer_, qsl("window"));
         controlPanel_->installEventFilter(this);
         connect(controlPanel_.get(), &VideoPlayerControlPanel::signalFullscreen, this, &DialogPlayer::fullScreen);
         connect(controlPanel_.get(), &VideoPlayerControlPanel::playClicked, this, &DialogPlayer::playClicked);
+        connect(controlPanel_.get(), &VideoPlayerControlPanel::mouseRightClicked, this, &DialogPlayer::timerHide);
+        connect(controlPanel_.get(), &VideoPlayerControlPanel::mouseRightClicked, this, &DialogPlayer::mouseRightClicked);
 
         if (useMetalRenderer())
-        {
             controlPanel_->setSeparateWindowMode();
-            connect(&Utils::InterConnector::instance(), &Utils::InterConnector::applicationDeactivated, this, &DialogPlayer::hide);
-            connect(&Utils::InterConnector::instance(), &Utils::InterConnector::applicationActivated, this, &DialogPlayer::show);
-        }
 
         attachedPlayer_->setAttachedPlayer(this);
 
@@ -1707,6 +911,7 @@ namespace Ui
         isLoad_ = false;
         isGif_ = _isGif;
         isSticker_ = _isSticker;
+        soundOnByUser_ = false;
 
         rootLayout_ = Utils::emptyVLayout(this);
 
@@ -1719,6 +924,11 @@ namespace Ui
         setMouseTracking(true);
 
         installEventFilter(this);
+
+        connect(Utils::InterConnector::instance().getMainWindow(), &MainWindow::galeryClosed, this, [this]()
+        {
+            isGalleryView_ = false;
+        });
     }
 
     void DialogPlayer::moveToScreen()
@@ -1746,6 +956,12 @@ namespace Ui
             case QEvent::Enter:
             {
                 QObject* objectcontrolPanel = qobject_cast<QObject*>(controlPanel_.get());
+                if (!isGalleryView_ && !isFullScreen_ && !soundOnByUser_ && !isGif_)
+                {
+                    controlPanel_->updateVolume(true);
+                    if (state() == QMovie::MovieState::Running)
+                        setMute(controlPanel_->getVolume() == 0);
+                }
                 if (_obj == objectcontrolPanel)
                 {
                     timerHide_->stop();
@@ -1755,6 +971,13 @@ namespace Ui
             case QEvent::Leave:
             {
                 QObject* objectcontrolPanel = qobject_cast<QObject*>(controlPanel_.get());
+                if (!isGalleryView_ && !isFullScreen_ && !soundOnByUser_ && !isGif_)
+                {
+                    controlPanel_->updateVolume(false);
+                    if (state() == QMovie::MovieState::Running)
+                        setMute(controlPanel_->getVolume() == 0);
+                }
+
                 if (_obj == objectcontrolPanel)
                 {
                     timerHide_->start(hideTimeoutShort);
@@ -1871,7 +1094,7 @@ namespace Ui
         mediaPath_ = _mediaPath;
 
         if (dialogControls_)
-            dialogControls_->setState(DialogControls::Paused);
+            dialogControls_->setState(MediaControls::Paused);
 
         updateVisibility(visible_);
 
@@ -1898,8 +1121,8 @@ namespace Ui
             emit paused();
         }
 
-        if (dialogControls_)
-            dialogControls_->setState(_paused ? DialogControls::Paused : DialogControls::Playing);
+        if (dialogControls_ && !Utils::InterConnector::instance().isMultiselect())
+            dialogControls_->setState(_paused ? MediaControls::Paused : MediaControls::Playing);
     }
 
     void DialogPlayer::setPausedByUser(const bool _paused)
@@ -1930,13 +1153,9 @@ namespace Ui
     void DialogPlayer::setMute(bool _mute)
     {
         if (_mute)
-        {
             controlPanel_->setVolume(0, false);
-        }
         else
-        {
             controlPanel_->restoreVolume();
-        }
 
         if (dialogControls_)
             dialogControls_->setMute(_mute);
@@ -1956,7 +1175,7 @@ namespace Ui
             ffplayer_->setPausedByUser(false);
 
             if (dialogControls_)
-                dialogControls_->setState(DialogControls::Playing);
+                dialogControls_->setState(MediaControls::Playing);
         }
     }
 
@@ -1988,19 +1207,47 @@ namespace Ui
             return get_gui_settings()->get_value(settings_autoplay_video, true);
     }
 
-    DialogControls*DialogPlayer::createControls(bool _isGif, int32_t _duration)
+    MediaControls* DialogPlayer::createControls(const uint32_t _flags)
     {
-        auto dialogControls = new DialogControls(_isGif, _duration, this);
+        std::set<MediaControls::ControlType> controls;
+        controls.insert(MediaControls::Play);
+        controls.insert(MediaControls::Fullscreen);
 
-        connect(dialogControls, &DialogControls::fullscreen, this, &DialogPlayer::openGallery);
-        connect(dialogControls, &DialogControls::mute, this, &DialogPlayer::setMute);
-        connect(dialogControls, &DialogControls::clicked, this, &DialogPlayer::mouseClicked);
+        if (_flags & Flags::is_gif)
+        {
+            controls.insert(MediaControls::GifLabel);
+        }
+        else
+        {
+            controls.insert(MediaControls::Duration);
+            controls.insert(MediaControls::Mute);
+        }
+
+        uint32_t options = MediaControls::PlayClickable;
+
+        if (_flags & Flags::compact_mode)
+            options |= MediaControls::CompactMode;
+
+        if (_flags & Flags::short_no_sound)
+            options |= MediaControls::ShortNoSound;
+
+        auto dialogControls = new MediaControls(controls, options, this);
+
+        connect(dialogControls, &MediaControls::fullscreen, this, [this]()
+        {
+            isGalleryView_ = !isGalleryView_;
+            emit openGallery();
+        });
+        connect(dialogControls, &MediaControls::mute, this, &DialogPlayer::setMute);
+        connect(dialogControls, &MediaControls::mute, this, [this]() { soundOnByUser_ = true; });
+        connect(dialogControls, &MediaControls::clicked, this, &DialogPlayer::mouseClicked);
         connect(ffplayer_, &FFMpegPlayer::positionChanged, this, [this, dialogControls](qint64 _position)
         {
             if (!attachedPlayer_)
                 dialogControls->setPosition(_position / 1000);
         });
-        connect(dialogControls, &DialogControls::play, this, [this](bool _enable) { setPaused(_enable, true); });
+        connect(dialogControls, &MediaControls::play, this, [this](bool _enable) { setPaused(_enable, true); });
+        connect(dialogControls, &MediaControls::copyLink, this, &DialogPlayer::copyLink);
 
         dialogControls->raise();
 
@@ -2018,7 +1265,7 @@ namespace Ui
 
     void DialogPlayer::mouseReleaseEvent(QMouseEvent* _event)
     {
-        if(_event->button() == Qt::LeftButton)
+        if (_event->button() == Qt::LeftButton)
         {
             if (rect().contains(_event->pos()))
             {
@@ -2032,6 +1279,11 @@ namespace Ui
                     emit mouseClicked();
             }
 
+        }
+        else if (_event->button() == Qt::RightButton)
+        {
+            if (rect().contains(_event->pos()))
+                emit mouseRightClicked();
         }
         QWidget::mouseReleaseEvent(_event);
     }
@@ -2057,9 +1309,7 @@ namespace Ui
 
         updateSize(screenGeometry);
 
-        if constexpr (platform::is_windows())
-            showMaximized();
-        else if constexpr (platform::is_linux())
+        if constexpr (platform::is_windows() || platform::is_linux())
             showFullScreen();
 
         showControlPanel(controlsShowed_);
@@ -2243,6 +1493,18 @@ namespace Ui
         controlPanel_->setGotAudio(_gotAudio);
     }
 
+    void DialogPlayer::setSiteName(const QString& _siteName)
+    {
+        if (dialogControls_)
+            dialogControls_->setSiteName(_siteName);
+    }
+
+    void DialogPlayer::setFavIcon(const QPixmap& _favicon)
+    {
+        if (dialogControls_)
+            dialogControls_->setFavicon(_favicon);
+    }
+
     void DialogPlayer::updateVisibility(bool _visible)
     {
         visible_ = _visible;
@@ -2259,6 +1521,16 @@ namespace Ui
         auto byUser = !play && isPausedByUser();
 
         setPaused(!play, byUser);
+    }
+
+    QWidget* DialogPlayer::getParentForContextMenu() const
+    {
+        return controlPanel_.get();
+    }
+
+    int DialogPlayer::bottomLeftControlsWidth() const
+    {
+        return dialogControls_ ? dialogControls_->bottomLeftControlsWidth() : 0;
     }
 
     void DialogPlayer::wheelEvent(QWheelEvent* _event)
@@ -2279,31 +1551,40 @@ namespace Ui
         QWidget::mouseMoveEvent(_event);
     }
 
-    std::unique_ptr<FrameRenderer> DialogPlayer::createRenderer(QWidget* _parent, bool _gpu)
+    std::unique_ptr<FrameRenderer> DialogPlayer::createRenderer(QWidget* _parent, bool _useGPU, bool _dialogMode)
     {
         std::unique_ptr<FrameRenderer> renderer;
 
 #if defined(__linux__)
-        renderer = std::make_unique<GDIRenderer>(_parent);
+        if (_dialogMode)
+            renderer = std::make_unique<DialogRenderer>(_parent);
+        else
+            renderer = std::make_unique<GDIRenderer>(_parent);
 #else
-        if (_gpu && (platform::is_windows_vista_or_late() || platform::is_apple()))
+        if (_useGPU && (platform::is_apple() || platform::is_windows_vista_or_late()))
         {
 #ifdef __APPLE__
             if (useMetalRenderer())
                 renderer = std::make_unique<MetalRenderer>(_parent);
             else
 #endif
-                renderer = std::make_unique<OpenGLRenderer>(_parent);
+                if (platform::is_apple())
+                    renderer = std::make_unique<MacOpenGLRenderer>(_parent);
+                else
+                    renderer = std::make_unique<OpenGLRenderer>(_parent);
         }
         else
         {
-            renderer = std::make_unique<GDIRenderer>(_parent);
-            if (_gpu)
+            if (_dialogMode)
+                renderer = std::make_unique<DialogRenderer>(_parent);
+            else
+                renderer = std::make_unique<GDIRenderer>(_parent);
+
+            if (_useGPU)
                 renderer->setFillColor(Qt::black);
         }
 #endif //__linux__ || __APPLE__
 
         return renderer;
     }
-
 }

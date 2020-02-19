@@ -104,11 +104,11 @@ namespace core
 
         core::tools::binary_stream    stream_;
 
-        virtual uint8_t* read(uint32_t _size) override;
+        virtual uint8_t* read(int64_t _size) override;
         virtual void write(std::istream& _source) override;
-        virtual void write(const uint8_t* _buffer, uint32_t _size) override;
+        virtual void write(const uint8_t* _buffer, int64_t _size) override;
         virtual bool empty() const override;
-        virtual uint32_t size() const override;
+        virtual int64_t size() const override;
         virtual void reset() override;
 
     public:

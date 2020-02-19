@@ -180,7 +180,7 @@ namespace Ui
         QObject::connect(passwordEdit_, &LineEditEx::enter, this, &ConnectionSettingsWidget::enterClicked);
 
         generalDialog_->addLabel(QT_TRANSLATE_NOOP("settings_connection", "Connection settings"));
-        generalDialog_->addButtonsPair(QT_TRANSLATE_NOOP("popup_window", "CANCEL"), QT_TRANSLATE_NOOP("popup_window", "DONE"), true);
+        generalDialog_->addButtonsPair(QT_TRANSLATE_NOOP("popup_window", "Cancel"), QT_TRANSLATE_NOOP("popup_window", "Done"), true);
 
         setVisibleParams(selectedProxyIndex_, userProxy->needAuth_);
     }

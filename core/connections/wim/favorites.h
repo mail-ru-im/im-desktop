@@ -1,6 +1,7 @@
 #pragma once
 
 #include "friendly/friendly.h"
+#include "tools/string_comparator.h"
 
 namespace core
 {
@@ -32,7 +33,7 @@ namespace core
             bool changed_ = false;
 
             std::vector<favorite>	contacts_;
-            std::unordered_map<std::string, int64_t> index_;
+            std::map<std::string, int64_t, tools::string_comparator> index_;
 
         public:
             size_t size() const noexcept { return contacts_.size(); }

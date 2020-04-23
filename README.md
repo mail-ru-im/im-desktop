@@ -3,6 +3,7 @@
 ## Requirements
 
 **[Download external libraries](https://hb.bizmrg.com/icq-www/external/external.7z)** and extract it to `./external` folder.
+**[Download voip libraries](https://icq-www.hb.bizmrg.com/external/voip.zip)** and extract it to `./core/Voip/libvoip` folder.
 
 
 ## Windows Build Directions

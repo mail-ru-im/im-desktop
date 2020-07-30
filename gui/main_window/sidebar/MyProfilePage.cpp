@@ -12,8 +12,8 @@
 #include "../PhoneWidget.h"
 #include "../contact_list/ContactListModel.h"
 #include "../contact_list/RecentsModel.h"
-#include "../contact_list/ContactList.h"
-#include "../friendly/FriendlyContainer.h"
+#include "../contact_list/RecentsTab.h"
+#include "../containers/FriendlyContainer.h"
 #include "../../cache/avatars/AvatarStorage.h"
 #include "../../controls/ContactAvatarWidget.h"
 #include "../../controls/FlatMenu.h"
@@ -31,11 +31,6 @@
 
 namespace
 {
-    auto getDefaultProfileWidth() noexcept
-    {
-        return Utils::scale_value(428);
-    }
-
     auto getTopMargin() noexcept
     {
         return Utils::scale_value(20);
@@ -225,7 +220,6 @@ namespace Ui
             header_ = new Ui::TextResizedWidget(this, QString(), Data::MentionMap(), Ui::TextRendering::LinksVisible::DONT_SHOW_LINKS);
             header_->init(getHeaderTextFont(), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
             header_->setSizePolicy(QSizePolicy::Policy::Expanding, QSizePolicy::Policy::Fixed);
-            Testing::setAccessibleName(header_, qsl("AS myinfo header_"));
             textLayout->addWidget(header_);
 
             textLayout->addSpacing(getInfoPlateTextSpacing());
@@ -239,7 +233,6 @@ namespace Ui
             sp.setHorizontalStretch(1);
             info_->setSizePolicy(sp);
             info_->setMaximumWidth(getInfoPlateTextMaximumWidth());
-            Testing::setAccessibleName(info_, qsl("AS myinfo info_"));
             infoLayout->addWidget(info_);
             infoLayout->addStretch();
             textLayout->addLayout(infoLayout);
@@ -270,12 +263,11 @@ namespace Ui
     void MyInfoPlate::setHeader(const QString& _header)
     {
         header_->setText(_header);
-        Testing::setAccessibleName(header_, qsl("AS myinfo head =") + _header);
-
+        Testing::setAccessibleName(header_, qsl("AS ProfilePage header"));
         update();
     }
 
-    void MyInfoPlate::setInfo(const QString& _info, const QString& _prefix)
+    void MyInfoPlate::setInfo(const QString& _info, QStringView _prefix)
     {
         infoStr_ = _info;
 
@@ -286,11 +278,11 @@ namespace Ui
         else
         {
             if (!infoStr_.startsWith(_prefix))
-                infoStr_ = _prefix + infoStr_;
+                infoStr_ = _prefix % infoStr_;
 
             info_->setText(infoStr_, Styling::getParameters().getColor(redoAvailable_ ? Styling::StyleVariable::TEXT_SOLID : Styling::StyleVariable::BASE_PRIMARY));
         }
-        Testing::setAccessibleName(info_, qsl("AS myinfo body =") + infoStr_);
+        Testing::setAccessibleName(info_, qsl("AS ProfilePage body"));
 
         update();
     }
@@ -344,7 +336,7 @@ namespace Ui
             if (isEnabled())
             {
                 if (rect().contains(_event->pos()) && rect().contains(pos_))
-                    emit clicked();
+                    Q_EMIT clicked();
 
                 if (hovered_)
                     iconArea_->setPixmap(iconHovered_);
@@ -392,20 +384,39 @@ namespace Ui
     void MyProfilePage::signOutClicked()
     {
         const QString text = QT_TRANSLATE_NOOP("popup_window", "Are you sure you want to sign out?");
-        auto confirm = Utils::GetConfirmationWithTwoButtons(
-            QT_TRANSLATE_NOOP("popup_window", "Cancel"),
-            QT_TRANSLATE_NOOP("popup_window", "Yes"),
-            text,
-            QT_TRANSLATE_NOOP("popup_window", "Sign out"),
-            nullptr);
+        const QString caption = QT_TRANSLATE_NOOP("popup_window", "Sign out");
+        const QString btnCancel = QT_TRANSLATE_NOOP("popup_window", "Cancel");
+        const QString btnConfirm = QT_TRANSLATE_NOOP("popup_window", "Yes");
+
+        auto confirm = false;
+        auto clearData = true;
+        if (get_gui_settings()->get_value(settings_keep_logged_in, settings_keep_logged_in_default()))
+        {
+            auto w = new Utils::CheckableInfoWidget(nullptr);
+            w->setCheckBoxText(QT_TRANSLATE_NOOP("popup_window", "Clear all data from this device"));
+            w->setCheckBoxChecked(true);
+            w->setInfoText(text);
+            Ui::GeneralDialog generalDialog(w, Utils::InterConnector::instance().getMainWindow());
+            generalDialog.addLabel(caption);
+            generalDialog.addButtonsPair(btnCancel, btnConfirm, true);
+            confirm = generalDialog.showInCenter();
+            clearData = w->isChecked();
+        }
+        else
+        {
+            confirm = Utils::GetConfirmationWithTwoButtons(btnCancel, btnConfirm, text, caption, nullptr);
+        }
 
         if (confirm)
         {
             GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::profileeditscr_signout_action, { {"do", "sign_out"} });
 
             get_gui_settings()->set_value(settings_feedback_email, QString());
-            GetDispatcher()->post_message_to_core("logout", nullptr);
-            emit Utils::InterConnector::instance().logout();
+
+            Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
+            collection.set_value_as_bool("clear", clearData);
+            GetDispatcher()->post_message_to_core("logout", collection.get());
+            Q_EMIT Utils::InterConnector::instance().logout();
         }
         else
         {
@@ -439,7 +450,7 @@ namespace Ui
         generalDialog->showInCenter();
     }
 
-    void MyProfilePage::initFor(const QString& _aimId)
+    void MyProfilePage::initFor(const QString& _aimId, SidebarParams _params)
     {
         UNUSED_ARG(_aimId);
 
@@ -467,7 +478,7 @@ namespace Ui
         area->setFrameStyle(QFrame::NoFrame);
         area->setStyleSheet(qsl("background: transparent;"));
         area->horizontalScrollBar()->setDisabled(true);
-        Testing::setAccessibleName(area, qsl("AS profile area"));
+        Testing::setAccessibleName(area, qsl("AS ProfilePage area"));
 
         auto layout = Utils::emptyVLayout(this);
         layout->addWidget(area);
@@ -490,61 +501,44 @@ namespace Ui
             avatarLayout->setContentsMargins(getLeftMargin(), 0, 0, 0);
             {
                 avatar_ = new ContactAvatarWidget(mainWidget_, QString(), QString(), getAvatarSize(), true, true);
-
-                if (Features::avatarChangeAllowed())
-                {
-                    avatar_->SetMode(ContactAvatarWidget::Mode::MyProfile);
-
-                    connect(avatar_, &ContactAvatarWidget::leftClicked, this, &MyProfilePage::editAvatarClicked);
-                    connect(avatar_, &ContactAvatarWidget::rightClicked, this, &MyProfilePage::showAvatarMenu);
-                    connect(avatar_, &ContactAvatarWidget::mouseEntered, this, [this]()
-                    {
-                        auto handCursor = !Logic::getContactListModel()->isChat(currentAimId_);
-                        avatar_->setCursor(handCursor ? Qt::PointingHandCursor : Qt::ArrowCursor);
-                    });
-                }
-                else if (!avatar_->isDefault())
-                {
-                    avatar_->setCursor(Qt::PointingHandCursor);
-                    connect(avatar_, &ContactAvatarWidget::leftClicked, this, &MyProfilePage::viewAvatarClicked);
-                }
+                avatar_->setFixedSize(QSize(getAvatarSize() + Utils::scale_value(6), getAvatarSize() + Utils::scale_value(6)));
 
                 Utils::grabTouchWidget(avatar_);
-                Testing::setAccessibleName(avatar_, qsl("AS profile avatar_"));
+                Testing::setAccessibleName(avatar_, qsl("AS ProfilePage avatar"));
                 avatarLayout->addWidget(avatar_);
 
                 avatarLayout->addSpacing(getInfoPlateSpacing());
 
-                name_ = new MyInfoPlate(mainWidget_, qsl(":/context_menu/edit"), getInfoPlateSpacing(), QT_TRANSLATE_NOOP("sidebar", "Add name"), Qt::AlignVCenter, 2, 0, Utils::scale_value(4), Features::changeNameAvailable());
+                name_ = new MyInfoPlate(mainWidget_, qsl(":/context_menu/edit"), getInfoPlateSpacing(), QT_TRANSLATE_NOOP("sidebar", "Add name"), Qt::AlignVCenter, 2, 0, Utils::scale_value(4), Features::changeNameAllowed());
                 name_->setHeader(QT_TRANSLATE_NOOP("sidebar", "Name"));
                 name_->setFixedHeight(getAvatarSize());
-                Testing::setAccessibleName(name_, qsl("AS profile name_"));
+                Testing::setAccessibleName(name_, qsl("AS ProfilePage name"));
                 avatarLayout->addWidget(name_);
             }
 
             rootLayout->addLayout(avatarLayout);
 
-            aboutMe_ = new MyInfoPlate(mainWidget_, qsl(":/context_menu/edit"), getLeftMargin(), QT_TRANSLATE_NOOP("sidebar", "Add description"));
+            aboutMe_ = new MyInfoPlate(mainWidget_, qsl(":/context_menu/edit"), getLeftMargin(), QT_TRANSLATE_NOOP("sidebar", "Add description"), Qt::AlignTop, -1, 0, 0, Features::changeInfoAllowed());
             aboutMe_->setHeader(QT_TRANSLATE_NOOP("sidebar", "About me"));
-            Testing::setAccessibleName(aboutMe_, qsl("AS profile aboutMe_"));
+            Testing::setAccessibleName(aboutMe_, qsl("AS ProfilePage aboutMe"));
             rootLayout->addWidget(aboutMe_);
 
             phone_ = new MyInfoPlate(mainWidget_, qsl(":/context_menu/edit"), getLeftMargin(), QT_TRANSLATE_NOOP("sidebar", "Attach phone"));
             phone_->setHeader(QT_TRANSLATE_NOOP("sidebar", "Phone number"));
-            Testing::setAccessibleName(phone_, qsl("AS profile phone_"));
+            Testing::setAccessibleName(phone_, qsl("AS ProfilePage phone"));
             rootLayout->addWidget(phone_);
             phone_->setVisible(phoneAllowed);
 
             nickName_ = new MyInfoPlate(mainWidget_, qsl(":/context_menu/edit"), getLeftMargin(), QT_TRANSLATE_NOOP("sidebar", "Add nickname"));
             nickName_->setHeader(QT_TRANSLATE_NOOP("sidebar", "Nickname"));
-            Testing::setAccessibleName(nickName_, qsl("AS profile nickName_"));
+            Testing::setAccessibleName(nickName_, qsl("AS ProfilePage nick"));
             rootLayout->addWidget(nickName_);
 
             email_ = new MyInfoPlate(mainWidget_, QString(), getLeftMargin());
             email_->setHeader(QT_TRANSLATE_NOOP("sidebar", "Email"));
             email_->setAttribute(Qt::WA_TransparentForMouseEvents, true);
             email_->setEnabled(false);
-            Testing::setAccessibleName(email_, qsl("AS profile email_"));
+            Testing::setAccessibleName(email_, qsl("AS ProfilePage email"));
             rootLayout->addWidget(email_);
 
             rootLayout->addSpacing(getInfoPlateSpacing());
@@ -563,7 +557,7 @@ namespace Ui
                     permissionsInfo_->setCursor(Qt::PointingHandCursor);
                     permissionsInfo_->setVisible(config::get().is_on(config::features::show_data_visibility_link));
                     Utils::grabTouchWidget(permissionsInfo_);
-                    Testing::setAccessibleName(permissionsInfo_, qsl("AS profile permissionsInfo_"));
+                    Testing::setAccessibleName(permissionsInfo_, qsl("AS ProfilePage permissionsInfo"));
                     hLayout->addWidget(permissionsInfo_);
                     hLayout->addSpacerItem(new QSpacerItem(0, 0, QSizePolicy::Expanding));
                     labelLayout->addLayout(hLayout);
@@ -582,7 +576,7 @@ namespace Ui
                     signOut_->setText(QT_TRANSLATE_NOOP("sidebar", "Sign out"));
                     signOut_->setCursor(Qt::PointingHandCursor);
                     Utils::grabTouchWidget(signOut_);
-                    Testing::setAccessibleName(signOut_, qsl("AS profile quitLabel_"));
+                    Testing::setAccessibleName(signOut_, qsl("AS ProfilePage quit"));
                     hLayout->addWidget(signOut_);
                     hLayout->addSpacerItem(new QSpacerItem(0, 0, QSizePolicy::Expanding));
                     labelLayout->addLayout(hLayout);
@@ -596,8 +590,6 @@ namespace Ui
         connect(MyInfo(), &Ui::my_info::received, this, &MyProfilePage::changed, Qt::UniqueConnection);
         connect(GetDispatcher(), &Ui::core_dispatcher::userInfo, this, &MyProfilePage::onUserInfo);
 
-        connect(avatar_, &Ui::ContactAvatarWidget::afterAvatarChanged, this, &Ui::MyProfilePage::avatarChanged);
-        connect(avatar_, &Ui::ContactAvatarWidget::cancelSelectFileForAvatar, this, &Ui::MyProfilePage::avatarCancelSelect);
         connect(name_, &Ui::MyInfoPlate::clicked, this, &Ui::MyProfilePage::editNameClicked);
         connect(aboutMe_, &Ui::MyInfoPlate::clicked, this, &Ui::MyProfilePage::editAboutMeClicked);
         connect(nickName_, &Ui::MyInfoPlate::clicked, this, &Ui::MyProfilePage::editNicknameClicked);
@@ -616,9 +608,13 @@ namespace Ui
 
         GetDispatcher()->getUserInfo(currentAimId_);
 
+        updateAvatarMode();
         Logic::GetAvatarStorage()->ForceRequest(currentAimId_, getAvatarSize());
         avatar_->UpdateParams(currentAimId_, Logic::GetFriendlyContainer()->getFriendly(currentAimId_));
         avatar_->update();
+
+        name_->setRedoAvailable(Features::changeNameAllowed());
+        aboutMe_->setRedoAvailable(Features::changeInfoAllowed());
 
         if (MyInfo()->haveConnectedEmail())
         {
@@ -647,6 +643,33 @@ namespace Ui
         };
 
         GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::profileeditscr_view, props);
+    }
+
+    void MyProfilePage::updateAvatarMode()
+    {
+        const auto mode = Features::avatarChangeAllowed() ? ContactAvatarWidget::Mode::MyProfile : ContactAvatarWidget::Mode::Common;
+        if (mode != avatar_->getMode() || avatar_->getAimId().isEmpty())
+        {
+            avatar_->disconnect(this);
+            avatar_->setCursor(Qt::ArrowCursor);
+
+            avatar_->SetMode(mode);
+
+            if (mode == ContactAvatarWidget::Mode::MyProfile)
+            {
+                connect(avatar_, &ContactAvatarWidget::leftClicked, this, &MyProfilePage::editAvatarClicked);
+                connect(avatar_, &ContactAvatarWidget::rightClicked, this, &MyProfilePage::showAvatarMenu);
+                connect(avatar_, &ContactAvatarWidget::mouseEntered, this, &MyProfilePage::avatarMouseEnter);
+            }
+            else if (!avatar_->isDefault())
+            {
+                avatar_->setCursor(Qt::PointingHandCursor);
+                connect(avatar_, &ContactAvatarWidget::leftClicked, this, &MyProfilePage::viewAvatarClicked);
+            }
+
+            connect(avatar_, &Ui::ContactAvatarWidget::afterAvatarChanged, this, &Ui::MyProfilePage::avatarChanged);
+            connect(avatar_, &Ui::ContactAvatarWidget::cancelSelectFileForAvatar, this, &Ui::MyProfilePage::avatarCancelSelect);
+        }
     }
 
     void MyProfilePage::changed()
@@ -684,7 +707,7 @@ namespace Ui
         phone_->setInfo(number);
 
         const auto& nick = _info.nick_;
-        nickName_->setInfo(nick, nick.isEmpty() ? QString() : qsl("@"));
+        nickName_->setInfo(nick, nick.isEmpty() ? QStringView{} : u"@");
 
         email_->setInfo(currentAimId_);
 
@@ -699,6 +722,7 @@ namespace Ui
     {
         auto text = _error == 0 ? QT_TRANSLATE_NOOP("sidebar", "Profile updated") : QT_TRANSLATE_NOOP("sidebar", "Error updating profile");
         auto toast = new Ui::Toast(text, this);
+        Testing::setAccessibleName(toast, qsl("AS ProfilePage toast"));
         Ui::ToastManager::instance()->showToast(toast, QPoint(width() / 2, height() - toast->height() - getToastVerOffset()));
     }
 
@@ -715,6 +739,12 @@ namespace Ui
             GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::profileeditscr_avatar_action, { {"do", "look"} });
             Utils::InterConnector::instance().getMainWindow()->openAvatar(currentAimId_);
         }
+    }
+
+    void MyProfilePage::avatarMouseEnter()
+    {
+        const auto handCursor = !Logic::getContactListModel()->isChat(currentAimId_);
+        avatar_->setCursor(handCursor ? Qt::PointingHandCursor : Qt::ArrowCursor);
     }
 
     void MyProfilePage::avatarChanged()
@@ -745,9 +775,9 @@ namespace Ui
         const auto params = _action->data().toMap();
         const auto command = params[qsl("command")].toString();
 
-        if (command == ql1s("edit"))
+        if (command == u"edit")
             editAvatarClicked();
-        else if (command == ql1s("view"))
+        else if (command == u"view")
             viewAvatarClicked();
     }
 
@@ -767,8 +797,8 @@ namespace Ui
             auto data = form->getFormData();
             firstName_ = data.firstName_;
             lastName_ = data.lastName_;
-            auto nameSpacer = !lastName_.isEmpty() ? qsl(" ") : QString();
-            QString friendly = firstName_ + nameSpacer + lastName_;
+            const auto nameSpacer = !lastName_.isEmpty() ? QStringView(u" ") : QStringView();
+            QString friendly = firstName_ % nameSpacer % lastName_;
             name_->setInfo(friendly);
             MyInfo()->setFriendly(friendly);
             update();
@@ -817,7 +847,7 @@ namespace Ui
 
         connect(form, &EditNicknameWidget::changed, this, [this, form]()
         {
-            nickName_->setInfo(form->getFormData().nickName_, qsl("@"));
+            nickName_->setInfo(form->getFormData().nickName_, u"@");
             update();
             onUpdateProfile(0);
         });

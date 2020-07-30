@@ -26,12 +26,7 @@ get_themes_index::~get_themes_index()
 {
 }
 
-bool get_themes_index::support_async_execution() const
-{
-    return true;
-}
-
-int32_t get_themes_index::init_request(std::shared_ptr<core::http_request_simple> _request)
+int32_t get_themes_index::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     _request->set_etag(etag_);
     _request->set_url(get_themes_url());
@@ -39,7 +34,7 @@ int32_t get_themes_index::init_request(std::shared_ptr<core::http_request_simple
     return 0;
 }
 
-int32_t get_themes_index::parse_response(std::shared_ptr<core::tools::binary_stream> _response)
+int32_t get_themes_index::parse_response(const std::shared_ptr<core::tools::binary_stream>& _response)
 {
     if (!_response->available())
     {
@@ -57,7 +52,7 @@ std::shared_ptr<core::tools::binary_stream> get_themes_index::get_response() con
     return response_;
 }
 
-std::string get_themes_index::get_header_etag() const
+const std::string& get_themes_index::get_header_etag() const
 {
     return header_etag_;
 }

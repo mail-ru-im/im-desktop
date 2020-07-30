@@ -128,6 +128,7 @@ add_definitions(-DQT_NO_CAST_FROM_ASCII)
 add_definitions(-DQT_NO_CAST_TO_ASCII)
 add_definitions(-DQT_NO_CAST_FROM_BYTEARRAY)
 add_definitions(-DQT_STRICT_ITERATORS)
+add_definitions(-DQT_NO_KEYWORDS)
 
 if(BUILD_FOR_STORE)
     message(STATUS "... cmake: This build for Store -> BUILD_FOR_STORE")
@@ -143,7 +144,7 @@ endif()
 message(STATUS "ICQ_ROOT is ${ICQ_ROOT}")
 if(MSVC)
     add_definitions(/FI"stdafx.h")
-    set(SYSTEM_LIBRARIES d3d9 dxguid opengl32 Ws2_32 Imm32 Winmm runtimeobject strmiids secur32 glu32 psapi)
+    set(SYSTEM_LIBRARIES d3d9 dxguid opengl32 Ws2_32 Imm32 Winmm runtimeobject strmiids secur32 glu32 psapi userenv version dwmapi shell32 rpcrt4 wtsapi32)
 elseif(APPLE)
     set(ICQ_MAC_ROOT "${ICQ_ROOT}/mac/ICQ")
     message(STATUS "ICQ_MAC_ROOT is ${ICQ_MAC_ROOT}")
@@ -159,6 +160,9 @@ elseif(APPLE)
     find_library(MAC_CORE_MEDIA CoreMedia)
     find_library(MAC_CORE_AUDIO CoreAudio)
     find_library(MAC_AUDIO_TOOLBOX AudioToolbox)
+    if (USE_SYSTEM_OPENAL)
+        find_library(MAC_OPEN_AL OpenAL)
+    endif()
     find_library(MAC_AUDIO_UNIT AudioUnit)
     find_library(MAC_CARBON Carbon)
     find_library(MAC_QUARTZ Quartz)
@@ -171,7 +175,7 @@ elseif(APPLE)
     find_library(MAC_VIDEO_TOOLBOX VideoToolbox)
     find_library(MAC_VIDEO_DECODE_ACCELERATION VideoDecodeAcceleration)
     find_library(MAC_SPARKLE Sparkle PATHS ${ICQ_PLATFORM_SPECIFIC})
-    
+
     include_directories(${MAC_SPARKLE})
 
     mark_as_advanced(
@@ -185,6 +189,7 @@ elseif(APPLE)
         MAC_CORE_MEDIA
         MAC_CORE_AUDIO
         MAC_AUDIO_TOOLBOX
+        MAC_OPEN_AL
         MAC_AUDIO_UNIT
         MAC_CARBON
         MAC_QUARTZ
@@ -210,6 +215,7 @@ elseif(APPLE)
         ${MAC_CORE_MEDIA}
         ${MAC_CORE_AUDIO}
         ${MAC_AUDIO_TOOLBOX}
+        ${MAC_OPEN_AL}
         ${MAC_AUDIO_UNIT}
         ${MAC_CARBON}
         ${MAC_QUARTZ}
@@ -268,26 +274,19 @@ elseif(LINUX)
         ${ICQ_PLATFORM_SPECIFIC}/librtmp.a
         ${ICQ_PLATFORM_SPECIFIC}/libgcrypt.a
         ${ICQ_PLATFORM_SPECIFIC}/libgnutls.a
-        ${ICQ_PLATFORM_SPECIFIC}/libgpg-error.a
         ${ICQ_PLATFORM_SPECIFIC}/libtasn1.a
         ${ICQ_PLATFORM_SPECIFIC}/libXi.a
         ${ICQ_PLATFORM_SPECIFIC}/libxkbcommon-x11.a
         ${ICQ_PLATFORM_SPECIFIC}/libxkbcommon.a
-        ${ICQ_PLATFORM_SPECIFIC}/libfontconfig.a
-        ${ICQ_PLATFORM_SPECIFIC}/libfreetype.a
-        ${ICQ_PLATFORM_SPECIFIC}/libuuid.a
         ${ICQ_PLATFORM_SPECIFIC}/libdbus-1.a
-        ${ICQ_PLATFORM_SPECIFIC}/librt.a
         ${ICQ_PLATFORM_SPECIFIC}/libxcb-util.a
         ${ICQ_PLATFORM_SPECIFIC}/libffi.a
         ${ICQ_PLATFORM_SPECIFIC}/libpcre.a
-        ${ICQ_PLATFORM_SPECIFIC}/libexpat.a
         ${ICQ_PLATFORM_SPECIFIC}/libXext.a
         ${ICQ_PLATFORM_SPECIFIC}/libXau.a
         ${ICQ_PLATFORM_SPECIFIC}/libXdmcp.a
-        ${ICQ_PLATFORM_SPECIFIC}/libz.a
         ${VOIP_LIBRARIES}
-        -Wl,-Bdynamic -ldl -lstdc++fs -lpthread -lX11 -lX11-xcb -lxcb -lXrandr -lXinerama -lXcursor -lXext -lXdamage -lXfixes -lXcomposite)
+        -Wl,-Bdynamic -ldl -lstdc++fs -lgpg-error -lfontconfig -lfreetype -luuid -lrt -lexpat -lz -lpthread -lX11 -lX11-xcb -lxcb -lXrandr -lXinerama -lXcursor -lXext -lXdamage -lXfixes -lXcomposite)
 
     if(ICQ_DEBUG)
         message(STATUS "ICQ_DEBUG = ${ICQ_DEBUG}")
@@ -310,7 +309,8 @@ elseif(LINUX)
 endif()
 
 # ------------------------- release notes  -----------------------
-find_package(PythonInterp)
+find_package(PythonInterp 3 REQUIRED)
+message(STATUS "PYTHON_EXECUTABLE = ${PYTHON_EXECUTABLE}")
 execute_process(COMMAND
                     ${PYTHON_EXECUTABLE} buildsystem/update_release_notes.py
                 WORKING_DIRECTORY
@@ -453,14 +453,15 @@ set(ICQ_THEMES_CHECKER_STAMP "${PROJECT_BINARY_DIR}/json_check.stamp")
 
 find_package(PythonInterp)
 # configure time
-message(STATUS "Checking themes JSON ${ICQ_THEMES_META_PATH}")
+message(STATUS "Configure time checking themes JSON ${ICQ_THEMES_META_PATH}")
+message(STATUS "Executing ${PYTHON_EXECUTABLE} ${ICQ_THEMES_CHECKER} ${ICQ_THEMES_META_PATH}")
 execute_process(
         WORKING_DIRECTORY ${ICQ_ROOT}
         COMMAND ${PYTHON_EXECUTABLE} ${ICQ_THEMES_CHECKER} ${ICQ_THEMES_META_PATH}
         RESULT_VARIABLE RETURN_VALUE
         )
 if (NOT RETURN_VALUE EQUAL 0)
-    message(FATAL_ERROR "Themes JSON check failed")
+    message(FATAL_ERROR "Themes JSON check failed, return value ${RETURN_VALUE}")
 else()
     message(STATUS "Themes JSON ${ICQ_THEMES_META_PATH} is valid")
 endif()
@@ -472,7 +473,7 @@ add_custom_command(
         COMMAND ${PYTHON_EXECUTABLE} ${ICQ_THEMES_CHECKER} ${ICQ_THEMES_META_PATH}
         COMMAND ${CMAKE_COMMAND} -E touch ${ICQ_THEMES_CHECKER_STAMP}
         OUTPUT ${ICQ_THEMES_CHECKER_STAMP}
-        COMMENT "Checking themes JSON ${ICQ_THEMES_META_PATH}"
+        COMMENT "Build time checking themes JSON ${ICQ_THEMES_META_PATH}"
         )
 
 add_custom_target(check_themes_meta DEPENDS ${ICQ_THEMES_CHECKER_STAMP})
@@ -506,16 +507,16 @@ if(APPLE)
 endif()
 
 set(ICQ_RESOURCES "${SUBPROJECT_ROOT}/resource.qrc")
-set(EMOJI_RESOURCES "${SUBPROJECT_ROOT}/resource_emoji.qrc")
+
 set(PRODUCT_RESOURCES "${PRODUCT_SPEC_DIR}/app/resources/product.qrc")
 message(STATUS "ICQ_RESOURCES = ${ICQ_RESOURCES}")
-message(STATUS "EMOJI_RESOURCES = ${EMOJI_RESOURCES}")
+
 message(STATUS "PRODUCT_RESOURCES = ${PRODUCT_RESOURCES}")
 
 get_filename_component(ICQ_RCC_EXE "${ICQ_QT_BIN_DIR}/rcc" ABSOLUTE)
 if(MSVC)
-    message(STATUS "Making BIG resources from ${ICQ_RESOURCES}, ${EMOJI_RESOURCES} and ${PRODUCT_RESOURCES}")
-    icq_add_big_resources(RCC_FILES ${ICQ_RESOURCES} ${EMOJI_RESOURCES} ${PRODUCT_RESOURCES})
+    message(STATUS "Making BIG resources from ${ICQ_RESOURCES}, ${PRODUCT_RESOURCES}")
+    icq_add_big_resources(RCC_FILES ${ICQ_RESOURCES} ${PRODUCT_RESOURCES})
 
     set(RC_FILE "${SUBPROJECT_ROOT}/Resource.rc")
     set(RC_SOURCE "${PRODUCT_SPEC_DIR}/app/resources/Resource.rc")
@@ -532,8 +533,8 @@ if(MSVC)
 else()
     set(ICQ_RESOURCES_OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/qresource.cpp")
     add_custom_command(OUTPUT ${ICQ_RESOURCES_OUTPUT}
-        COMMAND ${ICQ_RCC_EXE} ${ICQ_RESOURCES} ${EMOJI_RESOURCES} ${PRODUCT_RESOURCES} -o ${ICQ_RESOURCES_OUTPUT}
-        DEPENDS ${ICQ_QM_FILES} ${ICQ_RESOURCES} ${EMOJI_RESOURCES} ${PRODUCT_RESOURCES} ${ICQ_RESOURCE_FILES})
+        COMMAND ${ICQ_RCC_EXE} ${ICQ_RESOURCES} ${PRODUCT_RESOURCES} -o ${ICQ_RESOURCES_OUTPUT}
+        DEPENDS ${ICQ_QM_FILES} ${ICQ_RESOURCES} ${PRODUCT_RESOURCES} ${ICQ_RESOURCE_FILES})
 endif()
 source_group("resources" FILES ${ICQ_RESOURCES})
 source_group("resources" FILES ${ICQ_RESOURCES_OUTPUT})
@@ -556,6 +557,7 @@ add_executable(${PROJECT_NAME} MACOSX_BUNDLE WIN32
     ${SUBPROJECT_SOURCES} ${SUBPROJECT_MM_SOURCES} ${SUBPROJECT_HEADERS}
     ${COMMON_SOURCES} ${COMMON_HEADERS}
     ${GUI_SHARED_SOURCES} ${GUI_SHARED_HEADERS}
+    ${BREAKPAD_SOURCE}
     ${ICQ_PROTOLIB_SOURCES} ${ICQ_PROTOLIB_MM_SOURCES} ${ICQ_PROTOLIB_HEADERS}
     ${ICQ_SSKEYCHAIN_MM_SOURCES} ${ICQ_SSKEYCHAIN_HEADERS}
     ${ICQ_MOC_FILES}

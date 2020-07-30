@@ -20,7 +20,7 @@ namespace Ui
 
         void addItem(DraggableItem* _item);
         void removeItem(DraggableItem* _item);
-        QWidget* itemAt(int _index);
+        QWidget* itemAt(int _index) const;
         int indexOf(QWidget* _item) const;
 
         int count() const;

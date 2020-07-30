@@ -39,13 +39,13 @@ FileSharingBlockBase::FileSharingBlockBase(
     , DownloadRequestId_(-1)
     , LastModified_(-1)
     , FileMetaRequestId_(-1)
+    , fileDirectLinkRequestId_(-1)
     , FileSizeBytes_(-1)
     , IsSelected_(false)
     , Layout_(nullptr)
     , Link_(Utils::normalizeLink(QStringRef(&_link)).toString())
     , PreviewMetaRequestId_(-1)
     , Type_(std::make_unique<core::file_sharing_content_type>(_type))
-    , ref_(std::make_shared<bool>(false))
     , inited_(false)
     , loadedFromLocal_(false)
     , savedByUser_(false)
@@ -71,9 +71,7 @@ QString FileSharingBlockBase::formatRecentsText() const
 
     const auto& type = getType();
     if (type.is_sticker())
-    {
         return QT_TRANSLATE_NOOP("contact_list", "Sticker");
-    }
 
     switch (type.type_)
     {
@@ -102,9 +100,7 @@ Ui::MediaType FileSharingBlockBase::getMediaType() const
 
     const auto& type = getType();
     if (type.is_sticker())
-    {
         return Ui::MediaType::mediaTypeSticker;
-    }
 
     switch (type.type_)
     {
@@ -154,12 +150,12 @@ QString FileSharingBlockBase::getSourceText() const
 
     const auto mediaType = getPlaceholderFormatText();
     const auto id = getFileSharingId();
-    return ql1c('[') % mediaType % ql1s(": ") % id % ql1c(']');
+    return u'[' % mediaType % u": " % id % u']';
 }
 
 QString FileSharingBlockBase::getPlaceholderText() const
 {
-    return ql1c('[') % QT_TRANSLATE_NOOP("placeholders", "Failed to download file or media") % ql1c(']');
+    return u'[' % QT_TRANSLATE_NOOP("placeholders", "Failed to download file or media") % u']';
 }
 
 QString FileSharingBlockBase::getSelectedText(const bool, const TextDestination) const
@@ -239,7 +235,7 @@ const QString& FileSharingBlockBase::getLink() const
     return Link_;
 }
 
-core::file_sharing_content_type& FileSharingBlockBase::getType() const
+const core::file_sharing_content_type& FileSharingBlockBase::getType() const
 {
     return *Type_;
 }
@@ -258,7 +254,7 @@ bool FileSharingBlockBase::isFileDownloading() const
 {
     assert(DownloadRequestId_ >= -1);
 
-    return (DownloadRequestId_ > 0);
+    return DownloadRequestId_ > 0;
 }
 
 bool FileSharingBlockBase::isFileUploading() const
@@ -289,7 +285,7 @@ bool FileSharingBlockBase::isVideo() const
 Data::FilesPlaceholderMap FileSharingBlockBase::getFilePlaceholders()
 {
     Data::FilesPlaceholderMap files;
-    if (const auto link = getLink(); !link.isEmpty())
+    if (const auto& link = getLink(); !link.isEmpty())
         files.insert({ link, getSourceText() });
     return files;
 }
@@ -350,8 +346,7 @@ void FileSharingBlockBase::onMenuCopyFile()
     {
         static const QRegularExpression re(
             qsl("[{}-]"),
-            QRegularExpression::UseUnicodePropertiesOption | QRegularExpression::OptimizeOnFirstUsageOption
-        );
+            QRegularExpression::UseUnicodePropertiesOption);
 
         filename = QUuid::createUuid().toString();
         filename.remove(re);
@@ -370,27 +365,23 @@ void FileSharingBlockBase::onMenuSaveFileAs()
 
     QUrl urlParser(Filename_);
 
-    std::weak_ptr<bool> wr_ref = ref_;
-    Utils::saveAs(urlParser.fileName(), [this, wr_ref](const QString& file, const QString& dir_result)
+    Utils::saveAs(urlParser.fileName(), [weak_this = QPointer(this)](const QString& file, const QString& dir_result)
     {
-        auto ref = wr_ref.lock();
-        if (!ref)
+        if (!weak_this)
             return;
 
-        const auto addTrailingSlash = (!dir_result.endsWith(ql1c('\\')) && !dir_result.endsWith(ql1c('/')));
-        const auto slash = ql1s(addTrailingSlash ? "/" : "");
+        const auto addTrailingSlash = (!dir_result.endsWith(u'\\') && !dir_result.endsWith(u'/'));
+        const auto slash = addTrailingSlash ? QStringView(u"/") : QStringView();
         const QString dir = dir_result % slash % file;
 
-        auto saver = new Utils::FileSaver(this);
-        saver->save([dir](bool _success, const QString& _savedPath)
+        auto saver = new Utils::FileSaver(weak_this);
+        saver->save([dir](bool _success, const QString& /*_savedPath*/)
         {
-            Q_UNUSED(_savedPath)
-
             if (_success)
                 showFileSavedToast(dir);
             else
                 showErrorToast();
-        }, getLink(), dir);
+        }, weak_this->getLink(), dir);
     });
 }
 
@@ -483,12 +474,12 @@ void FileSharingBlockBase::stopDataTransfer()
 {
     if (isFileDownloading())
     {
-        GetDispatcher()->abortSharedFileDownloading(Link_);
+        GetDispatcher()->abortSharedFileDownloading(Link_, DownloadRequestId_);
     }
     else if (isFileUploading())
     {
         GetDispatcher()->abortSharedFileUploading(getChatAimid(), FileLocalPath_, uploadId_);
-        emit removeMe();
+        Q_EMIT removeMe();
     }
 
     DownloadRequestId_ = -1;
@@ -517,8 +508,8 @@ void FileSharingBlockBase::cancelRequests()
 
     if (isFileDownloading())
     {
-        GetDispatcher()->abortSharedFileDownloading(Link_);
-        GetDispatcher()->cancelLoaderTask(Link_);
+        GetDispatcher()->abortSharedFileDownloading(Link_, DownloadRequestId_);
+        GetDispatcher()->cancelLoaderTask(Link_, DownloadRequestId_);
     }
 }
 
@@ -535,7 +526,7 @@ void FileSharingBlockBase::setFileSize(int64_t _size)
 void FileSharingBlockBase::setLocalPath(const QString& _localPath)
 {
     FileLocalPath_ = _localPath;
-    QFileInfo f(_localPath);
+    const QFileInfo f(_localPath);
     FileSizeBytes_ = f.size();
     LastModified_ = f.lastModified().toTime_t();
 }
@@ -583,9 +574,7 @@ QString FileSharingBlockBase::getPlaceholderFormatText() const
     const auto& primalType = getType();
 
     if( primalType.is_sticker())
-    {
         return qsl("Sticker");
-    }
 
     switch (primalType.type_)
     {
@@ -603,8 +592,7 @@ QString FileSharingBlockBase::getPlaceholderFormatText() const
 
         default:
         {
-            const auto &filename = getFilename();
-            if (!filename.isEmpty())
+            if (const auto &filename = getFilename(); !filename.isEmpty())
                 return FileSharing::getPlaceholderForType(FileSharing::getFSType(filename));
         }
     }
@@ -626,7 +614,7 @@ void FileSharingBlockBase::onFileDownloaded(qint64 seq, const Data::FileSharingD
 
     FileLocalPath_ = _result.filename_;
 
-    QFileInfo f(_result.filename_);
+    const QFileInfo f(_result.filename_);
     FileSizeBytes_ = f.size();
     LastModified_ = f.lastModified().toTime_t();
 
@@ -701,6 +689,8 @@ void FileSharingBlockBase::onFileSharingError(qint64 seq, QString /*rawUri*/, qi
             showErrorToast();
             SaveAs_.clear();
         }
+
+        onDownloadingFailed(seq);
     }
     const auto isFileMetainfoRequestFailed = (FileMetaRequestId_ == seq);
     const auto isPreviewMetainfoRequestFailed = (PreviewMetaRequestId_ == seq);
@@ -712,8 +702,6 @@ void FileSharingBlockBase::onFileSharingError(qint64 seq, QString /*rawUri*/, qi
         if (isFileMetainfoRequestFailed)
             getParentComplexMessage()->replaceBlockWithSourceText(this, ReplaceReason::NoMeta);
     }
-
-    onDownloadingFailed(seq);
 
     if ((loader_errors) errorCode == loader_errors::move_file)
         onDownloaded();//stop animation
@@ -752,14 +740,13 @@ void FileSharingBlockBase::fileSharingUploadingResult(const QString& _seq, bool 
 
     if (_isFileTooBig)
     {
-        emit removeMe();
+        Q_EMIT removeMe();
         return;
     }
 
     loadedFromLocal_ = false;
     Link_ = _uri;
-    QFileInfo f(localPath);
-    setFileName(f.fileName());
+    setFileName(QFileInfo(localPath).fileName());
     setSourceText(_uri);
     uploadId_.clear();
 
@@ -769,12 +756,12 @@ void FileSharingBlockBase::fileSharingUploadingResult(const QString& _seq, bool 
 
     onFileDownloaded(DownloadRequestId_, result);
 
-    emit uploaded(QPrivateSignal());
+    Q_EMIT uploaded(QPrivateSignal());
 }
 
-IItemBlock::MenuFlags FileSharingBlockBase::getMenuFlags() const
+IItemBlock::MenuFlags FileSharingBlockBase::getMenuFlags(QPoint p) const
 {
-    int flags = GenericBlock::getMenuFlags();
+    int flags = GenericBlock::getMenuFlags(p);
     if (savedByUser_ && QFileInfo::exists(FileLocalPath_))
         flags |= IItemBlock::MenuFlags::MenuFlagOpenFolder;
 

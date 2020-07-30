@@ -19,7 +19,7 @@ set_avatar::set_avatar(wim_packet_params _params, tools::binary_stream _image, c
 
 set_avatar::~set_avatar() = default;
 
-int32_t set_avatar::init_request(std::shared_ptr<core::http_request_simple> _request)
+int32_t set_avatar::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     std::stringstream ss_url;
 
@@ -51,7 +51,7 @@ int32_t set_avatar::init_request(std::shared_ptr<core::http_request_simple> _req
     return 0;
 }
 
-int32_t set_avatar::execute_request(std::shared_ptr<core::http_request_simple> request)
+int32_t set_avatar::execute_request(const std::shared_ptr<core::http_request_simple>& request)
 {
     if (!request->post())
         return wpie_network_error;
@@ -70,7 +70,7 @@ int32_t set_avatar::execute_request(std::shared_ptr<core::http_request_simple> r
     return 0;
 }
 
-int32_t set_avatar::parse_response(std::shared_ptr<core::tools::binary_stream> response)
+int32_t set_avatar::parse_response(const std::shared_ptr<core::tools::binary_stream>& response)
 {
     return 0;
 }

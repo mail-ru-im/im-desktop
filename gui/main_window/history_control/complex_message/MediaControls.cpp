@@ -1006,14 +1006,14 @@ namespace Ui
         {
             case Fullscreen:
             {
-                emit fullscreen();
+                Q_EMIT fullscreen();
                 break;
             }
             case Mute:
             {
                 auto & muteButton = d->objects_[Mute];
                 if (muteButton)
-                    emit mute(!muteButton->checked());
+                    Q_EMIT mute(!muteButton->checked());
                 break;
             }
             case Play:
@@ -1024,7 +1024,7 @@ namespace Ui
                     if (d->options_ & ControlsOptions::PlayClickable)
                     {
                         auto enablePlay = playButton->checked();
-                        emit play(enablePlay);
+                        Q_EMIT play(enablePlay);
                     }
                     else
                     {
@@ -1036,7 +1036,7 @@ namespace Ui
             }
             case CopyLink:
             {
-                emit copyLink();
+                Q_EMIT copyLink();
                 break;
             }
             default:
@@ -1053,18 +1053,18 @@ namespace Ui
             auto checked = playButton->checked();
             playButton->setChecked(!checked);
             d->state_ = !checked ? Paused : Playing;
-            emit play(!checked);
+            Q_EMIT play(!checked);
         }
         else
         {
-            emit clicked();
+            Q_EMIT clicked();
         }
     }
 
     void MediaControls::onDoubleClick()
     {
         if (d->state_ != Preview)
-            emit fullscreen();
+            Q_EMIT fullscreen();
     }
 
     void MediaControls::onMousePressed(const QPoint& _pos)

@@ -1,6 +1,3 @@
-#ifndef __GET_GATEWAY_H_
-#define __GET_GATEWAY_H_
-
 #pragma once
 
 #include "../wim_packet.h"
@@ -27,8 +24,8 @@ namespace core
             std::optional<file_sharing_base_content_type> base_content_type_;
             std::optional<std::string> locale_;
 
-            int32_t init_request(std::shared_ptr<core::http_request_simple> _request) override;
-            int32_t parse_response(std::shared_ptr<core::tools::binary_stream> _response) override;
+            int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
+            int32_t parse_response(const std::shared_ptr<core::tools::binary_stream>& _response) override;
             int32_t on_http_client_error() override;
 
         public:
@@ -41,10 +38,8 @@ namespace core
                 const std::optional<std::string>& _locale);
             virtual ~get_gateway();
 
-            std::string get_host() const;
-            std::string get_url() const;
+            const std::string& get_host() const noexcept { return host_; }
+            const std::string& get_url() const noexcept { return url_; }
         };
     }
 }
-
-#endif //__GET_GATEWAY_H_

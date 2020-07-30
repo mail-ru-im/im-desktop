@@ -16,8 +16,8 @@ namespace Logic
     public:
         ContactSearcher(QObject* _parent);
 
-        void setExcludeChats(const bool _exclude);
-        bool getExcludeChats() const;
+        void setExcludeChats(SearchDataSource _exclude);
+        SearchDataSource getExcludeChats() const;
 
         void setHideReadonly(const bool _hide);
         bool getHideReadonly() const;
@@ -25,13 +25,16 @@ namespace Logic
         const QString& getPhoneNumber() const;
         void setPhoneNumber(const QString& _phoneNumber);
 
+        void setForceAddFavorites(bool _enable);
+
     private:
         void doLocalSearchRequest() override;
         void doServerSearchRequest() override;
 
         QString phoneNumber_;
 
-        bool excludeChats_;
+        SearchDataSource excludeChats_;
         bool hideReadonly_;
+        bool forceAddFavorites_;
     };
 }

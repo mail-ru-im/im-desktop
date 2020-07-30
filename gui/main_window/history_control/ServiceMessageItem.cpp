@@ -41,27 +41,12 @@ namespace
     {
         return Utils::scale_value(12);
     }
-
-    int getDateShadowWidth()
-    {
-        return Utils::scale_value(4);
-    }
-
-    qreal getDateShadowRadius()
-    {
-        return Utils::fscale_value(14.0);
-    }
-
-    qreal getDateRadius()
-    {
-        return Utils::fscale_value(10.0);
-    }
 }
 
 namespace Ui
 {
     ServiceMessageItem::ServiceMessageItem(QWidget* _parent, const bool _overlay)
-        : MessageItemBase(_parent)
+        : HistoryControlPageItem(_parent)
         , type_(_overlay ? ServiceMessageItem::type::typeOverlay : ServiceMessageItem::type::typeDate)
         , isFloating_(_overlay)
     {
@@ -85,7 +70,7 @@ namespace Ui
             }
         });
 
-        timer->start(updateTimeout.count());
+        timer->start(updateTimeout);
 
         setFixedHeight(getDateHeight() + 2 * getDateBubbleVerMargin(isFloating()));
     }

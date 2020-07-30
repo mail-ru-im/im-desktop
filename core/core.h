@@ -128,6 +128,8 @@ namespace core
         void on_message_set_default_theme_id(int64_t _seq, coll_helper _params);
         void on_message_set_default_wallpaper_id(int64_t _seq, coll_helper _params);
         void on_message_set_wallpaper_urls(int64_t _seq, coll_helper _params);
+        void on_feedback(int64_t _seq, coll_helper& _params);
+        void on_create_logs_archive(int64_t _seq, coll_helper& _params);
 
         void load_statistics();
         void load_im_stats();
@@ -178,7 +180,7 @@ namespace core
         void begin_cl_search();
         unsigned end_cl_search();
 
-        void unlogin(const bool _is_auth_error);
+        void unlogin(const bool _is_auth_error, const bool _force_clean_local_data = false);
 
         std::string get_root_login();
         std::string get_login_after_start() const;
@@ -192,7 +194,7 @@ namespace core
         void post_voip_alloc(unsigned _id, const char* _data, size_t _len);
 
         void insert_event(core::stats::stats_event_names _event);
-        void insert_event(core::stats::stats_event_names _event, const core::stats::event_props_type& _props);
+        void insert_event(core::stats::stats_event_names _event, core::stats::event_props_type&& _props);
 
         void insert_im_stats_event(core::stats::im_stat_event_names _event);
         void insert_im_stats_event(core::stats::im_stat_event_names _event, core::stats::event_props_type&& _props);
@@ -218,7 +220,7 @@ namespace core
         std::thread::id get_core_thread_id() const;
         bool is_core_thread() const;
 
-        void save_themes_etag(const std::string &etag);
+        void save_themes_etag(std::string_view etag);
         std::string load_themes_etag();
 
         themes::wallpaper_info_v get_wallpaper_urls() const;
@@ -243,8 +245,10 @@ namespace core
 
         std::string get_local_pin_hash() const;
         std::string get_local_pin_salt() const;
-
         bool verify_local_pin(const std::string& _password) const;
+
+        void set_external_config_host(std::string_view _host);
+        std::string get_external_config_host() const;
 
         int64_t get_voip_init_memory_usage() const;
 
@@ -256,6 +260,7 @@ namespace core
         bool is_smartreply_available() const;
         bool is_suggests_available() const;
 
+        void update_gui_settings();
 
         void reset_connection();
 

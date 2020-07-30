@@ -1,8 +1,8 @@
 #include "stdafx.h"
 #include "get_chat_member_info.h"
 
-#include "../../urls_cache.h"
 #include "../../../http_request.h"
+#include "../../../tools/json_helper.h"
 
 using namespace core;
 using namespace wim;
@@ -14,23 +14,12 @@ get_chat_member_info::get_chat_member_info(wim_packet_params _params, std::strin
 {
 }
 
-get_chat_member_info::~get_chat_member_info()
+get_chat_member_info::~get_chat_member_info() = default;
+
+int32_t get_chat_member_info::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
-}
-
-int32_t get_chat_member_info::init_request(std::shared_ptr<core::http_request_simple> _request)
-{
-    constexpr char method[] = "getChatMemberInfo";
-
-    _request->set_url(urls::get_url(urls::url_type::rapi_host));
-    _request->set_normalized_url(method);
-    _request->set_keep_alive();
-
     rapidjson::Document doc(rapidjson::Type::kObjectType);
     auto& a = doc.GetAllocator();
-
-    doc.AddMember("method", method, a);
-    doc.AddMember("reqId", get_req_id(), a);
 
     rapidjson::Value node_params(rapidjson::Type::kObjectType);
 
@@ -39,11 +28,7 @@ int32_t get_chat_member_info::init_request(std::shared_ptr<core::http_request_si
     rapidjson::Value node_members(rapidjson::Type::kArrayType);
     node_members.Reserve(members_.size(), a);
     for (const auto& member : members_)
-    {
-        rapidjson::Value node_member(rapidjson::Type::kStringType);
-        node_member.SetString(member.c_str(), member.size());
-        node_members.PushBack(std::move(node_member), a);
-    }
+        node_members.PushBack(tools::make_string_ref(member), a);
 
     rapidjson::Value filter_params(rapidjson::Type::kObjectType);
     filter_params.AddMember("members", std::move(node_members), a);
@@ -51,7 +36,7 @@ int32_t get_chat_member_info::init_request(std::shared_ptr<core::http_request_si
 
     doc.AddMember("params", std::move(node_params), a);
 
-    sign_packet(doc, a, _request);
+    setup_common_and_sign(doc, a, _request, "getChatMemberInfo");
 
     if (!robusto_packet::params_.full_log_)
     {

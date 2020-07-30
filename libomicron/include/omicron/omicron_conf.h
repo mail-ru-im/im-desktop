@@ -95,6 +95,25 @@ namespace omicronlib
     */
     using external_proxy_settings_func = omicron_proxy_settings (*)();
 
+    //! A type definition for the function, which is called when saving configuration to disk
+    /*!
+        This function is used to save configuration json to disk, if user implemented it.
+        If not provided, internal method is used
+        \param[in] _path File path
+        \param[in] _json_str JSON to save
+        \return Successful or not saving.
+    */
+    using save_helper_func = bool (*)(const std::wstring& _path, const std::string& _json_str);
+
+    //! A type definition for the function, which is called when loading configuration from disk
+    /*!
+        This function is used to load configuration json from disk, if user implemented it.
+        If not provided, internal method is used
+        \param[in] _path File path
+        \return Configuration JSON.
+    */
+    using load_helper_func = std::string (*)(const std::wstring& _path);
+
     //! An environment type.
     enum class environment_type
     {
@@ -124,7 +143,7 @@ namespace omicronlib
 
         //!@name Initialization group.
         //@{
-        omicron_config(const std::string& _api_url,
+        omicron_config(std::string _api_url,
                        const std::string& _app_id,
                        environment_type _environment = environment_type::develop,
                        std::chrono::milliseconds _update_interval = default_update_interval());
@@ -180,6 +199,30 @@ namespace omicronlib
         */
         void set_external_proxy_settings(external_proxy_settings_func _external_func);
 
+        //! Set function to save configuration to disk.
+        /*!
+            \param[in] _external_func A pointer to a user-defined function.
+        */
+        void set_save_helper(save_helper_func _external_func);
+
+        //! Get save helper.
+        /*!
+            \return A pointer to a user-defined function.
+        */
+        save_helper_func get_save_helper() const;
+
+        //! Set function to load configuration from disk.
+        /*!
+            \param[in] _external_func A pointer to a user-defined function.
+        */
+        void set_load_helper(load_helper_func _external_func);
+
+        //! Get load helper.
+        /*!
+            \return A pointer to a user-defined function.
+        */
+        load_helper_func get_load_helper() const;
+
         //! Get update interval.
         /*!
             \return The specified value of the update interval.
@@ -204,7 +247,7 @@ namespace omicronlib
         void reset_config_v();
         //! Set conditional hash-string.
         /*!
-            \param[in] _cond_s Ñonvolution of a configuration.
+            \param[in] _cond_s Convolution of a configuration.
         */
         void set_cond_s(std::string _cond_s);
         //! Reset conditional hash-string.
@@ -240,6 +283,9 @@ namespace omicronlib
         write_to_log_func custom_logger_; //!< Custom logger function.
         callback_update_data_func callback_updater_; //!< Callback updater function.
         external_proxy_settings_func external_proxy_settings_; //!< Function to get external proxy settings.
+        save_helper_func save_helper_; //!< Custom save to disk function
+        load_helper_func load_helper_; //!< Custom load from disk function
+
 
         std::string config_v_; //!< Configuration version.
         std::string cond_s_; //!< Conditional hash-string.

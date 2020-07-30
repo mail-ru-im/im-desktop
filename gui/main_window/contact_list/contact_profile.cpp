@@ -78,7 +78,7 @@ namespace Logic
         friendly_ = QString::fromUtf8(_coll.get_value_as_string("friendly"));
         if (friendly_.isEmpty())
         {
-            const auto sep = ql1s(first_name_.isEmpty() ? "" : " ");
+            const auto sep = first_name_.isEmpty() ? QStringView() : QStringView(u" ");
             friendly_ = first_name_ % sep % last_name_;
             if (friendly_.isEmpty())
             {
@@ -233,15 +233,15 @@ namespace Logic
     QString contact_profile::get_contact_name() const
     {
         const auto& friendly = get_friendly();
-        if (!QStringRef(&friendly).trimmed().isEmpty())
+        if (!QStringView(friendly).trimmed().isEmpty())
             return friendly;
 
         const auto& nick = get_nick();
-        if (!QStringRef(&nick).trimmed().isEmpty())
+        if (!QStringView(nick).trimmed().isEmpty())
             return get_nick_pretty();
 
         const auto& first_name = get_first_name();
-        if (!QStringRef(&first_name).trimmed().isEmpty())
+        if (!QStringView(first_name).trimmed().isEmpty())
             return first_name % ql1c(' ') % get_last_name();
 
         return get_aimid();

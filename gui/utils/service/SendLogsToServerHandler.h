@@ -10,7 +10,7 @@ class SendLogsToServerRequest;
 class SendLogsToServerHandler: public RequestHandler
 {
 public:
-    SendLogsToServerHandler(SendLogsToServerRequest* _request);
+    SendLogsToServerHandler(std::shared_ptr<SendLogsToServerRequest> _request);
     virtual ~SendLogsToServerHandler();
 
     void start() override;
@@ -21,7 +21,7 @@ private:
     bool getUserConsent() const;
 
 private:
-    SendLogsToServerRequest* request_;
+    std::shared_ptr<SendLogsToServerRequest> request_;
 };
 
 }

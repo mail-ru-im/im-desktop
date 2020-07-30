@@ -6,7 +6,6 @@
 namespace Logic
 {
     class contact_profile;
-    typedef std::shared_ptr<contact_profile> profile_ptr;
 
     class ContactItem
     {
@@ -41,8 +40,6 @@ namespace Logic
         void set_default_role(const QString& role);
         const QString& get_default_role() const;
 
-        void set_contact_profile(profile_ptr _profile);
-        profile_ptr getContactProfile() const;
         const QString& get_aimid() const;
 
         int get_outgoing_msg_count() const;
@@ -51,15 +48,12 @@ namespace Logic
         void set_stamp(const QString& _stamp);
         const QString& get_stamp() const;
 
-        const std::vector<phone> get_phones() const;
-
         bool is_channel() const;
         bool is_readonly() const;
 
     private:
 
         std::shared_ptr<Data::Contact>                contact_;
-        std::shared_ptr<Logic::contact_profile>        profile_;
 
 
         bool            visible_;

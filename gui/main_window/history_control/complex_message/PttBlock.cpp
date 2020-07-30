@@ -92,7 +92,7 @@ namespace PttDetails
     {
         updateStyle();
         setFixedSize(getButtonSize());
-        connect(this, &PlayButton::hoverChanged, this, Utils::QOverload<>::of(&PlayButton::update));
+        connect(this, &PlayButton::hoverChanged, this, qOverload<>(&PlayButton::update));
         connect(this, &PlayButton::pressed, this, [this]() { setPressed(true); });
         connect(this, &PlayButton::released, this, [this]() { setPressed(false); });
     }
@@ -131,7 +131,7 @@ namespace PttDetails
 
     void PlayButton::paintEvent(QPaintEvent* _e)
     {
-        static Utils::ColoredCache<PlayButtonIcons> iconsNormal(Styling::StyleVariable::TEXT_SOLID_PERMANENT);
+        static Utils::ColoredCache<PlayButtonIcons> iconsNormal(Styling::StyleVariable::BASE_GLOBALWHITE);
 
         QColor bgColor;
         if (isHovered())
@@ -161,7 +161,7 @@ namespace PttDetails
     }
 
     ButtonWithBackground::ButtonWithBackground(QWidget* _parent, const QString& _icon, const QString& _aimId, bool _isOutgoing)
-        : CustomButton(_parent, _icon, QSize(20, 20))
+        : CustomButton(_parent, _icon)
         , aimId_(_aimId)
         , isOutgoing_(_isOutgoing)
     {
@@ -171,7 +171,7 @@ namespace PttDetails
 
     void ButtonWithBackground::updateStyle()
     {
-        setDefaultColor(Styling::getParameters(aimId_).getColor(Styling::StyleVariable::PRIMARY_INVERSE));
+        setDefaultColor(Styling::getParameters(aimId_).getColor(Styling::StyleVariable::PRIMARY));
         setActiveColor(Styling::getParameters(aimId_).getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT));
     }
 
@@ -550,7 +550,7 @@ void PttBlock::onDataTransferStarted()
     {
         downloadAnimDelay_ = new QTimer(this);
         downloadAnimDelay_->setSingleShot(true);
-        downloadAnimDelay_->setInterval(animDownloadDelay.count());
+        downloadAnimDelay_->setInterval(animDownloadDelay);
         connect(downloadAnimDelay_, &QTimer::timeout, this, &PttBlock::showDownloadAnimation);
     }
 
@@ -621,13 +621,8 @@ void PttBlock::onDataTransfer(const int64_t _bytesTransferred, const int64_t _by
 
 void PttBlock::onDownloadingFailed(const int64_t _seq)
 {
-    assert(textRequestId_ >= -1);
-    assert(_seq >= -1);
-
-    if (textRequestId_ != _seq)
-        return;
-
-    getParentComplexMessage()->replaceBlockWithSourceText(this);
+    // replacing the block with the source text is already
+    // present in FileSharingBlockBase::onFileSharingError
 }
 
 void PttBlock::onLocalCopyInfoReady(const bool isCopyExists)
@@ -1021,7 +1016,7 @@ void PttBlock::onPlayButtonClicked()
     if (Utils::InterConnector::instance().isMultiselect())
         return;
 
-    emit Utils::InterConnector::instance().stopPttRecord();
+    Q_EMIT Utils::InterConnector::instance().stopPttRecord();
     if (isPlaying())
     {
         pausePlayback();
@@ -1251,11 +1246,11 @@ void PttBlock::onVisibilityChanged(const bool isVisible)
         pausePlayback();
 }
 
-IItemBlock::MenuFlags PttBlock::getMenuFlags() const
+IItemBlock::MenuFlags PttBlock::getMenuFlags(QPoint p) const
 {
     if (isSelected())
         return MenuFlags::MenuFlagCopyable;
-    return FileSharingBlockBase::getMenuFlags();
+    return FileSharingBlockBase::getMenuFlags(p);
 }
 
 UI_COMPLEX_MESSAGE_NS_END

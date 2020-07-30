@@ -20,7 +20,7 @@ get_stickers_store_packet::~get_stickers_store_packet()
 {
 }
 
-int32_t get_stickers_store_packet::init_request(std::shared_ptr<core::http_request_simple> _request)
+int32_t get_stickers_store_packet::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     std::map<std::string, std::string> params;
 
@@ -44,9 +44,6 @@ int32_t get_stickers_store_packet::init_request(std::shared_ptr<core::http_reque
     if (!search_term_.empty())
         params["search"] = escape_symbols(search_term_);
 
-    auto sha256 = escape_symbols(get_url_sign(ss_host.str(), params, params_, false));
-    params["sig_sha256"] = std::move(sha256);
-
     std::stringstream ss_url;
     ss_url << ss_host.str() << '?' << format_get_params(params);
 
@@ -58,7 +55,6 @@ int32_t get_stickers_store_packet::init_request(std::shared_ptr<core::http_reque
         _request->set_normalized_url("stickersStoreShowcase");
 
     _request->set_keep_alive();
-    _request->set_priority(high_priority());
 
     if (!params_.full_log_)
     {
@@ -70,7 +66,7 @@ int32_t get_stickers_store_packet::init_request(std::shared_ptr<core::http_reque
     return 0;
 }
 
-int32_t get_stickers_store_packet::parse_response(std::shared_ptr<core::tools::binary_stream> _response)
+int32_t get_stickers_store_packet::parse_response(const std::shared_ptr<core::tools::binary_stream>& _response)
 {
     if (!_response->available())
         return wpie_http_empty_response;
@@ -83,4 +79,9 @@ int32_t get_stickers_store_packet::parse_response(std::shared_ptr<core::tools::b
 std::shared_ptr<core::tools::binary_stream> get_stickers_store_packet::get_response() const
 {
     return response_;
+}
+
+priority_t get_stickers_store_packet::get_priority() const
+{
+    return packets_priority_high();
 }

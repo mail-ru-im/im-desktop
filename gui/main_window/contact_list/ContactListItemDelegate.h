@@ -107,17 +107,17 @@ namespace Logic
 
         virtual ~ContactListItemDelegate();
 
-        void paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const override;
+        void paint(QPainter* _painter, const QStyleOptionViewItem& _option, const QModelIndex& _index) const override;
 
         QSize sizeHint(const QStyleOptionViewItem &option, const QModelIndex &index) const override;
 
-        virtual void setFixedWidth(int width) override;
+        void setFixedWidth(int width) override;
 
-        virtual void blockState(bool value) override;
+        void blockState(bool value) override;
 
-        virtual void setDragIndex(const QModelIndex& index) override;
+        void setDragIndex(const QModelIndex& index) override;
 
-        virtual void setRegim(int _regim) override;
+        void setRegim(int _regim) override;
 
         int regim() const;
 

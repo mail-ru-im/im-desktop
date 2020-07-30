@@ -8,7 +8,7 @@ namespace Ui::MessageStyle
     QFont getImagePreviewLinkFont();
 
     QColor getTextColor();
-    QColor getLinkColor(bool _isOutgoing = false);
+    QColor getLinkColor();
     QColor getSelectionFontColor();
     QColor getTextSelectionColor(const QString& _aimId = QString());
     QColor getSelectionColor();
@@ -21,6 +21,8 @@ namespace Ui::MessageStyle
     QFont getQuoteSenderFont();
 
     QFont getQuoteSenderFontMarkdown();
+
+    QFont getButtonsFont();
 
     QColor getBorderColor();
 
@@ -113,9 +115,21 @@ namespace Ui::MessageStyle
 
     int getSharingButtonMargin();
 
+    int getSharingButtonTopMargin();
+
     int getSharingButtonOverlap();
 
     int getSharingButtonAnimationShift(const bool _isOutgoing);
+
+    int getButtonHeight();
+
+    int getTwoLineButtonHeight();
+
+    int getButtonHorOffset();
+
+    int getUrlInButtonOffset();
+
+    QSize getButtonsAnimationSize();
 
     int32_t getProgressTextRectHMargin();
 
@@ -251,5 +265,14 @@ namespace Ui::MessageStyle
         int32_t getTextButtonMarginRight();
         int32_t getPttProgressWidth();
         QFont getDurationFont();
+    }
+
+    namespace Reactions
+    {
+        int32_t plateHeight();
+        int32_t plateYOffset();
+        int32_t mediaPlateYOffset();
+        int32_t shadowHeight();
+        QSize addReactionButtonSize();
     }
 }

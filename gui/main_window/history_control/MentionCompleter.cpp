@@ -27,7 +27,7 @@ namespace Ui
         , arrowOffset_(Tooltip::getDefaultArrowOffset())
         , opacityEffect_(new Utils::OpacityEffect(this))
     {
-        Testing::setAccessibleName(this, qsl("AS mention wdg"));
+        Testing::setAccessibleName(this, qsl("AS Mention"));
 
         view_ = CreateFocusableViewAndSetTrScrollBar(this);
         view_->setParent(this);
@@ -51,7 +51,7 @@ namespace Ui
         view_->viewport()->grabGesture(Qt::TapAndHoldGesture);
         Utils::grabTouchWidget(view_->viewport(), true);
         Utils::ApplyStyle(view_->verticalScrollBar(), Styling::getParameters().getScrollBarQss(4, 0));
-        Testing::setAccessibleName(view_, qsl("AS mention view_"));
+        Testing::setAccessibleName(view_, qsl("AS Mention view"));
 
         view_->setModel(model_);
         view_->setItemDelegate(delegate_);
@@ -80,7 +80,7 @@ namespace Ui
 
     void MentionCompleter::hideEvent(QHideEvent*)
     {
-        emit hidden();
+        Q_EMIT hidden();
     }
 
     void MentionCompleter::keyPressEvent(QKeyEvent * _event)
@@ -163,7 +163,9 @@ namespace Ui
 
         view_->scrollToTop();
 
-        emit results(itemCount());
+        Q_EMIT results(itemCount());
+        if (!itemCount())
+            hide();
     }
 
     bool MentionCompleter::itemClicked(const QModelIndex& _current)
@@ -171,7 +173,7 @@ namespace Ui
         if (!model_->isServiceItem(_current))
         {
             auto item = _current.data().value<Logic::MentionSuggest>();
-            emit contactSelected(item.aimId_, item.friendlyName_);
+            Q_EMIT contactSelected(item.aimId_, item.friendlyName_);
             hide();
 
             return true;
@@ -205,6 +207,12 @@ namespace Ui
 
     void MentionCompleter::recalcHeight()
     {
+        if (itemCount() == 0)
+        {
+            setFixedHeight(0);
+            return;
+        }
+
         const auto curBot = y() + height();
         const auto calcedHeight = std::min(calcHeight(), Tooltip::getMaxMentionTooltipHeight());
         const auto viewHeight = itemCount() < maxItemsForMaxHeight ? calcedHeight + delegate_->itemHeight() : calcedHeight - delegate_->itemHeight()/2;

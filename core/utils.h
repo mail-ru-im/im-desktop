@@ -9,11 +9,12 @@ namespace core
         std::string_view get_dev_id();
         std::wstring get_product_data_path(std::wstring_view relative); // use it config.cpp only
         std::wstring get_product_data_path();
+        std::wstring get_local_product_data_path();
         std::string get_product_name();
         std::string_view get_app_name();
         std::string get_user_agent(const string_opt &_uin = string_opt());
         std::string get_platform_string();
-        std::string get_protocol_platform_string();
+        std::string_view get_protocol_platform_string();
         std::string_view get_client_string();
 
         std::wstring get_report_path();
@@ -22,6 +23,7 @@ namespace core
         std::wstring get_themes_meta_path();
 
         boost::filesystem::wpath get_logs_path();
+        boost::filesystem::wpath get_obsolete_logs_path();
         boost::filesystem::wpath create_logs_archive(const boost::filesystem::wpath& _path);
         boost::filesystem::wpath get_app_ini_path();
 

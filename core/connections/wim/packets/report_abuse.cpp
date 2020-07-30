@@ -4,7 +4,6 @@
 #include "../../../http_request.h"
 
 #include "report_abuse.h"
-#include "../../urls_cache.h"
 
 namespace
 {
@@ -32,6 +31,8 @@ namespace
 
         return result;
     }
+
+    constexpr std::string_view method() noexcept { return "reportAbuse"; }
 }
 
 CORE_WIM_NS_BEGIN
@@ -52,25 +53,16 @@ int32_t report_abuse::on_response_error_code()
 }
 
 report_contact::report_contact(wim_packet_params _params, const std::string& _aimid, const report_reason& _reason)
-    : report_abuse(_params)
+    : report_abuse(std::move(_params))
     , aimId_(_aimid)
     , reason_(_reason)
 {
 }
 
-int32_t report_contact::init_request(std::shared_ptr<core::http_request_simple> _request)
+int32_t report_contact::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
-    constexpr char method[] = "reportAbuse";
-
-    _request->set_url(urls::get_url(urls::url_type::rapi_host));
-    _request->set_normalized_url(method);
-    _request->set_keep_alive();
-
     rapidjson::Document doc(rapidjson::Type::kObjectType);
     auto& a = doc.GetAllocator();
-
-    doc.AddMember("method", method, a);
-    doc.AddMember("reqId", get_req_id(), a);
 
     rapidjson::Value node_params(rapidjson::Type::kObjectType);
     node_params.AddMember("sn", aimId_, a);
@@ -79,7 +71,7 @@ int32_t report_contact::init_request(std::shared_ptr<core::http_request_simple> 
 
     doc.AddMember("params", std::move(node_params), a);
 
-    sign_packet(doc, a, _request);
+    setup_common_and_sign(doc, a, _request, method());
 
     if (!params_.full_log_)
     {
@@ -99,16 +91,10 @@ report_stickerpack::report_stickerpack(wim_packet_params _params, const int32_t 
 {
 }
 
-int32_t report_stickerpack::init_request(std::shared_ptr<core::http_request_simple> _request)
+int32_t report_stickerpack::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
-    _request->set_url(urls::get_url(urls::url_type::rapi_host));
-    _request->set_keep_alive();
-
     rapidjson::Document doc(rapidjson::Type::kObjectType);
     auto& a = doc.GetAllocator();
-
-    doc.AddMember("method", "reportAbuse", a);
-    doc.AddMember("reqId", get_req_id(), a);
 
     rapidjson::Value node_params(rapidjson::Type::kObjectType);
     node_params.AddMember("packId", id_, a);
@@ -117,7 +103,7 @@ int32_t report_stickerpack::init_request(std::shared_ptr<core::http_request_simp
 
     doc.AddMember("params", std::move(node_params), a);
 
-    sign_packet(doc, a, _request);
+    setup_common_and_sign(doc, a, _request, method());
 
     if (!params_.full_log_)
     {
@@ -139,16 +125,10 @@ report_sticker::report_sticker(wim_packet_params _params, const std::string& _id
 {
 }
 
-int32_t report_sticker::init_request(std::shared_ptr<core::http_request_simple> _request)
+int32_t report_sticker::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
-    _request->set_url(urls::get_url(urls::url_type::rapi_host));
-    _request->set_keep_alive();
-
     rapidjson::Document doc(rapidjson::Type::kObjectType);
     auto& a = doc.GetAllocator();
-
-    doc.AddMember("method", "reportAbuse", a);
-    doc.AddMember("reqId", get_req_id(), a);
 
     rapidjson::Value node_params(rapidjson::Type::kObjectType);
     node_params.AddMember("stickerId", id_, a);
@@ -160,7 +140,7 @@ int32_t report_sticker::init_request(std::shared_ptr<core::http_request_simple> 
 
     doc.AddMember("params", std::move(node_params), a);
 
-    sign_packet(doc, a, _request);
+    setup_common_and_sign(doc, a, _request, method());
 
     if (!params_.full_log_)
     {
@@ -183,16 +163,10 @@ report_message::report_message(wim_packet_params _params, const int64_t _id, con
 {
 }
 
-int32_t report_message::init_request(std::shared_ptr<core::http_request_simple> _request)
+int32_t report_message::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
-    _request->set_url(urls::get_url(urls::url_type::rapi_host));
-    _request->set_keep_alive();
-
     rapidjson::Document doc(rapidjson::Type::kObjectType);
     auto& a = doc.GetAllocator();
-
-    doc.AddMember("method", "reportAbuse", a);
-    doc.AddMember("reqId", get_req_id(), a);
 
     rapidjson::Value node_params(rapidjson::Type::kObjectType);
     node_params.AddMember("msgId", id_, a);
@@ -206,7 +180,7 @@ int32_t report_message::init_request(std::shared_ptr<core::http_request_simple> 
 
     doc.AddMember("params", std::move(node_params), a);
 
-    sign_packet(doc, a, _request);
+    setup_common_and_sign(doc, a, _request, method());
 
     if (!params_.full_log_)
     {

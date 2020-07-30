@@ -24,6 +24,8 @@ namespace HistoryControl
         void serialize(Out coll_helper &_coll) const override;
         bool unserialize(const coll_helper &_coll) override;
 
+        QString getSid() const;
+
         QString formatRecentsText() const;
         QString formatItemText() const;
         QString formatDurationText() const;
@@ -44,6 +46,7 @@ namespace HistoryControl
     private:
         VoipEventInfo(const int32_t timestamp);
 
+        QString Sid_;
         QString ContactAimid_;
         int32_t Timestamp_;
         voip_event_type Type_;

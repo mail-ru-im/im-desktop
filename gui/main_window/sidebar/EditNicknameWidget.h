@@ -31,7 +31,6 @@ namespace Ui
                 , fixedSize_(false)
             {
             }
-
             QString nickName_;
             QString fixedPart_;
             bool groupMode_;
@@ -39,7 +38,7 @@ namespace Ui
             QMargins margins_;
         };
 
-        EditNicknameWidget(QWidget* _parent = nullptr, const FormData& _initData = FormData());
+        EditNicknameWidget(QWidget* _parent = nullptr, const FormData& _initData = {});
         ~EditNicknameWidget();
 
         FormData getFormData() const;

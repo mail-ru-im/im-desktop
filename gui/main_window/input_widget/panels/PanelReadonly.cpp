@@ -4,27 +4,34 @@
 
 #include "main_window/contact_list/ContactListModel.h"
 #include "main_window/contact_list/RecentsModel.h"
-#include "main_window/friendly/FriendlyContainer.h"
+#include "main_window/containers/FriendlyContainer.h"
 #include "main_window/GroupChatOperations.h"
 
 #include "controls/CustomButton.h"
 #include "utils/utils.h"
 #include "utils/stat_utils.h"
 #include "utils/features.h"
+#include "utils/InterConnector.h"
 #include "styles/ThemeParameters.h"
 #include "fonts.h"
 #include "core_dispatcher.h"
 
 namespace
 {
-    QSize shareButtonSize()
+    constexpr QSize shareButtonSize() noexcept
     {
         return QSize(32, 32);
     }
 
+    constexpr int cancelIconSize() noexcept
+    {
+        return 24;
+    }
+
     bool isShareButtonEnabled(const Ui::ReadonlyPanelState _state)
     {
-        return _state != Ui::ReadonlyPanelState::DeleteAndLeave && _state != Ui::ReadonlyPanelState::Unblock;
+        const std::vector<Ui::ReadonlyPanelState> disabled = { Ui::ReadonlyPanelState::DeleteAndLeave, Ui::ReadonlyPanelState::Unblock, Ui::ReadonlyPanelState::Start };
+        return std::none_of(disabled.begin(), disabled.end(), [_state](const auto s) { return s == _state; });
     }
 }
 
@@ -56,14 +63,14 @@ namespace Ui
 
         setTabOrder(mainButton_, shareButton_);
 
-        Testing::setAccessibleName(shareButton_, qsl("AS inputwidget shareButton_"));
-        Testing::setAccessibleName(mainButton_, qsl("AS inputwidget mainButton_"));
-        Testing::setAccessibleName(shareHost, qsl("AS inputwidget shareHost"));
+        Testing::setAccessibleName(shareButton_, qsl("AS ChatInput shareButton"));
+        Testing::setAccessibleName(mainButton_, qsl("AS ChatInput mainButton"));
+        Testing::setAccessibleName(shareHost, qsl("AS ChatInput shareHost"));
 
         connect(mainButton_, &RoundButton::clicked, this, &InputPanelReadonly::onButtonClicked);
         connect(shareButton_, &CustomButton::clicked, this, &InputPanelReadonly::onShareClicked);
 
-        connect(Ui::GetDispatcher(), &Ui::core_dispatcher::chatInfo, this, [this](const auto, const auto& _chatInfo){ updateFromChatInfo(_chatInfo); });
+        connect(GetDispatcher(), &core_dispatcher::chatInfo, this, [this](const auto, const auto& _chatInfo){ updateFromChatInfo(_chatInfo); });
 
         updateStyle(InputStyleMode::Default);
     }
@@ -73,17 +80,8 @@ namespace Ui
         if (aimId_ != _aimId)
         {
             aimId_ = _aimId;
-
-            if (const auto contact = Logic::getContactListModel()->getContactItem(aimId_))
-            {
-                stamp_ = contact->get_stamp();
-                isChannel_ = contact->is_channel();
-            }
-            else
-            {
-                stamp_ = Logic::getContactListModel()->getChatStamp(aimId_);
-                isChannel_ = false;
-            }
+            stamp_ = Logic::getContactListModel()->getChatStamp(aimId_);
+            isChannel_ = Logic::getContactListModel()->isChannel(aimId_);
         }
     }
 
@@ -94,7 +92,7 @@ namespace Ui
 
         shareButton_->setVisible(isShareButtonEnabled(state_) && !stamp_.isEmpty());
 
-        if (state_ == ReadonlyPanelState::AddToContactList)
+        if (state_ == ReadonlyPanelState::AddToContactList || state_ == ReadonlyPanelState::Start)
         {
             mainButton_->setColors(
                 Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY),
@@ -111,33 +109,45 @@ namespace Ui
             );
         }
 
+        constexpr auto fontSize = platform::is_apple() ? 15 : 16;
+
         mainButton_->setUpdatesEnabled(false);
         switch (state_)
         {
         case ReadonlyPanelState::AddToContactList:
-            mainButton_->setTextColor(Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT));
+            mainButton_->setTextColor(Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE));
             mainButton_->setIcon(qsl(":/input/add"));
-            mainButton_->setText(isChannel_ ? QT_TRANSLATE_NOOP("input_widget", "Subscribe") : QT_TRANSLATE_NOOP("input_widget", "Join"), platform::is_apple() ? 15 : 16);
+            mainButton_->setText(isChannel_ ? QT_TRANSLATE_NOOP("input_widget", "Subscribe") : QT_TRANSLATE_NOOP("input_widget", "Join"), fontSize);
             break;
         case ReadonlyPanelState::EnableNotifications:
-            mainButton_->setTextColor(Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY));
+            mainButton_->setTextColor(Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY));
             mainButton_->setIcon(qsl(":/input/unmute"));
-            mainButton_->setText(QT_TRANSLATE_NOOP("input_widget", "Enable notifications"), platform::is_apple() ? 15 : 16);
+            mainButton_->setText(QT_TRANSLATE_NOOP("input_widget", "Enable notifications"), fontSize);
             break;
         case ReadonlyPanelState::DisableNotifications:
-            mainButton_->setTextColor(Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
+            mainButton_->setTextColor(Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY));
             mainButton_->setIcon(qsl(":/input/mute"));
-            mainButton_->setText(QT_TRANSLATE_NOOP("input_widget", "Disable notifications"), platform::is_apple() ? 15 : 16);
+            mainButton_->setText(QT_TRANSLATE_NOOP("input_widget", "Disable notifications"), fontSize);
             break;
         case ReadonlyPanelState::DeleteAndLeave:
             mainButton_->setTextColor(Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_ATTENTION));
             mainButton_->setIcon(qsl(":/input/delete"));
-            mainButton_->setText(QT_TRANSLATE_NOOP("input_widget", "Delete and leave"), platform::is_apple() ? 15 : 16);
+            mainButton_->setText(QT_TRANSLATE_NOOP("input_widget", "Delete and leave"), fontSize);
+            break;
+        case ReadonlyPanelState::CancelJoin:
+            mainButton_->setTextColor(Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_ATTENTION));
+            mainButton_->setIcon(qsl(":/controls/close_icon"), cancelIconSize());
+            mainButton_->setText(QT_TRANSLATE_NOOP("input_widget", "Cancel request"), fontSize);
             break;
         case ReadonlyPanelState::Unblock:
             mainButton_->setTextColor(Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_ATTENTION));
             mainButton_->setIcon(qsl(":/input/unlock"));
-            mainButton_->setText(QT_TRANSLATE_NOOP("input_widget", "Unblock"), platform::is_apple() ? 15 : 16);
+            mainButton_->setText(QT_TRANSLATE_NOOP("input_widget", "Unblock"), fontSize);
+            break;
+        case ReadonlyPanelState::Start:
+            mainButton_->setTextColor(Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT));
+            mainButton_->setIcon(QPixmap());
+            mainButton_->setText(QT_TRANSLATE_NOOP("input_widget", "Start"), fontSize);
             break;
 
         default:
@@ -169,8 +179,16 @@ namespace Ui
             leaveClicked();
             break;
 
+        case ReadonlyPanelState::CancelJoin:
+            cancelJoinClicked();
+            break;
+
         case ReadonlyPanelState::Unblock:
             unblockClicked();
+            break;
+
+        case ReadonlyPanelState::Start:
+            startClicked();
             break;
 
         default:
@@ -184,7 +202,7 @@ namespace Ui
         assert(!stamp_.isEmpty());
         if (!stamp_.isEmpty())
         {
-            const QString link = qsl("https://") % Utils::getDomainUrl() % ql1c('/') % stamp_;
+            const QString link = u"https://" % Utils::getDomainUrl() % u'/' % stamp_;
             if (const auto count = forwardMessage(link, QString(), QString(), false))
                 Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::sharingscr_choicecontact_action, { { "count", Utils::averageCount(count) } });
         }
@@ -236,10 +254,20 @@ namespace Ui
         if (confirmed)
         {
             Logic::getContactListModel()->removeContactFromCL(aimId_);
-            GetDispatcher()->getVoipController().setDecline(aimId_.toUtf8().constData(), false);
+            GetDispatcher()->getVoipController().setDecline("", aimId_.toUtf8().constData(), false);
 
             Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::chatscr_leave_action, { {"chat_type", getStatsChatTypeReadonly() } });
         }
+    }
+
+    void InputPanelReadonly::cancelJoinClicked()
+    {
+        Utils::showCancelGroupJoinDialog(aimId_);
+    }
+
+    void InputPanelReadonly::startClicked()
+    {
+        Q_EMIT Utils::InterConnector::instance().startBot();
     }
 
     std::string InputPanelReadonly::getStatsChatTypeReadonly() const
@@ -253,7 +281,7 @@ namespace Ui
             return;
 
         stamp_ = _chatInfo->Stamp_;
-        isChannel_ = _chatInfo->DefaultRole_ == qsl("readonly");
+        isChannel_ = _chatInfo->isChannel();
         setState(currentState());
     }
 

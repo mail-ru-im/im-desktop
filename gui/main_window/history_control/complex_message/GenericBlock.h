@@ -68,17 +68,19 @@ public:
 
     const QString& getChatAimid() const;
 
-    virtual QString getSourceText() const override;
+    QString getSourceText() const override;
 
-    virtual QString getPlaceholderText() const override;
+    QString getTextInstantEdit() const override;
 
-    virtual const QString& getLink() const override;
+    QString getPlaceholderText() const override;
 
-    virtual QString getTextForCopy() const override;
+    const QString& getLink() const override;
 
-    virtual bool isBubbleRequired() const override;
+    QString getTextForCopy() const override;
 
-    virtual bool isMarginRequired() const override;
+    bool isBubbleRequired() const override;
+
+    bool isMarginRequired() const override;
 
     void setBubbleRequired(bool required);
 
@@ -92,7 +94,7 @@ public:
 
     bool isSenderVisible() const;
 
-    MenuFlags getMenuFlags() const override;
+    MenuFlags getMenuFlags(QPoint p) const override;
 
     bool onMenuItemTriggered(const QVariantMap &params) override;
 
@@ -122,7 +124,7 @@ public:
 
     void setGalleryId(qint64 _msgId);
 
-    virtual void setEmojiSizeType(const TextRendering::EmojiSizeType& _emojiSizeType) {}
+    virtual void setEmojiSizeType(const TextRendering::EmojiSizeType _emojiSizeType) {}
 
     void setInsideQuote(bool _inside);
 

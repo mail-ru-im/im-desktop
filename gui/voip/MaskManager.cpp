@@ -98,7 +98,7 @@ void voip_masks::MaskManager::onModelLoaded()
     if (!existentListLoaded_)
         loadExistentMasks();
 
-    updateTimer_->start(updateTimeout.count());
+    updateTimer_->start(updateTimeout);
 }
 
 void voip_masks::MaskManager::onLoaded(qint64 _seq, const QString& _localPath)
@@ -128,7 +128,7 @@ void voip_masks::MaskManager::onRetryUpdate()
     previewSeqList_.clear();
     maskSeqList_.clear();
 
-    updateTimer_->start(retryUpdateTimeout.count());
+    updateTimer_->start(retryUpdateTimeout);
 }
 
 void voip_masks::MaskManager::onExistentMasksLoaded(const std::vector<Data::Mask> &_masks)

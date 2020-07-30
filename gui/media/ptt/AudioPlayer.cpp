@@ -129,7 +129,7 @@ namespace ptt
         : QObject(_parent)
         , positionTimer_(new QTimer(this))
     {
-        impl_ = std::make_unique<AudioPlayerImpl>([this](State s) { emit stateChanged(s, QPrivateSignal()); });
+        impl_ = std::make_unique<AudioPlayerImpl>([this](State s) { Q_EMIT stateChanged(s, QPrivateSignal()); });
 
         QObject::connect(Ui::GetSoundsManager(), &Ui::SoundsManager::pttFinished, this, [this](int _id, bool _ended)
         {
@@ -151,7 +151,7 @@ namespace ptt
             }
         });
 
-        positionTimer_->setInterval(positionTimeout().count());
+        positionTimer_->setInterval(positionTimeout());
         QObject::connect(positionTimer_, &QTimer::timeout, this, &AudioPlayer::onPositionTimer);
     }
 
@@ -214,15 +214,15 @@ namespace ptt
         positionTimer_->stop();
         impl_->stop();
 
-        emit timePositionChanged(impl_->duration(), QPrivateSignal());
-        emit samplePositionChanged(-1, QPrivateSignal());
+        Q_EMIT timePositionChanged(impl_->duration(), QPrivateSignal());
+        Q_EMIT samplePositionChanged(-1, QPrivateSignal());
     }
 
     void AudioPlayer::onPositionTimer()
     {
         const auto pos = impl_->getCurrentSampleOffset();
         if (const auto time = timePosition(pos); time)
-            emit timePositionChanged(*time, QPrivateSignal());
-        emit samplePositionChanged(pos, QPrivateSignal());
+            Q_EMIT timePositionChanged(*time, QPrivateSignal());
+        Q_EMIT samplePositionChanged(pos, QPrivateSignal());
     }
 }

@@ -46,7 +46,7 @@ void FileSharingLoader::loadPreview()
 
 void FileSharingLoader::cancel()
 {
-    Ui::GetDispatcher()->abortSharedFileDownloading(link_);
+    Ui::GetDispatcher()->abortSharedFileDownloading(link_, seq_);
     seq_ = 0;
 
     disconnectSignals();
@@ -54,7 +54,7 @@ void FileSharingLoader::cancel()
 
 void FileSharingLoader::cancelPreview()
 {
-    Ui::GetDispatcher()->cancelLoaderTask(previewLink_);
+    Ui::GetDispatcher()->cancelLoaderTask(previewLink_, seq_);
     seq_ = 0;
 
     disconnectSignals();
@@ -97,7 +97,7 @@ void FileSharingLoader::onPreviewDownloaded(qint64 _seq, QString _url, QPixmap _
         return;
 
     seq_ = 0;
-    emit previewLoaded(_image, originSize_);
+    Q_EMIT previewLoaded(_image, originSize_);
 
     disconnectSignals();
 }
@@ -108,7 +108,7 @@ void FileSharingLoader::onFileDownloaded(int64_t _seq, const Data::FileSharingDo
         return;
 
     seq_ = 0;
-    emit fileLoaded(_result.filename_);
+    Q_EMIT fileLoaded(_result.filename_);
 
     disconnectSignals();
 }
@@ -116,7 +116,7 @@ void FileSharingLoader::onFileDownloaded(int64_t _seq, const Data::FileSharingDo
 void FileSharingLoader::onFileError(qint64 _seq)
 {
     if (seq_ == _seq)
-        emit error();
+        Q_EMIT error();
 }
 
 void FileSharingLoader::connectSignals()
@@ -169,7 +169,7 @@ void CommonMediaLoader::loadPreview()
 
 void CommonMediaLoader::cancel()
 {
-    Ui::GetDispatcher()->cancelLoaderTask(downloadLink_.isEmpty() ? link_ : downloadLink_);
+    Ui::GetDispatcher()->cancelLoaderTask(downloadLink_.isEmpty() ? link_ : downloadLink_, seq_);
     seq_ = 0;
 
     disconnectSignals();
@@ -177,7 +177,7 @@ void CommonMediaLoader::cancel()
 
 void CommonMediaLoader::cancelPreview()
 {
-    Ui::GetDispatcher()->cancelLoaderTask(link_);
+    Ui::GetDispatcher()->cancelLoaderTask(link_, seq_);
     seq_ = 0;
 
     disconnectSignals();
@@ -191,9 +191,9 @@ void CommonMediaLoader::onImageDownloaded(qint64 _seq, const QString& _url, cons
     seq_ = 0;
 
     if (!_image.isNull())
-        emit previewLoaded(_image, originSize_);
+        Q_EMIT previewLoaded(_image, originSize_);
     else
-        emit fileLoaded(_path);
+        Q_EMIT fileLoaded(_path);
 
     disconnectSignals();
 }
@@ -203,8 +203,8 @@ void CommonMediaLoader::onImageMetaDownloaded(qint64 _seq, const Data::LinkMetad
     if (seq_ != _seq)
         return;
 
-    isVideo_ = _meta.getContentTypeStr() == ql1s("video");
-    isGif_ = _meta.getContentTypeStr() == ql1s("gif");
+    isVideo_ = _meta.getContentTypeStr() == u"video";
+    isGif_ = _meta.getContentTypeStr() == u"gif";
     originSize_ = _meta.getOriginSize();
     downloadLink_ = _meta.getDownloadUri();
 }
@@ -213,7 +213,7 @@ void CommonMediaLoader::onImageError(qint64 _seq)
 {
     if (seq_ == _seq)
     {
-        emit error();
+        Q_EMIT error();
         disconnectSignals();
     }
 }
@@ -223,7 +223,7 @@ void CommonMediaLoader::onProgress(qint64 _seq, int64_t _bytesTotal, int64_t _by
     Q_UNUSED(_pctTransferred)
 
     if (seq_ == _seq)
-        emit progress(_bytesTotal, _bytesTransferred);
+        Q_EMIT progress(_bytesTotal, _bytesTransferred);
 }
 
 void CommonMediaLoader::connectSignals()

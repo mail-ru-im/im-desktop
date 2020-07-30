@@ -4,9 +4,6 @@
 #include "ServiceRequestsFactory.h"
 #include "RequestHandlersFactory.h"
 
-#include "ServiceRequest.h"
-#include "RequestHandler.h"
-
 namespace Utils
 {
 
@@ -35,7 +32,7 @@ void ServiceUrlsManager::processNewServiceURls(const QVector<QString> &_urlsVect
     }
 }
 
-void ServiceUrlsManager::handleServiceRequest(ServiceRequest* _request)
+void ServiceUrlsManager::handleServiceRequest(std::shared_ptr<ServiceRequest> _request)
 {
     auto handler = RequestHandlersFactory::handlerForRequest(_request);
     assert(handler && "couldn't get handler for request");
@@ -43,9 +40,7 @@ void ServiceUrlsManager::handleServiceRequest(ServiceRequest* _request)
         return;
 
     connectToHandler(handler);
-    addRequestToHandler(_request, handler);
-
-    handler->start();
+    addRequestToHandler(std::move(_request), std::move(handler))->start();
 }
 
 void ServiceUrlsManager::onRequestHandled(ServiceRequest::Id _id, const RequestHandler::Result& _result)
@@ -53,45 +48,39 @@ void ServiceUrlsManager::onRequestHandled(ServiceRequest::Id _id, const RequestH
     removeRequest(_id);
 }
 
-void ServiceUrlsManager::connectToHandler(RequestHandler *_handler)
+void ServiceUrlsManager::connectToHandler(const std::unique_ptr<RequestHandler>& _handler)
 {
-    connect(_handler, &RequestHandler::finished,
+    connect(_handler.get(), &RequestHandler::finished,
             this, &ServiceUrlsManager::onRequestHandled);
 }
 
-void ServiceUrlsManager::addRequestToHandler(ServiceRequest *_request, RequestHandler *_handler)
+std::unique_ptr<RequestHandler>& ServiceUrlsManager::addRequestToHandler(std::shared_ptr<ServiceRequest> _request, std::unique_ptr<RequestHandler> _handler)
 {
-    requestToHandler_[_request] = _handler;
+    auto& x = requestToHandler_[std::move(_request)];
+    x = std::move(_handler);
+    return x;
 }
 
 void ServiceUrlsManager::stopAllRequests()
 {
-    for (auto it: requestToHandler_)
-    {
+    for (auto& it: requestToHandler_)
         it.second->stop();
-    }
 }
 
 void ServiceUrlsManager::removeAllRequests()
 {
-    for (auto [request, handler]: requestToHandler_)
-    {
-        delete request;
-        handler->deleteLater();
-    }
-
     requestToHandler_.clear();
 }
 
 void ServiceUrlsManager::removeRequest(ServiceRequest::Id _reqId)
 {
-    auto it = std::find_if(requestToHandler_.begin(), requestToHandler_.end(),
-                           [_reqId](const RequestHandlersContainer::value_type& val)
+    const auto it = std::find_if(requestToHandler_.cbegin(), requestToHandler_.cend(),
+                           [_reqId](const auto& val)
     {
         return val.first->getId() == _reqId;
     });
 
-    if (it != requestToHandler_.end())
+    if (it != requestToHandler_.cend())
         requestToHandler_.erase(it);
 }
 

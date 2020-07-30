@@ -24,9 +24,10 @@ namespace core::wim
         virtual ~get_dialog_gallery();
 
         const core::archive::gallery_storage& get_gallery() const;
+        virtual priority_t get_priority() const override;
 
     private:
-        virtual int32_t init_request(std::shared_ptr<core::http_request_simple> _request) override;
+        virtual int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
         virtual int32_t parse_results(const rapidjson::Value& _node_results) override;
 
         core::archive::gallery_storage gallery_;
@@ -36,7 +37,6 @@ namespace core::wim
         const core::archive::gallery_entry_id from_;
         const core::archive::gallery_entry_id till_;
         const int count_;
-        const std::string my_aimid_;
         bool parse_for_patches_;
     };
 }

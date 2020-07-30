@@ -27,7 +27,7 @@ namespace
     constexpr auto uri_too_long_code = 414;
 }
 
-http_request_simple::http_request_simple(proxy_settings _proxy_settings, std::string _user_agent, stop_function _stop_func, progress_function _progress_func)
+http_request_simple::http_request_simple(proxy_settings _proxy_settings, std::string _user_agent, priority_t _priority, stop_function _stop_func, progress_function _progress_func)
     : stop_func_(std::move(_stop_func)),
     progress_func_(std::move(_progress_func)),
     response_code_(0),
@@ -44,7 +44,7 @@ http_request_simple::http_request_simple(proxy_settings _proxy_settings, std::st
     write_data_log_(true),
     need_log_original_url_(false),
     keep_alive_(false),
-    priority_(high_priority()),
+    priority_(_priority),
     proxy_settings_(std::move(_proxy_settings)),
     user_agent_(std::move(_user_agent)),
     post_data_(nullptr),
@@ -487,11 +487,6 @@ void core::http_request_simple::set_keep_alive()
     keep_alive_ = true;
 
     custom_headers_.emplace_back("Connection: keep-alive");
-}
-
-void core::http_request_simple::set_priority(priority_t _priority)
-{
-    priority_ = _priority;
 }
 
 void core::http_request_simple::set_multi(bool _multi)

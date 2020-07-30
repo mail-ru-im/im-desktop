@@ -3,17 +3,18 @@
 #ifdef _WIN32
 #pragma warning( disable : 35038)
 #include <WinSDKVer.h>
-#define WINVER 0x0501
-#define _WIN32_WINDOWS 0x0501
-#define _WIN32_WINNT 0x0600
+#define WINVER 0x0601
+#define _WIN32_WINDOWS 0x0601
+#define _WIN32_WINNT 0x0601
+#define NTDDI_VERSION 0x06010000
 
 #define _CRT_SECURE_NO_WARNINGS
 #define _WIN32_LEAN_AND_MEAN
-#define _ATL_XP_TARGETING
 
 #include "win32/targetver.h"
 #include <boost/asio.hpp>
 #include <Windows.h>
+#include <VersionHelpers.h>
 #include <Shlobj.h>
 #include <atlbase.h>
 #include <atlstr.h>
@@ -24,6 +25,7 @@
 #define BOOST_STACKTRACE_GNU_SOURCE_NOT_REQUIRED
 
 #include <algorithm>
+#include <numeric>
 #include <atomic>
 #include <cassert>
 #include <ctime>
@@ -55,6 +57,8 @@
 #include <vector>
 #include <optional>
 #include <type_traits>
+#include <charconv>
+#include <typeinfo>
 #include <assert.h>
 
 #if defined(_WIN32) || defined(__linux__)
@@ -67,6 +71,7 @@
 #include <boost/bind.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/range/adaptor/reversed.hpp>
+#include <boost/range/adaptor/map.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/format.hpp>
 #include <boost/lexical_cast.hpp>
@@ -136,6 +141,10 @@ namespace core
     constexpr inline priority_t priority_protocol() noexcept { return 2; }
 
     constexpr inline priority_t top_priority() noexcept { return 3; }
+
+    constexpr inline priority_t packets_priority_high() noexcept { return 40; }
+    constexpr inline priority_t packets_priority() noexcept { return 45; }
+
     constexpr inline priority_t highest_priority() noexcept { return 50; }
     constexpr inline priority_t high_priority() noexcept { return 100; }
     constexpr inline priority_t default_priority() noexcept { return 150; }

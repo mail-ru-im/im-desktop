@@ -61,7 +61,7 @@ namespace Ui
     public:
         MyInfoPlate(QWidget* _parent, const QString& _iconPath, int _leftMargin = 0, const QString& _infoEmptyStr = QString(), Qt::Alignment _align = Qt::AlignTop, int _maxInfoLinesCount = -1, int _correctTopMargin = 0, int _correctBottomMargin = 0, bool _canRedo = true);
         void setHeader(const QString& header);
-        void setInfo(const QString& info, const QString& prefix = QString());
+        void setInfo(const QString& info, QStringView prefix = {});
         QString getInfoText() const;
         QString getInfoStr() const;
         void setRedoAvailable(const bool _value) { redoAvailable_ = _value; };
@@ -93,11 +93,11 @@ namespace Ui
         Q_OBJECT
     public:
         explicit MyProfilePage(QWidget* _parent);
-        void initFor(const QString& _aimId) override;
+        void initFor(const QString& _aimId, SidebarParams _params = {}) override;
         void setFrameCountMode(FrameCountMode _mode) override;
         void close() override;
 
-    signals:
+    Q_SIGNALS:
         void headerBackButtonClicked() const;
 
     protected:
@@ -110,6 +110,7 @@ namespace Ui
         void onUpdateProfile(int _error);
         void editAvatarClicked();
         void viewAvatarClicked();
+        void avatarMouseEnter();
         void avatarChanged();
         void avatarCancelSelect();
         void showAvatarMenu();
@@ -125,6 +126,7 @@ namespace Ui
         void init();
         void updateInfo();
         void sendCommonStat();
+        void updateAvatarMode();
 
     private:
         QString currentAimId_;

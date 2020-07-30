@@ -23,7 +23,7 @@ namespace core
             const std::string friendly_;
             const std::string aimid_;
 
-            virtual int32_t init_request(std::shared_ptr<core::http_request_simple> _request) override;
+            virtual int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
             virtual int32_t parse_response_data(const rapidjson::Value& _data) override;
 
         public:

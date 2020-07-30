@@ -25,7 +25,7 @@ namespace Ui
         setAttribute(Qt::WA_TransparentForMouseEvents);
 
         resizeTimer_.setSingleShot(true);
-        resizeTimer_.setInterval(resizeTimeout().count());
+        resizeTimer_.setInterval(resizeTimeout());
         connect(&resizeTimer_, &QTimer::timeout, this, &InputBgWidget::requestBg);
 
         connect(chatBg_, &BackgroundWidget::wallpaperChanged, this, &InputBgWidget::onWallpaperChanged);

@@ -28,11 +28,11 @@ void GeneralSettingsWidget::Creator::initVoiceVideo(QWidget* _parent, VoiceAndVi
     mainLayout->setAlignment(Qt::AlignTop);
     mainLayout->setContentsMargins(Utils::scale_value(20), Utils::scale_value(36), Utils::scale_value(20), Utils::scale_value(36));
 
-    Testing::setAccessibleName(mainWidget, qsl("AS settings voip mainWidget"));
+    Testing::setAccessibleName(mainWidget, qsl("AS VoiceAndVideoPage mainWidget"));
     scrollArea->setWidget(mainWidget);
 
     auto layout = Utils::emptyHLayout(_parent);
-    Testing::setAccessibleName(scrollArea, qsl("AS settings voip scrollArea"));
+    Testing::setAccessibleName(scrollArea, qsl("AS VoiceAndVideoPage scrollArea"));
     layout->addWidget(scrollArea);
 
     auto __deviceChanged = [&_voiceAndVideo, _parent](const int ix, const voip_proxy::EvoipDevTypes dev_type)
@@ -67,7 +67,7 @@ void GeneralSettingsWidget::Creator::initVoiceVideo(QWidget* _parent, VoiceAndVi
 
         if (settingsWidget)
         {
-            Testing::setAccessibleName(settingsWidget, qsl("AS voip settingsWidget"));
+            Testing::setAccessibleName(settingsWidget, qsl("AS VoiceAndVideoPage settingsWidget"));
             voip_proxy::device_desc description;
             description.name = info.name;
             description.uid = info.uid;
@@ -87,16 +87,15 @@ void GeneralSettingsWidget::Creator::initVoiceVideo(QWidget* _parent, VoiceAndVi
             vs,
             0,
             -1,
-            [__deviceChanged](QString v, int ix, TextEmojiWidget*)
-        {
-            __deviceChanged(ix, voip_proxy::kvoipDevTypeAudioCapture);
-        },
-            [](bool) -> QString { return QString(); });
+            [__deviceChanged](const QString&, int ix, TextEmojiWidget*)
+            {
+                __deviceChanged(ix, voip_proxy::kvoipDevTypeAudioCapture);
+            });
 
         _voiceAndVideo.audioCaptureDevices = di.menu;
         _voiceAndVideo.aCapSelected = di.currentSelected;
-        Testing::setAccessibleName(_voiceAndVideo.audioCaptureDevices, qsl("AS voip audioCaptureDevices"));
-        Testing::setAccessibleName(_voiceAndVideo.aCapSelected, qsl("AS voip aCapSelected"));
+        Testing::setAccessibleName(_voiceAndVideo.audioCaptureDevices, qsl("AS VoiceAndVideoPage audioCaptureDevices"));
+        Testing::setAccessibleName(_voiceAndVideo.aCapSelected, qsl("AS VoiceAndVideoPage audioCaptureDevicesSelected"));
         mainLayout->addSpacing(Utils::scale_value(20));
     }
     {
@@ -109,16 +108,15 @@ void GeneralSettingsWidget::Creator::initVoiceVideo(QWidget* _parent, VoiceAndVi
             vs,
             0,
             -1,
-            [__deviceChanged](QString v, int ix, TextEmojiWidget*)
-        {
-            __deviceChanged(ix, voip_proxy::kvoipDevTypeAudioPlayback);
-        },
-            [](bool) -> QString { return QString(); });
+            [__deviceChanged](const QString&, int ix, TextEmojiWidget*)
+            {
+                __deviceChanged(ix, voip_proxy::kvoipDevTypeAudioPlayback);
+            });
 
         _voiceAndVideo.audioPlaybackDevices = di.menu;
         _voiceAndVideo.aPlaSelected = di.currentSelected;
-        Testing::setAccessibleName(_voiceAndVideo.audioPlaybackDevices, qsl("AS voip audioPlaybackDevices"));
-        Testing::setAccessibleName(_voiceAndVideo.aPlaSelected, qsl("AS voip aPlaSelected"));
+        Testing::setAccessibleName(_voiceAndVideo.audioPlaybackDevices, qsl("AS VoiceAndVideoPage audioPlaybackDevices"));
+        Testing::setAccessibleName(_voiceAndVideo.aPlaSelected, qsl("AS VoiceAndVideoPage  audioPlaybackDevicesSelected"));
         mainLayout->addSpacing(Utils::scale_value(20));
     }
     {
@@ -131,16 +129,15 @@ void GeneralSettingsWidget::Creator::initVoiceVideo(QWidget* _parent, VoiceAndVi
             vs,
             0,
             -1,
-            [__deviceChanged](QString v, int ix, TextEmojiWidget*)
-        {
-            __deviceChanged(ix, voip_proxy::kvoipDevTypeVideoCapture);
-        },
-            [](bool) -> QString { return QString(); });
+            [__deviceChanged](const QString&, int ix, TextEmojiWidget*)
+            {
+                __deviceChanged(ix, voip_proxy::kvoipDevTypeVideoCapture);
+            });
 
         _voiceAndVideo.videoCaptureDevices = di.menu;
         _voiceAndVideo.vCapSelected = di.currentSelected;
-        Testing::setAccessibleName(_voiceAndVideo.videoCaptureDevices, qsl("AS voip videoCaptureDevices"));
-        Testing::setAccessibleName(_voiceAndVideo.vCapSelected, qsl("AS voip vCapSelected"));
+        Testing::setAccessibleName(_voiceAndVideo.videoCaptureDevices, qsl("AS VoiceAndVideoPage videoCaptureDevices"));
+        Testing::setAccessibleName(_voiceAndVideo.vCapSelected, qsl("AS VoiceAndVideoPage videoCaptureDevicesSelected"));
         mainLayout->addSpacing(Utils::scale_value(20));
     }
 }

@@ -47,11 +47,11 @@ namespace Ui
 
         connect(this, &ClickableWidget::clicked, this, [this]()
         {
-            emit wallpaperClicked(getId(), QPrivateSignal());
+            Q_EMIT wallpaperClicked(getId(), QPrivateSignal());
         });
 
-        connect(this, &ClickableWidget::hoverChanged, this, Utils::QOverload<>::of(&WallpaperWidget::update));
-        connect(this, &ClickableWidget::pressChanged, this, Utils::QOverload<>::of(&WallpaperWidget::update));
+        connect(this, &ClickableWidget::hoverChanged, this, qOverload<>(&WallpaperWidget::update));
+        connect(this, &ClickableWidget::pressChanged, this, qOverload<>(&WallpaperWidget::update));
     }
 
     const Styling::WallpaperId& WallpaperWidget::getId() const noexcept

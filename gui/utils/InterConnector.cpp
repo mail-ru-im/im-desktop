@@ -54,9 +54,7 @@ namespace Utils
     Ui::HistoryControlPage* InterConnector::getHistoryPage(const QString& aimId) const
     {
         if (MainWindow_)
-        {
             return MainWindow_->getHistoryPage(aimId);
-        }
 
         return nullptr;
     }
@@ -89,6 +87,12 @@ namespace Utils
     {
         if (MainWindow_)
             MainWindow_->showSidebar(aimId);
+    }
+
+    void InterConnector::showSidebarWithParams(const QString &aimId, Ui::SidebarParams _params)
+    {
+        if (MainWindow_)
+            MainWindow_->showSidebarWithParams(aimId, std::move(_params));
     }
 
     void InterConnector::showMembersInSidebar(const QString& aimId)
@@ -198,17 +202,17 @@ namespace Utils
                     w.first->setAttribute(Qt::WA_TransparentForMouseEvents, _enable);
             }
 
-            emit multiselectChanged();
+            Q_EMIT multiselectChanged();
             if (_fromKeyboard)
             {
                 clearPartialSelection(current);
-                emit multiSelectCurrentElementChanged();
+                Q_EMIT multiSelectCurrentElementChanged();
             }
 
             auto from = _enable ? 0 : 100;
             auto to = _enable ? 100 : 0;
             multiselectAnimation_.finish();
-            multiselectAnimation_.start([this]() { emit multiselectAnimationUpdate(); }, from, to, 100);
+            multiselectAnimation_.start([this]() { Q_EMIT multiselectAnimationUpdate(); }, from, to, 100);
         }
     }
 
@@ -230,12 +234,14 @@ namespace Utils
         else
             currentElement_ = MultiselectCurrentElement::Cancel;
 
-        emit multiSelectCurrentElementChanged();
+        Q_EMIT multiSelectCurrentElementChanged();
     }
 
     void InterConnector::multiselectNextElementRight()
     {
         if (currentElement_ == MultiselectCurrentElement::Delete)
+            currentElement_ = MultiselectCurrentElement::Favorites;
+        else if (currentElement_ == MultiselectCurrentElement::Favorites)
             currentElement_ = MultiselectCurrentElement::Copy;
         else if (currentElement_ == MultiselectCurrentElement::Copy)
             currentElement_ = MultiselectCurrentElement::Reply;
@@ -246,7 +252,7 @@ namespace Utils
         else
             return;
 
-        emit multiSelectCurrentElementChanged();
+        Q_EMIT multiSelectCurrentElementChanged();
     }
 
     void InterConnector::multiselectNextElementLeft()
@@ -258,29 +264,31 @@ namespace Utils
         else if (currentElement_ == MultiselectCurrentElement::Reply)
             currentElement_ = MultiselectCurrentElement::Copy;
         else if (currentElement_ == MultiselectCurrentElement::Copy)
+            currentElement_ = MultiselectCurrentElement::Favorites;
+        else if (currentElement_ == MultiselectCurrentElement::Favorites)
             currentElement_ = MultiselectCurrentElement::Delete;
         else
             return;
 
-        emit multiSelectCurrentElementChanged();
+        Q_EMIT multiSelectCurrentElementChanged();
     }
 
     void InterConnector::multiselectNextElementUp(bool _shift)
     {
         if (currentElement_ == MultiselectCurrentElement::Message)
-            emit multiSelectCurrentMessageUp(_shift);
+            Q_EMIT multiSelectCurrentMessageUp(_shift);
     }
 
     void InterConnector::multiselectNextElementDown(bool _shift)
     {
         if (currentElement_ == MultiselectCurrentElement::Message)
-            emit multiSelectCurrentMessageDown(_shift);
+            Q_EMIT multiSelectCurrentMessageDown(_shift);
     }
 
     void InterConnector::multiselectSpace()
     {
         if (currentElement_ == MultiselectCurrentElement::Message)
-            emit multiselectSpaceClicked();
+            Q_EMIT multiselectSpaceClicked();
     }
 
     void InterConnector::multiselectEnter()
@@ -288,13 +296,15 @@ namespace Utils
         if (currentElement_ == MultiselectCurrentElement::Cancel)
             setMultiselect(false);
         else if (currentElement_ == MultiselectCurrentElement::Delete)
-            emit multiselectDelete();
+            Q_EMIT multiselectDelete();
+        else if (currentElement_ == MultiselectCurrentElement::Favorites)
+            Q_EMIT multiselectFavorites();
         else if (currentElement_ == MultiselectCurrentElement::Forward)
-            emit multiselectForward(Logic::getContactListModel()->selectedContact());
+            Q_EMIT multiselectForward(Logic::getContactListModel()->selectedContact());
         else if (currentElement_ == MultiselectCurrentElement::Copy)
-            emit multiselectCopy();
+            Q_EMIT multiselectCopy();
         else if (currentElement_ == MultiselectCurrentElement::Reply)
-            emit multiselectReply();
+            Q_EMIT multiselectReply();
     }
 
     qint64 InterConnector::currentMultiselectMessage() const
@@ -305,7 +315,7 @@ namespace Utils
     void InterConnector::setCurrentMultiselectMessage(qint64 _id)
     {
         currentMessage_ = _id;
-        emit multiSelectCurrentMessageChanged();
+        Q_EMIT multiSelectCurrentMessageChanged();
     }
 
     MultiselectCurrentElement InterConnector::currentMultiselectElement() const
@@ -348,5 +358,20 @@ namespace Utils
     {
         if (auto page = getHistoryPage(_aimid))
             page->clearPartialSelection();
+    }
+
+    void InterConnector::openGallery(const QString &_aimId, const QString &_link, int64_t _msgId, Ui::DialogPlayer* _attachedPlayer)
+    {
+        auto mainWindow = getMainWindow();
+        if (!mainWindow)
+            return;
+
+#ifdef __APPLE__
+        QTimer::singleShot(50, [mainWindow, _aimId, _link, _msgId, _attachedPlayer](){
+#endif //__APPLE__
+            mainWindow->openGallery(_aimId, _link, _msgId, _attachedPlayer);
+#ifdef __APPLE__
+        });
+#endif //__APPLE
     }
 }

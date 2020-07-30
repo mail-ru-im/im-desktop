@@ -159,18 +159,6 @@ namespace platform
 #endif
     }
 
-    inline bool is_windows_vista_or_late()
-    {
-#if defined(_WIN32)
-        OSVERSIONINFO os_version;
-        os_version.dwOSVersionInfoSize = sizeof(os_version);
-        ::GetVersionEx(&os_version);
-        return (os_version.dwMajorVersion >= 6);
-#else
-        return false;
-#endif
-    }
-
     constexpr bool is_apple() noexcept
     {
 #if defined(__APPLE__)
@@ -378,7 +366,7 @@ namespace core
             //                              2 for make full dump
 
             if constexpr (platform::is_apple())
-                return !build::is_debug() && !build::is_store();
+                return environment::is_alpha() || environment::is_beta() || environment::is_release();
             else
                 return !build::is_debug();
         }

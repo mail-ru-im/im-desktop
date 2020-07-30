@@ -13,9 +13,12 @@
 #include "../../utils/InterConnector.h"
 #include "../../utils/stat_utils.h"
 #include "../contact_list/ContactListModel.h"
+#include "../contact_list/FavoritesUtils.h"
 #include "../../styles/ThemesContainer.h"
 #include "../../cache/avatars/AvatarStorage.h"
-#include "../../main_window/friendly/FriendlyContainer.h"
+#include "../../main_window/containers/FriendlyContainer.h"
+#include "../../main_window/containers/LastseenContainer.h"
+#include "../../main_window/containers/StatusContainer.h"
 #include "../../main_window/MainWindow.h"
 #include "../../main_window/GroupChatOperations.h"
 #include "../../main_window/contact_list/ChatMembersModel.h"
@@ -27,16 +30,14 @@
 #include "../../controls/TooltipWidget.h"
 #include "../../utils/Text2DocConverter.h"
 #include "../../styles/ThemeParameters.h"
+#include "previewer/toast.h"
 
 namespace
 {
-    const int HOR_PADDING = 16;
-    const int ITEM_HEIGHT = 40;
     const int EDIT_AVATAR_SIZE = 100;
     const int EDIT_FONT_SIZE = 16;
     const int EDIT_HOR_OFFSET = 20;
     const int EDIT_VER_OFFSET = 24;
-    const int EDIT_BOTTOM_OFFSET = 40;
     const int EDIT_MAX_ENTER_HEIGHT = 100;
 
     const auto HOR_OFFSET = 16;
@@ -158,6 +159,7 @@ namespace Ui
     void SidebarButton::setEnabled(bool _isEnabled)
     {
         isEnabled_ = _isEnabled;
+        setCursor(isEnabled_ ? Qt::PointingHandCursor : Qt::ArrowCursor);
         if (!_isEnabled)
         {
             isActive_ = false;
@@ -214,7 +216,7 @@ namespace Ui
         {
             if (Utils::clicked(clickedPoint_, _event->pos()))
             {
-                emit clicked();
+                Q_EMIT clicked();
             }
             isActive_ = false;
             update();
@@ -302,7 +304,7 @@ namespace Ui
         if (isEnabled_ && Utils::clicked(clickedPoint_, _event->pos()))
         {
             setChecked(!isChecked());
-            emit checked(checkbox_->isChecked());
+            Q_EMIT checked(checkbox_->isChecked());
         }
         SidebarButton::mouseReleaseEvent(_event);
     }
@@ -316,11 +318,16 @@ namespace Ui
         , hovered_(false)
         , nameOnly_(false)
     {
-        name_ = TextRendering::MakeTextUnit(QString(), Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS);
-        info_ = TextRendering::MakeTextUnit(QString(), Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS);
+        name_ = TextRendering::MakeTextUnit(QString(), {}, TextRendering::LinksVisible::DONT_SHOW_LINKS);
+        info_ = TextRendering::MakeTextUnit(QString(), {}, TextRendering::LinksVisible::DONT_SHOW_LINKS);
 
         connect(Logic::GetAvatarStorage(), &Logic::AvatarStorage::avatarChanged, this, &AvatarNameInfo::avatarChanged);
         connect(Logic::GetFriendlyContainer(), &Logic::FriendlyContainer::friendlyChanged, this, &AvatarNameInfo::friendlyChanged);
+        connect(Logic::GetStatusContainer(), &Logic::StatusContainer::statusChanged, this, [this](const QString& _aimid)
+        {
+            if (_aimid == aimId_)
+                update();
+        });
         setMouseTracking(true);
     }
 
@@ -353,6 +360,7 @@ namespace Ui
         friendlyName_ = _friendly.isEmpty() ? Logic::GetFriendlyContainer()->getFriendly(aimId_) : _friendly;
         name_->setText(friendlyName_);
         name_->elide(width() - margins_.left() - margins_.right() - avatarSize_ - textOffset_ - (clickable_ ? Utils::scale_value(ICON_SIZE + ICON_OFFSET) : 0));
+        setBadgeRect();
         loadAvatar();
     }
 
@@ -365,6 +373,7 @@ namespace Ui
 
         avatar_ = *(Logic::GetAvatarStorage()->GetRounded(aimId_, friendlyName_, Utils::scale_bitmap(avatarSize_), defaultAvatar_, false, false));
         Utils::check_pixel_ratio(avatar_);
+        setBadgeRect();
         update();
     }
 
@@ -375,7 +384,7 @@ namespace Ui
         update();
     }
 
-    QString AvatarNameInfo::getFriendly() const
+    const QString& AvatarNameInfo::getFriendly() const
     {
         return friendlyName_;
     }
@@ -401,22 +410,15 @@ namespace Ui
             if (hovered_)
                 p.fillRect(QRect(rect().x(), Utils::scale_value(CLICKABLE_AVATAR_INFO_OFFSET), width(), height() - Utils::scale_value(CLICKABLE_AVATAR_INFO_OFFSET) * 2), Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT_INVERSE));
 
-            auto get_image = []()
-            {
-                auto result = Utils::renderSvgScaled(qsl(":/controls/back_icon"), QSize(ICON_SIZE, ICON_SIZE), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY));
-                QTransform t;
-                t.rotate(180);
-                result = result.transformed(t);
-                Utils::check_pixel_ratio(result);
-                return result;
-            };
-
-            static auto pixmap = get_image();
+            static auto pixmap = Utils::mirrorPixmapHor(Utils::renderSvgScaled(qsl(":/controls/back_icon"), QSize(ICON_SIZE, ICON_SIZE), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY)));
             p.drawPixmap(width() - Utils::scale_value(ICON_SIZE) - margins_.right(), height() / 2 - Utils::scale_value(ICON_SIZE) / 2, pixmap);
         }
 
         if (!avatar_.isNull())
-            Utils::drawAvatarWithBadge(p, QPoint(margins_.left(), height() / 2 - avatarSize_ / 2), avatar_, aimId_, false, false, false);
+        {
+            const auto statusBadgeState = aimId_ == MyInfo()->aimId() ? Utils::StatusBadgeState::AlwaysOn : Utils::StatusBadgeState::CanBeOff;
+            Utils::drawAvatarWithBadge(p, QPoint(margins_.left(), height() / 2 - avatarSize_ / 2), avatar_, aimId_, false, statusBadgeState, false, false);
+        }
 
         if (nameOnly_)
             name_->setOffsets(margins_.left() + avatarSize_ + textOffset_, height() / 2);
@@ -460,12 +462,19 @@ namespace Ui
     {
         if (Utils::clicked(clicked_, _event->pos()))
         {
-            QRect r(margins_.left(), height() / 2 - avatarSize_ / 2, avatarSize_, avatarSize_);
-            if (r.contains(_event->pos()) && !defaultAvatar_)
-                emit avatarClicked();
+            if (aimId_ == MyInfo()->aimId() && badgeRect_.isValid() && badgeRect_.contains(_event->pos()))
+            {
+                Q_EMIT badgeClicked();
+            }
+            else
+            {
+                QRect r(margins_.left(), height() / 2 - avatarSize_ / 2, avatarSize_, avatarSize_);
+                if (r.contains(_event->pos()) && !defaultAvatar_)
+                    Q_EMIT avatarClicked();
 
-            if (clickable_)
-                emit clicked();
+                if (clickable_)
+                    Q_EMIT clicked();
+            }
         }
         QWidget::mouseReleaseEvent(_event);
     }
@@ -523,12 +532,47 @@ namespace Ui
         update();
     }
 
+    void AvatarNameInfo::setBadgeRect()
+    {
+        if (aimId_ != MyInfo()->aimId())
+            return;
+        const auto statusParams = Utils::getStatusBadgeParams(Utils::scale_bitmap(avatarSize_));
+        if (statusParams.isValid())
+            badgeRect_ = QRect(statusParams.offset_, QSize(avatarSize_, avatarSize_)).translated(margins_.left(), height() / 2 - avatarSize_ / 2);
+    }
+
+    AvatarNamePlaceholder::AvatarNamePlaceholder(QWidget* _parent)
+        : QWidget(_parent)
+    {
+        setFixedHeight(Utils::scale_value(84));
+    }
+
+    void AvatarNamePlaceholder::paintEvent(QPaintEvent*)
+    {
+        QPainter p(this);
+        p.setRenderHints(QPainter::Antialiasing);
+        p.setPen(Qt::NoPen);
+        p.setBrush(Styling::getParameters().getColor(Styling::StyleVariable::BASE_LIGHT));
+
+        const auto avatarPos = Utils::scale_value(16);
+        const auto avatarSize = Utils::scale_value(52);
+        p.drawEllipse(avatarPos, avatarPos, avatarSize, avatarSize);
+
+        const auto lineX = avatarPos + avatarSize + Utils::scale_value(13);
+        const auto radius = Utils::scale_value(2);
+
+        p.drawRoundedRect(lineX, Utils::scale_value(25), Utils::scale_value(150), Utils::scale_value(12), radius, radius);
+        p.drawRoundedRect(lineX, Utils::scale_value(47), Utils::scale_value(112), Utils::scale_value(8), radius, radius);
+    }
+
+
     TextLabel::TextLabel(QWidget* _parent, int _maxLinesCount)
         : QWidget(_parent)
         , maxLinesCount_(_maxLinesCount)
         , collapsed_(false)
         , copyable_(false)
         , buttonsVisible_(false)
+        , onlyCopyButton_(false)
         , cursorForText_(false)
         , menu_(nullptr)
     {
@@ -536,6 +580,9 @@ namespace Ui
         collapsedText_ = TextRendering::MakeTextUnit(QString(), Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
         readMore_ = TextRendering::MakeTextUnit(QT_TRANSLATE_NOOP("sidebar", "Read more"));
 
+        iconNormalColor_ = Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY);
+        iconHoverColor_ = Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY_HOVER);
+        iconPressedColor_ = Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY_ACTIVE);
         setMouseTracking(true);
     }
 
@@ -546,15 +593,10 @@ namespace Ui
         update();
     }
 
-    QMargins TextLabel::getMargins() const
-    {
-        return margins_;
-    }
-
     void TextLabel::init(const QFont& _font, const QColor& _color, const QColor& _linkColor)
     {
-        text_->init(_font, _color, _linkColor, QColor(), QColor(), TextRendering::HorAligment::LEFT, -1, TextRendering::LineBreakType::PREFER_SPACES);
-        collapsedText_->init(_font, _color, _linkColor, QColor(), QColor(), TextRendering::HorAligment::LEFT, maxLinesCount_, TextRendering::LineBreakType::PREFER_SPACES);
+        text_->init(_font, _color, _linkColor, QColor(), QColor(), textAlign_, -1, TextRendering::LineBreakType::PREFER_SPACES);
+        collapsedText_->init(_font, _color, _linkColor, QColor(), QColor(), textAlign_, maxLinesCount_, TextRendering::LineBreakType::PREFER_SPACES);
         readMore_->init(_font, _linkColor);
         readMore_->evaluateDesiredSize();
 
@@ -578,13 +620,9 @@ namespace Ui
             collapsed_ = (fullHeight != collapsedHeight && collapsedText_->isElided());
 
         if (maxLinesCount_ == -1 || !collapsed_)
-        {
             setFixedHeight(fullHeight + margins_.top() + margins_.bottom());
-        }
         else
-        {
             setFixedHeight(collapsedHeight + readMore_->cachedSize().height() + margins_.top() + margins_.bottom());
-        }
     }
 
     void TextLabel::setText(const QString& _text, const QColor& _color)
@@ -652,6 +690,13 @@ namespace Ui
         update();
     }
 
+    void TextLabel::allowOnlyCopy()
+    {
+        onlyCopyButton_ = true;
+        updateSize();
+        update();
+    }
+
     QString TextLabel::getText() const
     {
         return text_->getText();
@@ -660,47 +705,58 @@ namespace Ui
     void TextLabel::paintEvent(QPaintEvent* _event)
     {
         QPainter p(this);
+        if (bgColor_.isValid())
+            p.fillRect(rect(), bgColor_);
 
         if (buttonsVisible_)
         {
             auto w = width() - margins_.left() - margins_.right();
             if (rect().contains(mapFromGlobal(QCursor::pos())))
             {
-                text_->elide(w - Utils::scale_value(ICON_SIZE) * 3 - Utils::scale_value(COLORED_BUTTON_TEXT_OFFSET));
+                text_->elide(w - Utils::scale_value(ICON_SIZE) * (onlyCopyButton_ ? 1 : 3) - Utils::scale_value(COLORED_BUTTON_TEXT_OFFSET));
 
-                static auto copy = Utils::renderSvgScaled(qsl(":/copy_icon"), QSize(ICON_SIZE, ICON_SIZE), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY));
-                static auto copyHover = Utils::renderSvgScaled(qsl(":/copy_icon"), QSize(ICON_SIZE, ICON_SIZE), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY_HOVER));
-                static auto copyActive = Utils::renderSvgScaled(qsl(":/copy_icon"), QSize(ICON_SIZE, ICON_SIZE), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY_ACTIVE));
+                auto makeIcon = [](const auto& _path, auto _color)
+                {
+                    return Utils::renderSvgScaled(_path, QSize(ICON_SIZE, ICON_SIZE), _color);
+                };
 
-                static auto share = Utils::renderSvgScaled(qsl(":/share_icon"), QSize(ICON_SIZE, ICON_SIZE), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY));
-                static auto shareHover = Utils::renderSvgScaled(qsl(":/share_icon"), QSize(ICON_SIZE, ICON_SIZE), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY_HOVER));
-                static auto shareActive = Utils::renderSvgScaled(qsl(":/share_icon"), QSize(ICON_SIZE, ICON_SIZE), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY_ACTIVE));
+                const auto copy = makeIcon(qsl(":/copy_icon"), iconNormalColor_);
+                const auto copyHover = makeIcon(qsl(":/copy_icon"), iconHoverColor_);
+                const auto copyActive = makeIcon(qsl(":/copy_icon"), iconPressedColor_);
 
-                const auto copyRect = QRect(width() - Utils::scale_value(ICON_SIZE) * 4, margins_.top(), Utils::scale_value(ICON_SIZE), Utils::scale_value(ICON_SIZE));
-                const auto shareRect = QRect(width() - Utils::scale_value(ICON_SIZE) * 2, margins_.top(), Utils::scale_value(ICON_SIZE), Utils::scale_value(ICON_SIZE));
-
+                const auto copyRect = QRect(width() - Utils::scale_value(ICON_SIZE) * (onlyCopyButton_ ? 2 :4), margins_.top(), Utils::scale_value(ICON_SIZE), Utils::scale_value(ICON_SIZE));
                 if (copyRect.contains(mapFromGlobal(QCursor::pos())))
                 {
                     if (QApplication::mouseButtons() & Qt::LeftButton)
-                        p.drawPixmap(copyRect.x(), copyRect.y(), copyActive);
+                        p.drawPixmap(copyRect.topLeft(), copyActive);
                     else
-                        p.drawPixmap(copyRect.x(), copyRect.y(), copyHover);
+                        p.drawPixmap(copyRect.topLeft(), copyHover);
                 }
                 else
                 {
-                    p.drawPixmap(copyRect.x(), copyRect.y(), copy);
+                    p.drawPixmap(copyRect.topLeft(), copy);
                 }
 
-                if (shareRect.contains(mapFromGlobal(QCursor::pos())))
+                if (!onlyCopyButton_)
                 {
-                    if (QApplication::mouseButtons() & Qt::LeftButton)
-                        p.drawPixmap(shareRect.x(), shareRect.y(), shareActive);
+                    const auto share = makeIcon(qsl(":/share_icon"), iconNormalColor_);
+                    const auto shareHover = makeIcon(qsl(":/share_icon"), iconHoverColor_);
+                    const auto shareActive = makeIcon(qsl(":/share_icon"), iconPressedColor_);
+
+                    const auto shareRect = QRect(width() - Utils::scale_value(ICON_SIZE) * 2, margins_.top(), Utils::scale_value(ICON_SIZE), Utils::scale_value(ICON_SIZE));
+
+
+                    if (shareRect.contains(mapFromGlobal(QCursor::pos())))
+                    {
+                        if (QApplication::mouseButtons() & Qt::LeftButton)
+                            p.drawPixmap(shareRect.topLeft(), shareActive);
+                        else
+                            p.drawPixmap(shareRect.topLeft(), shareHover);
+                    }
                     else
-                        p.drawPixmap(shareRect.x(), shareRect.y(), shareHover);
-                }
-                else
-                {
-                    p.drawPixmap(shareRect.x(), shareRect.y(), share);
+                    {
+                        p.drawPixmap(shareRect.topLeft(), share);
+                    }
                 }
             }
             else
@@ -786,17 +842,17 @@ namespace Ui
                     bool buttonWasClicked = false;
                     if (buttonsVisible_)
                     {
-                        auto copyRect = QRect(width() - Utils::scale_value(ICON_SIZE) * 4, margins_.top(), Utils::scale_value(ICON_SIZE), Utils::scale_value(ICON_SIZE));
+                        auto copyRect = QRect(width() - Utils::scale_value(ICON_SIZE) * (onlyCopyButton_ ? 2 : 4), margins_.top(), Utils::scale_value(ICON_SIZE), Utils::scale_value(ICON_SIZE));
                         if (copyRect.contains(_event->pos()) && !std::exchange(buttonWasClicked, true))
-                            emit copyClicked(text_->getSourceText());
+                            Q_EMIT copyClicked(text_->getSourceText());
 
                         auto shareRect = QRect(width() - Utils::scale_value(ICON_SIZE) * 2, margins_.top(), Utils::scale_value(ICON_SIZE), Utils::scale_value(ICON_SIZE));
-                        if (shareRect.contains(_event->pos()) && !std::exchange(buttonWasClicked, true))
-                            emit shareClicked();
+                        if (!onlyCopyButton_ && shareRect.contains(_event->pos()) && !std::exchange(buttonWasClicked, true))
+                            Q_EMIT shareClicked();
                     }
 
                     if (!buttonWasClicked && text_->contains(_event->pos()))
-                        emit textClicked();
+                        Q_EMIT textClicked();
                 }
             }
         }
@@ -809,17 +865,10 @@ namespace Ui
 
     void TextLabel::mouseMoveEvent(QMouseEvent* _event)
     {
-        auto copyRect = QRect(width() - Utils::scale_value(ICON_SIZE) * 4, margins_.top(), Utils::scale_value(ICON_SIZE), Utils::scale_value(ICON_SIZE));
+        auto copyRect = QRect(width() - Utils::scale_value(ICON_SIZE) * (onlyCopyButton_ ? 2 :4), margins_.top(), Utils::scale_value(ICON_SIZE), Utils::scale_value(ICON_SIZE));
         auto shareRect = QRect(width() - Utils::scale_value(ICON_SIZE) * 2, margins_.top(), Utils::scale_value(ICON_SIZE), Utils::scale_value(ICON_SIZE));
 
-
-        if ((maxLinesCount_ != -1 && collapsed_ && readMore_->contains(_event->pos()))
-            || (text_->contains(_event->pos()) && buttonsVisible_)
-            || (text_->contains(_event->pos()) && cursorForText_))
-        {
-            setCursor(Qt::PointingHandCursor);
-        }
-        else if (buttonsVisible_ && (copyRect.contains(_event->pos()) || shareRect.contains(_event->pos())))
+        if (buttonsVisible_ && (copyRect.contains(_event->pos()) || shareRect.contains(_event->pos())))
         {
             setCursor(Qt::PointingHandCursor);
             if (copyRect.contains(_event->pos()))
@@ -829,7 +878,11 @@ namespace Ui
         }
         else
         {
-            setCursor(Qt::ArrowCursor);
+            const auto isOnText = ((maxLinesCount_ != -1 && collapsed_ && readMore_->contains(_event->pos()))
+                || (text_->contains(_event->pos()) && buttonsVisible_)
+                || (text_->contains(_event->pos()) && cursorForText_));
+            setCursor(isOnText ? Qt::PointingHandCursor : Qt::ArrowCursor);
+            Tooltip::hide();
         }
 
         if (buttonsVisible_)
@@ -849,6 +902,13 @@ namespace Ui
         Tooltip::hide();
         update();
         QWidget::leaveEvent(_event);
+    }
+
+    void TextLabel::setIconColors(QColor _normal, QColor _hover, QColor _pressed)
+    {
+        iconNormalColor_ = _normal;
+        iconHoverColor_ = _hover;
+        iconPressedColor_ = _pressed;
     }
 
     void InfoBlock::hide()
@@ -969,6 +1029,12 @@ namespace Ui
                 menu->addActionWithIcon(qsl(":/context_menu/goto"), QT_TRANSLATE_NOOP("gallery", "Go to message"), makeData(qsl("go_to"), item_->getMsg(), item_->getLink(), item_->sender(), item_->time()));
                 menu->addActionWithIcon(qsl(":/context_menu/forward"), QT_TRANSLATE_NOOP("context_menu", "Forward"), makeData(qsl("forward"), item_->getMsg(), item_->getLink(), item_->sender(), item_->time()));
 
+                if (!Favorites::isFavorites(aimId_))
+                {
+                    menu->addSeparator();
+                    menu->addActionWithIcon(qsl(":/context_menu/favorites"), QT_TRANSLATE_NOOP("context_menu", "Add to favorites"), makeData(qsl("add_to_favorites"), item_->getMsg(), item_->getLink(), item_->sender(), item_->time()));
+                }
+
                 connect(menu, &ContextMenu::triggered, this, &GalleryPreviewItem::onMenuAction, Qt::QueuedConnection);
                 connect(menu, &ContextMenu::triggered, menu, &ContextMenu::deleteLater, Qt::QueuedConnection);
                 connect(menu, &ContextMenu::aboutToHide, menu, &ContextMenu::deleteLater, Qt::QueuedConnection);
@@ -993,31 +1059,40 @@ namespace Ui
         const auto sender = params[qsl("sender")].toString();
         const auto time = params[qsl("time")].toLongLong();
 
+        auto makeQuote = [this, &sender, &link, &msg, &time]()
+        {
+            Data::Quote quote;
+            quote.chatId_ = aimId_;
+            quote.senderId_ = sender;
+            quote.text_ = link;
+            quote.msgId_ = msg;
+            quote.time_ = time;
+            quote.senderFriendly_ = Logic::GetFriendlyContainer()->getFriendly(sender);
+            return quote;
+        };
+
         if (!msg)
             return;
 
-        if (command == ql1s("go_to"))
+        if (command == u"go_to")
         {
-            emit Logic::getContactListModel()->select(aimId_, msg, Logic::UpdateChatSelection::Yes);
+            Q_EMIT Logic::getContactListModel()->select(aimId_, msg, Logic::UpdateChatSelection::Yes);
         }
-        if (command == ql1s("forward"))
+        if (command == u"forward")
         {
-            Data::Quote q;
-            q.chatId_ = aimId_;
-            q.senderId_ = sender;
-            q.text_ = link;
-            q.msgId_ = msg;
-            q.time_ = time;
-            q.senderFriendly_ = Logic::GetFriendlyContainer()->getFriendly(sender);
-
-            Ui::forwardMessage({ q }, false, QString(), QString(), true);
+            Ui::forwardMessage({ makeQuote() }, false, QString(), QString(), !Favorites::isFavorites(aimId_));
         }
-        else if (command == ql1s("copy_link"))
+        else if (command == u"add_to_favorites")
+        {
+            Favorites::addToFavorites({ makeQuote() });
+            Favorites::showSavedToast();
+        }
+        else if (command == u"copy_link")
         {
             if (!link.isEmpty())
                 QApplication::clipboard()->setText(link);
         }
-        else if (command == ql1s("delete") || command == ql1s("delete_all"))
+        else if (const auto is_shared = command == u"delete_all"; is_shared || command == u"delete")
         {
             QString text = QT_TRANSLATE_NOOP("popup_window", "Are you sure you want to delete message?");
 
@@ -1030,10 +1105,7 @@ namespace Ui
             );
 
             if (confirm)
-            {
-                const auto is_shared = (command == ql1s("delete_all"));
                 GetDispatcher()->deleteMessages(aimId_, { DeleteMessageInfo(msg, QString(), is_shared) });
-            }
         }
     }
 
@@ -1083,7 +1155,7 @@ namespace Ui
 
     void GalleryPreviewWidget::requestGallery()
     {
-        reqId_ = Ui::GetDispatcher()->getDialogGallery(aimId_, { ql1s("image"), ql1s("video") }, 0, 0, previewCount_);
+        reqId_ = Ui::GetDispatcher()->getDialogGallery(aimId_, { ql1s("image"), ql1s("video") }, 0, 0, previewCount_, false);
     }
 
     void GalleryPreviewWidget::dialogGalleryResult(const int64_t _seq, const QVector<Data::DialogGalleryEntry>& _entries, bool _exhausted)
@@ -1122,7 +1194,7 @@ namespace Ui
         auto del = false;
         for (const auto& e : _entries)
         {
-            if (e.action_ == ql1s("add") && e.type_ != ql1s("image") && e.type_ != ql1s("video"))
+            if (e.action_ == u"add" && e.type_ != u"image" && e.type_ != u"video")
                 continue;
 
             for (auto i = 0; i < layout_->count(); ++i)
@@ -1131,7 +1203,7 @@ namespace Ui
                 auto w = item ? qobject_cast<GalleryPreviewItem*>(item->widget()) : nullptr;
                 if (w)
                 {
-                    if (w->msg() == e.msg_id_ && e.action_ == ql1s("del"))
+                    if (w->msg() == e.msg_id_ && e.action_ == u"del")
                     {
                         del = true;
                         break;
@@ -1140,7 +1212,7 @@ namespace Ui
                     if (w->msg() > e.msg_id_ || (w->msg() == e.msg_id_ && w->seq() > e.seq_))
                         continue;
 
-                    if (e.action_ == ql1s("add"))
+                    if (e.action_ == u"add")
                     {
                         layout_->insertWidget(i, new GalleryPreviewItem(this, e.url_, e.msg_id_, e.seq_, aimId_, e.sender_, e.outgoing_, e.time_, previewSize_));
                         if (layout_->count() >= previewCount_ + 2)
@@ -1157,7 +1229,7 @@ namespace Ui
         setVisible(layout_->count() > 1);
 
         if (del)
-            reqId_ = Ui::GetDispatcher()->getDialogGallery(aimId_, { ql1s("image"), ql1s("video") }, 0, 0, previewCount_);
+            reqId_ = Ui::GetDispatcher()->getDialogGallery(aimId_, { ql1s("image"), ql1s("video") }, 0, 0, previewCount_, true);
     }
 
     void GalleryPreviewWidget::dialogGalleryInit(const QString& _aimId)
@@ -1252,7 +1324,7 @@ namespace Ui
     {
         auto pos = _event->pos();
         if (Utils::clicked(clicked_, pos) && search_->contains(pos))
-            emit searchClicked();
+            Q_EMIT searchClicked();
 
         QWidget::mousePressEvent(_event);
     }
@@ -1272,7 +1344,7 @@ namespace Ui
         setMouseTracking(true);
         setCursor(Qt::PointingHandCursor);
 
-        connect(Logic::GetFriendlyContainer(), &Logic::FriendlyContainer::lastseenChanged, this, &Ui::MembersWidget::lastseenChanged);
+        connect(Logic::GetLastseenContainer(), &Logic::LastseenContainer::lastseenChanged, this, &Ui::MembersWidget::lastseenChanged);
     }
 
     void MembersWidget::clearCache()
@@ -1354,15 +1426,15 @@ namespace Ui
                     if (_event->pos().x() >= butttonX && _event->pos().x() <= width())
                     {
                         if (delegate_->regim() == Logic::MembersWidgetRegim::ADMIN_MEMBERS)
-                            emit moreClicked(aimId);
+                            Q_EMIT moreClicked(aimId);
                         else if (delegate_->regim() == Logic::MembersWidgetRegim::MEMBERS_LIST)
-                            emit removeClicked(aimId);
+                            Q_EMIT removeClicked(aimId);
                         else
-                            emit selected(aimId);
+                            Q_EMIT selected(aimId);
                     }
                     else
                     {
-                        emit selected(aimId);
+                        Q_EMIT selected(aimId);
                     }
                 }
             }
@@ -1495,7 +1567,7 @@ namespace Ui
     void ColoredButton::mouseReleaseEvent(QMouseEvent* _event)
     {
         if (Utils::clicked(clicked_, _event->pos()))
-            emit clicked();
+            Q_EMIT clicked();
 
         isActive_ = false;
         update();
@@ -1518,9 +1590,14 @@ namespace Ui
 
     EditWidget::EditWidget(QWidget* _parent)
         : QWidget(_parent)
+        , avatar_(nullptr)
+        , avatarSpacer_(nullptr)
         , name_(nullptr)
+        , nameSpacer_(nullptr)
         , description_(nullptr)
+        , descriptionSpacer_(nullptr)
         , rules_(nullptr)
+        , rulesSpacer_(nullptr)
         , avatarChanged_(false)
         , nameOnly_(false)
     {
@@ -1747,6 +1824,11 @@ namespace Ui
         return Utils::scale_value(BUTTON_ICON_SIZE);
     }
 
+    QString formatTimeStr(const QDateTime& _dt)
+    {
+        return _dt.toString(u"d MMM, ") % _dt.time().toString(u"hh:mm");
+    }
+
     AvatarNameInfo* addAvatarInfo(QWidget* _parent, QLayout* _layout)
     {
         auto w = new AvatarNameInfo(_parent);
@@ -1760,10 +1842,11 @@ namespace Ui
         return w;
     }
 
-    TextLabel* addLabel(const QString& _text, QWidget* _parent, QLayout* _layout, int _addLeftOffset)
+    TextLabel* addLabel(const QString& _text, QWidget* _parent, QLayout* _layout, int _addLeftOffset, TextRendering::HorAligment _align)
     {
         TextLabel* label = new TextLabel(_parent);
         label->setMargins(Utils::scale_value(HOR_OFFSET) + _addLeftOffset, 0, Utils::scale_value(HOR_OFFSET), 0);
+        label->setTextAlign(_align);
         label->init(Fonts::appFontScaled(15), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
         label->setText(_text);
         _layout->addWidget(label);
@@ -1888,11 +1971,11 @@ namespace Ui
         if (!_icon.isEmpty())
         {
             const auto size = _iconSize.isValid() ? _iconSize : QSize(BUTTON_ICON_SIZE, BUTTON_ICON_SIZE);
-            w->setIcon(Utils::renderSvgScaled(_icon, size, Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT)));
+            w->setIcon(Utils::renderSvgScaled(_icon, size, Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE)));
         }
 
         w->initColors(Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY), Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_HOVER), Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_ACTIVE));
-        w->initText(Fonts::appFontScaled(16), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT));
+        w->initText(Fonts::appFontScaled(16), Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE));
         w->setText(_text);
 
         const auto diff = _iconSize.isValid() ? (_iconSize.width() - BUTTON_ICON_SIZE) / 2 : 0;
@@ -1954,7 +2037,7 @@ namespace Ui
         checkbox_->setChecked(removeMessages_);
         checkbox_->move(Utils::scale_value(BLOCK_AND_DELETE_HOR_OFFSET), Utils::scale_value(BLOCK_AND_DELETE_TOP_OFFSET));
 
-        auto isChannel = Logic::getContactListModel()->isChannel(_chatAimid);
+        const auto isChannel = Logic::getContactListModel()->isChannel(_chatAimid);
 
         label_ = Ui::TextRendering::MakeTextUnit(isChannel ? QT_TRANSLATE_NOOP("block_and_delete", "This member won't be able to join the channel again. You could also delete his messages")
             : QT_TRANSLATE_NOOP("block_and_delete", "This member won't be able to join the group again. You could also delete his messages"));
@@ -1967,7 +2050,7 @@ namespace Ui
         label_->setOffsets(Utils::scale_value(BLOCK_AND_DELETE_HOR_OFFSET), checkbox_->height() + Utils::scale_value(BLOCK_AND_DELETE_TOP_OFFSET + BLOCK_AND_DELETE_ADD_OFFSET));
         label_->draw(p);
 
-        return QWidget::paintEvent(_event);
+        QWidget::paintEvent(_event);
     }
 
     bool BlockAndDeleteWidget::needToRemoveMessages() const
@@ -1980,6 +2063,6 @@ namespace Ui
         const auto maxWidth = _event->size().width() - Utils::scale_value(BLOCK_AND_DELETE_HOR_OFFSET * 2);
         checkbox_->setFixedWidth(maxWidth);
         setFixedHeight(label_->getHeight(maxWidth) + Utils::scale_value(BLOCK_AND_DELETE_TOP_OFFSET + BLOCK_AND_DELETE_BOTTOM_OFFSET + BLOCK_AND_DELETE_ADD_OFFSET) + checkbox_->height());
-        return QWidget::resizeEvent(_event);
+        QWidget::resizeEvent(_event);
     }
 }

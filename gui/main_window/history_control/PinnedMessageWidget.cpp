@@ -14,13 +14,14 @@
 #include "../../controls/CustomButton.h"
 #include "../../controls/TooltipWidget.h"
 #include "../../main_window/MainWindow.h"
-#include "../../main_window/friendly/FriendlyContainer.h"
+#include "../../main_window/containers/FriendlyContainer.h"
 #include "../../types/message.h"
 #include "../../utils/InterConnector.h"
 #include "../../utils/utils.h"
 #include "../../utils/stat_utils.h"
 #include "../../utils/ResizePixmapTask.h"
 #include "../../styles/ThemeParameters.h"
+#include "../../cache/stickers/stickers.h"
 
 namespace
 {
@@ -105,7 +106,7 @@ namespace Ui
         setMouseTracking(true);
 
         tooltipTimer_.setSingleShot(true);
-        tooltipTimer_.setInterval(tooltipDelay.count());
+        tooltipTimer_.setInterval(tooltipDelay);
 
         connect(&tooltipTimer_, &QTimer::timeout, this, [this]()
         {
@@ -262,8 +263,11 @@ namespace Ui
 
         auto updateSender = [this](const QString& friendly)
         {
-            sender_->setText(friendly);
-            sender_->evaluateDesiredSize();
+            if (sender_->getText() != friendly)
+            {
+                sender_->setText(friendly);
+                sender_->evaluateDesiredSize();
+            }
         };
 
         connections_.push_back(connect(Logic::GetFriendlyContainer(), &Logic::FriendlyContainer::friendlyChanged, this, [updateSender, aimId = _msg->GetChatSender()](const QString& _aimid, const QString& _friendly)
@@ -314,25 +318,38 @@ namespace Ui
 
     void FullPinnedMessage::mouseReleaseEvent(QMouseEvent* _e)
     {
+        auto atExit = Utils::ScopeExitT([_e, this]()
+        {
+            update();
+            CollapsableWidget::mouseReleaseEvent(_e);
+        });
+
         if (_e->button() == Qt::LeftButton && rect().contains(_e->pos()) && complexMessage_)
         {
             const auto collRect = getCollapseButtonRect(rect());
             if (collapsePressed_)
             {
                 if (collRect.contains(_e->pos()))
-                    emit collapseClicked();
+                    Q_EMIT collapseClicked();
             }
             else if (_e->pos().x() < collRect.left())
             {
-                if (snippetPressed_ && Utils::unscale_bitmap(getMediaRect()).contains(_e->pos()) && previewType_ != PinPlaceholderType::Sticker)
-                    openMedia();
-                else
-                    Logic::getContactListModel()->setCurrent(Logic::getContactListModel()->selectedContact(), complexMessage_->getId(), true);
+                if (snippetPressed_ && Utils::unscale_bitmap(getMediaRect()).contains(_e->pos()))
+                {
+                    if (previewType_ == PinPlaceholderType::Sticker)
+                    {
+                        if (openSticker())
+                            return;
+                    }
+                    else
+                    {
+                        openMedia();
+                        return;
+                    }
+                }
+                Logic::getContactListModel()->setCurrent(Logic::getContactListModel()->selectedContact(), complexMessage_->getId(), true);
             }
         }
-
-        update();
-        CollapsableWidget::mouseReleaseEvent(_e);
     }
 
     void FullPinnedMessage::enterEvent(QEvent* _e)
@@ -596,6 +613,18 @@ namespace Ui
         }
     }
 
+    bool FullPinnedMessage::openSticker() const
+    {
+        if (isSnippetSimple() || !complexMessage_)
+            return false;
+        const auto stickerId = complexMessage_->getFirstStickerId();
+        if (stickerId.isEmpty())
+            return false;
+        Q_EMIT Utils::InterConnector::instance().stopPttRecord();
+        Stickers::showStickersPackByStickerId(stickerId, Stickers::StatContext::Chat);
+        return true;
+    }
+
     //----------------------------------------------------------------------
     CollapsedPinnedMessage::CollapsedPinnedMessage(QWidget* _parent)
         : CollapsableWidget(_parent, QT_TRANSLATE_NOOP("pin", "Unroll"))
@@ -612,7 +641,7 @@ namespace Ui
     void CollapsedPinnedMessage::mouseReleaseEvent(QMouseEvent* _event)
     {
         if (underMouse() && _event->button() == Qt::LeftButton)
-            emit clicked();
+            Q_EMIT clicked();
 
         CollapsableWidget::mouseReleaseEvent(_event);
     }
@@ -659,6 +688,7 @@ namespace Ui
         close_->setHoverColor(Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_HOVER));
         close_->setActiveColor(Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_ACTIVE));
         close_->setFixedSize(Utils::scale_value(iconSize));
+        Testing::setAccessibleName(close_, qsl("AS Stranger closeButton"));
 
         connect(close_, &CustomButton::clicked, this, &StrangerPinnedWidget::closeClicked);
 
@@ -691,7 +721,7 @@ namespace Ui
         if (Utils::clicked(pressPoint_, _event->pos()))
         {
             if (block_->contains(_event->pos()))
-                emit blockClicked();
+                Q_EMIT blockClicked();
         }
 
         if (block_->contains(_event->pos()))
@@ -814,17 +844,12 @@ namespace Ui
             collapsed_->updateStyle();
     }
 
-    void PinnedMessageWidget::resizeEvent(QResizeEvent*)
-    {
-        emit resized();
-    }
-
     void PinnedMessageWidget::createStranger()
     {
         if (!stranger_)
         {
             stranger_ = new StrangerPinnedWidget(this);
-            Testing::setAccessibleName(stranger_, qsl("AS pinned auth_"));
+            Testing::setAccessibleName(stranger_, qsl("AS Stranger"));
             layout()->addWidget(stranger_);
 
             connect(stranger_, &StrangerPinnedWidget::blockClicked, this, &PinnedMessageWidget::strangerBlockClicked);
@@ -837,7 +862,7 @@ namespace Ui
         if (!full_)
         {
             full_ = new FullPinnedMessage(this);
-            Testing::setAccessibleName(full_, qsl("AS pinned full_"));
+            Testing::setAccessibleName(full_, qsl("AS Pin full"));
             layout()->addWidget(full_);
 
             connect(full_, &FullPinnedMessage::collapseClicked, this, &PinnedMessageWidget::showCollapsed);
@@ -849,7 +874,7 @@ namespace Ui
         if (!collapsed_)
         {
             collapsed_ = new CollapsedPinnedMessage(this);
-            Testing::setAccessibleName(collapsed_, qsl("AS pinned collapsed_"));
+            Testing::setAccessibleName(collapsed_, qsl("AS Pin collapsed"));
             layout()->addWidget(collapsed_);
 
             connect(collapsed_, &CollapsedPinnedMessage::clicked, this, &PinnedMessageWidget::showExpanded);

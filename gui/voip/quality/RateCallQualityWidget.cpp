@@ -64,7 +64,7 @@ RateCallQualityWidget::RateCallQualityWidget(const QString &_wTitle, QWidget *_p
     catWidget_->setSizePolicy(QSizePolicy::Policy::Fixed, QSizePolicy::Policy::Fixed);
     catWidget_->setIconAlignment(Qt::AlignLeft | Qt::AlignTop);
     catWidget_->setImage(Utils::renderSvg(CAT_IMAGE_NEUTRAL, catSize_), -1);
-    Testing::setAccessibleName(catWidget_, qsl("AS rate call quality widget logo catWidget_"));
+    Testing::setAccessibleName(catWidget_, qsl("AS VoipRateQuality logo"));
 
     auto evalAndSetHeight = [](TextBrowserEx& _textBrowser, const QFont& _font) {
         auto textHeightMetrics = Utils::evaluateTextHeightMetrics(_textBrowser.toPlainText(), _textBrowser.width(), QFontMetrics(_font));
@@ -166,10 +166,10 @@ void RateCallQualityWidget::onConfirmRating(bool _doConfirm, int _starsCount)
 {
     if (!_doConfirm)
     {
-        emit ratingCancelled();
+        Q_EMIT ratingCancelled();
         return;
     }
-    emit ratingConfirmed(_starsCount);
+    Q_EMIT ratingConfirmed(_starsCount);
 }
 
 void RateCallQualityWidget::paintEvent(QPaintEvent* _ev)

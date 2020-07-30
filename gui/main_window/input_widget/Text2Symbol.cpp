@@ -1,9 +1,7 @@
 ﻿#include "stdafx.h"
 
-#include "gui_settings.h"
-
 #include "Text2Symbol.h"
-#include "HistoryTextEdit.h"
+#include "utils/StringComparator.h"
 
 namespace
 {
@@ -12,147 +10,137 @@ namespace
 
 namespace Emoji
 {
+    using Text2ReplacementMap = std::map<QStringView, QVariant, Utils::StringComparatorInsensitive>;
     const Text2ReplacementMap& getText2ReplacementMap()
     {
         const static Text2ReplacementMap text2emojiMap =
         {
-            {qsl(":)"),  QVariant::fromValue(EmojiCode(0x1f642))},
-            {qsl(":-)"), QVariant::fromValue(EmojiCode(0x1f642))},
-            {qsl(":]"),  QVariant::fromValue(EmojiCode(0x1f642))},
-            {qsl(":)"),  QVariant::fromValue(EmojiCode(0x1f642))},
-            {qsl("(:"),  QVariant::fromValue(EmojiCode(0x1f642))},
+            {u":)",  QVariant::fromValue(EmojiCode(0x1f642))},
+            {u":-)", QVariant::fromValue(EmojiCode(0x1f642))},
+            {u":]",  QVariant::fromValue(EmojiCode(0x1f642))},
+            {u"(:",  QVariant::fromValue(EmojiCode(0x1f642))},
 
-            {qsl("=)"),  QVariant::fromValue(EmojiCode(0x263a, 0xfe0f))},
-            {qsl("(="),  QVariant::fromValue(EmojiCode(0x263a, 0xfe0f))},
+            {u"=)",  QVariant::fromValue(EmojiCode(0x263a, 0xfe0f))},
+            {u"(=",  QVariant::fromValue(EmojiCode(0x263a, 0xfe0f))},
 
-            {qsl(":("),  QVariant::fromValue(EmojiCode(0x2639, 0xfe0f))},
-            {qsl(":-("), QVariant::fromValue(EmojiCode(0x2639, 0xfe0f))},
-            {qsl("=("),  QVariant::fromValue(EmojiCode(0x2639, 0xfe0f))},
-            {qsl(")="),  QVariant::fromValue(EmojiCode(0x2639, 0xfe0f))},
-            {qsl(":["),  QVariant::fromValue(EmojiCode(0x2639, 0xfe0f))},
-            {qsl(":c"),  QVariant::fromValue(EmojiCode(0x2639, 0xfe0f))},
+            {u":(",  QVariant::fromValue(EmojiCode(0x2639, 0xfe0f))},
+            {u":-(", QVariant::fromValue(EmojiCode(0x2639, 0xfe0f))},
+            {u"=(",  QVariant::fromValue(EmojiCode(0x2639, 0xfe0f))},
+            {u")=",  QVariant::fromValue(EmojiCode(0x2639, 0xfe0f))},
+            {u":[",  QVariant::fromValue(EmojiCode(0x2639, 0xfe0f))},
+            {u":c",  QVariant::fromValue(EmojiCode(0x2639, 0xfe0f))},
 
-            {qsl(";-p"), QVariant::fromValue(EmojiCode(0x1f61c))},
-            {qsl(";p"),  QVariant::fromValue(EmojiCode(0x1f61c))},
+            {u";-p", QVariant::fromValue(EmojiCode(0x1f61c))},
+            {u";p",  QVariant::fromValue(EmojiCode(0x1f61c))},
 
-            {qsl(":-p"), QVariant::fromValue(EmojiCode(0x1f61b))},
-            {qsl(":p"),  QVariant::fromValue(EmojiCode(0x1f61b))},
-            {qsl("=p"),  QVariant::fromValue(EmojiCode(0x1f61b))},
-                         
-            {qsl(":-o"), QVariant::fromValue(EmojiCode(0x1f62e))},
-            {qsl(":o"),  QVariant::fromValue(EmojiCode(0x1f62e))},
-                         
-            {qsl(":-d"), QVariant::fromValue(EmojiCode(0x1f600))},
-            {qsl(":d"),  QVariant::fromValue(EmojiCode(0x1f600))},
-            {qsl("=d"),  QVariant::fromValue(EmojiCode(0x1f600))},
-                         
-            {qsl(";)"),  QVariant::fromValue(EmojiCode(0x1f609))},
-            {qsl(";-)"), QVariant::fromValue(EmojiCode(0x1f609))},
-                         
-            {qsl("b)"),  QVariant::fromValue(EmojiCode(0x1f60e))},
-            {qsl("b-)"), QVariant::fromValue(EmojiCode(0x1f60e))},
+            {u":-p", QVariant::fromValue(EmojiCode(0x1f61b))},
+            {u":p",  QVariant::fromValue(EmojiCode(0x1f61b))},
+            {u"=p",  QVariant::fromValue(EmojiCode(0x1f61b))},
 
-            {qsl(">:("),  QVariant::fromValue(EmojiCode(0x1f620))},
-            {qsl(">:-("), QVariant::fromValue(EmojiCode(0x1f620))},
-            {qsl(">:o"),  QVariant::fromValue(EmojiCode(0x1f620))},
-            {qsl(">:-o"), QVariant::fromValue(EmojiCode(0x1f620))},
+            {u":-o", QVariant::fromValue(EmojiCode(0x1f62e))},
+            {u":o",  QVariant::fromValue(EmojiCode(0x1f62e))},
 
-            {qsl(":\\"),  QVariant::fromValue(EmojiCode(0x1f615))},
-            {qsl(":-\\"), QVariant::fromValue(EmojiCode(0x1f615))},
-            {qsl(":/"),   QVariant::fromValue(EmojiCode(0x1f615))},
-            {qsl("=/"),   QVariant::fromValue(EmojiCode(0x1f615))},
-            {qsl(":-/"),  QVariant::fromValue(EmojiCode(0x1f615))},
-            {qsl("=\\"),  QVariant::fromValue(EmojiCode(0x1f615))},
-            {qsl("=-\\"), QVariant::fromValue(EmojiCode(0x1f615))},
+            {u":-d", QVariant::fromValue(EmojiCode(0x1f600))},
+            {u":d",  QVariant::fromValue(EmojiCode(0x1f600))},
+            {u"=d",  QVariant::fromValue(EmojiCode(0x1f600))},
 
-            {qsl(":'("),  QVariant::fromValue(EmojiCode(0x1f622))},
-            {qsl(":'-("), QVariant::fromValue(EmojiCode(0x1f622))},
+            {u";)",  QVariant::fromValue(EmojiCode(0x1f609))},
+            {u";-)", QVariant::fromValue(EmojiCode(0x1f609))},
+
+            {u"b)",  QVariant::fromValue(EmojiCode(0x1f60e))},
+            {u"b-)", QVariant::fromValue(EmojiCode(0x1f60e))},
+
+            {u">:(",  QVariant::fromValue(EmojiCode(0x1f620))},
+            {u">:-(", QVariant::fromValue(EmojiCode(0x1f620))},
+            {u">:o",  QVariant::fromValue(EmojiCode(0x1f620))},
+            {u">:-o", QVariant::fromValue(EmojiCode(0x1f620))},
+
+            {u":\\",  QVariant::fromValue(EmojiCode(0x1f615))},
+            {u":-\\", QVariant::fromValue(EmojiCode(0x1f615))},
+            {u":/",   QVariant::fromValue(EmojiCode(0x1f615))},
+            {u"=/",   QVariant::fromValue(EmojiCode(0x1f615))},
+            {u":-/",  QVariant::fromValue(EmojiCode(0x1f615))},
+            {u"=\\",  QVariant::fromValue(EmojiCode(0x1f615))},
+            {u"=-\\", QVariant::fromValue(EmojiCode(0x1f615))},
+
+            {u":'(",  QVariant::fromValue(EmojiCode(0x1f622))},
+            {u":'-(", QVariant::fromValue(EmojiCode(0x1f622))},
 #ifndef __APPLE__
-            {qsl(":’("),  QVariant::fromValue(EmojiCode(0x1f622))},
-            {qsl(":’-("), QVariant::fromValue(EmojiCode(0x1f622))},
-#endif         
-
-            {qsl("3:)"),  QVariant::fromValue(EmojiCode(0x1f608))},
-            {qsl("3:-)"), QVariant::fromValue(EmojiCode(0x1f608))},
-
-            {qsl("0:)"),  QVariant::fromValue(EmojiCode(0x1f607))},
-            {qsl("o:)"),  QVariant::fromValue(EmojiCode(0x1f607))},
-            {qsl("0:-)"), QVariant::fromValue(EmojiCode(0x1f607))},
-            {qsl("o:-)"), QVariant::fromValue(EmojiCode(0x1f607))},
-
-            {qsl(":*"),  QVariant::fromValue(EmojiCode(0x1f617))},
-            {qsl(":-*"), QVariant::fromValue(EmojiCode(0x1f617))},
-            {qsl("-3-"), QVariant::fromValue(EmojiCode(0x1f617))},
-
-            {qsl(";*"),  QVariant::fromValue(EmojiCode(0x1f618))},
-            {qsl(";-*"), QVariant::fromValue(EmojiCode(0x1f618))},
-
-            {qsl("^_^"), QVariant::fromValue(EmojiCode(0x263a, 0xfe0f))},
-            {qsl("^^"),  QVariant::fromValue(EmojiCode(0x263a, 0xfe0f))},
-            {qsl("^~^"), QVariant::fromValue(EmojiCode(0x263a, 0xfe0f))},
-
-            {qsl("-_-"), QVariant::fromValue(EmojiCode(0x1f611))},
-            {qsl(":-|"), QVariant::fromValue(EmojiCode(0x1f610))},
-            {qsl(":|"),  QVariant::fromValue(EmojiCode(0x1f610))},
-                                                               
-            {qsl(">_<"), QVariant::fromValue(EmojiCode(0x1f623))},
-            {qsl("><"),  QVariant::fromValue(EmojiCode(0x1f623))},
-            {qsl(">.<"), QVariant::fromValue(EmojiCode(0x1f623))},
-                                                               
-            {qsl("o_o"), QVariant::fromValue(EmojiCode(0x1f633))},
-            {qsl("0_0"), QVariant::fromValue(EmojiCode(0x1f633))},
-                                                               
-            {qsl("t_t"), QVariant::fromValue(EmojiCode(0x1f62d))},
-            {qsl("t-t"), QVariant::fromValue(EmojiCode(0x1f62d))},
-            {qsl("tot"), QVariant::fromValue(EmojiCode(0x1f62d))},
-            {qsl("t.t"), QVariant::fromValue(EmojiCode(0x1f62d))},
-
-            {qsl("'-_-"), QVariant::fromValue(EmojiCode(0x1f613))},
-            {qsl("-_-'"), QVariant::fromValue(EmojiCode(0x1f613))},
-#ifndef __APPLE__
-            {qsl("’-_-"), QVariant::fromValue(EmojiCode(0x1f613))},
-            {qsl("-_-’"), QVariant::fromValue(EmojiCode(0x1f613))},
+            {u":’(",  QVariant::fromValue(EmojiCode(0x1f622))},
+            {u":’-(", QVariant::fromValue(EmojiCode(0x1f622))},
 #endif
 
-            {qsl("<3"),         QVariant::fromValue(EmojiCode(0x2764, 0xfe0f))},
-            {qsl("&lt;3"),      QVariant::fromValue(EmojiCode(0x2764, 0xfe0f))},
-            {qsl(":like:"),     QVariant::fromValue(EmojiCode(0x1f44d))},
-            {qsl("(y)"),        QVariant::fromValue(EmojiCode(0x1f44d))},
-            {qsl(":dislike:"),  QVariant::fromValue(EmojiCode(0x1f44e))},
-            {qsl("(n)"),        QVariant::fromValue(EmojiCode(0x1f44e))},
+            {u"3:)",  QVariant::fromValue(EmojiCode(0x1f608))},
+            {u"3:-)", QVariant::fromValue(EmojiCode(0x1f608))},
 
-            {qsl(":poop:"), QVariant::fromValue(EmojiCode(0x1f4a9))},
-            {qsl("<(\")"),  QVariant::fromValue(EmojiCode(0x1f427))},
+            {u"0:)",  QVariant::fromValue(EmojiCode(0x1f607))},
+            {u"o:)",  QVariant::fromValue(EmojiCode(0x1f607))},
+            {u"0:-)", QVariant::fromValue(EmojiCode(0x1f607))},
+            {u"o:-)", QVariant::fromValue(EmojiCode(0x1f607))},
 
-            {qsl("--"), QVariant::fromValue(QString(0x2014))},
-            {qsl("->"), QVariant::fromValue(QString(0x2192))},
-            {qsl("<-"), QVariant::fromValue(QString(0x2190))},
-            {qsl("<->"), QVariant::fromValue(QString(0x2194))}
+            {u":*",  QVariant::fromValue(EmojiCode(0x1f617))},
+            {u":-*", QVariant::fromValue(EmojiCode(0x1f617))},
+            {u"-3-", QVariant::fromValue(EmojiCode(0x1f617))},
+
+            {u";*",  QVariant::fromValue(EmojiCode(0x1f618))},
+            {u";-*", QVariant::fromValue(EmojiCode(0x1f618))},
+
+            {u"^_^", QVariant::fromValue(EmojiCode(0x263a, 0xfe0f))},
+            {u"^^",  QVariant::fromValue(EmojiCode(0x263a, 0xfe0f))},
+            {u"^~^", QVariant::fromValue(EmojiCode(0x263a, 0xfe0f))},
+
+            {u"-_-", QVariant::fromValue(EmojiCode(0x1f611))},
+            {u":-|", QVariant::fromValue(EmojiCode(0x1f610))},
+            {u":|",  QVariant::fromValue(EmojiCode(0x1f610))},
+
+            {u">_<", QVariant::fromValue(EmojiCode(0x1f623))},
+            {u"><",  QVariant::fromValue(EmojiCode(0x1f623))},
+            {u">.<", QVariant::fromValue(EmojiCode(0x1f623))},
+
+            {u"o_o", QVariant::fromValue(EmojiCode(0x1f633))},
+            {u"0_0", QVariant::fromValue(EmojiCode(0x1f633))},
+
+            {u"t_t", QVariant::fromValue(EmojiCode(0x1f62d))},
+            {u"t-t", QVariant::fromValue(EmojiCode(0x1f62d))},
+            {u"tot", QVariant::fromValue(EmojiCode(0x1f62d))},
+            {u"t.t", QVariant::fromValue(EmojiCode(0x1f62d))},
+
+            {u"'-_-", QVariant::fromValue(EmojiCode(0x1f613))},
+            {u"-_-'", QVariant::fromValue(EmojiCode(0x1f613))},
+#ifndef __APPLE__
+            {u"’-_-", QVariant::fromValue(EmojiCode(0x1f613))},
+            {u"-_-’", QVariant::fromValue(EmojiCode(0x1f613))},
+#endif
+
+            {u"<3",         QVariant::fromValue(EmojiCode(0x2764, 0xfe0f))},
+            {u"&lt;3",      QVariant::fromValue(EmojiCode(0x2764, 0xfe0f))},
+            {u":like:",     QVariant::fromValue(EmojiCode(0x1f44d))},
+            {u"(y)",        QVariant::fromValue(EmojiCode(0x1f44d))},
+            {u":dislike:",  QVariant::fromValue(EmojiCode(0x1f44e))},
+            {u"(n)",        QVariant::fromValue(EmojiCode(0x1f44e))},
+
+            {u":poop:", QVariant::fromValue(EmojiCode(0x1f4a9))},
+            {u"<(\")",  QVariant::fromValue(EmojiCode(0x1f427))},
+
+            {u"--", QVariant::fromValue(QString(0x2014))},
+            {u"->", QVariant::fromValue(QString(0x2192))},
+            {u"<-", QVariant::fromValue(QString(0x2190))},
+            {u"<->", QVariant::fromValue(QString(0x2194))}
         };
 
         return text2emojiMap;
     }
 
-    TextSymbolReplacer::TextSymbolReplacer(Ui::HistoryTextEdit* _textEdit)
-        : textEdit_(_textEdit)
-        , replaceAvailable_(ReplaceAvailable::Available)
+    const QVariant& TextSymbolReplacer::getReplacement(QStringView _smile) const
     {
-    }
-
-    TextSymbolReplacer::~TextSymbolReplacer()
-    {
-    }
-
-    const QVariant& TextSymbolReplacer::getReplacement(const QStringRef& _smile) const
-    {
-        const auto& replacementMap = getText2ReplacementMap();
-        auto trimmedSmile = _smile.trimmed();
         static const QVariant emptyValue;
 
-        if (trimmedSmile.isEmpty() || trimmedSmile.length() - 1 > maxEmojiLength)
+        const auto trimmedSmile = _smile.trimmed();
+        if (trimmedSmile.isEmpty() || trimmedSmile.size() - 1 > maxEmojiLength)
             return emptyValue;
 
-        if (const auto emoji = replacementMap.find(trimmedSmile.toString().toLower()); emoji != replacementMap.end())
+        const auto& replacementMap = getText2ReplacementMap();
+        if (const auto emoji = replacementMap.find(trimmedSmile); emoji != replacementMap.end())
             return emoji->second;
 
         return emptyValue;

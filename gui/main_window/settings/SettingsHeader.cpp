@@ -18,8 +18,9 @@ namespace Ui
     {
         Styling::Buttons::setButtonDefaultColors(backButton_);
         backButton_->setFixedSize(Utils::scale_value(QSize(20, 20)));
+        Testing::setAccessibleName(backButton_, qsl("AS SettingsTab backButton"));
 
-        QObject::connect(backButton_, &CustomButton::clicked, this, [this]() { emit backClicked(QPrivateSignal()); });
+        QObject::connect(backButton_, &CustomButton::clicked, this, [this]() { Q_EMIT backClicked(QPrivateSignal()); });
 
         auto layout = Utils::emptyHLayout(this);
         layout->setSpacing(0);

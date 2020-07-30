@@ -7,6 +7,7 @@
 
 #include "../connections/wim/persons.h"
 #include "poll.h"
+#include "reactions.h"
 
 namespace core
 {
@@ -27,6 +28,7 @@ namespace core
         class quote;
         class url_snippet;
 
+        using message_fields_set = std::set<std::string, tools::string_comparator>;
         using history_block = std::vector<std::shared_ptr<history_message>>;
         using history_patch_uptr = std::unique_ptr<history_patch>;
         using mentions_map = std::map<std::string, std::string>;
@@ -62,6 +64,29 @@ namespace core
         };
         using geo = std::optional<geo_data>;
 
+        struct button_data
+        {
+            std::string text_;
+            std::string url_;
+            std::string callback_data_;
+            std::string style_;
+
+            void serialize(icollection* _collection) const;
+            void unserialize(const rapidjson::Value& _node);
+        };
+
+        struct message_reactions
+        {
+            bool exist_ = false;
+            std::optional<reactions_data> data_;
+
+            void serialize(icollection* _collection) const;
+            void serialize(core::tools::tlvpack& _pack) const;
+            void unserialize(const rapidjson::Value& _node);
+            bool unserialize(const core::tools::tlvpack& _pack);
+        };
+        using reactions = std::optional<message_reactions>;
+
         //////////////////////////////////////////////////////////////////////////
         // message_header class
         //////////////////////////////////////////////////////////////////////////
@@ -87,12 +112,12 @@ namespace core
             common::tools::patch_version update_patch_version_;
 
             bool has_shared_contact_with_sn_;
-
             bool has_poll_with_id_;
+            bool has_reactions_;
 
             message_header_vec modifications_;
 
-            uint32_t min_data_sizeof(uint8_t _version) const;
+            uint32_t min_data_sizeof(uint8_t _version) const noexcept;
 
         public:
 
@@ -105,66 +130,70 @@ namespace core
                 uint32_t _data_size,
                 common::tools::patch_version patch_,
                 bool _shared_contact_with_sn,
-                bool _has_poll_with_id);
+                bool _has_poll_with_id,
+                bool _has_reactions);
 
             message_header(message_header&&) = default;
             message_header(const message_header&) = default;
             message_header& operator=(const message_header&) = default;
             message_header& operator=(message_header&&) = default;
 
-            uint64_t get_time() const { return time_; }
-            void set_time(uint64_t _value) { time_ = _value; }
+            uint64_t get_time() const noexcept { return time_; }
+            void set_time(uint64_t _value) noexcept { time_ = _value; }
 
-            int64_t get_id() const { return id_; }
-            void set_id(int64_t _id) { id_ = _id; }
-            bool has_id() const { return (id_ > 0); }
+            int64_t get_id() const noexcept  { return id_; }
+            void set_id(int64_t _id) noexcept { id_ = _id; }
+            bool has_id() const noexcept { return (id_ > 0); }
 
-            message_flags get_flags() const { return flags_; }
-            void set_flags(message_flags _flags) { flags_ = _flags; }
+            message_flags get_flags() const noexcept { return flags_; }
+            void set_flags(message_flags _flags) noexcept { flags_ = _flags; }
 
-            int64_t get_data_offset() const;
-            void set_data_offset(int64_t _value);
-            void invalidate_data_offset();
-            bool is_message_data_valid() const;
+            int64_t get_data_offset() const noexcept;
+            void set_data_offset(int64_t _value) noexcept;
+            void invalidate_data_offset() noexcept;
+            bool is_message_data_valid() const noexcept;
 
-            uint32_t get_data_size() const;
-            void set_data_size(uint32_t _value);
+            uint32_t get_data_size() const noexcept;
+            void set_data_size(uint32_t _value) noexcept;
 
-            int64_t get_prev_msgid() const { return prev_id_; }
-            void set_prev_msgid(int64_t _value);
+            int64_t get_prev_msgid() const noexcept { return prev_id_; }
+            void set_prev_msgid(int64_t _value) noexcept;
+
+            uint8_t get_version() const { return version_; }
 
             void serialize(core::tools::binary_stream& _data) const;
             bool unserialize(core::tools::binary_stream& _data);
 
             void merge_with(const message_header &rhs);
 
-            bool is_deleted() const;
-            bool is_modified() const;
-            bool is_updated() const;
-            bool is_patch() const;
-            bool is_updated_message() const;
-            bool is_outgoing() const;
+            bool is_deleted() const noexcept;
+            bool is_modified() const noexcept;
+            bool is_updated() const noexcept;
+            bool is_patch() const noexcept;
+            bool is_updated_message() const noexcept;
+            bool is_outgoing() const noexcept;
 
-            void set_updated(bool _value);
+            void set_updated(bool _value) noexcept;
 
             const message_header_vec& get_modifications() const;
             bool has_modifications() const;
 
-            const common::tools::patch_version& get_update_patch_version() const { return update_patch_version_; }
+            const common::tools::patch_version& get_update_patch_version() const noexcept { return update_patch_version_; }
             void set_update_patch_version(common::tools::patch_version _value) { update_patch_version_ = std::move(_value); }
-            void increment_offline_version() { update_patch_version_.increment_offline(); }
+            void increment_offline_version() noexcept { update_patch_version_.increment_offline(); }
 
-            bool has_shared_contact_with_sn() const;
-            bool has_poll_with_id() const;
+            bool has_shared_contact_with_sn() const noexcept;
+            bool has_poll_with_id() const noexcept;
+            bool has_reactions() const noexcept;
 
             friend bool operator<(const message_header& _header1, const message_header& _header2) noexcept
             {
-                return(_header1.get_id() < _header2.get_id());
+                return _header1.get_id() < _header2.get_id();
             }
 
             friend bool operator<(const message_header& _header1, const int64_t& _id) noexcept
             {
-                return(_header1.get_id() < _id);
+                return _header1.get_id() < _id;
             }
         };
         //////////////////////////////////////////////////////////////////////////
@@ -220,6 +249,7 @@ namespace core
 
         private:
             voip_event_type type_;
+            std::string sid_;
             std::string sender_aimid_;
             std::string sender_friendly_;
             int32_t duration_sec_;
@@ -296,84 +326,63 @@ namespace core
             std::optional<file_sharing_base_content_type> base_content_type_;
         };
 
-        typedef std::unique_ptr<class chat_event_data> chat_event_data_uptr;
+        using chat_event_data_uptr = std::unique_ptr<class chat_event_data>;
 
         class chat_event_data
         {
         public:
             static chat_event_data_uptr make_added_to_buddy_list(const std::string &_sender_aimid);
-
             static chat_event_data_uptr make_mchat_event(const rapidjson::Value& _node);
-
             static chat_event_data_uptr make_modified_event(const rapidjson::Value& _node);
-
             static chat_event_data_uptr make_from_tlv(const tools::tlvpack& _pack);
-
             static chat_event_data_uptr make_simple_event(const chat_event_type _type);
-
             static chat_event_data_uptr make_generic_event(const rapidjson::Value& _text_node);
-
             static chat_event_data_uptr make_generic_event(std::string _text);
 
             void apply_persons(const archive::persons_map &_persons);
-
             bool contents_equal(const chat_event_data& _rhs) const;
 
-            void serialize(Out icollection* _collection, const bool _is_outgoing) const;
-
+            void serialize(Out icollection* _collection) const;
             void serialize(Out tools::tlvpack& _pack) const;
 
-            bool is_type_deleted() const;
-
+            bool is_type_deleted() const noexcept;
             void set_captcha_present(bool _is_captcha_present) { is_captcha_present_ = _is_captcha_present; }
+
+            archive::persons_map get_persons() const;
 
         private:
             chat_event_data(const chat_event_type _type);
-
             chat_event_data(const tools::tlvpack &_pack);
 
             void deserialize_chat_modifications(const tools::tlvpack &_pack);
-
             void deserialize_mchat_members(const tools::tlvpack &_pack);
-
             void deserialize_mchat_members_aimids(const tools::tlvpack &_pack);
 
             chat_event_type get_type() const;
-
             bool has_generic_text() const;
-
             bool has_mchat_members() const;
-
             bool has_chat_modifications() const;
-
             bool has_sender_aimid() const;
 
             void serialize_chat_modifications(Out coll_helper &_coll) const;
-
             void serialize_chat_modifications(Out tools::tlvpack &_pack) const;
-
             void serialize_mchat_members(Out coll_helper &_coll) const;
-
             void serialize_mchat_members_aimids(Out coll_helper &_coll) const;
-
             void serialize_mchat_members(Out tools::tlvpack &_pack) const;
-
             void serialize_mchat_members_aimids(Out tools::tlvpack &_pack) const;
 
             chat_event_type type_;
-
             bool is_captcha_present_;
-
             bool is_channel_;
-
             std::string sender_aimid_;
-
             std::string sender_friendly_;
 
             struct
             {
                 string_vector_t members_;
                 string_vector_t members_friendly_;
+                std::string requested_by_;
+                std::string requested_by_friendly_;
             } mchat_;
 
             struct
@@ -382,6 +391,8 @@ namespace core
                 std::string new_description_;
                 std::string new_rules_;
                 std::string new_stamp_;
+                bool new_join_moderation_;
+                bool new_public_;
             } chat_;
 
             std::string generic_;
@@ -416,6 +427,13 @@ namespace core
             shared_contact shared_contact_;
             geo geo_;
             poll poll_;
+            std::string json_;
+            std::string sender_aimid_;
+            bool unsupported_;
+            bool hide_edit_;
+            std::vector<std::vector<button_data>> buttons_;
+            std::string buttons_json_;
+            reactions reactions_;
 
             void copy(const history_message& _message);
 
@@ -437,11 +455,12 @@ namespace core
 
             void merge(const history_message& _message);
 
-            static history_message_sptr make_deleted_patch(const int64_t _archive_id, const std::string& _internal_id);
-            static history_message_sptr make_modified_patch(const int64_t _archive_id, const std::string& _internal_id);
-            static history_message_sptr make_updated_patch(const int64_t _archive_id, const std::string& _internal_id);
-            static history_message_sptr make_updated(const int64_t _archive_id, const std::string& _internal_id);
-            static history_message_sptr make_clear_patch(const int64_t _archive_id, const std::string& _internal_id);
+            static history_message_sptr make_deleted_patch(const int64_t _archive_id, std::string_view _internal_id);
+            static history_message_sptr make_modified_patch(const int64_t _archive_id, std::string_view _internal_id);
+            static history_message_sptr make_updated_patch(const int64_t _archive_id, std::string_view _internal_id);
+            static history_message_sptr make_updated(const int64_t _archive_id, std::string_view _internal_id);
+            static history_message_sptr make_clear_patch(const int64_t _archive_id, std::string_view _internal_id);
+            static history_message_sptr make_set_reactions_patch(const int64_t _archive_id, std::string_view _internal_id);
 
             static void make_deleted(history_message_sptr _message);
             static void make_modified(history_message_sptr _message);
@@ -453,8 +472,11 @@ namespace core
 
             void serialize(icollection* _collection, const time_t _offset, bool _serialize_message = true) const;
             void serialize(core::tools::binary_stream& _data) const;
+            void serialize_call(core::tools::binary_stream& _data, const std::string& _aimid) const;
+
             int32_t unserialize(const rapidjson::Value& _node, const std::string &_sender_aimid);
             int32_t unserialize(core::tools::binary_stream& _data);
+            int32_t unserialize_call(core::tools::binary_stream& _data, std::string& _aimid);
 
             static void jump_to_text_field(core::tools::binary_stream& _stream, uint32_t& length);
             static int64_t get_id_field(core::tools::binary_stream& _stream);
@@ -513,7 +535,6 @@ namespace core
             bool is_modified() const;
             bool is_updated() const;
             bool is_clear() const;
-            bool is_suspicious() const;
             bool is_patch() const;
             bool is_chat_event_deleted() const;
 
@@ -542,7 +563,7 @@ namespace core
             void init_sticker_from_text(std::string _text);
             const file_sharing_data_uptr& get_file_sharing_data() const;
 
-            chat_event_data_uptr& get_chat_event_data();
+            const chat_event_data_uptr& get_chat_event_data() const;
             voip_data_uptr& get_voip_data();
 
             message_type get_type() const noexcept;
@@ -551,6 +572,7 @@ namespace core
 
             void apply_persons_to_quotes(const archive::persons_map & _persons);
             void apply_persons_to_mentions(const archive::persons_map & _persons);
+            void apply_persons_to_voip(const archive::persons_map & _persons);
 
             void set_shared_contact(const shared_contact& _contact);
             const shared_contact& get_shared_contact() const;
@@ -565,6 +587,9 @@ namespace core
 
             bool has_shared_contact_with_sn() const;
             bool has_poll_with_id() const;
+            bool has_reactions() const;
+
+            const reactions& get_reactions() const;
         };
 
         class quote
@@ -592,7 +617,7 @@ namespace core
             void serialize(icollection* _collection) const;
             void serialize(core::tools::tlvpack& _pack) const;
             void unserialize(icollection* _coll);
-            void unserialize(const rapidjson::Value& _node, bool _is_forward);
+            bool unserialize(const rapidjson::Value& _node, bool _is_forward, const message_fields_set& _new_fields);
             void unserialize(const core::tools::tlvpack &_pack);
 
             const std::string& get_text() const { return text_; }

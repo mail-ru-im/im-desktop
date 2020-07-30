@@ -30,10 +30,7 @@ tlvpack& tlvpack::operator=(const tlvpack& _pack)
     return (*this);
 }
 
-core::tools::tlvpack::~tlvpack()
-{
-
-}
+core::tools::tlvpack::~tlvpack() = default;
 
 uint32_t core::tools::tlvpack::size() const
 {
@@ -61,6 +58,9 @@ bool core::tools::tlvpack::unserialize(const binary_stream& _stream)
 
 void core::tools::tlvpack::serialize(binary_stream& _stream) const
 {
+    const auto total = std::accumulate(tlvlist_.begin(), tlvlist_.end(), int64_t(0), [](int64_t _sum, const auto& _x) { return _sum + _x->value_size(); });
+    _stream.reserve(total);
+
     for (const auto &x : tlvlist_)
         x->serialize(_stream);
 }
@@ -75,6 +75,11 @@ void core::tools::tlvpack::push_child(tlv _tlv)
     tlvlist_.push_back(std::make_shared<tlv>(std::move(_tlv)));
 }
 
+void core::tools::tlvpack::reserve(size_t _capacity)
+{
+    tlvlist_.reserve(_capacity);
+}
+
 
 std::shared_ptr<tlv> core::tools::tlvpack::get_item(uint32_t _type) const
 {
@@ -84,7 +89,7 @@ std::shared_ptr<tlv> core::tools::tlvpack::get_item(uint32_t _type) const
             return x;
     }
 
-    return std::shared_ptr<tlv>();
+    return {};
 }
 
 std::shared_ptr<tlv> core::tools::tlvpack::get_first()
@@ -100,7 +105,7 @@ std::shared_ptr<tlv> core::tools::tlvpack::get_first()
 std::shared_ptr<tlv> core::tools::tlvpack::get_next()
 {
     if (tlvlist_.empty() || cursor_ == tlvlist_.end() || tlvlist_.end() == (++cursor_))
-        return std::shared_ptr<tlv>();
+        return {};
 
     return (*cursor_);
 }
@@ -137,19 +142,20 @@ void core::tools::tlv::serialize(core::tools::binary_stream& _stream) const
 {
     _stream.write((uint32_t) type_);
     _stream.write((uint32_t) value_stream_.available());
-    if (value_stream_.available())
+    if (const auto size = value_stream_.available(); size > 0)
     {
-        uint32_t size = value_stream_.available();
         _stream.write(value_stream_.read(size), size);
         value_stream_.reset_out();
     }
-
 }
 
 bool core::tools::tlv::unserialize(const binary_stream& _stream)
 {
     if (_stream.available() < sizeof(uint32_t)*2)
-        return false;
+    {
+        _stream.read(_stream.available());
+        return true;
+    }
 
     type_ = _stream.read<uint32_t>();
     uint32_t length = _stream.read<uint32_t>();
@@ -177,7 +183,7 @@ bool core::tools::tlv::try_get_field_with_type(const binary_stream& _stream, con
     if (length == 0)
         return true;
 
-    if (_stream.available() < (length))
+    if (_stream.available() < length)
         return false;
 
     if (type == _type)
@@ -208,7 +214,7 @@ template<> tlvpack tlv::get_value() const
 template<> std::string tlv::get_value<std::string>(const std::string& _default_value) const
 {
     std::string val = _default_value;
-    if (const uint32_t size = value_stream_.available(); size > 0)
+    if (const auto size = value_stream_.available(); size > 0)
     {
         try
         {
@@ -235,6 +241,14 @@ template<> void tlv::set_value<std::string>(const std::string& _value)
     if (_value.empty())
         return;
     value_stream_.write((char*)_value.c_str(), (uint32_t)_value.size());
+}
+
+template<> void tlv::set_value<std::string_view>(const std::string_view& _value)
+{
+    value_stream_.reset();
+    if (_value.empty())
+        return;
+    value_stream_.write((char*)_value.data(), (uint32_t)_value.size());
 }
 
 template<> void tlv::set_value<binary_stream>(const binary_stream& _value)

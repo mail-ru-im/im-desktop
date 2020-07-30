@@ -16,8 +16,8 @@
 namespace Utils
 {
 
-InternalServiceHandler::InternalServiceHandler(InternalServiceRequest *_request)
-    : request_(_request)
+InternalServiceHandler::InternalServiceHandler(std::shared_ptr<InternalServiceRequest> _request)
+    : request_(std::move(_request))
 {
 
 }
@@ -36,7 +36,7 @@ void InternalServiceHandler::start()
         Utils::clearAvatarsCache();
         break;
     case InternalServiceRequest::CommandType::OpenDebug:
-        emit Utils::InterConnector::instance().showDebugSettings();
+        Q_EMIT Utils::InterConnector::instance().showDebugSettings();
         break;
     case InternalServiceRequest::CommandType::CheckForUpdate:
         Utils::checkForUpdates();
@@ -44,6 +44,11 @@ void InternalServiceHandler::start()
     default:
         break;
     }
+
+    Result res;
+    res.status_ = Result::Status::Success;
+
+    Q_EMIT finished(request_->getId(), res);
 }
 
 

@@ -51,6 +51,8 @@ public:
 
     void selectAll() override;
 
+    MenuFlags getMenuFlags(QPoint p) const override;
+
     ContentType getContentType() const override { return ContentType::Text; }
 
     bool isBubbleRequired() const override;
@@ -63,11 +65,17 @@ public:
 
     QString linkAtPos(const QPoint& pos) const override;
 
+    std::optional<QString> getWordAt(QPoint) const override;
+
+    bool replaceWordAt(const QString&, const QString&, QPoint) override;
+
     QString getTrimmedText() const override;
 
     int desiredWidth(int _width = 0) const override;
 
     QString getTextForCopy() const override;
+
+    QString getTextInstantEdit() const override;
 
     bool getTextStyle() const;
 
@@ -77,12 +85,18 @@ public:
 
     void setText(const QString& _text) override;
 
-    void setEmojiSizeType(const TextRendering::EmojiSizeType& _emojiSizeType) override;
+    void setEmojiSizeType(const TextRendering::EmojiSizeType _emojiSizeType) override;
 
     void highlight(const highlightsV& _hl) override;
     void removeHighlight() override;
 
     bool managesTime() const override { return true; }
+
+    void startSpellChecking() override;
+
+    int effectiveBlockWidth() const override { return desiredWidth(); }
+
+    void setSpellErrorsVisible(bool _visible) override;
 
 protected:
     void drawBlock(QPainter &p, const QRect& _rect, const QColor& _quoteColor) override;
@@ -94,7 +108,12 @@ protected:
     void leaveEvent(QEvent *e) override;
 
 private:
+    void reinit();
     void initTextUnit();
+    void initTripleClickTimer();
+
+    void onTextUnitChanged();
+
     void adjustEmojiSize();
 
     void updateStyle() override;
@@ -102,13 +121,16 @@ private:
 
     QPoint mapPoint(const QPoint& _complexMsgPoint) const;
 
+    void startSpellCheckingIfNeeded();
+
 private:
     TextBlockLayout* Layout_;
 
     std::unique_ptr<TextRendering::TextUnit> textUnit_;
 
-    QTimer* TripleClickTimer_;
+    QTimer* TripleClickTimer_ = nullptr;
     TextRendering::EmojiSizeType emojiSizeType_;
+    bool needSpellCheck_ = false;
 };
 
 UI_COMPLEX_MESSAGE_NS_END

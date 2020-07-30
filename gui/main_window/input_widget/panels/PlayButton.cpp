@@ -81,9 +81,9 @@ namespace Ui
         switch (_s)
         {
         case Ui::PlayButton::State::Stop:
-            setDefaultImage(qsl(":/ptt/stop_record"), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT), imageSize());
-            setHoverColor(Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT));
-            setActiveColor(Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT));
+            setDefaultImage(qsl(":/ptt/stop_record"), Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE), imageSize());
+            setHoverColor(Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE));
+            setActiveColor(Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE));
             setFocusColor(focusColorGhost());
             break;
         case Ui::PlayButton::State::Play:

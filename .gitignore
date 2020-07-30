@@ -141,3 +141,10 @@ corelib/corelib/libcore.a
 /core/zstd_wrap/zstd_dicts/internal_request_dict.h
 /core/zstd_wrap/zstd_dicts/internal_response_dict.cpp
 /core/zstd_wrap/zstd_dicts/internal_response_dict.h
+
+# External folder
+downloads
+external_v*
+
+# Voip
+core/Voip/libvoip_*

@@ -1,0 +1,16 @@
+<svg width="8" height="8" viewBox="0 0 8 8" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="button_out">
+<g clip-path="url(#clip0)">
+<g id="Group 195">
+<line id="Line 36" x1="0.76709" y1="7.23377" x2="6.04469" y2="1.95618" stroke="#7E838F" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="Line 38" x1="0.75" y1="0.75" x2="7.25" y2="0.749999" stroke="#7E838F" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+<line id="Line 39" x1="7.24982" y1="0.749936" x2="7.25038" y2="7.24994" stroke="#7E838F" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+</g>
+</g>
+<defs>
+<clipPath id="clip0">
+<path d="M0 0H8V8H0V0Z" fill="white"/>
+</clipPath>
+</defs>
+</svg>

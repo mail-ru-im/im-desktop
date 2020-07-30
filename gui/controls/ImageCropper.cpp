@@ -24,6 +24,7 @@ namespace Ui
     ImageCropper::ImageCropper(QWidget* parent, const QSize &minimumSize)
         : QWidget(parent)
         , pimpl(std::make_unique<ImageCropperPrivate>())
+        , minScaledSize_(Utils::scale_value(MIN_SIZE))
     {
         WIDGET_MINIMUM_SIZE = getSize(minimumSize);
         width_ = WIDGET_MINIMUM_SIZE.width();
@@ -190,7 +191,7 @@ namespace Ui
             const auto radius = pimpl->croppingRect.height();
             p.addRoundedRect(pimpl->croppingRect, radius, radius);
             p.addRect(this->rect());
-            QColor foggingColor(ql1s("#000000"));
+            QColor foggingColor(u"#000000");
             foggingColor.setAlphaF(0.6);
             widgetPainter.setBrush(QBrush(foggingColor));
             widgetPainter.setPen(Qt::transparent);

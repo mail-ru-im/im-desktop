@@ -39,7 +39,7 @@ namespace common
                 version_string_ = _version;
             }
 
-            void set_offline_version(const int32_t _version)
+            void set_offline_version(const int32_t _version) noexcept
             {
                 offline_version_ = _version;
             }
@@ -54,7 +54,7 @@ namespace common
                 return version_string_.empty();
             }
 
-            void increment_offline()
+            void increment_offline() noexcept
             {
                 ++offline_version_;
             }

@@ -20,6 +20,7 @@
 #include "main_window/contact_list/AddContactDialogs.h"
 #include "previewer/toast.h"
 #include "utils/PhoneFormatter.h"
+#include "utils/gui_coll_helper.h"
 
 namespace
 {
@@ -66,12 +67,6 @@ namespace
     QRect getClickArea(const QRect& _contentRect)
     {
         return QRect(_contentRect.topLeft(), QSize(_contentRect.width(), getAvatarSize()));
-    }
-
-    const QColor& getSelectedTextColor()
-    {
-        static const auto color = Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT);
-        return color;
     }
 
     QFont getNameFont()
@@ -161,39 +156,34 @@ namespace
 
     const QPixmap& getArrowButtonPixmap(bool _hovered, bool _active, bool _outgoing)
     {
-        auto getPixmap = [](const QColor& _color)
+        auto getPixmap = [](const auto _var)
         {
-            auto pixmap = Utils::renderSvg(qsl(":/controls/back_icon"), getArrowButtonPixmapSize(), _color);
-            pixmap = pixmap.transformed(QTransform().rotate(180));
-            Utils::check_pixel_ratio(pixmap);
-            return pixmap;
+            return Utils::mirrorPixmapHor(Utils::renderSvg(qsl(":/controls/back_icon"), getArrowButtonPixmapSize(), Styling::getParameters().getColor(_var)));
         };
 
         if (_outgoing)
         {
-            static const auto pixmap = getPixmap(Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_PASTEL));
-            static const auto pixmapHovered = getPixmap(Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY_HOVER));
-            static const auto pixmapActive = getPixmap(Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY_ACTIVE));
+            static const auto pixmap = getPixmap(Styling::StyleVariable::PRIMARY_PASTEL);
+            static const auto pixmapHovered = getPixmap(Styling::StyleVariable::TEXT_PRIMARY_HOVER);
+            static const auto pixmapActive = getPixmap(Styling::StyleVariable::TEXT_PRIMARY_ACTIVE);
 
             if (_active)
                 return pixmapActive;
             else if (_hovered)
                 return pixmapHovered;
-            else
-                return pixmap;
+            return pixmap;
         }
         else
         {
-            static const auto pixmap = getPixmap(Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY));
-            static const auto pixmapHovered = getPixmap(Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY_HOVER));
-            static const auto pixmapActive = getPixmap(Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY_ACTIVE));
+            static const auto pixmap = getPixmap(Styling::StyleVariable::BASE_SECONDARY);
+            static const auto pixmapHovered = getPixmap(Styling::StyleVariable::BASE_SECONDARY_HOVER);
+            static const auto pixmapActive = getPixmap(Styling::StyleVariable::BASE_SECONDARY_ACTIVE);
 
             if (_active)
                 return pixmapActive;
             else if (_hovered)
                 return pixmapHovered;
-            else
-                return pixmap;
+            return pixmap;
         }
     }
 
@@ -257,12 +247,12 @@ void ProfileBlockBase::updateFonts()
 int ProfileBlockBase::desiredWidth(int _width) const
 {
     Q_UNUSED(_width)
-    auto width = MessageStyle::getProfileBlockDesiredWidth();
+    return MessageStyle::getProfileBlockDesiredWidth();
+}
 
-    if (!isStandalone())
-        width += MessageStyle::Files::getHorMargin() * 2;
-
-    return width;
+int ProfileBlockBase::getMaxWidth() const
+{
+    return Utils::scale_value(400);
 }
 
 int ProfileBlockBase::getHeightForWidth(int _width) const
@@ -343,8 +333,8 @@ void ProfileBlockBase::drawBlock(QPainter& p, const QRect& _rect, const QColor& 
 
     if (!isStandalone())
     {
-        p.setTransform(QTransform().translate(MessageStyle::Files::getHorMargin(), MessageStyle::Files::getVerMargin()));
-        contentSize.setWidth(contentSize.width() - MessageStyle::Files::getHorMargin() * 2);
+        p.setTransform(QTransform().translate(0, MessageStyle::Files::getVerMargin()));
+        contentSize.setWidth(width());
         contentSize.setHeight(contentSize.height() - MessageStyle::Files::getVerMargin() * 2);
     }
 
@@ -482,11 +472,11 @@ void ProfileBlockBase::onAvatarChanged(const QString& aimId)
 void ProfileBlockBase::init(const QString& _name, const QString& _underName, const QString& _description)
 {
     name_ = _name;
-    nameUnit_ = TextRendering::MakeTextUnit(_name, Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS);
+    nameUnit_ = TextRendering::MakeTextUnit(_name, {}, TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
 
     underNameText_ = _underName;
-    underNameUnit_ = TextRendering::MakeTextUnit(_underName, Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS);
-    descriptionUnit_ = TextRendering::MakeTextUnit(_description, Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS);
+    underNameUnit_ = TextRendering::MakeTextUnit(_underName, {}, TextRendering::LinksVisible::DONT_SHOW_LINKS);
+    descriptionUnit_ = TextRendering::MakeTextUnit(_description, {}, TextRendering::LinksVisible::DONT_SHOW_LINKS);
 
     button_ = std::make_unique<BLabel>();
     auto buttonUnit = TextRendering::MakeTextUnit(getButtonText());
@@ -581,8 +571,8 @@ QString ProfileBlock::getUnderNameText()
     if (info_.type_ == Data::IdInfo::IdType::User)
     {
         QString text;
-        if (!info_.sn_.contains(ql1c('@')))
-            text += ql1c('@');
+        if (!info_.sn_.contains(u'@'))
+            text += u'@';
 
         if (info_.nick_.isEmpty())
             text += info_.sn_;
@@ -593,7 +583,7 @@ QString ProfileBlock::getUnderNameText()
     }
     else if (info_.type_ == Data::IdInfo::IdType::Chat)
     {
-        const QString text = QString::number(info_.memberCount_) % ql1c(' ')
+        const QString text = QString::number(info_.memberCount_) % u' '
             % Utils::GetTranslator()->getNumberString(
                   info_.memberCount_,
                   QT_TRANSLATE_NOOP3("profile_block", "member", "1"),
@@ -663,14 +653,19 @@ void ProfileBlock::chatInfo(qint64 _seq, const std::shared_ptr<Data::ChatInfo>& 
     chatInfo_ = _chatInfo;
 }
 
+void ProfileBlock::openChat() const
+{
+    if (!info_.sn_.isEmpty())
+        Utils::openDialogOrProfile(info_.sn_);
+    else if (!info_.stamp_.isEmpty())
+        Utils::openDialogOrProfile(info_.stamp_, Utils::OpenDOPParam::stamp);
+}
+
 void ProfileBlock::onButtonPressed()
 {
     if (info_.type_ == Data::IdInfo::IdType::Chat)
     {
-        if (chatInfo_)
-            Utils::openChatDialog(info_.stamp_, info_.sn_, chatInfo_->ApprovedJoin_, chatInfo_->Public_);
-        else
-            Utils::openDialogOrProfile(info_.stamp_, Utils::OpenDOPParam::stamp);
+        openChat();
     }
     else
     {
@@ -684,14 +679,11 @@ void ProfileBlock::onClickAreaPressed()
 {
     if (info_.type_ == Data::IdInfo::IdType::Chat)
     {
-        if (chatInfo_)
-            Utils::openChatDialog(info_.stamp_, info_.sn_, chatInfo_->ApprovedJoin_, chatInfo_->Public_);
-        else
-            Utils::openDialogOrProfile(info_.stamp_, Utils::OpenDOPParam::stamp);
+        openChat();
     }
     else
     {
-        emit Utils::InterConnector::instance().profileSettingsShow(info_.sn_);
+        Q_EMIT Utils::InterConnector::instance().profileSettingsShow(info_.sn_);
         Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::chatscr_contactinfo_action, { { "chat_type", Utils::chatTypeByAimId(info_.sn_) }, { "do", "shared_contact" } });
         Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::sharedcontactscr_action, { { "do", "profile" } });
     }

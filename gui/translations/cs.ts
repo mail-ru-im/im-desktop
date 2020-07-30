@@ -127,6 +127,17 @@ Zde můžete zanechat svůj názor nebo nahlásit chybu:</translation>
     </message>
 </context>
 <context>
+    <name>active_call_plate</name>
+    <message>
+        <source>Join</source>
+        <translation>Vstoupit</translation>
+    </message>
+    <message>
+        <source>Active call</source>
+        <translation>Aktivní hovor</translation>
+    </message>
+</context>
+<context>
     <name>add_new_contact_dialogs</name>
     <message>
         <source>New contact</source>
@@ -251,8 +262,36 @@ Zde můžete zanechat svůj názor nebo nahlásit chybu:</translation>
         <translation>Oranžová</translation>
     </message>
     <message>
-        <source>Dark blue</source>
+        <source>Default</source>
+        <translation>Ve výchozím nastavení</translation>
+    </message>
+    <message>
+        <source>Dark Turquoise</source>
+        <translation>Tmavě tyrkysová</translation>
+    </message>
+    <message>
+        <source>Dark Violet</source>
+        <translation>Tmavá šeřík</translation>
+    </message>
+    <message>
+        <source>Dark Orange</source>
+        <translation>Tmavě oranžová</translation>
+    </message>
+    <message>
+        <source>Pink</source>
+        <translation>Růžový</translation>
+    </message>
+    <message>
+        <source>Dark Pink</source>
+        <translation>Tmavě růžová</translation>
+    </message>
+    <message>
+        <source>Dark Blue</source>
         <translation>Tmavě modrá</translation>
+    </message>
+    <message>
+        <source>Turquoise</source>
+        <translation>Tyrkysový</translation>
     </message>
 </context>
 <context>
@@ -315,10 +354,6 @@ Zde můžete zanechat svůj názor nebo nahlásit chybu:</translation>
         <translation>Mazat zprávy</translation>
     </message>
     <message>
-        <source>Block and delete?</source>
-        <translation>Blokovat a smazat?</translation>
-    </message>
-    <message>
         <source>Cancel</source>
         <translation>Zrušit</translation>
     </message>
@@ -334,23 +369,86 @@ Zde můžete zanechat svůj názor nebo nahlásit chybu:</translation>
         <source>This member won&apos;t be able to join the group again. You could also delete his messages</source>
         <translation>Člen se nebude moci vrátit do skupiny. Můžete také odstranit jeho zprávy</translation>
     </message>
+    <message>
+        <source>Delete?</source>
+        <translation>Smazat?</translation>
+    </message>
+</context>
+<context>
+    <name>bots</name>
+    <message>
+        <source>Cancel</source>
+        <translation>Zrušit</translation>
+    </message>
+    <message>
+        <source>Ok</source>
+        <translation>Dobře</translation>
+    </message>
+    <message>
+        <source>Open link</source>
+        <translation>Otevřít odkaz</translation>
+    </message>
+    <message>
+        <source>You are not a member of this chat or you was banned to write</source>
+        <translation>Nejste členem chatu nebo nemáte povoleno psát</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to open an external link %1?</source>
+        <translation>Opravdu chcete otevřít externí odkaz %1 ?</translation>
+    </message>
+</context>
+<context>
+    <name>call_link</name>
+    <message>
+        <source>Link on call</source>
+        <translation>Volat odkaz</translation>
+    </message>
+    <message>
+        <source>Link on webinar</source>
+        <translation>Odkaz na webinář</translation>
+    </message>
+    <message>
+        <source>Send the link to people you want to add to the call</source>
+        <translation>Pošlete odkaz lidem, které chcete přidat do hovoru</translation>
+    </message>
+    <message>
+        <source>Send the link to people you want to invite to the webinar</source>
+        <translation>Pošlete odkaz lidem, které chcete pozvat na webinář</translation>
+    </message>
+    <message>
+        <source>call</source>
+        <translation>zvonek</translation>
+    </message>
+    <message>
+        <source>webinar</source>
+        <translation>webinář</translation>
+    </message>
+    <message>
+        <source>Send the %1 link to current chat or copy it</source>
+        <translation>Zašlete odkaz na %1 v živém chatu nebo jej zkopírujte</translation>
+    </message>
+    <message>
+        <source>Send the call link %1 to current chat or copy it</source>
+        <translation>Odeslat odkaz a zavolat %1 nebo jej zkopírovat</translation>
+    </message>
+</context>
+<context>
+    <name>calls</name>
+    <message>
+        <source>Group call</source>
+        <translation>Zahájit skupinový hovor</translation>
+    </message>
+    <message>
+        <source>Create webinar</source>
+        <translation>Vytvořte webinář</translation>
+    </message>
+    <message>
+        <source>Create call link</source>
+        <translation>Vytvořte odkaz na volání</translation>
+    </message>
 </context>
 <context>
     <name>chat_event</name>
-    <message>
-        <source> and </source>
-        <translation> a </translation>
-    </message>
-    <message>
-        <source>You</source>
-        <comment>active_voice</comment>
-        <translation>Ty</translation>
-    </message>
-    <message>
-        <source>you</source>
-        <comment>passive_voice</comment>
-        <translation>tě</translation>
-    </message>
     <message>
         <source>Missed call</source>
         <translation>Volání zpět</translation>
@@ -364,20 +462,8 @@ Zde můžete zanechat svůj názor nebo nahlásit chybu:</translation>
         <translation>Příchozí hovor</translation>
     </message>
     <message>
-        <source>You changed picture of group</source>
-        <translation>Změnil jsi obrázek skupiny</translation>
-    </message>
-    <message>
         <source> has birthday!</source>
         <translation> má dnes narozeniny!</translation>
-    </message>
-    <message>
-        <source>You have joined group</source>
-        <translation>Připojil ses ke skupině</translation>
-    </message>
-    <message>
-        <source>You deleted chat description</source>
-        <translation>Odstranil(a) jsi popis chatu</translation>
     </message>
     <message>
         <source>Message was deleted</source>
@@ -390,58 +476,6 @@ Zde můžete zanechat svůj názor nebo nahlásit chybu:</translation>
     <message>
         <source>%1 added you to contacts</source>
         <translation>%1 vás přidal do kontaktů</translation>
-    </message>
-    <message>
-        <source>%1 changed picture of group</source>
-        <translation>%1 změnil obrázek skupiny</translation>
-    </message>
-    <message>
-        <source>You changed theme to &quot;%1&quot;</source>
-        <translation>Změnil jsi téma na &quot;%1&quot;</translation>
-    </message>
-    <message>
-        <source>%1 changed theme to &quot;%2&quot;</source>
-        <translation>%1 změnil téma na &quot;%2&quot;</translation>
-    </message>
-    <message>
-        <source>You added %1</source>
-        <translation>Přidal jste %1</translation>
-    </message>
-    <message>
-        <source>%1 has joined group</source>
-        <translation>%1 vstoupil do skupiny</translation>
-    </message>
-    <message>
-        <source>%1 added %2</source>
-        <translation>%1 přidáno %2</translation>
-    </message>
-    <message>
-        <source>%1 deleted chat description</source>
-        <translation>%1 odstranil(a) popis chatu</translation>
-    </message>
-    <message>
-        <source>You changed description to &quot;%1&quot;</source>
-        <translation>Změnil jsi popis na &quot;%1&quot;</translation>
-    </message>
-    <message>
-        <source>%1 changed description to &quot;%2&quot;</source>
-        <translation>%1 změnil popis na &quot;%2&quot;</translation>
-    </message>
-    <message>
-        <source>You changed chat rules to &quot;%1&quot;</source>
-        <translation>Změnili jste pravidla chatu na &quot;%1&quot;</translation>
-    </message>
-    <message>
-        <source>You removed %1</source>
-        <translation>Odebral jsi %1</translation>
-    </message>
-    <message>
-        <source>%1 removed %2</source>
-        <translation>%1 odebrán %2</translation>
-    </message>
-    <message>
-        <source>%1 changed chat rules to &quot;%2&quot;</source>
-        <translation>%1 změnil pravidla chatu na &quot;%2&quot;</translation>
     </message>
     <message>
         <source>Your call was missed</source>
@@ -488,40 +522,12 @@ Zde můžete zanechat svůj názor nebo nahlásit chybu:</translation>
         <translation>Neodpověděl jste na hovor od %1</translation>
     </message>
     <message>
-        <source>Theme was changed to &quot;%1&quot;</source>
-        <translation>Vlákno bylo změněno na %1</translation>
-    </message>
-    <message>
-        <source>%1 was added</source>
-        <translation>Byl přidán %1</translation>
-    </message>
-    <message>
-        <source>%1 were added</source>
-        <translation>%1 bylo přidáno</translation>
-    </message>
-    <message>
-        <source>Chat description was deleted</source>
-        <translation>Popis chatu byl smazán</translation>
-    </message>
-    <message>
         <source>%1 was removed</source>
         <translation>%1 byl smazán</translation>
     </message>
     <message>
         <source>%1 were removed</source>
         <translation>%1 byl smazán</translation>
-    </message>
-    <message>
-        <source>Channel avatar was changed</source>
-        <translation>Avatar kanálu byl změněn</translation>
-    </message>
-    <message>
-        <source>Description was changed to &quot;%1&quot;</source>
-        <translation>Popis změněn na %1</translation>
-    </message>
-    <message>
-        <source>Channel rules were changed to &quot;%1&quot;</source>
-        <translation>Pravidla kanálu se změnila na %1</translation>
     </message>
     <message>
         <source>You have recently added %1 to your phone contacts. Write a new message or make a call %2</source>
@@ -532,24 +538,418 @@ Zde můžete zanechat svůj názor nebo nahlásit chybu:</translation>
         <translation>Takže %1 je tady! Psát, volat %2</translation>
     </message>
     <message>
-        <source>You changed chat link to %1</source>
-        <translation>Odkaz jste změnili na %1</translation>
-    </message>
-    <message>
-        <source>Channel link was changed to %1</source>
-        <translation>Odkaz byl změněn na %1</translation>
-    </message>
-    <message>
-        <source>%1 changed chat link to %2</source>
-        <translation>%1 změnil odkaz na %2</translation>
-    </message>
-    <message>
         <source>Add avatar</source>
         <translation>Přidat avatar</translation>
     </message>
     <message>
         <source>Add description</source>
         <translation>Přidat popis</translation>
+    </message>
+    <message>
+        <source>You specified a new channel name - &quot;%1&quot;</source>
+        <translation>Zadali jste nový název kanálu - &quot;%1&quot;</translation>
+    </message>
+    <message>
+        <source>%1 specified a new channel name - &quot;%2&quot;</source>
+        <translation>%1 označil nový název kanálu - &quot;%2&quot;</translation>
+    </message>
+    <message>
+        <source>You specified a new group name - &quot;%1&quot;</source>
+        <translation>Zadali jste nový název skupiny - &quot;%1&quot;</translation>
+    </message>
+    <message>
+        <source>%1 specified a new group name - &quot;%2&quot;</source>
+        <translation>%1 označil nový název skupiny - &quot;%2&quot;</translation>
+    </message>
+    <message>
+        <source>%1 You have joined channel</source>
+        <translation>%1 Připojili jste se ke kanálu</translation>
+    </message>
+    <message>
+        <source>%1 %2 has joined channel</source>
+        <translation>%1 %2 připojil k kanálu</translation>
+    </message>
+    <message>
+        <source>%1 You have joined group</source>
+        <translation>%1 Připojili jste se ke skupině</translation>
+    </message>
+    <message>
+        <source>%1 %2 has joined group</source>
+        <translation>%1 %2 připojil ke skupině</translation>
+    </message>
+    <message>
+        <source>%1 You added %2 to the channel</source>
+        <translation>%1 Do kanálu jste přidali %2</translation>
+    </message>
+    <message>
+        <source>%1 %2 added %3 to the channel</source>
+        <translation>%1 %2 přidalo %3 do kanálu</translation>
+    </message>
+    <message>
+        <source>%1 You added %2 to the group</source>
+        <translation>%1 Do skupiny jste přidali %2</translation>
+    </message>
+    <message>
+        <source>%1 %2 added %3 to the group</source>
+        <translation>%1 %2 přidal %3 do skupiny</translation>
+    </message>
+    <message>
+        <source>You enabled join with approval</source>
+        <translation>Zapnuli jste moderování</translation>
+    </message>
+    <message>
+        <source>You disabled join with approval</source>
+        <translation>Na požádání jste vypnuli členství ve skupině</translation>
+    </message>
+    <message>
+        <source>%1 enabled join with approval</source>
+        <translation>%1 zapnul moderování spojení</translation>
+    </message>
+    <message>
+        <source>%1 disabled join with approval</source>
+        <translation>%1 vypnul moderování spojení</translation>
+    </message>
+    <message>
+        <source>You made the group public, now it is possible to find it through a search</source>
+        <translation>Skupinu jste zveřejnili, mohou ji najít prostřednictvím vyhledávání</translation>
+    </message>
+    <message>
+        <source>You made the group private, now it is impossible to find it through a search</source>
+        <translation>Skupinu jste nastavili jako soukromou, při hledání ji již nelze najít</translation>
+    </message>
+    <message>
+        <source>%1 made the group public, now it is possible to find it through a search</source>
+        <translation>%1 publikoval skupinu, lze ji najít prostřednictvím vyhledávání</translation>
+    </message>
+    <message>
+        <source>%1 made the group private, now it is impossible to find it through a search</source>
+        <translation>%1 učinil skupinu soukromou, již ji nelze najít pomocí vyhledávání</translation>
+    </message>
+    <message>
+        <source>%1 You removed %2</source>
+        <translation>%1 Odstranili jste %2</translation>
+    </message>
+    <message>
+        <source>%1 %2 removed %3</source>
+        <translation>%1 %2 smazáno %3</translation>
+    </message>
+    <message>
+        <source>You are no more an administrator of this group</source>
+        <translation>Již nejste administrátorem této skupiny</translation>
+    </message>
+    <message>
+        <source>You removed administrator role from %1</source>
+        <translation>Odebrali jste práva správce z %1</translation>
+    </message>
+    <message>
+        <source>%1 removed administrator role from %2</source>
+        <translation>%1 odebral administrátorská práva s %2</translation>
+    </message>
+    <message>
+        <source>%1 Wait for join request approval</source>
+        <translation>%1 Počkejte na potvrzení žádosti o zadání</translation>
+    </message>
+    <message>
+        <source>%1 You asked to add %2 to the channel</source>
+        <translation>%1 Požádali jste o přidání %2 do kanálu</translation>
+    </message>
+    <message>
+        <source>%1 You asked to add %2 to the group</source>
+        <translation>%1 Požádali jste o přidání %2 do skupiny</translation>
+    </message>
+    <message>
+        <source>%1 %2 asked to add %3 to the group</source>
+        <translation>%1 %2 požádal o přidání %3 do skupiny</translation>
+    </message>
+    <message>
+        <source>%1 %2 is waiting for group join request approval</source>
+        <translation>%1 %2 čeká na potvrzení připojení ke skupině</translation>
+    </message>
+    <message>
+        <source>%1 Your join request was approved</source>
+        <translation>%1 Vaše žádost o členství je potvrzena</translation>
+    </message>
+    <message>
+        <source>%1 Request from %2 to add you to the channel was approved</source>
+        <translation>%1 Žádost od %2 o přidání vás do kanálu byla potvrzena</translation>
+    </message>
+    <message>
+        <source>%1 Request from %2 to add you to the group was approved</source>
+        <translation>%1 Žádost od %2 o přidání vás do skupiny byla potvrzena</translation>
+    </message>
+    <message>
+        <source>%1 You approved join request from %2</source>
+        <translation>%1 Potvrdili jste svou žádost o připojení od %2</translation>
+    </message>
+    <message>
+        <source>%1 You approved join request from %2 to add %3 to the channel</source>
+        <translation>%1 Potvrdili jste žádost od %2 o přidání %3 do kanálu</translation>
+    </message>
+    <message>
+        <source>%1 You approved join request from %2 to add %3 to the group</source>
+        <translation>%1 Potvrdili jste žádost od %2 o přidání %3 do skupiny</translation>
+    </message>
+    <message>
+        <source>%1 %2 approved join request from %3</source>
+        <translation>%1 %2 potvrdil žádost o připojení od %3</translation>
+    </message>
+    <message>
+        <source>%1 Your join request was rejected</source>
+        <translation>%1 Vaše žádost o členství byla zamítnuta</translation>
+    </message>
+    <message>
+        <source>%1 Request from %2 to add you to the channel was rejected</source>
+        <translation>%1 Žádost od %2 o přidání vás do odmítnutého kanálu</translation>
+    </message>
+    <message>
+        <source>%1 Request from %2 to add you to the group was rejected</source>
+        <translation>%1 Žádost od %2 o přidání vás do skupiny zamítnuta</translation>
+    </message>
+    <message>
+        <source>%1 You rejected join request from %2</source>
+        <translation>%1 Odmítli jste se připojit z %2</translation>
+    </message>
+    <message>
+        <source>%1 You rejected join request from %2 to add %3 to the channel</source>
+        <translation>%1 Odmítli jste žádost od %2 o přidání %3 do kanálu</translation>
+    </message>
+    <message>
+        <source>%1 You rejected join request from %2 to add %3 to the group</source>
+        <translation>%1 Odmítli jste žádost od %2 o přidání %3 do skupiny</translation>
+    </message>
+    <message>
+        <source>%1 %2 rejected join request from %3</source>
+        <translation>%1 %2 zamítl žádost o připojení od %3</translation>
+    </message>
+    <message>
+        <source>%1 You have left channel</source>
+        <translation>%1 Opustili jste kanál</translation>
+    </message>
+    <message>
+        <source>%1 You have left group</source>
+        <translation>%1 Opustili jste skupinu</translation>
+    </message>
+    <message>
+        <source>you</source>
+        <translation>ty</translation>
+    </message>
+    <message>
+        <source>Administrator</source>
+        <translation>Správce</translation>
+    </message>
+    <message>
+        <source>%1 %2 removed you</source>
+        <translation>%1 %2 vás odstranil</translation>
+    </message>
+    <message>
+        <source>%1 allowed you to write</source>
+        <translation>%1 vám umožnil napsat</translation>
+    </message>
+    <message>
+        <source>You allowed %1 to write</source>
+        <translation>Můžete napsat %1</translation>
+    </message>
+    <message>
+        <source>%1 allowed %2 to write</source>
+        <translation>%1 , aby (y) psaní %2</translation>
+    </message>
+    <message>
+        <source>%1 banned you to write</source>
+        <translation>%1 vám zakázal psaní</translation>
+    </message>
+    <message>
+        <source>You banned %1 to write</source>
+        <translation>Je zakázáno psát %1</translation>
+    </message>
+    <message>
+        <source>%1 banned %2 to write</source>
+        <translation>%1 zakázána (y) písemně %2</translation>
+    </message>
+    <message>
+        <source>%1 %2 approved join request from %3 to add %4 to the group</source>
+        <translation>%1 %2 potvrdil požadavek od %3 přidat %4 do skupiny</translation>
+    </message>
+    <message>
+        <source>%1 %2 rejected join request from %3 to add %4 to the group</source>
+        <translation>%1 %2 odmítl požadavek od %3 přidat %4 do skupiny</translation>
+    </message>
+    <message>
+        <source>%1 %2 asked to add %3 to the channel (this message is visible only to administrators)</source>
+        <translation>%1 %2 požádal %3 o přidání do kanálu (tuto zprávu vidí pouze správci)</translation>
+    </message>
+    <message>
+        <source>%1 %2 is waiting for channel join request approval (this message is visible only to administrators)</source>
+        <translation>%1 %2 čeká na potvrzení žádosti o připojení ke kanálu (tuto zprávu vidí pouze správci)</translation>
+    </message>
+    <message>
+        <source>%1 %2 approved join request from %3 to add %4 to the channel (this message is visible only to administrators)</source>
+        <translation>%1 %2 potvrzuje žádost od %3 o přidání %4 do kanálu (tuto zprávu vidí pouze správci)</translation>
+    </message>
+    <message>
+        <source>%1 %2 rejected join request from %3 to add %4 to the channel (this message is visible only to administrators)</source>
+        <translation>%1 %2 odmítl požadavek od %3 na přidání %4 do kanálu (tuto zprávu vidí pouze správci)</translation>
+    </message>
+    <message>
+        <source>%1 %2 have left group (this message is visible only to administrators)</source>
+        <comment>many</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 %2 has left group (this message is visible only to administrators)</source>
+        <comment>one</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 Your request to add %2 to the channel was approved</source>
+        <translation>%1 Vaše žádost o přidání %2 do kanálu je potvrzena</translation>
+    </message>
+    <message>
+        <source>%1 Your request to add %2 to the group was approved</source>
+        <translation>%1 Vaše žádost o přidání %2 do skupiny je potvrzena</translation>
+    </message>
+    <message>
+        <source>%1 Your request to add %2 to the channel was rejected</source>
+        <translation>%1 Vaše žádost o přidání %2 do kanálu byla zamítnuta</translation>
+    </message>
+    <message>
+        <source>%1 Your request to add %2 to the group was rejected</source>
+        <translation>%1 Vaše žádost o přidání %2 do skupiny byla zamítnuta</translation>
+    </message>
+    <message>
+        <source>%1 %2 approved join request from %3(this message is visible only to administrators)</source>
+        <translation>Žádost o potvrzení vstupu %1 %2 od %3 (tuto zprávu vidí pouze správci)</translation>
+    </message>
+    <message>
+        <source>%1 %2 rejected join request from %3(this message is visible only to administrators)</source>
+        <translation>%1 %2 odmítl žádost o připojení od %3 (tato zpráva je viditelná pouze pro administrátory)</translation>
+    </message>
+    <message>
+        <source>You changed the channel avatar</source>
+        <translation>Změnili jste avatar kanálu</translation>
+    </message>
+    <message>
+        <source>%1 changed the channel avatar</source>
+        <translation>%1 změnil avatar kanálu</translation>
+    </message>
+    <message>
+        <source>You changed the group avatar</source>
+        <translation>Změnili jste avatar skupiny</translation>
+    </message>
+    <message>
+        <source>%1 changed the group avatar</source>
+        <translation>%1 změnil avatar skupiny</translation>
+    </message>
+    <message>
+        <source>You deleted the channel description</source>
+        <translation>Odstranili jste popis kanálu</translation>
+    </message>
+    <message>
+        <source>%1 deleted the channel description</source>
+        <translation>%1 odstranil popis kanálu</translation>
+    </message>
+    <message>
+        <source>You deleted the group description</source>
+        <translation>Odstranili jste popis skupiny</translation>
+    </message>
+    <message>
+        <source>%1 deleted the group description</source>
+        <translation>%1 smazal popis skupiny</translation>
+    </message>
+    <message>
+        <source>You changed the channel description - &quot;%1&quot;</source>
+        <translation>Změnili jste popis kanálu - &quot;%1&quot;</translation>
+    </message>
+    <message>
+        <source>%1 changed the channel description - &quot;%2&quot;</source>
+        <translation>%1 změnil popis kanálu - &quot;%2&quot;</translation>
+    </message>
+    <message>
+        <source>You changed the group description - &quot;%1&quot;</source>
+        <translation>Změnili jste popis skupiny - &quot;%1&quot;</translation>
+    </message>
+    <message>
+        <source>%1 changed the group description - &quot;%2&quot;</source>
+        <translation>%1 změnil popis skupiny - &quot;%2&quot;</translation>
+    </message>
+    <message>
+        <source>You deleted the channel rules</source>
+        <translation>Odstranili jste pravidla kanálu</translation>
+    </message>
+    <message>
+        <source>%1 deleted the channel rules</source>
+        <translation>Smazaná pravidla kanálu %1</translation>
+    </message>
+    <message>
+        <source>You deleted the group rules</source>
+        <translation>Odstranili jste pravidla skupiny</translation>
+    </message>
+    <message>
+        <source>%1 deleted the group rules</source>
+        <translation>%1 vypouští (y) pravidel</translation>
+    </message>
+    <message>
+        <source>You changed the channel rules - &quot;%1&quot;</source>
+        <translation>Změnili jste pravidla kanálu - &quot;%1&quot;</translation>
+    </message>
+    <message>
+        <source>%1 changed the channel rules - &quot;%2&quot;</source>
+        <translation>%1 změnil pravidla kanálu - &quot;%2&quot;</translation>
+    </message>
+    <message>
+        <source>You changed the group rules - &quot;%1&quot;</source>
+        <translation>Změnili jste pravidla skupiny - &quot;%1&quot;</translation>
+    </message>
+    <message>
+        <source>%1 changed the group rules - &quot;%2&quot;</source>
+        <translation>%1 změnil pravidla skupiny - &quot;%2&quot;</translation>
+    </message>
+    <message>
+        <source>You changed the link to %1</source>
+        <translation>Odkaz jste změnili na %1</translation>
+    </message>
+    <message>
+        <source>%1 changed the link to %2</source>
+        <translation>%1 změnil odkaz na %2</translation>
+    </message>
+    <message>
+        <source>You were assigned as an administrator of this channel</source>
+        <translation>Byli jste přiděleni jako správce tohoto kanálu</translation>
+    </message>
+    <message>
+        <source>You were assigned as an administrator of this group</source>
+        <translation>Byli jste přiděleni jako správce této skupiny</translation>
+    </message>
+    <message>
+        <source>You assigned %1 administrator of this channel</source>
+        <translation>Přiřadili jste %1 administrátora této skupiny</translation>
+    </message>
+    <message>
+        <source>You assigned %1 administrator of this group</source>
+        <translation>Přiřadili jste %1 administrátora této skupiny</translation>
+    </message>
+    <message>
+        <source>%1 assigned %2 administrator of this channel</source>
+        <translation>%1 přidělil %2 správce tohoto kanálu</translation>
+    </message>
+    <message>
+        <source>%1 assigned %2 administrator of this group</source>
+        <translation>%1 přiřazen %2 administrátor této skupiny</translation>
+    </message>
+    <message>
+        <source>%1 You have canceled your join request</source>
+        <translation>%1 Zrušili jste svou žádost o členství</translation>
+    </message>
+    <message>
+        <source>%1 Wait for subscription request approval</source>
+        <translation>%1 Počkejte na potvrzení žádosti o předplatné</translation>
+    </message>
+    <message>
+        <source>%1 Your subscription request was rejected</source>
+        <translation>%1 Vaše žádost o předplatné byla odmítnuta</translation>
+    </message>
+    <message>
+        <source>%1 %2 has canceled join request</source>
+        <translation>Zrušená žádost o členství:%1 %2</translation>
     </message>
 </context>
 <context>
@@ -614,6 +1014,26 @@ Zde můžete zanechat svůj názor nebo nahlásit chybu:</translation>
         <source>Quick send</source>
         <translation>Odeslat rychle</translation>
     </message>
+    <message>
+        <source>Message added to </source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Messages added to </source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Messages added to </source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Messages added to </source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>connection</name>
@@ -651,10 +1071,6 @@ Zde můžete zanechat svůj názor nebo nahlásit chybu:</translation>
     <message>
         <source>Voice message</source>
         <translation>Hlasová zpráva</translation>
-    </message>
-    <message>
-        <source>FAVORITES</source>
-        <translation>OBLÍBENÉ</translation>
     </message>
     <message>
         <source>RECENTS</source>
@@ -735,6 +1151,10 @@ Zde můžete zanechat svůj názor nebo nahlásit chybu:</translation>
     <message>
         <source>Create channel</source>
         <translation>Vytvořit kanál</translation>
+    </message>
+    <message>
+        <source>PINNED</source>
+        <translation>PŘIPNUL</translation>
     </message>
 </context>
 <context>
@@ -977,6 +1397,10 @@ Zde můžete zanechat svůj názor nebo nahlásit chybu:</translation>
         <source>Send</source>
         <translation>Poslat</translation>
     </message>
+    <message>
+        <source>Choose your problem</source>
+        <translation>Vyberte téma odvolání</translation>
+    </message>
 </context>
 <context>
     <name>context_menu</name>
@@ -1147,6 +1571,26 @@ Zde můžete zanechat svůj názor nebo nahlásit chybu:</translation>
     <message>
         <source>Stop poll</source>
         <translation>Zastavit hlasování</translation>
+    </message>
+    <message>
+        <source>Add to favorites</source>
+        <translation>Přidat k oblíbeným</translation>
+    </message>
+    <message>
+        <source>Remove from dictionary</source>
+        <translation>Odebrat ze slovníku</translation>
+    </message>
+    <message>
+        <source>Add to dictionary</source>
+        <translation>Přidat do slovníku</translation>
+    </message>
+    <message>
+        <source>Ignore</source>
+        <translation>Ignorovat</translation>
+    </message>
+    <message>
+        <source>Copy session info</source>
+        <translation>Zkopírujte informace o relaci</translation>
     </message>
 </context>
 <context>
@@ -2183,6 +2627,46 @@ Zde můžete zanechat svůj názor nebo nahlásit chybu:</translation>
     </message>
 </context>
 <context>
+    <name>favorites</name>
+    <message>
+        <source>
+%1, this is your personal space!
+
+%2 Save links, files and other messages
+%3 Write notes, to-do lists, store photos and videos
+%4 Draft messages and polls before sending them to chat with friends or to your channel</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Favorites</source>
+        <translation>Oblíbené</translation>
+    </message>
+    <message>
+        <source>save</source>
+        <translation>uložit</translation>
+    </message>
+    <message>
+        <source>saved</source>
+        <translation>uloženo</translation>
+    </message>
+    <message>
+        <source>favorites</source>
+        <translation>oblíbené</translation>
+    </message>
+    <message>
+        <source>%1, this is your work space!
+
+%2 Save links, files and other messages
+%3 Write notes, to-do lists, store photos and videos
+%4 Draft messages and polls before sending them to chat with colleagues or to your channel</source>
+        <translation>%1, toto je váš pracovní prostor!
+
+%2 Uložit odkazy, soubory a další zprávy
+%3 Psát poznámky, seznamy úkolů, ukládat fotografie a videa
+%4 Koncepty zpráv a anket před jejich odesláním na chat s kolegy nebo na váš kanál</translation>
+    </message>
+</context>
+<context>
     <name>files_widget</name>
     <message>
         <source>Send with caption</source>
@@ -2240,6 +2724,10 @@ Zde můžete zanechat svůj názor nebo nahlásit chybu:</translation>
         <source>Send</source>
         <translation>Poslat</translation>
     </message>
+    <message>
+        <source>Copied from clipboard</source>
+        <translation>Zkopírováno ze schránky</translation>
+    </message>
 </context>
 <context>
     <name>gallery</name>
@@ -2253,13 +2741,6 @@ Zde můžete zanechat svůj názor nebo nahlásit chybu:</translation>
     <message>
         <source>Copied to clipboard</source>
         <translation>Zkopírováno do schránky</translation>
-    </message>
-</context>
-<context>
-    <name>geolocation_block</name>
-    <message>
-        <source>Location</source>
-        <translation>Umístění</translation>
     </message>
 </context>
 <context>
@@ -2289,14 +2770,6 @@ Zde můžete zanechat svůj názor nebo nahlásit chybu:</translation>
         <translation>Název chatu</translation>
     </message>
     <message>
-        <source>Chat information is unavailable now, please try again later</source>
-        <translation>Informace z chatu již nejsou k dispozici, zkus to znovu později</translation>
-    </message>
-    <message>
-        <source>Chat does not exist or it is hidden by privacy settings</source>
-        <translation>Chat neexistuje nebo je skrytý v důsledku nastavení soukromí</translation>
-    </message>
-    <message>
         <source>member</source>
         <comment>1</comment>
         <translation>účastník</translation>
@@ -2315,26 +2788,6 @@ Zde můžete zanechat svůj názor nebo nahlásit chybu:</translation>
         <source>members</source>
         <comment>21</comment>
         <translation>účastníků</translation>
-    </message>
-    <message>
-        <source>friend</source>
-        <comment>1</comment>
-        <translation>přítel</translation>
-    </message>
-    <message>
-        <source>friends</source>
-        <comment>2</comment>
-        <translation>přátelé</translation>
-    </message>
-    <message>
-        <source>friends</source>
-        <comment>5</comment>
-        <translation>přátel</translation>
-    </message>
-    <message>
-        <source>friends</source>
-        <comment>21</comment>
-        <translation>přátel</translation>
     </message>
     <message>
         <source>Channel name</source>
@@ -2384,6 +2837,14 @@ Zde můžete zanechat svůj názor nebo nahlásit chybu:</translation>
         <source>Group name</source>
         <translation>Název skupiny</translation>
     </message>
+    <message>
+        <source>Chat information is unavailable now, please try again later</source>
+        <translation>Informace z chatu již nejsou k dispozici, zkus to znovu později</translation>
+    </message>
+    <message>
+        <source>Chat does not exist or it is hidden by privacy settings</source>
+        <translation>Chat neexistuje nebo je skrytý v důsledku nastavení soukromí</translation>
+    </message>
 </context>
 <context>
     <name>head</name>
@@ -2392,16 +2853,20 @@ Zde můžete zanechat svůj názor nebo nahlásit chybu:</translation>
         <translation>Kontakty</translation>
     </message>
     <message>
-        <source>Chats</source>
-        <translation>Chaty</translation>
-    </message>
-    <message>
         <source>Settings</source>
         <translation>Nastavení</translation>
     </message>
     <message>
         <source>Search</source>
         <translation>Vyhledávání</translation>
+    </message>
+    <message>
+        <source>Calls</source>
+        <translation>Volání</translation>
+    </message>
+    <message>
+        <source>Chats</source>
+        <translation>Chaty</translation>
     </message>
 </context>
 <context>
@@ -2553,6 +3018,30 @@ Zde můžete zanechat svůj názor nebo nahlásit chybu:</translation>
         <source>Unblock</source>
         <translation>Odemkněte</translation>
     </message>
+    <message>
+        <source>Start</source>
+        <translation>Začněte</translation>
+    </message>
+    <message>
+        <source>Webinar</source>
+        <translation>Webinář</translation>
+    </message>
+    <message>
+        <source>Error creating webinar</source>
+        <translation>Při vytváření webináře došlo k chybě</translation>
+    </message>
+    <message>
+        <source>Call link</source>
+        <translation>Volat odkaz</translation>
+    </message>
+    <message>
+        <source>Error creating call link</source>
+        <translation>Při vytváření odkazu na volání došlo k chybě</translation>
+    </message>
+    <message>
+        <source>Cancel request</source>
+        <translation>Zrušit žádost</translation>
+    </message>
 </context>
 <context>
     <name>linux_desktop_file</name>
@@ -2655,20 +3144,12 @@ Zde můžete zanechat svůj názor nebo nahlásit chybu:</translation>
         <translation>Vyvolejte v %1</translation>
     </message>
     <message>
-        <source>Enter one-time password received by email</source>
-        <translation>Zadejte jednorázové heslo přijaté e-mailem</translation>
-    </message>
-    <message>
         <source>Enter your login and password</source>
         <translation>Zadejte své přihlašovací jméno a heslo</translation>
     </message>
     <message>
         <source>To login use you corporative account created at</source>
         <translation>Chcete-li se přihlásit, použijte firemní účet vytvořený v systému</translation>
-    </message>
-    <message>
-        <source>Check the country code and enter your phone number</source>
-        <translation>Zkontrolujte kód země a zadejte své telefonní číslo</translation>
     </message>
     <message>
         <source>Phone</source>
@@ -2741,6 +3222,66 @@ Zde můžete zanechat svůj názor nebo nahlásit chybu:</translation>
     <message>
         <source>Phone code</source>
         <translation>Volat kód</translation>
+    </message>
+    <message>
+        <source>OK</source>
+        <translation>Dobře</translation>
+    </message>
+    <message>
+        <source>Configuration error</source>
+        <translation>Chyba konfigurace</translation>
+    </message>
+    <message>
+        <source>Enter hostname</source>
+        <translation>Zadejte adresu serveru</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>Zrušit</translation>
+    </message>
+    <message>
+        <source>It is necessary to supplement the server configuration for the application to work. Contact system administrator</source>
+        <translation>Aby aplikace fungovala, je nutné doplnit konfiguraci serveru. Kontaktujte správce</translation>
+    </message>
+    <message>
+        <source>Invalid server configuration format. Contact system administrator</source>
+        <translation>Neplatný formát konfigurace serveru. Kontaktujte správce</translation>
+    </message>
+    <message>
+        <source>Unknown error. Contact system administrator</source>
+        <translation>Neznámá chyba. Kontaktujte správce</translation>
+    </message>
+    <message>
+        <source>Invalid server configuration hostname. Contact system administrator</source>
+        <translation>Zkontrolujte adresu u správce</translation>
+    </message>
+    <message>
+        <source>Check the country code and enter your phone number for registration and authorization</source>
+        <translation>Zkontrolujte kód země a zadejte své telefonní číslo pro registraci a autorizaci</translation>
+    </message>
+    <message>
+        <source>Enter your corporate email, a password will be sent to it</source>
+        <translation>Zadejte firemní e-mail, heslo vám bude zasláno</translation>
+    </message>
+    <message>
+        <source>Enter one-time password sent to email</source>
+        <translation>Zadejte jednorázové heslo, které bylo odesláno</translation>
+    </message>
+    <message>
+        <source>Enter email</source>
+        <translation>Zadejte email</translation>
+    </message>
+    <message>
+        <source>Enter password</source>
+        <translation>Zadejte heslo</translation>
+    </message>
+    <message>
+        <source>Write us</source>
+        <translation>Napište nám</translation>
+    </message>
+    <message>
+        <source>Wrong password</source>
+        <translation>Špatné heslo</translation>
     </message>
 </context>
 <context>
@@ -2909,6 +3450,10 @@ Zde můžete zanechat svůj názor nebo nahlásit chybu:</translation>
     <message>
         <source>Sticker</source>
         <translation>Nálepka</translation>
+    </message>
+    <message>
+        <source>The message is not supported on your version of ICQ. Update the app to see the message</source>
+        <translation>Ve vaší verzi aplikace nelze zobrazit zprávu. Aktualizace</translation>
     </message>
 </context>
 <context>
@@ -3138,10 +3683,6 @@ Zde můžete zanechat svůj názor nebo nahlásit chybu:</translation>
 <context>
     <name>placeholders</name>
     <message>
-        <source>Install ICQ on mobile</source>
-        <translation>Nainstalovat ICQ na mobilu</translation>
-    </message>
-    <message>
         <source>Nothing found</source>
         <translation>Nic nenalezeno</translation>
     </message>
@@ -3204,6 +3745,42 @@ Zde můžete zanechat svůj názor nebo nahlásit chybu:</translation>
     <message>
         <source>Failed to download file or media</source>
         <translation>Nahrání souboru nebo média se nezdařilo</translation>
+    </message>
+    <message>
+        <source>Install ICQ on mobile</source>
+        <translation>Nainstalovat ICQ na mobilu</translation>
+    </message>
+    <message>
+        <source>This group can be joined only after admin approval</source>
+        <translation>K této skupině se můžete připojit až po potvrzení</translation>
+    </message>
+    <message>
+        <source>Join the group to start chatting</source>
+        <translation>Připojte se ke skupině a začněte chatovat</translation>
+    </message>
+    <message>
+        <source>Tell us about your problem. We will try to help you</source>
+        <translation>Řekněte nám o svém problému. Pokusíme se pomoci</translation>
+    </message>
+    <message>
+        <source>Start working with</source>
+        <translation>Začněte s</translation>
+    </message>
+    <message>
+        <source>Start chatting with</source>
+        <translation>Začněte chatovat s</translation>
+    </message>
+    <message>
+        <source>What this bot can do?</source>
+        <translation>Co může tento robot udělat?</translation>
+    </message>
+    <message>
+        <source>Subscribe the channel to see the messages</source>
+        <translation>Chcete-li zobrazit zprávy, přihlaste se k odběru kanálu</translation>
+    </message>
+    <message>
+        <source>This channel can be subscribed only after admin approval</source>
+        <translation>K odběru tohoto kanálu se můžete přihlásit až po potvrzení.</translation>
     </message>
 </context>
 <context>
@@ -3318,6 +3895,10 @@ Zde můžete zanechat svůj názor nebo nahlásit chybu:</translation>
 </context>
 <context>
     <name>popup_window</name>
+    <message>
+        <source>Clear all data from this device</source>
+        <translation>Vymažte všechna data ze zařízení</translation>
+    </message>
     <message>
         <source>Are you sure you want to sign out?</source>
         <translation>Opravdu se chceš odhlásit?</translation>
@@ -3587,14 +4168,6 @@ Zde můžete zanechat svůj názor nebo nahlásit chybu:</translation>
         <translation>Odstranit</translation>
     </message>
     <message>
-        <source>Waiting</source>
-        <translation>Čekání</translation>
-    </message>
-    <message>
-        <source>Join</source>
-        <translation>Vstoupit</translation>
-    </message>
-    <message>
         <source>If you stop the poll, nobody will be able to vote anymore. This action can not be undone</source>
         <translation>Pokud hlasování zastavíte, nikdo nebude moci dále hlasovat. Tuto akci nelze vrátit zpět</translation>
     </message>
@@ -3605,10 +4178,6 @@ Zde můžete zanechat svůj názor nebo nahlásit chybu:</translation>
     <message>
         <source>Stop this poll?</source>
         <translation>Zastavit tento hlasování?</translation>
-    </message>
-    <message>
-        <source>Open</source>
-        <translation>Otevřeno</translation>
     </message>
     <message>
         <source>Are you sure you want to leave channel?</source>
@@ -3657,6 +4226,186 @@ Zde můžete zanechat svůj názor nebo nahlásit chybu:</translation>
     <message>
         <source>Create</source>
         <translation>Vytvořit</translation>
+    </message>
+    <message>
+        <source>Do you want to join conference?</source>
+        <translation>Chcete se připojit ke konferenci?</translation>
+    </message>
+    <message>
+        <source>Join confirmation</source>
+        <translation>Připojte se k potvrzení</translation>
+    </message>
+    <message>
+        <source>All sessions except the current one will be closed</source>
+        <translation>Všechny relace kromě aktuální budou uzavřeny</translation>
+    </message>
+    <message>
+        <source>Close sessions</source>
+        <translation>Zavřít relaci</translation>
+    </message>
+    <message>
+        <source>Close session</source>
+        <translation>Zavřít relaci</translation>
+    </message>
+    <message>
+        <source>Session %1 will be closed</source>
+        <translation>Relace %1 bude uzavřena</translation>
+    </message>
+    <message>
+        <source>Don&apos;t ask me again</source>
+        <translation>Neptej se znovu</translation>
+    </message>
+    <message>
+        <source>Run this file?</source>
+        <translation>Spustit soubor?</translation>
+    </message>
+    <message>
+        <source>This file may be unsafe</source>
+        <translation>Tento soubor může být nebezpečný</translation>
+    </message>
+    <message>
+        <source>You cannot call this contact due to its privacy settings</source>
+        <translation>Vzhledem k nastavení ochrany osobních údajů nemůžete tento kontakt volat.</translation>
+    </message>
+    <message>
+        <source>Ok</source>
+        <translation>Dobře</translation>
+    </message>
+    <message>
+        <source>Maximum number of members selected</source>
+        <translation>Maximální počet vybraných členů</translation>
+    </message>
+    <message>
+        <source>Start group call</source>
+        <translation>Zahájit skupinový zvukový hovor</translation>
+    </message>
+    <message>
+        <source>Call</source>
+        <translation>Call</translation>
+    </message>
+    <message>
+        <source>Start group video call</source>
+        <translation>Zahajte skupinový videohovor</translation>
+    </message>
+    <message>
+        <source>Error</source>
+        <translation>Chyba</translation>
+    </message>
+    <message>
+        <source>Start</source>
+        <translation>Začněte</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to delete the call?</source>
+        <translation>Opravdu chcete hovor smazat?</translation>
+    </message>
+    <message>
+        <source>Some problems with your link</source>
+        <translation>Problém s odkazem</translation>
+    </message>
+    <message>
+        <source>Some problems with your link. Please check it and try again or ask for a new link</source>
+        <translation>Je nám líto, ale došlo k problému s vaším odkazem. Podívejte se na to a zkuste to znovu nebo požádejte o zaslání dalšího odkazu</translation>
+    </message>
+    <message>
+        <source>It&apos;s not possible to connect now, please, try again later</source>
+        <translation>Připojení není nyní možné, zkuste to znovu později</translation>
+    </message>
+    <message>
+        <source>Participants&apos; limit exceeded</source>
+        <translation>Překročen limit počtu účastníků</translation>
+    </message>
+    <message>
+        <source>Duration limit exceeded</source>
+        <translation>Byl překročen limit doby trvání</translation>
+    </message>
+    <message>
+        <source>Sorry, something went wrong. Please, try again later</source>
+        <translation>Promiňte, něco se pokazilo. Zkuste to znovu později</translation>
+    </message>
+    <message>
+        <source>My status</source>
+        <translation>Můj status</translation>
+    </message>
+    <message>
+        <source>You cannot call these users because of privacy settings:</source>
+        <translation>Tyto kontakty nelze volat z důvodu jejich nastavení ochrany osobních údajů. Kontakty:</translation>
+    </message>
+    <message>
+        <source>You cannot call these users. Try to write them:</source>
+        <translation>Chcete-li volat, napište do kontaktu osobní zprávu a vyčkejte na odpověď. Kontakty:</translation>
+    </message>
+    <message>
+        <source>Unknown error connecting to the following contacts:</source>
+        <translation>Neznámá chyba při připojení k následujícím kontaktům:</translation>
+    </message>
+    <message>
+        <source>You cannot call</source>
+        <translation>Nemůžete volat</translation>
+    </message>
+    <message>
+        <source>Call declined</source>
+        <translation>Hovor byl odmítnut</translation>
+    </message>
+    <message>
+        <source>You cannot call this contact. Write %1 to the chat and, if answered, you can call</source>
+        <translation>Tento kontakt nelze zavolat. Napište %1 do chatu a pokud jste odpověděli, můžete volat</translation>
+    </message>
+    <message>
+        <source>Write</source>
+        <translation>Psát</translation>
+    </message>
+    <message>
+        <source>Cancel request?</source>
+        <translation>Zrušit žádost?</translation>
+    </message>
+    <message>
+        <source>%1 is now unavailable</source>
+        <translation>%1 nyní nedostupný</translation>
+    </message>
+    <message>
+        <source>After canceling the request, the channel will disappear from the chat list</source>
+        <translation>Po zrušení požadavku kanál zmizí ze seznamu chatů</translation>
+    </message>
+    <message>
+        <source>After canceling the request, the group will disappear from the chat list</source>
+        <translation>Po zrušení požadavku skupina zmizí ze seznamu chatů</translation>
+    </message>
+    <message>
+        <source>You were blocked by admins</source>
+        <translation>Správci vás zablokovali</translation>
+    </message>
+    <message>
+        <source>Send link</source>
+        <translation>Poslat odkaz</translation>
+    </message>
+    <message>
+        <source>You can not join the call. It already has</source>
+        <translation>K hovoru se nemůžete připojit. Už v tom</translation>
+    </message>
+    <message>
+        <source>No</source>
+        <translation>Ne</translation>
+    </message>
+    <message>
+        <source>Do you want to join the call? Current call will be ended</source>
+        <translation>Připojte se k hovoru? Aktuální hovor skončí</translation>
+    </message>
+    <message>
+        <source>Do you want to start a new call? Current call will be ended</source>
+        <translation>Zahájit nový hovor? Aktuální hovor skončí</translation>
+    </message>
+    <message>
+        <source>Use internal DNS cache</source>
+        <translation>Použijte interní mezipaměť DNS</translation>
+    </message>
+    <message>
+        <source>To change this option you must restart the application. Continue?</source>
+        <translation>Chcete-li změnit nastavení, musíte aplikaci restartovat. Pokračovat?</translation>
+    </message>
+    <message>
+        <source>Global people search</source>
+        <translation>Globální vyhledávání lidí</translation>
     </message>
 </context>
 <context>
@@ -3720,6 +4469,10 @@ Zde můžete zanechat svůj názor nebo nahlásit chybu:</translation>
     <message>
         <source>Error file downloading</source>
         <translation>Chyba při nahrávání souboru</translation>
+    </message>
+    <message>
+        <source>Add to favorites</source>
+        <translation>Přidat k oblíbeným</translation>
     </message>
 </context>
 <context>
@@ -3875,6 +4628,57 @@ Zde můžete zanechat svůj názor nebo nahlásit chybu:</translation>
     <message>
         <source>Forwarded message</source>
         <translation>Přeposlaná zpráva</translation>
+    </message>
+</context>
+<context>
+    <name>reactions</name>
+    <message>
+        <source>Remove</source>
+        <translation>Odstranit</translation>
+    </message>
+    <message>
+        <source>Reactions</source>
+        <translation>Reakce</translation>
+    </message>
+    <message>
+        <source>All</source>
+        <translation>Všechno</translation>
+    </message>
+    <message>
+        <source>Like</source>
+        <translation>Jako</translation>
+    </message>
+    <message>
+        <source>Super</source>
+        <translation>Super</translation>
+    </message>
+    <message>
+        <source>Funny</source>
+        <translation>Legrační</translation>
+    </message>
+    <message>
+        <source>Oops</source>
+        <translation>Jejda</translation>
+    </message>
+    <message>
+        <source>Sad</source>
+        <translation>Smutný</translation>
+    </message>
+    <message>
+        <source>Scandalous</source>
+        <translation>Pobuřující</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation>Zavřít</translation>
+    </message>
+    <message>
+        <source>Add reaction: an error occurred</source>
+        <translation>Přidání reakce: došlo k chybě</translation>
+    </message>
+    <message>
+        <source>Remove reaction: an error occurred</source>
+        <translation>Reakce na odstranění: došlo k chybě</translation>
     </message>
 </context>
 <context>
@@ -4160,10 +4964,6 @@ Zde můžete zanechat svůj názor nebo nahlásit chybu:</translation>
         <translation>Seznam položek k ignorování</translation>
     </message>
     <message>
-        <source>Consequently marking messages as read</source>
-        <translation>Posloupná čtenost chatu</translation>
-    </message>
-    <message>
         <source>Auto play GIFs</source>
         <translation>Automatické přehrávání GIFs</translation>
     </message>
@@ -4316,10 +5116,6 @@ Zde můžete zanechat svůj názor nebo nahlásit chybu:</translation>
         <translation>Přidat přezdívku</translation>
     </message>
     <message>
-        <source>Problem</source>
-        <translation>Problém</translation>
-    </message>
-    <message>
         <source>Main window</source>
         <translation>Hlavní okno</translation>
     </message>
@@ -4362,6 +5158,74 @@ Zde můžete zanechat svůj názor nebo nahlásit chybu:</translation>
     <message>
         <source>Advanced Settings</source>
         <translation>Pokročilá nastavení</translation>
+    </message>
+    <message>
+        <source>Account Security</source>
+        <translation>Zabezpečení účtu</translation>
+    </message>
+    <message>
+        <source>Session List</source>
+        <translation>Seznam relací</translation>
+    </message>
+    <message>
+        <source>Favorites</source>
+        <translation>Oblíbené</translation>
+    </message>
+    <message>
+        <source>Current session</source>
+        <translation>Aktuální relace</translation>
+    </message>
+    <message>
+        <source>Session closed</source>
+        <translation>Relace ukončena</translation>
+    </message>
+    <message>
+        <source>Error occurred</source>
+        <translation>Došlo k chybě.</translation>
+    </message>
+    <message>
+        <source>Active session</source>
+        <translation>Aktivní relace</translation>
+    </message>
+    <message>
+        <source>Close all other sessions</source>
+        <translation>Ukončete všechny ostatní relace</translation>
+    </message>
+    <message>
+        <source>Active sessions</source>
+        <translation>Aktivní sezení</translation>
+    </message>
+    <message>
+        <source>Session info copied</source>
+        <translation>Informace o relaci byly zkopírovány</translation>
+    </message>
+    <message>
+        <source>Do not ask when running executable files</source>
+        <translation>Při spuštění spustitelných souborů se zeptat</translation>
+    </message>
+    <message>
+        <source>Use system spell checker</source>
+        <translation>Kontrola pravopisu systému</translation>
+    </message>
+    <message>
+        <source>Calls</source>
+        <translation>Volání</translation>
+    </message>
+    <message>
+        <source>Show calls tab</source>
+        <translation>Zobrazit kartu volání</translation>
+    </message>
+    <message>
+        <source>Show reactions to messages</source>
+        <translation>Zobrazit reakce na zprávy</translation>
+    </message>
+    <message>
+        <source>Show statuses</source>
+        <translation>Zobrazit stavy</translation>
+    </message>
+    <message>
+        <source>Show unreads counter in window title</source>
+        <translation>V nadpisu okna zobrazte počet nepřečtených</translation>
     </message>
 </context>
 <context>
@@ -4557,6 +5421,10 @@ Zde můžete zanechat svůj názor nebo nahlásit chybu:</translation>
         <source>Mark all dialogs as read</source>
         <translation>Označte všechny dialogy jako přečtené</translation>
     </message>
+    <message>
+        <source>Set status</source>
+        <translation>Nastavit stav</translation>
+    </message>
 </context>
 <context>
     <name>sidebar</name>
@@ -4575,10 +5443,6 @@ Zde můžete zanechat svůj názor nebo nahlásit chybu:</translation>
     <message>
         <source>Nickname</source>
         <translation>Uživatelské jméno</translation>
-    </message>
-    <message>
-        <source>Blocked people</source>
-        <translation>Blokovaní lidé</translation>
     </message>
     <message>
         <source>Phone number</source>
@@ -4859,20 +5723,12 @@ Uprav telefonní číslo a opakuj akci.</translation>
         <translation>V této skupině nemůžete číst ani psát zprávy, protože jste zablokováni</translation>
     </message>
     <message>
-        <source>The join request has been sent to administrator</source>
-        <translation>Požadavek spojení byl odeslán správci</translation>
-    </message>
-    <message>
         <source>Remove</source>
         <translation>Odstranit</translation>
     </message>
     <message>
         <source>Leave and delete</source>
         <translation>Odejít a smazat</translation>
-    </message>
-    <message>
-        <source>Block and delete</source>
-        <translation>Blokovat a smazat</translation>
     </message>
     <message>
         <source>Search</source>
@@ -4891,10 +5747,6 @@ Uprav telefonní číslo a opakuj akci.</translation>
         <translation>Nastavení kanálu</translation>
     </message>
     <message>
-        <source>Block and delete from group</source>
-        <translation>Blokovat a odebrat ze skupiny</translation>
-    </message>
-    <message>
         <source>Group settings</source>
         <translation>Skupinová nastavení</translation>
     </message>
@@ -4905,6 +5757,50 @@ Uprav telefonní číslo a opakuj akci.</translation>
     <message>
         <source>Public group</source>
         <translation>Veřejná skupina</translation>
+    </message>
+    <message>
+        <source>Favorites</source>
+        <translation>Oblíbené</translation>
+    </message>
+    <message>
+        <source>Open favorites</source>
+        <translation>Otevřete oblíbené položky</translation>
+    </message>
+    <message>
+        <source>Delete from group</source>
+        <translation>Odebrat ze skupiny</translation>
+    </message>
+    <message>
+        <source>Deleted and blocked</source>
+        <translation>Smazáno a blokováno</translation>
+    </message>
+    <message>
+        <source>Delete</source>
+        <translation>Odstranit</translation>
+    </message>
+    <message>
+        <source>You can&apos;t read messages in this channel because you are blocked</source>
+        <translation>Nelze číst zprávy na kanálu, protože jste zablokováni</translation>
+    </message>
+    <message>
+        <source>Wait for subscription request approval</source>
+        <translation>Počkejte na potvrzení žádosti o předplatné</translation>
+    </message>
+    <message>
+        <source>Wait for join request approval</source>
+        <translation>Počkejte na potvrzení žádosti o zadání</translation>
+    </message>
+    <message>
+        <source>Your subscription request was rejected</source>
+        <translation>Vaše žádost o předplatné byla zamítnuta</translation>
+    </message>
+    <message>
+        <source>Your join request was rejected</source>
+        <translation>Vaše žádost o členství byla zamítnuta</translation>
+    </message>
+    <message>
+        <source>Call</source>
+        <translation>Call</translation>
     </message>
 </context>
 <context>
@@ -4947,6 +5843,10 @@ Uprav telefonní číslo a opakuj akci.</translation>
         <source>Copied to clipboard</source>
         <translation>Zkopírováno do schránky</translation>
     </message>
+    <message>
+        <source>Location</source>
+        <translation>Umístění</translation>
+    </message>
 </context>
 <context>
     <name>state</name>
@@ -4969,6 +5869,57 @@ Uprav telefonní číslo a opakuj akci.</translation>
     <message>
         <source>Invisible</source>
         <translation>Neviditelný/á</translation>
+    </message>
+    <message>
+        <source>Blocked</source>
+        <translation>Blokováno</translation>
+    </message>
+    <message>
+        <source>Have never been here</source>
+        <translation>Nikdy jsem tu nebyl</translation>
+    </message>
+    <message>
+        <source>Bot</source>
+        <translation>Bot</translation>
+    </message>
+</context>
+<context>
+    <name>status</name>
+    <message>
+        <source>Add status</source>
+        <translation>Přidat stav</translation>
+    </message>
+    <message>
+        <source>Custom status</source>
+        <translation>Stav uživatele</translation>
+    </message>
+    <message>
+        <source>Status timing</source>
+        <translation>Stavový termín</translation>
+    </message>
+    <message>
+        <source>No status</source>
+        <translation>Bez statusu</translation>
+    </message>
+    <message>
+        <source>Show always</source>
+        <translation>Vždy ukazovat</translation>
+    </message>
+    <message>
+        <source>Week</source>
+        <translation>Týden</translation>
+    </message>
+    <message>
+        <source>undefined time</source>
+        <translation>neurčitý čas</translation>
+    </message>
+    <message>
+        <source>%1 left</source>
+        <translation>%1 zbyl</translation>
+    </message>
+    <message>
+        <source>For %1 already</source>
+        <translation>Již pro %1</translation>
     </message>
 </context>
 <context>
@@ -5040,6 +5991,10 @@ Uprav telefonní číslo a opakuj akci.</translation>
         <source>Settings</source>
         <translation>Nastavení</translation>
     </message>
+    <message>
+        <source>Calls</source>
+        <translation>Volání</translation>
+    </message>
 </context>
 <context>
     <name>tab header</name>
@@ -5062,6 +6017,10 @@ Uprav telefonní číslo a opakuj akci.</translation>
     <message>
         <source>Emails</source>
         <translation>Email</translation>
+    </message>
+    <message>
+        <source>Group call</source>
+        <translation>Skupinový hovor</translation>
     </message>
 </context>
 <context>
@@ -5091,16 +6050,12 @@ Uprav telefonní číslo a opakuj akci.</translation>
         <translation>ICQ New — vývoj komunikace</translation>
     </message>
     <message>
-        <source>Welcome to ICQ</source>
-        <translation>Vítejte v ICQ</translation>
+        <source>Welcome to ICQ New</source>
+        <translation>Vítejte v ICQ New</translation>
     </message>
 </context>
 <context>
     <name>title</name>
-    <message>
-        <source>ICQ</source>
-        <translation>ICQ</translation>
-    </message>
     <message>
         <source>Mail.ru Agent</source>
         <translation>Mail.ru Agent</translation>
@@ -5112,6 +6067,10 @@ Uprav telefonní číslo a opakuj akci.</translation>
     <message>
         <source>Myteam</source>
         <translation>Myteam</translation>
+    </message>
+    <message>
+        <source>ICQ</source>
+        <translation>ICQ</translation>
     </message>
 </context>
 <context>
@@ -5140,6 +6099,10 @@ Uprav telefonní číslo a opakuj akci.</translation>
         <source>There are no profiles with this email</source>
         <translation>S tímto e-mailem není žádný profil</translation>
     </message>
+    <message>
+        <source>You are not a member or banned to write in this group</source>
+        <translation>Nejste členem nebo máte zakázáno psát v této skupině</translation>
+    </message>
 </context>
 <context>
     <name>tooltips</name>
@@ -5156,52 +6119,12 @@ Uprav telefonní číslo a opakuj akci.</translation>
         <translation>Smajlíci a nálepky</translation>
     </message>
     <message>
-        <source>Open chat page</source>
-        <translation>Otevřít stránku chatu</translation>
-    </message>
-    <message>
-        <source>Turn off camera</source>
-        <translation>Vypnout fotoaparát</translation>
-    </message>
-    <message>
-        <source>Turn on camera</source>
-        <translation>Zapnout fotoaparát</translation>
-    </message>
-    <message>
-        <source>Turn off microphone</source>
-        <translation>Vypnout mikrofon</translation>
-    </message>
-    <message>
-        <source>Turn on microphone</source>
-        <translation>Zapnout mikrofon</translation>
-    </message>
-    <message>
-        <source>Turn off screen sharing</source>
-        <translation>Vypnout sdílení obrazovky</translation>
-    </message>
-    <message>
-        <source>Turn on screen sharing</source>
-        <translation>Zapnout sdílení obrazovky</translation>
-    </message>
-    <message>
         <source>Call</source>
         <translation>Call</translation>
     </message>
     <message>
         <source>Search for messages</source>
         <translation>Hledat zprávy</translation>
-    </message>
-    <message>
-        <source>Exit full screen</source>
-        <translation>Ukončit režim celé obrazovky</translation>
-    </message>
-    <message>
-        <source>Full screen</source>
-        <translation>Režim celé obrazovky</translation>
-    </message>
-    <message>
-        <source>End call</source>
-        <translation>Ukončit hovor</translation>
     </message>
     <message>
         <source>Share</source>
@@ -5214,6 +6137,14 @@ Uprav telefonní číslo a opakuj akci.</translation>
     <message>
         <source>Information</source>
         <translation>Informace</translation>
+    </message>
+    <message>
+        <source>Audio call</source>
+        <translation>Zvukový hovor</translation>
+    </message>
+    <message>
+        <source>Link to call</source>
+        <translation>Volat odkaz</translation>
     </message>
 </context>
 <context>
@@ -5289,10 +6220,6 @@ Uprav telefonní číslo a opakuj akci.</translation>
         <translation>Přidat do hovoru</translation>
     </message>
     <message>
-        <source>MEMBERS</source>
-        <translation>ÚČASTNÍCI</translation>
-    </message>
-    <message>
         <source>OTHERS</source>
         <translation>OSTATNÍ</translation>
     </message>
@@ -5323,6 +6250,133 @@ Uprav telefonní číslo a opakuj akci.</translation>
     <message>
         <source>To share screen you need to allow access to the screen recording in the system settings</source>
         <translation>Chcete-li sdílet obrazovku, musíte povolit přístup k záznamu obrazovky v nastavení systému</translation>
+    </message>
+    <message>
+        <source>VCS call</source>
+        <translation>VCS volání</translation>
+    </message>
+    <message>
+        <source>To use microphone you need to allow access to the microphone in the system settings</source>
+        <translation>Chcete-li použít mikrofon, povolte přístup k mikrofonu v nastavení systému</translation>
+    </message>
+    <message>
+        <source>Microphone permissions</source>
+        <translation>Přístup k mikrofonu</translation>
+    </message>
+    <message>
+        <source>To use camera you need to allow access to the camera in the system settings</source>
+        <translation>Chcete-li použít kameru, povolte přístup k fotoaparátu v nastavení systému</translation>
+    </message>
+    <message>
+        <source>Camera permissions</source>
+        <translation>Přístup z kamery</translation>
+    </message>
+    <message>
+        <source>Forward</source>
+        <translation>Vpřed</translation>
+    </message>
+    <message>
+        <source>ALL GROUP MEMBERS</source>
+        <translation>VŠECHNY ČLENOVÉ SKUPINY</translation>
+    </message>
+    <message>
+        <source>CALL MEMBERS</source>
+        <translation>ÚČASTNÍCI VOLÁNÍ</translation>
+    </message>
+</context>
+<context>
+    <name>voip_video_panel</name>
+    <message>
+        <source>Video</source>
+        <translation>Video</translation>
+    </message>
+    <message>
+        <source>Screen</source>
+        <translation>Obrazovka</translation>
+    </message>
+    <message>
+        <source>More</source>
+        <translation>Více</translation>
+    </message>
+    <message>
+        <source>Go to chat</source>
+        <translation>Přejít na chat</translation>
+    </message>
+    <message>
+        <source>Open masks</source>
+        <translation>Povolit masky</translation>
+    </message>
+    <message>
+        <source>Add user</source>
+        <translation>Přidat člena</translation>
+    </message>
+    <message>
+        <source>Settings</source>
+        <translation>Nastavení</translation>
+    </message>
+    <message>
+        <source>End</source>
+        <translation>Ukončit</translation>
+    </message>
+    <message>
+        <source>Show all</source>
+        <translation>Zobrazit vše</translation>
+    </message>
+    <message>
+        <source>Show one</source>
+        <translation>Ukaž jeden</translation>
+    </message>
+    <message>
+        <source>Stop screen sharing</source>
+        <translation>Zastavení sdílení obrazovky</translation>
+    </message>
+    <message>
+        <source>Screen sharing enabled</source>
+        <translation>Sdílení obrazovky povoleno</translation>
+    </message>
+    <message>
+        <source>Ask one of the participants to turn off the video. In calls with over %1 people only one video can be shown</source>
+        <translation>Požádejte o vypnutí videa jiného účastníka. U hovorů s více než %1 lidmi lze zobrazit pouze jedno video</translation>
+    </message>
+    <message>
+        <source>Masks aren&apos;t available in calls with more than %1 members</source>
+        <translation>U hovorů s více než %1 účastníky nejsou masky k dispozici</translation>
+    </message>
+    <message>
+        <source>Mic</source>
+        <translation>Mikrofon</translation>
+    </message>
+    <message>
+        <source>Only the creator of the webinar can show the video</source>
+        <translation>Video může zobrazit pouze tvůrce webináře</translation>
+    </message>
+    <message>
+        <source>Only the creator of the webinar can use masks</source>
+        <translation>Masky mohou používat pouze tvůrci webináře</translation>
+    </message>
+    <message>
+        <source>Only the creator of the webinar can use a microphone</source>
+        <translation>Mikrofon může používat pouze tvůrce webináře</translation>
+    </message>
+    <message>
+        <source>Copy link</source>
+        <translation>Kopírovat odkaz</translation>
+    </message>
+    <message>
+        <source>Invite</source>
+        <translation>Pozvat</translation>
+    </message>
+    <message>
+        <source>Link copied</source>
+        <translation>Odkaz byl zkopírován</translation>
+    </message>
+    <message>
+        <source>Sound</source>
+        <translation>Zvuk</translation>
+    </message>
+    <message>
+        <source>Wait for connection</source>
+        <translation>Očekávejte připojení</translation>
     </message>
 </context>
 <context>

@@ -59,7 +59,7 @@ public:
 
     virtual ContentType getContentType() const override { return ContentType::FileSharing; }
 
-    IItemBlock::MenuFlags getMenuFlags() const override;
+    IItemBlock::MenuFlags getMenuFlags(QPoint p) const override;
 
     PinPlaceholderType getPinPlaceholder() const override;
 
@@ -105,7 +105,7 @@ protected:
 
     QString getFileSharingId() const;
 
-    core::file_sharing_content_type& getType() const;
+    const core::file_sharing_content_type& getType() const;
 
     virtual void initializeFileSharingBlock() = 0;
 
@@ -202,8 +202,6 @@ private:
     std::unique_ptr<core::file_sharing_content_type> Type_;
 
     QString directUri_;
-
-    std::shared_ptr<bool> ref_;
 
     bool inited_;
 

@@ -3,6 +3,7 @@
 #include "async_task.h"
 #include "utils.h"
 #include "tools/system.h"
+#include "tools/coretime.h"
 #include "configuration/app_config.h"
 
 namespace core
@@ -198,11 +199,7 @@ namespace core
             const auto now_c = std::chrono::system_clock::to_time_t(current_time);
 
             tm now_tm = { 0 };
-#ifdef _WIN32
-            localtime_s(&now_tm, &now_c);
-#else
-            localtime_r(&now_c, &now_tm);
-#endif
+            tools::time::localtime(&now_c, &now_tm);
 
             const auto fraction = (current_time.time_since_epoch().count() % 1000);
             ss_header << '[' << std::put_time<char>(&now_tm, "%c") << '.' << fraction << "].[" << current_thread_id << "] \n";

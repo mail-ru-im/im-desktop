@@ -6,10 +6,13 @@
 #include "SearchItemDelegate.h"
 #include "SearchHighlight.h"
 
-#include "../friendly/FriendlyContainer.h"
+#include "../containers/FriendlyContainer.h"
 #include "../../cache/avatars/AvatarStorage.h"
+#include "../proxy/FriendlyContaInerProxy.h"
+#include "../proxy/AvatarStorageProxy.h"
 #include "../../app_config.h"
 #include "../../my_info.h"
+#include "FavoritesUtils.h"
 
 #include "styles/ThemeParameters.h"
 #include "controls/TextUnit.h"
@@ -73,9 +76,14 @@ namespace
         return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT);
     }
 
-    QColor getNameTextColor(const bool _isSelected)
+    QColor getNameTextColor(const bool _isSelected, const bool _isFavorites = false)
     {
-        return _isSelected ? getTextColorSelectedState() : Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID);
+        if (_isSelected)
+            return getTextColorSelectedState();
+        else if (_isFavorites)
+            return Favorites::nameColor();
+
+        return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID);
     }
 
     QColor getNickTextColor(const bool _isSelected)
@@ -98,32 +106,7 @@ namespace
         return getNameTextHighlightedColor();
     }
 
-    void drawAvatar(QPainter& _painter, const Ui::ContactListParams& _params, const QString& _aimid, const int _itemHeight, const bool _isSelected, const bool _isMessage)
-    {
-        const auto avatarSize = _params.getAvatarSize();
-
-        bool isDefault = false;
-        const auto avatar = *Logic::GetAvatarStorage()->GetRounded(
-            _aimid,
-            QString(),
-            Utils::scale_bitmap(avatarSize),
-            isDefault,
-            false,
-            false
-        );
-
-        if (!avatar.isNull())
-        {
-            const auto ratio = Utils::scale_bitmap_ratio();
-            const auto x = _params.getAvatarX();
-            const auto y = (_itemHeight - avatar.height() / ratio) / 2;
-
-            _painter.setRenderHints(QPainter::SmoothPixmapTransform | QPainter::Antialiasing);
-            Utils::drawAvatarWithBadge(_painter, QPoint(x, y), avatar, _aimid, false, _isSelected, !_isMessage);
-        }
-    }
-
-    Ui::TextRendering::TextUnitPtr createName(const QString& _text, const bool _isSelected, const int _maxWidth, const Ui::highlightsV& _highlights = {})
+    Ui::TextRendering::TextUnitPtr createName(const QString& _text, const QColor& _nameColor, const int _maxWidth, const Ui::highlightsV& _highlights = {})
     {
         if (_text.isEmpty())
             return Ui::TextRendering::TextUnitPtr();
@@ -133,7 +116,7 @@ namespace
         Ui::TextRendering::TextUnitPtr unit = Ui::createHightlightedText(
             _text,
             font,
-            getNameTextColor(_isSelected),
+            _nameColor,
             getNameTextHighlightedColor(),
             1,
             _highlights);
@@ -206,20 +189,6 @@ namespace
 
         return _msg->GetSourceText();
     }
-
-    QString getSenderName(const Data::MessageBuddySptr& _msg, const bool _fromDialogSearch)
-    {
-        if (!_fromDialogSearch && _msg->Chat_)
-        {
-            if (const QString sender = _msg->GetChatSender(); !sender.isEmpty() && sender != _msg->AimId_)
-            {
-                if (sender != Ui::MyInfo()->aimId())
-                    return Logic::GetFriendlyContainer()->getFriendly(sender) % qsl(": ");
-            }
-        }
-
-        return QString();
-    }
 }
 
 namespace Logic
@@ -229,7 +198,7 @@ namespace Logic
         , selectedMessage_(-1)
         , lastDrawTime_(QTime::currentTime())
     {
-        cacheTimer_.setInterval(dropCacheTimeout.count());
+        cacheTimer_.setInterval(dropCacheTimeout);
         cacheTimer_.setTimerType(Qt::VeryCoarseTimer);
         connect(&cacheTimer_, &QTimer::timeout, this, [this]()
         {
@@ -290,7 +259,7 @@ namespace Logic
                 {
                     Logic::getContactListModel()->isChannel(item->getAimId()) ? qsl("Chan") : QString(),
                     Logic::getContactListModel()->contains(item->getAimId())
-                        ? (item->isContact() || item->isChat()) ? qsl("oc:") % QString::number(Logic::getContactListModel()->getOutgoingCount(item->getAimId())) : QString()
+                        ? (item->isContact() || item->isChat()) ? u"oc:" % QString::number(Logic::getContactListModel()->getOutgoingCount(item->getAimId())) : QString()
                         : qsl("!CL"),
                     item->isLocalResult_ ? qsl("local") : qsl("server"),
                     item->getAimId(),
@@ -480,11 +449,15 @@ namespace Logic
     {
         const auto& params = Ui::GetContactListParams();
 
-        ci.name_ = createName(ci.searchResult_->getFriendlyName(), ci.isSelected_, _maxTextWidth, ci.searchResult_->highlights_);
+        const auto isFavorites = Favorites::isFavorites(ci.searchResult_->getAimId()) && replaceFavorites_;
+        const auto nameText = isFavorites ? Favorites::name() : ci.searchResult_->getFriendlyName();
+        ci.name_ = createName(nameText, getNameTextColor(ci.isSelected_, isFavorites), _maxTextWidth, ci.searchResult_->highlights_);
 
         const auto leftOffset = params.getContactNameX();
 
         auto nameVerOffset = _option.rect.height() / 2;
+
+        auto skipNick = replaceFavorites_ && Favorites::isFavorites(ci.searchResult_->getAimId());
 
         if (ci.searchResult_->isChat())
         {
@@ -512,7 +485,7 @@ namespace Logic
                 }
             }
         }
-        else if (const auto nick = ci.searchResult_->getNick(); !nick.isEmpty() && Ui::findNextHighlight(nick, ci.searchResult_->highlights_).indexStart_ != -1)
+        else if (const auto nick = ci.searchResult_->getNick(); !skipNick && !nick.isEmpty() && Ui::findNextHighlight(nick, ci.searchResult_->highlights_).indexStart_ != -1)
         {
             ci.nick_ = createNick(nick, ci.isSelected_, _maxTextWidth, ci.searchResult_->highlights_);
 
@@ -562,7 +535,9 @@ namespace Logic
         }
 
         const auto maxWidth = ci.time_ ? ci.time_->horOffset() - leftOffset : _maxTextWidth;
-        ci.name_ = createName(ci.searchResult_->getFriendlyName(), ci.isSelected_, maxWidth);
+        const auto isFavorites = Favorites::isFavorites(ci.searchResult_->getAimId()) && replaceFavorites_;
+        const auto nameText = isFavorites ? Favorites::name() : ci.searchResult_->getFriendlyName();
+        ci.name_ = createName(nameText, getNameTextColor(ci.isSelected_, isFavorites), maxWidth);
         ci.name_->setOffsets(leftOffset, getMsgNameVerOffset());
 
         const auto msgFont = Fonts::appFont(Utils::scale_value(params.messageFontSize()), Fonts::FontWeight::Normal, Fonts::FontAdjust::NoAdjust);
@@ -628,6 +603,49 @@ namespace Logic
         const auto isHovered = (_option.state & QStyle::State_Selected) && !isSelected && !item->isService();
 
         return { isSelected, isHovered };
+    }
+
+    void SearchItemDelegate::drawAvatar(QPainter& _painter, const Ui::ContactListParams& _params, const QString& _aimid, const int _itemHeight, const bool _isSelected, const bool _isMessage) const
+    {
+        const auto avatarSize = _params.getAvatarSize();
+
+        bool isDefault = false;
+        const auto avatar = *Logic::getAvatarStorageProxy(avatarProxyFlags()).GetRounded(
+            _aimid,
+            QString(),
+            Utils::scale_bitmap(avatarSize),
+            isDefault,
+            false,
+            false
+        );
+
+        if (!avatar.isNull())
+        {
+            const auto ratio = Utils::scale_bitmap_ratio();
+            const auto x = _params.getAvatarX();
+            const auto y = (_itemHeight - avatar.height() / ratio) / 2;
+
+            _painter.setRenderHints(QPainter::SmoothPixmapTransform | QPainter::Antialiasing);
+
+            if (Favorites::isFavorites(_aimid))
+                Utils::drawAvatarWithoutBadge(_painter, QPoint(x, y), avatar);
+            else
+                Utils::drawAvatarWithBadge(_painter, QPoint(x, y), avatar, _aimid, false, Utils::StatusBadgeState::CanBeOff, _isSelected, !_isMessage);
+        }
+    }
+
+    QString SearchItemDelegate::getSenderName(const Data::MessageBuddySptr& _msg, const bool _fromDialogSearch) const
+    {
+        if (!_fromDialogSearch && _msg->Chat_)
+        {
+            if (const QString sender = _msg->GetChatSender(); !sender.isEmpty() && sender != _msg->AimId_)
+            {
+                if (sender != Ui::MyInfo()->aimId())
+                    return Logic::getFriendlyContainerProxy(friendlyProxyFlags()).getFriendly(sender) % u": ";
+            }
+        }
+
+        return QString();
     }
 
     QSize SearchItemDelegate::sizeHint(const QStyleOptionViewItem& _option, const QModelIndex& _index) const

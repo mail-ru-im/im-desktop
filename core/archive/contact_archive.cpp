@@ -8,6 +8,7 @@
 #include "history_message.h"
 #include "mentions_me.h"
 #include "gallery_cache.h"
+#include "reactions.h"
 
 #include "../tools/time_measure.h"
 
@@ -18,13 +19,14 @@
 using namespace core;
 using namespace archive;
 
-contact_archive::contact_archive(const std::wstring& _archive_path, const std::string& _contact_id)
-    : path_(_archive_path)
-    , index_(std::make_unique<archive_index>(su::wconcat(_archive_path, L'/', index_filename()), _contact_id))
-    , data_(std::make_unique<messages_data>(su::wconcat(_archive_path, L'/', db_filename())))
-    , state_(std::make_unique<archive_state>(su::wconcat(_archive_path, L'/', dlg_state_filename()), _contact_id))
-    , mentions_(std::make_unique<mentions_me>(su::wconcat(_archive_path, L'/', mentions_filename())))
-    , gallery_(std::make_unique<gallery_storage>(su::wconcat(_archive_path, L'/', gallery_cache_filename()), su::wconcat(_archive_path, L'/', gallery_state_filename())))
+contact_archive::contact_archive(std::wstring _archive_path, const std::string& _contact_id)
+    : path_(std::move(_archive_path))
+    , index_(std::make_unique<archive_index>(su::wconcat(path_, L'/', index_filename()), _contact_id))
+    , data_(std::make_unique<messages_data>(su::wconcat(path_, L'/', db_filename())))
+    , state_(std::make_unique<archive_state>(su::wconcat(path_, L'/', dlg_state_filename()), _contact_id))
+    , mentions_(std::make_unique<mentions_me>(su::wconcat(path_, L'/', mentions_filename())))
+    , gallery_(std::make_unique<gallery_storage>(su::wconcat(path_, L'/', gallery_cache_filename()), su::wconcat(path_, L'/', gallery_state_filename())))
+    , reactions_(std::make_unique<reactions_storage>(su::wconcat(path_, L'/', reactions_index_filename()), su::wconcat(path_, L'/', reactions_data_filename())))
     , local_loaded_(false)
     , load_metrics_({0})
 {
@@ -109,7 +111,7 @@ bool contact_archive::get_messages_buddies_from_headers(const headers_list& _hea
 
     _errors = data_->get_messages(_headers, _messages);
 
-    for (auto [id, error] : std::as_const(_errors))
+    for (auto id : boost::adaptors::keys(std::as_const(_errors)))
     {
         if (id > 0)
             index_->invalidate_message_data(id, archive_index::mark_as_updated::yes);
@@ -192,6 +194,11 @@ void contact_archive::make_holes()
     index_->save_all();
 }
 
+bool contact_archive::is_gallery_hole_requested() const
+{
+    return gallery_->is_hole_requested();
+}
+
 void contact_archive::invalidate_message_data(const std::vector<int64_t>& _ids)
 {
     bool first_load = false;
@@ -256,13 +263,22 @@ void contact_archive::insert_history_block(
 
             const bool poll_id_added = message->has_poll_with_id() && !existing_header.has_poll_with_id();
 
-            const bool skip_duplicate = !is_patch_operation && !quote_with_chat_name && !is_prev_id_changed && !is_version_updated && is_valid_data && !shared_contact_sn_added && !poll_id_added;
+            const bool reactions_changed = message->has_reactions() != existing_header.has_reactions();
+
+            const bool skip_duplicate = !is_patch_operation && !quote_with_chat_name &&
+                                        !is_prev_id_changed && !is_version_updated &&
+                                        is_valid_data && !shared_contact_sn_added &&
+                                        !poll_id_added && !reactions_changed;
 
             if (skip_duplicate)
             {
                 // message is already in the db, no need in quote header replacement,
-                // and it's not a patch thus just skip it,
-                // and prev_ids are not changed, no need to fix linked list
+                // it's not a patch,
+                // prev_ids are not changed, no need to fix linked list,
+                // no shared contact sn added,
+                // no poll id added,
+                // and no reactions changed,
+                // thus just skip it
                 continue;
             }
         }
@@ -349,9 +365,7 @@ void contact_archive::update_message_data(const history_message& _message)
     message_header existing_header;
 
     if (!index_->get_header(_message.get_msgid(), Out existing_header))
-    {
         return;
-    }
 
     history_block block;
 
@@ -484,16 +498,16 @@ std::optional<std::string> contact_archive::get_locale() const
     error_vector errors;
     get_messages_buddies_from_headers(headers, messages, errors);
 
+    const static RE2 reg(russian_letters());
     auto contains_ru = [](const auto& m)
     {
-        const static RE2 reg(russian_letters());
         return RE2::PartialMatch(m->get_text(), reg);
     };
 
     if (std::any_of(messages.cbegin(), messages.cend(), contains_ru))
         return "ru_RU";
 
-    return std::optional<std::string>();
+    return {};
 }
 
 bool contact_archive::need_optimize() const
@@ -504,9 +518,7 @@ bool contact_archive::need_optimize() const
 void contact_archive::optimize()
 {
     if (index_->need_optimize())
-    {
         index_->optimize();
-    }
 }
 
 void contact_archive::free()
@@ -551,6 +563,16 @@ void contact_archive::get_memory_usage(int64_t& _index_size, int64_t& _gallery_s
     _gallery_size = gallery_->get_memory_usage();
 }
 
+void contact_archive::get_reactions(const msgids_list& _ids_to_load, std::vector<reactions_data>& _reactions, msgids_list& _missing)
+{
+    reactions_->get_reactions(_ids_to_load, _reactions, _missing);
+}
+
+void contact_archive::insert_reactions(std::vector<reactions_data>& _reactions)
+{
+    reactions_->insert_reactions(_reactions);
+}
+
 std::wstring_view archive::db_filename() noexcept
 {
     return L"_db2";
@@ -586,3 +608,12 @@ std::wstring_view archive::gallery_state_filename() noexcept
     return L"_gs3";
 }
 
+std::wstring_view archive::reactions_index_filename() noexcept
+{
+    return L"_reactions_idx";
+}
+
+std::wstring_view archive::reactions_data_filename() noexcept
+{
+    return L"_reactions_db";
+}

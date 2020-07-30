@@ -12,8 +12,8 @@ namespace core
         class active_dialog
         {
         public:
-            active_dialog();
-            active_dialog(std::string _aimid);
+            active_dialog() = default;
+            active_dialog(std::string _aimid) : aimid_(std::move(_aimid)) {}
             active_dialog(active_dialog&&) = default;
             active_dialog(const active_dialog&) = default;
             active_dialog& operator=(const active_dialog&) = default;
@@ -44,7 +44,7 @@ namespace core
             void set_changed(bool _changed) noexcept { changed_ = _changed; }
 
             active_dialogs();
-            virtual ~active_dialogs();
+            ~active_dialogs();
 
             void update(active_dialog _dialog);
             void remove(const std::string& _aimid);
@@ -54,7 +54,6 @@ namespace core
             void serialize(rapidjson::Value& _node, rapidjson_allocator& _a) const;
             void serialize(icollection* _coll) const;
         };
-
     }
 }
 

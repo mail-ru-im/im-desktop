@@ -19,6 +19,7 @@ namespace core::wim
             coll_helper coll_user(_root_coll->create_collection(), true);
             serialize_common(coll_user);
             coll_user.set_value_as_string("nick", nick_);
+            coll_user.set_value_as_bool("bot", bot_);
 
             _root_coll.set_value_as_collection("user", coll_user.get());
         }
@@ -42,6 +43,7 @@ namespace core::wim
                 tools::unserialize_value(user->value, "about", description_);
                 tools::unserialize_value(user->value, "friendly", name_);
                 tools::unserialize_value(user->value, "nick", nick_);
+                tools::unserialize_value(user->value, "bot", bot_);
 
                 type_ = id_info_response::id_type::user;
             }

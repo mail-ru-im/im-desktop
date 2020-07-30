@@ -18,7 +18,7 @@ namespace Ui
         kVPH_ShowMax    = 0x0008,
         kVPH_ShowClose  = 0x0010,
         kVPH_ShowLogo   = 0x0020,
-        kVPH_ShowSecure = 0x0040,
+        //kVPH_ShowSecure = 0x0040,
         kVPH_BackToVideo = 0x0080,
         kVPH_ShowAll = 0xffff
     };
@@ -33,14 +33,14 @@ namespace Ui
     Q_SIGNALS:
         void onMouseEnter();
         void onMouseLeave();
-        void onSecureCallClicked(const QRect& _rc);
+        //void onSecureCallClicked(const QRect& _rc);
         void updateConferenceMode(voip_manager::VideoLayout layout);
         void addUserToConference();
         void onPlaybackClick();
 
     private Q_SLOTS:
 
-        void _onSecureCallClicked();
+        //void _onSecureCallClicked();
         void onChangeConferenceMode();        
         void onPlaybackAudioOnOffClicked();
         void onClickSettings();
@@ -51,8 +51,7 @@ namespace Ui
         VideoPanelHeader(QWidget* _parent, int offset);
         virtual ~VideoPanelHeader();
 
-        void setSecureWndOpened(const bool _opened);
-        void enableSecureCall(bool _enable);
+        //void enableSecureCall(bool _enable);
         void changeConferenceMode(voip_manager::VideoLayout layout);
         void switchConferenceMode();
 
@@ -62,22 +61,14 @@ namespace Ui
         void setContacts(const std::vector<voip_manager::Contact>&, bool active_call);
         void setTopOffset(int offset);
 
-    public Q_SLOTS:
-        
-        void onCreateNewCall();
-        void onStartedTalk();
-
     private:
 
         QWidget*     lowWidget_;
-        bool         secureCallEnabled_;
-        bool         isVideoConference_;
-        bool         startTalking_;
 
         QPushButton* _backToVideoCode;
         int          topOffset_;
         QPushButton* conferenceMode_;
-        QPushButton* security_;
+        //QPushButton* security_;
         QPushButton* speaker_;
         QPushButton* addUsers_;
 
@@ -87,7 +78,7 @@ namespace Ui
         void leaveEvent(QEvent* _e) override;
         void updatePosition(const QWidget& parent) override;
 
-        void updateSecurityButtonState();
+        //void updateSecurityButtonState();
     };
 
 }

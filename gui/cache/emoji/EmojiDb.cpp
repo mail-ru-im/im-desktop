@@ -5,6 +5,8 @@
 #include "Emoji.h"
 #include "EmojiCategory.h"
 
+#include "utils/StringComparator.h"
+
 #include <qjsondocument.h>
 #include <qjsonobject.h>
 #include <qfile.h>
@@ -23,8 +25,8 @@ namespace
     EmojiIndex emojiIndexByFullCodepoint_;
     EmojiIndex emojiIndexByBaseCodepoint_;
 
-    using EmojiFlagVec = std::map<QString, EmojiCode>;
-    EmojiFlagVec flagEmojis_;
+    using EmojiFlags = std::map<QString, EmojiCode, Utils::StringComparatorInsensitive>;
+    EmojiFlags flagEmojis_;
 
     using EmojiIndexByCategory = std::map<QLatin1String, EmojiRecordVec>;
     EmojiIndexByCategory EmojiIndexByCategory_;
@@ -111,9 +113,6 @@ namespace Emoji
 #if defined(__APPLE__)
             if constexpr (useNativeEmoji())
             {
-                if (mac::isSkipEmojiFullCode(record.fullCodePoints))
-                    continue;
-
                 if (!mac::supportEmoji(record.fullCodePoints) && !canViewEmojiOneOnMac())
                     continue;
             }
@@ -134,7 +133,12 @@ namespace Emoji
         if (code.size() < EmojiCode::maxSize())
         {
             constexpr static EmojiCode::codePointType genders[] = { 0x2640, 0x2642 };
-            return std::any_of(std::begin(genders), std::end(genders), [&index, &code](auto gender) { return index.find(EmojiCode::addCodePoint(code, gender)) != index.end(); });
+            constexpr static EmojiCode::codePointType genderNeutral = 0x1f9d1;
+            const auto containsWithGender = std::any_of(std::begin(genders), std::end(genders),
+                                                        [&index, &code](auto gender) { return index.find(EmojiCode::addCodePoint(code, gender)) != index.end(); });
+            const auto containsGenderNeutral = code.contains(genderNeutral);
+
+            return containsWithGender || containsGenderNeutral;
         }
         return false;
     }
@@ -180,9 +184,6 @@ namespace Emoji
 #if defined(__APPLE__)
             if constexpr (useNativeEmoji())
             {
-                if (mac::isSkipEmojiFullCode(record.fullCodePoints))
-                    continue;
-
                 if (!canSendEmojiOneOnMac() && !mac::supportEmoji(record.fullCodePoints) && !isSupported(record.FileName_))
                     continue;
             }
@@ -248,9 +249,10 @@ namespace Emoji
         static const EmojiRecordVec empty;
         return empty;
     }
+
     const EmojiCode& GetEmojiInfoByCountryName(const QString& _country)
     {
-        if (const auto iter = std::as_const(flagEmojis_).find(_country.toLower()); iter != std::as_const(flagEmojis_).end())
+        if (const auto iter = std::as_const(flagEmojis_).find(_country); iter != std::as_const(flagEmojis_).end())
             return iter->second;
 
         static const EmojiCode empty;

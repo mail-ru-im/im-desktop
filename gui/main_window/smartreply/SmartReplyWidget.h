@@ -22,10 +22,11 @@ namespace Ui
         Q_OBJECT
 
     Q_SIGNALS:
-        void needHide(QPrivateSignal);
+        void needHide(QPrivateSignal) const;
+        void sendSmartreply(const Data::SmartreplySuggest& _suggest, QPrivateSignal) const;
 
     public:
-        SmartReplyWidget(QWidget* _parent);
+        SmartReplyWidget(QWidget* _parent, bool _withSideSpacers);
 
         bool addItems(const std::vector<Data::SmartreplySuggest>& _suggests);
 
@@ -37,14 +38,12 @@ namespace Ui
         void setBackgroundColor(const QColor& _color);
         void scrollToNewest();
 
-        void setFlat(const bool _flat);
-        bool isFlat() const noexcept { return isFlat_; }
-
         bool isUnderMouse() const noexcept { return isUnderMouse_; }
 
         void setNeedHideOnLeave();
 
         int itemCount() const { return getItems().size(); }
+        int getTotalWidth() const;
 
     protected:
         void resizeEvent(QResizeEvent*) override;
@@ -79,8 +78,6 @@ namespace Ui
         void deleteItemBySuggest(const Data::SmartreplySuggest& _suggest);
         bool isItemVisible(QWidget* _item) const;
 
-        void sendStats(const Data::SmartreplySuggest& _suggest);
-
     private:
         enum class Direction
         {
@@ -100,7 +97,7 @@ namespace Ui
 
         Smiles::StickerPreview* stickerPreview_;
 
-        bool isFlat_;
+        bool hasSideSpacers_;
         bool bgTransparent_;
         bool isUnderMouse_;
         bool needHideOnLeave_;

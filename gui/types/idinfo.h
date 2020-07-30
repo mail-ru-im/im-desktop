@@ -16,6 +16,8 @@ namespace Data
         QString nick_;
         QString sn_;
 
+        bool isBot_ = false;
+
         int64_t memberCount_ = 0;
         QString stamp_;
 

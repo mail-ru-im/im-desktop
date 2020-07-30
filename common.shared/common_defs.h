@@ -5,10 +5,13 @@ namespace common
 {
 #ifdef _WIN32
     std::wstring get_user_profile();
+    std::wstring get_local_user_profile();
     std::wstring get_guid();
     std::string get_win_os_version_string();
     std::string get_win_device_id();
-#endif //_WIN32
+#else //_WIN32
+    std::string get_home_directory();
+#endif
 
     std::string_view get_dev_id();
 

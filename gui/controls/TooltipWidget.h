@@ -9,6 +9,11 @@ namespace Ui
     class GradientWidget;
 }
 
+namespace Utils
+{
+    class OpacityEffect;
+}
+
 namespace Tooltip
 {
     enum class ArrowDirection
@@ -35,6 +40,7 @@ namespace Tooltip
     int getMentionArrowOffset();
     void drawTooltip(QPainter& _p, const QRect& _tooltipRect, const int _arrowOffset, const ArrowDirection _direction);
     void drawBigTooltip(QPainter& _p, const QRect& _tooltipRect, const int _arrowOffset, const ArrowDirection _direction);
+    void drawStatusTooltip(const QString& _aimid, const QRect _objectRect);
 
     Ui::TextTooltip* getDefaultTooltip();
     void resetDefaultTooltip();
@@ -102,7 +108,7 @@ namespace Ui
         int pointWidth_;
         GradientWidget* gradientRight_;
         GradientWidget* gradientLeft_;
-        QGraphicsOpacityEffect* opacityEffect_;
+        Utils::OpacityEffect* opacityEffect_;
         anim::Animation opacityAnimation_;
         bool canClose_;
         bool bigArrow_;
@@ -125,8 +131,6 @@ namespace Ui
         template <typename... Args>
         TextWidget(QWidget* _parent, Args&&... args)
             : QWidget(_parent)
-            , maxWidth_(0)
-            , opacity_(1.0)
         {
             setMouseTracking(true);
             text_ = TextRendering::MakeTextUnit(std::forward<Args>(args)...);
@@ -136,7 +140,8 @@ namespace Ui
         void init(Args&&... args)
         {
             text_->init(std::forward<Args>(args)...);
-            text_->getHeight(maxWidth_ ? maxWidth_ : text_->desiredWidth());
+            desiredWidth_ = text_->desiredWidth();
+            text_->getHeight(maxWidth_ ? maxWidth_ : desiredWidth_);
             setFixedSize(text_->cachedSize());
             update();
         }
@@ -150,6 +155,8 @@ namespace Ui
         {
             text_->setLineSpacing(_v);
         }
+
+        int getDesiredWidth() const noexcept { return desiredWidth_; }
 
         void setMaxWidth(int _width);
         void setMaxWidthAndResize(int _width);
@@ -168,8 +175,9 @@ namespace Ui
 
     private:
         TextRendering::TextUnitPtr text_;
-        int maxWidth_;
-        qreal opacity_;
+        int maxWidth_ = 0;
+        int desiredWidth_ = 0;
+        qreal opacity_ = 1.0;
     };
 
     class TextTooltip : public QWidget

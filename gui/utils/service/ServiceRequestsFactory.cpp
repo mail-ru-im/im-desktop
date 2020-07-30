@@ -15,14 +15,34 @@ namespace Utils
 
 namespace
 {
-constexpr int32_t LIMIT_LOG_FILES_TO_SEND = 10;
-constexpr int32_t LIMIT_RTP_DUMPS_FILES_TO_SEND = 3;
+    constexpr int32_t LIMIT_LOG_FILES_TO_SEND = 10;
+    constexpr int32_t LIMIT_RTP_DUMPS_FILES_TO_SEND = 3;
 
-SendLogsToServerRequest* buildSendLogsToServerRequest(ServiceRequest::Id _id, bool _withRTP);
-SendLogsToUinRequest* buildSendLogsToUinRequest(ServiceRequest::Id _id, const QString& _uin, bool _withRTP);
+    std::unique_ptr<ServiceRequest> buildSendLogsToServerRequest(ServiceRequest::Id _id, bool _withRTP)
+    {
+        // NOTE: artificial limit
+        Utils::LogsInfo logsInfo(LIMIT_LOG_FILES_TO_SEND, _withRTP ? LIMIT_RTP_DUMPS_FILES_TO_SEND : -1);
+        SendLogsToServerRequest::Info info(logsInfo);
+        if (!info.isValid())
+            return nullptr;
+
+        return std::make_unique<SendLogsToServerRequest>(_id, info);
+    }
+
+    std::unique_ptr<ServiceRequest> buildSendLogsToUinRequest(ServiceRequest::Id _id, const QString& _uin, bool _withRTP)
+    {
+        // NOTE: artificial limit
+        Utils::LogsInfo logsInfo(LIMIT_LOG_FILES_TO_SEND, _withRTP ? LIMIT_RTP_DUMPS_FILES_TO_SEND : -1);
+
+        SendLogsToUinRequest::Info info(_uin, logsInfo);
+        if (!info.isValid())
+            return nullptr;
+
+        return std::make_unique<SendLogsToUinRequest> (_id, info);
+    }
 }
 
-ServiceRequest* ServiceRequestsFactory::requestForUrl(const QString &_urlCommand)
+std::unique_ptr<ServiceRequest> ServiceRequestsFactory::requestForUrl(const QString &_urlCommand)
 {
     static std::atomic<ServiceRequest::Id> serviceRequestId(0);
 
@@ -35,20 +55,18 @@ ServiceRequest* ServiceRequestsFactory::requestForUrl(const QString &_urlCommand
     const QString path = url.path();
     QStringRef pathRef(&path);
 
-    assert(host == qsl(url_command_service));
-    if (host != qsl(url_command_service))
+    assert(host == url_command_service());
+    if (host != url_command_service())
         return nullptr;
 
-    if (pathRef.startsWith(ql1c('/')))
+    if (pathRef.startsWith(u'/'))
         pathRef = pathRef.mid(1);
 
-    if (pathRef.startsWith(qsl(url_commandpath_service_getlogs)) || pathRef.startsWith(qsl(url_commandpath_service_getlogs_with_rtp)))
+    if (const bool withRTP = pathRef.startsWith(url_commandpath_service_getlogs_with_rtp()); withRTP || pathRef.startsWith(url_commandpath_service_getlogs()))
     {
-        bool withRTP = pathRef.startsWith(qsl(url_commandpath_service_getlogs_with_rtp));
+        ++serviceRequestId;
 
-        serviceRequestId++;
-
-        auto logsPath = pathRef.split(ql1c('/'));
+        auto logsPath = pathRef.split(u'/');
         logsPath.removeFirst();
         if (!logsPath.size())
             // root request => send to support
@@ -57,53 +75,25 @@ ServiceRequest* ServiceRequestsFactory::requestForUrl(const QString &_urlCommand
         auto uin = logsPath.constFirst().toString();
         return buildSendLogsToUinRequest(serviceRequestId, uin, withRTP);
     }
-    else if (pathRef.startsWith(qsl(url_commandpath_service_clear_cache)))
+    else if (pathRef.startsWith(url_commandpath_service_clear_cache()))
     {
-        return new InternalServiceRequest(serviceRequestId, InternalServiceRequest::CommandType::ClearCache);
+        return std::make_unique<InternalServiceRequest>(serviceRequestId, InternalServiceRequest::CommandType::ClearCache);
     }
-    else if (pathRef.startsWith(qsl(url_commandpath_service_clear_avatars)))
+    else if (pathRef.startsWith(url_commandpath_service_clear_avatars()))
     {
-        return new InternalServiceRequest(serviceRequestId, InternalServiceRequest::CommandType::ClearAvatars);
+        return std::make_unique<InternalServiceRequest>(serviceRequestId, InternalServiceRequest::CommandType::ClearAvatars);
     }
-    else if (pathRef.startsWith(qsl(url_commandpath_service_debug)))
+    else if (pathRef.startsWith(url_commandpath_service_debug()))
     {
-        return new InternalServiceRequest(serviceRequestId, InternalServiceRequest::CommandType::OpenDebug);
+        return std::make_unique<InternalServiceRequest>(serviceRequestId, InternalServiceRequest::CommandType::OpenDebug);
     }
-    else if (pathRef.startsWith(qsl(url_commandpath_service_update)))
+    else if (pathRef.startsWith(url_commandpath_service_update()))
     {
-        return new InternalServiceRequest(serviceRequestId, InternalServiceRequest::CommandType::CheckForUpdate);
+        return std::make_unique<InternalServiceRequest>(serviceRequestId, InternalServiceRequest::CommandType::CheckForUpdate);
     }
 
     assert(!"unknown service command");
     return nullptr;
-}
-
-namespace
-{
-
-SendLogsToServerRequest* buildSendLogsToServerRequest(ServiceRequest::Id _id, bool _withRTP)
-{
-    // NOTE: artificial limit
-    Utils::LogsInfo logsInfo(LIMIT_LOG_FILES_TO_SEND, _withRTP ? LIMIT_RTP_DUMPS_FILES_TO_SEND : -1);
-    SendLogsToServerRequest::Info info(logsInfo);
-    if (!info.isValid())
-        return nullptr;
-
-    return new SendLogsToServerRequest(_id, info);
-}
-
-SendLogsToUinRequest* buildSendLogsToUinRequest(ServiceRequest::Id _id, const QString& _uin, bool _withRTP)
-{
-    // NOTE: artificial limit
-    Utils::LogsInfo logsInfo(LIMIT_LOG_FILES_TO_SEND, _withRTP ? LIMIT_RTP_DUMPS_FILES_TO_SEND : -1);
-
-    SendLogsToUinRequest::Info info(_uin, logsInfo);
-    if (!info.isValid())
-        return nullptr;
-
-    return new SendLogsToUinRequest(_id, info);
-}
-
 }
 
 }

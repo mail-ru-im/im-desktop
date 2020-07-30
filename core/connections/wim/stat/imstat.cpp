@@ -32,7 +32,7 @@ namespace core
 
         bool imstat::need_send() const
         {
-            return ((std::chrono::system_clock::now() - last_start_time_) > send_period);
+            return (config::get().is_on(config::features::statistics) && (std::chrono::system_clock::now() - last_start_time_) > send_period);
         }
 
         std::string get_referer()

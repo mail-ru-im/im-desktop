@@ -1,5 +1,7 @@
 #include "stdafx.h"
 
+#include "../../../libomicron/include/omicron/omicron.h"
+#include "../../../common.shared/omicron_keys.h"
 #include "../../corelib/collection_helper.h"
 #include "../../corelib/enumerations.h"
 
@@ -70,6 +72,11 @@ namespace
     const std::string_view c_geo = "geo";
     const std::string_view c_poll = "poll";
     const std::string_view c_poll_id = "pollId";
+    const std::string_view c_buttons = "inlineKeyboardMarkup";
+    const std::string_view c_hideedit = "hideEdit";
+    const std::string_view c_callback_data = "callbackData";
+    const std::string_view c_style = "style";
+    const std::string_view c_reactions = "reactions";
 
     std::string parse_sender_aimid(const rapidjson::Value &_node);
 
@@ -85,15 +92,34 @@ namespace
 
     string_vector_t read_members(const rapidjson::Value &_parent);
 
-    chat_event_type string_2_chat_event(std::string_view _str);
+    chat_event_type event_type_from_str(std::string_view _str);
 
-    constexpr uint8_t header_version()
+    constexpr uint8_t header_version() noexcept
     {
-        return 3;
+        return 4;
     }
 
     void serializePoll(const poll_data& _poll, core::tools::tlvpack& _pack);
     archive::poll unserializePoll(core::tools::tlvpack& _pack);
+
+    std::vector<std::vector<button_data>> unserialize_buttons(const rapidjson::Value& _node);
+    std::vector<std::vector<button_data>> unserialize_buttons(const std::string& _buttons);
+
+    message_fields_set set_from_json_array(const std::string& _json)
+    {
+        message_fields_set result;
+        rapidjson::Document doc;
+        if (!doc.Parse(_json).HasParseError() && doc.IsArray())
+        {
+            for (const auto& node : doc.GetArray())
+            {
+                if (node.IsString())
+                    result.insert(rapidjson_get_string(node));
+            }
+        }
+
+        return result;
+    }
 }
 
 
@@ -123,7 +149,8 @@ message_header::message_header(
     uint32_t _data_size,
     common::tools::patch_version patch_,
     bool _shared_contact_with_sn,
-    bool _has_poll_with_id)
+    bool _has_poll_with_id,
+    bool _has_reactions)
     :
     id_(_id),
     version_(header_version()),
@@ -134,42 +161,43 @@ message_header::message_header(
     data_size_(_data_size),
     update_patch_version_(std::move(patch_)),
     has_shared_contact_with_sn_(_shared_contact_with_sn),
-    has_poll_with_id_(_has_poll_with_id)
+    has_poll_with_id_(_has_poll_with_id),
+    has_reactions_(_has_reactions)
 {
 }
 
-int64_t message_header::get_data_offset() const
+int64_t message_header::get_data_offset() const noexcept
 {
     return data_offset_;
 }
 
-void message_header::set_data_offset(int64_t _value)
+void message_header::set_data_offset(int64_t _value) noexcept
 {
     data_offset_ = _value;
 }
 
-void message_header::invalidate_data_offset()
+void message_header::invalidate_data_offset() noexcept
 {
     data_offset_ = std::numeric_limits<decltype(data_offset_)>::max();
 }
 
-bool message_header::is_message_data_valid() const
+bool message_header::is_message_data_valid() const noexcept
 {
     return data_offset_ != std::numeric_limits<decltype(data_offset_)>::max();
 }
 
-uint32_t message_header::get_data_size() const
+uint32_t message_header::get_data_size() const noexcept
 {
     return data_size_;
 }
 
-void message_header::set_data_size(uint32_t _value)
+void message_header::set_data_size(uint32_t _value) noexcept
 {
     assert(_value > 0);
     data_size_ = _value;
 }
 
-void message_header::set_prev_msgid(int64_t _value)
+void message_header::set_prev_msgid(int64_t _value) noexcept
 {
     assert(_value >= -1);
     assert(!has_id() || (_value < get_id()));
@@ -177,7 +205,7 @@ void message_header::set_prev_msgid(int64_t _value)
     prev_id_ = _value;
 }
 
-uint32_t message_header::min_data_sizeof(uint8_t _version) const
+uint32_t message_header::min_data_sizeof(uint8_t _version) const noexcept
 {
     constexpr auto version0 =
         sizeof(uint8_t) +    /*version_*/
@@ -197,6 +225,9 @@ uint32_t message_header::min_data_sizeof(uint8_t _version) const
     constexpr auto version3 = version2 +
         sizeof(bool);       /*poll_with_id*/
 
+    constexpr auto version4 = version3 +
+        sizeof(bool);       /*reactions*/
+
     switch (_version)
     {
     case 0:
@@ -207,6 +238,8 @@ uint32_t message_header::min_data_sizeof(uint8_t _version) const
         return version2;
     case 3:
         return version3;
+    case 4:
+        return version4;
     default:
         assert(!"invalid version");
         return version0;
@@ -234,6 +267,9 @@ void message_header::serialize(core::tools::binary_stream& _data) const
 
     if (version_ > 2)
         _data.write<bool>(has_poll_with_id_);
+
+    if (version_ > 3)
+        _data.write<bool>(has_reactions_);
 
 #ifdef _DEBUG
     if (_data.available() < min_data_sizeof(version_))
@@ -281,6 +317,10 @@ bool message_header::unserialize(core::tools::binary_stream& _data)
     {
         has_poll_with_id_ = _data.read<bool>();
     }
+    if (version_ > 3)
+    {
+        has_reactions_ = _data.read<bool>();
+    }
 
     return true;
 }
@@ -289,7 +329,7 @@ void message_header::merge_with(const message_header &rhs)
 {
     assert(id_ == rhs.id_);
 
-    if (rhs.is_modified() && rhs.is_patch())
+    if ((rhs.is_modified() || rhs.is_updated()) && rhs.is_patch())
     {
         __INFO(
             "delete_history",
@@ -301,11 +341,13 @@ void message_header::merge_with(const message_header &rhs)
         modifications_.push_back(std::cref(rhs));
     }
 
+
     version_ = rhs.version_;
     time_ = rhs.time_;
 
     has_shared_contact_with_sn_ = rhs.has_shared_contact_with_sn_;
     has_poll_with_id_ = rhs.has_poll_with_id_;
+    has_reactions_ = rhs.has_reactions_;
 
     const auto updateOffset = ((rhs.data_offset_ != -1) && !rhs.is_patch());
     if (updateOffset)
@@ -355,61 +397,67 @@ void message_header::merge_with(const message_header &rhs)
         flags_.flags_.updated_ = 1;
 }
 
-bool message_header::is_deleted() const
+bool message_header::is_deleted() const noexcept
 {
     return flags_.flags_.deleted_;
 }
 
-bool message_header::is_modified() const
+bool message_header::is_modified() const noexcept
 {
     return flags_.flags_.modified_;
 }
 
-bool core::archive::message_header::is_updated() const
+bool core::archive::message_header::is_updated() const noexcept
 {
     return flags_.flags_.updated_;
 }
 
-bool message_header::is_patch() const
+bool message_header::is_patch() const noexcept
 {
     return flags_.flags_.patch_;
 }
 
-bool message_header::is_updated_message() const
+bool message_header::is_updated_message() const noexcept
 {
     return !is_patch() && is_updated();
 }
 
-bool message_header::is_outgoing() const
+bool message_header::is_outgoing() const noexcept
 {
     return flags_.flags_.outgoing_;
 }
 
-void message_header::set_updated(bool _value)
+void message_header::set_updated(bool _value) noexcept
 {
     flags_.flags_.updated_ = true;
 }
 
 const message_header_vec& message_header::get_modifications() const
 {
-    assert(is_modified());
+    assert(is_modified() || is_updated());
 
     return modifications_;
 }
 
 bool message_header::has_modifications() const
 {
-    return (is_modified() && !modifications_.empty());
+    return (is_modified() || is_updated()) && !modifications_.empty();
 }
 
-bool message_header::has_shared_contact_with_sn() const
+
+bool message_header::has_shared_contact_with_sn() const noexcept
 {
     return has_shared_contact_with_sn_;
 }
 
-bool message_header::has_poll_with_id() const
+bool message_header::has_poll_with_id() const noexcept
 {
     return has_poll_with_id_;
+}
+
+bool message_header::has_reactions() const noexcept
+{
+    return has_reactions_;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -513,7 +561,17 @@ enum message_fields : uint32_t
     mf_poll_id = 82,
     mf_poll_answer = 83,
     mf_poll_type = 84,
-    mf_chat_event_new_chat_stamp = 85
+    mf_chat_event_new_chat_stamp = 85,
+    mf_json = 86,
+    mf_sender_aimid = 87,
+    mf_buttons = 88,
+    mf_hide_edit = 89,
+    mf_chat_requested_by = 90,
+    mf_chat_requested_by_friendly = 91,
+    mf_call_aimid = 92,
+    mf_voip_sid = 93,
+    mf_reactions = 94,
+    mf_reactions_exist = 95
 };
 
 void shared_contact_data::serialize(icollection *_collection) const
@@ -639,6 +697,68 @@ bool geo_data::unserialize(const core::tools::tlvpack &_pack)
     return true;
 }
 
+void button_data::serialize(icollection* _collection) const
+{
+    coll_helper coll(_collection, false);
+
+    coll.set_value_as_string("text", text_);
+    coll.set_value_as_string("url", url_);
+    coll.set_value_as_string("callback_data", callback_data_);
+    coll.set_value_as_string("style", style_);
+}
+
+void button_data::unserialize(const rapidjson::Value& _node)
+{
+    tools::unserialize_value(_node, c_text, text_);
+    tools::unserialize_value(_node, c_url, url_);
+    tools::unserialize_value(_node, c_callback_data, callback_data_);
+    tools::unserialize_value(_node, c_style, style_);
+}
+
+void message_reactions::serialize(icollection* _collection) const
+{
+    coll_helper coll(_collection, false);
+    coll_helper coll_reactions(coll->create_collection(), true);
+    coll_reactions.set_value_as_bool("exist", exist_);
+
+    coll.set_value_as_collection("reactions", coll_reactions.get());
+}
+
+void message_reactions::serialize(core::tools::tlvpack& _pack) const
+{
+    core::tools::tlvpack pack;
+    pack.push_child(core::tools::tlv(message_fields::mf_reactions_exist, exist_));
+
+    _pack.push_child(core::tools::tlv(message_fields::mf_reactions, pack));
+}
+
+void message_reactions::unserialize(const rapidjson::Value &_node)
+{
+    tools::unserialize_value(_node, "exist", exist_);
+
+    auto data_iter = _node.FindMember("data");
+    if (data_iter != _node.MemberEnd() && data_iter->value.IsObject())
+    {
+        reactions_data data;
+        data.unserialize(data_iter->value);
+
+        data_ = std::move(data);
+    }
+}
+
+bool message_reactions::unserialize(const core::tools::tlvpack& _pack)
+{
+    if (const auto name_item = _pack.get_item(message_fields::mf_reactions_exist))
+    {
+        exist_ = name_item->get_value<bool>();
+        return true;
+    }
+
+    return false;
+}
+
+
+
 sticker_data::sticker_data()
 {
 }
@@ -728,6 +848,7 @@ bool core::archive::voip_data::unserialize(
 
     unserialize_duration(_node);
 
+    tools::unserialize_value(_node, "sid", sid_);
     // read type
     std::string_view type;
     if (!tools::unserialize_value(_node, "type", type))
@@ -777,7 +898,7 @@ bool core::archive::voip_data::unserialize(
             for (auto node = pt_it->value.Begin(), nend = pt_it->value.End(); node != nend; ++node)
             {
                 if (std::string sn; tools::unserialize_value(*node, "sn", sn))
-                    conf_members_.push_back(sn);
+                    conf_members_.push_back(std::move(sn));
             }
         }
     }
@@ -813,6 +934,8 @@ void core::archive::voip_data::serialize(Out coll_helper &_coll) const
     assert(type_ > voip_event_type::min);
     assert(type_ < voip_event_type::max);
     _coll.set<voip_event_type>("type", type_);
+
+    _coll.set<std::string>("sid", sid_);
 
     assert(!sender_aimid_.empty());
     _coll.set<std::string>("sender_aimid", sender_aimid_);
@@ -890,6 +1013,8 @@ void core::archive::voip_data::serialize(Out core::tools::tlvpack &_pack) const
 
         _pack.push_child(tools::tlv(message_fields::mf_voip_conf_members, members_pack));
     }
+
+    _pack.push_child(tools::tlv(message_fields::mf_voip_sid, sid_));
 }
 
 bool core::archive::voip_data::unserialize(const core::tools::tlvpack &_pack)
@@ -953,6 +1078,10 @@ bool core::archive::voip_data::unserialize(const core::tools::tlvpack &_pack)
     const auto tlv_conf = _pack.get_item(message_fields::mf_voip_conf_members);
     if (tlv_conf)
         unserialize_conf_members(tlv_conf->get_value<tools::tlvpack>());
+
+    const auto tlv_sid = _pack.get_item(message_fields::mf_voip_sid);
+    if (tlv_sid)
+        sid_ = tlv_sid->get_value<std::string>();
 
     return true;
 }
@@ -1302,7 +1431,7 @@ chat_event_data_uptr chat_event_data::make_mchat_event(const rapidjson::Value& _
         return nullptr;
     }
 
-    auto type = string_2_chat_event(type_str);
+    auto type = event_type_from_str(type_str);
     if (type == chat_event_type::invalid)
     {
         return nullptr;
@@ -1318,6 +1447,8 @@ chat_event_data_uptr chat_event_data::make_mchat_event(const rapidjson::Value& _
     result->sender_aimid_ = std::move(sender_aimid);
     result->is_channel_ = is_channel;
 
+    tools::unserialize_value(event_iter->value, "requestedBy", result->mchat_.requested_by_);
+
     return result;
 }
 
@@ -1327,16 +1458,13 @@ chat_event_data_uptr chat_event_data::make_modified_event(const rapidjson::Value
 
     auto sender_aimid = parse_sender_aimid(_node);
     if (sender_aimid.empty())
-    {
         return nullptr;
-    }
 
     bool is_channel = false;
-    auto chat_type_iter = _node.FindMember("type");
-    if (chat_type_iter != _node.MemberEnd() && chat_type_iter->value.IsString())
+
+    if (auto it = _node.FindMember("type"); it != _node.MemberEnd() && it->value.IsString())
     {
-        std::string chat_type_str = chat_type_iter->value.GetString();
-        if (chat_type_str.compare("channel") == 0)
+        if (rapidjson_get_string_view(it->value) == "channel")
             is_channel = true;
     }
 
@@ -1344,60 +1472,28 @@ chat_event_data_uptr chat_event_data::make_modified_event(const rapidjson::Value
 
     assert(modified_event_iter != _node.MemberEnd());
     if (modified_event_iter == _node.MemberEnd())
-    {
         return nullptr;
-    }
 
     const auto &modified_event = modified_event_iter->value;
 
     assert(modified_event.IsObject());
     if (!modified_event.IsObject())
-    {
         return nullptr;
-    }
+
+    chat_event_data_uptr result;
 
     const auto new_name_iter = modified_event.FindMember("name");
-    const auto is_name_modified = (new_name_iter != modified_event.MemberEnd());
+    const auto is_name_modified = (new_name_iter != modified_event.MemberEnd() && new_name_iter->value.IsString());
     if (is_name_modified)
     {
-        const auto &new_name_node = new_name_iter->value;
-        if (!new_name_node.IsString())
-        {
-            return nullptr;
-        }
-
-        std::string new_name = rapidjson_get_string(new_name_node);
-
-        chat_event_data_uptr result(
-            new chat_event_data(chat_event_type::chat_name_modified));
-
-        assert(result->sender_aimid_.empty());
-        result->sender_aimid_ = std::move(sender_aimid);
-
-        if (!new_name.empty())
-        {
-            assert(result->chat_.new_name_.empty());
-            result->chat_.new_name_ = std::move(new_name);
-        }
-
-        result->is_channel_ = is_channel;
-
-        return result;
+        result.reset(new chat_event_data(chat_event_type::chat_name_modified));
+        result->chat_.new_name_ = rapidjson_get_string(new_name_iter->value);
     }
 
     const auto avatar_last_modified_iter = modified_event.FindMember("avatarLastModified");
     const auto is_avatar_modified = (avatar_last_modified_iter != modified_event.MemberEnd());
     if (is_avatar_modified)
-    {
-        chat_event_data_uptr result(
-            new chat_event_data(chat_event_type::avatar_modified));
-
-        assert(result->sender_aimid_.empty());
-        result->sender_aimid_ = std::move(sender_aimid);
-        result->is_channel_ = is_channel;
-
-        return result;
-    }
+        result.reset(new chat_event_data(chat_event_type::avatar_modified));
 
     const auto about_iter = modified_event.FindMember("about");
     const auto is_about_changed = (
@@ -1405,17 +1501,8 @@ chat_event_data_uptr chat_event_data::make_modified_event(const rapidjson::Value
         about_iter->value.IsString());
     if (is_about_changed)
     {
-        chat_event_data_uptr result(
-            new chat_event_data(chat_event_type::chat_description_modified)
-            );
-
+        result.reset(new chat_event_data(chat_event_type::chat_description_modified));
         result->chat_.new_description_ = rapidjson_get_string(about_iter->value);
-
-        assert(result->sender_aimid_.empty());
-        result->sender_aimid_ = std::move(sender_aimid);
-        result->is_channel_ = is_channel;
-
-        return result;
     }
 
     const auto rules_iter = modified_event.FindMember("rules");
@@ -1424,16 +1511,8 @@ chat_event_data_uptr chat_event_data::make_modified_event(const rapidjson::Value
         rules_iter->value.IsString());
     if (is_rules_changed)
     {
-        chat_event_data_uptr result(
-            new chat_event_data(chat_event_type::chat_rules_modified));
-
+        result.reset(new chat_event_data(chat_event_type::chat_rules_modified));
         result->chat_.new_rules_ = rapidjson_get_string(rules_iter->value);
-
-        assert(result->sender_aimid_.empty());
-        result->sender_aimid_ = std::move(sender_aimid);
-        result->is_channel_ = is_channel;
-
-        return result;
     }
 
     const auto stamp_iter = modified_event.FindMember("stamp");
@@ -1442,19 +1521,34 @@ chat_event_data_uptr chat_event_data::make_modified_event(const rapidjson::Value
         stamp_iter->value.IsString());
     if (is_stamp_changed)
     {
-        chat_event_data_uptr result(
-            new chat_event_data(chat_event_type::chat_stamp_modified));
-
+        result.reset(new chat_event_data(chat_event_type::chat_stamp_modified));
         result->chat_.new_stamp_ = rapidjson_get_string(stamp_iter->value);
+    }
 
+    const auto join_moderation_iter = modified_event.FindMember("joinModeration");
+    const auto join_moderation_changed = join_moderation_iter != modified_event.MemberEnd() && join_moderation_iter->value.IsBool();
+    if (join_moderation_changed)
+    {
+        result.reset(new chat_event_data(chat_event_type::chat_join_moderation_modified));
+        result->chat_.new_join_moderation_ = join_moderation_iter->value.GetBool();
+    }
+
+    const auto public_iter = modified_event.FindMember("public");
+    const auto public_changed = public_iter != modified_event.MemberEnd() && public_iter->value.IsBool();
+    if (public_changed)
+    {
+        result.reset(new chat_event_data(chat_event_type::chat_public_modified));
+        result->chat_.new_public_ = public_iter->value.GetBool();
+    }
+
+    if (result)
+    {
         assert(result->sender_aimid_.empty());
         result->sender_aimid_ = std::move(sender_aimid);
         result->is_channel_ = is_channel;
-
-        return result;
     }
 
-    return nullptr;
+    return result;
 }
 
 chat_event_data_uptr chat_event_data::make_from_tlv(const tools::tlvpack& _pack)
@@ -1518,8 +1612,8 @@ chat_event_data::chat_event_data(const tools::tlvpack& _pack)
 
     if (has_sender_aimid())
     {
-        sender_friendly_ = _pack.get_item(message_fields::mf_chat_event_sender_friendly)->get_value<std::string>();
-        assert(!sender_friendly_.empty());
+        if (auto item = _pack.get_item(message_fields::mf_chat_event_sender_friendly))
+            sender_friendly_ = item->get_value<std::string>();
 
         auto item = _pack.get_item(message_fields::mf_chat_event_sender_aimid);
         if (item)
@@ -1544,6 +1638,12 @@ chat_event_data::chat_event_data(const tools::tlvpack& _pack)
         {
             deserialize_mchat_members_aimids(item->get_value<tools::tlvpack>());
         }
+
+        if (auto item = _pack.get_item(message_fields::mf_chat_requested_by))
+            mchat_.requested_by_ = item->get_value<std::string>(std::string());
+
+        if (auto item = _pack.get_item(message_fields::mf_chat_requested_by_friendly))
+            mchat_.requested_by_friendly_ = item->get_value<std::string>(std::string());
     }
 
     if (has_chat_modifications())
@@ -1553,8 +1653,8 @@ chat_event_data::chat_event_data(const tools::tlvpack& _pack)
 
     if (has_generic_text())
     {
-        generic_ = _pack.get_item(message_fields::mf_chat_event_generic_text)->get_value<std::string>();
-        assert(!generic_.empty());
+        if (auto item = _pack.get_item(message_fields::mf_chat_event_generic_text))
+            generic_ = item->get_value<std::string>();
     }
 }
 
@@ -1569,9 +1669,6 @@ void chat_event_data::apply_persons(const archive::persons_map &_persons)
 
     if (has_mchat_members())
     {
-        auto &friendly_members = mchat_.members_friendly_;
-        assert(friendly_members.empty());
-
         string_vector_t tmp;
         for (auto member : mchat_.members_)
         {
@@ -1582,7 +1679,10 @@ void chat_event_data::apply_persons(const archive::persons_map &_persons)
         mchat_.members_= std::move(tmp);
 
         for (const auto& member_uin : mchat_.members_)
-            friendly_members.push_back(find_person(member_uin, _persons));
+            mchat_.members_friendly_.push_back(find_person(member_uin, _persons));
+
+        if (!mchat_.requested_by_.empty())
+            mchat_.requested_by_friendly_ = find_person(mchat_.requested_by_, _persons);
     }
 }
 
@@ -1596,9 +1696,7 @@ bool chat_event_data::contents_equal(const chat_event_data& _rhs) const
     return true;
 }
 
-void chat_event_data::serialize(
-    Out icollection* _collection,
-    const bool _is_outgoing) const
+void chat_event_data::serialize(Out icollection* _collection) const
 {
     assert(_collection);
 
@@ -1610,17 +1708,14 @@ void chat_event_data::serialize(
         coll.set_value_as_bool("is_captcha_present", is_captcha_present_);
 
     if (has_sender_aimid())
-    {
-        coll.set_value_as_string("sender_aimid", sender_aimid_);
-
-        assert(!sender_friendly_.empty());
-        coll.set_value_as_string("sender_friendly", sender_friendly_);
-    }
+        coll.set_value_as_string("sender", sender_aimid_);
 
     if (has_mchat_members())
     {
         serialize_mchat_members(Out coll);
         serialize_mchat_members_aimids(Out coll);
+
+        coll.set_value_as_string("mchat/requested_by", mchat_.requested_by_);
     }
 
     if (has_chat_modifications())
@@ -1656,6 +1751,9 @@ void chat_event_data::serialize(Out tools::tlvpack &_pack) const
     {
         serialize_mchat_members(Out _pack);
         serialize_mchat_members_aimids(Out _pack);
+
+        _pack.push_child(core::tools::tlv(message_fields::mf_chat_requested_by, mchat_.requested_by_));
+        _pack.push_child(core::tools::tlv(message_fields::mf_chat_requested_by_friendly, mchat_.requested_by_friendly_));
     }
 
     if (has_chat_modifications())
@@ -1714,7 +1812,7 @@ void chat_event_data::deserialize_mchat_members(const tools::tlvpack &_pack)
 {
     assert(mchat_.members_friendly_.empty());
 
-    for(auto index = 0u; index < _pack.size(); ++index)
+    for (auto index = 0u; index < _pack.size(); ++index)
     {
         const auto item = _pack.get_item(index);
         assert(item);
@@ -1757,34 +1855,55 @@ bool chat_event_data::has_generic_text() const
 
 bool chat_event_data::has_mchat_members() const
 {
-    return ((get_type() == chat_event_type::mchat_add_members) ||
-            (get_type() == chat_event_type::mchat_invite) ||
-            (get_type() == chat_event_type::mchat_leave) ||
-            (get_type() == chat_event_type::mchat_del_members) ||
-            (get_type() == chat_event_type::mchat_kicked));
+    static const auto types_with_mchat_members =
+    {
+        chat_event_type::mchat_add_members,
+        chat_event_type::mchat_invite,
+        chat_event_type::mchat_leave,
+        chat_event_type::mchat_del_members,
+        chat_event_type::mchat_kicked,
+        chat_event_type::mchat_adm_granted,
+        chat_event_type::mchat_adm_revoked,
+        chat_event_type::mchat_allowed_to_write,
+        chat_event_type::mchat_disallowed_to_write,
+        chat_event_type::mchat_waiting_for_approve,
+        chat_event_type::mchat_joining_approved,
+        chat_event_type::mchat_joining_rejected,
+        chat_event_type::mchat_joining_canceled,
+    };
+
+    return std::any_of(types_with_mchat_members.begin(), types_with_mchat_members.end(), [this](const auto type) { return type == get_type(); });
 }
 
 bool chat_event_data::has_chat_modifications() const
 {
-    return ((get_type() == chat_event_type::chat_name_modified) ||
-            (get_type() == chat_event_type::chat_description_modified) ||
-            (get_type() == chat_event_type::chat_rules_modified) ||
-            (get_type() == chat_event_type::chat_stamp_modified));
+    static const auto types_with_chat_modifications =
+    {
+        chat_event_type::chat_name_modified,
+        chat_event_type::chat_description_modified,
+        chat_event_type::chat_rules_modified,
+        chat_event_type::chat_stamp_modified,
+        chat_event_type::chat_join_moderation_modified,
+        chat_event_type::chat_public_modified
+    };
+
+    return std::any_of(types_with_chat_modifications.begin(), types_with_chat_modifications.end(), [this](const auto type) { return type == get_type(); });
 }
 
 bool chat_event_data::has_sender_aimid() const
 {
-    return ((get_type() == chat_event_type::added_to_buddy_list) ||
-            (get_type() == chat_event_type::chat_name_modified) ||
-            (get_type() == chat_event_type::mchat_add_members) ||
-            (get_type() == chat_event_type::mchat_invite) ||
-            (get_type() == chat_event_type::mchat_leave) ||
-            (get_type() == chat_event_type::mchat_del_members) ||
-            (get_type() == chat_event_type::mchat_kicked) ||
-            (get_type() == chat_event_type::avatar_modified) ||
-            (get_type() == chat_event_type::chat_description_modified) ||
-            (get_type() == chat_event_type::chat_rules_modified) ||
-            (get_type() == chat_event_type::chat_stamp_modified));
+    static const auto types_without_sender =
+    {
+        chat_event_type::invalid,
+        chat_event_type::min,
+        chat_event_type::buddy_reg,
+        chat_event_type::buddy_found,
+        chat_event_type::birthday,
+        chat_event_type::generic,
+        chat_event_type::message_deleted
+    };
+
+    return !std::any_of(types_without_sender.begin(), types_without_sender.end(), [this](const auto type) { return type == get_type(); });
 }
 
 void chat_event_data::serialize_chat_modifications(Out coll_helper &_coll) const
@@ -1798,19 +1917,19 @@ void chat_event_data::serialize_chat_modifications(Out coll_helper &_coll) const
     }
 
     if (type_ == chat_event_type::chat_description_modified)
-    {
         _coll.set<std::string>("chat/new_description", chat_.new_description_);
-    }
 
     if (type_ == chat_event_type::chat_rules_modified)
-    {
         _coll.set<std::string>("chat/new_rules", chat_.new_rules_);
-    }
 
     if (type_ == chat_event_type::chat_stamp_modified)
-    {
         _coll.set<std::string>("chat/new_stamp", chat_.new_stamp_);
-    }
+
+    if (type_ == chat_event_type::chat_join_moderation_modified)
+        _coll.set<bool>("chat/new_join_moderation", chat_.new_join_moderation_);
+
+    if (type_ == chat_event_type::chat_public_modified)
+        _coll.set<bool>("chat/new_public", chat_.new_public_);
 }
 
 void chat_event_data::serialize_chat_modifications(Out tools::tlvpack &_pack) const
@@ -1920,16 +2039,50 @@ void chat_event_data::serialize_mchat_members_aimids(Out tools::tlvpack &_pack) 
     _pack.push_child(tools::tlv(message_fields::mf_chat_event_mchat_members_aimids, members_pack));
 }
 
-bool chat_event_data::is_type_deleted() const
+bool chat_event_data::is_type_deleted() const noexcept
 {
     return type_ == chat_event_type::message_deleted;
+}
+
+persons_map chat_event_data::get_persons() const
+{
+    persons_map persons;
+
+    if (has_mchat_members())
+    {
+        if (mchat_.members_.size() == mchat_.members_friendly_.size())
+        {
+            for (size_t i = 0; i < mchat_.members_.size(); ++i)
+            {
+                core::archive::person p;
+                p.friendly_ = mchat_.members_friendly_[i];
+                persons.emplace(mchat_.members_[i], std::move(p));
+            }
+        }
+
+        if (!mchat_.requested_by_.empty())
+        {
+            core::archive::person p;
+            p.friendly_ = mchat_.requested_by_friendly_;
+            persons.emplace(mchat_.requested_by_, std::move(p));
+        }
+    }
+
+    if (has_sender_aimid())
+    {
+        core::archive::person p;
+        p.friendly_ = sender_friendly_;
+        persons.emplace(sender_aimid_, std::move(p));
+    }
+
+    return persons;
 }
 
 //////////////////////////////////////////////////////////////////////////
 // history_message class
 //////////////////////////////////////////////////////////////////////////
 
-history_message_sptr history_message::make_deleted_patch(const int64_t _archive_id, const std::string& _internal_id)
+history_message_sptr history_message::make_deleted_patch(const int64_t _archive_id, std::string_view _internal_id)
 {
     assert(_archive_id > 0 || !_internal_id.empty());
 
@@ -1943,23 +2096,18 @@ history_message_sptr history_message::make_deleted_patch(const int64_t _archive_
     return result;
 }
 
-history_message_sptr history_message::make_modified_patch(const int64_t _archive_id, const std::string& _internal_id)
+history_message_sptr history_message::make_modified_patch(const int64_t _archive_id, std::string_view _internal_id)
 {
     assert(_archive_id > 0 || !_internal_id.empty());
 
-    auto result = std::make_shared<history_message>();
-
-    result->msgid_ = _archive_id;
-    result->internal_id_ = _internal_id;
-    result->set_modified(true);
-    result->set_patch(true);
+    auto result = make_updated_patch(_archive_id, _internal_id);
 
     result->chat_event_ = chat_event_data::make_simple_event(chat_event_type::message_deleted);
 
     return result;
 }
 
-history_message_sptr history_message::make_updated_patch(const int64_t _archive_id, const std::string& _internal_id)
+history_message_sptr history_message::make_updated_patch(const int64_t _archive_id, std::string_view _internal_id)
 {
     assert(_archive_id > 0 || !_internal_id.empty());
 
@@ -1973,7 +2121,7 @@ history_message_sptr history_message::make_updated_patch(const int64_t _archive_
     return result;
 }
 
-history_message_sptr history_message::make_updated(const int64_t _archive_id, const std::string& _internal_id)
+history_message_sptr history_message::make_updated(const int64_t _archive_id, std::string_view _internal_id)
 {
     assert(_archive_id > 0 || !_internal_id.empty());
 
@@ -1987,7 +2135,7 @@ history_message_sptr history_message::make_updated(const int64_t _archive_id, co
     return result;
 }
 
-history_message_sptr core::archive::history_message::make_clear_patch(const int64_t _archive_id, const std::string& _internal_id)
+history_message_sptr core::archive::history_message::make_clear_patch(const int64_t _archive_id, std::string_view _internal_id)
 {
     assert(_archive_id > 0 || !_internal_id.empty());
 
@@ -1999,6 +2147,11 @@ history_message_sptr core::archive::history_message::make_clear_patch(const int6
     result->set_patch(true);
 
     return result;
+}
+
+history_message_sptr history_message::make_set_reactions_patch(const int64_t _archive_id, std::string_view _internal_id)
+{
+    return make_updated_patch(_archive_id, _internal_id);
 }
 
 void core::archive::history_message::make_deleted(history_message_sptr _message)
@@ -2030,10 +2183,7 @@ history_message::history_message()
     init_default();
 }
 
-history_message::~history_message()
-{
-
-}
+history_message::~history_message() = default;
 
 history_message& history_message::operator=(const history_message& _message)
 {
@@ -2048,6 +2198,8 @@ void history_message::init_default()
     data_offset_ = -1;
     data_size_ = 0;
     prev_msg_id_ = -1;
+    unsupported_ = false;
+    hide_edit_ = false;
 }
 
 bool history_message::init_file_sharing_from_local_path(const std::string& _local_path)
@@ -2094,7 +2246,7 @@ const file_sharing_data_uptr& history_message::get_file_sharing_data() const
     return file_sharing_;
 }
 
-chat_event_data_uptr& history_message::get_chat_event_data()
+const chat_event_data_uptr& history_message::get_chat_event_data() const
 {
     return chat_event_;
 }
@@ -2131,6 +2283,9 @@ void history_message::copy(const history_message& _message)
     shared_contact_.reset();
     geo_.reset();
     poll_.reset();
+
+    unsupported_ = _message.unsupported_;
+    hide_edit_ = _message.hide_edit_;
 
     if (_message.sticker_)
         sticker_ = std::make_unique<core::archive::sticker_data>(*_message.sticker_);
@@ -2171,6 +2326,7 @@ void history_message::merge(const history_message& _message)
     update_patch_version_ = _message.update_patch_version_;
     url_ = _message.url_;
     description_ = _message.description_;
+    hide_edit_ = _message.hide_edit_;
 
     sticker_.reset();
     mult_.reset();
@@ -2261,11 +2417,13 @@ void history_message::serialize(icollection* _collection, const time_t _offset, 
     coll.set_value_as_int("offline_version", update_patch_version_.get_offline_version());
     coll.set_value_as_string("description", description_);
     coll.set_value_as_string("url", url_);
+    coll.set_value_as_bool("unsupported", unsupported_);
+    coll.set_value_as_bool("hide_edit", hide_edit_);
 
     if (chat_event_)
     {
         coll_helper coll_chat_event(coll->create_collection(), true);
-        chat_event_->serialize(coll_chat_event.get(), flags_.flags_.outgoing_);
+        chat_event_->serialize(coll_chat_event.get());
         coll.set_value_as_collection("chat_event", coll_chat_event.get());
     }
 
@@ -2372,13 +2530,46 @@ void history_message::serialize(icollection* _collection, const time_t _offset, 
 
     if (poll_)
         poll_->serialize(coll.get());
-}
 
+    if (reactions_)
+        reactions_->serialize(coll.get());
+
+    if (!buttons_.empty())
+    {
+        ifptr<iarray> buttons_aray(coll->create_array());
+        buttons_aray->reserve(buttons_.size());
+
+        for (const auto& line : buttons_)
+        {
+            ifptr<iarray> line_aray(coll->create_array());
+            line_aray->reserve(line.size());
+
+            for (const auto& btn : line)
+            {
+                coll_helper coll_btn(coll->create_collection(), true);
+                btn.serialize(coll_btn.get());
+                ifptr<ivalue> btn_value(coll->create_value());
+                btn_value->set_as_collection(coll_btn.get());
+                line_aray->push_back(btn_value.get());
+            }
+
+            ifptr<ivalue> value(coll->create_value());
+            value->set_as_array(line_aray.get());
+            buttons_aray->push_back(value.get());
+        }
+
+        coll.set_value_as_array("buttons", buttons_aray.get());
+    }
+}
 
 void history_message::serialize(core::tools::binary_stream& _data) const
 {
-    core::tools::tlvpack msg_pack;
+    serialize_call(_data, std::string());
+}
 
+void history_message::serialize_call(core::tools::binary_stream& _data, const std::string& _aimid) const
+{
+    core::tools::tlvpack msg_pack;
     // text is the first for fast searching
     msg_pack.push_child(core::tools::tlv(mf_text, (std::string) text_));
     msg_pack.push_child(core::tools::tlv(mf_msg_id, (int64_t) msgid_));
@@ -2391,6 +2582,10 @@ void history_message::serialize(core::tools::binary_stream& _data) const
     msg_pack.push_child(core::tools::tlv(mf_offline_version, update_patch_version_.get_offline_version()));
     msg_pack.push_child(core::tools::tlv(mf_description, description_));
     msg_pack.push_child(core::tools::tlv(mf_url, url_));
+    msg_pack.push_child(core::tools::tlv(mf_json, json_));
+    msg_pack.push_child(core::tools::tlv(mf_sender_aimid, sender_aimid_));
+    msg_pack.push_child(core::tools::tlv(mf_buttons, buttons_json_));
+    msg_pack.push_child(core::tools::tlv(mf_hide_edit, hide_edit_));
 
     if (chat_)
     {
@@ -2463,10 +2658,20 @@ void history_message::serialize(core::tools::binary_stream& _data) const
     if (poll_)
         serializePoll(*poll_, msg_pack);
 
+    if (reactions_)
+        reactions_->serialize(msg_pack);
+
+    msg_pack.push_child(core::tools::tlv(mf_call_aimid, _aimid));
     msg_pack.serialize(_data);
 }
 
 int32_t history_message::unserialize(core::tools::binary_stream& _data)
+{
+    std::string dummy;
+    return unserialize_call(_data, dummy);
+}
+
+int32_t history_message::unserialize_call(core::tools::binary_stream& _data, std::string& _aimid)
 {
     core::tools::tlvpack msg_pack;
 
@@ -2610,6 +2815,59 @@ int32_t history_message::unserialize(core::tools::binary_stream& _data)
                 auto pack = tlv_field->get_value<core::tools::tlvpack>();
                 poll_ = unserializePoll(pack);
             }
+            break;
+
+        case message_fields::mf_reactions:
+            {
+                const auto pack = tlv_field->get_value<core::tools::tlvpack>();
+                message_reactions reactions;
+                if (reactions.unserialize(pack))
+                    reactions_ = std::move(reactions);
+            }
+
+        case message_fields::mf_json:
+            {
+                json_ = tlv_field->get_value<std::string>(std::string());
+                if (!json_.empty() && !sender_aimid_.empty())
+                {
+                    rapidjson::Document doc(rapidjson::Type::kObjectType);
+                    doc.Parse(json_);
+                    return unserialize(doc, sender_aimid_);
+                }
+            }
+
+            break;
+
+        case message_fields::mf_sender_aimid:
+            {
+                sender_aimid_ = tlv_field->get_value<std::string>(std::string());
+                if (!json_.empty() && !sender_aimid_.empty())
+                {
+                    rapidjson::Document doc(rapidjson::Type::kObjectType);
+                    doc.Parse(json_);
+                    return unserialize(doc, sender_aimid_);
+                }
+            }
+
+            break;
+
+        case message_fields::mf_buttons:
+            {
+                buttons_json_ = tlv_field->get_value<std::string>(std::string());
+                buttons_ = unserialize_buttons(buttons_json_);
+            }
+
+            break;
+
+        case message_fields::mf_hide_edit:
+        {
+            hide_edit_ = tlv_field->get_value<bool>(false);
+            break;
+        }
+
+        case message_fields::mf_call_aimid:
+            _aimid = tlv_field->get_value<std::string>(std::string());
+            break;
 
         default:
             break;
@@ -2623,35 +2881,116 @@ int32_t history_message::unserialize(const rapidjson::Value& _node, const std::s
 {
     assert(!_sender_aimid.empty());
 
+    static auto new_message_fields_str = omicronlib::_o(omicron::keys::new_message_fields, feature::default_new_message_fields());
+    static message_fields_set new_message_fields_set;
+    if (!new_message_fields_str.empty() && new_message_fields_set.empty())
+        new_message_fields_set = set_from_json_array(new_message_fields_str);
+
+    static auto new_message_parts_str = omicronlib::_o(omicron::keys::new_message_parts, feature::default_new_message_parts());
+    static message_fields_set new_message_parts_set;
+    if (!new_message_parts_str.empty() && new_message_parts_set.empty())
+        new_message_parts_set = set_from_json_array(new_message_parts_str);
+
+
     // load basic fields
 
-    for (auto iter_field = _node.MemberBegin(), end = _node.MemberEnd(); iter_field != end ; ++iter_field)
+    for (const auto& field : _node.GetObject())
     {
-        const auto name = rapidjson_get_string_view(iter_field->name);
+        const auto name = rapidjson_get_string_view(field.name);
 
         if (c_msgid == name)
         {
-            msgid_ = iter_field->value.GetInt64();
+            msgid_ = field.value.GetInt64();
         }
         else if (c_reqid == name)
         {
-            internal_id_ = rapidjson_get_string(iter_field->value);
+            internal_id_ = rapidjson_get_string(field.value);
         }
         else if (c_outgoing == name)
         {
-            flags_.flags_.outgoing_ = iter_field->value.GetBool();
+            flags_.flags_.outgoing_ = field.value.GetBool();
         }
         else if (c_time == name)
         {
-            time_ = iter_field->value.GetInt();
+            time_ = field.value.GetInt();
         }
         else if (c_text == name)
         {
-            text_ = rapidjson_get_string(iter_field->value);
+            text_ = rapidjson_get_string(field.value);
         }
         else if (c_update_patch_version == name)
         {
-            update_patch_version_ = common::tools::patch_version(rapidjson_get_string(iter_field->value));
+            update_patch_version_ = common::tools::patch_version(rapidjson_get_string(field.value));
+        }
+        else if (c_sticker == name)
+        {
+            sticker_ = std::make_unique<core::archive::sticker_data>();
+            sticker_->unserialize(field.value);
+        }
+        else if (c_mult == name)
+        {
+            mult_ = std::make_unique<core::archive::mult_data>();
+            mult_->unserialize(field.value);
+        }
+        else if (c_voip == name)
+        {
+            voip_ = std::make_unique<core::archive::voip_data>();
+            if (!voip_->unserialize(field.value, _sender_aimid))
+            {
+                assert(!"voip unserialization failed");
+                voip_.reset();
+            }
+        }
+        else if (c_chat == name)
+        {
+            chat_ = std::make_unique<core::archive::chat_data>();
+            chat_->unserialize(field.value);
+        }
+        else if (c_mentions == name)
+        {
+            mentions_.clear();
+            const auto& mentions = field.value;
+            if (mentions.IsArray())
+            {
+                for (const auto& m : mentions.GetArray())
+                {
+                    if (m.IsString())
+                    {
+                        const auto mention = rapidjson_get_string(m);
+                        mentions_.emplace(mention, mention);
+                    }
+                }
+            }
+        }
+        else if (name == c_buttons)
+        {
+            buttons_ = unserialize_buttons(field.value);
+            rapidjson::StringBuffer buffer;
+            rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+            field.value.Accept(writer);
+            buttons_json_ = rapidjson_get_string_view(buffer);
+        }
+        else if (name == c_hideedit)
+        {
+            hide_edit_ = field.value.GetBool();
+        }
+        else if (new_message_fields_set.find(name) != new_message_fields_set.end())
+        {
+            unsupported_ = true;
+            rapidjson::StringBuffer buffer;
+            rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+            _node.Accept(writer);
+            json_ = rapidjson_get_string_view(buffer);
+            sender_aimid_ = _sender_aimid;
+        }
+        else if (name == c_reactions)
+        {
+            message_reactions reactions;
+            reactions.unserialize(field.value);
+            if (reactions.data_)
+                reactions.data_->msg_id_ = msgid_;
+
+            reactions_ = std::move(reactions);
         }
     }
 
@@ -2659,72 +2998,97 @@ int32_t history_message::unserialize(const rapidjson::Value& _node, const std::s
     if ((parts_iter != _node.MemberEnd()) && parts_iter->value.IsArray())
     {
         text_.clear();
-        const auto &parts = parts_iter->value;
-        const auto parts_count = parts.Size();
-        for (auto i = 0u; i < parts_count; ++i)
+        for (const auto &part : parts_iter->value.GetArray())
         {
-            const auto &part = parts[i];
             const auto type_iter = part.FindMember(tools::make_string_ref(c_media_type));
             if (type_iter != part.MemberEnd() && type_iter->value.IsString())
             {
-                const auto & type = rapidjson_get_string_view(type_iter->value);
+                const auto type = rapidjson_get_string_view(type_iter->value);
                 if (type == c_type_text)
                 {
-                    const auto iter_text = part.FindMember(tools::make_string_ref(c_text));
-                    if (iter_text != part.MemberEnd() && iter_text->value.IsString())
-                        text_ = rapidjson_get_string(iter_text->value);
-
-                    const auto iter_caption = part.FindMember(tools::make_string_ref(c_captioned_content));
-                    if (iter_caption != part.MemberEnd() && iter_caption->value.IsObject())
+                    for (const auto& field : part.GetObject())
                     {
-                        auto iter_url = iter_caption->value.FindMember(tools::make_string_ref(c_url));
-                        if (iter_url != iter_caption->value.MemberEnd() && iter_url->value.IsString())
-                            url_ = rapidjson_get_string(iter_url->value);
+                        const auto name = rapidjson_get_string_view(field.name);
+                        if (name == c_media_type)
+                        {
+                            continue;
+                        }
+                        else if (name == c_text)
+                        {
+                            text_ = rapidjson_get_string(field.value);
+                        }
+                        else if (name == c_captioned_content)
+                        {
 
-                        auto iter_description = iter_caption->value.FindMember(tools::make_string_ref(c_caption));
-                        if (iter_description != iter_caption->value.MemberEnd() && iter_description->value.IsString())
-                            description_ = rapidjson_get_string(iter_description->value);
-                    }
+                            if (const auto it = field.value.FindMember(tools::make_string_ref(c_url)); it != field.value.MemberEnd() && it->value.IsString())
+                                url_ = rapidjson_get_string(it->value);
 
-                    const auto iter_contact = part.FindMember(tools::make_string_ref(c_contact));
-                    if (iter_contact != part.MemberEnd() && iter_contact->value.IsObject())
-                    {
-                        shared_contact_data contact;
-                        if (contact.unserialize(iter_contact->value))
-                            shared_contact_ = std::move(contact);
-                    }
-
-                    const auto iter_geo = part.FindMember(tools::make_string_ref(c_geo));
-                    if (iter_geo != part.MemberEnd() && iter_geo->value.IsObject())
-                    {
-                        geo_data geo;
-                        if (geo.unserialize(iter_geo->value))
-                            geo_ = std::move(geo);
-                    }
-
-                    const auto iter_poll = part.FindMember(tools::make_string_ref(c_poll));
-                    if (iter_poll != part.MemberEnd() && iter_poll->value.IsObject())
-                    {
-                        poll_data poll;
-                        if (poll.unserialize(iter_poll->value))
-                            poll_ = std::move(poll);
+                            if (const auto it = field.value.FindMember(tools::make_string_ref(c_caption)); it != field.value.MemberEnd() && it->value.IsString())
+                                description_ = rapidjson_get_string(it->value);
+                        }
+                        else if (name == c_contact)
+                        {
+                            shared_contact_data contact;
+                            if (contact.unserialize(field.value))
+                                shared_contact_ = std::move(contact);
+                        }
+                        else if (name == c_geo)
+                        {
+                            geo_data geo;
+                            if (geo.unserialize(field.value))
+                                geo_ = std::move(geo);
+                        }
+                        else if (name == c_poll)
+                        {
+                            poll_data poll;
+                            if (poll.unserialize(field.value))
+                                poll_ = std::move(poll);
+                        }
+                        else if (new_message_parts_set.find(name) != new_message_parts_set.end())
+                        {
+                            unsupported_ = true;
+                            rapidjson::StringBuffer buffer;
+                            rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+                            _node.Accept(writer);
+                            json_ = rapidjson_get_string_view(buffer);
+                            sender_aimid_ = _sender_aimid;
+                        }
                     }
 
                     continue;
                 }
                 else if (type == c_type_sticker)
                 {
-                    const auto stickerId = part.FindMember(tools::make_string_ref(c_stiker_id));
-                    if (stickerId != part.MemberEnd() && stickerId->value.IsString())
-                        sticker_ = std::make_unique<core::archive::sticker_data>(rapidjson_get_string(stickerId->value));
+
+                    if (const auto it = part.FindMember(tools::make_string_ref(c_stiker_id)); it != part.MemberEnd() && it->value.IsString())
+                        sticker_ = std::make_unique<core::archive::sticker_data>(rapidjson_get_string(it->value));
 
                     continue;
                 }
                 else if (type == c_type_quote || type == c_type_forward)
                 {
                     quote q;
-                    q.unserialize(part, type == c_type_forward);
+                    if (!q.unserialize(part, type == c_type_forward, new_message_fields_set))
+                    {
+                        unsupported_ = true;
+                        rapidjson::StringBuffer buffer;
+                        rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+                        _node.Accept(writer);
+                        json_ = rapidjson_get_string_view(buffer);
+                        sender_aimid_ = _sender_aimid;
+                        continue;
+                    }
                     quotes_.push_back(std::move(q));
+                    continue;
+                }
+                else if (new_message_parts_set.find(type) != new_message_parts_set.end())
+                {
+                    unsupported_ = true;
+                    rapidjson::StringBuffer buffer;
+                    rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+                    _node.Accept(writer);
+                    json_ = rapidjson_get_string_view(buffer);
+                    sender_aimid_ = _sender_aimid;
                     continue;
                 }
             }
@@ -2735,20 +3099,19 @@ int32_t history_message::unserialize(const rapidjson::Value& _node, const std::s
     if (snip_iter != _node.MemberEnd() && snip_iter->value.IsArray())
     {
         snippets_.reserve(snip_iter->value.Size());
-        for (auto i = 0u; i < snip_iter->value.Size(); ++i)
+        for (const auto& snipObj : snip_iter->value.GetArray())
         {
-            const auto& snipObj = snip_iter->value[i];
             if (!snipObj.IsObject())
                 continue;
 
-            for (auto snip = snipObj.MemberBegin(); snip != snipObj.MemberEnd(); ++snip)
+            for (const auto& snip : snipObj.GetObject())
             {
-                const auto url = rapidjson_get_string_view(snip->name);
+                const auto url = rapidjson_get_string_view(snip.name);
 
-                if (std::none_of(snippets_.begin(), snippets_.end(), [&url](const auto& _snip) { return _snip.get_url() == url; }))
+                if (std::none_of(snippets_.begin(), snippets_.end(), [url](const auto& _snip) { return _snip.get_url() == url; }))
                 {
                     url_snippet s(url);
-                    s.unserialize(snip->value);
+                    s.unserialize(snip.value);
 
                     snippets_.push_back(std::move(s));
                 }
@@ -2818,54 +3181,6 @@ int32_t history_message::unserialize(const rapidjson::Value& _node, const std::s
             chat_event_->set_captcha_present(true);
 
         return 0;
-    }
-
-    // load other child structures
-
-    for (auto iter_field = _node.MemberBegin(), end = _node.MemberEnd(); iter_field != end; ++iter_field)
-    {
-        const auto name = rapidjson_get_string_view(iter_field->name);
-
-        if (c_sticker == name)
-        {
-            sticker_ = std::make_unique<core::archive::sticker_data>();
-            sticker_->unserialize(iter_field->value);
-        }
-        else if (c_mult == name)
-        {
-            mult_ = std::make_unique<core::archive::mult_data>();
-            mult_->unserialize(iter_field->value);
-        }
-        else if (c_voip == name)
-        {
-            voip_ = std::make_unique<core::archive::voip_data>();
-            if (!voip_->unserialize(iter_field->value, _sender_aimid))
-            {
-                assert(!"voip unserialization failed");
-                voip_.reset();
-            }
-        }
-        else if (c_chat == name)
-        {
-            chat_ = std::make_unique<core::archive::chat_data>();
-            chat_->unserialize(iter_field->value);
-        }
-        else if (c_mentions == name)
-        {
-            mentions_.clear();
-            const auto& mentions = iter_field->value;
-            if (mentions.IsArray())
-            {
-                for (auto iter = mentions.Begin(), m_end = mentions.End(); iter != m_end; ++iter)
-                {
-                    if (iter->IsString())
-                    {
-                        const auto mention = rapidjson_get_string(*iter);
-                        mentions_.emplace(mention, mention);
-                    }
-                }
-            }
-        }
     }
 
     if (shared_contact_) // if message contains shared contact, we do not process its text
@@ -3016,7 +3331,7 @@ void history_message::apply_modifications(const history_block &_modifications)
     for (const auto &modification : _modifications)
     {
         assert(modification->get_msgid() == get_msgid());
-        assert(modification->is_modified());
+        assert(modification->is_modified() || modification->is_updated());
 
         if (modification->has_text())
         {
@@ -3053,6 +3368,7 @@ void history_message::apply_modifications(const history_block &_modifications)
         }
     }
 }
+
 
 const quotes_vec& history_message::get_quotes() const
 {
@@ -3092,29 +3408,19 @@ message_flags history_message::get_flags() const noexcept
 message_type history_message::get_type() const noexcept
 {
     if (is_sms())
-    {
         return message_type::sms;
-    }
 
     if (is_sticker())
-    {
         return message_type::sticker;
-    }
 
     if (is_file_sharing())
-    {
         return message_type::file_sharing;
-    }
 
     if (is_chat_event())
-    {
         return message_type::chat_event;
-    }
 
     if (is_voip_event())
-    {
         return message_type::voip_event;
-    }
 
     return message_type::base;
 }
@@ -3129,7 +3435,7 @@ bool history_message::contents_equal(const history_message& _msg) const
     switch (get_type())
     {
         case message_type::base:
-            return (get_text() == _msg.get_text());
+            return get_text() == _msg.get_text();
 
         case message_type::file_sharing:
             assert(file_sharing_);
@@ -3157,11 +3463,17 @@ void history_message::apply_persons_to_quotes(const archive::persons_map & _pers
 
 void core::archive::history_message::apply_persons_to_mentions(const archive::persons_map & _persons)
 {
-    for (auto& it: mentions_)
+    for (auto& [id, friendly]: mentions_)
     {
-        if (const auto iter_p = _persons.find(it.first); iter_p != _persons.end())
-            it.second = iter_p->second.friendly_;
+        if (const auto iter_p = _persons.find(id); iter_p != _persons.end())
+            friendly = iter_p->second.friendly_;
     }
+}
+
+void history_message::apply_persons_to_voip(const archive::persons_map & _persons)
+{
+    if (voip_)
+        voip_->apply_persons(_persons);
 }
 
 void history_message::set_shared_contact(const shared_contact& _contact)
@@ -3213,6 +3525,16 @@ bool history_message::has_shared_contact_with_sn() const
 bool history_message::has_poll_with_id() const
 {
     return poll_ && !poll_->id_.empty();
+}
+
+bool history_message::has_reactions() const
+{
+    return reactions_ && reactions_->exist_;
+}
+
+const reactions &history_message::get_reactions() const
+{
+    return reactions_;
 }
 
 void history_message::set_update_patch_version(common::tools::patch_version _value)
@@ -3388,86 +3710,91 @@ void quote::unserialize(icollection* _coll)
     }
 }
 
-void quote::unserialize(const rapidjson::Value& _node, bool _is_forward)
+bool quote::unserialize(const rapidjson::Value& _node, bool _is_forward, const message_fields_set& _new_fields)
 {
-    tools::unserialize_value(_node, c_text, text_);
-    tools::unserialize_value(_node, c_sn, sender_);
-    tools::unserialize_value(_node, c_time, time_);
-
-    const auto msg_id_iter = _node.FindMember(tools::make_string_ref(c_msgid));
-    if (msg_id_iter != _node.MemberEnd())
+    for (const auto& field : _node.GetObject())
     {
-        if (msg_id_iter->value.IsInt64())
+        const auto name = rapidjson_get_string_view(field.name);
+
+        if (c_text == name)
         {
-            msg_id_ = msg_id_iter->value.GetInt64();
+            text_ = rapidjson_get_string(field.value);
         }
-        else if (msg_id_iter->value.IsString())
+        else if (c_sn == name)
         {
-            auto id = rapidjson_get_string_view(msg_id_iter->value);
-            std::stringstream ss;
-            ss << id;
-            ss >> msg_id_;
+            sender_ = rapidjson_get_string(field.value);
         }
-    }
+        else if (c_time == name)
+        {
+            time_ = field.value.GetUint();
+        }
+        else if (c_msgid == name)
+        {
+            if (field.value.IsInt64())
+            {
+                msg_id_ = field.value.GetInt64();
+            }
+            else if (field.value.IsString())
+            {
+                auto id = rapidjson_get_string_view(field.value);
+                std::stringstream ss;
+                ss << id;
+                ss >> msg_id_;
+            }
+        }
+        else if (c_captioned_content == name)
+        {
+            auto iter_url = field.value.FindMember(tools::make_string_ref(c_url));
+            if (iter_url != field.value.MemberEnd() && iter_url->value.IsString())
+                url_ = rapidjson_get_string(iter_url->value);
 
-    const auto iter_caption = _node.FindMember(tools::make_string_ref(c_captioned_content));
-    if (iter_caption != _node.MemberEnd() && iter_caption->value.IsObject())
-    {
-        auto iter_url = iter_caption->value.FindMember(tools::make_string_ref(c_url));
-        if (iter_url != iter_caption->value.MemberEnd() && iter_url->value.IsString())
-            url_ = rapidjson_get_string(iter_url->value);
+            auto iter_description = field.value.FindMember(tools::make_string_ref(c_caption));
+            if (iter_description != field.value.MemberEnd() && iter_description->value.IsString())
+                description_ = rapidjson_get_string(iter_description->value);
+        }
+        else if (c_sticker_id == name)
+        {
+            auto ids = sticker_data::get_ids(rapidjson_get_string(field.value));
+            setId_ = ids.first;
+            stickerId_ = ids.second;
+        }
+        else if (c_chat == name)
+        {
+            const rapidjson::Value& chat_node = field.value;
 
-        auto iter_description = iter_caption->value.FindMember(tools::make_string_ref(c_caption));
-        if (iter_description != iter_caption->value.MemberEnd() && iter_description->value.IsString())
-            description_ = rapidjson_get_string(iter_description->value);
-    }
-
-    const auto sticker_iter = _node.FindMember(tools::make_string_ref(c_sticker_id));
-    if (sticker_iter != _node.MemberEnd() && sticker_iter->value.IsString())
-    {
-        auto ids = sticker_data::get_ids(rapidjson_get_string(sticker_iter->value));
-        setId_ = ids.first;
-        stickerId_ = ids.second;
+            tools::unserialize_value(chat_node, c_sn, chat_);
+            tools::unserialize_value(chat_node, c_chat_stamp, chat_stamp_);
+            tools::unserialize_value(chat_node, c_chat_name, chat_name_);
+        }
+        else if (c_contact == name)
+        {
+            shared_contact_data contact;
+            if (contact.unserialize(field.value))
+                shared_contact_ = std::move(contact);
+        }
+        else if (c_geo == name)
+        {
+            geo_data geo;
+            if (geo.unserialize(field.value))
+                geo_ = std::move(geo);
+        }
+        else if (c_poll == name)
+        {
+            poll_data poll;
+            if (poll.unserialize(field.value))
+                poll_ = std::move(poll);
+        }
+        else if (_new_fields.find(name) != _new_fields.end())
+        {
+            return false;
+        }
     }
 
     is_forward_ = _is_forward;
-
-    const auto chat_iter = _node.FindMember(tools::make_string_ref(c_chat));
-    if (chat_iter != _node.MemberEnd() && chat_iter->value.IsObject())
-    {
-        const rapidjson::Value& chat_node = chat_iter->value;
-
-        tools::unserialize_value(chat_node, c_sn, chat_);
-        tools::unserialize_value(chat_node, c_chat_stamp, chat_stamp_);
-        tools::unserialize_value(chat_node, c_chat_name, chat_name_);
-    }
-
-    const auto iter_contact = _node.FindMember(tools::make_string_ref(c_contact));
-    if (iter_contact != _node.MemberEnd() && iter_contact->value.IsObject())
-    {
-        shared_contact_data contact;
-        if (contact.unserialize(iter_contact->value))
-            shared_contact_ = std::move(contact);
-    }
-
-    const auto iter_geo = _node.FindMember(tools::make_string_ref(c_geo));
-    if (iter_geo != _node.MemberEnd() && iter_geo->value.IsObject())
-    {
-        geo_data geo;
-        if (geo.unserialize(iter_geo->value))
-            geo_ = std::move(geo);
-    }
-
-    const auto iter_poll = _node.FindMember(tools::make_string_ref(c_poll));
-    if (iter_poll != _node.MemberEnd() && iter_poll->value.IsObject())
-    {
-        poll_data poll;
-        if (poll.unserialize(iter_poll->value))
-            poll_ = std::move(poll);
-    }
-
     if (shared_contact_) // if quote contains shared contact, we do not process its text
         text_.clear();
+
+    return true;
 }
 
 void quote::unserialize(const core::tools::tlvpack &_pack)
@@ -3553,17 +3880,17 @@ void url_snippet::serialize(core::tools::tlvpack& _pack) const
 {
     const auto str_fields =
     {
-        std::make_pair(message_fields::mf_snippet_url, &url_),
-        std::make_pair(message_fields::mf_snippet_content_type, &content_type_),
-        std::make_pair(message_fields::mf_snippet_preview_url, &preview_url_),
-        std::make_pair(message_fields::mf_snippet_title, &title_),
-        std::make_pair(message_fields::mf_snippet_description, &description_),
+        std::make_pair(message_fields::mf_snippet_url, std::cref(url_)),
+        std::make_pair(message_fields::mf_snippet_content_type, std::cref(content_type_)),
+        std::make_pair(message_fields::mf_snippet_preview_url, std::cref(preview_url_)),
+        std::make_pair(message_fields::mf_snippet_title, std::cref(title_)),
+        std::make_pair(message_fields::mf_snippet_description, std::cref(description_)),
     };
 
     for (const auto&[field, field_ptr] : str_fields)
     {
-        if (!field_ptr->empty())
-            _pack.push_child(core::tools::tlv(field, *field_ptr));
+        if (!field_ptr.empty())
+            _pack.push_child(core::tools::tlv(field, field_ptr));
     }
 
     if (preview_width_ != 0)
@@ -3719,25 +4046,22 @@ namespace
     {
         assert(_node.IsObject());
 
-        const auto text_iter = _node.FindMember("text");
-        if (text_iter == _node.MemberEnd() ||
-            !text_iter->value.IsString() ||
-            rapidjson_get_string_view(text_iter->name).empty())
+
+        if (const auto it = _node.FindMember("text"); it == _node.MemberEnd()
+            || !it->value.IsString()
+            || rapidjson_get_string_view(it->name).empty()
+            )
         {
             return false;
         }
 
-        const auto voip_iter = _node.FindMember("voip");
-        if (voip_iter != _node.MemberEnd())
-        {
-            return false;
-        }
 
-        const auto class_iter = _node.FindMember("class");
-        if (
-            (class_iter != _node.MemberEnd()) &&
-            class_iter->value.IsString() &&
-            (rapidjson_get_string_view(class_iter->value) == c_event_class)
+        if (const auto it = _node.FindMember("voip"); it != _node.MemberEnd())
+            return false;
+
+        if (const auto it = _node.FindMember("class"); (it != _node.MemberEnd())
+            && it->value.IsString()
+            && (rapidjson_get_string_view(it->value) == c_event_class)
             )
         {
             return true;
@@ -3745,72 +4069,45 @@ namespace
 
         const auto chat_node_iter = _node.FindMember("chat");
         if (chat_node_iter == _node.MemberEnd())
-        {
             return false;
-        }
 
         const auto &chat_node = chat_node_iter->value;
         if (!chat_node.IsObject())
-        {
             return false;
-        }
 
         const auto modified_info_iter = chat_node.FindMember("modifiedInfo");
         if (modified_info_iter == chat_node.MemberEnd())
-        {
             return false;
-        }
 
         const auto &modified_info = modified_info_iter->value;
         if (!modified_info.IsObject())
-        {
             return false;
-        }
 
         if (modified_info.HasMember("public"))
-        {
             return true;
-        }
 
         return false;
     }
 
     chat_event_type_class probe_for_chat_event(const rapidjson::Value& _node)
     {
-        const auto added_to_buddy_list_iter = _node.FindMember("addedToBuddyList");
-        if (added_to_buddy_list_iter != _node.MemberEnd())
-        {
+        if (const auto it = _node.FindMember("addedToBuddyList"); it != _node.MemberEnd())
             return chat_event_type_class::added_to_buddy_list;
-        }
 
-        const auto buddy_reg_iter = _node.FindMember("buddyReg");
-        if (buddy_reg_iter != _node.MemberEnd())
-        {
+        if (const auto it = _node.FindMember("buddyReg"); it != _node.MemberEnd())
             return chat_event_type_class::buddy_reg;
-        }
 
-        const auto buddy_bday_iter = _node.FindMember("bday");
-        if (buddy_bday_iter != _node.MemberEnd())
-        {
+        if (const auto it = _node.FindMember("bday"); it != _node.MemberEnd())
             return chat_event_type_class::birthday;
-        }
 
-        const auto buddy_found_iter = _node.FindMember("buddyFound");
-        if (buddy_found_iter != _node.MemberEnd())
-        {
+        if (const auto it = _node.FindMember("buddyFound"); it != _node.MemberEnd())
             return chat_event_type_class::buddy_found;
-        }
 
-        const auto modified_event = probe_for_modified_event(_node);
-        if (modified_event != chat_event_type_class::unknown)
-        {
-            return modified_event;
-        }
+        if (const auto event = probe_for_modified_event(_node); event != chat_event_type_class::unknown)
+            return event;
 
         if (is_generic_event(_node))
-        {
             return chat_event_type_class::generic;
-        }
 
         return chat_event_type_class::unknown;
     }
@@ -3821,37 +4118,31 @@ namespace
 
         const auto chat_node_iter = _node.FindMember("chat");
         if (chat_node_iter == _node.MemberEnd())
-        {
             return chat_event_type_class::unknown;
-        }
 
         const auto &chat_node = chat_node_iter->value;
         if (!chat_node.IsObject())
-        {
             return chat_event_type_class::unknown;
-        }
 
-        const auto modified_info_iter = chat_node.FindMember("modifiedInfo");
-        if (modified_info_iter != chat_node.MemberEnd())
+        if (const auto it = chat_node.FindMember("modifiedInfo"); it != chat_node.MemberEnd())
         {
-            const auto &modified_info = modified_info_iter->value;
+            const auto &modified_info = it->value;
 
             if (modified_info.IsObject() && (
                     modified_info.HasMember("name") ||
                     modified_info.HasMember("rules") ||
                     modified_info.HasMember("avatarLastModified") ||
                     modified_info.HasMember("about") ||
-                    modified_info.HasMember("stamp")))
+                    modified_info.HasMember("stamp") ||
+                    modified_info.HasMember("joinModeration") ||
+                    modified_info.HasMember("public")))
             {
                 return chat_event_type_class::chat_modified;
             }
         }
 
-        const auto member_event_iter = chat_node.FindMember("memberEvent");
-        if (member_event_iter != chat_node.MemberEnd())
-        {
+        if (const auto it = chat_node.FindMember("memberEvent"); it != chat_node.MemberEnd())
             return chat_event_type_class::mchat;
-        }
 
         return chat_event_type_class::unknown;
     }
@@ -3864,36 +4155,28 @@ namespace
 
         const auto members_iter = _parent.FindMember("members");
         if ((members_iter == _parent.MemberEnd()) || !members_iter->value.IsArray())
-        {
             return result;
-        }
 
         const auto &members_array = members_iter->value;
 
         const auto members_count = members_array.Size();
         result.reserve(members_count);
-        for (auto index = 0u; index < members_count; ++index)
+        for (const auto &member_value : members_array.GetArray())
         {
-            const auto &member_value = members_array[index];
-
             if (!member_value.IsString())
-            {
                 continue;
-            }
 
             std::string member = rapidjson_get_string(member_value);
             assert(!member.empty());
 
             if (!member.empty())
-            {
                 result.push_back(std::move(member));
-            }
         }
 
         return result;
     }
 
-    chat_event_type string_2_chat_event(std::string_view _str)
+    chat_event_type event_type_from_str(std::string_view _str)
     {
         static const std::map<std::string_view, chat_event_type> mapping =
         {
@@ -3901,14 +4184,20 @@ namespace
             { "invite", chat_event_type::mchat_invite },
             { "leave", chat_event_type::mchat_leave },
             { "delMembers", chat_event_type::mchat_del_members },
-            { "kicked", chat_event_type::mchat_kicked }
+            { "kicked", chat_event_type::mchat_kicked },
+            { "admGranted", chat_event_type::mchat_adm_granted},
+            { "admRevoked", chat_event_type::mchat_adm_revoked},
+            { "allowedToWrite", chat_event_type::mchat_allowed_to_write},
+            { "disallowedToWrite", chat_event_type::mchat_disallowed_to_write},
+            { "waitingForApprove", chat_event_type::mchat_waiting_for_approve},
+            { "joiningApproved", chat_event_type::mchat_joining_approved},
+            { "joiningRejected", chat_event_type::mchat_joining_rejected},
+            { "waitingCanceled", chat_event_type::mchat_joining_canceled},
         };
 
         const auto iter = mapping.find(_str);
         if (iter == mapping.end())
-        {
             return chat_event_type::invalid;
-        }
 
         const auto type = std::get<1>(*iter);
         assert(type > chat_event_type::min);
@@ -3962,5 +4251,41 @@ namespace
 
         return poll;
     }
-}
 
+    std::vector<std::vector<button_data>> unserialize_buttons(const rapidjson::Value& _node)
+    {
+        std::vector<std::vector<button_data>> result;
+
+        if (_node.IsArray())
+        {
+            const auto lines_count = _node.Size();
+            result.reserve(lines_count);
+            for (const auto &line : _node.GetArray())
+            {
+                std::vector<button_data> buttons;
+                buttons.reserve(line.Size());
+                for (const auto& btn : line.GetArray())
+                {
+                    button_data data;
+                    data.unserialize(btn);
+                    buttons.push_back(std::move(data));
+                }
+
+                result.push_back(std::move(buttons));
+            }
+        }
+
+        return result;
+    }
+
+    std::vector<std::vector<button_data>> unserialize_buttons(const std::string& _buttons)
+    {
+        if (_buttons.empty())
+            return {};
+
+        rapidjson::Document doc(rapidjson::Type::kObjectType);
+        doc.Parse(_buttons);
+
+        return unserialize_buttons(doc);
+    }
+}

@@ -7,12 +7,15 @@
 #include "../../controls/ContextMenu.h"
 #include "../../fonts.h"
 #include "../../utils/utils.h"
+#include "../../utils/UrlParser.h"
 #include "utils/stat_utils.h"
 #include "../../my_info.h"
 #include "../GroupChatOperations.h"
-#include "../friendly/FriendlyContainer.h"
+#include "../containers/FriendlyContainer.h"
 #include "../contact_list/ContactListModel.h"
 #include "../../styles/ThemeParameters.h"
+
+#include "../../../common.shared/config/config.h"
 
 namespace
 {
@@ -76,10 +79,9 @@ namespace Ui
         , msg_(_msg)
         , seq_(_seq)
     {
-        auto dt = QDateTime::fromTime_t(_time);
-        auto date = QLocale().standaloneMonthName(dt.date().month());
+        const auto date = QLocale().standaloneMonthName(QDateTime::fromTime_t(_time).date().month()).toUpper();
 
-        date_ = Ui::TextRendering::MakeTextUnit(date.toUpper());
+        date_ = Ui::TextRendering::MakeTextUnit(date);
         date_->init(Fonts::appFontScaled(11, Fonts::FontWeight::SemiBold), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
         date_->evaluateDesiredSize();
     }
@@ -123,10 +125,10 @@ namespace Ui
         , time_(_time)
         , loaded_(false)
     {
-        title_ = Ui::TextRendering::MakeTextUnit(QString(), {}, TextRendering::LinksVisible::DONT_SHOW_LINKS);
+        title_ = Ui::TextRendering::MakeTextUnit(QString(), {}, TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
         title_->init(Fonts::appFontScaled(14, Fonts::FontWeight::SemiBold), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID), QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, 1);
 
-        desc_ = Ui::TextRendering::MakeTextUnit(QString(), {}, TextRendering::LinksVisible::DONT_SHOW_LINKS);
+        desc_ = Ui::TextRendering::MakeTextUnit(QString(), {}, TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
         desc_->init(Fonts::appFontScaled(14), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID), QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, 3);
 
         link_ = Ui::TextRendering::MakeTextUnit(url_, {}, TextRendering::LinksVisible::DONT_SHOW_LINKS);
@@ -383,17 +385,22 @@ namespace Ui
 
     void LinkList::processItems(const QVector<Data::DialogGalleryEntry>& _entries)
     {
+        const auto snippetsEnabled = config::get().is_on(config::features::snippet_in_chat);
+
         auto h = height();
         for (const auto& e : _entries)
         {
             auto time = QDateTime::fromTime_t(e.time_);
-            auto item = std::make_unique<LinkItem>(e.url_, time.toString(qsl("d MMM, ")) + time.time().toString(qsl("hh:mm")), e.msg_id_, e.seq_, e.outgoing_, e.sender_, e.time_, width());
+            auto item = std::make_unique<LinkItem>(e.url_, formatTimeStr(time), e.msg_id_, e.seq_, e.outgoing_, e.sender_, e.time_, width());
             h += item->getHeight();
 
-            auto reqId = GetDispatcher()->downloadLinkMetainfo(e.url_);
-            item->setReqId(reqId);
-            RequestIds_.push_back(reqId);
-            RequestedUrls_.push_back(e.url_);
+            if (snippetsEnabled)
+            {
+                auto reqId = GetDispatcher()->downloadLinkMetainfo(e.url_);
+                item->setReqId(reqId);
+                RequestIds_.push_back(reqId);
+                RequestedUrls_.push_back(e.url_);
+            }
             Items_.push_back(std::move(item));
         }
         setFixedHeight(h);
@@ -402,10 +409,12 @@ namespace Ui
 
     void LinkList::processUpdates(const QVector<Data::DialogGalleryEntry>& _entries)
     {
+        const auto snippetsEnabled = config::get().is_on(config::features::snippet_in_chat);
+
         auto h = height();
         for (const auto& e : _entries)
         {
-            if (e.action_ == qsl("del"))
+            if (e.action_ == u"del")
             {
                 Items_.erase(std::remove_if(Items_.begin(), Items_.end(), [e](const auto& i) { return i->getMsg() == e.msg_id_; }), Items_.end());
                 h = 0;
@@ -415,12 +424,10 @@ namespace Ui
                 continue;
             }
 
-            if (e.type_ != qsl("link"))
-            {
+            if (e.type_ != u"link")
                 continue;
-            }
 
-            auto time = QDateTime::fromTime_t(e.time_);
+            const auto time = QDateTime::fromTime_t(e.time_);
 
             auto iter = Items_.cbegin();
             for (; iter != Items_.cend(); ++iter)
@@ -440,12 +447,15 @@ namespace Ui
                 break;
             }
 
-            auto reqId = GetDispatcher()->downloadLinkMetainfo(e.url_);
-            auto item = std::make_unique<LinkItem>(e.url_, time.toString(qsl("d MMM, ")) + time.time().toString(qsl("hh:mm")), e.msg_id_, e.seq_, e.outgoing_, e.sender_, e.time_, width());
+            auto item = std::make_unique<LinkItem>(e.url_, formatTimeStr(time), e.msg_id_, e.seq_, e.outgoing_, e.sender_, e.time_, width());
             h += item->getHeight();
 
-            RequestIds_.push_back(reqId);
-            item->setReqId(reqId);
+            if (snippetsEnabled)
+            {
+                auto reqId = GetDispatcher()->downloadLinkMetainfo(e.url_);
+                RequestIds_.push_back(reqId);
+                item->setReqId(reqId);
+            }
 
             Items_.insert(iter, std::move(item));
         }
@@ -543,7 +553,7 @@ namespace Ui
                     {
                         auto url = parser.getUrl();
                         if (url.is_email())
-                            return Utils::openUrl(ql1s("mailto:") + QString::fromStdString(url.url_));
+                            return Utils::openUrl(u"mailto:" % QString::fromStdString(url.url_));
 
                         Utils::openUrl(QString::fromStdString(url.url_));
                         return;
@@ -551,7 +561,7 @@ namespace Ui
                 }
                 if (i->isOverDate(_event->pos()))
                 {
-                    emit Logic::getContactListModel()->select(aimId_, i->getMsg(), Logic::UpdateChatSelection::No);
+                    Q_EMIT Logic::getContactListModel()->select(aimId_, i->getMsg(), Logic::UpdateChatSelection::No);
                     i->setDateState(true, false);
                 }
                 else
@@ -690,6 +700,8 @@ namespace Ui
         loadingRect.setY(std::max(0, loadingRect.y() - Utils::scale_value(LOADING_RANGE / 2)));
         loadingRect.setHeight(loadingRect.height() + Utils::scale_value(LOADING_RANGE));
 
+        const auto snippetsEnabled = config::get().is_on(config::features::snippet_in_chat);
+
         auto h = 0;
         for (auto& i : Items_)
         {
@@ -701,11 +713,11 @@ namespace Ui
                 {
                     if (std::find(RequestedUrls_.begin(), RequestedUrls_.end(), url) != RequestedUrls_.end())
                     {
-                        Ui::GetDispatcher()->cancelLoaderTask(url);
+                        Ui::GetDispatcher()->cancelLoaderTask(url, i->reqId());
                         RequestedUrls_.erase(std::remove(RequestedUrls_.begin(), RequestedUrls_.end(), url), RequestedUrls_.end());
                     }
                 }
-                else
+                else if (snippetsEnabled)
                 {
                     if (std::find(RequestedUrls_.begin(), RequestedUrls_.end(), url) == RequestedUrls_.end())
                     {

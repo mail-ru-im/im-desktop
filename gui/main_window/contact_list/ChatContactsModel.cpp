@@ -19,7 +19,7 @@ namespace Logic
 
         contacts_ = _contacts;
 
-        emit dataChanged(index(0), index(rowCount()));
+        Q_EMIT dataChanged(index(0), index(rowCount()));
     }
 
     ChatContactsModel::ChatContactsModel(QObject* _parent)

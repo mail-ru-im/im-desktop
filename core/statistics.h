@@ -12,20 +12,6 @@ namespace core
         class binary_stream;
     }
 
-    const static std::string flurry_url = "https://data.flurry.com/aah.do";
-
-#ifdef DEBUG
-    const static auto send_interval = std::chrono::minutes(1);
-    const static auto fetch_ram_usage_interval = std::chrono::seconds(30);
-#else
-    const static auto send_interval = std::chrono::hours(1);
-    const static auto fetch_ram_usage_interval = std::chrono::hours(1);
-#endif // DEBUG
-
-    const static auto save_to_file_interval = std::chrono::seconds(10);
-    const static auto delay_send_on_start = std::chrono::seconds(10);
-    const static auto fetch_disk_size_interval = std::chrono::hours(24);
-
     namespace stats
     {
         enum class stats_event_names;
@@ -48,7 +34,7 @@ namespace core
             {
             public:
                 std::string to_string(time_t _start_time) const;
-                stats_event(stats_event_names _name, std::chrono::system_clock::time_point _event_time, int32_t _event_id, const event_props_type& props);
+                stats_event(stats_event_names _name, std::chrono::system_clock::time_point _event_time, int32_t _event_id, event_props_type&& props);
                 stats_event_names get_name() const;
                 event_props_type get_props() const;
                 static void reset_session_event_id();
@@ -112,7 +98,7 @@ namespace core
             bool load();
             void start_save();
             void start_send();
-            void insert_event(stats_event_names _event_name, const event_props_type& _props,
+            void insert_event(stats_event_names _event_name, event_props_type&& _props,
                 std::chrono::system_clock::time_point _event_time, int32_t _event_id);
             void insert_accumulated_event(stats_event_names _event_name, core::stats::event_props_type _props);
             void clear();
@@ -126,7 +112,7 @@ namespace core
             virtual ~statistics();
 
             void init();
-            void insert_event(stats_event_names _event_name, const event_props_type& _props);
+            void insert_event(stats_event_names _event_name, event_props_type _props);
             void insert_event(stats_event_names _event_name);
 
             // Inserts if doesn't exist

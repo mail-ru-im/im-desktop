@@ -19,7 +19,7 @@ namespace Ui
         : CustomButton(_parent, _svgName, _iconSize, _defaultColor)
     {
         tooltipTimer_.setSingleShot(true);
-        tooltipTimer_.setInterval(tooltipShowDelay().count());
+        tooltipTimer_.setInterval(tooltipShowDelay());
 
         connect(&tooltipTimer_, &QTimer::timeout, this, [this]() {
             if (enableCircleHover_ && underMouse_)
@@ -129,7 +129,7 @@ namespace Ui
         {
             _event->ignore();
             if ((_event->key() == Qt::Key_Enter || _event->key() == Qt::Key_Return) && hasFocus())
-                emit clicked();
+                Q_EMIT clicked();
         }
         else
         {

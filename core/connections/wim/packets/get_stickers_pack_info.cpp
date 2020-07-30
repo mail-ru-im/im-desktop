@@ -27,12 +27,7 @@ get_stickers_pack_info_packet::~get_stickers_pack_info_packet()
 {
 }
 
-bool get_stickers_pack_info_packet::support_async_execution() const
-{
-    return true;
-}
-
-int32_t get_stickers_pack_info_packet::init_request(std::shared_ptr<core::http_request_simple> _request)
+int32_t get_stickers_pack_info_packet::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     std::map<std::string, std::string> params;
 
@@ -59,16 +54,12 @@ int32_t get_stickers_pack_info_packet::init_request(std::shared_ptr<core::http_r
     else if (!file_id_.empty())
         params["file_id"] = escape_symbols(file_id_);
 
-    auto sha256 = escape_symbols(get_url_sign(ss_host.str(), params, params_, false));
-    params["sig_sha256"] = std::move(sha256);
-
     std::stringstream ss_url;
     ss_url << ss_host.str() << '?' << format_get_params(params);
 
     _request->set_url(ss_url.str());
     _request->set_normalized_url("stikersStorePackinfo");
     _request->set_keep_alive();
-    _request->set_priority(high_priority());
 
     if (!params_.full_log_)
     {
@@ -81,7 +72,7 @@ int32_t get_stickers_pack_info_packet::init_request(std::shared_ptr<core::http_r
     return 0;
 }
 
-int32_t get_stickers_pack_info_packet::parse_response(std::shared_ptr<core::tools::binary_stream> _response)
+int32_t get_stickers_pack_info_packet::parse_response(const std::shared_ptr<core::tools::binary_stream>& _response)
 {
     if (!_response->available())
         return wpie_http_empty_response;
@@ -94,4 +85,9 @@ int32_t get_stickers_pack_info_packet::parse_response(std::shared_ptr<core::tool
 std::shared_ptr<core::tools::binary_stream> get_stickers_pack_info_packet::get_response() const
 {
     return response_;
+}
+
+priority_t get_stickers_pack_info_packet::get_priority() const
+{
+    return packets_priority_high();
 }

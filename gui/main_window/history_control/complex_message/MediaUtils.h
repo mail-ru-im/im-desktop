@@ -21,6 +21,7 @@ namespace MediaUtils
         NoBackground
     };
 
+    QSize getTargetSize(const QRect& _rect, const QPixmap& _pixmap, const QSize& _originalSize);
     void drawMediaInRect(QPainter& _p, const QRect& _rect, const QPixmap& _pixmap, const QSize& _originalSize, BackgroundMode _backgroundMode = BackgroundMode::Auto);
 
     struct MediaBlockParams

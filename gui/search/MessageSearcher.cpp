@@ -104,7 +104,7 @@ namespace Logic
 
         qCDebug(messageSearcher) << "got" << _localResults.size() << "items from local";
 
-        emit localResults();
+        Q_EMIT localResults();
         onRequestReturned();
     }
 
@@ -143,7 +143,7 @@ namespace Logic
 
         qCDebug(messageSearcher) << "local results empty";
 
-        emit localResults();
+        Q_EMIT localResults();
         onRequestReturned();
     }
 
@@ -179,7 +179,7 @@ namespace Logic
             << "\n results count " << serverResults_.size() - _serverResults.size() << "->" <<serverResults_.size()
             << "\n total ~" << _totalEntries << "cursorNext" << _cursorNext;
 
-        emit serverResults();
+        Q_EMIT serverResults();
         onRequestReturned();
     }
 }

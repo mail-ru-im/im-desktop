@@ -3,11 +3,11 @@
 #include "chat.h"
 #include "message.h"
 #include "cache/countries.h"
+#include "../statuses/StatusUtils.h"
 
 namespace Logic
 {
-    class contact_profile;
-    using profile_ptr = std::shared_ptr<contact_profile>;
+    using profile_ptr = std::shared_ptr<class contact_profile>;
 }
 
 namespace Ui
@@ -24,7 +24,8 @@ namespace Data
         chat,
         message,
         suggest,
-        country
+        country,
+        status
     };
 
     struct AbstractSearchResult
@@ -43,7 +44,7 @@ namespace Data
         bool isChat() const { return getType() == SearchResultType::chat; }
         bool isMessage() const { return getType() == SearchResultType::message; }
         bool isSuggest() const { return getType() == SearchResultType::suggest; }
-        bool isCountry() const {return getType() == SearchResultType::country;}
+        bool isStatus() const { return getType() == SearchResultType::status; }
 
         bool dialogSearchResult_ = false;
         bool isLocalResult_ = true;
@@ -130,8 +131,8 @@ namespace Data
         QString getAimId() const override;
         QString getFriendlyName() const override;
         QString getNick() const override;
-        QString getRole() const;
-        int32_t getLastseen() const;
+        const QString& getRole() const noexcept;
+        const LastSeen& getLastseen() const noexcept;
         bool isCreator() const;
 
         Data::ChatMemberInfo info_;
@@ -162,8 +163,8 @@ namespace Data
         SearchResultType getType() const override { return SearchResultType::country; }
         QString getAimId() const override { return country_.name_; };
         QString getFriendlyName() const override { return country_.name_; };
-        QString getCountryName() { return country_.name_; }
-        QString getCountryCode() { return country_.phone_code_; }
+        const QString& getCountryName() const noexcept { return country_.name_; }
+        const QString& getCountryCode() const noexcept { return country_.phone_code_; }
 
         Country country_;
     };

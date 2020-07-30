@@ -1,6 +1,6 @@
 #pragma once
 
-#include "MessageItemBase.h"
+#include "HistoryControlPageItem.h"
 #include "../../controls/TextUnit.h"
 #include "../../controls/ClickWidget.h"
 
@@ -35,7 +35,7 @@ namespace Ui
     class MessageTimeWidget;
     enum class MediaType;
 
-    class VoipEventItem : public MessageItemBase
+    class VoipEventItem : public HistoryControlPageItem
     {
         Q_OBJECT
 
@@ -43,6 +43,7 @@ namespace Ui
         void quote(const Data::QuotesVec&);
         void copy(const QString&);
         void forward(const Data::QuotesVec&);
+        void addToFavorites(const Data::QuotesVec&);
 
     private Q_SLOTS:
         void onAvatarChanged(const QString& _aimId);
@@ -79,6 +80,8 @@ namespace Ui
 
         void setQuoteSelection() override;
         void updateSize() override;
+
+        QRect messageRect() const override;
 
     protected:
         void mouseMoveEvent(QMouseEvent *) override;
@@ -136,6 +139,7 @@ namespace Ui
         QString friendlyName_;
 
         std::map<QString, QPixmap> confMembers_;
+        TextRendering::TextUnitPtr membersPlus_;
 
         TextRendering::TextUnitPtr text_;
         TextRendering::TextUnitPtr duration_;

@@ -3,6 +3,7 @@
 #include "UrlParser.h"
 #include "utils.h"
 #include "../common.shared/config/config.h"
+#include "features.h"
 #include "url_config.h"
 
 namespace

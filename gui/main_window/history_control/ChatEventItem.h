@@ -1,6 +1,6 @@
 #pragma once
 
-#include "MessageItemBase.h"
+#include "HistoryControlPageItem.h"
 
 namespace HistoryControl
 {
@@ -16,14 +16,14 @@ namespace Ui
 
     class RoundButton;
 
-    class ChatEventItem : public MessageItemBase
+    class ChatEventItem : public HistoryControlPageItem
     {
         Q_OBJECT
 
     public:
         ChatEventItem(const ::HistoryControl::ChatEventInfoSptr& _eventInfo, const qint64 _id, const qint64 _prevId);
-
         ChatEventItem(QWidget* _parent, const ::HistoryControl::ChatEventInfoSptr& eventInfo, const qint64 _id, const qint64 _prevId);
+        ChatEventItem(QWidget* _parent, std::unique_ptr<TextRendering::TextUnit> _textUnit);
 
         ~ChatEventItem();
 
@@ -37,8 +37,8 @@ namespace Ui
 
         void setLastStatus(LastStatus _lastStatus) override;
 
-        qint64 getId() const override;
-        qint64 getPrevId() const override;
+        qint64 getId() const override { return id_; }
+        qint64 getPrevId() const override { return prevId_; }
 
         void setQuoteSelection() override {}
 
@@ -52,55 +52,59 @@ namespace Ui
 
         int bottomOffset() const override;
 
+        static QColor getTextColor(const QString& _contact);
+        static QColor getLinkColor(const QString& _contact);
+        static QFont getTextFont();
+        static QFont getTextFontBold();
+
     private Q_SLOTS:
-        void chatInfo(qint64, const std::shared_ptr<Data::ChatInfo>&, const int);
+        void onChatInfo();
         void modChatAboutResult(qint64, int);
         void avatarChanged(const QString&);
         void addAvatarClicked();
         void addDescriptionClicked();
 
-    private:
+    protected:
+        void paintEvent(QPaintEvent* _event) override;
+        void resizeEvent(QResizeEvent* _event) override;
+        void mousePressEvent(QMouseEvent* _event) override;
+        void mouseMoveEvent(QMouseEvent* _event) override;
+        void mouseReleaseEvent(QMouseEvent* _event) override;
 
+        bool supportsReactions() const override { return false; }
+
+    private:
         QRect BubbleRect_;
 
         std::unique_ptr<TextRendering::TextUnit> TextWidget_;
 
         const ::HistoryControl::ChatEventInfoSptr EventInfo_;
 
-        int height_;
+        int height_ = 0;
 
-        qint64 id_;
-        qint64 prevId_;
+        qint64 id_ = -1;
+        qint64 prevId_ = -1;
 
         QPoint pressPos_;
 
-        QWidget* textPlaceholder_;
-        QWidget* buttonsWidget_;
-        RoundButton* addAvatar_;
-        RoundButton* addDescription_;
+        QWidget* textPlaceholder_ = nullptr;
+        QWidget* buttonsWidget_ = nullptr;
+        RoundButton* btnLeft_ = nullptr;
+        RoundButton* btnRight_ = nullptr;
 
-        bool buttonsVisible_;
-        bool descriptionButtonVisible_;
-        bool avatarButtonVisible_;
+        bool buttonsVisible_ = false;
 
-        qint64 modChatAboutSeq_;
+        qint64 modChatAboutSeq_ = -1;
+
+    private:
+        void init();
+        void initTextWidget();
 
         int32_t evaluateTextWidth(const int32_t _widgetWidth);
-
-        virtual void paintEvent(QPaintEvent* _event) override;
-
-        virtual void resizeEvent(QResizeEvent* _event) override;
-
-        virtual void mousePressEvent(QMouseEvent* _event) override;
-
-        virtual void mouseMoveEvent(QMouseEvent* _event) override;
-
-        virtual void mouseReleaseEvent(QMouseEvent* _event) override;
-
         void updateSize(const QSize& _size);
 
+        void initButtons(const QString& _leftCaption, const QString& _rightCaption);
         bool hasButtons() const;
-
         void updateButtons();
     };
 

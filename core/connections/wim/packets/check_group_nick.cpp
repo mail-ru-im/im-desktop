@@ -3,7 +3,6 @@
 
 #include "../../../http_request.h"
 #include "../../../tools/system.h"
-#include "../../urls_cache.h"
 
 using namespace core;
 using namespace wim;
@@ -14,26 +13,17 @@ check_group_nick::check_group_nick(wim_packet_params _params, const std::string&
 {
 }
 
-int32_t check_group_nick::init_request(std::shared_ptr<core::http_request_simple> _request)
+int32_t check_group_nick::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
-    auto method = std::string("checkGroupStamp");
-
-    _request->set_url(urls::get_url(urls::url_type::rapi_host));
-    _request->set_normalized_url(method);
-    _request->set_keep_alive();
-
     rapidjson::Document doc(rapidjson::Type::kObjectType);
     auto& a = doc.GetAllocator();
-
-    doc.AddMember("method", std::move(method), a);
-    doc.AddMember("reqId", get_req_id(), a);
 
     rapidjson::Value node_params(rapidjson::Type::kObjectType);
     node_params.AddMember("stamp", nickname_, a);
 
     doc.AddMember("params", std::move(node_params), a);
 
-    sign_packet(doc, a, _request);
+    setup_common_and_sign(doc, a, _request, "checkGroupStamp");
 
     if (!params_.full_log_)
     {

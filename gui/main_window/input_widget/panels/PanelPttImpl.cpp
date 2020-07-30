@@ -67,10 +67,8 @@ namespace Ui
             setFocusColor(focusColorAttention());
 
             auto circleHover = std::make_unique<CircleHover>();
-            auto c = Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_ATTENTION);
-            c.setAlphaF(0.22);
-            circleHover->setColor(c);
-            setCircleHover(std::move(circleHover));
+            circleHover->setColor(Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_ATTENTION, 0.22));
+            ButtonWithCircleHover::setCircleHover(std::move(circleHover));
         }
 
         QWidget* previousInFocusChain() const
@@ -134,7 +132,7 @@ namespace Ui
 
         QObject::connect(recorder_, &ptt::AudioRecorder2::aacReady, this, [this](const QString& _contact, const QString& _file, std::chrono::seconds _duration, const ptt::StatInfo& _statInfo)
         {
-            emit pttReady(_file, _duration, _statInfo, QPrivateSignal());
+            Q_EMIT pttReady(_file, _duration, _statInfo, QPrivateSignal());
         });
 
         QObject::connect(recorder_, &ptt::AudioRecorder2::spectrum, this, [this](const QVector<double>& _v)
@@ -167,7 +165,7 @@ namespace Ui
         QObject::connect(histogram_, &HistogramPtt::stopButtonClicked, this, &InputPanelPttImpl::stop);
         QObject::connect(histogram_, &HistogramPtt::underMouseChanged, this, [this](bool _underMouse)
         {
-            emit histogramUnderMouseChanged(_underMouse, QPrivateSignal());
+            Q_EMIT histogramUnderMouseChanged(_underMouse, QPrivateSignal());
         });
 
         QObject::connect(player_, &ptt::AudioPlayer::stateChanged, this, &InputPanelPttImpl::onPlayerStateChanged);
@@ -198,7 +196,7 @@ namespace Ui
     {
         if (recorder_)
         {
-            auto duration = std::chrono::milliseconds(GetSoundsManager()->playSound(SoundsManager::Sound::StartPtt));
+            auto duration = GetSoundsManager()->playSound(SoundsManager::Sound::StartPtt);
             recordScheduled_ = true;
             histogram_->switchToInit();
 
@@ -212,7 +210,7 @@ namespace Ui
             };
 
             if (duration.count() > 0)
-                QTimer::singleShot(duration.count(), this, startRecord);
+                QTimer::singleShot(duration, this, startRecord);
             else
                 startRecord();
         }
@@ -376,7 +374,7 @@ namespace Ui
         else if (_state == ptt::State2::Paused || _state == ptt::State2::Stopped)
             histogram_->stop();
 
-        emit stateChanged(_state, QPrivateSignal());
+        Q_EMIT stateChanged(_state, QPrivateSignal());
     }
 
     void InputPanelPttImpl::onPcmDataReady(const ptt::Buffer& _buffer)
@@ -405,7 +403,7 @@ namespace Ui
             recorder_->clear();
         }
 
-        emit pttRemoved(QPrivateSignal());
+        Q_EMIT pttRemoved(QPrivateSignal());
 
         GetSoundsManager()->playSound(SoundsManager::Sound::RemovePtt);
         histogram_->switchToInit();

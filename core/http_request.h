@@ -5,7 +5,7 @@
 
 #include "proxy_settings.h"
 
-#include "../external/curl/include/curl.h"
+#include "curl/include/curl.h"
 
 #include "curl_easy_handler.h"
 
@@ -111,7 +111,7 @@ namespace core
         data_compression_method compression_method_;
 
     public:
-        http_request_simple(proxy_settings _proxy_settings, std::string _user_agent, stop_function _stop_func = nullptr, progress_function _progress_func = nullptr);
+        http_request_simple(proxy_settings _proxy_settings, std::string _user_agent, priority_t _priority, stop_function _stop_func = nullptr, progress_function _progress_func = nullptr);
         virtual ~http_request_simple();
 
         static void init_global();
@@ -146,7 +146,6 @@ namespace core
         void set_write_data_log(bool _enable);
         void set_need_log_original_url(bool _value);
         void set_keep_alive();
-        void set_priority(priority_t _priority);
         void set_multi(bool _multi);
         void set_compression_method(data_compression_method _method);
         void set_compression_auto();

@@ -53,11 +53,6 @@ namespace
         return iconOffset() + iconWidth() + Ui::getHorSpacer();
     }
 
-    QColor iconColor()
-    {
-        return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT);
-    }
-
     QColor captionColor()
     {
         return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID);
@@ -115,7 +110,7 @@ namespace Ui
         {
             isSelected_ = _value;
 
-            emit selectChanged(QPrivateSignal());
+            Q_EMIT selectChanged(QPrivateSignal());
             update();
         }
     }
@@ -161,6 +156,11 @@ namespace Ui
         setContentsMargins(getShadowSize(), getListVerMargin() + getShadowSize(), getShadowSize(), getListVerMargin() + getShadowSize());
     }
 
+    int AttachPopupBackground::heightForContent(int _height) const
+    {
+        return _height + contentsMargins().top() + contentsMargins().bottom();
+    }
+
     void AttachPopupBackground::paintEvent(QPaintEvent* _event)
     {
         QPainter p(this);
@@ -185,12 +185,48 @@ namespace Ui
         setCursor(Qt::ArrowCursor);
 
         listWidget_ = new SimpleListWidget(Qt::Vertical, this);
-        Testing::setAccessibleName(listWidget_, qsl("AS inputwidget listWidget_"));
+        Testing::setAccessibleName(listWidget_, qsl("AS Plus listWidget"));
         connect(listWidget_, &SimpleListWidget::clicked, this, &AttachFilePopup::onItemClicked);
 
-        const auto addItem = [this](const auto& _icon, const auto& _capt, const auto _iconBg, const auto _id)
+        listWidget_->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Minimum);
+
+        connect(this, &ClickableWidget::pressed, this, &AttachFilePopup::onBackgroundClicked);
+        connect(this, &AttachFilePopup::photoVideoClicked, input_, &InputWidget::onAttachPhotoVideo);
+        connect(this, &AttachFilePopup::fileClicked, input_, &InputWidget::onAttachFile);
+        connect(this, &AttachFilePopup::cameraClicked, input_, &InputWidget::onAttachCamera);
+        connect(this, &AttachFilePopup::contactClicked, input_, &InputWidget::onAttachContact);
+        connect(this, &AttachFilePopup::pttClicked, input_, &InputWidget::onAttachPtt);
+        connect(this, &AttachFilePopup::pollClicked, input_, &InputWidget::onAttachPoll);
+        connect(this, &AttachFilePopup::callClicked, input_, &InputWidget::onAttachCallByLink);
+        connect(this, &AttachFilePopup::webinarClicked, input_, &InputWidget::onAttachWebinar);
+
+        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::omicronUpdated, this, &AttachFilePopup::initItems);
+        connect(Ui::GetDispatcher(), &Ui::core_dispatcher::externalUrlConfigUpdated, this, &AttachFilePopup::initItems);
+
+        widget_ = new AttachPopupBackground(this);
+        auto layout = Utils::emptyVLayout(widget_);
+        layout->addWidget(listWidget_);
+
+        setGraphicsEffect(opacityEffect_);
+
+        hideTimer_.setSingleShot(true);
+        hideTimer_.setInterval(leaveHideDelay());
+        connect(&hideTimer_, &QTimer::timeout, this, &AttachFilePopup::onHideTimer);
+
+        initItems();
+        hide();
+        popupInstance = this;
+    }
+
+    void AttachFilePopup::initItems()
+    {
+        items_.clear();
+        listWidget_->clear();
+
+        const auto addItem = [this](const auto& _icon, const auto& _capt, const auto _iconBg, const auto _id, const auto& _testingName)
         {
             auto item = new AttachFileMenuItem(listWidget_, _icon, _capt, Styling::getParameters().getColor(_iconBg));
+            Testing::setAccessibleName(item, qsl("AS AttachPopup %1").arg(_testingName));
             const auto idx = listWidget_->addItem(item);
             connect(item, &AttachFileMenuItem::hoverChanged, this, [this, idx](const bool _hovered)
             {
@@ -202,52 +238,38 @@ namespace Ui
             items_.push_back({ idx, _id });
         };
 
-        addItem(qsl(":/input/attach_photo"), QT_TRANSLATE_NOOP("input_widget", "Photo or Video"), Styling::StyleVariable::SECONDARY_RAINBOW_PINK, MenuItemId::photoVideo);
-        addItem(qsl(":/input/attach_documents"), QT_TRANSLATE_NOOP("input_widget", "File"), Styling::StyleVariable::SECONDARY_RAINBOW_MAIL, MenuItemId::file);
+        addItem(qsl(":/input/attach_photo"), QT_TRANSLATE_NOOP("input_widget", "Photo or Video"), Styling::StyleVariable::SECONDARY_RAINBOW_PINK, MenuItemId::photoVideo, QString());
+        addItem(qsl(":/input/attach_documents"), QT_TRANSLATE_NOOP("input_widget", "File"), Styling::StyleVariable::SECONDARY_RAINBOW_MAIL, MenuItemId::file, QString());
         //addItem(qsl(":/input/attach_camera"), QT_TRANSLATE_NOOP("input_widget", "Camera"), Styling::StyleVariable::SECONDARY_RAINBOW_AQUA, MenuItemId::camera);
 
         if (Features::pollsEnabled())
-            addItem(qsl(":/input/attach_poll"), QT_TRANSLATE_NOOP("input_widget", "Poll"), Styling::StyleVariable::SECONDARY_RAINBOW_PURPLE, MenuItemId::poll);
+            addItem(qsl(":/input/attach_poll"), QT_TRANSLATE_NOOP("input_widget", "Poll"), Styling::StyleVariable::SECONDARY_RAINBOW_PURPLE, MenuItemId::poll, QString());
 
-        addItem(qsl(":/input/attach_contact"), QT_TRANSLATE_NOOP("input_widget", "Contact"), Styling::StyleVariable::SECONDARY_RAINBOW_WARM, MenuItemId::contact);
-        //addItem(qsl(":/input/attach_poll"), QT_TRANSLATE_NOOP("input_widget", "Poll"), Styling::StyleVariable::SECONDARY_RAINBOW_PURPLE, MenuItemId::poll);
+        addItem(qsl(":/input/attach_contact"), QT_TRANSLATE_NOOP("input_widget", "Contact"), Styling::StyleVariable::SECONDARY_RAINBOW_WARM, MenuItemId::contact, QString());
         //addItem(qsl(":/message_type_contact_icon"), QT_TRANSLATE_NOOP("input_widget", "Location"), Styling::StyleVariable::SECONDARY_RAINBOW_AQUA, MenuItemId::geo);
-        addItem(qsl(":/input/attach_ptt"), QT_TRANSLATE_NOOP("input_widget", "Voice Message"), Styling::StyleVariable::SECONDARY_ATTENTION, MenuItemId::ptt);
 
-        listWidget_->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Minimum);
+        if (Features::isVcsCallByLinkEnabled())
+            addItem(qsl(":/copy_link_icon"), QT_TRANSLATE_NOOP("input_widget", "Call link"), Styling::StyleVariable::SECONDARY_RAINBOW_AQUA, MenuItemId::callLink, qsl("Link"));
+        if (Features::isVcsWebinarEnabled())
+            addItem(qsl(":/input/webinar"), QT_TRANSLATE_NOOP("input_widget", "Webinar"), Styling::StyleVariable::SECONDARY_RAINBOW_EMERALD, MenuItemId::webinar, qsl("Webinar"));
 
-        widget_ = new AttachPopupBackground(this);
-        auto layout = Utils::emptyVLayout(widget_);
-        layout->addWidget(listWidget_);
+        addItem(qsl(":/input/attach_ptt"), QT_TRANSLATE_NOOP("input_widget", "Voice Message"), Styling::StyleVariable::SECONDARY_ATTENTION, MenuItemId::ptt, QString());
 
-        connect(this, &ClickableWidget::pressed, this, &AttachFilePopup::onBackgroundClicked);
-        connect(this, &AttachFilePopup::photoVideoClicked, input_, &InputWidget::onAttachPhotoVideo);
-        connect(this, &AttachFilePopup::fileClicked, input_, &InputWidget::onAttachFile);
-        connect(this, &AttachFilePopup::cameraClicked, input_, &InputWidget::onAttachCamera);
-        connect(this, &AttachFilePopup::contactClicked, input_, &InputWidget::onAttachContact);
-        connect(this, &AttachFilePopup::pttClicked, input_, &InputWidget::onAttachPtt);
-        connect(this, &AttachFilePopup::pollClicked, input_, &InputWidget::onAttachPoll);
-
-        setGraphicsEffect(opacityEffect_);
-
-        hideTimer_.setSingleShot(true);
-        hideTimer_.setInterval(leaveHideDelay().count());
-        connect(&hideTimer_, &QTimer::timeout, this, &AttachFilePopup::onHideTimer);
-
-        hide();
-        popupInstance = this;
+        updateSizeAndPos();
     }
 
     AttachFilePopup& AttachFilePopup::instance()
     {
         if (!popupInstance)
         {
-            auto mainPage = Utils::InterConnector::instance().getMainPage();
-            auto inputWidget = mainPage->getContactDialog()->getInputWidget();
-            assert(mainPage);
-            assert(inputWidget);
+            if (auto mainPage = Utils::InterConnector::instance().getMainPage())
+            {
+                auto inputWidget = mainPage->getContactDialog()->getInputWidget();
+                assert(mainPage);
+                assert(inputWidget);
 
-            popupInstance = new AttachFilePopup(mainPage, inputWidget);
+                popupInstance = new AttachFilePopup(mainPage, inputWidget);
+            }
         }
 
         return *popupInstance;
@@ -276,8 +298,6 @@ namespace Ui
         if (animState_ == AnimState::Showing)
             return;
 
-        animState_ = AnimState::Showing;
-
         updateSizeAndPos();
         buttonRect_ = getPlusButtonRect();
         mouseAreaPoly_ = getMouseAreaPoly();
@@ -285,6 +305,8 @@ namespace Ui
 
         const auto startValue = animState_ == AnimState::Hiding ? opacityEffect_->opacity() : 0.0;
         opacityEffect_->setOpacity(startValue);
+
+        animState_ = AnimState::Showing;
 
         opacityAnimation_.finish();
         opacityAnimation_.start(
@@ -303,9 +325,9 @@ namespace Ui
         if (!isVisible() || animState_ == AnimState::Hiding)
             return;
 
+        const auto startValue = animState_ == AnimState::Showing ? opacityEffect_->opacity() : 1.0;
         animState_ = AnimState::Hiding;
 
-        const auto startValue = animState_ == AnimState::Showing ? opacityEffect_->opacity() : 1.0;
         opacityAnimation_.finish();
         opacityAnimation_.start(
             [this]() { opacityEffect_->setOpacity(opacityAnimation_.current()); },
@@ -333,7 +355,7 @@ namespace Ui
     void AttachFilePopup::updateSizeAndPos()
     {
         const auto inputRect = input_->rect().translated(parentWidget()->mapFromGlobal(input_->mapToGlobal({ 0, 0 })));
-        const auto popupSize = widget_->sizeHint();
+        const auto popupSize = QSize(widget_->sizeHint().width(), widget_->heightForContent(items_.size() * itemHeight()));
 
         auto x = inputRect.left() - getShadowSize() + popupLeftOffset();
         if (inputRect.width() > MessageStyle::getHistoryWidgetMaxWidth())
@@ -341,6 +363,8 @@ namespace Ui
 
         const auto y = inputRect.bottom() + 1 - popupBottomOffset() - popupSize.height() + getShadowSize();
         setGeometry(x, y, popupSize.width(), popupSize.height() + popupBottomOffset());
+        widget_->setFixedHeight(popupSize.height());
+
         widget_->move(0, 0);
     }
 
@@ -430,12 +454,12 @@ namespace Ui
 
     void AttachFilePopup::showEvent(QShowEvent*)
     {
-        emit Utils::InterConnector::instance().attachFilePopupVisiblityChanged(true);
+        Q_EMIT Utils::InterConnector::instance().attachFilePopupVisiblityChanged(true);
     }
 
     void AttachFilePopup::hideEvent(QHideEvent*)
     {
-        emit Utils::InterConnector::instance().attachFilePopupVisiblityChanged(false);
+        Q_EMIT Utils::InterConnector::instance().attachFilePopupVisiblityChanged(false);
 
         const auto mainPage = Utils::InterConnector::instance().getMainPage();
         if (input_ && mainPage && !mainPage->isSemiWindowVisible())
@@ -460,37 +484,47 @@ namespace Ui
         switch (it->second)
         {
         case MenuItemId::photoVideo:
-            emit photoVideoClicked(QPrivateSignal());
+            Q_EMIT photoVideoClicked(QPrivateSignal());
             sendStat(core::stats::stats_event_names::chatscr_openmedgallery_action, "plus");
             break;
 
         case MenuItemId::file:
-            emit fileClicked(QPrivateSignal());
+            Q_EMIT fileClicked(QPrivateSignal());
             sendStat(core::stats::stats_event_names::chatscr_openfile_action, "plus");
             break;
 
         case MenuItemId::camera:
-            emit cameraClicked(QPrivateSignal());
+            Q_EMIT cameraClicked(QPrivateSignal());
             sendStat(core::stats::stats_event_names::chatscr_opencamera_action, "plus");
             break;
 
         case MenuItemId::contact:
-            emit contactClicked(QPrivateSignal());
+            Q_EMIT contactClicked(QPrivateSignal());
             sendStat(core::stats::stats_event_names::chatscr_opencontact_action, "plus");
             break;
 
         case MenuItemId::poll:
-            emit pollClicked(QPrivateSignal());
+            Q_EMIT pollClicked(QPrivateSignal());
             break;
 
         case MenuItemId::ptt:
-            emit pttClicked(QPrivateSignal());
+            Q_EMIT pttClicked(QPrivateSignal());
             sendStat(core::stats::stats_event_names::chatscr_openptt_action, "plus");
             break;
 
         case MenuItemId::geo:
-            emit geoClicked(QPrivateSignal());
+            Q_EMIT geoClicked(QPrivateSignal());
             sendStat(core::stats::stats_event_names::chatscr_opengeo_action, "plus");
+            break;
+
+        case MenuItemId::callLink:
+            Q_EMIT callClicked(QPrivateSignal());
+            sendStat(core::stats::stats_event_names::chatscr_callbylink_action, "plus");
+            break;
+
+        case MenuItemId::webinar:
+            Q_EMIT webinarClicked(QPrivateSignal());
+            sendStat(core::stats::stats_event_names::chatscr_webinar_action, "plus");
             break;
 
         default:

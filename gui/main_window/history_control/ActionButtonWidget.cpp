@@ -467,7 +467,7 @@ void ActionButtonWidget::mouseMoveEvent(QMouseEvent *e)
         if (!(QSysInfo().macVersion() > QSysInfo().MV_10_11 && (QCursor::pos() - mousePressStartPoint).manhattanLength() <= 2))
 #endif
         {
-            emit dragSignal();
+            Q_EMIT dragSignal();
             IsPressed_ = false;
         }
     }
@@ -504,11 +504,11 @@ void ActionButtonWidget::mouseReleaseEvent(QMouseEvent *event)
 
         if (IsAnimating_)
         {
-            emit stopClickedSignal(event->globalPos());
+            Q_EMIT stopClickedSignal(event->globalPos());
         }
         else
         {
-            emit startClickedSignal(event->globalPos());
+            Q_EMIT startClickedSignal(event->globalPos());
         }
     }
 
@@ -631,7 +631,7 @@ void ActionButtonWidget::onAnimationStartTimeout()
 
     resetLayoutGeometry();
 
-    emit internallyChangedSignal();
+    Q_EMIT internallyChangedSignal();
 }
 
 namespace

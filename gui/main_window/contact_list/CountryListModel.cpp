@@ -1,4 +1,7 @@
+#include "stdafx.h"
+
 #include "CountryListModel.h"
+#include "utils/utils.h"
 
 namespace Logic
 {
@@ -52,7 +55,7 @@ namespace Logic
         if (countries_.empty())
             return;
 
-        emit hideNoSearchResults();
+        Q_EMIT hideNoSearchResults();
 
         const auto addResult = [this](const auto& _item, const std::vector<QString>& _highlights)
         {
@@ -208,12 +211,12 @@ namespace Logic
             }
         }
 
-        emit dataChanged(index(0), index(rowCount()));
+        Q_EMIT dataChanged(index(0), index(rowCount()));
 
         if (!searchPattern_.isEmpty() && results_.empty())
-            emit showNoSearchResults();
+            Q_EMIT showNoSearchResults();
         else
-            emit hideNoSearchResults();
+            Q_EMIT hideNoSearchResults();
     }
 
     int CountryListModel::getCountriesCount() const
@@ -238,7 +241,7 @@ namespace Logic
     {
         assert(!_code.isEmpty());
         // CRUTCH: to avoid Kazakhstan
-        if (_code == qsl("+7"))
+        if (_code == u"+7")
             return getCountry(QT_TRANSLATE_NOOP("countries", "Russia"));
         const auto country = std::find_if(countries_.begin(), countries_.end(), [_code](const auto& c) { return c.phone_code_ == _code; });
         if (country == countries_.end())

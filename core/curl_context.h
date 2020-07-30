@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../external/curl/include/curl.h"
+#include "curl/include/curl.h"
 
 #include "http_request.h"
 

@@ -10,10 +10,15 @@
 #include "../styles/ThemeParameters.h"
 #include "main_window/sidebar/SidebarUtils.h"
 
+static QString spaceString()
+{
+    return qsl(" ");
+}
+
 class SliderProxyStyle : public QProxyStyle
 {
 public:
-    int pixelMetric(PixelMetric metric, const QStyleOption * option = 0, const QWidget * widget = 0) const
+    int pixelMetric(PixelMetric metric, const QStyleOption * option = 0, const QWidget * widget = 0) const override
     {
         switch (metric) {
         case PM_SliderLength: return Utils::scale_value(8);
@@ -27,7 +32,7 @@ public:
 class ComboboxProxyStyle : public QProxyStyle
 {
 public:
-    int pixelMetric(PixelMetric metric, const QStyleOption * option = 0, const QWidget * widget = 0) const
+    int pixelMetric(PixelMetric metric, const QStyleOption * option = 0, const QWidget * widget = 0) const override
     {
         switch (metric)
         {
@@ -51,13 +56,13 @@ namespace Ui
             Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
 
         title->setText(_text);
-        Testing::setAccessibleName(title, qsl("AS ")+_text);
+        Testing::setAccessibleName(title, u"AS GeneralCreator" % _text);
         layout->addWidget(title);
         _layout->addWidget(mainWidget);
         Utils::grabTouchWidget(title);
     }
 
-    void GeneralCreator::addHotkeyInfo(QWidget* _parent, QLayout* _layout, const QString& _name, const QString& _keys)
+    QWidget* GeneralCreator::addHotkeyInfo(QWidget* _parent, QLayout* _layout, const QString& _name, const QString& _keys)
     {
         auto infoWidget = new QWidget(_parent);
         auto infoLayout = Utils::emptyHLayout(infoWidget);
@@ -81,13 +86,14 @@ namespace Ui
         infoLayout->addStretch();
         infoLayout->addWidget(textKeys);
 
-        Testing::setAccessibleName(infoWidget, qsl("AS gc hotkeyInfoWidget") + _keys);
+        Testing::setAccessibleName(infoWidget, u"AS GeneralCreator hotkeyInfoWidget" % _keys);
         Utils::grabTouchWidget(infoWidget);
         _layout->addWidget(infoWidget);
+        return infoWidget;
     }
 
     SidebarCheckboxButton* GeneralCreator::addSwitcher(QWidget *_parent, QLayout *_layout, const QString &_text,
-                                                       bool _switched, std::function<QString(bool)> _slot, int _height)
+                                                       bool _switched, std::function<void(bool)> _slot, int _height, const QString& _accName)
     {
         const auto switcherRow = addCheckbox(QString(), _text, _parent, _layout);
         switcherRow->setFixedHeight(_height == -1 ? Utils::scale_value(44) : _height);
@@ -95,16 +101,18 @@ namespace Ui
         switcherRow->setTextOffset(0);
         switcherRow->setContentsMargins(0, 0, 0, 0);
         switcherRow->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+        Testing::setAccessibleName(switcherRow, _accName);
 
-        QObject::connect(switcherRow, &SidebarCheckboxButton::clicked, [switcherRow, _slot]()
+        QObject::connect(switcherRow, &SidebarCheckboxButton::clicked, switcherRow, [switcherRow, slot = std::move(_slot)]()
         {
-            _slot(switcherRow->isChecked());
+            if (slot)
+                slot(switcherRow->isChecked());
         });
 
         return switcherRow;
     }
 
-    TextEmojiWidget* GeneralCreator::addChooser(QWidget* _parent, QLayout* _layout, const QString& _info, const QString& _value, std::function< void(TextEmojiWidget*) > _slot)
+    TextEmojiWidget* GeneralCreator::addChooser(QWidget* _parent, QLayout* _layout, const QString& _info, const QString& _value, std::function< void(TextEmojiWidget*) > _slot, const QString& _accName)
     {
         auto mainWidget = new QWidget(_parent);
 
@@ -119,7 +127,7 @@ namespace Ui
         Utils::grabTouchWidget(info);
         info->setSizePolicy(QSizePolicy::Policy::Preferred, info->sizePolicy().verticalPolicy());
         info->setText(_info);
-        Testing::setAccessibleName(info, qsl("AS gc info ") + _info);
+        Testing::setAccessibleName(info, u"AS GeneralCreator " % _info);
         mainLayout->addWidget(info);
 
         auto valueWidget = new QWidget(_parent);
@@ -137,22 +145,23 @@ namespace Ui
             value->setEllipsis(true);
             value->setHoverColor(Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY_HOVER));
             value->setActiveColor(Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY_ACTIVE));
-            QObject::connect(value, &TextEmojiWidget::clicked, [value, _slot]()
+            QObject::connect(value, &TextEmojiWidget::clicked, value, [value, slot = std::move(_slot)]()
             {
-                _slot(value);
+                if (slot)
+                    slot(value);
             });
-            Testing::setAccessibleName(value, qsl("AS gc ") + _value);
+            Testing::setAccessibleName(value, _accName);
             valueLayout->addWidget(value);
         }
-        Testing::setAccessibleName(valueWidget, qsl("AS gc valueWidget"));
+        Testing::setAccessibleName(valueWidget, qsl("AS GeneralCreator valueWidget"));
         mainLayout->addWidget(valueWidget);
 
-        Testing::setAccessibleName(mainWidget, qsl("AS gc mainWidget"));
+        Testing::setAccessibleName(mainWidget, qsl("AS GeneralCreator mainWidget"));
         _layout->addWidget(mainWidget);
         return value;
     }
 
-    GeneralCreator::DropperInfo GeneralCreator::addDropper(QWidget* _parent, QLayout* _layout, const QString& _info, bool _is_header, const std::vector< QString >& _values, int _selected, int _width, std::function< void(QString, int, TextEmojiWidget*) > _slot1, std::function< QString(bool) > _slot2)
+    GeneralCreator::DropperInfo GeneralCreator::addDropper(QWidget* _parent, QLayout* _layout, const QString& _info, bool _is_header, const std::vector< QString >& _values, int _selected, int _width, std::function< void(const QString&, int, TextEmojiWidget*) > _slot)
     {
         TextEmojiWidget* title = nullptr;
         TextEmojiWidget* aw1 = nullptr;
@@ -172,17 +181,17 @@ namespace Ui
             Utils::grabTouchWidget(title);
             title->setSizePolicy(QSizePolicy::Policy::Preferred, title->sizePolicy().verticalPolicy());
             title->setText(_info);
-            Testing::setAccessibleName(title, qsl("AS gc title ") + _info);
+            Testing::setAccessibleName(title, qsl("AS GeneralCreator title"));
             titleLayout->addWidget(title);
 
             aw1 = new TextEmojiWidget(titleWidget, Fonts::appFontScaled(15), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
             Utils::grabTouchWidget(aw1);
             aw1->setSizePolicy(QSizePolicy::Policy::Preferred, aw1->sizePolicy().verticalPolicy());
-            aw1->setText(qsl(" "));
-            Testing::setAccessibleName(aw1, qsl("AS gc aw1"));
+            aw1->setText(spaceString());
+            Testing::setAccessibleName(aw1, qsl("AS GeneralCreator something"));
             titleLayout->addWidget(aw1);
         }
-        Testing::setAccessibleName(titleWidget, qsl("AS gc titleWidget"));
+        Testing::setAccessibleName(titleWidget, qsl("AS GeneralCreator titleWidget"));
         _layout->addWidget(titleWidget);
 
         auto selectedItemWidget = new QWidget(_parent);
@@ -208,10 +217,10 @@ namespace Ui
                 auto selectedItem = new TextEmojiWidget(selectedItemButton, Fonts::appFontScaled(15), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY), Utils::scale_value(24));
                 Utils::grabTouchWidget(selectedItem);
 
-                auto selectedItemText = Utils::getItemSafe(_values, _selected, qsl(" "));
+                auto selectedItemText = _selected < int(_values.size()) ? _values[_selected] : spaceString();
                 selectedItem->setText(selectedItemText);
                 selectedItem->setFading(true);
-                Testing::setAccessibleName(selectedItem, qsl("AS gc selectedItem ") + selectedItemText);
+                Testing::setAccessibleName(selectedItem, u"AS GeneralCreator selectedItem " % selectedItemText);
                 dl->addWidget(selectedItem);
                 di.currentSelected = selectedItem;
 
@@ -225,10 +234,10 @@ namespace Ui
                     ln->setSizePolicy(QSizePolicy::Policy::Expanding, QSizePolicy::Policy::Expanding);
                     ln->setFrameShape(QFrame::StyledPanel);
                     Utils::ApplyStyle(ln, qsl("border-width: 1dip; border-bottom-style: solid; border-color: %1; ").arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_SECONDARY)));//DROPDOWN_STYLE);
-                    Testing::setAccessibleName(ln, qsl("AS gc ln"));
+                    Testing::setAccessibleName(ln, qsl("AS GeneralCreator ln"));
                     lpl->addWidget(ln);
                 }
-                Testing::setAccessibleName(lp, qsl("AS gc lp"));
+                Testing::setAccessibleName(lp, qsl("AS GeneralCreator lp"));
                 dl->addWidget(lp);
 
                 auto menu = new FlatMenu(selectedItemButton);
@@ -236,13 +245,13 @@ namespace Ui
                 menu->setExpandDirection(Qt::AlignBottom);
                 menu->setNeedAdjustSize(true);
 
-                Testing::setAccessibleName(menu, qsl("AS menu FlatMenu"));
+                Testing::setAccessibleName(menu, qsl("AS GeneralCreator flatMenu"));
                 for (const auto& v : _values)
                 {
                     auto a = menu->addAction(v);
                     a->setProperty(FlatMenu::sourceTextPropName(), v);
                 }
-                QObject::connect(menu, &QMenu::triggered, _parent, [menu, aw1, selectedItem, _slot1](QAction* a)
+                QObject::connect(menu, &QMenu::triggered, _parent, [menu, aw1, selectedItem, slot = std::move(_slot)](QAction* a)
                 {
                     int ix = -1;
                     const QList<QAction*> allActions = menu->actions();
@@ -253,7 +262,8 @@ namespace Ui
                         {
                             const auto text = a->property(FlatMenu::sourceTextPropName()).toString();
                             selectedItem->setText(text);
-                            _slot1(text, ix, aw1);
+                            if (slot)
+                                slot(text, ix, aw1);
                             break;
                         }
                     }
@@ -261,10 +271,10 @@ namespace Ui
                 selectedItemButton->setMenu(menu);
                 di.menu = menu;
             }
-            Testing::setAccessibleName(selectedItemButton, qsl("AS gc selectedItemButton"));
+            Testing::setAccessibleName(selectedItemButton, qsl("AS GeneralCreator selectedItemButton"));
             selectedItemLayout->addWidget(selectedItemButton);
         }
-        Testing::setAccessibleName(selectedItemWidget, qsl("AS gc selectedItemWidget"));
+        Testing::setAccessibleName(selectedItemWidget, qsl("AS GeneralCreator selectedItemWidget"));
         _layout->addWidget(selectedItemWidget);
 
         return di;
@@ -291,20 +301,20 @@ namespace Ui
             w = new TextEmojiWidget(mainWidget, Fonts::appFontScaled(15), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
             Utils::grabTouchWidget(w);
             w->setSizePolicy(QSizePolicy::Policy::Preferred, w->sizePolicy().verticalPolicy());
-            w->setText(qsl(" "));
-            Testing::setAccessibleName(w, qsl("AS gc w"));
+            w->setText(spaceString());
+            Testing::setAccessibleName(w, qsl("AS GeneralCreator w"));
             mainLayout->addWidget(w);
 
             aw = new TextEmojiWidget(mainWidget, Fonts::appFontScaled(15), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
             Utils::grabTouchWidget(aw);
             aw->setSizePolicy(QSizePolicy::Policy::Preferred, aw->sizePolicy().verticalPolicy());
-            aw->setText(qsl(" "));
-            Testing::setAccessibleName(aw, qsl("AS gc aw"));
+            aw->setText(spaceString());
+            Testing::setAccessibleName(aw, qsl("AS GeneralCreator aw"));
             mainLayout->addWidget(aw);
 
             _slot_finish(w, aw, _selected);
         }
-        Testing::setAccessibleName(mainWidget, qsl("AS gc mainWidget"));
+        Testing::setAccessibleName(mainWidget, qsl("AS GeneralCreator mainWidget"));
         _layout->addWidget(mainWidget);
 
         auto sliderWidget = new QWidget(_parent);
@@ -341,10 +351,10 @@ namespace Ui
                 aw->update();
             });
 
-            Testing::setAccessibleName(slider, qsl("AS gc slider"));
+            Testing::setAccessibleName(slider, qsl("AS GeneralCreator slider"));
             sliderLayout->addWidget(slider);
         }
-        Testing::setAccessibleName(sliderWidget, qsl("AS gc sliderWidget"));
+        Testing::setAccessibleName(sliderWidget, qsl("AS GeneralCreator sliderWidget"));
         _layout->addWidget(sliderWidget);
     }
 
@@ -358,26 +368,30 @@ namespace Ui
         auto backButton = new CustomButton(backArea, qsl(":/controls/back_icon"), QSize(20, 20));
         Styling::Buttons::setButtonDefaultColors(backButton);
         backButton->setFixedSize(Utils::scale_value(QSize(24, 24)));
-        Testing::setAccessibleName(backButton, qsl("AS gc backButton"));
+        Testing::setAccessibleName(backButton, qsl("AS GeneralCreator backButton"));
         backLayout->addWidget(backButton);
 
         auto verticalSpacer = new QSpacerItem(Utils::scale_value(15), Utils::scale_value(543), QSizePolicy::Minimum, QSizePolicy::Expanding);
         backLayout->addItem(verticalSpacer);
 
-        Testing::setAccessibleName(backArea, qsl("AS gc backArea"));
+        Testing::setAccessibleName(backArea, qsl("AS GeneralCreator backArea"));
         _layout->addWidget(backArea);
-        QObject::connect(backButton, &QPushButton::clicked, _onButtonClick);
+
+        if (_onButtonClick)
+            QObject::connect(backButton, &QPushButton::clicked, _onButtonClick);
     }
 
-    QComboBox* GeneralCreator::addComboBox(QWidget * _parent, QLayout * _layout, const QString & _info, bool _is_header, const std::vector<QString>& _values, int _selected, int _width, std::function<void(QString, int, TextEmojiWidget*)> _slot1, std::function<QString(bool)> _slot2)
+    QComboBox* GeneralCreator::addComboBox(QWidget * _parent, QLayout * _layout, const QString & _info, bool _is_header, const std::vector<QString>& _values, int _selected, int _width, std::function<void(const QString&, int)> _slot)
     {
-        TextEmojiWidget* title = nullptr;
-        auto titleWidget = new QWidget(_parent);
-        auto titleLayout = Utils::emptyHLayout(titleWidget);
-        Utils::grabTouchWidget(titleWidget);
-        titleWidget->setSizePolicy(QSizePolicy::Policy::Preferred, QSizePolicy::Policy::Preferred);
-        titleLayout->setAlignment(Qt::AlignLeft);
+        if (!_info.isEmpty())
         {
+            TextEmojiWidget* title = nullptr;
+            auto titleWidget = new QWidget(_parent);
+            auto titleLayout = Utils::emptyHLayout(titleWidget);
+            Utils::grabTouchWidget(titleWidget);
+            titleWidget->setSizePolicy(QSizePolicy::Policy::Preferred, QSizePolicy::Policy::Preferred);
+            titleLayout->setAlignment(Qt::AlignLeft);
+
             QFont font;
             if (!_is_header)
                 font = Fonts::appFontScaled(15);
@@ -388,11 +402,12 @@ namespace Ui
             Utils::grabTouchWidget(title);
             title->setSizePolicy(QSizePolicy::Policy::Preferred, title->sizePolicy().verticalPolicy());
             title->setText(_info);
-            Testing::setAccessibleName(title, qsl("AS gc title ") + _info);
+            Testing::setAccessibleName(title, u"AS GeneralCreator " % _info);
             titleLayout->addWidget(title);
+
+            Testing::setAccessibleName(titleWidget, qsl("AS GeneralCreator titleWidget"));
+            _layout->addWidget(titleWidget);
         }
-        Testing::setAccessibleName(titleWidget, qsl("AS gc titleWidget"));
-        _layout->addWidget(titleWidget);
 
         auto cmbBox = new QComboBox(_parent);
         Utils::SetProxyStyle(cmbBox, new ComboboxProxyStyle());
@@ -401,7 +416,7 @@ namespace Ui
         cmbBox->setMaxVisibleItems(6);
         cmbBox->setCursor(Qt::PointingHandCursor);
         cmbBox->setFixedWidth(Utils::scale_value(280));
-        Testing::setAccessibleName(cmbBox, qsl("AS gc cmbBoxProblems"));
+        Testing::setAccessibleName(cmbBox, qsl("AS GeneralCreator cmbBoxProblems"));
 
         QPixmap pixmap(1, Utils::scale_value(50));
         pixmap.fill(Qt::transparent);
@@ -412,7 +427,7 @@ namespace Ui
         auto viewWidth = 0;
         for (const auto& v : _values)
         {
-            viewWidth = std::max(viewWidth, metrics.width(v));
+            viewWidth = std::max(viewWidth, metrics.horizontalAdvance(v));
             cmbBox->addItem(icon, v);
         }
 
@@ -420,10 +435,8 @@ namespace Ui
         viewWidth = std::max(viewWidth + Utils::scale_value(32), cmbBox->width());
 
         cmbBox->view()->setFixedWidth(std::min(maxViewWidth, viewWidth));
-        QObject::connect(cmbBox, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged), _parent, [cmbBox, _slot1](int _idx)
-        {
-            _slot1(cmbBox->itemText(_idx), _idx, nullptr);
-        });
+        if (_slot)
+            QObject::connect(cmbBox, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged), _parent, [cmbBox, slot = std::move(_slot)](int _idx) { slot(cmbBox->itemText(_idx), _idx); });
 
         _layout->addWidget(cmbBox);
         return cmbBox;
@@ -469,7 +482,7 @@ namespace Ui
                 (orientation() == Qt::Vertical) ? _event->y() : _event->x(),
                 (orientation() == Qt::Vertical) ? height() : width()));
 
-            emit sliderReleased();
+            Q_EMIT sliderReleased();
 
             _event->accept();
         }

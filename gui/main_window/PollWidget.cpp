@@ -22,11 +22,6 @@
 
 namespace
 {
-    int lineEditHeight()
-    {
-        return Utils::scale_value(32);
-    }
-
     int commonPollsMargin()
     {
         return Utils::scale_value(16);
@@ -65,39 +60,9 @@ namespace
         return 1;
     }
 
-    bool isValidText(const QString& _text)
+    bool isValidText(QStringView _text)
     {
         return !_text.trimmed().isEmpty();
-    }
-
-    const QColor& addWidgetTextColor(bool _hovered, bool _pressed)
-    {
-        static const auto color = Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY);
-        static const auto hoveredColor = Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY_HOVER);
-        static const auto pressedColor = Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY_ACTIVE);
-
-        if (_pressed)
-            return pressedColor;
-        if (_hovered)
-            return hoveredColor;
-
-        return color;
-    }
-
-    const QPixmap& addIcon(bool _hovered, bool _pressed)
-    {
-        static const auto iconSize = Utils::scale_value(QSize(20, 20));
-
-        static const auto pixmap = Utils::renderSvgScaled(qsl(":/controls/add_icon"), iconSize, Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY));
-        static const auto hoveredPixmap = Utils::renderSvgScaled(qsl(":/controls/add_icon"), iconSize, Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_HOVER));
-        static const auto pressedPixmap = Utils::renderSvgScaled(qsl(":/controls/add_icon"), iconSize, Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_ACTIVE));
-
-        if (_pressed)
-            return pressedPixmap;
-        if (_hovered)
-            return hoveredPixmap;
-
-        return pixmap;
     }
 
     const QColor& pollItemButtonColor()
@@ -137,7 +102,7 @@ public:
     TextEditEx* question_ = nullptr;
     DialogButton* sendButton_ = nullptr;
     DialogButton* cancelButton_ = nullptr;
-    ClickableWidget* addWidget_ = nullptr;
+    CustomButton* addWidget_ = nullptr;
     ScrollAreaWithTrScrollBar* scrollArea_ = nullptr;
     anim::Animation scrollAnimation_;
 
@@ -201,32 +166,18 @@ PollWidget::PollWidget(const QString& _contact, QWidget* _parent)
     contentLayout->addWidget(d->list_);
     contentLayout->addSpacing(Utils::scale_value(20));
 
-    d->addWidget_ = new ClickableWidget(this);
-    auto iconLabel = new QLabel(this);
-    iconLabel->setPixmap(addIcon(false, false));
-    auto addText = new TextWidget(this, QT_TRANSLATE_NOOP("poll", "Add another option"));
-    addText->setAttribute(Qt::WA_TransparentForMouseEvents);
-    addText->init(Fonts::appFontScaled(17, Fonts::FontWeight::Medium), addWidgetTextColor(false, false));
-
-    connect(d->addWidget_, &ClickableWidget::hoverChanged, this, [iconLabel, addText](bool _hovered)
-    {
-        iconLabel->setPixmap(addIcon(_hovered, false));
-        addText->setColor(addWidgetTextColor(_hovered, false));
-    });
-
-    connect(d->addWidget_, &ClickableWidget::pressChanged, this, [iconLabel, addText](bool _pressed)
-    {
-        iconLabel->setPixmap(addIcon(false, _pressed));
-        addText->setColor(addWidgetTextColor(false, _pressed));
-    });
-
-    auto addLayout = Utils::emptyHLayout(d->addWidget_);
-    addLayout->addWidget(iconLabel);
-    addLayout->addSpacing(Utils::scale_value(8));
-    addLayout->addWidget(addText);
-    addLayout->addStretch();
-
-    connect(d->addWidget_, &ClickableWidget::clicked, this, &PollWidget::onAdd);
+    d->addWidget_ = new CustomButton(this, qsl(":/controls/add_icon"), QSize(20, 20), Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY));
+    d->addWidget_->setHoverColor(Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_HOVER));
+    d->addWidget_->setPressedColor(Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_ACTIVE));
+    d->addWidget_->setText(QT_TRANSLATE_NOOP("poll", "Add another option"));
+    d->addWidget_->setNormalTextColor(Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY));
+    d->addWidget_->setHoveredTextColor(Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY_HOVER));
+    d->addWidget_->setPressedTextColor(Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY_ACTIVE));
+    d->addWidget_->setFont(Fonts::appFontScaled(17, Fonts::FontWeight::Medium));
+    d->addWidget_->setIconAlignment(Qt::AlignLeft);
+    d->addWidget_->setTextAlignment(Qt::AlignLeft);
+    d->addWidget_->setTextLeftOffset(Utils::scale_value(28));
+    connect(d->addWidget_, &CustomButton::clicked, this, &PollWidget::onAdd);
 
     contentLayout->addWidget(d->addWidget_);
     contentLayout->addStretch(1);
@@ -298,7 +249,7 @@ void PollWidget::onAdd()
 
 void PollWidget::onCancel()
 {
-    emit Utils::InterConnector::instance().closeAnyPopupWindow(Utils::CloseWindowInfo());
+    Q_EMIT Utils::InterConnector::instance().closeAnyPopupWindow(Utils::CloseWindowInfo());
 }
 
 void PollWidget::onSend()
@@ -327,7 +278,7 @@ void PollWidget::onSend()
 
     Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::polls_create, { { "from", "plus" }, {"chat_type", Ui::getStatsChatType()} });
 
-    emit Utils::InterConnector::instance().acceptGeneralDialog();
+    Q_EMIT Utils::InterConnector::instance().acceptGeneralDialog();
     close();
 }
 
@@ -444,7 +395,7 @@ void PollItemsList::onRemoveItem()
                 focusItem->setFocusOnInput();
         }
 
-        emit itemRemoved();
+        Q_EMIT itemRemoved();
     }
 }
 
@@ -523,10 +474,7 @@ PollItem::PollItem(QWidget* _parent)
     d->remainedCount_->init(Fonts::adjustedAppFont(15), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
 }
 
-PollItem::~PollItem()
-{
-
-}
+PollItem::~PollItem() = default;
 
 QVariant PollItem::data() const
 {

@@ -3,6 +3,9 @@
 #include "suggest_storage.h"
 #include "smartreply_suggest.h"
 
+#include "../../../common.shared/smartreply/smartreply_types.h"
+#include "../tools/json_helper.h"
+
 namespace core
 {
     namespace smartreply
@@ -114,13 +117,37 @@ namespace core
         {
             rapidjson::Value node_suggests(rapidjson::Type::kArrayType);
             node_suggests.Reserve(suggests_.size(), _a);
-            for (const auto& it : suggests_)
+
+            const auto add_new = [&node_suggests, &_a](const auto& _suggest)
             {
-                for (const auto& s : it.second)
+                rapidjson::Value suggest_node(rapidjson::Type::kObjectType);
+                _suggest.serialize(suggest_node, _a);
+                node_suggests.PushBack(std::move(suggest_node), _a);
+            };
+
+            for (const auto& [_, contact_suggests] : suggests_)
+            {
+                if (contact_suggests.empty())
+                    continue;
+
+                add_new(*contact_suggests.begin());
+                for (auto it = std::next(contact_suggests.begin()); it != contact_suggests.end(); ++it)
                 {
-                    rapidjson::Value suggest_node(rapidjson::Type::kObjectType);
-                    s.serialize(suggest_node, _a);
-                    node_suggests.PushBack(std::move(suggest_node), _a);
+                    const auto& cur = *it;
+                    const auto& prev = *(std::prev(it));
+                    if (prev.get_type() != cur.get_type() || prev.get_msgid() != cur.get_msgid() || prev.get_aimid() != cur.get_aimid() || node_suggests.Empty())
+                    {
+                        add_new(cur);
+                    }
+                    else
+                    {
+                        auto& last = node_suggests[node_suggests.Size() - 1];
+                        if (const auto node_name = array_node_name_for(cur.get_type()); !node_name.empty())
+                        {
+                            if (auto value_it = last.FindMember(core::tools::make_string_ref(node_name)); value_it != last.MemberEnd() && value_it->value.IsArray())
+                                value_it->value.PushBack(core::tools::make_string_ref(cur.get_data()), _a);
+                        }
+                    }
                 }
             }
 

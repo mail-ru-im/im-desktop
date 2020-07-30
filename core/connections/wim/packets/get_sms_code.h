@@ -27,7 +27,7 @@ namespace core
             int32_t         code_length_;
             bool			existing_;
 
-            virtual int32_t init_request(std::shared_ptr<core::http_request_simple> _request) override;
+            virtual int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
             virtual int32_t on_response_error_code() override;
             virtual int32_t parse_response_data(const rapidjson::Value& _data) override;
 
@@ -52,11 +52,12 @@ namespace core
         class get_code_by_phone_call : public wim_packet
         {
             std::string ivr_url_;
-            virtual int32_t init_request(std::shared_ptr<core::http_request_simple> _request) override;
+            virtual int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
 
         public:
             get_code_by_phone_call(wim_packet_params params, const std::string& _ivr_url);
             virtual ~get_code_by_phone_call();
+            bool is_valid() const override { return true; }
         };
     }
 }

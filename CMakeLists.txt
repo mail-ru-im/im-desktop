@@ -1,8 +1,4 @@
-if(WIN32)
-    cmake_minimum_required(VERSION 3.11)
-else()
-    cmake_minimum_required(VERSION 3.8)
-endif()
+cmake_minimum_required(VERSION 3.14)
 
 include(CheckFunctionExists)
 
@@ -51,9 +47,9 @@ endif()
 
 
 message(STATUS "DIR CMAKE_SOURCE_DIR = ${CMAKE_SOURCE_DIR}")
-find_package (Git)
+find_package(Git)
 if (GIT_FOUND)
-    message("-- git found: ${GIT_EXECUTABLE} in version ${GIT_VERSION_STRING}")
+    message(STATUS "git found: ${GIT_EXECUTABLE} in version ${GIT_VERSION_STRING}")
     if(GIT_VERSION_STRING VERSION_LESS 2.23.0)
         execute_process(
             COMMAND ${GIT_EXECUTABLE} rev-parse --abbrev-ref HEAD
@@ -130,10 +126,14 @@ if(ENABLE_UBSAN)
   set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=undefined")
   list(APPEND _build_flags "-fsanitize=undefined")
 endif()
+
 if(VOIP_AS_MODULE)
+  # When building voip library from source (to do this, just add voip3 symlink to voip3 repo), include
+  # voip sources before mangling flags, CMake options, etc. to avoid interference with voip build scripts
   add_subdirectory(voip3)
   set(VOIP_LIBRARIES libvoip::sdk_cpp_merged)
 endif()
+
 
 if(MSVC)
     set(ICQ_PLATFORM windows)
@@ -144,15 +144,15 @@ if(MSVC)
     else()
         add_definitions(/MT)
         # disable LTO because of https://bugreports.qt.io/browse/QTBUG-41301
-        # add_definitions(/GL)
-        # set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /LTCG")
+        #add_definitions(/GL)
+        #set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /LTCG")
     endif()
     add_definitions(/Zi)
     add_definitions(/MP)
     set(CMAKE_HAVE_PTHREAD_H OFF)
     add_definitions(-D_UNICODE)
     add_definitions(-DUNICODE)
-    add_definitions(-D_VARIADIC_MAX=6)
+    #add_definitions(-D_VARIADIC_MAX=6)
     add_definitions(-D_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS)
     add_definitions(/Zm500)
     add_definitions(/W4)
@@ -183,7 +183,7 @@ if(MSVC)
 
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /DEBUG /OPT:REF /OPT:ICF")
     set(WIN_SDK_DIR "$ENV{ProgramFiles\(x86\)}/Windows Kits/10")
-    set(WIN_SDK_VER "10.0.17763.0")
+    set(WIN_SDK_VER "10.0.18362.0")
     include_directories("${WIN_SDK_DIR}/Include/${WIN_SDK_VER}/shared")
     include_directories("${WIN_SDK_DIR}/Include/${WIN_SDK_VER}/winrt")
     include_directories("${WIN_SDK_DIR}/Include/${WIN_SDK_VER}/um")
@@ -194,7 +194,7 @@ elseif(APPLE)
     set(CMAKE_XCODE_ATTRIBUTE_DEBUG_INFORMATION_FORMAT "dwarf-with-dsym")
     set(CMAKE_XCODE_ATTRIBUTE_GCC_GENERATE_DEBUGGING_SYMBOLS "YES")
     set(CMAKE_XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY "")
-    set(CMAKE_OSX_DEPLOYMENT_TARGET 10.11)
+    set(CMAKE_OSX_DEPLOYMENT_TARGET 10.12)
 
     set(MACOS_COMMON_FLAGS "-ffunction-sections -fdata-sections -fno-stack-protector -fvisibility-inlines-hidden -fvisibility=hidden -fasm-blocks -stdlib=libc++")
     set(MACOS_COMMON_FLAGS "${MACOS_COMMON_FLAGS} -mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET} -Werror=most -Werror=switch")
@@ -299,9 +299,111 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${ICQ_BIN_DIR})
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${ICQ_BIN_DIR})
 
 # --------------------------  external  --------------------------
-set(ICQ_EXTERNAL "${ICQ_ROOT}/external")
-set(ICQ_EXTERNAL_PLATFORM "${ICQ_EXTERNAL}/${ICQ_PLATFORM}")
+set(DOWNLOAD_URL "https://hb.bizmrg.com/icq-www/external")
 
+set(EXT_LIBS_VERSION v9)
+
+set(EXT_LIBS_FNAME "external_${EXT_LIBS_VERSION}.zip")
+set(EXT_LIBS_MD5 "external_${EXT_LIBS_VERSION}.md5")
+
+set(EXTERNAL_URL "${DOWNLOAD_URL}/${EXT_LIBS_VERSION}/${EXT_LIBS_FNAME}")
+
+set(ICQ_EXTERNAL "${ICQ_ROOT}/external_${EXT_LIBS_VERSION}")
+include_directories(${ICQ_EXTERNAL})
+
+set(EXTERNAL_DOWNLOADS "${ICQ_ROOT}/downloads")
+
+message(WARNING "")
+message(WARNING "ICQ_EXTERNAL = ${ICQ_EXTERNAL}")
+message(WARNING "")
+
+message(STATUS "")
+message(STATUS "[+] -> FetchContent [external]")
+
+include(FetchContent)
+
+set(EXTERNAL_FILE_WITH_MD5)
+set(EXTERNAL_FILE_ZIPFILE_MD5)
+
+set(FETCHCONTENT_QUIET OFF)
+
+
+if(EXISTS "${EXTERNAL_DOWNLOADS}/tmp")
+    message(STATUS "file(REMOVE_RECURSE ${EXTERNAL_DOWNLOADS}/tmp)")
+    file(REMOVE_RECURSE "${EXTERNAL_DOWNLOADS}/tmp")
+endif()
+if(EXISTS "${EXTERNAL_DOWNLOADS}/src/${EXT_LIBS_VERSION}-populate-stamp")
+    message(STATUS "file(REMOVE_RECURSE ${EXTERNAL_DOWNLOADS}/src/${EXT_LIBS_VERSION}-populate-stamp)")
+    file(REMOVE_RECURSE "${EXTERNAL_DOWNLOADS}/src/${EXT_LIBS_VERSION}-populate-stamp")
+endif()
+
+if(NOT EXISTS "${EXTERNAL_DOWNLOADS}/src/${EXT_LIBS_MD5}")
+    message(STATUS "No hash, continue")
+    FetchContent_Declare(
+        ${EXT_LIBS_VERSION}
+        PREFIX "${EXTERNAL_DOWNLOADS}"
+        URL ${EXTERNAL_URL}
+        SOURCE_DIR "${ICQ_EXTERNAL}"
+    )
+else()
+    message(STATUS "Reading MD5 HASH from md5 file")
+    file(READ "${EXTERNAL_DOWNLOADS}/src/${EXT_LIBS_MD5}" EXTERNAL_FILE_WITH_MD5)
+    string(STRIP "${EXTERNAL_FILE_WITH_MD5}" EXTERNAL_FILE_WITH_MD5)
+    message(STATUS "EXTERNAL_FILE_WITH_MD5 = ${EXTERNAL_FILE_WITH_MD5}")
+
+    message(STATUS "[md5] Checksum MD5 HASH")
+    file(MD5 "${EXTERNAL_DOWNLOADS}/src/${EXT_LIBS_FNAME}" EXTERNAL_FILE_ZIPFILE_MD5)
+    message(STATUS "EXTERNAL_FILE_ZIPFILE_MD5 = ${EXTERNAL_FILE_ZIPFILE_MD5}")
+    IF(NOT ${EXTERNAL_FILE_WITH_MD5} MATCHES "${EXTERNAL_FILE_ZIPFILE_MD5}")
+        message(STATUS "[md5] not equals!!!")
+        message(STATUS "File will be re-downloaded")
+        FetchContent_Declare(
+            ${EXT_LIBS_VERSION}
+            PREFIX "${EXTERNAL_DOWNLOADS}"
+            URL ${EXTERNAL_URL}
+            SOURCE_DIR "${ICQ_EXTERNAL}"
+        )
+    else()
+        FetchContent_Declare(
+            ${EXT_LIBS_VERSION}
+            PREFIX "${EXTERNAL_DOWNLOADS}"
+            URL ${EXTERNAL_URL}
+            URL_HASH MD5=${EXTERNAL_FILE_WITH_MD5}
+            SOURCE_DIR "${ICQ_EXTERNAL}"
+        )
+    endif()
+endif()
+
+message(STATUS "FetchContent_MakeAvailable(${EXT_LIBS_VERSION})")
+FetchContent_MakeAvailable(${EXT_LIBS_VERSION})
+
+FetchContent_GetProperties(${EXT_LIBS_VERSION})
+if (NOT ${EXT_LIBS_VERSION}_POPULATED)
+    message(STATUS "FetchContent_Populate(${EXT_LIBS_VERSION})")
+    FetchContent_Populate(${EXT_LIBS_VERSION})
+endif()
+
+
+if(EXISTS "${EXTERNAL_DOWNLOADS}/src/${EXT_LIBS_FNAME}")
+    message(STATUS "[md5] Checksum MD5 HASH")
+    file(MD5 "${EXTERNAL_DOWNLOADS}/src/${EXT_LIBS_FNAME}" EXTERNAL_FILE_WITH_MD5)
+    string(STRIP "${EXTERNAL_FILE_WITH_MD5}" EXTERNAL_FILE_WITH_MD5)
+    message(STATUS "[md5] EXTERNAL_FILE_WITH_MD5 = ${EXTERNAL_FILE_WITH_MD5}")
+    message(STATUS "[write][force] Saving MD5 to file -> ${EXTERNAL_DOWNLOADS}/src/${EXT_LIBS_MD5}")
+    FILE(WRITE "${EXTERNAL_DOWNLOADS}/src/${EXT_LIBS_MD5}" "${EXTERNAL_FILE_WITH_MD5}")
+else()
+    message(STATUS "[404] File external_${EXT_LIBS_VERSION}.zip not found!")
+endif()
+
+if(NOT EXISTS "${EXTERNAL_DOWNLOADS}/src/${EXT_LIBS_MD5}")
+    message(STATUS "[404] File ${EXT_LIBS_MD5} was not created")
+endif()
+
+message(STATUS "[+] <- FetchContent [external]")
+message(STATUS "")
+
+
+set(ICQ_EXTERNAL_PLATFORM "${ICQ_EXTERNAL}/${ICQ_PLATFORM}")
 # ------------------------  set_lib_var  -------------------------
 
 macro(set_lib_var varName libName)
@@ -312,22 +414,24 @@ endmacro()
 set(ICQ_PLATFORM_SPECIFIC "${ICQ_EXTERNAL}/platform_specific/${ICQ_PLATFORM}/${ICQ_ARCH}")
 
 # --------------------------    boost   --------------------------
-if(MSVC)
-    add_definitions(-DBOOST_UUID_RANDOM_PROVIDER_FORCE_WINCRYPT) # fix for xp
-elseif(LINUX)
+if(LINUX)
     add_definitions(-DBOOST_UUID_RANDOM_PROVIDER_FORCE_POSIX) # fix missed SYS_getrandom in older kernels
 endif()
 
-set(BOOST_INCLUDEDIR "${ICQ_EXTERNAL}/boost/include")
-
-set_lib_var(BOOST_LIBRARYDIR boost)
+if(WIN32)
+    set(BOOST_INCLUDEDIR "${ICQ_EXTERNAL}/boost_1.72.0/include")
+    set_lib_var(BOOST_LIBRARYDIR "boost_1.72.0")
+else()
+    set(BOOST_INCLUDEDIR "${ICQ_EXTERNAL}/boost/include")
+    set_lib_var(BOOST_LIBRARYDIR boost)
+endif()
 
 set(Boost_USE_STATIC_LIBS ON)
 set(Boost_USE_STATIC_RUNTIME ON)
 set(Boost_NO_SYSTEM_PATHS ON)
 if(MSVC)
     add_definitions(-D_SCL_SECURE_NO_WARNINGS)
-    find_package(Boost REQUIRED chrono date_time filesystem locale system thread  regex)
+    find_package(Boost REQUIRED chrono date_time filesystem locale system thread regex)
 elseif(APPLE)
     find_package(Boost REQUIRED)
     set(Boost_LIBRARIES ${Boost_LIBRARIES} "${BOOST_LIBRARYDIR}/libboost_chrono.a")
@@ -410,22 +514,36 @@ if(APPLE)
 endif()
 
 # --------------------------   OpenAl   --------------------------
-set(ICQ_OPENAL "${ICQ_EXTERNAL}/openal")
-set_lib_var(OPENAL_LIBRARY_DIR openal)
-include_directories(${ICQ_OPENAL}/include)
-add_definitions(-DAL_LIBTYPE_STATIC)
-if(MSVC)
-    set(OPEN_AL_LIBRARIES
-        optimized "${OPENAL_LIBRARY_DIR}/OpenAL32.lib"
-        debug "${OPENAL_LIBRARY_DIR}/OpenAL32d.lib")
+if(APPLE)
+    set(DEFAULT_USE_SYSTEM_OPENAL ON)
 else()
-    set(OPEN_AL_LIBRARIES "${OPENAL_LIBRARY_DIR}/libopenal.a")
+    set(DEFAULT_USE_SYSTEM_OPENAL OFF)
+endif()
+
+option(USE_SYSTEM_OPENAL "Use system openal." ${DEFAULT_USE_SYSTEM_OPENAL})
+
+if (USE_SYSTEM_OPENAL)
+    message(STATUS "openal: system")
+    add_definitions(-DUSE_SYSTEM_OPENAL)
+else()
+    message(STATUS "openal: external")
+    set(ICQ_OPENAL "${ICQ_EXTERNAL}/openal")
+    set_lib_var(OPENAL_LIBRARY_DIR openal)
+    include_directories(${ICQ_OPENAL}/include)
+    add_definitions(-DAL_LIBTYPE_STATIC)
+    if(MSVC)
+        set(OPEN_AL_LIBRARIES
+            optimized "${OPENAL_LIBRARY_DIR}/OpenAL32.lib"
+            debug "${OPENAL_LIBRARY_DIR}/OpenAL32d.lib")
+    else()
+        set(OPEN_AL_LIBRARIES "${OPENAL_LIBRARY_DIR}/libopenal.a")
+    endif()
 endif()
 
 # --------------------------   ffmpeg   --------------------------
 set(ICQ_FFMPEG "${ICQ_EXTERNAL}/ffmpeg")
 if(MSVC)
-    include_directories(${ICQ_FFMPEG}/include_old)										# use old ffmped for windows until xp is being supported
+    include_directories(${ICQ_FFMPEG}/include_old)                                      # use old ffmped for windows until xp is being supported
     SET(FFMPEG_LIBRARY_DIR "${ICQ_EXTERNAL}/ffmpeg/lib_old/${ICQ_PLATFORM}/${ICQ_ARCH}")
     set(FFMPEG_LIBRARIES ${FFMPEG_LIBRARIES} "${FFMPEG_LIBRARY_DIR}/libavcodec.lib")
     set(FFMPEG_LIBRARIES ${FFMPEG_LIBRARIES} "${FFMPEG_LIBRARY_DIR}/libavfilter.lib")
@@ -449,29 +567,127 @@ set(ICQ_MINIZIP "${ICQ_EXTERNAL}/minizip")
 include_directories(${ICQ_MINIZIP}/include)
 
 # --------------------------   libvoip   -------------------------
+set(VOIP_LIBS_VERSION 3.3.0.1664)
+
+set(VOIP_LIBS_FNAME "voip3_${VOIP_LIBS_VERSION}_desktop.zip")
+set(VOIP_LIBS_MD5 "voip3_${VOIP_LIBS_VERSION}_desktop.md5")
+
+set(VOIPLIB_URL "${DOWNLOAD_URL}/Voiplib/${VOIP_LIBS_VERSION}/${VOIP_LIBS_FNAME}")
+
+set(VOIPLIB_DOWNLOADS "${ICQ_ROOT}/downloads")
+
+set(VOIPLIB_ROOT "${ICQ_ROOT}/core/Voip/libvoip_${VOIP_LIBS_VERSION}")
+include_directories(${VOIPLIB_ROOT})
+
+message(STATUS "")
+message(STATUS "[+] -> FetchContent [VOIP]")
+
+# include(FetchContent)
+
+set(VOIPLIB_FILE_WITH_MD5)
+set(VOIPLIB_FILE_ZIPFILE_MD5)
+
+set(FETCHCONTENT_QUIET OFF)
+
+if(EXISTS "${VOIPLIB_DOWNLOADS}/src/${VOIP_LIBS_VERSION}-populate-stamp")
+    message(STATUS "file(REMOVE_RECURSE ${VOIPLIB_DOWNLOADS}/src/${VOIP_LIBS_VERSION}-populate-stamp)")
+    file(REMOVE_RECURSE "${VOIPLIB_DOWNLOADS}/src/${VOIP_LIBS_VERSION}-populate-stamp")
+endif()
+
+if(NOT EXISTS "${VOIPLIB_DOWNLOADS}/src/${VOIP_LIBS_MD5}")
+    message(STATUS "No hash, continue")
+    FetchContent_Declare(
+        ${VOIP_LIBS_VERSION}
+        PREFIX "${VOIPLIB_DOWNLOADS}"
+        URL ${VOIPLIB_URL}
+        SOURCE_DIR "${VOIPLIB_ROOT}"
+    )
+else()
+    message(STATUS "Reading MD5 HASH from md5 file")
+    file(READ "${VOIPLIB_DOWNLOADS}/src/${VOIP_LIBS_MD5}" VOIPLIB_FILE_WITH_MD5)
+    string(STRIP "${VOIPLIB_FILE_WITH_MD5}" VOIPLIB_FILE_WITH_MD5)
+    message(STATUS "VOIPLIB_FILE_WITH_MD5 = ${VOIPLIB_FILE_WITH_MD5}")
+
+    message(STATUS "[md5] Checksum MD5 HASH")
+    file(MD5 "${VOIPLIB_DOWNLOADS}/src/${VOIP_LIBS_FNAME}" VOIPLIB_FILE_ZIPFILE_MD5)
+    message(STATUS "VOIPLIB_FILE_ZIPFILE_MD5 = ${VOIPLIB_FILE_ZIPFILE_MD5}")
+    IF(NOT ${VOIPLIB_FILE_WITH_MD5} MATCHES "${VOIPLIB_FILE_ZIPFILE_MD5}")
+        message(STATUS "[md5] not equals!!!")
+        message(STATUS "File will be re-downloaded")
+        FetchContent_Declare(
+            ${VOIP_LIBS_VERSION}
+            PREFIX "${VOIPLIB_DOWNLOADS}"
+            URL ${VOIPLIB_URL}
+            SOURCE_DIR "${VOIPLIB_ROOT}"
+        )
+    else()
+        FetchContent_Declare(
+            ${VOIP_LIBS_VERSION}
+            PREFIX "${VOIPLIB_DOWNLOADS}"
+            URL ${VOIPLIB_URL}
+            URL_HASH MD5=${VOIPLIB_FILE_WITH_MD5}
+            SOURCE_DIR "${VOIPLIB_ROOT}"
+        )
+    endif()
+endif()
+
+message(STATUS "FetchContent_MakeAvailable(${VOIP_LIBS_VERSION})")
+FetchContent_MakeAvailable(${VOIP_LIBS_VERSION})
+
+FetchContent_GetProperties(${VOIP_LIBS_VERSION})
+if (NOT ${VOIP_LIBS_VERSION}_POPULATED)
+    message(STATUS "FetchContent_Populate(${VOIP_LIBS_VERSION})")
+    FetchContent_Populate(${VOIP_LIBS_VERSION})
+endif()
+
+
+if(EXISTS "${VOIPLIB_DOWNLOADS}/src/${VOIP_LIBS_FNAME}")
+    message(STATUS "[md5] Checksum MD5 HASH")
+    file(MD5 "${VOIPLIB_DOWNLOADS}/src/${VOIP_LIBS_FNAME}" VOIPLIB_FILE_WITH_MD5)
+    string(STRIP "${VOIPLIB_FILE_WITH_MD5}" VOIPLIB_FILE_WITH_MD5)
+    message(STATUS "[md5] VOIPLIB_FILE_WITH_MD5 = ${VOIPLIB_FILE_WITH_MD5}")
+    message(STATUS "[write][force] Saving MD5 to file -> ${VOIPLIB_DOWNLOADS}/src/${VOIP_LIBS_MD5}")
+    FILE(WRITE "${VOIPLIB_DOWNLOADS}/src/${VOIP_LIBS_MD5}" "${VOIPLIB_FILE_WITH_MD5}")
+else()
+    message(STATUS "[404] File ${VOIP_LIBS_FNAME} not found!")
+endif()
+
+if(NOT EXISTS "${VOIPLIB_DOWNLOADS}/src/${VOIP_LIBS_MD5}")
+    message(STATUS "[404] File ${VOIP_LIBS_MD5} was not created")
+endif()
+
+message(STATUS "[+] <- FetchContent [VOIP]")
+message(STATUS "")
+
+
 if(MSVC)
- set(ICQ_VOIP "${ICQ_ROOT}/core/Voip/libvoip/lib.windows")
- set(VOIP_LIBRARIES "${VOIP_LIBRARIES}" msdmo.lib dmoguids.lib wmcodecdspuuid.lib amstrmid.lib winmm.lib secur32.lib ws2_32.lib comsuppw.lib)
- set(VOIP_LIBRARIES "${VOIP_LIBRARIES}" optimized comsuppw.lib debug comsuppwd.lib)
-  set(VOIP_DX_COMPILER_LIBRARY "${ICQ_VOIP}/d3dcompiler_43.dll")
+    set(VOIP_LIBRARIES "${VOIP_LIBRARIES}" msdmo.lib dmoguids.lib wmcodecdspuuid.lib amstrmid.lib winmm.lib secur32.lib ws2_32.lib comsuppw.lib)
+    set(VOIP_LIBRARIES "${VOIP_LIBRARIES}" optimized comsuppw.lib debug comsuppwd.lib)
+    set(VOIP_DX_COMPILER_LIBRARY "${ICQ_PLATFORM_SPECIFIC}/d3dcompiler_43.dll")
 endif()
 
 if(NOT VOIP_AS_MODULE)
-    include_directories("${ICQ_ROOT}/core/Voip/libvoip/include")
+    include_directories("${VOIPLIB_ROOT}/include")
     if(MSVC)
-        set(VOIP_LIBRARIES "${VOIP_LIBRARIES}" optimized "${ICQ_VOIP}/libvoip_sdk_merged_x86.lib" debug "${ICQ_VOIP}/libvoip_sdk_merged_x86d.lib")
+        set(VOIP_LIBRARIES "${VOIP_LIBRARIES}" optimized "${VOIPLIB_ROOT}/lib/windows.Release.x86/libvoip_sdk_merged_x86.lib" debug "${VOIPLIB_ROOT}/lib/windows.Debug.x86/libvoip_sdk_merged_x86d.lib")
+
     elseif(APPLE)
-        set(ICQ_VOIP "${ICQ_ROOT}/core/Voip/libvoip/lib.macos")
-        set(VOIP_LIBRARIES "${ICQ_VOIP}/libvoip_sdk_merged_x64.a")
+        set(VOIP_LIBRARIES "${VOIPLIB_ROOT}/lib/macos.Release.x64/libvoip_sdk_merged_x64.a")
+
     elseif(LINUX)
-        set(ICQ_VOIP "${ICQ_ROOT}/core/Voip/libvoip/lib.linux")
         if(LINUX32)
-            set(VOIP_LIBRARIES "${ICQ_VOIP}/libvoip_sdk_merged_x86.a")
+            set(VOIP_LIBRARIES "${VOIPLIB_ROOT}/lib/linux.Release.x86/libvoip_sdk_merged_x86.a")
         else()
-            set(VOIP_LIBRARIES "${ICQ_VOIP}/libvoip_sdk_merged_x64.a")
+            set(VOIP_LIBRARIES "${VOIPLIB_ROOT}/lib/linux.Release.x64/libvoip_sdk_merged_x64.a")
         endif()
     endif()
 endif()
+
+if (STRIP_VOIP)
+    add_definitions(-DSTRIP_VOIP)
+endif()
+
+
 
 # --------------------------     qt     --------------------------
 set(ICQ_QT_ROOT "${ICQ_EXTERNAL}/qt/${ICQ_PLATFORM}")
@@ -480,6 +696,7 @@ if(LINUX)
     set(ICQ_QT_INCLUDE_DIR "${ICQ_QT_ROOT}/include")
     set(ICQ_QT_LIB_DIR "${ICQ_QT_ROOT}/lib/${ICQ_ARCH}")
     set(ICQ_QT_BIN_DIR "${ICQ_QT_ROOT}/bin")
+    set(ICQ_QT_PLUGINS_DIR "${ICQ_QT_ROOT}/plugins/${ICQ_ARCH}")
     EXEC_PROGRAM("chmod +x ${ICQ_QT_BIN_DIR}/lrelease")
     EXEC_PROGRAM("chmod +x ${ICQ_QT_BIN_DIR}/rcc")
     EXEC_PROGRAM("chmod +x ${ICQ_QT_BIN_DIR}/uic")
@@ -492,11 +709,9 @@ else()
 endif()
 
 if(APPLE)
-    set(ICQ_QT_VERSION "5.11.3")
-elseif(LINUX)
-    set(ICQ_QT_VERSION "5.6.4")
+    set(ICQ_QT_VERSION "5.12.8")
 else()
-    set(ICQ_QT_VERSION "5.6.2")
+    set(ICQ_QT_VERSION "5.14.2")
 endif()
 include_directories("${ICQ_QT_INCLUDE_DIR}")
 include_directories("${ICQ_QT_INCLUDE_DIR}/QtCore")
@@ -522,23 +737,36 @@ if(MSVC)
     set(QT_LIBRARIES
         optimized ${ICQ_QT_LIB_DIR}/Qt5Gui.lib debug ${ICQ_QT_LIB_DIR}/Qt5Guid.lib
         optimized ${ICQ_QT_LIB_DIR}/Qt5Core.lib debug ${ICQ_QT_LIB_DIR}/Qt5Cored.lib
-        optimized ${ICQ_QT_LIB_DIR}/Qt5Widgets.lib debug ${ICQ_QT_LIB_DIR}/Qt5Widgetsd.lib
-        optimized ${ICQ_QT_LIB_DIR}/Qt5PlatformSupport.lib debug ${ICQ_QT_LIB_DIR}/Qt5PlatformSupportd.lib
+        optimized ${ICQ_QT_LIB_DIR}/Qt5EventDispatcherSupport.lib debug ${ICQ_QT_LIB_DIR}/Qt5EventDispatcherSupportd.lib
+        optimized ${ICQ_QT_LIB_DIR}/Qt5FontDatabaseSupport.lib debug ${ICQ_QT_LIB_DIR}/Qt5FontDatabaseSupportd.lib
+        optimized ${ICQ_QT_LIB_DIR}/Qt5Network.lib debug ${ICQ_QT_LIB_DIR}/Qt5Networkd.lib        
         optimized ${ICQ_QT_LIB_DIR}/Qt5Multimedia.lib debug ${ICQ_QT_LIB_DIR}/Qt5Multimediad.lib
         optimized ${ICQ_QT_LIB_DIR}/Qt5MultimediaWidgets.lib debug ${ICQ_QT_LIB_DIR}/Qt5MultimediaWidgetsd.lib
-        optimized ${ICQ_QT_LIB_DIR}/Qt5Network.lib debug ${ICQ_QT_LIB_DIR}/Qt5Networkd.lib
+        optimized ${ICQ_QT_LIB_DIR}/Qt5Multimedia.lib debug ${ICQ_QT_LIB_DIR}/Qt5Multimediad.lib
         optimized ${ICQ_QT_LIB_DIR}/Qt5Test.lib debug ${ICQ_QT_LIB_DIR}/Qt5Testd.lib
-        optimized ${ICQ_QT_LIB_DIR}/qtharfbuzzng.lib debug ${ICQ_QT_LIB_DIR}/qtharfbuzzngd.lib
-        optimized ${ICQ_QT_LIB_DIR}/qtmain.lib debug ${ICQ_QT_LIB_DIR}/qtmaind.lib
-        optimized ${ICQ_QT_LIB_DIR}/qwindows.lib debug ${ICQ_QT_LIB_DIR}/qwindowsd.lib
-        optimized ${ICQ_QT_LIB_DIR}/qico.lib debug ${ICQ_QT_LIB_DIR}/qicod.lib
-        optimized ${ICQ_QT_LIB_DIR}/qtaudio_windows.lib debug ${ICQ_QT_LIB_DIR}/qtaudio_windowsd.lib
-        optimized ${ICQ_QT_LIB_DIR}/qtiff.lib debug ${ICQ_QT_LIB_DIR}/qtiffd.lib
-        optimized ${ICQ_QT_LIB_DIR}/Qt5Svg.lib debug ${ICQ_QT_LIB_DIR}/Qt5Svgd.lib
+        optimized ${ICQ_QT_LIB_DIR}/Qt5ThemeSupport.lib debug ${ICQ_QT_LIB_DIR}/Qt5ThemeSupportd.lib
         optimized ${ICQ_QT_LIB_DIR}/Qt5OpenGL.lib debug ${ICQ_QT_LIB_DIR}/Qt5OpenGLd.lib
-        optimized ${ICQ_QT_LIB_DIR}/qtpcre.lib debug ${ICQ_QT_LIB_DIR}/qtpcred.lib
+        optimized ${ICQ_QT_LIB_DIR}/Qt5Svg.lib debug ${ICQ_QT_LIB_DIR}/Qt5Svgd.lib
+        optimized ${ICQ_QT_LIB_DIR}/Qt5PlatformCompositorSupport.lib debug ${ICQ_QT_LIB_DIR}/Qt5PlatformCompositorSupportd.lib
+        optimized ${ICQ_QT_LIB_DIR}/Qt5Widgets.lib debug ${ICQ_QT_LIB_DIR}/Qt5Widgetsd.lib
+        optimized ${ICQ_QT_LIB_DIR}/Qt5WinExtras.lib debug ${ICQ_QT_LIB_DIR}/Qt5WinExtrasd.lib
+        optimized ${ICQ_QT_LIB_DIR}/Qt5WindowsUIAutomationSupport.lib debug ${ICQ_QT_LIB_DIR}/Qt5WindowsUIAutomationSupportd.lib
+        optimized ${ICQ_QT_LIB_DIR}/qtpcre2.lib debug ${ICQ_QT_LIB_DIR}/qtpcre2d.lib
+        optimized ${ICQ_QT_LIB_DIR}/qtmain.lib debug ${ICQ_QT_LIB_DIR}/qtmaind.lib
+        optimized ${ICQ_QT_LIB_DIR}/qtharfbuzz.lib debug ${ICQ_QT_LIB_DIR}/qtharfbuzzd.lib
         optimized ${ICQ_QT_LIB_DIR}/qtfreetype.lib debug ${ICQ_QT_LIB_DIR}/qtfreetyped.lib
-        optimized ${ICQ_QT_LIB_DIR}/qsvg.lib debug ${ICQ_QT_LIB_DIR}/qsvgd.lib
+        optimized ${ICQ_QT_LIB_DIR}/qtlibpng.lib debug ${ICQ_QT_LIB_DIR}/qtlibpngd.lib
+        optimized ${ICQ_QT_PLUGINS_DIR}/imageformats/qgif.lib debug ${ICQ_QT_PLUGINS_DIR}/imageformats/qgifd.lib
+        optimized ${ICQ_QT_PLUGINS_DIR}/imageformats/qicns.lib debug ${ICQ_QT_PLUGINS_DIR}/imageformats/qicnsd.lib
+        optimized ${ICQ_QT_PLUGINS_DIR}/imageformats/qico.lib debug ${ICQ_QT_PLUGINS_DIR}/imageformats/qicod.lib
+        optimized ${ICQ_QT_PLUGINS_DIR}/imageformats/qjpeg.lib debug ${ICQ_QT_PLUGINS_DIR}/imageformats/qjpegd.lib
+        optimized ${ICQ_QT_PLUGINS_DIR}/imageformats/qsvg.lib debug ${ICQ_QT_PLUGINS_DIR}/imageformats/qsvgd.lib
+        optimized ${ICQ_QT_PLUGINS_DIR}/imageformats/qtga.lib debug ${ICQ_QT_PLUGINS_DIR}/imageformats/qtgad.lib
+        optimized ${ICQ_QT_PLUGINS_DIR}/imageformats/qtiff.lib debug ${ICQ_QT_PLUGINS_DIR}/imageformats/qtiffd.lib
+        optimized ${ICQ_QT_PLUGINS_DIR}/imageformats/qwbmp.lib debug ${ICQ_QT_PLUGINS_DIR}/imageformats/qwbmpd.lib
+        optimized ${ICQ_QT_PLUGINS_DIR}/imageformats/qwebp.lib debug ${ICQ_QT_PLUGINS_DIR}/imageformats/qwebpd.lib
+        optimized ${ICQ_QT_PLUGINS_DIR}/audio/qtaudio_windows.lib debug ${ICQ_QT_PLUGINS_DIR}/audio/qtaudio_windowsd.lib
+        optimized ${ICQ_QT_PLUGINS_DIR}/platforms/qwindows.lib debug ${ICQ_QT_PLUGINS_DIR}/platforms/qwindowsd.lib
     )
 elseif(APPLE)
     add_definitions(-DQT_GUI_LIB=1)
@@ -563,11 +791,17 @@ elseif(APPLE)
         ${ICQ_QT_LIB_DIR}/libqtpcre2.a
         ${ICQ_QT_LIB_DIR}/libqtlibpng.a
         ${ICQ_QT_LIB_DIR}/libQt5MacExtras.a
-        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqtiff.a
-        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqico.a
-        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqsvg.a
-        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqjpeg.a
         ${ICQ_QT_PLUGINS_DIR}/imageformats/libqgif.a
+        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqicns.a
+        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqico.a
+        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqjpeg.a
+        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqmacheif.a
+        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqmacjp2.a
+        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqsvg.a
+        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqtga.a
+        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqtiff.a
+        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqwbmp.a
+        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqwebp.a
         ${ICQ_QT_PLUGINS_DIR}/platforms/libqcocoa.a
         )
 
@@ -579,32 +813,51 @@ elseif(APPLE)
 
 elseif(LINUX)
     set(QT_LIBRARIES
-        ${ICQ_QT_LIB_DIR}/libQt5Widgets.a
-        ${ICQ_QT_LIB_DIR}/libqtmedia_audioengine.a
-        ${ICQ_QT_LIB_DIR}/libqtmultimedia_m3u.a
-        ${ICQ_QT_LIB_DIR}/libQt5Multimedia.a
-        ${ICQ_QT_LIB_DIR}/libqxcb.a
+        ${ICQ_QT_PLUGINS_DIR}/platforms/libqxcb.a
         ${ICQ_QT_LIB_DIR}/libQt5XcbQpa.a
-        ${ICQ_QT_LIB_DIR}/libxcb-static.a
-        ${ICQ_QT_LIB_DIR}/libQt5PlatformSupport.a
-        ${ICQ_QT_LIB_DIR}/libqico.a
-        ${ICQ_QT_LIB_DIR}/libQt5Gui.a
-        ${ICQ_QT_LIB_DIR}/libqconnmanbearer.a
-        ${ICQ_QT_LIB_DIR}/libqgenericbearer.a
-        ${ICQ_QT_LIB_DIR}/libqnmbearer.a
-        ${ICQ_QT_LIB_DIR}/libQt5Network.a
+        ${ICQ_QT_LIB_DIR}/libQt5ServiceSupport.a
+        ${ICQ_QT_LIB_DIR}/libQt5ThemeSupport.a
+        ${ICQ_QT_LIB_DIR}/libQt5FontDatabaseSupport.a
+        ${ICQ_QT_LIB_DIR}/libQt5XkbCommonSupport.a
+        ${ICQ_QT_LIB_DIR}/libQt5LinuxAccessibilitySupport.a
+        ${ICQ_QT_LIB_DIR}/libQt5AccessibilitySupport.a
+        ${ICQ_QT_LIB_DIR}/libQt5EdidSupport.a
         ${ICQ_QT_LIB_DIR}/libQt5DBus.a
+        ${ICQ_QT_LIB_DIR}/libQt5Widgets.a
+        ${ICQ_QT_LIB_DIR}/libQt5Gui.a
+        ${ICQ_QT_LIB_DIR}/libQt5Network.a
+        ${ICQ_QT_LIB_DIR}/libQt5Multimedia.a
+        ${ICQ_QT_LIB_DIR}/libQt5Concurrent.a
+        ${ICQ_QT_LIB_DIR}/libxcb-static.a
         ${ICQ_QT_LIB_DIR}/libQt5Core.a
-        ${ICQ_QT_LIB_DIR}/libqtpcre.a
         ${ICQ_QT_LIB_DIR}/libQt5Svg.a
-        ${ICQ_QT_LIB_DIR}/libqsvg.a)
+        ${ICQ_QT_LIB_DIR}/libqtpcre2.a
+        ${ICQ_QT_LIB_DIR}/libqtlibpng.a
+        ${ICQ_QT_PLUGINS_DIR}/bearer/libqconnmanbearer.a
+        ${ICQ_QT_PLUGINS_DIR}/bearer/libqnmbearer.a
+        ${ICQ_QT_PLUGINS_DIR}/bearer/libqgenericbearer.a
+        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqgif.a
+        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqicns.a
+        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqico.a
+        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqjpeg.a
+        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqsvg.a
+        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqtga.a
+        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqtiff.a
+        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqwbmp.a
+        ${ICQ_QT_PLUGINS_DIR}/imageformats/libqwebp.a
+        )
 endif()
 
 # ------------------------ phonenumber  -----------------------
 set(ICQ_PHONENUMBER "${ICQ_EXTERNAL}/phonenumber")
 set_lib_var(PHONENUMBER_LIBRARY_DIR phonenumber)
 add_definitions ("-DI18N_PHONENUMBERS_USE_BOOST")
-include_directories(${ICQ_PHONENUMBER}/include)
+if(MSVC)
+    include_directories(${ICQ_PHONENUMBER}/include_win)
+else()
+    include_directories(${ICQ_PHONENUMBER}/include)
+endif()
+
 if(LINUX OR APPLE)
     set(PHONENUMBER_LIBRARIES ${PHONENUMBER_LIBRARY_DIR}/libphonenumber.a)
 elseif(MSVC)
@@ -617,9 +870,10 @@ set_lib_var(PROTOBUF_LIBRARY_DIR protobuf)
 
 include_directories(${ICQ_PROTOBUF}/include)
 
-# --------------------------- breadpad  --------------------------
+# --------------------------- breakpad  --------------------------
 
 if (LINUX)
+    message(STATUS "> BREAKPAD")
     set(ICQ_BREAKPAD "${ICQ_EXTERNAL}/breakpad/src")
     set_lib_var(BREAKPAD_LIBRARY_DIR breakpad)
 
@@ -652,20 +906,52 @@ if (LINUX)
     ${breadpad_common_platform_files} ${breadpad_client_platform_files})
 endif()
 
-# --------------------------- crashpad  --------------------------
 
 if (APPLE)
-    set(ICQ_CRASHPAD "${ICQ_EXTERNAL}/crashpad")
-    set_lib_var(CRASHPAD_LIBRARY_DIR crashpad)
+    if (BUILD_FOR_STORE)
+        message(STATUS "> BREAKPAD")
+        set(ICQ_BREAKPAD "${ICQ_EXTERNAL}/breakpad/src")
+        set_lib_var(BREAKPAD_LIBRARY_DIR breakpad)
 
-    include_directories(${ICQ_CRASHPAD}/include)
-    include_directories(${ICQ_CRASHPAD}/include/mini_chromium)
+        include_directories(${ICQ_BREAKPAD})
+        include_directories(${ICQ_BREAKPAD}/client)
+        include_directories(${ICQ_BREAKPAD}/common)
+        set(BREAKPAD_LIBRARIES ${BREAKPAD_LIBRARY_DIR}/libbreakpad.a)
 
-    set(CRASHPAD_LIBRARIES
-        ${CRASHPAD_LIBRARY_DIR}/libclient.a
-        ${CRASHPAD_LIBRARY_DIR}/libutil.a
-        ${CRASHPAD_LIBRARY_DIR}/libbase.a
-        ${CRASHPAD_LIBRARY_DIR}/libsnapshot.a)
+        set(BREAKPAD_SOURCE
+        ${ICQ_BREAKPAD}/common/string_conversion.cc
+        ${ICQ_BREAKPAD}/common/convert_UTF.cc
+        ${ICQ_BREAKPAD}/common/md5.cc
+        ${ICQ_BREAKPAD}/client/minidump_file_writer.cc
+        ${ICQ_BREAKPAD}/client/mac/crash_generation/crash_generation_client.cc
+        ${ICQ_BREAKPAD}/client/mac/handler/exception_handler.cc
+        ${ICQ_BREAKPAD}/client/mac/handler/minidump_generator.cc
+        ${ICQ_BREAKPAD}/client/mac/handler/breakpad_nlist_64.cc
+        ${ICQ_BREAKPAD}/client/mac/handler/dynamic_images.cc
+        ${ICQ_BREAKPAD}/client/mac/handler/protected_memory_allocator.cc
+        ${ICQ_BREAKPAD}/common/mac/bootstrap_compat.cc
+        ${ICQ_BREAKPAD}/common/mac/file_id.cc
+        ${ICQ_BREAKPAD}/common/mac/macho_id.cc
+        ${ICQ_BREAKPAD}/common/mac/macho_reader.cc
+        ${ICQ_BREAKPAD}/common/mac/macho_utilities.cc
+        ${ICQ_BREAKPAD}/common/mac/macho_walker.cc
+        ${ICQ_BREAKPAD}/common/mac/string_utilities.cc
+        ${ICQ_BREAKPAD}/common/mac/MachIPC.mm)
+    else()
+# --------------------------- crashpad  --------------------------
+        message(STATUS "> CRASHPAD")
+        set(ICQ_CRASHPAD "${ICQ_EXTERNAL}/crashpad")
+        set_lib_var(CRASHPAD_LIBRARY_DIR crashpad)
+
+        include_directories(${ICQ_CRASHPAD}/include)
+        include_directories(${ICQ_CRASHPAD}/include/mini_chromium)
+
+        set(CRASHPAD_LIBRARIES
+            ${CRASHPAD_LIBRARY_DIR}/libclient.a
+            ${CRASHPAD_LIBRARY_DIR}/libutil.a
+            ${CRASHPAD_LIBRARY_DIR}/libbase.a
+            ${CRASHPAD_LIBRARY_DIR}/libsnapshot.a)
+    endif()
 endif()
 
 # --------------------------- re2  ----------------------------
@@ -829,7 +1115,6 @@ function(generate_mocs output ${ARGN})
         string(FIND "${file_content}" "Q_SIGNALS" pos3)
 
         if ((pos1 EQUAL -1) AND (pos2 EQUAL -1) AND (pos3 EQUAL -1))
-            message(STATUS "generate_mocs skipped: " ${header})
             continue()
         endif()
 
@@ -885,7 +1170,3 @@ add_subdirectory(core)
 add_subdirectory(corelib)
 add_subdirectory(gui)
 add_subdirectory(libomicron)
-if(MSVC)
-    add_subdirectory(coretest)
-    add_subdirectory(tests/unit_tests)
-endif()

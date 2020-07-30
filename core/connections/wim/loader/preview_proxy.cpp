@@ -6,6 +6,7 @@
 
 #include "../../../tools/json_helper.h"
 #include "../../urls_cache.h"
+#include "../common.shared/string_utils.h"
 
 CORE_WIM_PREVIEW_PROXY_NS_BEGIN
 
@@ -246,7 +247,7 @@ link_meta_uptr parse_json(InOut char *_json, const std::string &_uri)
 
     const auto site_name = extract_host(_uri);
 
-    const auto content_type = parse_content_type(root_node);    
+    const auto content_type = parse_content_type(root_node);
 
     const auto is_invalid_json = content_type.empty();
     if (is_invalid_json)
@@ -274,15 +275,12 @@ namespace uri
 {
     std::string get_preview()
     {
-        std::string res;
-        res += urls::get_url(urls::url_type::preview_host);
-        res += "/getPreview";
-        return res;
+        return su::concat(urls::get_url(urls::url_type::preview_host), "/getPreview");
     }
 
-    std::string_view get_url_content()
+    std::string get_url_content()
     {
-        return "https://api.icq.net/preview/getURLContent";
+        return urls::get_url(urls::url_type::url_content);
     }
 }
 
@@ -353,12 +351,12 @@ namespace
 
         const auto &node_image = iter_favicon->value[0];
         if (!node_image.IsObject() ||
-            !node_image.HasMember("url"))
+            !node_image.HasMember("preview_url"))
         {
             return std::string();
         }
 
-        const auto &node_preview_url = node_image["url"];
+        const auto &node_preview_url = node_image["preview_url"];
         if (!node_preview_url.IsString())
         {
             return std::string();

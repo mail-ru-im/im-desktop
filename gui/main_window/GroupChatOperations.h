@@ -73,6 +73,8 @@ namespace Ui
         pencil,
         profile,
     };
+
+    void createGroupVideoCall();
     void createGroupChat(const std::vector<QString>& _members_aimIds, const CreateChatSource _source);
     void createChannel(const CreateChatSource _source);
     bool callChatNameEditor(QWidget* _parent, GroupChatOperations::ChatData &chatData, Out std::shared_ptr<GroupChatSettings> &groupChatSettings, bool _channel);
@@ -88,9 +90,52 @@ namespace Ui
 
     int forwardMessage(const QString& _message, const QString& _labelText = QString(), const QString& _buttonText = QString(), bool _enableAuthorSetting = true);
 
+    enum class ForwardWithAuthor
+    {
+        Yes,
+        No
+    };
+
+    enum class ForwardSeparately
+    {
+        Yes,
+        No
+    };
+
+    void sendForwardedMessages(const Data::QuotesVec& quotes, std::vector<QString> _contacts, ForwardWithAuthor _forwardWithAuthor, ForwardSeparately _forwardSeparately);
+
     void eraseHistory(const QString& _aimid);
 
     void sharePhone(const QString& _name, const QString& _phone, const QString& _aimid);
 
     void sharePhone(const QString& _name, const QString& _phone, const std::vector<QString>& _selectedContacts, const QString& _aimid, const Data::QuotesVec& _quotes = {});
+
+    enum class ChatMembersShowMode
+    {
+        All,
+        WithoutMe
+    };
+
+    bool selectChatMembers(const QString& _aimId, const QString& _title, const QString& _buttonName, ChatMembersShowMode _mode,  std::vector<QString>& _contacts);
+
+    enum class CallType
+    {
+        Audio,
+        Video
+    };
+
+    enum class CallPlace
+    {
+        Chat,
+        Profile,
+        CallLog
+    };
+
+    enum class JoinChatRoom
+    {
+        No,
+        Yes
+    };
+
+    void doVoipCall(const QString& _aimId, CallType _type, CallPlace _place);
 }

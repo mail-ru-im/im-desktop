@@ -50,6 +50,11 @@ namespace Ui
             void setFixed(const bool _isFixed);
             bool isFixed() const;
 
+            void setSetId(int32_t _id) { setId_ = _id; }
+            int getSetId() const noexcept { return setId_; }
+
+            void setPixmap(QPixmap _pixmap);
+
         protected:
             void paintEvent(QPaintEvent* _e) override;
 
@@ -57,6 +62,7 @@ namespace Ui
             AttachedView attachedView_;
             bool fixed_;
             QPixmap pixmap_;
+            int32_t setId_ = -1;
         };
 
         //////////////////////////////////////////////////////////////////////////
@@ -124,6 +130,7 @@ namespace Ui
 
             TabButton* addButton(const QPixmap& _icon);
             TabButton* selectedButton() const;
+            TabButton* getButton(int32_t _setId) const;
 
             void scrollToButton(TabButton* _button);
 

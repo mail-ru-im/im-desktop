@@ -8,32 +8,33 @@
 #define CORELIBRARY "libcorelib.so"
 #endif
 
-const auto updates_folder_short = QLatin1String("updates");
-const auto update_final_command = QLatin1String("-update_final");
-const auto delete_updates_command = QLatin1String("-delete_updates");
-const auto autoupdate_from_8x = QLatin1String("-autoupdate");
-const auto nolaunch_from_8x = QLatin1String("-nolaunch");
-const auto send_dump_arg = QLatin1String("-send_dump");
+constexpr auto updates_folder_short() noexcept { return QStringView(u"updates"); }
+constexpr auto update_final_command() noexcept { return QStringView(u"-update_final"); }
+constexpr auto delete_updates_command() noexcept { return QStringView(u"-delete_updates"); }
+constexpr auto installer_start_client_minimized() noexcept { return QStringView(u"-startup"); }
+constexpr auto arg_start_client_minimized() noexcept { return QStringView(u"/startup"); }
+constexpr auto autoupdate_from_8x() noexcept { return QStringView(u"-autoupdate"); }
+constexpr auto nolaunch_from_8x() noexcept { return QStringView(u"-nolaunch"); };
+constexpr auto send_dump_arg() noexcept { return QStringView(u"-send_dump"); }
 
 #define crossprocess_pipe_name_postfix ".client"
-const QString crossprocess_message_get_process_id = QLatin1String("get_process_id");
-const QString crossprocess_message_get_hwnd_activate = QLatin1String("get_hwnd_and_activate");
-const QString crossprocess_message_shutdown_process = QLatin1String("shutdown_process");
-const QString crossprocess_message_execute_url_command = QLatin1String("execute_url_command");
+constexpr auto crossprocess_message_get_process_id() noexcept { return QStringView(u"get_process_id"); }
+constexpr auto crossprocess_message_get_hwnd_activate() noexcept { return QStringView(u"get_hwnd_and_activate"); }
+constexpr auto crossprocess_message_shutdown_process() noexcept { return QStringView(u"shutdown_process"); }
+constexpr auto crossprocess_message_execute_url_command() noexcept { return QStringView(u"execute_url_command"); }
 
-#define url_command_join_livechat "chat"
-#define url_command_stickerpack_info "s"
-#define url_command_open_profile "people"
-#define url_command_app "app"
-#define url_command_show_public_livechats "show_public_livechats"
-#define url_command_service "service"
-#define url_commandpath_service_getlogs           "getlogs"
-#define url_commandpath_service_getlogs_with_rtp  "getlogswithrtp"
-#define url_commandpath_agent_profile "profile"
-#define url_commandpath_service_clear_avatars         "clear/avatars"
-#define url_commandpath_service_clear_cache           "clear/cache"
-#define url_commandpath_service_debug           "debug"
-#define url_commandpath_service_update          "update"
+constexpr auto url_command_join_livechat() noexcept { return u"chat"; }
+constexpr auto url_command_stickerpack_info() noexcept { return u"s"; }
+constexpr auto url_command_open_profile() noexcept { return u"people"; }
+constexpr auto url_command_service() noexcept { return u"service"; }
+constexpr auto url_command_vcs_call() noexcept { return u"call"; }
+constexpr auto url_commandpath_service_getlogs() noexcept { return u"getlogs"; }
+constexpr auto url_commandpath_service_getlogs_with_rtp() noexcept { return u"getlogswithrtp"; }
+constexpr auto url_commandpath_agent_profile() noexcept { return u"profile"; }
+constexpr auto url_commandpath_service_clear_avatars() noexcept { return u"clear/avatars"; }
+constexpr auto url_commandpath_service_clear_cache() noexcept { return u"clear/cache"; }
+constexpr auto url_commandpath_service_debug() noexcept { return u"debug"; }
+constexpr auto url_commandpath_service_update() noexcept { return u"update"; }
 
 namespace Ui
 {

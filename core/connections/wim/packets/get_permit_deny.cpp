@@ -20,7 +20,7 @@ get_permit_deny::~get_permit_deny()
 {
 }
 
-int32_t get_permit_deny::init_request(std::shared_ptr<core::http_request_simple> _request)
+int32_t get_permit_deny::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     std::stringstream ss_url;
 

@@ -2,7 +2,6 @@
 
 #include "../../../http_request.h"
 #include "../../../tools/json_helper.h"
-#include "../../urls_cache.h"
 #include "archive/history_message.h"
 
 #include "vote_in_poll.h"
@@ -23,19 +22,10 @@ const archive::poll_data& vote_in_poll::get_result() const
     return poll_;
 }
 
-int32_t vote_in_poll::init_request(std::shared_ptr<http_request_simple> _request)
+int32_t vote_in_poll::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
-    constexpr char method[] = "poll/vote";
-
-    _request->set_url(urls::get_url(urls::url_type::rapi_host));
-    _request->set_normalized_url(method);
-    _request->set_keep_alive();
-
     rapidjson::Document doc(rapidjson::Type::kObjectType);
     auto& a = doc.GetAllocator();
-
-    doc.AddMember("method", method, a);
-    doc.AddMember("reqId", get_req_id(), a);
 
     rapidjson::Value node_params(rapidjson::Type::kObjectType);
 
@@ -44,7 +34,7 @@ int32_t vote_in_poll::init_request(std::shared_ptr<http_request_simple> _request
 
     doc.AddMember("params", std::move(node_params), a);
 
-    sign_packet(doc, a, _request);
+    setup_common_and_sign(doc, a, _request, "poll/vote");
 
     if (!robusto_packet::params_.full_log_)
     {

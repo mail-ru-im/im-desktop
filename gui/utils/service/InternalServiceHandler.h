@@ -10,14 +10,14 @@ class InternalServiceRequest;
 class InternalServiceHandler : public RequestHandler
 {
 public:
-    InternalServiceHandler(InternalServiceRequest* _request);
+    InternalServiceHandler(std::shared_ptr<InternalServiceRequest> _request);
     virtual ~InternalServiceHandler();
 
     void start() override;
     void stop() override;
 
 private:
-    InternalServiceRequest* request_;
+    std::shared_ptr<InternalServiceRequest> request_;
 };
 
 }

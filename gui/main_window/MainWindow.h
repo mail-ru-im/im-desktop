@@ -4,6 +4,7 @@
 class MacSupport;
 #endif
 #include "../voip/secureCallWnd.h"
+#include "sidebar/Sidebar.h"
 
 class QApplication;
 class QDockWidget;
@@ -105,7 +106,8 @@ namespace Ui
         enum class ActivateReason
         {
             Unknown = 0,
-            ByNotificationClick = 1
+            ByNotificationClick = 1,
+            ByMailClick = 2,
         };
 
     Q_SIGNALS:
@@ -127,6 +129,8 @@ namespace Ui
         void showMainPage();
         void showGDPRPage();
         void checkForUpdates();
+        void checkForUpdatesInBackground();
+        void installUpdates();
         void showIconInTaskbar(bool);
         void activateWithReason(ActivateReason _reason);
         void activate();
@@ -172,9 +176,13 @@ namespace Ui
         void onThemeChanged();
         void zoomWindow();
 
+        void openStatusPicker();
+
     public:
-        MainWindow(QApplication* _app, const bool _has_valid_login, const bool _locked, const QString& _validOrFirstLogin);
+        MainWindow(QApplication* _app, const bool _hasValidLogin, const bool _locked, const QString& _validOrFirstLogin);
         ~MainWindow();
+
+        void init(bool _needToShow);
 
         void openGallery(const QString &_aimId, const QString &_link, int64_t _msgId, DialogPlayer* _attachedPlayer = nullptr);
         void showHideGallery();
@@ -184,10 +192,20 @@ namespace Ui
         bool isActive() const;
         bool isUIActive() const;
 
+        //! Same as isUIActive but considering only MainWindow
+        bool isUIActiveMainWindow() const;
+
         bool isMainPage() const;
 
         int getScreen() const;
         QRect screenGeometry() const;
+        QRect screenAvailableGeometry() const;
+        QRect availableVirtualGeometry() const;
+
+        int getMinWindowWidth();
+        int getMinWindowHeight();
+        QRect getDefaultWindowSize();
+
         void skipRead(); //skip next sending last read by window activation
 
         void closePopups(const Utils::CloseWindowInfo&);
@@ -197,6 +215,7 @@ namespace Ui
         QLabel* getWindowLogo() const;
 
         void showSidebar(const QString& _aimId);
+        void showSidebarWithParams(const QString& _aimId, SidebarParams _params);
         void showMembersInSidebar(const QString& _aimId);
         void setSidebarVisible(const Utils::SidebarVisibilityParams& _params);
         bool isSidebarVisible() const;
@@ -211,29 +230,32 @@ namespace Ui
 
         void resize(int w, int h);
 
-        QWidget* getWidget();
-
-        bool hasMemoryDockWidget() const;
-        void addMemoryDockWidget(Qt::DockWidgetArea _area, QDockWidget *_dockWidget);
-        bool removeMemoryDockWidget();
+        QWidget* getWidget() const;
 
         void lock();
+        void minimizeOnStartup();
+
+        void updateWindowTitle();
 
     private:
         void initSizes();
-        void initSettings();
+        void initSettings(const bool _do_not_show);
         void initStats();
         void showMaximized();
         void showNormal();
+        void showMinimized();
         void updateState();
         void notifyWindowActive(const bool _active);
         void userActivity();
-        void initGDPR();
         void updateMaximizeButton(bool _isMaximized);
         void needChangeState();
 
         void resetMainPage();
-        void saveWindowSize(QSize size);
+
+        void saveWindowGeometryAndState(QSize size);
+
+        void sendStatus() const;
+        void onEscPressed(const QString& _aimId, const bool _autorepeat);
 
     protected:
         bool nativeEventFilter(const QByteArray&, void* _message, long* _result) override;
@@ -247,6 +269,7 @@ namespace Ui
         void hideEvent(QHideEvent* _event) override;
         void keyPressEvent(QKeyEvent* _event) override;
         void mouseReleaseEvent(QMouseEvent* _event) override;
+        void showEvent(QShowEvent* _event) override;
         void hideTaskbarIcon();
         void showTaskbarIcon();
         void clear_global_objects();
@@ -280,7 +303,6 @@ namespace Ui
         ShadowWindow* Shadow_;
         DialogPlayer* ffplayer_;
         CallQualityStatsMgr* callStatsMgr_;
-        QDockWidget* memoryDockWidget_;
         ConnectionStateWatcher* connStateWatcher_;
 
         bool SkipRead_;
@@ -288,7 +310,10 @@ namespace Ui
         bool isMaximized_;
         bool sleeping_;
 
+        bool inCtor_ = true;
+
         QTimer* userActivityTimer_;
+        QTimer* updateWhenUserInactiveTimer_;
 
 #ifdef _WIN32
         HWND fake_parent_window_;
@@ -299,6 +324,9 @@ namespace Ui
 #endif
         bool windowActive_;
         bool uiActive_;
+        bool uiActiveMainWindow_;
+        bool maximizeLater_;
+        bool minimizeOnStartup_;
 
         ShowingAgreementInfo showingAgreementInfo_;
         LocalPINWidget* localPINWidget_;

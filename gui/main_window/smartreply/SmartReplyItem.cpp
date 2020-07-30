@@ -3,6 +3,7 @@
 #include "SmartReplyItem.h"
 
 #include "controls/TextUnit.h"
+
 #include "cache/stickers/stickers.h"
 #include "styles/ThemeParameters.h"
 #include "utils/utils.h"
@@ -13,13 +14,36 @@
 #include "app_config.h"
 #include "main_window/smiles_menu/SmilesMenu.h"
 
-#include "../../../common.shared/smartreply/smartreply_types.h"
+#include "../common.shared/smartreply/smartreply_types.h"
 
 namespace
 {
-    int textItemHorMargin() { return Utils::scale_value(12); }
-    int textItemHeight() { return Utils::scale_value(34); }
+    int textItemHorMargin(int _emojiCount)
+    {
+        switch (_emojiCount)
+        {
+        case 1:
+            return Utils::scale_value(4);
+        case 2:
+            return Utils::scale_value(6);
+        case 3:
+            return Utils::scale_value(8);
+        default:
+            break;
+        }
+
+        return Utils::scale_value(12);
+    }
+
+    int textItemHeight() { return Utils::scale_value(44); }
+    int textItemRadius() { return Utils::scale_value(17); }
     int textItemBubbleHorMargin() { return Utils::scale_value(2); }
+
+    const QFont& getTextItemFont()
+    {
+        static const auto font = Fonts::appFontScaled(16);
+        return font;
+    }
 
     int stickerBoxSize() { return Utils::scale_value(62); }
     int stickerSize() { return Utils::scale_value(54); }
@@ -77,7 +101,7 @@ namespace Ui
 
     void SmartReplyItem::onClicked() const
     {
-        emit selected(suggest_, QPrivateSignal());
+        Q_EMIT selected(suggest_, QPrivateSignal());
     }
 
     SmartReplySticker::SmartReplySticker(QWidget* _parent, const Data::SmartreplySuggest& _suggest)
@@ -87,8 +111,8 @@ namespace Ui
 
         setFixedSize(stickerBoxSize(), stickerBoxSize());
 
-        connect(this, &ClickableWidget::hoverChanged, this, Utils::QOverload<>::of(&SmartReplySticker::update));
-        connect(this, &ClickableWidget::pressChanged, this, Utils::QOverload<>::of(&SmartReplySticker::update));
+        connect(this, &ClickableWidget::hoverChanged, this, qOverload<>(&SmartReplySticker::update));
+        connect(this, &ClickableWidget::pressChanged, this, qOverload<>(&SmartReplySticker::update));
 
         connect(Ui::GetDispatcher(), &core_dispatcher::onSticker, this, [this](qint32, qint32, qint32, const QString& _stickerId)
         {
@@ -96,7 +120,7 @@ namespace Ui
             {
                 const auto sticker = Stickers::getSticker(getId());
                 if (!sticker || sticker->isFailed())
-                    emit deleteMe();
+                    Q_EMIT deleteMe();
                 else
                     update();
             }
@@ -105,8 +129,8 @@ namespace Ui
         prepareImage();
 
         longtapTimer_.setSingleShot(true);
-        longtapTimer_.setInterval(getLongtapTimeout().count());
-        connect(&longtapTimer_, &QTimer::timeout, this, [this]() { emit showPreview(getId()); });
+        longtapTimer_.setInterval(getLongtapTimeout());
+        connect(&longtapTimer_, &QTimer::timeout, this, [this]() { Q_EMIT showPreview(getId()); });
     }
 
     void SmartReplySticker::paintEvent(QPaintEvent*)
@@ -147,7 +171,7 @@ namespace Ui
 
     QColor SmartReplySticker::getUnderlayColor()
     {
-        const bool active = isHovered() || isPressed();
+        const bool active = isEnabled() && (isHovered() || isPressed());
         if (isFlat())
         {
             if (active)
@@ -158,9 +182,7 @@ namespace Ui
             if (active)
                 return Styling::getParameters().getColor(Styling::StyleVariable::CHAT_PRIMARY_HOVER);
 
-            auto color = Styling::getParameters().getColor(Styling::StyleVariable::CHAT_PRIMARY);
-            color.setAlphaF(0.8);
-            return color;
+            return Styling::getParameters().getColor(Styling::StyleVariable::CHAT_PRIMARY, 0.8);
         }
         else if (active)
         {
@@ -206,7 +228,7 @@ namespace Ui
 
         if (isPreviewVisible())
         {
-            emit hidePreview();
+            Q_EMIT hidePreview();
             setHovered(false);
         }
         update();
@@ -217,7 +239,7 @@ namespace Ui
     void SmartReplySticker::mouseMoveEvent(QMouseEvent* _e)
     {
         if (isPressed() && isPreviewVisible())
-            emit mouseMoved(_e->globalPos());
+            Q_EMIT mouseMoved(_e->globalPos());
 
         SmartReplyItem::mouseMoveEvent(_e);
     }
@@ -229,8 +251,8 @@ namespace Ui
     {
         assert(!suggest_.getData().isEmpty());
 
-        textUnit_ = TextRendering::MakeTextUnit(suggest_.getData(), {}, TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
-        textUnit_->init(Fonts::appFontScaled(16), getTextColor(), QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, 1);
+        textUnit_ = TextRendering::MakeTextUnit(suggest_.getData(), {}, TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS, TextRendering::EmojiSizeType::SMARTREPLY);
+        textUnit_->init(getTextItemFont(), getTextColor(), QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, 1, TextRendering::LineBreakType::PREFER_SPACES, TextRendering::EmojiSizeType::SMARTREPLY);
         textUnit_->evaluateDesiredSize();
 
         recalcSize();
@@ -267,46 +289,41 @@ namespace Ui
 
     QColor SmartReplyText::getTextColor() const
     {
-        if (isFlat())
+        if (isEnabled())
         {
             if (isPressed())
                 return Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY_ACTIVE);
             else if (isHovered())
                 return Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY_HOVER);
-
-            return Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY);
         }
-        else
-        {
-            if (isPressed())
-                return Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY_ACTIVE);
-            else if (isHovered())
-                return Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY_HOVER);
 
-            return Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY);
-        }
+        return Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY);
     }
 
     QColor SmartReplyText::getBubbleColor() const
     {
         if (isFlat())
         {
-            if (isPressed())
-                return Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT_ACTIVE);
-            else if (isHovered())
-                return Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT_HOVER);
+            if (isEnabled())
+            {
+                if (isPressed())
+                    return Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT_ACTIVE);
+                else if (isHovered())
+                    return Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT_HOVER);
+            }
 
             return Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT);
         }
-        else
+
+        if (isEnabled())
         {
             if (isPressed())
                 return Styling::getParameters().getColor(Styling::StyleVariable::CHAT_PRIMARY_ACTIVE);
             else if (isHovered())
                 return Styling::getParameters().getColor(Styling::StyleVariable::CHAT_PRIMARY_HOVER);
-
-            return Styling::getParameters().getColor(Styling::StyleVariable::CHAT_PRIMARY);
         }
+
+        return Styling::getParameters().getColor(Styling::StyleVariable::CHAT_PRIMARY);
     }
 
     void SmartReplyText::updateColors()
@@ -321,18 +338,23 @@ namespace Ui
         const auto margins = (hasMarginLeft_ ? textItemBubbleHorMargin() : 0) + (hasMarginRight_ ? textItemBubbleHorMargin() : 0);
         setFixedSize(bubbleSize.width() + margins, bubbleSize.height() + Utils::getShadowMargin() * 2);
 
-        const auto x = hasMarginLeft_ ? textItemBubbleHorMargin() : 0;
-        const auto y = (rect().height() - bubbleSize.height()) / 2;
-        const auto bubbleRect = QRect(QPoint(x, y), bubbleSize);
-        bubble_ = Utils::renderMessageBubble(bubbleRect, bubbleRect.height() / 2);
-        textUnit_->setOffsets(bubbleRect.left() + textItemHorMargin(), bubbleRect.center().y());
+        const auto bubbleX = hasMarginLeft_ ? textItemBubbleHorMargin() : 0;
+        const auto bubbleY = (rect().height() - bubbleSize.height()) / 2;
+        const auto bubbleRect = QRect(QPoint(bubbleX, bubbleY), bubbleSize);
+        bubble_ = Utils::renderMessageBubble(bubbleRect, textItemRadius());
+
+        const auto emojiCount = textUnit_->getEmojiCount();
+        const auto shift = emojiCount > 0 ? (emojiCount == 3 ? 2 : 1) : 0;
+        const auto textX = bubbleRect.left() + textItemHorMargin(emojiCount);
+        const auto textY = bubbleRect.center().y() - Utils::scale_value(shift);
+        textUnit_->setOffsets(textX, textY);
     }
 
     QSize SmartReplyText::getBubbleSize() const
     {
-        const auto bubbleW = 2 * textItemHorMargin() + textUnit_->desiredWidth();
-        const auto bubbleH = textItemHeight();
-        return QSize(bubbleW, bubbleH);
+        const auto textWidth = textUnit_->desiredWidth();
+        const auto margins = 2 * textItemHorMargin(textUnit_->getEmojiCount());
+        return QSize(textWidth + margins, textItemHeight());
     }
 
     std::unique_ptr<SmartReplyItem> makeSmartReplyItem(const Data::SmartreplySuggest& _suggest)

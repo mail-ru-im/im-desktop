@@ -10,6 +10,7 @@ public:
     virtual ~DeviceMonitoringCallback() = default;
     virtual void DeviceMonitoringListChanged() = 0;
     virtual void DeviceMonitoringBluetoothHeadsetChanged(bool connected) = 0;
+    virtual void DeviceMonitoringAudioPropChanged() {};
 };
 
 class DeviceMonitoring

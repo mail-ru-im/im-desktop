@@ -1,6 +1,6 @@
 # Authors and License
 
-**This source code is Copyright (C) 2020 ICQ LLC (Mail.Ru Group), published under Apache Public License 2.0, except third-party libraries. See NOTICE for more information.**
+**This source code is Copyright (C) 2016 ICQ LLC (Mail.Ru Group), published under Apache Public License 2.0, except third-party libraries. See NOTICE for more information.**
 
  
 

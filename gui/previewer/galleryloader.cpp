@@ -18,6 +18,7 @@ GalleryLoader::GalleryLoader(const QString &_aimId, const QString &_link, int64_
     : aimId_(_aimId)
     , frontLoadSeq_(-1)
     , backLoadSeq_(-1)
+    , isFirstItemInitialized_(false)
     , exhaustedFront_(false)
     , exhaustedBack_(false)
     , index_(-1)
@@ -39,7 +40,7 @@ GalleryLoader::GalleryLoader(const QString &_aimId, const QString &_link, int64_
     items_.push_back(createItem(_link, _msgId, 0, 0, QString(), QString(), _attachedPlayer));
     current_ = 0;
 
-    firstItemSeq_ = Ui::GetDispatcher()->getDialogGalleryByMsg(aimId_, QStringList() << qsl("image") << qsl("video"), _msgId);
+    firstItemSeq_ = Ui::GetDispatcher()->getDialogGalleryByMsg(aimId_, { qsl("image"), qsl("video") }, _msgId);
     initialLink_ = _link;
 
     frontLoadSeq_ = -1;
@@ -91,7 +92,7 @@ void GalleryLoader::dialogGalleryResult(const int64_t _seq, const QVector<Data::
             backLoadSeq_ = -1;
         }
 
-        emit contentUpdated();
+        Q_EMIT contentUpdated();
     }
 }
 
@@ -112,14 +113,15 @@ void GalleryLoader::dialogGalleryResultByMsg(const int64_t _seq, const QVector<D
             firstItem->setTime(e.time_);
             firstItem->setSender(e.sender_);
             firstItem->setCaption(e.caption_);
+            isFirstItemInitialized_ = true;
             break;
         }
     }
 
     loadMore();
 
-    emit itemUpdated();
-    emit contentUpdated();
+    Q_EMIT itemUpdated();
+    Q_EMIT contentUpdated();
 }
 
 void GalleryLoader::dialogGalleryState(const QString& _aimId, const Data::DialogGalleryState& _state)
@@ -127,8 +129,8 @@ void GalleryLoader::dialogGalleryState(const QString& _aimId, const Data::Dialog
     if (aimId_ != _aimId)
         return;
 
-    emit itemUpdated();
-    emit contentUpdated();
+    Q_EMIT itemUpdated();
+    Q_EMIT contentUpdated();
 }
 
 void GalleryLoader::dialogGalleryUpdate(const QString& _aimId, const QVector<Data::DialogGalleryEntry>& _entries)
@@ -143,7 +145,7 @@ void GalleryLoader::dialogGalleryUpdate(const QString& _aimId, const QVector<Dat
     auto currentMsgId = current->msg();
     for (const auto& e : _entries)
     {
-        if (e.msg_id_ == currentMsgId && e.action_ == ql1s("add") && e.url_ == current->link())
+        if (e.msg_id_ == currentMsgId && e.action_ == u"add" && e.url_ == current->link())
         {
             auto galleryItem = qobject_cast<GalleryItem*>(current);
             if (galleryItem)
@@ -152,6 +154,12 @@ void GalleryLoader::dialogGalleryUpdate(const QString& _aimId, const QVector<Dat
                 galleryItem->setTime(e.time_);
                 galleryItem->setSender(e.sender_);
                 galleryItem->setCaption(e.caption_);
+                
+                if (galleryItem == items_.front().get())
+                {
+                    assert(!isFirstItemInitialized_);
+                    isFirstItemInitialized_ = true;
+                }
             }
             continue;
         }
@@ -159,7 +167,7 @@ void GalleryLoader::dialogGalleryUpdate(const QString& _aimId, const QVector<Dat
         auto iter = items_.begin();
         while (iter != items_.end())
         {
-            if (!iter->get() || ((e.action_ == qsl("del") || e.action_ == qsl("edit")) && iter->get()->msg() == e.msg_id_ && hasPrev()))
+            if (!iter->get() || ((e.action_ == u"del" || e.action_ == u"edit") && iter->get()->msg() == e.msg_id_ && hasPrev()))
             {
                 if (e.msg_id_ <= currentMsgId)
                 {
@@ -179,8 +187,8 @@ void GalleryLoader::dialogGalleryUpdate(const QString& _aimId, const QVector<Dat
     exhaustedBack_ = false;
     loadMore();
 
-    emit itemUpdated();
-    emit contentUpdated();
+    Q_EMIT itemUpdated();
+    Q_EMIT contentUpdated();
 }
 
 void GalleryLoader::dialogGalleryInit(const QString& _aimId)
@@ -190,14 +198,14 @@ void GalleryLoader::dialogGalleryInit(const QString& _aimId)
 
     if (items_.size() == 1)
     {
-        firstItemSeq_ = Ui::GetDispatcher()->getDialogGalleryByMsg(aimId_, QStringList() << qsl("image") << qsl("video"), items_.front()->msg());
+        firstItemSeq_ = Ui::GetDispatcher()->getDialogGalleryByMsg(aimId_, { qsl("image"), qsl("video") }, items_.front()->msg());
         return;
     }
 
     loadMore();
 
-    emit itemUpdated();
-    emit contentUpdated();
+    Q_EMIT itemUpdated();
+    Q_EMIT contentUpdated();
 }
 
 void GalleryLoader::dialogGalleryHoles(const QString& _aimId)
@@ -207,7 +215,13 @@ void GalleryLoader::dialogGalleryHoles(const QString& _aimId)
 
     auto current = currentItem();
     if (current)
-        Ui::GetDispatcher()->getDialogGalleryIndex(_aimId, QStringList() << qsl("image") << qsl("video"), current->msg(), current->seq());
+    {
+        if (!isFirstItemInitialized_ && current == items_.front().get())
+        {
+            Ui::GetDispatcher()->getDialogGalleryByMsg(_aimId, { qsl("image"), qsl("video") }, current->msg());
+        }
+        Ui::GetDispatcher()->getDialogGalleryIndex(_aimId, { qsl("image"), qsl("video") }, current->msg(), current->seq());
+    }
 }
 
 void GalleryLoader::dialogGalleryIndex(const QString& _aimId, qint64 _msg, qint64 _seq, int _index, int _total)
@@ -222,12 +236,12 @@ void GalleryLoader::dialogGalleryIndex(const QString& _aimId, qint64 _msg, qint6
         {
             index_ = _index;
             total_ = _total;
-            emit itemUpdated();
-            emit contentUpdated();
+            Q_EMIT itemUpdated();
+            Q_EMIT contentUpdated();
         }
         else
         {
-            Ui::GetDispatcher()->getDialogGalleryIndex(_aimId, QStringList() << qsl("image") << qsl("video"), current->msg(), current->seq());
+            Ui::GetDispatcher()->getDialogGalleryIndex(_aimId, { qsl("image"), qsl("video") }, current->msg(), current->seq());
         }
     }
 }
@@ -307,7 +321,7 @@ void GalleryLoader::onItemLoaded(const QString& _link, int64_t _msgId)
 
     if (item->link() == _link && item->msg() == _msgId)
     {
-        emit mediaLoaded();
+        Q_EMIT mediaLoaded();
     }
 }
 
@@ -321,7 +335,7 @@ void GalleryLoader::onPreviewLoaded(const QString &_link, int64_t _msgId)
     if (item->link() == _link && item->msg() == _msgId)
     {
         item->loadFullMedia();
-        emit previewLoaded();
+        Q_EMIT previewLoaded();
     }
 }
 
@@ -334,7 +348,7 @@ void GalleryLoader::onItemError(const QString &_link, int64_t _msgId)
 
     if (item->link() == _link && item->msg() == _msgId)
     {
-        emit error();
+        Q_EMIT error();
     }
 }
 
@@ -361,11 +375,11 @@ void GalleryLoader::move(Previewer::GalleryLoader::Direction _direction)
     {
         if (!current->path().isEmpty())
         {
-            emit mediaLoaded();
+            Q_EMIT mediaLoaded();
         }
         else if (!current->preview().isNull())
         {
-            emit previewLoaded();
+            Q_EMIT previewLoaded();
             current->loadFullMedia();
         }
         else
@@ -379,7 +393,7 @@ void GalleryLoader::move(Previewer::GalleryLoader::Direction _direction)
 
 void GalleryLoader::loadMore()
 {
-    if (items_.empty() || (items_.size() == 1 && items_.front()->link() == initialLink_))
+    if (items_.empty())
     {
         frontLoadSeq_ = loadItems(0, 0, loadDistance());
         return;
@@ -399,15 +413,16 @@ void GalleryLoader::loadMore()
 
 int64_t GalleryLoader::loadItems(int64_t _after, int64_t _seq, int _count)
 {
-    return Ui::GetDispatcher()->getDialogGallery(aimId_, QStringList() << qsl("image") << qsl("video"), _after, _seq, _count);
+    return Ui::GetDispatcher()->getDialogGallery(aimId_, { qsl("image"), qsl("video") }, _after, _seq, _count, true);
 }
 
 void GalleryLoader::unload()
 {
     if (current_ > 2 * loadDistance())
     {
-        items_.erase(items_.begin(), items_.begin() + current_ - 2 * loadDistance());
-        current_ -= current_ - 2 * loadDistance();
+        const auto unloadCount = current_ - 2 * loadDistance();
+        items_.erase(items_.begin(), items_.begin() + unloadCount);
+        current_ -= unloadCount;
         exhaustedFront_ = false;
     }
 
@@ -493,10 +508,7 @@ QString GalleryItem::fileName() const
 
 bool GalleryItem::isVideo() const
 {
-    if (loader_)
-        return loader_->isVideo() || loader_->isGif();;
-
-    return false;
+    return loader_ && (loader_->isVideo() || loader_->isGif());
 }
 
 void GalleryItem::loadFullMedia()
@@ -540,11 +552,9 @@ void GalleryItem::showPreview(Previewer::ImageViewerWidget *_viewer)
 
 void GalleryItem::save(const QString &_path)
 {
-    const QFileInfo info(_path);
+    const auto suffix = QFileInfo(_path).suffix();
 
-    const auto suffix = info.suffix();
-
-    const auto dot = suffix.isEmpty() ? QString() : qsl(".");
+    const auto dot = suffix.isEmpty() ? QStringView() : u".";
 
     const auto name = QStringRef(&_path).left(_path.size() - suffix.size() - (suffix.isEmpty() ? 0 : 1));
 
@@ -568,9 +578,9 @@ void GalleryItem::save(const QString &_path)
         Q_UNUSED(_savedPath)
 
         if (_success)
-            emit saved(resultPath);
+            Q_EMIT saved(resultPath);
         else
-            emit saveError();
+            Q_EMIT saveError();
     }, link_, resultPath);
 }
 
@@ -582,7 +592,7 @@ void GalleryItem::copyToClipboard()
 void GalleryItem::onFileLoaded(const QString& _path)
 {
     path_ = _path;
-    emit loaded(link_, msg_);
+    Q_EMIT loaded(link_, msg_);
 }
 
 void GalleryItem::onPreviewLoaded(const QPixmap& _preview, const QSize& _originSize)
@@ -590,11 +600,11 @@ void GalleryItem::onPreviewLoaded(const QPixmap& _preview, const QSize& _originS
     preview_ = _preview;
     originSize_ = _originSize;
     if (!attachedPlayer_)
-        emit previewLoaded(link_, msg_);
+        Q_EMIT previewLoaded(link_, msg_);
 }
 
 void GalleryItem::onItemError()
 {
     if (preview_.isNull())
-        emit error(link_, msg_);
+        Q_EMIT error(link_, msg_);
 }

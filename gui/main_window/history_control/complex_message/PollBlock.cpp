@@ -76,7 +76,7 @@ namespace
 
     const QColor& resultItemBorderColor(bool _outgoing)
     {
-        static const auto incomingColor = []() { auto c = Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY); c.setAlphaF(0.2); return c; } ();
+        static const auto incomingColor = Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY, 0.2);
         static const auto outgoingColor = Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_BRIGHT);
 
         return (_outgoing ? outgoingColor : incomingColor);
@@ -90,7 +90,7 @@ namespace
 
     const QColor& checkBoxColor(CheckBoxOpacity _opacity)
     {
-        static const auto color50 = []() { auto c = Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY); c.setAlphaF(0.5); return c; } ();
+        static const auto color50 = Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY, 0.5);
         static const auto color100 = Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY);
 
         if (_opacity == CheckBoxOpacity::_50)
@@ -125,21 +125,6 @@ namespace
     int32_t itemRightPadding()
     {
         return Utils::scale_value(12);
-    }
-
-    QSize questionPlaceholderSize()
-    {
-        return Utils::scale_value(QSize(180, 16));
-    }
-
-    int32_t questionPlaceholderRadius()
-    {
-        return Utils::scale_value(8);
-    }
-
-    int32_t questionPlaceholderBottomMargin()
-    {
-        return Utils::scale_value(15);
     }
 
     int32_t minAnswerHeight()
@@ -180,7 +165,7 @@ namespace
     {
         if (_outgoing)
         {
-            static const auto color = []() { auto c = Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY); c.setAlphaF(0.5); return c; } ();
+            static const auto color = Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY, 0.5);
             return color;
         }
         else
@@ -208,12 +193,7 @@ namespace
 
     const QColor& votesPercentRectColor()
     {
-        static const auto color = []() {
-            auto color = Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY);
-            color.setAlphaF(0.2);
-            return color;
-        }();
-
+        static const auto color = Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY, 0.2);
         return color;
     }
 
@@ -236,8 +216,7 @@ namespace
             QPainter p(&result);
             p.setRenderHint(QPainter::Antialiasing);
             const auto pollIcon = Utils::renderSvgScaled(qsl(":/poll/poll_icon"), QSize(32, 32), Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_RAINBOW_PURPLE));
-            auto backgroundColor = Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_RAINBOW_PURPLE);
-            backgroundColor.setAlphaF(0.05);
+            auto backgroundColor = Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_RAINBOW_PURPLE, 0.05);
             QPainterPath backgroundPath;
             backgroundPath.addEllipse(QRect(QPoint(0, 0), quotePollIconSize()));
             p.fillPath(backgroundPath, backgroundColor);
@@ -350,7 +329,7 @@ public:
     void updatePollData()
     {
         static const auto commonTextColor = Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID);
-        static const auto loadingTextColor = []() { auto c = Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID); c.setAlphaF(0.5); return c; } ();
+        static const auto loadingTextColor = Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID, 0.5);
 
         if (!isQuote_)
         {
@@ -448,7 +427,7 @@ public:
             else if (drawResults)
             {
                 QFontMetrics percentMetrics(item.percentUnit_->getFont());
-                auto percentWidth = percentMetrics.width(qsl("%1%").arg(std::floor(votesPercent(item.votes_))));
+                auto percentWidth = percentMetrics.horizontalAdvance(qsl("%1%").arg(std::floor(votesPercent(item.votes_))));
 
                 const auto rightTextWidth = std::max(percentWidth, item.votesCountUnit_ ? item.votesCountUnit_->desiredWidth() : 0);
                 answerAvailableWidth -= rightTextWidth + (myLocalAnswer ? checkMarkSize().width() : 0) + 2 * checkMarkHorizontalMargin();
@@ -879,13 +858,13 @@ bool PollBlock::onMenuItemTriggered(const QVariantMap& _params)
 {
     const auto command = _params[qsl("command")].toString();
 
-    if (command == ql1s("revoke_vote"))
+    if (command == u"revoke_vote")
     {
         d->executeRequest([this]() { return GetDispatcher()->revokeVote(d->poll_.id_); });
         sendPollStat("revote");
         return true;
     }
-    else if(command == ql1s("stop_poll"))
+    else if(command == u"stop_poll")
     {
         const QString text = QT_TRANSLATE_NOOP("popup_window", "If you stop the poll, nobody will be able to vote anymore. This action can not be undone");
 
@@ -904,7 +883,7 @@ bool PollBlock::onMenuItemTriggered(const QVariantMap& _params)
         }
         return true;
     }
-    else if (command == ql1s("copy_poll_id"))
+    else if (command == u"copy_poll_id")
     {
         QApplication::clipboard()->setText(d->poll_.id_);
         showToast(QT_TRANSLATE_NOOP("poll_block", "Poll Id copied to clipboard"));
@@ -913,7 +892,7 @@ bool PollBlock::onMenuItemTriggered(const QVariantMap& _params)
     return GenericBlock::onMenuItemTriggered(_params);
 }
 
-IItemBlock::MenuFlags PollBlock::getMenuFlags() const
+IItemBlock::MenuFlags PollBlock::getMenuFlags(QPoint) const
 {
     int flags = MenuFlagNone;
 

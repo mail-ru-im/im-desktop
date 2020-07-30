@@ -92,9 +92,8 @@ void AddNewContactStackedWidget::onOkClicked()
 
         lastFormData_ = addContactWidget_->getFormData();
 
-        const auto name = lastFormData_.firstName_ +
-                          (lastFormData_.firstName_.isEmpty() ? qsl("") : qsl(" ")) +
-                          lastFormData_.lastName_;
+        const auto space = lastFormData_.firstName_.isEmpty() ? QStringView() : u" ";
+        const QString name = lastFormData_.firstName_ % space % lastFormData_.lastName_;
         Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
         collection.set_value_as_qstring("name", name);
 
@@ -127,7 +126,7 @@ void AddNewContactStackedWidget::onSyncAdressBook(const bool _hasError)
 
     result_ = AddContactResult::Added;
     Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::conlistscr_addcon_action);
-    emit finished();
+    Q_EMIT finished();
 
     /*
     /// For later use maybe. Opens dialog with contact if contact is unique
@@ -141,7 +140,7 @@ void AddNewContactStackedWidget::onSyncAdressBook(const bool _hasError)
 
     if (aimId.isEmpty())
     {
-        emit finished();
+        Q_EMIT finished();
         return;
     }
 
@@ -159,7 +158,7 @@ void AddNewContactStackedWidget::onSyncAdressBook(const bool _hasError)
 
             result_ = AddContactResult::Added;
 
-            emit finished();
+            Q_EMIT finished();
         };
 
     auto contactInCL = Logic::getContactListModel()->getContactItem(aimId);
@@ -173,7 +172,7 @@ void AddNewContactStackedWidget::onSyncAdressBook(const bool _hasError)
     {
         if (!_added)
         {
-            emit finished();
+            Q_EMIT finished();
             return;
         }
 

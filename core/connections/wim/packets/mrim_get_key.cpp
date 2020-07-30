@@ -21,7 +21,7 @@ mrim_get_key::~mrim_get_key()
 {
 }
 
-int32_t mrim_get_key::init_request(std::shared_ptr<core::http_request_simple> _request)
+int32_t mrim_get_key::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     std::stringstream ss_url;
 
@@ -45,13 +45,13 @@ int32_t mrim_get_key::init_request(std::shared_ptr<core::http_request_simple> _r
     return 0;
 }
 
-int32_t mrim_get_key::parse_response(std::shared_ptr<core::tools::binary_stream> _response)
+int32_t mrim_get_key::parse_response(const std::shared_ptr<core::tools::binary_stream>& _response)
 {
     if (!_response->available())
         return wpie_http_empty_response;
 
     _response->write((char) 0);
-    uint32_t size = _response->available();
+    auto size = _response->available();
     load_response_str((const char*) _response->read(size), size);
     _response->reset_out();
 

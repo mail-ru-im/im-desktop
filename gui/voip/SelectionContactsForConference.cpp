@@ -1,37 +1,28 @@
 #include "stdafx.h"
 #include "SelectionContactsForConference.h"
 
-#include "../main_window/contact_list/ContactList.h"
-#include "../main_window/contact_list/ContactListUtils.h"
 #include "../main_window/contact_list/ContactListWidget.h"
 #include "../main_window/contact_list/ContactListModel.h"
-#include "../main_window/contact_list/ChatMembersModel.h"
 #include "../main_window/contact_list/SearchWidget.h"
 #include "../main_window/contact_list/ContactListItemDelegate.h"
-#include "../main_window/contact_list/Common.h"
-#include "../main_window/contact_list/SearchMembersModel.h"
-#include "../main_window/contact_list/SearchModel.h"
 
-#include "../main_window/friendly/FriendlyContainer.h"
+#include "../main_window/containers/FriendlyContainer.h"
+#include "../main_window/containers/LastseenContainer.h"
 #include "../main_window/GroupChatOperations.h"
-#include "../main_window/sidebar/SidebarUtils.h"
-
-#include "../../core/Voip/VoipManagerDefines.h"
-
-#include "../core_dispatcher.h"
-#include "../my_info.h"
 
 #include "../cache/avatars/AvatarStorage.h"
 #include "../controls/GeneralDialog.h"
 #include "../controls/CustomButton.h"
-#include "../controls/ClickWidget.h"
 #include "../utils/InterConnector.h"
+#include "../utils/features.h"
 #include "../styles/ThemeParameters.h"
 
 #include "CommonUI.h"
 
 namespace
 {
+    constexpr int curMembersIdx = 0;
+
     QSize getArrowSize()
     {
         return QSize(16, 16);
@@ -40,168 +31,28 @@ namespace
 
 namespace Ui
 {
-    SelectionContactsForConference* SelectionContactsForConference::currentVisibleInstance_ = nullptr;
-
-    SelectionContactsForConference::SelectionContactsForConference(
-        Logic::ChatMembersModel* _conferenceMembersModel,
-        Logic::ChatMembersModel* _otherContactsModel,
-        const QString& _labelText,
-        QWidget* _parent,
-        ConferenceSearchMember& usersSearchModel,
-        bool _handleKeyPressEvents)
-        : SelectContactsWidget(
-            _conferenceMembersModel,
-            Logic::MembersWidgetRegim::VIDEO_CONFERENCE,
-            _labelText,
-            QString(),
-            _parent,
-            _handleKeyPressEvents,
-            &usersSearchModel),
-        conferenceMembersModel_(_conferenceMembersModel),
-        videoConferenceMaxUsers_(-1)
+    CurrentConferenceMembers::CurrentConferenceMembers(QWidget* _parent, Logic::ChatMembersModel* _membersModel, bool _chatRoomCall)
+        : QWidget(_parent)
+        , conferenceMembersModel_(_membersModel)
     {
-        initCurrentMembersWidget();
-
-        contactList_->setIndexWidget(0, curMembersHost_);
-        usersSearchModel.setWidget(curMembersHost_);
-
-        mainDialog_->addButtonsPair(QT_TRANSLATE_NOOP("popup_window", "Cancel"), QT_TRANSLATE_NOOP("popup_window", "Add"), true);
-
-        connect(conferenceContacts_, &FocusableListView::clicked, this, &SelectionContactsForConference::itemClicked, Qt::QueuedConnection);
-
-        // Update other contacts list.
-        connect(_otherContactsModel, &Logic::ChatMembersModel::dataChanged, this, [this]() { searchModel_->repeatSearch(); });
-
-        connect(&Ui::GetDispatcher()->getVoipController(), &voip_proxy::VoipController::onVoipCallNameChanged, this, &SelectionContactsForConference::onVoipCallNameChanged);
-        connect(&Ui::GetDispatcher()->getVoipController(), &voip_proxy::VoipController::onVoipCallDestroyed, this, &SelectionContactsForConference::onVoipCallDestroyed);
-
-        connect(membersLabelHost_, &ClickableWidget::clicked, this, &SelectionContactsForConference::clickConferenceMembers);
-        connect(memberArrowDown_, &CustomButton::clicked, this, &SelectionContactsForConference::clickConferenceMembers);
-        connect(memberArrowUp_,   &CustomButton::clicked, this, &SelectionContactsForConference::clickConferenceMembers);
-
-        clickConferenceMembers();
-        updateMemberList();
-    }
-
-    void SelectionContactsForConference::itemClicked(const QModelIndex& _current)
-    {
-        if (!(QApplication::mouseButtons() & Qt::RightButton /*|| tapAndHoldModifier()*/))
-        {
-            if (const auto aimid = Logic::aimIdFromIndex(_current); !aimid.isEmpty())
-                deleteMemberDialog(conferenceMembersModel_, QString(), aimid, regim_, this);
-        }
-    }
-
-    void SelectionContactsForConference::onVoipCallNameChanged(const voip_manager::ContactsList& _contacts)
-    {
-        updateMemberList();
-    }
-
-    void SelectionContactsForConference::updateMemberList()
-    {
-        auto chatInfo = std::make_shared<Data::ChatInfo>();
-
-        const auto& currentCallContacts = Ui::GetDispatcher()->getVoipController().currentCallContacts();
-        chatInfo->Members_.reserve(currentCallContacts.size());
-        for (const voip_manager::Contact& contact : currentCallContacts)
-        {
-            Data::ChatMemberInfo memberInfo;
-            memberInfo.AimId_ = QString::fromStdString(contact.contact);
-            chatInfo->Members_.push_back(std::move(memberInfo));
-        }
-
-        chatInfo->MembersCount_ = currentCallContacts.size();
-
-        conferenceMembersModel_->updateInfo(chatInfo);
-
-        updateConferenceListSize();
-
-        updateMaxSelectedCount();
-        UpdateMembers();
-        conferenceContacts_->update();
-    }
-
-    void SelectionContactsForConference::updateConferenceListSize()
-    {
-        if (conferenceContacts_->flow() == QListView::TopToBottom)
-            conferenceContacts_->setFixedHeight(::Ui::GetContactListParams().itemHeight() * conferenceMembersModel_->rowCount());
-        else
-            conferenceContacts_->setFixedHeight(::Ui::GetContactListParams().itemHeight()); // All in one row.
-        // Force update first element in list view.
-        //conferenceContacts_->update(conferenceMembersModel_->index(0));
-        contactList_->getView()->doItemsLayout(); // update() do not work anymore, hack QListView dynamic content violation with other method
-    }
-
-    void SelectionContactsForConference::onVoipCallDestroyed(const voip_manager::ContactEx& _contactEx)
-    {
-        if (!_contactEx.incoming && _contactEx.connection_count <= 1)
-            reject();
-    }
-
-    // Set maximum restriction for selected item count. Used for video conference.
-    void SelectionContactsForConference::setMaximumSelectedCount(int number)
-    {
-        videoConferenceMaxUsers_ = number;
-        updateMaxSelectedCount();
-    }
-
-    void SelectionContactsForConference::updateMaxSelectedCount()
-    {
-        // -1 is your own contact.
-        if (videoConferenceMaxUsers_ >= 0)
-        {
-            memberLabel_->setText(QT_TRANSLATE_NOOP("voip_pages", "MEMBERS") % ql1s(" (") % QString::number(conferenceMembersModel_->getMembersCount()) % ql1c('/') % QString::number(videoConferenceMaxUsers_ - 1) % ql1c(')'));
-            SelectContactsWidget::setMaximumSelectedCount(qMax(videoConferenceMaxUsers_ - conferenceMembersModel_->getMembersCount() - 1, 0));
-        }
-    }
-
-    void SelectionContactsForConference::clickConferenceMembers()
-    {
-        // TODO: change
-        if (conferenceContacts_->flow() == QListView::TopToBottom)
-        {
-            conferenceContacts_->setFlow(QListView::LeftToRight);
-            conferenceContacts_->setItemDelegate(new ContactListItemHorizontalDelegate(this));
-
-            memberArrowDown_->show();
-            memberArrowUp_->hide();
-        } else
-        {
-            conferenceContacts_->setFlow(QListView::TopToBottom);
-            auto deleg = new Logic::ContactListItemDelegate(this, Logic::MembersWidgetRegim::VIDEO_CONFERENCE, conferenceMembersModel_);
-            deleg->setFixedWidth(conferenceContacts_->width());
-            conferenceContacts_->setItemDelegate(deleg);
-
-            memberArrowDown_->hide();
-            memberArrowUp_->show();
-        }
-        updateConferenceListSize();
-    }
-
-    void SelectionContactsForConference::initCurrentMembersWidget()
-    {
-        curMembersHost_ = new QWidget(this);
-
-        membersLabelHost_ = new ClickableWidget(curMembersHost_);
+        membersLabelHost_ = new ClickableWidget(this);
         membersLabelHost_->setContentsMargins(Utils::scale_value(16), Utils::scale_value(12), Utils::scale_value(20), Utils::scale_value(4));
-        Testing::setAccessibleName(membersLabelHost_, qsl("AS scfc membersLabelHost"));
+        Testing::setAccessibleName(membersLabelHost_, qsl("AS SelectionContactsForConference membersLabelHost"));
 
-        memberLabel_ = new QLabel(QT_TRANSLATE_NOOP("voip_pages", "MEMBERS"), membersLabelHost_);
+        memberLabel_ = new QLabel(getLabelCaption(), membersLabelHost_);
         memberLabel_->setContentsMargins(0, 0, 0, 0);
-        QPalette p;
-        p.setColor(QPalette::Text, Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
-        memberLabel_->setPalette(p);
+        memberLabel_->setStyleSheet(qsl("color:") %Styling::getParameters().getColorHex(Styling::StyleVariable::TEXT_SOLID));
         memberLabel_->setFont(Fonts::appFontScaled(12, Fonts::FontWeight::SemiBold));
-        Testing::setAccessibleName(memberLabel_, qsl("AS scfc memberLabel_"));
+        Testing::setAccessibleName(memberLabel_, qsl("AS SelectionContactsForConference memberLabel"));
 
         memberArrowDown_ = new CustomButton(membersLabelHost_, qsl(":/controls/down_icon"), getArrowSize());
         memberArrowDown_->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-        Testing::setAccessibleName(memberArrowDown_, qsl("AS scfc memberArrowDown_"));
+        Testing::setAccessibleName(memberArrowDown_, qsl("AS SelectionContactsForConference memberExpand"));
         Styling::Buttons::setButtonDefaultColors(memberArrowDown_);
 
         memberArrowUp_ = new CustomButton(membersLabelHost_, qsl(":/controls/top_icon"), getArrowSize());
         memberArrowUp_->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-        Testing::setAccessibleName(memberArrowUp_, qsl("AS scfc memberArrowUp_"));
+        Testing::setAccessibleName(memberArrowUp_, qsl("AS SelectionContactsForConference memberFold"));
         Styling::Buttons::setButtonDefaultColors(memberArrowUp_);
         memberArrowUp_->hide();
 
@@ -213,7 +64,7 @@ namespace Ui
         membersLabelLayout->addStretch();
 
         auto clDelegate = new Logic::ContactListItemDelegate(this, Logic::MembersWidgetRegim::VIDEO_CONFERENCE, conferenceMembersModel_);
-        conferenceContacts_ = CreateFocusableViewAndSetTrScrollBar(curMembersHost_);
+        conferenceContacts_ = CreateFocusableViewAndSetTrScrollBar(this);
         conferenceContacts_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
         conferenceContacts_->setFrameShape(QFrame::NoFrame);
         conferenceContacts_->setSpacing(0);
@@ -232,22 +83,192 @@ namespace Ui
         conferenceContacts_->setModel(conferenceMembersModel_);
         conferenceContacts_->setItemDelegate(clDelegate);
         conferenceContacts_->setContentsMargins(0, 0, 0, 0);
-        Testing::setAccessibleName(conferenceContacts_, qsl("AS scfc conferenceContacts_"));
+        Testing::setAccessibleName(conferenceContacts_, qsl("AS SelectionContactsForConference conferenceContacts"));
 
-        auto othersLabel = new QLabel(QT_TRANSLATE_NOOP("voip_pages", "OTHERS"), curMembersHost_);
+        auto othersLabel = new QLabel(_chatRoomCall ? QT_TRANSLATE_NOOP("voip_pages", "ALL GROUP MEMBERS") : QT_TRANSLATE_NOOP("voip_pages", "OTHERS"), this);
         othersLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
         othersLabel->setContentsMargins(Utils::scale_value(16), Utils::scale_value(12), Utils::scale_value(20), Utils::scale_value(4));
         othersLabel->setMinimumHeight(2 * Utils::scale_value(12) + Utils::scale_value(4)); //Qt ignores our Margins if zoom is 200%. This line fix this problem.
-        QPalette pal;
-        pal.setColor(QPalette::Text, Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
-        othersLabel->setPalette(pal);
+        othersLabel->setStyleSheet(qsl("color:") %Styling::getParameters().getColorHex(Styling::StyleVariable::TEXT_SOLID));
         othersLabel->setFont(Fonts::appFontScaled(12, Fonts::FontWeight::SemiBold));
-        Testing::setAccessibleName(othersLabel, qsl("AS scfc othersLabel"));
+        Testing::setAccessibleName(othersLabel, qsl("AS SelectionContactsForConference othersLabel"));
 
-        auto verLayout = Utils::emptyVLayout(curMembersHost_);
+        auto verLayout = Utils::emptyVLayout(this);
         verLayout->addWidget(membersLabelHost_);
         verLayout->addWidget(conferenceContacts_);
         verLayout->addWidget(othersLabel);
+
+        onMembersLabelClicked();
+
+        connect(conferenceContacts_, &FocusableListView::clicked, this, &CurrentConferenceMembers::itemClicked);
+
+        connect(membersLabelHost_, &ClickableWidget::clicked, this, &CurrentConferenceMembers::onMembersLabelClicked);
+        connect(memberArrowDown_, &CustomButton::clicked, this, &CurrentConferenceMembers::onMembersLabelClicked);
+        connect(memberArrowUp_,   &CustomButton::clicked, this, &CurrentConferenceMembers::onMembersLabelClicked);
+
+        connect(conferenceMembersModel_, &Logic::ChatMembersModel::dataChanged, this, [this](){ memberLabel_->setText(getLabelCaption()); });
+    }
+
+    void CurrentConferenceMembers::updateConferenceListSize()
+    {
+        const auto count = conferenceContacts_->flow() == QListView::TopToBottom ? conferenceMembersModel_->rowCount() : 1;
+        const auto newHeight = ::Ui::GetContactListParams().itemHeight() * count;
+        if (conferenceContacts_->height() != newHeight)
+        {
+            conferenceContacts_->setFixedHeight(newHeight);
+
+            Q_EMIT sizeChanged(QPrivateSignal());
+            update();
+        }
+    }
+
+    void CurrentConferenceMembers::resizeEvent(QResizeEvent*)
+    {
+        Q_EMIT sizeChanged(QPrivateSignal());
+    }
+
+    void CurrentConferenceMembers::onMembersLabelClicked()
+    {
+        if (conferenceContacts_->flow() == QListView::TopToBottom)
+        {
+            conferenceContacts_->setFlow(QListView::LeftToRight);
+            conferenceContacts_->setItemDelegate(new ContactListItemHorizontalDelegate(this));
+
+            memberArrowDown_->show();
+            memberArrowUp_->hide();
+        } else
+        {
+            conferenceContacts_->setFlow(QListView::TopToBottom);
+            auto deleg = new Logic::ContactListItemDelegate(this, Logic::MembersWidgetRegim::VIDEO_CONFERENCE, conferenceMembersModel_);
+            deleg->setFixedWidth(conferenceContacts_->width());
+            conferenceContacts_->setItemDelegate(deleg);
+
+            memberArrowDown_->hide();
+            memberArrowUp_->show();
+        }
+
+        updateConferenceListSize();
+    }
+
+    void CurrentConferenceMembers::itemClicked(const QModelIndex& _current)
+    {
+        if (!(QApplication::mouseButtons() & Qt::RightButton))
+        {
+            if (const auto aimid = Logic::aimIdFromIndex(_current); !aimid.isEmpty())
+                Q_EMIT memberClicked(aimid, QPrivateSignal());
+        }
+    }
+
+    QString CurrentConferenceMembers::getLabelCaption() const
+    {
+        QString res = QT_TRANSLATE_NOOP("voip_pages", "CALL MEMBERS");
+
+        const auto currentCount = conferenceMembersModel_->getMembersCount();
+        res = res % u" (" % QString::number(currentCount) % u'/' % QString::number(GetDispatcher()->getVoipController().maxVideoConferenceMembers()) % u')';
+
+        return res;
+    }
+
+
+    SelectionContactsForConference* SelectionContactsForConference::currentVisibleInstance_ = nullptr;
+
+    SelectionContactsForConference::SelectionContactsForConference(Logic::ChatMembersModel* _conferenceMembersModel, const QString& _labelText, QWidget* _parent,
+                                                                   ConferenceSearchModel* _usersSearchModel, bool _chatRoomCall, bool _handleKeyPressEvents)
+        : SelectContactsWidget(_conferenceMembersModel,
+                               Logic::MembersWidgetRegim::VIDEO_CONFERENCE,
+                               _labelText, QString(),
+                               _parent, _handleKeyPressEvents, _usersSearchModel)
+        , conferenceMembersModel_(_conferenceMembersModel)
+        , videoConferenceMaxUsers_(-1)
+        , chatRoomCall_(_chatRoomCall)
+    {
+        if (_usersSearchModel)
+        {
+            _usersSearchModel->setView(contactList_);
+            _usersSearchModel->setDialog(this);
+            _usersSearchModel->setSearchPattern(QString());
+        }
+
+        auto buttonPair = mainDialog_->addButtonsPair(QT_TRANSLATE_NOOP("popup_window", "Cancel"), QT_TRANSLATE_NOOP("popup_window", "Add"), true);
+        acceptButton_ = buttonPair.first;
+        cancelButton_ = buttonPair.second;
+        focusWidget_[acceptButton_] = FocusPosition::Accept;
+        focusWidget_[cancelButton_] = FocusPosition::Cancel;
+
+        connect(&Ui::GetDispatcher()->getVoipController(), &voip_proxy::VoipController::onVoipCallNameChanged, this, &SelectionContactsForConference::onVoipCallNameChanged);
+        connect(&Ui::GetDispatcher()->getVoipController(), &voip_proxy::VoipController::onVoipCallDestroyed, this, &SelectionContactsForConference::onVoipCallDestroyed);
+
+        searchWidget_->setTempPlaceholderText(QT_TRANSLATE_NOOP("popup_window", "Global people search"));
+
+        updateMemberList();
+    }
+
+    void SelectionContactsForConference::onCurrentMemberClicked(const QString& _aimid)
+    {
+        if (!_aimid.isEmpty() && _aimid != MyInfo()->aimId())
+            deleteMemberDialog(conferenceMembersModel_, QString(), _aimid, regim_, this);
+    }
+
+    void SelectionContactsForConference::onVoipCallNameChanged(const voip_manager::ContactsList& _contacts)
+    {
+        updateMemberList();
+    }
+
+    void SelectionContactsForConference::updateMemberList()
+    {
+        if (conferenceMembersModel_)
+        {
+            auto chatInfo = std::make_shared<Data::ChatInfo>();
+
+            const auto& currentCallContacts = Ui::GetDispatcher()->getVoipController().currentCallContacts();
+            chatInfo->Members_.reserve(currentCallContacts.size());
+            for (const voip_manager::Contact& contact : currentCallContacts)
+            {
+                Data::ChatMemberInfo memberInfo;
+                memberInfo.AimId_ = QString::fromStdString(contact.contact);
+                chatInfo->Members_.push_back(std::move(memberInfo));
+            }
+
+            Data::ChatMemberInfo myInfo;
+            myInfo.AimId_ = MyInfo()->aimId();
+            chatInfo->Members_.push_back(std::move(myInfo));
+
+            chatInfo->MembersCount_ = currentCallContacts.size() + 1;
+
+            conferenceMembersModel_->updateInfo(chatInfo);
+
+            if (curMembers_)
+                curMembers_->updateConferenceListSize();
+        }
+
+        updateMaxSelectedCount();
+        UpdateMembers();
+    }
+
+    void SelectionContactsForConference::onVoipCallDestroyed(const voip_manager::ContactEx& _contactEx)
+    {
+        if (!_contactEx.incoming)
+            reject();
+    }
+
+    // Set maximum restriction for selected item count. Used for video conference.
+    void SelectionContactsForConference::setMaximumSelectedCount(int _number)
+    {
+        videoConferenceMaxUsers_ = _number;
+        updateMaxSelectedCount();
+    }
+
+    void SelectionContactsForConference::updateMaxSelectedCount()
+    {
+        if (conferenceMembersModel_)
+        {
+            if (videoConferenceMaxUsers_ >= 0)
+                SelectContactsWidget::setMaximumSelectedCount(qMax(videoConferenceMaxUsers_ - conferenceMembersModel_->getMembersCount(), 0));
+        }
+        else
+        {
+            SelectContactsWidget::setMaximumSelectedCount(videoConferenceMaxUsers_);
+        }
     }
 
     void SelectionContactsForConference::updateSize()
@@ -272,88 +293,39 @@ namespace Ui
         return res;
     }
 
-
-    ContactsForVideoConference::ContactsForVideoConference(QObject* parent, const Logic::ChatMembersModel& videoConferenceModel)
-        : Logic::ChatMembersModel(parent), videoConferenceModel_(videoConferenceModel)
-        , searchModel_(new Logic::SearchModel(this))
+    QPointer<CurrentConferenceMembers> SelectionContactsForConference::createCurMembersPtr()
     {
-        searchModel_->setSearchInDialogs(false);
-        searchModel_->setExcludeChats(true);
-        searchModel_->setHideReadonly(false);
-        searchModel_->setCategoriesEnabled(false);
-        searchModel_->setServerSearchEnabled(false);
-
-        connect(&videoConferenceModel_, &Logic::ChatMembersModel::dataChanged, this, &ContactsForVideoConference::updateMemberList);
-        updateMemberList();
-    }
-
-    void ContactsForVideoConference::updateMemberList()
-    {
-        if (allMembers_.Members_.empty())
+        if (!curMembers_)
         {
-            // Fetch all members first.
-            connection_ = connect(searchModel_, &QAbstractItemModel::dataChanged, this, &ContactsForVideoConference::allMembersDataChanged);
-            searchModel_->setSearchPattern(QString());
-        } else
-        {
-            auto chatInfo = std::make_shared<Data::ChatInfo>();
-            chatInfo->Members_.reserve(allMembers_.Members_.size());
-
-            for (const auto& memberInfo : allMembers_.Members_)
-            {
-                if (!videoConferenceModel_.contains(memberInfo.AimId_))
-                    chatInfo->Members_.push_back(memberInfo);
-            }
-            chatInfo->MembersCount_ = chatInfo->Members_.size();
-
-            updateInfo(chatInfo);
+            curMembers_ = new CurrentConferenceMembers(this, conferenceMembersModel_, chatRoomCall_);
+            curMembers_->updateConferenceListSize();
+            connect(curMembers_, &CurrentConferenceMembers::memberClicked, this, &SelectionContactsForConference::onCurrentMemberClicked);
         }
+        return curMembers_;
     }
 
-    void ContactsForVideoConference::allMembersDataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRight, const QVector<int> &roles)
+    void SelectionContactsForConference::clearCurMembersPtr()
     {
-        allMembers_.Members_.clear();
-
-        int nCount = 0;
-        for (int i = 0; i < searchModel_->rowCount(); i++)
-        {
-            const auto dataContact = searchModel_->index(i).data().value<Data::AbstractSearchResultSptr>();
-            if (dataContact)
-            {
-                Data::ChatMemberInfo memberInfo;
-                memberInfo.AimId_ = dataContact->getAimId();
-                allMembers_.Members_.push_back(memberInfo);
-                nCount++;
-            }
-        }
-        allMembers_.MembersCount_ = nCount;
-        if (allMembers_.MembersCount_ > 0)
-        {
-            updateMemberList();
-            disconnect(connection_);
-        }
+        curMembers_.clear();
     }
 
-    ContactListItemHorizontalDelegate::ContactListItemHorizontalDelegate(QObject* parent)
-        : AbstractItemDelegateWithRegim(parent)
+
+    ContactListItemHorizontalDelegate::ContactListItemHorizontalDelegate(QObject* _parent)
+        : AbstractItemDelegateWithRegim(_parent)
     {
     }
 
-    ContactListItemHorizontalDelegate::~ContactListItemHorizontalDelegate()
-    {
-    }
-
-    void ContactListItemHorizontalDelegate::paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const
+    void ContactListItemHorizontalDelegate::paint(QPainter* _painter, const QStyleOptionViewItem& _option, const QModelIndex& _index) const
     {
         bool isOfficial = false, isMuted = false, isOnline = false  ;
 
-        const auto aimId = Logic::aimIdFromIndex(index);
+        const auto aimId = Logic::aimIdFromIndex(_index);
         if (!aimId.isEmpty())
         {
             isOfficial = Logic::GetFriendlyContainer()->getOfficial(aimId);
             if (aimId != Ui::MyInfo()->aimId())
                 isMuted = Logic::getContactListModel()->isMuted(aimId);
-            isOnline = Logic::getContactListModel()->isOnline(aimId);
+            isOnline = Logic::GetLastseenContainer()->isOnline(aimId);
         }
 
         auto isDefault = false;
@@ -368,32 +340,34 @@ namespace Ui
         const auto contactList = ::Ui::GetContactListParams();
         const QPoint pos(Utils::scale_value(16), contactList.getAvatarY());
         {
-            Utils::PainterSaver ps(*painter);
-            painter->setRenderHints(QPainter::SmoothPixmapTransform | QPainter::Antialiasing | QPainter::TextAntialiasing);
-            painter->translate(option.rect.topLeft());
+            Utils::PainterSaver ps(*_painter);
+            _painter->setRenderHints(QPainter::SmoothPixmapTransform | QPainter::Antialiasing | QPainter::TextAntialiasing);
+            auto topLeft = _option.rect.topLeft();
+            topLeft.rx() -= Utils::scale_value(4);
+            _painter->translate(topLeft);
 
-            Utils::drawAvatarWithBadge(*painter, pos, *avatar, isOfficial, isMuted, false, isOnline, true);
+            Utils::drawAvatarWithBadge(*_painter, pos, *avatar, isOfficial, Utils::getStatusBadge(aimId, avatar->width()), isMuted, false, isOnline, true);
         }
     }
 
-    QSize ContactListItemHorizontalDelegate::sizeHint(const QStyleOptionViewItem&, const QModelIndex &index) const
+    QSize ContactListItemHorizontalDelegate::sizeHint(const QStyleOptionViewItem& _option, const QModelIndex& _index) const
     {
-        return QSize(::Ui::GetContactListParams().getAvatarSize() + Utils::scale_value(16), ::Ui::GetContactListParams().getAvatarSize());
+        return QSize(GetContactListParams().getAvatarSize() + Utils::scale_value(16), GetContactListParams().getAvatarSize());
     }
 
-    void ContactListItemHorizontalDelegate::setFixedWidth(int width)
+    void ContactListItemHorizontalDelegate::setFixedWidth(int _width)
     {
-        viewParams_.fixedWidth_ = width;
+        viewParams_.fixedWidth_ = _width;
     }
 
-    void ContactListItemHorizontalDelegate::setLeftMargin(int margin)
+    void ContactListItemHorizontalDelegate::setLeftMargin(int _margin)
     {
-        viewParams_.leftMargin_ = margin;
+        viewParams_.leftMargin_ = _margin;
     }
 
-    void ContactListItemHorizontalDelegate::setRightMargin(int margin)
+    void ContactListItemHorizontalDelegate::setRightMargin(int _margin)
     {
-        viewParams_.rightMargin_ = margin;
+        viewParams_.rightMargin_ = _margin;
     }
 
     void ContactListItemHorizontalDelegate::setRegim(int _regim)
@@ -401,46 +375,109 @@ namespace Ui
         viewParams_.regim_ = _regim;
     }
 
-
-    ConferenceSearchMember::ConferenceSearchMember() : Logic::SearchMembersModel(nullptr), firstElement_(nullptr), bSearchMode_(false) {}
-
-    int ConferenceSearchMember::rowCount(const QModelIndex& _parent) const
+    ConferenceSearchModel::ConferenceSearchModel(Logic::AbstractSearchModel* _sourceModel)
+        : sourceModel_(_sourceModel)
     {
-        return Logic::SearchMembersModel::rowCount(_parent) + 1;
+        connect(sourceModel_, &AbstractSearchModel::dataChanged, this, &ConferenceSearchModel::onSourceDataChanged);
     }
 
-    QVariant ConferenceSearchMember::data(const QModelIndex& _index, int _role) const
+    int ConferenceSearchModel::rowCount(const QModelIndex& _index) const
     {
-        if (!_index.isValid())
+        return sourceModel_->rowCount(_index) + indexShift();
+    }
+
+    QVariant ConferenceSearchModel::data(const QModelIndex& _index, int _role) const
+    {
+        if (!_index.isValid() || (_role != Qt::DisplayRole && !Testing::isAccessibleRole(_role)))
             return QVariant();
 
-        const int cur = _index.row();
-        if (cur == 0)
-        {
-            if (_role != Qt::DisplayRole && !Testing::isAccessibleRole(_role))
-                return QVariant();
+        const auto cur = _index.row();
 
-            if (firstElement_)
-                firstElement_->setVisible(!bSearchMode_);
-
-            return QVariant::fromValue(firstElement_);
-        }
+        if (cur == curMembersIdx && !inSearchMode_)
+            return QVariant::fromValue((QWidget*)membersWidget_);
 
         if (cur >= rowCount(_index))
             return QVariant();
 
-        const QModelIndex id = index(cur - 1);
-        return Logic::SearchMembersModel::data(id, _role);
+        const QModelIndex index = sourceModel_->index(cur - indexShift());
+        return sourceModel_->data(index, _role);
     }
 
-    void ConferenceSearchMember::setWidget(QWidget* widget)
+    void ConferenceSearchModel::setSearchPattern(const QString& _pattern)
     {
-        firstElement_ = widget;
+        inSearchMode_ = !_pattern.isEmpty();
+
+        if (view_)
+        {
+            if (inSearchMode_)
+            {
+                membersWidget_.clear();
+                dialog_->clearCurMembersPtr();
+                view_->setIndexWidget(curMembersIdx, nullptr);
+            }
+            else if (!view_->indexWidget(curMembersIdx))
+            {
+                membersWidget_ = dialog_->createCurMembersPtr();
+                connect(membersWidget_, &CurrentConferenceMembers::sizeChanged, this, [this]()
+                {
+                    const auto idx = index(curMembersIdx);
+                    Q_EMIT dataChanged(idx, idx);
+                });
+
+                view_->setIndexWidget(curMembersIdx, membersWidget_);
+            }
+        }
+
+        sourceModel_->setSearchPattern(_pattern);
     }
 
-    void ConferenceSearchMember::setSearchPattern(const QString& _search)
+    bool ConferenceSearchModel::isCheckedItem(const QString& _name) const
     {
-        bSearchMode_ = !_search.isEmpty();
-        ::Logic::SearchMembersModel::setSearchPattern(_search);
+        auto chatModel = qobject_cast<Logic::ChatMembersModel*>(sourceModel_);
+        if (chatModel)
+            return chatModel->isCheckedItem(_name);
+        else
+            return Logic::getContactListModel()->isCheckedItem(_name);
     }
+
+    void ConferenceSearchModel::setCheckedItem(const QString& _name, bool _checked)
+    {
+        auto chatModel = qobject_cast<Logic::ChatMembersModel*>(sourceModel_);
+        if (chatModel)
+            chatModel->setCheckedItem(_name, _checked);
+        else
+            Logic::getContactListModel()->setCheckedItem(_name, _checked);
+    }
+
+    int ConferenceSearchModel::getCheckedItemsCount() const
+    {
+        auto chatModel = qobject_cast<Logic::ChatMembersModel*>(sourceModel_);
+        if (chatModel)
+            return chatModel->getCheckedItemsCount();
+
+        return Logic::getContactListModel()->getCheckedItemsCount();
+    }
+
+    void ConferenceSearchModel::addTemporarySearchData(const QString& _aimid)
+    {
+        if (!qobject_cast<Logic::ChatMembersModel*>(sourceModel_) && !Logic::getContactListModel()->contains(_aimid))
+        {
+            sourceModel_->addTemporarySearchData(_aimid);
+            Logic::getContactListModel()->add(_aimid, Logic::GetFriendlyContainer()->getFriendly(_aimid), true);
+        }
+    }
+
+    void ConferenceSearchModel::onSourceDataChanged(const QModelIndex& _topLeft, const QModelIndex& _bottomRight)
+    {
+        Q_EMIT dataChanged(mapFromSource(_topLeft), mapFromSource(_bottomRight));
+    }
+
+    QModelIndex ConferenceSearchModel::mapFromSource(const QModelIndex& _sourceIndex) const
+    {
+        if (!_sourceIndex.isValid())
+            return QModelIndex();
+
+        return index(_sourceIndex.row() + indexShift());
+    }
+
 }

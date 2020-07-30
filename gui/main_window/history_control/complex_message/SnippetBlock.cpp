@@ -5,6 +5,7 @@
 #include "controls/TextUnit.h"
 #include "MediaUtils.h"
 #include "../MessageStyle.h"
+#include "styles/ThemeParameters.h"
 #include "utils/PainterPath.h"
 #include "ComplexMessageItem.h"
 #include "../MessageStatusWidget.h"
@@ -14,10 +15,13 @@
 #include "main_window/MainWindow.h"
 #include "../ActionButtonWidget.h"
 #include "utils/medialoader.h"
+#include "utils/BlurPixmapTask.h"
 #include "../FileSizeFormatter.h"
 #include "gui_settings.h"
 #include "controls/FileSharingIcon.h"
 #include "../SnippetCache.h"
+
+#include "../../../common.shared/config/config.h"
 
 namespace
 {
@@ -65,7 +69,7 @@ namespace
 
     QString removeWWW(const QString& _link)
     {
-        static const auto wwwDot = ql1s("www.");
+        constexpr QStringView wwwDot = u"www.";
 
         if (_link.startsWith(wwwDot))
             return _link.mid(wwwDot.size());
@@ -105,6 +109,13 @@ namespace
         else
             return 0;
     }
+
+    const auto locationTitle()
+    {
+        return QT_TRANSLATE_NOOP("snippet_block", "Location");
+    }
+
+    constexpr auto BLUR_RADIOUS = 150;
 }
 
 
@@ -115,11 +126,12 @@ UI_COMPLEX_MESSAGE_NS_BEGIN
 //////////////////////////////////////////////////////////////////////////
 
 SnippetBlock::SnippetBlock(ComplexMessageItem* _parent, const QString& _link, const bool _hasLinkInMessage, EstimatedType _estimatedType)
-    : GenericBlock(_parent, _link, MenuFlagLinkCopyable, false),
-      link_(_link),
-      hasLinkInMessage_(_hasLinkInMessage),
-      visible_(false),
-      estimatedType_(_estimatedType)
+    : GenericBlock(_parent, _link, MenuFlagLinkCopyable, false)
+    , link_(_link)
+    , hasLinkInMessage_(_hasLinkInMessage)
+    , visible_(false)
+    , estimatedType_(_estimatedType)
+    , seq_(-1)
 {
     setMouseTracking(true);
 }
@@ -192,6 +204,14 @@ bool SnippetBlock::clicked(const QPoint& _p)
     return content_ && content_->clicked();
 }
 
+bool SnippetBlock::pressed(const QPoint& _p)
+{
+    if (!contentRect_.contains(_p))
+        return false;
+
+    return content_ && content_->pressed();
+}
+
 bool SnippetBlock::isBubbleRequired() const
 {
     return content_ && content_->isBubbleRequired() && GenericBlock::isBubbleRequired();
@@ -220,6 +240,9 @@ MediaType SnippetBlock::getMediaType() const
             return MediaType::mediaTypePhoto;
         case EstimatedType::Video:
             return MediaType::mediaTypeVideo;
+        case EstimatedType::Geo:
+            return MediaType::mediaTypeGeo;
+
         default:
             break;
     }
@@ -268,6 +291,8 @@ PinPlaceholderType SnippetBlock::getPinPlaceholder() const
             return PinPlaceholderType::Video;
         case EstimatedType::Article:
             return PinPlaceholderType::Link;
+        default:
+            break;
     }
 
     return PinPlaceholderType::None;
@@ -275,11 +300,14 @@ PinPlaceholderType SnippetBlock::getPinPlaceholder() const
 
 void SnippetBlock::requestPinPreview()
 {
+    if (!config::get().is_on(config::features::snippet_in_chat))
+        return;
+
     auto conn = std::make_shared<QMetaObject::Connection>();
     *conn = connect(GetDispatcher(), &core_dispatcher::linkMetainfoImageDownloaded, this, [this, conn](int64_t _seq, bool _success, const QPixmap& _pixmap)
     {
         if (seq_ == _seq && _success)
-            emit getParentComplexMessage()->pinPreview(_pixmap);
+            Q_EMIT getParentComplexMessage()->pinPreview(_pixmap);
 
         disconnect(*conn);
     });
@@ -296,6 +324,8 @@ QString SnippetBlock::formatRecentsText() const
             return QT_TRANSLATE_NOOP("contact_list", "Video");
         case EstimatedType::GIF:
             return QT_TRANSLATE_NOOP("contact_list", "GIF");
+        case EstimatedType::Geo:
+            return locationTitle();
         default:
             break;
     }
@@ -368,7 +398,7 @@ void SnippetBlock::initialize()
     {
         initWithMeta(*meta);
     }
-    else
+    else if (config::get().is_on(config::features::snippet_in_chat))
     {
         connect(GetDispatcher(), &core_dispatcher::linkMetainfoMetaDownloaded, this, &SnippetBlock::onLinkMetainfoMetaDownloaded);
         seq_ = GetDispatcher()->downloadLinkMetainfo(link_, core_dispatcher::LoadPreview::No, 0, 0, Utils::msgIdLogStr(getParentComplexMessage()->getId()));
@@ -410,15 +440,15 @@ void SnippetBlock::onMenuOpenInBrowser()
 
 bool SnippetBlock::drag()
 {
-    emit Utils::InterConnector::instance().clearSelecting();
+    Q_EMIT Utils::InterConnector::instance().clearSelecting();
 
     const auto preview = content_ ? content_->preview() : QPixmap();
     return Utils::dragUrl(this, preview, link_);
 }
 
-IItemBlock::MenuFlags SnippetBlock::getMenuFlags() const
+IItemBlock::MenuFlags SnippetBlock::getMenuFlags(QPoint p) const
 {
-    int32_t flags = GenericBlock::getMenuFlags();
+    int32_t flags = GenericBlock::getMenuFlags(p);
 
     if (content_)
         flags |= content_->menuFlags();
@@ -499,6 +529,9 @@ std::unique_ptr<SnippetContent> SnippetBlock::createContent(const Data::LinkMeta
         case Data::LinkContentType::File:
             return std::make_unique<FileContent>(this, _meta, link_);
         default:
+            if (estimatedType_ == EstimatedType::Geo)
+                return std::make_unique<LocationContent>(this, _meta, link_);
+
             return std::make_unique<ArticleContent>(this, _meta, link_);
     }
 }
@@ -511,6 +544,7 @@ std::unique_ptr<SnippetContent> SnippetBlock::createPreloader()
         case EstimatedType::Video:
         case EstimatedType::GIF:
             return std::make_unique<MediaPreloader>(this, link_);
+        case EstimatedType::Geo:
         case EstimatedType::Article:
             return std::make_unique<ArticlePreloader>(this, link_);
     }
@@ -528,7 +562,11 @@ bool SnippetBlock::shouldCopySource() const
 //////////////////////////////////////////////////////////////////////////
 
 SnippetContent::SnippetContent(SnippetBlock* _snippetBlock, const Data::LinkMetadata& _meta, const QString& _link)
-    : snippetBlock_(_snippetBlock), meta_(_meta), link_(_link)
+    : snippetBlock_(_snippetBlock)
+    , meta_(_meta)
+    , link_(_link)
+    , previewSeq_(-1)
+    , faviconSeq_(-1)
 {
     connect(GetDispatcher(), &core_dispatcher::imageDownloaded, this, &SnippetContent::onImageLoaded);
 }
@@ -727,7 +765,7 @@ void ArticleContent::draw(QPainter& _p, const QRect& _rect)
 
     if (!preview_.isNull() && !insideQuote)
     {
-        Utils::PainterSaver saver(_p);
+        Utils::PainterSaver previewSaver(_p);
         _p.setClipPath(Utils::renderMessageBubble(previewRect_, Ui::MessageStyle::Preview::getInternalBorderRadius()));
 
         if (isHorizontalMode())
@@ -756,6 +794,11 @@ void ArticleContent::onBlockSizeChanged()
 bool ArticleContent::clicked()
 {
     Utils::openUrl(link_);
+    return true;
+}
+
+bool ArticleContent::pressed()
+{
     return true;
 }
 
@@ -920,8 +963,27 @@ void MediaContent::draw(QPainter& _p, const QRect& _rect)
 
     _p.setClipPath(clipPath_);
 
+    if (!background_.isNull())
+    {
+        auto bRect = background_.rect();
+        if (bRect.width() > bRect.height())
+        {
+            const auto diff = bRect.width() - _rect.width();
+            bRect.setX(diff / 2);
+            bRect.setWidth(_rect.width());
+        }
+        else
+        {
+            const auto diff = bRect.height() - _rect.height();
+            bRect.setY(diff / 2);
+            bRect.setHeight(_rect.height());
+        }
+
+        _p.drawPixmap(_rect, background_, bRect);
+    }
+
     if (!preview_.isNull() && !player_)
-        MediaUtils::drawMediaInRect(_p, _rect, preview_, originSizeScaled());
+        MediaUtils::drawMediaInRect(_p, _rect, preview_, originSizeScaled(), background_.isNull() ? MediaUtils::BackgroundMode::Auto : MediaUtils::BackgroundMode::NoBackground);
 }
 
 void MediaContent::onBlockSizeChanged()
@@ -938,6 +1000,15 @@ void MediaContent::onBlockSizeChanged()
 
     if (controls_)
         controls_->setRect(contentRect());
+
+    if (!background_.isNull())
+    {
+        const auto& r = contentRect();
+        if (r.width() >= r.height())
+            background_ = background_.scaledToHeight(r.height());
+        else
+            background_ = background_.scaledToWidth(r.width());
+    }
 }
 
 bool MediaContent::clicked()
@@ -952,9 +1023,14 @@ bool MediaContent::clicked()
     else if (fileLoaded_ || !isPlayable())
     {
         postOpenGalleryStat(snippetBlock_->getChatAimid());
-        Utils::InterConnector::instance().getMainWindow()->openGallery(snippetBlock_->getChatAimid(), link_, snippetBlock_->getGalleryId());
+        Utils::InterConnector::instance().openGallery(snippetBlock_->getChatAimid(), link_, snippetBlock_->getGalleryId());
     }
 
+    return true;
+}
+
+bool MediaContent::pressed()
+{
     return true;
 }
 
@@ -1002,7 +1078,17 @@ void MediaContent::setPreview(const QPixmap& _preview)
 {
     SnippetContent::setPreview(_preview);
 
-    emit loaded();
+    background_ = QPixmap();
+    if (isBubbleRequired() || MediaUtils::isNarrowMedia(originSizeScaled()) || MediaUtils::isWideMedia(originSizeScaled()))
+    {
+        backgroundSeq_ = _preview.cacheKey();
+
+        auto task = new Utils::BlurPixmapTask(_preview, BLUR_RADIOUS);
+        connect(task, &Utils::BlurPixmapTask::blurred, this, &MediaContent::prepareBackground);
+        QThreadPool::globalInstance()->start(task);
+    }
+
+    Q_EMIT loaded();
 
     if (player_)
         player_->setPreview(_preview);
@@ -1044,8 +1130,8 @@ void MediaContent::onMenuSaveFileAs()
         if (!guard)
             return;
 
-        const auto addTrailingSlash = !_dirResult.endsWith(ql1c('\\')) && !_dirResult.endsWith(ql1c('/'));
-        const auto slash = ql1s(addTrailingSlash ? "/" : "");
+        const auto addTrailingSlash = !_dirResult.endsWith(u'\\') && !_dirResult.endsWith(u'/');
+        const auto slash = addTrailingSlash ? QStringView(u"/") : QStringView();
         const QString dir = _dirResult % slash % _file;
 
         auto saver = new Utils::FileSaver(this);
@@ -1155,6 +1241,26 @@ void MediaContent::onFilePath(int64_t _seq, const QString& _path)
         onLoaded(_path);
 }
 
+void MediaContent::prepareBackground(const QPixmap& _result, qint64 _srcCacheKey)
+{
+    if (_srcCacheKey != backgroundSeq_ || _result.isNull())
+        return;
+
+    background_ = _result;
+    {
+        auto color = Styling::getParameters().getColor(Styling::StyleVariable::CHAT_SECONDARY_MEDIA, 0.15);
+        QPainter p(&background_);
+        p.fillRect(background_.rect(), color);
+    }
+
+
+    const auto& r = contentRect();
+    if (r.width() >= r.height())
+        background_ = background_.scaledToHeight(r.height());
+    else
+        background_ = background_.scaledToWidth(r.width());
+}
+
 QSize MediaContent::calcContentSize(int _availableWidth) const
 {
     MediaUtils::MediaBlockParams params;
@@ -1226,7 +1332,7 @@ DialogPlayer* MediaContent::createPlayer()
     connect(player, &DialogPlayer::openGallery, this, [this]()
     {
         postOpenGalleryStat(snippetBlock_->getChatAimid());
-        Utils::InterConnector::instance().getMainWindow()->openGallery(snippetBlock_->getChatAimid(), link_, snippetBlock_->getGalleryId(), player_);
+        Utils::InterConnector::instance().openGallery(snippetBlock_->getChatAimid(), link_, snippetBlock_->getGalleryId(), player_);
     });
 
     connect(player, &DialogPlayer::mouseClicked, this, &MediaContent::clicked);
@@ -1434,6 +1540,11 @@ bool FileContent::clicked()
     return true;
 }
 
+bool FileContent::pressed()
+{
+    return true;
+}
+
 bool FileContent::isBubbleRequired() const
 {
     return true;
@@ -1479,6 +1590,148 @@ void FileContent::initTextUnits()
 
     fileNameUnit_->setHighlightedTextColor(MessageStyle::getHighlightTextColor());
     linkUnit_->setHighlightedTextColor(MessageStyle::getHighlightTextColor());
+}
+
+//////////////////////////////////////////////////////////////////////////
+// LocationContent
+//////////////////////////////////////////////////////////////////////////
+
+LocationContent::LocationContent(SnippetBlock* _snippetBlock, const Data::LinkMetadata& _meta, const QString& _link)
+    : SnippetContent(_snippetBlock, _meta, _link)
+{
+    titleUnit_ = TextRendering::MakeTextUnit(locationTitle(), Data::MentionMap(),
+                                             TextRendering::LinksVisible::SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
+
+    initTextUnits();
+    loadPreview();
+}
+
+LocationContent::~LocationContent()
+{
+
+}
+
+QSize LocationContent::setContentSize(const QSize& _available)
+{
+    const auto availableWidth = std::min(_available.width(), MessageStyle::Snippet::getMaxWidth());
+    const auto topPadding = MessageStyle::Snippet::getPreviewTopPadding();
+
+    auto currentY = topPadding;
+
+    QSize previewRectSize;
+    if (!meta_.getOriginSize().isEmpty())
+    {
+        MediaUtils::MediaBlockParams params;
+        params.mediaType =  MediaUtils::MediaType::Image;
+        params.mediaSize = meta_.getOriginSize();
+        params.availableWidth = availableWidth;
+
+        previewRectSize = calcPreviewSize(availableWidth);
+        currentY += previewRectSize.height();
+    }
+
+    auto timeWidth = 0;
+    const auto timeWidget = snippetBlock_->getParentComplexMessage()->getTimeWidget();
+    if (timeWidget && isTimeInTitle())
+        timeWidth = timeWidget->width() + MessageStyle::getTimeLeftSpacing();
+
+    currentY += MessageStyle::Snippet::getTitleTopPadding();
+    titleUnit_->setOffsets(0, currentY);
+    currentY += titleUnit_->getHeight(availableWidth - timeWidth);
+
+    const auto textWidth = titleUnit_->desiredWidth() + timeWidth;
+    const auto desiredWidth = std::max(previewRectSize.width(), textWidth);
+    const auto blockWidth = std::min(desiredWidth, availableWidth);
+
+    previewRect_ = QRect(QPoint((blockWidth - previewRectSize.width()) / 2, topPadding), previewRectSize);
+
+    return QSize(blockWidth, currentY);
+}
+
+void LocationContent::draw(QPainter& _p, const QRect& _rect)
+{
+    Utils::PainterSaver saver(_p);
+    _p.setRenderHint(QPainter::Antialiasing);
+
+    titleUnit_->draw(_p);
+
+    if (!preview_.isNull())
+    {
+        Utils::PainterSaver previewSaver(_p);
+        _p.setClipPath(Utils::renderMessageBubble(previewRect_, Ui::MessageStyle::Preview::getInternalBorderRadius()));
+
+        MediaUtils::drawMediaInRect(_p, previewRect_, preview_, meta_.getOriginSize());
+    }
+}
+
+bool LocationContent::clicked()
+{
+    Utils::openUrl(link_);
+    return true;
+}
+
+bool LocationContent::pressed()
+{
+    return true;
+}
+
+bool LocationContent::isBubbleRequired() const
+{
+    return true;
+}
+
+bool LocationContent::isMarginRequired() const
+{
+    return true;
+}
+
+MediaType LocationContent::mediaType() const
+{
+    return MediaType::mediaTypeGeo;
+}
+
+int LocationContent::desiredWidth(int _availableWidth) const
+{
+    auto timeWidth = 0;
+    const auto timeWidget = snippetBlock_->getParentComplexMessage()->getTimeWidget();
+    if (timeWidget && isTimeInTitle())
+        timeWidth = timeWidget->width() + MessageStyle::getTimeLeftSpacing();
+
+    const auto previewWidth = calcPreviewSize(_availableWidth).width();
+
+    return std::max(previewWidth, timeWidth + titleUnit_->desiredWidth());
+}
+
+void LocationContent::updateStyle()
+{
+    initTextUnits();
+}
+
+QSize LocationContent::calcPreviewSize(int _availableWidth) const
+{
+    MediaUtils::MediaBlockParams params;
+
+    params.mediaType =  MediaUtils::MediaType::Image;
+    params.mediaSize = originSizeScaled();
+    params.availableWidth = _availableWidth;
+
+    return MediaUtils::calcMediaBlockSize(params);
+}
+
+QSize LocationContent::originSizeScaled() const
+{
+    return Utils::scale_value(meta_.getOriginSize());
+}
+
+bool LocationContent::isTimeInTitle() const
+{
+    return !snippetBlock_->isInsideQuote() && !snippetBlock_->isInsideForward();
+}
+
+void LocationContent::initTextUnits()
+{
+    titleUnit_->init(MessageStyle::Snippet::getTitleFont(), MessageStyle::Snippet::getTitleColor(), MessageStyle::Snippet::getTitleColor(),
+                     MessageStyle::getSelectionColor(), MessageStyle::getHighlightColor(), TextRendering::HorAligment::LEFT, 1, TextRendering::LineBreakType::PREFER_SPACES);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1531,6 +1784,11 @@ void ArticlePreloader::draw(QPainter& _p, const QRect& _rect)
 bool ArticlePreloader::clicked()
 {
     Utils::openUrl(link_);
+    return true;
+}
+
+bool ArticlePreloader::pressed()
+{
     return true;
 }
 
@@ -1593,6 +1851,11 @@ void MediaPreloader::onBlockSizeChanged()
 bool MediaPreloader::clicked()
 {
     Utils::openUrl(link_);
+    return true;
+}
+
+bool MediaPreloader::pressed()
+{
     return true;
 }
 

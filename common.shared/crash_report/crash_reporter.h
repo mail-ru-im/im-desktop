@@ -2,6 +2,7 @@
 
 #include "../common_defs.h"
 #include "../config/config.h"
+#include "../version_info.h"
 
 namespace google_breakpad
 {
@@ -36,7 +37,10 @@ namespace crash_system
         static LONG WINAPI seh_handler(PEXCEPTION_POINTERS pExceptionPtrs);
         void set_process_exception_handlers();
         void set_thread_exception_handlers();
+        void set_sys_handler_enabled(bool _sys_handler_enabled);
 #endif
+
+        void uninstall();
 
         static reporter& instance();
 
@@ -53,6 +57,8 @@ namespace crash_system
                 url += _login;
 
             url += '/';
+            url += core::tools::version_info().get_version();
+            url += "/";
 
             return url;
         }
@@ -70,7 +76,11 @@ namespace crash_system
 #ifdef  _WIN32
         std::unique_ptr<core::dump::crash_handler> crash_handler_;
 #elif __APPLE__
+#if defined(BUILD_FOR_STORE)
+        std::unique_ptr<google_breakpad::ExceptionHandler> breakpad_;
+#else
         std::unique_ptr<crashpad::CrashpadClient> crashpad_;
+#endif
 #elif __linux__
         std::unique_ptr<google_breakpad::ExceptionHandler> breakpad_;
 #endif

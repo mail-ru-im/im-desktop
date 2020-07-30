@@ -4,6 +4,7 @@
 #include "../../corelib/collection_helper.h"
 
 #include "../../core/core.h"
+#include "tools/coretime.h"
 
 #include "../log/log.h"
 
@@ -49,6 +50,7 @@ enum dlg_state_fields
     stranger = 24,
     info_version = 25,
     no_recents_update = 26,
+    members_version = 27
 };
 
 dlg_state::dlg_state()
@@ -110,6 +112,7 @@ void dlg_state::copy_from(const dlg_state& _state)
     no_recents_update_ = _state.no_recents_update_;
     heads_ = _state.heads_;
     info_version_ = _state.info_version_;
+    members_version_ = _state.members_version_;
 }
 
 void dlg_state::set_last_msgid(const int64_t _value)
@@ -288,6 +291,9 @@ void dlg_state::serialize(icollection* _collection, const time_t _offset, const 
     if (info_version_)
         coll.set<std::string>("info_version", *info_version_);
 
+    if (members_version_)
+        coll.set<std::string>("members_version", *members_version_);
+
     auto cur_time = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()) + _offset;
     bool timed_out = cur_time - _last_successful_fetch >= offline_timeout.count();
     coll.set_value_as_bool("visible", get_visible() && !timed_out);
@@ -352,6 +358,9 @@ void dlg_state::serialize(core::tools::binary_stream& _data) const
 
     if (info_version_)
         state_pack.push_child(core::tools::tlv(dlg_state_fields::info_version, *info_version_));
+
+    if (members_version_)
+        state_pack.push_child(core::tools::tlv(dlg_state_fields::members_version, *members_version_));
 
     if (has_history_patch_version())
     {
@@ -425,6 +434,7 @@ bool dlg_state::unserialize(core::tools::binary_stream& _data)
     auto tlv_last_read_mention = state_pack.get_item(dlg_state_fields::last_read_mention);
     auto tlv_stranger = state_pack.get_item(dlg_state_fields::stranger);
     auto tlv_info_version = state_pack.get_item(dlg_state_fields::info_version);
+    auto tlv_members_version = state_pack.get_item(dlg_state_fields::members_version);
     auto tlv_no_recents_update = state_pack.get_item(dlg_state_fields::no_recents_update);
 
     if (!tlv_unreads_count || !tlv_last_msg_id || !tlv_yours_last_read || !tlv_theirs_last_read ||
@@ -442,6 +452,9 @@ bool dlg_state::unserialize(core::tools::binary_stream& _data)
 
     if (tlv_info_version)
         set_info_version(tlv_info_version->get_value<std::string>());
+
+    if (tlv_members_version)
+        set_members_version(tlv_members_version->get_value<std::string>());
 
     if (tlv_last_read_mention)
         set_last_read_mention(tlv_last_read_mention->get_value<int64_t>(-1));
@@ -675,7 +688,9 @@ bool archive_state::merge_state(const dlg_state& _new_state, Out dlg_state_chang
         message.merge(archive::history_message());
         message.set_outgoing(false);
         time_t now = time(nullptr);
-        message.set_time(mktime(localtime(&now)));
+        tm now_tm = { 0 };
+        if (tools::time::localtime(&now, &now_tm))
+            message.set_time(mktime(&now_tm));
         state_->set_last_message(message);
         Out _changes.last_message_changed_ = true;
         return true;
@@ -695,6 +710,9 @@ bool archive_state::merge_state(const dlg_state& _new_state, Out dlg_state_chang
 
     if (_new_state.has_info_version())
         state_->set_info_version(_new_state.get_info_version());
+
+    if (_new_state.has_members_version())
+        state_->set_members_version(_new_state.get_members_version());
 
     if (_new_state.get_last_read_mention() == _new_state.get_last_msgid())
         state_->set_unread_mentions_count(0);

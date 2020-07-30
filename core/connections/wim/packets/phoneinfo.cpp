@@ -19,7 +19,7 @@ phoneinfo::~phoneinfo()
 {
 }
 
-int32_t phoneinfo::init_request(std::shared_ptr<core::http_request_simple> request)
+int32_t phoneinfo::init_request(const std::shared_ptr<core::http_request_simple>& request)
 {
     std::stringstream get_request;
     get_request << urls::get_url(urls::url_type::smsapi_host) << "/fcgi-bin/smsphoneinfo" <<
@@ -37,13 +37,13 @@ int32_t phoneinfo::init_request(std::shared_ptr<core::http_request_simple> reque
     return 0;
 }
 
-int32_t phoneinfo::parse_response(std::shared_ptr<core::tools::binary_stream> response)
+int32_t phoneinfo::parse_response(const std::shared_ptr<core::tools::binary_stream>& response)
 {
     if (!response->available())
         return wpie_http_empty_response;
 
     response->write((char)0);
-    uint32_t size = response->available();
+    auto size = response->available();
     load_response_str((const char *)response->read(size), size);
     response->reset_out();
 

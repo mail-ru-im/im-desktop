@@ -108,6 +108,8 @@ public:
 
     int getMaxWidth() const override;
 
+    int effectiveBlockWidth() const override;
+
 protected:
     void drawBlock(QPainter &p, const QRect& _rect, const QColor& _quoteColor) override;
 

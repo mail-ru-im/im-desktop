@@ -23,6 +23,7 @@ namespace core
 
             void serialize(coll_helper& _coll) const;
             void serialize(rapidjson::Value& _node, rapidjson_allocator& _a) const;
+            bool unserialize(const coll_helper& _coll);
 
             void set_msgid(const int64_t _msg_id) { msg_id_ = _msg_id; }
             const int64_t get_msgid() const { return msg_id_; }
@@ -38,6 +39,7 @@ namespace core
         };
 
         std::vector<suggest> unserialize_suggests_node(const rapidjson::Value& _node);
+        std::vector<suggest> unserialize_suggests_node(const rapidjson::Value& _node, smartreply::type _type, const std::string& _aimid, int64_t _msgid);
         void serialize_smartreply_suggests(const std::vector<smartreply::suggest>& _suggests, coll_helper& _coll);
     }
 }

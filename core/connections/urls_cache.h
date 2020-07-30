@@ -20,6 +20,7 @@ namespace core
             webrtc_host,
             files_info,
             avatars,
+            url_content,
         };
 
         enum class with_https
@@ -28,8 +29,11 @@ namespace core
             yes
         };
 
-        std::string get_url(const url_type _type, const with_https _https = with_https::yes);
+        std::string get_url(url_type _type, with_https _https = with_https::yes);
 
         bool is_one_domain_url(std::string_view _url) noexcept;
+
+        uint32_t get_api_version();
+        std::string api_version_prefix();
     }
 }

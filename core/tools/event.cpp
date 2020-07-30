@@ -4,20 +4,10 @@
 using namespace core;
 using namespace tools;
 
-autoreset_event::autoreset_event()
-    : signalled_(false)
-{
-}
-
-
-autoreset_event::~autoreset_event()
-{
-}
-
 void autoreset_event::notify()
 {
     {
-        std::lock_guard<std::mutex> lock(mtx_);
+        std::scoped_lock lock(mtx_);
         signalled_ = true;
     }
 

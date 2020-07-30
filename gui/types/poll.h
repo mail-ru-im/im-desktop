@@ -1,6 +1,9 @@
 #pragma once
 
-#include "utils/gui_coll_helper.h"
+namespace core
+{
+    struct icollection;
+}
 
 namespace Data
 {

@@ -79,7 +79,7 @@ namespace Utils
         void getProcessId();
         void getHwndAndActivate();
         void sendShutdown();
-        void sendUrlCommand(const QString& _command);
+        void sendUrlCommand(QStringView _command);
 
     private:
         void processMessage(LocalConnection* _conn, const QString& _message);

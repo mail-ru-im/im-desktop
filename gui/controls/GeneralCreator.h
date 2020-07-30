@@ -45,7 +45,7 @@ namespace Ui
             const int _leftMargin = 0
         );
 
-        static void addHotkeyInfo(
+        static QWidget* addHotkeyInfo(
             QWidget* _parent,
             QLayout* _layout,
             const QString& _name,
@@ -56,15 +56,18 @@ namespace Ui
                                                   QLayout *_layout,
                                                   const QString &_text,
                                                   bool _switched,
-                                                  std::function<QString(bool)> _slot,
-                                                  int _height = -1);
+                                                  std::function<void(bool)> _slot = {},
+                                                  int _height = -1,
+                                                  const QString& accName = QString()
+        );
 
         static TextEmojiWidget* addChooser(
             QWidget* _parent,
             QLayout* _layout,
             const QString& _info,
             const QString& _value,
-            std::function< void(TextEmojiWidget*) > _slot
+            std::function< void(TextEmojiWidget*) > _slot,
+            const QString& _accName = QString()
         );
 
         static DropperInfo addDropper(
@@ -75,8 +78,7 @@ namespace Ui
             const std::vector< QString >& _values,
             int _selected,
             int _width,
-            std::function< void(QString, int, TextEmojiWidget*) > _slot1,
-            std::function< QString(bool) > _slot2
+            std::function< void(const QString&, int, TextEmojiWidget*) > _slot
         );
 
         static void addProgresser(
@@ -91,7 +93,7 @@ namespace Ui
         static void addBackButton(
             QWidget* _parent,
             QLayout* _layout,
-            std::function<void()> _on_button_click = [](){}
+            std::function<void()> _on_button_click = {}
         );
 
         static QComboBox* addComboBox(
@@ -102,8 +104,7 @@ namespace Ui
             const std::vector< QString >& _values,
             int _selected,
             int _width,
-            std::function< void(QString, int, TextEmojiWidget*) > _slot1,
-            std::function< QString(bool) > _slot2
+            std::function< void(const QString&, int) > _slot
         );
     };
 }

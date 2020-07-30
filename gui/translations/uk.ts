@@ -126,6 +126,17 @@ You can leave your feedback or report an error here:</source>
     </message>
 </context>
 <context>
+    <name>active_call_plate</name>
+    <message>
+        <source>Join</source>
+        <translation>вступити</translation>
+    </message>
+    <message>
+        <source>Active call</source>
+        <translation>активний дзвінок</translation>
+    </message>
+</context>
+<context>
     <name>add_new_contact_dialogs</name>
     <message>
         <source>New contact</source>
@@ -243,15 +254,43 @@ You can leave your feedback or report an error here:</source>
     </message>
     <message>
         <source>Violet</source>
-        <translation>бузкова</translation>
+        <translation>Бузкова</translation>
     </message>
     <message>
         <source>Orange</source>
         <translation>Помаранчева</translation>
     </message>
     <message>
-        <source>Dark blue</source>
+        <source>Default</source>
+        <translation>Типово</translation>
+    </message>
+    <message>
+        <source>Dark Turquoise</source>
+        <translation>Темна бірюзова</translation>
+    </message>
+    <message>
+        <source>Dark Violet</source>
+        <translation>Темна бузкова</translation>
+    </message>
+    <message>
+        <source>Dark Orange</source>
+        <translation>темна помаранчева</translation>
+    </message>
+    <message>
+        <source>Pink</source>
+        <translation>рожева</translation>
+    </message>
+    <message>
+        <source>Dark Pink</source>
+        <translation>Темна рожева</translation>
+    </message>
+    <message>
+        <source>Dark Blue</source>
         <translation>Темна синя</translation>
+    </message>
+    <message>
+        <source>Turquoise</source>
+        <translation>бірюзова</translation>
     </message>
 </context>
 <context>
@@ -314,10 +353,6 @@ You can leave your feedback or report an error here:</source>
         <translation>видалити повідомлення</translation>
     </message>
     <message>
-        <source>Block and delete?</source>
-        <translation>Заблокувати і видалити?</translation>
-    </message>
-    <message>
         <source>Cancel</source>
         <translation>Відміна</translation>
     </message>
@@ -333,23 +368,86 @@ You can leave your feedback or report an error here:</source>
         <source>This member won&apos;t be able to join the group again. You could also delete his messages</source>
         <translation>Учасник не зможе повернутися в групу. Ви також можете видалити його повідомлення</translation>
     </message>
+    <message>
+        <source>Delete?</source>
+        <translation>Вилучити?</translation>
+    </message>
+</context>
+<context>
+    <name>bots</name>
+    <message>
+        <source>Cancel</source>
+        <translation>Скасувати</translation>
+    </message>
+    <message>
+        <source>Ok</source>
+        <translation>Ок</translation>
+    </message>
+    <message>
+        <source>Open link</source>
+        <translation>відкрити посилання</translation>
+    </message>
+    <message>
+        <source>You are not a member of this chat or you was banned to write</source>
+        <translation>Ви не учасник чату або вам заборонено писати</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to open an external link %1?</source>
+        <translation>Ви впевнені, що хочете відкрити зовнішнє посилання %1 ?</translation>
+    </message>
+</context>
+<context>
+    <name>call_link</name>
+    <message>
+        <source>Link on call</source>
+        <translation>Посилання на дзвінок</translation>
+    </message>
+    <message>
+        <source>Link on webinar</source>
+        <translation>Посилання на вебінар</translation>
+    </message>
+    <message>
+        <source>Send the link to people you want to add to the call</source>
+        <translation>Надішліть посилання людям, яких хочете додати в дзвінок</translation>
+    </message>
+    <message>
+        <source>Send the link to people you want to invite to the webinar</source>
+        <translation>Надішліть посилання людям, яких потрібно запросити до вебінар</translation>
+    </message>
+    <message>
+        <source>call</source>
+        <translation>дзвінок</translation>
+    </message>
+    <message>
+        <source>webinar</source>
+        <translation>вебінар</translation>
+    </message>
+    <message>
+        <source>Send the %1 link to current chat or copy it</source>
+        <translation>Надішліть посилання на %1 в поточний чат або скопіюйте її</translation>
+    </message>
+    <message>
+        <source>Send the call link %1 to current chat or copy it</source>
+        <translation>Надішліть посилання на дзвінок %1 або скопіюйте її</translation>
+    </message>
+</context>
+<context>
+    <name>calls</name>
+    <message>
+        <source>Group call</source>
+        <translation>Почати груповий дзвінок</translation>
+    </message>
+    <message>
+        <source>Create webinar</source>
+        <translation>створити вебінар</translation>
+    </message>
+    <message>
+        <source>Create call link</source>
+        <translation>Створити посилання на дзвінок</translation>
+    </message>
 </context>
 <context>
     <name>chat_event</name>
-    <message>
-        <source> and </source>
-        <translation> i </translation>
-    </message>
-    <message>
-        <source>You</source>
-        <comment>active_voice</comment>
-        <translation>Ви</translation>
-    </message>
-    <message>
-        <source>you</source>
-        <comment>passive_voice</comment>
-        <translation>вас</translation>
-    </message>
     <message>
         <source>Missed call</source>
         <translation>Пропущений дзвінок</translation>
@@ -363,20 +461,8 @@ You can leave your feedback or report an error here:</source>
         <translation>Вхідний дзвінок</translation>
     </message>
     <message>
-        <source>You changed picture of group</source>
-        <translation>Ви змінили зображення групи</translation>
-    </message>
-    <message>
         <source> has birthday!</source>
         <translation> святкує день народження!</translation>
-    </message>
-    <message>
-        <source>You have joined group</source>
-        <translation>Ви приєдналися до групи</translation>
-    </message>
-    <message>
-        <source>You deleted chat description</source>
-        <translation>Ви видалили опис чату</translation>
     </message>
     <message>
         <source>Message was deleted</source>
@@ -389,58 +475,6 @@ You can leave your feedback or report an error here:</source>
     <message>
         <source>%1 added you to contacts</source>
         <translation>%1 додав вас до контактного списку</translation>
-    </message>
-    <message>
-        <source>%1 changed picture of group</source>
-        <translation>%1 змінив малюнок групи</translation>
-    </message>
-    <message>
-        <source>You changed theme to &quot;%1&quot;</source>
-        <translation>Ви змінили тему на &quot;%1&quot;</translation>
-    </message>
-    <message>
-        <source>%1 changed theme to &quot;%2&quot;</source>
-        <translation>%1 змінив тему на &quot;%2&quot;</translation>
-    </message>
-    <message>
-        <source>You added %1</source>
-        <translation>Ви додали %1</translation>
-    </message>
-    <message>
-        <source>%1 has joined group</source>
-        <translation>%1 увійшов у чат</translation>
-    </message>
-    <message>
-        <source>%1 added %2</source>
-        <translation>%1 додав %2</translation>
-    </message>
-    <message>
-        <source>%1 deleted chat description</source>
-        <translation>%1 видалив опис чату</translation>
-    </message>
-    <message>
-        <source>You changed description to &quot;%1&quot;</source>
-        <translation>Ви змінили опис на &quot;%1&quot;</translation>
-    </message>
-    <message>
-        <source>%1 changed description to &quot;%2&quot;</source>
-        <translation>%1 змінив опис на &quot;%2&quot;</translation>
-    </message>
-    <message>
-        <source>You changed chat rules to &quot;%1&quot;</source>
-        <translation>Ви змінили правила чату на &quot;%1&quot;</translation>
-    </message>
-    <message>
-        <source>You removed %1</source>
-        <translation>Ви видалили %1</translation>
-    </message>
-    <message>
-        <source>%1 removed %2</source>
-        <translation>%1 видалив %2</translation>
-    </message>
-    <message>
-        <source>%1 changed chat rules to &quot;%2&quot;</source>
-        <translation>%1 змінив(-ла) правила чату на &quot;%2&quot;</translation>
     </message>
     <message>
         <source>Your call was missed</source>
@@ -487,40 +521,12 @@ You can leave your feedback or report an error here:</source>
         <translation>Ви не відповіли на дзвінок від %1</translation>
     </message>
     <message>
-        <source>Theme was changed to &quot;%1&quot;</source>
-        <translation>Тема змінилася на %1</translation>
-    </message>
-    <message>
-        <source>%1 was added</source>
-        <translation>%1 був(а) доданий(а)</translation>
-    </message>
-    <message>
-        <source>%1 were added</source>
-        <translation>%1 були додані</translation>
-    </message>
-    <message>
-        <source>Chat description was deleted</source>
-        <translation>Опис чату видалено</translation>
-    </message>
-    <message>
         <source>%1 was removed</source>
         <translation>%1 був вилучений</translation>
     </message>
     <message>
         <source>%1 were removed</source>
         <translation>%1 були видалені</translation>
-    </message>
-    <message>
-        <source>Channel avatar was changed</source>
-        <translation>Аватар каналу змінився</translation>
-    </message>
-    <message>
-        <source>Description was changed to &quot;%1&quot;</source>
-        <translation>Опис змінилося на %1</translation>
-    </message>
-    <message>
-        <source>Channel rules were changed to &quot;%1&quot;</source>
-        <translation>Правила каналу змінилися на %1</translation>
     </message>
     <message>
         <source>You have recently added %1 to your phone contacts. Write a new message or make a call %2</source>
@@ -531,24 +537,418 @@ You can leave your feedback or report an error here:</source>
         <translation>Ось і %1 тепер тут! Пишіть, телефонуйте %2</translation>
     </message>
     <message>
-        <source>You changed chat link to %1</source>
-        <translation>Ви змінили посилання на %1</translation>
-    </message>
-    <message>
-        <source>Channel link was changed to %1</source>
-        <translation>Посилання змінилася на %1</translation>
-    </message>
-    <message>
-        <source>%1 changed chat link to %2</source>
-        <translation>%1 змінив посилання на %2</translation>
-    </message>
-    <message>
         <source>Add avatar</source>
         <translation>Додати аватар</translation>
     </message>
     <message>
         <source>Add description</source>
         <translation>Додати опис</translation>
+    </message>
+    <message>
+        <source>You specified a new channel name - &quot;%1&quot;</source>
+        <translation>Ви вказали нову назву каналу - &quot;%1&quot;</translation>
+    </message>
+    <message>
+        <source>%1 specified a new channel name - &quot;%2&quot;</source>
+        <translation>%1 вказав (-а) нову назву каналу - &quot;%2&quot;</translation>
+    </message>
+    <message>
+        <source>You specified a new group name - &quot;%1&quot;</source>
+        <translation>Ви вказали нову назву групи - &quot;%1&quot;</translation>
+    </message>
+    <message>
+        <source>%1 specified a new group name - &quot;%2&quot;</source>
+        <translation>%1 вказав (-а) нову назву групи - &quot;%2&quot;</translation>
+    </message>
+    <message>
+        <source>%1 You have joined channel</source>
+        <translation>%1 Ви вступили в канал</translation>
+    </message>
+    <message>
+        <source>%1 %2 has joined channel</source>
+        <translation>%1 %2 вступив (ла) в канал</translation>
+    </message>
+    <message>
+        <source>%1 You have joined group</source>
+        <translation>%1 Ви вступили в групу</translation>
+    </message>
+    <message>
+        <source>%1 %2 has joined group</source>
+        <translation>%1 %2 вступив (ла) в групу</translation>
+    </message>
+    <message>
+        <source>%1 You added %2 to the channel</source>
+        <translation>%1 Ви додали %2 в канал</translation>
+    </message>
+    <message>
+        <source>%1 %2 added %3 to the channel</source>
+        <translation>%1 %2 додав (-ла) %3 в канал</translation>
+    </message>
+    <message>
+        <source>%1 You added %2 to the group</source>
+        <translation>%1 Ви додали %2 в групу</translation>
+    </message>
+    <message>
+        <source>%1 %2 added %3 to the group</source>
+        <translation>%1 %2 додав (-ла) %3 до групи</translation>
+    </message>
+    <message>
+        <source>You enabled join with approval</source>
+        <translation>Ви включили вступ в групу за запитом</translation>
+    </message>
+    <message>
+        <source>You disabled join with approval</source>
+        <translation>Ви вимкнули вступ в групу за запитом</translation>
+    </message>
+    <message>
+        <source>%1 enabled join with approval</source>
+        <translation>%1 включив(-а) вступ в групу за запитом</translation>
+    </message>
+    <message>
+        <source>%1 disabled join with approval</source>
+        <translation>%1 вимкнув (-а) вступ в групу за запитом</translation>
+    </message>
+    <message>
+        <source>You made the group public, now it is possible to find it through a search</source>
+        <translation>Ви зробили групу публічної, її зможуть знайти через пошук</translation>
+    </message>
+    <message>
+        <source>You made the group private, now it is impossible to find it through a search</source>
+        <translation>Ви зробили групу приватної, її більше не зможуть знайти через пошук</translation>
+    </message>
+    <message>
+        <source>%1 made the group public, now it is possible to find it through a search</source>
+        <translation>%1 зробив (-ла) групу публічної, її зможуть знайти через пошук</translation>
+    </message>
+    <message>
+        <source>%1 made the group private, now it is impossible to find it through a search</source>
+        <translation>%1 зробив (-ла) групу приватної, її більше не зможуть знайти через пошук</translation>
+    </message>
+    <message>
+        <source>%1 You removed %2</source>
+        <translation>%1 Ви видалили %2</translation>
+    </message>
+    <message>
+        <source>%1 %2 removed %3</source>
+        <translation>%1 %2 видалив (-а) %3</translation>
+    </message>
+    <message>
+        <source>You are no more an administrator of this group</source>
+        <translation>Ви більше не адміністратор цієї групи</translation>
+    </message>
+    <message>
+        <source>You removed administrator role from %1</source>
+        <translation>Ви зняли права адміністратора з %1</translation>
+    </message>
+    <message>
+        <source>%1 removed administrator role from %2</source>
+        <translation>%1 зняв (-а) права адміністратора з %2</translation>
+    </message>
+    <message>
+        <source>%1 Wait for join request approval</source>
+        <translation>%1 Дочекайтеся підтвердження запиту на вступ</translation>
+    </message>
+    <message>
+        <source>%1 You asked to add %2 to the channel</source>
+        <translation>%1 Ви попросили додати %2 в канал</translation>
+    </message>
+    <message>
+        <source>%1 You asked to add %2 to the group</source>
+        <translation>%1 Ви попросили додати %2 до групи</translation>
+    </message>
+    <message>
+        <source>%1 %2 asked to add %3 to the group</source>
+        <translation>%1 %2 попросив (-а) додати %3 до групи</translation>
+    </message>
+    <message>
+        <source>%1 %2 is waiting for group join request approval</source>
+        <translation>%1 %2 чекає підтвердження запиту на вступ до групи</translation>
+    </message>
+    <message>
+        <source>%1 Your join request was approved</source>
+        <translation>%1 Ваш запит на вступ підтверджений</translation>
+    </message>
+    <message>
+        <source>%1 Request from %2 to add you to the channel was approved</source>
+        <translation>%1 Запит від %2 на додавання вас в канал підтверджений</translation>
+    </message>
+    <message>
+        <source>%1 Request from %2 to add you to the group was approved</source>
+        <translation>%1 Запит від %2 на додавання вас до групи підтверджений</translation>
+    </message>
+    <message>
+        <source>%1 You approved join request from %2</source>
+        <translation>%1 Ви підтвердили запит на вступ від %2</translation>
+    </message>
+    <message>
+        <source>%1 You approved join request from %2 to add %3 to the channel</source>
+        <translation>%1 Ви підтвердили запит від %2 на додавання %3 в канал</translation>
+    </message>
+    <message>
+        <source>%1 You approved join request from %2 to add %3 to the group</source>
+        <translation>%1 Ви підтвердили запит від %2 на додавання %3 до групи</translation>
+    </message>
+    <message>
+        <source>%1 %2 approved join request from %3</source>
+        <translation>%1 %2 підтвердив (-а) запит на вступ від %3</translation>
+    </message>
+    <message>
+        <source>%1 Your join request was rejected</source>
+        <translation>%1 Ваш запит на вступ відхилений</translation>
+    </message>
+    <message>
+        <source>%1 Request from %2 to add you to the channel was rejected</source>
+        <translation>%1 Запит від %2 на додавання вас в канал відхилений</translation>
+    </message>
+    <message>
+        <source>%1 Request from %2 to add you to the group was rejected</source>
+        <translation>%1 Запит від %2 на додавання вас до групи відхилений</translation>
+    </message>
+    <message>
+        <source>%1 You rejected join request from %2</source>
+        <translation>%1 Ви відхилили запит на вступ від %2</translation>
+    </message>
+    <message>
+        <source>%1 You rejected join request from %2 to add %3 to the channel</source>
+        <translation>%1 Ви відхилили запит від %2 на додавання %3 в канал</translation>
+    </message>
+    <message>
+        <source>%1 You rejected join request from %2 to add %3 to the group</source>
+        <translation>%1 Ви відхилили запит від %2 на додавання %3 до групи</translation>
+    </message>
+    <message>
+        <source>%1 %2 rejected join request from %3</source>
+        <translation>%1 %2 відхилив (-а) запит на вступ від %3</translation>
+    </message>
+    <message>
+        <source>%1 You have left channel</source>
+        <translation>%1 Ви покинули канал</translation>
+    </message>
+    <message>
+        <source>%1 You have left group</source>
+        <translation>%1 Ви покинули групу</translation>
+    </message>
+    <message>
+        <source>you</source>
+        <translation>вас</translation>
+    </message>
+    <message>
+        <source>Administrator</source>
+        <translation>Адміністратор</translation>
+    </message>
+    <message>
+        <source>%1 %2 removed you</source>
+        <translation>%1 %2 видалив (-а) вас</translation>
+    </message>
+    <message>
+        <source>%1 allowed you to write</source>
+        <translation>%1 дозволив (-а) вам писати</translation>
+    </message>
+    <message>
+        <source>You allowed %1 to write</source>
+        <translation>Ви дозволили писати %1</translation>
+    </message>
+    <message>
+        <source>%1 allowed %2 to write</source>
+        <translation>%1 дозволив (-а) писати %2</translation>
+    </message>
+    <message>
+        <source>%1 banned you to write</source>
+        <translation>%1 заборонив (-а) вам писати</translation>
+    </message>
+    <message>
+        <source>You banned %1 to write</source>
+        <translation>Ви заборонили писати %1</translation>
+    </message>
+    <message>
+        <source>%1 banned %2 to write</source>
+        <translation>%1 заборонив (-а) писати %2</translation>
+    </message>
+    <message>
+        <source>%1 %2 approved join request from %3 to add %4 to the group</source>
+        <translation>%1 %2 підтвердив (-а) запит від %3 на додавання %4 до групи</translation>
+    </message>
+    <message>
+        <source>%1 %2 rejected join request from %3 to add %4 to the group</source>
+        <translation>%1 %2 відхилив (-а) запит від %3 на додавання %4 до групи</translation>
+    </message>
+    <message>
+        <source>%1 %2 asked to add %3 to the channel (this message is visible only to administrators)</source>
+        <translation>%1 %2 попросив (-а) додати %3 в канал (це повідомлення бачать тільки адміністратори)</translation>
+    </message>
+    <message>
+        <source>%1 %2 is waiting for channel join request approval (this message is visible only to administrators)</source>
+        <translation>%1 %2 чекає підтвердження запиту на вступ в канал (це повідомлення бачать тільки адміністратори)</translation>
+    </message>
+    <message>
+        <source>%1 %2 approved join request from %3 to add %4 to the channel (this message is visible only to administrators)</source>
+        <translation>%1 %2 підтвердив (-а) запит від %3 на додавання %4 в канал (це повідомлення бачать тільки адміністратори)</translation>
+    </message>
+    <message>
+        <source>%1 %2 rejected join request from %3 to add %4 to the channel (this message is visible only to administrators)</source>
+        <translation>%1 %2 відхилив (-а) запит від %3 на додавання %4 в канал (це повідомлення бачать тільки адміністратори)</translation>
+    </message>
+    <message>
+        <source>%1 %2 have left group (this message is visible only to administrators)</source>
+        <comment>many</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 %2 has left group (this message is visible only to administrators)</source>
+        <comment>one</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 Your request to add %2 to the channel was approved</source>
+        <translation>%1 Ваш запит на додавання %2 в канал підтверджений</translation>
+    </message>
+    <message>
+        <source>%1 Your request to add %2 to the group was approved</source>
+        <translation>%1 Ваш запит на додавання %2 до групи підтверджений</translation>
+    </message>
+    <message>
+        <source>%1 Your request to add %2 to the channel was rejected</source>
+        <translation>%1 Ваш запит на додавання %2 в канал відхилений</translation>
+    </message>
+    <message>
+        <source>%1 Your request to add %2 to the group was rejected</source>
+        <translation>%1 Ваш запит на додавання %2 до групи відхилений</translation>
+    </message>
+    <message>
+        <source>%1 %2 approved join request from %3(this message is visible only to administrators)</source>
+        <translation>%1 %2 підтвердив(-а) запит на вступ від %3 (це повідомлення бачать тільки адміністратори)</translation>
+    </message>
+    <message>
+        <source>%1 %2 rejected join request from %3(this message is visible only to administrators)</source>
+        <translation>%1 %2 відхилив (-а) запит на вступ від %3 (це повідомлення бачать тільки адміністратори)</translation>
+    </message>
+    <message>
+        <source>You changed the channel avatar</source>
+        <translation>Ви змінили аватар каналу</translation>
+    </message>
+    <message>
+        <source>%1 changed the channel avatar</source>
+        <translation>%1 змінив (-ла) аватар каналу</translation>
+    </message>
+    <message>
+        <source>You changed the group avatar</source>
+        <translation>Ви змінили аватар групи</translation>
+    </message>
+    <message>
+        <source>%1 changed the group avatar</source>
+        <translation>%1 змінив (-ла) аватар групи</translation>
+    </message>
+    <message>
+        <source>You deleted the channel description</source>
+        <translation>Ви видалили опис каналу</translation>
+    </message>
+    <message>
+        <source>%1 deleted the channel description</source>
+        <translation>%1 видалив (-а) опис каналу</translation>
+    </message>
+    <message>
+        <source>You deleted the group description</source>
+        <translation>Ви видалили опис групи</translation>
+    </message>
+    <message>
+        <source>%1 deleted the group description</source>
+        <translation>%1 видалив (-а) опис групи</translation>
+    </message>
+    <message>
+        <source>You changed the channel description - &quot;%1&quot;</source>
+        <translation>Ви змінили опис каналу - &quot;%1&quot;</translation>
+    </message>
+    <message>
+        <source>%1 changed the channel description - &quot;%2&quot;</source>
+        <translation>%1 змінив (-ла) опис каналу - &quot;%2&quot;</translation>
+    </message>
+    <message>
+        <source>You changed the group description - &quot;%1&quot;</source>
+        <translation>Ви змінили опис групи - &quot;%1&quot;</translation>
+    </message>
+    <message>
+        <source>%1 changed the group description - &quot;%2&quot;</source>
+        <translation>%1 змінив (-ла) опис групи - &quot;%2&quot;</translation>
+    </message>
+    <message>
+        <source>You deleted the channel rules</source>
+        <translation>Ви видалили правила каналу</translation>
+    </message>
+    <message>
+        <source>%1 deleted the channel rules</source>
+        <translation>%1 видалив (-а) правила каналу</translation>
+    </message>
+    <message>
+        <source>You deleted the group rules</source>
+        <translation>Ви видалили правила групи</translation>
+    </message>
+    <message>
+        <source>%1 deleted the group rules</source>
+        <translation>%1 видалив (-а) правила групи</translation>
+    </message>
+    <message>
+        <source>You changed the channel rules - &quot;%1&quot;</source>
+        <translation>Ви змінили правила каналу - &quot;%1&quot;</translation>
+    </message>
+    <message>
+        <source>%1 changed the channel rules - &quot;%2&quot;</source>
+        <translation>%1 змінив (-ла) правила каналу - &quot;%2&quot;</translation>
+    </message>
+    <message>
+        <source>You changed the group rules - &quot;%1&quot;</source>
+        <translation>Ви змінили правила групи - &quot;%1&quot;</translation>
+    </message>
+    <message>
+        <source>%1 changed the group rules - &quot;%2&quot;</source>
+        <translation>%1 змінив (-ла) правила групи - &quot;%2&quot;</translation>
+    </message>
+    <message>
+        <source>You changed the link to %1</source>
+        <translation>Ви змінили посилання на %1</translation>
+    </message>
+    <message>
+        <source>%1 changed the link to %2</source>
+        <translation>%1 змінив (-ла) посилання на %2</translation>
+    </message>
+    <message>
+        <source>You were assigned as an administrator of this channel</source>
+        <translation>Вас призначили адміністратором цього каналу</translation>
+    </message>
+    <message>
+        <source>You were assigned as an administrator of this group</source>
+        <translation>Вас призначили адміністратором цієї групи</translation>
+    </message>
+    <message>
+        <source>You assigned %1 administrator of this channel</source>
+        <translation>Ви призначили %1 адміністратором цього каналу</translation>
+    </message>
+    <message>
+        <source>You assigned %1 administrator of this group</source>
+        <translation>Ви призначили %1 адміністратором цієї групи</translation>
+    </message>
+    <message>
+        <source>%1 assigned %2 administrator of this channel</source>
+        <translation>%1 призначив(-а) %2 адміністратором цього каналу</translation>
+    </message>
+    <message>
+        <source>%1 assigned %2 administrator of this group</source>
+        <translation>%1 призначив (-а) %2 адміністратором цієї групи</translation>
+    </message>
+    <message>
+        <source>%1 You have canceled your join request</source>
+        <translation>%1 Ви скасували запит на вступ</translation>
+    </message>
+    <message>
+        <source>%1 Wait for subscription request approval</source>
+        <translation>%1 Дочекайтеся підтвердження запиту на підписку</translation>
+    </message>
+    <message>
+        <source>%1 Your subscription request was rejected</source>
+        <translation>%1 Ваш запит на підписку відхилено</translation>
+    </message>
+    <message>
+        <source>%1 %2 has canceled join request</source>
+        <translation>%1 %2 скасував (-а) запит на вступ</translation>
     </message>
 </context>
 <context>
@@ -613,6 +1013,26 @@ You can leave your feedback or report an error here:</source>
         <source>Quick send</source>
         <translation>Відправити швидко</translation>
     </message>
+    <message>
+        <source>Message added to </source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Messages added to </source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Messages added to </source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Messages added to </source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>connection</name>
@@ -650,10 +1070,6 @@ You can leave your feedback or report an error here:</source>
     <message>
         <source>Voice message</source>
         <translation>Голосове повідомлення</translation>
-    </message>
-    <message>
-        <source>FAVORITES</source>
-        <translation>УПОДОБАННЯ</translation>
     </message>
     <message>
         <source>RECENTS</source>
@@ -734,6 +1150,10 @@ You can leave your feedback or report an error here:</source>
     <message>
         <source>Create channel</source>
         <translation>Створити канал</translation>
+    </message>
+    <message>
+        <source>PINNED</source>
+        <translation>ЗАКРІПЛЕНІ</translation>
     </message>
 </context>
 <context>
@@ -976,6 +1396,10 @@ You can leave your feedback or report an error here:</source>
         <source>Send</source>
         <translation>Відправити</translation>
     </message>
+    <message>
+        <source>Choose your problem</source>
+        <translation>Виберіть тему звернення</translation>
+    </message>
 </context>
 <context>
     <name>context_menu</name>
@@ -1146,6 +1570,26 @@ You can leave your feedback or report an error here:</source>
     <message>
         <source>Stop poll</source>
         <translation>Зупинити опитування</translation>
+    </message>
+    <message>
+        <source>Add to favorites</source>
+        <translation>У обране</translation>
+    </message>
+    <message>
+        <source>Remove from dictionary</source>
+        <translation>Видалити зі словника</translation>
+    </message>
+    <message>
+        <source>Add to dictionary</source>
+        <translation>Додати в словник</translation>
+    </message>
+    <message>
+        <source>Ignore</source>
+        <translation>ігнорувати</translation>
+    </message>
+    <message>
+        <source>Copy session info</source>
+        <translation>Скопіювати інформацію про сесії</translation>
     </message>
 </context>
 <context>
@@ -2182,6 +2626,46 @@ You can leave your feedback or report an error here:</source>
     </message>
 </context>
 <context>
+    <name>favorites</name>
+    <message>
+        <source>
+%1, this is your personal space!
+
+%2 Save links, files and other messages
+%3 Write notes, to-do lists, store photos and videos
+%4 Draft messages and polls before sending them to chat with friends or to your channel</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Favorites</source>
+        <translation>Вибране</translation>
+    </message>
+    <message>
+        <source>save</source>
+        <translation>зберегти</translation>
+    </message>
+    <message>
+        <source>saved</source>
+        <translation>збережене</translation>
+    </message>
+    <message>
+        <source>favorites</source>
+        <translation>обране</translation>
+    </message>
+    <message>
+        <source>%1, this is your work space!
+
+%2 Save links, files and other messages
+%3 Write notes, to-do lists, store photos and videos
+%4 Draft messages and polls before sending them to chat with colleagues or to your channel</source>
+        <translation>%1, це ваш робочий простір!
+
+%2 Зберігайте посилання, файли і інші повідомлення
+%3 Пишіть замітки, списки справ, зберігайте фото і відео
+%4 Створюйте чернетки повідомлень і опитувань перед тим, як відправити їх в чат з колегами або в свій канал</translation>
+    </message>
+</context>
+<context>
     <name>files_widget</name>
     <message>
         <source>Send with caption</source>
@@ -2239,6 +2723,10 @@ You can leave your feedback or report an error here:</source>
         <source>Send</source>
         <translation>Надіслати</translation>
     </message>
+    <message>
+        <source>Copied from clipboard</source>
+        <translation>Скопійовано з буфера обміну</translation>
+    </message>
 </context>
 <context>
     <name>gallery</name>
@@ -2252,13 +2740,6 @@ You can leave your feedback or report an error here:</source>
     <message>
         <source>Copied to clipboard</source>
         <translation>Скопійовано в буфер</translation>
-    </message>
-</context>
-<context>
-    <name>geolocation_block</name>
-    <message>
-        <source>Location</source>
-        <translation>Місцезнаходження</translation>
     </message>
 </context>
 <context>
@@ -2288,14 +2769,6 @@ You can leave your feedback or report an error here:</source>
         <translation>Ім&apos;я чату</translation>
     </message>
     <message>
-        <source>Chat information is unavailable now, please try again later</source>
-        <translation>Дані чату наразі недоступні, спробуйте ще раз пізніше</translation>
-    </message>
-    <message>
-        <source>Chat does not exist or it is hidden by privacy settings</source>
-        <translation>Чат не існує або прихований настройками конфіденційності</translation>
-    </message>
-    <message>
         <source>member</source>
         <comment>1</comment>
         <translation>учасник</translation>
@@ -2314,26 +2787,6 @@ You can leave your feedback or report an error here:</source>
         <source>members</source>
         <comment>21</comment>
         <translation>учасник</translation>
-    </message>
-    <message>
-        <source>friend</source>
-        <comment>1</comment>
-        <translation>друг</translation>
-    </message>
-    <message>
-        <source>friends</source>
-        <comment>2</comment>
-        <translation>друга</translation>
-    </message>
-    <message>
-        <source>friends</source>
-        <comment>5</comment>
-        <translation>друзів</translation>
-    </message>
-    <message>
-        <source>friends</source>
-        <comment>21</comment>
-        <translation>друг</translation>
     </message>
     <message>
         <source>Channel name</source>
@@ -2383,6 +2836,14 @@ You can leave your feedback or report an error here:</source>
         <source>Group name</source>
         <translation>ім&apos;я групи</translation>
     </message>
+    <message>
+        <source>Chat information is unavailable now, please try again later</source>
+        <translation>Дані чату наразі недоступні, спробуйте ще раз пізніше</translation>
+    </message>
+    <message>
+        <source>Chat does not exist or it is hidden by privacy settings</source>
+        <translation>Чат не існує або прихований настройками конфіденційності</translation>
+    </message>
 </context>
 <context>
     <name>head</name>
@@ -2391,16 +2852,20 @@ You can leave your feedback or report an error here:</source>
         <translation>Контакти</translation>
     </message>
     <message>
-        <source>Chats</source>
-        <translation>Чати</translation>
-    </message>
-    <message>
         <source>Settings</source>
         <translation>Налаштування</translation>
     </message>
     <message>
         <source>Search</source>
         <translation>Пошук</translation>
+    </message>
+    <message>
+        <source>Calls</source>
+        <translation>дзвінки</translation>
+    </message>
+    <message>
+        <source>Chats</source>
+        <translation>Чати</translation>
     </message>
 </context>
 <context>
@@ -2552,6 +3017,30 @@ You can leave your feedback or report an error here:</source>
         <source>Unblock</source>
         <translation>Розблокувати</translation>
     </message>
+    <message>
+        <source>Start</source>
+        <translation>Почати</translation>
+    </message>
+    <message>
+        <source>Webinar</source>
+        <translation>вебінар</translation>
+    </message>
+    <message>
+        <source>Error creating webinar</source>
+        <translation>Помилка при створенні вебінару</translation>
+    </message>
+    <message>
+        <source>Call link</source>
+        <translation>Посилання на дзвінок</translation>
+    </message>
+    <message>
+        <source>Error creating call link</source>
+        <translation>Помилка при створенні посилання на дзвінок</translation>
+    </message>
+    <message>
+        <source>Cancel request</source>
+        <translation>Скасувати запит</translation>
+    </message>
 </context>
 <context>
     <name>linux_desktop_file</name>
@@ -2654,20 +3143,12 @@ You can leave your feedback or report an error here:</source>
         <translation>Передзвонити через %1</translation>
     </message>
     <message>
-        <source>Enter one-time password received by email</source>
-        <translation>Введіть одноразовий пароль, отриманий по email</translation>
-    </message>
-    <message>
         <source>Enter your login and password</source>
         <translation>Вкажіть ваш логін і пароль</translation>
     </message>
     <message>
         <source>To login use you corporative account created at</source>
         <translation>Для входу використовуйте корпоративний обліковий запис, створений в</translation>
-    </message>
-    <message>
-        <source>Check the country code and enter your phone number</source>
-        <translation>Перевірте код країни і введіть свій номер телефону</translation>
     </message>
     <message>
         <source>Phone</source>
@@ -2740,6 +3221,66 @@ You can leave your feedback or report an error here:</source>
     <message>
         <source>Phone code</source>
         <translation>Код з дзвінка</translation>
+    </message>
+    <message>
+        <source>OK</source>
+        <translation>OK</translation>
+    </message>
+    <message>
+        <source>Configuration error</source>
+        <translation>Помилка конфігурації</translation>
+    </message>
+    <message>
+        <source>Enter hostname</source>
+        <translation>Введіть адресу сервера</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>Скасувати</translation>
+    </message>
+    <message>
+        <source>It is necessary to supplement the server configuration for the application to work. Contact system administrator</source>
+        <translation>Для роботи програми, необхідно доповнити конфігурацію сервера. Зверніться до адміністратора</translation>
+    </message>
+    <message>
+        <source>Invalid server configuration format. Contact system administrator</source>
+        <translation>Некоректний формат конфігурації сервера. Зверніться до адміністратора</translation>
+    </message>
+    <message>
+        <source>Unknown error. Contact system administrator</source>
+        <translation>Невідома помилка. Зверніться до адміністратора</translation>
+    </message>
+    <message>
+        <source>Invalid server configuration hostname. Contact system administrator</source>
+        <translation>Уточніть адресу у адміністратора</translation>
+    </message>
+    <message>
+        <source>Check the country code and enter your phone number for registration and authorization</source>
+        <translation>Перевірте код країни і введіть свій номер телефону для реєстрації і авторизації</translation>
+    </message>
+    <message>
+        <source>Enter your corporate email, a password will be sent to it</source>
+        <translation>Введіть ваш корпоративний email, на нього буде відправлений пароль для входу</translation>
+    </message>
+    <message>
+        <source>Enter one-time password sent to email</source>
+        <translation>Введіть одноразовий пароль, який був відправлений на</translation>
+    </message>
+    <message>
+        <source>Enter email</source>
+        <translation>Введіть email</translation>
+    </message>
+    <message>
+        <source>Enter password</source>
+        <translation>Введіть пароль</translation>
+    </message>
+    <message>
+        <source>Write us</source>
+        <translation>Напишіть нам</translation>
+    </message>
+    <message>
+        <source>Wrong password</source>
+        <translation>Невірний пароль</translation>
     </message>
 </context>
 <context>
@@ -2908,6 +3449,10 @@ You can leave your feedback or report an error here:</source>
     <message>
         <source>Sticker</source>
         <translation>стікер</translation>
+    </message>
+    <message>
+        <source>The message is not supported on your version of ICQ. Update the app to see the message</source>
+        <translation>Не вдалося визначити відобразити повідомлення у вашій версії програми. оновіться</translation>
     </message>
 </context>
 <context>
@@ -3137,10 +3682,6 @@ You can leave your feedback or report an error here:</source>
 <context>
     <name>placeholders</name>
     <message>
-        <source>Install ICQ on mobile</source>
-        <translation>Інсталювати ICQ на мобільний пристрій</translation>
-    </message>
-    <message>
         <source>Nothing found</source>
         <translation>Нічого не знайдено</translation>
     </message>
@@ -3190,7 +3731,7 @@ You can leave your feedback or report an error here:</source>
     </message>
     <message>
         <source>Copy</source>
-        <translation>Cкопіровать</translation>
+        <translation>Скопіювати</translation>
     </message>
     <message>
         <source>Share the link %1 so people can write you</source>
@@ -3203,6 +3744,42 @@ You can leave your feedback or report an error here:</source>
     <message>
         <source>Failed to download file or media</source>
         <translation>Не вдалося завантажити файл або медіа</translation>
+    </message>
+    <message>
+        <source>Install ICQ on mobile</source>
+        <translation>Інсталювати ICQ на мобільний пристрій</translation>
+    </message>
+    <message>
+        <source>This group can be joined only after admin approval</source>
+        <translation>У цю групу можна вступити лише після підтвердження</translation>
+    </message>
+    <message>
+        <source>Join the group to start chatting</source>
+        <translation>Приєднуйтеся до групи, щоб почати листуватися</translation>
+    </message>
+    <message>
+        <source>Tell us about your problem. We will try to help you</source>
+        <translation>Розкажіть про вашу проблему. Ми постараємося допомогти</translation>
+    </message>
+    <message>
+        <source>Start working with</source>
+        <translation>Почніть працювати з</translation>
+    </message>
+    <message>
+        <source>Start chatting with</source>
+        <translation>Почніть спілкуватися з</translation>
+    </message>
+    <message>
+        <source>What this bot can do?</source>
+        <translation>Що вміє цей бот?</translation>
+    </message>
+    <message>
+        <source>Subscribe the channel to see the messages</source>
+        <translation>Підпишіться на канал, щоб побачити повідомлення</translation>
+    </message>
+    <message>
+        <source>This channel can be subscribed only after admin approval</source>
+        <translation>На цей канал можна підписатися тільки після підтвердження</translation>
     </message>
 </context>
 <context>
@@ -3292,7 +3869,7 @@ You can leave your feedback or report an error here:</source>
     </message>
     <message>
         <source>Photo</source>
-        <translation>фото</translation>
+        <translation>Фото</translation>
     </message>
     <message>
         <source>Vote: an error occurred</source>
@@ -3317,6 +3894,10 @@ You can leave your feedback or report an error here:</source>
 </context>
 <context>
     <name>popup_window</name>
+    <message>
+        <source>Clear all data from this device</source>
+        <translation>Видалити всі дані з пристрою</translation>
+    </message>
     <message>
         <source>Are you sure you want to sign out?</source>
         <translation>Дійсно вийти з облікового запису?</translation>
@@ -3586,14 +4167,6 @@ You can leave your feedback or report an error here:</source>
         <translation>видалити</translation>
     </message>
     <message>
-        <source>Waiting</source>
-        <translation>Очікування</translation>
-    </message>
-    <message>
-        <source>Join</source>
-        <translation>вступити</translation>
-    </message>
-    <message>
         <source>If you stop the poll, nobody will be able to vote anymore. This action can not be undone</source>
         <translation>Якщо ви зупините опитування, ніхто не зможе проголосувати. Ця дія не можна скасувати</translation>
     </message>
@@ -3604,10 +4177,6 @@ You can leave your feedback or report an error here:</source>
     <message>
         <source>Stop this poll?</source>
         <translation>Зупинити опитування?</translation>
-    </message>
-    <message>
-        <source>Open</source>
-        <translation>відкрити</translation>
     </message>
     <message>
         <source>Are you sure you want to leave channel?</source>
@@ -3656,6 +4225,186 @@ You can leave your feedback or report an error here:</source>
     <message>
         <source>Create</source>
         <translation>створити</translation>
+    </message>
+    <message>
+        <source>Do you want to join conference?</source>
+        <translation>Ви хочете приєднатися до конференції?</translation>
+    </message>
+    <message>
+        <source>Join confirmation</source>
+        <translation>Підтвердження вступу</translation>
+    </message>
+    <message>
+        <source>All sessions except the current one will be closed</source>
+        <translation>Всі сесії, крім поточної, будуть закриті</translation>
+    </message>
+    <message>
+        <source>Close sessions</source>
+        <translation>Закрити сесії</translation>
+    </message>
+    <message>
+        <source>Close session</source>
+        <translation>Закрити сесію</translation>
+    </message>
+    <message>
+        <source>Session %1 will be closed</source>
+        <translation>Сесія %1 буде закрита</translation>
+    </message>
+    <message>
+        <source>Don&apos;t ask me again</source>
+        <translation>Не запитувати</translation>
+    </message>
+    <message>
+        <source>Run this file?</source>
+        <translation>Запустити файл?</translation>
+    </message>
+    <message>
+        <source>This file may be unsafe</source>
+        <translation>Цей файл може бути небезпечним</translation>
+    </message>
+    <message>
+        <source>You cannot call this contact due to its privacy settings</source>
+        <translation>Ви не можете дзвонити з контактом через його налаштувань приватності</translation>
+    </message>
+    <message>
+        <source>Ok</source>
+        <translation>Ок</translation>
+    </message>
+    <message>
+        <source>Maximum number of members selected</source>
+        <translation>Обрано максимальне число учасників</translation>
+    </message>
+    <message>
+        <source>Start group call</source>
+        <translation>Почати груповий аудіозвонок</translation>
+    </message>
+    <message>
+        <source>Call</source>
+        <translation>Подзвонити</translation>
+    </message>
+    <message>
+        <source>Start group video call</source>
+        <translation>Почати груповий відеодзвінок</translation>
+    </message>
+    <message>
+        <source>Error</source>
+        <translation>Помилка</translation>
+    </message>
+    <message>
+        <source>Start</source>
+        <translation>почати</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to delete the call?</source>
+        <translation>Ви впевнені, що хочете видалити дзвінок?</translation>
+    </message>
+    <message>
+        <source>Some problems with your link</source>
+        <translation>Проблема з вашої посиланням</translation>
+    </message>
+    <message>
+        <source>Some problems with your link. Please check it and try again or ask for a new link</source>
+        <translation>На жаль, виникла проблема з вашої посиланням. Перевірте її та повторіть спробу або попросіть надіслати вам інше посилання</translation>
+    </message>
+    <message>
+        <source>It&apos;s not possible to connect now, please, try again later</source>
+        <translation>Підключення зараз неможливо, спробуйте пізніше</translation>
+    </message>
+    <message>
+        <source>Participants&apos; limit exceeded</source>
+        <translation>Перевищено ліміт на кількість учасників</translation>
+    </message>
+    <message>
+        <source>Duration limit exceeded</source>
+        <translation>Перевищено ліміт по тривалості</translation>
+    </message>
+    <message>
+        <source>Sorry, something went wrong. Please, try again later</source>
+        <translation>Вибачте, щось пішло не так. Спробуй пізніше</translation>
+    </message>
+    <message>
+        <source>My status</source>
+        <translation>Мій статус</translation>
+    </message>
+    <message>
+        <source>You cannot call these users because of privacy settings:</source>
+        <translation>Ви не можете дзвонити цим контактам через їх налаштувань приватності. Контакти:</translation>
+    </message>
+    <message>
+        <source>You cannot call these users. Try to write them:</source>
+        <translation>Щоб зателефонувати, напишіть контакту приватне повідомлення та дочекайтеся відповіді. Контакти:</translation>
+    </message>
+    <message>
+        <source>Unknown error connecting to the following contacts:</source>
+        <translation>Невідома помилка при з&apos;єднанні з наступними контактами:</translation>
+    </message>
+    <message>
+        <source>You cannot call</source>
+        <translation>Ви не можете зателефонувати</translation>
+    </message>
+    <message>
+        <source>Call declined</source>
+        <translation>дзвінок відхилений</translation>
+    </message>
+    <message>
+        <source>You cannot call this contact. Write %1 to the chat and, if answered, you can call</source>
+        <translation>Ви не можете дзвонити з контактом. Напишіть %1 в чат і, якщо вам дадуть відповідь, зможете зателефонувати</translation>
+    </message>
+    <message>
+        <source>Write</source>
+        <translation>Написати</translation>
+    </message>
+    <message>
+        <source>Cancel request?</source>
+        <translation>Скасувати запит?</translation>
+    </message>
+    <message>
+        <source>%1 is now unavailable</source>
+        <translation>%1 тепер недоступний</translation>
+    </message>
+    <message>
+        <source>After canceling the request, the channel will disappear from the chat list</source>
+        <translation>Після скасування запиту канал пропаде зі списку чатів</translation>
+    </message>
+    <message>
+        <source>After canceling the request, the group will disappear from the chat list</source>
+        <translation>Після скасування запиту група пропаде зі списку чатів</translation>
+    </message>
+    <message>
+        <source>You were blocked by admins</source>
+        <translation>Адміністратори заблокували вас</translation>
+    </message>
+    <message>
+        <source>Send link</source>
+        <translation>Надіслати посилання</translation>
+    </message>
+    <message>
+        <source>You can not join the call. It already has</source>
+        <translation>Ви не можете підключитися до дзвінка. У ньому вже</translation>
+    </message>
+    <message>
+        <source>No</source>
+        <translation>немає</translation>
+    </message>
+    <message>
+        <source>Do you want to join the call? Current call will be ended</source>
+        <translation>Приєднатися до дзвінка? Поточний дзвінок буде закінчений</translation>
+    </message>
+    <message>
+        <source>Do you want to start a new call? Current call will be ended</source>
+        <translation>Почати новий дзвінок? Поточний дзвінок буде закінчений</translation>
+    </message>
+    <message>
+        <source>Use internal DNS cache</source>
+        <translation>Використовувати внутрішній DNS кеш</translation>
+    </message>
+    <message>
+        <source>To change this option you must restart the application. Continue?</source>
+        <translation>Щоб змінити налаштування, необхідно перезапустити програму. Продовжити?</translation>
+    </message>
+    <message>
+        <source>Global people search</source>
+        <translation>Глобальний пошук людей</translation>
     </message>
 </context>
 <context>
@@ -3719,6 +4468,10 @@ You can leave your feedback or report an error here:</source>
     <message>
         <source>Error file downloading</source>
         <translation>Помилка завантаження файлу</translation>
+    </message>
+    <message>
+        <source>Add to favorites</source>
+        <translation>У обране</translation>
     </message>
 </context>
 <context>
@@ -3874,6 +4627,57 @@ You can leave your feedback or report an error here:</source>
     <message>
         <source>Forwarded message</source>
         <translation>Переслане повідомлення</translation>
+    </message>
+</context>
+<context>
+    <name>reactions</name>
+    <message>
+        <source>Remove</source>
+        <translation>вилучити</translation>
+    </message>
+    <message>
+        <source>Reactions</source>
+        <translation>реакції</translation>
+    </message>
+    <message>
+        <source>All</source>
+        <translation>Усе</translation>
+    </message>
+    <message>
+        <source>Like</source>
+        <translation>подобається</translation>
+    </message>
+    <message>
+        <source>Super</source>
+        <translation>супер</translation>
+    </message>
+    <message>
+        <source>Funny</source>
+        <translation>смішно</translation>
+    </message>
+    <message>
+        <source>Oops</source>
+        <translation>Упс</translation>
+    </message>
+    <message>
+        <source>Sad</source>
+        <translation>сумно</translation>
+    </message>
+    <message>
+        <source>Scandalous</source>
+        <translation>Обурливо</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation>Закрити</translation>
+    </message>
+    <message>
+        <source>Add reaction: an error occurred</source>
+        <translation>Додавання реакції: сталася помилка</translation>
+    </message>
+    <message>
+        <source>Remove reaction: an error occurred</source>
+        <translation>Видалення реакції: сталася помилка</translation>
     </message>
 </context>
 <context>
@@ -4159,10 +4963,6 @@ You can leave your feedback or report an error here:</source>
         <translation>Список ігнорування</translation>
     </message>
     <message>
-        <source>Consequently marking messages as read</source>
-        <translation>Послідовне прочитання чату</translation>
-    </message>
-    <message>
         <source>Auto play GIFs</source>
         <translation>Автовідтворення GIFs</translation>
     </message>
@@ -4315,10 +5115,6 @@ You can leave your feedback or report an error here:</source>
         <translation>Додати нікнейм</translation>
     </message>
     <message>
-        <source>Problem</source>
-        <translation>проблема</translation>
-    </message>
-    <message>
         <source>Main window</source>
         <translation>Головне вікно</translation>
     </message>
@@ -4361,6 +5157,74 @@ You can leave your feedback or report an error here:</source>
     <message>
         <source>Advanced Settings</source>
         <translation>розширені налаштування</translation>
+    </message>
+    <message>
+        <source>Account Security</source>
+        <translation>Безпека аккаунта</translation>
+    </message>
+    <message>
+        <source>Session List</source>
+        <translation>список сесій</translation>
+    </message>
+    <message>
+        <source>Favorites</source>
+        <translation>Вибране</translation>
+    </message>
+    <message>
+        <source>Current session</source>
+        <translation>Поточна сесія</translation>
+    </message>
+    <message>
+        <source>Session closed</source>
+        <translation>Сесія закрита</translation>
+    </message>
+    <message>
+        <source>Error occurred</source>
+        <translation>Виникла помилка</translation>
+    </message>
+    <message>
+        <source>Active session</source>
+        <translation>активна сессіяс</translation>
+    </message>
+    <message>
+        <source>Close all other sessions</source>
+        <translation>Закрити всі інші сесії</translation>
+    </message>
+    <message>
+        <source>Active sessions</source>
+        <translation>активні сесії</translation>
+    </message>
+    <message>
+        <source>Session info copied</source>
+        <translation>Інформація про сесію скопійована</translation>
+    </message>
+    <message>
+        <source>Do not ask when running executable files</source>
+        <translation>Чи не питати при запуску виконуваних файлів</translation>
+    </message>
+    <message>
+        <source>Use system spell checker</source>
+        <translation>Системна перевірка орфографії</translation>
+    </message>
+    <message>
+        <source>Calls</source>
+        <translation>дзвінки</translation>
+    </message>
+    <message>
+        <source>Show calls tab</source>
+        <translation>Показувати вкладку &quot;Дзвінки&quot;</translation>
+    </message>
+    <message>
+        <source>Show reactions to messages</source>
+        <translation>Показувати реакції на повідомлення</translation>
+    </message>
+    <message>
+        <source>Show statuses</source>
+        <translation>показувати статуси</translation>
+    </message>
+    <message>
+        <source>Show unreads counter in window title</source>
+        <translation>Показувати кількість непрочитаних в заголовку вікна</translation>
     </message>
 </context>
 <context>
@@ -4556,6 +5420,10 @@ You can leave your feedback or report an error here:</source>
         <source>Mark all dialogs as read</source>
         <translation>Помітити всі чати прочитаними</translation>
     </message>
+    <message>
+        <source>Set status</source>
+        <translation>встановити статус</translation>
+    </message>
 </context>
 <context>
     <name>sidebar</name>
@@ -4574,10 +5442,6 @@ You can leave your feedback or report an error here:</source>
     <message>
         <source>Nickname</source>
         <translation>Нiк</translation>
-    </message>
-    <message>
-        <source>Blocked people</source>
-        <translation>Заблоковані</translation>
     </message>
     <message>
         <source>Phone number</source>
@@ -4858,20 +5722,12 @@ Please edit phone number and try again.</source>
         <translation>Ви не можете читати або писати повідомлення в групі, тому що ви заблоковані</translation>
     </message>
     <message>
-        <source>The join request has been sent to administrator</source>
-        <translation>Запит на вступ відправлений адміністратору</translation>
-    </message>
-    <message>
         <source>Remove</source>
         <translation>Видалити</translation>
     </message>
     <message>
         <source>Leave and delete</source>
         <translation>Вийти і видалити</translation>
-    </message>
-    <message>
-        <source>Block and delete</source>
-        <translation>Заблокувати і видалити</translation>
     </message>
     <message>
         <source>Search</source>
@@ -4890,10 +5746,6 @@ Please edit phone number and try again.</source>
         <translation>Параметри каналів</translation>
     </message>
     <message>
-        <source>Block and delete from group</source>
-        <translation>Заблокувати і видалити з групи</translation>
-    </message>
-    <message>
         <source>Group settings</source>
         <translation>Налаштування групи</translation>
     </message>
@@ -4904,6 +5756,50 @@ Please edit phone number and try again.</source>
     <message>
         <source>Public group</source>
         <translation>публічна група</translation>
+    </message>
+    <message>
+        <source>Favorites</source>
+        <translation>Вибране</translation>
+    </message>
+    <message>
+        <source>Open favorites</source>
+        <translation>Відкрити обране</translation>
+    </message>
+    <message>
+        <source>Delete from group</source>
+        <translation>Видалити з групи</translation>
+    </message>
+    <message>
+        <source>Deleted and blocked</source>
+        <translation>Дистанційні і заблоковані</translation>
+    </message>
+    <message>
+        <source>Delete</source>
+        <translation>вилучити</translation>
+    </message>
+    <message>
+        <source>You can&apos;t read messages in this channel because you are blocked</source>
+        <translation>Ви не можете читати повідомлення в каналі, тому що ви заблоковані</translation>
+    </message>
+    <message>
+        <source>Wait for subscription request approval</source>
+        <translation>Дочекайтеся підтвердження запиту на підписку</translation>
+    </message>
+    <message>
+        <source>Wait for join request approval</source>
+        <translation>Дочекайтеся підтвердження запиту на вступ</translation>
+    </message>
+    <message>
+        <source>Your subscription request was rejected</source>
+        <translation>Ваш запит на підписку відхилено</translation>
+    </message>
+    <message>
+        <source>Your join request was rejected</source>
+        <translation>Ваш запит на вступ відхилений</translation>
+    </message>
+    <message>
+        <source>Call</source>
+        <translation>Подзвонити</translation>
     </message>
 </context>
 <context>
@@ -4946,6 +5842,10 @@ Please edit phone number and try again.</source>
         <source>Copied to clipboard</source>
         <translation>Скопійовано в буфер</translation>
     </message>
+    <message>
+        <source>Location</source>
+        <translation>Місцезнаходження</translation>
+    </message>
 </context>
 <context>
     <name>state</name>
@@ -4968,6 +5868,57 @@ Please edit phone number and try again.</source>
     <message>
         <source>Invisible</source>
         <translation>Невидимий</translation>
+    </message>
+    <message>
+        <source>Blocked</source>
+        <translation>Заблокований (-а)</translation>
+    </message>
+    <message>
+        <source>Have never been here</source>
+        <translation>Жодного разу не заходив(-а)</translation>
+    </message>
+    <message>
+        <source>Bot</source>
+        <translation>бот</translation>
+    </message>
+</context>
+<context>
+    <name>status</name>
+    <message>
+        <source>Add status</source>
+        <translation>Додати статус</translation>
+    </message>
+    <message>
+        <source>Custom status</source>
+        <translation>статус користувача</translation>
+    </message>
+    <message>
+        <source>Status timing</source>
+        <translation>термін статусу</translation>
+    </message>
+    <message>
+        <source>No status</source>
+        <translation>Без статусу</translation>
+    </message>
+    <message>
+        <source>Show always</source>
+        <translation>Показувати завжди</translation>
+    </message>
+    <message>
+        <source>Week</source>
+        <translation>Тиждень</translation>
+    </message>
+    <message>
+        <source>undefined time</source>
+        <translation>невизначений час</translation>
+    </message>
+    <message>
+        <source>%1 left</source>
+        <translation>Ще %1</translation>
+    </message>
+    <message>
+        <source>For %1 already</source>
+        <translation>Уже %1</translation>
     </message>
 </context>
 <context>
@@ -5039,6 +5990,10 @@ Please edit phone number and try again.</source>
         <source>Settings</source>
         <translation>Налаштування</translation>
     </message>
+    <message>
+        <source>Calls</source>
+        <translation>дзвінки</translation>
+    </message>
 </context>
 <context>
     <name>tab header</name>
@@ -5061,6 +6016,10 @@ Please edit phone number and try again.</source>
     <message>
         <source>Emails</source>
         <translation>Email</translation>
+    </message>
+    <message>
+        <source>Group call</source>
+        <translation>груповий дзвінок</translation>
     </message>
 </context>
 <context>
@@ -5090,16 +6049,12 @@ Please edit phone number and try again.</source>
         <translation>ICQ New — еволюція спілкування</translation>
     </message>
     <message>
-        <source>Welcome to ICQ</source>
-        <translation>Ласкаво просимо в ICQ</translation>
+        <source>Welcome to ICQ New</source>
+        <translation>Ласкаво просимо в ICQ New</translation>
     </message>
 </context>
 <context>
     <name>title</name>
-    <message>
-        <source>ICQ</source>
-        <translation>ICQ</translation>
-    </message>
     <message>
         <source>Mail.ru Agent</source>
         <translation>Mail.ru Агент</translation>
@@ -5111,6 +6066,10 @@ Please edit phone number and try again.</source>
     <message>
         <source>Myteam</source>
         <translation>Myteam</translation>
+    </message>
+    <message>
+        <source>ICQ</source>
+        <translation>ICQ</translation>
     </message>
 </context>
 <context>
@@ -5139,6 +6098,10 @@ Please edit phone number and try again.</source>
         <source>There are no profiles with this email</source>
         <translation>Немає профілю з таким email</translation>
     </message>
+    <message>
+        <source>You are not a member or banned to write in this group</source>
+        <translation>Ви не учасник чату або вам заборонено писати</translation>
+    </message>
 </context>
 <context>
     <name>tooltips</name>
@@ -5155,52 +6118,12 @@ Please edit phone number and try again.</source>
         <translation>Смайли та стікери</translation>
     </message>
     <message>
-        <source>Open chat page</source>
-        <translation>Відкрити сторінку чату</translation>
-    </message>
-    <message>
-        <source>Turn off camera</source>
-        <translation>Вимкнути камеру</translation>
-    </message>
-    <message>
-        <source>Turn on camera</source>
-        <translation>Увімкнути камеру</translation>
-    </message>
-    <message>
-        <source>Turn off microphone</source>
-        <translation>Вимкнути мікрофон</translation>
-    </message>
-    <message>
-        <source>Turn on microphone</source>
-        <translation>Увімкнути мікрофон</translation>
-    </message>
-    <message>
-        <source>Turn off screen sharing</source>
-        <translation>Вимкнути спільне використання екрана</translation>
-    </message>
-    <message>
-        <source>Turn on screen sharing</source>
-        <translation>Увімкнути спільне використання екрана</translation>
-    </message>
-    <message>
         <source>Call</source>
         <translation>Подзвонити</translation>
     </message>
     <message>
         <source>Search for messages</source>
         <translation>Шукати повідомлення</translation>
-    </message>
-    <message>
-        <source>Exit full screen</source>
-        <translation>Вийти з повноекранного режиму</translation>
-    </message>
-    <message>
-        <source>Full screen</source>
-        <translation>На весь екран</translation>
-    </message>
-    <message>
-        <source>End call</source>
-        <translation>Завершити виклик</translation>
     </message>
     <message>
         <source>Share</source>
@@ -5213,6 +6136,14 @@ Please edit phone number and try again.</source>
     <message>
         <source>Information</source>
         <translation>Iнформація</translation>
+    </message>
+    <message>
+        <source>Audio call</source>
+        <translation>Аудіозвонок</translation>
+    </message>
+    <message>
+        <source>Link to call</source>
+        <translation>Посилання на дзвінок</translation>
     </message>
 </context>
 <context>
@@ -5285,11 +6216,7 @@ Please edit phone number and try again.</source>
     </message>
     <message>
         <source>Add to call</source>
-        <translation>Додати до дзвінка</translation>
-    </message>
-    <message>
-        <source>MEMBERS</source>
-        <translation>УЧАСНИКИ</translation>
+        <translation>Додати в дзвінок</translation>
     </message>
     <message>
         <source>OTHERS</source>
@@ -5322,6 +6249,133 @@ Please edit phone number and try again.</source>
     <message>
         <source>To share screen you need to allow access to the screen recording in the system settings</source>
         <translation>Щоб включити показ екрана, дозвольте запис екрану в настройках системи</translation>
+    </message>
+    <message>
+        <source>VCS call</source>
+        <translation>ВКС дзвінок</translation>
+    </message>
+    <message>
+        <source>To use microphone you need to allow access to the microphone in the system settings</source>
+        <translation>Для використання мікрофона дозвольте доступ до мікрофона в налаштуваннях системи</translation>
+    </message>
+    <message>
+        <source>Microphone permissions</source>
+        <translation>Доступ до мікрофона</translation>
+    </message>
+    <message>
+        <source>To use camera you need to allow access to the camera in the system settings</source>
+        <translation>Для використання камери дозвольте доступ до камери в настройках системи</translation>
+    </message>
+    <message>
+        <source>Camera permissions</source>
+        <translation>Доступ до камери</translation>
+    </message>
+    <message>
+        <source>Forward</source>
+        <translation>Переслати</translation>
+    </message>
+    <message>
+        <source>ALL GROUP MEMBERS</source>
+        <translation>ВСІ УЧАСНИКИ ГРУПИ</translation>
+    </message>
+    <message>
+        <source>CALL MEMBERS</source>
+        <translation>УЧАСНИКИ ДЗВОНИКА</translation>
+    </message>
+</context>
+<context>
+    <name>voip_video_panel</name>
+    <message>
+        <source>Video</source>
+        <translation>Відео</translation>
+    </message>
+    <message>
+        <source>Screen</source>
+        <translation>екран</translation>
+    </message>
+    <message>
+        <source>More</source>
+        <translation>Iнше</translation>
+    </message>
+    <message>
+        <source>Go to chat</source>
+        <translation>Перейти в чат</translation>
+    </message>
+    <message>
+        <source>Open masks</source>
+        <translation>Включити маски</translation>
+    </message>
+    <message>
+        <source>Add user</source>
+        <translation>Додати учасника</translation>
+    </message>
+    <message>
+        <source>Settings</source>
+        <translation>налаштування</translation>
+    </message>
+    <message>
+        <source>End</source>
+        <translation>Завершити</translation>
+    </message>
+    <message>
+        <source>Show all</source>
+        <translation>Показати всіх</translation>
+    </message>
+    <message>
+        <source>Show one</source>
+        <translation>Збільшити на все вікно</translation>
+    </message>
+    <message>
+        <source>Stop screen sharing</source>
+        <translation>Зупинити показ екрана</translation>
+    </message>
+    <message>
+        <source>Screen sharing enabled</source>
+        <translation>Показ екрану включений</translation>
+    </message>
+    <message>
+        <source>Ask one of the participants to turn off the video. In calls with over %1 people only one video can be shown</source>
+        <translation>Попросіть вимкнути відео іншого учасника. У дзвінках з більш %1 людьми відео може показувати тільки один</translation>
+    </message>
+    <message>
+        <source>Masks aren&apos;t available in calls with more than %1 members</source>
+        <translation>У дзвінках з більш %1 учасниками маски недоступні</translation>
+    </message>
+    <message>
+        <source>Mic</source>
+        <translation>мікрофон</translation>
+    </message>
+    <message>
+        <source>Only the creator of the webinar can show the video</source>
+        <translation>Тільки творець вебінару може показати відео</translation>
+    </message>
+    <message>
+        <source>Only the creator of the webinar can use masks</source>
+        <translation>Тільки творець вебінару може використовувати маски</translation>
+    </message>
+    <message>
+        <source>Only the creator of the webinar can use a microphone</source>
+        <translation>Тільки творець вебінару може використовувати мікрофон</translation>
+    </message>
+    <message>
+        <source>Copy link</source>
+        <translation>копіювати посилання</translation>
+    </message>
+    <message>
+        <source>Invite</source>
+        <translation>Запросити</translation>
+    </message>
+    <message>
+        <source>Link copied</source>
+        <translation>посилання скопійована</translation>
+    </message>
+    <message>
+        <source>Sound</source>
+        <translation>звук</translation>
+    </message>
+    <message>
+        <source>Wait for connection</source>
+        <translation>чекайте підключення</translation>
     </message>
 </context>
 <context>

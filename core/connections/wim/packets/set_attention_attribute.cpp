@@ -21,7 +21,7 @@ set_attention_attribute::~set_attention_attribute()
 {
 }
 
-int32_t set_attention_attribute::init_request(std::shared_ptr<core::http_request_simple> _request)
+int32_t set_attention_attribute::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     std::stringstream ss_url;
     ss_url << urls::get_url(urls::url_type::wim_host) << "recently/setAttentionAttribute?aimsid=" << escape_symbols(get_params().aimsid_)
@@ -43,7 +43,7 @@ int32_t set_attention_attribute::init_request(std::shared_ptr<core::http_request
     return 0;
 }
 
-int32_t set_attention_attribute::parse_response(std::shared_ptr<core::tools::binary_stream> /*_response*/)
+int32_t set_attention_attribute::parse_response(const std::shared_ptr<core::tools::binary_stream>& /*_response*/)
 {
     return 0;
 }

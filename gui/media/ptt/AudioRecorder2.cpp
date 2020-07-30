@@ -119,7 +119,7 @@ namespace ptt
         , timer_(new QTimer(this))
         , fft_(std::make_unique<AmplitudeCalc>(std::cref(buffer_), getWavHeaderSize(), rate()))
     {
-        timer_->setInterval(timeout().count());
+        timer_->setInterval(timeout());
         internalBuffer_.resize(rate() * channelsCount() * bitesPerSample() / 8 * std::chrono::seconds(1).count(), std::byte(0));
 
         QObject::connect(timer_, &QTimer::timeout, this, &AudioRecorder2::onTimer);
@@ -131,7 +131,7 @@ namespace ptt
         QObject::connect(this, &AudioRecorder2::getPcmDataS, this, &AudioRecorder2::getPcmDataImpl);
         QObject::connect(this, &AudioRecorder2::deviceListChangedS, this, [this]() { setReinit(true); });
         QObject::connect(this, &AudioRecorder2::dataReady, this, &AudioRecorder2::onDataReadyImpl);
-        QObject::connect(this, &AudioRecorder2::getDurationS, this, [this]() { emit durationChanged(currentDurationImpl(), contact_, QPrivateSignal()); });
+        QObject::connect(this, &AudioRecorder2::getDurationS, this, [this]() { Q_EMIT durationChanged(currentDurationImpl(), contact_, QPrivateSignal()); });
         QObject::connect(this, &AudioRecorder2::clearS, this, &AudioRecorder2::clearImpl);
     }
 
@@ -148,46 +148,46 @@ namespace ptt
     void AudioRecorder2::record()
     {
         qCDebug(pttLog) << "call record";
-        emit recordS(QPrivateSignal());
+        Q_EMIT recordS(QPrivateSignal());
     }
 
     void AudioRecorder2::pauseRecord()
     {
         qCDebug(pttLog) << "call pause";
-        emit pauseRecordS(QPrivateSignal());
+        Q_EMIT pauseRecordS(QPrivateSignal());
     }
 
      void AudioRecorder2::stop()
     {
         qCDebug(pttLog) << "call stop";
-        emit stopS(QPrivateSignal());
+        Q_EMIT stopS(QPrivateSignal());
     }
 
     void AudioRecorder2::getData(ptt::StatInfo&& _statInfo)
     {
         qCDebug(pttLog) << "call getData";
-        emit getDataS(_statInfo, QPrivateSignal());
+        Q_EMIT getDataS(_statInfo, QPrivateSignal());
     }
 
     void AudioRecorder2::deviceListChanged()
     {
-        emit deviceListChangedS(QPrivateSignal());
+        Q_EMIT deviceListChangedS(QPrivateSignal());
     }
 
     void AudioRecorder2::getDuration()
     {
-        emit getDurationS(QPrivateSignal());
+        Q_EMIT getDurationS(QPrivateSignal());
     }
 
     void AudioRecorder2::getPcmData()
     {
-        emit getPcmDataS(QPrivateSignal());
+        Q_EMIT getPcmDataS(QPrivateSignal());
     }
 
     void AudioRecorder2::clear()
     {
         qCDebug(pttLog) << "call clear";
-        emit clearS(QPrivateSignal());
+        Q_EMIT clearS(QPrivateSignal());
     }
 
     void AudioRecorder2::onTimer()
@@ -212,7 +212,7 @@ namespace ptt
         if (errorHappened(device_))
         {
             stopImpl();
-            emit error(Error2::DeviceInit, contact_, QPrivateSignal());
+            Q_EMIT error(Error2::DeviceInit, contact_, QPrivateSignal());
             return;
         }
         if (sample <= 0)
@@ -226,12 +226,12 @@ namespace ptt
 
             buffer_.append(reinterpret_cast<const char*>(internalBuffer_.data()), sample * sizeof(openal::ALCushort) * channelsCount());
             if (auto v = fft_->getSamples(); !v.isEmpty())
-                emit spectrum(v, contact_, QPrivateSignal());
+                Q_EMIT spectrum(v, contact_, QPrivateSignal());
         }
         catch (const std::bad_alloc&)
         {
             stopImpl();
-            emit error(Error2::BufferOOM, contact_, QPrivateSignal());
+            Q_EMIT error(Error2::BufferOOM, contact_, QPrivateSignal());
             return;
         }
 
@@ -244,13 +244,13 @@ namespace ptt
             {
                 insertWavHeader();
 
-                emit dataReady(buffer_, contact_, ptt::StatInfo{}, QPrivateSignal());
+                Q_EMIT dataReady(buffer_, contact_, ptt::StatInfo{}, QPrivateSignal());
                 resetBuffer();
             }
             else
             {
                 stopImpl();
-                emit limitReached(contact_, QPrivateSignal());
+                Q_EMIT limitReached(contact_, QPrivateSignal());
             }
         }
     }
@@ -303,7 +303,7 @@ namespace ptt
         {
             setStateImpl(State2::Stopped);
             timer_->stop();
-            emit error(Error2::DeviceInit, contact_, QPrivateSignal());
+            Q_EMIT error(Error2::DeviceInit, contact_, QPrivateSignal());
             return false;
         }
         return true;
@@ -316,7 +316,7 @@ namespace ptt
         {
             qCDebug(pttLog) << "setStateImpl" << (int)_state;
             state_ = _state;
-            emit stateChanged(_state, contact_, QPrivateSignal());
+            Q_EMIT stateChanged(_state, contact_, QPrivateSignal());
         }
     }
 
@@ -335,7 +335,7 @@ namespace ptt
         if (currentDurationImpl_ != _duration)
         {
             currentDurationImpl_ = _duration;
-            emit durationChanged(currentDurationImpl_, contact_, QPrivateSignal());
+            Q_EMIT durationChanged(currentDurationImpl_, contact_, QPrivateSignal());
         }
     }
 
@@ -353,6 +353,12 @@ namespace ptt
         assert(!inGuiThread());
         if (timer_->isActive())
             return;
+
+        if constexpr (platform::is_apple())
+        {
+            if (getStateImpl() == State2::Stopped)
+                setReinit(true);
+        }
 
         if (needReinit() || (deviceName_ != getDeviceName()))
         {
@@ -388,7 +394,7 @@ namespace ptt
         stopDevice(device_);
 
         if ((prevState == State2::Recording || prevState == State2::Paused) && (currentDurationImpl() < minDuration_))
-            emit tooShortRecord(contact_, QPrivateSignal());
+            Q_EMIT tooShortRecord(contact_, QPrivateSignal());
     }
 
     void AudioRecorder2::getDataImpl(const ptt::StatInfo& _statInfo)
@@ -396,7 +402,7 @@ namespace ptt
         assert(!inGuiThread());
 
         if ((currentDurationImpl() >= minDuration_) && insertWavHeader())
-            emit dataReady(buffer_, contact_, _statInfo, QPrivateSignal());
+            Q_EMIT dataReady(buffer_, contact_, _statInfo, QPrivateSignal());
     }
 
     void AudioRecorder2::getPcmDataImpl()
@@ -404,7 +410,7 @@ namespace ptt
         assert(!inGuiThread());
 
         if ((currentDurationImpl() >= minDuration_) && insertWavHeader())
-            emit pcmDataReady({ buffer_, getWavHeaderSize(), rate(), format(), bitesPerSample(), channelsCount() }, contact_, QPrivateSignal());
+            Q_EMIT pcmDataReady({ buffer_, getWavHeaderSize(), rate(), format(), bitesPerSample(), channelsCount() }, contact_, QPrivateSignal());
     }
 
     void AudioRecorder2::onDataReadyImpl(const QByteArray& _data, const QString&, const ptt::StatInfo& _statInfo)
@@ -414,7 +420,7 @@ namespace ptt
         auto task = new ConvertTask(_data, rate(), channelsCount(), bitesPerSample());
 
 #ifdef DUMP_PTT_WAV
-        if (QFile f(qApp->applicationDirPath() % QDateTime::currentDateTimeUtc().toString() % ql1s(".wav")); f.open(QIODevice::WriteOnly))
+        if (QFile f(qApp->applicationDirPath() % QDateTime::currentDateTimeUtc().toString() % u".wav"); f.open(QIODevice::WriteOnly))
             f.write(_data);
 #endif
 
@@ -422,13 +428,13 @@ namespace ptt
         {
             auto stat = _statInfo;
             stat.duration = duration;
-            emit aacReady(contact_, _aacFile, duration, stat, QPrivateSignal());
+            Q_EMIT aacReady(contact_, _aacFile, duration, stat, QPrivateSignal());
         });
 
         QObject::connect(task, &ConvertTask::error, this, [this]()
         {
             qCDebug(pttLog) << "error";
-            emit error(Error2::Convert, contact_, QPrivateSignal());
+            Q_EMIT error(Error2::Convert, contact_, QPrivateSignal());
         });
 
         QThreadPool::globalInstance()->start(task);

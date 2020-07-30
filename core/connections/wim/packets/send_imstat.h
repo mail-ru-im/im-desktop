@@ -21,11 +21,9 @@ namespace core
         class send_imstat
             : public wim_packet
         {
-            bool support_async_execution() const override;
-
-            virtual int32_t init_request(std::shared_ptr<core::http_request_simple> _request) override;
-            virtual void execute_request_async(std::shared_ptr<core::http_request_simple> _request, handler_t _handler) override;
-            virtual int32_t parse_response(std::shared_ptr<core::tools::binary_stream> response) override;
+            virtual int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
+            virtual void execute_request_async(const std::shared_ptr<core::http_request_simple>& _request, handler_t _handler) override;
+            virtual int32_t parse_response(const std::shared_ptr<core::tools::binary_stream>& response) override;
 
             std::string		data_;
 

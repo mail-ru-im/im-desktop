@@ -99,7 +99,7 @@ namespace Ui
         if (h <= 0)
             return;
         const auto w = width();
-        const auto color = Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT);
+        const auto color = Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE);
 
         while (h > 0 && int(samplePaths_.size()) <= h + 1)
             samplePaths_.push_back(histogram::makeRelativeSamplePath(samplePaths_.size(), h));
@@ -167,7 +167,7 @@ namespace Ui
     {
         if (ampl_.empty())
         {
-            emit clickOnSample(0, 0, QPrivateSignal());
+            Q_EMIT clickOnSample(0, 0, QPrivateSignal());
         }
         else
         {
@@ -175,7 +175,7 @@ namespace Ui
             int idx = pos.x() / (histogram::getSampleWidth() + histogram::getSampleSpace());
 
             idx = std::clamp(idx, 0, int(ampl_.size() - 1));
-            emit clickOnSample(idx, 0, QPrivateSignal());
+            Q_EMIT clickOnSample(idx, 0, QPrivateSignal());
         }
     }
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../utils/InterConnector.h"
+#include "sidebar/Sidebar.h"
 #include "types/idinfo.h"
 
 class QStandardItemModel;
@@ -14,38 +15,38 @@ namespace voip_manager
 namespace Utils
 {
     enum class CommonSettingsType;
+    class CallLinkCreator;
 }
 
 namespace Ui
 {
     class WidgetsNavigator;
-    class ContactList;
+    class RecentsTab;
     class VideoWindow;
     class VideoSettings;
     class IncomingCallWindow;
     class ContactDialog;
     class GeneralSettingsWidget;
     class HistoryControlPage;
-    class LiveChatHome;
-    class LiveChats;
     class TopPanelWidget;
     class SemitransparentWindowAnimated;
     class MyProfilePage;
     class Splitter;
-    class Sidebar;
     class TabWidget;
     class SettingsTab;
     class ContactsTab;
+    class CallsTab;
     class ExpandButton;
     class HeaderTitleBarButton;
     class SettingsHeader;
     class LineLayoutSeparator;
     class LoaderOverlay;
-    class ContextMenu;
     class UpdaterButton;
+    class ContextMenu;
 
     enum class Tabs;
     enum class CreateChatSource;
+    enum class ConferenceType;
 
     namespace Stickers
     {
@@ -121,16 +122,12 @@ namespace Ui
 
         //voip
         void onVoipShowVideoWindow(bool);
-        void onVoipCallIncoming(const std::string&, const std::string&);
-        void onVoipCallIncomingAccepted(const voip_manager::ContactEx& _contacEx);
+        void onVoipCallIncoming(const std::string&, const std::string&, const std::string&);
+        void onVoipCallIncomingAccepted(const std::string& call_id);
         void onVoipCallDestroyed(const voip_manager::ContactEx& _contactEx);
 
-        void showPlaceholder(Utils::PlaceholdersType _placeholdersType);
-
         void post_stats_with_settings();
-        void myInfo();
         void popPagesToRoot();
-        void liveChatSelected();
 
         void spreadCL();
         void hideRecentsPopup();
@@ -140,6 +137,12 @@ namespace Ui
         void changeCLHeadToUnknownSlot();
         void recentsTopPanelBack();
         void addByNick();
+
+        void createGroupCall();
+        void createCallByLink();
+        void createWebinar();
+        void createCallLink(ConferenceType _type);
+        void callContact(const std::vector<QString>& _aimids, const QString& _friendly, bool _video);
 
         void onShowWindowForTesters();
         void compactModeChanged();
@@ -173,6 +176,8 @@ namespace Ui
         void showLoaderOverlay();
         void hideLoaderOverlay();
 
+        void onJoinChatResultBlocked(const QString& _stamp);
+
     private:
         explicit MainPage(QWidget* _parent);
 
@@ -191,6 +196,7 @@ namespace Ui
         ~MainPage();
         void selectRecentChat(const QString& _aimId);
         void recentsTabActivate(bool _selectUnread = false);
+        void selectRecentsTab();
         void settingsTabActivate(Utils::CommonSettingsType _item = Utils::CommonSettingsType::CommonSettingsType_None);
         void hideInput();
         void cancelSelection();
@@ -214,9 +220,11 @@ namespace Ui
 
         ContactDialog* getContactDialog() const;
         HistoryControlPage* getHistoryPage(const QString& _aimId) const;
+        VideoWindow* getVideoWindow() const;
 
         void showMembersInSidebar(const QString& _aimid);
-        void showSidebar(const QString& _aimId, bool _selectionChanged = false, bool _shared_profile = false);
+        void showSidebar(const QString& _aimId, bool _selectionChanged = false);
+        void showSidebarWithParams(const QString& _aimId, SidebarParams _params = {}, bool _selectionChanged = false);
         bool isSidebarVisible() const;
         void setSidebarVisible(bool _visible);
         void setSidebarVisible(const Utils::SidebarVisibilityParams& _params);
@@ -263,8 +271,9 @@ namespace Ui
         LeftPanelState getLeftPanelState() const;
 
         bool isOneFrameTab() const;
+        bool isInSettingsTab() const;
 
-        void openDialogOrProfileById(const QString& _id);
+        void openDialogOrProfileById(const QString& _id, bool _forceDialogOpen, std::optional<QString> _botParams);
 
         FrameCountMode getFrameCount() const;
 
@@ -277,7 +286,6 @@ namespace Ui
 
     private:
 
-        QWidget* showIntroduceYourselfSuggestions(QWidget* _parent);
         void animateVisibilityCL(int _newWidth, bool _withAnimation);
         void setLeftPanelState(LeftPanelState _newState, bool _withAnimation, bool _for_search = false, bool _force = false);
 
@@ -295,6 +303,7 @@ namespace Ui
 
         void updateSettingHeader();
         void updateNewMailButton();
+        void updateCallsTabButton();
 
         void switchToContentFrame();
         void switchToTabFrame();
@@ -306,8 +315,12 @@ namespace Ui
         void updateLoaderOverlayPosition();
         bool canSetSearchFocus() const;
 
+        void onMoreClicked();
+
+        void initUpdateButton();
+
     private:
-        ContactList* contactListWidget_;
+        RecentsTab* recentsTab_;
         VideoWindow* videoWindow_;
         VideoSettings* videoSettings_;
         WidgetsNavigator* pages_;
@@ -315,12 +328,8 @@ namespace Ui
         QVBoxLayout* pagesLayout_;
         GeneralSettingsWidget* generalSettings_;
         Stickers::Store* stickersStore_;
-        LiveChatHome* liveChatsPage_;
         QHBoxLayout* horizontalLayout_;
-        QWidget* introduceYourselfSuggestions_;
-        bool needShowIntroduceYourself_;
         QTimer* settingsTimer_;
-        bool recvMyInfo_;
         QPropertyAnimation* animCLWidth_;
         QWidget* clSpacer_;
         QVBoxLayout* contactsLayout;
@@ -341,6 +350,7 @@ namespace Ui
         ExpandButton* expandButton_;
         SettingsTab* settingsTab_;
         ContactsTab* contactsTab_;
+        CallsTab* callsTab_;
         LineLayoutSeparator* spreadedModeLine_;
         UpdaterButton* updaterButton_;
         bool NeedShowUnknownsHeader_;
@@ -349,9 +359,27 @@ namespace Ui
         FrameCountMode frameCountMode_;
         OneFrameMode oneFrameMode_;
 
-        LoaderOverlay* loaderOverlay_;
-        qint64 idInfoSeq_;
-        QString requestedId_;
+        ContextMenu* moreMenu_;
+        QWidget* callsTabButton_;
+        Utils::CallLinkCreator* callLinkCreator_;
+
+        struct DialogByIdLoader
+        {
+            LoaderOverlay* loaderOverlay_ = nullptr;
+            qint64 idInfoSeq_ = -1;
+            QString id_;
+            std::optional<QString> botParams_;
+            bool forceDialogOpen_ = false;
+
+            void clear()
+            {
+                idInfoSeq_ = -1;
+                id_.clear();
+                botParams_ = {};
+                forceDialogOpen_ = false;
+            }
+
+        } dialogIdLoader_;
 
         struct UnreadCounters
         {
@@ -371,8 +399,6 @@ namespace Ui
 
         std::vector<std::pair<int, Tabs>> indexToTabs_;
 
-        ContextMenu* moreMenu_;
-
         Tabs getTabByIndex(int _index) const;
         int getIndexByTab(Tabs _tab) const;
 
@@ -383,7 +409,6 @@ namespace Ui
         void selectTab(Tabs _tab);
 
         std::map<std::string, std::shared_ptr<IncomingCallWindow> > incomingCallWindows_;
-        LiveChats* liveChats_;
         void destroyIncomingCallWindow(const std::string& _account, const std::string& _contact);
     };
 }

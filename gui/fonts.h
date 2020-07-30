@@ -105,15 +105,3 @@ FONTS_NS_BEGIN
     void setFontSizeSetting(const FontSize _size);
 
 FONTS_NS_END
-
-namespace std
-{
-    template<>
-    struct hash<Fonts::FontWeight>
-    {
-        size_t operator()(const Fonts::FontWeight &_v) const
-        {
-            return (size_t)_v;
-        }
-    };
-}

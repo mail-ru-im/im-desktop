@@ -23,7 +23,6 @@ namespace Ui
 
     HistoryUndoStack::HistoryUndoStack()
         : currentPosition_(0)
-        , currentRedoAvailable_(false)
         , maxSize_(Features::maximumUndoStackSize())
     {
         vect_.reserve(maxSize_);
@@ -31,7 +30,6 @@ namespace Ui
 
     HistoryUndoStack::HistoryUndoStack(size_t _size)
         : currentPosition_(0)
-        , currentRedoAvailable_(false)
         , maxSize_(std::min(_size, Features::maximumUndoStackSize()))
     {
         vect_.reserve(maxSize_);
@@ -106,5 +104,10 @@ namespace Ui
 
         if (currentPosition_ < vect_.size())
             vect_.erase(vect_.begin() + currentPosition_, vect_.end());
+    }
+
+    bool HistoryUndoStack::isEmpty() const
+    {
+        return !(canUndo() || canRedo());
     }
 }

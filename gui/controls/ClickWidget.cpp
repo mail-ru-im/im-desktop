@@ -21,7 +21,7 @@ namespace Ui
         setFocusPolicy(Qt::NoFocus);
 
         tooltipTimer_.setSingleShot(true);
-        tooltipTimer_.setInterval(tooltipShowDelay().count());
+        tooltipTimer_.setInterval(tooltipShowDelay());
         connect(&tooltipTimer_, &QTimer::timeout, this, &ClickableWidget::onTooltipTimer);
     }
 
@@ -36,7 +36,8 @@ namespace Ui
             return;
 
         isHovered_ = _isHovered;
-        emit hoverChanged(isHovered_, QPrivateSignal());
+        update();
+        Q_EMIT hoverChanged(isHovered_, QPrivateSignal());
     }
 
     bool ClickableWidget::isPressed() const
@@ -44,10 +45,19 @@ namespace Ui
         return isPressed_;
     }
 
+    void ClickableWidget::setPressed(const bool _isPressed)
+    {
+        if (isPressed_ == _isPressed)
+            return;
+
+        isPressed_ = _isPressed;
+        Q_EMIT pressChanged(isPressed_, QPrivateSignal());
+    }
+
     void ClickableWidget::click(const ClickType _how)
     {
         if (isEnabled())
-            emit clicked(_how, QPrivateSignal());
+            Q_EMIT clicked(_how, QPrivateSignal());
     }
 
     void ClickableWidget::setFocusColor(const QColor & _color)
@@ -55,6 +65,16 @@ namespace Ui
         focusColor_ = _color;
         if (hasFocus())
             update();
+    }
+
+    void ClickableWidget::setHoverColor(const QColor& _color)
+    {
+        hoverColor_ = _color;
+    }
+
+    void ClickableWidget::setBackgroundColor(const QColor& _color)
+    {
+        bgColor_ = _color;
     }
 
     void ClickableWidget::setTooltipText(const QString& _text)
@@ -86,8 +106,8 @@ namespace Ui
         {
             _e->accept();
             isPressed_ = true;
-            emit pressed(QPrivateSignal());
-            emit pressChanged(isPressed_, QPrivateSignal());
+            Q_EMIT pressed(QPrivateSignal());
+            Q_EMIT pressChanged(isPressed_, QPrivateSignal());
         }
 
         enableTooltip_ = false;
@@ -106,12 +126,20 @@ namespace Ui
         }
 
         isPressed_ = false;
-        emit released(QPrivateSignal());
-        emit pressChanged(isPressed_, QPrivateSignal());
+        Q_EMIT released(QPrivateSignal());
+        Q_EMIT pressChanged(isPressed_, QPrivateSignal());
     }
 
     void ClickableWidget::paintEvent(QPaintEvent*)
     {
+        if (bgColor_.isValid())
+        {
+            QPainter p(this);
+            p.setRenderHints(QPainter::Antialiasing);
+            p.setPen(Qt::NoPen);
+            p.fillRect(rect(), bgColor_);
+        }
+
         if (focusColor_.isValid() && (animFocus_.isRunning() || hasFocus()))
         {
             QPainter p(this);
@@ -129,12 +157,21 @@ namespace Ui
             }
             p.drawEllipse(r);
         }
+
+        if (isHovered_ && hoverColor_.isValid())
+        {
+            QPainter p(this);
+            p.setRenderHints(QPainter::Antialiasing);
+            p.setPen(Qt::NoPen);
+            p.fillRect(rect(), hoverColor_);
+        }
     }
 
     void ClickableWidget::enterEvent(QEvent* _e)
     {
         enableTooltip_ = true;
-        tooltipTimer_.start();
+        if (isEnabled())
+            tooltipTimer_.start();
 
         setHovered(true);
     }
@@ -150,6 +187,7 @@ namespace Ui
     void ClickableWidget::mouseMoveEvent(QMouseEvent* _e)
     {
         setHovered(rect().contains(_e->pos()));
+        Q_EMIT moved(QPrivateSignal());
     }
 
     void ClickableWidget::keyPressEvent(QKeyEvent* _event)
@@ -179,6 +217,11 @@ namespace Ui
         enableTooltip_ = false;
         tooltipTimer_.stop();
         hideToolTip();
+    }
+
+    void ClickableWidget::showEvent(QShowEvent*)
+    {
+        Q_EMIT shown(QPrivateSignal());
     }
 
     bool ClickableWidget::focusNextPrevChild(bool _next)
@@ -237,7 +280,6 @@ namespace Ui
 
     ClickableTextWidget::ClickableTextWidget(QWidget* _parent, const QFont& _font, const QColor& _color, const TextRendering::HorAligment _textAlign)
         : ClickableWidget(_parent)
-        , fullWidth_(0)
     {
         text_ = TextRendering::MakeTextUnit(QString(), Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
         text_->init(_font, _color, QColor(), QColor(), QColor(), _textAlign, 1);
@@ -253,7 +295,7 @@ namespace Ui
     void ClickableTextWidget::setText(const QString& _text)
     {
         text_->setText(_text);
-        text_->setOffsets(0, height() / 2);
+        text_->setOffsets(leftPadding_, height() / 2);
         fullWidth_ = text_->desiredWidth();
 
         updateGeometry();
@@ -262,7 +304,7 @@ namespace Ui
 
     QSize ClickableTextWidget::sizeHint() const
     {
-        return QSize(fullWidth_, height());
+        return QSize(fullWidth_  + leftPadding_, height());
     }
 
     void ClickableTextWidget::setColor(const QColor& _color)
@@ -281,6 +323,15 @@ namespace Ui
         text_->init(_font, text_->getColor(), QColor(), QColor(), QColor(), text_->getAlign(), 1);
 
         elideText();
+    }
+
+    void ClickableTextWidget::setLeftPadding(int _x)
+    {
+        if (leftPadding_ != _x)
+        {
+            leftPadding_ = _x;
+            setText(text_->getSourceText());
+        }
     }
 
     void ClickableTextWidget::paintEvent(QPaintEvent* _e)

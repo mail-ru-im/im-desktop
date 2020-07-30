@@ -84,7 +84,6 @@ namespace Ui
     void CountrySearchCombobox::initLayout()
     {
         QHBoxLayout* mainLayout = Utils::emptyHLayout(this);
-        Testing::setAccessibleName(Edit_, qsl("AS csc Edit_"));
         mainLayout->addWidget(Edit_);
         QSpacerItem* editLayoutSpacer = new QSpacerItem(0, 0, QSizePolicy::Minimum);
         mainLayout->addSpacerItem(editLayoutSpacer);
@@ -157,8 +156,7 @@ namespace Ui
         {
             static const QRegularExpression re(
                 qsl("^\\d*$"),
-                QRegularExpression::UseUnicodePropertiesOption | QRegularExpression::OptimizeOnFirstUsageOption
-            );
+                QRegularExpression::UseUnicodePropertiesOption);
 
             value = Edit_->text();
             if (re.match(value).hasMatch())
@@ -214,7 +212,7 @@ namespace Ui
         }
         else
         {
-            emit selected(value);
+            Q_EMIT selected(value);
         }
     }
 
@@ -225,8 +223,7 @@ namespace Ui
 
         static const QRegularExpression re(
             qsl("^[\\+\\d]\\d*$"),
-            QRegularExpression::UseUnicodePropertiesOption | QRegularExpression::OptimizeOnFirstUsageOption
-        );
+            QRegularExpression::UseUnicodePropertiesOption);
 
         if (re.match(_text).hasMatch())
         {
@@ -270,8 +267,7 @@ namespace Ui
     {
         static const QRegularExpression re(
             qsl("^[\\+\\d]\\d*$"),
-            QRegularExpression::UseUnicodePropertiesOption | QRegularExpression::OptimizeOnFirstUsageOption
-        );
+            QRegularExpression::UseUnicodePropertiesOption);
 
         if (re.match(_item).hasMatch())
         {
@@ -303,7 +299,7 @@ namespace Ui
         {
             Edit_->setText(_item);
             OldEditValue_ = _item;
-            emit selected(value);
+            Q_EMIT selected(value);
             return true;
         }
         return false;

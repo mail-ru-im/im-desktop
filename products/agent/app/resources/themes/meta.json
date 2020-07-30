@@ -1,0 +1,1435 @@
+{
+  "style": {
+    "base_light": "#F7FAFD",
+    "base_primary": "#838690",
+    "base_primary_hover": "#7A7E8B",
+    "base_primary_active": "#707482",
+    "base_secondary": "#b7bcc9",
+    "base_secondary_hover": "#8e94a2",
+    "base_secondary_active": "#6f747e",
+    "base_tertiary": "#cccfd8",
+    "base_bright": "#eceef3",
+    "base_bright_active": "#dee1eb",
+    "base_bright_hover": "#e4e7ef",
+    "base_ultrabright": "#fbfcfd",
+    "base_ultrabright_hover": "#f3f5f8",
+    "base_bright_inverse": "#f3f5f8",
+    "base_bright_inverse_hover": "#e4e7ef",
+    "text_solid": "#000000",
+    "text_solid_permanent": "#ffffff",
+    "text_solid_permanent_hover": "#c0ffffff",
+    "text_solid_permanent_active": "#80ffffff",
+    "text_primary": "#00b84d",
+    "text_primary_inverse": "#00b84d",
+    "text_primary_hover": "#00a846",
+    "text_primary_active": "#009940",
+    "secondary_attention": "#f83e33",
+    "secondary_attention_hover": "#e12B21",
+    "secondary_attention_active": "#d81409",
+    "secondary_rainbow_warning": "#fef7ac",
+    "secondary_rainbow_mint": "#40d295",
+    "secondary_rainbow_cold": "#0eb4ff",
+    "secondary_rainbow_warm": "#f87a53",
+    "secondary_rainbow_orange": "#FE9A3F",
+    "secondary_rainbow_aqua": "#23C7DE",
+    "secondary_rainbow_purple": "#8171E4",
+    "secondary_rainbow_pink": "#E85EB9",
+    "secondary_rainbow_blue": "#4B9FFF",
+    "secondary_rainbow_green": "#68D166",
+    "secondary_rainbow_mail": "#005FF9",
+    "secondary_rainbow_emerald": "#4DD567",
+    "secondary_rainbow_emerald_hover": "#43C85D",
+    "secondary_rainbow_emerald_active": "#3ABC53",
+    "base_globalwhite": "#ffffff",
+    "base_globalwhite_secondary": "#ffffff",
+    "base_globalwhite_permanent": "#363637",
+    "base_globalwhite_permanent_hover": "#444445",
+    "base_globalblack_permanent": "#000000",
+    "lucent_tertiary": "#4dffffff",
+    "lucent_tertiary_hover": "#40ffffff",
+    "lucent_tertiary_active": "#33ffffff",
+    "primary": "#21d86a",
+    "primary_hover": "#1ec360",
+    "primary_selected": "#1dcf67",
+    "primary_active": "#1bb157",
+    "primary_pastel": "#0abd47",
+    "primary_pastel_hover": "#0ab845",
+    "primary_pastel_active": "#09a03c",
+    "primary_inverse": "#00b84d",
+    "primary_bright": "#c8f9d4",
+    "primary_bright_hover": "#b1f6c2",
+    "primary_bright_active": "#9af4b1",
+    "primary_light": "#38ED80",
+    "chat_secondary": "#d6ffe0",
+    "chat_secondary_media": "#96a1b2",
+    "secondary_info": "#fcf6ec",
+    "chat_primary": "#ffffff",
+    "chat_primary_hover": "#f9f9f9",
+    "chat_primary_active": "#f4f4f4",
+    "chat_primary_media": "#E0E6EE",
+    "chat_environment": "#f0f3f5",
+    "ghost_primary": "#8c000000",
+    "ghost_primary_inverse": "#8c000000",
+    "ghost_primary_inverse_hover": "#9e000000",
+    "ghost_primary_inverse_active": "#ab000000",
+    "ghost_secondary": "#4c000000",
+    "ghost_tertiary": "#33000000",
+    "ghost_ultralight": "#0c000000",
+    "ghost_ultralight_inverse": "#0d000000",
+    "ghost_accent": "#00ff2a0c",
+    "ghost_accent_hover": "#00ff2a11",
+    "ghost_accent_active": "#00ff2a19",
+    "ghost_overlay": "#00000000",
+    "app_primary": "#f4f4f4",
+    "ghost_light": "#ccffffff",
+    "ghost_secondary_inverse": "#4d000000",
+    "ghost_secondary_inverse_hover": "#59000000",
+    "ghost_light_inverse": "#0f000000",
+    "ghost_quaternary": "#19000000",
+    "ghost_perceptible": "#80343537",
+    "secondary_rainbow_yellow": "#FFA901"
+  },
+  "themes": [
+    {
+      "id": "default",
+      "name": "Blue",
+      "defaultWallpaper": 1004,
+      "underline": false,
+      "style": {
+        "base_light": "#f7fafd",
+        "base_primary": "#838690",
+        "base_primary_hover": "#7A7E8B",
+        "base_primary_active": "#707482",
+        "base_secondary": "#b7bcc9",
+        "base_secondary_hover": "#8e94a2",
+        "base_secondary_active": "#6f747e",
+        "base_tertiary": "#cccfd8",
+        "base_bright": "#eceef3",
+        "base_bright_hover": "#e4e7ef",
+        "base_bright_active": "#dee1eb",
+        "base_ultrabright": "#fbfcfd",
+        "base_ultrabright_hover": "#f3f5f8",
+        "base_bright_inverse": "#f3f5f8",
+        "base_bright_inverse_hover": "#e4e7ef",
+        "text_solid": "#111111",
+        "text_solid_permanent": "#ffffff",
+        "text_primary": "#1b85f1",
+        "text_primary_hover": "#1e7bda",
+        "text_primary_active": "#2173c6",
+        "secondary_attention": "#f83e33",
+        "secondary_attention_hover": "#e12B21",
+        "secondary_attention_active": "#d81409",
+        "base_globalwhite": "#ffffff",
+        "primary": "#2d90f5",
+        "primary_hover": "#2c84df",
+        "primary_selected": "#429bf6",
+        "primary_active": "#317bc7",
+        "primary_pastel": "#6087b3",
+        "primary_inverse": "#3492f2",
+        "primary_bright": "#aad7ff",
+        "primary_bright_hover": "#9fd1fc",
+        "primary_bright_active": "#90c6f4",
+        "primary_light": "#57B3FF",
+        "chat_secondary": "#c7e6ff",
+        "secondary_info": "#fcf6ec",
+        "chat_primary": "#ffffff",
+        "chat_environment": "#F0F3F5",
+        "ghost_primary": "#8c000000",
+        "ghost_primary_inverse_active": "#5E5F6C",
+        "ghost_secondary": "#4c000000",
+        "ghost_tertiary": "#33000000",
+        "ghost_ultralight": "#0c000000",
+        "ghost_ultralight_inverse": "#0c000000",
+        "ghost_accent": "#141c88ff",
+        "ghost_accent_hover": "#1c1c88ff",
+        "ghost_accent_active": "#231c88ff",
+        "app_primary": "#f4f4f4",
+        "ghost_light": "#ccffffff",
+        "ghost_secondary_inverse": "#4c000000",
+        "ghost_secondary_inverse_hover": "#59000000",
+        "ghost_light_inverse": "#0f000000",
+        "ghost_quaternary": "#19000000"
+      }
+    },
+    {
+      "id": "black",
+      "name": "Dark Blue",
+      "defaultWallpaper": 1002,
+      "underline": true,
+      "style": {
+        "base_light": "#23242D",
+        "base_primary": "#7e848f",
+        "base_primary_hover": "#8C939E",
+        "base_primary_active": "#9BA2AD",
+        "base_secondary": "#7e848f",
+        "base_secondary_hover": "#8c8d9c",
+        "base_secondary_active": "#9ea0b2",
+        "base_tertiary": "#5e5f6c",
+        "base_bright": "#3c3d47",
+        "base_bright_hover": "#444551",
+        "base_bright_active": "#3f404d",
+        "base_ultrabright": "#fbfcfd",
+        "base_ultrabright_hover": "#fbfcfd",
+        "base_bright_inverse": "#3c3d48",
+        "base_bright_inverse_hover": "#3c3d48",
+        "text_solid": "#ffffff",
+        "text_solid_permanent": "#ffffff",
+        "text_primary": "#2f92ff",
+        "text_primary_hover": "#479dff",
+        "text_primary_active": "#47a0ff",
+        "secondary_attention": "#f75d5d",
+        "secondary_attention_hover": "#e65151",
+        "secondary_attention_active": "#ce4343",
+        "secondary_rainbow_warning": "#fff480",
+        "base_globalwhite": "#2b2c34",
+        "base_globalwhite_secondary": "#3A3B42",
+        "base_globalwhite_permanent": "#2b2c34",
+        "base_globalwhite_permanent_hover": "#3c3d49",
+        "primary": "#2e91ff",
+        "primary_hover": "#479dff",
+        "primary_selected": "#253956",
+        "primary_active": "#3b96ff",
+        "primary_pastel": "#73a5dc",
+        "primary_inverse": "#ffffff",
+        "primary_bright": "#2a4a71",
+        "primary_bright_hover": "#305582",
+        "primary_bright_active": "#376195",
+        "chat_secondary": "#22344F",
+        "secondary_info": "#3c3d48",
+        "chat_primary": "#2b2c34",
+        "chat_primary_hover": "#282931",
+        "primary_light": "#4271B5",
+        "chat_primary_active": "#26272F",
+        "chat_primary_media": "#191B21",
+        "chat_environment": "#21222A",
+        "ghost_primary": "#8c000000",
+        "ghost_primary_inverse": "#8cffffff",
+        "ghost_primary_inverse_hover": "#b2ffffff",
+        "ghost_primary_inverse_active": "#d9ffffff",
+        "ghost_secondary": "#4c000000",
+        "ghost_tertiary": "#26000000",
+        "ghost_ultralight": "#0c000000",
+        "ghost_ultralight_inverse": "#0dffffff",
+        "ghost_accent": "#070672eb",
+        "ghost_accent_hover": "#0f0672eb",
+        "ghost_accent_active": "#140672eb",
+        "ghost_overlay": "#0c000000",
+        "app_primary": "#272832",
+        "ghost_light": "#ccffffff",
+        "ghost_secondary_inverse": "#57ffffff",
+        "ghost_secondary_inverse_hover": "#66ffffff",
+        "ghost_light_inverse": "#00ffffff",
+        "ghost_quaternary": "#26000000"
+      }
+    },
+    {
+      "id": "green",
+      "name": "Green",
+      "defaultWallpaper": 1001,
+      "style": {}
+    },
+        {
+      "id": "dark_green",
+      "name": "Dark Green",
+      "defaultWallpaper": 1002,
+      "underline": true,
+      "style": {
+        "base_light": "#23242D",
+        "base_primary": "#7e848f",
+        "base_primary_hover": "#8C939E",
+        "base_primary_active": "#9BA2AD",
+        "base_secondary": "#7e848f",
+        "base_secondary_hover": "#8c8d9c",
+        "base_secondary_active": "#9ea0b2",
+        "base_tertiary": "#5e5f6c",
+        "base_bright": "#3c3d47",
+        "base_bright_hover": "#444551",
+        "base_bright_active": "#3f404d",
+        "base_ultrabright": "#fbfcfd",
+        "base_ultrabright_hover": "#fbfcfd",
+        "base_bright_inverse": "#3c3d48",
+        "base_bright_inverse_hover": "#3c3d48",
+        "text_solid": "#ffffff",
+        "text_solid_permanent": "#ffffff",
+        "text_primary": "#0ac248",
+        "text_primary_hover": "#0bf468",
+        "text_primary_active": "#3cf686",
+        "secondary_attention": "#f75d5d",
+        "secondary_attention_hover": "#e65151",
+        "secondary_attention_active": "#ce4343",
+        "secondary_rainbow_warning": "#fff480",
+        "base_globalwhite": "#2b2c34",
+        "base_globalwhite_secondary": "#3A3B42",
+        "base_globalwhite_permanent": "#2b2c34",
+        "base_globalwhite_permanent_hover": "#3c3d49",
+        "primary": "#0adc5e",
+        "primary_hover": "#0bf468",
+        "primary_selected": "#2a4533",
+        "primary_active": "#3cf686",
+        "primary_pastel": "#0bce4d",
+        "primary_pastel_hover": "#0ce857",
+        "primary_pastel_active": "#1bf364",
+        "primary_inverse": "#ffffff",
+        "primary_bright": "#4c8959",
+        "primary_bright_hover": "#559a65",
+        "primary_bright_active": "#61a871",
+        "chat_secondary": "#2a4533",
+        "secondary_info": "#3c3d48",
+        "chat_primary": "#2b2c34",
+        "chat_primary_hover": "#282931",
+        "chat_primary_active": "#26272F",
+        "chat_primary_media": "#191B21",
+        "chat_environment": "#21222A",
+        "ghost_primary": "#8c000000",
+        "ghost_primary_inverse": "#8cffffff",
+        "ghost_primary_inverse_hover": "#b2ffffff",
+        "ghost_primary_inverse_active": "#d9ffffff",
+        "ghost_secondary": "#4c000000",
+        "ghost_tertiary": "#26000000",
+        "ghost_ultralight": "#0c000000",
+        "ghost_ultralight_inverse": "#0dffffff",
+        "ghost_accent": "#00ff2a07",
+        "ghost_accent_hover": "#00ff2a0f",
+        "ghost_accent_active": "#00ff2a14",
+        "ghost_overlay": "#0c000000",
+        "app_primary": "#272832",
+        "ghost_light": "#ccffffff",
+        "ghost_secondary_inverse": "#57ffffff",
+        "ghost_secondary_inverse_hover": "#66ffffff",
+        "ghost_light_inverse": "#00ffffff",
+        "ghost_quaternary": "#26000000",
+        "primary_light": "#53DE72"
+      }
+    },
+    {
+      "id": "violet",
+      "name": "Violet",
+      "defaultWallpaper": 1001,
+    "hidden": false,
+      "underline": false,
+        "style": {
+        "text_primary": "#8D36E4",
+        "text_primary_inverse": "#8D36E4",
+        "text_primary_hover": "#7E30CC",
+        "text_primary_active": "#722BB8",
+        "primary": "#AD7FEE",
+        "primary_hover": "#A378E0",
+        "primary_selected": "#AD7FEE",
+        "primary_active": "#9A71D4",
+        "primary_light": "#BC94FF",
+        "primary_pastel": "#A056FF",
+        "primary_pastel_hover":"#934FEB",
+        "primary_pastel_active":"#8849D9",
+        "primary_inverse": "#AD7FEE",
+        "primary_bright": "#E3DEFF",
+        "primary_bright_hover": "#D8D1FF",
+        "primary_bright_active": "#CDC4FF",
+        "chat_secondary": "#E9E5FF",
+        "chat_secondary_hover": "#DFD9FF",
+        "chat_secondary_active": "#D4CCFF",
+        "ghost_accent": "#0C9E00FF",
+        "ghost_accent_hover": "#119E00FF",
+        "ghost_accent_active": "#199E00FF",
+        "gradient_primary": "#A36CF0",
+        "gradient_secondary": "#A36CF0",
+        "gradient_primary_hover": "#9764DE",
+        "gradient_secondary_hover": "#9764DE",
+        "gradient_primary_active": "#8B5CCC",
+        "gradient_secondary_active": "#8B5CCC"
+      }
+    },
+    {
+      "id": "dark_violet",
+      "name": "Dark Violet",
+      "defaultWallpaper": 1002,
+      "hidden": false,
+      "underline": true,
+      "style": {
+        "base_light": "#23242D",
+        "base_primary": "#7e848f",
+        "base_primary_hover": "#8C939E",
+        "base_primary_active": "#9BA2AD",
+        "base_secondary": "#7e848f",
+        "base_secondary_hover": "#8c8d9c",
+        "base_secondary_active": "#9ea0b2",
+        "base_tertiary": "#5e5f6c",
+        "base_bright": "#3c3d47",
+        "base_bright_hover": "#444551",
+        "base_bright_active": "#3f404d",
+        "base_ultrabright": "#fbfcfd",
+        "base_ultrabright_hover": "#fbfcfd",
+        "base_bright_inverse": "#3c3d48",
+        "base_bright_inverse_hover": "#3c3d48",
+        "text_solid": "#ffffff",
+        "text_solid_permanent": "#ffffff",
+        "text_primary": "#A587FF",
+        "text_primary_inverse": "#FBFCFD",
+        "text_primary_hover": "#AD91FF",
+        "text_primary_active": "#B399FF",
+        "secondary_attention": "#f75d5d",
+        "secondary_attention_hover": "#e65151",
+        "secondary_attention_active": "#ce4343",
+        "secondary_rainbow_warning": "#fff480",
+        "base_globalwhite": "#2b2c34",
+        "base_globalwhite_secondary": "#3A3B42",
+        "base_globalwhite_permanent": "#2b2c34",
+        "base_globalwhite_permanent_hover": "#3c3d49",
+        "primary": "#A67BFE",
+        "primary_hover": "#AE87FE",
+        "primary_selected": "#3C2E5B",
+        "primary_active": "#B693FE",
+        "primary_pastel": "#8562EE",
+        "primary_pastel_hover": "#8E6DEE",
+        "primary_pastel_active": "#9779EE",
+        "primary_inverse": "#FFFFFF",
+        "primary_bright": "#4E3F70",
+        "primary_bright_hover": "#56457A",
+        "primary_bright_active": "#5D4B85",
+        "chat_secondary": "#3C2E5B",
+        "chat_secondary_hover": "#433466",
+        "chat_secondary_active": "#4A3970",
+        "secondary_info": "#3c3d48",
+        "chat_primary": "#2b2c34",
+        "chat_primary_hover": "#282931",
+        "chat_primary_active": "#26272F",
+        "chat_primary_media": "#191B21",
+        "chat_environment": "#21222a",
+        "ghost_primary": "#8c000000",
+        "ghost_primary_inverse": "#8cffffff",
+        "ghost_primary_inverse_hover": "#b2ffffff",
+        "ghost_primary_inverse_active": "#d9ffffff",
+        "ghost_secondary": "#4c000000",
+        "ghost_tertiary": "#26000000",
+        "ghost_ultralight": "#0c000000",
+        "ghost_ultralight_inverse": "#0dffffff",
+        "ghost_accent": "#078000FF",
+        "ghost_accent_hover": "#0F8000FF",
+        "ghost_accent_active": "#148000FF",
+        "ghost_overlay": "#0c000000",
+        "app_primary": "#272832",
+        "ghost_light": "#ccffffff",
+        "ghost_secondary_inverse": "#57ffffff",
+        "ghost_secondary_inverse_hover": "#66ffffff",
+        "ghost_light_inverse": "#00ffffff",
+        "ghost_quaternary": "#26000000",
+        "primary_light": "#8449D8",
+        "gradient_primary": "#A67BFE",
+        "gradient_secondary": "#A67BFE",
+        "gradient_primary_hover": "#B693FE",
+        "gradient_secondary_hover": "#B693FE",
+        "gradient_primary_active": "#C7ADFE",
+        "gradient_secondary_active": "#C7ADFE"
+      }
+    },
+    {
+      "id": "orange",
+      "name": "Orange",
+      "defaultWallpaper": 1001,
+    "hidden": false,
+      "underline": false,
+      "style": {
+        "text_primary": "#FF7034",
+        "text_primary_inverse": "#FF7034",
+        "text_primary_hover": "#F56C32",
+        "text_primary_active": "#ED6830",
+        "primary": "#FF814C",
+        "primary_hover": "#F57C49",
+        "primary_selected": "#FF7034",
+        "primary_active": "#ED7847",
+        "primary_light": "#FF9533",
+        "primary_pastel": "#F86C32",
+        "primary_pastel_hover":"#ED682F",
+        "primary_pastel_active":"#E6642E",
+        "primary_inverse": "#FF814C",
+        "primary_bright": "#FFE7D9",
+        "primary_bright_hover": "#FFD6BF",
+        "primary_bright_active": "#FFC6A6",
+        "chat_secondary": "#FFEFE5",
+        "chat_secondary_hover": "#FFDECC",
+        "chat_secondary_active": "#FFCEB3",
+        "ghost_accent": "#0CFF6B00",
+        "ghost_accent_hover": "#11FF6B00",
+        "ghost_accent_active": "#19FF6B00",
+        "gradient_primary": "#FF814C",
+        "gradient_secondary": "#FF814C",
+        "gradient_primary_hover": "#F57C49",
+        "gradient_secondary_hover": "#F57C49",
+        "gradient_primary_active": "#ED7847",
+        "gradient_secondary_active": "#ED7847"
+      }
+    },
+    {
+      "id": "dark_orange",
+      "name": "Dark Orange",
+      "defaultWallpaper": 1002,
+      "hidden": false,
+      "underline": true,
+      "style": {
+        "base_light": "#23242D",
+        "base_primary": "#7e848f",
+        "base_primary_hover": "#8C939E",
+        "base_primary_active": "#9BA2AD",
+        "base_secondary": "#7e848f",
+        "base_secondary_hover": "#8c8d9c",
+        "base_secondary_active": "#9ea0b2",
+        "base_tertiary": "#5e5f6c",
+        "base_bright": "#3c3d47",
+        "base_bright_hover": "#444551",
+        "base_bright_active": "#3f404d",
+        "base_ultrabright": "#fbfcfd",
+        "base_ultrabright_hover": "#fbfcfd",
+        "base_bright_inverse": "#3c3d48",
+        "base_bright_inverse_hover": "#3c3d48",
+        "text_solid": "#ffffff",
+        "text_solid_permanent": "#ffffff",
+        "text_primary": "#EC6F50",
+        "text_primary_inverse": "#FBFCFD",
+        "text_primary_hover": "#EC7B5E",
+        "text_primary_active": "#EC866D",
+        "secondary_attention": "#f75d5d",
+        "secondary_attention_hover": "#e65151",
+        "secondary_attention_active": "#ce4343",
+        "secondary_rainbow_warning": "#fff480",
+        "base_globalwhite": "#2b2c34",
+        "base_globalwhite_secondary": "#3A3B42",
+        "base_globalwhite_permanent": "#2b2c34",
+        "base_globalwhite_permanent_hover": "#3c3d49",
+        "primary": "#FF6D33",
+        "primary_hover": "#FF7B47",
+        "primary_selected": "#5E312E",
+        "primary_active": "#FF8859",
+        "primary_pastel": "#EA6619",
+        "primary_pastel_hover": "#EA742F",
+        "primary_pastel_active": "#EA8346",
+        "primary_inverse": "#FFFFFF",
+        "primary_bright": "#6D3734",
+        "primary_bright_hover": "#783C38",
+        "primary_bright_active": "#80403C",
+        "chat_secondary": "#5E312E",
+        "chat_secondary_hover": "#663532",
+        "chat_secondary_active": "#703A37",
+        "secondary_info": "#3c3d48",
+        "chat_primary": "#2b2c34",
+        "chat_primary_hover": "#282931",
+        "chat_primary_active": "#26272F",
+        "chat_primary_media": "#191B21",
+        "chat_environment": "#21222a",
+        "ghost_primary": "#8c000000",
+        "ghost_primary_inverse": "#8cffffff",
+        "ghost_primary_inverse_hover": "#b2ffffff",
+        "ghost_primary_inverse_active": "#d9ffffff",
+        "ghost_secondary": "#4c000000",
+        "ghost_tertiary": "#26000000",
+        "ghost_ultralight": "#0c000000",
+        "ghost_ultralight_inverse": "#0dffffff",
+        "ghost_accent": "#07FF7835",
+        "ghost_accent_hover": "#0FFF7835",
+        "ghost_accent_active": "#14FF7835",
+        "ghost_overlay": "#0c000000",
+        "app_primary": "#272832",
+        "ghost_light": "#ccffffff",
+        "ghost_secondary_inverse": "#57ffffff",
+        "ghost_secondary_inverse_hover": "#66ffffff",
+        "ghost_light_inverse": "#00ffffff",
+        "ghost_quaternary": "#26000000",
+        "primary_light": "#FF6D33",
+        "gradient_primary": "#FF6D33",
+        "gradient_secondary": "#FF6D33",
+        "gradient_primary_hover": "#FF8859",
+        "gradient_secondary_hover": "#FF8859",
+        "gradient_primary_active": "#FF8859",
+        "gradient_secondary_active": "#FF8859"
+      }
+    },
+    {
+      "id": "pink",
+      "name": "Pink",
+      "defaultWallpaper": 1001,
+      "hidden": false,
+      "underline": false,
+      "style": {
+        "text_primary": "#BF6FB0",
+        "text_primary_inverse": "#BF6FB0",
+        "text_primary_hover": "#B268A4",
+        "text_primary_active": "#A66099",
+        "primary": "#DAA2CF",
+        "primary_hover": "#CC98C2",
+        "primary_selected": "#DAA2CF",
+        "primary_active": "#BF8EB6",
+        "primary_light": "#EDC1E4",
+        "primary_pastel": "#BC80B1",
+        "primary_pastel_hover":"#B37AA8",
+        "primary_pastel_active":"#A8739F",
+        "primary_inverse": "#DAA2CF",
+        "primary_bright": "#FFE6F9",
+        "primary_bright_hover": "#F7DEF2",
+        "primary_bright_active": "#F2DAED",
+        "chat_secondary": "#FFEDFB",
+        "chat_secondary_hover": "#FFE6F9",
+        "chat_secondary_active": "#FFDEF7",
+        "ghost_accent": "#0CEDC1E4",
+        "ghost_accent_hover": "#11EDC1E4",
+        "ghost_accent_active": "#19EDC1E4",
+        "gradient_primary": "#DBAFD3",
+        "gradient_secondary": "#DBAFD3",
+        "gradient_primary_hover": "#D1A7C9",
+        "gradient_secondary_hover": "#D1A7C9",
+        "gradient_primary_active": "#C79FC0",
+        "gradient_secondary_active": "#C79FC0"
+      }
+    },
+    {
+      "id": "dark_pink",
+      "name": "Dark Pink",
+      "defaultWallpaper": 1002,
+      "hidden": false,
+      "underline": true,
+      "style": {
+        "base_light": "#23242D",
+        "base_primary": "#7e848f",
+        "base_primary_hover": "#8C939E",
+        "base_primary_active": "#9BA2AD",
+        "base_secondary": "#7e848f",
+        "base_secondary_hover": "#8c8d9c",
+        "base_secondary_active": "#9ea0b2",
+        "base_tertiary": "#5e5f6c",
+        "base_bright": "#3c3d47",
+        "base_bright_hover": "#444551",
+        "base_bright_active": "#3f404d",
+        "base_ultrabright": "#fbfcfd",
+        "base_ultrabright_hover": "#fbfcfd",
+        "base_bright_inverse": "#3c3d48",
+        "base_bright_inverse_hover": "#3c3d48",
+        "text_solid": "#ffffff",
+        "text_solid_permanent": "#ffffff",
+        "text_primary": "#F1ACE3",
+        "text_primary_inverse": "#FBFCFD",
+        "text_primary_hover": "#F1C1E7",
+        "text_primary_active": "#F1CDEA",
+        "secondary_attention": "#f75d5d",
+        "secondary_attention_hover": "#e65151",
+        "secondary_attention_active": "#ce4343",
+        "secondary_rainbow_warning": "#fff480",
+        "base_globalwhite": "#2b2c34",
+        "base_globalwhite_secondary": "#3A3B42",
+        "base_globalwhite_permanent": "#2b2c34",
+        "base_globalwhite_permanent_hover": "#3c3d49",
+        "primary": "#EDC1E4",
+        "primary_hover": "#F2CEEB",
+        "primary_selected": "#4F3449",
+        "primary_active": "#EDD5E8",
+        "primary_pastel": "#F1ACE3",
+        "primary_pastel_hover": "#F1BAE6",
+        "primary_pastel_active": "#F1C8E9",
+        "primary_inverse": "#FFFFFF",
+        "primary_bright": "#63425C",
+        "primary_bright_hover": "#6B4863",
+        "primary_bright_active": "#7A5271",
+        "chat_secondary": "#4F3449",
+        "chat_secondary_hover": "#5C3C55",
+        "chat_secondary_active": "#694561",
+        "secondary_info": "#3c3d48",
+        "chat_primary": "#2b2c34",
+        "chat_primary_hover": "#282931",
+        "chat_primary_active": "#26272F",
+        "chat_primary_media": "#191B21",
+        "chat_environment": "#21222a",
+        "ghost_primary": "#8c000000",
+        "ghost_primary_inverse": "#8cffffff",
+        "ghost_primary_inverse_hover": "#b2ffffff",
+        "ghost_primary_inverse_active": "#d9ffffff",
+        "ghost_secondary": "#4c000000",
+        "ghost_tertiary": "#26000000",
+        "ghost_ultralight": "#0c000000",
+        "ghost_ultralight_inverse": "#0dffffff",
+        "ghost_accent": "#07EFB2E3",
+        "ghost_accent_hover": "#0FEFB2E3",
+        "ghost_accent_active": "#14EFB2E3",
+        "ghost_overlay": "#0c000000",
+        "app_primary": "#272832",
+        "ghost_light": "#ccffffff",
+        "ghost_secondary_inverse": "#57ffffff",
+        "ghost_secondary_inverse_hover": "#66ffffff",
+        "ghost_light_inverse": "#00ffffff",
+        "ghost_quaternary": "#26000000",
+        "primary_light": "#C88FBB",
+        "gradient_primary": "#EDC1E4",
+        "gradient_secondary": "#EDC1E4",
+        "gradient_primary_hover": "#F2CEEB",
+        "gradient_secondary_hover": "#F2CEEB",
+        "gradient_primary_active": "#EDD5E8",
+        "gradient_secondary_active": "#EDD5E8"
+      }
+    }
+  ],
+  "wallpapers": [
+    {
+      "id": 96,
+      "themes": [
+        "*"
+      ],
+      "color": "#ecf3fd",
+      "tile": false,
+      "need_border": false,
+      "preview": "iPad_96_thumb@2x.jpg",
+      "image": "wallpaper_96_ipad@2x.jpg",
+      "style": {
+        "typing_text": "#ff000000",
+        "typing_animation": "#ff000000",
+        "chatevent_text": "#ffffffff",
+        "chatevent_background": "#19000000",
+        "newplate_text": "#ffffffff",
+        "newplate_background": "#19000000"
+      }
+    },
+    {
+      "id": 91,
+      "themes": [
+        "*"
+      ],
+      "color": "#b7e2ce",
+      "tile": false,
+      "need_border": false,
+      "preview": "iPad_91_thumb@2x.jpg",
+      "image": "wallpaper_91_ipad@2x.jpg",
+      "style": {
+        "typing_text": "#ff000000",
+        "typing_animation": "#ff000000",
+        "chatevent_text": "#ffffffff",
+        "chatevent_background": "#19000000",
+        "newplate_text": "#ffffffff",
+        "newplate_background": "#19000000"
+      }
+    },
+    {
+      "id": 10,
+      "themes": [
+        "*"
+      ],
+      "color": "#e5d6d3",
+      "tile": false,
+      "tint": "#73e7e0d2",
+      "need_border": false,
+      "preview": "iPad_10_thumb@2x.jpg",
+      "image": "wallpaper_10_ipad@2x.jpg",
+      "style": {
+        "typing_text": "#ff000000",
+        "typing_animation": "#ff000000",
+        "chatevent_text": "#ffffffff",
+        "chatevent_background": "#19000000",
+        "newplate_text": "#ffffffff",
+        "newplate_background": "#19000000"
+      }
+    },
+    {
+      "id": 25,
+      "themes": [
+        "*"
+      ],
+      "color": "#673363",
+      "tile": false,
+      "need_border": false,
+      "preview": "iPad_25_thumb@2x.jpg",
+      "image": "wallpaper_25_ipad@2x.jpg",
+      "style": {
+        "typing_text": "#ffffffff",
+        "typing_animation": "#ffffffff",
+        "chatevent_text": "#ffffffff",
+        "chatevent_background": "#19000000",
+        "newplate_text": "#ffffffff",
+        "newplate_background": "#19000000"
+      }
+    },
+    {
+      "id": 46,
+      "themes": [
+        "*"
+      ],
+      "color": "#e5d6d3",
+      "tile": true,
+      "tint": "#4cfaeac8",
+      "need_border": false,
+      "preview": "iPad_46_thumb@2x.jpg",
+      "image": "wallpaper_46_ipad@2x.jpg",
+      "style": {
+        "typing_text": "#ffffffff",
+        "typing_animation": "#ffffffff",
+        "chatevent_text": "#ffffffff",
+        "chatevent_background": "#19000000",
+        "newplate_text": "#ffffffff",
+        "newplate_background": "#19000000"
+      }
+    },
+    {
+      "id": 88,
+      "themes": [
+        "*"
+      ],
+      "color": "#caa175",
+      "tile": false,
+      "tint": "#7f5a563a",
+      "need_border": false,
+      "preview": "iPad_88_thumb@2x.jpg",
+      "image": "wallpaper_88_ipad@2x.jpg",
+      "style": {
+        "typing_text": "#ffffffff",
+        "typing_animation": "#ffffffff",
+        "chatevent_text": "#ffffffff",
+        "chatevent_background": "#19000000",
+        "newplate_text": "#ffffffff",
+        "newplate_background": "#19000000"
+      }
+    },
+    {
+      "id": 61,
+      "themes": [
+        "*"
+      ],
+      "color": "#067d85",
+      "tile": false,
+      "tint": "#66015068",
+      "need_border": false,
+      "preview": "iPad_61_thumb@2x.jpg",
+      "image": "wallpaper_61_ipad@2x.jpg",
+      "style": {
+        "typing_text": "#ff000000",
+        "typing_animation": "#ff000000",
+        "chatevent_text": "#ffffffff",
+        "chatevent_background": "#19000000",
+        "newplate_text": "#ffffffff",
+        "newplate_background": "#19000000"
+      }
+    },
+    {
+      "id": 17,
+      "themes": [
+        "*"
+      ],
+      "color": "#0a80a6",
+      "tile": false,
+      "tint": "#59018faf",
+      "need_border": false,
+      "preview": "iPad_17_thumb@2x.jpg",
+      "image": "wallpaper_17_ipad@2x.jpg",
+      "style": {
+        "typing_text": "#ffffffff",
+        "typing_animation": "#ffffffff",
+        "chatevent_text": "#ffffffff",
+        "chatevent_background": "#19000000",
+        "newplate_text": "#ffffffff",
+        "newplate_background": "#19000000"
+      }
+    },
+    {
+      "id": 53,
+      "themes": [
+        "*"
+      ],
+      "color": "#efc0ee",
+      "tile": false,
+      "tint": "#66debdea",
+      "need_border": false,
+      "preview": "iPad_53_thumb@2x.jpg",
+      "image": "wallpaper_53_ipad@2x.jpg",
+      "style": {
+        "typing_text": "#ff000000",
+        "typing_animation": "#ff000000",
+        "chatevent_text": "#ffffffff",
+        "chatevent_background": "#19000000",
+        "newplate_text": "#ffffffff",
+        "newplate_background": "#19000000"
+      }
+    },
+    {
+      "id": 101,
+      "themes": [
+        "*"
+      ],
+      "color": "#e0e7ef",
+      "tile": false,
+      "tint": "#4cd4e2ed",
+      "need_border": false,
+      "preview": "iPad_101_thumb@2x.jpg",
+      "image": "wallpaper_101_ipad@2x.jpg",
+      "style": {
+        "typing_text": "#ff000000",
+        "typing_animation": "#ff000000",
+        "chatevent_text": "#ffffffff",
+        "chatevent_background": "#19000000",
+        "newplate_text": "#ffffffff",
+        "newplate_background": "#19000000"
+      }
+    },
+    {
+      "id": 27,
+      "themes": [
+        "*"
+      ],
+      "color": "#d1b399",
+      "tile": false,
+      "tint": "#4cf7d5a7",
+      "need_border": false,
+      "preview": "iPad_27_thumb@2x.jpg",
+      "image": "wallpaper_27_ipad@2x.jpg",
+      "style": {
+        "typing_text": "#ff000000",
+        "typing_animation": "#ff000000",
+        "chatevent_text": "#ffffffff",
+        "chatevent_background": "#19000000",
+        "newplate_text": "#ffffffff",
+        "newplate_background": "#19000000"
+      }
+    },
+    {
+      "id": 82,
+      "themes": [
+        "*"
+      ],
+      "color": "#3b5a91",
+      "tile": false,
+      "tint": "#4c001738",
+      "need_border": false,
+      "preview": "iPad_82_thumb@2x.jpg",
+      "image": "wallpaper_82_ipad@2x.jpg",
+      "style": {
+        "typing_text": "#ffffffff",
+        "typing_animation": "#ffffffff",
+        "chatevent_text": "#ffffffff",
+        "chatevent_background": "#19000000",
+        "newplate_text": "#ffffffff",
+        "newplate_background": "#19000000"
+      }
+    },
+    {
+      "id": 108,
+      "themes": [
+        "*"
+      ],
+      "color": "#3c3c3c",
+      "tile": false,
+      "need_border": false,
+      "preview": "iPad_108_thumb@2x.jpg",
+      "image": "wallpaper_108_ipad@2x.jpg",
+      "style": {
+        "typing_text": "#ffffffff",
+        "typing_animation": "#ffffffff",
+        "chatevent_text": "#ffffffff",
+        "chatevent_background": "#19000000",
+        "newplate_text": "#ffffffff",
+        "newplate_background": "#19000000"
+      }
+    },
+    {
+      "id": 107,
+      "themes": [
+        "*"
+      ],
+      "color": "#1b1b1b",
+      "tile": false,
+      "need_border": false,
+      "preview": "iPad_107_thumb@2x.jpg",
+      "image": "wallpaper_107_ipad@2x.jpg",
+      "style": {
+        "typing_text": "#ffffffff",
+        "typing_animation": "#ffffffff",
+        "chatevent_text": "#ffffffff",
+        "chatevent_background": "#19000000",
+        "newplate_text": "#ffffffff",
+        "newplate_background": "#19000000"
+      }
+    },
+    {
+      "id": 89,
+      "themes": [
+        "*"
+      ],
+      "color": "#010437",
+      "tile": false,
+      "tint": "#73151f23",
+      "need_border": false,
+      "preview": "iPad_89_thumb@2x.jpg",
+      "image": "wallpaper_89_ipad@2x.jpg",
+      "style": {
+        "typing_text": "#ffffffff",
+        "typing_animation": "#ffffffff",
+        "chatevent_text": "#ffffffff",
+        "chatevent_background": "#19000000",
+        "newplate_text": "#ffffffff",
+        "newplate_background": "#19000000"
+      }
+    },
+    {
+      "id": 59,
+      "themes": [
+        "*"
+      ],
+      "color": "#fcecca",
+      "tile": false,
+      "need_border": false,
+      "preview": "iPad_59_thumb@2x.jpg",
+      "image": "wallpaper_59_ipad@2x.jpg",
+      "style": {
+        "typing_text": "#ffffffff",
+        "typing_animation": "#ffffffff",
+        "chatevent_text": "#ffffffff",
+        "chatevent_background": "#19000000",
+        "newplate_text": "#ffffffff",
+        "newplate_background": "#19000000"
+      }
+    },
+    {
+      "id": 15,
+      "themes": [
+        "*"
+      ],
+      "color": "#c5dce4",
+      "tile": false,
+      "tint": "#40c8dbe2",
+      "need_border": false,
+      "preview": "iPad_15_thumb@2x.jpg",
+      "image": "wallpaper_15_ipad@2x.jpg",
+      "style": {
+        "typing_text": "#ff000000",
+        "typing_animation": "#ff000000",
+        "chatevent_text": "#ffffffff",
+        "chatevent_background": "#19000000",
+        "newplate_text": "#ffffffff",
+        "newplate_background": "#19000000"
+      }
+    },
+    {
+      "id": 100,
+      "themes": [
+        "*"
+      ],
+      "color": "#cc286d",
+      "tile": false,
+      "tint": "#66c02164",
+      "need_border": false,
+      "preview": "iPad_100_thumb@2x.jpg",
+      "image": "wallpaper_100_ipad@2x.jpg",
+      "style": {
+        "typing_text": "#ffffffff",
+        "typing_animation": "#ffffffff",
+        "chatevent_text": "#ffffffff",
+        "chatevent_background": "#19000000",
+        "newplate_text": "#ffffffff",
+        "newplate_background": "#19000000"
+      }
+    },
+    {
+      "id": 114,
+      "themes": [
+        "*"
+      ],
+      "color": "#bac9b4",
+      "tile": false,
+      "tint": "#7f555f61",
+      "need_border": false,
+      "preview": "iPad_114_thumb@2x.jpg",
+      "image": "wallpaper_114_ipad@2x.jpg",
+      "style": {
+        "typing_text": "#ffffffff",
+        "typing_animation": "#ffffffff",
+        "chatevent_text": "#ffffffff",
+        "chatevent_background": "#19000000",
+        "newplate_text": "#ffffffff",
+        "newplate_background": "#19000000"
+      }
+    },
+    {
+      "id": 93,
+      "themes": [
+        "*"
+      ],
+      "color": "#f3f3f3",
+      "tile": false,
+      "tint": "#66d5d6d2",
+      "need_border": false,
+      "preview": "iPad_93_thumb@2x.jpg",
+      "image": "wallpaper_93_ipad@2x.jpg",
+      "style": {
+        "typing_text": "#ff542b13",
+        "typing_animation": "#ff542b13",
+        "chatevent_text": "#ffffffff",
+        "chatevent_background": "#19000000",
+        "newplate_text": "#ffffffff",
+        "newplate_background": "#19000000"
+      }
+    },
+    {
+      "id": 92,
+      "themes": [
+        "*"
+      ],
+      "color": "#deecf7",
+      "tile": false,
+      "tint": "#66e0edf6",
+      "need_border": false,
+      "preview": "iPad_92_thumb@2x.jpg",
+      "image": "wallpaper_92_ipad@2x.jpg",
+      "style": {
+        "typing_text": "#ff000000",
+        "typing_animation": "#ff000000",
+        "chatevent_text": "#ffffffff",
+        "chatevent_background": "#19000000",
+        "newplate_text": "#ffffffff",
+        "newplate_background": "#19000000"
+      }
+    },
+    {
+      "id": 2,
+      "themes": [
+        "*"
+      ],
+      "color": "#f6d497",
+      "tile": false,
+      "tint": "#73e0e0e0",
+      "need_border": false,
+      "preview": "iPad_02_thumb@2x.jpg",
+      "image": "wallpaper_02_ipad@2x.jpg",
+      "style": {
+        "typing_text": "#ff000000",
+        "typing_animation": "#ff000000",
+        "chatevent_text": "#ffffffff",
+        "chatevent_background": "#19000000",
+        "newplate_text": "#ffffffff",
+        "newplate_background": "#19000000"
+      }
+    },
+    {
+      "id": 6,
+      "themes": [
+        "*"
+      ],
+      "color": "#9ec5b2",
+      "tile": false,
+      "tint": "#73e7edd9",
+      "need_border": false,
+      "preview": "iPad_06_thumb@2x.jpg",
+      "image": "wallpaper_06_ipad@2x.jpg",
+      "style": {
+        "typing_text": "#ff000000",
+        "typing_animation": "#ff000000",
+        "chatevent_text": "#ffffffff",
+        "chatevent_background": "#19000000",
+        "newplate_text": "#ffffffff",
+        "newplate_background": "#19000000"
+      }
+    },
+    {
+      "id": 7,
+      "themes": [
+        "*"
+      ],
+      "color": "#195cab",
+      "tile": false,
+      "tint": "#4c234793",
+      "need_border": false,
+      "preview": "iPad_07_thumb@2x.jpg",
+      "image": "wallpaper_07_ipad@2x.jpg",
+      "style": {
+        "typing_text": "#ffffffff",
+        "typing_animation": "#ffffffff",
+        "chatevent_text": "#ffffffff",
+        "chatevent_background": "#19000000",
+        "newplate_text": "#ffffffff",
+        "newplate_background": "#19000000"
+      }
+    },
+    {
+      "id": 72,
+      "themes": [
+        "*"
+      ],
+      "color": "#334b4b",
+      "tile": false,
+      "tint": "#66273f2f",
+      "need_border": false,
+      "preview": "iPad_72_thumb@2x.jpg",
+      "image": "wallpaper_72_ipad@2x.jpg",
+      "style": {
+        "typing_text": "#ffffffff",
+        "typing_animation": "#ffffffff",
+        "chatevent_text": "#ffffffff",
+        "chatevent_background": "#19000000",
+        "newplate_text": "#ffffffff",
+        "newplate_background": "#19000000"
+      }
+    },
+    {
+      "id": 116,
+      "themes": [
+        "*"
+      ],
+      "color": "#dd3a04",
+      "tile": false,
+      "tint": "#4c561803",
+      "need_border": false,
+      "preview": "iPad_116_thumb@2x.jpg",
+      "image": "wallpaper_116_ipad@2x.jpg",
+      "style": {
+        "typing_text": "#ffffffff",
+        "typing_animation": "#ffffffff",
+        "chatevent_text": "#ffffffff",
+        "chatevent_background": "#19000000",
+        "newplate_text": "#ffffffff",
+        "newplate_background": "#19000000"
+      }
+    },
+    {
+      "id": 76,
+      "themes": [
+        "*"
+      ],
+      "color": "#d7eccb",
+      "tile": false,
+      "need_border": false,
+      "style": {
+        "typing_text": "#ff000000",
+        "typing_animation": "#ff000000",
+        "chatevent_text": "#ffffffff",
+        "chatevent_background": "#28000000",
+        "newplate_text": "#ffffffff",
+        "newplate_background": "#19000000"
+      }
+    },
+    {
+      "id": 94,
+      "themes": [
+        "*"
+      ],
+      "color": "#84bea6",
+      "tile": false,
+      "tint": "#1998ccb5",
+      "need_border": false,
+      "preview": "iPad_94_thumb@2x.jpg",
+      "image": "wallpaper_94_ipad@2x.jpg",
+      "style": {
+        "typing_text": "#ff000000",
+        "typing_animation": "#ff000000",
+        "chatevent_text": "#ffffffff",
+        "chatevent_background": "#19000000",
+        "newplate_text": "#ffffffff",
+        "newplate_background": "#19000000"
+      }
+    },
+    {
+      "id": 60,
+      "themes": [
+        "*"
+      ],
+      "color": "#cfe9dc",
+      "tile": false,
+      "need_border": false,
+      "preview": "iPad_60_thumb@2x.jpg",
+      "image": "wallpaper_60_ipad@2x.jpg",
+      "style": {
+        "typing_text": "#ff000000",
+        "typing_animation": "#ff000000",
+        "chatevent_text": "#ffffffff",
+        "chatevent_background": "#19000000",
+        "newplate_text": "#ffffffff",
+        "newplate_background": "#19000000"
+      }
+    },
+    {
+      "id": 35,
+      "themes": [
+        "*"
+      ],
+      "color": "#2c477c",
+      "tile": false,
+      "tint": "#4c142f65",
+      "need_border": false,
+      "preview": "iPad_35_thumb@2x.jpg",
+      "image": "wallpaper_35_ipad@2x.jpg",
+      "style": {
+        "typing_text": "#ffffffff",
+        "typing_animation": "#ffffffff",
+        "chatevent_text": "#ffffffff",
+        "chatevent_background": "#19000000",
+        "newplate_text": "#ffffffff",
+        "newplate_background": "#19000000"
+      }
+    },
+    {
+      "id": 5,
+      "themes": [
+        "*"
+      ],
+      "color": "#05b8ce",
+      "tile": false,
+      "tint": "#590095ac",
+      "need_border": false,
+      "preview": "iPad_05_thumb@2x.jpg",
+      "image": "wallpaper_05_ipad@2x.jpg",
+      "style": {
+        "typing_text": "#ffffffff",
+        "typing_animation": "#ffffffff",
+        "chatevent_text": "#ffffffff",
+        "chatevent_background": "#19000000",
+        "newplate_text": "#ffffffff",
+        "newplate_background": "#19000000"
+      }
+    },
+    {
+      "id": 77,
+      "themes": [
+        "*"
+      ],
+      "color": "#ffc8c9",
+      "tile": false,
+      "need_border": false,
+      "style": {
+        "typing_text": "#ff000000",
+        "typing_animation": "#ff000000",
+        "chatevent_text": "#ffffffff",
+        "chatevent_background": "#19000000",
+        "newplate_text": "#ffffffff",
+        "newplate_background": "#19000000"
+      }
+    },
+    {
+      "id": 8,
+      "themes": [
+        "*"
+      ],
+      "color": "#d5cfd1",
+      "tile": false,
+      "need_border": false,
+      "preview": "iPad_08_thumb@2x.jpg",
+      "image": "wallpaper_08_ipad@2x.jpg",
+      "style": {
+        "typing_text": "#ff000000",
+        "typing_animation": "#ff000000",
+        "chatevent_text": "#ffffffff",
+        "chatevent_background": "#19000000",
+        "newplate_text": "#ffffffff",
+        "newplate_background": "#19000000"
+      }
+    },
+    {
+      "id": 1000,
+      "themes": [
+        "*"
+      ],
+      "color": "#ffffff",
+      "tile": false,
+      "need_border": false,
+      "style": {
+        "typing_text": "#ff767676",
+        "typing_animation": "#ff767676",
+        "chatevent_text": "#ff999ba6",
+        "chatevent_background": "#0f000000",
+        "newplate_text": "#ff999ba6",
+        "newplate_background": "#0f000000"
+      }
+    },
+    {
+      "id": 1001,
+      "themes": [
+        "*"
+      ],
+      "color": "#f0f3f5",
+      "tile": false,
+      "need_border": false,
+      "style": {
+        "typing_text": "#838690",
+        "typing_animation": "#838690",
+        "chatevent_text": "#838690",
+        "chatevent_background": "#0d000000",
+        "newplate_text": "#838690",
+        "newplate_background": "#0d000000"
+      }
+    },
+    {
+      "id": 1002,
+      "themes": [
+        "*"
+      ],
+      "color": "#21222a",
+      "tile": false,
+      "need_border": false,
+      "style": {
+        "typing_text": "#7e848f",
+        "typing_animation": "#7e848f",
+        "chatevent_text": "#7e848f",
+        "chatevent_background": "#0d000000",
+        "newplate_text": "#7e848f",
+        "newplate_background": "#3c3d48"
+      }
+    },
+    {
+      "id": 1003,
+      "themes": [
+        "*"
+      ],
+      "color": "#ffffff",
+      "tile": true,
+      "need_border": false,
+      "preview": "iPad_1003_thumb@2x.jpg",
+      "image": "wallpaper_1003_ipad@2x.jpg",
+      "style": {
+        "typing_text": "#ff767676",
+        "typing_animation": "#ff767676",
+        "chatevent_text": "#ff999ba6",
+        "chatevent_background": "#0f000000",
+        "newplate_text": "#ff999ba6",
+        "newplate_background": "#0f000000"
+      }
+    },
+    {
+      "id": 1004,
+      "themes": [
+        "*"
+      ],
+      "color": "#f0f3f5",
+      "tile": false,
+      "need_border": false,
+      "style": {
+        "typing_text": "#838690",
+        "typing_animation": "#838690",
+        "chatevent_text": "#838690",
+        "chatevent_background": "#0d000000",
+        "newplate_text": "#838690",
+        "newplate_background": "#0d000000"
+      }
+    },
+    {
+      "id": 1005,
+      "themes": [
+        "*"
+      ],
+      "color": "#edefff",
+      "tile": false,
+      "need_border": false,
+      "style": {
+        "typing_text": "#838690",
+        "typing_animation": "#838690",
+        "chatevent_text": "#838690",
+        "chatevent_background": "#0d000000",
+        "newplate_text": "#838690",
+        "newplate_background": "#0d000000"
+      }
+    },
+    {
+      "id": 1006,
+      "themes": [
+        "*"
+      ],
+      "color": "#f0f0f0",
+      "tile": false,
+      "need_border": false,
+      "style": {
+        "typing_text": "#838690",
+        "typing_animation": "#838690",
+        "chatevent_text": "#838690",
+        "chatevent_background": "#0d000000",
+        "newplate_text": "#838690",
+        "newplate_background": "#0d000000"
+      }
+    }
+  ],
+  "base_url": "https://c.icq.com/images/wallpapers/"
+}

@@ -1,6 +1,5 @@
 #include "stdafx.h"
 #include "tools/device_id.h"
-#include <mach-o/arch.h>
 
 #import <IOKit/IOKitLib.h>
 #import <Foundation/Foundation.h>
@@ -25,13 +24,15 @@ static std::string serialNumber()
     return std::string([serial UTF8String], [serial lengthOfBytesUsingEncoding:NSUTF8StringEncoding]);
 }
 
-unsigned short getCpuHash()
+static unsigned short getCpuHash()
 {
-    const NXArchInfo* info = NXGetLocalArchInfo();
-    unsigned short val = 0;
-    val += (unsigned short)info->cputype;
-    val += (unsigned short)info->cpusubtype;
-    return val;
+#if defined(__x86_64__)
+    return 1;
+#elif defined(__arm64)
+    return 2;
+#else
+    return 0;
+#endif
 }
 
 std::string core::tools::impl::get_device_id_impl()

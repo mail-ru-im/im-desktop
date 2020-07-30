@@ -110,6 +110,10 @@ public:
 
     int minControlsWidth() const;
 
+    void updateWith(IItemBlock* _other) override;
+
+    int effectiveBlockWidth() const override;
+
 protected:
     void drawBlock(QPainter &p, const QRect& _rect, const QColor& _quoteColor) override;
 
@@ -123,7 +127,7 @@ protected:
 
     void resizeEvent(QResizeEvent * _event) override;
 
-    MenuFlags getMenuFlags() const override;
+    MenuFlags getMenuFlags(QPoint p) const override;
 
     void setSelected(const bool _isSelected) override;
 
@@ -131,6 +135,8 @@ protected:
 
 public:
     const QPixmap& getPreview() const;
+
+    const QPixmap& getBackground() const;
 
 private:
     void init();
@@ -172,11 +178,11 @@ private:
 
     void onLocalCopyInfoReady(const bool isCopyExists) override;
 
-    void onLeftMouseClick(const QPoint &_pos);
+    bool onLeftMouseClick(const QPoint &_pos);
 
     void onPreviewMetainfoDownloaded(const QString &miniPreviewUri, const QString &fullPreviewUri) override;
 
-    QString getStickerId() const override { return Id_; }
+    Data::StickerId getStickerId() const override { return Data::StickerId(Id_); }
 
     ContentType getContentType() const override;
 
@@ -206,7 +212,7 @@ private:
     void buttonStartAnimation();
     void buttonStopAnimation();
 
-    void setPreview(QPixmap _preview);
+    void setPreview(QPixmap _preview, QPixmap _background = QPixmap());
 
     void updateStyle() override;
     void updateFonts() override;
@@ -231,6 +237,8 @@ private:
     QPainterPath RelativePreviewClippingPath_;
 
     QPixmap Preview_;
+    QPixmap Background_;
+    qint64 seq_;
 
     int64_t PreviewRequestId_;
 
@@ -258,6 +266,7 @@ private Q_SLOTS:
     void localDurationLoaded(qint64 _duration);
     void localGotAudioLoaded(bool _gotAudio);
     void multiselectChanged();
+    void prepareBackground(const QPixmap& _result, qint64 _srcCacheKey);
 };
 
 UI_COMPLEX_MESSAGE_NS_END

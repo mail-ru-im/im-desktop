@@ -22,7 +22,7 @@ namespace core
 
         class get_mentions_suggests : public robusto_packet, public persons_packet
         {
-            int32_t init_request(std::shared_ptr<core::http_request_simple> _request) override;
+            int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
             int32_t parse_results(const rapidjson::Value& _data) override;
 
             std::string aimid_;
@@ -37,8 +37,6 @@ namespace core
             const mention_suggest_vec& get_suggests() const;
 
             const std::shared_ptr<core::archive::persons_map>& get_persons() const override { return persons_; }
-
-            bool support_async_execution() const override { return true; }
         };
     }
 }

@@ -43,6 +43,7 @@ namespace Ui
         Q_OBJECT
     public:
         AttachPopupBackground(QWidget* _parent);
+        int heightForContent(int _height) const;
 
     protected:
         void paintEvent(QPaintEvent* _event) override;
@@ -61,6 +62,8 @@ namespace Ui
         void contactClicked(QPrivateSignal) const;
         void pttClicked(QPrivateSignal) const;
         void pollClicked(QPrivateSignal) const;
+        void callClicked(QPrivateSignal) const;
+        void webinarClicked(QPrivateSignal) const;
 
     public:
         static AttachFilePopup& instance();
@@ -90,6 +93,9 @@ namespace Ui
         void keyPressEvent(QKeyEvent* _event) override;
         void showEvent(QShowEvent*) override;
         void hideEvent(QHideEvent*) override;
+
+    private Q_SLOTS:
+        void initItems();
 
     private:
         explicit AttachFilePopup(QWidget* _parent, InputWidget* _input);
@@ -129,6 +135,8 @@ namespace Ui
             poll,
             ptt,
             geo,
+            callLink,
+            webinar
         };
         std::vector<std::pair<int, MenuItemId>> items_;
 

@@ -8,7 +8,7 @@ namespace core
     {
         class tlv;
 
-        typedef std::vector<std::shared_ptr<tlv>> tlv_list;
+        using tlv_list = std::vector<std::shared_ptr<tlv>>;
 
         template<class T, bool is_integral>
         struct is_implementaion_defined_fundamental_impl
@@ -52,6 +52,8 @@ namespace core
 
             void push_child(const std::shared_ptr<tlv>& _tlv);
             void push_child(tlv _tlv);
+
+            void reserve(size_t _capacity);
 
             std::shared_ptr<tlv> get_item(const uint32_t _type) const;
             std::shared_ptr<tlv> get_first();
@@ -99,10 +101,12 @@ namespace core
             bool unserialize(const binary_stream& _stream);
             static bool try_get_field_with_type(const binary_stream& _stream, uint32_t _type, uint32_t& _length);
 
+            int64_t value_size() const noexcept { return value_stream_.all_size(); }
         };
 
         template<> void tlv::set_value<iserializable_tlv>(const iserializable_tlv& _value);
         template<> void tlv::set_value<std::string>(const std::string& _value);
+        template<> void tlv::set_value<std::string_view>(const std::string_view& _value);
         template<> void tlv::set_value<core::tools::binary_stream>(const binary_stream& _value);
         template<> void tlv::set_value<core::tools::tlvpack>(const tlvpack& _value);
 

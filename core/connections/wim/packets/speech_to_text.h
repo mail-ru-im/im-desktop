@@ -19,9 +19,9 @@ namespace core
     {
         class speech_to_text : public wim_packet
         {
-            virtual int32_t init_request(std::shared_ptr<core::http_request_simple> _request) override;
-            virtual int32_t parse_response(std::shared_ptr<core::tools::binary_stream> _response) override;
-            virtual int32_t execute_request(std::shared_ptr<core::http_request_simple> request) override;
+            virtual int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
+            virtual int32_t parse_response(const std::shared_ptr<core::tools::binary_stream>& _response) override;
+            virtual int32_t execute_request(const std::shared_ptr<core::http_request_simple>& request) override;
 
             std::string Url_;
             std::string Locale_;

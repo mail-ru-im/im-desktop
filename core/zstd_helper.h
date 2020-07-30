@@ -42,8 +42,8 @@ namespace core
         std::string get_last_request_dict() const;
         std::string get_last_response_dict() const;
 
-        int compress(const char* _data_in, size_t _data_in_size, char* _data_out, size_t _data_out_size, size_t* _data_size_written, const std::string& _dict_name, int _compress_level = -1) const;
-        int decompress(const char* _data_in, size_t _data_in_size, char* _data_out, size_t _data_out_size, size_t* _data_size_written, const std::string& _dict_name) const;
+        int compress(const char* _data_in, size_t _data_in_size, char* _data_out, size_t _data_out_size, size_t* _data_size_written, std::string_view _dict_name, int _compress_level = -1) const;
+        int decompress(const char* _data_in, size_t _data_in_size, char* _data_out, size_t _data_out_size, size_t* _data_size_written, std::string_view _dict_name) const;
 
     private:
         enum class dict_type

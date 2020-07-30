@@ -5,12 +5,33 @@
 
 #include "omicron/omicron_helper.h"
 #include "../gui_settings.h"
+#include "spellcheck/Spellchecker.h"
 
 #include "../app_config.h"
 #include "../url_config.h"
 #include "../common.shared/config/config.h"
 #include "../common.shared/omicron_keys.h"
 #include "../common.shared/smartreply/smartreply_config.h"
+#include "cache/emoji/EmojiCode.h"
+
+
+namespace
+{
+    std::vector<Features::ReactionWithTooltip> default_reactions_with_tooltip_set()
+    {
+        static const std::vector<Features::ReactionWithTooltip> reactions =
+        {
+            { Emoji::EmojiCode::toQString(Emoji::EmojiCode(0x1f44d)),           QT_TRANSLATE_NOOP("reactions", "Like") },
+            { Emoji::EmojiCode::toQString(Emoji::EmojiCode(0x2764, 0xfe0f)),    QT_TRANSLATE_NOOP("reactions", "Super") },
+            { Emoji::EmojiCode::toQString(Emoji::EmojiCode(0x1f923)),           QT_TRANSLATE_NOOP("reactions", "Funny") },
+            { Emoji::EmojiCode::toQString(Emoji::EmojiCode(0x1f633)),           QT_TRANSLATE_NOOP("reactions", "Oops") },
+            { Emoji::EmojiCode::toQString(Emoji::EmojiCode(0x1f622)),           QT_TRANSLATE_NOOP("reactions", "Sad") },
+            { Emoji::EmojiCode::toQString(Emoji::EmojiCode(0x1f621)),           QT_TRANSLATE_NOOP("reactions", "Scandalous") },
+        };
+
+        return reactions;
+    }
+}
 
 namespace Features
 {
@@ -21,7 +42,10 @@ namespace Features
 
     QString getProfileDomain()
     {
-        const static QString defaultDomain = []() -> QString {
+        const QString defaultDomain = []() -> QString {
+            if (config::get().is_on(config::features::external_url_config))
+                return Ui::getUrlConfig().getUrlProfile();
+
             const std::string_view link = config::get().url(config::urls::profile);
             return QString::fromUtf8(link.data(), link.size());
         }();
@@ -55,14 +79,13 @@ namespace Features
         return Omicron::_o(omicron::keys::open_file_on_click, feature::default_open_file_on_click());
     }
 
-    bool forceShowChatPopup()
-    {
-        return Omicron::_o(omicron::keys::force_show_chat_popup, config::get().is_on(config::features::force_show_chat_popup_default));
-    }
-
     bool phoneAllowed()
     {
-        return Omicron::_o(omicron::keys::phone_allowed, config::get().is_on(config::features::phone_allowed));
+        const auto defaultValue = config::get().is_on(config::features::phone_allowed);
+        const auto omicronValue =  Omicron::_o(omicron::keys::phone_allowed, defaultValue);
+        if (config::get().is_on(config::features::store_version))
+            return defaultValue && omicronValue;
+        return omicronValue;
     }
 
     bool externalPhoneAttachment()
@@ -86,7 +109,7 @@ namespace Features
     {
         const static QString link = []() -> QString {
             const std::string_view link = config::get().url(config::urls::data_visibility);
-            return ql1s("https://") % QString::fromUtf8(link.data(), link.size()) % ql1c('/');
+            return u"https://" % QString::fromUtf8(link.data(), link.size()) % u'/';
         }();
 
         return Omicron::_o(omicron::keys::data_visibility_link, link);
@@ -96,7 +119,7 @@ namespace Features
     {
         const static QString link = []() -> QString {
             const std::string_view link = config::get().url(config::urls::password_recovery);
-            return ql1s("https://") % QString::fromUtf8(link.data(), link.size()) % ql1c('/');
+            return u"https://" % QString::fromUtf8(link.data(), link.size()) % u'/';
         }();
 
         return Omicron::_o(omicron::keys::password_recovery_link, link);
@@ -114,10 +137,15 @@ namespace Features
     {
         const static QString link = []() -> QString {
             const std::string_view link = config::get().url(config::urls::attach_phone);
-            return ql1s("https://") % QString::fromUtf8(link.data(), link.size()) % ql1c('/');
+            return u"https://" % QString::fromUtf8(link.data(), link.size()) % u'/';
         }();
 
         return Omicron::_o("attach_phone_url", link);
+    }
+
+    QString updateAppUrl()
+    {
+        return Omicron::_o("update_app_url", QString());
     }
 
     LoginMethod loginMethod()
@@ -141,7 +169,7 @@ namespace Features
 
     bool closeBtnAttachPhoneNumberPopup()
     {
-        const static bool isRuLang = Utils::GetTranslator()->getLang().toLower() == ql1s("ru");
+        const static bool isRuLang = Utils::GetTranslator()->getLang().toLower() == u"ru";
         const static bool value = !(config::get().is_on(config::features::attach_phone_number_popup_modal) && isRuLang);
 
         return Omicron::_o(omicron::keys::attach_phone_number_popup_close_btn, value);
@@ -149,7 +177,7 @@ namespace Features
 
     int showTimeoutAttachPhoneNumberPopup()
     {
-        const static bool isRuLang = Utils::GetTranslator()->getLang().toLower() == ql1s("ru");
+        const static bool isRuLang = Utils::GetTranslator()->getLang().toLower() == u"ru";
         const static int value = (config::get().is_on(config::features::attach_phone_number_popup_modal) && isRuLang) ? 0 : feature::default_show_timeout_attach_phone_number_popup();
 
         return Omicron::_o(omicron::keys::attach_phone_number_popup_show_timeout, value);
@@ -172,6 +200,11 @@ namespace Features
     bool isSmartreplyEnabled()
     {
         return config::get().is_on(config::features::smartreplies) && Omicron::_o(feature::smartreply::is_enabled().name(), feature::smartreply::is_enabled().def<bool>());
+    }
+
+    bool isSmartreplyForQuoteEnabled()
+    {
+        return isSmartreplyEnabled() && Omicron::_o(feature::smartreply::is_enabled_for_quotes().name(), feature::smartreply::is_enabled_for_quotes().def<bool>());
     }
 
     std::chrono::milliseconds smartreplyHideTime()
@@ -232,7 +265,9 @@ namespace Features
 
     bool avatarChangeAllowed()
     {
-        return Omicron::_o(omicron::keys::avatar_change_allowed, config::get().is_on(config::features::avatar_change_allowed));
+        auto value = config::get().is_on(config::features::avatar_change_allowed);
+        value = config::is_overridden(config::features::avatar_change_allowed) ? value : Omicron::_o(omicron::keys::avatar_change_allowed, value);
+        return value;
     }
 
     bool clRemoveContactsAllowed()
@@ -240,9 +275,16 @@ namespace Features
         return Omicron::_o(omicron::keys::cl_remove_contacts_allowed, config::get().is_on(config::features::remove_contact));
     }
 
-    bool changeNameAvailable()
+    bool changeNameAllowed()
     {
-        return Omicron::_o(omicron::keys::changeable_name, config::get().is_on(config::features::changeable_name));
+        auto value = config::get().is_on(config::features::changeable_name);
+        value = config::is_overridden(config::features::changeable_name) ? value : Omicron::_o(omicron::keys::changeable_name, value);
+        return value;
+    }
+
+    bool changeInfoAllowed()
+    {
+        return config::get().is_on(config::features::info_change_allowed);
     }
 
     bool pollsEnabled()
@@ -253,5 +295,151 @@ namespace Features
     int getFsIDLength()
     {
         return Omicron::_o(omicron::keys::fs_id_length, feature::default_fs_id_length());
+    }
+
+    bool isSpellCheckEnabled()
+    {
+        return spellcheck::Spellchecker::isAvailable() && Omicron::_o(omicron::keys::spell_check_enabled, config::get().is_on(config::features::spell_check));
+    }
+
+    size_t spellCheckMaxSuggestCount()
+    {
+        return Omicron::_o(omicron::keys::spell_check_max_suggest_count, 3);
+    }
+
+    QString favoritesImageIdEnglish()
+    {
+        constexpr std::string_view id = feature::default_favorites_image_id_english();
+        return Omicron::_o(omicron::keys::favorites_image_id_english, QString::fromUtf8(id.data(), id.size()));
+    }
+
+    QString favoritesImageIdRussian()
+    {
+        constexpr std::string_view id = feature::default_favorites_image_id_russian();
+        return Omicron::_o(omicron::keys::favorites_image_id_russian, QString::fromUtf8(id.data(), id.size()));
+    }
+
+    int getAsyncResponseTimeout()
+    {
+        return Omicron::_o(omicron::keys::async_response_timeout, feature::default_async_response_timeout());
+    }
+
+    int getVoipCallUserLimit()
+    {
+        static const auto default_value = config::get().number<int64_t>(config::values::voip_call_user_limit).value_or(feature::default_voip_call_user_limit());
+        return Omicron::_o(omicron::keys::voip_call_user_limit, default_value);
+    }
+
+    int getVoipVideoUserLimit()
+    {
+        static const auto default_value = config::get().number<int64_t>(config::values::voip_video_user_limit).value_or(feature::default_voip_video_user_limit());
+        return Omicron::_o(omicron::keys::voip_video_user_limit, default_value);
+    }
+
+    int getVoipBigConferenceBoundary()
+    {
+        static const auto default_value = config::get().number<int64_t>(config::values::voip_big_conference_boundary).value_or(feature::default_voip_big_conference_boundary());
+        return Omicron::_o(omicron::keys::voip_big_conference_boundary, default_value);
+    }
+
+    bool isVcsCallByLinkEnabled()
+    {
+        auto value = config::get().is_on(config::features::vcs_call_by_link_enabled);
+        value = config::is_overridden(config::features::vcs_call_by_link_enabled) ? value : Omicron::_o(omicron::keys::vcs_call_by_link_enabled, value);
+        return value;
+    }
+
+    bool isVcsWebinarEnabled()
+    {
+        auto value = config::get().is_on(config::features::vcs_webinar_enabled);
+        value = config::is_overridden(config::features::vcs_webinar_enabled) ? value : Omicron::_o(omicron::keys::vcs_webinar_enabled, value);
+        return value;
+    }
+
+    QString getVcsRoomList()
+    {
+        const static auto default_value = []() -> QString {
+            const auto value = config::get().url(config::urls::vcs_room);
+            return QString::fromUtf8(value.data(), value.size());
+        }();
+
+        return Omicron::_o(omicron::keys::vcs_room, default_value);
+    }
+
+    std::vector<QString> getReactionsSet()
+    {
+        auto reactionsWithTooltip = getReactionsWithTooltipsSet();
+
+        std::vector<QString> result;
+        result.reserve(reactionsWithTooltip.size());
+
+        for (auto& reactionWithTooltip : reactionsWithTooltip)
+            result.push_back(reactionWithTooltip.reaction_);
+
+        return result;
+    }
+
+    std::vector<ReactionWithTooltip> getReactionsWithTooltipsSet()
+    {
+        // json format example:  "{\"👍\" : \"tooltip\", \"❤️\" : \"tooltip\", \"🤣\" : \"tooltip\", \"😳\" : \"tooltip\", \"😢\" : \"tooltip\", \"😡\" : \"tooltip\"}"
+
+        auto json = Omicron::_o_json(omicron::keys::reactions_initial_set, std::string());
+        if (json.empty())
+            return default_reactions_with_tooltip_set();
+
+        std::vector<ReactionWithTooltip> result;
+
+        rapidjson::Document doc;
+        doc.Parse(json);
+
+        if (doc.HasParseError())
+            return default_reactions_with_tooltip_set();
+
+        for (auto it = doc.MemberBegin(); it != doc.MemberEnd(); ++it)
+        {
+            ReactionWithTooltip reaction;
+            reaction.reaction_ = QString::fromStdString(it->name.GetString());
+            if (it->value.IsString())
+                reaction.tooltip_ = QString::fromStdString(it->value.GetString());
+
+            result.push_back(reaction);
+        }
+
+        return result;
+    }
+
+    bool reactionsEnabled()
+    {
+        return Omicron::_o(omicron::keys::show_reactions, config::get().is_on(config::features::show_reactions));
+    }
+
+    QString getStatusJson()
+    {
+        return Omicron::_o_json(omicron::keys::statuses_json, QString());
+    }
+
+    bool isStatusEnabled()
+    {
+        return Omicron::_o(omicron::keys::statuses_enabled, config::get().is_on(config::features::statuses_enabled));
+    }
+
+    bool isGlobalContactSearchAllowed()
+    {
+        return config::get().is_on(config::features::global_contact_search_allowed);
+    }
+
+    bool forceCheckMacUpdates()
+    {
+        return Omicron::_o(omicron::keys::force_update_check_allowed, config::get().is_on(config::features::force_update_check_allowed));
+    }
+
+    bool callRoomInfoEnabled()
+    {
+        return Omicron::_o(omicron::keys::call_room_info_enabled, config::get().is_on(config::features::call_room_info_enabled));
+    }
+
+    bool hasConnectByIpOption()
+    {
+        return Omicron::_o(omicron::keys::has_connect_by_ip_option, config::get().is_on(config::features::has_connect_by_ip_option));
     }
 }

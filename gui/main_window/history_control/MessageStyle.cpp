@@ -53,9 +53,9 @@ namespace Ui::MessageStyle
         return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID);
     }
 
-    QColor getLinkColor(bool _isOutgoing)
+    QColor getLinkColor()
     {
-        return Styling::getParameters().getColor(_isOutgoing ? Styling::StyleVariable::PRIMARY_INVERSE : Styling::StyleVariable::TEXT_PRIMARY);
+        return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY);
     }
 
     QColor getSelectionFontColor()
@@ -70,9 +70,7 @@ namespace Ui::MessageStyle
 
     QColor getSelectionColor()
     {
-        QColor color(Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY));
-        color.setAlphaF(0.3);
-        return color;
+        return Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY, 0.3);
     }
 
     QColor getHighlightColor()
@@ -100,6 +98,12 @@ namespace Ui::MessageStyle
     QFont getQuoteSenderFontMarkdown()
     {
         return Fonts::adjustedAppFont(senderFontSize(), Fonts::FontWeight::SemiBold);
+    }
+
+    QFont getButtonsFont()
+    {
+        constexpr auto fontWeight = platform::is_apple() ? Fonts::FontWeight::Medium : Fonts::FontWeight::Normal;
+        return Fonts::adjustedAppFont(14, fontWeight);
     }
 
     QColor getBorderColor()
@@ -374,6 +378,11 @@ namespace Ui::MessageStyle
         return Utils::scale_value(8);
     }
 
+    int getSharingButtonTopMargin()
+    {
+        return Utils::scale_value(-4);
+    }
+
     int getSharingButtonOverlap()
     {
         return Utils::scale_value(12);
@@ -382,6 +391,31 @@ namespace Ui::MessageStyle
     int getSharingButtonAnimationShift(const bool _isOutgoing)
     {
         return (_isOutgoing ? 1 : -1) * (MessageStyle::getSharingButtonMargin() + MessageStyle::getSharingButtonOverlap());
+    }
+
+    int getButtonHeight()
+    {
+        return Utils::scale_value(36);
+    }
+
+    int getTwoLineButtonHeight()
+    {
+        return Utils::scale_value(48);
+    }
+
+    int getButtonHorOffset()
+    {
+        return Utils::scale_value(12);
+    }
+
+    int getUrlInButtonOffset()
+    {
+        return Utils::scale_value(4);
+    }
+
+    QSize getButtonsAnimationSize()
+    {
+        return QSize(Utils::scale_value(20), Utils::scale_value(20));
     }
 
     int32_t getProgressTextRectHMargin()
@@ -427,7 +461,7 @@ namespace Ui::MessageStyle
 
     bool isBlocksGridEnabled()
     {
-        if (build::is_release())
+        if constexpr (build::is_release())
             return false;
 
         return false;
@@ -477,7 +511,7 @@ namespace Ui::MessageStyle
 
         QBrush getImagePlaceholderBrush()
         {
-            QColor imagePlaceholderColor(ql1s("#000000"));
+            QColor imagePlaceholderColor(u"#000000");
             imagePlaceholderColor.setAlphaF(0.15);
             return imagePlaceholderColor;
         }
@@ -618,11 +652,11 @@ namespace Ui::MessageStyle
             grad.setCoordinateMode(QGradient::StretchToDeviceMode);
             grad.setSpread(QGradient::ReflectSpread);
 
-            QColor colorEdge(ql1s("#000000"));
+            QColor colorEdge(u"#000000");
             colorEdge.setAlphaF(0.07);
             grad.setColorAt(0, colorEdge);
 
-            QColor colorCenter(ql1s("#000000"));
+            QColor colorCenter(u"#000000");
             colorCenter.setAlphaF(0.12);
             grad.setColorAt(0.5, colorCenter);
 
@@ -881,4 +915,34 @@ namespace Ui::MessageStyle
             return Fonts::adjustedAppFont(13);
         }
     }
+
+    namespace Reactions
+    {
+        int32_t plateHeight()
+        {
+            return Utils::scale_value(24);
+        }
+
+        int32_t plateYOffset()
+        {
+            return Utils::scale_value(-8);
+        }
+
+        int32_t mediaPlateYOffset()
+        {
+            return Utils::scale_value(-4);
+        }
+
+        int32_t shadowHeight()
+        {
+            return Utils::scale_value(2);
+        }
+
+        QSize addReactionButtonSize()
+        {
+            return Utils::scale_value(QSize(28, 28));
+        }
+
+    }
+
 }

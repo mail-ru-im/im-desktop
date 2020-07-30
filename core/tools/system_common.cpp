@@ -18,6 +18,9 @@
 #error "Unable to define getMemorySize( ) for an unknown OS."
 #endif
 
+#include "../common.shared/common.h"
+#include "../common.shared/common_defs.h"
+
 namespace core { namespace tools { namespace system {
 
     const int32_t mb = 1024 * 1024;
@@ -147,11 +150,15 @@ namespace core { namespace tools { namespace system {
 
     bool delete_directory(const std::wstring& path)
     {
-        boost::filesystem::wpath pathW(path);
+        return delete_directory(boost::filesystem::wpath(path));
+    }
+
+    bool delete_directory(const boost::filesystem::wpath& path)
+    {
         boost::system::error_code error;
-        if (boost::filesystem::is_directory(pathW, error))
+        if (boost::filesystem::is_directory(path, error))
         {
-            boost::filesystem::remove_all(pathW, error);
+            boost::filesystem::remove_all(path, error);
             return !error;
         }
         return false;
@@ -198,14 +205,7 @@ namespace core { namespace tools { namespace system {
 
     bool unzip(const boost::filesystem::path& _archive, const boost::filesystem::path& _target_dir)
     {
-#ifdef _WIN32
-        unzFile zip = unzOpen(
-            is_windows_vista_or_higher()
-                ? _archive.string().c_str()
-                : get_short_file_name(_archive.native()).c_str());
-#else
         unzFile zip = unzOpen(_archive.string().c_str());
-#endif
 
         if (!zip)
             return false;
@@ -352,6 +352,13 @@ namespace core { namespace tools { namespace system {
             ? static_cast<size_t>(file.tellg())
             : 0;
     }
+
+#ifndef _WIN32
+    std::string get_home_directory()
+    {
+        return common::get_home_directory();
+    }
+#endif
 
     size_t get_file_size(std::wstring_view _file_name)
     {

@@ -16,9 +16,7 @@ messages_data::messages_data(std::wstring _file_name)
 }
 
 
-messages_data::~messages_data()
-{
-}
+messages_data::~messages_data() = default;
 
 
 messages_data::error_vector messages_data::get_messages(const headers_list& _headers, history_block& _messages) const
@@ -308,12 +306,9 @@ void messages_data::search_in_archive(std::shared_ptr<contact_and_offsets_v> _co
 
 history_block messages_data::get_message_modifications(const message_header& _header) const
 {
-    if (!_header.is_modified())
-    {
-        return history_block();
-    }
-
     history_block modifications;
+    if (!_header.is_modified() && !_header.is_updated())
+        return modifications;
 
     core::tools::binary_stream message_data;
 
@@ -345,6 +340,7 @@ history_block messages_data::get_message_modifications(const message_header& _he
 
     return modifications;
 }
+
 
 storage::result_type messages_data::update(const archive::history_block& _data)
 {

@@ -65,7 +65,7 @@ bool poll_data::unserialize(icollection* _coll)
             if (coll_answer.is_value_exist("votes"))
                 answer.votes_ = coll_answer.get_value_as_int64("votes");
 
-            answers_.push_back(answer);
+            answers_.push_back(std::move(answer));
         }
     }
 
@@ -90,7 +90,7 @@ bool poll_data::unserialize(const rapidjson::Value& _node)
             tools::unserialize_value(answer_node, "answerId", answer.answer_id_);
             tools::unserialize_value(answer_node, "text", answer.text_);
             tools::unserialize_value(answer_node, "votes", answer.votes_);
-            answers_.push_back(answer);
+            answers_.push_back(std::move(answer));
         }
     }
 

@@ -34,7 +34,6 @@ namespace core
             const int32_t count_;
             const std::string patch_version_;
             bool init_;
-            bool from_deleted_;
             bool from_editing_;
             bool from_search_;
 
@@ -45,7 +44,7 @@ namespace core
                 const int32_t _count,
                 const std::string &_patch_version,
                 bool _init = false,
-                bool _from_deleted = false,
+                bool _from_deleted = false, // unused
                 bool _from_editing = false,
                 bool _from_search = false,
                 int64_t _seq = 0
@@ -67,7 +66,7 @@ namespace core
             bool unpinned_;
             std::shared_ptr<core::archive::persons_map> persons_;
 
-            virtual int32_t init_request(std::shared_ptr<core::http_request_simple> _request) override;
+            virtual int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
 
             virtual int32_t parse_results(const rapidjson::Value& _node_results) override;
 
@@ -87,6 +86,8 @@ namespace core
             bool has_older_msgid() const noexcept { return older_msgid_ != -1; }
             int64_t get_older_msgid() const { return older_msgid_; }
             const std::shared_ptr<core::archive::persons_map>& get_persons() const override { return persons_; }
+
+            virtual priority_t get_priority() const override;
         };
     }
 }

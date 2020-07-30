@@ -27,8 +27,8 @@ namespace core
             std::shared_ptr<core::tools::binary_stream> response_;
             std::string search_term_;
 
-            virtual int32_t init_request(std::shared_ptr<core::http_request_simple> _request) override;
-            virtual int32_t parse_response(std::shared_ptr<core::tools::binary_stream> _response) override;
+            virtual int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
+            virtual int32_t parse_response(const std::shared_ptr<core::tools::binary_stream>& _response) override;
 
         public:
 
@@ -36,6 +36,7 @@ namespace core
             virtual ~get_stickers_store_packet();
 
             std::shared_ptr<core::tools::binary_stream> get_response() const;
+            virtual priority_t get_priority() const override;
 
         };
     }

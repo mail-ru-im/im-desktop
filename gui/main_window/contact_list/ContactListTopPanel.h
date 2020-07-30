@@ -18,6 +18,8 @@ namespace Ui
         void addButtonToLeft(HeaderTitleBarButton* _button);
         void addButtonToRight(HeaderTitleBarButton* _button);
 
+        void setTitle(const QString& _title);
+
     private:
         HeaderTitleBar * titleBar_;
         SearchWidget* searchWidget_;

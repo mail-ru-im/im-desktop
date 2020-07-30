@@ -27,15 +27,13 @@ using namespace wim;
 
 namespace
 {
-    bool is_suspendable_error(const loader_errors _error);
-
     template<typename T>
-    T find_task_by_id(T first, T last, const std::string &_id)
+    T find_task_by_id(T first, T last, std::string_view _id)
     {
         return std::find_if(
             first,
             last,
-            [&_id]
+            [_id]
         (const auto &_item)
         {
             assert(_item);
@@ -70,7 +68,7 @@ void loader::add_file_sharing_task(const std::shared_ptr<fs_loader_task>& _task)
     file_sharing_tasks_.push_back(_task);
 }
 
-void loader::remove_file_sharing_task(const std::string &_id)
+void loader::remove_file_sharing_task(std::string_view _id)
 {
     assert(!_id.empty());
 
@@ -95,7 +93,7 @@ void loader::on_file_sharing_task_progress(const std::shared_ptr<fs_loader_task>
     _task->on_progress();
 }
 
-bool loader::has_file_sharing_task(const std::string &_id) const
+bool loader::has_file_sharing_task(std::string_view _id) const
 {
     assert(!_id.empty());
 
@@ -159,7 +157,7 @@ void loader::send_task_ranges_async(std::weak_ptr<upload_task> _wr_task)
             core::stats::event_props_type props;
             props.emplace_back("time", std::to_string((current_time - task->get_start_time())/std::chrono::milliseconds(1)));
             props.emplace_back("size", std::to_string(task->get_file_size()/1024));
-            g_core->insert_event(core::stats::stats_event_names::filesharing_sent_success, props);
+            g_core->insert_event(core::stats::stats_event_names::filesharing_sent_success, std::move(props));
         }
     };
 }
@@ -322,18 +320,10 @@ void loader::resume_task(
 {
 }
 
-void loader::abort_file_sharing_process(const std::string &_process_id)
+void loader::abort_file_sharing_process(std::string_view _process_id)
 {
     assert(!_process_id.empty());
 
     remove_file_sharing_task(_process_id);
 }
 
-namespace
-{
-    bool is_suspendable_error(const loader_errors _error)
-    {
-        return (_error == loader_errors::network_error) ||
-               (_error == loader_errors::suspend);
-    }
-}

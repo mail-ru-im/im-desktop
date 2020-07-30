@@ -33,12 +33,18 @@ namespace Ui
         void showed();
         void resized(QPrivateSignal);
 
+    private Q_SLOTS:
+        void onAvatarChanged(const QString& aimId);
+
     public:
-        AvatarsArea(QWidget* _parent);
-        void add(const QString& _aimid, QPixmap _avatar);
-        void remove(const QString& _aimid);
+        AvatarsArea(QWidget* _parent, int _regim, Logic::CustomAbstractListModel* _membersModel, Logic::AbstractSearchModel* _searchModel);
+        void add(const QString& _aimId, QPixmap _avatar);
+        void add(const QString& _aimId);
+        void remove(const QString& _aimId);
 
         size_t avatars() const noexcept { return avatars_.size(); }
+
+        void setReplaceFavorites(bool _enable);
 
     protected:
         virtual void paintEvent(QPaintEvent*) override;
@@ -54,6 +60,7 @@ namespace Ui
 
     private:
         void updateHover(const QPoint& _pos);
+        QPixmap getAvatar(const QString& _aimId);
 
         enum class UpdateFocusOrder
         {
@@ -71,6 +78,10 @@ namespace Ui
         int avatarOffset_;
         anim::Animation heightAnimation_;
         anim::Animation avatarAnimation_;
+        bool replaceFavorites_;
+        Logic::CustomAbstractListModel* membersModel_;
+        Logic::AbstractSearchModel* searchModel_;
+        int regim_;
     };
 
     class AuthorWidget_p;
@@ -114,6 +125,8 @@ namespace Ui
     {
         Q_OBJECT
 
+    Q_SIGNALS:
+        void moreClicked(const QString& _aimId, QPrivateSignal);
     private Q_SLOTS:
         void itemClicked(const QString&);
         void searchEnd();
@@ -121,12 +134,16 @@ namespace Ui
         void enterPressed();
         void recalcAvatarArea();
         void nameChanged();
+        void containsPreCheckedMembers(const std::vector<QString>& _names);
 
     public Q_SLOTS:
         void UpdateMembers();
         void UpdateViewForIgnoreList(bool _isEmptyIgnoreList);
         void UpdateContactList();
         void reject() override;
+        void updateSelected();
+
+        void updateSize();
 
     public:
         SelectContactsWidget(const QString& _labelText, QWidget* _parent);
@@ -163,19 +180,22 @@ namespace Ui
     protected:
         bool eventFilter(QObject* _obj, QEvent* _event) override;
 
-    protected:
         void init(const QString& _labelText, const QString& _buttonText = QString());
 
         int calcListHeight() const;
         bool isCheckboxesVisible() const;
-        bool isShareMode() const;
+        bool isShareModes() const;
         bool isCreateGroupMode() const;
-        bool isVideoConference() const;
+        bool isVideoModes() const;
         bool isPopupWithCloseBtn() const;
         bool isPopupWithCancelBtn() const;
 
         void updateFocus(bool _order);
         void updateSpacer();
+
+        void addAvatarToArea(const QString& _aimId);
+        void removeAvatarFromArea(const QString& _aimId);
+        void addAvatarsToArea(const std::vector<QString>& _aimIds);
 
         enum class FocusPosition
         {
@@ -199,6 +219,7 @@ namespace Ui
         QVBoxLayout* globalLayout_;
         QWidget* clHost_;
         QSpacerItem* clSpacer_;
+        QSpacerItem* clBottomSpacer_;
         int regim_;
         Logic::CustomAbstractListModel* chatMembersModel_;
         QWidget* mainWidget_;
@@ -220,5 +241,9 @@ namespace Ui
         QPixmap lastCroppedImage_;
 
         std::map<QWidget*, FocusPosition> focusWidget_;
+        ContactAvatarWidget* statusAvatar_;
+
+    private:
+        int bottomSpacerHeight() const;
     };
 }

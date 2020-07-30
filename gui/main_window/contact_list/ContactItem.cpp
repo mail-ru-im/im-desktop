@@ -47,12 +47,12 @@ namespace Logic
 
     bool ContactItem::is_online() const
     {
-        return contact_->HasLastSeen_ && !contact_->LastSeen_.isValid();
+        return contact_->LastSeen_.isOnline();
     }
 
     bool ContactItem::is_phone() const
     {
-        return contact_->UserType_ == ql1s("sms") || contact_->UserType_ == ql1s("phone");
+        return contact_->UserType_ == u"sms" || contact_->UserType_ == u"phone";
     }
 
     bool ContactItem::recently() const
@@ -62,12 +62,12 @@ namespace Logic
 
     bool ContactItem::recently(const QDateTime& _current) const
     {
-        return contact_->LastSeen_.isValid() && contact_->LastSeen_.daysTo(_current) <= maxDaysForActive;
+        return contact_->LastSeen_.isValid() && contact_->LastSeen_.isActive() && contact_->LastSeen_.toDateTime().daysTo(_current) <= maxDaysForActive;
     }
 
     bool ContactItem::is_active(const QDateTime& _current) const
     {
-        return (is_online() || recently(_current) || is_chat() || is_live_chat()) && !is_group();
+        return (is_online() || is_chat() || is_live_chat() || recently(_current)) && !is_group();
     }
 
     bool ContactItem::is_chat() const
@@ -119,16 +119,6 @@ namespace Logic
         return default_role_;
     }
 
-    void ContactItem::set_contact_profile(profile_ptr _profile)
-    {
-        profile_ = _profile;
-    }
-
-    profile_ptr ContactItem::getContactProfile() const
-    {
-        return profile_;
-    }
-
     const QString& ContactItem::get_aimid() const
     {
         return contact_->AimId_;
@@ -154,11 +144,6 @@ namespace Logic
         return stamp_;
     }
 
-    const std::vector<phone> ContactItem::get_phones() const
-    {
-        return profile_->get_phones();
-    }
-
     bool ContactItem::is_channel() const
     {
         return contact_->isChannel_;
@@ -167,6 +152,6 @@ namespace Logic
     bool ContactItem::is_readonly() const
     {
         const auto chatRole = get_chat_role();
-        return chatRole == ql1s("readonly") || chatRole == ql1s("notamember") || chatRole == ql1s("pending") || (chatRole.isEmpty() && is_channel());
+        return (chatRole.isEmpty() && is_channel()) || chatRole == u"readonly" || chatRole == u"notamember" || chatRole == u"pending";
     }
 }

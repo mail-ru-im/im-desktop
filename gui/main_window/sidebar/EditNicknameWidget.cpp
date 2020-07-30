@@ -81,11 +81,6 @@ namespace
         return Fonts::appFontScaled(23);
     }
 
-    auto getNickFont()
-    {
-        return Fonts::appFontScaled(16);
-    }
-
     auto getTextFont()
     {
         return Fonts::appFontScaled(15);
@@ -151,7 +146,7 @@ namespace Ui
             nickLabelText_ = new TextWidget(this, QT_TRANSLATE_NOOP("profile_edit_dialogs", "People who do not have your phone number can search for you by nickname, by specifying"));
             nickLabelText_->init(getTextFont(), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
             nickLabelText_->setMaxWidthAndResize(textMaxWidth);
-            Testing::setAccessibleName(nickLabelText_, qsl("AS ped nickLabelText"));
+            Testing::setAccessibleName(nickLabelText_, qsl("AS ProfilePage nickLabelText"));
             globalLayout->addWidget(nickLabelText_);
         }
 
@@ -166,10 +161,10 @@ namespace Ui
                 TextRendering::HorAligment::LEFT, 2, Ui::TextRendering::LineBreakType::PREFER_SPACES);
             nickLabel_ = new TextUnitLabel(this, std::move(nickUnit), Ui::TextRendering::VerPosition::TOP, textMaxWidth, true);
             nickLabel_->setCursor(Qt::PointingHandCursor);
-            Testing::setAccessibleName(nickLabel_, qsl("AS ped nickLabel_"));
+            Testing::setAccessibleName(nickLabel_, qsl("AS ProfilePage nickLabel"));
+            nickLabel_->setFixedHeight(nickLabel_->sizeHint().height());
             globalLayout->addWidget(nickLabel_);
             globalLayout->addSpacing(getNickSpacing());
-
         }
 
         nickName_ = new NickLineEdit(this, _initData.nickName_, _initData.fixedPart_, groupMode_);
@@ -179,34 +174,31 @@ namespace Ui
         ruleText_ = new TextWidget(this, QT_TRANSLATE_NOOP("profile_edit_dialogs", "Acceptable characters: the Roman alphabet (a-z), digits (0-9), period \".\", underscore \"_\""));
         ruleText_->init(getTextFont(), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
         ruleText_->setMaxWidthAndResize(textMaxWidth);
-        Testing::setAccessibleName(ruleText_, qsl("AS ped ruleText_"));
+        Testing::setAccessibleName(ruleText_, qsl("AS ProfilePage nickRuleText"));
         globalLayout->addWidget(ruleText_);
         globalLayout->addSpacing(getTextSpacing());
 
         if (!groupMode_)
         {
-            auto urlTextLayout = Utils::emptyHLayout();
-            {
-                urlLabelText_ = new TextWidget(this, QT_TRANSLATE_NOOP("profile_edit_dialogs", "This link will open a chat with you in ICQ"));
-                urlLabelText_->init(getTextFont(), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
-                urlLabelText_->setMaxWidthAndResize(textMaxWidth);
-                Testing::setAccessibleName(urlLabelText_, qsl("AS ped urlLabelText_"));
+            auto nickWidget = new QWidget();
+            auto nickWidgetLayout = Utils::emptyVLayout(nickWidget);
+            urlLabelText_ = new TextWidget(this, QT_TRANSLATE_NOOP("profile_edit_dialogs", "This link will open a chat with you in ICQ"));
+            urlLabelText_->init(getTextFont(), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
+            urlLabelText_->setMaxWidthAndResize(textMaxWidth);
+            Testing::setAccessibleName(urlLabelText_, qsl("AS ProfilePage nickUrlLabelText"));
 
-                auto heightHolder = new QWidget(this);
-                heightHolder->setFixedHeight(urlLabelText_->height());
-
-                urlTextLayout->addWidget(urlLabelText_);
-                urlTextLayout->addWidget(heightHolder);
-            }
-            globalLayout->addLayout(urlTextLayout);
+            nickWidgetLayout->addWidget(urlLabelText_);
 
             auto urlUnit = Ui::TextRendering::MakeTextUnit(getNickUrl(_initData.nickName_), Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS);
             urlUnit->init(getTextFont(), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY), QColor(), QColor(), QColor(),
                 TextRendering::HorAligment::LEFT, 2, Ui::TextRendering::LineBreakType::PREFER_SPACES);
             urlLabel_ = new TextUnitLabel(this, std::move(urlUnit), Ui::TextRendering::VerPosition::TOP, textMaxWidth, true);
             urlLabel_->setCursor(Qt::PointingHandCursor);
-            Testing::setAccessibleName(urlLabel_, qsl("AS ped urlLabel_"));
-            globalLayout->addWidget(urlLabel_);
+            Testing::setAccessibleName(urlLabel_, qsl("AS ProfilePage nickUrlLabel"));
+            urlLabel_->setFixedHeight(urlLabel_->sizeHint().height());
+            nickWidgetLayout->addWidget(urlLabel_);
+            nickWidget->setFixedHeight(nickWidget->sizeHint().height());
+            globalLayout->addWidget(nickWidget);
             globalLayout->addSpacing(getBottomSpacing());
         }
 
@@ -214,7 +206,7 @@ namespace Ui
         setNickSpinner_->hide();
 
         setNickTimeout_->setSingleShot(true);
-        setNickTimeout_->setInterval(getSetNickTimeout().count());
+        setNickTimeout_->setInterval(getSetNickTimeout());
 
         connect(nickName_, &NickLineEdit::changed, this, &EditNicknameWidget::onFormChanged);
         connect(nickName_, &NickLineEdit::ready, this, &EditNicknameWidget::onFormReady);
@@ -308,7 +300,7 @@ namespace Ui
 
         auto nick = nickName_->getText();
         if (!nick.isEmpty())
-            nick.prepend(ql1c('@'));
+            nick.prepend(u'@');
 
         if (!groupMode_)
         {
@@ -345,7 +337,7 @@ namespace Ui
         if (okButton_)
             okButton_->setEnabled(true);
 
-        emit ready();
+        Q_EMIT ready();
     }
 
     void EditNicknameWidget::onSameNick()
@@ -359,7 +351,7 @@ namespace Ui
         urlLabel_->setText(urlLabel_->text(), color);
         urlLabel_->setEnabled(true);
 
-        emit theSame();
+        Q_EMIT theSame();
     }
 
     void EditNicknameWidget::onServerError(bool _repeateOn)
@@ -384,7 +376,7 @@ namespace Ui
             }
         }
 
-        emit error();
+        Q_EMIT error();
     }
 
     void EditNicknameWidget::onNickSet()
@@ -397,8 +389,8 @@ namespace Ui
         nickSet_ = true;
         Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::nickeditscr_edit_action, { {"from", statFrom_}, {"do", "save"} });
 
-        emit changed();
-        emit Utils::InterConnector::instance().closeAnyPopupWindow(Utils::CloseWindowInfo());
+        Q_EMIT changed();
+        Q_EMIT Utils::InterConnector::instance().closeAnyPopupWindow(Utils::CloseWindowInfo());
         close();
     }
 
@@ -423,7 +415,7 @@ namespace Ui
 
     void EditNicknameWidget::cancelClicked()
     {
-        emit Utils::InterConnector::instance().closeAnyPopupWindow(Utils::CloseWindowInfo());
+        Q_EMIT Utils::InterConnector::instance().closeAnyPopupWindow(Utils::CloseWindowInfo());
         close();
     }
 
@@ -491,7 +483,7 @@ namespace Ui
         if (_nick.isEmpty())
             return QString();
 
-        return qsl("https://") % Features::getProfileDomain() % ql1c('/') % _nick;
+        return u"https://" % Features::getProfileDomain() % u'/' % _nick;
     }
 
     void EditNicknameWidget::showToast(const QString& _text) const
@@ -499,6 +491,7 @@ namespace Ui
         if (toastParent_)
         {
             auto toast = new Ui::Toast(_text, toastParent_);
+            Testing::setAccessibleName(toast, qsl("AS General toast"));
             Ui::ToastManager::instance()->showToast(toast, QPoint(toastParent_->width() / 2, toastParent_->height() - toast->height() - getToastVerOffset()));
         }
     }

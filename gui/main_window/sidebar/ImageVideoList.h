@@ -38,7 +38,7 @@ public:
 
     int bottomViewOffset() { return visibleRegion().boundingRect().height() / 2; }
 
-signals:
+Q_SIGNALS:
 
     void runVisitor(ImageVideoList* _list);
 
@@ -115,7 +115,7 @@ public:
     void unload(const QRect& _rect, ViewportChangeDirection _direction);
     void load(QRect _rect, ViewportChangeDirection _direction);
 
-signals:
+Q_SIGNALS:
     void needUpdate(const QRect& _rect);
 
 private:
@@ -181,7 +181,7 @@ public:
 
     void cancelLoading();
 
-signals:
+Q_SIGNALS:
     void needUpdate(const QRect& _rect);
 
 private Q_SLOTS:
@@ -228,10 +228,10 @@ private:
     QRect visibleRect_;
     QRect prevVisibleRect_;
 
-    int height_;
-    int prevHeight_;
+    int height_ = 0;
+    int prevHeight_ = 0;
 
-    bool forceLoad_;
+    bool forceLoad_ = false;
 };
 
 //////////////////////////////////////////////////////////////////////////

@@ -134,7 +134,7 @@ namespace Ui
         nick_->verticalScrollBar()->setEnabled(false);
         nick_->setContentsMargins(0, 0, 0, 0);
         Utils::ApplyStyle(nick_, Styling::getParameters().getTextLineEditCommonQss(false, Utils::unscale_value(QFontMetrics(getNickFont()).height() + getTextToLineSpacing())));
-        Testing::setAccessibleName(nick_, qsl("AS nick_edit nick_"));
+        Testing::setAccessibleName(nick_, qsl("AS General nickEdit"));
 
         auto hintLayout = Utils::emptyHLayout();
         hintLayout->setContentsMargins(QMargins());
@@ -159,7 +159,7 @@ namespace Ui
         globalLayout->addLayout(hintLayout);
 
         checkTimer_->setSingleShot(true);
-        checkTimer_->setInterval(getCheckTimeout().count());
+        checkTimer_->setInterval(getCheckTimeout());
 
         connect(nick_, &TextEditEx::textChanged, this, &NickLineEdit::onNickChanged);
         connect(nick_, &TextEditEx::cursorPositionChanged, this, &NickLineEdit::onNickCursorPositionChanged);
@@ -204,7 +204,7 @@ namespace Ui
         if (full)
             return text;
 
-        return text.mid(fixedPart_.length(), text.length() - fixedPart_.length());
+        return text.mid(fixedPart_.size(), text.size() - fixedPart_.size());
     }
 
     void NickLineEdit::setNickRequest()
@@ -235,14 +235,15 @@ namespace Ui
     void NickLineEdit::onNickChanged()
     {
         QSignalBlocker sb(nick_);
-        auto text = nick_->getPlainText();
+        const auto plainText = nick_->getPlainText();
+        auto text = QStringView(plainText);
         if (!fixedPart_.isEmpty() && !text.startsWith(fixedPart_))
         {
             auto cur = nick_->textCursor();
             auto pos = cur.position();
             if (text.isEmpty())
             {
-                previous_ = makeHtml(fixedPart_, QString());
+                previous_ = makeHtml(fixedPart_, {});
                 previousPlain_ = fixedPart_;
                 cur.movePosition(QTextCursor::End);
             }
@@ -251,10 +252,10 @@ namespace Ui
 
             if (!text.isEmpty())
             {
-                if (text.length() > previousPlain_.length())
-                    pos -= (text.length() - previousPlain_.length());
+                if (text.size() > previousPlain_.size())
+                    pos -= (text.size() - previousPlain_.size());
                 else
-                    pos += (previousPlain_.length() - text.length());
+                    pos += (previousPlain_.size() - text.size());
 
                 cur.setPosition(pos);
             }
@@ -263,9 +264,9 @@ namespace Ui
             return;
         }
 
-        emit changed();
+        Q_EMIT changed();
 
-        text = text.mid(fixedPart_.length(), text.length() - fixedPart_.length());
+        text = text.mid(fixedPart_.size(), text.size() - fixedPart_.size());
         auto cur = nick_->textCursor();
         auto pos = cur.position();
         previous_ = makeHtml(fixedPart_, text);
@@ -286,7 +287,7 @@ namespace Ui
             stopCheckAnimation();
             updateHint(HintTextCode::NickMinLength, getHintColorNormal());
             isFrendlyMinLengthError_ = true;
-            emit ready();
+            Q_EMIT ready();
         }
         else
         {
@@ -333,19 +334,19 @@ namespace Ui
             switch (nickErrors)
             {
             case core::nickname_errors::success:
-                emit nickSet();
+                Q_EMIT nickSet();
                 return;
             case core::nickname_errors::bad_value:
                 updateHint(HintTextCode::InvalidChar, color);
-                emit serverError();
+                Q_EMIT serverError();
                 break;
             case core::nickname_errors::already_used:
                 updateHint(HintTextCode::NickAlreadyOccupied, color);
-                emit serverError();
+                Q_EMIT serverError();
                 break;
             case core::nickname_errors::not_allowed:
                 updateHint(HintTextCode::NickNotAllowed, color);
-                emit serverError();
+                Q_EMIT serverError();
                 break;
             default:
                 if (serverErrorsCounter_++ < getServerResendCount())
@@ -357,7 +358,7 @@ namespace Ui
                 {
                     serverErrorsCounter_ = 0;
                     updateHint(HintTextCode::ServerError, color);
-                    emit serverError(true);
+                    Q_EMIT serverError(true);
                 }
                 break;
             }
@@ -379,8 +380,8 @@ namespace Ui
             stopCheckAnimation();
             hintUnit_->setText(QString());
             update();
-            emit ready();
-            emit sameNick();
+            Q_EMIT ready();
+            Q_EMIT sameNick();
             return;
         }
 
@@ -395,7 +396,7 @@ namespace Ui
         {
         case core::nickname_errors::success:
             updateHint(HintTextCode::NickAvailable, getHintColorAvailable());
-            emit ready();
+            Q_EMIT ready();
             break;
         case core::nickname_errors::bad_value:
             if (checkForCorrectInput(true))
@@ -427,7 +428,7 @@ namespace Ui
         updateNickLine(checkResult_ > 0);
 
         if (servError)
-            emit serverError();
+            Q_EMIT serverError();
     }
 
     void NickLineEdit::paintEvent(QPaintEvent* _event)
@@ -550,7 +551,7 @@ namespace Ui
 
     void NickLineEdit::clearHint()
     {
-        hintUnit_->setText(qsl(""));
+        hintUnit_->setText({});
         updateNickLine(false);
         update();
     }
@@ -580,8 +581,7 @@ namespace Ui
     {
         static const QRegularExpression nickRule(
             qsl("^[a-zA-Z][a-zA-Z0-9._]*$"),
-            QRegularExpression::UseUnicodePropertiesOption | QRegularExpression::OptimizeOnFirstUsageOption
-        );
+            QRegularExpression::UseUnicodePropertiesOption);
         const auto nick = getText();
         const auto color = getHintColorBad();
 
@@ -589,8 +589,7 @@ namespace Ui
         {
             static const QRegularExpression startsWithLatin(
                 qsl("^[a-zA-Z]"),
-                QRegularExpression::UseUnicodePropertiesOption | QRegularExpression::OptimizeOnFirstUsageOption
-            );
+                QRegularExpression::UseUnicodePropertiesOption);
 
             if (_showHints)
             {
@@ -600,7 +599,7 @@ namespace Ui
                     updateHint(HintTextCode::NickLatinChar, color);
             }
 
-            emit checkError();
+            Q_EMIT checkError();
             return false;
         }
 
@@ -618,14 +617,14 @@ namespace Ui
                     updateHint(HintTextCode::NickMinLength, color);
                 }
             }
-            emit checkError();
+            Q_EMIT checkError();
             return false;
         }
         else if (nick.length() > getMaxNickLength())
         {
             if (_showHints)
                 updateHint(HintTextCode::NickMaxLength, color);
-            emit checkError();
+            Q_EMIT checkError();
             return false;
         }
 
@@ -671,10 +670,9 @@ namespace Ui
         nick_->setTextCursor(cur);
     }
 
-    QString NickLineEdit::makeHtml(const QString& _fixed, const QString& _text)
+    QString NickLineEdit::makeHtml(QStringView _fixed, QStringView _text)
     {
         auto color = Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY).name(QColor::HexRgb);
-        QString result = qsl("<font color=%1>").arg(color) % _fixed % qsl("</font>") % _text;
-        return result;
+        return u"<font color=" % color % u'>' % _fixed % u"</font>" % _text;
     }
 }

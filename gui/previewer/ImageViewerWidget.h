@@ -13,7 +13,7 @@ namespace Previewer
     {
         QPixmap preview;
         QString fileName;
-        bool gotAudio;
+        bool gotAudio = false;
         Ui::DialogPlayer* attachedPlayer = nullptr;
     };
 
@@ -67,7 +67,7 @@ namespace Previewer
         void bringToBack();
         void showOverAll();
 
-    signals:
+    Q_SIGNALS:
         void imageClicked();
         void zoomChanged();
         void closeRequested();

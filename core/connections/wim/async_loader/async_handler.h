@@ -11,21 +11,17 @@ namespace core
         template <typename T>
         struct async_handler
         {
-            typedef std::function<void (loader_errors _error, const transferred_data<T>& _data)> completion_callback_t;
+            using completion_callback_t = std::function<void (loader_errors _error, const transferred_data<T>& _data)>;
             completion_callback_t completion_callback_;
 
-            typedef std::function<void (int64_t _total, int64_t _transferred, int32_t _completion_percent)> progress_callback_t;
+            using progress_callback_t = std::function<void (int64_t _total, int64_t _transferred, int32_t _completion_percent)>;
             progress_callback_t progress_callback_;
 
-            async_handler()
-                : completion_callback_(nullptr)
-                , progress_callback_(nullptr)
-            {
-            }
+            async_handler() = default;
 
-            async_handler(completion_callback_t _completion_callback, progress_callback_t _progress_callback = nullptr)
-                : completion_callback_(_completion_callback)
-                , progress_callback_(_progress_callback)
+            async_handler(completion_callback_t _completion_callback, progress_callback_t _progress_callback = {})
+                : completion_callback_(std::move(_completion_callback))
+                , progress_callback_(std::move(_progress_callback))
             {
             }
 

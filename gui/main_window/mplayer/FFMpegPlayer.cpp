@@ -51,9 +51,6 @@ namespace Ui
 
     static ffmpeg::AVPacket quit_pkt;
 
-    const int max_video_w = 1280;
-    const int max_video_h = 720;
-
     const int64_t empty_pts = -1000000;
 
     bool ThreadMessagesQueue::getMessage(ThreadMessage& _message, std::function<bool()> _isQuit, int32_t _wait_timeout)
@@ -233,6 +230,7 @@ namespace Ui
         , videoQuitRecv_(false)
         , demuxQuitRecv_(false)
         , streamClosed_(false)
+        , isImage_(false)
     {
     }
 
@@ -459,7 +457,7 @@ namespace Ui
                 {
                     _media.seek_position_ = _packet->dts;
 
-                    emit seekedV(_videoId);
+                    Q_EMIT seekedV(_videoId);
                 }
 
                 flushVideoBuffers(_media);
@@ -779,7 +777,7 @@ namespace Ui
         err = ffmpeg::avformat_open_input(&_media.formatContext_, _file.toStdString().c_str(), 0, 0);
         if (err < 0)
         {
-            emit streamsOpenFailed(_mediaId);
+            Q_EMIT streamsOpenFailed(_mediaId);
             return false;
         }
 
@@ -787,7 +785,7 @@ namespace Ui
         err = ffmpeg::avformat_find_stream_info(_media.formatContext_, 0);
         if (err < 0)
         {
-            emit streamsOpenFailed(_mediaId);
+            Q_EMIT streamsOpenFailed(_mediaId);
             return false;
         }
 
@@ -796,7 +794,7 @@ namespace Ui
 
         if (!_media.videoStream_)
         {
-            emit streamsOpenFailed(_mediaId);
+            Q_EMIT streamsOpenFailed(_mediaId);
             return false;
         }
 
@@ -804,7 +802,7 @@ namespace Ui
 
         _media.audioStream_ = openStream(ffmpeg::AVMEDIA_TYPE_AUDIO, _media.formatContext_);
 
-        emit streamsOpened(_mediaId);
+        Q_EMIT streamsOpened(_mediaId);
         return true;
     }
 
@@ -1245,7 +1243,7 @@ namespace Ui
     static void stopPttIfNeeded(const MediaData& _media)
     {
         if (!_media.mute_ && _media.volume_ > 0)
-            emit Utils::InterConnector::instance().stopPttRecord();
+            Q_EMIT Utils::InterConnector::instance().stopPttRecord();
     }
 
     bool VideoContext::playNextAudioFrame(
@@ -1257,6 +1255,8 @@ namespace Ui
         uint32_t _videoId)
     {
         qCDebug(ffmpegPlayer) << "playNextAudioFrame";
+
+        Ui::GetSoundsManager()->checkAudioDevice();
 
         openal::ALint iBuffersProcessed = 0;
 
@@ -1488,7 +1488,7 @@ namespace Ui
             _media.scaledSize_ = _sz;
             _media.needUpdateSwsContext_ = true;
 
-            emit videoSizeChanged(_media.scaledSize_);
+            Q_EMIT videoSizeChanged(_media.scaledSize_);
         }
 
         return true;
@@ -1568,9 +1568,9 @@ namespace Ui
         {
             if (_packet.data == (uint8_t*) &flush_pkt_data)
             {
-                qCDebug(ffmpegPlayer) << "emit seekedV from clear";
+                qCDebug(ffmpegPlayer) << "Q_EMIT seekedV from clear";
 
-                emit seekedV(_videoId);
+                Q_EMIT seekedV(_videoId);
             }
 
         });
@@ -1579,9 +1579,9 @@ namespace Ui
         {
             if (_packet.data == (uint8_t*) &flush_pkt_data)
             {
-                qCDebug(ffmpegPlayer) << "emit seekedA from clear";
+                qCDebug(ffmpegPlayer) << "Q_EMIT seekedA from clear";
 
-                emit seekedA(_videoId);
+                Q_EMIT seekedA(_videoId);
             }
         });
 
@@ -1601,7 +1601,7 @@ namespace Ui
         }
         else
         {
-            emit seekedA(_videoId);
+            Q_EMIT seekedA(_videoId);
         }
 
 
@@ -1810,7 +1810,7 @@ namespace Ui
                             videoDataFound = true;
                         }
 
-                        emit ctx_.demuxInited(msg.videoId_);
+                        Q_EMIT ctx_.demuxInited(msg.videoId_);
 
                         break;
                     }
@@ -1849,13 +1849,13 @@ namespace Ui
 
                         getMediaContainer()->ctx_.closeFile(*media_ptr);
 
-                        emit ctx_.streamsClosed(msg.videoId_);
+                        Q_EMIT ctx_.streamsClosed(msg.videoId_);
 
                         continue;
                     }
                     case thread_message_type::tmt_get_first_frame:
                     {
-                        emit getMediaContainer()->frameReady(ctx_.getFirstFrame(msg.str_), msg.str_);
+                        Q_EMIT getMediaContainer()->frameReady(ctx_.getFirstFrame(msg.str_), msg.str_);
 
                         continue;
                     }
@@ -1874,14 +1874,14 @@ namespace Ui
 
                         if (!media_ptr)
                         {
-                            emit ctx_.demuxQuit(msg.videoId_);
+                            Q_EMIT ctx_.demuxQuit(msg.videoId_);
                             continue;
                         }
 
                         ctx_.pushVideoPacket(&quit_pkt, *media_ptr);
                         ctx_.pushAudioPacket(&quit_pkt, *media_ptr);
 
-                        emit ctx_.demuxQuit(msg.videoId_);
+                        Q_EMIT ctx_.demuxQuit(msg.videoId_);
                         break;
                     }
                     case thread_message_type::tmt_play:
@@ -1904,8 +1904,8 @@ namespace Ui
                         {
                             if (seekPosition >= 0)
                             {
-                                emit ctx_.seekedV(msg.videoId_);
-                                emit ctx_.seekedA(msg.videoId_);
+                                Q_EMIT ctx_.seekedV(msg.videoId_);
+                                Q_EMIT ctx_.seekedA(msg.videoId_);
                             }
 
                             seekPosition = msg.x_;
@@ -2035,7 +2035,7 @@ namespace Ui
                 {
                     elem.second.inited = true;
 
-                    emit ctx_.dataReady(videoId);
+                    Q_EMIT ctx_.dataReady(videoId);
                 }
             }
         }
@@ -2114,7 +2114,7 @@ namespace Ui
                     }
                     else if (msg.message_ == thread_message_type::tmt_quit)
                     {
-                        emit ctx_.videoQuit(videoId);
+                        Q_EMIT ctx_.videoQuit(videoId);
 
                         continue;
                     }
@@ -2142,7 +2142,7 @@ namespace Ui
                             ctx_.freeScaleContext(media);
                         }
 
-                        emit ctx_.videoQuit(videoId);
+                        Q_EMIT ctx_.videoQuit(videoId);
 
                         break;
                     }
@@ -2295,7 +2295,7 @@ namespace Ui
                             if (rotation)
                                 lastFrame = lastFrame.transformed(QTransform().rotate(rotation));
 
-                            emit ctx_.nextframeReady(videoId, lastFrame, pts, false);
+                            Q_EMIT ctx_.nextframeReady(videoId, lastFrame, pts, false);
                         }
                         else if (videoData[videoId].eof_)
                         {
@@ -2305,7 +2305,7 @@ namespace Ui
 
                             ctx_.resetVideoClock(media);
 
-                            emit ctx_.nextframeReady(videoId, QImage(), 0, true);
+                            Q_EMIT ctx_.nextframeReady(videoId, QImage(), 0, true);
                         }
                         else
                         {
@@ -2449,7 +2449,7 @@ namespace Ui
 
                                 audioData.erase(msg.videoId_);
                             }
-                            emit ctx_.audioQuit(videoId);
+                            Q_EMIT ctx_.audioQuit(videoId);
                             break;
                         }
                         case thread_message_type::tmt_set_finished:
@@ -2511,16 +2511,16 @@ namespace Ui
                         {
                             audioData[videoId].last_sync_time_ = current_time;
 
-                            //qDebug() << "Audio thread: emit audioTime";
+                            //qDebug() << "Audio thread: Q_EMIT audioTime";
                             //qDebug() << "Audio thread: offset = " <<  audioData[videoId].offset_;
 
-                            emit ctx_.audioTime(videoId, current_time, audioData[videoId].offset_);
+                            Q_EMIT ctx_.audioTime(videoId, current_time, audioData[videoId].offset_);
                         }
 
                          if (seekCount)
                          {
                              for (int i = 0; i < seekCount; ++i)
-                                emit ctx_.seekedA(videoId);
+                                Q_EMIT ctx_.seekedA(videoId);
                          }
 
                         flush |= local_flush;
@@ -2734,7 +2734,7 @@ namespace Ui
             {
                 firstFrame_ = std::make_unique<DecodedFrame>(_image, _pts);
 
-                emit firstFrameReady();
+                Q_EMIT firstFrameReady();
             }
         }
         else
@@ -2753,7 +2753,7 @@ namespace Ui
 
         timer_->stop();
 
-        emit durationChanged(getDuration());
+        Q_EMIT durationChanged(getDuration());
         dataReady_ = true;
 
         if (!getMediaContainer()->is_decods_inited_)
@@ -2826,7 +2826,7 @@ namespace Ui
             if (!media)
                 return;
 
-            emit positionChanged(getMediaContainer()->getDuration(*media));
+            Q_EMIT positionChanged(getMediaContainer()->getDuration(*media));
 
             lastVideoPosition_ = 0;
             lastPostedPosition_ = 0;
@@ -2844,10 +2844,7 @@ namespace Ui
             {
                 lastPostedPosition_ = lastVideoPosition_;
 
-                if (seek_request_id_ == 0)
-                {
-                    emit positionChanged(lastVideoPosition_);
-                }
+                Q_EMIT positionChanged(lastVideoPosition_);
             }
         }
     }
@@ -2907,7 +2904,7 @@ namespace Ui
 
         if (dataReady_)
         {
-            emit dataReady();
+            Q_EMIT dataReady();
             setImageProgress(0);
             dataReady_ = false;
         }
@@ -2979,7 +2976,7 @@ namespace Ui
             else
             {
                 stop();
-                emit mediaFinished();
+                Q_EMIT mediaFinished();
             }
 
             return;
@@ -3043,7 +3040,7 @@ namespace Ui
         if (mediaId_ == 0 || !continius_)
         {
             mediaId_ = mediaId;
-            emit mediaChanged(mediaId_);
+            Q_EMIT mediaChanged(mediaId_);
         }
         else
         {
@@ -3080,7 +3077,7 @@ namespace Ui
             return;
 
         getMediaContainer()->openFile(*media);
-        emit fileLoaded();
+        Q_EMIT fileLoaded();
     }
 
     void FFMpegPlayer::play(bool _init)
@@ -3170,7 +3167,7 @@ namespace Ui
 
         state_ = decode_thread_state::dts_playing;
 
-        emit played();
+        Q_EMIT played();
     }
 
     bool FFMpegPlayer::canPause() const
@@ -3195,7 +3192,7 @@ namespace Ui
 
         timer_->stop();
 
-        emit paused();
+        Q_EMIT paused();
     }
 
     void FFMpegPlayer::setPosition(int64_t _position)
@@ -3327,7 +3324,7 @@ namespace Ui
             {
                 if (QEvent::Leave == _event->type())
                 {
-                    emit mouseLeaveEvent(QPrivateSignal());
+                    Q_EMIT mouseLeaveEvent(QPrivateSignal());
                 }
                 else if (QEvent::MouseMove == _event->type())
                 {
@@ -3336,7 +3333,7 @@ namespace Ui
                     {
                         lastEmitMouseMove_ = currentTime;
 
-                        emit mouseMoved(QPrivateSignal());
+                        Q_EMIT mouseMoved(QPrivateSignal());
                     }
                 }
             }
@@ -3408,14 +3405,14 @@ namespace Ui
     {
         if (queuedMedia_.empty())
         {
-            emit mediaChanged(-1);
+            Q_EMIT mediaChanged(-1);
             return;
         }
 
         mediaId_ = queuedMedia_.front();
         queuedMedia_.pop_front();
 
-        emit mediaChanged(mediaId_);
+        Q_EMIT mediaChanged(mediaId_);
     }
 
     void FFMpegPlayer::removeFromQueue(uint32_t _media)
@@ -3461,7 +3458,7 @@ namespace Ui
 
         if (media->isImage_)
         {
-            emit positionChanged(_val);
+            Q_EMIT positionChanged(_val);
         }
     }
 

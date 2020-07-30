@@ -28,14 +28,17 @@ namespace core
 
             std::shared_ptr<core::tools::binary_stream> response_;
 
-            virtual int32_t init_request(std::shared_ptr<core::http_request_simple> _request) override;
-            virtual int32_t parse_response(std::shared_ptr<core::tools::binary_stream> _response) override;
-            virtual int32_t execute_request(std::shared_ptr<core::http_request_simple> _request) override;
+            virtual int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
+            virtual int32_t parse_response(const std::shared_ptr<core::tools::binary_stream>& _response) override;
+            virtual int32_t execute_request(const std::shared_ptr<core::http_request_simple>& _request) override;
 
         public:
 
             set_stickers_order_packet(wim_packet_params _params, std::vector<int32_t>&& _values);
             virtual ~set_stickers_order_packet();
+
+            virtual priority_t get_priority() const override;
+            virtual bool is_post() const override { return true; }
         };
     }
 }

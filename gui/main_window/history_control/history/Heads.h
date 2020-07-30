@@ -16,7 +16,7 @@ namespace Heads
         const Data::HeadsById& headsById() const;
         bool hasHeads(qint64 _id) const;
 
-    signals:
+    Q_SIGNALS:
         void headChanged(const Data::ChatHeads& chatHeads, QPrivateSignal);
         void hide(QPrivateSignal);
 

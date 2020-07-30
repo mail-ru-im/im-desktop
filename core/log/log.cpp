@@ -2,6 +2,7 @@
 
 #include "../tools/threadpool.h"
 #include "../tools/system.h"
+#include "../tools/coretime.h"
 #include "../utils.h"
 #include "log.h"
 
@@ -89,7 +90,6 @@ namespace core
 {
     namespace log
     {
-
         void determine_log_index()
         {
             boost::system::error_code error;
@@ -139,9 +139,7 @@ namespace core
         {
             boost::system::error_code error;
             if (!fs::is_directory(_path, error))
-            {
                 return core::tools::system::create_directory(_path);
-            }
 
             return true;
         }
@@ -288,11 +286,7 @@ namespace
         const auto now_c = std::chrono::system_clock::to_time_t(_record.ts_);
 
         tm now_tm = { 0 };
-#ifdef _WIN32
-        localtime_s(&now_tm, &now_c);
-#else
-        localtime_r(&now_c, &now_tm);
-#endif
+        tools::time::localtime(&now_c, &now_tm);
 
         const auto fraction = (_record.ts_.time_since_epoch().count() % 1000);
 
@@ -381,11 +375,7 @@ namespace
         const auto now_c = std::chrono::system_clock::to_time_t(_record.ts_);
 
         tm now_tm = { 0 };
-#ifdef _WIN32
-        localtime_s(&now_tm, &now_c);
-#else
-        localtime_r(&now_c, &now_tm);
-#endif
+        tools::time::localtime(&now_c, &now_tm);
 
         const auto fraction = (_record.ts_.time_since_epoch().count() % 1000);
 
@@ -621,7 +611,5 @@ namespace core
         {
             return get_area_file_path(std::string_view("net"));
         }
-
     }
-
 }

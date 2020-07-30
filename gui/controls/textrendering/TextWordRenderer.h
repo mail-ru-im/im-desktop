@@ -4,8 +4,7 @@
 
 namespace TextWordRendererPrivate
 {
-    constexpr auto fillTypesCount = 2;
-    constexpr auto textPartsCount = (fillTypesCount * 2) + 1 + 1;
+    constexpr auto preallocTextPartsCount = 16;
 
     struct TextPart
     {
@@ -17,7 +16,8 @@ namespace TextWordRendererPrivate
 
         QStringRef ref_;
         QColor textColor_;
-        QVarLengthArray<Fill, fillTypesCount> fill_;
+        QVarLengthArray<Fill, preallocTextPartsCount> fill_;
+        bool hasSpellError_ = false;
 
         TextPart() = default;
         TextPart(const QStringRef& _ref, const QColor& _textColor, const QColor& _fillColor = QColor())
@@ -87,8 +87,14 @@ namespace Ui
             void drawWord(const TextWord& _word, const bool _needsSpace);
             void drawEmoji(const TextWord& _word, const bool _needsSpace);
 
-            void split(const QString& _text, const int _from, const int _to, const QColor& _textColor, const QColor& _fillColor);
-            void fill(const QString& _text, const int _from, const int _to, const QColor& _fillColor);
+            enum class SpellError
+            {
+                No,
+                Yes
+            };
+
+            void split(const QString& _text, const int _from, const int _to, const QColor& _textColor, const QColor& _fillColor, SpellError _e = SpellError::No);
+            void fill(const QString& _text, const int _from, const int _to, const QColor& _fillColor, SpellError _e = SpellError::No);
 
             std::pair<QVarLengthArray<int>, int> prepareEngine(const QString& _text, const QFont& _font);
 
@@ -105,7 +111,7 @@ namespace Ui
             QColor hightlightTextColor_;
             QColor linkColor_;
 
-            QVarLengthArray<TextWordRendererPrivate::TextPart, TextWordRendererPrivate::textPartsCount> textParts_;
+            QVarLengthArray<TextWordRendererPrivate::TextPart, TextWordRendererPrivate::preallocTextPartsCount> textParts_;
             int addSpace_;
 
             std::unique_ptr<TextWordRenderer_p> d;

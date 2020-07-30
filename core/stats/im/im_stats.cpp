@@ -3,6 +3,7 @@
 
 #include "core.h"
 #include "connections/wim/auth_parameters.h"
+#include "connections/urls_cache.h"
 #include "tools/binary_stream.h"
 #include "tools/strings.h"
 #include "tools/system.h"
@@ -11,15 +12,21 @@
 #include "http_request.h"
 #include "async_task.h"
 #include "utils.h"
-#include "../common.shared/common.h"
-#include "../common.shared/version_info.h"
-#include "../common.shared/omicron_keys.h"
-#include "../common.shared/string_utils.h"
-#include "../common.shared/config/config.h"
-#include "../corelib/enumerations.h"
-#include "../external/curl/include/curl.h"
+#include "../../../common.shared/common.h"
+#include "../../../common.shared/version_info.h"
+#include "../../../common.shared/omicron_keys.h"
+#include "../../../common.shared/string_utils.h"
+#include "../../../common.shared/config/config.h"
+#include "../../../corelib/enumerations.h"
+#include "curl/include/curl.h"
 
 #include "../../../libomicron/include/omicron/omicron.h"
+
+namespace
+{
+    constexpr auto save_events_to_file_interval = std::chrono::seconds(10);
+    constexpr auto delay_send_events_on_start = std::chrono::seconds(10);
+}
 
 using namespace core::stats;
 using namespace core;
@@ -49,7 +56,7 @@ auto omicron_get_events_max_store_interval()
 
 std::string get_client_stat_url()
 {
-    return su::concat("https://", config::get().url(config::urls::stat_base), "/srp/clientStat");
+    return su::concat("https://", config::get().url(config::urls::stat_base), core::urls::api_version_prefix(), "/srp/clientStat");
 }
 
 im_stats::im_stats(std::wstring _file_name)
@@ -173,13 +180,14 @@ bool im_stats::load()
 void im_stats::serialize(tools::binary_stream& _bs) const
 {
     tools::tlvpack pack;
+    pack.reserve(events_.size() + 1);
+
     uint32_t counter = 0;
 
     // push stats info
     {
         tools::tlvpack value_tlv;
-        value_tlv.push_child(tools::tlv(im_stats_info_types::last_sent_time,
-                                        static_cast<int64_t>(std::chrono::system_clock::to_time_t(last_sent_time_))));
+        value_tlv.push_child(tools::tlv(im_stats_info_types::last_sent_time, static_cast<int64_t>(std::chrono::system_clock::to_time_t(last_sent_time_))));
         tools::binary_stream bs_value;
         value_tlv.serialize(bs_value);
         pack.push_child(tools::tlv(++counter, bs_value));
@@ -188,18 +196,17 @@ void im_stats::serialize(tools::binary_stream& _bs) const
     for (const auto& event_stat : events_)
     {
         tools::tlvpack value_tlv;
-        value_tlv.push_child(tools::tlv(im_stats_info_types::event_name,
-                                        event_stat.get_name()));
-        value_tlv.push_child(tools::tlv(im_stats_info_types::event_time,
-                                        static_cast<int64_t>(std::chrono::system_clock::to_time_t(event_stat.get_time()))));
+        value_tlv.reserve(3);
+        value_tlv.push_child(tools::tlv(im_stats_info_types::event_name, event_stat.get_name()));
+        value_tlv.push_child(tools::tlv(im_stats_info_types::event_time, static_cast<int64_t>(std::chrono::system_clock::to_time_t(event_stat.get_time()))));
 
         tools::tlvpack props_pack;
         uint32_t prop_counter = 0;
-        auto props = event_stat.get_props();
 
-        for (auto prop : props)
+        for (const auto& prop : event_stat.get_props())
         {
             tools::tlvpack value_tlv_prop;
+            value_tlv.reserve(2);
             value_tlv_prop.push_child(tools::tlv(im_stats_info_types::event_prop_name, prop.first));
             value_tlv_prop.push_child(tools::tlv(im_stats_info_types::event_prop_value, prop.second));
 
@@ -327,9 +334,8 @@ void im_stats::save_if_needed()
 
         auto bs_data = std::make_shared<tools::binary_stream>();
         serialize(*bs_data);
-        std::wstring file_name = file_name_;
 
-        g_core->run_async([bs_data, file_name]()
+        g_core->run_async([bs_data, file_name = file_name_]()
         {
             bs_data->save_2_file(file_name);
             return 0;
@@ -481,7 +487,7 @@ std::string im_stats::get_post_data() const
 }
 
 int32_t im_stats::send(const proxy_settings& _user_proxy,
-                       const std::string& _post_data,
+                       std::string_view _post_data,
                        const std::wstring& _file_name)
 {
 #ifdef DEBUG
@@ -496,9 +502,9 @@ int32_t im_stats::send(const proxy_settings& _user_proxy,
     }
 #endif // DEBUG
 
-    const std::weak_ptr<stop_objects> wr_stop(stop_objects_);
+    std::weak_ptr<stop_objects> wr_stop = stop_objects_;
 
-    const auto stop_handler = [wr_stop]()
+    const auto stop_handler = [wr_stop = std::move(wr_stop)]()
     {
         auto ptr_stop = wr_stop.lock();
         if (!ptr_stop)
@@ -507,7 +513,7 @@ int32_t im_stats::send(const proxy_settings& _user_proxy,
         return ptr_stop->is_stop_.load();
     };
 
-    core::http_request_simple post_request(_user_proxy, utils::get_user_agent(), stop_handler);
+    core::http_request_simple post_request(_user_proxy, utils::get_user_agent(), default_priority(), stop_handler);
     post_request.set_connect_timeout(std::chrono::seconds(5));
     post_request.set_timeout(std::chrono::seconds(5));
     post_request.set_keep_alive();

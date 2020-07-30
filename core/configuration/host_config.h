@@ -28,7 +28,11 @@ namespace config
 
         bool is_valid();
         bool load_config();
-        core::ext_url_config_error load_external_config_from_url(std::string_view _url);
         void clear_external_config();
+
+        using load_callback_t = std::function<void(core::ext_url_config_error _error, std::string _host)>;
+        void load_external_config_from_url(std::string_view _url, load_callback_t _callback);
+        void load_external_url_config(std::vector<std::string>&& _hosts, load_callback_t&& _callback);
+        void send_config_to_gui();
     }
 }

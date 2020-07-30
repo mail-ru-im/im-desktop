@@ -2,6 +2,11 @@
 
 #include "controls/BackgroundWidget.h"
 
+namespace Data
+{
+    class SmartreplySuggest;
+}
+
 namespace Emoji
 {
     class EmojiCode;
@@ -15,6 +20,7 @@ namespace Ui
     class HistoryControlPage;
     class InputWidget;
     class DragOverlayWindow;
+    class SmartReplyForQuote;
 
     enum class FrameCountMode;
 
@@ -46,9 +52,13 @@ namespace Ui
         void updateDragOverlay();
         void historyControlClicked();
         void inputTyped();
+        void onQuotesAdded();
+        void onQuotesDropped();
         void onSuggestShow(const QString& _text, const QPoint& _pos);
         void onSuggestHide();
         void suggestedStickerSelected(const QString& _stickerId);
+        void onSmartrepliesForQuote(const std::vector<Data::SmartreplySuggest>& _suggests);
+        void onMultiselectChanged();
 
     Q_SIGNALS:
         void contactSelected(const QString& _aimId, qint64 _messageId, const highlightsV& _highlights) const;
@@ -70,6 +80,7 @@ namespace Ui
         Stickers::StickersSuggest* suggestsWidget_;
         FrameCountMode frameCountMode_;
         bool suggestWidgetShown_;
+        SmartReplyForQuote* smartreplyForQuotePopup_;
 
         void initTopWidget();
         void initSmilesMenu();
@@ -81,6 +92,16 @@ namespace Ui
         void removeTopWidget(const QString& _aimId);
 
         void sendSuggestedStickerStats(const QString& _stickerId);
+
+        struct SmartreplyForQuoteParams
+        {
+            QPoint pos_;
+            QRect areaRect_;
+            QSize maxSize_;
+        };
+        SmartreplyForQuoteParams getSmartreplyForQuoteParams() const;
+
+        void sendSmartreplyForQuote(const Data::SmartreplySuggest& _suggest);
 
     public:
         explicit ContactDialog(QWidget* _parent);
@@ -131,6 +152,9 @@ namespace Ui
         FrameCountMode getFrameCountMode() const;
 
         const QString& currentAimId() const;
+
+        void hideSmartrepliesForQuoteAnimated();
+        void hideSmartrepliesForQuoteForce();
 
     protected:
         void dragEnterEvent(QDragEnterEvent *) override;

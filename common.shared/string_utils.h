@@ -35,6 +35,26 @@ namespace su
             (res.operator+=(std::forward<Args>(args)), ...);
             return res;
         }
+
+        template<typename T, typename U, typename V>
+        T join_impl(U first, U last, V sep)
+        {
+            T res;
+
+            if (first != last)
+            {
+                res += *first;
+                ++first;
+            }
+
+            for (; first != last; ++first)
+            {
+                res += sep;
+                res += *first;
+            }
+
+            return res;
+        }
     }
 
     template<typename ...Args>
@@ -47,5 +67,17 @@ namespace su
     [[nodiscard]] std::wstring wconcat(Args&&... args)
     {
         return concat_impl<std::wstring>(std::forward<Args>(args)...);
+    }
+
+    template<typename T>
+    [[nodiscard]] std::string join(T first, T last, std::string_view sep)
+    {
+        return join_impl<std::string>(first, last, sep);
+    }
+
+    template<typename T>
+    [[nodiscard]] std::wstring join(T first, T last, std::wstring_view sep)
+    {
+        return join_impl<std::wstring>(first, last, sep);
     }
 }

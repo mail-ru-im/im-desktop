@@ -7,4 +7,6 @@ namespace features
     bool is_zstd_response_enabled();
     std::string get_zstd_dict_request();
     std::string get_zstd_dict_response();
+
+    bool is_fetch_hotstart_enabled();
 }

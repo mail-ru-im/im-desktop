@@ -25,40 +25,16 @@
 #include "types/friendly.h"
 #include "types/masks.h"
 #include "types/smartreply_suggest.h"
+#include "types/session_info.h"
+#include "types/reactions.h"
 #include "my_info.h"
 
-namespace voip_manager
-{
-    struct Contact;
-    struct ContactEx;
-}
-
-namespace voip_proxy
-{
-    struct device_desc;
-}
+#include "statuses/Status.h"
 
 namespace core
 {
-    enum class file_sharing_function;
     enum class sticker_size;
     enum class group_chat_info_errors;
-    enum class typing_status;
-}
-
-namespace launch
-{
-    int main(int argc, char *argv[]);
-}
-
-namespace Utils
-{
-    struct ProxySettings;
-}
-
-namespace stickers
-{
-    enum class sticker_size;
 }
 
 namespace Ui
@@ -71,7 +47,7 @@ namespace Ui
         stateOnline = 3
     };
 
-    typedef std::function<void(int64_t, core::coll_helper&)> message_function;
+    using message_function = std::function<void(int64_t, core::coll_helper&)>;
 
     #define REGISTER_IM_MESSAGE(_message_string, _callback) \
         messages_map_.emplace( \
@@ -148,7 +124,13 @@ Q_SIGNALS:
         bool ForAll_;
     };
 
-    typedef std::function<void(core::icollection*)> message_processed_callback;
+    using message_processed_callback = std::function<void(core::icollection*)>;
+
+    enum class ConferenceType
+    {
+        Webinar,
+        Call
+    };
 
     class core_dispatcher : public QObject
     {
@@ -202,6 +184,7 @@ Q_SIGNALS:
         void messagesDeletedUpTo(const QString&, int64_t);
         void messagesModified(const QString&, const Data::MessageBuddies&);
         void messagesClear(const QString&, qint64);
+        void messagesEmpty(const QString&, qint64);
         void mentionMe(const QString& _contact, Data::MessageBuddySptr _mention);
         void removePending(const QString& _aimId, const Logic::MessageKey& _key);
 
@@ -229,11 +212,14 @@ Q_SIGNALS:
         void onStoreSearch();
 
         void smartreplyInstantSuggests(const std::vector<Data::SmartreplySuggest>& _suggests);
-        void smartreplyRequestedSuggestsResult(const std::vector<Data::SmartreplySuggest>&);
+
+        void stickersRequestedSuggestsResult(const QVector<QString>&);
+        void smartreplyRequestedResult(const std::vector<Data::SmartreplySuggest>&);
 
         void onStickerMigration(const std::vector<Ui::Stickers::Sticker>&);
 
-        void onSetBigIcon(const qint32 _error, const qint32 _setId);
+        void setBigIconChanged(const qint32 _setId);
+        void setIconChanged(const qint32 _setId);
 
         void onStickerpackInfo(const bool _result, const bool _exist, const std::shared_ptr<Ui::Stickers::Set>& _set);
 
@@ -265,7 +251,6 @@ Q_SIGNALS:
         void linkMetainfoImageDownloaded(int64_t _seq, bool _success, const QPixmap& _image);
         void linkMetainfoFaviconDownloaded(int64_t _seq, bool _success, const QPixmap& _image);
 
-        void signedUrl(const QString&);
         void speechToText(qint64 _seq, int _error, const QString& _text, int _comeback);
 
         void chatsHome(const QVector<Data::ChatInfo>&, const QString&, bool, bool);
@@ -340,7 +325,7 @@ Q_SIGNALS:
 
         void userInfo(const int64_t _seq, const QString& _aimid, const Data::UserInfo& _info);
 
-        void userLastSeen(const int64_t _seq, const std::map<QString, int32_t>& _lastseens);
+        void userLastSeen(const int64_t _seq, const std::map<QString, Data::LastSeen>& _lastseens);
 
         void nickCheckSetResult(qint64 _seq, int _result);
 
@@ -362,7 +347,31 @@ Q_SIGNALS:
         void suggestGroupNickResult(const QString& _nick);
 
         void sessionStarted(const QString& _aimId);
-        void externalUrlConfigError(int _error);
+        void externalUrlConfigUpdated(int _error);
+        void subscribeResult(int _error, int _resubscribeIn);
+
+        void botCallbackAnswer(const int64_t _seq, const QString& _reqId, const QString& text, const QString& _url, bool _showAlert);
+
+        void activeSessionsList(const std::vector<Data::SessionInfo>& _sessions);
+        void sessionResetResult(const QString& _hash, bool _success);
+
+        void createConferenceResult(int64_t _seq, int _error, bool _isWebinar, const QString& _url, int64_t _expires, QPrivateSignal) const;
+
+        void callLog(const Data::CallInfoVec& _calls);
+        void newCall(const Data::CallInfo& _call);
+        void callRemoveMessages(const QString& _aimid, const std::vector<qint64> _messages);
+        void callDelUpTo(const QString& _aimid, qint64 _del_up_to);
+        void callRemoveContact(const QString& _contact);
+
+        void reactions(const QString& _contact, const std::vector<Data::Reactions> _reactions);
+        void reactionsListResult(int64_t _seq, const Data::ReactionsPage& _page, bool _success);
+        void reactionAddResult(int64_t _seq, const Data::Reactions& _reactions, bool _success);
+        void reactionRemoveResult(int64_t _seq, bool _success);
+
+        void updateStatus(const QString& _aimId, const Statuses::Status& _status);
+
+        void chatJoinResultBlocked(const QString& _stamp);
+        void callRoomInfo(const QString& _roomId, int64_t _membersCount, bool _failed);
 
     public Q_SLOTS:
         void received(const QString&, const qint64, core::icollection*);
@@ -377,7 +386,6 @@ Q_SIGNALS:
         qint64 post_stats_to_core(core::stats::stats_event_names _eventName, const core::stats::event_props_type& _props = {});
         qint64 post_im_stats_to_core(core::stats::im_stat_event_names _eventName, const core::stats::event_props_type& _props = {});
 
-        void set_enabled_stats_post(bool _isStatsEnabled);
         bool get_enabled_stats_post() const;
 
         voip_proxy::VoipController& getVoipController();
@@ -386,13 +394,26 @@ Q_SIGNALS:
         qint64 downloadFileSharingMetainfo(const QString& _url);
         qint64 downloadSharedFile(const QString& _contactAimid, const QString& _url, bool _forceRequestMetainfo, const QString& _fileName = QString(), bool _raise_priority = false);
 
-        qint64 abortSharedFileDownloading(const QString& _url);
+        qint64 abortSharedFileDownloading(const QString& _url, std::optional<qint64> _seq);
+        qint64 abortSharedFileDownloading(const QString& _url, qint64 _seq)
+        {
+            return abortSharedFileDownloading(_url, _seq > 0 ? std::make_optional(_seq) : std::nullopt);
+        }
+
+        qint64 cancelLoaderTask(const QString& _url, std::optional<qint64> _seq);
+        qint64 cancelLoaderTask(const QString& _url, qint64 _seq)
+        {
+            if (_seq > 0)
+                return cancelLoaderTask(_url,  std::make_optional(_seq));
+
+            return -1;
+        }
 
         qint64 uploadSharedFile(const QString& _contact, const QString& _localPath, const Data::QuotesVec& _quotes = {}, const QString& _description = QString(), const Data::MentionMap& _mentions = {});
-        qint64 uploadSharedFile(const QString& _contact, const QByteArray& _array, const QString& _ext, const Data::QuotesVec& _quotes = {});
-        qint64 uploadSharedFile(const QString& _contact, const QByteArray& _array, const QString& _ext, const Data::QuotesVec& _quotes, const QString& _description, const Data::MentionMap& _mentions);
-        qint64 uploadSharedFile(const QString& _contact, const QByteArray& _array, const QString& _ext, std::optional<std::chrono::seconds> _duration);
-        qint64 uploadSharedFile(const QString& _contact, const QByteArray& _array, const QString& _ext, const Data::QuotesVec& _quotes, const QString& _description, const Data::MentionMap& _mentions, std::optional<std::chrono::seconds> _duration);
+        qint64 uploadSharedFile(const QString& _contact, const QByteArray& _array, QStringView _ext, const Data::QuotesVec& _quotes = {});
+        qint64 uploadSharedFile(const QString& _contact, const QByteArray& _array, QStringView _ext, const Data::QuotesVec& _quotes, const QString& _description, const Data::MentionMap& _mentions);
+        qint64 uploadSharedFile(const QString& _contact, const QByteArray& _array, QStringView _ext, std::optional<std::chrono::seconds> _duration);
+        qint64 uploadSharedFile(const QString& _contact, const QByteArray& _array, QStringView _ext, const Data::QuotesVec& _quotes, const QString& _description, const Data::MentionMap& _mentions, std::optional<std::chrono::seconds> _duration);
         qint64 uploadSharedFile(const QString& _contact, const QString& _localPath, const Data::QuotesVec& _quotes, std::optional<std::chrono::seconds> _duration);
         qint64 abortSharedFileUploading(const QString& _contact, const QString& _localPath, const QString& _uploadingProcessId);
 
@@ -418,7 +439,6 @@ Q_SIGNALS:
             const bool _raisePriority = false,
             const bool _withData = true);
 
-        void cancelLoaderTask(const QString& _url);
 
         int64_t getExternalFilePath(const QString& _url);
 
@@ -458,6 +478,7 @@ Q_SIGNALS:
         void sendMessageToContact(const QString& _contact, MessageData _data);
 
         void updateMessageToContact(const QString& _contact, int64_t _messageId, const QString& _text);
+        void sendSmartreplyToContact(const QString& _contact, const Data::SmartreplySuggest& _smartreply, const Data::QuotesVec& _quotes = {});
 
         int64_t pttToText(const QString& _pttLink, const QString& _locale);
 
@@ -469,7 +490,7 @@ Q_SIGNALS:
 
         void getCodeByPhoneCall(const QString& _ivr_url);
 
-        qint64 getDialogGallery(const QString& _aimId, const QStringList& _types, int64_t _after_msg, int64_t _after_seq, const int _pageSize);
+        qint64 getDialogGallery(const QString& _aimId, const QStringList& _types, int64_t _after_msg, int64_t _after_seq, const int _pageSize, const bool _download_holes);
         qint64 getDialogGalleryByMsg(const QString& _aimId, const QStringList& _types, int64_t _id);
         qint64 requestDialogGalleryState(const QString& _aimId);
         qint64 getDialogGalleryIndex(const QString& _aimId, const QStringList& _types, qint64 _msg, qint64 _seq);
@@ -481,6 +502,12 @@ Q_SIGNALS:
         qint64 getUserInfo(const QString& _aimid);
 
         qint64 getUserLastSeen(const std::vector<QString>& _ids);
+
+        qint64 subscribeStatus(const std::vector<QString>& _ids);
+        qint64 unsubscribeStatus(const std::vector<QString>& _ids);
+
+        qint64 subscribeCallRoomInfo(const QString& _roomId);
+        qint64 unsubscribeCallRoomInfo(const QString& _roomId);
 
         qint64 localPINEntered(const QString& _password);
 
@@ -502,6 +529,23 @@ Q_SIGNALS:
         int64_t voteInPoll(const QString& _pollId, const QString& _answerId);
         int64_t revokeVote(const QString& _pollId);
         int64_t stopPoll(const QString& _pollId);
+
+        int64_t getBotCallbackAnswer(const QString& _chatId, const QString& _callbackData, qint64 _msgId);
+        qint64 pinContact(const QString& _aimId, bool _enable);
+
+        qint64 loadChatMembersInfo(const QString& _aimId, const std::vector<QString>& _members);
+
+        qint64 requestSessionsList();
+
+        qint64 cancelGalleryHolesDownloading(const QString& _aimid);
+        int64_t createConference(ConferenceType _type, const std::vector<QString>& _participants = {}, bool _callParticipants = false);
+
+        qint64 resolveChatPendings(const QString& _chatAimId, const std::vector<QString>& _pendings, bool _approve);
+
+        void getReactions(const QString& _chatId, std::vector<int64_t> _msgIds, bool _firstLoad = false);
+        int64_t addReaction(int64_t _msgId, const QString& _chatId, const QString& _reaction, const std::vector<QString>& _reactionsList);
+        int64_t removeReaction(int64_t _msgId, const QString& _chatId);
+        int64_t getReactionsPage(int64_t _msgId, const QString& _chatId, const QString& _reaction, const QString& _newerThan, const QString& _olderThan, int64_t _limit);
 
         // messages
         void onNeedLogin(const int64_t _seq, core::coll_helper _params);
@@ -525,6 +569,7 @@ Q_SIGNALS:
         void onMessagesReceivedServer(const int64_t _seq, core::coll_helper _params);
         void onMessagesReceivedSearch(const int64_t _seq, core::coll_helper _params);
         void onMessagesClear(const int64_t _seq, core::coll_helper _params);
+        void onMessagesEmpty(const int64_t _seq, core::coll_helper _params);
         void onArchiveMessagesPending(const int64_t _seq, core::coll_helper _params);
         void onMessagesReceivedInit(const int64_t _seq, core::coll_helper _params);
         void onMessagesReceivedContext(const int64_t _seq, core::coll_helper _params);
@@ -557,10 +602,13 @@ Q_SIGNALS:
 
         void onStickersStickerGetResult(const int64_t _seq, core::coll_helper _params);
         void onStickersGetSetBigIconResult(const int64_t _seq, core::coll_helper _params);
+        void onStickersSetIcon(const int64_t _seq, core::coll_helper _params);
         void onStickersPackInfo(const int64_t _seq, core::coll_helper _params);
         void onStickersStore(const int64_t _seq, core::coll_helper _params);
         void onStickersStoreSearch(const int64_t _seq, core::coll_helper _params);
         void onStickersSuggests(const int64_t _seq, core::coll_helper _params);
+        void onStickersRequestedSuggests(const int64_t _seq, core::coll_helper _params);
+
         void onSmartreplyInstantSuggests(const int64_t _seq, core::coll_helper _params);
         void onSmartreplyRequestedSuggests(const int64_t _seq, core::coll_helper _params);
 
@@ -597,7 +645,6 @@ Q_SIGNALS:
         void onAppConfig(const int64_t _seq, core::coll_helper _params);
         void onAppConfigChanged(const int64_t _seq, core::coll_helper _params);
         void onMyInfo(const int64_t _seq, core::coll_helper _params);
-        void onSignedUrl(const int64_t _seq, core::coll_helper _params);
         void onFeedbackSent(const int64_t _seq, core::coll_helper _params);
         void onMessagesReceivedSenders(const int64_t _seq, core::coll_helper _params);
         void onTyping(const int64_t _seq, core::coll_helper _params);
@@ -678,6 +725,31 @@ Q_SIGNALS:
         void onExternalUrlConfigError(const int64_t _seq, core::coll_helper _params);
         void onExternalUrlConfigHosts(const int64_t _seq, core::coll_helper _params);
 
+        void onGroupSubscribeResult(const int64_t _seq, core::coll_helper _params);
+
+        void onBotCallbackAnswer(const int64_t _seq, core::coll_helper _params);
+
+        void onGetSessionsResult(const int64_t _seq, core::coll_helper _params);
+        void onResetSessionResult(const int64_t _seq, core::coll_helper _params);
+
+        void onCreateConferenceResult(const int64_t _seq, core::coll_helper _params);
+
+        void onCallLog(const int64_t _seq, core::coll_helper _params);
+        void onNewCall(const int64_t _seq, core::coll_helper _params);
+        void onCallRemoveMessages(const int64_t _seq, core::coll_helper _params);
+        void onCallDelUpTo(const int64_t _seq, core::coll_helper _params);
+        void onCallRemoveContact(const int64_t _seq, core::coll_helper _params);
+
+        void onReactions(const int64_t _seq, core::coll_helper _params);
+        void onReactionsListResult(const int64_t _seq, core::coll_helper _params);
+        void onReactionAddResult(const int64_t _seq, core::coll_helper _params);
+        void onReactionRemoveResult(const int64_t _seq, core::coll_helper _params);
+
+        void onStatus(const int64_t _seq, core::coll_helper _params);
+
+        void onCallRoomInfo(const int64_t _seq, core::coll_helper _params);
+        void onChatJoinResult(const int64_t _seq, core::coll_helper _params);
+
     private:
 
         struct callback_info
@@ -719,7 +791,6 @@ Q_SIGNALS:
 
         qint64 lastTimeCallbacksCleanedUp_;
 
-        bool isStatsEnabled_;
         bool isImCreated_;
 
         bool userStateGoneAway_;

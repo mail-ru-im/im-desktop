@@ -33,7 +33,7 @@ namespace
         {
             core::stats::event_props_type props;
             props.emplace_back("time", core::stats::round_value(_duration_msec, 50, 1000));
-            core::g_core->insert_event(_event_flurry, props);
+            core::g_core->insert_event(_event_flurry, core::stats::event_props_type{ props });
             core::g_core->insert_im_stats_event(_event_imstat, std::move(props));
         }
     }
@@ -53,9 +53,7 @@ local_history::local_history(const std::wstring& _archive_path)
 }
 
 
-local_history::~local_history()
-{
-}
+local_history::~local_history() = default;
 
 std::shared_ptr<contact_archive> local_history::get_contact_archive(const std::string& _contact)
 {
@@ -66,7 +64,7 @@ std::shared_ptr<contact_archive> local_history::get_contact_archive(const std::s
 
     std::wstring contact_folder = core::tools::from_utf8(_contact);
     std::replace(contact_folder.begin(), contact_folder.end(), L'|', L'_');
-    auto contact_arch = std::make_shared<contact_archive>(archive_path_ + L'/' + contact_folder, _contact);
+    auto contact_arch = std::make_shared<contact_archive>(su::wconcat(archive_path_, L'/', contact_folder), _contact);
 
     archives_.insert(std::make_pair(_contact, contact_arch));
 
@@ -602,6 +600,11 @@ void local_history::make_holes(const std::string& _aimId)
     get_contact_archive(_aimId)->make_holes();
 }
 
+void local_history::is_gallery_hole_requested(const std::string& _aimId, bool& _is_hole_requsted)
+{
+    _is_hole_requsted = get_contact_archive(_aimId)->is_gallery_hole_requested();
+}
+
 void local_history::invalidate_message_data(const std::string& _aimId, const std::vector<int64_t>& _ids)
 {
     get_contact_archive(_aimId)->invalidate_message_data(_ids);
@@ -627,6 +630,16 @@ void local_history::get_memory_usage(int64_t& _index_size, int64_t& _gallery_siz
         _index_size += _i_index_size;
         _gallery_size += _i_gallery_size;
     }
+}
+
+void local_history::insert_reactions(const std::string& _contact, const reactions_vector_sptr& _reactions)
+{
+    get_contact_archive(_contact)->insert_reactions(*_reactions);
+}
+
+void local_history::get_reactions(const std::string& _contact, const std::shared_ptr<msgids_list>& _msg_ids, /*out*/ reactions_vector_sptr _reactions, /*out*/ std::shared_ptr<msgids_list> _missing)
+{
+    get_contact_archive(_contact)->get_reactions(*_msg_ids, *_reactions, *_missing);
 }
 
 
@@ -1080,15 +1093,12 @@ std::shared_ptr<not_sent_messages_handler> face::get_pending_message()
 
     static constexpr char task_name[] = "face::get_pending_message";
 
-    auto task = thread_->run_async_function(
+   thread_->run_async_function(
         [history_cache = history_cache_, message]
     {
         *message = history_cache->get_first_message_to_send();
         return (*message) ? 0 : -1;
-    }, task_name
-    );
-
-    task->on_result_ = [handler, message](int32_t _error)
+    }, task_name)->on_result_ = [handler, message](int32_t _error)
     {
         if (handler->on_result)
         {
@@ -1763,6 +1773,28 @@ std::shared_ptr<async_task_handlers> face::make_holes(const std::string& _aimid)
     return handler;
 }
 
+std::shared_ptr<request_gallery_is_hole_requested> face::is_gallery_hole_requested(const std::string& _aimid)
+{
+    auto handler = std::make_shared<request_gallery_is_hole_requested>();
+    auto is_hole_requsted = std::make_shared<bool>();
+
+
+    static constexpr char task_name[] = "face::is_gallery_hole_requested";
+
+    thread_->run_async_function([history_cache = history_cache_, _aimid, is_hole_requsted]()->int32_t
+    {
+        history_cache->is_gallery_hole_requested(_aimid, *is_hole_requsted);
+        return 0;
+
+    }, task_name)->on_result_ = [handler, is_hole_requsted](int32_t _error)
+    {
+        if (handler->on_result)
+            handler->on_result(*is_hole_requsted);
+    };
+
+    return handler;
+}
+
 std::shared_ptr<async_task_handlers> face::invalidate_message_data(const std::string& _aimid, std::vector<int64_t> _ids)
 {
     auto handler = std::make_shared<async_task_handlers>();
@@ -1836,6 +1868,42 @@ std::shared_ptr<memory_usage> face::get_memory_usage()
     }, task_name)->on_result_ = [handler, index_size, gallery_size](int32_t _error)
     {
         handler->on_result(*index_size, *gallery_size);
+    };
+
+    return handler;
+}
+
+void face::insert_reactions(const std::string& _contact, const reactions_vector_sptr& _reactions)
+{
+    static constexpr char task_name[] = "face::insert_reactions";
+
+    thread_->run_async_function([history_cache = history_cache_, _contact, _reactions]()->int32_t
+    {
+        history_cache->insert_reactions(_contact, _reactions);
+
+        return 0;
+
+    }, task_name);
+}
+
+std::shared_ptr<get_reactions_handler> face::get_reactions(const std::string& _contact, const std::shared_ptr<msgids_list>& _msg_ids)
+{
+    auto handler = std::make_shared<get_reactions_handler>();
+
+    auto result = std::make_shared<reactions_vector>();
+    auto missing = std::make_shared<msgids_list>();
+
+    static constexpr char task_name[] = "face::get_reactions";
+
+    thread_->run_async_function([history_cache = history_cache_, _contact, _msg_ids, result, missing]()->int32_t
+    {
+        history_cache->get_reactions(_contact, _msg_ids, result, missing);
+
+        return 0;
+
+    }, task_name)->on_result_ = [handler, result, missing](int32_t _error)
+    {
+        handler->on_result(result, missing);
     };
 
     return handler;

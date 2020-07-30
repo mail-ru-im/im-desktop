@@ -3,26 +3,26 @@
 
 namespace core::tools
 {
-    void sort_json_keys_by_name(rapidjson::Value* _node)
+    void sort_json_keys_by_name(rapidjson::Value& _node)
     {
-        auto members_comparator = [](const rapidjson::Value::Member& _lhs, const rapidjson::Value::Member& _rhs) noexcept
+        auto members_comparator = [](const auto& _lhs, const auto& _rhs) noexcept
         {
             return rapidjson_get_string_view(_lhs.name) < rapidjson_get_string_view(_rhs.name);
         };
 
-        std::sort(_node->MemberBegin(), _node->MemberEnd(), members_comparator);
+        std::sort(_node.MemberBegin(), _node.MemberEnd(), members_comparator);
 
-        for (auto member = _node->MemberBegin(); member != _node->MemberEnd(); ++member)
+        for (auto& member : _node.GetObject())
         {
-            if (member->value.IsObject())
+            if (member.value.IsObject())
             {
-                sort_json_keys_by_name(&member->value);
+                sort_json_keys_by_name(member.value);
             }
-            else if (member->value.IsArray())
+            else if (member.value.IsArray())
             {
-                for (auto array_member = member->value.Begin(); array_member != member->value.End(); ++array_member)
+                for (auto& array_member : member.value.GetArray())
                 {
-                    if (array_member->IsObject())
+                    if (array_member.IsObject())
                         sort_json_keys_by_name(array_member);
                 }
             }

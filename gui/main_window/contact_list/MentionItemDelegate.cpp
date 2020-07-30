@@ -6,7 +6,7 @@
 #include "../../cache/avatars/AvatarStorage.h"
 #include "../../styles/ThemeParameters.h"
 #include "../../app_config.h"
-#include "../friendly/FriendlyContainer.h"
+#include "../containers/FriendlyContainer.h"
 
 #include "ContactListModel.h"
 
@@ -52,7 +52,7 @@ namespace Logic
         , lastDrawTime_(QTime::currentTime())
         , cacheTimer_(new QTimer(this))
     {
-        cacheTimer_->setInterval(dropCacheTimeout.count());
+        cacheTimer_->setInterval(dropCacheTimeout);
         cacheTimer_->setTimerType(Qt::VeryCoarseTimer);
         connect(cacheTimer_, &QTimer::timeout, this, [this]()
         {

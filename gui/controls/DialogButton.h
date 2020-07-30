@@ -13,20 +13,12 @@ namespace Ui
         DEFAULT = CONFIRM
     };
 
-    enum class DialogButtonShape
-    {
-        RECT,
-        ROUNDED,
-
-        DEFAULT = RECT
-    };
-
     class DialogButton : public QPushButton
     {
         Q_OBJECT
 
     public:
-        explicit DialogButton(QWidget* _parent, const QString _text, const DialogButtonRole _role = DialogButtonRole::DEFAULT, const DialogButtonShape _shape = DialogButtonShape::DEFAULT);
+        explicit DialogButton(QWidget* _parent, const QString _text, const DialogButtonRole _role = DialogButtonRole::DEFAULT);
         void changeRole(const DialogButtonRole _role);
         bool isEnabled() const;
         void updateWidth();
@@ -62,7 +54,5 @@ namespace Ui
         QColor textColor_;
         QColor textColorHover_;
         QColor textColorPress_;
-
-        DialogButtonShape shape_;
     };
 }

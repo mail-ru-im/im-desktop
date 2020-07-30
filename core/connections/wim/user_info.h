@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../../../corelib/collection_helper.h"
+#include "lastseen.h"
 
 namespace core
 {
@@ -16,7 +17,7 @@ namespace core
             std::string phone_;
             std::string avatar_id_;
 
-            int32_t lastseen_ = -1;
+            lastseen lastseen_;
             int32_t common_chats_ = 0;
             bool official_ = false;
             bool mute_ = false;

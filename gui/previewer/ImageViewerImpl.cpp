@@ -134,6 +134,7 @@ Previewer::AbstractViewer::AbstractViewer(const QSize& _viewportSize, QWidget* _
     : QObject(_parent)
     , canScroll_(false)
     , viewportRect_(QPoint(), _viewportSize)
+    , preferredScaleFactor_(0.0)
     , scaleFactor_(0.0)
 {
 }
@@ -347,7 +348,7 @@ Previewer::FFMpegViewer::FFMpegViewer(const MediaData& _mediaData,
 
         fullscreen_ = !fullscreen_;
 
-        emit fullscreenToggled(fullscreen_);
+        Q_EMIT fullscreenToggled(fullscreen_);
 
     }, Qt::QueuedConnection);
 
@@ -355,7 +356,7 @@ Previewer::FFMpegViewer::FFMpegViewer(const MediaData& _mediaData,
 
     connect(ffplayer_.get(), &Ui::DialogPlayer::mouseWheelEvent, this, [this](const QPoint& _delta)
     {
-        emit mouseWheelEvent(_delta);
+        Q_EMIT mouseWheelEvent(_delta);
 
     });
 

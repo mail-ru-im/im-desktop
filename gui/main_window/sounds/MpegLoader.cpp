@@ -143,6 +143,7 @@ namespace Ui
         , SampleSize_(2 * sizeof(quint16))
         , OutSamplesData_(nullptr)
         , CodecContext_(nullptr)
+        , InputFormat_(AV_SAMPLE_FMT_NONE)
         , Frame_(nullptr)
         , SwrContext_(nullptr)
     {

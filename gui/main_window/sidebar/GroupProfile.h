@@ -11,6 +11,7 @@ namespace Logic
 namespace Ui
 {
     class AvatarNameInfo;
+    class AvatarNamePlaceholder;
     class HeaderTitleBar;
     class HeaderTitleBarButton;
     class TextLabel;
@@ -27,6 +28,9 @@ namespace Ui
     class GalleryPopup;
     class EditNicknameWidget;
     class DialogButton;
+    class StartCallButton;
+
+    enum class CallType;
 
     enum class ActionType
     {
@@ -34,13 +38,14 @@ namespace Ui
         NEGATIVE = 1,
     };
 
+
     class GroupProfile : public SidebarPage
     {
         Q_OBJECT
     public:
         explicit GroupProfile(QWidget* parent);
         virtual ~GroupProfile();
-        void initFor(const QString& aimId) override;
+        void initFor(const QString& aimId, SidebarParams _params = {}) override;
         void setFrameCountMode(FrameCountMode _mode) override;
         void close() override;
         void toggleMembersList() override;
@@ -66,17 +71,23 @@ namespace Ui
 
         void updateRegim();
         void updateChatControls();
+        void hideControls();
 
         void blockUser(const QString& aimId, ActionType _action);
         void readOnly(const QString& aimId, ActionType _action);
         void changeRole(const QString& aimId, ActionType _action);
 
+        void requestNickSuggest();
+
+        void setInfoPlaceholderVisible(bool _isVisible);
+        void updateGalleryVisibility();
+
     private Q_SLOTS:
         void chatInfo(qint64, const std::shared_ptr<Data::ChatInfo>&, const int _requestMembersLimit);
         void chatInfoFailed(qint64 _seq, core::group_chat_info_errors _errorCode, const QString& _aimId);
         void dialogGalleryState(const QString& _aimId, const Data::DialogGalleryState& _state);
-        void favoriteChanged(const QString _aimid);
-        void unimportantChanged(const QString _aimid);
+        void favoriteChanged(const QString& _aimid);
+        void unimportantChanged(const QString& _aimid);
         void modChatParamsResult(int _error);
         void suggestGroupNickResult(const QString& _nick);
         void loadChatInfo();
@@ -133,6 +144,8 @@ namespace Ui
         void checkApplyButton();
         void publicClicked();
 
+        void updateActiveChatMembersModel(const QString& _aimId);
+
     private:
         QStackedWidget* stackedWidget_;
 
@@ -147,9 +160,11 @@ namespace Ui
         QWidget* fifthSpacer_;
 
         AvatarNameInfo* info_;
+        AvatarNamePlaceholder* infoPlaceholder_;
         QWidget* infoSpacer_;
         TextLabel* groupStatus_;
         ColoredButton* mainActionButton_;
+        StartCallButton* callButton_;
         std::unique_ptr<InfoBlock> about_;
         std::unique_ptr<InfoBlock> rules_;
         std::unique_ptr<InfoBlock> link_;
@@ -209,5 +224,6 @@ namespace Ui
         bool galleryIsEmpty_;
         bool forceMembersRefresh_;
         bool invalidNick_;
+        bool infoPlaceholderVisible_;
     };
 }

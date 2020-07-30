@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.8)
+cmake_minimum_required(VERSION 3.14)
 
 project(omicron-desktop-tests CXX)
 
@@ -29,7 +29,7 @@ if(OMICRON_USE_LIBCURL)
     if(MSVC)
         message(STATUS "Windows")
         set(CURL_LIBRARY_DIR "${CURL_DIR}/lib")
-        set(ZLIB_LIBRARY_DIR "${TOP_DIR}/../external/zlib/lib")
+        set(ZLIB_LIBRARY_DIR "${ICQ_EXTERNAL}/zlib/lib")
         set(CURL_LIBRARIES
             optimized "${CURL_LIBRARY_DIR}/libcurl.lib" "${ZLIB_LIBRARY_DIR}/zlib.lib"
             debug "${CURL_LIBRARY_DIR}/libcurld.lib" "${ZLIB_LIBRARY_DIR}/zlibd.lib")

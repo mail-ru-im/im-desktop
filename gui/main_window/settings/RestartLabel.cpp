@@ -45,6 +45,7 @@ namespace Ui
         const auto r = rect();
 
         const auto textHeight = textUnit_->getHeight(r.width() - 2 * textHorPadding());
+        Q_UNUSED(textHeight);
 
         {
             const static auto background = Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_INFO);

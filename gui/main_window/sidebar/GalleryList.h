@@ -64,7 +64,7 @@ namespace Ui
 
         virtual void showContextMenu(ItemData _data, const QPoint& _pos, bool _inverted = false);
 
-        ContextMenu* makeContextMenu(qint64 _msg, const QString& _link, const QString& _sender, time_t _time);
+        ContextMenu* makeContextMenu(qint64 _msg, const QString& _link, const QString& _sender, time_t _time, const QString& _aimid);
 
         QString aimId_;
         QPoint pos_;

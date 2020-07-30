@@ -46,8 +46,8 @@ namespace omicronlib
         return ss_out.str();
     }
 
-    omicron_config::omicron_config(const std::string& _api_url, const std::string& _app_id, environment_type _environment, std::chrono::milliseconds _update_interval)
-        : api_url_(_api_url)
+    omicron_config::omicron_config(std::string _api_url, const std::string& _app_id, environment_type _environment, std::chrono::milliseconds _update_interval)
+        : api_url_(std::move(_api_url))
         , app_id_(_app_id)
         , update_interval_(_update_interval)
         , environment_(_environment)
@@ -55,6 +55,8 @@ namespace omicronlib
         , custom_logger_(nullptr)
         , callback_updater_(nullptr)
         , external_proxy_settings_(nullptr)
+        , save_helper_(nullptr)
+        , load_helper_(nullptr)
     {
     }
 
@@ -104,6 +106,26 @@ namespace omicronlib
     void omicron_config::set_external_proxy_settings(external_proxy_settings_func _external_func)
     {
         external_proxy_settings_ = _external_func;
+    }
+
+    void omicron_config::set_save_helper(save_helper_func _external_func)
+    {
+        save_helper_ = _external_func;
+    }
+
+    save_helper_func omicron_config::get_save_helper() const
+    {
+        return save_helper_;
+    }
+
+    void omicron_config::set_load_helper(load_helper_func _external_func)
+    {
+        load_helper_ = _external_func;
+    }
+
+    load_helper_func omicron_config::get_load_helper() const
+    {
+        return load_helper_;
     }
 
     std::string omicron_config::generate_request_string() const

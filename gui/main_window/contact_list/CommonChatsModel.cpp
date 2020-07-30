@@ -3,6 +3,8 @@
 #include "../../core_dispatcher.h"
 #include "../../utils/gui_coll_helper.h"
 #include "../../cache/avatars/AvatarStorage.h"
+#include "utils/utils.h"
+#include "../containers/StatusContainer.h"
 
 namespace Logic
 {
@@ -12,6 +14,10 @@ namespace Logic
     {
         connect(Ui::GetDispatcher(), &Ui::core_dispatcher::commonChatsGetResult, this, &CommonChatsModel::onCommonChatsGet);
         connect(Logic::GetAvatarStorage(), &Logic::AvatarStorage::avatarChanged, this, &CommonChatsModel::avatarChanged);
+        connect(Logic::GetStatusContainer(), &Logic::StatusContainer::statusChanged, this, [this](const QString& _aimid)
+        {
+            avatarChanged(_aimid);
+        });
     }
 
 
@@ -35,7 +41,7 @@ namespace Logic
     void CommonChatsModel::load(const QString& _sn)
     {
         chats_.clear();
-        emit dataChanged(index(0), index(rowCount()));
+        Q_EMIT dataChanged(index(0), index(rowCount()));
 
         Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
         collection.set_value_as_qstring("contact", _sn);
@@ -53,7 +59,7 @@ namespace Logic
             return;
 
         chats_ = _chats;
-        emit dataChanged(index(0), index(rowCount()));
+        Q_EMIT dataChanged(index(0), index(rowCount()));
     }
 
     void CommonChatsModel::avatarChanged(const QString& _aimid)
@@ -66,7 +72,7 @@ namespace Logic
         if (iter != chats_.end())
         {
             auto i = std::distance(chats_.begin(), iter);
-            emit dataChanged(index(i), index(i));
+            Q_EMIT dataChanged(index(i), index(i));
         }
     }
 
@@ -184,11 +190,11 @@ namespace Logic
         }
 
         if (results_.isEmpty())
-            emit showNoSearchResults();
+            Q_EMIT showNoSearchResults();
         else
-            emit hideNoSearchResults();
+            Q_EMIT hideNoSearchResults();
 
-        emit dataChanged(index(0), index(rowCount()));
+        Q_EMIT dataChanged(index(0), index(rowCount()));
     }
 
     int CommonChatsSearchModel::rowCount(const QModelIndex& _parent) const

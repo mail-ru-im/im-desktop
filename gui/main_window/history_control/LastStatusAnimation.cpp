@@ -53,7 +53,7 @@ namespace Ui
         assert(_parent);
 
         pendingTimer_->setSingleShot(true);
-        pendingTimer_->setInterval(pendingTimeout.count());
+        pendingTimer_->setInterval(pendingTimeout);
         connect(pendingTimer_, &QTimer::timeout, this, &LastStatusAnimation::onPendingTimeout);
     }
 

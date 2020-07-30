@@ -4,9 +4,10 @@
 #include "../../../types/message.h"
 #include "../../../types/link_metadata.h"
 #include "../../../controls/TextUnit.h"
+#include "../../../animation/animation.h"
 #include "SnippetBlock.h"
 
-#include "../MessageItemBase.h"
+#include "../HistoryControlPageItem.h"
 
 UI_NS_BEGIN
 
@@ -38,7 +39,26 @@ typedef std::shared_ptr<const QPixmap> QPixmapSCptr;
 
 typedef std::vector<IItemBlock*> IItemBlocksVec;
 
-class ComplexMessageItem final : public MessageItemBase
+struct MessageButton
+{
+    void clearProgress();
+    void initButton();
+
+    Data::ButtonData data_;
+    QRect rect_;
+    bool hovered_ = false;
+    bool pressed_ = false;
+    bool animating_ = false;
+    bool isExternalUrl_ = false;
+    bool isTwoLines_ = false;
+
+    qint64 seq_ = -1;
+    QString reqId_;
+    QDateTime pressTime_;
+    QString originalText_;
+};
+
+class ComplexMessageItem final : public HistoryControlPageItem
 {
     friend class ComplexMessageItemLayout;
 
@@ -46,7 +66,7 @@ class ComplexMessageItem final : public MessageItemBase
     {
         Copy,
         Quote,
-        Forward,
+        Forward
     };
 
     Q_OBJECT
@@ -66,10 +86,12 @@ Q_SIGNALS:
         const common::tools::patch_version& _patchVersion,
         const QString& _url,
         const QString& _description,
+        const Data::MentionMap& _mentions,
         const Data::QuotesVec& _quotes,
         qint32 _time,
         const Data::FilesPlaceholderMap& _files,
-        MediaType _mediaType);
+        MediaType _mediaType,
+        bool instantEdit);
 
     void edit(
         const int64_t _msgId,
@@ -80,7 +102,8 @@ Q_SIGNALS:
         const Data::QuotesVec& _quotes,
         qint32 _time,
         const Data::FilesPlaceholderMap& _files,
-        MediaType _mediaType);
+        MediaType _mediaType,
+        bool instantEdit);
 
     void pinPreview(const QPixmap& _preview);
 
@@ -90,6 +113,10 @@ Q_SIGNALS:
     void selectionChanged();
     void leave();
     void removeMe();
+    void addToFavorites(const Data::QuotesVec& _quotes);
+
+    void readOnlyUser(const QString& _aimId, bool _isReadOnly, QPrivateSignal) const;
+    void blockUser(const QString& _aimId, bool _isBlock, QPrivateSignal) const;
 
 public:
     ComplexMessageItem(QWidget *parent, const Data::MessageBuddy& _msg);
@@ -109,6 +136,7 @@ public:
     void requestPinPreview(PinPlaceholderType _type);
 
     QString getFirstLink() const;
+    Data::StickerId getFirstStickerId() const;
 
     qint64 getId() const override;
     qint64 getPrevId() const override;
@@ -149,6 +177,8 @@ public:
     void updateStyle() override;
     void updateFonts() override;
 
+    void startSpellChecking() override;
+
     virtual void onActivityChanged(const bool isActive) override;
 
     virtual void onVisibilityChanged(const bool isVisible) override;
@@ -180,6 +210,8 @@ public:
 
     void updateWith(ComplexMessageItem &update);
 
+    void getUpdatableInfoFrom(ComplexMessageItem &update);
+
     bool isSelected() const override;
 
     bool isAllSelected() const;
@@ -200,7 +232,7 @@ public:
     /// observe to resize when replaced
     bool isObserveToSize() const;
 
-    virtual int getMaxWidth() const;
+    int getMaxWidth() const;
 
     virtual void setEdited(const bool _isEdited) override;
 
@@ -210,9 +242,15 @@ public:
 
     const Data::FilesPlaceholderMap& getFilesPlaceholders() const;
 
-    QString getEditableText() const;
-
     int desiredWidth() const;
+
+    int maxEffectiveBLockWidth() const;
+
+    int buttonsDesiredWidth() const;
+
+    int calcButtonsWidth(int _availableWidth);
+
+    int buttonsHeight() const;
 
     void updateSize() override;
 
@@ -222,6 +260,12 @@ public:
 
     void setHasLinkInText(const bool _hasLinkInText);
 
+    void setButtons(const std::vector<std::vector<Data::ButtonData>>& _buttons);
+
+    void updateButtonsFromOther(const std::vector<std::vector<MessageButton>>& _buttons);
+
+    void setHideEdit(bool _hideEdit);
+
     int getBlockCount() const;
 
     IItemBlock* getHoveredBlock() const;
@@ -230,6 +274,8 @@ public:
     int getSharingAdditionalWidth() const;
 
     bool isFirstBlockDebug() const;
+
+    bool hasButtons() const;
 
     // NOTE: Debug purposes only
     const IItemBlocksVec& getBlocks() const;
@@ -266,6 +312,16 @@ public:
 
     void updateTimeWidgetUnderlay();
 
+    static bool isSpellCheckIsOn();
+
+    QRect getBubbleGeometry() const;
+
+    QRect messageRect() const override;
+
+    ReactionsPlateType reactionsPlateType() const override;
+
+    void setSpellErrorsVisible(bool _visible) override;
+
 protected:
 
     void leaveEvent(QEvent *event) override;
@@ -279,10 +335,14 @@ protected:
 
     void onChainsChanged() override;
 
+    void initialize() override;
+
 private Q_SLOTS:
     void onAvatarChanged(const QString& aimId);
     void onMenuItemTriggered(QAction *action);
     void onLinkMetainfoMetaDownloaded(int64_t _seq, bool _success, Data::LinkMetadata _meta);
+    void onBotCallbackAnswer(const int64_t _seq, const QString& _reqId, const QString& text, const QString& _url, bool _showAlert);
+    void updateButtons();
 
 public Q_SLOTS:
     void trackMenu(const QPoint &globalPos);
@@ -292,6 +352,17 @@ public Q_SLOTS:
 
 private:
     void fillFilesPlaceholderMap();
+    void handleBotAction(const QString& _url, const QString& _text = QString(), bool _showAlert = false);
+    void initButtonsTimerIfNeeded();
+    void startButtonsTimer(int _timeout);
+
+    enum class InstantEdit
+    {
+        No,
+        Yes
+    };
+    void callEditingImpl(InstantEdit _mode);
+    QString getEditableText(InstantEdit _mode) const;
 
     void cleanupMenu();
 
@@ -300,6 +371,8 @@ private:
     void drawAvatar(QPainter &p);
 
     void drawBubble(QPainter &p, const QColor& quote_color);
+
+    void drawButtons(QPainter &p, const QColor& quote_color);
 
     QString getBlocksText(const IItemBlocksVec& _items, const bool _isSelected, TextFormat _format = TextFormat::Formatted) const;
 
@@ -313,10 +386,10 @@ private:
 
     IItemBlock* findBlockUnder(const QPoint& _pos, FindForSharing _findFor = FindForSharing::No) const;
 
-    void initialize();
     void initializeShareButton();
 
     void initSender();
+    void initButtonsLabel();
 
     bool isBubbleRequired() const;
     bool isMarginRequired() const;
@@ -328,7 +401,7 @@ private:
 
     void onCopyMenuItem(MenuItemType type);
 
-    bool onDeveloperMenuItemTriggered(const QStringRef &cmd);
+    bool onDeveloperMenuItemTriggered(QStringView cmd);
 
     void onShareButtonClicked();
 
@@ -381,8 +454,6 @@ private:
     QString internalId_;
     common::tools::patch_version version_;
 
-    bool Initialized_;
-
     bool IsOutgoing_;
 
     bool deliveredToServer_;
@@ -400,6 +471,8 @@ private:
     int desiredSenderWidth_;
 
     QString SenderAimid_;
+
+    QString SenderAimidForDisplay_;
 
     QString SenderFriendly_;
 
@@ -420,6 +493,7 @@ private:
     bool bubbleHovered_;
     bool hasTrailingLink_;
     bool hasLinkInText_;
+    bool hideEdit_;
 
     Data::MentionMap mentions_;
     Data::FilesPlaceholderMap files_;
@@ -440,6 +514,13 @@ private:
 
     std::vector<SnippetData> snippetsWaitingForInitialization_;
     std::map<int64_t, SnippetData> snippetsWaitingForMeta_;
+
+    std::vector<std::vector<MessageButton>> buttons_;
+    std::vector<int> buttonLineHeights_;
+    TextRendering::TextUnitPtr buttonLabel_;
+
+    QTimer* buttonsUpdateTimer_;
+    anim::Animation buttonsAnimation_;
 };
 
 UI_COMPLEX_MESSAGE_NS_END

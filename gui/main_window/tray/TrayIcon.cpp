@@ -5,7 +5,7 @@
 #include "../MainWindow.h"
 #include "../MainPage.h"
 #include "../contact_list/ContactListModel.h"
-#include "../friendly/FriendlyContainer.h"
+#include "../containers/FriendlyContainer.h"
 #include "../contact_list/RecentItemDelegate.h"
 #include "../contact_list/RecentsModel.h"
 #include "../contact_list/UnknownsModel.h"
@@ -25,6 +25,7 @@
 #include "main_window/LocalPIN.h"
 #include "styles/ThemeParameters.h"
 #include "../common.shared/config/config.h"
+#include "../common.shared/string_utils.h"
 
 #if defined(_WIN32)
     //#   include "toast_notifications/win32/ToastManager.h"
@@ -64,7 +65,24 @@ namespace
         }
         return nullptr;
     }
+
+    bool isTaskbarIconsSmall()
+    {
+        QSettings s(qsl("HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced"), QSettings::NativeFormat);
+        return s.value(qsl("TaskbarSmallIcons"), 0).toInt() == 1;
+    }
 #endif //_WIN32
+
+#ifdef __linux__
+    quint32 djbStringHash(const QString& string)
+    {
+        quint32 hash = 5381;
+        const auto chars = string.toLatin1();
+        for (auto c : chars)
+            hash = (hash << 5) + hash + c;
+        return hash;
+    }
+#endif
 }
 
 namespace Ui
@@ -78,7 +96,6 @@ namespace Ui
         , MentionAlert_(new RecentMessagesAlert(AlertType::alertTypeMentionMe))
         , MailAlert_(new  RecentMessagesAlert(AlertType::alertTypeEmail))
         , MainWindow_(parent)
-        , first_start_(true)
         , Base_(qsl(":/logo/ico"))
         , Unreads_(qsl(":/logo/ico_unread"))
 #ifdef _WIN32
@@ -97,12 +114,9 @@ namespace Ui
 #endif //_WIN32
     {
 #ifdef _WIN32
-        if (QSysInfo().windowsVersion() >= QSysInfo::WV_WINDOWS7)
-        {
-            HRESULT hr = CoCreateInstance(CLSID_TaskbarList, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&ptbl));
-            if (FAILED(hr))
-                ptbl = nullptr;
-        }
+        HRESULT hr = CoCreateInstance(CLSID_TaskbarList, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&ptbl));
+        if (FAILED(hr))
+            ptbl = nullptr;
 
         for (auto& icon : winIcons_)
             icon = nullptr;
@@ -110,7 +124,7 @@ namespace Ui
         init();
 
         InitMailStatusTimer_ = new QTimer(this);
-        InitMailStatusTimer_->setInterval(init_mail_timeout.count());
+        InitMailStatusTimer_->setInterval(init_mail_timeout);
         InitMailStatusTimer_->setSingleShot(true);
 
         connect(MessageAlert_, &RecentMessagesAlert::messageClicked, this, &TrayIcon::messageClicked, Qt::QueuedConnection);
@@ -148,7 +162,6 @@ namespace Ui
     {
         cleanupWinIcons();
         clearAllNotifications();
-        disconnect(get_gui_settings());
     }
 
     void TrayIcon::cleanupWinIcons()
@@ -191,10 +204,11 @@ namespace Ui
     void TrayIcon::resetState()
     {
         UnreadsCount_ = 0;
-        first_start_ = true;
+        MailCount_ = 0;
+        Email_.clear();
 
-        updateIcon();
-        hideEmailIcon();
+        forceUpdateIcon();
+        updateEmailIcon();
 
         clearAllNotifications();
     }
@@ -220,7 +234,7 @@ namespace Ui
         NotificationCenterManager::updateBadgeIcon(UnreadsCount_);
 
         QString state = MyInfo()->state().toLower();
-        if (state != ql1s("offline"))
+        if (state != u"offline")
             state = qsl("online");
 
         const auto curTheme = MacSupport::currentTheme();
@@ -314,28 +328,56 @@ namespace Ui
 
     void TrayIcon::updateIcon(const bool _updateOverlay)
     {
-#ifdef _WIN32
+#if defined(_WIN32)
         if (_updateOverlay)
         {
-            cleanupWinIcons();
-
             const auto hwnd = reinterpret_cast<HWND>(MainWindow_->winId());
-            if (ptbl)
+            const auto resetIcons = [this, hwnd](const QIcon& _icon)
             {
-                winIcons_[0] = UnreadsCount_ > 0 ? createHIconFromQIcon(createIcon(), hIconSize::small) : nullptr;
-                ptbl->SetOverlayIcon(hwnd, winIcons_[0], L"");
+                cleanupWinIcons();
+                winIcons_[IconType::small] = createHIconFromQIcon(_icon, hIconSize::small);
+                winIcons_[IconType::big] = createHIconFromQIcon(_icon, hIconSize::big);
+                winIcons_[IconType::overlay] = UnreadsCount_ > 0 ? createHIconFromQIcon(createIcon(), hIconSize::small) : nullptr;
+
+                SendMessage(hwnd, WM_SETICON, ICON_SMALL, LPARAM(winIcons_[IconType::small]));
+                SendMessage(hwnd, WM_SETICON, ICON_BIG, LPARAM(winIcons_[IconType::big]));
+            };
+
+            if (ptbl && !isTaskbarIconsSmall())
+            {
+                resetIcons(Base_);
+                ptbl->SetOverlayIcon(hwnd, winIcons_[IconType::overlay], L"");
             }
             else
             {
-                const auto& icon = UnreadsCount_ > 0 ? Unreads_ : Base_;
-                winIcons_[0] = createHIconFromQIcon(icon, hIconSize::small);
-                winIcons_[1] = createHIconFromQIcon(icon, hIconSize::big);
-
-                SendMessage(hwnd, WM_SETICON, ICON_SMALL, LPARAM(winIcons_[0]));
-                SendMessage(hwnd, WM_SETICON, ICON_BIG, LPARAM(winIcons_[1]));
+                resetIcons(UnreadsCount_ > 0 ? Unreads_ : Base_);
             }
         }
-#endif //_WIN32
+#elif defined(__linux__)
+        static const auto hasUnity = QDBusInterface(qsl("com.canonical.Unity"), qsl("/")).isValid();
+        if (hasUnity)
+        {
+            static const auto launcherUrl = []() -> QString
+            {
+                const auto executableInfo = QFileInfo(QCoreApplication::applicationFilePath());
+                const QString desktopFileName = executableInfo.fileName() % u"desktop.desktop";
+                return u"application://" % desktopFileName;
+            }();
+
+            QVariantMap unityProperties;
+            unityProperties.insert(qsl("count-visible"), UnreadsCount_ > 0);
+            if (UnreadsCount_ > 0)
+                unityProperties.insert(qsl("count"), (qint64)(UnreadsCount_ > 9999 ? 9999 : UnreadsCount_));
+
+            QDBusMessage signal = QDBusMessage::createSignal(
+                        qsl("/com/canonical/unity/launcherentry/") % QString::number(djbStringHash(launcherUrl)),
+                        qsl("com.canonical.Unity.LauncherEntry"),
+                        qsl("Update"));
+            signal << launcherUrl;
+            signal << unityProperties;
+            QDBusConnection::sessionBus().send(signal);
+        }
+#endif
 
         if constexpr (platform::is_apple())
             setMacIcon();
@@ -427,7 +469,7 @@ namespace Ui
     {
         if constexpr (!platform::is_apple())
         {
-            if (Notifications_.empty())
+            if (Notifications_.isEmpty())
             {
                 updateIconIfNeeded();
                 return;
@@ -465,7 +507,7 @@ namespace Ui
             {
                 ShowedMessages_[_state.AimId_] = _state.LastMsgId_;
 
-                const auto notifType = _state.AimId_ == ql1s("mail") ? NotificationType::email : NotificationType::messages;
+                const auto notifType = _state.AimId_ == u"mail" ? NotificationType::email : NotificationType::messages;
                 if (canShowNotifications(notifType))
                     showMessage(_state, AlertType::alertTypeMessage);
 
@@ -558,65 +600,49 @@ namespace Ui
         Email_ = email;
         MailCount_ = count;
 
-        if (first_start_)
-        {
-            bool visible = !!count;
-            if (visible)
-            {
-                showEmailIcon();
-            }
-            else
-            {
-                hideEmailIcon();
-            }
+        updateEmailIcon();
 
-            first_start_ = false;
-        }
-        else if (!count)
+        if (!canShowNotifications(NotificationType::email))
+            return;
+
+        if (!init && !InitMailStatusTimer_->isActive() && !MailAlert_->isVisible())
+            return;
+
+        if (count == 0 && init)
         {
-            hideEmailIcon();
+            InitMailStatusTimer_->start();
+            return;
         }
 
-        if (canShowNotifications(NotificationType::email))
+        Data::DlgState state;
+        state.AimId_ = qsl("mail");
+        state.header_ = Email_;
+        state.Friendly_ = QT_TRANSLATE_NOOP("tray_menu", "New email");
+        state.SetText(QString::number(count) % Utils::GetTranslator()->getNumberString(count,
+            QT_TRANSLATE_NOOP3("tray_menu", " new email", "1"),
+            QT_TRANSLATE_NOOP3("tray_menu", " new emails", "2"),
+            QT_TRANSLATE_NOOP3("tray_menu", " new emails", "5"),
+            QT_TRANSLATE_NOOP3("tray_menu", " new emails", "21")
+            ));
+
+        MailAlert_->updateMailStatusAlert(state);
+        if (count == 0)
         {
-            if (!init && !InitMailStatusTimer_->isActive() && !MailAlert_->isVisible())
-                return;
-
-            if (count == 0 && init)
-            {
-                InitMailStatusTimer_->start();
-                return;
-            }
-
-            Data::DlgState state;
-            state.AimId_ = qsl("mail");
-            state.header_ = Email_;
-            state.Friendly_ = QT_TRANSLATE_NOOP("tray_menu", "New email");
-            state.SetText(QString::number(count) % Utils::GetTranslator()->getNumberString(count,
-                QT_TRANSLATE_NOOP3("tray_menu", " new email", "1"),
-                QT_TRANSLATE_NOOP3("tray_menu", " new emails", "2"),
-                QT_TRANSLATE_NOOP3("tray_menu", " new emails", "5"),
-                QT_TRANSLATE_NOOP3("tray_menu", " new emails", "21")
-                ));
-
-            MailAlert_->updateMailStatusAlert(state);
-            if (count == 0)
-            {
-                hideMailAlerts();
-                return;
-            }
-            else if (MailAlert_->isVisible())
-            {
-                return;
-            }
-
-            showMessage(state, AlertType::alertTypeEmail);
+            hideMailAlerts();
+            return;
         }
+        else if (MailAlert_->isVisible())
+        {
+            return;
+        }
+
+        showMessage(state, AlertType::alertTypeEmail);
     }
 
     void TrayIcon::messageClicked(const QString& _aimId, const QString& mailId, const qint64 mentionId, const AlertType _alertType)
     {
         statistic::getGuiMetrics().eventNotificationClicked();
+        MainWindow::ActivateReason reason = MainWindow::ActivateReason::ByNotificationClick;
 
         if (!_aimId.isEmpty())
         {
@@ -649,7 +675,7 @@ namespace Ui
 
                             openMailBox(mailId);
                         };
-
+                        reason = MainWindow::ActivateReason::ByMailClick;
                         break;
                     }
                     case AlertType::alertTypeMessage:
@@ -680,7 +706,7 @@ namespace Ui
 
                         action = [_aimId, mentionId]()
                         {
-                            emit Logic::getContactListModel()->select(_aimId, mentionId);
+                            Q_EMIT Logic::getContactListModel()->select(_aimId, mentionId);
                         };
 
                         break;
@@ -702,9 +728,9 @@ namespace Ui
             }
         }
 
-        MainWindow_->activateFromEventLoop(MainWindow::ActivateReason::ByNotificationClick);
-        emit Utils::InterConnector::instance().closeAnyPopupMenu();
-        emit Utils::InterConnector::instance().closeAnyPopupWindow(Utils::CloseWindowInfo());
+        MainWindow_->activateFromEventLoop(reason);
+        Q_EMIT Utils::InterConnector::instance().closeAnyPopupMenu();
+        Q_EMIT Utils::InterConnector::instance().closeAnyPopupWindow(Utils::CloseWindowInfo());
         GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::alert_click);
     }
 
@@ -726,7 +752,7 @@ namespace Ui
 
     void TrayIcon::showMessage(const Data::DlgState& state, const AlertType _alertType)
     {
-        Notifications_ << state.AimId_;
+        Notifications_.push_back(state.AimId_);
 
         const auto isMail = (_alertType == AlertType::alertTypeEmail);
 #if defined (_WIN32)
@@ -819,7 +845,7 @@ namespace Ui
 
         QString ag = qsl("availableGeometry x: %1, y: %2, w: %3, h: %4 ").arg(availableGeometry.x()).arg(availableGeometry.y()).arg(availableGeometry.width()).arg(availableGeometry.height());
         QString ig = qsl("iconGeometry x: %1, y: %2, w: %3, h: %4").arg(iconGeometry.x()).arg(iconGeometry.y()).arg(iconGeometry.width()).arg(iconGeometry.height());
-        Log::trace(qsl("tray"), ag + ig);
+        Log::trace(u"tray", ag + ig);
 
         if (platform::is_linux() && iconGeometry.isEmpty())
             return TrayPosition::TOP_RIGHT;
@@ -930,24 +956,11 @@ namespace Ui
     bool TrayIcon::canShowNotificationsWin() const
     {
 #ifdef _WIN32
-        if (QSysInfo().windowsVersion() >= QSysInfo::WV_VISTA)
+        QUERY_USER_NOTIFICATION_STATE state;
+        if (SHQueryUserNotificationState(&state) == S_OK && state != QUNS_ACCEPTS_NOTIFICATIONS)
         {
-            static QueryUserNotificationState query;
-            if (!query)
-            {
-                HINSTANCE shell32 = LoadLibraryW(L"shell32.dll");
-                if (shell32)
-                {
-                    query = (QueryUserNotificationState)GetProcAddress(shell32, "SHQueryUserNotificationState");
-                }
-            }
-
-            if (query)
-            {
-                QUERY_USER_NOTIFICATION_STATE state;
-                if (query(&state) == S_OK && state != QUNS_ACCEPTS_NOTIFICATIONS)
-                    return false;
-            }
+            Log::write_network_log(su::concat("QueryUserNotificationState returned ", std::to_string((int)state)));
+            return false;
         }
 #endif //_WIN32
         return true;
@@ -967,56 +980,32 @@ namespace Ui
 
     bool TrayIcon::canShowNotifications(const NotificationType _notifType) const
     {
-        // TODO: must be based on the type of notification - is it message, birthday-notify or contact-coming-notify.
-
-        const auto paramName = _notifType == NotificationType::email
-                ? settings_notify_new_mail_messages
-                : settings_notify_new_messages;
+        const auto isMail = _notifType == NotificationType::email;
+        const auto paramName = isMail ? settings_notify_new_mail_messages : settings_notify_new_messages;
         if (!get_gui_settings()->get_value<bool>(paramName, true))
             return false;
 
-        if (_notifType == NotificationType::email && !getUrlConfig().isMailConfigPresent())
+        if (isMail && !getUrlConfig().isMailConfigPresent())
             return false;
 
-#ifdef _WIN32
-        if (QSysInfo().windowsVersion() == QSysInfo::WV_XP)
-        {
-            static QuerySystemParametersInfo query;
-            if (!query)
-            {
-                HINSTANCE user32 = LoadLibraryW(L"user32.dll");
-                if (user32)
-                {
-                    query = (QuerySystemParametersInfo)GetProcAddress(user32, "SystemParametersInfoW");
-                }
-            }
+#ifdef __linux__
+        static const bool trayCanShowMessages = systemTrayIcon_->isSystemTrayAvailable() && systemTrayIcon_->supportsMessages();
+#else
+        const bool trayCanShowMessages = systemTrayIcon_->isSystemTrayAvailable() && systemTrayIcon_->supportsMessages();
+#endif
 
-            if (query)
-            {
-                BOOL result = FALSE;
-                if (query(SPI_GETSCREENSAVERRUNNING, 0, &result, 0) && result)
-                    return false;
-            }
-        }
-        else
-        {
-            if (!canShowNotificationsWin())
-                return false;
-        }
+        const bool uiActive = isMail ? false : MainWindow_->isUIActive();
 
-        if (_notifType == NotificationType::email)
-            return systemTrayIcon_->isSystemTrayAvailable() && systemTrayIcon_->supportsMessages();
-
-#endif //_WIN32
 #ifdef __APPLE__
-        if (_notifType == NotificationType::email)
+        if (isMail)
             return get_gui_settings()->get_value<bool>(settings_notify_new_mail_messages, true);
 
-        return systemTrayIcon_->isSystemTrayAvailable() && systemTrayIcon_->supportsMessages() && (!MainWindow_->isUIActive() || MacSupport::previewIsShown());
+        return trayCanShowMessages && (!uiActive || MacSupport::previewIsShown());
 #else
-        static bool trayAvailable = systemTrayIcon_->isSystemTrayAvailable();
-        static bool msgsSupport = systemTrayIcon_->supportsMessages();
-        return _notifType != NotificationType::email && trayAvailable && msgsSupport && !MainWindow_->isUIActive();
+        if (platform::is_windows() && !canShowNotificationsWin())
+            return false;
+
+        return trayCanShowMessages && !uiActive;
 #endif
     }
 
@@ -1043,9 +1032,11 @@ namespace Ui
         connect(Logic::getContactListModel(), &Logic::ContactListModel::contactChanged, this, &TrayIcon::updateIconIfNeeded, Qt::QueuedConnection);
         connect(Logic::getContactListModel(), &Logic::ContactListModel::selectedContactChanged, this, &TrayIcon::clearNotifications, Qt::QueuedConnection);
         connect(Logic::getContactListModel(), &Logic::ContactListModel::contact_removed, this, &TrayIcon::clearNotifications, Qt::QueuedConnection);
+
+        forceUpdateIcon();
     }
 
-    void TrayIcon::loggedOut(const bool)
+    void TrayIcon::loggedOut()
     {
         resetState();
     }

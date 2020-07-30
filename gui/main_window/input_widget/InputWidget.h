@@ -5,6 +5,7 @@
 #include "animation/animation.h"
 
 #include "InputWidgetUtils.h"
+#include "FileToSend.h"
 
 namespace Emoji
 {
@@ -24,6 +25,11 @@ namespace ptt
     enum class State2;
 }
 
+namespace Utils
+{
+    class CallLinkCreator;
+}
+
 namespace Ui
 {
     class MentionCompleter;
@@ -34,7 +40,7 @@ namespace Ui
     class QuotesWidget;
 
     class InputPanelMain;
-    class InputPanelBanned;
+    class InputPanelDisabled;
     class InputPanelReadonly;
     class InputPanelPtt;
     class InputPanelMultiselect;
@@ -46,14 +52,15 @@ namespace Ui
     class SelectContactsWidget;
 
     enum class ReadonlyPanelState;
-    enum class BannedPanelState;
+    enum class DisabledPanelState;
     enum class ClickType;
+    enum class ConferenceType;
 
     enum class InputView
     {
         Default,
         Readonly,
-        Banned,
+        Disabled,
         Edit,
         Ptt,
         Multiselect,
@@ -71,9 +78,8 @@ namespace Ui
         Data::MentionMap mentions_;
         Data::FilesPlaceholderMap files_;
 
-        QPixmap imageBuffer_;
+        FilesToSend filesToSend_;
         QString description_;
-        QStringList filesToSend_;
 
         struct
         {
@@ -90,11 +96,12 @@ namespace Ui
         std::vector<InputView> viewHistory_;
         int mentionSignIndex_ = -1;
 
+        bool msgHistoryReady_ = false;
+
         void clear(const InputView _newView = InputView::Default)
         {
             quotes_.clear();
             mentions_.clear();
-            imageBuffer_ = QPixmap();
             filesToSend_.clear();
             description_.clear();
             edit_.message_.reset();
@@ -110,7 +117,7 @@ namespace Ui
 
         bool isDisabled() const noexcept
         {
-            return view_ == InputView::Banned || view_ == InputView::Readonly;
+            return view_ == InputView::Disabled || view_ == InputView::Readonly;
         }
 
         bool hasQuotes() const
@@ -146,6 +153,8 @@ namespace Ui
         void hideSuggets();
         void resized();
         void needClearQuotes();
+        void quotesDropped(QPrivateSignal) const;
+        void quotesAdded(QPrivateSignal) const;
 
     public:
         void quote(const Data::QuotesVec& _quotes);
@@ -156,16 +165,30 @@ namespace Ui
         void insertMention(const QString& _aimId, const QString& _friendly);
         void messageIdsFetched(const QString& _aimId, const Data::MessageBuddies&);
 
+        void onHistoryReady(const QString& _contact);
+        void onHistoryCleared(const QString& _contact);
+        void onHistoryInsertedMessages(const QString& _contact);
+
         enum class CursorPolicy
         {
             Keep,
             Set,
         };
         void mentionOffer(const int _position, const CursorPolicy _policy);
-        void requestSuggests();
+        void requestMoreStickerSuggests();
 
     public Q_SLOTS:
         void clearInputText();
+
+    private:
+        enum class InstantEdit
+        {
+            No,
+            Yes
+        };
+
+        void send(InstantEdit _mode = InstantEdit::No);
+        void sendPiece(const QStringRef& _msg, InstantEdit _mode = InstantEdit::No);
 
     private Q_SLOTS:
         void textChanged();
@@ -174,10 +197,6 @@ namespace Ui
         void cursorPositionChanged();
         void inputPositionChanged();
         void enterPressed();
-
-        void send();
-        void sendPiece(const QStringRef& _msg);
-
         void clearQuotes();
         void clearFiles();
         void clearEdit();
@@ -205,7 +224,8 @@ namespace Ui
         void multiselectChanged();
         void onRecvPermitDeny();
 
-        void onRequestedSuggests(const std::vector<Data::SmartreplySuggest>& _suggests);
+        void onRequestedStickerSuggests(const QVector<QString>& _suggests);
+        void onQuotesHeightChanged();
 
     public:
         InputWidget(QWidget* _parent, BackgroundWidget* _bg);
@@ -225,7 +245,8 @@ namespace Ui
             const Data::QuotesVec& _quotes,
             qint32 _time,
             const Data::FilesPlaceholderMap& _files,
-            MediaType _mediaType);
+            MediaType _mediaType,
+            bool _instantEdit);
 
         void editWithCaption(
             const int64_t _msgId,
@@ -233,10 +254,12 @@ namespace Ui
             const common::tools::patch_version& _patchVersion,
             const QString& _url,
             const QString& _description,
+            const Data::MentionMap& _mentions,
             const Data::QuotesVec& _quotes,
             qint32 _time,
             const Data::FilesPlaceholderMap& _files,
-            MediaType _mediaType);
+            MediaType _mediaType,
+            bool _instantEdit);
 
         void loadInputText();
         void setInputText(const QString& _text, int _pos = -1);
@@ -245,6 +268,7 @@ namespace Ui
         const Data::MentionMap& getInputMentions() const;
         const Data::QuotesVec& getInputQuotes();
         const Data::FilesPlaceholderMap& getInputFiles() const;
+        int getQuotesCount() const;
 
         bool isInputEmpty() const;
         bool isEditing() const;
@@ -276,6 +300,8 @@ namespace Ui
         void onAttachContact();
         void onAttachPtt();
         void onAttachPoll();
+        void onAttachCallByLink();
+        void onAttachWebinar();
 
         QRect getAttachFileButtonRect() const;
 
@@ -295,12 +321,26 @@ namespace Ui
     private:
         void updateBackgroundGeometry();
 
+        void editImpl(
+            const int64_t _msgId,
+            const QString& _internalId,
+            const common::tools::patch_version& _patchVersion,
+            const Data::QuotesVec& _quotes,
+            qint32 _time,
+            const Data::FilesPlaceholderMap& _files,
+            MediaType _mediaType,
+            InstantEdit _mode,
+            std::optional<QString> _text,
+            std::optional<Data::MentionMap> _mentions,
+            std::optional<QString> _url,
+            std::optional<QString> _description);
+
         void setEditView();
 
         bool isAllAttachmentsEmpty(const QString& _contact) const;
 
         bool shouldOfferMentions() const;
-        void requestSuggest();
+        void requestStickerSuggests();
 
         void pasteFromClipboard();
 
@@ -313,7 +353,7 @@ namespace Ui
 
         void switchToMainPanel(const StateTransition _transition);
         void switchToReadonlyPanel(const ReadonlyPanelState _state);
-        void switchToBannedPanel(const BannedPanelState _state);
+        void switchToDisabledPanel(const DisabledPanelState _state);
         void switchToPttPanel(const StateTransition _transition);
         void switchToMultiselectPanel();
 
@@ -332,7 +372,7 @@ namespace Ui
             AddToHistory,
             DontAddToHistory,
         };
-        void setView(const InputView _view, const UpdateMode _updateMode = UpdateMode::IfChanged, const SetHistoryPolicy _historyPolicy = SetHistoryPolicy::AddToHistory);
+        void setView(InputView _view, const UpdateMode _updateMode = UpdateMode::IfChanged, const SetHistoryPolicy _historyPolicy = SetHistoryPolicy::AddToHistory);
         void switchToPreviousView();
         void addViewToHistory(const InputView _view);
 
@@ -340,6 +380,8 @@ namespace Ui
         void updateSubmitButtonPos();
 
         void sendFiles(const FileSource _source = FileSource::CopyPaste);
+
+        void notifyDialogAboutSend(const QString& _contact);
 
         void sendStatsIfNeeded() const;
 
@@ -394,6 +436,11 @@ namespace Ui
 
         void processUrls() const;
 
+        void requestSmartrepliesForQuote() const;
+        bool isBot() const;
+
+        void createConference(ConferenceType _type);
+
     private:
         std::optional<PttMode> pttMode_;
 
@@ -406,7 +453,7 @@ namespace Ui
         QStackedWidget* stackWidget_;
 
         InputPanelMain* panelMain_;
-        InputPanelBanned* panelBanned_;
+        InputPanelDisabled* panelDisabled_;
         InputPanelReadonly* panelReadonly_;
         InputPanelPtt* panelPtt_;
         InputPanelMultiselect* panelMultiselect_;
@@ -435,5 +482,7 @@ namespace Ui
 
         bool suggestRequested_ = false;
         std::vector<QString> lastRequestedSuggests_;
+
+        Utils::CallLinkCreator* callLinkCreator_;
     };
 }

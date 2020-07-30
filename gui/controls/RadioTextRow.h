@@ -23,7 +23,7 @@ namespace Ui
         void setComment(const QString& _comment);
         void resetComment();
 
-    signals:
+    Q_SIGNALS:
         void clicked(const QString&, QPrivateSignal) const;
 
     protected:

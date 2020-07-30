@@ -17,7 +17,7 @@ namespace core
     {
         class mute_buddy : public wim_packet
         {
-            virtual int32_t init_request(std::shared_ptr<core::http_request_simple> _request) override;
+            virtual int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
             virtual int32_t parse_response_data(const rapidjson::Value& _data) override;
 
             std::string aimid_;

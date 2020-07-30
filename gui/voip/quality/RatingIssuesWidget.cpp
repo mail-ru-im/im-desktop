@@ -37,7 +37,7 @@ RatingIssuesWidget::RatingIssuesWidget(const ShowQualityReasonsPopupConfig& _con
     br_options.bodyMargins_ = QMargins(Utils::scale_value(16), Utils::scale_value(12), Utils::scale_value(16), Utils::scale_value(20));
 
     title_ = new TextBrowserEx(br_options, this);
-    title_->setHtml(ql1s("<body>") % _config.surveyTitle() % ql1s("</body>"));
+    title_->setHtml(u"<body>" % _config.surveyTitle() % u"</body>");
     title_->setFixedWidth(Utils::scale_value(DIALOG_WIDTH));
 
     const auto& metrics = Utils::evaluateTextHeightMetrics(_config.surveyTitle(),
@@ -52,8 +52,6 @@ RatingIssuesWidget::RatingIssuesWidget(const ShowQualityReasonsPopupConfig& _con
     title_->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     title_->setAlignment(Qt::AlignLeft);
     title_->setContextMenuPolicy(Qt::ContextMenuPolicy::NoContextMenu);
-
-    Testing::setAccessibleName(title_, qsl("AS title_"));
 
     scrollArea_ = CreateScrollAreaAndSetTrScrollBarV(this);
     scrollArea_->setContentsMargins(0, 0, 0, 0);
@@ -92,7 +90,7 @@ RatingIssuesWidget::RatingIssuesWidget(const ShowQualityReasonsPopupConfig& _con
     reasonsList_->setSeparators(separatorIndexes);
     reasonsList_->setScrollAreaHeight(scrollArea_->size().height());
 
-    scrollArea_->setStyleSheet(ql1s("background-color: ") % Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE) % ql1s("; border: none;"));
+    scrollArea_->setStyleSheet(u"background-color: " % Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE) % u"; border: none;");
     scrollArea_->setWidget(reasonsList_);
 
     globalLayout_->addWidget(title_);

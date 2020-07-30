@@ -35,7 +35,7 @@ namespace Ui
         , frameCountMode_(FrameCountMode::_1)
     {
         semiWindow_->hide();
-        Testing::setAccessibleName(semiWindow_, qsl("AS sb semiWindow_"));
+        Testing::setAccessibleName(semiWindow_, qsl("AS Sidebar semiWindow"));
 
         setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Preferred);
         setAttribute(Qt::WA_NoMousePropagation);
@@ -133,15 +133,14 @@ namespace Ui
             hide();
     }
 
-    void Sidebar::preparePage(const QString& aimId, bool _selectionChanged, bool _shared_profile)
+    void Sidebar::preparePage(const QString& aimId, SidebarParams _params, bool _selectionChanged)
     {
         auto index = Utils::isChat(aimId) ? group_profile : user_profile;
         auto page = pages_[index];
         const auto selectedContact = Logic::getContactListModel()->selectedContact();
         page->setPrev(_selectionChanged || aimId == selectedContact || currentAimId_ == aimId ? QString() : currentAimId_);
 
-        page->initFor(!aimId.isEmpty() ? aimId : selectedContact);
-        page->setSharedProfile(_shared_profile);
+        page->initFor(!aimId.isEmpty() ? aimId : selectedContact, std::move(_params));
         setCurrentIndex(index);
         currentAimId_ = !aimId.isEmpty() ? aimId : selectedContact;
 

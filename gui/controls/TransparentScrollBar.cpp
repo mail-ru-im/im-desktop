@@ -55,7 +55,7 @@ namespace Ui
         {
             timer_ = new QTimer(this);
             timer_->setSingleShot(true);
-            timer_->setInterval(disappearTime.count());
+            timer_->setInterval(disappearTime);
             connect(timer_, &QTimer::timeout, this, &TransparentAnimation::fadeOut);
 
             timer_->start();
@@ -80,7 +80,7 @@ namespace Ui
     void TransparentAnimation::fadeIn()
     {
         if (timer_)
-            timer_->start(disappearTime.count());
+            timer_->start(disappearTime);
 
         fadeAnimation_->stop();
         fadeAnimation_->setDuration(fadeInTime.count());
@@ -94,7 +94,7 @@ namespace Ui
         if (timer_)
             timer_->stop();
 
-        emit fadeOutStarted();
+        Q_EMIT fadeOutStarted();
         fadeAnimation_->stop();
         fadeAnimation_->setDuration(fadeOutTime.count());
         fadeAnimation_->setStartValue(opacityEffect_->opacity());
@@ -133,7 +133,7 @@ namespace Ui
 
     void TransparentScrollButton::mouseMoveEvent(QMouseEvent *event)
     {
-        emit moved(event->globalPos());
+        Q_EMIT moved(event->globalPos());
     }
 
     void TransparentScrollButton::fadeIn()
@@ -313,6 +313,7 @@ namespace Ui
     TransparentScrollBar::TransparentScrollBar()
         : QWidget(nullptr, Qt::FramelessWindowHint)
         , view_(nullptr)
+        , scrollBar_(nullptr)
         , transparentAnimation_(new TransparentAnimation(minOpacity, maxOpacity, this))
     {
         setAttribute(Qt::WA_TranslucentBackground);
@@ -895,7 +896,7 @@ namespace Ui
     void ScrollAreaWithTrScrollBar::resizeEvent(QResizeEvent *event)
     {
         QScrollArea::resizeEvent(event);
-        emit resized();
+        Q_EMIT resized();
     }
 
     void ScrollAreaWithTrScrollBar::updateGeometry()
@@ -1045,10 +1046,10 @@ namespace Ui
         , rescheduleLayoutTimer_(new QTimer(this))
     {
         rescheduleLayoutTimer_->setSingleShot(true);
-        rescheduleLayoutTimer_->setInterval(layoutReschedInterval.count());
+        rescheduleLayoutTimer_->setInterval(layoutReschedInterval);
 
         connect(rescheduleLayoutTimer_, &QTimer::timeout, this, &FocusableListView::scheduleDelayedItemsLayout);
-        connect(this, &QListView::pressed, this, Utils::QOverload<const QModelIndex&>::of(&QListView::update));
+        connect(this, &QListView::pressed, this, qOverload<const QModelIndex&>(&QListView::update));
     }
 
     void FocusableListView::setSelectByMouseHover(const bool _enabled)
@@ -1070,14 +1071,14 @@ namespace Ui
     {
         QListView::enterEvent(_e);
         if (platform::is_apple() && !FlatMenu::shown())
-            emit Utils::InterConnector::instance().forceRefreshList(model(), true);
+            Q_EMIT Utils::InterConnector::instance().forceRefreshList(model(), true);
     }
 
     void FocusableListView::leaveEvent(QEvent *_e)
     {
         QListView::leaveEvent(_e);
         if (platform::is_apple() && !FlatMenu::shown())
-            emit Utils::InterConnector::instance().forceRefreshList(model(), false);
+            Q_EMIT Utils::InterConnector::instance().forceRefreshList(model(), false);
 
         if (selectByMouseHoverEnabled_)
         {
@@ -1107,7 +1108,7 @@ namespace Ui
 
         updateSelectionUnderCursor(_e->pos());
 
-        emit wheeled();
+        Q_EMIT wheeled();
     }
 
     void FocusableListView::resizeEvent(QResizeEvent * e)
@@ -1134,7 +1135,7 @@ namespace Ui
             selectItem(index);
         updateCursor(index);
 
-        emit mousePosChanged(_pos, index);
+        Q_EMIT mousePosChanged(_pos, index);
     }
 
     void FocusableListView::selectItem(const QModelIndex& _index)

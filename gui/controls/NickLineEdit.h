@@ -87,7 +87,7 @@ namespace Ui
         void retryLastServerRequest();
         void moveCursorToTheEnd();
 
-        QString makeHtml(const QString& _fixed, const QString& _text);
+        QString makeHtml(QStringView _fixed, QStringView _text);
 
     private:
         QString originNick_;

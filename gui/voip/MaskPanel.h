@@ -17,16 +17,16 @@ namespace Ui
 
     public:
 
-        MaskWidget(const voip_masks::Mask* mask);
+        MaskWidget(voip_masks::Mask* mask);
 
-        QString maskPath();
+        const QString& maskPath() const;
 
         void setPixmap(const QPixmap& image);
-        QPixmap pixmap();
+        const QPixmap& pixmap() const;
         void setChecked(bool check);
-        bool isEmptyMask();
-        bool isLoaded();
-        const QString& name();
+        bool isEmptyMask() const;
+        bool isLoaded() const;
+        const QString& name() const;
 
         void setXPos(int x);
         void setYPos(int x);
@@ -34,8 +34,8 @@ namespace Ui
         void setYCenter(int y);
         void setXCenter(int y);
 
-        int  yCenter();
-        int  xCenter();
+        int  yCenter() const;
+        int  xCenter() const;
 
         void updateSize();
 
@@ -44,10 +44,10 @@ namespace Ui
     Q_SIGNALS:
         void loaded();
 
-    public slots:
+    public Q_SLOTS:
         void setMaskEngineReady(bool ready);
 
-    protected slots:
+    protected Q_SLOTS:
         void updatePreview();
         void updateJsonPath();
         void updateLoadingProgress(unsigned);
@@ -60,7 +60,7 @@ namespace Ui
         QPixmap image_;
         QString maskPath_;
         QString name_;
-        const voip_masks::Mask* mask_;
+        QPointer<voip_masks::Mask> mask_;
         float loadingProgress_;
         bool maskEngineReady_;
         bool applyWhenEnebled_;
@@ -123,7 +123,7 @@ namespace Ui
     protected Q_SLOTS:
 
         void showMaskList();
-        MaskWidget* appendItem(const voip_masks::Mask* mask);
+        MaskWidget* appendItem(voip_masks::Mask* mask);
         void changedMask();
         void scrollListUp();
         void scrollListDown();
@@ -155,7 +155,7 @@ namespace Ui
 
         // Enumirate all masks. First mask is empty mask.
         void enumerateMask(std::function<void(MaskWidget* mask)> func);
-        
+
         void updateMaskList();
 
         void updatePosition(const QWidget& parent) override;

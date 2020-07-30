@@ -270,7 +270,7 @@ namespace Ui
 
     void NotificationCenterManager::themeChanged()
     {
-        emit osxThemeChanged();
+        Q_EMIT osxThemeChanged();
     }
 
     void NotificationCenterManager::setScreenLocked(const bool _locked)
@@ -312,7 +312,7 @@ namespace Ui
     {
         Utils::InterConnector::instance().getMainWindow()->closeGallery();
 
-        emit messageClicked(aimId, mailId, messageId.toLongLong(), string2AlertType(alertType));
+        Q_EMIT messageClicked(aimId, mailId, messageId.toLongLong(), string2AlertType(alertType));
 
         HideNotifications(aimId);
     }

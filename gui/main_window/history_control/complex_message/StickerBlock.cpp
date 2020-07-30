@@ -117,7 +117,7 @@ void StickerBlock::requestPinPreview()
                     auto unused = false;
                     auto image = sticker->getImage(getStickerSize(), false, unused);
 
-                    emit getParentComplexMessage()->pinPreview(QPixmap::fromImage(image));
+                    Q_EMIT getParentComplexMessage()->pinPreview(QPixmap::fromImage(image));
                 }
             }
             disconnect(*conn);
@@ -284,7 +284,7 @@ bool StickerBlock::clicked(const QPoint& _p)
     if (!rect().contains(mappedPoint))
         return true;
 
-    emit Utils::InterConnector::instance().stopPttRecord();
+    Q_EMIT Utils::InterConnector::instance().stopPttRecord();
     Stickers::showStickersPack(Info_->SetId_, Stickers::StatContext::Chat);
 
     if (auto pack = Stickers::getSet(Info_->SetId_); pack && !pack->isPurchased())
@@ -293,12 +293,12 @@ bool StickerBlock::clicked(const QPoint& _p)
     return true;
 }
 
-QString StickerBlock::getStickerId() const
+Data::StickerId StickerBlock::getStickerId() const
 {
     if (!Info_)
-        return QString();
+        return {};
 
-    return ql1s("ext:") % QString::number(Info_->SetId_) % ql1s(":sticker:") % QString::number(Info_->StickerId_);
+    return Data::StickerId(Info_->SetId_, Info_->StickerId_);
 }
 
 UI_COMPLEX_MESSAGE_NS_END

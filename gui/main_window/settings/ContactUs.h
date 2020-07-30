@@ -10,6 +10,9 @@ namespace Ui
     class TextEmojiWidget;
     class RotatingSpinner;
     class ProgressAnimation;
+    class CommonInputContainer;
+    class TextEditInputContainer;
+    class ScrollAreaWithTrScrollBar;
 
     class AttachFileWidget : public QWidget
     {
@@ -21,7 +24,9 @@ namespace Ui
         void clearFileList();
     private:
         QWidget* attachWidget_;
+        QWidget* errorWidget_;
         QVBoxLayout* attachLayout_;
+        QVBoxLayout* filesLayout_;
         TextEmojiWidget* attachSizeError_;
         std::map<QString, QString> filesToSend_;
         double totalFileSize_;
@@ -35,6 +40,7 @@ namespace Ui
         Q_OBJECT
     public:
         GetDebugInfoWidget(QWidget* _parent = nullptr);
+        void reset();
 
     private:
         void onClick();
@@ -50,6 +56,12 @@ namespace Ui
         QTimer* checkTimer_;
     };
 
+    enum class ClearData
+    {
+        No,
+        Yes,
+    };
+
     class ContactUsWidget : public QWidget
     {
         Q_OBJECT
@@ -59,17 +71,23 @@ namespace Ui
         AttachFileWidget* attachWidget_;
         QComboBox* dropper_;
         QString selectedProblem_;
-        TextEditEx* suggestioner_;
-        LineEditEx* email_;
+        TextEditInputContainer* suggestioner_;
+        CommonInputContainer* email_;
         DialogButton* sendButton_;
         GetDebugInfoWidget* debugInfoWidget_;
 
         TextEmojiWidget* suggestionSizeError_;
         TextEmojiWidget* emailError_;
+        QWidget* sendWidget_;
         TextEmojiWidget* errorOccuredSign_;
+        QWidget*         errorOccuredWidget_;
         RotatingSpinner* sendSpinner_;
+        ScrollAreaWithTrScrollBar* scrollArea_;
+        QWidget* mainWidget_;
 
         bool hasProblemDropper_;
+        bool isPlain_;
+        QTimer* timeoutTimer_;
         enum class State
         {
             Feedback,
@@ -77,7 +95,12 @@ namespace Ui
         };
 
     public:
-        ContactUsWidget(QWidget* _parent);
+        ContactUsWidget(QWidget* _parent, bool _isPlain = false);
+        void resetState(ClearData _mode = ClearData::No);
+    protected:
+        void resizeEvent(QResizeEvent* _event) override;
+        void focusInEvent(QFocusEvent* _event) override;
+        bool eventFilter(QObject* _obj, QEvent* _event) override;
     private:
         void init();
         void initFeedback();
@@ -86,7 +109,11 @@ namespace Ui
         void setState(const ContactUsWidget::State& _state);
         void sendFeedback();
 
-        void updateSuggesionHeight();
-        void updateSendButton(bool _state);
+        enum class ErrorReason
+        {
+            Feedback,
+            Email
+        };
+        void showError(ErrorReason _reason);
     };
 }

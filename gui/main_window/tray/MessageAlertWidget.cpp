@@ -15,9 +15,9 @@ namespace Ui
         return Utils::scale_value(376);
     }
 
-    bool isMail(const Data::DlgState& _state)
+    static bool isMail(const Data::DlgState& _state)
     {
-        return _state.AimId_ == ql1s("mail");
+        return _state.AimId_ == u"mail";
     }
 
     std::unique_ptr<RecentItemBase> createItem(const Data::DlgState& _state)
@@ -107,9 +107,9 @@ namespace Ui
     {
         e->accept();
         if (e->button() == Qt::RightButton)
-            emit closed(id(), mailId(), mentionId());
+            Q_EMIT closed(id(), mailId(), mentionId());
         else
-            emit clicked(id(), mailId(), mentionId());
+            Q_EMIT clicked(id(), mailId(), mentionId());
     }
 
     void MessageAlertWidget::avatarChanged(const QString& aimId)

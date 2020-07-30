@@ -68,14 +68,16 @@ namespace Ui
         DialogButton* addAcceptButton(const QString& _buttonText, const bool _isEnabled);
         DialogButton* addCancelButton(const QString& _buttonText, const bool _setActive = false);
         QPair<DialogButton* /* ok (right) button */, DialogButton* /* cancel (left) button */>
-        addButtonsPair(const QString& _buttonTextLeft, const QString& _buttonTextRight, bool _isActive, bool _rejectable = true, bool _acceptable = true, QWidget* _area = nullptr, const DialogButtonShape _shape = DialogButtonShape::DEFAULT);
+        addButtonsPair(const QString& _buttonTextLeft, const QString& _buttonTextRight, bool _isActive, bool _rejectable = true, bool _acceptable = true, QWidget* _area = nullptr);
         void setButtonsAreaMargins(const QMargins& _margins);
 
+        DialogButton* getAcceptButton() const noexcept { return nextButton_; };
         DialogButton* takeAcceptButton();
         void setAcceptButtonText(const QString& _text);
 
-        void addLabel(const QString& _text);
+        void addLabel(const QString& _text, Qt::Alignment _alignment = Qt::AlignTop | Qt::AlignLeft, int maxLinesNumber = -1);
         void addText(const QString& _messageText, int _upperMarginPx);
+        void addText(const QString& _messageText, int _upperMarginPx, const QFont& _font, const QColor& _color);
         void addError(const QString& _messageText);
 
         inline void setShadow(bool b) { shadow_ = b; }

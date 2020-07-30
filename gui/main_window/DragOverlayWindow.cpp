@@ -5,6 +5,7 @@
 #include "MainWindow.h"
 #include "FilesWidget.h"
 
+#include "history_control/HistoryControlPage.h"
 #include "input_widget/InputWidget.h"
 #include "contact_list/ContactListModel.h"
 #include "utils/utils.h"
@@ -66,7 +67,7 @@ namespace Ui
         setAttribute(Qt::WA_TranslucentBackground);
         setAcceptDrops(true);
 
-        dragMouseoverTimer_.setInterval(dragActivateDelay().count());
+        dragMouseoverTimer_.setInterval(dragActivateDelay());
         dragMouseoverTimer_.setSingleShot(true);
         connect(&dragMouseoverTimer_, &QTimer::timeout, this, &DragOverlayWindow::onTimer);
     }
@@ -98,11 +99,7 @@ namespace Ui
         painter.setPen(Qt::NoPen);
         painter.setRenderHint(QPainter::Antialiasing);
 
-        static const QColor overlayColor = []() {
-            auto c = Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE);
-            c.setAlphaF(0.98);
-            return c;
-        }();
+        static const QColor overlayColor = Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE, 0.98);
 
         painter.fillRect(rect(), overlayColor);
 
@@ -150,12 +147,11 @@ namespace Ui
             const QList<QUrl> urlList = mimeData->urls();
 
             QString contact = Logic::getContactListModel()->selectedContact();
-            QStringList files;
-            QImage image;
+            FilesToSend files;
 
             if (mimeDataWithImage)
             {
-                image = Utils::getImageFromMimeData(mimeData);
+                files.emplace_back(QPixmap::fromImage(Utils::getImageFromMimeData(mimeData)));
             }
             else
             {
@@ -168,7 +164,7 @@ namespace Ui
                         QFileInfo info(url.toLocalFile());
                         const bool canDrop = !(info.isBundle() || info.isDir() || info.size() == 0);
                         if (canDrop)
-                            files << url.toLocalFile();
+                            files.emplace_back(std::move(info));
                     }
                     else if (url.isValid())
                     {
@@ -178,7 +174,7 @@ namespace Ui
                         if (sendQuotesOnce && !quotes.isEmpty())
                         {
                             GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::quotes_messagescount, { { "Quotes_MessagesCount", std::to_string(quotes.size()) } });
-                            emit Utils::InterConnector::instance().getContactDialog()->getInputWidget()->needClearQuotes();
+                            Q_EMIT Utils::InterConnector::instance().getContactDialog()->getInputWidget()->needClearQuotes();
                         }
 
                         sendQuotesOnce = false;
@@ -186,7 +182,8 @@ namespace Ui
                 }
             }
 
-            emit Utils::InterConnector::instance().hideSmartReplies(contact);
+            if (auto page = Utils::InterConnector::instance().getHistoryPage(contact))
+                page->hideSmartreplies();
 
             auto inputWidget = Utils::InterConnector::instance().getContactDialog()->getInputWidget();
             auto inputText = inputWidget->getInputText();
@@ -197,16 +194,75 @@ namespace Ui
             QTimer::singleShot(100, this, [this,
                 files = std::move(files),
                 contact = std::move(contact),
-                image = std::move(image),
                 inputText = std::move(inputText),
                 inputMentions = std::move(inputMentions)]()
             {
                 const auto& quotes = Utils::InterConnector::instance().getContactDialog()->getInputWidget()->getInputQuotes();
                 bool mayQuotesSent = false;
 
+                const auto sendFiles = [this, &contact, &mayQuotesSent, &quotes](const FilesToSend& _files, const QString& desc, const Data::MentionMap& descMentions)
+                {
+                    if (_files.empty())
+                        return;
+
+                    auto descriptionInside = false;
+                    if (_files.size() == 1)
+                    {
+                        if (_files.front().isFile())
+                        {
+                            const auto suffix = _files.front().getFileInfo().suffix();
+                            descriptionInside = Utils::is_image_extension(suffix) || Utils::is_video_extension(suffix);
+                        }
+                        else
+                        {
+                            descriptionInside = true;
+                        }
+                    }
+
+                    if (!desc.isEmpty() && !descriptionInside)
+                    {
+                        Ui::GetDispatcher()->sendMessageToContact(contact, desc, quotes, descMentions);
+                        mayQuotesSent = true;
+                    }
+
+                    auto sendQuotesOnce = !mayQuotesSent;
+                    for (const auto& f : _files)
+                    {
+                        if (f.isFile())
+                        {
+                            const auto& fi = f.getFileInfo();
+                            if (fi.size() == 0)
+                                continue;
+
+                            Ui::GetDispatcher()->uploadSharedFile(contact, fi.absoluteFilePath(), sendQuotesOnce ? quotes : Data::QuotesVec(), descriptionInside ? desc : QString(), descriptionInside ? descMentions : Data::MentionMap());
+                        }
+                        else
+                        {
+                            QByteArray array;
+                            QBuffer b(&array);
+                            b.open(QIODevice::WriteOnly);
+                            f.getPixmap().save(&b, "png");
+
+                            Ui::GetDispatcher()->uploadSharedFile(contact, array, u".png", quotes, desc, descMentions);
+                        }
+
+                        Parent_->onSendMessage(contact);
+                        if (sendQuotesOnce)
+                        {
+                            mayQuotesSent = true;
+                            sendQuotesOnce = false;
+                        }
+                    }
+
+                    const core::stats::event_props_type props = { { "chat_type", Utils::chatTypeByAimId(contact) }, { "count", _files.size() > 1 ? "multi" : "single" }, { "type", "dndchat" } };
+                    Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::chatscr_sendmedia_action, props);
+                    if (!desc.isEmpty())
+                        Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::chatscr_sendmediawcapt_action, props);
+                };
+
                 if (top_)
                 {
-                    auto filesWidget = new FilesWidget(this, files, QPixmap::fromImage(image));
+                    auto filesWidget = new FilesWidget(this, files);
 
                     GeneralDialog::Options options;
                     options.preferredSize_.setWidth(filesWidget->width());
@@ -219,109 +275,19 @@ namespace Ui
                     filesWidget->setFocusOnInput();
 
                     if (generalDialog.showInCenter())
-                    {
-                        const auto desc = filesWidget->getDescription();
-                        const auto& descMentions = filesWidget->getMentions();
-                        const auto newFiles = filesWidget->getFiles();
-                        int amount = 0;
-
-                        if (!image.isNull())
-                        {
-                            amount = 1;
-
-                            QByteArray array;
-                            QBuffer b(&array);
-                            b.open(QIODevice::WriteOnly);
-                            image.save(&b, "png");
-
-                            Ui::GetDispatcher()->uploadSharedFile(contact, array, qsl(".png"), quotes, desc, descMentions);
-                            Parent_->onSendMessage(contact);
-                            mayQuotesSent = true;
-                        }
-                        else if (!newFiles.empty())
-                        {
-                            amount = newFiles.size();
-
-                            auto descriptionInside = false;
-                            if (amount == 1)
-                            {
-                                QFileInfo f(newFiles.front());
-                                descriptionInside = Utils::is_image_extension(f.suffix()) || Utils::is_video_extension(f.suffix());
-                            }
-
-                            if (!desc.isEmpty() && !descriptionInside)
-                            {
-                                Ui::GetDispatcher()->sendMessageToContact(contact, desc, quotes, descMentions);
-                                mayQuotesSent = true;
-                            }
-
-                            auto sendQuotesOnce = !mayQuotesSent;
-                            for (const auto& f : newFiles)
-                            {
-                                const QFileInfo fileInfo(f);
-                                if (fileInfo.size() == 0)
-                                    continue;
-
-                                Ui::GetDispatcher()->uploadSharedFile(contact, f, sendQuotesOnce ? quotes : Data::QuotesVec(), descriptionInside ? desc : QString(), descriptionInside ? descMentions : Data::MentionMap());
-                                Parent_->onSendMessage(contact);
-                                if (sendQuotesOnce)
-                                {
-                                    mayQuotesSent = true;
-                                    sendQuotesOnce = false;
-                                }
-
-                            }
-                        }
-
-                        if (amount > 0)
-                        {
-                            Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::chatscr_sendmedia_action, { { "chat_type", Utils::chatTypeByAimId(contact) }, { "count", amount > 1 ? "multi" : "single" }, { "type", "dndchat" } });
-                            if (!desc.isEmpty())
-                                Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::chatscr_sendmediawcapt_action, { { "chat_type", Utils::chatTypeByAimId(contact) }, { "count", amount > 1 ? "multi" : "single" }, { "type", "dndchat"} });
-                        }
-                    }
+                        sendFiles(filesWidget->getFiles(), filesWidget->getDescription(), filesWidget->getMentions());
                     else if (!inputText.isEmpty())
-                    {
                         Utils::InterConnector::instance().getContactDialog()->getInputWidget()->setInputText(inputText);
-                    }
                 }
                 else
                 {
-                    if (!files.isEmpty())
-                    {
-                        auto sendQuotesOnce = true;
-                        for (const auto& f : files)
-                        {
-                            const QFileInfo fileInfo(f);
-                            if (fileInfo.size() == 0)
-                                continue;
-
-                            Ui::GetDispatcher()->uploadSharedFile(contact, f, sendQuotesOnce ? quotes : Data::QuotesVec());
-                            Parent_->onSendMessage(contact);
-                            sendQuotesOnce = false;
-                            mayQuotesSent = true;
-                        }
-
-                        Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::chatscr_sendmedia_action, { { "chat_type", Utils::chatTypeByAimId(contact) }, { "count", files.size() > 1 ? "multi" : "single" }, { "type", "dndchat" } });
-                    }
-                    else if (!image.isNull())
-                    {
-                        QByteArray imageData;
-                        QBuffer buffer(&imageData);
-                        buffer.open(QIODevice::WriteOnly);
-                        image.save(&buffer, "png");
-
-                        Ui::GetDispatcher()->uploadSharedFile(contact, imageData, qsl(".png"), quotes);
-                        Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::chatscr_sendmedia_action, { { "chat_type", Utils::chatTypeByAimId(contact) }, { "count", "single" }, { "type", "dndchat" } });
-                        Parent_->onSendMessage(contact);
-                        mayQuotesSent = true;
-                    }
+                    sendFiles(files, QString(), {});
                 }
 
                 if (mayQuotesSent && !quotes.isEmpty())
                 {
                     GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::quotes_messagescount, { { "Quotes_MessagesCount", std::to_string(quotes.size()) } });
-                    emit Utils::InterConnector::instance().getContactDialog()->getInputWidget()->needClearQuotes();
+                    Q_EMIT Utils::InterConnector::instance().getContactDialog()->getInputWidget()->needClearQuotes();
                 }
             });
         }

@@ -7,7 +7,6 @@
 #include "../../main_window/MainWindow.h"
 #include "../../utils/InterConnector.h"
 #include "../../styles/ThemeParameters.h"
-#include "../../app_config.h"
 
 struct MacTitlebarPrivate
 {
@@ -34,19 +33,15 @@ void MacTitlebar::setup()
     if (!mainWindow_ || !d->nativeWindow_)
         return;
 
-    bool yosemiteOrLater = @available(macOS 10.10, *); //osx 10.10+
-
     auto gp = mainWindow_->geometry();
-    if (yosemiteOrLater)
-        [d->nativeWindow_ setTitleVisibility: NSWindowTitleHidden];
+    [d->nativeWindow_ setTitleVisibility: NSWindowTitleHidden];
 
     auto g = mainWindow_->geometry();
     auto shift = (g.bottom() - gp.bottom()) - (g.top() - gp.top());
     g.setHeight(g.height() - shift);
     mainWindow_->setGeometry(g);
 
-    if (yosemiteOrLater)
-        initWindowTitle();
+    initWindowTitle();
 }
 
 void MacTitlebar::initWindowTitle()
@@ -104,11 +99,7 @@ void MacTitlebar::updateTitleBgColor()
 {
     if (d->nativeWindow_)
     {
-        const auto var = Ui::GetAppConfig().hasCustomDeviceId() ? Styling::StyleVariable::SECONDARY_RAINBOW_WARM : Styling::StyleVariable::APP_PRIMARY;
-        const auto color = Styling::getParameters().getColor(var);
-
-        if (!@available(macOS 10.12, *))
-            [d->nativeWindow_ setStyleMask:[d->nativeWindow_ styleMask] | NSTexturedBackgroundWindowMask];
+        const auto color = Styling::getParameters().getAppTitlebarColor();
 
         d->nativeWindow_.backgroundColor = [NSColor
                 colorWithCalibratedRed: color.redF()

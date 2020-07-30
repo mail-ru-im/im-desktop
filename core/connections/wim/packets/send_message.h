@@ -1,9 +1,7 @@
-#ifndef __WIM_SEND_MESSAGE_H_
-#define __WIM_SEND_MESSAGE_H_
-
 #pragma once
 
 #include "../wim_packet.h"
+#include "smartreply/smartreply_marker.h"
 
 namespace core
 {
@@ -34,9 +32,9 @@ namespace core
     {
         class send_message : public wim_packet
         {
-            virtual int32_t init_request(std::shared_ptr<core::http_request_simple> _request) override;
+            virtual int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
             virtual int32_t parse_response_data(const rapidjson::Value& _data) override;
-            virtual int32_t execute_request(std::shared_ptr<core::http_request_simple> _request) override;
+            virtual int32_t execute_request(const std::shared_ptr<core::http_request_simple>& _request) override;
 
             const int64_t updated_id_;
             const message_type type_;
@@ -64,6 +62,7 @@ namespace core
             core::archive::shared_contact shared_contact_;
             core::archive::geo geo_;
             core::archive::poll poll_;
+            smartreply::marker_opt smartreply_marker_;
 
         public:
 
@@ -93,14 +92,15 @@ namespace core
                 const std::string& _url,
                 const core::archive::shared_contact& _shared_contact,
                 const core::archive::geo& _geo,
-                const core::archive::poll& _poll);
+                const core::archive::poll& _poll,
+                const smartreply::marker_opt& _smartreply_marker);
 
             virtual ~send_message();
+
+            virtual priority_t get_priority() const override;
+            virtual bool is_post() const override { return true; }
         };
 
     }
 
 }
-
-
-#endif// __WIM_SEND_MESSAGE_H_

@@ -67,14 +67,14 @@ void CountryItem::paint(QPainter & _painter, const bool _isHovered, const bool _
 
     _painter.drawImage(QRect(getHorMargin(), (getItemHeight() - getIconSize())/2, getIconSize(), getIconSize()), icon_);
 
-    const auto yOffset = (getItemHeight() - name_->cachedSize().height()) / 2;
+    const auto yOffset = getItemHeight() / 2;
 
     name_->setOffsets(getIconSize() + 2 * getHorMargin(), yOffset);
     name_->elide(width - getIconSize() - 3 * getHorMargin() - getCodeWidth());
-    name_->draw(_painter, Ui::TextRendering::VerPosition::TOP);
+    name_->draw(_painter, Ui::TextRendering::VerPosition::MIDDLE);
 
     code_->setOffsets((width - (getIconSize() + 2 * getHorMargin())), yOffset);
-    code_->draw(_painter, Ui::TextRendering::VerPosition::TOP);
+    code_->draw(_painter, Ui::TextRendering::VerPosition::MIDDLE);
 }
 
 CountryListItemDelegate::CountryListItemDelegate(QObject* _parent, CountryListModel* _countriesModel)

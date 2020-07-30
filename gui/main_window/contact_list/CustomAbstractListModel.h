@@ -11,6 +11,9 @@ namespace Logic
     {
         Q_OBJECT
 
+    Q_SIGNALS:
+        void containsPreCheckedItems(const std::vector<QString>& _names) const;
+
     private Q_SLOTS:
         void forceRefreshList(QAbstractItemModel *, bool);
 
@@ -28,6 +31,11 @@ namespace Logic
         virtual bool isClickableItem(const QModelIndex& _index) const;
         virtual bool contains(const QString& _name) const;
 
+        virtual void clearCheckedItems();
+        virtual int getCheckedItemsCount() const;
+        virtual void setCheckedItem(const QString& _name, bool _isChecked);
+        virtual bool isCheckedItem(const QString& _name) const;
+
         void setCustomFlag(const int _flag);
         void unsetCustomFlag(const int _flag);
 
@@ -38,7 +46,7 @@ namespace Logic
 
     protected:
         virtual void refreshList();
-        void emitChanged(const int _first, const int _last);
+        void Q_EMITChanged(const int _first, const int _last);
 
     private:
         int flags_;

@@ -1,13 +1,13 @@
 #include "stdafx.h"
 #include "ThemesContainer.h"
 #include "ThemeParameters.h"
-#include "ThemesUtils.h"
 #include "ThemeCommon.h"
 
 #include "../fonts.h"
 
 #include "../utils/gui_coll_helper.h"
 #include "../utils/InterConnector.h"
+#include "../utils/JsonUtils.h"
 #include "../core_dispatcher.h"
 #include "../app_config.h"
 
@@ -23,7 +23,7 @@ namespace
     constexpr auto checkMetaUpdates = false;
     constexpr auto userWallpaperOverlay = Styling::StyleVariable::GHOST_ULTRALIGHT;
 
-    auto darkThemeId() { return ql1s("black"); }
+    constexpr auto darkThemeId() noexcept { return QStringView(u"black"); }
 }
 
 namespace Styling
@@ -42,7 +42,7 @@ namespace Styling
 
         auto unloadTimer = new QTimer(this);
         connect(unloadTimer, &QTimer::timeout, this, &ThemesContainer::unloadUnusedWallpaperImages);
-        unloadTimer->start(unloadCheckTimeout.count());
+        unloadTimer->start(unloadCheckTimeout);
     }
 
     void ThemesContainer::unserialize(core::coll_helper _collection)
@@ -87,8 +87,6 @@ namespace Styling
             json = file.readAll().toStdString();
 
             doc.Parse(json);
-            auto i = doc.GetParseError();
-            i;
             if (doc.HasParseError())
             {
                 assert(false);
@@ -113,7 +111,7 @@ namespace Styling
         {
             for (auto& themeNodeIt : themeIter->value.GetArray())
             {
-                if (bool themeHidden = false; !Ui::GetAppConfig().IsShowHiddenThemes() && StylingUtils::unserialize_value(themeNodeIt, "hidden", themeHidden) && themeHidden)
+                if (bool themeHidden = false; !Ui::GetAppConfig().IsShowHiddenThemes() && JsonUtils::unserialize_value(themeNodeIt, "hidden", themeHidden) && themeHidden)
                     continue;
 
                 Theme tmpTheme = defaultTheme;
@@ -128,7 +126,7 @@ namespace Styling
             availableThemes_.push_back(std::make_shared<Theme>(defaultTheme));
         }
 
-        assert(std::any_of(availableThemes_.begin(), availableThemes_.end(), [](const auto& _theme) { return _theme->getId() == qsl("default"); }));
+        assert(std::any_of(availableThemes_.begin(), availableThemes_.end(), [](const auto& _theme) { return _theme->getId() == u"default"; }));
 
         if (wallpaperIter != doc.MemberEnd() && wallpaperIter->value.IsArray())
         {
@@ -149,8 +147,8 @@ namespace Styling
                 {
                     for (const auto& th : wpThemeIter->value.GetArray())
                     {
-                        const auto id = StylingUtils::getString(th);
-                        if (wpThemeIter->value.Size() == 1 && id == ql1s("*"))
+                        const auto id = JsonUtils::getString(th);
+                        if (wpThemeIter->value.Size() == 1 && id == u'*')
                         {
                             for (const auto& theme : availableThemes_)
                                 addWallpaper(theme, wallpaperNodeIt);
@@ -169,7 +167,7 @@ namespace Styling
             }
         }
 
-        baseUrl_ = StylingUtils::getString(urlIter->value);
+        baseUrl_ = JsonUtils::getString(urlIter->value);
     }
 
     void ThemesContainer::unserializeUserWallpapers(core::coll_helper _collection)
@@ -443,7 +441,7 @@ namespace Styling
     {
         if (checkMetaUpdates)
         {
-            QTimer::singleShot(updateCheckDelay.count(), this, []()
+            QTimer::singleShot(updateCheckDelay, this, []()
             {
                 Ui::GetDispatcher()->post_message_to_core("themes/meta/check", nullptr); // answer "themes/meta/check/result" not checked
             });
@@ -465,7 +463,7 @@ namespace Styling
             for (const auto& wp : getAllWallpapersById(_id))
                 wp->setWallpaperImage(preparedWp);
 
-            emit wallpaperImageAvailable(_id, QPrivateSignal());
+            Q_EMIT wallpaperImageAvailable(_id, QPrivateSignal());
         }
     }
 
@@ -477,7 +475,7 @@ namespace Styling
         for (const auto& wp : getAllWallpapersById(_id))
             wp->setPreviewImage(_image);
 
-        emit wallpaperPreviewAvailable(_id, QPrivateSignal());
+        Q_EMIT wallpaperPreviewAvailable(_id, QPrivateSignal());
     }
 
     void ThemesContainer::onDialogClosed(const QString& _aimId, bool)
@@ -529,7 +527,7 @@ namespace Styling
             if (_fromGui == GuiCall::yes)
                 postCurrentThemeIdToCore();
 
-            emit globalThemeChanged(QPrivateSignal());
+            Q_EMIT globalThemeChanged(QPrivateSignal());
         }
     }
 
@@ -546,7 +544,7 @@ namespace Styling
                     if (_fromGui == GuiCall::yes)
                         postGlobalWallpaperToCore();
 
-                    emit globalWallpaperChanged(QPrivateSignal());
+                    Q_EMIT globalWallpaperChanged(QPrivateSignal());
                 }
             }
         }
@@ -562,7 +560,7 @@ namespace Styling
 
                 if (_fromGui == GuiCall::yes)
                 {
-                    emit contactWallpaperChanged(_aimId, QPrivateSignal());
+                    Q_EMIT contactWallpaperChanged(_aimId, QPrivateSignal());
                     postContactsWallpapersToCore();
                 }
             }
@@ -577,7 +575,7 @@ namespace Styling
 
             if (_fromGui == GuiCall::yes)
             {
-                emit contactWallpaperChanged(_aimId, QPrivateSignal());
+                Q_EMIT contactWallpaperChanged(_aimId, QPrivateSignal());
                 postContactsWallpapersToCore();
             }
         }
@@ -598,7 +596,7 @@ namespace Styling
         if (_fromGui == GuiCall::yes)
         {
             for (const auto& aimId : aimIds)
-                emit contactWallpaperChanged(aimId, QPrivateSignal());
+                Q_EMIT contactWallpaperChanged(aimId, QPrivateSignal());
 
             postContactsWallpapersToCore();
         }
@@ -654,7 +652,7 @@ namespace Styling
         {
             const auto id = t->getId();
             const auto translatedName = QApplication::translate("appearance", t->getName().toUtf8().constData());
-            const QString name =  build::is_debug() ? translatedName % ql1s(" [") % id % ql1c(']') : translatedName;
+            const QString name =  build::is_debug() ? translatedName % u" [" % id % u']' : translatedName;
             res.emplace_back(t->getId(), !name.isEmpty() ? name : id);
         }
 

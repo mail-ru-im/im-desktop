@@ -2,7 +2,6 @@
 
 #include "get_id_info.h"
 #include "http_request.h"
-#include "../../urls_cache.h"
 
 using namespace core::wim;
 
@@ -23,26 +22,17 @@ const std::shared_ptr<core::archive::persons_map>& core::wim::get_id_info::get_p
     return persons_;
 }
 
-int32_t get_id_info::init_request(std::shared_ptr<core::http_request_simple> _request)
+int32_t get_id_info::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
-    constexpr char method[] = "getIdInfo";
-
-    _request->set_url(urls::get_url(urls::url_type::rapi_host));
-    _request->set_normalized_url(method);
-    _request->set_keep_alive();
-
     rapidjson::Document doc(rapidjson::Type::kObjectType);
     auto& a = doc.GetAllocator();
-
-    doc.AddMember("method", method, a);
-    doc.AddMember("reqId", get_req_id(), a);
 
     rapidjson::Value node_params(rapidjson::Type::kObjectType);
     node_params.AddMember("id", id_, a);
 
     doc.AddMember("params", std::move(node_params), a);
 
-    sign_packet(doc, a, _request);
+    setup_common_and_sign(doc, a, _request, "getIdInfo");
 
     if (!params_.full_log_)
     {

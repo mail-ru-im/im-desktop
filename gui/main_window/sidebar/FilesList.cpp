@@ -8,9 +8,10 @@
 #include "../../controls/FileSharingIcon.h"
 #include "../../fonts.h"
 #include "../../utils/utils.h"
+#include "../../utils/UrlParser.h"
 #include "../../my_info.h"
 #include "../GroupChatOperations.h"
-#include "../friendly/FriendlyContainer.h"
+#include "../containers/FriendlyContainer.h"
 #include "../contact_list/ContactListModel.h"
 #include "../history_control/FileSizeFormatter.h"
 #include "utils/stat_utils.h"
@@ -31,7 +32,6 @@ namespace
     const int PREVIEW_SIZE = 44;
     const int PREVIEW_RIGHT_OFFSET = 12;
     const int NAME_OFFSET = 0;
-    const int DATE_HEIGHT = 20;
     const int DATE_OFFSET = 0;
     const int SHOW_IN_FOLDER_OFFSET = 8;
     const int BUTTON_SIZE = 20;
@@ -137,8 +137,8 @@ namespace Ui
             auto r = QRect(Utils::scale_value(HOR_OFFSET), Utils::scale_value(ICON_VER_OFFSET) + _rect.y(), Utils::scale_value(PREVIEW_SIZE), Utils::scale_value(PREVIEW_SIZE));
             auto r2 = QRect(Utils::scale_value(HOR_OFFSET) + Utils::scale_value(4), Utils::scale_value(ICON_VER_OFFSET) + _rect.y() + Utils::scale_value(4), Utils::scale_value(PREVIEW_SIZE) - Utils::scale_value(8), Utils::scale_value(PREVIEW_SIZE) - Utils::scale_value(8));
 
-            static auto download_icon = Utils::renderSvgScaled(qsl(":/filesharing/download_icon"), QSize(BUTTON_SIZE, BUTTON_SIZE), QColor(qsl("#ffffff")));
-            static auto cancel_icon = Utils::renderSvgScaled(qsl(":/filesharing/cancel_icon"), QSize(BUTTON_SIZE, BUTTON_SIZE), QColor(qsl("#ffffff")));
+            static auto download_icon = Utils::renderSvgScaled(qsl(":/filesharing/download_icon"), QSize(BUTTON_SIZE, BUTTON_SIZE), QColor(u"#ffffff"));
+            static auto cancel_icon = Utils::renderSvgScaled(qsl(":/filesharing/cancel_icon"), QSize(BUTTON_SIZE, BUTTON_SIZE), QColor(u"#ffffff"));
 
             _p.save();
             _p.setBrush(FileSharingIcon::getFillColor(filename_));
@@ -146,7 +146,7 @@ namespace Ui
             _p.drawEllipse(r);
             if (downloading_)
             {
-                auto p = QPen(QColor(qsl("#ffffff")), Utils::scale_value(2));
+                auto p = QPen(QColor(u"#ffffff"), Utils::scale_value(2));
                 _p.setPen(p);
                 _p.drawArc(r2, -baseAngle, -progressAngle);
                 _p.drawPixmap(Utils::scale_value(HOR_OFFSET + PREVIEW_SIZE / 2) - cancel_icon.width() / 2 / Utils::scale_bitmap_ratio(), Utils::scale_value(ICON_VER_OFFSET + PREVIEW_SIZE / 2) - cancel_icon.height() / 2 / Utils::scale_bitmap_ratio() + _rect.y(), cancel_icon);
@@ -285,19 +285,19 @@ namespace Ui
 
     bool FileItem::isOverControl(const QPoint& _pos)
     {
-        static auto r = QRect(Utils::scale_value(HOR_OFFSET), Utils::scale_value(VER_OFFSET), Utils::scale_value(PREVIEW_SIZE), Utils::scale_value(PREVIEW_SIZE));
+        static const auto r = QRect(Utils::scale_value(HOR_OFFSET), Utils::scale_value(VER_OFFSET), Utils::scale_value(PREVIEW_SIZE), Utils::scale_value(PREVIEW_SIZE));
         return localPath_.isEmpty() && r.contains(_pos);
     }
 
     bool FileItem::isOverLink(const QPoint& _pos, const QPoint& _pos2)
     {
-        static auto r = QRect(Utils::scale_value(HOR_OFFSET), Utils::scale_value(VER_OFFSET), Utils::scale_value(PREVIEW_SIZE), Utils::scale_value(PREVIEW_SIZE));
-        return !localPath_.isEmpty() && (showInFolder_->contains(_pos) || r.contains(_pos2) || name_->contains(_pos));
+        static const auto r = QRect(Utils::scale_value(HOR_OFFSET), Utils::scale_value(VER_OFFSET), Utils::scale_value(PREVIEW_SIZE), Utils::scale_value(PREVIEW_SIZE));
+        return !localPath_.isEmpty() && (showInFolder_->contains(_pos) || r.contains(_pos2) || (name_ && name_->contains(_pos)));
     }
 
     bool FileItem::isOverIcon(const QPoint & _pos)
     {
-        static auto r = QRect(Utils::scale_value(HOR_OFFSET), Utils::scale_value(VER_OFFSET), Utils::scale_value(PREVIEW_SIZE), Utils::scale_value(PREVIEW_SIZE));
+        static const auto r = QRect(Utils::scale_value(HOR_OFFSET), Utils::scale_value(VER_OFFSET), Utils::scale_value(PREVIEW_SIZE), Utils::scale_value(PREVIEW_SIZE));
         return !localPath_.isEmpty() && r.contains(_pos);
     }
 
@@ -421,7 +421,7 @@ namespace Ui
             auto reqId = GetDispatcher()->downloadFileSharingMetainfo(e.url_);
 
             auto time = QDateTime::fromTime_t(e.time_);
-            auto item = std::make_unique<FileItem>(e.url_, time.toString(qsl("d MMM, ")) + time.time().toString(qsl("hh:mm")), e.msg_id_, e.seq_, e.outgoing_, e.sender_, e.time_, width());
+            auto item = std::make_unique<FileItem>(e.url_, formatTimeStr(time), e.msg_id_, e.seq_, e.outgoing_, e.sender_, e.time_, width());
             h += item->getHeight();
 
             RequestIds_.push_back(reqId);
@@ -438,7 +438,7 @@ namespace Ui
         auto h = height();
         for (const auto& e : _entries)
         {
-            if (e.action_ == qsl("del"))
+            if (e.action_ == u"del")
             {
                 Items_.erase(std::remove_if(Items_.begin(), Items_.end(), [e](const auto& i) { return i->getMsg() == e.msg_id_; }), Items_.end());
                 h = 0;
@@ -452,7 +452,7 @@ namespace Ui
             parser.process(QStringRef(&e.url_));
 
             const auto isFilesharing = parser.hasUrl() && parser.getUrl().is_filesharing();
-            if (!isFilesharing || (e.type_ != qsl("file") && e.type_ != qsl("audio")))
+            if (!isFilesharing || (e.type_ != u"file" && e.type_ != u"audio"))
                 continue;
 
             auto time = QDateTime::fromTime_t(e.time_);
@@ -476,7 +476,7 @@ namespace Ui
             }
 
             auto reqId = GetDispatcher()->downloadFileSharingMetainfo(e.url_);
-            auto item = std::make_unique<FileItem>(e.url_, time.toString(qsl("d MMM, ")) + time.time().toString(qsl("hh:mm")), e.msg_id_, e.seq_, e.outgoing_, e.sender_, e.time_, width());
+            auto item = std::make_unique<FileItem>(e.url_, formatTimeStr(time), e.msg_id_, e.seq_, e.outgoing_, e.sender_, e.time_, width());
             h += item->getHeight();
 
             RequestIds_.push_back(reqId);
@@ -565,7 +565,7 @@ namespace Ui
                     {
                         if (i->isDownloading())
                         {
-                            Ui::GetDispatcher()->abortSharedFileDownloading(i->getLink());
+                            Ui::GetDispatcher()->abortSharedFileDownloading(i->getLink(), i->reqId());
                             i->setDownloading(false);
                             Downloading_.erase(std::remove(Downloading_.begin(), Downloading_.end(), i->reqId()), Downloading_.end());
                             if (Downloading_.empty())
@@ -601,7 +601,7 @@ namespace Ui
                 }
                 if (i->isOverDate(_event->pos()))
                 {
-                    emit Logic::getContactListModel()->select(aimId_, i->getMsg(), Logic::UpdateChatSelection::No);
+                    Q_EMIT Logic::getContactListModel()->select(aimId_, i->getMsg(), Logic::UpdateChatSelection::No);
                     i->setDateState(true, false);
                 }
                 else

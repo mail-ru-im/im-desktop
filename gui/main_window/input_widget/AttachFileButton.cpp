@@ -58,7 +58,7 @@ namespace Ui
         , currentAngle_(0)
         , isActive_(false)
     {
-        connect(this, &AttachFileButton::hoverChanged, this, Utils::QOverload<>::of(&AttachFileButton::update));
+        connect(this, &AttachFileButton::hoverChanged, this, qOverload<>(&AttachFileButton::update));
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::attachFilePopupVisiblityChanged, this, &AttachFileButton::onAttachVisibleChanged);
 
         setFixedSize(buttonSize());

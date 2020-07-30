@@ -34,7 +34,7 @@ attach_phone::~attach_phone()
 {
 }
 
-int32_t attach_phone::init_request(std::shared_ptr<core::http_request_simple> _request)
+int32_t attach_phone::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     if (phone_info_.get_phone().empty())// || password_.empty())
         return wpie_invalid_login;
@@ -52,9 +52,7 @@ int32_t attach_phone::init_request(std::shared_ptr<core::http_request_simple> _r
     _request->push_post_parameter("r", core::tools::system::generate_guid());
 
     time_t ts = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()) - params_.time_offset_;
-    _request->push_post_parameter("ts", tools::from_int64(ts));
-
-    _request->push_post_parameter("sig_sha256", escape_symbols(get_url_sign(host, _request->get_post_parameters(), params_, true)));
+    _request->push_post_parameter("ts", std::to_string(ts));
 
     return 0;
 }
@@ -77,7 +75,7 @@ int32_t attach_phone::parse_response_data(const rapidjson::Value& _data)
     return 0;
 }
 
-int32_t attach_phone::execute_request(std::shared_ptr<core::http_request_simple> request)
+int32_t attach_phone::execute_request(const std::shared_ptr<core::http_request_simple>& request)
 {
     if (!request->post())
         return wpie_network_error;

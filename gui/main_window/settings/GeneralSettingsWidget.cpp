@@ -1,17 +1,20 @@
 #include "stdafx.h"
 #include "GeneralSettingsWidget.h"
 
-
-#include "../../controls/TextEmojiWidget.h"
-#include "../../controls/FlatMenu.h"
-#include "../../core_dispatcher.h"
-#include "../../gui_settings.h"
-#include "../../utils/InterConnector.h"
-#include "../../utils/utils.h"
+#include "controls/TextEmojiWidget.h"
+#include "controls/FlatMenu.h"
+#include "core_dispatcher.h"
+#include "gui_settings.h"
+#include "utils/InterConnector.h"
+#include "utils/utils.h"
+#include "utils/features.h"
 #include "styles/ThemeParameters.h"
 #include "main_window/smiles_menu/Store.h"
 #include "ContactUs.h"
 #include "SettingsForTesters.h"
+#include "SessionsPage.h"
+
+#include "../common.shared/config/config.h"
 
 namespace Ui
 {
@@ -22,10 +25,7 @@ namespace Ui
         setStyleSheet(qsl("QWidget{border: none; background-color: %1;}").arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE)));
     }
 
-    GeneralSettingsWidget::~GeneralSettingsWidget()
-    {
-        //
-    }
+    GeneralSettingsWidget::~GeneralSettingsWidget() = default;
 
     void GeneralSettingsWidget::setType(int _type)
     {
@@ -40,7 +40,7 @@ namespace Ui
                 Creator::initGeneral(general_);
                 addWidget(general_);
 
-                Testing::setAccessibleName(general_, qsl("AS settings general_"));
+                Testing::setAccessibleName(general_, qsl("AS GeneralPage"));
 
                 general_->recvUserProxy();
                 QObject::connect(Ui::GetDispatcher(), &core_dispatcher::getUserProxy, general_, &GeneralSettings::recvUserProxy);
@@ -64,7 +64,7 @@ namespace Ui
                 Creator::initNotifications(notifications_);
                 addWidget(notifications_);
 
-                Testing::setAccessibleName(notifications_, qsl("AS settings notifications_"));
+                Testing::setAccessibleName(notifications_, qsl("AS NotificationsPage"));
             }
 
             setCurrentWidget(notifications_);
@@ -78,7 +78,7 @@ namespace Ui
                 Creator::initAppearance(appearance_);
                 addWidget(appearance_);
 
-                Testing::setAccessibleName(appearance_, qsl("AS settings appearance_"));
+                Testing::setAccessibleName(appearance_, qsl("AS AppearancePage"));
             }
 
             setCurrentWidget(appearance_);
@@ -92,7 +92,7 @@ namespace Ui
                 Creator::initAbout(about_);
                 addWidget(about_);
 
-                Testing::setAccessibleName(about_, qsl("AS settings about_"));
+                Testing::setAccessibleName(about_, qsl("AS AboutUsPage"));
             }
 
             setCurrentWidget(about_);
@@ -105,11 +105,11 @@ namespace Ui
                 contactus_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
                 addWidget(contactus_);
 
-                Testing::setAccessibleName(contactus_, qsl("AS settings contactus_"));
+                Testing::setAccessibleName(contactus_, qsl("AS ContactUsPage"));
             }
 
             setCurrentWidget(contactus_);
-            emit Utils::InterConnector::instance().generalSettingsContactUsShown();
+            Q_EMIT Utils::InterConnector::instance().generalSettingsContactUsShown();
         }
         else if (type == Utils::CommonSettingsType::CommonSettingsType_Language)
         {
@@ -120,7 +120,7 @@ namespace Ui
                 Creator::initLanguage(language_);
                 addWidget(language_);
 
-                Testing::setAccessibleName(language_, qsl("AS settings language_"));
+                Testing::setAccessibleName(language_, qsl("AS LanguagePage"));
             }
 
             setCurrentWidget(language_);
@@ -129,12 +129,12 @@ namespace Ui
         {
             if (!shortcuts_)
             {
-                shortcuts_ = new QWidget(this);
+                shortcuts_ = new ShortcutsSettings(this);
                 shortcuts_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
                 Creator::initShortcuts(shortcuts_);
                 addWidget(shortcuts_);
 
-                Testing::setAccessibleName(shortcuts_, qsl("AS settings shortcuts_"));
+                Testing::setAccessibleName(shortcuts_, qsl("AS ShortcutsPage"));
             }
 
             setCurrentWidget(shortcuts_);
@@ -145,10 +145,12 @@ namespace Ui
             {
                 security_ = new QWidget(this);
                 security_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+
+                initSessionsPage();
                 Creator::initSecurity(security_);
                 addWidget(security_);
 
-                Testing::setAccessibleName(shortcuts_, qsl("AS settings security_"));
+                Testing::setAccessibleName(security_, qsl("AS PrivacyPage"));
             }
 
             setCurrentWidget(security_);
@@ -163,8 +165,9 @@ namespace Ui
 
                 connect(stickersStore_, &Stickers::Store::back, this, []()
                 {
-                    emit Utils::InterConnector::instance().myProfileBack();
+                    Q_EMIT Utils::InterConnector::instance().myProfileBack();
                 });
+                Testing::setAccessibleName(stickersStore_, qsl("AS StickersPage"));
             }
 
             setCurrentWidget(stickersStore_);
@@ -177,10 +180,15 @@ namespace Ui
                 debugSettings_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
                 addWidget(debugSettings_);
 
-                Testing::setAccessibleName(debugSettings_, qsl("AS settings debugSettings_"));
+                Testing::setAccessibleName(debugSettings_, qsl("AS AdditionalSettingsPage"));
             }
 
             setCurrentWidget(debugSettings_);
+        }
+        else if (type == Utils::CommonSettingsType::CommonSettingsType_Sessions)
+        {
+            initSessionsPage();
+            setCurrentWidget(sessions_);
         }
     }
 
@@ -227,8 +235,6 @@ namespace Ui
         if (!menu || !deviceList)
             return;
 
-        Testing::setAccessibleName(menu, qsl("AS voip menu"));
-
         deviceList->clear();
         menu->clear();
         if (currentSelected)
@@ -253,9 +259,8 @@ namespace Ui
         using namespace voip_proxy;
 
         const device_desc* selectedDesc = nullptr;
-        for (unsigned ix = 0; ix < devices.size(); ix++)
+        for (const device_desc& desc : devices)
         {
-            const device_desc& desc = devices[ix];
             DeviceInfo di;
             di.name = desc.name;
             di.uid  = desc.uid;
@@ -321,6 +326,11 @@ namespace Ui
             get_gui_settings()->set_value<QString>(settingsName, uid);
     }
 
+    bool GeneralSettingsWidget::isSessionsShown() const
+    {
+        return sessions_ && currentWidget() == sessions_;
+    }
+
     void GeneralSettingsWidget::initVoiceAndVideo()
     {
         if (voiceAndVideo_.rootWidget)
@@ -343,6 +353,18 @@ namespace Ui
         addWidget(voiceAndVideo_.rootWidget);
 
         QObject::connect(&Ui::GetDispatcher()->getVoipController(), &voip_proxy::VoipController::onVoipDeviceListUpdated, this, &GeneralSettingsWidget::onVoipDeviceListUpdated);
+    }
+
+    void GeneralSettingsWidget::initSessionsPage()
+    {
+        if (!sessions_)
+        {
+            sessions_ = new SessionsPage(this);
+            sessions_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+            addWidget(sessions_);
+
+            Testing::setAccessibleName(sessions_, qsl("AS SessionsList"));
+        }
     }
 
     bool GeneralSettingsWidget::getDefaultDeviceFlag(const voip_proxy::EvoipDevTypes& type)
@@ -386,7 +408,15 @@ namespace Ui
         , connectionTypeChooser_(nullptr)
         , downloadPathChooser_(nullptr)
         , launchMinimized_(nullptr)
+        , smartreplySwitcher_(nullptr)
+        , spellCheckerSwitcher_(nullptr)
+        , suggestsEmojiSwitcher_(nullptr)
+        , suggestsWordsSwitcher_(nullptr)
+        , statusSwitcher_(nullptr)
+        , previewLinks_(nullptr)
+        , reactionsSwitcher_(nullptr)
     {
+        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::omicronUpdated, this, &GeneralSettings::onOmicronUpdate);
     }
 
     void GeneralSettings::recvUserProxy()
@@ -404,6 +434,29 @@ namespace Ui
             downloadPathChooser_->setText(Ui::getDownloadPath());
     }
 
+    void GeneralSettings::onOmicronUpdate()
+    {
+        if (smartreplySwitcher_)
+            smartreplySwitcher_->setVisible(Features::isSmartreplyEnabled());
+        if (spellCheckerSwitcher_)
+            spellCheckerSwitcher_->setVisible(Features::isSpellCheckEnabled());
+        if (suggestsEmojiSwitcher_)
+            suggestsEmojiSwitcher_->setVisible(Features::isSuggestsEnabled());
+        if (suggestsWordsSwitcher_)
+            suggestsWordsSwitcher_->setVisible(Features::isSuggestsEnabled());
+        if (statusSwitcher_)
+            statusSwitcher_->setVisible(Features::isStatusEnabled());
+        if (reactionsSwitcher_)
+            reactionsSwitcher_->setVisible(Features::reactionsEnabled());
+    }
+
+    void GeneralSettings::showEvent(QShowEvent*)
+    {
+        onOmicronUpdate();
+        if (previewLinks_)
+            previewLinks_->setVisible(config::get().is_on(config::features::snippet_in_chat));
+    }
+
     NotificationSettings::NotificationSettings(QWidget* _parent)
         : QWidget(_parent)
         , sounds_(nullptr)
@@ -413,10 +466,35 @@ namespace Ui
 
     void NotificationSettings::value_changed(const QString& name)
     {
-        if (name == ql1s(settings_sounds_enabled))
+        if (sounds_ && name == ql1s(settings_sounds_enabled))
         {
             QSignalBlocker sb(sounds_);
             sounds_->setChecked(get_gui_settings()->get_value<bool>(settings_sounds_enabled, true));
         }
+    }
+
+    ShortcutsSettings::ShortcutsSettings(QWidget* _parent)
+            : QWidget(_parent)
+            , statuses_(nullptr)
+    {
+        connect(get_gui_settings(), &Ui::qt_gui_settings::changed, this, &ShortcutsSettings::onSettingsChanged);
+        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::omicronUpdated, this, &ShortcutsSettings::onOmicronUpdate);
+    }
+
+    void ShortcutsSettings::onSettingsChanged(const QString& _name)
+    {
+        if (statuses_ && _name == ql1s(settings_allow_statuses))
+            statuses_->setVisible(Statuses::isStatusEnabled());
+    }
+    void ShortcutsSettings::onOmicronUpdate()
+    {
+        if (statuses_)
+            statuses_->setVisible(Statuses::isStatusEnabled());
+    }
+
+    void ShortcutsSettings::showEvent(QShowEvent *_event)
+    {
+        onOmicronUpdate();
+        onSettingsChanged(ql1s(settings_allow_statuses));
     }
 }

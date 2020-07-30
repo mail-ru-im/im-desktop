@@ -26,6 +26,7 @@ namespace Ui
     class IntroduceYourself;
     class TextWidget;
     class ContextMenu;
+    class ContactUsWidget;
 
     class EntryHintWidget : public QWidget
     {
@@ -99,6 +100,7 @@ namespace Ui
             SUBPAGE_PHONE_CONF_INDEX = 1,
             SUBPAGE_UIN_LOGIN_INDEX = 2,
             SUBPAGE_INTRODUCEYOURSELF = 3,
+            SUBPAGE_REPORT = 4,
         };
 
         void init();
@@ -108,16 +110,23 @@ namespace Ui
         bool needGDPRPage() const;
         void connectGDPR();
         void setGDPRacceptedThisSession(bool _accepted);
-        bool userAcceptedGDPR() const;
         bool gdprAcceptedThisSession() const;
         void setErrorText(int _result);
         void setErrorText(const QString& _customError);
         void updateErrors(int _result);
 
+        void prepareLoginByPhone();
+
         void updateBackButton();
         void updateNextButton();
         void updateInputFocus();
-        void updatePage();
+
+        enum class UpdateMode
+        {
+            Delayed,
+            Instant
+        };
+        void updatePage(UpdateMode _mode = UpdateMode::Delayed);
         void updateButtonsWidgetHeight();
         void resizeSpacers();
 
@@ -148,10 +157,12 @@ namespace Ui
 
         QStackedWidget*         loginStakedWidget_;
         QWidget*                controlsWidget_;
+        QWidget*                hintsWidget_;
 
         DialogButton*           nextButton_;
         CustomButton*           changePageButton_;
         CustomButton*           proxySettingsButton_;
+        CustomButton*           reportButton_;
         QPushButton*            resendButton_;
         CommonInputContainer*   uinInput_;
         CommonInputContainer*   passwordInput_;
@@ -176,6 +187,7 @@ namespace Ui
         QString                 ivrUrl_;
 
         IntroduceYourself* introduceMyselfWidget_;
+        ContactUsWidget* contactUsWidget_;
 
         std::optional<OTPAuthState> otpState_;
 

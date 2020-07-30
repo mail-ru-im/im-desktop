@@ -12,7 +12,7 @@
 #include "../../../my_info.h"
 #include "../../../fonts.h"
 #include "../../contact_list/ContactListModel.h"
-#include "../../friendly/FriendlyContainer.h"
+#include "../../containers/FriendlyContainer.h"
 
 #include "QuoteBlockLayout.h"
 
@@ -60,7 +60,7 @@ QuoteBlock::QuoteBlock(ComplexMessageItem *parent, const Data::Quote& quote)
     if (Quote_.isInteractive())
     {
         setCursor(Qt::PointingHandCursor);
-        connect(parent, &ComplexMessageItem::hoveredBlockChanged, this, Utils::QOverload<>::of(&QuoteBlock::update));
+        connect(parent, &ComplexMessageItem::hoveredBlockChanged, this, qOverload<>(&QuoteBlock::update));
     }
 }
 
@@ -118,7 +118,12 @@ QString QuoteBlock::getSelectedText(const bool _isFullSelect, const TextDestinat
     for (auto b : Blocks_)
     {
         if (b->isSelected())
-            result += b->getSelectedText(false, _dest) % QChar::LineFeed;
+        {
+            const auto selectedText = b->getSelectedText(false, _dest);
+            if (b->getContentType() == IItemBlock::ContentType::Link && result.contains(selectedText))
+                continue;
+            result += selectedText % QChar::LineFeed;
+        }
     }
 
     if (_isFullSelect && !result.isEmpty())
@@ -132,7 +137,11 @@ QString QuoteBlock::getTextForCopy() const
     QString result;
     for (auto b : Blocks_)
     {
-        result += b->getTextForCopy();
+        const auto textForCopy = !b->hasSourceText() ? b->getTextForCopy() : b->getSourceText();
+        if (b->getContentType() == IItemBlock::ContentType::Link && result.contains(textForCopy))
+            continue;
+
+        result += textForCopy;
         result += QChar::LineFeed;
     }
 
@@ -147,7 +156,11 @@ QString QuoteBlock::getSourceText() const
     QString result;
     for (auto b : Blocks_)
     {
-        result += b->getSourceText();
+        const auto sourceText = !b->hasSourceText() ? b->getTextForCopy() : b->getSourceText();
+        if (b->getContentType() == IItemBlock::ContentType::Link && result.contains(sourceText))
+            continue;
+
+        result += sourceText;
         result += QChar::LineFeed;
     }
 
@@ -166,7 +179,7 @@ QString QuoteBlock::formatRecentsText() const
     {
         const auto senderFriendly = Logic::GetFriendlyContainer()->getFriendly2(Quote_.senderId_);
         const auto friendly = senderFriendly.default_ ? QString() : senderFriendly.name_;
-        const auto separator = senderFriendly.default_ ? QLatin1String() : ql1s(": ");
+        const auto separator = senderFriendly.default_ ? QStringView() : QStringView(u": ");
         if (!Quote_.description_.isEmpty())
             return friendly % separator % Blocks_.front()->formatRecentsText() % QChar::Space % Quote_.description_;
 
@@ -198,10 +211,14 @@ IItemBlock* QuoteBlock::findBlockUnder(const QPoint &pos) const
         if (block->isSharingEnabled())
         {
             const auto add = getParentComplexMessage()->getSharingAdditionalWidth();
+            auto extendedGeometry = getParentComplexMessage()->getBubbleGeometry();
+            if (extendedGeometry.isEmpty())
+                extendedGeometry = rc;
+
             if (isOutgoing())
-                rc.setLeft(rc.left() - add);
+                rc.setLeft(extendedGeometry.left() - add);
             else
-                rc.setRight(rc.right() + add);
+                rc.setRight(extendedGeometry.right() + add);
         }
 
         if (rc.contains(pos))
@@ -327,7 +344,7 @@ bool QuoteBlock::quoteOnly() const
 
 QString QuoteBlock::getQuoteHeader() const
 {
-    return ql1s("> ") % Quote_.senderFriendly_ % ql1s(" (") % QDateTime::fromTime_t(Quote_.time_).toString(qsl("dd.MM.yyyy hh:mm")) % ql1s("): ");
+    return u"> " % Quote_.senderFriendly_ % u" (" % QDateTime::fromTime_t(Quote_.time_).toString(u"dd.MM.yyyy hh:mm") % u"): ";
 }
 
 QColor QuoteBlock::getSenderColor() const
@@ -422,9 +439,9 @@ void QuoteBlock::blockClicked()
         {
             const auto selectedContact = Logic::getContactListModel()->selectedContact();
             if (selectedContact != Quote_.chatId_)
-                emit Utils::InterConnector::instance().addPageToDialogHistory(selectedContact);
+                Q_EMIT Utils::InterConnector::instance().addPageToDialogHistory(selectedContact);
 
-            emit Logic::getContactListModel()->select(Quote_.chatId_, Quote_.msgId_, Logic::UpdateChatSelection::Yes);
+            Q_EMIT Logic::getContactListModel()->select(Quote_.chatId_, Quote_.msgId_, Logic::UpdateChatSelection::Yes);
         }
         else if (!Quote_.chatStamp_.isEmpty())
         {
@@ -433,7 +450,7 @@ void QuoteBlock::blockClicked()
     }
     else
     {
-        Logic::getContactListModel()->setCurrent(Logic::getContactListModel()->selectedContact(), Quote_.msgId_, true, nullptr);
+        Logic::getContactListModel()->setCurrent(Logic::getContactListModel()->selectedContact(), Quote_.msgId_, true);
     }
 }
 
@@ -533,7 +550,7 @@ bool QuoteBlock::replaceBlockWithSourceText(IItemBlock *block)
     existingBlock->deleteLater();
     existingBlock = textBlock;
 
-    emit observeToSize();
+    Q_EMIT observeToSize();
 
     return true;
 }
@@ -669,6 +686,15 @@ bool QuoteBlock::pressed(const QPoint & _p)
         if (isChildBlock)
             return hoveredBlock->pressed(_p);
     }
+    else if (Geometry_.contains(_p))
+    {
+        auto pressed = false;
+        for (auto b : Blocks_)
+            pressed |= b->pressed(_p);
+
+        return pressed;
+    }
+
     return false;
 }
 
@@ -732,6 +758,17 @@ int QuoteBlock::getMaxWidth() const
         return maxWidth + (getLeftOffset() - getLeftAdditional()) + Ui::MessageStyle::Quote::getQuoteOffsetRight();
     else
         return 0;
+}
+
+int QuoteBlock::effectiveBlockWidth() const
+{
+    auto result = 0;
+    for (auto block : Blocks_)
+    {
+        result = std::max(result, block->effectiveBlockWidth());
+    }
+
+    return result;
 }
 
 const std::vector<GenericBlock *>& QuoteBlock::getBlocks() const

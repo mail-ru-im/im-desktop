@@ -16,6 +16,11 @@ namespace
         return Utils::scale_value(80);
     }
 
+    int defaultButtonHeight()
+    {
+        return platform::is_apple() ? Utils::scale_value(33) : Utils::scale_value(32);
+    }
+
     class ProxyStyle : public QProxyStyle
     {
     public:
@@ -37,7 +42,7 @@ namespace
 
 namespace Ui
 {
-    DialogButton::DialogButton(QWidget* _parent, const QString _text, const DialogButtonRole _role, const DialogButtonShape _shape)
+    DialogButton::DialogButton(QWidget* _parent, const QString _text, const DialogButtonRole _role)
         : QPushButton(_parent)
         , hovered_(false)
         , pressed_(false)
@@ -52,19 +57,18 @@ namespace Ui
         , textColor_(Qt::transparent)
         , textColorHover_(Qt::transparent)
         , textColorPress_(Qt::transparent)
-        , shape_(_shape)
     {
         Utils::SetProxyStyle(this, new ProxyStyle());
         setFocusPolicy(Qt::NoFocus);
         setMouseTracking(true);
         setFlat(true);
 
-        setFixedHeight(Utils::scale_value(32));
+        setFixedHeight(defaultButtonHeight());
 
         changeRole(initRole_);
 
         QFontMetrics metrics(buttonFont());
-        setMinimumWidth(std::max(defaultButtonWidth(), metrics.width(text_) + 2*Utils::scale_value(10)));
+        setMinimumWidth(std::max(defaultButtonWidth(), metrics.horizontalAdvance(text_) + 2*Utils::scale_value(10)));
         setFont(buttonFont());
         setText(text_);
     }
@@ -94,7 +98,7 @@ namespace Ui
     {
         QFontMetrics metrics(font());
         const auto margins = contentsMargins();
-        setFixedWidth(metrics.width(text()) + margins.left() + margins.right());
+        setFixedWidth(metrics.horizontalAdvance(text()) + margins.left() + margins.right());
     }
 
     void DialogButton::paintEvent(QPaintEvent * _e)
@@ -106,7 +110,7 @@ namespace Ui
         p.setPen(hovered_ ? borderColorHover_ : (pressed_ ? borderColorPress_ : borderColor_));
         p.setBrush(hovered_ ? bgColorHover_ : (pressed_ ? bgColorPress_ : bgColor_));
 
-        const auto radius = (shape_ == DialogButtonShape::RECT) ? Utils::scale_value(4) : height() / 2;
+        const auto radius = height() / 2;
         p.drawRoundedRect(insideRect, radius, radius);
 
         p.setPen(hovered_ ? textColorHover_ : (pressed_ ? textColorPress_ : textColor_));
@@ -278,16 +282,11 @@ namespace Ui
         {
         case DialogButtonRole::CONFIRM:
         case DialogButtonRole::CONFIRM_DELETE:
-            textColor_ = StyleColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT);
-            textColorHover_ = StyleColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT);
-            textColorPress_ = StyleColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT);
-            break;
         case DialogButtonRole::DISABLED:
-            textColor_ = StyleColor(Styling::StyleVariable::GHOST_LIGHT);
-            textColorHover_ = StyleColor(Styling::StyleVariable::GHOST_LIGHT);
-            textColorPress_ = StyleColor(Styling::StyleVariable::GHOST_LIGHT);
+            textColor_ = StyleColor(Styling::StyleVariable::BASE_GLOBALWHITE);
+            textColorHover_ = StyleColor(Styling::StyleVariable::BASE_GLOBALWHITE);
+            textColorPress_ = StyleColor(Styling::StyleVariable::BASE_GLOBALWHITE);
             break;
-
         case DialogButtonRole::CANCEL:
             textColor_ = StyleColor(Styling::StyleVariable::BASE_SECONDARY);
             textColorHover_ = StyleColor(Styling::StyleVariable::BASE_SECONDARY_HOVER);

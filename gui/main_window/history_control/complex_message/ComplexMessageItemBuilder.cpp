@@ -1,6 +1,7 @@
 ﻿#include "stdafx.h"
 
 #include "../common.shared/config/config.h"
+#include "../common.shared/string_utils.h"
 #include "../../../../corelib/enumerations.h"
 
 #include "../../../utils/utils.h"
@@ -19,13 +20,14 @@
 #include "StickerBlock.h"
 #include "TextChunk.h"
 #include "ProfileBlock.h"
-#include "GeolocationBlock.h"
 #include "PollBlock.h"
 #include "SnippetBlock.h"
 
 #include "ComplexMessageItemBuilder.h"
 #include "../../../controls/TextUnit.h"
+#include "../../../controls/textrendering/TextRendering.h"
 #include "../../../app_config.h"
+#include "../../../gui_settings.h"
 #include "memory_stats/MessageItemMemMonitor.h"
 #include "main_window/contact_list/RecentsModel.h"
 
@@ -84,12 +86,12 @@ FixedUrls getFixedUrls()
         return profileDomain;
     };
 
-    auto makeFsItem = [](const std::string& url)
+    auto makeFsItem = [](std::string_view url)
     {
         constexpr std::string_view get = "/get";
 
         common::tools::url_parser::compare_item profileDomain;
-        profileDomain.str = url + '/';
+        profileDomain.str = su::concat(url, '/');
         profileDomain.ok_state = common::tools::url_parser::states::filesharing_id;
         profileDomain.safe_pos = url.size() - get.size() - 1;
         return profileDomain;
@@ -147,7 +149,7 @@ QString convertPollQuoteText(const QString& _text) // replace media with placeho
                 else if(chunk.text_.startsWith(ql1c(' ')))
                     result += QChar::Space;
 
-                result += chunk.text_.trimmed();
+                result += QStringRef(&chunk.text_).trimmed();
                 break;
 
             default:
@@ -165,7 +167,7 @@ QString convertPollQuoteText(const QString& _text) // replace media with placeho
     return result;
 }
 
-SnippetBlock::EstimatedType estimatedTypeFromExtension(const QString& _extension)
+SnippetBlock::EstimatedType estimatedTypeFromExtension(QStringView _extension)
 {
     if (Utils::is_video_extension(_extension))
         return SnippetBlock::EstimatedType::Video;
@@ -216,8 +218,8 @@ parseResult parseText(const QString& _text, const bool _allowSnippet, const bool
 {
     parseResult result;
 
-    static const auto sl = ql1c('`');
-    static const auto ml = qsl("```");
+    const auto sl = Ui::TextRendering::singleBackTick();
+    const auto ml = Ui::TextRendering::tripleBackTick();
 
     std::vector<QStringRef> toSkipLinks;
     const auto mcount = _text.count(ml);
@@ -375,13 +377,14 @@ enum class QuoteType
     Forward
 };
 
-std::vector<GenericBlock*> createBlocks(const parseResult& _parseRes, ComplexMessageItem* _parent, const int64_t _id, const int64_t _prev, QuoteType _quoteType = QuoteType::None)
+std::vector<GenericBlock*> createBlocks(const parseResult& _parseRes, ComplexMessageItem* _parent, const int64_t _id, const int64_t _prev, int _quotesCount, QuoteType _quoteType = QuoteType::None)
 {
     std::vector<GenericBlock*> blocks;
     blocks.reserve(_parseRes.chunks.size());
 
     const auto isQuote = _quoteType == QuoteType::Quote;
     const auto isForward = _quoteType == QuoteType::Forward;
+    const auto bigEmojiAllowed = !isQuote && !isForward && Ui::get_gui_settings()->get_value<bool>(settings_allow_big_emoji, settings_allow_big_emoji_default());
 
     if (_parseRes.poll_ && !isForward)
     {
@@ -396,14 +399,14 @@ std::vector<GenericBlock*> createBlocks(const parseResult& _parseRes, ComplexMes
             case TextChunk::Type::Text:
             case TextChunk::Type::GenericLink:
             {
-                if (!QStringRef(&chunk.text_).trimmed().isEmpty())
-                    blocks.push_back(new TextBlock(_parent, chunk.text_, isForward ? TextRendering::EmojiSizeType::REGULAR : TextRendering::EmojiSizeType::ALLOW_BIG));
+                if (!QStringView(chunk.text_).trimmed().isEmpty())
+                    blocks.push_back(new TextBlock(_parent, chunk.text_, bigEmojiAllowed ? TextRendering::EmojiSizeType::ALLOW_BIG: TextRendering::EmojiSizeType::REGULAR));
                 break;
             }
 
             case TextChunk::Type::ImageLink:
             {
-                auto block = _parent->addSnippetBlock(chunk.text_, _parseRes.linkInsideText, estimatedTypeFromExtension(chunk.ImageType_), blocks.size(), isQuote || isForward);
+                auto block = _parent->addSnippetBlock(chunk.text_, _parseRes.linkInsideText, estimatedTypeFromExtension(chunk.ImageType_), _quotesCount + blocks.size(), isQuote || isForward);
                 if (block)
                     blocks.push_back(block);
                 break;
@@ -445,16 +448,10 @@ std::vector<GenericBlock*> createBlocks(const parseResult& _parseRes, ComplexMes
     // create snippet
     if (_parseRes.snippetsCount == 1 && _parseRes.mediaCount == 0)
     {
-        if (_parseRes.geo_)
-        {
-            blocks.push_back(new GeolocationBlock(_parent, _parseRes.snippet.text_));
-        }
-        else
-        {
-            auto block = _parent->addSnippetBlock(_parseRes.snippet.text_, _parseRes.linkInsideText, SnippetBlock::EstimatedType::Article, blocks.size(), isQuote || isForward);
-            if (block)
-                blocks.push_back(block);
-        }
+        const auto estimatedType = _parseRes.geo_ ? SnippetBlock::EstimatedType::Geo : SnippetBlock::EstimatedType::Article;
+        auto block = _parent->addSnippetBlock(_parseRes.snippet.text_, _parseRes.linkInsideText, estimatedType, _quotesCount + blocks.size(), isQuote || isForward);
+        if (block)
+            blocks.push_back(block);
     }
 
     if (_parseRes.sharedContact_)
@@ -474,14 +471,14 @@ namespace ComplexMessageItemBuilder
 
         const auto isNotAuth = Logic::getRecentsModel()->isSuspicious(_msg.AimId_);
         const auto isOutgoing = _msg.IsOutgoing();
+        const auto id = _msg.Id_;
+        const auto prev = _msg.Prev_;
         const auto& text = _msg.GetText();
         const auto& description = _msg.GetDescription();
         const auto& mentions = _msg.Mentions_;
         const auto& quotes = _msg.Quotes_;
-        const auto& id = _msg.Id_;
-        const auto& prev = _msg.Prev_;
         const auto& filesharing = _msg.GetFileSharing();
-        const auto sticker = _msg.GetSticker();
+        const auto& sticker = _msg.GetSticker();
 
         const auto mediaType = complexItem->getMediaType();
         const bool allowSnippet = config::get().is_on(config::features::snippet_in_chat)
@@ -500,7 +497,7 @@ namespace ComplexMessageItemBuilder
             quote.isSelectable_ = (quotesCount == 1);
 
             const auto& parsedQuote = parseQuote(quote, mentions, allowSnippet, _forcePreview == ForcePreview::Yes);
-            const auto parsedBlocks = createBlocks(parsedQuote, complexItem.get(), id, prev, quote.isForward_ ? QuoteType::Forward : QuoteType::Quote);
+            const auto parsedBlocks = createBlocks(parsedQuote, complexItem.get(), id, prev, 0, quote.isForward_ ? QuoteType::Forward : QuoteType::Quote);
 
             auto quoteBlock = new QuoteBlock(complexItem.get(), quote);
 
@@ -508,7 +505,7 @@ namespace ComplexMessageItemBuilder
                 quoteBlock->addBlock(block);
 
             quoteBlocks.push_back(quoteBlock);
-            i++;
+            ++i;
         }
 
         std::vector<GenericBlock*> messageBlocks;
@@ -522,7 +519,7 @@ namespace ComplexMessageItemBuilder
 
             parseResult res;
             res.chunks.push_back(std::move(chunk));
-            messageBlocks = createBlocks(res, complexItem.get(), id, prev);
+            messageBlocks = createBlocks(res, complexItem.get(), id, prev, quoteBlocks.size());
         }
         else if (_msg.sharedContact_)
         {
@@ -530,14 +527,14 @@ namespace ComplexMessageItemBuilder
         }
         else if (_msg.geo_)
         {
-            messageBlocks.push_back(new GeolocationBlock(complexItem.get(), text));
+            messageBlocks.push_back(new SnippetBlock(complexItem.get(), text, false, SnippetBlock::EstimatedType::Geo));
         }
         else if (filesharing && !filesharing->HasUri())
         {
             auto type = TextChunk::Type::FileSharingGeneral;
             if (filesharing->getContentType().type_ == core::file_sharing_base_content_type::undefined && !filesharing->GetLocalPath().isEmpty())
             {
-                const static auto gifExt = ql1s("gif");
+                constexpr auto gifExt = u"gif";
                 const auto ext = QFileInfo(filesharing->GetLocalPath()).suffix();
                 if (ext.compare(gifExt, Qt::CaseInsensitive) == 0)
                     type = TextChunk::Type::FileSharingGif;
@@ -576,7 +573,7 @@ namespace ComplexMessageItemBuilder
             if (!description.isEmpty())
                 res.chunks.push_back(TextChunk(TextChunk::Type::Text, description, QString(), -1));
 
-            messageBlocks = createBlocks(res, complexItem.get(), id, prev);
+            messageBlocks = createBlocks(res, complexItem.get(), id, prev, quoteBlocks.size());
         }
         else
         {
@@ -584,7 +581,7 @@ namespace ComplexMessageItemBuilder
             {
                 auto parsedMsg = parseText(_msg.GetUrl(), allowSnippet, _forcePreview == ForcePreview::Yes);
                 parsedMsg.chunks.push_back(TextChunk(TextChunk::Type::Text, description, QString(), -1));
-                messageBlocks = createBlocks(parsedMsg, complexItem.get(), id, prev);
+                messageBlocks = createBlocks(parsedMsg, complexItem.get(), id, prev, quoteBlocks.size());
                 hasTrailingLink = parsedMsg.hasTrailingLink;
                 hasLinkInText = parsedMsg.linkInsideText;
             }
@@ -592,7 +589,7 @@ namespace ComplexMessageItemBuilder
             {
                 const auto parsedMsg = parseText(text, allowSnippet, _forcePreview == ForcePreview::Yes);
 
-                messageBlocks = createBlocks(parsedMsg, complexItem.get(), id, prev);
+                messageBlocks = createBlocks(parsedMsg, complexItem.get(), id, prev, quoteBlocks.size());
                 hasTrailingLink = parsedMsg.hasTrailingLink;
                 hasLinkInText = parsedMsg.linkInsideText;
             }
@@ -607,7 +604,7 @@ namespace ComplexMessageItemBuilder
                 q->setReplyBlock(messageBlocks.front());
         }
 
-        bool appendId = GetAppConfig().IsShowMsgIdsEnabled();
+        const bool appendId = GetAppConfig().IsShowMsgIdsEnabled();
         const auto blockCount = quoteBlocks.size() + messageBlocks.size() + (appendId ? 1 : 0);
 
         IItemBlocksVec items;
@@ -635,11 +632,14 @@ namespace ComplexMessageItemBuilder
         complexItem->setItems(std::move(items));
         complexItem->setHasTrailingLink(hasTrailingLink);
         complexItem->setHasLinkInText(hasLinkInText);
-
+        complexItem->setButtons(_msg.buttons_);
+        complexItem->setHideEdit(_msg.hideEdit());
         complexItem->setUrlAndDescription(_msg.GetUrl(), description);
 
         if (GetAppConfig().WatchGuiMemoryEnabled())
             MessageItemMemMonitor::instance().watchComplexMsgItem(complexItem.get());
+
+        complexItem->setIsUnsupported(_msg.isUnsupported());
 
         return complexItem;
     }

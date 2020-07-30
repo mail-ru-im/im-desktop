@@ -9,7 +9,7 @@
 #include "SearchModel.h"
 #include "CommonChatsModel.h"
 #include "Common.h"
-#include "../friendly/FriendlyContainer.h"
+#include "../containers/FriendlyContainer.h"
 
 #include "RecentItemDelegate.h"
 
@@ -38,13 +38,35 @@ namespace Logic
 
     bool is_select_members_regim(int _regim)
     {
-        return _regim == Logic::MembersWidgetRegim::SELECT_MEMBERS
-            || _regim == Logic::MembersWidgetRegim::VIDEO_CONFERENCE;
+        return _regim == Logic::MembersWidgetRegim::SELECT_MEMBERS || _regim == Logic::MembersWidgetRegim::VIDEO_CONFERENCE
+            || _regim == Logic::MembersWidgetRegim::SELECT_CHAT_MEMBERS;
+    }
+
+    bool is_select_chat_members_regim(int _regim)
+    {
+        return _regim == Logic::MembersWidgetRegim::SELECT_CHAT_MEMBERS;
     }
 
     bool is_video_conference_regim(int _regim)
     {
         return _regim == Logic::MembersWidgetRegim::VIDEO_CONFERENCE;
+    }
+
+    bool is_share_regims(int _regim)
+    {
+        return _regim == Logic::MembersWidgetRegim::SHARE || _regim == Logic::MembersWidgetRegim::SHARE_VIDEO_CONFERENCE;
+    }
+
+    bool isRegimWithGlobalContactSearch(int _regim)
+    {
+        return _regim == Logic::MembersWidgetRegim::SHARE || _regim == Logic::MembersWidgetRegim::SHARE_VIDEO_CONFERENCE
+            || _regim == Logic::MembersWidgetRegim::SELECT_MEMBERS || _regim == Logic::MembersWidgetRegim::VIDEO_CONFERENCE
+            || _regim == Logic::MembersWidgetRegim::SELECT_CHAT_MEMBERS || _regim == Logic::MembersWidgetRegim::SHARE_CONTACT;
+    }
+
+    bool isAddMembersRegim(int _regim)
+    {
+        return _regim == Logic::MembersWidgetRegim::SELECT_MEMBERS || _regim == Logic::MembersWidgetRegim::VIDEO_CONFERENCE;
     }
 
     QString aimIdFromIndex(const QModelIndex& _index)
@@ -92,13 +114,22 @@ namespace Logic
         return result;
     }
 
+    QMap<QString, QVariant> makeData(const QString& _command, Data::CallInfoPtr _call)
+    {
+        QMap<QString, QVariant> result;
+        result[qsl("command")] = _command;
+        result[qsl("call")] = QVariant::fromValue(_call);
+        return result;
+    }
+
     void showContactListPopup(QAction* _action)
     {
         const auto params = _action->data().toMap();
         const QString command = params[qsl("command")].toString();
         const QString aimId = params[qsl("contact")].toString();
+        Data::CallInfoPtr call = params[qsl("call")].value<Data::CallInfoPtr>();
 
-        if (command == ql1s("recents/mark_read"))
+        if (command == u"recents/mark_read")
         {
             const auto dlgState = Logic::getRecentsModel()->getDlgState(aimId);
             if (dlgState.Attention_)
@@ -111,34 +142,34 @@ namespace Logic
                 Logic::getRecentsModel()->sendLastRead(aimId, true, Logic::RecentsModel::ReadMode::ReadAll);
             }
         }
-        else if (command == ql1s("recents/mute"))
+        else if (command == u"recents/mute")
         {
             Logic::getRecentsModel()->muteChat(aimId, true);
             Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::mute_recents_menu);
         }
-        else if (command == ql1s("recents/unmute"))
+        else if (command == u"recents/unmute")
         {
             Logic::getRecentsModel()->muteChat(aimId, false);
             Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::unmute);
         }
-        else if (command == ql1s("contacts/ignore"))
+        else if (command == u"contacts/ignore")
         {
             if (Logic::getContactListModel()->ignoreContactWithConfirm(aimId))
                 Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::ignore_contact, { { "From", "ContactList_Menu" } });
         }
 
-        else if (command == ql1s("recents/ignore"))
+        else if (command == u"recents/ignore")
         {
             if (Logic::getContactListModel()->ignoreContactWithConfirm(aimId))
                 Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::ignore_contact, { { "From", "Recents_Menu" } });
         }
 
-        else if (command == ql1s("recents/close"))
+        else if (command == u"recents/close")
         {
             Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::recents_close);
             Logic::getRecentsModel()->hideChat(aimId);
         }
-        else if (command == ql1s("recents/remove"))
+        else if (command == u"recents/remove")
         {
             const QString text = QT_TRANSLATE_NOOP("popup_window", "Remove %1 from your contacts?").arg(Logic::GetFriendlyContainer()->getFriendly(aimId));
 
@@ -156,27 +187,27 @@ namespace Logic
                 Logic::getContactListModel()->removeContactFromCL(aimId);
             }
         }
-        else if (command == ql1s("recents/mark_unread"))
+        else if (command == u"recents/mark_unread")
         {
             Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::mark_unread);
             if (Logic::getContactListModel()->selectedContact() == aimId)
             {
-                emit Logic::getContactListModel()->leave_dialog(aimId);
+                Q_EMIT Logic::getContactListModel()->leave_dialog(aimId);
                 Logic::getContactListModel()->setCurrent(QString(), -1);
             }
             Logic::getRecentsModel()->setAttention(aimId, true);
         }
-        else if (command == ql1s("contacts/call"))
+        else if (command == u"contacts/call")
         {
-            Ui::GetDispatcher()->getVoipController().setStartV(aimId.toUtf8().constData(), false);
+            Ui::GetDispatcher()->getVoipController().setStartCall({ aimId }, true, false);
             Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::call_audio, { { "From", "ContactList_Menu" } });
         }
-        else if (command == ql1s("contacts/Profile"))
+        else if (command == u"contacts/Profile")
         {
-            emit Utils::InterConnector::instance().profileSettingsShow(aimId);
+            Q_EMIT Utils::InterConnector::instance().profileSettingsShow(aimId);
             Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::profile_open, { { "From", "CL_Popup" } });
         }
-        else if (command == ql1s("contacts/spam"))
+        else if (command == u"contacts/spam")
         {
             if (Ui::ReportContact(aimId, Logic::GetFriendlyContainer()->getFriendly(aimId)))
             {
@@ -184,7 +215,7 @@ namespace Logic
                 Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::spam_contact, { { "From", "ContactList_Menu" } });
             }
         }
-        else if (command == ql1s("contacts/remove"))
+        else if (command == u"contacts/remove")
         {
             const QString text = QT_TRANSLATE_NOOP("popup_window", Logic::getContactListModel()->isChat(aimId)
                 ? "Are you sure you want to leave chat?" : "Are you sure you want to delete contact?");
@@ -203,19 +234,15 @@ namespace Logic
                 Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::delete_contact, { { "From", "ContactList_Menu" } });
             }
         }
-        else if (command == ql1s("recents/favorite"))
+        else if (command == u"recents/favorite")
         {
-            Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
-            collection.set_value_as_qstring("contact", aimId);
-            Ui::GetDispatcher()->post_message_to_core("favorite", collection.get());
+            Ui::GetDispatcher()->pinContact(aimId, true);
         }
-        else if (command == ql1s("recents/unfavorite"))
+        else if (command == u"recents/unfavorite")
         {
-            Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
-            collection.set_value_as_qstring("contact", aimId);
-            Ui::GetDispatcher()->post_message_to_core("unfavorite", collection.get());
+            Ui::GetDispatcher()->pinContact(aimId, false);
         }
-        else if (command == ql1s("recents/mark_unimportant"))
+        else if (command == u"recents/mark_unimportant")
         {
             const auto confirmed = Utils::GetConfirmationWithTwoButtons(
                 QT_TRANSLATE_NOOP("popup_window", "Cancel"),
@@ -231,13 +258,13 @@ namespace Logic
                 Ui::GetDispatcher()->post_message_to_core("mark_unimportant", collection.get());
             }
         }
-        else if (command == ql1s("recents/remove_from_unimportant"))
+        else if (command == u"recents/remove_from_unimportant")
         {
             Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
             collection.set_value_as_qstring("contact", aimId);
             Ui::GetDispatcher()->post_message_to_core("remove_from_unimportant", collection.get());
         }
-        else if (command == ql1s("recents/clear_history"))
+        else if (command == u"recents/clear_history")
         {
             const auto confirmed = Utils::GetConfirmationWithTwoButtons(
                 QT_TRANSLATE_NOOP("popup_window", "Cancel"),
@@ -249,12 +276,33 @@ namespace Logic
             if (confirmed)
                 Ui::eraseHistory(aimId);
         }
-        else if (command == ql1s("recents/report"))
+        else if (command == u"recents/report")
         {
             if (Ui::ReportContact(aimId, Logic::GetFriendlyContainer()->getFriendly(aimId)))
             {
                 Logic::getContactListModel()->ignoreContact(aimId, true);
                 Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::spam_contact, { { "From", "ContactList_Menu" } });
+            }
+        }
+        else if (command == u"calls/remove")
+        {
+            const QString text = QT_TRANSLATE_NOOP("popup_window", "Are you sure you want to delete the call?");
+
+            auto confirm = Utils::GetConfirmationWithTwoButtons(
+                QT_TRANSLATE_NOOP("popup_window", "Cancel"),
+                QT_TRANSLATE_NOOP("popup_window", "Yes"),
+                text,
+                call->getFriendly(),
+                nullptr
+            );
+
+            if (confirm)
+            {
+                for (const auto& msg : call->getMessages())
+                {
+                    Ui::DeleteMessageInfo info(msg->Id_, QString(), false);
+                    Ui::GetDispatcher()->deleteMessages(msg->AimId_, { info });
+                }
             }
         }
     }
@@ -267,10 +315,7 @@ namespace Ui
     {
     }
 
-    EmptyIgnoreListLabel::~EmptyIgnoreListLabel()
-    {
-
-    }
+    EmptyIgnoreListLabel::~EmptyIgnoreListLabel() = default;
 
     void EmptyIgnoreListLabel::paintEvent(QPaintEvent*)
     {
@@ -354,7 +399,7 @@ namespace Ui
 
     QColor SearchCategoryButton::getTextColor() const
     {
-        return Styling::getParameters().getColor( selected_ ? Styling::StyleVariable::TEXT_SOLID_PERMANENT : Styling::StyleVariable::TEXT_SOLID);
+        return Styling::getParameters().getColor( selected_ ? Styling::StyleVariable::BASE_GLOBALWHITE : Styling::StyleVariable::TEXT_SOLID);
     }
 
     HeaderScrollOverlay::HeaderScrollOverlay(QWidget* _parent, QScrollArea* _scrollArea)
@@ -418,7 +463,7 @@ namespace Ui
         viewArea_->setWidgetResizable(true);
         viewArea_->setFocusPolicy(Qt::NoFocus);
 
-        Testing::setAccessibleName(viewArea_, qsl("AS clu viewArea_"));
+        Testing::setAccessibleName(viewArea_, qsl("AS Search groupViewArea"));
         rootLayout->addWidget(viewArea_);
 
         Utils::grabTouchWidget(viewArea_->viewport(), true);
@@ -436,7 +481,7 @@ namespace Ui
         const auto addCat = [layout, this](const QString& _text, const QString& _accName)
         {
             auto cat = new SearchCategoryButton(this, _text);
-            Testing::setAccessibleName(cat, qsl("AS clu ") % _accName);
+            Testing::setAccessibleName(cat, u"AS Search " % _accName);
             layout->addWidget(cat);
 
             connect(cat, &SearchCategoryButton::clicked, this, &GlobalSearchViewHeader::onCategoryClicked);
@@ -446,7 +491,7 @@ namespace Ui
 
         buttons_ =
         {
-            { SearchCategory::ContactsAndGroups, addCat(QT_TRANSLATE_NOOP("search", "CONTACTS AND GROUPS"), qsl("contgroups")) },
+            { SearchCategory::ContactsAndGroups, addCat(QT_TRANSLATE_NOOP("search", "CONTACTS AND GROUPS"), qsl("contactsAndGroups")) },
             { SearchCategory::Messages, addCat(QT_TRANSLATE_NOOP("search", "MESSAGES"), qsl("messages")) },
         };
 
@@ -467,7 +512,7 @@ namespace Ui
         }
 
         if (_selectType == SelectType::Click)
-            emit categorySelected(_cat);
+            Q_EMIT categorySelected(_cat);
     }
 
     void GlobalSearchViewHeader::setCategoryVisible(const SearchCategory _cat, const bool _isVisible)
@@ -568,7 +613,7 @@ namespace Ui
         btn->setHoverColor(Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT));
         btn->setPressedColor(Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT));
         btn->setFixedSize(Utils::scale_value(QSize(btnSize.width() + rightMargin * 2, btnHeight)));
-        Testing::setAccessibleName(btn, qsl("AS clu btn"));
+        Testing::setAccessibleName(btn, qsl("AS Search deleteChatButton"));
         layout->addWidget(btn);
 
         connect(btn, &CustomButton::clicked, this, &SearchFilterButton::onRemoveClicked);
@@ -630,7 +675,7 @@ namespace Ui
 
     void SearchFilterButton::onRemoveClicked()
     {
-        emit removeClicked(QPrivateSignal());
+        Q_EMIT removeClicked(QPrivateSignal());
     }
 
     DialogSearchViewHeader::DialogSearchViewHeader(QWidget* _parent)
@@ -657,7 +702,7 @@ namespace Ui
     {
         removeFilter(qsl("dialog"));
 
-        emit contactFilterRemoved();
+        Q_EMIT contactFilterRemoved();
     }
 
     void DialogSearchViewHeader::addFilter(const QString& _filterName, SearchFilterButton* _button)
@@ -665,7 +710,7 @@ namespace Ui
         removeFilter(_filterName);
 
         filters_[_filterName] = _button;
-        Testing::setAccessibleName(_button, qsl("AS clu _button"));
+        Testing::setAccessibleName(_button, qsl("AS Search chat"));
         layout()->addWidget(_button);
     }
 

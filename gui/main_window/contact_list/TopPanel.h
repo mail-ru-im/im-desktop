@@ -6,6 +6,7 @@ namespace Ui
 {
     class SearchWidget;
     enum class LeftPanelState;
+    class ContactAvatarWidget;
 
     namespace TextRendering
     {
@@ -83,6 +84,7 @@ namespace Ui
         void setTitle(const QString& _title);
         void addButtonToLeft(HeaderTitleBarButton* _button);
         void addButtonToRight(HeaderTitleBarButton* _button);
+        void addCentralWidget(QWidget* _widget);
 
         void setButtonSize(QSize _size);
 
@@ -90,6 +92,8 @@ namespace Ui
         void refresh();
 
         void setArrowVisible(bool _visible);
+        void setTitleVisible(bool _visible);
+        void setCentralWidgetVisible(bool _visible);
 
     protected:
         void paintEvent(QPaintEvent* _event) override;
@@ -100,10 +104,18 @@ namespace Ui
 
     private:
         void addButtonImpl(HeaderTitleBarButton* _button);
+        void updateSpacers();
 
     private:
-        QHBoxLayout * LeftLayout_;
-        QHBoxLayout* RightLayout_;
+        QGridLayout* mainLayout_;
+        QHBoxLayout* leftLayout_;
+        QHBoxLayout* centerLayout_;
+        QHBoxLayout* rightLayout_;
+        QWidget* leftWidget_;
+        QWidget* centerWidget_;
+        QWidget* rightWidget_;
+        QSpacerItem* leftSpacer_;
+        QSpacerItem* rightSpacer_;
         OverlayTopWidget* overlayWidget_;
         std::vector<QPointer<HeaderTitleBarButton>> buttons_;
         bool isCompactMode_;
@@ -111,6 +123,7 @@ namespace Ui
         std::unique_ptr<TextRendering::TextUnit> titleTextUnit_;
         QSize buttonSize_;
         bool arrowVisible_;
+        bool titleVisible_;
         QPoint clicked_;
 
         friend class OverlayTopWidget;
@@ -192,10 +205,12 @@ namespace Ui
         void addButtonToRight(HeaderTitleBarButton* _button);
 
         void refresh();
+        void updateTitle();
 
     private:
         HeaderTitleBar* titleBar_;
         HeaderTitleBarButton* pencil_;
+        ContactAvatarWidget* statusWidget_;
     };
 
     //----------------------------------------------------------------------
@@ -223,7 +238,7 @@ namespace Ui
             Search
         };
 
-        TopPanelWidget(QWidget* _parent);
+        TopPanelWidget(QWidget* _showStatus);
 
         void setState(const LeftPanelState _state) override;
         void setRegime(const Regime _regime);
@@ -239,6 +254,8 @@ namespace Ui
         bool isSearchRegime(const Regime _regime);
         void endSearch();
         void updateSearchWidgetVisibility();
+        bool isSearchWidgetVisible();
+        void updateHeader();
 
         QStackedWidget* stackWidget_;
         RecentsHeader* recentsHeader_;

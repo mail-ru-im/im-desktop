@@ -58,7 +58,7 @@ namespace core
             bool unpinned_;
             std::shared_ptr<core::archive::persons_map> persons_;
 
-            virtual int32_t init_request(std::shared_ptr<core::http_request_simple> _request) override;
+            virtual int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
 
             virtual int32_t parse_results(const rapidjson::Value& _node_results) override;
 
@@ -76,6 +76,8 @@ namespace core
             bool get_unpinned() const noexcept { return unpinned_; }
             const get_history_batch_params& get_hist_params() const { return hist_params_; }
             const std::shared_ptr<core::archive::persons_map>& get_persons() const override { return persons_; }
+
+            virtual priority_t get_priority() const override;
         };
     }
 }

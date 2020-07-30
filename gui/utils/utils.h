@@ -1,10 +1,11 @@
 #pragma once
 
 #include "../../corelib/enumerations.h"
-#include "../../gui.shared/qt_overload.h"
 #include "../types/message.h"
 #include "../types/filesharing_download_result.h"
 #include "../controls/TextUnit.h"
+#include "StringComparator.h"
+
 #include "stdafx.h"
 
 class QApplication;
@@ -19,11 +20,14 @@ namespace Ui
     class GeneralDialog;
     class CheckBox;
     class MessagesScrollArea;
+    class HistoryControlPage;
+    enum class ConferenceType;
 }
 
 namespace Utils
 {
     inline void ensureMainThread() { assert(QThread::currentThread() == qApp->thread()); }
+    inline void ensureNonMainThread() { assert(QThread::currentThread() != qApp->thread()); }
 
     QString getAppTitle();
     QString getVersionLabel();
@@ -136,14 +140,13 @@ namespace Utils
 
     bool foregroundWndIsFullscreened();
 
-    QString rgbaStringFromColor(const QColor& _color);
-
     double fscale_value(const double _px) noexcept;
     int scale_value(const int _px) noexcept;
     QSize scale_value(const QSize& _px) noexcept;
     QSizeF scale_value(const QSizeF& _px) noexcept;
     QRect scale_value(const QRect& _px) noexcept;
     QPoint scale_value(const QPoint& _px) noexcept;
+    QMargins scale_value(const QMargins& _px) noexcept;
 
     int unscale_value(int _px) noexcept;
     QSize unscale_value(const QSize& _px) noexcept;
@@ -222,14 +225,15 @@ namespace Utils
 
     void drawText(QPainter& painter, const QPointF& point, int flags, const QString& text, QRectF* boundingRect = nullptr);
 
-    const std::vector<QLatin1String>& getImageExtensions();
-    const std::vector<QLatin1String>& getVideoExtensions();
+    const std::vector<QStringView>& getImageExtensions();
+    const std::vector<QStringView>& getVideoExtensions();
 
-    bool is_image_extension(const QString& _ext);
-    bool is_image_extension_not_gif(const QString& _ext);
-    bool is_video_extension(const QString& _ext);
+    bool is_image_extension(QStringView _ext);
+    bool is_image_extension_not_gif(QStringView _ext);
+    bool is_video_extension(QStringView _ext);
 
     void copyFileToClipboard(const QString& _path);
+    void copyLink(const QString& _link);
 
     void saveAs(const QString& _inputFilename, std::function<void (const QString& _filename, const QString& _directory)> _callback, std::function<void ()> _cancel_callback = std::function<void ()>(), bool asSheet = true /* for OSX only */);
 
@@ -253,8 +257,6 @@ namespace Utils
 
     void UpdateProfile(const std::vector<std::pair<std::string, QString>>& _fields);
 
-    QString getItemSafe(const std::vector<QString>& _values, size_t _selected, const QString& _default);
-
     Ui::GeneralDialog *NameEditorDialog(
         QWidget* _parent,
         const QString& _chatName,
@@ -271,13 +273,43 @@ namespace Utils
         Out QString& resultChatName,
         bool acceptEnter = true);
 
-    bool GetConfirmationWithTwoButtons(const QString& _buttonLeft, const QString& _buttonRight,
-        const QString& _messageText, const QString& _labelText, QWidget* _parent, QWidget* _mainWindow = nullptr, bool _withSemiwindow = true);
+    bool GetConfirmationWithTwoButtons(
+        const QString& _buttonLeft,
+        const QString& _buttonRight,
+        const QString& _messageText,
+        const QString& _labelText,
+        QWidget* _parent,
+        QWidget* _mainWindow = nullptr,
+        bool _withSemiwindow = true);
 
-    bool GetConfirmationWithOneButton(const QString& _buttonText, const QString& _messageText, const QString& _labelText, QWidget* _parent, QWidget* _mainWindow = nullptr, bool _withSemiwindow = true);
+    bool GetDeleteConfirmation(
+        const QString& _buttonLeft,
+        const QString& _buttonRight,
+        const QString& _messageText,
+        const QString& _labelText,
+        QWidget* _parent,
+        QWidget* _mainWindow = nullptr,
+        bool _withSemiwindow = true);
 
-    bool GetErrorWithTwoButtons(const QString& _buttonLeftText, const QString& _buttonRightText,
-        const QString& _messageText, const QString& _labelText, const QString& _errorText, QWidget* _parent);
+    bool GetConfirmationWithOneButton(
+        const QString& _buttonText,
+        const QString& _messageText,
+        const QString& _labelText,
+        QWidget* _parent,
+        QWidget* _mainWindow = nullptr,
+        bool _withSemiwindow = true);
+
+    bool GetErrorWithTwoButtons(
+        const QString& _buttonLeftText,
+        const QString& _buttonRightText,
+        const QString& _messageText,
+        const QString& _labelText,
+        const QString& _errorText,
+        QWidget* _parent);
+
+    void ShowBotAlert(const QString& _alertText);
+
+    void showCancelGroupJoinDialog(const QString& _aimId);
 
     struct ProxySettings
     {
@@ -425,25 +457,31 @@ namespace Utils
         Launcher,
     };
 
-    void openFileOrFolder(const QStringRef& _path, const OpenAt _openAt);
-    inline void openFileOrFolder(const QString& _path, const OpenAt _openAt)
+    enum class OpenWithWarning
     {
-        openFileOrFolder(QStringRef(&_path), _openAt);
+        No,
+        Yes,
+    };
+
+    void openFileOrFolder(const QStringRef& _path, OpenAt _openAt, OpenWithWarning _withWarning = OpenWithWarning::Yes);
+    inline void openFileOrFolder(const QString& _path, OpenAt _openAt, OpenWithWarning _withWarning = OpenWithWarning::Yes)
+    {
+        openFileOrFolder(QStringRef(&_path), _openAt, _withWarning);
     }
 
     QString convertMentions(const QString& _source, const Data::MentionMap& _mentions);
-    QString convertFilesPlaceholders(const QString& _source, const Data::FilesPlaceholderMap& _files);
+    QString convertFilesPlaceholders(const QStringRef& _source, const Data::FilesPlaceholderMap& _files);
+    inline QString convertFilesPlaceholders(const QString& _source, const Data::FilesPlaceholderMap& _files)
+    {
+        return convertFilesPlaceholders(QStringRef(&_source), _files);
+    }
     QString replaceFilesPlaceholders(QString _text, const Data::FilesPlaceholderMap& _files);
     QString setFilesPlaceholders(QString _text, const Data::FilesPlaceholderMap& _files);
 
     bool isNick(const QStringRef& _text);
     QString makeNick(const QString& _text);
 
-    bool isMentionLink(const QStringRef& _url);
-    inline bool isMentionLink(const QString& _url)
-    {
-        return isMentionLink(QStringRef(&_url));
-    }
+    bool isMentionLink(QStringView _url);
 
     bool isContainsMentionLink(const QStringRef& _url);
     inline bool isContainsMentionLink(const QString& _url)
@@ -461,7 +499,6 @@ namespace Utils
     {
         dialog,
         profile,
-        chat_popup
     };
 
     enum class OpenDOPParam
@@ -470,9 +507,8 @@ namespace Utils
         stamp,
     };
 
-    OpenDOPResult openChatDialog(const QString& _stamp, const QString& _aimid, bool _joinApproval, bool _public);
     OpenDOPResult openDialogOrProfile(const QString& _contact, const OpenDOPParam _paramType = OpenDOPParam::aimid);
-    void openDialogWithContact(const QString& _contact, qint64 _id = -1, bool _sel = true);
+    void openDialogWithContact(const QString& _contact, qint64 _id = -1, bool _sel = true, std::function<void(Ui::HistoryControlPage*)> _getPageCallback = nullptr);
 
     bool clicked(const QPoint& _prev, const QPoint& _cur, int dragDistance = 0);
 
@@ -481,10 +517,36 @@ namespace Utils
     int getShadowMargin();
     void drawBubbleShadow(QPainter& _p, const QPainterPath& _bubble, const int _clipLength = -1, const int _shadowMargin = -1, const QColor _shadowColor = QColor());
 
+    enum class StatusBadgeState
+    {
+        CanBeOff,
+        AlwaysOn,
+        StatusOnly,
+        Hovered,
+        Pressed
+    };
+
+    struct StatusBadge
+    {
+        QPoint offset_;
+        QSize size_;
+
+        StatusBadge(int _offset = 0, int _statusSize = 0)
+            : offset_(Utils::scale_value(QPoint(_offset, _offset)))
+            , size_(Utils::scale_value(QSize(_statusSize, _statusSize)))
+        {};
+
+        bool isValid() const { return !size_.isNull(); }
+    };
+
     QSize avatarWithBadgeSize(const int _avatarWidthScaled);
-    void drawAvatarWithBadge(QPainter& _p, const QPoint& _topLeft, const QPixmap& _pm, const bool _isOfficial, const bool _isMuted, const bool _isSelected, const bool _isOnline, const bool _small_online);
-    void drawAvatarWithBadge(QPainter& _p, const QPoint& _topLeft, const QPixmap& _pm, const QString& _aimid, const bool _officialOnly = false, const bool _isSelected = false, const bool _small_online = true);
-    void drawAvatarWithoutBadge(QPainter& _p, const QPoint& _topLeft, const QPixmap& _pm);
+    const StatusBadge& getStatusBadgeParams(const int _avatarWidthScaled);
+    QPixmap getStatusBadge(const QString& _aimid, int _avatarSize);
+    QPixmap getBotDefaultBadge(int _badgeSize);
+    QPixmap getEmptyStatusBadge(StatusBadgeState _state, int _avatarSize);
+    void drawAvatarWithBadge(QPainter& _p, const QPoint& _topLeft, const QPixmap& _pm, const bool _isOfficial, const QPixmap& _status, const bool _isMuted, const bool _isSelected, const bool _isOnline, const bool _small_online);
+    void drawAvatarWithBadge(QPainter& _p, const QPoint& _topLeft, const QPixmap& _pm, const QString& _aimid, const bool _officialOnly = false, StatusBadgeState _state = StatusBadgeState::CanBeOff, const bool _isSelected = false, const bool _small_online = true);
+    void drawAvatarWithoutBadge(QPainter& _p, const QPoint& _topLeft, const QPixmap& _pm, const QPixmap& _status = QPixmap());
 
     template<typename T>
     QString replaceLine(T&& _s)
@@ -565,8 +627,19 @@ namespace Utils
     {
         Q_OBJECT
     public:
-        DeleteMessagesWidget(QWidget* _parent, int _deleteForYou, int _deleteForAll);
-        bool isDeleteForAll() const;
+
+        enum ShowInfoText
+        {
+            Yes,
+            No
+        };
+
+        DeleteMessagesWidget(QWidget* _parent, bool _showCheckBox, ShowInfoText _showInfoText = ShowInfoText::Yes);
+        bool isChecked() const;
+
+        void setCheckBoxText(const QString& _text);
+        void setCheckBoxChecked(bool _value);
+        void setInfoText(const QString& _text);
 
     protected:
         void paintEvent(QPaintEvent* _event) override;
@@ -575,7 +648,28 @@ namespace Utils
     private:
         Ui::CheckBox* checkbox_;
         std::unique_ptr<Ui::TextRendering::TextUnit> label_;
-        bool deleteForAll_;
+        const bool showCheckBox_;
+        const ShowInfoText showInfoText_;
+    };
+
+    class CheckableInfoWidget : public QWidget
+    {
+        Q_OBJECT
+    public:
+        explicit CheckableInfoWidget(QWidget* _parent);
+        bool isChecked() const;
+
+        void setCheckBoxText(const QString& _text);
+        void setCheckBoxChecked(bool _value);
+        void setInfoText(const QString& _text);
+
+    protected:
+        void paintEvent(QPaintEvent* _event) override;
+        void resizeEvent(QResizeEvent* _event) override;
+
+    private:
+        Ui::CheckBox* checkbox_;
+        std::unique_ptr<Ui::TextRendering::TextUnit> label_;
     };
 
     void logMessage(const QString& _message);
@@ -597,7 +691,8 @@ namespace Utils
     bool startsNotLetter(const QString& _str);
 
     QPixmap tintImage(const QPixmap& _source, const QColor& _tint);
-    bool isChat(const QString& _aimid);
+    bool isChat(QStringView _aimid);
+    bool isServiceAimId(QStringView _aimId);
 
     QString getDomainUrl();
 
@@ -608,9 +703,40 @@ namespace Utils
     {
         static_assert(std::is_same_v<decltype(x1), decltype(x2)>);
         return static_cast<std::underlying_type_t<decltype(x1.first)>>(x1.first) < static_cast<std::underlying_type_t<decltype(x2.first)>>(x2.first);
-    };
+    }
 
     QString msgIdLogStr(qint64 _msgId);
+
+    bool isUrlVCS(const QString& _url);
+
+    bool canShowSmartreplies(const QString& _aimId);
+
+    QString getDefaultCallAvatarId();
+
+    bool supportUpdates() noexcept;
+
+    enum class CallLinkFrom
+    {
+        CallLog,
+        Chat,
+        Input,
+        Profile,
+    };
+
+    class CallLinkCreator : public QObject
+    {
+        Q_OBJECT
+
+    public Q_SLOTS:
+        void onCreateCallLinkResult(int64_t _seq, int _error, bool _isWebinar, const QString& _url, int64_t _expires);
+    public:
+        CallLinkCreator(CallLinkFrom _from);
+        void createCallLink(Ui::ConferenceType _type, const QString& _aimId);
+    private:
+        int64_t seqRequestWithLoader_;
+        CallLinkFrom from_;
+        QString aimId_;
+    };
 }
 
 Q_DECLARE_METATYPE(Utils::CloseWindowInfo)
@@ -632,12 +758,12 @@ namespace MimeData
     QString getRawMimeType();
     QString getFileMimeType();
 
-    QByteArray convertMapToArray(const std::map<QString, QString, StringComparator>& _map);
-    std::map<QString, QString, StringComparator> convertArrayToMap(const QByteArray& _array);
+    QByteArray convertMapToArray(const std::map<QString, QString, Utils::StringComparator>& _map);
+    std::map<QString, QString, Utils::StringComparator> convertArrayToMap(const QByteArray& _array);
 
     void copyMimeData(const Ui::MessagesScrollArea& _area);
 
-    const std::vector<QString>& getFilesPlaceholderList();
+    const std::vector<QStringView>& getFilesPlaceholderList();
 }
 
 namespace FileSharing

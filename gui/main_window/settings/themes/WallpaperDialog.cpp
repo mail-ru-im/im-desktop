@@ -17,7 +17,7 @@
 #include "styles/ThemeParameters.h"
 #include "styles/ThemesContainer.h"
 #include "main_window/MainWindow.h"
-#include "main_window/friendly/FriendlyContainer.h"
+#include "main_window/containers/FriendlyContainer.h"
 #include "../../../core_dispatcher.h"
 
 namespace
@@ -45,11 +45,6 @@ namespace
     int getLeftMargin()
     {
         return Utils::scale_value(16);
-    }
-
-    int getCaptionLeftMargin()
-    {
-        return Utils::scale_value(20);
     }
 
     int checkboxHeight()
@@ -107,7 +102,7 @@ namespace Ui
         setAttribute(Qt::WA_TranslucentBackground);
         setAcceptDrops(true);
 
-        dragMouseoverTimer_->setInterval(dragActivateDelay().count());
+        dragMouseoverTimer_->setInterval(dragActivateDelay());
         dragMouseoverTimer_->setSingleShot(true);
         connect(dragMouseoverTimer_, &QTimer::timeout, this, &DragOverlay::onTimer);
     }
@@ -199,7 +194,7 @@ namespace Ui
                             info.size() > 0;
 
                         if (canDrop)
-                            emit fileDropped(info.absoluteFilePath(), QPrivateSignal());
+                            Q_EMIT fileDropped(info.absoluteFilePath(), QPrivateSignal());
                     }
                 }
             }
@@ -220,7 +215,7 @@ namespace Ui
     {
         assert(!_pixmap.isNull());
         if (!_pixmap.isNull())
-            emit imageDropped(_pixmap, QPrivateSignal());
+            Q_EMIT imageDropped(_pixmap, QPrivateSignal());
     }
 
 
@@ -275,6 +270,8 @@ namespace Ui
             setToAll_ = new CheckBox(this);
             setToAll_->setText(QT_TRANSLATE_NOOP("wallpaper_select", "Reset all previous"));
             setToAll_->setFixedHeight(checkboxHeight());
+
+            Testing::setAccessibleName(setToAll_, qsl("AS Wallpapers resetAll"));
 
             auto cbLayout = Utils::emptyHLayout();
             cbLayout->addSpacing(getLeftMargin());
@@ -458,7 +455,7 @@ namespace Ui
                 _wpWidget->setCaption(QT_TRANSLATE_NOOP("wallpaper_select", "Default"), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
 
             Utils::grabTouchWidget(_wpWidget);
-            Testing::setAccessibleName(_wpWidget, qsl("AS wallpaper ") % wpId.id_);
+            Testing::setAccessibleName(_wpWidget, u"AS Wallpaper " % wpId.id_);
             thumbLayout_->addWidget(_wpWidget);
 
             connect(_wpWidget, &WallpaperWidget::wallpaperClicked, this, _slot);

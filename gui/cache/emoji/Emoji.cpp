@@ -12,6 +12,8 @@
 #include "macos/Emoji_mac.h"
 #endif
 
+//#define DEBUG_EMOJI
+
 namespace
 {
     using namespace Emoji;
@@ -50,7 +52,7 @@ namespace
         if (_type == EmojiType::Svg)
             return _base;
         else
-            return _base % ql1c('_') % getNearestAppleEmojiSize(_size).second;
+            return _base % u'_' % getNearestAppleEmojiSize(_size).second;
     }
 
     QString getEmojiDefaultPath(EmojiType _type, const QString& _size = QString())
@@ -59,12 +61,12 @@ namespace
         if (_type == EmojiType::Svg)
             return svgDefaultPath;
         else
-            return qsl(":/apple_emoji/default_") % _size % qsl(".png");
+            return u":/apple_emoji/default_" % _size % u".png";
     }
 
     QString getEmojiOneFullPath(QLatin1String _base)
     {
-        QString path = qsl(":/emoji/") % _base % qsl(".svg");
+        QString path = u":/emoji/" % _base % u".svg";
         if (!QFileInfo::exists(path))
             path = getEmojiDefaultPath(EmojiType::Svg);
         return path;
@@ -74,7 +76,7 @@ namespace
     {
         const auto size = getNearestAppleEmojiSize(_size).second;
 
-        QString path = qsl(":/apple_emoji/") % _base % ql1c('_') % size % qsl(".png");
+        QString path = u":/apple_emoji/" % _base % u'_' % size % u".png";
 
         if (!QFileInfo::exists(path))
             path = getEmojiDefaultPath(EmojiType::Png, size);
@@ -244,6 +246,14 @@ namespace Emoji
         auto image = getEmojiImage(info.FileName_, _sizePx);
 #endif
 
+#if defined(DEBUG_EMOJI)
+        QImage filled(image.width(), image.height(), QImage::Format_ARGB32_Premultiplied);
+        filled.fill(Qt::yellow);
+        QPainter p(&filled);
+        p.drawImage(filled.rect(), image);
+        image = filled;
+#endif //DEBUG_EMOJI
+
         EmojiCache_.insert({ key, image });
 
         return image;
@@ -256,15 +266,15 @@ namespace Emoji
         return QImage();
     }
 
-    uint32_t readCodepoint(const QStringRef& text, int& pos)
+    uint32_t readCodepoint(QStringView text, qsizetype& pos)
     {
-        if (pos >= text.length())
+        if (pos >= text.size())
             return 0;
 
         const QChar high = text.at(pos);
         ++pos;
 
-        if (pos >= text.length() || !high.isHighSurrogate())
+        if (pos >= text.size() || !high.isHighSurrogate())
         {
             return high.unicode();
         }
@@ -279,14 +289,14 @@ namespace Emoji
         return QChar::surrogateToUcs4(high, low);
     }
 
-    EmojiCode getEmoji(const QStringRef& _text, int& _pos)
+    EmojiCode getEmoji(QStringView _text, qsizetype& _pos)
     {
         const auto emojiMaxSize = EmojiCode::maxSize();
         if (_pos >= 0)
         {
             size_t i = 0;
             EmojiCode current;
-            std::array<int, emojiMaxSize> prevPositions = {0};
+            std::array<qsizetype, emojiMaxSize> prevPositions = {0};
 
             do
             {

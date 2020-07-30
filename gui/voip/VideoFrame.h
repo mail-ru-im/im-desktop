@@ -25,7 +25,8 @@ namespace platform_specific
         virtual void fullscreenAnimationFinish() {}
         virtual void windowWillDeminiaturize() {}
         virtual void windowDidDeminiaturize() {}
-        virtual void createdTalk() {}
+        virtual void createdTalk(bool is_vcs) {}
         virtual void startedTalk() {}
+        virtual void exitTalk() {}
     };
 }

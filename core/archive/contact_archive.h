@@ -20,6 +20,8 @@ namespace core
         struct gallery_state;
         struct gallery_entry_id;
         struct gallery_item;
+        class reactions_storage;
+        struct reactions_data;
 
         using image_list = std::list<image_data>;
         using history_block = std::vector<std::shared_ptr<history_message>>;
@@ -37,6 +39,7 @@ namespace core
             std::unique_ptr<archive_state> state_;
             std::unique_ptr<mentions_me> mentions_;
             std::unique_ptr<gallery_storage> gallery_;
+            std::unique_ptr<reactions_storage> reactions_;
 
             bool local_loaded_;
 
@@ -104,7 +107,7 @@ namespace core
 
             void delete_messages_up_to(const int64_t _up_to);
 
-            contact_archive(const std::wstring& _archive_path, const std::string& _contact_id);
+            contact_archive(std::wstring _archive_path, const std::string& _contact_id);
             ~contact_archive();
 
             void add_mention(const std::shared_ptr<archive::history_message>& _message);
@@ -118,9 +121,12 @@ namespace core
             void clear_hole_request();
             void make_gallery_hole(int64_t _from, int64_t _till);
             void make_holes();
+            bool is_gallery_hole_requested() const;
             void invalidate_message_data(const std::vector<int64_t>& _ids);
             void invalidate_message_data(int64_t _from, int64_t _before_count, int64_t _after_count);
             void get_memory_usage(int64_t& _index_size, int64_t& _gallery_size) const;
+            void get_reactions(const msgids_list& _ids_to_load, /*out*/ std::vector<reactions_data>& _reactions, /*out*/ msgids_list& _missing);
+            void insert_reactions(std::vector<reactions_data>& _reactions);
         };
 
         std::wstring_view db_filename() noexcept;
@@ -130,5 +136,7 @@ namespace core
         std::wstring_view mentions_filename() noexcept;
         std::wstring_view gallery_cache_filename() noexcept;
         std::wstring_view gallery_state_filename() noexcept;
+        std::wstring_view reactions_index_filename() noexcept;
+        std::wstring_view reactions_data_filename() noexcept;
     }
 }

@@ -9,10 +9,15 @@
 #include "private/qfontengine_p.h"
 #include "qtextformat.h"
 
+#include "styles/ThemeParameters.h"
+
 namespace
 {
-    const int getExtraSpace() { return Utils::scale_value(2); }
-    const int getYDiff() { return Utils::scale_value(1); }
+    int getExtraSpace() noexcept { return Utils::scale_value(2); }
+    int getYDiff() noexcept { return Utils::scale_value(1); }
+
+    constexpr bool useCustomDots() noexcept { return true; }
+    constexpr bool useDotsViaLine() noexcept { return false; }
 
     double getVerticalShift(const int _lineHeight, const Ui::TextRendering::VerPosition _pos, const QTextItemInt& _gf)
     {
@@ -34,13 +39,29 @@ namespace
         return 0;
     }
 
-    std::pair<QTextItemInt, QFont> prepareGlyph(const QStackTextEngine& _engine, const int _item)
+    QTextCharFormat spellCheckUnderline()
+    {
+        QTextCharFormat format;
+        const static auto color = Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_PASTEL);
+        format.setUnderlineColor(color);
+        format.setUnderlineStyle(QTextCharFormat::UnderlineStyle::DotLine);
+        return format;
+    }
+
+    QTextCharFormat makeCharFormat(QTextCharFormat::UnderlineStyle _underlineStyle)
+    {
+        if (_underlineStyle == QTextCharFormat::UnderlineStyle::SpellCheckUnderline)
+            return spellCheckUnderline();
+        return {};
+    }
+
+    std::pair<QTextItemInt, QFont> prepareGlyph(const QStackTextEngine& _engine, const int _item, QTextCharFormat::UnderlineStyle _underlineStyle = QTextCharFormat::UnderlineStyle::NoUnderline)
     {
         const QScriptItem &si = _engine.layoutData->items.at(_item);
 
         QFont f = _engine.font(si);
 
-        QTextItemInt gf(si, &f);
+        QTextItemInt gf(si, &f, makeCharFormat(_underlineStyle));
         gf.glyphs = _engine.shapedGlyphs(&si);
         gf.chars = _engine.layoutData->string.unicode() + si.position;
         gf.num_chars = _engine.length(_item);
@@ -120,10 +141,17 @@ namespace Ui
             textParts_.clear();
             textParts_.push_back(TextPart(&text, textColor));
 
+            if (_word.hasSpellError())
+            {
+                for (auto e : boost::adaptors::reverse(_word.getSyntaxWords()))
+                    if (e.spellError)
+                        split(text, e.pos, e.pos + e.size, textColor, {}, SpellError::Yes);
+            }
+
             if (_word.isHighlighted() && highlightColor_.isValid())
             {
                 const auto highlightedTextColor = hightlightTextColor_.isValid() ? hightlightTextColor_ : textColor;
-                if (highlightedTextColor == textColor)
+                if (highlightedTextColor == textColor && textParts_.size() == 1)
                     fill(text, _word.highlightedFrom(), _word.highlightedTo(), highlightColor_);
                 else
                     split(text, _word.highlightedFrom(), _word.highlightedTo(), highlightedTextColor, highlightColor_);
@@ -143,7 +171,7 @@ namespace Ui
 
             if (!_needsSpace && _word.isSpaceAfter())
             {
-                static const QString sp(QChar::Space);
+                const static auto sp = spaceAsString();
                 textParts_.push_back(TextPart(&sp, textColor));
 
                 if (_word.isSpaceSelected())
@@ -158,20 +186,22 @@ namespace Ui
                 fillY -= lineHeight_ / 2.0;
             else if (pos_ == Ui::TextRendering::VerPosition::BASELINE)
                 fillY -= textAscent(_word.getFont());
-
             for (const auto& part : textParts_)
             {
-                const auto curText = textParts_.size() > 1 ? part.ref_.toString() : text;
+                const auto [visualOrder, nItems] = prepareEngine(part.ref_.toString(), _word.getFont());
 
-                const auto [visualOrder, nItems] = prepareEngine(curText, _word.getFont());
-
+                const auto underLineStyle = (part.hasSpellError_ && !useCustomDots()) ? QTextCharFormat::UnderlineStyle::SpellCheckUnderline : QTextCharFormat::UnderlineStyle::NoUnderline;
                 bool fillHanded = false;
+                const auto startX = point_.x();
+                auto startY = point_.y();
                 for (int i = 0; i < nItems; ++i)
                 {
-                    const auto [gf, font] = prepareGlyph(*d->engine_, visualOrder[i]);
+                    const auto[gf, font] = prepareGlyph(*d->engine_, visualOrder[i], underLineStyle);
 
                     const auto x = point_.x();
                     const auto y = point_.y() + getVerticalShift(lineHeight_, pos_, gf) - lineSpacing_ / 2;
+                    if (y > startY)
+                        startY = y;
 
                     if (!part.fill_.isEmpty())
                     {
@@ -197,6 +227,43 @@ namespace Ui
 
                     point_.rx() += gf.width.toReal();
                 }
+
+                const auto endX = point_.x();
+                if (useCustomDots() && part.hasSpellError_)
+                {
+                    const qreal fontFactor = qreal(_word.getFont().pixelSize()) / qreal(10.);
+                    startY += Utils::scale_value(3);
+                    Utils::PainterSaver p(*painter_);
+                    painter_->setRenderHint(QPainter::Antialiasing);
+                    const static auto color = Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_PASTEL);
+
+                    if constexpr (useDotsViaLine())
+                    {
+                        QPen pen;
+                        pen.setStyle(Qt::PenStyle::DotLine);
+                        pen.setColor(color);
+                        pen.setCapStyle(Qt::RoundCap);
+                        pen.setJoinStyle(Qt::RoundJoin);
+                        pen.setWidthF(1 * fontFactor);
+                        painter_->setBrush(Qt::NoBrush);
+                        painter_->setPen(pen);
+                        painter_->drawLine(QPointF{ startX, startY }, { endX, startY });
+                    }
+                    else
+                    {
+                        const auto r = 1 * fontFactor / 2;
+                        auto p = QPointF{ startX + r, startY };
+                        painter_->setPen(Qt::NoPen);
+                        painter_->setBrush(color);
+                        for (;;)
+                        {
+                            painter_->drawEllipse(p, r, r);
+                            p.rx() += r * 4;
+                            if (p.x() + r > endX)
+                                break;
+                        }
+                    }
+                }
             }
 
             if (_word.isSpaceSelected() || _word.isSpaceHighlighted())
@@ -213,12 +280,11 @@ namespace Ui
 
         void TextWordRenderer::drawEmoji(const TextWord& _word, const bool _needsSpace)
         {
-            auto emoji = Emoji::GetEmoji(_word.getCode(), _word.emojiSize() * Utils::scale_bitmap_ratio());
+            const auto b = Utils::scale_bitmap_ratio();
+            auto emoji = Emoji::GetEmoji(_word.getCode(), _word.emojiSize() * b);
             Utils::check_pixel_ratio(emoji);
 
-            const auto b = Utils::scale_bitmap_ratio();
-            auto y = point_.y() + (lineHeight_ / 2.0 - emoji.height() / 2.0 / b);
-
+            auto y = std::round(point_.y() + (lineHeight_ / 2.0 - emoji.height() / 2.0 / b) + getYDiff());
             if (pos_ == VerPosition::MIDDLE) //todo: handle other cases
                 y -= lineHeight_ / 2.0;
             else if (pos_ == VerPosition::BASELINE)
@@ -244,25 +310,22 @@ namespace Ui
 
             if (_word.underline())
             {
-                auto someSpaces = qsl(" ");
+                QString someSpaces;
+                someSpaces += QChar::Space;
                 const auto fontMetrics = getMetrics(_word.getFont());
                 while (fontMetrics.width(someSpaces) <= emoji.width() / b)
-                    someSpaces += ql1c(' ');
+                    someSpaces += QChar::Space;
                 if (!_needsSpace && _word.isSpaceAfter())
-                    someSpaces += ql1c(' ');
+                    someSpaces += QChar::Space;
 
                 const auto [visualOrder, nItems] = prepareEngine(someSpaces, _word.getFont());
 
-                auto uy = y;
                 for (int i = 0; i < nItems; ++i)
                 {
                     const auto [gf, f] = prepareGlyph(*d->engine_, visualOrder[i]);
-
-                    uy += getVerticalShift(lineHeight_, pos_, gf);
-                    uy -= 1.*lineSpacing_ / 2;
-                    uy = platform::is_apple() ? std::ceil(uy) : std::floor(uy);
+                    const auto underlineY = point_.y() + getVerticalShift(lineHeight_, pos_, gf) - lineSpacing_ / 2;
                     painter_->setPen((selected || highlighted) ? _word.getColor() : linkColor_);
-                    painter_->drawTextItem(QPointF(point_.x() - 1., uy), gf);
+                    painter_->drawTextItem(QPointF(point_.x() - 1., underlineY), gf);
                 }
             }
 
@@ -272,7 +335,7 @@ namespace Ui
             point_.rx() += (roundToInt(_word.cachedWidth()) + addSpace_);
         }
 
-        void TextWordRenderer::split(const QString& _text, const int _from, const int _to, const QColor& _textColor, const QColor& _fillColor)
+        void TextWordRenderer::split(const QString& _text, const int _from, const int _to, const QColor& _textColor, const QColor& _fillColor, SpellError _e)
         {
             const auto processFillRightSide = [](const auto _it, const auto& _oldFill)
             {
@@ -303,21 +366,27 @@ namespace Ui
                 {
                     p.textColor_ = _textColor;
                     p.fillEntirely(_fillColor);
+                    p.hasSpellError_ |= SpellError::Yes == _e;
                 }
                 else if (_from > p.from() && _to < p.to()) //inside
                 {
                     auto partFill = p.fill_;
                     p.truncate(_from - p.from());
-                    textParts_.insert(std::next(textParts_.begin(), i + 1), TextPart(_text.midRef(_from, _to - _from), _textColor, _fillColor));
-                    auto it = textParts_.insert(std::next(textParts_.begin(), i + 2), TextPart(_text.midRef(_to, r - _to), p.textColor_));
+                    auto it = textParts_.insert(std::next(textParts_.begin(), i + 1), TextPart(_text.midRef(_from, _to - _from), _textColor, _fillColor));
+                    it->hasSpellError_ = SpellError::Yes == _e || p.hasSpellError_;
+                    it = textParts_.insert(std::next(textParts_.begin(), i + 2), TextPart(_text.midRef(_to, r - _to), p.textColor_));
+                    it->hasSpellError_ = p.hasSpellError_;
                     processFillRightSide(it, partFill);
                 }
                 else if (_from <= p.from() && _to < p.to()) //left
                 {
                     auto partFill = p.fill_;
                     p.truncate(_to - p.from());
+                    p.hasSpellError_ |= SpellError::Yes == _e;
 
                     auto it = textParts_.insert(std::next(textParts_.begin(), i + 1), TextPart(_text.midRef(_to, r - _to), p.textColor_));
+                    if (SpellError::No == _e)
+                        it->hasSpellError_ = p.hasSpellError_;
                     processFillRightSide(it, partFill);
 
                     p.textColor_ = _textColor;
@@ -326,12 +395,14 @@ namespace Ui
                 else //right
                 {
                     p.truncate(_from - p.from());
-                    textParts_.insert(std::next(textParts_.begin(), i + 1), TextPart(_text.midRef(_from,  r - _from), _textColor, _fillColor));
+                    p.hasSpellError_ |= SpellError::Yes == _e;
+                    auto it = textParts_.insert(std::next(textParts_.begin(), i + 1), TextPart(_text.midRef(_from,  r - _from), _textColor, _fillColor));
+                    it->hasSpellError_ = SpellError::Yes == _e || p.hasSpellError_;
                 }
             }
         }
 
-        void TextWordRenderer::fill(const QString& _text, const int _from, const int _to, const QColor& _fillColor)
+        void TextWordRenderer::fill(const QString& _text, const int _from, const int _to, const QColor& _fillColor, SpellError _e)
         {
             for (auto& p : textParts_)
             {

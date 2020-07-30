@@ -16,6 +16,7 @@ class DeviceMonitoringImpl
 protected:
     DeviceMonitoringImpl();
     void DeviceMonitoringListChanged() override;
+    void DeviceMonitoringAudioPropChanged() override;
     void DeviceMonitoringBluetoothHeadsetChanged(bool connected) override;
 
 public:

@@ -27,15 +27,17 @@ namespace Omicron
             if (newData->Parse(_collection.get_value_as_string("data")).HasParseError())
                 return;
 
-            init_ = true;
-
-            std::scoped_lock lock(dataLock_);
-            data_.swap(newData);
+            {
+                std::scoped_lock lock(dataLock_);
+                data_.swap(newData);
+                init_ = true;
+            }
         }
     }
 
     void OmicronContainer::cleanup()
     {
+        std::scoped_lock lock(dataLock_);
         init_ = false;
         data_.reset();
     }

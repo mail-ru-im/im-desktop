@@ -1,5 +1,7 @@
 #pragma once
 
+#include "smartreply/smartreply_marker.h"
+
 namespace core
 {
     enum class message_type;
@@ -162,6 +164,9 @@ namespace core
             void set_poll(const core::archive::poll& _poll);
             const core::archive::poll get_poll() const;
 
+            void set_smartreply_marker(const smartreply::marker_opt& _marker);
+            const smartreply::marker_opt& get_smartreply_marker() const;
+
         private:
 
             std::string aimid_;
@@ -185,6 +190,7 @@ namespace core
             bool deleted_;
 
             delete_operation delete_operation_;
+            smartreply::marker_opt smartreply_marker_;
 
             not_sent_message();
 

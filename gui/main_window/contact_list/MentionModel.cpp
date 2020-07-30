@@ -4,20 +4,23 @@
 #include "ContactListModel.h"
 #include "SearchModel.h"
 
-#include "../friendly/FriendlyContainer.h"
+#include "../containers/FriendlyContainer.h"
 #include "../../cache/avatars/AvatarStorage.h"
 #include "../../search/ContactSearcher.h"
 #include "../../utils/gui_coll_helper.h"
 #include "../../utils/InterConnector.h"
+#include "../../utils/features.h"
 #include "../../core_dispatcher.h"
+
+#include "../common.shared/config/config.h"
 
 Q_LOGGING_CATEGORY(mentionsModel, "mentionsModel")
 
 namespace
 {
-    constexpr std::chrono::milliseconds serverTimeout = std::chrono::seconds(1);
-    constexpr std::chrono::milliseconds typingTimeout = std::chrono::milliseconds(100);
-    constexpr auto expectedCount = 100;
+    std::chrono::milliseconds serverTimeout() noexcept { return std::chrono::milliseconds(config::get().number<int64_t>(config::values::server_mention_timeout).value_or(1000)); }
+    constexpr std::chrono::milliseconds typingTimeout() noexcept { return std::chrono::milliseconds(100); }
+    constexpr auto expectedCount() noexcept { return 100; }
 }
 
 namespace Logic
@@ -39,10 +42,7 @@ namespace Logic
     {
         setServerSearchEnabled(true);
 
-        localSearcher_->setExcludeChats(true);
-        localSearcher_->setSearchSource(SearchDataSource::local);
-
-        connect(localSearcher_, &ContactSearcher::localResults, this, &MentionModel::onContactListResults);
+        connect(localSearcher_, &ContactSearcher::allResults, this, &MentionModel::onContactListResults);
 
         connect(getContactListModel(), &ContactListModel::selectedContactChanged, this, &MentionModel::onContactSelected);
 
@@ -55,17 +55,17 @@ namespace Logic
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::dialogClosed, this, &MentionModel::onDialogClosed);
 
         responseTimer_->setSingleShot(true);
-        responseTimer_->setInterval(serverTimeout.count());
+        responseTimer_->setInterval(serverTimeout());
         connect(responseTimer_, &QTimer::timeout, this, &MentionModel::onServerTimeout);
 
         typingTimer_->setSingleShot(true);
-        typingTimer_->setInterval(typingTimeout.count());
+        typingTimer_->setInterval(typingTimeout());
         connect(typingTimer_, &QTimer::timeout, this, &MentionModel::search);
 
-        match_.reserve(expectedCount);
-        localResults_.reserve(expectedCount);
-        serverResults_.reserve(expectedCount);
-        clResults_.reserve(expectedCount);
+        match_.reserve(expectedCount());
+        localResults_.reserve(expectedCount());
+        serverResults_.reserve(expectedCount());
+        clResults_.reserve(expectedCount());
     }
 
     int MentionModel::rowCount(const QModelIndex &) const
@@ -132,6 +132,8 @@ namespace Logic
         requestId_ = -1;
 
         dialogAimId_ = _aimid;
+        localSearcher_->setExcludeChats(SearchDataSource::localAndServer);
+        localSearcher_->setSearchSource(isGlobalContactSearchAllowed() ? SearchDataSource::localAndServer : SearchDataSource::local);
         sendServerRequests_ = Logic::getContactListModel()->isChat(dialogAimId_) && isServerSearchEnabled();
     }
 
@@ -215,8 +217,8 @@ namespace Logic
                 match_.pop_back();
         }
 
-        emit dataChanged(index(0), index(match_.size()));
-        emit results();
+        Q_EMIT dataChanged(index(0), index(match_.size()));
+        Q_EMIT results();
 
         if (sendServerRequests_)
         {
@@ -236,12 +238,17 @@ namespace Logic
             return;
 
         auto contacts = localSearcher_->getLocalResults();
+        contacts.append(localSearcher_->getServerResults());
         std::sort(contacts.begin(), contacts.end(), [](const auto& first, const auto& second) { return SearchModel::simpleSort(first, second, true, QString()); });
 
         clResults_.reserve(clResults_.size() + contacts.size());
 
         for (const auto& c : contacts)
+        {
+            if (std::any_of(clResults_.begin(), clResults_.end(), [_aimId = c->getAimId()](const auto& res){ return res.aimId_ == _aimId;}))
+                continue;
             clResults_.emplace_back(c->getAimId(), c->getFriendlyName(), searchPattern_, c->getNick());
+        }
 
         qCDebug(mentionsModel) << "CL returned" << contacts.size() << "items";
         onRequestReturned();
@@ -294,7 +301,7 @@ namespace Logic
             if (s.aimId_ == _aimid)
             {
                 const auto ndx = index(i);
-                emit dataChanged(ndx, ndx);
+                Q_EMIT dataChanged(ndx, ndx);
                 break;
             }
             ++i;
@@ -313,7 +320,7 @@ namespace Logic
             {
                 s.friendlyName_ = _friendlyName;
                 const auto ndx = index(i);
-                emit dataChanged(ndx, ndx);
+                Q_EMIT dataChanged(ndx, ndx);
                 break;
             }
             ++i;
@@ -385,6 +392,11 @@ namespace Logic
 
         localSearcher_->search(searchPattern_);
         filterLocal();
+    }
+
+    bool MentionModel::isGlobalContactSearchAllowed() const
+    {
+        return Features::isGlobalContactSearchAllowed() && !Logic::getContactListModel()->isChat(dialogAimId_);
     }
 
     MentionModel* GetMentionModel()

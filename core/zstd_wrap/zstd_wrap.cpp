@@ -53,7 +53,7 @@ int preprocessJSON(const char *data_in, size_t data_in_size, string &s_out)
     }
     else
     {
-        core::tools::sort_json_keys_by_name(&doc);
+        core::tools::sort_json_keys_by_name(doc);
 
         rapidjson::StringBuffer buffer;
         rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);

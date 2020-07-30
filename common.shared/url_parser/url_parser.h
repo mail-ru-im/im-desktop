@@ -28,6 +28,10 @@ namespace common
                 ftp,
                 https,
                 ftps,
+                sftp,
+                ssh,
+                vnc,
+                rdp,
                 icq,
                 agent,
                 biz,
@@ -91,13 +95,16 @@ namespace common
                 protocol_t2,
                 protocol_p,
                 protocol_s,
+                protocol_f,
                 protocol_c,
                 protocol_q,
                 protocol_a,
                 protocol_g,
                 protocol_e,
+                protocol_h,
                 protocol_n,
                 protocol_t,
+                protocol_v,
                 protocol_y,
                 protocol_r,
                 protocol_s1,
@@ -168,7 +175,7 @@ namespace common
             struct compare_item
             {
                 std::string str;
-                states ok_state;
+                states ok_state = states::lookup;
                 bool match = false;
                 int safe_pos = 0;
             };
@@ -268,7 +275,7 @@ namespace common
 
             int32_t id_length_;
 
-            char char_buf_[6];
+            std::array<char, 6> char_buf_;
             int32_t char_pos_;
             int32_t char_size_;
 

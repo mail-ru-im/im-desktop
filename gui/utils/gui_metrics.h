@@ -89,7 +89,7 @@ namespace statistic
 
         gui_time now() const;
 
-        bool is_started_by_user_;
+        bool is_started_by_user_ = false;
 
         gui_time start_time_;
 

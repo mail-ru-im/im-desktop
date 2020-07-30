@@ -102,7 +102,7 @@ namespace Ui
         firstName_->setAttribute(Qt::WA_MacShowFocusRect, false);
         firstName_->setContextMenuPolicy(Qt::ContextMenuPolicy::NoContextMenu);
         Utils::ApplyStyle(firstName_, Styling::getParameters().getLineEditCommonQss(false, nameEditHeight));
-        Testing::setAccessibleName(firstName_, qsl("AS ped firstName_"));
+        Testing::setAccessibleName(firstName_, qsl("AS ProfilePage firstNameEdit"));
 
         lastName_ = new LineEditEx(this, lineEditOptions);
         lastName_->setPlaceholderText(QT_TRANSLATE_NOOP("profile_edit_dialogs", "Last name"));
@@ -114,7 +114,7 @@ namespace Ui
         lastName_->setContextMenuPolicy(Qt::ContextMenuPolicy::NoContextMenu);
         lastName_->setAttribute(Qt::WA_MacShowFocusRect, false);
         Utils::ApplyStyle(lastName_, Styling::getParameters().getLineEditCommonQss(false, nameEditHeight));
-        Testing::setAccessibleName(lastName_, qsl("AS ped lastName_"));
+        Testing::setAccessibleName(lastName_, qsl("AS ProfilePage lastNameEdit"));
 
         connect(firstName_, &LineEditEx::textChanged, this, &EditNameWidget::onFormChanged);
         connect(lastName_, &LineEditEx::textChanged, this, &EditNameWidget::onFormChanged);
@@ -173,14 +173,14 @@ namespace Ui
     {
         Utils::UpdateProfile({std::make_pair(std::string("firstName"), firstName_->text()),
                               std::make_pair(std::string("lastName"), lastName_->text())});
-        emit changed();
-        emit Utils::InterConnector::instance().closeAnyPopupWindow(Utils::CloseWindowInfo());
+        Q_EMIT changed();
+        Q_EMIT Utils::InterConnector::instance().closeAnyPopupWindow(Utils::CloseWindowInfo());
         close();
     }
 
     void EditNameWidget::cancelClicked()
     {
-        emit Utils::InterConnector::instance().closeAnyPopupWindow(Utils::CloseWindowInfo());
+        Q_EMIT Utils::InterConnector::instance().closeAnyPopupWindow(Utils::CloseWindowInfo());
         close();
     }
 
@@ -219,13 +219,13 @@ namespace Ui
     {
         if (_onUp)
         {
-            connect(_lineEdit, &LineEditEx::upArrow, _onUp, Utils::QOverload<>::of(&LineEditEx::setFocus));
+            connect(_lineEdit, &LineEditEx::upArrow, _onUp, qOverload<>(&LineEditEx::setFocus));
             connect(_lineEdit, &LineEditEx::backtab, _onUp, [_onUp]() { _onUp->setFocus(Qt::BacktabFocusReason); });
         }
 
         if (_onDown)
         {
-            connect(_lineEdit, &LineEditEx::downArrow, _onDown, Utils::QOverload<>::of(&LineEditEx::setFocus));
+            connect(_lineEdit, &LineEditEx::downArrow, _onDown, qOverload<>(&LineEditEx::setFocus));
             connect(_lineEdit, &LineEditEx::tab, _onDown, [_onDown]() { _onDown->setFocus(Qt::TabFocusReason); });
         }
     }

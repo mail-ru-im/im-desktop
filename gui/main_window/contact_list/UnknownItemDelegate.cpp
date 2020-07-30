@@ -1,13 +1,13 @@
 #include "stdafx.h"
 #include "UnknownItemDelegate.h"
 
-#include "ContactList.h"
+#include "RecentsTab.h"
 #include "ContactListModel.h"
 #include "UnknownsModel.h"
 #include "../../types/contact.h"
 #include "../../utils/utils.h"
 #include "../../main_window/contact_list/RecentItemDelegate.h"
-#include "../friendly/FriendlyContainer.h"
+#include "../containers/FriendlyContainer.h"
 
 namespace Logic
 {

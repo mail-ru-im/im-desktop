@@ -2,22 +2,21 @@
 
 #include "GeneralSettingsWidget.h"
 #include "RestartLabel.h"
+#include "PageOpenerWidget.h"
 
 #include "themes/WallpaperDialog.h"
 #include "themes/WallpaperPreviewWidget.h"
-#include "themes/DialogOpenerWidget.h"
 #include "themes/FontSizeSelectorWidget.h"
 
-#include "../../controls/TransparentScrollBar.h"
-#include "../../controls/RadioTextRow.h"
-#include "../../controls/TextEmojiWidget.h"
-#include "../../utils/utils.h"
-#include "../../utils/InterConnector.h"
-#include "../../gui_settings.h"
+#include "styles/ThemesContainer.h"
+#include "styles/ThemeParameters.h"
+#include "controls/TransparentScrollBar.h"
+#include "controls/RadioTextRow.h"
+#include "controls/TextEmojiWidget.h"
+#include "utils/utils.h"
+#include "utils/InterConnector.h"
+#include "gui_settings.h"
 #include "fonts.h"
-
-#include "../../styles/ThemesContainer.h"
-#include "../../styles/ThemeParameters.h"
 
 using namespace Ui;
 
@@ -26,11 +25,6 @@ namespace
     int getBgHeight()
     {
         return Utils::scale_value(180);
-    }
-
-    int getItemHeight()
-    {
-        return Utils::scale_value(44);
     }
 
     int getItemSpacing()
@@ -53,12 +47,12 @@ void GeneralSettingsWidget::Creator::initAppearance(QWidget* _parent)
     scrollArea->setWidgetResizable(true);
     scrollArea->setStyleSheet(qsl("background: transparent"));
     Utils::grabTouchWidget(scrollArea->viewport(), true);
-    Testing::setAccessibleName(scrollArea, qsl("AS settings appearance scrollArea"));
+    Testing::setAccessibleName(scrollArea, qsl("AS AppearancePage scrollArea"));
     layout->addWidget(scrollArea);
 
     auto scrollAreaWidget = new QWidget(scrollArea);
     Utils::grabTouchWidget(scrollAreaWidget);
-    Testing::setAccessibleName(scrollAreaWidget, qsl("AS settings scrollAreaWidget"));
+    Testing::setAccessibleName(scrollAreaWidget, qsl("AS AppearancePage scrollAreaWidget"));
 
     auto scrollAreaLayout = Utils::emptyVLayout(scrollAreaWidget);
     scrollAreaLayout->setAlignment(Qt::AlignTop);
@@ -75,8 +69,9 @@ void GeneralSettingsWidget::Creator::initAppearance(QWidget* _parent)
     scrollAreaLayout->addWidget(preview);
     scrollAreaLayout->addSpacing(Utils::scale_value(8));
 
-    auto wpSelector = new DialogOpenerWidget(scrollArea, QT_TRANSLATE_NOOP("settings", "Chats wallpaper"));
-    QObject::connect(wpSelector, &DialogOpenerWidget::clicked, preview, [preview]()
+    auto wpSelector = new PageOpenerWidget(scrollArea, QT_TRANSLATE_NOOP("settings", "Chats wallpaper"));
+    Testing::setAccessibleName(wpSelector, qsl("AS AppearancePage wallpapers"));
+    QObject::connect(wpSelector, &PageOpenerWidget::clicked, preview, [preview]()
     {
         showWallpaperSelectionDialog(getPreviewContact());
         preview->updateFor(getPreviewContact());
@@ -97,7 +92,7 @@ void GeneralSettingsWidget::Creator::initAppearance(QWidget* _parent)
         if (Fonts::getFontSizeSetting() != _size)
         {
             Fonts::setFontSizeSetting(_size);
-            emit Utils::InterConnector::instance().chatFontParamsChanged();
+            Q_EMIT Utils::InterConnector::instance().chatFontParamsChanged();
         }
     });
     scrollAreaLayout->addWidget(fontSelector);
@@ -112,14 +107,15 @@ void GeneralSettingsWidget::Creator::initAppearance(QWidget* _parent)
             gcItemsLayout,
             QT_TRANSLATE_NOOP("settings", "Bold text"),
             Fonts::getFontBoldSetting(),
-            [](bool checked) -> QString {
-                if (Fonts::getFontBoldSetting() != checked) {
+            [](bool checked)
+            {
+                if (Fonts::getFontBoldSetting() != checked)
+                {
                     Fonts::setFontBoldSetting(checked);
-                    emit Utils::InterConnector::instance().chatFontParamsChanged();
+                    Q_EMIT Utils::InterConnector::instance().chatFontParamsChanged();
                 }
-
-                return QString();
-            });
+            }, -1, qsl("AS AppearancePage boldSetting")
+    );
 
     gcItemsLayout->addSpacing(getItemSpacing());
 
@@ -128,14 +124,14 @@ void GeneralSettingsWidget::Creator::initAppearance(QWidget* _parent)
             gcItemsLayout,
             QT_TRANSLATE_NOOP("settings", "Chat list compact mode"),
             !get_gui_settings()->get_value<bool>(settings_show_last_message, true),
-            [](bool checked) -> QString {
+            [](bool checked)
+            {
                 if (get_gui_settings()->get_value<bool>(settings_show_last_message, true) != !checked) {
                     get_gui_settings()->set_value<bool>(settings_show_last_message, !checked);
-                    emit Utils::InterConnector::instance().compactModeChanged();
+                    Q_EMIT Utils::InterConnector::instance().compactModeChanged();
                 }
-
-                return QString();
-            });
+            }, -1, qsl("AS AppearancePage compactChatSetting")
+    );
 
 #ifndef __APPLE__
     gcItemsLayout->addSpacing(Utils::scale_value(20) + getItemSpacing());
@@ -221,8 +217,12 @@ void GeneralSettingsWidget::Creator::initAppearance(QWidget* _parent)
 
         auto list = new SimpleListWidget(Qt::Vertical);
 
-        for (const auto&[_, name] : themesList)
-            list->addItem(new RadioTextRow(name));
+        for (const auto& [id, name] : themesList)
+        {
+            auto row = new RadioTextRow(name);
+            Testing::setAccessibleName(row, qsl("AS AppearancePage ") % id);
+            list->addItem(row);
+        }
 
         list->setCurrentIndex(currentIdx);
 

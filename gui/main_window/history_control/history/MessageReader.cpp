@@ -85,9 +85,9 @@ namespace hist
 
             pendingVisibleMessages_.insert(_messageId);
 
-            constexpr std::chrono::milliseconds readTimeout = std::chrono::milliseconds(300);
+            constexpr auto readTimeout = std::chrono::milliseconds(300);
 
-            QTimer::singleShot(readTimeout.count(), this, [this, _messageId, removeFromPending]()
+            QTimer::singleShot(readTimeout, this, [this, _messageId, removeFromPending]()
             {
                 if (removeFromPending(_messageId))
                 {
@@ -118,7 +118,7 @@ namespace hist
             mentions_.erase(partIt, end);
 
             for (auto id : readIds)
-                emit mentionRead(id, QPrivateSignal());
+                Q_EMIT mentionRead(id, QPrivateSignal());
         }
     }
 
@@ -130,23 +130,15 @@ namespace hist
 
             const auto dlgState = hist::getDlgState(aimId_);
             const auto lastReadMention = std::max(lastReads_.mention, dlgState.LastReadMention_);
-            if (Ui::get_gui_settings()->get_value<bool>(settings_partial_read, settings_partial_read_default()))
+            const auto yoursLastRead = dlgState.YoursLastRead_;
+            const auto needResetUnreadCount = (dlgState.UnreadCount_ != 0 && yoursLastRead == _messageId);
+            if (yoursLastRead < _messageId || needResetUnreadCount)
             {
-                const auto yoursLastRead = dlgState.YoursLastRead_;
-                const auto needResetUnreadCount = (dlgState.UnreadCount_ != 0 && yoursLastRead == _messageId);
-                if (yoursLastRead < _messageId || needResetUnreadCount)
+                if (std::min(lastReads_.mention, lastReads_.text) < _messageId || needResetUnreadCount)
                 {
-                    if (std::min(lastReads_.mention, lastReads_.text) < _messageId || needResetUnreadCount)
-                    {
-                        lastReads_.mention = std::max({ _messageId, lastReads_.mention, lastReads_.text });
-                        lastReads_.text = lastReads_.mention;
-                        sendPartialLastRead(lastReads_.text);
-                    }
-                }
-                else if (lastReadMention < _messageId)
-                {
-                    lastReads_.mention = _messageId;
-                    sendLastReadMention(_messageId);
+                    lastReads_.mention = std::max({ _messageId, lastReads_.mention, lastReads_.text });
+                    lastReads_.text = lastReads_.mention;
+                    sendPartialLastRead(lastReads_.text);
                 }
             }
             else if (lastReadMention < _messageId)

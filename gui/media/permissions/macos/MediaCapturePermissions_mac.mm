@@ -11,11 +11,11 @@ namespace
     {
         if (@available(macOS 10.14, *))
         {
-            AVCaptureDevice* target = [AVCaptureDevice class];
+            Class aClass = [AVCaptureDevice class];
             SEL selector = @selector(authorizationStatusForMediaType:);
-            if ([target respondsToSelector:selector])
+            if ([aClass respondsToSelector:selector])
             {
-                NSInteger status = (NSInteger)[target performSelector:selector withObject:mediaType];
+                NSInteger status = (NSInteger)[aClass performSelector:selector withObject:mediaType];
                 switch (status)
                 {
                 case AVAuthorizationStatusAuthorized:
@@ -103,15 +103,17 @@ namespace media::permissions
         }
         else if (@available(macOS 10.14, *))
         {
-            AVCaptureDevice* target = [AVCaptureDevice class];
+            Class aClass = [AVCaptureDevice class];
             SEL selector = @selector(requestAccessForMediaType:completionHandler:);
-            if ([target respondsToSelector:selector])
+            if ([aClass respondsToSelector:selector])
             {
-                [target performSelector:selector withObject:getMediaType(type) withObject:^(BOOL granted)
-                {
-                    if (_callback)
-                        _callback(bool(granted));
-                }];
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    [aClass performSelector:selector withObject:getMediaType(type) withObject:^(BOOL granted)
+                    {
+                        if (_callback)
+                            _callback(bool(granted));
+                    }];
+                });
             }
             else
             {

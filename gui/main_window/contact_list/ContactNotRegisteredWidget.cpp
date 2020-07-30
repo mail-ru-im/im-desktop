@@ -71,7 +71,7 @@ void ContactNotRegisteredWidget::keyPressEvent(QKeyEvent *_event)
     QWidget::keyPressEvent(_event);
 
     if (_event->key() == Qt::Key_Return || _event->key() == Qt::Key_Enter)
-        emit enterPressed();
+        Q_EMIT enterPressed();
 }
 
 }

@@ -9,33 +9,33 @@ using namespace Ui;
 
 namespace
 {
-    void log(const QString &type, const QString &area, const QString &text);
-    inline void log(const QString &type, const char* area, const QString &text)
+    void log(QStringView type, QStringView area, QStringView text);
+    inline void log(const QString& type, const char* area, const QString& text)
     {
-        log(type, ql1s(area), text);
+        log(type, QString(ql1s(area)), text);
     }
 }
 
 namespace Log
 {
-    void trace(const QString& area, const QString& text)
+    void trace(QStringView area, QStringView text)
     {
-        log(qsl("trace"), area, text);
+        log(u"trace", area, text);
     }
 
-    void info(const QString& area, const QString& text)
+    void info(QStringView area, QStringView text)
     {
-        log(qsl("info"), area, text);
+        log(u"info", area, text);
     }
 
-    void warn(const QString& area, const QString& text)
+    void warn(QStringView area, QStringView text)
     {
-        log(qsl("warn"), area, text);
+        log(u"warn", area, text);
     }
 
-    void error(const QString& area, const QString& text)
+    void error(QStringView area, QStringView text)
     {
-        log(qsl("error"), area, text);
+        log(u"error", area, text);
     }
 
     void write_network_log(const std::string& _text)
@@ -108,7 +108,7 @@ QTextStream& operator <<(QTextStream &oss, const core::file_sharing_function arg
 
 namespace
 {
-    void log(const QString &type, const QString &area, const QString &text)
+    void log(QStringView type, QStringView area, QStringView text)
     {
         assert(!type.isEmpty());
         assert(!area.isEmpty());

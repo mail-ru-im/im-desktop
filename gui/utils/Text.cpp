@@ -53,11 +53,9 @@ namespace Utils
     {
         assert(textHeight > 0);
         assert(contentHeight > 0);
-
         if constexpr (platform::is_windows())
         {
-            static bool isVistaOrLater = platform::is_windows_vista_or_late();
-            const auto isMultiline = (textHeight >= Utils::scale_value(isVistaOrLater ? 38 : 34));
+            const auto isMultiline = (textHeight >= Utils::scale_value(38));
             const auto fix = (
                 isMultiline ?
                     Utils::scale_value(9) :
@@ -66,8 +64,7 @@ namespace Utils
 
             return (contentHeight + fix);
         }
-
-        if constexpr (platform::is_linux())
+        else if constexpr (platform::is_linux())
         {
             const auto isMultiline = (textHeight >= Utils::scale_value(34));
             const auto fix = (
@@ -78,8 +75,7 @@ namespace Utils
 
             return (contentHeight + fix);
         }
-
-        if constexpr (platform::is_apple())
+        else if constexpr (platform::is_apple())
         {
             const auto isMultiline = (textHeight >= Utils::scale_value(36));
             const auto fix = (
@@ -98,22 +94,22 @@ namespace Utils
     {
         assert(textWidth > 0);
 
+        // preliminary fix of division by zero
+        // todo: replace the default value when required
+        const auto fontHeight = std::max(fontMetrics.height(), 1);
+
         if (text.isEmpty() || (textWidth <= 0))
         {
-            return TextHeightMetrics(1, fontMetrics.height());
+            return TextHeightMetrics(1, fontHeight);
         }
 
         const QRect textLtr(0, 0, textWidth, QWIDGETSIZE_MAX / 2);
-
         const auto textRect = fontMetrics.boundingRect(textLtr, Qt::AlignLeft | Qt::TextWordWrap, text);
-
         const auto textHeight = textRect.height();
-
-        const auto lineHeight = fontMetrics.height();
-        const auto linesNumber = (1 + ((textHeight - 1) / lineHeight));
+        const auto linesNumber = (1 + ((textHeight - 1) / fontHeight));
         assert(linesNumber >= 1);
 
-        return TextHeightMetrics(linesNumber, fontMetrics.height());
+        return TextHeightMetrics(linesNumber, fontHeight);
     }
 
     int32_t evaluateActualLineHeight(const QFontMetrics &_m)

@@ -81,13 +81,13 @@ namespace Ui
         void cancelClicked(QPrivateSignal) const;
         void needScrollToLastQuote(QPrivateSignal) const;
         void quoteCountChanged(QPrivateSignal) const;
+        void quoteHeightChanged(QPrivateSignal) const;
 
     public:
         QuotesWidget(QWidget* _parent);
 
         void setQuotes(const Data::QuotesVec& _quotes);
         void clearQuotes();
-        bool isMaxHeight() const;
 
     protected:
         void updateStyleImpl(const InputStyleMode _mode) override;

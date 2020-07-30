@@ -8,16 +8,16 @@
 #include "app_config.h"
 #include "url_config.h"
 #include "features.h"
+#include "../../common.shared/config/config.h"
 
 namespace
 {
     bool checkJoinQuery(const QUrl& _url)
     {
-        const QUrlQuery urlQuery(_url);
-        const auto items = urlQuery.queryItems();
+        const auto items = QUrlQuery(_url).queryItems();
         const bool join = std::any_of(items.cbegin(), items.cend(), [](const auto& param)
         {
-            return param.first == ql1s("join") && param.second == ql1s("1");
+            return param.first == u"join" && param.second == u'1';
         });
 
         return join;
@@ -25,11 +25,11 @@ namespace
 }
 
 
-std::shared_ptr<UrlCommand> UrlCommandBuilder::makeCommand(QString _url, Context _context)
+std::unique_ptr<UrlCommand> UrlCommandBuilder::makeCommand(QString _url, Context _context)
 {
-    auto command = std::make_shared<UrlCommand>();
+    auto command = std::make_unique<UrlCommand>();
 
-    if (_url.endsWith(ql1c('/')))
+    if (_url.endsWith(u'/'))
         _url.chop(1);
 
     const static auto schemesWithSlashes = []() {
@@ -37,7 +37,7 @@ std::shared_ptr<UrlCommand> UrlCommandBuilder::makeCommand(QString _url, Context
         std::vector<QString> schemes;
         schemes.reserve(urlSchemes.size());
         for (const auto& x : urlSchemes)
-            schemes.push_back(x % ql1s("://"));
+            schemes.push_back(x % u"://");
         return schemes;
     }();
 
@@ -45,64 +45,80 @@ std::shared_ptr<UrlCommand> UrlCommandBuilder::makeCommand(QString _url, Context
     if (const auto it = std::find_if(schemesWithSlashes.begin(), schemesWithSlashes.end(), [&_url](const auto &x) { return _url.startsWith(x, Qt::CaseInsensitive); }); it != schemesWithSlashes.end())
         currentScheme = *it;
 
-    const auto slashCount = currentScheme.count(ql1c('/'));
-    const auto noAdditionalSlashes = _url.count(ql1c('/')) == slashCount; // redundant, but safe
+    const auto slashCount = currentScheme.count(u'/');
+    const auto noAdditionalSlashes = _url.count(u'/') == slashCount; // redundant, but safe
 
     if (!currentScheme.isEmpty()) // [icq|magent|myteam-messenger|itd-messenger]://uin
     {
-        if (_url.indexOf(qsl("attach_phone_result")) != -1)
+        static const auto startMarker = ql1s("?start=");
+        QStringRef cmd = _url.midRef(currentScheme.size());
+        const auto startIdx = cmd.indexOf(startMarker);
+
+        if (_url.contains(ql1s("attach_phone_result")))
         {
-            command = std::make_shared<PhoneAttachedCommand>(_url.indexOf(qsl("success=1")) != -1, _url.indexOf(qsl("cancel=1")) != -1);
+            command = std::make_unique<PhoneAttachedCommand>(_url.contains(ql1s("success=1")), _url.contains(ql1s("cancel=1")));
             return command;
         }
-        else if (noAdditionalSlashes)
+        else if (noAdditionalSlashes || startIdx != -1)
         {
-            command = std::make_shared<OpenIdCommand>(_url.mid(currentScheme.size()));
+            QStringRef params;
+            if (startIdx != -1)
+            {
+                params = cmd.mid(startIdx + startMarker.size());
+                cmd = cmd.left(startIdx);
+                if (cmd.endsWith(u'/'))
+                    cmd.chop(1);
+            }
+
+            command = std::make_unique<OpenIdCommand>(cmd.toString(), _context, startIdx != -1 ? std::make_optional(params.toString()) : std::nullopt);
             return command;
         }
     }
 
-    static const auto wwwDot = ql1s("www.");
+    constexpr QStringView wwwDot = u"www.";
 
     const QUrl url(_url);
     const QString scheme = url.scheme();
     const QString host = url.host();
-    QStringRef hostRef(&host);
+    QStringView hostView(host);
     QString path = url.path();
 
-    if (hostRef.startsWith(wwwDot))
-        hostRef = hostRef.mid(wwwDot.size());
+    if (hostView.startsWith(wwwDot))
+        hostView = hostView.mid(wwwDot.size());
 
     if (!path.isEmpty())
         path.remove(0, 1);
 
-    if (path.endsWith(ql1c('/')))
+    if (path.endsWith(u'/'))
         path.chop(1);
 
     if (Utils::isInternalScheme(scheme)) // check for urls starting with icq://, magent://, myteam-messenger://, itd-messenger://
     {
-        if (hostRef.compare(ql1s(url_command_join_livechat), Qt::CaseInsensitive) == 0)            // [icq|magent|myteam-messenger|itd-messenger]://chat/stamp[?join=1]
-            command = std::make_shared<OpenChatCommand>(path, checkJoinQuery(url));
+        if (hostView.compare(url_command_join_livechat(), Qt::CaseInsensitive) == 0)            // [icq|magent|myteam-messenger|itd-messenger]://chat/stamp[?join=1]
+            command = std::make_unique<OpenChatCommand>(path, checkJoinQuery(url));
 
-        else if (hostRef.compare(ql1s(url_command_open_profile), Qt::CaseInsensitive) == 0)        // [icq|magent|myteam-messenger|itd-messenger]://people/uin
-            command = std::make_shared<OpenContactCommand>(path);
+        else if (hostView.compare(url_command_open_profile(), Qt::CaseInsensitive) == 0)        // [icq|magent|myteam-messenger|itd-messenger]://people/uin
+            command = std::make_unique<OpenContactCommand>(path);
 
-        else if (hostRef.compare(ql1s(url_command_stickerpack_info), Qt::CaseInsensitive) == 0)    // [icq|magent|myteam-messenger|itd-messenger]://s/store_id
-            command = std::make_shared<ShowStickerpackCommand>(path, _context);
+        else if (hostView.compare(url_command_stickerpack_info(), Qt::CaseInsensitive) == 0)    // [icq|magent|myteam-messenger|itd-messenger]://s/store_id
+            command = std::make_unique<ShowStickerpackCommand>(path, _context);
 
-        else if (hostRef.compare(ql1s(url_command_service), Qt::CaseInsensitive) == 0)             // [icq|magent|myteam-messenger|itd-messenger]://service/*
-            command = std::make_shared<ServiceCommand>(_url);
+        else if (hostView.compare(url_command_service(), Qt::CaseInsensitive) == 0)             // [icq|magent|myteam-messenger|itd-messenger]://service/*
+            command = std::make_unique<ServiceCommand>(_url);
+
+        else if (hostView.compare(url_command_vcs_call(), Qt::CaseInsensitive) == 0)            // [client]://call/*
+            command = std::make_unique<VCSCommand>(_url);
     }
     else
     {
-        static const auto icqCom = ql1s("icq.com");
-        static const auto icqIm = ql1s("icq.im");
+        constexpr auto icqCom = u"icq.com";
         static const auto stickerStore = Ui::getUrlConfig().getUrlStickerShare();
         static const auto agentProfile = Features::getProfileDomainAgent();
+        static const auto profile = Features::getProfileDomain();
 
-        const auto parts = path.splitRef(ql1c('/'));
+        const auto parts = path.splitRef(u'/');
 
-        if (hostRef.compare(icqCom, Qt::CaseInsensitive) == 0)
+        if (config::get().is_on(config::features::open_icqcom_link) && hostView.compare(icqCom, Qt::CaseInsensitive) == 0)
         {
             const QRegularExpression re(qsl("^\\d*$")); // only numbers
             const auto match = re.match(path);
@@ -111,26 +127,30 @@ std::shared_ptr<UrlCommand> UrlCommandBuilder::makeCommand(QString _url, Context
             p.process(path);
             const auto isEmail = p.hasUrl() && p.getUrl().is_email();
 
-            if (!path.contains(ql1c('/')) && (match.hasMatch() || isEmail))                     // icq.com/uin, where uin is either an email or a string of numbers
-                command = std::make_shared<OpenContactCommand>(path);
-            else if (parts.size() > 1 && parts.first().compare(ql1s(url_command_join_livechat), Qt::CaseInsensitive) == 0)  // icq.com/chat/stamp[?join=1]
-                command = std::make_shared<OpenChatCommand>(parts[1].toString(), checkJoinQuery(url));
+            if (!path.contains(u'/') && (match.hasMatch() || isEmail))                     // icq.com/uin, where uin is either an email or a string of numbers
+                command = std::make_unique<OpenContactCommand>(path);
+            else if (parts.size() > 1 && QStringView(parts.first()).compare(url_command_join_livechat(), Qt::CaseInsensitive) == 0)  // icq.com/chat/stamp[?join=1]
+                command = std::make_unique<OpenChatCommand>(parts[1].toString(), checkJoinQuery(url));
         }
         else if (_url.contains(agentProfile)) // for unparcable by QUrl hosts, containing '/profile'
         {
-            const auto profileParts = _url.splitRef(ql1s(url_commandpath_agent_profile) + ql1c('/'));
+            const auto profileParts = _url.splitRef(QStringView(url_commandpath_agent_profile()) % u'/');
             if (profileParts.size() > 1)
-                command = std::make_shared<OpenIdCommand>(profileParts[1].toString());
+                command = std::make_unique<OpenIdCommand>(profileParts[1].toString());
         }
         else if (_url.contains(stickerStore)) // cicq.org/s/store_id
         {
-            if (parts.size() > 1 && parts.first().compare(ql1s(url_command_stickerpack_info), Qt::CaseInsensitive) == 0)
-                command = std::make_shared<ShowStickerpackCommand>(parts[1].toString(), _context);
+            if (parts.size() > 1 && QStringView(parts.first()).compare(url_command_stickerpack_info(), Qt::CaseInsensitive) == 0)
+                command = std::make_unique<ShowStickerpackCommand>(parts[1].toString(), _context);
         }
-        else if (hostRef.compare(icqIm, Qt::CaseInsensitive) == 0)
+        else if (hostView.compare(profile, Qt::CaseInsensitive) == 0)
         {
-            if (!path.contains(ql1c('/')))                                                      // icq.com/uin
-                command = std::make_shared<OpenIdCommand>(path);
+            if (!path.contains(u'/')) // icq.com/uin
+                command = std::make_unique<OpenIdCommand>(std::move(path), _context);
+        }
+        else if (Utils::isUrlVCS(_url))
+        {
+            command = std::make_unique<VCSCommand>(_url);
         }
     }
 
@@ -172,15 +192,17 @@ void OpenChatCommand::execute()
 // OpenIdCommand
 //////////////////////////////////////////////////////////////////////////
 
-OpenIdCommand::OpenIdCommand(const QString &_id)
-    : id_(_id)
+OpenIdCommand::OpenIdCommand(QString _id, UrlCommandBuilder::Context _context, std::optional<QString> _botParams)
+    : id_(std::move(_id))
+    , context_(_context)
+    , params_(std::move(_botParams))
 {
     isValid_ = !id_.isEmpty();
 }
 
 void OpenIdCommand::execute()
 {
-    emit Utils::InterConnector::instance().openDialogOrProfileById(id_);
+    Q_EMIT Utils::InterConnector::instance().openDialogOrProfileById(id_, context_ == UrlCommandBuilder::Context::External, params_);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -197,9 +219,9 @@ PhoneAttachedCommand::PhoneAttachedCommand(const bool _success, const bool _canc
 void PhoneAttachedCommand::execute()
 {
     if (cancel_)
-        emit Utils::InterConnector::instance().phoneAttachmentCancelled();
+        Q_EMIT Utils::InterConnector::instance().phoneAttachmentCancelled();
 //     else
-//         emit Utils::InterConnector::instance().phoneAttached(success_);
+//         Q_EMIT Utils::InterConnector::instance().phoneAttached(success_);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -237,5 +259,36 @@ ServiceCommand::ServiceCommand(const QString &_url)
 
 void ServiceCommand::execute()
 {
-    emit Utils::InterConnector::instance().gotServiceUrls({ url_ });
+    Q_EMIT Utils::InterConnector::instance().gotServiceUrls({ url_ });
+}
+
+//////////////////////////////////////////////////////////////////////////
+// VCSCommand
+//////////////////////////////////////////////////////////////////////////
+
+VCSCommand::VCSCommand(const QString &_url)
+    : url_(_url)
+{
+    isValid_ = !url_.isEmpty();
+}
+
+void VCSCommand::execute()
+{
+    if (!isValid_)
+        return;
+
+    Q_EMIT Utils::InterConnector::instance().closeAnySemitransparentWindow({ Utils::CloseWindowInfo::Initiator::Unknown, Utils::CloseWindowInfo::Reason::Keep_Sidebar });
+
+    auto confirm = Utils::GetConfirmationWithTwoButtons(
+        QT_TRANSLATE_NOOP("popup_window", "Cancel"),
+        QT_TRANSLATE_NOOP("popup_window", "Yes"),
+        QT_TRANSLATE_NOOP("popup_window", "Do you want to join conference?"),
+        QT_TRANSLATE_NOOP("popup_window", "Join confirmation"),
+        nullptr
+    );
+    if (!confirm)
+        return;
+
+    Ui::GetDispatcher()->getVoipController().setStartVCS(url_.toStdString().c_str());
+    return;
 }

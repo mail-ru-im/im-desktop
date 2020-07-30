@@ -17,18 +17,21 @@ namespace Ui
         bool isLinksUnderlined();
 
         enum class EmojiScale;
-        EmojiScale getEmojiScale(const int _emojiCount = 0);
-        int emojiHeight(const QFont& _font, const int _emojiCount = 0);
-        int getEmojiSize(const QFont& _font, const int _emojiCount = 0);
-        bool isEmoji(const QStringRef& _text);
+        constexpr EmojiScale getEmojiScale(int _emojiCount = 0) noexcept;
 
-        QString elideText(const QFont& _font, const QString& _text, const int _width);
+        int getEmojiSize(const QFont& _font, int _emojiCount);
+        int getEmojiSizeSmartreply(const QFont& _font, int _emojiCount);
 
-        QString stringFromCode(const int _code);
+        bool isEmoji(QStringView _text);
+
+        QString elideText(const QFont& _font, const QString& _text, int _width);
+
+        QString stringFromCode(int _code);
+        QString spaceAsString();
 
         class TextWord;
         double getLineWidth(const std::vector<TextWord>& _line);
         size_t getEmojiCount(const std::vector<TextWord>& _words);
-        int getHeightCorrection(const TextWord& _word, const int _emojiCount);
+        int getHeightCorrection(const TextWord& _word, int _emojiCount);
     }
 }

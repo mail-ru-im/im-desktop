@@ -9,9 +9,6 @@
 using namespace core;
 using namespace wim;
 
-const auto startup_period = std::chrono::seconds(30);
-
-
 core::wim::auth_parameters::auth_parameters()
     : dev_id_(utils::get_dev_id())
     , exipired_in_(std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()))
@@ -367,22 +364,22 @@ std::string core::wim::hide_url_param(const std::string& _url, const std::string
 {
     auto url = _url;
     auto param = _param + '=';
-    auto begin_pos = url.find(param);
-    if (begin_pos != std::string::npos)
+    if (auto begin_pos = url.find(param); begin_pos != std::string::npos)
     {
+        begin_pos += param.size();
         auto end_pos = url.find('&', begin_pos);
-        if (end_pos != std::string::npos)
+        if (end_pos == std::string::npos)
+            end_pos = url.size();
+
+        size_t hide_len = end_pos - begin_pos;
+        if (_range_eval)
         {
-            begin_pos += param.size();
-            size_t hide_len = end_pos - begin_pos;
-            if (_range_eval)
-            {
-                auto [start_hide_pos, end_hide_pos] = _range_eval(std::string_view(url.c_str() + begin_pos, hide_len));
-                begin_pos += start_hide_pos;
-                hide_len = end_hide_pos - start_hide_pos + 1;
-            }
-            url.replace(begin_pos, hide_len, hide_len, '*');
+            auto [start_hide_pos, end_hide_pos] = _range_eval(std::string_view(url.c_str() + begin_pos, hide_len));
+            begin_pos += start_hide_pos;
+            hide_len = end_hide_pos - start_hide_pos + 1;
         }
+
+        url.replace(begin_pos, hide_len, hide_len, '*');
     }
 
     return url;
@@ -392,13 +389,12 @@ std::string core::wim::recover_hidden_url_param(const std::string& _url, const s
 {
     auto url = _url;
     auto param = _param + '=';
-    auto begin = url.find(param);
-    if (begin != std::string::npos)
+    if (auto begin = url.find(param); begin != std::string::npos)
     {
-        begin += param.length();
+        begin += param.size();
         auto end = url.find('&', begin);
-        if (end != std::string::npos)
-            end = url.length();
+        if (end == std::string::npos)
+            end = url.size();
 
         url.replace(url.begin() + begin, url.begin() + end, _value.begin(), _value.end());
     }

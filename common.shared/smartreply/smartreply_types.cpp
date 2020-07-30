@@ -37,3 +37,22 @@ smartreply::type smartreply::string_2_type(const std::string_view _str) noexcept
     assert(!"invalid smartreply type string or unimplemented");
     return smartreply::type::invalid;
 }
+
+std::string_view core::smartreply::array_node_name_for(const smartreply::type _type) noexcept
+{
+    switch (_type)
+    {
+    case smartreply::type::sticker:
+    case smartreply::type::sticker_by_text:
+        return "stickers";
+
+    case smartreply::type::text:
+        return "text";
+
+    default:
+        break;
+    }
+
+    assert(!"invalid smartreply type or unimplemented");
+    return std::string_view();
+}

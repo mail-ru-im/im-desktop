@@ -3,62 +3,63 @@
 #include "search_pattern_history.h"
 #include "tools/binary_stream.h"
 #include "tools/system.h"
+#include "../common.shared/string_utils.h"
 
 using namespace core;
 using namespace search;
 
-search_pattern_history::search_pattern_history(const std::wstring & _path)
-    : thread_(nullptr)
-    , root_path_(_path)
+search_pattern_history::search_pattern_history(std::wstring _path)
+    : root_path_(std::move(_path))
 {
 }
 
-void search_pattern_history::add_pattern(const std::string_view _pattern, const std::string_view _contact)
+void search_pattern_history::add_pattern(std::string_view _pattern, std::string_view _contact, const std::shared_ptr<core::async_executer>& _executer)
 {
-    get_thread()->run_async_function([wr_this = weak_from_this(), contact = std::string(_contact), pattern = std::string(_pattern)]()->int32_t
+    _executer->run_async_function([wr_this = weak_from_this(), contact = std::string(_contact), pattern = std::string(_pattern)]()->int32_t
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
             return 0;
 
         ptr_this->get_contact(contact).add_pattern(pattern);
-
         return 0;
     });
 }
 
-void search_pattern_history::remove_pattern(const std::string_view _pattern, const std::string_view _contact)
+void search_pattern_history::remove_pattern(std::string_view _pattern, std::string_view _contact, const std::shared_ptr<core::async_executer>& _executer)
 {
-    get_thread()->run_async_function([wr_this = weak_from_this(), contact = std::string(_contact), pattern = std::string(_pattern)]()->int32_t
+    _executer->run_async_function([wr_this = weak_from_this(), contact = std::string(_contact), pattern = std::string(_pattern)]()->int32_t
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
             return 0;
 
         ptr_this->get_contact(contact).remove_pattern(pattern);
-
         return 0;
     });
 }
 
-std::shared_ptr<get_patterns_handler> search_pattern_history::get_patterns(const std::string_view _contact)
+std::shared_ptr<get_patterns_handler> search_pattern_history::get_patterns(std::string_view _contact, const std::shared_ptr<core::async_executer>& _executer)
 {
     auto handler = std::make_shared<get_patterns_handler>();
     auto patterns = std::make_shared<search_patterns>();
 
     auto wr_this = weak_from_this();
 
-    get_thread()->run_async_function([wr_this, contact = std::string(_contact), patterns]()->int32_t
+    _executer->run_async_function([wr_this, contact = std::string(_contact), patterns]()->int32_t
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
-            return 0;
+            return -1;
 
         *patterns = ptr_this->get_contact(contact).get_patterns();
         return 0;
 
-    })->on_result_ = [wr_this, handler, patterns](int32_t)
+    })->on_result_ = [wr_this, handler, patterns](int32_t _err)
     {
+        if (_err != 0)
+            return;
+
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
             return;
@@ -70,9 +71,9 @@ std::shared_ptr<get_patterns_handler> search_pattern_history::get_patterns(const
     return handler;
 }
 
-void search_pattern_history::free_dialog(const std::string_view _contact)
+void search_pattern_history::free_dialog(const std::string_view _contact, const std::shared_ptr<core::async_executer>& _executer)
 {
-    get_thread()->run_async_function([wr_this = weak_from_this(), contact = std::string(_contact)]()->int32_t
+    _executer->run_async_function([wr_this = weak_from_this(), contact = std::string(_contact)]()->int32_t
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -83,43 +84,41 @@ void search_pattern_history::free_dialog(const std::string_view _contact)
     });
 }
 
-void search_pattern_history::save_all()
+void search_pattern_history::save_all(const std::shared_ptr<core::async_executer>& _executer)
 {
-    for (auto& [_, pat] : contact_patterns_)
-        pat.save();
+    _executer->run_async_function([shared_this = shared_from_this()]()
+    {
+        for (auto& [_, pat] : shared_this->contact_patterns_)
+            if (pat.save_needed())
+                pat.save();
+
+        return 0;
+    });
 }
 
-std::wstring search_pattern_history::get_contact_path(const std::string_view _contact)
+std::wstring search_pattern_history::get_contact_path(std::string_view _contact) const
 {
     std::wstring contact_filename = core::tools::from_utf8(_contact);
     std::replace(contact_filename.begin(), contact_filename.end(), L'|', L'_');
 
-    return (root_path_ + L'/' + contact_filename + L"/hst");
+    return su::wconcat(root_path_, L'/', contact_filename, L"/hst");
 }
 
-contact_last_patterns& search_pattern_history::get_contact(const std::string_view _contact)
+contact_last_patterns& search_pattern_history::get_contact(std::string_view _contact)
 {
     auto it = contact_patterns_.find(_contact);
     if (it == contact_patterns_.end())
     {
         contact_last_patterns clp(get_contact_path(_contact));
-        it = contact_patterns_.emplace(_contact, clp).first;
+        it = contact_patterns_.emplace(_contact, std::move(clp)).first;
     }
 
     return it->second;
 }
 
-std::shared_ptr<async_executer> search_pattern_history::get_thread()
-{
-    if (!thread_)
-        thread_ = std::make_shared<core::async_executer>("srchPatHst");
 
-    return thread_;
-}
-
-contact_last_patterns::contact_last_patterns(const std::wstring& _path)
-    : save_needed_(false)
-    , path_(_path)
+contact_last_patterns::contact_last_patterns(std::wstring _path)
+    : path_(std::move(_path))
 {
     load();
 }
@@ -129,11 +128,9 @@ void contact_last_patterns::save()
     if (!save_needed_)
         return;
 
-    tools::binary_stream output;
-    for (const auto& p : patterns_)
-        output.write(p + '\n');
+    std::string output = su::join(patterns_.cbegin(), patterns_.cend(), "\n");
 
-    if (output.save_2_file(path_))
+    if (tools::binary_stream::save_2_file(output, path_))
         save_needed_ = false;
 }
 
@@ -172,28 +169,17 @@ void contact_last_patterns::add_pattern(std::string_view _pattern)
     save_needed_ = true;
 }
 
-void core::search::contact_last_patterns::replace_last_pattern(std::string_view _pattern)
-{
-    if (!patterns_.empty())
-        patterns_.pop_front();
-
-    add_pattern(_pattern);
-}
-
 void contact_last_patterns::remove_pattern(std::string_view _pattern)
 {
     if (patterns_.empty())
         return;
 
+    const auto prev_size = patterns_.size();
     const auto pattern_lower = ::tools::system::to_lower(_pattern);
     patterns_.remove_if([&pattern_lower](const auto& p) { return pattern_lower == tools::system::to_lower(p); });
 
-    save_needed_ = true;
-}
-
-const search_patterns& contact_last_patterns::get_patterns() const
-{
-    return patterns_;
+    if (patterns_.size() != prev_size) //TODO: refactor when c++20 arrives and use return value of remove_if
+        save_needed_ = true;
 }
 
 void contact_last_patterns::resize_if_needed()

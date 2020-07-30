@@ -106,6 +106,7 @@ namespace Ui
         {
             const auto desiredWidth = badgeTextUnit_->desiredWidth();
             const auto textHeight = badgeTextUnit_->getHeight(desiredWidth);
+            Q_UNUSED(textHeight);
             {
                 Utils::PainterSaver saver(p);
                 const static QPen pen(bgColor, badgeBorderWidth());

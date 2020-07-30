@@ -65,7 +65,8 @@ namespace Previewer
             Forward = 0x4,
             SaveAs = 0x8,
             DeleteForMe = 0x10,
-            DeleteForAll = 0x20
+            DeleteForAll = 0x20,
+            SaveToFavorites = 0x40
         };
 
         Q_DECLARE_FLAGS(Actions, Action)
@@ -118,6 +119,7 @@ namespace Previewer
         void deleteForMe();
         void deleteForAll();
         void openContact();
+        void saveToFavorites();
 
     protected:
         void paintEvent(QPaintEvent* _event) override;

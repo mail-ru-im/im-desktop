@@ -27,7 +27,6 @@ namespace
     const int SPACING = 20;
     const int ACTIONS_SPACING = 20;
     const int PHONE_CALL_SPACING = 14;
-    const int BUTTONS_OFFSET = 64;
     const int DIALOG_WIDTH = 360;
     const int DIALOG_HEIGHT = 478;
     const int CUT_DIALOG_HEIGHT = 360;
@@ -238,6 +237,7 @@ namespace Ui
         next_ = new DialogButton(this, QT_TRANSLATE_NOOP("popup_window", "Next"), DialogButtonRole::CONFIRM);
         next_->setCursor(QCursor(Qt::PointingHandCursor));
         next_->setFixedSize(Utils::scale_value(BUTTON_WIDTH), Utils::scale_value(BUTTON_HEIGHT));
+        Testing::setAccessibleName(next_, qsl("AS AddPhonePopup next"));
         connect(next_, &QPushButton::clicked, this, &PhoneWidget::nextClicked);
 
         cancel_ = new DialogButton(this, QT_TRANSLATE_NOOP("popup_window", "Cancel"), DialogButtonRole::CANCEL);
@@ -286,6 +286,7 @@ namespace Ui
         countryCode_->move(Utils::scale_value(COUNTRY_CODE_LEFT_MARGIN), labelOffset + Utils::scale_value(PHONE_EDIT_MARGIN));
         countryCode_->hide();
         countryCode_->setValidator(new Utils::PhoneValidator(this, true));
+        Testing::setAccessibleName(countryCode_, qsl("AS AddPhonePopup phoneCodeInput"));
 
         const auto countries = Utils::getCountryCodes();
         auto model = new QStandardItemModel(this);
@@ -322,7 +323,7 @@ namespace Ui
         completer_->setCompletionPrefix(countryCode_->text());
         countryCode_->setCompleter(completer_);
 
-        connect(completer_, Utils::QOverload<const QString&>::of(&QCompleter::activated), this, &PhoneWidget::countrySelected);
+        connect(completer_, qOverload<const QString&>(&QCompleter::activated), this, &PhoneWidget::countrySelected);
 
         connect(countryCode_, &QLineEdit::textChanged, this, &PhoneWidget::codeChanged);
         connect(countryCode_, &Ui::LineEditEx::clicked, this, &PhoneWidget::codeFocused);
@@ -337,6 +338,7 @@ namespace Ui
         phoneNumber_->setValidator(new Utils::PhoneValidator(this, false));
         phoneNumber_->move(countryCode_->x() + countryCode_->width() + Utils::scale_value(PHONE_EDIT_LEFT_MARGIN), labelOffset + Utils::scale_value(PHONE_EDIT_MARGIN));
         phoneNumber_->hide();
+        Testing::setAccessibleName(phoneNumber_, qsl("AS AddPhonePopup phoneInput"));
 
         connect(phoneNumber_, &QLineEdit::textChanged, this, &PhoneWidget::phoneChanged);
         connect(phoneNumber_, &LineEditEx::emptyTextBackspace, this, [this]() { countryCode_->setFocus(); completer_->complete(); });
@@ -350,6 +352,7 @@ namespace Ui
         enteredPhoneNumber_->setEnabled(false);
         enteredPhoneNumber_->move(Utils::scale_value(DIALOG_WIDTH) / 2 - Utils::scale_value(ABOUT_PHONE_NUMBER_WIDTH) / 2, Utils::scale_value(ENTERED_PHONE_NUMBER_TOP_MARGIN));
         enteredPhoneNumber_->hide();
+        Testing::setAccessibleName(enteredPhoneNumber_, qsl("AS AddPhonePopup phoneView"));
 
         smsCode_ = new LineEditEx(this);
         smsCode_->setFont(Fonts::appFontScaled(18));
@@ -359,6 +362,7 @@ namespace Ui
         smsCode_->setValidator(new Utils::PhoneValidator(this, false));
         smsCode_->move(Utils::scale_value(DIALOG_WIDTH) / 2 - Utils::scale_value(ABOUT_PHONE_NUMBER_WIDTH) / 2, Utils::scale_value(ENTERED_PHONE_NUMBER_TOP_MARGIN) + enteredPhoneNumber_->height() + Utils::scale_value(SMS_CODE_SPACING));
         smsCode_->hide();
+        Testing::setAccessibleName(smsCode_, qsl("AS AddPhonePopup smsCodeInput"));
 
         connect(smsCode_, &QLineEdit::textChanged, this, &PhoneWidget::smsCodeChanged);
 
@@ -385,7 +389,7 @@ namespace Ui
         phone_hint_->evaluateDesiredSize();
         phone_hint_->setOffsets(Utils::scale_value(HOR_MARGIN), Utils::scale_value(CODE_ACTIONS_TOP_MARGIN));
 
-        send_again_ = TextRendering::MakeTextUnit(QT_TRANSLATE_NOOP("phone_widget", "Resend code") + ql1s(" 1:00"));
+        send_again_ = TextRendering::MakeTextUnit(QT_TRANSLATE_NOOP("phone_widget", "Resend code") % u" 1:00");
         send_again_->init(Fonts::appFontScaled(13), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
         send_again_->evaluateDesiredSize();
         send_again_->setOffsets((Utils::scale_value(DIALOG_WIDTH) - send_again_->desiredWidth()) / 2, Utils::scale_value(CODE_ACTIONS_TOP_MARGIN));
@@ -511,9 +515,9 @@ namespace Ui
             loggedOut_ = true;
             get_gui_settings()->set_value(settings_feedback_email, QString());
             GetDispatcher()->post_message_to_core("logout", nullptr);
-            emit Utils::InterConnector::instance().logout();
-            emit Utils::InterConnector::instance().closeAnyPopupWindow(Utils::CloseWindowInfo());
-            emit requestClose();
+            Q_EMIT Utils::InterConnector::instance().logout();
+            Q_EMIT Utils::InterConnector::instance().closeAnyPopupWindow(Utils::CloseWindowInfo());
+            Q_EMIT requestClose();
         }
         else
         {
@@ -548,7 +552,7 @@ namespace Ui
     void PhoneWidget::resetActions()
     {
         showPhoneHint_ = LoginPage::isCallCheck(checks_);
-        send_again_->setText((showPhoneHint_ ? QT_TRANSLATE_NOOP("phone_widget", "Recall") : QT_TRANSLATE_NOOP("phone_widget", "Resend code")) + ql1s(" 1:00"), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
+        send_again_->setText((showPhoneHint_ ? QT_TRANSLATE_NOOP("phone_widget", "Recall") : QT_TRANSLATE_NOOP("phone_widget", "Resend code")) % u" 1:00", Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
         phone_call_->setText(QT_TRANSLATE_NOOP("phone_widget", "Dictate over the phone"), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
 
         phone_hint_->setOffsets(Utils::scale_value(HOR_MARGIN), Utils::scale_value(CODE_ACTIONS_TOP_MARGIN));
@@ -599,13 +603,13 @@ namespace Ui
         }
         else if (state_ == PhoneWidgetState::FINISH_STATE)
         {
-            emit Utils::InterConnector::instance().acceptGeneralDialog();
+            Q_EMIT Utils::InterConnector::instance().acceptGeneralDialog();
         }
     }
 
     void PhoneWidget::cancelClicked()
     {
-        emit Utils::InterConnector::instance().closeAnyPopupWindow(Utils::CloseWindowInfo());
+        Q_EMIT Utils::InterConnector::instance().closeAnyPopupWindow(Utils::CloseWindowInfo());
     }
 
     void PhoneWidget::codeChanged(const QString& _code)
@@ -613,16 +617,7 @@ namespace Ui
         if (!_code.startsWith(ql1c('+')))
             countryCode_->setText(ql1c('+') + _code);
 
-        if (completer_->completionCount() == 0)
-        {
-            phoneNumber_->setText(_code.mid(_code.length() - 1));
-            phoneNumber_->setFocus();
-
-            countryCode_->blockSignals(true);
-            countryCode_->setText(_code.left(_code.length() - 1));
-            countryCode_->blockSignals(false);
-        }
-        else if (completer_->completionCount() == 1 && completer_->currentCompletion() == _code)
+        if (completer_->completionCount() == 1 && completer_->currentCompletion() == _code)
         {
             phoneNumber_->setFocus();
         }
@@ -742,7 +737,7 @@ namespace Ui
 
             next_->setText(text);
             QFontMetrics m(Fonts::appFontScaled(14));
-            next_->setFixedWidth(Utils::scale_value(BUTTON_HOR_PADDING * 2) + m.width(text));
+            next_->setFixedWidth(Utils::scale_value(BUTTON_HOR_PADDING * 2) + m.horizontalAdvance(text));
             if (!canClose_)
             {
                 next_->move(Utils::scale_value(DIALOG_WIDTH) / 2 - next_->width() / 2, Utils::scale_value(get_dialog_height() - BOTTOM_MARGIN) - next_->height());
@@ -841,7 +836,10 @@ namespace Ui
     void PhoneWidget::phoneAttached(bool _success)
     {
         if (_success)
-            emit Utils::InterConnector::instance().acceptGeneralDialog();
+        {
+            setState(PhoneWidgetState::FINISH_STATE);
+            Q_EMIT Utils::InterConnector::instance().acceptGeneralDialog();
+        }
     }
 
     void PhoneWidget::onTimer()

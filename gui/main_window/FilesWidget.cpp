@@ -2,49 +2,82 @@
 
 #include "FilesWidget.h"
 #include "MainWindow.h"
+
+#include "controls/TextEditEx.h"
+#include "controls/FileSharingIcon.h"
+
+#include "fonts.h"
+#include "gui_settings.h"
+
+#include "utils/utils.h"
+#include "utils/translator.h"
+#include "utils/InterConnector.h"
+#include "utils/LoadPixmapFromFileTask.h"
+#include "utils/LoadFirstFrameTask.h"
+
 #include "history_control/FileSizeFormatter.h"
-
-
-#include "../controls/FileSharingIcon.h"
-#include "../fonts.h"
-#include "../utils/utils.h"
-#include "../utils/translator.h"
-#include "../utils/InterConnector.h"
-#include "../utils/LoadPixmapFromFileTask.h"
-#include "../utils/LoadFirstFrameTask.h"
-#include "../gui_settings.h"
-#include "../styles/ThemeParameters.h"
+#include "styles/ThemeParameters.h"
 
 namespace
 {
-    const auto DIALOG_WIDTH = 340;
-    const auto HEADER_HEIGHT = 56;
-    const auto INPUT_OFFSET = 20;
-    const auto INPUT_AREA = 56;
-    const auto INPUT_AREA_MAX = 86;
-    const auto HOR_OFFSET = 16;
-    const auto HOR_OFFSET_SMALL = 8;
-    const auto VER_OFFSET = 10;
-    const auto INPUT_TOP_OFFSET = 16;
-    const auto INPUT_BOTTOM_OFFSET = 8;
-    const auto BOTTOM_OFFSET = 12;
-    const auto DEFAULT_INPUT_HEIGHT = 24;
-    const auto MIN_PREVIEW_HEIGHT = 80;
-    const auto MAX_PREVIEW_HEIGHT = 308;
-    const auto PREVIEW_TOP_OFFSET = 16;
-    const auto PREVIEW_BOTTOM_OFFSET = 20;
-    const auto FILE_PREVIEW_SIZE = 44;
-    const auto FILE_PREVIEW_HOR_OFFSET = 12;
-    const auto FILE_PREVIEW_VER_OFFSET = 16;
-    const auto FILE_NAME_OFFSET = 2;
-    const auto FILE_SIZE_OFFSET = 4;
-    const auto REMOVE_BUTTON_SIZE = 20;
-    const auto REMOVE_BUTTON_OFFSET = 4;
-    const auto PLACEHOLDER_HEIGHT = 124;
-    const auto DURATION_WIDTH = 36;
-    const auto DURATION_HEIGHT = 20;
-    const auto VIDEO_ICON_SIZE = 16;
-    const auto RIGHT_OFFSET = 6;
+    constexpr auto DIALOG_WIDTH = 340;
+    constexpr auto HEADER_HEIGHT = 56;
+    constexpr auto INPUT_AREA = 56;
+    constexpr auto INPUT_AREA_MAX = 86;
+    constexpr auto HOR_OFFSET = 16;
+    constexpr auto HOR_OFFSET_SMALL = 8;
+    constexpr auto VER_OFFSET = 10;
+    constexpr auto INPUT_TOP_OFFSET = 16;
+    constexpr auto INPUT_BOTTOM_OFFSET = 8;
+    constexpr auto BOTTOM_OFFSET = 12;
+    constexpr auto DEFAULT_INPUT_HEIGHT = 24;
+    constexpr auto MIN_PREVIEW_HEIGHT = 80;
+    constexpr auto MAX_PREVIEW_HEIGHT = 308;
+    constexpr auto PREVIEW_TOP_OFFSET = 16;
+    constexpr auto FILE_PREVIEW_SIZE = 44;
+    constexpr auto FILE_PREVIEW_HOR_OFFSET = 12;
+    constexpr auto FILE_PREVIEW_VER_OFFSET = 16;
+    constexpr auto FILE_NAME_OFFSET = 2;
+    constexpr auto FILE_SIZE_OFFSET = 4;
+    constexpr auto REMOVE_BUTTON_SIZE = 20;
+    constexpr auto REMOVE_BUTTON_OFFSET = 4;
+    constexpr auto PLACEHOLDER_HEIGHT = 124;
+    constexpr auto DURATION_WIDTH = 36;
+    constexpr auto DURATION_HEIGHT = 20;
+    constexpr auto VIDEO_ICON_SIZE = 16;
+    constexpr auto RIGHT_OFFSET = 6;
+    constexpr auto durationFontSize = platform::is_apple() ? 11 : 13;
+
+    const auto roundRadius() { return Utils::scale_value(5); }
+
+    QPixmap getRemoveIcon(Styling::StyleVariable _color)
+    {
+        return Utils::renderSvgScaled(qsl(":/history_icon"), QSize(REMOVE_BUTTON_SIZE, REMOVE_BUTTON_SIZE), Styling::getParameters().getColor(_color));
+    }
+
+    QPixmap getRemoveIcon()
+    {
+        static auto remove_normal = getRemoveIcon(Styling::StyleVariable::BASE_SECONDARY);
+        return remove_normal;
+    }
+
+    QPixmap getRemoveIconHover()
+    {
+        static auto remove_hover = getRemoveIcon(Styling::StyleVariable::BASE_SECONDARY_HOVER);
+        return remove_hover;
+    }
+
+    QPixmap getRemoveIconActive()
+    {
+        static auto remove_active = getRemoveIcon(Styling::StyleVariable::BASE_SECONDARY_ACTIVE);
+        return remove_active;
+    }
+
+    QPixmap getDurationIcon()
+    {
+        static auto video_icon = Utils::renderSvgScaled(qsl(":/videoplayer/duration_time_icon"), QSize(VIDEO_ICON_SIZE, VIDEO_ICON_SIZE), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT));
+        return video_icon;
+    }
 
     QString formatDuration(const qint64 _seconds)
     {
@@ -52,105 +85,113 @@ namespace
             return qsl("00:00");
 
         const auto minutes = (_seconds / 60);
-
         const auto seconds = (_seconds % 60);
 
         return qsl("%1:%2")
             .arg(minutes, 2, 10, ql1c('0'))
             .arg(seconds, 2, 10, ql1c('0'));
     }
+
+    bool isDragDisallowed(const QMimeData* _mimeData)
+    {
+        bool oneExternalUrl = _mimeData->hasUrls() && _mimeData->urls().count() == 1 && !_mimeData->urls().constFirst().isLocalFile();
+        return oneExternalUrl || Utils::isMimeDataWithImage(_mimeData);
+    }
 }
 
 namespace Ui
-{    
-    FilesAreaItem::FilesAreaItem(const QString& _filepath, int _width)
-        : path_(_filepath)
-        , iconPreview_(false)
+{
+    FilesAreaItem::FilesAreaItem(const FileToSend& _file, int _width)
+        : file_(_file)
     {
-        QFileInfo f(_filepath);
-
-        name_ = TextRendering::MakeTextUnit(f.fileName(), Data::MentionMap(), Ui::TextRendering::LinksVisible::DONT_SHOW_LINKS);
-        name_->init(Fonts::appFontScaled(16), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
-        name_->evaluateDesiredSize();
-        name_->elide(_width - Utils::scale_value(FILE_PREVIEW_SIZE + FILE_SIZE_OFFSET + REMOVE_BUTTON_SIZE + FILE_NAME_OFFSET + REMOVE_BUTTON_OFFSET));
-
-        size_ = TextRendering::MakeTextUnit(HistoryControl::formatFileSize(f.size()));
-        size_->init(Fonts::appFontScaled(13), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
-        size_->evaluateDesiredSize();
-
-        if (Utils::is_image_extension(f.suffix()))
+        if (file_.isClipboardImage())
         {
-            auto task = new Utils::LoadPixmapFromFileTask(_filepath);
-
-            QObject::connect(
-                task,
-                &Utils::LoadPixmapFromFileTask::loadedSignal,
-                this,
-                &FilesAreaItem::localPreviewLoaded);
-
-            QThreadPool::globalInstance()->start(task);
-        }
-        else if (Utils::is_video_extension(f.suffix()))
-        {
-            auto task = new Utils::LoadFirstFrameTask(_filepath);
-
-            QObject::connect(
-                task,
-                &Utils::LoadFirstFrameTask::loadedSignal,
-                this,
-                &FilesAreaItem::localPreviewLoaded);
-
-            QThreadPool::globalInstance()->start(task);
+            initText(QT_TRANSLATE_NOOP("files_widget", "Copied from clipboard"), -1, _width);
+            localPreviewLoaded(file_.getPixmap(), file_.getPixmap().size());
         }
         else
         {
-            preview_ = FileSharingIcon::getIcon(_filepath);
-            iconPreview_ = true;
+            const auto& fi = file_.getFileInfo();
+            initText(fi.fileName(), file_.getSize(), _width);
+
+            if (Utils::is_image_extension(fi.suffix()))
+            {
+                auto task = new Utils::LoadPixmapFromFileTask(fi.absoluteFilePath());
+                QObject::connect(task, &Utils::LoadPixmapFromFileTask::loadedSignal, this, &FilesAreaItem::localPreviewLoaded);
+                QThreadPool::globalInstance()->start(task);
+            }
+            else if (Utils::is_video_extension(fi.suffix()))
+            {
+                auto task = new Utils::LoadFirstFrameTask(fi.absoluteFilePath());
+                QObject::connect(task, &Utils::LoadFirstFrameTask::loadedSignal, this, &FilesAreaItem::localPreviewLoaded);
+                QThreadPool::globalInstance()->start(task);
+            }
+            else
+            {
+                preview_ = FileSharingIcon::getIcon(fi.absoluteFilePath());
+                iconPreview_ = true;
+            }
         }
     }
 
+
     bool FilesAreaItem::operator==(const FilesAreaItem& _other) const
     {
-        return path_ == _other.path_;
+        return file_ == _other.file_;
     }
 
     void FilesAreaItem::draw(QPainter& _p, const QPoint& _at)
     {
-        _p.save();
+        Utils::PainterSaver ps(_p);
         if (iconPreview_)
         {
             _p.drawPixmap(_at, preview_);
         }
         else
         {
-            _p.setRenderHint(QPainter::Antialiasing, true);
             auto b = QBrush(preview_);
             QMatrix m;
             m.translate(_at.x(), _at.y());
             b.setMatrix(m);
             _p.setBrush(b);
             _p.setPen(Qt::NoPen);
-            _p.drawRoundedRect(QRect(_at.x(), _at.y(), preview_.width(), preview_.height()), Utils::scale_value(5), Utils::scale_value(5));
+            _p.drawRoundedRect(QRect(_at, preview_.size()), roundRadius(), roundRadius());
         }
 
-        name_->setOffsets(_at.x() + Utils::scale_value(FILE_PREVIEW_SIZE + FILE_PREVIEW_HOR_OFFSET), _at.y() + Utils::scale_value(FILE_NAME_OFFSET));
+        const auto x = _at.x() + Utils::scale_value(FILE_PREVIEW_SIZE + FILE_PREVIEW_HOR_OFFSET);
+        const auto y = _at.y() + Utils::scale_value(FILE_NAME_OFFSET);
+
+        name_->setOffsets(x, y);
         name_->draw(_p);
-        size_->setOffsets(_at.x() + Utils::scale_value(FILE_PREVIEW_SIZE + FILE_PREVIEW_HOR_OFFSET), _at.y() + Utils::scale_value(FILE_NAME_OFFSET) + name_->cachedSize().height());
-        size_->draw(_p);
-        _p.restore();
+
+        if (size_)
+        {
+            size_->setOffsets(x, y + name_->cachedSize().height());
+            size_->draw(_p);
+        }
     }
 
-    QString FilesAreaItem::path() const
+    void FilesAreaItem::initText(const QString& _name, int64_t _size, int _width)
     {
-        return path_;
+        name_ = TextRendering::MakeTextUnit(_name, {}, TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
+        name_->init(Fonts::appFontScaled(16), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
+        name_->evaluateDesiredSize();
+        name_->elide(_width - Utils::scale_value(FILE_PREVIEW_SIZE + FILE_SIZE_OFFSET + REMOVE_BUTTON_SIZE + FILE_NAME_OFFSET + REMOVE_BUTTON_OFFSET));
+
+        if (_size >= 0)
+        {
+            size_ = TextRendering::MakeTextUnit(HistoryControl::formatFileSize(_size));
+            size_->init(Fonts::appFontScaled(13), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
+            size_->evaluateDesiredSize();
+        }
     }
 
     void FilesAreaItem::localPreviewLoaded(QPixmap pixmap, const QSize _originalSize)
     {
-        auto minSize = std::min(_originalSize.width(), _originalSize.height());
-        preview_ = pixmap.copy(pixmap.width() / 2 - minSize / 2, pixmap.height() / 2 - minSize / 2, minSize, minSize);
+        const auto minSize = std::min(_originalSize.width(), _originalSize.height());
+        preview_ = pixmap.copy((pixmap.width() - minSize) / 2, (pixmap.height() - minSize) / 2, minSize, minSize);
         preview_ = preview_.scaledToHeight(Utils::scale_value(FILE_PREVIEW_SIZE), Qt::SmoothTransformation);
-        emit needUpdate();
+        Q_EMIT needUpdate();
     }
 
     FilesScroll::FilesScroll(QWidget* _parent, FilesArea* _area, bool _acceptDrops)
@@ -172,39 +213,28 @@ namespace Ui
 
             painter.setPen(Qt::NoPen);
             painter.setRenderHint(QPainter::Antialiasing);
+            painter.fillRect(rect(), Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE, 0.95));
 
-            static const QColor overlayColor = []() {
-                auto c = Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE);
-                c.setAlphaF(0.95);
-                return c;
-            }();
-
-            painter.fillRect(rect(), overlayColor);
-
-            QPen pen((placeholder_ && !dnd_) ? Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY) : Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY), Utils::scale_value(1), (placeholder_ && !dnd_) ? Qt::CustomDashLine : Qt::SolidLine, Qt::RoundCap);
-            if (placeholder_ && !dnd_)
+            const auto dashed = placeholder_ && !dnd_;
+            QPen pen(Styling::getParameters().getColor(dashed ? Styling::StyleVariable::BASE_PRIMARY : Styling::StyleVariable::PRIMARY), Utils::scale_value(1), dashed ? Qt::CustomDashLine : Qt::SolidLine, Qt::RoundCap);
+            if (dashed)
                 pen.setDashPattern({ 2, 4 });
 
             painter.setPen(pen);
 
             static const auto padding = Utils::scale_value(2);
             static const auto padding_right = Utils::scale_value(10);
-            static const auto radius = Utils::scale_value(5);
 
             if (dnd_)
-            {
-                auto color = Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY);
-                color.setAlphaF(0.02);
-                painter.setBrush(color);
-            }
+                painter.setBrush(Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY, 0.02));
 
             painter.drawRoundedRect(
                 padding,
                 padding,
                 rect().width() - padding * 2 - padding_right,
                 rect().height() - padding * 2,
-                radius,
-                radius
+                roundRadius(),
+                roundRadius()
             );
 
             painter.setFont(Fonts::appFontScaled(24));
@@ -267,9 +297,7 @@ namespace Ui
             for (const QUrl& url : urlList)
             {
                 if (url.isLocalFile())
-                {
                     area_->addItem(new FilesAreaItem(url.toLocalFile(), width()));
-                }
             }
         }
         _event->acceptProposedAction();
@@ -279,16 +307,13 @@ namespace Ui
         update();
     }
 
-    bool FilesScroll::isDragDisallowed(const QMimeData* _mimeData) const
-    {
-        bool oneExternalUrl = _mimeData->hasUrls() && _mimeData->urls().count() == 1 && !_mimeData->urls().constFirst().isLocalFile();
-        return oneExternalUrl || Utils::isMimeDataWithImage(_mimeData);
-    }
+
 
     FilesArea::FilesArea(QWidget* _parent)
         : QWidget(_parent)
         , removeIndex_(-1)
         , hovered_(false)
+        , dnd_(false)
     {
         setMouseTracking(true);
         setFixedHeight(0);
@@ -302,20 +327,21 @@ namespace Ui
         connect(_item, &FilesAreaItem::needUpdate, this, &FilesArea::needUpdate);
 
         items_.emplace_back(_item);
-        auto h = height();
-        h += Utils::scale_value(FILE_PREVIEW_SIZE);
+
+        auto h = height() + Utils::scale_value(FILE_PREVIEW_SIZE);
         if (items_.size() > 1)
             h += Utils::scale_value(FILE_PREVIEW_VER_OFFSET);
 
         setFixedHeight(h);
-        emit sizeChanged();
+        Q_EMIT sizeChanged();
     }
 
-    QStringList FilesArea::getItems() const
+    FilesToSend FilesArea::getItems() const
     {
-        QStringList result;
+        FilesToSend result;
+        result.reserve(items_.size());
         for (const auto& i : items_)
-            result.push_back(i->path());
+            result.push_back(i->getFile());
 
         return result;
     }
@@ -327,13 +353,16 @@ namespace Ui
 
     void FilesArea::clear()
     {
-        items_.clear(); update();
+        items_.clear();
+        update();
         setFixedHeight(0);
     }
 
     void FilesArea::paintEvent(QPaintEvent* _event)
     {
         QPainter p(this);
+        p.setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
+
         QPoint at(0, 0);
         auto j = 0;
         for (const auto& i : items_)
@@ -357,16 +386,11 @@ namespace Ui
             {
                 removeIndex_ = j;
 
-                auto s = QSize(REMOVE_BUTTON_SIZE, REMOVE_BUTTON_SIZE);
-                static auto remove_normal = Utils::renderSvgScaled(qsl(":/history_icon"), s, Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY));
-                static auto remove_hover = Utils::renderSvgScaled(qsl(":/history_icon"), s, Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY_HOVER));
-                static auto remove_active = Utils::renderSvgScaled(qsl(":/history_icon"), s, Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY_ACTIVE));
-
                 auto removeRect = QRect(width() - Utils::scale_value(REMOVE_BUTTON_SIZE), r.y() + Utils::scale_value(FILE_PREVIEW_SIZE) / 2 - Utils::scale_value(REMOVE_BUTTON_SIZE) / 2,
                                         Utils::scale_value(REMOVE_BUTTON_SIZE), Utils::scale_value(REMOVE_BUTTON_SIZE));
 
                 hovered_ = removeRect.contains(_event->pos());
-                removeButton_ = hovered_ ? remove_hover : remove_normal;
+                removeButton_ = hovered_ ? getRemoveIconHover() : getRemoveIcon();
             }
 
             r.setY(r.y() + Utils::scale_value(FILE_PREVIEW_SIZE + FILE_PREVIEW_VER_OFFSET));
@@ -387,10 +411,9 @@ namespace Ui
 
     void FilesArea::mousePressEvent(QMouseEvent* _event)
     {
-        static auto remove_active = Utils::renderSvgScaled(qsl(":/history_icon"), QSize(REMOVE_BUTTON_SIZE, REMOVE_BUTTON_SIZE), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY_ACTIVE));
         if (hovered_)
         {
-            removeButton_ = remove_active;
+            removeButton_ = getRemoveIconActive();
             update();
         }
 
@@ -399,10 +422,9 @@ namespace Ui
 
     void FilesArea::mouseReleaseEvent(QMouseEvent* _event)
     {
-        static auto remove_hover = Utils::renderSvgScaled(qsl(":/history_icon"), QSize(REMOVE_BUTTON_SIZE, REMOVE_BUTTON_SIZE), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY));
         if (hovered_)
         {
-            removeButton_ = remove_hover;
+            removeButton_ = getRemoveIconHover();
             auto i = 0;
             for (auto iter = items_.begin(); iter != items_.end(); ++iter)
             {
@@ -414,7 +436,7 @@ namespace Ui
                     if (!items_.empty())
                         h -= Utils::scale_value(FILE_PREVIEW_VER_OFFSET);
                     setFixedHeight(items_.empty() ? Utils::scale_value(PLACEHOLDER_HEIGHT) : h);
-                    emit sizeChanged();
+                    Q_EMIT sizeChanged();
                     break;
                 }
                 ++i;
@@ -430,7 +452,7 @@ namespace Ui
         update();
     }
 
-    FilesWidget::FilesWidget(QWidget* _parent, const QStringList& _files, const QPixmap& _imageBuffer)
+    FilesWidget::FilesWidget(QWidget* _parent, const FilesToSend& _files)
         : QWidget(_parent)
         , currentDocumentHeight_(-1)
         , neededHeight_(-1)
@@ -454,14 +476,13 @@ namespace Ui
         description_->setAcceptDrops(false);
         description_->setEnterKeyPolicy(TextEditEx::EnterKeyPolicy::FollowSettingsRules);
 
-        description_->setFixedWidth(Utils::scale_value(DIALOG_WIDTH - HOR_OFFSET * 2));
-        description_->setFixedHeight(Utils::scale_value(DEFAULT_INPUT_HEIGHT));
+        description_->setFixedSize(Utils::scale_value(QSize(DIALOG_WIDTH - HOR_OFFSET * 2, DEFAULT_INPUT_HEIGHT)));
 
         connect(description_, &TextEditEx::enter, this, &FilesWidget::enter);
 
         filesArea_ = new FilesArea(this);
         connect(filesArea_, &FilesArea::sizeChanged, this, &FilesWidget::updateFilesArea);
-        area_ = new FilesScroll(this, filesArea_, _imageBuffer.isNull());
+        area_ = new FilesScroll(this, filesArea_, true);
         area_->setStyleSheet(qsl("background: transparent;"));
         area_->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
         area_->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
@@ -481,27 +502,22 @@ namespace Ui
         area_->setFixedWidth(Utils::scale_value(DIALOG_WIDTH - HOR_OFFSET - RIGHT_OFFSET));
 
 #ifdef _WIN32
-        DragAcceptFiles((HWND)Utils::InterConnector::instance().getMainWindow()->winId(), _imageBuffer.isNull());
+        DragAcceptFiles((HWND)Utils::InterConnector::instance().getMainWindow()->winId(), TRUE);
 #endif //_WIN32
 
         connect(area_->verticalScrollBar(), &QScrollBar::rangeChanged, this, &FilesWidget::scrollRangeChanged);
         connect(description_, &TextEditEx::textChanged, this, &FilesWidget::descriptionChanged);
 
-        initPreview(_files, _imageBuffer);
+        initPreview(_files);
         updateDescriptionHeight();
     }
 
-    FilesWidget::~FilesWidget()
-    {
-#ifdef _WIN32
-        DragAcceptFiles((HWND)Utils::InterConnector::instance().getMainWindow()->winId(), TRUE);
-#endif //_WIN32
-    }
+    FilesWidget::~FilesWidget() = default;
 
-    QStringList FilesWidget::getFiles() const
+    FilesToSend FilesWidget::getFiles() const
     {
         if (filesArea_->count() == 0)
-            return { previewPath_ };
+            return { singleFile_ };
         else
             return filesArea_->getItems();
     }
@@ -532,57 +548,55 @@ namespace Ui
     void FilesWidget::paintEvent(QPaintEvent* _event)
     {
         QPainter p(this);
-        p.setRenderHint(QPainter::Antialiasing, true);
+        p.setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
 
         title_->setOffsets(Utils::scale_value(HOR_OFFSET), Utils::scale_value(VER_OFFSET));
         title_->draw(p);
 
-        if (!preview_.isNull())
+        if (!singlePreview_.isNull())
         {
-            auto x = width() / 2 - preview_.width() / 2;
-            auto y = Utils::scale_value(VER_OFFSET + PREVIEW_TOP_OFFSET) + title_->cachedSize().height();
-            if (preview_.height() < Utils::scale_value(MIN_PREVIEW_HEIGHT) || preview_.width() < Utils::scale_value(MAX_PREVIEW_HEIGHT))
-            {
-                p.setPen(Qt::NoPen);
-                p.setBrush(Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT));
-                p.drawRoundedRect(QRect(Utils::scale_value(HOR_OFFSET), y, Utils::scale_value(MAX_PREVIEW_HEIGHT), preview_.height() < Utils::scale_value(MIN_PREVIEW_HEIGHT) ? Utils::scale_value(MIN_PREVIEW_HEIGHT) : preview_.height()), Utils::scale_value(5), Utils::scale_value(5));
-                if (preview_.height() < Utils::scale_value(MIN_PREVIEW_HEIGHT))
-                    y += Utils::scale_value(MIN_PREVIEW_HEIGHT) / 2 - preview_.height() / 2;
+            p.setPen(Qt::NoPen);
 
-                p.drawPixmap(x, y, preview_);
+            auto x = (width() - singlePreview_.width()) / 2;
+            auto y = Utils::scale_value(VER_OFFSET + PREVIEW_TOP_OFFSET) + title_->cachedSize().height();
+            if (singlePreview_.height() < Utils::scale_value(MIN_PREVIEW_HEIGHT) || singlePreview_.width() < Utils::scale_value(MAX_PREVIEW_HEIGHT))
+            {
+                const QRect r(
+                    Utils::scale_value(HOR_OFFSET),
+                    y,
+                    Utils::scale_value(MAX_PREVIEW_HEIGHT),
+                    std::max(singlePreview_.height(), Utils::scale_value(MIN_PREVIEW_HEIGHT))
+                );
+
+                p.setBrush(Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT));
+                p.drawRoundedRect(r, roundRadius(), roundRadius());
+
+                if (singlePreview_.height() < Utils::scale_value(MIN_PREVIEW_HEIGHT))
+                    y += (Utils::scale_value(MIN_PREVIEW_HEIGHT) - singlePreview_.height()) / 2;
+
+                p.drawPixmap(x, y, singlePreview_);
             }
             else
             {
-                auto b = QBrush(preview_);
+                auto b = QBrush(singlePreview_);
                 QMatrix m;
                 m.translate(x, y);
                 b.setMatrix(m);
                 p.setBrush(b);
-                p.setPen(Qt::NoPen);
-                p.drawRoundedRect(QRect(x, y, preview_.width(), preview_.height()), Utils::scale_value(5), Utils::scale_value(5));
+                p.drawRoundedRect(QRect(QPoint(x, y), singlePreview_.size()), roundRadius(), roundRadius());
             }
 
             if (drawDuration_)
             {
-                static const QColor durationColor = []() {
-                    auto c = Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID);
-                    c.setAlphaF(0.5);
-                    return c;
-                }();
-
-                p.setPen(Qt::NoPen);
-                p.setBrush(durationColor);
+                p.setBrush(Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID, 0.5));
                 p.drawRoundedRect(Utils::scale_value(HOR_OFFSET + HOR_OFFSET_SMALL), Utils::scale_value(VER_OFFSET + PREVIEW_TOP_OFFSET) + title_->cachedSize().height() + Utils::scale_value(HOR_OFFSET_SMALL), Utils::scale_value(DURATION_WIDTH) + (isGif_ ? 0 : Utils::scale_value(VIDEO_ICON_SIZE)), Utils::scale_value(DURATION_HEIGHT), Utils::scale_value(8), Utils::scale_value(8));
 
                 if (!isGif_)
-                {
-                    static auto video_icon = Utils::renderSvgScaled(qsl(":/videoplayer/duration_time_icon"), QSize(VIDEO_ICON_SIZE, VIDEO_ICON_SIZE), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT));
-                    p.drawPixmap(Utils::scale_value(HOR_OFFSET + HOR_OFFSET_SMALL) + Utils::scale_value(1), Utils::scale_value(VER_OFFSET + PREVIEW_TOP_OFFSET) + title_->cachedSize().height() + Utils::scale_value(HOR_OFFSET_SMALL) + Utils::scale_value(2), video_icon);
-                }
+                    p.drawPixmap(Utils::scale_value(HOR_OFFSET + HOR_OFFSET_SMALL) + Utils::scale_value(1), Utils::scale_value(VER_OFFSET + PREVIEW_TOP_OFFSET) + title_->cachedSize().height() + Utils::scale_value(HOR_OFFSET_SMALL) + Utils::scale_value(2), getDurationIcon());
 
                 if (durationLabel_)
                 {
-                    durationLabel_->setOffsets(Utils::scale_value(HOR_OFFSET + HOR_OFFSET_SMALL) + Utils::scale_value(DURATION_WIDTH) / 2 - durationLabel_->desiredWidth() / 2 + (isGif_ ? 0 : Utils::scale_value(VIDEO_ICON_SIZE)), Utils::scale_value(VER_OFFSET + PREVIEW_TOP_OFFSET) + title_->cachedSize().height() + Utils::scale_value(HOR_OFFSET_SMALL) + Utils::scale_value(DURATION_HEIGHT) / 2);
+                    durationLabel_->setOffsets(Utils::scale_value(HOR_OFFSET + HOR_OFFSET_SMALL) + (Utils::scale_value(DURATION_WIDTH) - durationLabel_->desiredWidth()) / 2 + (isGif_ ? 0 : Utils::scale_value(VIDEO_ICON_SIZE)), Utils::scale_value(VER_OFFSET + PREVIEW_TOP_OFFSET) + title_->cachedSize().height() + Utils::scale_value(HOR_OFFSET_SMALL) + Utils::scale_value(DURATION_HEIGHT) / 2);
                     durationLabel_->draw(p, TextRendering::VerPosition::MIDDLE);
                 }
             }
@@ -599,27 +613,17 @@ namespace Ui
     void FilesWidget::updateFilesArea()
     {
         auto items = filesArea_->getItems();
-        if (!preview_.isNull() || filesArea_->count() == 1)
+        if (!singlePreview_.isNull() || items.size() == 1)
         {
-            if (!preview_.isNull())
-                items.push_front(previewPath_);
+            if (!singlePreview_.isNull())
+                items.insert(items.begin(), singleFile_);
 
             initPreview(items);
         }
 
-        const QString text = QT_TRANSLATE_NOOP("files_widget", "Send ") % QString::number(items.size()) % ql1c(' ') %
-            Utils::GetTranslator()->getNumberString(
-                items.size(),
-                QT_TRANSLATE_NOOP3("files_widget", "file", "1"),
-                QT_TRANSLATE_NOOP3("files_widget", "files", "2"),
-                QT_TRANSLATE_NOOP3("files_widget", "files", "5"),
-                QT_TRANSLATE_NOOP3("files_widget", "files", "21")
-            );
+        updateTitle();
 
-        title_->setText(items.empty() ? QT_TRANSLATE_NOOP("files_widget", "Send files") : text);
-        update();
-
-        emit setButtonActive(!items.empty());
+        Q_EMIT setButtonActive(!items.empty());
         area_->setPlaceholder(items.empty());
 
         updateSize();
@@ -632,16 +636,16 @@ namespace Ui
             if (pixmap.width() > pixmap.height())
             {
                 if (pixmap.width() > Utils::scale_value(DIALOG_WIDTH - HOR_OFFSET * 2))
-                    preview_ = pixmap.scaledToWidth(Utils::scale_value(DIALOG_WIDTH - HOR_OFFSET * 2), Qt::SmoothTransformation);
+                    singlePreview_ = pixmap.scaledToWidth(Utils::scale_value(DIALOG_WIDTH - HOR_OFFSET * 2), Qt::SmoothTransformation);
                 else
-                    preview_ = pixmap;
+                    singlePreview_ = pixmap;
             }
             else
             {
                 if (pixmap.height() > Utils::scale_value(MAX_PREVIEW_HEIGHT))
-                    preview_ = pixmap.scaledToHeight(Utils::scale_value(MAX_PREVIEW_HEIGHT), Qt::SmoothTransformation);
+                    singlePreview_ = pixmap.scaledToHeight(Utils::scale_value(MAX_PREVIEW_HEIGHT), Qt::SmoothTransformation);
                 else
-                    preview_ = pixmap;
+                    singlePreview_ = pixmap;
             }
         }
 
@@ -651,8 +655,8 @@ namespace Ui
 
     void FilesWidget::enter()
     {
-        if (filesArea_->count() != 0 || !preview_.isNull())
-            emit Utils::InterConnector::instance().acceptGeneralDialog();
+        if (filesArea_->count() > 0 || !singlePreview_.isNull())
+            Q_EMIT Utils::InterConnector::instance().acceptGeneralDialog();
     }
 
     void FilesWidget::duration(qint64 _duration)
@@ -670,23 +674,20 @@ namespace Ui
 
     void FilesWidget::updateSize()
     {
-        setFixedWidth(Utils::scale_value(DIALOG_WIDTH));
-        auto h = Utils::scale_value(HEADER_HEIGHT);
-        if (!preview_.isNull())
+        auto h = Utils::scale_value(HEADER_HEIGHT + PREVIEW_TOP_OFFSET + BOTTOM_OFFSET) + description_->height();
+        if (!singlePreview_.isNull())
         {
-            auto needHeight = std::max(preview_.height(), Utils::scale_value(MIN_PREVIEW_HEIGHT));
+            const auto needHeight = std::max(singlePreview_.height(), Utils::scale_value(MIN_PREVIEW_HEIGHT));
             h += needHeight;
-            area_->setFixedHeight(std::max(preview_.height(), Utils::scale_value(MIN_PREVIEW_HEIGHT)));
+            area_->setFixedHeight(needHeight);
         }
         else
         {
             area_->setFixedHeight(std::min(Utils::scale_value(MAX_PREVIEW_HEIGHT), filesArea_->height()));
             h += area_->height();
         }
-        h += Utils::scale_value(PREVIEW_TOP_OFFSET + BOTTOM_OFFSET);
-        h += description_->height();
 
-        setFixedHeight(h);
+        setFixedSize(Utils::scale_value(DIALOG_WIDTH), h);
 
         area_->move(Utils::scale_value(HOR_OFFSET), Utils::scale_value(VER_OFFSET + PREVIEW_TOP_OFFSET) + title_->cachedSize().height());
         description_->move(QPoint(width() / 2 - description_->width() / 2, rect().height() - Utils::scale_value(BOTTOM_OFFSET + VER_OFFSET/2 - (platform::is_apple() ? Utils::scale_value(2) : 0) ) - description_->height()));
@@ -697,35 +698,42 @@ namespace Ui
     {
         if (!durationLabel_)
         {
-            durationLabel_ = TextRendering::MakeTextUnit(QString());
-            static const auto fontSize = platform::is_apple() ? 11 : 13;
-            durationLabel_->init(Fonts::appFontScaledFixed(fontSize, Fonts::FontWeight::Normal), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT), QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, 1);
-        }
-
-        durationLabel_->setText(_duration);
-        durationLabel_->evaluateDesiredSize();
-    }
-
-    void FilesWidget::initPreview(const QStringList& _files, const QPixmap& _imageBuffer)
-    {
-        filesArea_->clear();
-
-        if (!_imageBuffer.isNull())
-        {
-            localPreviewLoaded(_imageBuffer, _imageBuffer.size());
+            durationLabel_ = TextRendering::MakeTextUnit(_duration);
+            durationLabel_->init(Fonts::appFontScaledFixed(durationFontSize, Fonts::FontWeight::Normal), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT), QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, 1);
         }
         else
         {
-            preview_ = QPixmap();
-            drawDuration_ = false;
-            if (_files.size() == 1)
+            durationLabel_->setText(_duration);
+        }
+        durationLabel_->evaluateDesiredSize();
+    }
+
+    void FilesWidget::initPreview(const FilesToSend& _files)
+    {
+        filesArea_->clear();
+        singlePreview_ = QPixmap();
+        singleFile_ = FileToSend();
+        drawDuration_ = false;
+
+        if (_files.empty())
+            return;
+
+        const auto addFilesToArea = [this, &_files]()
+        {
+            QSignalBlocker sb(filesArea_);
+            for (const auto& f : _files)
+                filesArea_->addItem(new FilesAreaItem(f, Utils::scale_value(DIALOG_WIDTH - HOR_OFFSET * 2)));
+        };
+
+        if (_files.size() == 1)
+        {
+            const auto& file = _files.front();
+            if (file.isFile())
             {
-                bool handled = false;
+                const auto& fi = file.getFileInfo();
+                const auto ext = fi.suffix();
 
-                QFileInfo f(_files.front());
-                const auto ext = f.suffix();
-
-                if (ext.compare(ql1s("gif"), Qt::CaseInsensitive) == 0)
+                if (ext.compare(u"gif", Qt::CaseInsensitive) == 0)
                 {
                     drawDuration_ = true;
                     isGif_ = true;
@@ -738,73 +746,35 @@ namespace Ui
 
                 if (Utils::is_image_extension(ext))
                 {
-                    auto task = new Utils::LoadPixmapFromFileTask(_files.front());
-
-                    QObject::connect(
-                        task,
-                        &Utils::LoadPixmapFromFileTask::loadedSignal,
-                        this,
-                        &FilesWidget::localPreviewLoaded);
-
+                    auto task = new Utils::LoadPixmapFromFileTask(fi.absoluteFilePath());
+                    connect(task, &Utils::LoadPixmapFromFileTask::loadedSignal, this, &FilesWidget::localPreviewLoaded);
                     QThreadPool::globalInstance()->start(task);
-
-                    handled = true;
                 }
                 else if (Utils::is_video_extension(ext))
                 {
-                    auto task = new Utils::LoadFirstFrameTask(_files.front());
-
-                    QObject::connect(
-                        task,
-                        &Utils::LoadFirstFrameTask::loadedSignal,
-                        this,
-                        &FilesWidget::localPreviewLoaded);
-
-                    QObject::connect(
-                        task,
-                        &Utils::LoadFirstFrameTask::duration,
-                        this,
-                        &FilesWidget::duration);
-
+                    auto task = new Utils::LoadFirstFrameTask(fi.absoluteFilePath());
+                    connect(task, &Utils::LoadFirstFrameTask::loadedSignal, this, &FilesWidget::localPreviewLoaded);
+                    connect(task, &Utils::LoadFirstFrameTask::duration, this, &FilesWidget::duration);
                     QThreadPool::globalInstance()->start(task);
-
-                    handled = true;
                 }
-
-                if (handled)
+                else
                 {
-                    previewPath_ = _files.front();
-                    const QString text = QT_TRANSLATE_NOOP("files_widget", "Send ") % QString::number(_files.size()) % ql1c(' ') %
-                        Utils::GetTranslator()->getNumberString(
-                            _files.size(),
-                            QT_TRANSLATE_NOOP3("files_widget", "file", "1"),
-                            QT_TRANSLATE_NOOP3("files_widget", "files", "2"),
-                            QT_TRANSLATE_NOOP3("files_widget", "files", "5"),
-                            QT_TRANSLATE_NOOP3("files_widget", "files", "21")
-                        );
-                    title_->setText(text);
-                    return;
+                    addFilesToArea();
                 }
             }
-
-            for (const auto& f : _files)
+            else
             {
-                filesArea_->blockSignals(true);
-                filesArea_->addItem(new FilesAreaItem(f, Utils::scale_value(DIALOG_WIDTH - HOR_OFFSET * 2)));
-                filesArea_->blockSignals(false);
+                localPreviewLoaded(file.getPixmap(), file.getPixmap().size());
             }
+
+            singleFile_ = file;
+        }
+        else
+        {
+            addFilesToArea();
         }
 
-        const auto amount = _imageBuffer.isNull() ? _files.size() : 1;
-        const QString text = QT_TRANSLATE_NOOP("files_widget", "Send ") % QString::number(amount) % ql1c(' ') %
-            Utils::GetTranslator()->getNumberString(
-                amount,
-                QT_TRANSLATE_NOOP3("files_widget", "file", "1"),
-                QT_TRANSLATE_NOOP3("files_widget", "files", "2"),
-                QT_TRANSLATE_NOOP3("files_widget", "files", "5"),
-                QT_TRANSLATE_NOOP3("files_widget", "files", "21")
-            );
-        title_->setText(text);
+        updateTitle();
     }
 
     void FilesWidget::updateDescriptionHeight()
@@ -847,5 +817,27 @@ namespace Ui
         description_->setVerticalScrollBarPolicy(sbPolicy);
         description_->setFixedHeight(newEditHeight);
         updateSize();
+    }
+
+    void FilesWidget::updateTitle()
+    {
+        if (!title_)
+            return;
+
+        const auto amount = filesArea_->count();
+        auto amountString = [amount]() -> QString
+        {
+            return QT_TRANSLATE_NOOP("files_widget", "Send ") % QString::number(amount) % ql1c(' ') %
+                Utils::GetTranslator()->getNumberString(
+                    amount,
+                    QT_TRANSLATE_NOOP3("files_widget", "file", "1"),
+                    QT_TRANSLATE_NOOP3("files_widget", "files", "2"),
+                    QT_TRANSLATE_NOOP3("files_widget", "files", "5"),
+                    QT_TRANSLATE_NOOP3("files_widget", "files", "21")
+                );
+        };
+
+        title_->setText(amount > 0 ? amountString() : QT_TRANSLATE_NOOP("files_widget", "Send files"));
+        update();
     }
 }

@@ -17,11 +17,14 @@ namespace Ui
         void paintEvent(QPaintEvent* _e) override;
         void mousePressEvent(QMouseEvent*) override;
         void mouseReleaseEvent(QMouseEvent*) override;
+        void mouseMoveEvent(QMouseEvent*) override;
         void enterEvent(QEvent*) override;
         void leaveEvent(QEvent*) override;
         void resizeEvent(QResizeEvent*) override;
         void dragEnterEvent(QDragEnterEvent*) override;
         void dropEvent(QDropEvent*) override;
+        void showEvent(QShowEvent*) override;
+        void hideEvent(QHideEvent*) override;
 
     private:
         struct InfoForSetAvatar
@@ -41,6 +44,8 @@ namespace Ui
             MyProfile,
             CreateChat,
             ChangeAvatar,
+            ChangeStatus,
+            StatusPicker
         };
 
         bool isDefault();
@@ -54,6 +59,7 @@ namespace Ui
         void summonSelectFileForAvatar();
         void leftClicked();
         void rightClicked();
+        void badgeClicked();
         void cancelSelectFileForAvatar();
         void avatarSetToCore();
 
@@ -73,18 +79,31 @@ namespace Ui
 
     public:
 
-        ContactAvatarWidget(QWidget* _parent, const QString& _aimid, const QString& _displayName, const int _size, const bool _autoUpdate, const bool _officialOnly = false, const bool _isVisibleBadge = true);
+        ContactAvatarWidget(QWidget* _parent,
+                            const QString& _aimid,
+                            const QString& _displayName,
+                            const int _size,
+                            const bool _autoUpdate,
+                            const bool _officialOnly = false,
+                            const bool _isVisibleBadge = true);
+
         ~ContactAvatarWidget();
 
         void UpdateParams(const QString& _aimid, const QString& _displayName);
+        const QString& getAimId() const noexcept { return aimid_; }
+
         void SetImageCropHolder(QWidget *_holder);
         void SetImageCropSize(const QSize &_size);
+
         void SetMode(ContactAvatarWidget::Mode _mode);
+        ContactAvatarWidget::Mode getMode() const noexcept { return mode_; }
+
         void SetVisibleShadow(bool _isVisibleShadow);
         void SetVisibleSpinner(bool _isVisibleSpinner);
         void SetOutline(bool _isVisibleOutline);
         void SetSmallBadge(bool _small);
         void SetOffset(int _offset);
+        void setAvatarProxyFlags(int32_t _flags);
 
         void applyAvatar(const QPixmap &alter = QPixmap());
         const QPixmap &croppedImage() const;
@@ -94,6 +113,10 @@ namespace Ui
         void ResetInfoForSetAvatar();
         void updateSpinnerPos();
         void selectFile(const QString& _url = QString(), bool _drop = false);
+        bool badgeRectUnderCursor() const;
+
+        void showTooltip();
+        void openStatusPicker() const;
 
     private:
         QWidget *imageCropHolder_;
@@ -109,9 +132,13 @@ namespace Ui
         bool officialBadgeOnly_;
         RotatingSpinner* spinner_;
         bool hovered_;
+        bool badgeHovered_;
         bool pressed_;
         bool smallBadge_;
         bool displayNameChanged_;
         int offset_;
+        int avatarProxyFlags_ = 0;
+        QRect badgeRect_;
+        QTimer* tooltipTimer_;
     };
 }

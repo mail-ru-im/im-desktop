@@ -1,18 +1,14 @@
 #pragma once
 
 #include "CustomAbstractListModel.h"
-
-#include "../../types/contact.h"
-#include "../../types/message.h"
-#include "../../types/chat.h"
-
 #include "ContactItem.h"
+#include "types/chat.h"
 
 Q_DECLARE_LOGGING_CATEGORY(clModel)
 
 namespace core
 {
-    struct icollection;
+    enum class group_chat_info_errors;
 }
 
 namespace Ui
@@ -20,96 +16,19 @@ namespace Ui
     class HistoryControlPage;
 }
 
+namespace Data
+{
+    struct IdInfo;
+}
+
 namespace Logic
 {
     namespace ContactListSorting
     {
-        const int maxTopContactsByOutgoing = 5;
-        typedef std::function<bool (const Logic::ContactItem&, const Logic::ContactItem&)> contact_sort_pred;
-
-        struct ItemLessThanDisplayName
-        {
-            ItemLessThanDisplayName(bool _force_cyrillic = false)
-                : force_cyrillic_(_force_cyrillic)
-                , collator_(Utils::GetTranslator()->getLocale())
-            {
-                collator_.setCaseSensitivity(Qt::CaseInsensitive);
-            }
-
-            inline bool operator() (const Logic::ContactItem& _first, const Logic::ContactItem& _second)
-            {
-                const auto& firstName = _first.Get()->GetDisplayName();
-                const auto& secondName = _second.Get()->GetDisplayName();
-
-                const auto firstNotLetter = Utils::startsNotLetter(firstName);
-                const auto secondNotLetter = Utils::startsNotLetter(secondName);
-                if (firstNotLetter != secondNotLetter)
-                    return secondNotLetter;
-
-                if (force_cyrillic_)
-                {
-                    const auto firstCyrillic = Utils::startsCyrillic(firstName);
-                    const auto secondCyrillic = Utils::startsCyrillic(secondName);
-
-                    if (firstCyrillic != secondCyrillic)
-                        return firstCyrillic;
-                }
-
-                return collator_(firstName, secondName);
-            }
-
-            bool force_cyrillic_;
-            QCollator collator_;
-        };
-
-        struct ItemLessThan
-        {
-            inline bool operator() (const Logic::ContactItem& _first, const Logic::ContactItem& _second)
-            {
-                if (_first.Get()->GroupId_ == _second.Get()->GroupId_)
-                {
-                    if (_first.is_group() && _second.is_group())
-                        return false;
-
-                    if (_first.is_group())
-                        return true;
-
-                    if (_second.is_group())
-                        return false;
-
-                    return ItemLessThanDisplayName()(_first, _second);
-                }
-
-                return _first.Get()->GroupId_ < _second.Get()->GroupId_;
-            }
-        };
-
-        struct ItemLessThanNoGroups
-        {
-            ItemLessThanNoGroups(const QDateTime& _current)
-                : current_(_current)
-            {
-            }
-
-            inline bool operator() (const Logic::ContactItem& _first, const Logic::ContactItem& _second)
-            {
-                if (_first.Get()->IsChecked_ != _second.Get()->IsChecked_)
-                    return _first.Get()->IsChecked_;
-
-                const auto firstIsActive = _first.is_active(current_);
-                const auto secondIsActive = _second.is_active(current_);
-                if (firstIsActive != secondIsActive)
-                    return firstIsActive;
-
-                return ItemLessThanDisplayName()(_first, _second);
-            }
-
-            QDateTime current_;
-        };
+        using contact_sort_pred = std::function<bool(const Logic::ContactItem&, const Logic::ContactItem&)>;
     }
 
-    class contact_profile;
-    using profile_ptr = std::shared_ptr<contact_profile>;
+    using profile_ptr = std::shared_ptr<class contact_profile>;
 
     enum class UpdateChatSelection
     {
@@ -123,6 +42,9 @@ namespace Logic
         QString name_;
         QString description_;
         QString rules_;
+        bool joinModeration_ = false;
+        bool public_ = false;
+        bool channel_ = false;
     };
 
     class ContactListModel : public CustomAbstractListModel
@@ -132,7 +54,7 @@ namespace Logic
     Q_SIGNALS:
         void currentDlgStateChanged() const;
         void selectedContactChanged(const QString& _new, const QString& _prev);
-        void contactChanged(const QString&) const;
+        void contactChanged(const QString&, QPrivateSignal) const;
         void select(const QString&, qint64, Logic::UpdateChatSelection mode = Logic::UpdateChatSelection::No) const;
         void profile_loaded(profile_ptr _profile) const;
         void contact_added(const QString& _contact, bool _result);
@@ -157,6 +79,8 @@ namespace Logic
 
     public Q_SLOTS:
         void chatInfo(qint64, const std::shared_ptr<Data::ChatInfo>&, const int _requestMembersLimit);
+        void chatInfoFailed(qint64, core::group_chat_info_errors _errorCode, const QString& _aimId);
+        void onIdInfo(qint64, const Data::IdInfo& _info);
 
         void sort();
         void forceSort();
@@ -176,14 +100,13 @@ namespace Logic
         QString getAimidByABName(const QString& _name);
         void setCurrentCallbackHappened(Ui::HistoryControlPage* _page);
 
-        void setCurrent(const QString& _aimId, qint64 id, bool _select = false, std::function<void(Ui::HistoryControlPage*)> _getPageCallback = nullptr);
+        void setCurrent(const QString& _aimId, qint64 id, bool _select = false, std::function<void(Ui::HistoryControlPage*)> _getPageCallback = {});
 
         const ContactItem* getContactItem(const QString& _aimId) const;
 
         const QString& selectedContact() const;
-        QString selectedContactName() const;
 
-        void add(const QString& _aimId, const QString& _friendly);
+        void add(const QString& _aimId, const QString& _friendly, bool _isTemporary = false);
 
         void setContactVisible(const QString& _aimId, bool _visible);
 
@@ -192,29 +115,31 @@ namespace Logic
         bool isMuted(const QString& _aimId) const;
         bool isLiveChat(const QString& _aimId) const;
         bool isOfficial(const QString& _aimId) const;
-        bool isOnline(const QString& _aimId) const;
+        bool isPublic(const QString& _aimId) const;
         QModelIndex contactIndex(const QString& _aimId) const;
 
-        void addContactToCL(const QString& _aimId, std::function<void(bool)> _callBack = [](bool) {});
-        void getContactProfile(const QString& _aimId, std::function<void(profile_ptr, int32_t)> _callBack = [](profile_ptr, int32_t) {});
+        void addContactToCL(const QString& _aimId, std::function<void(bool)> _callBack = {});
         void ignoreContact(const QString& _aimId, bool _ignore);
         bool ignoreContactWithConfirm(const QString& _aimId);
         bool isYouAdmin(const QString& _aimId) const;
         QString getYourRole(const QString& _aimId) const;
         void setYourRole(const QString& _aimId, const QString& _role);
         void removeContactFromCL(const QString& _aimId);
-        void renameContact(const QString& _aimId, const QString& _friendly, std::function<void(bool)> _callBack = nullptr);
+        void renameContact(const QString& _aimId, const QString& _friendly, std::function<void(bool)> _callBack = {});
         void static getIgnoreList();
 
         bool youAreNotAMember(const QString& _aimid) const;
+        bool isYouBlocked(const QString& _aimId) const;
 
         void removeContactsFromModel(const QVector<QString>& _vcontacts);
+        void removeTemporaryContactsFromModel();
 
-        std::vector<QString> GetCheckedContacts() const;
-        void clearChecked();
-        void setChecked(const QString& _aimId, bool _isChecked);
+        std::vector<QString> getCheckedContacts() const;
+        void clearCheckedItems() override;
+        int getCheckedItemsCount() const override;
+        void setCheckedItem(const QString& _aimId, bool _isChecked) override;
         void setIsWithCheckedBox(bool);
-        bool getIsChecked(const QString& _aimId) const;
+        bool isCheckedItem(const QString& _aimId) const override;
 
         bool isWithCheckedBox() const;
         QString contactToTryOnTheme() const;
@@ -224,6 +149,7 @@ namespace Logic
         void prev();
 
         bool contains(const QString& _aimId) const override;
+        bool hasContact(const QString& _aimId) const;
 
         int getTopSortedCount() const;
 
@@ -231,15 +157,20 @@ namespace Logic
 
         bool isChannel(const QString& _aimId) const;
         bool isReadonly(const QString& _aimId) const; // no write access to this chat, for channel check use isChannel
+        bool isJoinModeration(const QString& _aimId) const;
 
-        Data::DialogGalleryState getGalleryState(const QString& _aimid) const;
+        const Data::DialogGalleryState& getGalleryState(const QString& _aimid) const;
 
         QString getChatStamp(const QString& _aimid) const;
         QString getChatName(const QString& _aimid) const;
         QString getChatDescription(const QString& _aimid) const;
         QString getChatRules(const QString& _aimId) const;
 
+        const QString& getAimidByStamp(const QString& _aimId) const;
+
         void updateChatInfo(const Data::ChatInfo& _chat_info);
+
+        void emitContactChanged(const QString& _aimId) const;
 
     private:
         std::function<void(Ui::HistoryControlPage*)> gotPageCallback_;
@@ -276,12 +207,13 @@ namespace Logic
         bool isWithCheckedBox_;
         int topSortedCount_;
 
-        QMap<QString, Data::DialogGalleryState> galleryStates_;
+        std::map<QString, Data::DialogGalleryState> galleryStates_;
 
         QSet<QString> deletedContacts_;
 
         QMap<QString, CachedChatData> chatsCache_;
         std::vector<QString> notAMemberChats_;
+        std::vector<QString> youBlockedChats_;
     };
 
     ContactListModel* getContactListModel();

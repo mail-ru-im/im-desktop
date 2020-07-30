@@ -127,6 +127,17 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
     </message>
 </context>
 <context>
+    <name>active_call_plate</name>
+    <message>
+        <source>Join</source>
+        <translation>Giriş</translation>
+    </message>
+    <message>
+        <source>Active call</source>
+        <translation>Aktif çağrı</translation>
+    </message>
+</context>
+<context>
     <name>add_new_contact_dialogs</name>
     <message>
         <source>New contact</source>
@@ -251,8 +262,36 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
         <translation>turuncu</translation>
     </message>
     <message>
-        <source>Dark blue</source>
+        <source>Default</source>
+        <translation>Varsayilan olarak</translation>
+    </message>
+    <message>
+        <source>Dark Turquoise</source>
+        <translation>Koyu turkuaz</translation>
+    </message>
+    <message>
+        <source>Dark Violet</source>
+        <translation>Kara leylak</translation>
+    </message>
+    <message>
+        <source>Dark Orange</source>
+        <translation>Koyu turuncu</translation>
+    </message>
+    <message>
+        <source>Pink</source>
+        <translation>Pembe</translation>
+    </message>
+    <message>
+        <source>Dark Pink</source>
+        <translation>Koyu pembe</translation>
+    </message>
+    <message>
+        <source>Dark Blue</source>
         <translation>Koyu mavi</translation>
+    </message>
+    <message>
+        <source>Turquoise</source>
+        <translation>Turkuaz</translation>
     </message>
 </context>
 <context>
@@ -315,10 +354,6 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
         <translation>Mesajları sil</translation>
     </message>
     <message>
-        <source>Block and delete?</source>
-        <translation>Engelle ve sil?</translation>
-    </message>
-    <message>
         <source>Cancel</source>
         <translation>iptal</translation>
     </message>
@@ -334,23 +369,86 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
         <source>This member won&apos;t be able to join the group again. You could also delete his messages</source>
         <translation>Üye gruba geri dönemez. Ayrıca mesajlarını silebilirsiniz</translation>
     </message>
+    <message>
+        <source>Delete?</source>
+        <translation>Sil?</translation>
+    </message>
+</context>
+<context>
+    <name>bots</name>
+    <message>
+        <source>Cancel</source>
+        <translation>iptal</translation>
+    </message>
+    <message>
+        <source>Ok</source>
+        <translation>yaklaşık</translation>
+    </message>
+    <message>
+        <source>Open link</source>
+        <translation>Bağlantıyı aç</translation>
+    </message>
+    <message>
+        <source>You are not a member of this chat or you was banned to write</source>
+        <translation>Sohbet üyesi değilsiniz veya yazma izniniz yok</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to open an external link %1?</source>
+        <translation>%1 harici bağlantısını açmak istediğinizden emin misiniz?</translation>
+    </message>
+</context>
+<context>
+    <name>call_link</name>
+    <message>
+        <source>Link on call</source>
+        <translation>Çağrı bağlantısı</translation>
+    </message>
+    <message>
+        <source>Link on webinar</source>
+        <translation>Web seminerine bağlantı</translation>
+    </message>
+    <message>
+        <source>Send the link to people you want to add to the call</source>
+        <translation>Bağlantıyı aramaya eklemek istediğiniz kişilere gönderin</translation>
+    </message>
+    <message>
+        <source>Send the link to people you want to invite to the webinar</source>
+        <translation>Bağlantıyı web seminerine davet etmek istediğiniz kişilere gönderin</translation>
+    </message>
+    <message>
+        <source>call</source>
+        <translation>çan</translation>
+    </message>
+    <message>
+        <source>webinar</source>
+        <translation>web semineri</translation>
+    </message>
+    <message>
+        <source>Send the %1 link to current chat or copy it</source>
+        <translation>Canlı sohbette %1 adresine bağlantı gönderin veya kopyalayın</translation>
+    </message>
+    <message>
+        <source>Send the call link %1 to current chat or copy it</source>
+        <translation>%1 telefonu aramak için bağlantı gönderin veya kopyalayın</translation>
+    </message>
+</context>
+<context>
+    <name>calls</name>
+    <message>
+        <source>Group call</source>
+        <translation>Grup aramasını başlat</translation>
+    </message>
+    <message>
+        <source>Create webinar</source>
+        <translation>Web semineri oluşturun</translation>
+    </message>
+    <message>
+        <source>Create call link</source>
+        <translation>Bir çağrı bağlantısı oluşturun</translation>
+    </message>
 </context>
 <context>
     <name>chat_event</name>
-    <message>
-        <source> and </source>
-        <translation> ve </translation>
-    </message>
-    <message>
-        <source>You</source>
-        <comment>active_voice</comment>
-        <translation>Sen</translation>
-    </message>
-    <message>
-        <source>you</source>
-        <comment>passive_voice</comment>
-        <translation>seni</translation>
-    </message>
     <message>
         <source>Missed call</source>
         <translation>Cevapsız arama</translation>
@@ -364,20 +462,8 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
         <translation>Gelen çağrı</translation>
     </message>
     <message>
-        <source>You changed picture of group</source>
-        <translation>Grubun fotoğrafını değiştirdiniz</translation>
-    </message>
-    <message>
         <source> has birthday!</source>
         <translation> kullanıcısının doğum günü!</translation>
-    </message>
-    <message>
-        <source>You have joined group</source>
-        <translation>Gruba katıldınız</translation>
-    </message>
-    <message>
-        <source>You deleted chat description</source>
-        <translation>Sohbet açıklamasını sildiniz</translation>
     </message>
     <message>
         <source>Message was deleted</source>
@@ -390,58 +476,6 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
     <message>
         <source>%1 added you to contacts</source>
         <translation>%1, sizi kişilerine ekledi</translation>
-    </message>
-    <message>
-        <source>%1 changed picture of group</source>
-        <translation>%1, grubun fotoğrafını değiştirdi</translation>
-    </message>
-    <message>
-        <source>You changed theme to &quot;%1&quot;</source>
-        <translation>Konuyu %1 olarak değiştirdiniz</translation>
-    </message>
-    <message>
-        <source>%1 changed theme to &quot;%2&quot;</source>
-        <translation>%1, konuyu %2 olarak değiştirdi</translation>
-    </message>
-    <message>
-        <source>You added %1</source>
-        <translation>%1 eklediniz</translation>
-    </message>
-    <message>
-        <source>%1 has joined group</source>
-        <translation>%1, gruba katıldı</translation>
-    </message>
-    <message>
-        <source>%1 added %2</source>
-        <translation>%1, %2 kullanıcısını ekledi</translation>
-    </message>
-    <message>
-        <source>%1 deleted chat description</source>
-        <translation>%1, sohbet açıklamasını sildi</translation>
-    </message>
-    <message>
-        <source>You changed description to &quot;%1&quot;</source>
-        <translation>Açıklamayı &quot;%1&quot; olarak değiştirdiniz</translation>
-    </message>
-    <message>
-        <source>%1 changed description to &quot;%2&quot;</source>
-        <translation>%1, açıklamayı &quot;%2&quot; olarak değiştirdi</translation>
-    </message>
-    <message>
-        <source>You changed chat rules to &quot;%1&quot;</source>
-        <translation>Sohbet kurallarını &quot;%1&quot; olarak değiştirdiniz</translation>
-    </message>
-    <message>
-        <source>You removed %1</source>
-        <translation>%1 kullanıcısını çıkardınız</translation>
-    </message>
-    <message>
-        <source>%1 removed %2</source>
-        <translation>%1, %2 kullanıcısını çıkardı</translation>
-    </message>
-    <message>
-        <source>%1 changed chat rules to &quot;%2&quot;</source>
-        <translation>%1, sohbet kurallarını &quot;%2&quot; olarak değiştirdi</translation>
     </message>
     <message>
         <source>Your call was missed</source>
@@ -488,40 +522,12 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
         <translation>%1&apos;den gelen aramaya cevap vermediniz</translation>
     </message>
     <message>
-        <source>Theme was changed to &quot;%1&quot;</source>
-        <translation>%1 olarak değiştirildi</translation>
-    </message>
-    <message>
-        <source>%1 was added</source>
-        <translation>%1 eklendi</translation>
-    </message>
-    <message>
-        <source>%1 were added</source>
-        <translation>%1 eklendi</translation>
-    </message>
-    <message>
-        <source>Chat description was deleted</source>
-        <translation>Sohbet Açıklaması Silinen</translation>
-    </message>
-    <message>
         <source>%1 was removed</source>
         <translation>%1 silindi</translation>
     </message>
     <message>
         <source>%1 were removed</source>
         <translation>%1 silindi</translation>
-    </message>
-    <message>
-        <source>Channel avatar was changed</source>
-        <translation>Kanal avatarı değiştirildi</translation>
-    </message>
-    <message>
-        <source>Description was changed to &quot;%1&quot;</source>
-        <translation>Açıklama %1 olarak değiştirildi</translation>
-    </message>
-    <message>
-        <source>Channel rules were changed to &quot;%1&quot;</source>
-        <translation>Kanal kuralları %1 olarak değiştirildi</translation>
     </message>
     <message>
         <source>You have recently added %1 to your phone contacts. Write a new message or make a call %2</source>
@@ -532,34 +538,418 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
         <translation>%1 şimdi burada! Yaz, %2 ara</translation>
     </message>
     <message>
-        <source>%1 have left group (this message is visible only to group admins)</source>
-        <comment>many</comment>
-        <translation>%1 gruptan ayrıldı (bu mesaj yalnızca grup yöneticileri tarafından görülebilir)</translation>
-    </message>
-    <message>
-        <source>%1 has left group (this message is visible only to group admins)</source>
-        <comment>one</comment>
-        <translation>%1 gruptan ayrıldı (yalnızca grup yöneticileri bu mesajı görür)</translation>
-    </message>
-    <message>
-        <source>You changed chat link to %1</source>
-        <translation>Bağlantıyı %1 değiştirdin</translation>
-    </message>
-    <message>
-        <source>Channel link was changed to %1</source>
-        <translation>Bağlantı %1 değiştirildi</translation>
-    </message>
-    <message>
-        <source>%1 changed chat link to %2</source>
-        <translation>%1 bağlantıyı %2 değiştirdi</translation>
-    </message>
-    <message>
         <source>Add avatar</source>
         <translation>Avatar ekle</translation>
     </message>
     <message>
         <source>Add description</source>
         <translation>Açıklama ekle</translation>
+    </message>
+    <message>
+        <source>You specified a new channel name - &quot;%1&quot;</source>
+        <translation>Yeni bir kanal adı girdiniz - &quot;%1&quot;</translation>
+    </message>
+    <message>
+        <source>%1 specified a new channel name - &quot;%2&quot;</source>
+        <translation>%1 yeni bir kanal adı gösterdi - &quot;%2&quot;</translation>
+    </message>
+    <message>
+        <source>You specified a new group name - &quot;%1&quot;</source>
+        <translation>Yeni bir grup adı girdiniz - &quot;%1&quot;</translation>
+    </message>
+    <message>
+        <source>%1 specified a new group name - &quot;%2&quot;</source>
+        <translation>%1 yeni bir grup adı gösterdi - &quot;%2&quot;</translation>
+    </message>
+    <message>
+        <source>%1 You have joined channel</source>
+        <translation>%1 Kanala katıldınız</translation>
+    </message>
+    <message>
+        <source>%1 %2 has joined channel</source>
+        <translation>%1 %2 kanala katıldı</translation>
+    </message>
+    <message>
+        <source>%1 You have joined group</source>
+        <translation>%1 Gruba katıldınız</translation>
+    </message>
+    <message>
+        <source>%1 %2 has joined group</source>
+        <translation>%1 %2 gruba katıldı</translation>
+    </message>
+    <message>
+        <source>%1 You added %2 to the channel</source>
+        <translation>%1 Kanala %2 eklediniz</translation>
+    </message>
+    <message>
+        <source>%1 %2 added %3 to the channel</source>
+        <translation>%1 %2 kanala %3 ekledi</translation>
+    </message>
+    <message>
+        <source>%1 You added %2 to the group</source>
+        <translation>%1 Gruba %2 eklediniz</translation>
+    </message>
+    <message>
+        <source>%1 %2 added %3 to the group</source>
+        <translation>%1 %2 gruba %3 ekledi</translation>
+    </message>
+    <message>
+        <source>You enabled join with approval</source>
+        <translation>Üyelik denetimini açtınız</translation>
+    </message>
+    <message>
+        <source>You disabled join with approval</source>
+        <translation>İstek üzerine grup üyeliğini kapattınız</translation>
+    </message>
+    <message>
+        <source>%1 enabled join with approval</source>
+        <translation>%1 katılma denetlemesini açtı</translation>
+    </message>
+    <message>
+        <source>%1 disabled join with approval</source>
+        <translation>%1 katılma denetlemesini kapattı</translation>
+    </message>
+    <message>
+        <source>You made the group public, now it is possible to find it through a search</source>
+        <translation>Grubu herkese açık hale getirdiniz, arama yoluyla bulabilirler</translation>
+    </message>
+    <message>
+        <source>You made the group private, now it is impossible to find it through a search</source>
+        <translation>Grubu özel hale getirdiniz, artık arama yoluyla bulunamıyorlar</translation>
+    </message>
+    <message>
+        <source>%1 made the group public, now it is possible to find it through a search</source>
+        <translation>%1 grubu herkese açık hale getirdi, bir arama yoluyla bulunabilir</translation>
+    </message>
+    <message>
+        <source>%1 made the group private, now it is impossible to find it through a search</source>
+        <translation>%1 grubu özel yaptı, artık arama yapılamıyor</translation>
+    </message>
+    <message>
+        <source>%1 You removed %2</source>
+        <translation>%1 %2 sildiniz</translation>
+    </message>
+    <message>
+        <source>%1 %2 removed %3</source>
+        <translation>%1 %2 silindi %3</translation>
+    </message>
+    <message>
+        <source>You are no more an administrator of this group</source>
+        <translation>Artık bu grubun yöneticisi değilsiniz</translation>
+    </message>
+    <message>
+        <source>You removed administrator role from %1</source>
+        <translation>%1 yönetici haklarını kaldırdınız</translation>
+    </message>
+    <message>
+        <source>%1 removed administrator role from %2</source>
+        <translation>%1 , %2 ile yönetici haklarını geri çekti</translation>
+    </message>
+    <message>
+        <source>%1 Wait for join request approval</source>
+        <translation>%1 Giriş isteğinin onaylanmasını bekleyin</translation>
+    </message>
+    <message>
+        <source>%1 You asked to add %2 to the channel</source>
+        <translation>%1 Kanala %2 eklemek istediniz</translation>
+    </message>
+    <message>
+        <source>%1 You asked to add %2 to the group</source>
+        <translation>%1 Gruba %2 eklemek istediniz</translation>
+    </message>
+    <message>
+        <source>%1 %2 asked to add %3 to the group</source>
+        <translation>%1 %2 gruba %3 eklemek istedi</translation>
+    </message>
+    <message>
+        <source>%1 %2 is waiting for group join request approval</source>
+        <translation>%1 %2 gruba katılma onayını bekliyor</translation>
+    </message>
+    <message>
+        <source>%1 Your join request was approved</source>
+        <translation>%1 Üyelik isteğiniz onaylandı</translation>
+    </message>
+    <message>
+        <source>%1 Request from %2 to add you to the channel was approved</source>
+        <translation>%1 %2 kullanıcısından sizi doğrulanan kanala ekleme isteği</translation>
+    </message>
+    <message>
+        <source>%1 Request from %2 to add you to the group was approved</source>
+        <translation>%1 %2 kullanıcısından sizi onaylanan gruba ekleme isteği</translation>
+    </message>
+    <message>
+        <source>%1 You approved join request from %2</source>
+        <translation>%1 %2 adresinden katılma isteğinizi onayladınız</translation>
+    </message>
+    <message>
+        <source>%1 You approved join request from %2 to add %3 to the channel</source>
+        <translation>%1 %2 kanalına %3 ekleme isteğini onayladınız</translation>
+    </message>
+    <message>
+        <source>%1 You approved join request from %2 to add %3 to the group</source>
+        <translation>%1 %2 grubuna %3 ekleme isteğini onayladınız</translation>
+    </message>
+    <message>
+        <source>%1 %2 approved join request from %3</source>
+        <translation>%1 %2 , %3 katılım isteğini doğruladı</translation>
+    </message>
+    <message>
+        <source>%1 Your join request was rejected</source>
+        <translation>%1 Üyelik isteğiniz reddedildi</translation>
+    </message>
+    <message>
+        <source>%1 Request from %2 to add you to the channel was rejected</source>
+        <translation>%1 %2 kullanıcısından sizi kanala eklemeyi reddetti</translation>
+    </message>
+    <message>
+        <source>%1 Request from %2 to add you to the group was rejected</source>
+        <translation>%1 %2 sizi reddettiğiniz gruba ekleme isteği</translation>
+    </message>
+    <message>
+        <source>%1 You rejected join request from %2</source>
+        <translation>%1 %2 grubundan katılmayı reddettiniz</translation>
+    </message>
+    <message>
+        <source>%1 You rejected join request from %2 to add %3 to the channel</source>
+        <translation>%1 %2 kanalına %3 ekleme isteğini reddettiniz</translation>
+    </message>
+    <message>
+        <source>%1 You rejected join request from %2 to add %3 to the group</source>
+        <translation>%1 %2 grubuna %3 ekleme isteğini reddettiniz</translation>
+    </message>
+    <message>
+        <source>%1 %2 rejected join request from %3</source>
+        <translation>%1 %2 , %3 katılım isteğini reddetti</translation>
+    </message>
+    <message>
+        <source>%1 You have left channel</source>
+        <translation>%1 Kanaldan ayrıldınız</translation>
+    </message>
+    <message>
+        <source>%1 You have left group</source>
+        <translation>%1 Gruptan ayrıldınız</translation>
+    </message>
+    <message>
+        <source>you</source>
+        <translation>sen</translation>
+    </message>
+    <message>
+        <source>Administrator</source>
+        <translation>yönetici</translation>
+    </message>
+    <message>
+        <source>%1 %2 removed you</source>
+        <translation>%1 %2 sizi sildi</translation>
+    </message>
+    <message>
+        <source>%1 allowed you to write</source>
+        <translation>%1 yazmanıza izin verdi</translation>
+    </message>
+    <message>
+        <source>You allowed %1 to write</source>
+        <translation>%1 yazmanıza izin veriliyor</translation>
+    </message>
+    <message>
+        <source>%1 allowed %2 to write</source>
+        <translation>%1 izin veriliyor %2</translation>
+    </message>
+    <message>
+        <source>%1 banned you to write</source>
+        <translation>%1 sizi yazmanızı yasakladı</translation>
+    </message>
+    <message>
+        <source>You banned %1 to write</source>
+        <translation>%1 yazmanız yasaktır</translation>
+    </message>
+    <message>
+        <source>%1 banned %2 to write</source>
+        <translation>%1 yasaklanmış (ler), yazma %2</translation>
+    </message>
+    <message>
+        <source>%1 %2 approved join request from %3 to add %4 to the group</source>
+        <translation>%1 %2 %3 gruba %4 eklemek için onaylanan istek</translation>
+    </message>
+    <message>
+        <source>%1 %2 rejected join request from %3 to add %4 to the group</source>
+        <translation>%1 %2 , gruba %4 eklemek için %3 isteğini reddetti</translation>
+    </message>
+    <message>
+        <source>%1 %2 asked to add %3 to the channel (this message is visible only to administrators)</source>
+        <translation>%1 %2 kanala %3 eklenmesini istedi (sadece yöneticiler bu mesajı görüyor)</translation>
+    </message>
+    <message>
+        <source>%1 %2 is waiting for channel join request approval (this message is visible only to administrators)</source>
+        <translation>%1 %2 kanala katılma isteğinin onaylanmasını bekliyor (yalnızca yöneticiler bu mesajı görüyor)</translation>
+    </message>
+    <message>
+        <source>%1 %2 approved join request from %3 to add %4 to the channel (this message is visible only to administrators)</source>
+        <translation>%1 %2 %3 kanala %4 ekleme isteğini onayladı (yalnızca yöneticiler bu mesajı görüyor)</translation>
+    </message>
+    <message>
+        <source>%1 %2 rejected join request from %3 to add %4 to the channel (this message is visible only to administrators)</source>
+        <translation>%1 %2 %3 kanala %4 ekleme isteğini reddetti (yalnızca yöneticiler bu mesajı görüyor)</translation>
+    </message>
+    <message>
+        <source>%1 %2 have left group (this message is visible only to administrators)</source>
+        <comment>many</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 %2 has left group (this message is visible only to administrators)</source>
+        <comment>one</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 Your request to add %2 to the channel was approved</source>
+        <translation>%1 Kanala %2 ekleme isteğiniz onaylandı</translation>
+    </message>
+    <message>
+        <source>%1 Your request to add %2 to the group was approved</source>
+        <translation>%1 Gruba %2 ekleme isteğiniz onaylandı</translation>
+    </message>
+    <message>
+        <source>%1 Your request to add %2 to the channel was rejected</source>
+        <translation>%1 Kanala %2 ekleme isteğiniz reddedildi</translation>
+    </message>
+    <message>
+        <source>%1 Your request to add %2 to the group was rejected</source>
+        <translation>%1 Gruba %2 ekleme isteğiniz reddedildi</translation>
+    </message>
+    <message>
+        <source>%1 %2 approved join request from %3(this message is visible only to administrators)</source>
+        <translation>%1 %2 , %3 gelen giriş isteğini kabul etti (bu mesajı yalnızca yöneticiler görüyor)</translation>
+    </message>
+    <message>
+        <source>%1 %2 rejected join request from %3(this message is visible only to administrators)</source>
+        <translation>%1 %2 , %3 gelen giriş isteğini reddetti (yalnızca yöneticiler bu mesajı görür)</translation>
+    </message>
+    <message>
+        <source>You changed the channel avatar</source>
+        <translation>Kanal avatarını değiştirdiniz</translation>
+    </message>
+    <message>
+        <source>%1 changed the channel avatar</source>
+        <translation>%1 kanal avatarını değiştirdi</translation>
+    </message>
+    <message>
+        <source>You changed the group avatar</source>
+        <translation>Grup avatarını değiştirdiniz</translation>
+    </message>
+    <message>
+        <source>%1 changed the group avatar</source>
+        <translation>%1 grup avatarını değiştirdi</translation>
+    </message>
+    <message>
+        <source>You deleted the channel description</source>
+        <translation>Kanal açıklamasını sildiniz</translation>
+    </message>
+    <message>
+        <source>%1 deleted the channel description</source>
+        <translation>%1 kanal açıklamasını sildi</translation>
+    </message>
+    <message>
+        <source>You deleted the group description</source>
+        <translation>Grup açıklamasını sildiniz</translation>
+    </message>
+    <message>
+        <source>%1 deleted the group description</source>
+        <translation>%1 bir grup açıklamasını sildi</translation>
+    </message>
+    <message>
+        <source>You changed the channel description - &quot;%1&quot;</source>
+        <translation>Kanalın açıklamasını değiştirdiniz - &quot;%1&quot;</translation>
+    </message>
+    <message>
+        <source>%1 changed the channel description - &quot;%2&quot;</source>
+        <translation>%1 kanal açıklamasını değiştirdi - &quot;%2&quot;</translation>
+    </message>
+    <message>
+        <source>You changed the group description - &quot;%1&quot;</source>
+        <translation>Grubun açıklamasını değiştirdiniz - &quot;%1&quot;</translation>
+    </message>
+    <message>
+        <source>%1 changed the group description - &quot;%2&quot;</source>
+        <translation>%1 grup tanımını değiştirdi - &quot;%2&quot;</translation>
+    </message>
+    <message>
+        <source>You deleted the channel rules</source>
+        <translation>Kanal kurallarını sildiniz</translation>
+    </message>
+    <message>
+        <source>%1 deleted the channel rules</source>
+        <translation>%1 silinmiş kanal kuralı</translation>
+    </message>
+    <message>
+        <source>You deleted the group rules</source>
+        <translation>Grup kurallarını sildiniz</translation>
+    </message>
+    <message>
+        <source>%1 deleted the group rules</source>
+        <translation>%1 silinen grup kuralı</translation>
+    </message>
+    <message>
+        <source>You changed the channel rules - &quot;%1&quot;</source>
+        <translation>Kanal kurallarını değiştirdiniz - &quot;%1&quot;</translation>
+    </message>
+    <message>
+        <source>%1 changed the channel rules - &quot;%2&quot;</source>
+        <translation>%1 kanal kurallarını değiştirdi - &quot;%2&quot;</translation>
+    </message>
+    <message>
+        <source>You changed the group rules - &quot;%1&quot;</source>
+        <translation>Grup kurallarını değiştirdiniz - &quot;%1&quot;</translation>
+    </message>
+    <message>
+        <source>%1 changed the group rules - &quot;%2&quot;</source>
+        <translation>%1 grup kuralını değiştirdi - &quot;%2&quot;</translation>
+    </message>
+    <message>
+        <source>You changed the link to %1</source>
+        <translation>Bağlantıyı %1 değiştirdin</translation>
+    </message>
+    <message>
+        <source>%1 changed the link to %2</source>
+        <translation>%1 , bağlantıyı %2 değiştirdi</translation>
+    </message>
+    <message>
+        <source>You were assigned as an administrator of this channel</source>
+        <translation>Bu kanalın yöneticisi olarak atandınız</translation>
+    </message>
+    <message>
+        <source>You were assigned as an administrator of this group</source>
+        <translation>Bu grubun yöneticisi olarak atandınız.</translation>
+    </message>
+    <message>
+        <source>You assigned %1 administrator of this channel</source>
+        <translation>%1 bu kanalın yöneticisi </translation>
+    </message>
+    <message>
+        <source>You assigned %1 administrator of this group</source>
+        <translation>Bu grubun %1 yöneticisini atadınız</translation>
+    </message>
+    <message>
+        <source>%1 assigned %2 administrator of this channel</source>
+        <translation>%1 , bu kanalın yöneticisi %2 belirlendi</translation>
+    </message>
+    <message>
+        <source>%1 assigned %2 administrator of this group</source>
+        <translation>%1 bu grubun %2 yöneticisini atadı</translation>
+    </message>
+    <message>
+        <source>%1 You have canceled your join request</source>
+        <translation>%1 Üyelik isteğinizi iptal ettiniz</translation>
+    </message>
+    <message>
+        <source>%1 Wait for subscription request approval</source>
+        <translation>%1 Abonelik isteğinin onaylanmasını bekleyin</translation>
+    </message>
+    <message>
+        <source>%1 Your subscription request was rejected</source>
+        <translation>%1 Abonelik isteğiniz reddedildi</translation>
+    </message>
+    <message>
+        <source>%1 %2 has canceled join request</source>
+        <translation>%1 %2 iptal edilen üyelik isteği</translation>
     </message>
 </context>
 <context>
@@ -624,6 +1014,26 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
         <source>Quick send</source>
         <translation>Hızlı gönder</translation>
     </message>
+    <message>
+        <source>Message added to </source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Messages added to </source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Messages added to </source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Messages added to </source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>connection</name>
@@ -661,10 +1071,6 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
     <message>
         <source>Voice message</source>
         <translation>Sesli ileti</translation>
-    </message>
-    <message>
-        <source>FAVORITES</source>
-        <translation>FAVORİLER</translation>
     </message>
     <message>
         <source>RECENTS</source>
@@ -745,6 +1151,10 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
     <message>
         <source>Create channel</source>
         <translation>Kanal oluştur</translation>
+    </message>
+    <message>
+        <source>PINNED</source>
+        <translation>SABİT</translation>
     </message>
 </context>
 <context>
@@ -987,6 +1397,10 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
         <source>Send</source>
         <translation>Gönder</translation>
     </message>
+    <message>
+        <source>Choose your problem</source>
+        <translation>Bir temyiz konusu seçin</translation>
+    </message>
 </context>
 <context>
     <name>context_menu</name>
@@ -1157,6 +1571,26 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
     <message>
         <source>Stop poll</source>
         <translation>Anketi durdur</translation>
+    </message>
+    <message>
+        <source>Add to favorites</source>
+        <translation>Favorilerime</translation>
+    </message>
+    <message>
+        <source>Remove from dictionary</source>
+        <translation>Sözlükten kaldır</translation>
+    </message>
+    <message>
+        <source>Add to dictionary</source>
+        <translation>Sözlüğe Ekle</translation>
+    </message>
+    <message>
+        <source>Ignore</source>
+        <translation>aldırmamak</translation>
+    </message>
+    <message>
+        <source>Copy session info</source>
+        <translation>Oturum bilgilerini kopyala</translation>
     </message>
 </context>
 <context>
@@ -2193,6 +2627,46 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
     </message>
 </context>
 <context>
+    <name>favorites</name>
+    <message>
+        <source>
+%1, this is your personal space!
+
+%2 Save links, files and other messages
+%3 Write notes, to-do lists, store photos and videos
+%4 Draft messages and polls before sending them to chat with friends or to your channel</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Favorites</source>
+        <translation>Sık</translation>
+    </message>
+    <message>
+        <source>save</source>
+        <translation>tutmak</translation>
+    </message>
+    <message>
+        <source>saved</source>
+        <translation>Kayıtlı</translation>
+    </message>
+    <message>
+        <source>favorites</source>
+        <translation>Favorilerim</translation>
+    </message>
+    <message>
+        <source>%1, this is your work space!
+
+%2 Save links, files and other messages
+%3 Write notes, to-do lists, store photos and videos
+%4 Draft messages and polls before sending them to chat with colleagues or to your channel</source>
+        <translation>%1, bu sizin çalışma alanınız!
+
+%2 Bağlantıları, dosyaları ve diğer mesajları kaydet
+%3 Not yazma, yapılacaklar listesi, fotoğraf ve video saklama
+%4 İş arkadaşlarınızla veya kanalınıza sohbet etmek için göndermeden önce mesajlar ve anketler hazırlayın</translation>
+    </message>
+</context>
+<context>
     <name>files_widget</name>
     <message>
         <source>Send with caption</source>
@@ -2250,6 +2724,10 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
         <source>Send</source>
         <translation>Gönder</translation>
     </message>
+    <message>
+        <source>Copied from clipboard</source>
+        <translation>Panodan kopyalandı</translation>
+    </message>
 </context>
 <context>
     <name>gallery</name>
@@ -2263,13 +2741,6 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
     <message>
         <source>Copied to clipboard</source>
         <translation>Panoya kopyalandı</translation>
-    </message>
-</context>
-<context>
-    <name>geolocation_block</name>
-    <message>
-        <source>Location</source>
-        <translation>Yer</translation>
     </message>
 </context>
 <context>
@@ -2299,14 +2770,6 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
         <translation>Sohbet adı</translation>
     </message>
     <message>
-        <source>Chat information is unavailable now, please try again later</source>
-        <translation>Sohbet bilgisine şu an ulaşılamıyor, lütfen daha sonra tekrar deneyin</translation>
-    </message>
-    <message>
-        <source>Chat does not exist or it is hidden by privacy settings</source>
-        <translation>Sohbet mevcut değil veya gizlilik ayarlarından dolayı gizli</translation>
-    </message>
-    <message>
         <source>member</source>
         <comment>1</comment>
         <translation>katılımcı</translation>
@@ -2325,26 +2788,6 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
         <source>members</source>
         <comment>21</comment>
         <translation>katılımcı</translation>
-    </message>
-    <message>
-        <source>friend</source>
-        <comment>1</comment>
-        <translation>arkadaş</translation>
-    </message>
-    <message>
-        <source>friends</source>
-        <comment>2</comment>
-        <translation>arkadaş</translation>
-    </message>
-    <message>
-        <source>friends</source>
-        <comment>5</comment>
-        <translation>arkadaş</translation>
-    </message>
-    <message>
-        <source>friends</source>
-        <comment>21</comment>
-        <translation>arkadaş</translation>
     </message>
     <message>
         <source>Channel name</source>
@@ -2394,6 +2837,14 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
         <source>Group name</source>
         <translation>Grup adı</translation>
     </message>
+    <message>
+        <source>Chat information is unavailable now, please try again later</source>
+        <translation>Sohbet bilgisine şu an ulaşılamıyor, lütfen daha sonra tekrar deneyin</translation>
+    </message>
+    <message>
+        <source>Chat does not exist or it is hidden by privacy settings</source>
+        <translation>Sohbet mevcut değil veya gizlilik ayarlarından dolayı gizli</translation>
+    </message>
 </context>
 <context>
     <name>head</name>
@@ -2402,16 +2853,20 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
         <translation>Kişiler</translation>
     </message>
     <message>
-        <source>Chats</source>
-        <translation>Sohbetler</translation>
-    </message>
-    <message>
         <source>Settings</source>
         <translation>Ayarlar</translation>
     </message>
     <message>
         <source>Search</source>
         <translation>Arama</translation>
+    </message>
+    <message>
+        <source>Calls</source>
+        <translation>aramalar</translation>
+    </message>
+    <message>
+        <source>Chats</source>
+        <translation>Sohbetler</translation>
     </message>
 </context>
 <context>
@@ -2563,6 +3018,30 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
         <source>Unblock</source>
         <translation>salıverme</translation>
     </message>
+    <message>
+        <source>Start</source>
+        <translation>Başlayın</translation>
+    </message>
+    <message>
+        <source>Webinar</source>
+        <translation>web semineri</translation>
+    </message>
+    <message>
+        <source>Error creating webinar</source>
+        <translation>Web semineri oluşturulurken hata meydana geldi</translation>
+    </message>
+    <message>
+        <source>Call link</source>
+        <translation>Çağrı bağlantısı</translation>
+    </message>
+    <message>
+        <source>Error creating call link</source>
+        <translation>Çağrı bağlantısı oluşturulurken hata meydana geldi</translation>
+    </message>
+    <message>
+        <source>Cancel request</source>
+        <translation>İsteği iptal et</translation>
+    </message>
 </context>
 <context>
     <name>linux_desktop_file</name>
@@ -2665,20 +3144,12 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
         <translation>Recall in %1</translation>
     </message>
     <message>
-        <source>Enter one-time password received by email</source>
-        <translation>E-posta ile alınan tek seferlik şifreyi girin</translation>
-    </message>
-    <message>
         <source>Enter your login and password</source>
         <translation>Giriş bilgilerinizi ve şifrenizi girin</translation>
     </message>
     <message>
         <source>To login use you corporative account created at</source>
         <translation>Giriş yapmak için içinde oluşturulan şirket hesabını kullanın.</translation>
-    </message>
-    <message>
-        <source>Check the country code and enter your phone number</source>
-        <translation>Ülke kodunu kontrol edin ve telefon numaranızı girin</translation>
     </message>
     <message>
         <source>Phone</source>
@@ -2751,6 +3222,66 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
     <message>
         <source>Phone code</source>
         <translation>Telefon Kodu</translation>
+    </message>
+    <message>
+        <source>OK</source>
+        <translation>tamam</translation>
+    </message>
+    <message>
+        <source>Configuration error</source>
+        <translation>Yapılandırma hatası</translation>
+    </message>
+    <message>
+        <source>Enter hostname</source>
+        <translation>Sunucu adresini girin</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>iptal</translation>
+    </message>
+    <message>
+        <source>It is necessary to supplement the server configuration for the application to work. Contact system administrator</source>
+        <translation>Uygulamanın çalışması için sunucu yapılandırmasını tamamlamanız gerekir. Yöneticiye başvurun</translation>
+    </message>
+    <message>
+        <source>Invalid server configuration format. Contact system administrator</source>
+        <translation>Geçersiz sunucu yapılandırma biçimi. Yöneticiye başvurun</translation>
+    </message>
+    <message>
+        <source>Unknown error. Contact system administrator</source>
+        <translation>Bilinmeyen hata. Yöneticiye başvurun</translation>
+    </message>
+    <message>
+        <source>Invalid server configuration hostname. Contact system administrator</source>
+        <translation>Adresi yönetici ile kontrol edin</translation>
+    </message>
+    <message>
+        <source>Check the country code and enter your phone number for registration and authorization</source>
+        <translation>Ülke kodunu kontrol edin ve kayıt ve yetkilendirme için telefon numaranızı girin</translation>
+    </message>
+    <message>
+        <source>Enter your corporate email, a password will be sent to it</source>
+        <translation>Kurumsal e-postanızı girin, bir şifre gönderilecektir</translation>
+    </message>
+    <message>
+        <source>Enter one-time password sent to email</source>
+        <translation>Adresine gönderilen bir defalık şifreyi girin</translation>
+    </message>
+    <message>
+        <source>Enter email</source>
+        <translation>E-posta Gir</translation>
+    </message>
+    <message>
+        <source>Enter password</source>
+        <translation>şifre girin</translation>
+    </message>
+    <message>
+        <source>Write us</source>
+        <translation>Bize yazın</translation>
+    </message>
+    <message>
+        <source>Wrong password</source>
+        <translation>Yanlış şifre</translation>
     </message>
 </context>
 <context>
@@ -2919,6 +3450,10 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
     <message>
         <source>Sticker</source>
         <translation>etiket</translation>
+    </message>
+    <message>
+        <source>The message is not supported on your version of ICQ. Update the app to see the message</source>
+        <translation>Uygulama sürümünüzde bir mesaj görüntülenemiyor. yükseltme</translation>
     </message>
 </context>
 <context>
@@ -3148,10 +3683,6 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
 <context>
     <name>placeholders</name>
     <message>
-        <source>Install ICQ on mobile</source>
-        <translation>ICQ&apos;yu mobil cihazınıza yükleyin</translation>
-    </message>
-    <message>
         <source>Nothing found</source>
         <translation>Hiçbir şey bulunamadı</translation>
     </message>
@@ -3214,6 +3745,42 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
     <message>
         <source>Failed to download file or media</source>
         <translation>Dosya veya medya yüklenemedi</translation>
+    </message>
+    <message>
+        <source>Install ICQ on mobile</source>
+        <translation>ICQ&apos;yu mobil cihazınıza yükleyin</translation>
+    </message>
+    <message>
+        <source>This group can be joined only after admin approval</source>
+        <translation>Bu gruba ancak onaylandıktan sonra katılabilirsiniz</translation>
+    </message>
+    <message>
+        <source>Join the group to start chatting</source>
+        <translation>Sohbete başlamak için bir gruba katılın</translation>
+    </message>
+    <message>
+        <source>Tell us about your problem. We will try to help you</source>
+        <translation>Bize sorununuzu anlatın. Yardım etmeye çalışacağız</translation>
+    </message>
+    <message>
+        <source>Start working with</source>
+        <translation>İle başlayın</translation>
+    </message>
+    <message>
+        <source>Start chatting with</source>
+        <translation>İle sohbet etmeye başla</translation>
+    </message>
+    <message>
+        <source>What this bot can do?</source>
+        <translation>Bu bot ne yapabilir?</translation>
+    </message>
+    <message>
+        <source>Subscribe the channel to see the messages</source>
+        <translation>Mesajları görmek için kanala abone olun</translation>
+    </message>
+    <message>
+        <source>This channel can be subscribed only after admin approval</source>
+        <translation>Bu kanala yalnızca onaydan sonra abone olabilirsiniz.</translation>
     </message>
 </context>
 <context>
@@ -3328,6 +3895,10 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
 </context>
 <context>
     <name>popup_window</name>
+    <message>
+        <source>Clear all data from this device</source>
+        <translation>Cihazdaki tüm verileri sil</translation>
+    </message>
     <message>
         <source>Are you sure you want to sign out?</source>
         <translation>Çıkış yapmak istediğinizden emin misiniz?</translation>
@@ -3597,14 +4168,6 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
         <translation>Sil</translation>
     </message>
     <message>
-        <source>Waiting</source>
-        <translation>Bekleme</translation>
-    </message>
-    <message>
-        <source>Join</source>
-        <translation>başlangıç</translation>
-    </message>
-    <message>
         <source>If you stop the poll, nobody will be able to vote anymore. This action can not be undone</source>
         <translation>Anketi durdurursanız artık kimse oy kullanamayacak. Bu işlem geri alınamaz</translation>
     </message>
@@ -3615,10 +4178,6 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
     <message>
         <source>Stop this poll?</source>
         <translation>Bu anketi durdurdun mu?</translation>
-    </message>
-    <message>
-        <source>Open</source>
-        <translation>açık</translation>
     </message>
     <message>
         <source>Are you sure you want to leave channel?</source>
@@ -3667,6 +4226,186 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
     <message>
         <source>Create</source>
         <translation>oluşturmak</translation>
+    </message>
+    <message>
+        <source>Do you want to join conference?</source>
+        <translation>Konferansa katılmak ister misiniz?</translation>
+    </message>
+    <message>
+        <source>Join confirmation</source>
+        <translation>Üyelik onayı</translation>
+    </message>
+    <message>
+        <source>All sessions except the current one will be closed</source>
+        <translation>Geçerli oturum dışındaki tüm oturumlar kapatılacak</translation>
+    </message>
+    <message>
+        <source>Close sessions</source>
+        <translation>Oturumu kapat</translation>
+    </message>
+    <message>
+        <source>Close session</source>
+        <translation>Oturumu kapat</translation>
+    </message>
+    <message>
+        <source>Session %1 will be closed</source>
+        <translation>%1 oturumu kapatılacak</translation>
+    </message>
+    <message>
+        <source>Don&apos;t ask me again</source>
+        <translation>Bir daha sorma</translation>
+    </message>
+    <message>
+        <source>Run this file?</source>
+        <translation>Dosya çalıştırılsın mı?</translation>
+    </message>
+    <message>
+        <source>This file may be unsafe</source>
+        <translation>Bu dosya güvensiz olabilir</translation>
+    </message>
+    <message>
+        <source>You cannot call this contact due to its privacy settings</source>
+        <translation>Gizlilik ayarları nedeniyle bu kişiyi arayamazsınız.</translation>
+    </message>
+    <message>
+        <source>Ok</source>
+        <translation>yaklaşık</translation>
+    </message>
+    <message>
+        <source>Maximum number of members selected</source>
+        <translation>Maksimum üye sayısı seçildi</translation>
+    </message>
+    <message>
+        <source>Start group call</source>
+        <translation>Grup sesli aramayı başlat</translation>
+    </message>
+    <message>
+        <source>Call</source>
+        <translation>Arama yap</translation>
+    </message>
+    <message>
+        <source>Start group video call</source>
+        <translation>Grup video görüşmesini başlat</translation>
+    </message>
+    <message>
+        <source>Error</source>
+        <translation>hata</translation>
+    </message>
+    <message>
+        <source>Start</source>
+        <translation>Başlayın</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to delete the call?</source>
+        <translation>Aramayı silmek istediğinizden emin misiniz?</translation>
+    </message>
+    <message>
+        <source>Some problems with your link</source>
+        <translation>Bağlantınızla ilgili sorun</translation>
+    </message>
+    <message>
+        <source>Some problems with your link. Please check it and try again or ask for a new link</source>
+        <translation>Maalesef bağlantınızla ilgili bir sorun oluştu. Göz atın ve tekrar deneyin veya size başka bir bağlantı göndermeyi isteyin</translation>
+    </message>
+    <message>
+        <source>It&apos;s not possible to connect now, please, try again later</source>
+        <translation>Bağlantı artık mümkün değil, daha sonra tekrar deneyin</translation>
+    </message>
+    <message>
+        <source>Participants&apos; limit exceeded</source>
+        <translation>Katılımcı sayısındaki sınır aşıldı</translation>
+    </message>
+    <message>
+        <source>Duration limit exceeded</source>
+        <translation>Süre sınırı aşıldı</translation>
+    </message>
+    <message>
+        <source>Sorry, something went wrong. Please, try again later</source>
+        <translation>Üzgünüm, bir şeyler ters gitti. Daha sonra tekrar dene</translation>
+    </message>
+    <message>
+        <source>My status</source>
+        <translation>Durumum</translation>
+    </message>
+    <message>
+        <source>You cannot call these users because of privacy settings:</source>
+        <translation>Gizlilik ayarları nedeniyle bu kişileri arayamazsınız. İletişim:</translation>
+    </message>
+    <message>
+        <source>You cannot call these users. Try to write them:</source>
+        <translation>Aramak için kişiye kişisel bir mesaj yazın ve bir cevap bekleyin. İletişim:</translation>
+    </message>
+    <message>
+        <source>Unknown error connecting to the following contacts:</source>
+        <translation>Aşağıdaki kişilere bağlanmada bilinmeyen hata:</translation>
+    </message>
+    <message>
+        <source>You cannot call</source>
+        <translation>Arayamazsın</translation>
+    </message>
+    <message>
+        <source>Call declined</source>
+        <translation>Arama reddedildi</translation>
+    </message>
+    <message>
+        <source>You cannot call this contact. Write %1 to the chat and, if answered, you can call</source>
+        <translation>Bu kişiyi arayamazsınız. Sohbete %1 yazın ve yanıtlanırsa arayabilirsiniz</translation>
+    </message>
+    <message>
+        <source>Write</source>
+        <translation>Yazmak</translation>
+    </message>
+    <message>
+        <source>Cancel request?</source>
+        <translation>İsteği iptal et?</translation>
+    </message>
+    <message>
+        <source>%1 is now unavailable</source>
+        <translation>%1 artık kullanılamıyor</translation>
+    </message>
+    <message>
+        <source>After canceling the request, the channel will disappear from the chat list</source>
+        <translation>İsteği iptal ettikten sonra, kanal sohbet listesinden kaybolacak</translation>
+    </message>
+    <message>
+        <source>After canceling the request, the group will disappear from the chat list</source>
+        <translation>İsteği iptal ettikten sonra, grup sohbet listesinden kaybolacak</translation>
+    </message>
+    <message>
+        <source>You were blocked by admins</source>
+        <translation>Yöneticiler sizi engelledi</translation>
+    </message>
+    <message>
+        <source>Send link</source>
+        <translation>Link gönder</translation>
+    </message>
+    <message>
+        <source>You can not join the call. It already has</source>
+        <translation>Çağrıya bağlanamazsınız. İçinde zaten</translation>
+    </message>
+    <message>
+        <source>No</source>
+        <translation>Değil</translation>
+    </message>
+    <message>
+        <source>Do you want to join the call? Current call will be ended</source>
+        <translation>Çağrıya katılmak ister misiniz? Geçerli çağrı sona erecek</translation>
+    </message>
+    <message>
+        <source>Do you want to start a new call? Current call will be ended</source>
+        <translation>Yeni bir çağrı başlatmak istiyor musunuz? Geçerli çağrı sona erecek</translation>
+    </message>
+    <message>
+        <source>Use internal DNS cache</source>
+        <translation>Dahili DNS önbelleğini kullan</translation>
+    </message>
+    <message>
+        <source>To change this option you must restart the application. Continue?</source>
+        <translation>Ayarı değiştirmek için uygulamayı yeniden başlatmanız gerekir. İlerlemek?</translation>
+    </message>
+    <message>
+        <source>Global people search</source>
+        <translation>Global Kişi Arama</translation>
     </message>
 </context>
 <context>
@@ -3730,6 +4469,10 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
     <message>
         <source>Error file downloading</source>
         <translation>Dosya yükleme hatası</translation>
+    </message>
+    <message>
+        <source>Add to favorites</source>
+        <translation>Favorilere ekle</translation>
     </message>
 </context>
 <context>
@@ -3885,6 +4628,57 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
     <message>
         <source>Forwarded message</source>
         <translation>İletilen mesaj</translation>
+    </message>
+</context>
+<context>
+    <name>reactions</name>
+    <message>
+        <source>Remove</source>
+        <translation>Sil</translation>
+    </message>
+    <message>
+        <source>Reactions</source>
+        <translation>Tepkiler</translation>
+    </message>
+    <message>
+        <source>All</source>
+        <translation>Herşey</translation>
+    </message>
+    <message>
+        <source>Like</source>
+        <translation>Sevmek</translation>
+    </message>
+    <message>
+        <source>Super</source>
+        <translation>Süper</translation>
+    </message>
+    <message>
+        <source>Funny</source>
+        <translation>Komik</translation>
+    </message>
+    <message>
+        <source>Oops</source>
+        <translation>Hata</translation>
+    </message>
+    <message>
+        <source>Sad</source>
+        <translation>Üzgün</translation>
+    </message>
+    <message>
+        <source>Scandalous</source>
+        <translation>Rezil</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation>Kapat</translation>
+    </message>
+    <message>
+        <source>Add reaction: an error occurred</source>
+        <translation>Reaksiyon ekleme: bir hata oluştu</translation>
+    </message>
+    <message>
+        <source>Remove reaction: an error occurred</source>
+        <translation>Silme yanıtı: bir hata oluştu</translation>
     </message>
 </context>
 <context>
@@ -4170,10 +4964,6 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
         <translation>Görmezden gelinenler listesi</translation>
     </message>
     <message>
-        <source>Consequently marking messages as read</source>
-        <translation>Sıralı konuşma okunması</translation>
-    </message>
-    <message>
         <source>Auto play GIFs</source>
         <translation>GIFs otomatik oyna</translation>
     </message>
@@ -4326,10 +5116,6 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
         <translation>Takma ad ekle</translation>
     </message>
     <message>
-        <source>Problem</source>
-        <translation>Problem</translation>
-    </message>
-    <message>
         <source>Main window</source>
         <translation>Ana pencere</translation>
     </message>
@@ -4372,6 +5158,74 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
     <message>
         <source>Advanced Settings</source>
         <translation>Gelişmiş ayarlar</translation>
+    </message>
+    <message>
+        <source>Account Security</source>
+        <translation>Hesap Güvenliği</translation>
+    </message>
+    <message>
+        <source>Session List</source>
+        <translation>Oturum Listesi</translation>
+    </message>
+    <message>
+        <source>Favorites</source>
+        <translation>Sık</translation>
+    </message>
+    <message>
+        <source>Current session</source>
+        <translation>Geçerli oturum</translation>
+    </message>
+    <message>
+        <source>Session closed</source>
+        <translation>Oturum kapatıldı</translation>
+    </message>
+    <message>
+        <source>Error occurred</source>
+        <translation>Bir hata oluştu.</translation>
+    </message>
+    <message>
+        <source>Active session</source>
+        <translation>Aktif Oturum</translation>
+    </message>
+    <message>
+        <source>Close all other sessions</source>
+        <translation>Diğer tüm oturumları kapat</translation>
+    </message>
+    <message>
+        <source>Active sessions</source>
+        <translation>Aktif oturumlar</translation>
+    </message>
+    <message>
+        <source>Session info copied</source>
+        <translation>Oturum bilgileri kopyalandı</translation>
+    </message>
+    <message>
+        <source>Do not ask when running executable files</source>
+        <translation>Yürütülebilir dosyaları çalıştırırken sorma</translation>
+    </message>
+    <message>
+        <source>Use system spell checker</source>
+        <translation>Sistem yazım denetimi</translation>
+    </message>
+    <message>
+        <source>Calls</source>
+        <translation>aramalar</translation>
+    </message>
+    <message>
+        <source>Show calls tab</source>
+        <translation>Çağrıları Göster Sekmesi</translation>
+    </message>
+    <message>
+        <source>Show reactions to messages</source>
+        <translation>İletilere tepki göster</translation>
+    </message>
+    <message>
+        <source>Show statuses</source>
+        <translation>Durumları göster</translation>
+    </message>
+    <message>
+        <source>Show unreads counter in window title</source>
+        <translation>Pencere başlığında okunmamışların sayısını göster</translation>
     </message>
 </context>
 <context>
@@ -4567,6 +5421,10 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
         <source>Mark all dialogs as read</source>
         <translation>Tüm iletişim kutularını okundu olarak işaretle</translation>
     </message>
+    <message>
+        <source>Set status</source>
+        <translation>Durumu Ayarla</translation>
+    </message>
 </context>
 <context>
     <name>sidebar</name>
@@ -4585,10 +5443,6 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
     <message>
         <source>Nickname</source>
         <translation>Takma ad</translation>
-    </message>
-    <message>
-        <source>Blocked people</source>
-        <translation>Engellenmiş kişiler</translation>
     </message>
     <message>
         <source>Phone number</source>
@@ -4869,20 +5723,12 @@ Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
         <translation>Engellenmiş olduğunuz için bu gruptaki mesajları okuyamaz veya yazamazsınız</translation>
     </message>
     <message>
-        <source>The join request has been sent to administrator</source>
-        <translation>Katılma isteği yöneticiye gönderildi</translation>
-    </message>
-    <message>
         <source>Remove</source>
         <translation>Kaldir</translation>
     </message>
     <message>
         <source>Leave and delete</source>
         <translation>Çık ve sil</translation>
-    </message>
-    <message>
-        <source>Block and delete</source>
-        <translation>Engelle ve sil</translation>
     </message>
     <message>
         <source>Search</source>
@@ -4901,10 +5747,6 @@ Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
         <translation>Kanal ayarları</translation>
     </message>
     <message>
-        <source>Block and delete from group</source>
-        <translation>Engelle ve gruptan kaldır</translation>
-    </message>
-    <message>
         <source>Group settings</source>
         <translation>Grup ayarları</translation>
     </message>
@@ -4915,6 +5757,50 @@ Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
     <message>
         <source>Public group</source>
         <translation>Herkese açık grup</translation>
+    </message>
+    <message>
+        <source>Favorites</source>
+        <translation>Sık</translation>
+    </message>
+    <message>
+        <source>Open favorites</source>
+        <translation>Sık Kullanılanları Aç</translation>
+    </message>
+    <message>
+        <source>Delete from group</source>
+        <translation>Gruptan kaldır</translation>
+    </message>
+    <message>
+        <source>Deleted and blocked</source>
+        <translation>Silindi ve Engellendi</translation>
+    </message>
+    <message>
+        <source>Delete</source>
+        <translation>Sil</translation>
+    </message>
+    <message>
+        <source>You can&apos;t read messages in this channel because you are blocked</source>
+        <translation>Engellendiğiniz için kanaldaki mesajları okuyamazsınız</translation>
+    </message>
+    <message>
+        <source>Wait for subscription request approval</source>
+        <translation>Abonelik isteğinin onaylanmasını bekleyin</translation>
+    </message>
+    <message>
+        <source>Wait for join request approval</source>
+        <translation>Giriş isteğinin onaylanmasını bekleyin</translation>
+    </message>
+    <message>
+        <source>Your subscription request was rejected</source>
+        <translation>Abonelik isteğiniz reddedildi</translation>
+    </message>
+    <message>
+        <source>Your join request was rejected</source>
+        <translation>Üyelik isteğiniz reddedildi</translation>
+    </message>
+    <message>
+        <source>Call</source>
+        <translation>Arama yap</translation>
     </message>
 </context>
 <context>
@@ -4957,6 +5843,10 @@ Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
         <source>Copied to clipboard</source>
         <translation>Panoya kopyalandı</translation>
     </message>
+    <message>
+        <source>Location</source>
+        <translation>konum</translation>
+    </message>
 </context>
 <context>
     <name>state</name>
@@ -4979,6 +5869,57 @@ Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
     <message>
         <source>Invisible</source>
         <translation>Görünmez</translation>
+    </message>
+    <message>
+        <source>Blocked</source>
+        <translation>Bloke (lar)</translation>
+    </message>
+    <message>
+        <source>Have never been here</source>
+        <translation>Hiç burada bulunmadım</translation>
+    </message>
+    <message>
+        <source>Bot</source>
+        <translation>tekne</translation>
+    </message>
+</context>
+<context>
+    <name>status</name>
+    <message>
+        <source>Add status</source>
+        <translation>Durum ekle</translation>
+    </message>
+    <message>
+        <source>Custom status</source>
+        <translation>Kullanıcı durumu</translation>
+    </message>
+    <message>
+        <source>Status timing</source>
+        <translation>Durum terimi</translation>
+    </message>
+    <message>
+        <source>No status</source>
+        <translation>Durumsuz</translation>
+    </message>
+    <message>
+        <source>Show always</source>
+        <translation>Her zaman göster</translation>
+    </message>
+    <message>
+        <source>Week</source>
+        <translation>Bir hafta</translation>
+    </message>
+    <message>
+        <source>undefined time</source>
+        <translation>Belirsiz zaman</translation>
+    </message>
+    <message>
+        <source>%1 left</source>
+        <translation>%1 kaldı</translation>
+    </message>
+    <message>
+        <source>For %1 already</source>
+        <translation>%1 için zaten</translation>
     </message>
 </context>
 <context>
@@ -5050,6 +5991,10 @@ Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
         <source>Settings</source>
         <translation>Ayarlar</translation>
     </message>
+    <message>
+        <source>Calls</source>
+        <translation>aramalar</translation>
+    </message>
 </context>
 <context>
     <name>tab header</name>
@@ -5072,6 +6017,10 @@ Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
     <message>
         <source>Emails</source>
         <translation>E-mail</translation>
+    </message>
+    <message>
+        <source>Group call</source>
+        <translation>Grup araması</translation>
     </message>
 </context>
 <context>
@@ -5101,16 +6050,12 @@ Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
         <translation>ICQ New — iletişimin evrimi</translation>
     </message>
     <message>
-        <source>Welcome to ICQ</source>
-        <translation>ICQ&apos;ya Hoşgeldiniz</translation>
+        <source>Welcome to ICQ New</source>
+        <translation>ICQ&apos;ya Hoş Geldiniz Yeni</translation>
     </message>
 </context>
 <context>
     <name>title</name>
-    <message>
-        <source>ICQ</source>
-        <translation>ICQ</translation>
-    </message>
     <message>
         <source>Mail.ru Agent</source>
         <translation>Mail.ru Agent</translation>
@@ -5122,6 +6067,10 @@ Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
     <message>
         <source>Myteam</source>
         <translation>Myteam</translation>
+    </message>
+    <message>
+        <source>ICQ</source>
+        <translation>ICQ</translation>
     </message>
 </context>
 <context>
@@ -5150,6 +6099,10 @@ Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
         <source>There are no profiles with this email</source>
         <translation>Bu e-postada profil yok</translation>
     </message>
+    <message>
+        <source>You are not a member or banned to write in this group</source>
+        <translation>Sohbet üyesi değilsiniz veya yazma izniniz yok</translation>
+    </message>
 </context>
 <context>
     <name>tooltips</name>
@@ -5166,52 +6119,12 @@ Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
         <translation>Gülücükler ve çıkartmalar</translation>
     </message>
     <message>
-        <source>Open chat page</source>
-        <translation>Sohbet sayfasını aç</translation>
-    </message>
-    <message>
-        <source>Turn off camera</source>
-        <translation>Kamerayı kapat</translation>
-    </message>
-    <message>
-        <source>Turn on camera</source>
-        <translation>Kamerayı aç</translation>
-    </message>
-    <message>
-        <source>Turn off microphone</source>
-        <translation>Mikrofonu kapat</translation>
-    </message>
-    <message>
-        <source>Turn on microphone</source>
-        <translation>Mikrofonu aç</translation>
-    </message>
-    <message>
-        <source>Turn off screen sharing</source>
-        <translation>Ekran paylaşımını kapat</translation>
-    </message>
-    <message>
-        <source>Turn on screen sharing</source>
-        <translation>Ekran paylaşımını aç</translation>
-    </message>
-    <message>
         <source>Call</source>
         <translation>Arama yap</translation>
     </message>
     <message>
         <source>Search for messages</source>
         <translation>İletilerde ara</translation>
-    </message>
-    <message>
-        <source>Exit full screen</source>
-        <translation>Tam ekrandan çık</translation>
-    </message>
-    <message>
-        <source>Full screen</source>
-        <translation>Tam ekran</translation>
-    </message>
-    <message>
-        <source>End call</source>
-        <translation>Aramayı bitir</translation>
     </message>
     <message>
         <source>Share</source>
@@ -5224,6 +6137,14 @@ Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
     <message>
         <source>Information</source>
         <translation>bilgi</translation>
+    </message>
+    <message>
+        <source>Audio call</source>
+        <translation>Sesli arama</translation>
+    </message>
+    <message>
+        <source>Link to call</source>
+        <translation>Çağrı bağlantısı</translation>
     </message>
 </context>
 <context>
@@ -5296,11 +6217,7 @@ Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
     </message>
     <message>
         <source>Add to call</source>
-        <translation>Çağrıya ekle</translation>
-    </message>
-    <message>
-        <source>MEMBERS</source>
-        <translation>ÜYELER</translation>
+        <translation>Aramaya ekle</translation>
     </message>
     <message>
         <source>OTHERS</source>
@@ -5333,6 +6250,133 @@ Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
     <message>
         <source>To share screen you need to allow access to the screen recording in the system settings</source>
         <translation>Ekranı paylaşmak için, sistem ayarlarında ekran kaydına erişime izin vermeniz gerekir</translation>
+    </message>
+    <message>
+        <source>VCS call</source>
+        <translation>VCS çağrısı</translation>
+    </message>
+    <message>
+        <source>To use microphone you need to allow access to the microphone in the system settings</source>
+        <translation>Mikrofonu kullanmak için sistem ayarlarında mikrofona erişime izin verin</translation>
+    </message>
+    <message>
+        <source>Microphone permissions</source>
+        <translation>Mikrofon erişimi</translation>
+    </message>
+    <message>
+        <source>To use camera you need to allow access to the camera in the system settings</source>
+        <translation>Kamerayı kullanmak için sistem ayarlarından kameraya erişim izni verin</translation>
+    </message>
+    <message>
+        <source>Camera permissions</source>
+        <translation>Kamera erişimi</translation>
+    </message>
+    <message>
+        <source>Forward</source>
+        <translation>gönderme</translation>
+    </message>
+    <message>
+        <source>ALL GROUP MEMBERS</source>
+        <translation>TÜM GRUP ÜYELERİ</translation>
+    </message>
+    <message>
+        <source>CALL MEMBERS</source>
+        <translation>ÇAĞRI KATILIMCILARI</translation>
+    </message>
+</context>
+<context>
+    <name>voip_video_panel</name>
+    <message>
+        <source>Video</source>
+        <translation>video</translation>
+    </message>
+    <message>
+        <source>Screen</source>
+        <translation>ekran</translation>
+    </message>
+    <message>
+        <source>More</source>
+        <translation>Daha</translation>
+    </message>
+    <message>
+        <source>Go to chat</source>
+        <translation>Sohbete git</translation>
+    </message>
+    <message>
+        <source>Open masks</source>
+        <translation>Maskeleri etkinleştir</translation>
+    </message>
+    <message>
+        <source>Add user</source>
+        <translation>Üye ekle</translation>
+    </message>
+    <message>
+        <source>Settings</source>
+        <translation>ayarlar</translation>
+    </message>
+    <message>
+        <source>End</source>
+        <translation>Son</translation>
+    </message>
+    <message>
+        <source>Show all</source>
+        <translation>Tümünü göster</translation>
+    </message>
+    <message>
+        <source>Show one</source>
+        <translation>Birini göster</translation>
+    </message>
+    <message>
+        <source>Stop screen sharing</source>
+        <translation>Ekran paylaşımını durdur</translation>
+    </message>
+    <message>
+        <source>Screen sharing enabled</source>
+        <translation>Ekran paylaşımı etkin</translation>
+    </message>
+    <message>
+        <source>Ask one of the participants to turn off the video. In calls with over %1 people only one video can be shown</source>
+        <translation>Katılımcılardan birinden videoyu kapatmasını isteyin. %1 &apos;den fazla kişiyle yapılan aramalarda yalnızca bir video gösterilebilir</translation>
+    </message>
+    <message>
+        <source>Masks aren&apos;t available in calls with more than %1 members</source>
+        <translation>%1 fazla katılımcıyla yapılan aramalarda maskeler mevcut değil</translation>
+    </message>
+    <message>
+        <source>Mic</source>
+        <translation>mikrofon</translation>
+    </message>
+    <message>
+        <source>Only the creator of the webinar can show the video</source>
+        <translation>Videoyu yalnızca web seminerinin yaratıcısı gösterebilir</translation>
+    </message>
+    <message>
+        <source>Only the creator of the webinar can use masks</source>
+        <translation>Yalnızca web seminerinin yaratıcısı maskeleri kullanabilir</translation>
+    </message>
+    <message>
+        <source>Only the creator of the webinar can use a microphone</source>
+        <translation>Yalnızca bir web semineri oluşturucu mikrofon kullanabilir</translation>
+    </message>
+    <message>
+        <source>Copy link</source>
+        <translation>Bağlantıyı kopyala</translation>
+    </message>
+    <message>
+        <source>Invite</source>
+        <translation>Davet etmek</translation>
+    </message>
+    <message>
+        <source>Link copied</source>
+        <translation>Bağlantı kopyalandı</translation>
+    </message>
+    <message>
+        <source>Sound</source>
+        <translation>ses</translation>
+    </message>
+    <message>
+        <source>Wait for connection</source>
+        <translation>Bağlantı bekliyoruz</translation>
     </message>
 </context>
 <context>

@@ -130,6 +130,7 @@ void GenericBlockLayout::shiftHorizontally(const int _shift)
 void GenericBlockLayout::resizeBlock(const QSize& _size)
 {
     BlockSize_ = _size;
+    BlockGeometry_ = QRect(BlockGeometry_.topLeft(), _size);
 }
 
 UI_COMPLEX_MESSAGE_NS_END

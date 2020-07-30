@@ -44,7 +44,7 @@ namespace Heads
     {
         disconnect(Ui::GetDispatcher(), &Ui::core_dispatcher::chatHeads, this, &HeadContainer::onHeads);
         chatHeads_ = {};
-        emit hide(QPrivateSignal());
+        Q_EMIT hide(QPrivateSignal());
     }
 
     void HeadContainer::onHeads(const Data::ChatHeads& _chatHeads)
@@ -88,6 +88,6 @@ namespace Heads
             }
         }
 
-        emit headChanged(_chatHeads, QPrivateSignal());
+        Q_EMIT headChanged(_chatHeads, QPrivateSignal());
     }
 }

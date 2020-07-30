@@ -24,9 +24,9 @@ namespace core
             std::shared_ptr<core::tools::binary_stream> data_;
             time_t write_time_;
 
-            int32_t init_request(std::shared_ptr<core::http_request_simple> _request) override;
-            int32_t execute_request(std::shared_ptr<core::http_request_simple> _request) override;
-            int32_t parse_response(std::shared_ptr<core::tools::binary_stream> _response) override;
+            int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
+            int32_t execute_request(const std::shared_ptr<core::http_request_simple>& _request) override;
+            int32_t parse_response(const std::shared_ptr<core::tools::binary_stream>& _response) override;
 
         public:
 
@@ -38,6 +38,8 @@ namespace core
                 std::string_view _avatar_type,
                 time_t _write_time = 0);
             virtual ~request_avatar();
+
+            virtual priority_t get_priority() const override;
         };
     }
 }

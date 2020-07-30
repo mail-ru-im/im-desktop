@@ -127,6 +127,17 @@ You can leave your feedback or report an error here:</translation>
     </message>
 </context>
 <context>
+    <name>active_call_plate</name>
+    <message>
+        <source>Join</source>
+        <translation>Enter</translation>
+    </message>
+    <message>
+        <source>Active call</source>
+        <translation>Active call</translation>
+    </message>
+</context>
+<context>
     <name>add_new_contact_dialogs</name>
     <message>
         <source>New contact</source>
@@ -240,19 +251,47 @@ You can leave your feedback or report an error here:</translation>
     </message>
     <message>
         <source>Dark Green</source>
-        <translation>Dark green</translation>
+        <translation>Dark Green</translation>
     </message>
     <message>
         <source>Violet</source>
-        <translation>Lilac</translation>
+        <translation>Violet</translation>
     </message>
     <message>
         <source>Orange</source>
         <translation>Orange</translation>
     </message>
     <message>
-        <source>Dark blue</source>
-        <translation>Dark blue</translation>
+        <source>Default</source>
+        <translation>Default</translation>
+    </message>
+    <message>
+        <source>Dark Turquoise</source>
+        <translation>Dark Turquoise</translation>
+    </message>
+    <message>
+        <source>Dark Violet</source>
+        <translation>Dark Violet</translation>
+    </message>
+    <message>
+        <source>Dark Orange</source>
+        <translation>Dark Orange</translation>
+    </message>
+    <message>
+        <source>Pink</source>
+        <translation>Pink</translation>
+    </message>
+    <message>
+        <source>Dark Pink</source>
+        <translation>Dark Pink</translation>
+    </message>
+    <message>
+        <source>Dark Blue</source>
+        <translation>Dark Blue</translation>
+    </message>
+    <message>
+        <source>Turquoise</source>
+        <translation>Turquoise</translation>
     </message>
 </context>
 <context>
@@ -315,10 +354,6 @@ You can leave your feedback or report an error here:</translation>
         <translation>Delete messages</translation>
     </message>
     <message>
-        <source>Block and delete?</source>
-        <translation>Block and delete?</translation>
-    </message>
-    <message>
         <source>Cancel</source>
         <translation>Cancel</translation>
     </message>
@@ -334,23 +369,86 @@ You can leave your feedback or report an error here:</translation>
         <source>This member won&apos;t be able to join the group again. You could also delete his messages</source>
         <translation>This member won&apos;t be able to join the group again. You could also delete his messages</translation>
     </message>
+    <message>
+        <source>Delete?</source>
+        <translation>Delete?</translation>
+    </message>
+</context>
+<context>
+    <name>bots</name>
+    <message>
+        <source>Cancel</source>
+        <translation>Cancel</translation>
+    </message>
+    <message>
+        <source>Ok</source>
+        <translation>OK</translation>
+    </message>
+    <message>
+        <source>Open link</source>
+        <translation>Open link</translation>
+    </message>
+    <message>
+        <source>You are not a member of this chat or you was banned to write</source>
+        <translation>You are not a chat member or you are not allowed to write</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to open an external link %1?</source>
+        <translation>Are you sure you want to open the external link %1 ?</translation>
+    </message>
+</context>
+<context>
+    <name>call_link</name>
+    <message>
+        <source>Link on call</source>
+        <translation>Call link</translation>
+    </message>
+    <message>
+        <source>Link on webinar</source>
+        <translation>Link to the webinar</translation>
+    </message>
+    <message>
+        <source>Send the link to people you want to add to the call</source>
+        <translation>Send the link to the people you want to add to the call</translation>
+    </message>
+    <message>
+        <source>Send the link to people you want to invite to the webinar</source>
+        <translation>Send the link to the people you want to invite to the webinar</translation>
+    </message>
+    <message>
+        <source>call</source>
+        <translation>bell</translation>
+    </message>
+    <message>
+        <source>webinar</source>
+        <translation>webinar</translation>
+    </message>
+    <message>
+        <source>Send the %1 link to current chat or copy it</source>
+        <translation>Send link to %1 in live chat or copy it</translation>
+    </message>
+    <message>
+        <source>Send the call link %1 to current chat or copy it</source>
+        <translation>Send link to call %1 or copy it</translation>
+    </message>
+</context>
+<context>
+    <name>calls</name>
+    <message>
+        <source>Group call</source>
+        <translation>Start group call</translation>
+    </message>
+    <message>
+        <source>Create webinar</source>
+        <translation>Create a webinar</translation>
+    </message>
+    <message>
+        <source>Create call link</source>
+        <translation>Create a call link</translation>
+    </message>
 </context>
 <context>
     <name>chat_event</name>
-    <message>
-        <source> and </source>
-        <translation> and </translation>
-    </message>
-    <message>
-        <source>You</source>
-        <comment>active_voice</comment>
-        <translation>You</translation>
-    </message>
-    <message>
-        <source>you</source>
-        <comment>passive_voice</comment>
-        <translation>you</translation>
-    </message>
     <message>
         <source>Missed call</source>
         <translation>Missed call</translation>
@@ -364,20 +462,8 @@ You can leave your feedback or report an error here:</translation>
         <translation>Incoming call</translation>
     </message>
     <message>
-        <source>You changed picture of group</source>
-        <translation>You changed picture of group</translation>
-    </message>
-    <message>
         <source> has birthday!</source>
         <translation> has birthday!</translation>
-    </message>
-    <message>
-        <source>You have joined group</source>
-        <translation>You have joined group</translation>
-    </message>
-    <message>
-        <source>You deleted chat description</source>
-        <translation>You deleted chat description</translation>
     </message>
     <message>
         <source>Message was deleted</source>
@@ -390,58 +476,6 @@ You can leave your feedback or report an error here:</translation>
     <message>
         <source>%1 added you to contacts</source>
         <translation>%1 added you to contacts</translation>
-    </message>
-    <message>
-        <source>%1 changed picture of group</source>
-        <translation>%1 changed picture of group</translation>
-    </message>
-    <message>
-        <source>You changed theme to &quot;%1&quot;</source>
-        <translation>You changed theme to &quot;%1&quot;</translation>
-    </message>
-    <message>
-        <source>%1 changed theme to &quot;%2&quot;</source>
-        <translation>%1 changed theme to &quot;%2&quot;</translation>
-    </message>
-    <message>
-        <source>You added %1</source>
-        <translation>You added %1</translation>
-    </message>
-    <message>
-        <source>%1 has joined group</source>
-        <translation>%1 has joined group</translation>
-    </message>
-    <message>
-        <source>%1 added %2</source>
-        <translation>%1 added %2</translation>
-    </message>
-    <message>
-        <source>%1 deleted chat description</source>
-        <translation>%1 deleted chat description</translation>
-    </message>
-    <message>
-        <source>You changed description to &quot;%1&quot;</source>
-        <translation>You changed description to &quot;%1&quot;</translation>
-    </message>
-    <message>
-        <source>%1 changed description to &quot;%2&quot;</source>
-        <translation>%1 changed description to &quot;%2&quot;</translation>
-    </message>
-    <message>
-        <source>You changed chat rules to &quot;%1&quot;</source>
-        <translation>You changed chat rules to &quot;%1&quot;</translation>
-    </message>
-    <message>
-        <source>You removed %1</source>
-        <translation>You removed %1</translation>
-    </message>
-    <message>
-        <source>%1 removed %2</source>
-        <translation>%1 removed %2</translation>
-    </message>
-    <message>
-        <source>%1 changed chat rules to &quot;%2&quot;</source>
-        <translation>%1 changed chat rules to &quot;%2&quot;</translation>
     </message>
     <message>
         <source>Your call was missed</source>
@@ -488,40 +522,12 @@ You can leave your feedback or report an error here:</translation>
         <translation>You declined a call from %1</translation>
     </message>
     <message>
-        <source>Theme was changed to &quot;%1&quot;</source>
-        <translation>Topic changed to %1</translation>
-    </message>
-    <message>
-        <source>%1 was added</source>
-        <translation>%1 was added</translation>
-    </message>
-    <message>
-        <source>%1 were added</source>
-        <translation>%1 were added</translation>
-    </message>
-    <message>
-        <source>Chat description was deleted</source>
-        <translation>Chat Description Deleted</translation>
-    </message>
-    <message>
         <source>%1 was removed</source>
         <translation>%1 was deleted</translation>
     </message>
     <message>
         <source>%1 were removed</source>
         <translation>%1 was deleted</translation>
-    </message>
-    <message>
-        <source>Channel avatar was changed</source>
-        <translation>Channel avatar was changed</translation>
-    </message>
-    <message>
-        <source>Description was changed to &quot;%1&quot;</source>
-        <translation>Description changed to %1</translation>
-    </message>
-    <message>
-        <source>Channel rules were changed to &quot;%1&quot;</source>
-        <translation>Channel rules changed to %1</translation>
     </message>
     <message>
         <source>You have recently added %1 to your phone contacts. Write a new message or make a call %2</source>
@@ -532,29 +538,418 @@ You can leave your feedback or report an error here:</translation>
         <translation>So %1 is here now! Write, call %2</translation>
     </message>
     <message>
-        <source>%1 has left group (this message is visible only to group admins)</source>
-        <comment>one</comment>
-        <translation>%1 has left group (this message is visible only to group admins)</translation>
-    </message>
-    <message>
-        <source>You changed chat link to %1</source>
-        <translation>You changed chat link to %1</translation>
-    </message>
-    <message>
-        <source>Channel link was changed to %1</source>
-        <translation>Channel link was changed to %1</translation>
-    </message>
-    <message>
-        <source>%1 changed chat link to %2</source>
-        <translation>%1 changed link to %2</translation>
-    </message>
-    <message>
         <source>Add avatar</source>
         <translation>Add avatar</translation>
     </message>
     <message>
         <source>Add description</source>
-        <translation>add description</translation>
+        <translation>Add description</translation>
+    </message>
+    <message>
+        <source>You specified a new channel name - &quot;%1&quot;</source>
+        <translation>You entered a new channel name - &quot;%1&quot;</translation>
+    </message>
+    <message>
+        <source>%1 specified a new channel name - &quot;%2&quot;</source>
+        <translation>%1 indicated a new channel name - &quot;%2&quot;</translation>
+    </message>
+    <message>
+        <source>You specified a new group name - &quot;%1&quot;</source>
+        <translation>You entered a new group name - &quot;%1&quot;</translation>
+    </message>
+    <message>
+        <source>%1 specified a new group name - &quot;%2&quot;</source>
+        <translation>%1 indicated a new group name - &quot;%2&quot;</translation>
+    </message>
+    <message>
+        <source>%1 You have joined channel</source>
+        <translation>%1 You have joined the channel</translation>
+    </message>
+    <message>
+        <source>%1 %2 has joined channel</source>
+        <translation>%1 %2 joined the channel</translation>
+    </message>
+    <message>
+        <source>%1 You have joined group</source>
+        <translation>%1 You have joined the group</translation>
+    </message>
+    <message>
+        <source>%1 %2 has joined group</source>
+        <translation>%1 %2 joined the group</translation>
+    </message>
+    <message>
+        <source>%1 You added %2 to the channel</source>
+        <translation>%1 You added %2 to the channel</translation>
+    </message>
+    <message>
+        <source>%1 %2 added %3 to the channel</source>
+        <translation>%1 %2 added %3 to channel</translation>
+    </message>
+    <message>
+        <source>%1 You added %2 to the group</source>
+        <translation>%1 You added %2 to the group</translation>
+    </message>
+    <message>
+        <source>%1 %2 added %3 to the group</source>
+        <translation>%1 %2 added %3 to the group</translation>
+    </message>
+    <message>
+        <source>You enabled join with approval</source>
+        <translation>You enabled join with approval</translation>
+    </message>
+    <message>
+        <source>You disabled join with approval</source>
+        <translation>You turned off group membership on request</translation>
+    </message>
+    <message>
+        <source>%1 enabled join with approval</source>
+        <translation>%1 enabled join with approval</translation>
+    </message>
+    <message>
+        <source>%1 disabled join with approval</source>
+        <translation>%1 disabled join with approval</translation>
+    </message>
+    <message>
+        <source>You made the group public, now it is possible to find it through a search</source>
+        <translation>You made the group public, they can find it through a search</translation>
+    </message>
+    <message>
+        <source>You made the group private, now it is impossible to find it through a search</source>
+        <translation>You made the group private, they can no longer be found through the search</translation>
+    </message>
+    <message>
+        <source>%1 made the group public, now it is possible to find it through a search</source>
+        <translation>%1 made the group public, it can be found through a search</translation>
+    </message>
+    <message>
+        <source>%1 made the group private, now it is impossible to find it through a search</source>
+        <translation>%1 made the group private, they can no longer be found through a search</translation>
+    </message>
+    <message>
+        <source>%1 You removed %2</source>
+        <translation>%1 You have deleted %2</translation>
+    </message>
+    <message>
+        <source>%1 %2 removed %3</source>
+        <translation>%1 %2 deleted %3</translation>
+    </message>
+    <message>
+        <source>You are no more an administrator of this group</source>
+        <translation>You are no longer the administrator of this group</translation>
+    </message>
+    <message>
+        <source>You removed administrator role from %1</source>
+        <translation>You have removed administrator rights from %1</translation>
+    </message>
+    <message>
+        <source>%1 removed administrator role from %2</source>
+        <translation>%1 withdrew admin rights with %2</translation>
+    </message>
+    <message>
+        <source>%1 Wait for join request approval</source>
+        <translation>%1 Wait for confirmation of entry request</translation>
+    </message>
+    <message>
+        <source>%1 You asked to add %2 to the channel</source>
+        <translation>%1 You asked to add %2 to the channel</translation>
+    </message>
+    <message>
+        <source>%1 You asked to add %2 to the group</source>
+        <translation>%1 You asked to add %2 to the group</translation>
+    </message>
+    <message>
+        <source>%1 %2 asked to add %3 to the group</source>
+        <translation>%1 %2 asked to add %3 to the group</translation>
+    </message>
+    <message>
+        <source>%1 %2 is waiting for group join request approval</source>
+        <translation>%1 %2 waiting for confirmation to join the group</translation>
+    </message>
+    <message>
+        <source>%1 Your join request was approved</source>
+        <translation>%1 Your membership request is confirmed</translation>
+    </message>
+    <message>
+        <source>%1 Request from %2 to add you to the channel was approved</source>
+        <translation>%1 Request from %2 to add you to the channel confirmed</translation>
+    </message>
+    <message>
+        <source>%1 Request from %2 to add you to the group was approved</source>
+        <translation>%1 Request from %2 to add you to the group confirmed</translation>
+    </message>
+    <message>
+        <source>%1 You approved join request from %2</source>
+        <translation>%1 You have confirmed join request from %2</translation>
+    </message>
+    <message>
+        <source>%1 You approved join request from %2 to add %3 to the channel</source>
+        <translation>%1 You have confirmed a request from %2 to add %3 to the channel</translation>
+    </message>
+    <message>
+        <source>%1 You approved join request from %2 to add %3 to the group</source>
+        <translation>%1 You have confirmed a request from %2 to add %3 to the group</translation>
+    </message>
+    <message>
+        <source>%1 %2 approved join request from %3</source>
+        <translation>%1 %2 confirmed joining request from %3</translation>
+    </message>
+    <message>
+        <source>%1 Your join request was rejected</source>
+        <translation>%1 Your join request was rejected</translation>
+    </message>
+    <message>
+        <source>%1 Request from %2 to add you to the channel was rejected</source>
+        <translation>%1 Request from %2 to add you to the channel rejected</translation>
+    </message>
+    <message>
+        <source>%1 Request from %2 to add you to the group was rejected</source>
+        <translation>%1 Request from %2 to add you to the group rejected</translation>
+    </message>
+    <message>
+        <source>%1 You rejected join request from %2</source>
+        <translation>%1 You have declined to join from %2</translation>
+    </message>
+    <message>
+        <source>%1 You rejected join request from %2 to add %3 to the channel</source>
+        <translation>%1 You rejected a request from %2 to add %3 to the channel</translation>
+    </message>
+    <message>
+        <source>%1 You rejected join request from %2 to add %3 to the group</source>
+        <translation>%1 You rejected the request from %2 to add %3 to the group</translation>
+    </message>
+    <message>
+        <source>%1 %2 rejected join request from %3</source>
+        <translation>%1 %2 rejected joining request from %3</translation>
+    </message>
+    <message>
+        <source>%1 You have left channel</source>
+        <translation>%1 You left the channel</translation>
+    </message>
+    <message>
+        <source>%1 You have left group</source>
+        <translation>%1 You left the group</translation>
+    </message>
+    <message>
+        <source>you</source>
+        <translation>you</translation>
+    </message>
+    <message>
+        <source>Administrator</source>
+        <translation>Administrator</translation>
+    </message>
+    <message>
+        <source>%1 %2 removed you</source>
+        <translation>%1 %2 deleted you</translation>
+    </message>
+    <message>
+        <source>%1 allowed you to write</source>
+        <translation>%1 allowed you to write</translation>
+    </message>
+    <message>
+        <source>You allowed %1 to write</source>
+        <translation>You have allowed to write %1</translation>
+    </message>
+    <message>
+        <source>%1 allowed %2 to write</source>
+        <translation>%1 allowed writing %2</translation>
+    </message>
+    <message>
+        <source>%1 banned you to write</source>
+        <translation>%1 banned you from writing</translation>
+    </message>
+    <message>
+        <source>You banned %1 to write</source>
+        <translation>You have forbidden to write %1</translation>
+    </message>
+    <message>
+        <source>%1 banned %2 to write</source>
+        <translation>%1 prohibited (s) writing %2</translation>
+    </message>
+    <message>
+        <source>%1 %2 approved join request from %3 to add %4 to the group</source>
+        <translation>%1 %2 confirmed request from %3 to add %4 to the group</translation>
+    </message>
+    <message>
+        <source>%1 %2 rejected join request from %3 to add %4 to the group</source>
+        <translation>%1 %2 rejected a request from %3 to add %4 to the group</translation>
+    </message>
+    <message>
+        <source>%1 %2 asked to add %3 to the channel (this message is visible only to administrators)</source>
+        <translation>%1 %2 asked %3 to be added to the channel (only administrators see this message)</translation>
+    </message>
+    <message>
+        <source>%1 %2 is waiting for channel join request approval (this message is visible only to administrators)</source>
+        <translation>%1 %2 waiting for confirmation of the request to join the channel (only administrators see this message)</translation>
+    </message>
+    <message>
+        <source>%1 %2 approved join request from %3 to add %4 to the channel (this message is visible only to administrators)</source>
+        <translation>%1 %2 confirmed request from %3 to add %4 to the channel (only administrators see this message)</translation>
+    </message>
+    <message>
+        <source>%1 %2 rejected join request from %3 to add %4 to the channel (this message is visible only to administrators)</source>
+        <translation>%1 %2 rejected a request from %3 to add %4 to the channel (only administrators see this message)</translation>
+    </message>
+    <message>
+        <source>%1 %2 have left group (this message is visible only to administrators)</source>
+        <comment>many</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 %2 has left group (this message is visible only to administrators)</source>
+        <comment>one</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 Your request to add %2 to the channel was approved</source>
+        <translation>%1 Your request to add %2 to the channel is confirmed</translation>
+    </message>
+    <message>
+        <source>%1 Your request to add %2 to the group was approved</source>
+        <translation>%1 Your request to add %2 to the group is confirmed</translation>
+    </message>
+    <message>
+        <source>%1 Your request to add %2 to the channel was rejected</source>
+        <translation>%1 Your request to add %2 to the channel was rejected</translation>
+    </message>
+    <message>
+        <source>%1 Your request to add %2 to the group was rejected</source>
+        <translation>%1 Your request to add %2 to the group was rejected</translation>
+    </message>
+    <message>
+        <source>%1 %2 approved join request from %3(this message is visible only to administrators)</source>
+        <translation>%1 %2 approved join request from %3 (this message is visible only to administrators)</translation>
+    </message>
+    <message>
+        <source>%1 %2 rejected join request from %3(this message is visible only to administrators)</source>
+        <translation>%1 %2 rejected join request from %3 (this message is visible only to administrators)</translation>
+    </message>
+    <message>
+        <source>You changed the channel avatar</source>
+        <translation>You changed the channel avatar</translation>
+    </message>
+    <message>
+        <source>%1 changed the channel avatar</source>
+        <translation>%1 changed the channel avatar</translation>
+    </message>
+    <message>
+        <source>You changed the group avatar</source>
+        <translation>You changed the group avatar</translation>
+    </message>
+    <message>
+        <source>%1 changed the group avatar</source>
+        <translation>%1 changed the group avatar</translation>
+    </message>
+    <message>
+        <source>You deleted the channel description</source>
+        <translation>You deleted the channel description</translation>
+    </message>
+    <message>
+        <source>%1 deleted the channel description</source>
+        <translation>%1 deleted the channel description</translation>
+    </message>
+    <message>
+        <source>You deleted the group description</source>
+        <translation>You deleted the group description</translation>
+    </message>
+    <message>
+        <source>%1 deleted the group description</source>
+        <translation>%1 deleted the group description</translation>
+    </message>
+    <message>
+        <source>You changed the channel description - &quot;%1&quot;</source>
+        <translation>You changed the channel description - &quot;%1&quot;</translation>
+    </message>
+    <message>
+        <source>%1 changed the channel description - &quot;%2&quot;</source>
+        <translation>%1 changed the channel description - &quot;%2&quot;</translation>
+    </message>
+    <message>
+        <source>You changed the group description - &quot;%1&quot;</source>
+        <translation>You changed the group description - &quot;%1&quot;</translation>
+    </message>
+    <message>
+        <source>%1 changed the group description - &quot;%2&quot;</source>
+        <translation>%1 changed the group description - &quot;%2&quot;</translation>
+    </message>
+    <message>
+        <source>You deleted the channel rules</source>
+        <translation>You deleted the channel rules</translation>
+    </message>
+    <message>
+        <source>%1 deleted the channel rules</source>
+        <translation>%1 deleted the channel rules</translation>
+    </message>
+    <message>
+        <source>You deleted the group rules</source>
+        <translation>You deleted the group rules</translation>
+    </message>
+    <message>
+        <source>%1 deleted the group rules</source>
+        <translation>%1 deleted the group rules</translation>
+    </message>
+    <message>
+        <source>You changed the channel rules - &quot;%1&quot;</source>
+        <translation>You changed the channel rules - &quot;%1&quot;</translation>
+    </message>
+    <message>
+        <source>%1 changed the channel rules - &quot;%2&quot;</source>
+        <translation>%1 changed the channel rules - &quot;%2&quot;</translation>
+    </message>
+    <message>
+        <source>You changed the group rules - &quot;%1&quot;</source>
+        <translation>You changed the group rules - &quot;%1&quot;</translation>
+    </message>
+    <message>
+        <source>%1 changed the group rules - &quot;%2&quot;</source>
+        <translation>%1 changed the group rules - &quot;%2&quot;</translation>
+    </message>
+    <message>
+        <source>You changed the link to %1</source>
+        <translation>You changed the link to %1</translation>
+    </message>
+    <message>
+        <source>%1 changed the link to %2</source>
+        <translation>%1 changed the link to %2</translation>
+    </message>
+    <message>
+        <source>You were assigned as an administrator of this channel</source>
+        <translation>You were assigned as an administrator of this channel</translation>
+    </message>
+    <message>
+        <source>You were assigned as an administrator of this group</source>
+        <translation>You were assigned as an administrator of this group</translation>
+    </message>
+    <message>
+        <source>You assigned %1 administrator of this channel</source>
+        <translation>You assigned %1 administrator of this channel</translation>
+    </message>
+    <message>
+        <source>You assigned %1 administrator of this group</source>
+        <translation>You assigned %1 administrator of this group</translation>
+    </message>
+    <message>
+        <source>%1 assigned %2 administrator of this channel</source>
+        <translation>%1 assigned %2 administrator of this channel</translation>
+    </message>
+    <message>
+        <source>%1 assigned %2 administrator of this group</source>
+        <translation>%1 assigned %2 administrator of this group</translation>
+    </message>
+    <message>
+        <source>%1 You have canceled your join request</source>
+        <translation>%1 You have canceled your join request</translation>
+    </message>
+    <message>
+        <source>%1 Wait for subscription request approval</source>
+        <translation>%1 Wait for subscription request approval</translation>
+    </message>
+    <message>
+        <source>%1 Your subscription request was rejected</source>
+        <translation>%1 Your subscription request was rejected</translation>
+    </message>
+    <message>
+        <source>%1 %2 has canceled join request</source>
+        <translation>%1 %2 has canceled join request</translation>
     </message>
 </context>
 <context>
@@ -619,6 +1014,26 @@ You can leave your feedback or report an error here:</translation>
         <source>Quick send</source>
         <translation>Quick send</translation>
     </message>
+    <message>
+        <source>Message added to </source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Messages added to </source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Messages added to </source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Messages added to </source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>connection</name>
@@ -656,10 +1071,6 @@ You can leave your feedback or report an error here:</translation>
     <message>
         <source>Voice message</source>
         <translation>Voice message</translation>
-    </message>
-    <message>
-        <source>FAVORITES</source>
-        <translation>FAVORITES</translation>
     </message>
     <message>
         <source>RECENTS</source>
@@ -740,6 +1151,10 @@ You can leave your feedback or report an error here:</translation>
     <message>
         <source>Create channel</source>
         <translation>Create channel</translation>
+    </message>
+    <message>
+        <source>PINNED</source>
+        <translation>PINNED</translation>
     </message>
 </context>
 <context>
@@ -982,6 +1397,10 @@ You can leave your feedback or report an error here:</translation>
         <source>Send</source>
         <translation>Send</translation>
     </message>
+    <message>
+        <source>Choose your problem</source>
+        <translation>Choose your problem</translation>
+    </message>
 </context>
 <context>
     <name>context_menu</name>
@@ -1152,6 +1571,26 @@ You can leave your feedback or report an error here:</translation>
     <message>
         <source>Stop poll</source>
         <translation>Stop poll</translation>
+    </message>
+    <message>
+        <source>Add to favorites</source>
+        <translation>Add to Favorites</translation>
+    </message>
+    <message>
+        <source>Remove from dictionary</source>
+        <translation>Remove from dictionary</translation>
+    </message>
+    <message>
+        <source>Add to dictionary</source>
+        <translation>Add to Dictionary</translation>
+    </message>
+    <message>
+        <source>Ignore</source>
+        <translation>Ignore</translation>
+    </message>
+    <message>
+        <source>Copy session info</source>
+        <translation>Copy session info</translation>
     </message>
 </context>
 <context>
@@ -2188,6 +2627,46 @@ You can leave your feedback or report an error here:</translation>
     </message>
 </context>
 <context>
+    <name>favorites</name>
+    <message>
+        <source>
+%1, this is your personal space!
+
+%2 Save links, files and other messages
+%3 Write notes, to-do lists, store photos and videos
+%4 Draft messages and polls before sending them to chat with friends or to your channel</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Favorites</source>
+        <translation>Favorites</translation>
+    </message>
+    <message>
+        <source>save</source>
+        <translation>save</translation>
+    </message>
+    <message>
+        <source>saved</source>
+        <translation>saved</translation>
+    </message>
+    <message>
+        <source>favorites</source>
+        <translation>favorites</translation>
+    </message>
+    <message>
+        <source>%1, this is your work space!
+
+%2 Save links, files and other messages
+%3 Write notes, to-do lists, store photos and videos
+%4 Draft messages and polls before sending them to chat with colleagues or to your channel</source>
+        <translation>%1, this is your work space!
+
+%2 Save links, files and other messages
+%3 Write notes, to-do lists, store photos and videos
+%4 Draft messages and polls before sending them to chat with colleagues or to your channel</translation>
+    </message>
+</context>
+<context>
     <name>files_widget</name>
     <message>
         <source>Send with caption</source>
@@ -2245,6 +2724,10 @@ You can leave your feedback or report an error here:</translation>
         <source>Send</source>
         <translation>Send</translation>
     </message>
+    <message>
+        <source>Copied from clipboard</source>
+        <translation>Copied from clipboard</translation>
+    </message>
 </context>
 <context>
     <name>gallery</name>
@@ -2258,13 +2741,6 @@ You can leave your feedback or report an error here:</translation>
     <message>
         <source>Copied to clipboard</source>
         <translation>Copied to clipboard</translation>
-    </message>
-</context>
-<context>
-    <name>geolocation_block</name>
-    <message>
-        <source>Location</source>
-        <translation>Location</translation>
     </message>
 </context>
 <context>
@@ -2294,14 +2770,6 @@ You can leave your feedback or report an error here:</translation>
         <translation>Chat name</translation>
     </message>
     <message>
-        <source>Chat information is unavailable now, please try again later</source>
-        <translation>Chat information is unavailable now, please try again later</translation>
-    </message>
-    <message>
-        <source>Chat does not exist or it is hidden by privacy settings</source>
-        <translation>Chat does not exist or it is hidden by privacy settings</translation>
-    </message>
-    <message>
         <source>member</source>
         <comment>1</comment>
         <translation>member</translation>
@@ -2320,26 +2788,6 @@ You can leave your feedback or report an error here:</translation>
         <source>members</source>
         <comment>21</comment>
         <translation>members</translation>
-    </message>
-    <message>
-        <source>friend</source>
-        <comment>1</comment>
-        <translation>friend</translation>
-    </message>
-    <message>
-        <source>friends</source>
-        <comment>2</comment>
-        <translation>friends</translation>
-    </message>
-    <message>
-        <source>friends</source>
-        <comment>5</comment>
-        <translation>friends</translation>
-    </message>
-    <message>
-        <source>friends</source>
-        <comment>21</comment>
-        <translation>friends</translation>
     </message>
     <message>
         <source>Channel name</source>
@@ -2389,6 +2837,14 @@ You can leave your feedback or report an error here:</translation>
         <source>Group name</source>
         <translation>Group name</translation>
     </message>
+    <message>
+        <source>Chat information is unavailable now, please try again later</source>
+        <translation>Chat information is unavailable now, please try again later</translation>
+    </message>
+    <message>
+        <source>Chat does not exist or it is hidden by privacy settings</source>
+        <translation>Chat does not exist or it is hidden by privacy settings</translation>
+    </message>
 </context>
 <context>
     <name>head</name>
@@ -2397,16 +2853,20 @@ You can leave your feedback or report an error here:</translation>
         <translation>Contacts</translation>
     </message>
     <message>
-        <source>Chats</source>
-        <translation>Chats</translation>
-    </message>
-    <message>
         <source>Settings</source>
         <translation>Settings</translation>
     </message>
     <message>
         <source>Search</source>
         <translation>Search</translation>
+    </message>
+    <message>
+        <source>Calls</source>
+        <translation>Calls</translation>
+    </message>
+    <message>
+        <source>Chats</source>
+        <translation>Chats</translation>
     </message>
 </context>
 <context>
@@ -2558,6 +3018,30 @@ You can leave your feedback or report an error here:</translation>
         <source>Unblock</source>
         <translation>Unblock</translation>
     </message>
+    <message>
+        <source>Start</source>
+        <translation>Start</translation>
+    </message>
+    <message>
+        <source>Webinar</source>
+        <translation>Webinar</translation>
+    </message>
+    <message>
+        <source>Error creating webinar</source>
+        <translation>Error creating webinar</translation>
+    </message>
+    <message>
+        <source>Call link</source>
+        <translation>Call link</translation>
+    </message>
+    <message>
+        <source>Error creating call link</source>
+        <translation>Error creating call link</translation>
+    </message>
+    <message>
+        <source>Cancel request</source>
+        <translation>Cancel request</translation>
+    </message>
 </context>
 <context>
     <name>linux_desktop_file</name>
@@ -2660,20 +3144,12 @@ You can leave your feedback or report an error here:</translation>
         <translation>Recall in %1</translation>
     </message>
     <message>
-        <source>Enter one-time password received by email</source>
-        <translation>Enter one-time password received by email</translation>
-    </message>
-    <message>
         <source>Enter your login and password</source>
         <translation>Enter your login and password</translation>
     </message>
     <message>
         <source>To login use you corporative account created at</source>
         <translation>To log in, use the corporate account created in</translation>
-    </message>
-    <message>
-        <source>Check the country code and enter your phone number</source>
-        <translation>Check the country code and enter your phone number</translation>
     </message>
     <message>
         <source>Phone</source>
@@ -2746,6 +3222,66 @@ You can leave your feedback or report an error here:</translation>
     <message>
         <source>Phone code</source>
         <translation>Phone code</translation>
+    </message>
+    <message>
+        <source>OK</source>
+        <translation>Ok</translation>
+    </message>
+    <message>
+        <source>Configuration error</source>
+        <translation>Configuration error</translation>
+    </message>
+    <message>
+        <source>Enter hostname</source>
+        <translation>Enter server address</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>Cancel</translation>
+    </message>
+    <message>
+        <source>It is necessary to supplement the server configuration for the application to work. Contact system administrator</source>
+        <translation>It is necessary to supplement the server configuration for the application to work. Contact system administrator</translation>
+    </message>
+    <message>
+        <source>Invalid server configuration format. Contact system administrator</source>
+        <translation>Invalid server configuration format. Contact system administrator</translation>
+    </message>
+    <message>
+        <source>Unknown error. Contact system administrator</source>
+        <translation>Unknown error. Contact administrator</translation>
+    </message>
+    <message>
+        <source>Invalid server configuration hostname. Contact system administrator</source>
+        <translation>Check the address with the administrator</translation>
+    </message>
+    <message>
+        <source>Check the country code and enter your phone number for registration and authorization</source>
+        <translation>Check the country code and enter your phone number for registration and authorization</translation>
+    </message>
+    <message>
+        <source>Enter your corporate email, a password will be sent to it</source>
+        <translation>Enter your corporate email, a password will be sent to it</translation>
+    </message>
+    <message>
+        <source>Enter one-time password sent to email</source>
+        <translation>Enter one-time password sent to email</translation>
+    </message>
+    <message>
+        <source>Enter email</source>
+        <translation>Enter email</translation>
+    </message>
+    <message>
+        <source>Enter password</source>
+        <translation>Enter password</translation>
+    </message>
+    <message>
+        <source>Write us</source>
+        <translation>Write us</translation>
+    </message>
+    <message>
+        <source>Wrong password</source>
+        <translation>Wrong password</translation>
     </message>
 </context>
 <context>
@@ -2914,6 +3450,10 @@ You can leave your feedback or report an error here:</translation>
     <message>
         <source>Sticker</source>
         <translation>Sticker</translation>
+    </message>
+    <message>
+        <source>The message is not supported on your version of ICQ. Update the app to see the message</source>
+        <translation>The message is not supported on your version of ICQ. Update the app to see the message</translation>
     </message>
 </context>
 <context>
@@ -3143,10 +3683,6 @@ You can leave your feedback or report an error here:</translation>
 <context>
     <name>placeholders</name>
     <message>
-        <source>Install ICQ on mobile</source>
-        <translation>Install ICQ on mobile</translation>
-    </message>
-    <message>
         <source>Nothing found</source>
         <translation>Nothing found</translation>
     </message>
@@ -3209,6 +3745,42 @@ You can leave your feedback or report an error here:</translation>
     <message>
         <source>Failed to download file or media</source>
         <translation>Failed to upload file or media</translation>
+    </message>
+    <message>
+        <source>Install ICQ on mobile</source>
+        <translation>Install ICQ on mobile</translation>
+    </message>
+    <message>
+        <source>This group can be joined only after admin approval</source>
+        <translation>This group can be joined only after admin approval</translation>
+    </message>
+    <message>
+        <source>Join the group to start chatting</source>
+        <translation>Join the group to start chatting</translation>
+    </message>
+    <message>
+        <source>Tell us about your problem. We will try to help you</source>
+        <translation>Tell us about your problem. We will try to help you</translation>
+    </message>
+    <message>
+        <source>Start working with</source>
+        <translation>Start working with</translation>
+    </message>
+    <message>
+        <source>Start chatting with</source>
+        <translation>Start chatting with</translation>
+    </message>
+    <message>
+        <source>What this bot can do?</source>
+        <translation>What can this bot do?</translation>
+    </message>
+    <message>
+        <source>Subscribe the channel to see the messages</source>
+        <translation>Subscribe to the channel to see messages</translation>
+    </message>
+    <message>
+        <source>This channel can be subscribed only after admin approval</source>
+        <translation>You can subscribe to this channel only after confirmation.</translation>
     </message>
 </context>
 <context>
@@ -3298,7 +3870,7 @@ You can leave your feedback or report an error here:</translation>
     </message>
     <message>
         <source>Photo</source>
-        <translation>A photo</translation>
+        <translation>Photo</translation>
     </message>
     <message>
         <source>Vote: an error occurred</source>
@@ -3323,6 +3895,10 @@ You can leave your feedback or report an error here:</translation>
 </context>
 <context>
     <name>popup_window</name>
+    <message>
+        <source>Clear all data from this device</source>
+        <translation>Clear all data from the device</translation>
+    </message>
     <message>
         <source>Are you sure you want to sign out?</source>
         <translation>Are you sure you want to sign out?</translation>
@@ -3592,14 +4168,6 @@ You can leave your feedback or report an error here:</translation>
         <translation>Delete</translation>
     </message>
     <message>
-        <source>Waiting</source>
-        <translation>Waiting</translation>
-    </message>
-    <message>
-        <source>Join</source>
-        <translation>Enter</translation>
-    </message>
-    <message>
         <source>If you stop the poll, nobody will be able to vote anymore. This action can not be undone</source>
         <translation>If you stop the poll, nobody will be able to vote anymore. This action can not be undone</translation>
     </message>
@@ -3610,10 +4178,6 @@ You can leave your feedback or report an error here:</translation>
     <message>
         <source>Stop this poll?</source>
         <translation>Stop this poll?</translation>
-    </message>
-    <message>
-        <source>Open</source>
-        <translation>Open</translation>
     </message>
     <message>
         <source>Are you sure you want to leave channel?</source>
@@ -3662,6 +4226,186 @@ You can leave your feedback or report an error here:</translation>
     <message>
         <source>Create</source>
         <translation>Create</translation>
+    </message>
+    <message>
+        <source>Do you want to join conference?</source>
+        <translation>Do you want to join the conference?</translation>
+    </message>
+    <message>
+        <source>Join confirmation</source>
+        <translation>Join confirmation</translation>
+    </message>
+    <message>
+        <source>All sessions except the current one will be closed</source>
+        <translation>All sessions except the current one will be closed</translation>
+    </message>
+    <message>
+        <source>Close sessions</source>
+        <translation>Close session</translation>
+    </message>
+    <message>
+        <source>Close session</source>
+        <translation>Close session</translation>
+    </message>
+    <message>
+        <source>Session %1 will be closed</source>
+        <translation>Session %1 will be closed</translation>
+    </message>
+    <message>
+        <source>Don&apos;t ask me again</source>
+        <translation>Don&apos;t ask me again</translation>
+    </message>
+    <message>
+        <source>Run this file?</source>
+        <translation>Run this file?</translation>
+    </message>
+    <message>
+        <source>This file may be unsafe</source>
+        <translation>This file may be unsafe</translation>
+    </message>
+    <message>
+        <source>You cannot call this contact due to its privacy settings</source>
+        <translation>You cannot call this contact due to its privacy settings.</translation>
+    </message>
+    <message>
+        <source>Ok</source>
+        <translation>OK</translation>
+    </message>
+    <message>
+        <source>Maximum number of members selected</source>
+        <translation>Maximum number of members selected</translation>
+    </message>
+    <message>
+        <source>Start group call</source>
+        <translation>Start group audio call</translation>
+    </message>
+    <message>
+        <source>Call</source>
+        <translation>Call</translation>
+    </message>
+    <message>
+        <source>Start group video call</source>
+        <translation>Start group video call</translation>
+    </message>
+    <message>
+        <source>Error</source>
+        <translation>Error</translation>
+    </message>
+    <message>
+        <source>Start</source>
+        <translation>Start</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to delete the call?</source>
+        <translation>Are you sure you want to delete the call?</translation>
+    </message>
+    <message>
+        <source>Some problems with your link</source>
+        <translation>Problem with your link</translation>
+    </message>
+    <message>
+        <source>Some problems with your link. Please check it and try again or ask for a new link</source>
+        <translation>Sorry, there was a problem with your link. Check it out and try again or ask to send you another link</translation>
+    </message>
+    <message>
+        <source>It&apos;s not possible to connect now, please, try again later</source>
+        <translation>Connection is not possible now, try again later</translation>
+    </message>
+    <message>
+        <source>Participants&apos; limit exceeded</source>
+        <translation>Exceeded the limit on the number of participants</translation>
+    </message>
+    <message>
+        <source>Duration limit exceeded</source>
+        <translation>Duration limit exceeded</translation>
+    </message>
+    <message>
+        <source>Sorry, something went wrong. Please, try again later</source>
+        <translation>Sorry, something went wrong. try later</translation>
+    </message>
+    <message>
+        <source>My status</source>
+        <translation>My status</translation>
+    </message>
+    <message>
+        <source>You cannot call these users because of privacy settings:</source>
+        <translation>You cannot call these contacts because of their privacy settings. Contacts:</translation>
+    </message>
+    <message>
+        <source>You cannot call these users. Try to write them:</source>
+        <translation>To call, write a personal message to the contact and wait for an answer. Contacts:</translation>
+    </message>
+    <message>
+        <source>Unknown error connecting to the following contacts:</source>
+        <translation>Unknown error connecting to the following contacts:</translation>
+    </message>
+    <message>
+        <source>You cannot call</source>
+        <translation>You can not call</translation>
+    </message>
+    <message>
+        <source>Call declined</source>
+        <translation>Call rejected</translation>
+    </message>
+    <message>
+        <source>You cannot call this contact. Write %1 to the chat and, if answered, you can call</source>
+        <translation>You cannot call this contact. Write %1 to the chat and, if answered, you can call</translation>
+    </message>
+    <message>
+        <source>Write</source>
+        <translation>Write</translation>
+    </message>
+    <message>
+        <source>Cancel request?</source>
+        <translation>Cancel request?</translation>
+    </message>
+    <message>
+        <source>%1 is now unavailable</source>
+        <translation>%1 is now unavailable</translation>
+    </message>
+    <message>
+        <source>After canceling the request, the channel will disappear from the chat list</source>
+        <translation>After canceling the request, the channel will disappear from the chat list</translation>
+    </message>
+    <message>
+        <source>After canceling the request, the group will disappear from the chat list</source>
+        <translation>After canceling the request, the group will disappear from the chat list</translation>
+    </message>
+    <message>
+        <source>You were blocked by admins</source>
+        <translation>Admins blocked you</translation>
+    </message>
+    <message>
+        <source>Send link</source>
+        <translation>Send link</translation>
+    </message>
+    <message>
+        <source>You can not join the call. It already has</source>
+        <translation>You can not join the call. It already has</translation>
+    </message>
+    <message>
+        <source>No</source>
+        <translation>No</translation>
+    </message>
+    <message>
+        <source>Do you want to join the call? Current call will be ended</source>
+        <translation>Do you want to join the call? Current call will be ended</translation>
+    </message>
+    <message>
+        <source>Do you want to start a new call? Current call will be ended</source>
+        <translation>Do you want to start a new call? Current call will be ended</translation>
+    </message>
+    <message>
+        <source>Use internal DNS cache</source>
+        <translation>Use internal DNS cache</translation>
+    </message>
+    <message>
+        <source>To change this option you must restart the application. Continue?</source>
+        <translation>To change this option you must restart the application. Continue?</translation>
+    </message>
+    <message>
+        <source>Global people search</source>
+        <translation>Global people search</translation>
     </message>
 </context>
 <context>
@@ -3725,6 +4469,10 @@ You can leave your feedback or report an error here:</translation>
     <message>
         <source>Error file downloading</source>
         <translation>File upload error</translation>
+    </message>
+    <message>
+        <source>Add to favorites</source>
+        <translation>Add to Favorites</translation>
     </message>
 </context>
 <context>
@@ -3880,6 +4628,57 @@ You can leave your feedback or report an error here:</translation>
     <message>
         <source>Forwarded message</source>
         <translation>Forwarded message</translation>
+    </message>
+</context>
+<context>
+    <name>reactions</name>
+    <message>
+        <source>Remove</source>
+        <translation>Delete</translation>
+    </message>
+    <message>
+        <source>Reactions</source>
+        <translation>Reactions</translation>
+    </message>
+    <message>
+        <source>All</source>
+        <translation>All</translation>
+    </message>
+    <message>
+        <source>Like</source>
+        <translation>Like</translation>
+    </message>
+    <message>
+        <source>Super</source>
+        <translation>Super</translation>
+    </message>
+    <message>
+        <source>Funny</source>
+        <translation>Funny</translation>
+    </message>
+    <message>
+        <source>Oops</source>
+        <translation>Oops</translation>
+    </message>
+    <message>
+        <source>Sad</source>
+        <translation>Sad</translation>
+    </message>
+    <message>
+        <source>Scandalous</source>
+        <translation>Scandalous</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation>Close</translation>
+    </message>
+    <message>
+        <source>Add reaction: an error occurred</source>
+        <translation>Adding a reaction: an error occurred</translation>
+    </message>
+    <message>
+        <source>Remove reaction: an error occurred</source>
+        <translation>Deletion response: an error occurred</translation>
     </message>
 </context>
 <context>
@@ -4165,10 +4964,6 @@ You can leave your feedback or report an error here:</translation>
         <translation>Ignore list</translation>
     </message>
     <message>
-        <source>Consequently marking messages as read</source>
-        <translation>Consequently marking messages as read</translation>
-    </message>
-    <message>
         <source>Auto play GIFs</source>
         <translation>Auto play GIFs</translation>
     </message>
@@ -4321,10 +5116,6 @@ You can leave your feedback or report an error here:</translation>
         <translation>Add nickname</translation>
     </message>
     <message>
-        <source>Problem</source>
-        <translation>Problem</translation>
-    </message>
-    <message>
         <source>Main window</source>
         <translation>Main window</translation>
     </message>
@@ -4367,6 +5158,74 @@ You can leave your feedback or report an error here:</translation>
     <message>
         <source>Advanced Settings</source>
         <translation>Advanced settings</translation>
+    </message>
+    <message>
+        <source>Account Security</source>
+        <translation>Account Security</translation>
+    </message>
+    <message>
+        <source>Session List</source>
+        <translation>Session List</translation>
+    </message>
+    <message>
+        <source>Favorites</source>
+        <translation>Favorites</translation>
+    </message>
+    <message>
+        <source>Current session</source>
+        <translation>Current session</translation>
+    </message>
+    <message>
+        <source>Session closed</source>
+        <translation>Session is closed</translation>
+    </message>
+    <message>
+        <source>Error occurred</source>
+        <translation>Error occurred</translation>
+    </message>
+    <message>
+        <source>Active session</source>
+        <translation>Active Session</translation>
+    </message>
+    <message>
+        <source>Close all other sessions</source>
+        <translation>Close all other sessions</translation>
+    </message>
+    <message>
+        <source>Active sessions</source>
+        <translation>Active sessions</translation>
+    </message>
+    <message>
+        <source>Session info copied</source>
+        <translation>Session info copied</translation>
+    </message>
+    <message>
+        <source>Do not ask when running executable files</source>
+        <translation>Do not ask when running executable files</translation>
+    </message>
+    <message>
+        <source>Use system spell checker</source>
+        <translation>Use system spell checker</translation>
+    </message>
+    <message>
+        <source>Calls</source>
+        <translation>Calls</translation>
+    </message>
+    <message>
+        <source>Show calls tab</source>
+        <translation>Show Calls Tab</translation>
+    </message>
+    <message>
+        <source>Show reactions to messages</source>
+        <translation>Show reactions to messages</translation>
+    </message>
+    <message>
+        <source>Show statuses</source>
+        <translation>Show statuses</translation>
+    </message>
+    <message>
+        <source>Show unreads counter in window title</source>
+        <translation>Show unreads counter in window title</translation>
     </message>
 </context>
 <context>
@@ -4562,6 +5421,10 @@ You can leave your feedback or report an error here:</translation>
         <source>Mark all dialogs as read</source>
         <translation>Mark all dialogs as read</translation>
     </message>
+    <message>
+        <source>Set status</source>
+        <translation>Set status</translation>
+    </message>
 </context>
 <context>
     <name>sidebar</name>
@@ -4580,10 +5443,6 @@ You can leave your feedback or report an error here:</translation>
     <message>
         <source>Nickname</source>
         <translation>Nickname</translation>
-    </message>
-    <message>
-        <source>Blocked people</source>
-        <translation>Blocked people</translation>
     </message>
     <message>
         <source>Phone number</source>
@@ -4864,20 +5723,12 @@ Please edit phone number and try again.</translation>
         <translation>You can&apos;t read or write messages in this group because you are blocked</translation>
     </message>
     <message>
-        <source>The join request has been sent to administrator</source>
-        <translation>The join request has been sent to administrator</translation>
-    </message>
-    <message>
         <source>Remove</source>
         <translation>Remove</translation>
     </message>
     <message>
         <source>Leave and delete</source>
         <translation>Leave and delete</translation>
-    </message>
-    <message>
-        <source>Block and delete</source>
-        <translation>Block and delete</translation>
     </message>
     <message>
         <source>Search</source>
@@ -4896,10 +5747,6 @@ Please edit phone number and try again.</translation>
         <translation>Channel settings</translation>
     </message>
     <message>
-        <source>Block and delete from group</source>
-        <translation>Block and remove from group</translation>
-    </message>
-    <message>
         <source>Group settings</source>
         <translation>Group settings</translation>
     </message>
@@ -4910,6 +5757,50 @@ Please edit phone number and try again.</translation>
     <message>
         <source>Public group</source>
         <translation>Public group</translation>
+    </message>
+    <message>
+        <source>Favorites</source>
+        <translation>Favorites</translation>
+    </message>
+    <message>
+        <source>Open favorites</source>
+        <translation>Open Favorites</translation>
+    </message>
+    <message>
+        <source>Delete from group</source>
+        <translation>Delete from group</translation>
+    </message>
+    <message>
+        <source>Deleted and blocked</source>
+        <translation>Deleted and blocked</translation>
+    </message>
+    <message>
+        <source>Delete</source>
+        <translation>Delete</translation>
+    </message>
+    <message>
+        <source>You can&apos;t read messages in this channel because you are blocked</source>
+        <translation>You can&apos;t read messages in this channel because you are blocked</translation>
+    </message>
+    <message>
+        <source>Wait for subscription request approval</source>
+        <translation>Wait for subscription request approval</translation>
+    </message>
+    <message>
+        <source>Wait for join request approval</source>
+        <translation>Wait for join request approval</translation>
+    </message>
+    <message>
+        <source>Your subscription request was rejected</source>
+        <translation>Your subscription request was rejected</translation>
+    </message>
+    <message>
+        <source>Your join request was rejected</source>
+        <translation>Your join request was rejected</translation>
+    </message>
+    <message>
+        <source>Call</source>
+        <translation>Call</translation>
     </message>
 </context>
 <context>
@@ -4952,6 +5843,10 @@ Please edit phone number and try again.</translation>
         <source>Copied to clipboard</source>
         <translation>Copied to clipboard</translation>
     </message>
+    <message>
+        <source>Location</source>
+        <translation>Location</translation>
+    </message>
 </context>
 <context>
     <name>state</name>
@@ -4974,6 +5869,57 @@ Please edit phone number and try again.</translation>
     <message>
         <source>Invisible</source>
         <translation>Invisible</translation>
+    </message>
+    <message>
+        <source>Blocked</source>
+        <translation>Blocked</translation>
+    </message>
+    <message>
+        <source>Have never been here</source>
+        <translation>Has never been here</translation>
+    </message>
+    <message>
+        <source>Bot</source>
+        <translation>Bot</translation>
+    </message>
+</context>
+<context>
+    <name>status</name>
+    <message>
+        <source>Add status</source>
+        <translation>Add status</translation>
+    </message>
+    <message>
+        <source>Custom status</source>
+        <translation>User status</translation>
+    </message>
+    <message>
+        <source>Status timing</source>
+        <translation>Status timing</translation>
+    </message>
+    <message>
+        <source>No status</source>
+        <translation>No status</translation>
+    </message>
+    <message>
+        <source>Show always</source>
+        <translation>Show always</translation>
+    </message>
+    <message>
+        <source>Week</source>
+        <translation>Week</translation>
+    </message>
+    <message>
+        <source>undefined time</source>
+        <translation>undefined time</translation>
+    </message>
+    <message>
+        <source>%1 left</source>
+        <translation>%1 left</translation>
+    </message>
+    <message>
+        <source>For %1 already</source>
+        <translation>For %1 already</translation>
     </message>
 </context>
 <context>
@@ -5045,6 +5991,10 @@ Please edit phone number and try again.</translation>
         <source>Settings</source>
         <translation>Settings</translation>
     </message>
+    <message>
+        <source>Calls</source>
+        <translation>Calls</translation>
+    </message>
 </context>
 <context>
     <name>tab header</name>
@@ -5067,6 +6017,10 @@ Please edit phone number and try again.</translation>
     <message>
         <source>Emails</source>
         <translation>Email</translation>
+    </message>
+    <message>
+        <source>Group call</source>
+        <translation>Group call</translation>
     </message>
 </context>
 <context>
@@ -5096,16 +6050,12 @@ Please edit phone number and try again.</translation>
         <translation>ICQ New — the evolution of communication</translation>
     </message>
     <message>
-        <source>Welcome to ICQ</source>
-        <translation>Welcome to ICQ</translation>
+        <source>Welcome to ICQ New</source>
+        <translation>Welcome to ICQ New</translation>
     </message>
 </context>
 <context>
     <name>title</name>
-    <message>
-        <source>ICQ</source>
-        <translation>ICQ</translation>
-    </message>
     <message>
         <source>Mail.ru Agent</source>
         <translation>Mail.ru Agent</translation>
@@ -5117,6 +6067,10 @@ Please edit phone number and try again.</translation>
     <message>
         <source>Myteam</source>
         <translation>Myteam</translation>
+    </message>
+    <message>
+        <source>ICQ</source>
+        <translation>ICQ</translation>
     </message>
 </context>
 <context>
@@ -5145,6 +6099,10 @@ Please edit phone number and try again.</translation>
         <source>There are no profiles with this email</source>
         <translation>There is no profile with this email</translation>
     </message>
+    <message>
+        <source>You are not a member or banned to write in this group</source>
+        <translation>You are not a member or banned to write in this group</translation>
+    </message>
 </context>
 <context>
     <name>tooltips</name>
@@ -5161,52 +6119,12 @@ Please edit phone number and try again.</translation>
         <translation>Emoji and stickers</translation>
     </message>
     <message>
-        <source>Open chat page</source>
-        <translation>Open chat page</translation>
-    </message>
-    <message>
-        <source>Turn off camera</source>
-        <translation>Turn off camera</translation>
-    </message>
-    <message>
-        <source>Turn on camera</source>
-        <translation>Turn on camera</translation>
-    </message>
-    <message>
-        <source>Turn off microphone</source>
-        <translation>Turn off microphone</translation>
-    </message>
-    <message>
-        <source>Turn on microphone</source>
-        <translation>Turn on microphone</translation>
-    </message>
-    <message>
-        <source>Turn off screen sharing</source>
-        <translation>Turn off screen sharing</translation>
-    </message>
-    <message>
-        <source>Turn on screen sharing</source>
-        <translation>Turn on screen sharing</translation>
-    </message>
-    <message>
         <source>Call</source>
         <translation>Call</translation>
     </message>
     <message>
         <source>Search for messages</source>
         <translation>Search for messages</translation>
-    </message>
-    <message>
-        <source>Exit full screen</source>
-        <translation>Exit full screen</translation>
-    </message>
-    <message>
-        <source>Full screen</source>
-        <translation>Full screen</translation>
-    </message>
-    <message>
-        <source>End call</source>
-        <translation>End call</translation>
     </message>
     <message>
         <source>Share</source>
@@ -5219,6 +6137,14 @@ Please edit phone number and try again.</translation>
     <message>
         <source>Information</source>
         <translation>Information</translation>
+    </message>
+    <message>
+        <source>Audio call</source>
+        <translation>Audio call</translation>
+    </message>
+    <message>
+        <source>Link to call</source>
+        <translation>Call link</translation>
     </message>
 </context>
 <context>
@@ -5294,10 +6220,6 @@ Please edit phone number and try again.</translation>
         <translation>Add to call</translation>
     </message>
     <message>
-        <source>MEMBERS</source>
-        <translation>MEMBERS</translation>
-    </message>
-    <message>
         <source>OTHERS</source>
         <translation>OTHERS</translation>
     </message>
@@ -5328,6 +6250,133 @@ Please edit phone number and try again.</translation>
     <message>
         <source>To share screen you need to allow access to the screen recording in the system settings</source>
         <translation>To share screen you need to allow access to the screen recording in the system settings</translation>
+    </message>
+    <message>
+        <source>VCS call</source>
+        <translation>VCS call</translation>
+    </message>
+    <message>
+        <source>To use microphone you need to allow access to the microphone in the system settings</source>
+        <translation>To use the microphone, allow access to the microphone in the system settings</translation>
+    </message>
+    <message>
+        <source>Microphone permissions</source>
+        <translation>Microphone access</translation>
+    </message>
+    <message>
+        <source>To use camera you need to allow access to the camera in the system settings</source>
+        <translation>To use the camera, allow access to the camera in the system settings</translation>
+    </message>
+    <message>
+        <source>Camera permissions</source>
+        <translation>Camera access</translation>
+    </message>
+    <message>
+        <source>Forward</source>
+        <translation>Forward</translation>
+    </message>
+    <message>
+        <source>ALL GROUP MEMBERS</source>
+        <translation>ALL GROUP MEMBERS</translation>
+    </message>
+    <message>
+        <source>CALL MEMBERS</source>
+        <translation>CALL MEMBERS</translation>
+    </message>
+</context>
+<context>
+    <name>voip_video_panel</name>
+    <message>
+        <source>Video</source>
+        <translation>Video</translation>
+    </message>
+    <message>
+        <source>Screen</source>
+        <translation>Screen</translation>
+    </message>
+    <message>
+        <source>More</source>
+        <translation>More</translation>
+    </message>
+    <message>
+        <source>Go to chat</source>
+        <translation>Go to chat</translation>
+    </message>
+    <message>
+        <source>Open masks</source>
+        <translation>Open masks</translation>
+    </message>
+    <message>
+        <source>Add user</source>
+        <translation>Add member</translation>
+    </message>
+    <message>
+        <source>Settings</source>
+        <translation>Settings</translation>
+    </message>
+    <message>
+        <source>End</source>
+        <translation>End</translation>
+    </message>
+    <message>
+        <source>Show all</source>
+        <translation>Show all</translation>
+    </message>
+    <message>
+        <source>Show one</source>
+        <translation>Show one</translation>
+    </message>
+    <message>
+        <source>Stop screen sharing</source>
+        <translation>Stop screen sharing</translation>
+    </message>
+    <message>
+        <source>Screen sharing enabled</source>
+        <translation>Screen sharing enabled</translation>
+    </message>
+    <message>
+        <source>Ask one of the participants to turn off the video. In calls with over %1 people only one video can be shown</source>
+        <translation>Ask one of the participants to turn off the video. In calls with over %1 people only one video can be shown</translation>
+    </message>
+    <message>
+        <source>Masks aren&apos;t available in calls with more than %1 members</source>
+        <translation>In calls with more than %1 participants, masks are not available</translation>
+    </message>
+    <message>
+        <source>Mic</source>
+        <translation>Microphone</translation>
+    </message>
+    <message>
+        <source>Only the creator of the webinar can show the video</source>
+        <translation>Only the creator of the webinar can show the video</translation>
+    </message>
+    <message>
+        <source>Only the creator of the webinar can use masks</source>
+        <translation>Only the creator of the webinar can use masks</translation>
+    </message>
+    <message>
+        <source>Only the creator of the webinar can use a microphone</source>
+        <translation>Only the creator of the webinar can use a microphone</translation>
+    </message>
+    <message>
+        <source>Copy link</source>
+        <translation>Copy link</translation>
+    </message>
+    <message>
+        <source>Invite</source>
+        <translation>Invite</translation>
+    </message>
+    <message>
+        <source>Link copied</source>
+        <translation>Link copied</translation>
+    </message>
+    <message>
+        <source>Sound</source>
+        <translation>Sound</translation>
+    </message>
+    <message>
+        <source>Wait for connection</source>
+        <translation>Expect connection</translation>
     </message>
 </context>
 <context>

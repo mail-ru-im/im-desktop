@@ -58,7 +58,7 @@ namespace core
         {
             set_dlg_state_params params_;
 
-            virtual int32_t init_request(std::shared_ptr<core::http_request_simple> _request) override;
+            virtual int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
 
         public:
 
@@ -67,6 +67,8 @@ namespace core
                 set_dlg_state_params _dlg_params);
 
             virtual ~set_dlg_state();
+
+            virtual priority_t get_priority() const override;
         };
 
     }

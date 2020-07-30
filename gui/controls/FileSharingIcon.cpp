@@ -3,6 +3,7 @@
 #include "FileSharingIcon.h"
 #include "../utils/utils.h"
 #include "../utils/InterConnector.h"
+#include "../utils/StringComparator.h"
 #include "../fonts.h"
 
 using namespace FileSharing;
@@ -53,20 +54,20 @@ namespace
     {
         FileInfoArray fileinfo =
         {
-            std::pair(FileType::archive, FileTypeInfo(qsl(":/filesharing/archive"), QColor(qsl("#FFBB34")))),
-            std::pair(FileType::xls, FileTypeInfo(qsl(":/filesharing/excel"), QColor(qsl("#1B7346")))),
-            std::pair(FileType::html, FileTypeInfo(qsl(":/filesharing/html"), QColor(qsl("#8A6AB3")))),
-            std::pair(FileType::keynote, FileTypeInfo(qsl(":/filesharing/keynote"), QColor(qsl("#4691EA")))),
-            std::pair(FileType::numbers, FileTypeInfo(qsl(":/filesharing/numbers"), QColor(qsl("#23D129")))),
-            std::pair(FileType::pages, FileTypeInfo(qsl(":/filesharing/pages"), QColor(qsl("#F59A36")))),
-            std::pair(FileType::pdf, FileTypeInfo(qsl(":/filesharing/pdf"), QColor(qsl("#F96657")))),
-            std::pair(FileType::ppt, FileTypeInfo(qsl(":/filesharing/powerpoint"), QColor(qsl("#D34829")))),
-            std::pair(FileType::audio, FileTypeInfo(qsl(":/filesharing/sound"), QColor(qsl("#B684C3")))),
-            std::pair(FileType::txt, FileTypeInfo(qsl(":/filesharing/text"), QColor(qsl("#1E93F1")))),
-            std::pair(FileType::doc, FileTypeInfo(qsl(":/filesharing/word"), QColor(qsl("#23589B")))),
-            std::pair(FileType::apk, FileTypeInfo(qsl(":/filesharing/other"), QColor(qsl("#A8ADB8")))),
+            std::pair(FileType::archive, FileTypeInfo(qsl(":/filesharing/archive"), QColor(u"#FFBB34"))),
+            std::pair(FileType::xls, FileTypeInfo(qsl(":/filesharing/excel"), QColor(u"#1B7346"))),
+            std::pair(FileType::html, FileTypeInfo(qsl(":/filesharing/html"), QColor(u"#8A6AB3"))),
+            std::pair(FileType::keynote, FileTypeInfo(qsl(":/filesharing/keynote"), QColor(u"#4691EA"))),
+            std::pair(FileType::numbers, FileTypeInfo(qsl(":/filesharing/numbers"), QColor(u"#23D129"))),
+            std::pair(FileType::pages, FileTypeInfo(qsl(":/filesharing/pages"), QColor(u"#F59A36"))),
+            std::pair(FileType::pdf, FileTypeInfo(qsl(":/filesharing/pdf"), QColor(u"#F96657"))),
+            std::pair(FileType::ppt, FileTypeInfo(qsl(":/filesharing/powerpoint"), QColor(u"#D34829"))),
+            std::pair(FileType::audio, FileTypeInfo(qsl(":/filesharing/sound"), QColor(u"#B684C3"))),
+            std::pair(FileType::txt, FileTypeInfo(qsl(":/filesharing/text"), QColor(u"#1E93F1"))),
+            std::pair(FileType::doc, FileTypeInfo(qsl(":/filesharing/word"), QColor(u"#23589B"))),
+            std::pair(FileType::apk, FileTypeInfo(qsl(":/filesharing/other"), QColor(u"#A8ADB8"))),
 
-            std::pair(FileType::unknown, FileTypeInfo(qsl(":/filesharing/other"), QColor(qsl("#A8ADB8")))),
+            std::pair(FileType::unknown, FileTypeInfo(qsl(":/filesharing/other"), QColor(u"#A8ADB8"))),
         };
 
         if (!std::is_sorted(std::cbegin(fileinfo), std::cend(fileinfo), Utils::is_less_by_first<FileType, FileTypeInfo>))
@@ -89,7 +90,7 @@ namespace
         if (ext.isEmpty() || ext.length() > 7)
             return otherIcon.icon_;
 
-        static std::map<QString, std::optional<QPixmap>, StringComparator> extensions;
+        static std::map<QString, std::optional<QPixmap>, Utils::StringComparator> extensions;
         auto& pixmap = extensions[ext];
         if (pixmap)
             return *pixmap;

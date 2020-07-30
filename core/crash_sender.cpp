@@ -1,6 +1,6 @@
 #include "stdafx.h"
 
-#if defined _WIN32 || defined __linux__
+#if defined _WIN32 || defined __linux__ || BUILD_FOR_STORE
 
 #include "crash_sender.h"
 #include "utils.h"
@@ -20,31 +20,32 @@ namespace core
 
         bool report_sender::send(std::string_view _login, const proxy_settings& _proxy)
         {
-            core::http_request_simple post_request(_proxy, utils::get_user_agent());
+            core::http_request_simple post_request(_proxy, utils::get_user_agent(), default_priority());
             post_request.set_url(crash_system::reporter::submit_url(_login));
+            post_request.set_normalized_url("crash_submit");
             post_request.set_post_form(true);
             post_request.set_need_log(true);
             post_request.set_send_im_stats(false);
 
-            std::error_code ec;
-            auto it = std::filesystem::recursive_directory_iterator(utils::get_report_path(), ec);
-            auto end = std::filesystem::recursive_directory_iterator();
+            boost::system::error_code ec;
+            auto it = boost::filesystem::recursive_directory_iterator(boost::filesystem::path(utils::get_report_path()), ec);
+            auto end = boost::filesystem::recursive_directory_iterator();
             for (; it != end && !ec; it.increment(ec))
             {
-                if (it->status().type() != std::filesystem::file_type::regular)
+                if (it->status().type() != boost::filesystem::file_type::regular_file)
                     continue;
 
                 if (const auto& path = it->path(); path.extension().wstring() == L".dmp")
                 {
                     try
                     {
-                        std::error_code e;
-                        const auto size = std::filesystem::file_size(path, e);
+                        boost::system::error_code e;
+                        const auto size = boost::filesystem::file_size(path, e);
                         if (size < 10 * 1024 * 1024) // 10 mb
                             post_request.push_post_form_filedata(L"upload_file_minidump", path.wstring());
                         if (post_request.post() && post_request.get_response_code() == 200)
                         {
-                            std::filesystem::remove(path, e);
+                            boost::filesystem::remove(path, e);
                             continue;
                         }
                         return false;
@@ -62,10 +63,9 @@ namespace core
 
         void report_sender::insert_imstat_event()
         {
-            std::error_code e;
-            const auto last_modified = std::filesystem::last_write_time(utils::get_report_path(), e);
-            const auto diff = std::chrono::duration_cast<std::chrono::seconds>(std::filesystem::file_time_type::clock::now() - last_modified);
-            auto crash_interval = std::min<time_t>(core::stats::round_to_hours(diff.count()), max_crash_stat_interval);
+            boost::system::error_code e;
+            auto last_modified = boost::filesystem::last_write_time(utils::get_report_path(), e);
+            auto crash_interval = std::min<time_t>(core::stats::round_to_hours(std::time(nullptr) - last_modified), max_crash_stat_interval);
 
             core::stats::event_props_type props;
             props.emplace_back("time", std::to_string(crash_interval));

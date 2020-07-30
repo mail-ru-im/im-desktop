@@ -6,6 +6,9 @@
 #include "fonts.h"
 #include "controls/CustomButton.h"
 
+#include "app_config.h"
+#include "../common.shared/config/config.h"
+
 namespace
 {
     QString getTextLineEditQss();
@@ -174,7 +177,7 @@ namespace Styling
 
     QString ThemeParameters::getPhoneComboboxQss() const
     {
-        return  Styling::getParameters().getScrollBarQss() %
+        return  getScrollBarQss() %
             qsl("QTreeView { background: %1; color: %2;}").arg(
                 getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE),
                 getColorHex(Styling::StyleVariable::TEXT_SOLID));
@@ -185,20 +188,25 @@ namespace Styling
         return getColor(Styling::StyleVariable::PRIMARY, 0.2);
     }
 
+    QColor ThemeParameters::getAppTitlebarColor() const
+    {
+        auto var = platform::is_apple() ? Styling::StyleVariable::APP_PRIMARY : Styling::StyleVariable::BASE_BRIGHT_INVERSE;
+        if (config::get().is_external())
+            var = Styling::StyleVariable::SECONDARY_RAINBOW_BLUE;
+        else if (Ui::GetAppConfig().hasCustomDeviceId())
+            var = Styling::StyleVariable::SECONDARY_RAINBOW_WARM;
+
+        return getColor(var);
+    }
+
     bool ThemeParameters::isBorderNeeded() const noexcept
     {
-        if (wallpaper_)
-            return wallpaper_->isBorderNeeded();
-
-        return false;
+        return wallpaper_ && wallpaper_->isBorderNeeded();
     }
 
     QString ThemeParameters::getBackgroundCommonQss() const
     {
-        auto qss = getBackgroundQss();
-
-        qss.replace(qsl("%BACKGROUND%"), getColorHex(StyleVariable::BASE_GLOBALWHITE));
-        return qss;
+        return getBackgroundQss().replace(qsl("%BACKGROUND%"), getColorHex(StyleVariable::BASE_GLOBALWHITE));
     }
 
     QString ThemeParameters::getLineEditCommonQss(bool _isError, int _height) const
@@ -504,42 +512,19 @@ namespace Styling
     QString ThemeParameters::getContactUsQss() const
     {
         QString qss = qsl(
-            "QWidget{"
-            "border: none; "
-            "background-color: transparent;}"
-            "QWidget[normal=\"true\"]{"
-            "font-size: 18dip;"
-            "background-color: %1;"
-            "border-radius: 8dip;"
-            "border-color: %2;"
-            "border-width: 1dip;"
-            "border-style: solid;"
-            "padding-left: 12dip;"
-            "padding-right: 0dip;"
-            "padding-top: 10dip;"
-            "padding-bottom: 10dip;}"
-            "QWidget[normal=\"false\"]{"
-            "border-color: %3;}"
-            "QWidget:focus{"
-            "color: %5;"
-            "border-color: %4;}"
             "QWidget[fileWidget=\"true\"]{"
             "background-color: transparent;"
             "border-radius: 8dip;"
-            "border-color: %2;"
+            "border-color: %1;"
             "border-style: none;"
             "padding-left: 15dip;"
             "padding-right: 15dip;"
             "padding-top: 12dip;"
             "padding-bottom: 10dip;}"
             "QPushButton#successImage{"
+            "outline: none;"
             "border-image: url(:/placeholders/good_100);}"
-        ).arg(getColorHex(StyleVariable::BASE_BRIGHT_INVERSE),
-            getColorHex(StyleVariable::BASE_SECONDARY),
-            getColorHex(StyleVariable::SECONDARY_ATTENTION),
-            getColorHex(StyleVariable::PRIMARY),
-            getColorHex(StyleVariable::TEXT_SOLID)
-        );
+        ).arg(getColorHex(StyleVariable::BASE_SECONDARY));
 
         return qss;
     }
@@ -563,7 +548,7 @@ namespace Styling
             "border: 0px;}"
             "QComboBox QAbstractItemView {"
             "border: 2px solid %2;"
-            "background-color: transparent;"
+            "background-color: %1;"
             "color: %4;"
             "selection-background-color: %3;"
             "selection-color: %4;"
@@ -574,11 +559,11 @@ namespace Styling
             "outline: none;"
             "width: 12dip;"
             "height: 8dip; }")
-            .arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE),
-                Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_BRIGHT),
-                Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_BRIGHT_INVERSE),
-                Styling::getParameters().getColorHex(Styling::StyleVariable::TEXT_SOLID),
-                Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_PRIMARY)
+            .arg(getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE),
+                 getColorHex(Styling::StyleVariable::BASE_BRIGHT),
+                 getColorHex(Styling::StyleVariable::BASE_BRIGHT_INVERSE),
+                 getColorHex(Styling::StyleVariable::TEXT_SOLID),
+                 getColorHex(Styling::StyleVariable::BASE_PRIMARY)
             );
         return menuQss;
     }
@@ -614,6 +599,31 @@ namespace Styling
         return qss;
     }
 
+    QString ThemeParameters::getFlatMenuQss(const StyleVariable _borderColor) const
+    {
+        const QString qss = qsl(
+                "QMenu {"
+                "background-color: %1;"
+                "border: 2px solid %2;"
+                "}"
+                "QMenu::item { background: transparent;"
+                "height: 28dip;"
+                "padding-left: 20dip;"
+                "padding-right: 64dip;"
+                "padding-top: 4dip;"
+                "padding-bottom: 4dip;"
+                "color: %4;}"
+                "QMenu::item:selected { background: %3; }"
+            ).arg(
+                getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE),
+                getColorHex(_borderColor),
+                getColorHex(Styling::StyleVariable::BASE_BRIGHT_INVERSE),
+                getColorHex(Styling::StyleVariable::TEXT_SOLID)
+            );
+
+        return qss;
+    }
+    
     ThemeParameters getParameters(const QString& _aimId)
     {
         ThemeParameters params(getThemesContainer().getCurrentTheme(), _aimId.isEmpty() ? nullptr : getThemesContainer().getContactWallpaper(_aimId));

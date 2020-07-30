@@ -22,7 +22,7 @@ set_buddy_attribute::~set_buddy_attribute()
 {
 }
 
-int32_t set_buddy_attribute::init_request(std::shared_ptr<core::http_request_simple> _request)
+int32_t set_buddy_attribute::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     std::stringstream ss_url;
 

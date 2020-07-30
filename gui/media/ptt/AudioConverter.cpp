@@ -567,7 +567,7 @@ namespace
     QString getTemplate()
     {
         auto n = QTemporaryFile().fileTemplate();
-        while (n.endsWith(ql1c('X')))
+        while (n.endsWith(u'X'))
             n.chop(1);
         return n;
     }
@@ -579,7 +579,7 @@ namespace
 
         auto generateName = [&n](auto counter) -> QString
         {
-            return n % QString::number(counter) % ql1s(".aac");
+            return n % QString::number(counter) % u".aac";
         };
 
         QString tmpAacName = generateName(time);
@@ -728,11 +728,11 @@ namespace ptt
         {
             const auto realDuration = calculateDuration(wavData_.size() - getWavHeaderSize(), sampleRate_, channelsCount_, bitesPerSample_);
             const auto duration = std::max(std::chrono::duration_cast<std::chrono::seconds>(realDuration), std::chrono::seconds(1));
-            emit ready(res.fileName, duration, QPrivateSignal());
+            Q_EMIT ready(res.fileName, duration, QPrivateSignal());
         }
         else
         {
-            emit error(QPrivateSignal());
+            Q_EMIT error(QPrivateSignal());
         }
     }
 }

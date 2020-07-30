@@ -3,7 +3,7 @@
 
 #include "../../core_dispatcher.h"
 #include "../../main_window/contact_list/ContactListModel.h"
-#include "../../main_window/friendly/FriendlyContainer.h"
+#include "../../main_window/containers/FriendlyContainer.h"
 #include "../../main_window/history_control/HistoryControlPage.h"
 #include "../../utils/gui_coll_helper.h"
 #include "../../utils/utils.h"
@@ -23,7 +23,7 @@ namespace Logic
         : Timer_(new QTimer(this))
     {
         Timer_->setSingleShot(false);
-        Timer_->setInterval(CLEANUP_TIMEOUT.count());
+        Timer_->setInterval(CLEANUP_TIMEOUT);
         Timer_->start();
 
         connect(Ui::GetDispatcher(), &Ui::core_dispatcher::avatarLoaded, this, &AvatarStorage::avatarLoaded);
@@ -92,11 +92,11 @@ namespace Logic
         const auto result = AvatarsByAimIdAndSize_.emplace(key, std::make_shared<QPixmap>(std::move(scaledImage)));
         assert(result.second);
 
-        if (_aimId == ql1s("mail") || _aimId.isEmpty())
+        if (_aimId == u"mail" || _aimId.isEmpty())
             return result.first->second;
 
         auto requestedAvatarsIter = RequestedAvatars_.find(_aimId);
-        if (requestedAvatarsIter == RequestedAvatars_.end() || (avatarByAimId.width() < _sizePx && avatarByAimId.height() < _sizePx))
+        if ((requestedAvatarsIter == RequestedAvatars_.end() || (avatarByAimId.width() < _sizePx && avatarByAimId.height() < _sizePx)) && _aimId != Utils::getDefaultCallAvatarId())
         {
             Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
             collection.set_value_as_qstring("contact", _aimId);
@@ -137,7 +137,7 @@ namespace Logic
         LoadedAvatars_.removeAll(_aimId);
         LoadedAvatars_ << _aimId;
 
-        emit avatarChanged(_aimId);
+        Q_EMIT avatarChanged(_aimId);
     }
 
     const AvatarStorage::CacheMap &AvatarStorage::GetByAimIdAndSize() const
@@ -168,7 +168,7 @@ namespace Logic
         if (TimesCache_.find(_aimId) != TimesCache_.end())
         {
             auto iter = AvatarsByAimId_.find(_aimId);
-            if (iter != AvatarsByAimId_.end())
+            if (iter != AvatarsByAimId_.end() && _aimId != Utils::getDefaultCallAvatarId())
             {
                 Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
                 collection.set_value_as_qstring("contact", _aimId);
@@ -188,6 +188,9 @@ namespace Logic
 
     void AvatarStorage::ForceRequest(const QString& _aimId, const int _sizePx)
     {
+        if (_aimId == Utils::getDefaultCallAvatarId())
+            return;
+
         Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
         collection.set_value_as_qstring("contact", _aimId);
         collection.set_value_as_int("size", _sizePx);
@@ -242,7 +245,7 @@ namespace Logic
 
         if (_pixmap.isNull())
         {
-            if (!LoadedAvatarsFails_.contains(_aimId))
+            if (!LoadedAvatarsFails_.contains(_aimId) && _aimId != Utils::getDefaultCallAvatarId())
             {
                 LoadedAvatarsFails_ << _aimId;
                 Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
@@ -284,7 +287,7 @@ namespace Logic
 
         LoadedAvatars_ << _aimId;
 
-        emit avatarChanged(_aimId);
+        Q_EMIT avatarChanged(_aimId);
     }
 
     void AvatarStorage::UpdateDefaultAvatarIfNeed(const QString& _aimId)
@@ -295,7 +298,7 @@ namespace Logic
         if (AvatarsByAimId_.find(_aimId) != AvatarsByAimId_.end())
             AvatarsByAimId_.erase(_aimId);
         CleanupSecondaryCaches(_aimId);
-        emit avatarChanged(_aimId);
+        Q_EMIT avatarChanged(_aimId);
     }
 
     void AvatarStorage::cleanup()

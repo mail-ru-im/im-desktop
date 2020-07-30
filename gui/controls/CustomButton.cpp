@@ -12,11 +12,6 @@ namespace
     constexpr std::chrono::milliseconds tooltipShowDelay() noexcept { return 400ms; }
     constexpr std::chrono::milliseconds focusInAnimDuration() noexcept { return 50ms; }
 
-    int get_radius()
-    {
-        return Utils::scale_value(8);
-    }
-
     int getMargin()
     {
         return Utils::scale_value(8);
@@ -90,7 +85,7 @@ namespace Ui
         connect(this, &QAbstractButton::toggled, this, &CustomButton::setActive);
 
         tooltipTimer_.setSingleShot(true);
-        tooltipTimer_.setInterval(tooltipShowDelay().count());
+        tooltipTimer_.setInterval(tooltipShowDelay());
 
         connect(&tooltipTimer_, &QTimer::timeout, this, &CustomButton::onTooltipTimer);
     }
@@ -107,7 +102,8 @@ namespace Ui
                 p.setBrush(bgColor_);
                 auto pen = QPen(bgColor_, 0);
                 p.setPen(pen);
-                p.drawRoundedRect(bgRect_, get_radius(), get_radius());
+                const auto radius = bgRect_.height() / 2;
+                p.drawRoundedRect(bgRect_, radius, radius);
             }
             else
             {
@@ -187,7 +183,7 @@ namespace Ui
     void CustomButton::leaveEvent(QEvent* _e)
     {
         hovered_ = false;
-        emit changedHover(hovered_);
+        Q_EMIT changedHover(hovered_);
         enableTooltip_ = false;
         tooltipTimer_.stop();
         update();
@@ -201,7 +197,7 @@ namespace Ui
     void CustomButton::enterEvent(QEvent* _e)
     {
         hovered_ = true;
-        emit changedHover(hovered_);
+        Q_EMIT changedHover(hovered_);
         enableTooltip_ = true;
         update();
 
@@ -218,7 +214,7 @@ namespace Ui
     void CustomButton::mousePressEvent(QMouseEvent * _e)
     {
         pressed_ = true;
-        emit changedPress(pressed_);
+        Q_EMIT changedPress(pressed_);
         enableTooltip_ = false;
         hideToolTip();
         update();
@@ -232,13 +228,13 @@ namespace Ui
     void CustomButton::mouseReleaseEvent(QMouseEvent * _e)
     {
         pressed_ = false;
-        emit changedPress(pressed_);
+        Q_EMIT changedPress(pressed_);
         update();
 
         if (textColor_.isValid())
             setTextColor(textColorNormal_);
 
-        emit clickedWithButtons(_e->button());
+        Q_EMIT clickedWithButtons(_e->button());
 
         QAbstractButton::mouseReleaseEvent(_e);
     }
@@ -256,7 +252,7 @@ namespace Ui
         _event->ignore();
         if ((_event->key() == Qt::Key_Enter || _event->key() == Qt::Key_Return) && hasFocus())
         {
-            emit clicked();
+            Q_EMIT clicked();
             _event->accept();
         }
     }
@@ -355,7 +351,7 @@ namespace Ui
     QSize CustomButton::sizeHint() const
     {
         QFontMetrics fm(font());
-        int width = fm.width(text());
+        int width = fm.horizontalAdvance(text());
         int height = fm.height();
         return QSize(width, height);
     }
@@ -551,8 +547,8 @@ namespace Ui
         , forceHover_(false)
         , radius_(_radius == 0 ? getBubbleCornerRadius() : _radius)
     {
-        connect(this, &RoundButton::hoverChanged, this, Utils::QOverload<>::of(&RoundButton::update));
-        connect(this, &RoundButton::pressChanged, this, Utils::QOverload<>::of(&RoundButton::update));
+        connect(this, &RoundButton::hoverChanged, this, qOverload<>(&RoundButton::update));
+        connect(this, &RoundButton::pressChanged, this, qOverload<>(&RoundButton::update));
     }
 
     void RoundButton::setColors(const QColor& _bgNormal, const QColor& _bgHover, const QColor& _bgActive)

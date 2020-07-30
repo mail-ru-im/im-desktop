@@ -13,8 +13,8 @@ namespace core
     {
         class group_subscribe : public robusto_packet
         {
-            virtual int32_t init_request(std::shared_ptr<core::http_request_simple> _request) override;
-            virtual int32_t parse_results(const rapidjson::Value& _node_results) override;
+            int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
+            int32_t parse_results(const rapidjson::Value& _node_results) override;
 
             std::string stamp_;
             int32_t resubscribe_in_;

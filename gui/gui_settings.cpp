@@ -18,8 +18,8 @@ namespace
 namespace Ui
 {
     qt_gui_settings::qt_gui_settings()
-        :
-        shadowWidth_(0)
+        : shadowWidth_(0)
+        , isLoaded_(false)
     {
 
     }
@@ -30,7 +30,7 @@ namespace Ui
         set_value_simple_data(_name, arr.data(), arr.size() + 1);
     }
 
-    template<> QString qt_gui_settings::get_value<QString>(const QString& _name, const QString& _defaultValue) const
+    template<> QString qt_gui_settings::get_value<QString>(QStringView _name, const QString& _defaultValue) const
     {
         std::vector<char> data;
         if (!get_value_simple_data(_name, data))
@@ -64,7 +64,7 @@ namespace Ui
         set_value_simple_data(_name, arr.constData(), arr.size());
     }
 
-    template<> qt_gui_settings::VoipCallsCountMap qt_gui_settings::get_value<qt_gui_settings::VoipCallsCountMap>(const QString& _name, const qt_gui_settings::VoipCallsCountMap& _default) const
+    template<> qt_gui_settings::VoipCallsCountMap qt_gui_settings::get_value<qt_gui_settings::VoipCallsCountMap>(QStringView _name, const qt_gui_settings::VoipCallsCountMap& _default) const
     {
         qt_gui_settings::VoipCallsCountMap result;
 
@@ -95,7 +95,7 @@ namespace Ui
         return result;
     }
 
-    template<> std::map<int64_t, int64_t> Ui::qt_gui_settings::get_value<std::map<int64_t, int64_t>>(const QString &_name, const std::map<int64_t, int64_t>& _def) const
+    template<> std::map<int64_t, int64_t> Ui::qt_gui_settings::get_value<std::map<int64_t, int64_t>>(QStringView _name, const std::map<int64_t, int64_t>& _def) const
     {
         std::map<int64_t, int64_t> result;
 
@@ -150,7 +150,7 @@ namespace Ui
         set_value_simple(_name, _value);
     }
 
-    template <> int qt_gui_settings::get_value<int>(const QString& _name, const int& _defaultValue) const
+    template <> int qt_gui_settings::get_value<int>(QStringView _name, const int& _defaultValue) const
     {
         return get_value_simple(_name, _defaultValue);
     }
@@ -165,7 +165,7 @@ namespace Ui
         set_value_simple(_name, _value);
     }
 
-    template <> double qt_gui_settings::get_value<double>(const QString& _name, const double& _defaultValue) const
+    template <> double qt_gui_settings::get_value<double>(QStringView _name, const double& _defaultValue) const
     {
         return get_value_simple(_name, _defaultValue);
     }
@@ -180,7 +180,7 @@ namespace Ui
         set_value_simple(_name, _value);
     }
 
-    template <> bool qt_gui_settings::get_value<bool>(const QString& _name, const bool& _defaultValue) const
+    template <> bool qt_gui_settings::get_value<bool>(QStringView _name, const bool& _defaultValue) const
     {
         return get_value_simple(_name, _defaultValue);
     }
@@ -202,7 +202,7 @@ namespace Ui
         set_value_simple_data(_name, (const char*)&_value[0], (int)_value.size() * sizeof(int32_t));
     }
 
-    template<> std::vector<int32_t> qt_gui_settings::get_value<std::vector<int32_t>>(const QString& _name, const std::vector<int32_t>& _defaultValue) const
+    template<> std::vector<int32_t> qt_gui_settings::get_value<std::vector<int32_t>>(QStringView _name, const std::vector<int32_t>& _defaultValue) const
     {
         std::vector<char> data;
         if (!get_value_simple_data(_name, data))
@@ -251,7 +251,7 @@ namespace Ui
         set_value_simple_data(_name, (const char*) buffer, sizeof(buffer));
     }
 
-    template<> QRect qt_gui_settings::get_value<QRect>(const QString& _name, const QRect& _defaultValue) const
+    template<> QRect qt_gui_settings::get_value<QRect>(QStringView _name, const QRect& _defaultValue) const
     {
         std::vector<char> data;
         if (!get_value_simple_data(_name, data))
@@ -323,11 +323,15 @@ namespace Ui
             set_value_simple_data(QString::fromUtf8(coll_val.get_value_as_string("name")), (const char*) idata->read(len), len, false);
         }
 
-        emit received();
+        Q_EMIT received();
         setIsLoaded(true);
     }
 
-
+    void qt_gui_settings::clear()
+    {
+        values_.clear();
+        setIsLoaded(false);
+    }
 
     void qt_gui_settings::post_value_to_core(const QString& _name, const settings_value& _val) const
     {
@@ -398,7 +402,7 @@ namespace Ui
             if (!downloadPath.isEmpty() && !QFileInfo::exists(downloadPath))
             {
                 Ui::get_gui_settings()->set_value(settings_download_directory, QString());
-                emit Utils::InterConnector::instance().downloadPathUpdated();
+                Q_EMIT Utils::InterConnector::instance().downloadPathUpdated();
             }
         }
 

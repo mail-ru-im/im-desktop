@@ -3,7 +3,7 @@
 #include "core_dispatcher.h"
 #include "utils/gui_coll_helper.h"
 #include "utils/utils.h"
-#include "main_window/friendly/FriendlyContainer.h"
+#include "main_window/containers/FriendlyContainer.h"
 
 #include "ImageViewerWidget.h"
 
@@ -39,7 +39,7 @@ AvatarItem::AvatarItem(const QString &_aimId)
 
 QString AvatarItem::fileName() const
 {
-    return Logic::GetFriendlyContainer()->getFriendly(aimId_) % ql1s(".png");
+    return Logic::GetFriendlyContainer()->getFriendly(aimId_) % u".png";
 }
 
 void AvatarItem::showMedia(ImageViewerWidget *_viewer)
@@ -50,9 +50,9 @@ void AvatarItem::showMedia(ImageViewerWidget *_viewer)
 void AvatarItem::save(const QString &_path)
 {
     if (pixmap_.save(_path))
-        emit saved(_path);
+        Q_EMIT saved(_path);
     else
-        emit saveError();
+        Q_EMIT saveError();
 }
 
 void AvatarItem::copyToClipboard()
@@ -67,5 +67,5 @@ void AvatarItem::avatarLoaded(int64_t _seq, const QString &_aimId, QPixmap& _pix
 
     pixmap_ = _pixmap;
 
-    emit loaded();
+    Q_EMIT loaded();
 }

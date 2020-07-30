@@ -134,7 +134,7 @@ void avatar_loader::execute_task(std::shared_ptr<avatar_task> _task, std::functi
 
             ptr_this->local_thread_->run_async_function([avatar_data, _task]()->int32_t
             {
-                uint32_t size = avatar_data->available();
+                auto size = avatar_data->available();
                 assert(size);
                 if (size == 0)
                     return wpie_error_empty_avatar_data;

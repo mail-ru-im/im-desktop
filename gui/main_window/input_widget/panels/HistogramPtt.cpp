@@ -68,9 +68,7 @@ namespace Ui
         playButton_ = new PlayButton(this);
 
         auto circleHover = std::make_unique<CircleHover>();
-        auto c = Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY);
-        c.setAlphaF(0.28);
-        circleHover->setColor(c);
+        circleHover->setColor(Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY, 0.28));
         playButton_->setCircleHover(std::move(circleHover));
         setStoppedButton();
 
@@ -93,12 +91,12 @@ namespace Ui
         rootLayout->addWidget(histograms_);
 
         durationText_ = TextRendering::MakeTextUnit(makeTextDuration(std::chrono::seconds::zero()));
-        durationText_->init(Fonts::appFontScaled(16, Fonts::FontWeight::Normal), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT));
+        durationText_->init(Fonts::appFontScaled(16, Fonts::FontWeight::Normal), Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE));
         durationText_->evaluateDesiredSize();
         rootLayout->setContentsMargins(buttonHorMargin, 0, durationText_->desiredWidth() + Utils::scale_value(16) + getHorSpacer(), 0);
 
         tooltipTimer_.setSingleShot(true);
-        tooltipTimer_.setInterval(tooltipShowDelay().count());
+        tooltipTimer_.setInterval(tooltipShowDelay());
 
         connect(&tooltipTimer_, &QTimer::timeout, this, [this]()
             {
@@ -220,7 +218,7 @@ namespace Ui
                 hideToolTip();
             }
 
-            emit underMouseChanged(underMouse_, QPrivateSignal());
+            Q_EMIT underMouseChanged(underMouse_, QPrivateSignal());
             update();
         }
     }
@@ -268,10 +266,10 @@ namespace Ui
         auto getTextColor = [](auto active, auto hasSignal)
         {
             if (active)
-                return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT);
+                return Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE);
             if (hasSignal)
                 return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY);
-            return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT);
+            return Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE);
         };
 
         const auto color = getColor(active, hasSignal, pressed_, underMouse_);
@@ -319,7 +317,7 @@ namespace Ui
     void HistogramPtt::onClicked()
     {
         if (const auto sample = histograms_->playerHistogram()->sampleUnderCursor(); sample)
-            emit clickOnSample((*sample).idx, (*sample).coeff, QPrivateSignal());
+            Q_EMIT clickOnSample((*sample).idx, (*sample).coeff, QPrivateSignal());
     }
 
     void HistogramPtt::showToolTip()
@@ -361,13 +359,13 @@ namespace Ui
         switch (playButton_->getState())
         {
         case PlayButton::State::Pause:
-            emit pauseButtonClicked(QPrivateSignal());
+            Q_EMIT pauseButtonClicked(QPrivateSignal());
             break;
         case PlayButton::State::Play:
-            emit playButtonClicked(QPrivateSignal());
+            Q_EMIT playButtonClicked(QPrivateSignal());
             break;
         case PlayButton::State::Stop:
-            emit stopButtonClicked(QPrivateSignal());
+            Q_EMIT stopButtonClicked(QPrivateSignal());
             break;
         default:
             Q_UNREACHABLE();

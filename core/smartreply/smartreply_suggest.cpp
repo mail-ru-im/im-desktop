@@ -87,21 +87,20 @@ namespace core
             data_node.Reserve(1, _a);
             data_node.PushBack(tools::make_string_ref(data_), _a);
 
-            switch (type_)
-            {
-            case core::smartreply::type::sticker:
-            case core::smartreply::type::sticker_by_text:
-                _node.AddMember("stickers", std::move(data_node), _a);
-                break;
+            if (const auto node_name = array_node_name_for(type_); !node_name.empty())
+                _node.AddMember(core::tools::make_string_ref(node_name), std::move(data_node), _a);
+        }
 
-            case core::smartreply::type::text:
-                _node.AddMember("text", std::move(data_node), _a);
-                break;
+        bool suggest::unserialize(const coll_helper& _coll)
+        {
+            if (!_coll.is_value_exist("type"))
+                return false;
 
-            default:
-                assert(!"invalid smartreply type or unimplemented");
-                break;
-            }
+            type_ = (core::smartreply::type)_coll.get_value_as_int("type");
+            msg_id_ = _coll.get_value_as_int64("msgId");
+            aimid_ = _coll.get_value_as_string("contact");
+            data_ = _coll.get_value_as_string("data");
+            return true;
         }
 
         std::vector<suggest> unserialize_suggests_node(const rapidjson::Value& _node)
@@ -124,24 +123,16 @@ namespace core
                         msgid = std::stoll(s);
                 }
 
-                switch (type)
-                {
-                case smartreply::type::sticker:
-                    assert(msgid != -1);
-                    [[fallthrough]];
-                case smartreply::type::sticker_by_text:
-                    return parse_node(type, aimid, msgid, _node, "stickers");
-
-                case smartreply::type::text:
-                    assert(msgid != -1);
-                    return parse_node(type, aimid, msgid, _node, "text");
-
-                default:
-                    break;
-                }
+                if (const auto node_name = array_node_name_for(type); !node_name.empty())
+                    return parse_node(type, aimid, msgid, _node, node_name);
             }
 
             return {};
+        }
+
+        std::vector<suggest> unserialize_suggests_node(const rapidjson::Value& _node, smartreply::type _type, const std::string& _aimid, int64_t _msgid)
+        {
+            return parse_node(_type, _aimid, _msgid, _node, smartreply::type_2_string(_type));
         }
 
         void serialize_smartreply_suggests(const std::vector<smartreply::suggest>& _suggests, coll_helper& _coll)

@@ -23,10 +23,10 @@ namespace Ui
         pages_ = new QStackedWidget(this);
         pages_->setStyleSheet(qsl("background: transparent; border: none; color: %1").arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_PRIMARY)));
 
-        Testing::setAccessibleName(pages_, qsl("AS tab pages_"));
+        Testing::setAccessibleName(pages_, qsl("AS Tab page"));
         layout->addWidget(pages_);
 
-        Testing::setAccessibleName(tabbar_, qsl("AS tab tabbar_"));
+        Testing::setAccessibleName(tabbar_, qsl("AS Tab bar"));
         layout->addWidget(tabbar_);
 
         QObject::connect(tabbar_, &TabBar::clicked, this, &TabWidget::onTabClicked);
@@ -44,16 +44,18 @@ namespace Ui
         tabbar_->show();
     }
 
-    int TabWidget::addTab(QWidget* _widget, const QString& _name, const QString& _icon, const QString& _iconActive)
+    std::pair<int, QWidget*> TabWidget::addTab(QWidget* _widget, const QString& _name, const QString& _icon, const QString& _iconActive)
     {
+        QWidget* icon = nullptr;
         int index = pages_->indexOf(_widget);
         if (index == -1)
         {
             index = pages_->addWidget(_widget);
             auto tab = new TabItem(_icon, _iconActive, this);
-            Testing::setAccessibleName(tab, ql1s("AS tab ") % _widget->accessibleName());
+            Testing::setAccessibleName(tab, u"AS Tab " % _widget->accessibleName());
             tab->setName(_name);
             tabbar_->addItem(tab);
+            icon = tab;
             if (index == 0)
             {
                 pages_->setCurrentIndex(index);
@@ -64,7 +66,8 @@ namespace Ui
         {
             qWarning("TabWidget: widget is already in tabWidget");
         }
-        return index;
+
+        return std::make_pair(index, icon);
     }
 
     void TabWidget::setCurrentIndex(int _index)
@@ -75,7 +78,7 @@ namespace Ui
             tabbar_->setCurrentIndex(_index);
             pages_->setCurrentIndex(_index);
             setUpdatesEnabled(true);
-            emit currentChanged(_index, QPrivateSignal());
+            Q_EMIT currentChanged(_index, QPrivateSignal());
         }
     }
 
@@ -107,7 +110,7 @@ namespace Ui
 
     void TabWidget::onTabClicked(int _index)
     {
-        emit tabBarClicked(_index, QPrivateSignal());
+        Q_EMIT tabBarClicked(_index, QPrivateSignal());
         if (tabbar_->getCurrentIndex() != _index)
             setCurrentIndex(_index);
     }

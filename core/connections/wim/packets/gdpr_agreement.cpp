@@ -22,7 +22,7 @@ gdpr_agreement::gdpr_agreement(wim_packet_params _params, const accept_agreement
 {
 }
 
-int32_t gdpr_agreement::init_request(std::shared_ptr<core::http_request_simple> _request)
+int32_t gdpr_agreement::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     std::string host = get_gdpr_agreement_host();
 
@@ -31,8 +31,7 @@ int32_t gdpr_agreement::init_request(std::shared_ptr<core::http_request_simple> 
     std::map<std::string, std::string> params;
     params["a"] = escape_symbols(params_.a_token_);
     params["k"] = params_.dev_id_;
-    params["ts"] = std::to_string((int64_t) ts);
-    params["sig_sha256"] = escape_symbols(get_url_sign(host, params, params_, true));
+    params["ts"] = std::to_string((int64_t)ts);
 
     std::stringstream ss_url;
     ss_url << host << '?' << format_get_params(params);
@@ -61,7 +60,6 @@ int32_t gdpr_agreement::init_request(std::shared_ptr<core::http_request_simple> 
 
     _request->set_url(ss_url.str());
     _request->set_normalized_url("agreementSave");
-    _request->set_priority(high_priority());
 
     if (!params_.full_log_)
     {
@@ -89,7 +87,7 @@ void gdpr_agreement::parse_response_data_on_error(const rapidjson::Value &_data)
     UNUSED_ARG(_data);
 }
 
-int32_t gdpr_agreement::execute_request(std::shared_ptr<core::http_request_simple> request)
+int32_t gdpr_agreement::execute_request(const std::shared_ptr<core::http_request_simple>& request)
 {
     if (!request->post())
         return wpie_network_error;
@@ -104,4 +102,9 @@ int32_t gdpr_agreement::execute_request(std::shared_ptr<core::http_request_simpl
 int32_t gdpr_agreement::on_empty_data()
 {
     return 0;
+}
+
+priority_t gdpr_agreement::get_priority() const
+{
+    return packets_priority_high();
 }

@@ -12,10 +12,6 @@ namespace core
         class tlvpack;
     }
 
-    const static auto save_events_to_file_interval = std::chrono::seconds(10);
-    const static auto delay_send_events_on_start = std::chrono::seconds(10);
-
-
     namespace stats
     {
         enum class im_stat_event_names;
@@ -70,7 +66,7 @@ namespace core
 
             static std::shared_ptr<stop_objects> stop_objects_;
             static int32_t send(const proxy_settings& _user_proxy,
-                                const std::string& _post_data,
+                                std::string_view _post_data,
                                 const std::wstring& _file_name);
 
             std::wstring file_name_;

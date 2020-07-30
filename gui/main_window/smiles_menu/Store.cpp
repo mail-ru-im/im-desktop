@@ -24,149 +24,164 @@
 using namespace Ui;
 using namespace Stickers;
 
-int getMarginLeft()
+namespace
 {
-    return Utils::scale_value(20);
-}
 
-int getMarginRight()
-{
-    return Utils::scale_value(20);
-}
+    int getMarginLeft()
+    {
+        return Utils::scale_value(20);
+    }
 
-int getHeaderHeight()
-{
-    return Utils::scale_value(52);
-}
+    int getMarginRight()
+    {
+        return Utils::scale_value(20);
+    }
 
-int getPackIconSize()
-{
-    return Utils::scale_value(92);
-}
+    int getHeaderHeight()
+    {
+        return Utils::scale_value(52);
+    }
 
-int getIconMarginV()
-{
-    return Utils::scale_value(4);
-}
+    int getPackIconSize()
+    {
+        return Utils::scale_value(92);
+    }
 
-int getIconMarginH()
-{
-    return Utils::scale_value(8);
-}
+    int getIconMarginV()
+    {
+        return Utils::scale_value(4);
+    }
 
-int getPackNameHeight()
-{
-    return Utils::scale_value(40);
-}
+    int getIconMarginH()
+    {
+        return Utils::scale_value(8);
+    }
 
-int getPackNameMargin()
-{
-    return Utils::scale_value(4);
-}
+    int getPackNameHeight()
+    {
+        return Utils::scale_value(40);
+    }
 
-int getPackDescHeight()
-{
-    return Utils::scale_value(20);
-}
+    int getPackNameMargin()
+    {
+        return Utils::scale_value(4);
+    }
 
-int getPacksViewHeight()
-{
-    return (getPackIconSize() + getIconMarginV() + getPackNameHeight() + getPackNameMargin() + getPackDescHeight());
-}
+    int getPackDescHeight()
+    {
+        return Utils::scale_value(20);
+    }
 
-int getHScrollbarHeight()
-{
-    return Utils::scale_value(16);
-}
+    int getPacksViewHeight()
+    {
+        return (getPackIconSize() + getIconMarginV() + getPackNameHeight() + getPackNameMargin() + getPackDescHeight());
+    }
 
-int getMyStickerMarginBottom()
-{
-    return Utils::scale_value(12);
-}
+    int getHScrollbarHeight()
+    {
+        return Utils::scale_value(16);
+    }
 
-int getMyStickerHeight()
-{
-    return getMyStickerMarginBottom() + Utils::scale_value(52);
-}
+    int getMyStickerMarginBottom()
+    {
+        return Utils::scale_value(12);
+    }
 
-int getMyPackIconSize()
-{
-    return Utils::scale_value(52);
-}
+    int getMyStickerHeight()
+    {
+        return getMyStickerMarginBottom() + Utils::scale_value(52);
+    }
 
-int getMyPackTextLeftMargin()
-{
-    return Utils::scale_value(16);
-}
+    int getMyPackIconSize()
+    {
+        return Utils::scale_value(52);
+    }
 
-int getMyPackTextTopMargin()
-{
-    return Utils::scale_value(8);
-}
+    int getMyPackTextLeftMargin()
+    {
+        return Utils::scale_value(16);
+    }
 
-int getMyPackDescTopMargin()
-{
-    return Utils::scale_value(32);
-}
+    int getMyPackTextTopMargin()
+    {
+        return Utils::scale_value(8);
+    }
 
-int getMyPackIconTopMargin()
-{
-    return Utils::scale_value(4);
-}
+    int getMyPackDescTopMargin()
+    {
+        return Utils::scale_value(32);
+    }
 
-int getDelButtonHeight()
-{
-    return Utils::scale_value(36);
-}
+    int getMyPackIconTopMargin()
+    {
+        return Utils::scale_value(4);
+    }
 
-QSize getAddButtonSize()
-{
-    return { 20, 20 };
-}
+    int getDelButtonHeight()
+    {
+        return Utils::scale_value(36);
+    }
 
-int getAddButtonHeight()
-{
-    return Utils::scale_value(36);
-}
+    QSize getAddButtonSize()
+    {
+        return { 20, 20 };
+    }
 
-int getDragButtonHeight()
-{
-    return Utils::scale_value(36);
-}
+    int getAddButtonHeight()
+    {
+        return Utils::scale_value(36);
+    }
 
-int getPackIconPlaceholderRadius()
-{
-    return Utils::scale_value(5);
-}
+    int getDragButtonHeight()
+    {
+        return Utils::scale_value(36);
+    }
 
-QColor getHoverColor()
-{
-    return Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT_INVERSE);
-}
+    int getPackIconPlaceholderRadius()
+    {
+        return Utils::scale_value(5);
+    }
 
-QString getEmptyMyStickersText()
-{
-    return QT_TRANSLATE_NOOP("stickers", "You have not added stickers yet");
-}
+    QColor getHoverColor()
+    {
+        return Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT_INVERSE);
+    }
 
-QString getNoSearchResultsText()
-{
-    return QT_TRANSLATE_NOOP("stickers", "Nothing found");
-}
+    QString getEmptyMyStickersText()
+    {
+        return QT_TRANSLATE_NOOP("stickers", "You have not added stickers yet");
+    }
 
-int getMyHeaderHeight()
-{
-    return Utils::scale_value(44);
-}
+    QString getNoSearchResultsText()
+    {
+        return QT_TRANSLATE_NOOP("stickers", "Nothing found");
+    }
 
-int getSearchPacksOffset()
-{
-    return Utils::scale_value(12);
-}
+    int getMyHeaderHeight()
+    {
+        return Utils::scale_value(44);
+    }
 
-int getHoverMargin()
-{
-    return Utils::scale_value(2);
+    int getSearchPacksOffset()
+    {
+        return Utils::scale_value(12);
+    }
+
+    int getHoverMargin()
+    {
+        return Utils::scale_value(2);
+    }
+
+    QPixmap scaleIcon(const QPixmap& _icon, const int _toSize)
+    {
+        if (_icon.isNull())
+            return QPixmap();
+
+        auto p = _icon.scaled(Utils::scale_bitmap(QSize(_toSize, _toSize)), Qt::KeepAspectRatio, Qt::SmoothTransformation);
+        Utils::check_pixel_ratio(p);
+
+        return p;
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -192,6 +207,8 @@ QRect TopPacksView::getStickerRect(const int _pos)
 void TopPacksView::paintEvent(QPaintEvent* _e)
 {
     QPainter p(this);
+    p.setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
+    p.setPen(Qt::PenStyle::NoPen);
 
     static auto hoveredBrush = QBrush(getHoverColor());
     static auto nameFont(Fonts::appFontScaled(15, Fonts::FontWeight::SemiBold));
@@ -200,7 +217,8 @@ void TopPacksView::paintEvent(QPaintEvent* _e)
     static auto descFont(Fonts::appFontScaled(12, Fonts::FontWeight::Normal));
     static auto descTextColor = Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY);
 
-    for (unsigned int i = 0; i < packs_.size(); ++i)
+    int i = 0;
+    for (auto& pack : packs_)
     {
         const QRect stickerRect = getStickerRect(i);
 
@@ -208,48 +226,32 @@ void TopPacksView::paintEvent(QPaintEvent* _e)
         {
             const QRect imageRect(stickerRect.left(), stickerRect.top(), getPackIconSize(), getPackIconSize());
 
-            if ((int)i == hoveredPack_)
+            if (!pack.iconRequested_)
+            {
+                if (const auto stickersSet = Stickers::getStoreSet(pack.id_))
+                {
+                    pack.icon_ = scaleIcon(stickersSet->getBigIcon(), getPackIconSize());
+                    pack.iconRequested_ = true;
+                }
+            }
+
+            const auto hasIcon = !pack.icon_.isNull();
+            if (i == hoveredPack_ || !hasIcon)
             {
                 Utils::PainterSaver ps(p);
-
                 p.setBrush(hoveredBrush);
-                p.setPen(Qt::PenStyle::NoPen);
-                p.setRenderHint(QPainter::Antialiasing);
 
                 const qreal radius = qreal(Utils::scale_value(8));
-
                 p.drawRoundedRect(imageRect, radius, radius);
             }
 
-            if (!packs_[i].iconRequested_)
-            {
-                const auto stickersSet = Stickers::getStoreSet(packs_[i].id_);
-                packs_[i].icon_ = stickersSet->getBigIcon();
-                packs_[i].iconRequested_ = true;
-            }
+            if (hasIcon)
+                p.drawPixmap(imageRect, pack.icon_);
 
-            if (!packs_[i].icon_.isNull())
-            {
-                p.drawPixmap(imageRect, packs_[i].icon_);
-            }
-            else
-            {
-                Utils::PainterSaver ps(p);
-
-                p.setBrush(hoveredBrush);
-                p.setPen(Qt::PenStyle::NoPen);
-                p.setRenderHint(QPainter::Antialiasing);
-
-                const qreal radius = qreal(Utils::scale_value(8));
-
-                p.drawRoundedRect(imageRect, radius, radius);
-            }
-
-            auto & nameUnit = nameUnits_[packs_[i].id_];
-
+            auto& nameUnit = nameUnits_[pack.id_];
             if (!nameUnit)
             {
-                nameUnit = TextRendering::MakeTextUnit(packs_[i].name_, {}, TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
+                nameUnit = TextRendering::MakeTextUnit(pack.name_, {}, TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
                 nameUnit->init(nameFont, nameTextColor, QColor(), QColor(), QColor(), TextRendering::HorAligment::CENTER, 2, TextRendering::LineBreakType::PREFER_SPACES);
                 nameUnit->getHeight(stickerRect.width());
             }
@@ -257,57 +259,34 @@ void TopPacksView::paintEvent(QPaintEvent* _e)
             nameUnit->setOffsets(stickerRect.x(), stickerRect.height() - getPackNameHeight() - getPackNameMargin() - getPackDescHeight());
             nameUnit->draw(p);
 
-            auto & descUnit = descUnits_[packs_[i].id_];
-
-            if (!descUnit)
+            if (!pack.subtitle_.isEmpty())
             {
-                descUnit = TextRendering::MakeTextUnit(packs_[i].subtitle_, {}, TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
-                descUnit->init(descFont, descTextColor, QColor(), QColor(), QColor(), TextRendering::HorAligment::CENTER, 1);
-                descUnit->getHeight(stickerRect.width());
+                auto& descUnit = descUnits_[pack.id_];
+                if (!descUnit)
+                {
+                    descUnit = TextRendering::MakeTextUnit(pack.subtitle_, {}, TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
+                    descUnit->init(descFont, descTextColor, QColor(), QColor(), QColor(), TextRendering::HorAligment::CENTER, 1);
+                    descUnit->getHeight(stickerRect.width());
+                }
+
+                descUnit->setOffsets(stickerRect.x(), stickerRect.height() - getPackDescHeight() - getPackNameHeight() + nameUnit->cachedSize().height());
+                descUnit->draw(p);
             }
-
-            descUnit->setOffsets(stickerRect.x(), stickerRect.height() - getPackDescHeight() - getPackNameHeight() + nameUnit->cachedSize().height());
-            descUnit->draw(p);
         }
+
+        ++i;
     }
-
-    QWidget::paintEvent(_e);
-}
-
-QPixmap scaleIcon(const QPixmap& _icon, const int _toSize)
-{
-    if (_icon.isNull())
-        return QPixmap();
-
-    int coeff = Utils::is_mac_retina() ? 2 : 1;
-
-    QSize szNeed(_toSize * coeff, _toSize * coeff);
-
-    QPixmap p = _icon.scaled(szNeed, Qt::KeepAspectRatio, Qt::SmoothTransformation);
-
-    Utils::check_pixel_ratio(p);
-
-    return p;
 }
 
 void TopPacksView::onSetIcon(const int32_t _setId)
 {
-    for (unsigned int i = 0; i < packs_.size(); ++i)
+    const auto it = std::find_if(packs_.begin(), packs_.end(), [_setId](const auto& pack) { return pack.id_ == _setId; });
+    if (it != packs_.end())
     {
-        if (packs_[i].id_ == _setId)
-        {
-            auto pack = Stickers::getStoreSet(_setId);
-            if (pack)
-            {
-                packs_[i].icon_ = scaleIcon(pack->getBigIcon(), getPackIconSize());
-            }
+        if (auto pack = Stickers::getStoreSet(_setId))
+            it->icon_ = scaleIcon(pack->getBigIcon(), getPackIconSize());
 
-            const QRect stickerRect = getStickerRect(i);
-
-            update(stickerRect);
-
-            break;
-        }
+        update(getStickerRect(std::distance(packs_.begin(), it)));
     }
 }
 
@@ -708,35 +687,33 @@ void drawButton(QPainter& _p, const QPixmap& _image, const QRect& _buttonRect)
 
 void PacksView::drawStickerPack(QPainter& _p, const QRect& _stickerRect, PackInfo& _pack, bool _hovered, bool _selected)
 {
-    bool highlight = _hovered || _selected;
-    if (highlight)
-    {
-        Utils::PainterSaver ps(_p);
-        _p.setBrush(Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT_INVERSE));
-        _p.setPen(Qt::transparent);
-        _p.drawRect(_stickerRect);
-    }
-
-    const QRect iconRect(_stickerRect.left() + getMarginLeft(), _stickerRect.top() + getMyPackIconTopMargin(), getMyPackIconSize(), getMyPackIconSize());
-
     if (!_pack.iconRequested_)
     {
-        const auto stickersSet = Stickers::getStoreSet(_pack.id_);
-        _pack.icon_ = stickersSet->getBigIcon();
-        _pack.iconRequested_ = true;
+        if (const auto stickersSet = Stickers::getStoreSet(_pack.id_))
+        {
+            _pack.icon_ = scaleIcon(stickersSet->getBigIcon(), getMyPackIconSize());
+            _pack.iconRequested_ = true;
+        }
     }
 
+    const bool highlight = _hovered || _selected;
+    if (highlight)
+        _p.fillRect(_stickerRect, Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT_INVERSE));
+
+    const QRect iconRect(_stickerRect.left() + getMarginLeft(), _stickerRect.top() + getMyPackIconTopMargin(), getMyPackIconSize(), getMyPackIconSize());
     if (!_pack.icon_.isNull())
     {
         _p.drawPixmap(iconRect, _pack.icon_);
     }
     else
     {
+        const auto radius = qreal(Utils::scale_value(8));
+        const auto var = highlight ? Styling::StyleVariable::BASE_GLOBALWHITE : Styling::StyleVariable::BASE_BRIGHT_INVERSE;
+
         Utils::PainterSaver ps(_p);
-        auto fillColor = Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT_INVERSE);
-        _p.setBrush(fillColor);
-        _p.setPen(Qt::transparent);
-        _p.drawRoundedRect(iconRect, getPackIconPlaceholderRadius(), getPackIconPlaceholderRadius());
+        _p.setBrush(Styling::getParameters().getColor(var));
+        _p.setPen(Qt::NoPen);
+        _p.drawRoundedRect(iconRect, radius, radius);
     }
 
     static auto nameFont = getNameFont();
@@ -787,6 +764,8 @@ void PacksView::drawStickerPack(QPainter& _p, const QRect& _stickerRect, PackInf
 void PacksView::paintEvent(QPaintEvent* _e)
 {
     QPainter p(this);
+    p.setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
+    p.setPen(Qt::NoPen);
 
     int dragPackPos = -1;
 
@@ -826,9 +805,6 @@ void PacksView::paintEvent(QPaintEvent* _e)
 
         p.setOpacity(1.0);
     }
-
-
-    QWidget::paintEvent(_e);
 }
 
 void PacksView::mousePressEvent(QMouseEvent* _e)
@@ -900,7 +876,7 @@ void PacksView::mouseReleaseEvent(QMouseEvent* _e)
 
         postStickersOrder();
 
-        emit stopScroll();
+        Q_EMIT stopScroll();
 
         update();
 
@@ -981,15 +957,15 @@ void PacksView::mouseMoveEvent(QMouseEvent* _e)
 
         if (_e->pos().y() > viewportRect.bottom())
         {
-            emit startScrollDown();
+            Q_EMIT startScrollDown();
         }
         else if (_e->pos().y() < viewportRect.top())
         {
-            emit startScrollUp();
+            Q_EMIT startScrollUp();
         }
         else
         {
-            emit stopScroll();
+            Q_EMIT stopScroll();
         }
 
         const int dragPackPos = getDragPackNum();
@@ -1080,12 +1056,10 @@ void PacksView::postStickersOrder() const
 
     values_array->reserve(packs_.size());
 
-    for (int i = 0; i < int(packs_.size()); ++i)
+    for (const auto& pack : packs_)
     {
         core::ifptr<core::ivalue> ival(collection->create_value(), true);
-
-        ival->set_as_int(packs_[i].id_);
-
+        ival->set_as_int(pack.id_);
         values_array->push_back(ival.get());
     }
 
@@ -1096,22 +1070,13 @@ void PacksView::postStickersOrder() const
 
 void PacksView::onSetIcon(const int32_t _setId)
 {
-    for (unsigned int i = 0; i < packs_.size(); ++i)
+    const auto it = std::find_if(packs_.begin(), packs_.end(), [_setId](const auto& pack) { return pack.id_ == _setId; });
+    if (it != packs_.end())
     {
-        if (packs_[i].id_ == _setId)
-        {
-            auto pack = Stickers::getStoreSet(_setId);
-            if (pack)
-            {
-                packs_[i].icon_ = scaleIcon(pack->getBigIcon(), Utils::scale_value(52));
-            }
+        if (auto pack = Stickers::getStoreSet(_setId))
+            it->icon_ = scaleIcon(pack->getBigIcon(), getMyPackIconSize());
 
-            const QRect stickerRect = getStickerRect(i);
-
-            update(stickerRect);
-
-            break;
-        }
+        update(getStickerRect(std::distance(packs_.begin(), it)));
     }
 }
 
@@ -1137,7 +1102,7 @@ MyPacksHeader::MyPacksHeader(QWidget* _parent)
     myText_->evaluateDesiredSize();
 
     buttonAdd_ = new ClickableWidget(this);
-    connect(buttonAdd_, &ClickableWidget::clicked, this, [this]() { emit addClicked(QPrivateSignal()); });
+    connect(buttonAdd_, &ClickableWidget::clicked, this, [this]() { Q_EMIT addClicked(QPrivateSignal()); });
 }
 
 void MyPacksHeader::paintEvent(QPaintEvent* _e)
@@ -1173,7 +1138,6 @@ void MyPacksHeader::resizeEvent(QResizeEvent* _e)
 MyPacksWidget::MyPacksWidget(QWidget* _parent)
     : QWidget(_parent)
     , syncedWithServer_(false)
-    , ref_(new bool(false))
 {
     auto rootLayout = Utils::emptyVLayout(this);
     rootLayout->setAlignment(Qt::AlignTop);
@@ -1244,7 +1208,7 @@ void MyPacksWidget::onScrollUp()
 
     scrollAnimationUp_.start([this]()
     {
-        emit scrollStep(Utils::scale_value(-12));
+        Q_EMIT scrollStep(Utils::scale_value(-12));
 
     }, 0.0, 1.0, 200, anim::linear, 1);
 }
@@ -1258,7 +1222,7 @@ void MyPacksWidget::onScrollDown()
 
     scrollAnimationDown_.start([this]()
     {
-        emit scrollStep(Utils::scale_value(12));
+        Q_EMIT scrollStep(Utils::scale_value(12));
 
     }, 0.0, 1.0, 200, anim::linear, 1);
 }
@@ -1301,8 +1265,6 @@ void MyPacksWidget::paintEvent(QPaintEvent* _e)
 
 void MyPacksWidget::createPackButtonClicked()
 {
-    std::weak_ptr<bool> wr_ref = ref_;
-
     const auto bot = Utils::getStickerBotAimId();
 
     if (Logic::getContactListModel()->contains(bot))
@@ -1311,10 +1273,9 @@ void MyPacksWidget::createPackButtonClicked()
     }
     else
     {
-        Logic::getContactListModel()->addContactToCL(bot, [wr_ref, bot](bool _res)
+        Logic::getContactListModel()->addContactToCL(bot, [weak_this = QPointer(this), bot](bool _res)
         {
-            auto ref = wr_ref.lock();
-            if (!ref)
+            if (!weak_this)
                 return;
 
             Logic::getContactListModel()->setCurrent(bot, -1, true);
@@ -1380,7 +1341,7 @@ Store::Store(QWidget* _parent)
     Utils::grabTouchWidget(searchPacks_);
     searchPacks_->hide();
 
-    QObject::connect(Ui::GetDispatcher(), &core_dispatcher::onSetBigIcon, this, &Store::onSetBigIcon);
+    QObject::connect(Ui::GetDispatcher(), &core_dispatcher::setBigIconChanged, this, &Store::onSetBigIcon);
     QObject::connect(Ui::GetDispatcher(), &core_dispatcher::onStore, this, &Store::onStore);
     QObject::connect(Ui::GetDispatcher(), &core_dispatcher::onStoreSearch, this, &Store::onSearchStore);
     QObject::connect(Ui::GetDispatcher(), &core_dispatcher::onStickers, this, &Store::onStickers);
@@ -1390,7 +1351,6 @@ Store::Store(QWidget* _parent)
 
 void Store::onScrollStep(const int _step)
 {
-    QRect viewRect = rootScrollArea_->viewport()->geometry();
     auto scrollbar = rootScrollArea_->verticalScrollBar();
 
     const int maxVal = scrollbar->maximum();
@@ -1471,11 +1431,8 @@ void Store::onStickers()
 }
 
 
-void Store::onSetBigIcon(const qint32 _error, const qint32 _setId)
+void Store::onSetBigIcon(const qint32 _setId)
 {
-    if (_error != 0)
-        return;
-
     packsView_->onSetIcon(_setId);
     myPacks_->onSetIcon(_setId);
     searchPacks_->onSetIcon(_setId);
@@ -1542,10 +1499,7 @@ void Store::keyPressEvent(QKeyEvent *_e)
 }
 
 namespace {
-const int counter_padding = 4;
 const int back_spacing = 16;
-const int balloon_size = 20;
-const int search_button_size = 32;
 const int start_search_delay_ms = 700;
 
 int badgeTopOffset()
@@ -1580,8 +1534,8 @@ BackToChatsHeader::BackToChatsHeader(QWidget *_parent)
         button->setFixedSize(Utils::scale_value(QSize(20, 20)));
     }
 
-    QObject::connect(backButton_, &CustomButton::clicked, this, [this]() { emit backClicked(QPrivateSignal()); });
-    QObject::connect(searchButton_, &CustomButton::clicked, this, [this]() { emit searchClicked(QPrivateSignal()); });
+    QObject::connect(backButton_, &CustomButton::clicked, this, [this]() { Q_EMIT backClicked(QPrivateSignal()); });
+    QObject::connect(searchButton_, &CustomButton::clicked, this, [this]() { Q_EMIT searchClicked(QPrivateSignal()); });
 
     auto layout = Utils::emptyHLayout();
     layout->setSpacing(0);
@@ -1705,7 +1659,7 @@ StickersPageHeader::StickersPageHeader(QWidget *_parent)
 
     searchTimer_.setSingleShot(true);
     searchTimer_.setInterval(start_search_delay_ms);
-    connect(&searchTimer_, &QTimer::timeout, this, [this](){emit searchRequested(lastTerm_);});
+    connect(&searchTimer_, &QTimer::timeout, this, [this](){Q_EMIT searchRequested(lastTerm_);});
 }
 
 QString StickersPageHeader::currentTerm() const
@@ -1735,7 +1689,7 @@ void StickersPageHeader::onSearch()
     {
         searchTimer_.stop();
         lastTerm_ = text;
-        emit searchRequested(text);
+        Q_EMIT searchRequested(text);
     }
 }
 
@@ -1744,7 +1698,7 @@ void StickersPageHeader::onSearchCancelled()
     lastTerm_.clear();
     searchHeader_->hide();
     backToChatsHeader_->show();
-    emit searchCancelled();
+    Q_EMIT searchCancelled();
 }
 
 void StickersPageHeader::onSearchActivated()
@@ -1771,7 +1725,7 @@ void StickersPageHeader::onSearchTextChanged(const QString &_text)
     if (!_text.isEmpty())
         searchTimer_.start();
     else
-        emit searchCancelled();
+        Q_EMIT searchCancelled();
 }
 
 bool StickersPageHeader::eventFilter(QObject *_o, QEvent *_e)
@@ -1794,7 +1748,6 @@ bool StickersPageHeader::eventFilter(QObject *_o, QEvent *_e)
 SearchPacksWidget::SearchPacksWidget(QWidget *_parent)
     : QWidget(_parent)
     , syncedWithServer_(false)
-    , ref_(new bool(false))
 {
     auto rootLayout = new QVBoxLayout(this);
     rootLayout->setContentsMargins(0, 0, 0, 0);

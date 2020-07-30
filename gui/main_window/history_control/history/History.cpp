@@ -4,7 +4,7 @@
 
 #include "../../contact_list/RecentsModel.h"
 #include "../../contact_list/UnknownsModel.h"
-#include "../../friendly/FriendlyContainer.h"
+#include "../../containers/FriendlyContainer.h"
 #include "../../history_control/ChatEventInfo.h"
 #include "../../history_control/VoipEventInfo.h"
 
@@ -79,11 +79,6 @@ namespace
     bool isInvisibleVoip(const Data::MessageBuddy& _buddy)
     {
         return _buddy.IsVoipEvent() && !_buddy.GetVoipEvent()->isVisible();
-    }
-
-    bool isInvisibleVoip(const Data::MessageBuddySptr& _buddy)
-    {
-        return _buddy && isInvisibleVoip(*_buddy);
     }
 
     bool isVisibleMessage(const Data::MessageBuddy& _buddy)
@@ -212,6 +207,7 @@ namespace hist
         connect(Ui::GetDispatcher(), &Ui::core_dispatcher::messagesDeletedUpTo, this, &History::messagesDeletedUpTo);
         connect(Ui::GetDispatcher(), &Ui::core_dispatcher::messagesModified, this, &History::messagesModified);
         connect(Ui::GetDispatcher(), &Ui::core_dispatcher::messagesClear, this, &History::messagesClear);
+        connect(Ui::GetDispatcher(), &Ui::core_dispatcher::messagesEmpty, this, &History::messagesEmpty);
         connect(Ui::GetDispatcher(), &Ui::core_dispatcher::messageContextError, this, &History::messageContextError);
         connect(Ui::GetDispatcher(), &Ui::core_dispatcher::messageLoadAfterSearchError, this, &History::messageLoadAfterSearchError);
         connect(Ui::GetDispatcher(), &Ui::core_dispatcher::removePending, this, &History::pendingAutoRemove);
@@ -587,6 +583,16 @@ namespace hist
         return lastMessageId_;
     }
 
+    void History::clear()
+    {
+        messagesClear(aimId_);
+    }
+
+    void History::clearViewBounds()
+    {
+        viewBounds_ = {};
+    }
+
     void History::initForImpl(qint64 _messageId, hist::scroll_mode_type _type, ServerResultsOnly _serverResultsOnly)
     {
         std::scoped_lock locker(lockForViewFetchCounter_);
@@ -596,7 +602,7 @@ namespace hist
         if (hasAllMessagesForInit(_messageId, _type))
         {
             waitingInitSeq_ = std::nullopt;
-            auto lastMessageIvView = [this]()
+            auto lastMessageInView = [this]()
             {
                 if (viewBounds_.inBounds(lastMessageId_))
                     return true;
@@ -606,14 +612,14 @@ namespace hist
 
                 return false;
             };
-            if (_type == hist::scroll_mode_type::none && _messageId == -1 && lastMessageIvView())
+            if (_type == hist::scroll_mode_type::none && _messageId == -1 && lastMessageInView())
             {
-                qCDebug(history) << "no need to request and emit init";
+                qCDebug(history) << "no need to request and Q_EMIT init";
             }
             else
             {
                 clearExecutedRequests();
-                emit readyInit(initParams_.centralMessage, initParams_._mode, QPrivateSignal());
+                Q_EMIT readyInit(initParams_.centralMessage, initParams_._mode, QPrivateSignal());
             }
             return;
         }
@@ -676,7 +682,7 @@ namespace hist
         {
             const auto newIds = incomingIdsGreaterThan(_buddies, prevLastId);
             if (!newIds.isEmpty())
-                emit newMessagesReceived(newIds, QPrivateSignal());
+                Q_EMIT newMessagesReceived(newIds, QPrivateSignal());
 
             logCurrentIds(qsl("needIgnoreMessages"), LogType::Simple);
             return;
@@ -719,12 +725,12 @@ namespace hist
         {
             if (const auto fixed = fixIdAndMode(initParams_.centralMessage, initParams_._mode); fixed.id && fixed.mode)
             {
-                qCDebug(history) << "emit ready fixed" << *fixed.id;
-                emit readyInit(*fixed.id, *fixed.mode, QPrivateSignal());
+                qCDebug(history) << "Q_EMIT ready fixed" << *fixed.id;
+                Q_EMIT readyInit(*fixed.id, *fixed.mode, QPrivateSignal());
             }
             else
             {
-                emit readyInit(initParams_.centralMessage, initParams_._mode, QPrivateSignal());
+                Q_EMIT readyInit(initParams_.centralMessage, initParams_._mode, QPrivateSignal());
             }
             waitingInitSeq_ = std::nullopt;
 
@@ -735,7 +741,7 @@ namespace hist
             proccesInserted(pendingResult, buddiesResult, _option, _seq, prevLastId);
         }
 
-        emit updateLastSeen(getDlgState(aimId_), QPrivateSignal());
+        Q_EMIT updateLastSeen(getDlgState(aimId_), QPrivateSignal());
     }
 
     template <typename R>
@@ -883,7 +889,7 @@ namespace hist
         if (messages_.empty())
         {
             // no messages in dialog. need to fetch from last
-            emit canFetch(FetchDirection::toOlder, QPrivateSignal());
+            Q_EMIT canFetch(FetchDirection::toOlder, QPrivateSignal());
             return;
         }
 
@@ -912,9 +918,9 @@ namespace hist
         const bool canFetchToNewer = std::any_of(_ids.begin(), _ids.end(), [bb = messages_.crbegin()->first](auto x) { return x > bb; });
 
         if (canFetchToOlder)
-            emit canFetch(FetchDirection::toOlder, QPrivateSignal());
+            Q_EMIT canFetch(FetchDirection::toOlder, QPrivateSignal());
         else if (canFetchToNewer)
-            emit canFetch(FetchDirection::toNewer, QPrivateSignal());
+            Q_EMIT canFetch(FetchDirection::toNewer, QPrivateSignal());
     }
 
     void History::messageIdsUpdated(const QVector<qint64>& _ids, const QString& _aimId, qint64 _seq)
@@ -973,7 +979,7 @@ namespace hist
         clearPendingsIfPossible();
 
         if (!deleted.isEmpty())
-            emit deletedBuddies(deleted, QPrivateSignal());
+            Q_EMIT deletedBuddies(deleted, QPrivateSignal());
     }
 
     void History::messagesDeletedUpTo(const QString& _aimId, qint64 _id)
@@ -1006,7 +1012,7 @@ namespace hist
         }
 
         if (!deleted.isEmpty())
-            emit deletedBuddies(deleted, QPrivateSignal());
+            Q_EMIT deletedBuddies(deleted, QPrivateSignal());
     }
 
     void History::pendingAutoRemove(const QString& _aimId, const Logic::MessageKey& _key)
@@ -1025,7 +1031,7 @@ namespace hist
 
             clearPendingsIfPossible();
 
-            emit deletedBuddies(deleted, QPrivateSignal());
+            Q_EMIT deletedBuddies(deleted, QPrivateSignal());
         }
     }
 
@@ -1075,8 +1081,8 @@ namespace hist
             {
                 initParams_._serverResultsOnly = ServerResultsOnly::No;
 
-                const auto searchMode = /*initParams_._mode == scroll_mode_type::search &&*/ initParams_._serverResultsOnly == ServerResultsOnly::Yes ? SearchMode::Yes : SearchMode::No;
-                const auto isFirstInit = searchMode == SearchMode::Yes ? FirstRequest::No : getAndResetFirstInitRequest();
+                const auto searchMode = SearchMode::No;
+                const auto isFirstInit = getAndResetFirstInitRequest();
                 auto params = *it;
                 Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
                 collection.set_value_as_qstring("contact", aimId_);
@@ -1096,7 +1102,7 @@ namespace hist
         }
     }
 
-    void History::messagesClear(const QString& _aimId, qint64 _seq)
+    void History::messagesClear(const QString& _aimId)
     {
         if (_aimId != aimId_)
             return;
@@ -1111,7 +1117,15 @@ namespace hist
 
         clearExecutedRequests();
 
-        emit clearAll(QPrivateSignal());
+        Q_EMIT clearAll(QPrivateSignal());
+    }
+
+    void History::messagesEmpty(const QString &_aimId, qint64 _seq)
+    {
+        Q_UNUSED(_seq)
+
+        if (_aimId == aimId_)
+            Q_EMIT emptyHistory(QPrivateSignal());
     }
 
     void History::messagesModified(const QString& _aimId, const Data::MessageBuddies& _modifications)
@@ -1160,7 +1174,7 @@ namespace hist
         }
 
         if (!updated.isEmpty())
-            emit updatedBuddies(updated, QPrivateSignal());
+            Q_EMIT updatedBuddies(updated, QPrivateSignal());
     }
 
     void History::addToTail(const Data::MessageBuddySptr& _msg)
@@ -1181,7 +1195,7 @@ namespace hist
             }
 
             if (!events.isEmpty())
-                emit Utils::InterConnector::instance().chatEvents(aimId_, events);
+                Q_EMIT Utils::InterConnector::instance().chatEvents(aimId_, events);
         }
     }
 
@@ -1241,7 +1255,7 @@ namespace hist
         };
 
         if (!_buddiesResult.updated.isEmpty())
-            emit updatedBuddies(_buddiesResult.updated, QPrivateSignal());
+            Q_EMIT updatedBuddies(_buddiesResult.updated, QPrivateSignal());
 
         const auto hasRequestedInside = (_option == Ui::MessagesBuddiesOpt::Requested) && hasMessagesInBounds(_buddiesResult.inserted, viewBounds_);
 
@@ -1303,11 +1317,11 @@ namespace hist
                     }
                 }
 
-                emit pendingResolves(pendingResolvesInViewBounds, _buddiesResult.pendingResolves, QPrivateSignal());
+                Q_EMIT pendingResolves(pendingResolvesInViewBounds, _buddiesResult.pendingResolves, QPrivateSignal());
             }
 
             if (!_pendingResult.updated.isEmpty())
-                emit updatedBuddies(_pendingResult.updated, QPrivateSignal());
+                Q_EMIT updatedBuddies(_pendingResult.updated, QPrivateSignal());
 
             Data::MessageBuddies needToInsert;
             if (!_buddiesResult.inserted.isEmpty())
@@ -1364,8 +1378,8 @@ namespace hist
                 std::sort(needToInsert.begin(), needToInsert.end(), msgComparator);
                 const auto newIds = incomingIdsGreaterThan(needToInsert, _prevLastId);
                 if (!newIds.isEmpty())
-                    emit newMessagesReceived(newIds, QPrivateSignal());
-                emit dlgStateBuddies(needToInsert, QPrivateSignal());
+                    Q_EMIT newMessagesReceived(newIds, QPrivateSignal());
+                Q_EMIT dlgStateBuddies(needToInsert, QPrivateSignal());
             }
         }
         else
@@ -1375,9 +1389,9 @@ namespace hist
                 if (const auto it = std::find_if(executedRequests.fetch.cbegin(), executedRequests.fetch.cend(), hasSeq(_seq)); it != executedRequests.fetch.cend())
                 {
                     if (it->direction == RequestDirection::ToNewer)
-                        emit canFetch(hist::FetchDirection::toNewer, QPrivateSignal());
+                        Q_EMIT canFetch(hist::FetchDirection::toNewer, QPrivateSignal());
                     else if (it->direction == RequestDirection::ToOlder)
-                        emit canFetch(hist::FetchDirection::toOlder, QPrivateSignal());
+                        Q_EMIT canFetch(hist::FetchDirection::toOlder, QPrivateSignal());
                 }
             }
         }
@@ -1493,7 +1507,7 @@ namespace hist
         }
 
         if (!updated.isEmpty())
-            emit updatedBuddies(updated, QPrivateSignal());
+            Q_EMIT updatedBuddies(updated, QPrivateSignal());
 
         if (!inserted.isEmpty())
             processRequestedByIds(inserted);
@@ -1530,7 +1544,7 @@ namespace hist
         }
 
         if (!inserted.isEmpty())
-            emit insertedBuddies(inserted, QPrivateSignal());
+            Q_EMIT insertedBuddies(inserted, QPrivateSignal());
     }
 
     History::FixedIdAndMode History::fixIdAndMode(qint64 _id, hist::scroll_mode_type _mode) const
@@ -1633,6 +1647,10 @@ namespace hist
             traceMessageBuddies(aimId_,_buddies, _option);
             return true;
         }
+
+        // workaround for showing the channel with one message when overview it at the first time
+        if (_option == Ui::MessagesBuddiesOpt::Init && _seq > 0 && messages_.empty() && !_buddies.isEmpty() && _buddies.first()->Prev_ == -1)
+            return false;
 
         if (_option != Ui::MessagesBuddiesOpt::Pending && _seq > 0 && needSkipSeq(_seq))
         {

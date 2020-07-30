@@ -93,7 +93,7 @@ void showAddContactsDialog(const AddContactDialogs::Initiator &_initiator)
         if (w->isFirstSelected())
             showAddContactsDialog(QString(), QString(), AddContactCallback(), _initiator);
         else if (w->isSecondSelected())
-            emit Utils::InterConnector::instance().addByNick();
+            Q_EMIT Utils::InterConnector::instance().addByNick();
     }
 }
 

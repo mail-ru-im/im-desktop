@@ -15,6 +15,10 @@
 #include "../../common.shared/config/config.h"
 #include "../../common.shared/string_utils.h"
 
+#ifdef _WIN32
+#include "../../common.shared/crash_report/crash_reporter.h"
+#endif //_WIN32
+
 CORE_CONFIGURATION_NS_BEGIN
 
 namespace pt = boost::property_tree;
@@ -111,6 +115,13 @@ pt::ptree app_config::as_ptree() const
         case app_config::AppConfigOption::show_hidden_themes:
             result.add(option_name(key), is_show_hidden_themes());
             break;
+        case app_config::AppConfigOption::sys_crash_handler_enabled:
+            result.add(option_name(key), is_sys_crash_handler_enabled());
+            break;
+        case app_config::AppConfigOption::connect_by_ip:
+            result.add(option_name(key), is_connect_by_ip_enabled());
+            break;
+
         default:
             assert(!"unhandled option for as_ptree");
             continue;
@@ -195,6 +206,20 @@ bool app_config::is_show_hidden_themes() const
     auto it = app_config_options_.find(app_config::AppConfigOption::show_hidden_themes);
     return it == app_config_options_.end() ? false
                                            : boost::any_cast<bool>(it->second);
+}
+
+bool app_config::is_sys_crash_handler_enabled() const
+{
+    auto it = app_config_options_.find(app_config::AppConfigOption::sys_crash_handler_enabled);
+    return it == app_config_options_.end() ? false
+        : boost::any_cast<bool>(it->second);
+}
+
+bool app_config::is_connect_by_ip_enabled() const
+{
+    auto it = app_config_options_.find(app_config::AppConfigOption::connect_by_ip);
+    return it == app_config_options_.end() ? false
+        : boost::any_cast<bool>(it->second);
 }
 
 bool app_config::gdpr_user_has_agreed() const
@@ -403,6 +428,8 @@ void app_config::serialize(Out core::coll_helper &_collection) const
     _collection.set<bool>(option_name(app_config::AppConfigOption::task_trace), is_task_trace_enabled());
     _collection.set<bool>(option_name(app_config::AppConfigOption::hide_keyword_pattern), is_hide_keyword_pattern());
     _collection.set<bool>(option_name(app_config::AppConfigOption::show_hidden_themes), is_show_hidden_themes());
+    _collection.set<bool>(option_name(app_config::AppConfigOption::sys_crash_handler_enabled), is_sys_crash_handler_enabled());
+    _collection.set<bool>(option_name(app_config::AppConfigOption::connect_by_ip), is_connect_by_ip_enabled());
 
     // urls
     _collection.set<std::string_view>("urls.url_update_mac_alpha", get_update_mac_alpha_url());
@@ -449,6 +476,10 @@ void load_app_config(const boost::filesystem::wpath &_path)
     {
 
     }
+
+#ifdef _WIN32
+    crash_system::reporter::instance().set_sys_handler_enabled(config_->is_sys_crash_handler_enabled());
+#endif //_WIN32
 }
 
 void dump_app_config_to_disk(const boost::filesystem::wpath &_path)
@@ -577,6 +608,14 @@ namespace
             {
                 app_config::AppConfigOption::show_hidden_themes,
                 property_tree_.get<bool>(option_name(app_config::AppConfigOption::show_hidden_themes), false)
+            },
+            {
+                app_config::AppConfigOption::sys_crash_handler_enabled,
+                property_tree_.get<bool>(option_name(app_config::AppConfigOption::sys_crash_handler_enabled), false)
+            },
+            {
+                app_config::AppConfigOption::connect_by_ip,
+                property_tree_.get<bool>(option_name(app_config::AppConfigOption::connect_by_ip), false)
             }
         };
     }
@@ -625,6 +664,11 @@ namespace
             return "dev.hide_keyword_pattern";
         case app_config::AppConfigOption::show_hidden_themes:
             return "show_hidden_themes";
+        case app_config::AppConfigOption::sys_crash_handler_enabled:
+            return "sys_crash_handler_enabled";
+        case app_config::AppConfigOption::connect_by_ip:
+            return "dev.connect_by_ip";
+
         default:
             assert(!"unhandled option for option_name");
             return "";

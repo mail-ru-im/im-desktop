@@ -15,8 +15,8 @@ namespace Ui
         , tiling_(false)
         , isMultiselectEnabled_(_isMultiselectEnabled)
     {
-        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::multiselectChanged, this, Utils::QOverload<>::of(&BackgroundWidget::update));
-        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::multiselectAnimationUpdate, this, Utils::QOverload<>::of(&BackgroundWidget::update));
+        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::multiselectChanged, this, qOverload<>(&BackgroundWidget::update));
+        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::multiselectAnimationUpdate, this, qOverload<>(&BackgroundWidget::update));
     }
 
     void BackgroundWidget::paintEvent(QPaintEvent *_e)
@@ -51,8 +51,7 @@ namespace Ui
         if (isMultiselectEnabled_)
         {
             double current = Utils::InterConnector::instance().multiselectAnimationCurrent() / 100.0;
-            auto color = Styling::getParameters().getColor(Styling::StyleVariable::CHAT_ENVIRONMENT);
-            color.setAlpha(0.85 * 255 * current);
+            const auto color = Styling::getParameters().getColor(Styling::StyleVariable::CHAT_ENVIRONMENT, 0.85 * current);
             p.fillRect(rect(), color);
         }
     }
@@ -65,7 +64,7 @@ namespace Ui
             bgColor_ = QColor();
             tiling_ = _tiling;
 
-            emit wallpaperChanged(QPrivateSignal());
+            Q_EMIT wallpaperChanged(QPrivateSignal());
             update();
         }
     }
@@ -78,7 +77,7 @@ namespace Ui
         wallpaper_ = QPixmap();
         tiling_ = false;
 
-        emit wallpaperChanged(QPrivateSignal());
+        Q_EMIT wallpaperChanged(QPrivateSignal());
         update();
     }
 
@@ -86,7 +85,7 @@ namespace Ui
     {
         viewRect_ = _rect;
 
-        emit wallpaperChanged(QPrivateSignal());
+        Q_EMIT wallpaperChanged(QPrivateSignal());
         update();
     }
 

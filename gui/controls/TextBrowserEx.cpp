@@ -31,16 +31,17 @@ const TextBrowserEx::Options &TextBrowserEx::getOptions() const
 
 QString TextBrowserEx::generateStyleSheet(const TextBrowserEx::Options &_options)
 {
-    QString styleSheet = qsl("a { color: %1; }").arg(_options.linkColor_.name());
+    QString styleSheet;
+    styleSheet += qsl("a { color: %1; }").arg(_options.linkColor_.name());
 
     if (_options.borderless_)
-        styleSheet.append(qsl(" ")).append(qsl("QWidget { border: none; background-color: %1; color: %2; }").arg(_options.backgroundColor_.name()).arg(_options.textColor_.name()));
+        styleSheet.append(QChar::Space).append(qsl("QWidget { border: none; background-color: %1; color: %2; }").arg(_options.backgroundColor_.name(), _options.textColor_.name()));
 
     if (_options.noTextDecoration_)
-        styleSheet.append(qsl(" ")).append(qsl("a:link { text-decoration: none }"));
+        styleSheet.append(QChar::Space).append(ql1s("a:link { text-decoration: none }"));
 
     if (!_options.useDocumentMargin_)
-        styleSheet.append(qsl(" ")).append(qsl("body { margin-left: %1; margin-top: %2; margin-right: %3; margin-bottom: %4; }")
+        styleSheet.append(QChar::Space).append(qsl("body { margin-left: %1; margin-top: %2; margin-right: %3; margin-bottom: %4; }")
                                             .arg(_options.leftBodyMargin()).arg(_options.topBodyMargin())
                                             .arg(_options.rightBodyMargin()).arg(_options.bottomBodyMargin()));
 

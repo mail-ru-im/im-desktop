@@ -508,7 +508,7 @@ namespace Ui
     public:
 
         explicit AudioDecodeThread(VideoContext& _ctx);
-    };    
+    };
 
     class MediaContainer : public QObject
     {
@@ -616,7 +616,7 @@ namespace Ui
             bool eof_;
 
             DecodedFrame(const QImage& _image, const double _pts) : image_(_image), pts_(_pts), eof_(false) {}
-            DecodedFrame(bool _eof) : eof_(_eof) {}
+            DecodedFrame(bool _eof) : pts_(0.0), eof_(_eof) {}
         };
 
         std::unique_ptr<DecodedFrame> firstFrame_;

@@ -2,6 +2,7 @@
 #include "SidebarUtils.h"
 
 #include "../../controls/TextUnit.h"
+#include "../../controls/TextEditEx.h"
 #include "../../controls/TextBrowserEx.h"
 #include "../../controls/DialogButton.h"
 #include "../../core_dispatcher.h"
@@ -155,7 +156,7 @@ namespace Ui
         description_->setPlainText(_initData.description_, false);
         description_->setEnterKeyPolicy(TextEditEx::EnterKeyPolicy::FollowSettingsRules);
         Utils::ApplyStyle(description_, Styling::getParameters().getTextEditCommonQss(true));
-        Testing::setAccessibleName(description_, qsl("AS ped description_"));
+        Testing::setAccessibleName(description_, qsl("AS ProfilePage aboutMeEdit"));
 
         hintUnit_ = TextRendering::MakeTextUnit(QT_TRANSLATE_NOOP("profile_edit_dialogs", "A short text about you"));
         hintUnit_->init(getHintFont(), getHintColorNormal());
@@ -232,6 +233,8 @@ namespace Ui
         }
 
         updateDescriptionHeight();
+        counterUnit_->setText(QString::number(getMaxDescriptionLength() - description_->getPlainText().length()), wrongDescription_ ? getHintColorBad() : getHintColorNormal());
+        hintUnit_->elide(getWidgetWidth() - getHintHorOffset()- getRightMargin() - counterUnit_->cachedSize().width());
 
         update();
     }
@@ -242,14 +245,14 @@ namespace Ui
             return;
 
         Utils::UpdateProfile({std::make_pair(std::string("aboutMe"), description_->getPlainText().trimmed())});
-        emit changed();
-        emit Utils::InterConnector::instance().closeAnyPopupWindow(Utils::CloseWindowInfo());
+        Q_EMIT changed();
+        Q_EMIT Utils::InterConnector::instance().closeAnyPopupWindow(Utils::CloseWindowInfo());
         close();
     }
 
     void EditDescriptionWidget::cancelClicked()
     {
-        emit Utils::InterConnector::instance().closeAnyPopupWindow(Utils::CloseWindowInfo());
+        Q_EMIT Utils::InterConnector::instance().closeAnyPopupWindow(Utils::CloseWindowInfo());
         close();
     }
 
@@ -263,7 +266,6 @@ namespace Ui
         hintUnit_->setOffsets(getHintHorOffset(), getTopMargin() + description_->rect().bottom() + getHintVerOffset());
         hintUnit_->draw(p, Ui::TextRendering::VerPosition::TOP);
 
-        counterUnit_->setText(QString::number(getMaxDescriptionLength() - description_->getPlainText().length()), wrongDescription_ ? getHintColorBad() : getHintColorNormal());
         counterUnit_->setOffsets(getWidgetWidth() - getRightMargin() - counterUnit_->cachedSize().width(), getTopMargin() + description_->rect().bottom() + getCounterVerOffset());
         counterUnit_->draw(p, Ui::TextRendering::VerPosition::TOP);
     }

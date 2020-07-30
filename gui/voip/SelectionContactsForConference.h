@@ -3,139 +3,141 @@
 #include "../main_window/contact_list/ChatMembersModel.h"
 #include "../../core/Voip/VoipManagerDefines.h"
 #include "../main_window/contact_list/Common.h"
-#include "../main_window/contact_list/SearchMembersModel.h"
-
-namespace Logic
-{
-    class SearchMembersModel;
-    class SearchModel;
-}
+#include "../main_window/contact_list/SearchModel.h"
 
 namespace Ui
 {
     class ListViewWithTrScrollBar;
-    class ConferenceSearchMember;
+    class ConferenceSearchModel;
     class CustomButton;
     class ClickableWidget;
+
+
+    class CurrentConferenceMembers : public QWidget
+    {
+        Q_OBJECT
+
+    Q_SIGNALS:
+        void memberClicked(const QString& _aimid, QPrivateSignal);
+        void sizeChanged(QPrivateSignal);
+
+    public:
+        CurrentConferenceMembers(QWidget* _parent, Logic::ChatMembersModel* _membersModel, bool _chatRoomCall);
+        void updateConferenceListSize();
+
+    protected:
+        void resizeEvent(QResizeEvent*) override;
+
+    private:
+        void onMembersLabelClicked();
+        void itemClicked(const QModelIndex& _current);
+        QString getLabelCaption() const;
+
+    private:
+        ClickableWidget* membersLabelHost_;
+        QLabel* memberLabel_;
+        CustomButton* memberArrowDown_;
+        CustomButton* memberArrowUp_;
+        ListViewWithTrScrollBar* conferenceContacts_;
+        Logic::ChatMembersModel* conferenceMembersModel_;
+    };
+
 
     class SelectionContactsForConference : public SelectContactsWidget
     {
         Q_OBJECT
 
     public:
-
-        SelectionContactsForConference(
-            Logic::ChatMembersModel* _chatMembersModel,
-            Logic::ChatMembersModel* _otherContactsModel,
-            const QString& _labelText,
-            QWidget* _parent,
-            ConferenceSearchMember& usersSearchModel,
-            bool _handleKeyPressEvents = true);
+        SelectionContactsForConference(Logic::ChatMembersModel* _conferenceMembersModel, const QString& _labelText, QWidget* _parent,
+                                       ConferenceSearchModel* _usersSearchModel, bool _chatRoomCall, bool _handleKeyPressEvents = true);
 
         void onVoipCallDestroyed(const voip_manager::ContactEx& _contactEx);
 
         // Set maximum restriction for selected item count. Used for video conference.
-        virtual void setMaximumSelectedCount(int number) override;
+        void setMaximumSelectedCount(int _number) override;
 
-        virtual bool show() override;
+        bool show() override;
+
+        QPointer<CurrentConferenceMembers> createCurMembersPtr();
+        void clearCurMembersPtr();
 
     public Q_SLOTS:
         void updateSize();
 
     private Q_SLOTS:
         void updateMemberList();
-        void itemClicked(const QModelIndex& _current);
+        void onCurrentMemberClicked(const QString& _aimid);
         void onVoipCallNameChanged(const voip_manager::ContactsList& _contacts);
         void updateMaxSelectedCount();
-        void updateConferenceListSize();
-        void clickConferenceMembers();
 
     private:
-        void initCurrentMembersWidget();
-        QWidget* curMembersHost_;
-        QWidget* membersList_;
-        QLabel*  memberLabel_;
-        ClickableWidget* membersLabelHost_;
-        CustomButton* memberArrowDown_;
-        CustomButton* memberArrowUp_;
-        ListViewWithTrScrollBar* conferenceContacts_;
+        QPointer<CurrentConferenceMembers> curMembers_;
         Logic::ChatMembersModel* conferenceMembersModel_;
         int videoConferenceMaxUsers_;
+        bool chatRoomCall_ = false;
 
         // Make this dialog singleton visible. If second instance is show, first will be hide.
         static SelectionContactsForConference* currentVisibleInstance_;
     };
-
-    // Copy of contact list without video conference members.
-    class ContactsForVideoConference : public Logic::ChatMembersModel
-    {
-        Q_OBJECT
-
-    public:
-
-        ContactsForVideoConference(QObject* parent, const Logic::ChatMembersModel& videoConferenceModel);
-
-    protected Q_SLOTS:
-
-        void updateMemberList();
-        void allMembersDataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRight, const QVector<int> &roles);
-
-    protected:
-        const Logic::ChatMembersModel& videoConferenceModel_;
-        Data::ChatInfo allMembers_;
-        Logic::SearchModel* searchModel_;
-        QMetaObject::Connection connection_;
-    };
-
 
     // Draw only avatars of users for contacts list.
     // Used in horizontal mode in add to video conference dialog.
     class ContactListItemHorizontalDelegate : public Logic::AbstractItemDelegateWithRegim
     {
     public:
-        ContactListItemHorizontalDelegate(QObject* parent);
+        explicit ContactListItemHorizontalDelegate(QObject* _parent);
 
-        virtual ~ContactListItemHorizontalDelegate();
+        void paint(QPainter* _painter, const QStyleOptionViewItem& _option, const QModelIndex& _index) const override;
 
-        void paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const override;
+        QSize sizeHint(const QStyleOptionViewItem& _option, const QModelIndex& _index) const override;
 
-        QSize sizeHint(const QStyleOptionViewItem &option, const QModelIndex &index) const override;
+        void setFixedWidth(int _width) override;
 
-        virtual void setFixedWidth(int width) override;
+        void setLeftMargin(int _margin);
 
-        void setLeftMargin(int margin);
+        void setRightMargin(int _margin);
 
-        void setRightMargin(int margin);
+        void blockState(bool _value) override {}
 
-        virtual void blockState(bool value) override {}
+        void setDragIndex(const QModelIndex& _index) override {}
 
-        virtual void setDragIndex(const QModelIndex& index) override {}
-
-        virtual void setRegim(int _regim) override;
+        void setRegim(int _regim) override;
 
     private:
-        ::Ui::ViewParams viewParams_;
+        ViewParams viewParams_;
     };
 
-    class ConferenceSearchMember : public ::Logic::SearchMembersModel
+    class ConferenceSearchModel : public Logic::AbstractSearchModel
     {
         Q_OBJECT
 
     public:
-        ConferenceSearchMember();
+        ConferenceSearchModel(Logic::AbstractSearchModel* _sourceModel);
 
-        int rowCount(const QModelIndex& _parent = QModelIndex()) const override;
+        int rowCount(const QModelIndex& _index = QModelIndex()) const override;
         QVariant data(const QModelIndex& _index, int _role) const override;
+        void setSearchPattern(const QString& _pattern) override;
 
-        void setWidget(QWidget* widget);
+        void setView(ContactListWidget* _view) { view_ = _view; }
+        void setDialog(SelectionContactsForConference* _dialog) { dialog_ = _dialog; }
 
-    public Q_SLOTS:
-        void setSearchPattern(const QString&) override;
+        bool isCheckedItem(const QString &_name) const override;
+        void setCheckedItem(const QString& _name, bool _checked) override;
+        int getCheckedItemsCount() const override;
+
+        void addTemporarySearchData(const QString& _aimid) override;
+
+    private Q_SLOTS:
+        void onSourceDataChanged(const QModelIndex& _topLeft, const QModelIndex& _bottomRight);
 
     private:
+        int indexShift() const noexcept { return !inSearchMode_ ? 1 : 0; }
+        QModelIndex mapFromSource(const QModelIndex &_sourceIndex) const;
 
-        QWidget* firstElement_;
-        bool bSearchMode_;
+        QPointer<CurrentConferenceMembers> membersWidget_;
+        bool inSearchMode_ = false;
+        ContactListWidget* view_ = nullptr;
+        SelectionContactsForConference* dialog_ = nullptr;
+        Logic::AbstractSearchModel* sourceModel_ = nullptr;
     };
-
 }

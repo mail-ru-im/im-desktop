@@ -9,6 +9,10 @@
 namespace Ui
 {
 
+//////////////////////////////////////////////////////////////////////////
+// ToastBase
+//////////////////////////////////////////////////////////////////////////
+
 class ToastBase : public QWidget
 {
     Q_OBJECT
@@ -21,8 +25,11 @@ public:
     virtual QString getPath() const { return QString(); }
 
     void setVisibilityDuration(std::chrono::milliseconds _duration);
+    void setUseMainWindowShift(bool _enable);
+    void setBackgroundColor(const QColor& _color);
+    void enableMoveAnimation(bool _enable);
 
-signals:
+Q_SIGNALS:
     void dissapeared();
 
 protected:
@@ -38,20 +45,26 @@ protected:
     void handleMouseLeave();
     virtual void updateSize() {}
 
-    virtual QPoint shiftToastPos() const { return QPoint(); }
-
 private Q_SLOTS:
     void startHide();
 
 private:
     QTimer hideTimer_;
     QTimer startHideTimer_;
+    QColor bgColor_;
 
     anim::Animation opacityAnimation_;
     anim::Animation moveAnimation_;
 
     QGraphicsOpacityEffect* opacity_;
+
+    bool useMainWindowShift_ = false;
+    bool isMoveAnimationEnabled_ = true;
 };
+
+//////////////////////////////////////////////////////////////////////////
+// ToastManager
+//////////////////////////////////////////////////////////////////////////
 
 class ToastManager : public QObject
 {
@@ -64,6 +77,8 @@ public:
     void hideToast();
     void moveToast();
 
+    void raiseBottomToastIfPresent();
+
 protected:
     bool eventFilter(QObject* _object, QEvent* _event) override;
 
@@ -74,6 +89,10 @@ private:
     QPointer<ToastBase> bottomToast_;
     QPointer<ToastBase> topToast_;
 };
+
+//////////////////////////////////////////////////////////////////////////
+// Toast
+//////////////////////////////////////////////////////////////////////////
 
 class Toast : public ToastBase // simple toast with text
 {
@@ -88,13 +107,9 @@ private:
     Ui::TextRendering::TextUnitPtr textUnit_;
 };
 
-class PlaceholderToast : public Toast
-{
-public:
-    explicit PlaceholderToast(const QString& _text, QWidget* _parent, int _maxLineCount = 1);
-
-    QPoint shiftToastPos() const override;
-};
+//////////////////////////////////////////////////////////////////////////
+// SavedPathToast
+//////////////////////////////////////////////////////////////////////////
 
 class SavedPathToast_p;
 
@@ -114,6 +129,10 @@ protected:
 private:
     std::unique_ptr<SavedPathToast_p> d;
 };
+
+//////////////////////////////////////////////////////////////////////////
+// DownloadFinishedToast
+//////////////////////////////////////////////////////////////////////////
 
 class DownloadFinishedToast_p;
 
@@ -136,8 +155,6 @@ protected:
     void leaveEvent(QEvent* _event) override;
     void updateSize() override;
 
-    QPoint shiftToastPos() const override;
-
 private:
     void compose(bool _isMinimal, const int maxWidth, const QFontMetrics fm, int fileWidth, int pathWidth, int _totalWidth);
 private:
@@ -154,7 +171,12 @@ private:
 namespace Utils
 {
     void showToastOverMainWindow(const QString& _text, int _bottomOffset, int _maxLineCount = 1); // show text toast over main window
-    void showToastOverContactDialog(const QString& _text, int _maxLineCount = 1); // show text toast over contactDialog
+
+    //! Show text toast over video window, taking into account video contols panel presence
+    void showToastOverVideoWindow(const QString& _text, int _maxLineCount = 1);
+
+    void showToastOverContactDialog(Ui::ToastBase* toast);
+    void showTextToastOverContactDialog(const QString& _text, int _maxLineCount = 1); // show text toast over contactDialog
     void showDownloadToast(const Data::FileSharingDownloadResult& _result);
     void showCopiedToast(std::optional<std::chrono::milliseconds> _visibilityDuration = std::nullopt);
 }

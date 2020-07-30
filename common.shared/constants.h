@@ -1,9 +1,6 @@
 #pragma once
 
 #define auth_file_name "value.au"
-#define auth_export_file_name "exported.json"
-#define auth_export_file_name_merge "exportedmerge.json"
-#define muted_chats_export_file_name "mutedchats.json"
 #define settings_export_file_name "exported_ui.json"
 #define core_settings_export_file_name "exported_core.json"
 #define fetch_url_file_name "fetch"
@@ -24,7 +21,9 @@
 #define settings_window_maximized "window_maximized"
 #define settings_cl_groups_enabled "cl_groups_enabled"
 #define settings_main_window_rect "main_window_rect"
-#define settings_favorites_visible "favorites_visible"
+#define settings_desktop_rect "desktop_rect"
+#define settings_available_geometry "available_geometry"
+#define settings_pinned_chats_visible "pinned_chats_visible"
 #define settings_unimportant_visible "unimportant_visible"
 #define settings_splitter_state "splitter_state"
 #define settings_splitter_state_scale "splitter_state_scale"
@@ -48,11 +47,11 @@
 #define settings_show_popular_contacts "show_popular_contacts"
 #define settings_show_groupchat_heads "show_groupchat_heads"
 #define settings_show_smartreply "show_smartreply"
+#define settings_spell_check "settings_spell_check"
 #define settings_show_suggests_emoji "show_suggest_emoji"
 #define settings_show_suggests_words "show_suggest_words"
 #define settings_allow_big_emoji "allow_big_emoji"
 #define settings_autoreplace_emoji "autoreplace_emoji"
-#define settings_partial_read "partial_read"
 #define settings_voip_calls_count_map "voip_calls_count_map"
 #define settings_stat_last_posted_times "stat_last_posted_times"
 #define settings_shortcuts_close_action "shortcuts_close_action"
@@ -61,13 +60,22 @@
 #define settings_appearance_text_size "appearance_text_size"
 #define settings_appearance_last_directory "appearance_last_wp_directory"
 #define settings_fast_drop_search_results "fast_drop_search_results"
+#define settings_exec_files_without_warning "exec_files_without_warning"
+#define settings_show_calls_tab "settings_show_calls_tab"
+#define settings_show_reactions "settings_show_reactions"
+
+#define settings_allow_statuses "settings_allow_statuses"
 
 constexpr bool settings_allow_big_emoji_default() noexcept { return true; }
 constexpr bool settings_autoreplace_emoji_default() noexcept { return true; }
 constexpr bool settings_hoversound_video_default() noexcept { return true; }
-constexpr bool settings_partial_read_default() noexcept { return true; }
 constexpr bool settings_show_smartreply_default() noexcept { return true; }
+constexpr bool settings_spell_check_default() noexcept { return true; }
 constexpr bool settings_fast_drop_search_default() noexcept { return false; }
+constexpr bool settings_exec_files_without_warning_default() noexcept { return false; }
+constexpr bool settings_keep_logged_in_default() noexcept { return true; }
+constexpr bool settings_show_reactions_default() noexcept { return true; }
+constexpr bool settings_allow_statuses_default() noexcept { return true; }
 
 #define settings_microphone "microphone"
 #define settings_microphone_gain "microphone_gain"
@@ -82,6 +90,7 @@ constexpr bool settings_fast_drop_search_default() noexcept { return false; }
 #define settings_notify_new_mail_messages "notify_new_mail_messages"
 #define settings_hide_message_notification "hide_message_notification"
 #define settings_alert_tray_icon "alert_tray_icon"
+#define settings_show_unreads_in_title "show_unreads_in_title"
 
 #define settings_keep_logged_in "keep_logged_in"
 
@@ -105,13 +114,14 @@ constexpr bool settings_fast_drop_search_default() noexcept { return false; }
 #define setting_mplayer_volume "mplayer_volume"
 #define setting_mplayer_mute "mplayer_mute"
 
-#define setting_show_forward_author "show_forward_author"
-
 #define setting_local_pin_timeout "local_pin_timeout"
 
 #define release_notes_sha1 "release_notes_sha1"
 #define first_run "first_run"
 #define last_version "last_version"
+#define favorites_pinned_on_start "favorites_pinned_on_start"
+
+#define statuses_user_statuses "statuses_user_statuses"
 
 constexpr const char* get_global_wp_id_setting_field() noexcept
 {
@@ -156,4 +166,16 @@ namespace feature
     constexpr int default_fs_id_length() noexcept { return 33; }
     constexpr int default_im_zstd_compression_level() noexcept { return 3; }
     constexpr const char* default_dev_id() noexcept { return "dev_icq_id"; }
+
+    constexpr const char* default_new_message_fields() noexcept { return ""; }
+    constexpr const char* default_new_message_parts() noexcept { return ""; }
+
+    constexpr const char* default_favorites_image_id_english() noexcept { return "0qMfR000RBszw8u3OQ7dTH5e4a9a391ba"; }
+    constexpr const char* default_favorites_image_id_russian() noexcept { return "0qMfR000R15jWpnrLo5fe85e4a9a391ba"; }
+
+    constexpr int default_async_response_timeout() noexcept { return 20; }
+
+    constexpr int default_voip_call_user_limit() noexcept { return 30; }
+    constexpr int default_voip_video_user_limit() noexcept { return 5; }
+    constexpr int default_voip_big_conference_boundary() noexcept { return 5; }
 }

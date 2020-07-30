@@ -19,8 +19,7 @@ namespace Ui
         , img_(std::move(_img))
     {}
 
-    AvatarPreview::~AvatarPreview()
-    {}
+    AvatarPreview::~AvatarPreview() = default;
 
     void AvatarPreview::paintEvent(QPaintEvent* _e)
     {

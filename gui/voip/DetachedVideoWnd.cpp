@@ -10,7 +10,6 @@
 #include "CommonUI.h"
 #include "../controls/ContextMenu.h"
 #include "../main_window/MainWindow.h"
-#include "media/permissions/MediaCapturePermissions.h"
 
 #ifdef _WIN32
     #include <windows.h>
@@ -21,20 +20,52 @@
     #include "macos/VideoFrameMacos.h"
 #endif
 
-const QSize cDetachedVideoWindowSize(240, 180);
+namespace
+{
+    enum { kAnimationDefDuration = 500 };
 
-enum { kAnimationDefDuration = 500 };
+    auto getDetachedVideoWindowSize() noexcept
+    {
+        if constexpr (platform::is_linux())
+            return Utils::scale_value(QSize(240, 224));
+        else
+            return Utils::scale_value(QSize(240, 180));
+    }
 
-#define SHOW_HEADER_PANEL false
+    auto getButtonSize() noexcept
+    {
+        return Utils::scale_value(QSize(40, 40));
+    }
+
+    auto getPanelBackgroundColorLinux() noexcept
+    {
+        return QColor(38, 38, 38, 255);
+    }
+
+    auto getPanelOffsetFromButton() noexcept
+    {
+        return Utils::scale_value(22);
+    }
+
+    auto getButtonsVerOffset() noexcept
+    {
+        if constexpr (platform::is_linux())
+            return Utils::scale_value(4);
+        else
+            return Utils::scale_value(0);
+    }
+}
 
 void Ui::MiniWindowVideoPanel::onHangUpButtonClicked()
 {
     Ui::GetDispatcher()->getVoipController().setHangup();
 }
+
 void Ui::MiniWindowVideoPanel::onAudioOnOffClicked()
 {
     Ui::GetDispatcher()->getVoipController().setSwitchACaptureMute();
 }
+
 void Ui::MiniWindowVideoPanel::onVideoOnOffClicked()
 {
     Ui::GetDispatcher()->getVoipController().setSwitchVCaptureMute();
@@ -61,6 +92,9 @@ void Ui::MiniWindowVideoPanel::onVoipMediaLocalVideo(bool _enabled)
 
 void Ui::MiniWindowVideoPanel::onShareScreen()
 {
+    if (!Ui::GetDispatcher()->getVoipController().isLocalDesktopAllowed())
+        return;
+
     const QList<voip_proxy::device_desc>& screens = Ui::GetDispatcher()->getVoipController().screenList();
 
     const auto switchSharingImpl = [this, &screens](const int _index)
@@ -84,8 +118,7 @@ void Ui::MiniWindowVideoPanel::onShareScreen()
                 else
                 {
                     media::permissions::requestPermission(media::permissions::DeviceType::Screen, [](bool){});
-
-                    emit needShowScreenPermissionsPopup();
+                    Q_EMIT needShowScreenPermissionsPopup(media::permissions::DeviceType::Screen);
                 }
             }
             else
@@ -117,10 +150,10 @@ void Ui::MiniWindowVideoPanel::onShareScreen()
     }
 }
 
-void Ui::MiniWindowVideoPanel::onVoipVideoDeviceSelected(const voip_proxy::device_desc& desc)
+void Ui::MiniWindowVideoPanel::onVoipVideoDeviceSelected(const voip_proxy::device_desc& _desc)
 {
-    isScreenSharingEnabled_ = (desc.dev_type == voip_proxy::kvoipDevTypeVideoCapture && desc.video_dev_type == voip_proxy::kvoipDeviceDesktop);
-    isCameraEnabled_ = (desc.dev_type == voip_proxy::kvoipDevTypeVideoCapture && desc.video_dev_type == voip_proxy::kvoipDeviceCamera);
+    isScreenSharingEnabled_ = (_desc.dev_type == voip_proxy::kvoipDevTypeVideoCapture && _desc.video_dev_type == voip_proxy::kvoipDeviceDesktop);
+    isCameraEnabled_ = (_desc.dev_type == voip_proxy::kvoipDevTypeVideoCapture && _desc.video_dev_type == voip_proxy::kvoipDeviceCamera);
 
     updateVideoDeviceButtonsState();
 }
@@ -140,103 +173,102 @@ Ui::MiniWindowVideoPanel::MiniWindowVideoPanel(QWidget* _parent)
     , micButton_(nullptr)
     , stopCallButton_(nullptr)
     , videoButton_(nullptr)
-    , isTakling(false)
-    , isFadedVisible(false)
+    , isFadedVisible_(false)
     , localVideoEnabled_(false)
     , isScreenSharingEnabled_(false)
     , isCameraEnabled_(true)
 {
-    //setWindowFlags(Qt::SubWindow | Qt::FramelessWindowHint);
-#ifndef __linux__
+    if constexpr (!platform::is_linux())
+    {
+        setAttribute(Qt::WA_NoSystemBackground, true);
+        setAttribute(Qt::WA_TranslucentBackground, true);
+    }
+
     setStyleSheet(Utils::LoadStyle(qsl(":/qss/video_panel_mini_window")));
     setProperty("VideoPanelMain", true);
-    setAttribute(Qt::WA_NoSystemBackground, true);
-    setAttribute(Qt::WA_TranslucentBackground, true);
-#else
-    setStyleSheet(Utils::LoadStyle(qsl(":/qss/video_panel_linux")));
-    setProperty("VideoPanelMain", true);
-#endif
 
-    QVBoxLayout* rootLayout = Utils::emptyVLayout();
-    rootLayout->setAlignment(Qt::AlignBottom);
-#ifndef __linux__
-    rootLayout->setContentsMargins(0, 0, 0, 0);
-#endif
+    auto rootLayout = Utils::emptyVLayout();
+
+    if constexpr (platform::is_linux())
+        rootLayout->setAlignment(Qt::AlignVCenter);
+    else
+        rootLayout->setAlignment(Qt::AlignBottom);
+
+    rootLayout->setContentsMargins(0, getButtonsVerOffset(), 0, getButtonsVerOffset());
     setLayout(rootLayout);
 
     rootWidget_ = new QWidget(this);
     rootWidget_->setContentsMargins(0, 0, 0, 0);
     rootWidget_->setProperty("VideoPanel", true);
-    layout()->addWidget(rootWidget_);
+    rootLayout->addWidget(rootWidget_);
 
-    QHBoxLayout* layoutTarget = Utils::emptyHLayout();
+    auto layoutTarget = Utils::emptyHLayout();
     layoutTarget->setAlignment(Qt::AlignVCenter);
     rootWidget_->setLayout(layoutTarget);
 
-    QWidget* parentWidget = rootWidget_;
-    auto addButton = [this, parentWidget, layoutTarget](const char* _propertyName, const char* _slot, QHBoxLayout* layout = nullptr)->QPushButton*
+    auto addButton = [this, parent = rootWidget_, layoutTarget](const char* _propertyName, auto _slot) -> QPushButton*
     {
-        QPushButton* btn = new QPushButton(parentWidget);
+        auto btn = new QPushButton(parent);
         if (_propertyName != NULL)
             btn->setProperty(_propertyName, true);
         btn->setSizePolicy(QSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding));
         btn->setCursor(QCursor(Qt::PointingHandCursor));
         btn->setFlat(true);
-        (layout ? layout : layoutTarget)->addWidget(btn);
 
-#ifdef __APPLE__
-        connect(btn, &QPushButton::clicked, this, [this](){ if (!isActiveWindow()) activateWindow(); }, Qt::QueuedConnection);
-#endif
-        connect(btn, SIGNAL(clicked()), this, _slot, Qt::QueuedConnection);
+        layoutTarget->addWidget(btn);
+
+        if constexpr (platform::is_apple())
+            connect(btn, &QPushButton::clicked, this, [this](){ if (!isActiveWindow()) activateWindow(); });
+
+        connect(btn, &QPushButton::clicked, this, std::forward<decltype(_slot)>(_slot));
+
         return btn;
     };
 
     layoutTarget->addStretch(1);
-    stopCallButton_ = addButton("StopCallButton", SLOT(onHangUpButtonClicked()));
+    stopCallButton_ = addButton("StopCallButton", &MiniWindowVideoPanel::onHangUpButtonClicked);
     layoutTarget->addStretch(1);
-    micButton_ = addButton("CallEnableMic", SLOT(onAudioOnOffClicked()));
+    micButton_ = addButton("CallEnableMic", &MiniWindowVideoPanel::onAudioOnOffClicked);
     micButton_->setProperty("CallDisableMic", false);
     layoutTarget->addStretch(1);
-    shareScreenButton_ = addButton("ShareScreenButtonDisable", SLOT(onShareScreen()));
-#ifdef __linux__
-    shareScreenButton_->hide();
-#else
+    shareScreenButton_ = addButton("ShareScreenButtonDisable", &MiniWindowVideoPanel::onShareScreen);
     layoutTarget->addStretch(1);
-#endif
-
-    videoButton_ = addButton(NULL, SLOT(onVideoOnOffClicked()));
+    videoButton_ = addButton(NULL, &MiniWindowVideoPanel::onVideoOnOffClicked);
     layoutTarget->addStretch(1);
 
     resetHangupText();
 
-    QObject::connect(&Ui::GetDispatcher()->getVoipController(), SIGNAL(onVoipMediaLocalAudio(bool)), this, SLOT(onVoipMediaLocalAudio(bool)), Qt::DirectConnection);
-    QObject::connect(&Ui::GetDispatcher()->getVoipController(), SIGNAL(onVoipMediaLocalVideo(bool)), this, SLOT(onVoipMediaLocalVideo(bool)), Qt::DirectConnection);
+    connect(&Ui::GetDispatcher()->getVoipController(), &voip_proxy::VoipController::onVoipMediaLocalAudio, this, &MiniWindowVideoPanel::onVoipMediaLocalAudio);
+    connect(&Ui::GetDispatcher()->getVoipController(), &voip_proxy::VoipController::onVoipMediaLocalVideo, this, &MiniWindowVideoPanel::onVoipMediaLocalVideo);
     //QObject::connect(&Ui::GetDispatcher()->getVoipController(), SIGNAL(onVoipCallNameChanged(const voip_manager::ContactsList&)), this, SLOT(onVoipCallNameChanged(const voip_manager::ContactsList&)), Qt::DirectConnection);
     //QObject::connect(&Ui::GetDispatcher()->getVoipController(), SIGNAL(onVoipMinimalBandwidthChanged(bool)), this, SLOT(onVoipMinimalBandwidthChanged(bool)), Qt::DirectConnection);
-    QObject::connect(&Ui::GetDispatcher()->getVoipController(), SIGNAL(onVoipVideoDeviceSelected(const voip_proxy::device_desc&)), this, SLOT(onVoipVideoDeviceSelected(const voip_proxy::device_desc&)), Qt::DirectConnection);
+    connect(&Ui::GetDispatcher()->getVoipController(), &voip_proxy::VoipController::onVoipVideoDeviceSelected, this, &MiniWindowVideoPanel::onVoipVideoDeviceSelected);
 
-    videoPanelEffect_ = std::make_unique<Ui::UIEffects>(*this);
 }
 
-void Ui::MiniWindowVideoPanel::fadeIn(unsigned int kAnimationDefDuration)
+void Ui::MiniWindowVideoPanel::fadeIn(unsigned int _kAnimationDefDuration)
 {
-    isFadedVisible = true;
-#ifndef __linux__
-    videoPanelEffect_->fadeIn(kAnimationDefDuration);
-#endif
+    if (!isFadedVisible_)
+    {
+        isFadedVisible_ = true;
+        if constexpr (!platform::is_linux())
+            BaseVideoPanel::fadeIn(_kAnimationDefDuration);
+    }
 }
 
-void Ui::MiniWindowVideoPanel::fadeOut(unsigned int kAnimationDefDuration)
+void Ui::MiniWindowVideoPanel::fadeOut(unsigned int _kAnimationDefDuration)
 {
-    isFadedVisible = false;
-#ifndef __linux__
-    videoPanelEffect_->fadeOut(kAnimationDefDuration);
-#endif
+    if (isFadedVisible_)
+    {
+        isFadedVisible_ = false;
+        if constexpr (!platform::is_linux())
+            BaseVideoPanel::fadeOut(_kAnimationDefDuration);
+    }
 }
 
 bool Ui::MiniWindowVideoPanel::isFadedIn()
 {
-    return isFadedVisible;
+    return isFadedVisible_;
 }
 
 bool Ui::MiniWindowVideoPanel::isUnderMouse()
@@ -290,7 +322,7 @@ void Ui::MiniWindowVideoPanel::enterEvent(QEvent* _e)
     if (!mouseUnderPanel_)
     {
         mouseUnderPanel_ = true;
-        emit onMouseEnter();
+        Q_EMIT onMouseEnter();
     }
 }
 
@@ -298,89 +330,112 @@ void Ui::MiniWindowVideoPanel::leaveEvent(QEvent* _e)
 {
     QWidget::leaveEvent(_e);
     mouseUnderPanel_ = false;
-    emit onMouseLeave();
+    Q_EMIT onMouseLeave();
 }
 
 void Ui::MiniWindowVideoPanel::resizeEvent(QResizeEvent* _e)
 {
     QWidget::resizeEvent(_e);
-#ifdef __APPLE__
-    // Forced set fixed size, because under mac we use cocoa to change panel size.
-    setFixedSize(size());
-#endif
+    if constexpr (platform::is_apple())
+    {
+        // Forced set fixed size, because under mac we use cocoa to change panel size.
+        setFixedSize(size());
+    }
 }
 
-void Ui::MiniWindowVideoPanel::updatePosition(const QWidget& parent)
+void Ui::MiniWindowVideoPanel::updatePosition(const QWidget& _parent)
 {
-    int offsetFromButton = Utils::scale_value(22);
+    const auto rc = parentWidget()->geometry();
+
     if (platform::is_linux())
+        move(0, rc.height() - rect().height());
+    else
+        move(rc.x(), rc.y() + rc.height() - rect().height() - getPanelOffsetFromButton());
+
+    setFixedWidth(rc.width());
+}
+
+
+Ui::DetachedVideoWindow::DetachedVideoWindow(QWidget* _parent)
+    : QWidget()
+    , showPanelTimer_(this)
+    , parent_(_parent)
+    , closedManualy_(false)
+    , videoPanel_(new MiniWindowVideoPanel(this))
+    , shadow_(new Ui::ShadowWindowParent(this))
+{
+    setFixedSize(getDetachedVideoWindowSize());
+
+    auto rootLayout = Utils::emptyVLayout(this);
+    rootLayout->setAlignment(Qt::AlignVCenter);
+    setLayout(rootLayout);
+
+    QMetaObject::connectSlotsByName(this);
+
+    if constexpr (platform::is_windows())
     {
-        auto rc = parentWidget()->geometry();
-        move(0, rc.height() - rect().height() - offsetFromButton);
-        setFixedWidth(rc.width());
+        setWindowFlags(Qt::WindowStaysOnTopHint | Qt::FramelessWindowHint | Qt::SubWindow);
     }
     else
     {
-        auto rc = parentWidget()->geometry();
-        move(rc.x(), rc.y() + rc.height() - rect().height() - offsetFromButton);
-        setFixedWidth(rc.width());
+        // We have problem on Mac with WA_ShowWithoutActivating and WindowDoesNotAcceptFocus.
+        // If video window is showing with this flags, we cannot activate main ICQ window.
+        // UPDATED: Looks like for mini video window it works ok with  Qt::WindowDoesNotAcceptFocus
+        // and Qt::WA_ShowWithoutActivating.
+        setWindowFlags(Qt::WindowStaysOnTopHint | Qt::Window | Qt::WindowDoesNotAcceptFocus);
+        //setAttribute(Qt::WA_ShowWithoutActivating);
+        setAttribute(Qt::WA_X11DoNotAcceptFocus);
     }
-}
-
-
-Ui::DetachedVideoWindow::DetachedVideoWindow(QWidget* parent)
-    : QWidget()
-    , showPanelTimer_(this)
-    , parent_(parent)
-    , closedManualy_(false)
-    , videoPanel_(new MiniWindowVideoPanel(this))
-    , shadow_ (new Ui::ShadowWindowParent(this))
-{
-    setFixedSize(Utils::scale_value(cDetachedVideoWindowSize));
-
-    horizontalLayout_ = Utils::emptyHLayout(this);
-    horizontalLayout_->setAlignment(Qt::AlignVCenter);
-    QMetaObject::connectSlotsByName(this);
-
-#ifdef _WIN32
-    setWindowFlags(Qt::WindowStaysOnTopHint | Qt::FramelessWindowHint | Qt::SubWindow);
-#else
-    // We have problem on Mac with WA_ShowWithoutActivating and WindowDoesNotAcceptFocus.
-    // If video window is showing with this flags, we cannot activate main ICQ window.
-    // UPDATED: Looks like for mini video window it works ok with  Qt::WindowDoesNotAcceptFocus
-    // and Qt::WA_ShowWithoutActivating.
-    setWindowFlags(Qt::WindowStaysOnTopHint | Qt::Window | Qt::WindowDoesNotAcceptFocus);
-    //setAttribute(Qt::WA_ShowWithoutActivating);
-    setAttribute(Qt::WA_X11DoNotAcceptFocus);
-#endif
 
 #ifndef STRIP_VOIP
-    std::vector<QPointer<Ui::BaseVideoPanel>> panels;
+    std::vector<QPointer<Ui::BaseVideoPanel>> panels = { videoPanel_ };
     rootWidget_ = platform_specific::GraphicsPanel::create(this, panels, false, false);
     rootWidget_->setContentsMargins(0, 0, 0, 0);
     rootWidget_->setAttribute(Qt::WA_UpdatesDisabled);
     rootWidget_->setSizePolicy(QSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding));
-    layout()->addWidget(rootWidget_);
+
+    if constexpr (!platform::is_linux())
+    {
+        rootLayout->addWidget(rootWidget_);
+    }
+    else
+    {
+        rootLayout->addWidget(rootWidget_, 1);
+        rootLayout->addWidget(videoPanel_);
+    }
+
 #endif
 
-    std::vector<QPointer<BaseVideoPanel>> videoPanels;
-    if (videoPanel_)
-        videoPanels.push_back(videoPanel_);
-
+    std::vector<QPointer<BaseVideoPanel>> videoPanels = { videoPanel_ };
     eventFilter_ = new ResizeEventFilter(videoPanels, shadow_->getShadowWidget(), this);
     installEventFilter(eventFilter_);
 
-    setAttribute(Qt::WA_UpdatesDisabled);
-    setAttribute(Qt::WA_ShowWithoutActivating);
+    if constexpr (!platform::is_linux())
+    {
+        setAttribute(Qt::WA_UpdatesDisabled);
+        setAttribute(Qt::WA_ShowWithoutActivating);
+    }
 
-    connect(&showPanelTimer_, SIGNAL(timeout()), this, SLOT(checkPanelsVis()), Qt::QueuedConnection);
+    connect(&showPanelTimer_, &QTimer::timeout, this, &DetachedVideoWindow::checkPanelsVis);
     showPanelTimer_.setInterval(1500);
 
-    connect(&Ui::GetDispatcher()->getVoipController(), SIGNAL(onVoipWindowRemoveComplete(quintptr)), this, SLOT(onVoipWindowRemoveComplete(quintptr)), Qt::DirectConnection);
-    connect(&Ui::GetDispatcher()->getVoipController(), SIGNAL(onVoipWindowAddComplete(quintptr)), this, SLOT(onVoipWindowAddComplete(quintptr)), Qt::DirectConnection);
-    connect(&Ui::GetDispatcher()->getVoipController(), SIGNAL(onVoipCallDestroyed(const voip_manager::ContactEx&)), this, SLOT(onVoipCallDestroyed(const voip_manager::ContactEx&)), Qt::DirectConnection);
+    connect(&Ui::GetDispatcher()->getVoipController(), &voip_proxy::VoipController::onVoipWindowRemoveComplete, this, &DetachedVideoWindow::onVoipWindowRemoveComplete);
+    connect(&Ui::GetDispatcher()->getVoipController(), &voip_proxy::VoipController::onVoipWindowAddComplete, this, &DetachedVideoWindow::onVoipWindowAddComplete);
+    connect(&Ui::GetDispatcher()->getVoipController(), &voip_proxy::VoipController::onVoipCallDestroyed, this, &DetachedVideoWindow::onVoipCallDestroyed);
 
     //setMinimumSize(Utils::scale_value(320), Utils::scale_value(80));
+
+    if (videoPanel_)
+    {
+        videoPanel_->fadeOut(0);
+        connect(videoPanel_, &MiniWindowVideoPanel::onMouseLeave, this, &DetachedVideoWindow::onPanelMouseLeave);
+        connect(videoPanel_, &MiniWindowVideoPanel::onMouseEnter, this, &DetachedVideoWindow::onPanelMouseEnter);
+        connect(videoPanel_, &MiniWindowVideoPanel::needShowScreenPermissionsPopup, this, [this](media::permissions::DeviceType type)
+        {
+            activateMainVideoWindow();
+            Q_EMIT needShowScreenPermissionsPopup(type);
+        });
+    }
 
     const auto screenRect = Utils::mainWindowScreen()->geometry();
     const auto detachedWndRect = rect();
@@ -388,18 +443,6 @@ Ui::DetachedVideoWindow::DetachedVideoWindow(QWidget* parent)
     auto detachedWndPos = screenRect.topRight();
     detachedWndPos.setX(detachedWndPos.x() - detachedWndRect.width() - 0.01f * screenRect.width());
     detachedWndPos.setY(detachedWndPos.y() + 0.05f * screenRect.height());
-
-    if (videoPanel_)
-    {
-        videoPanel_->fadeOut(0);
-        connect(videoPanel_, &MiniWindowVideoPanel::onMouseLeave, this, &DetachedVideoWindow::onPanelMouseLeave, Qt::QueuedConnection);
-        connect(videoPanel_, &MiniWindowVideoPanel::onMouseEnter, this, &DetachedVideoWindow::onPanelMouseEnter, Qt::QueuedConnection);
-        connect(videoPanel_, &MiniWindowVideoPanel::needShowScreenPermissionsPopup, this, [this]()
-        {
-            activateMainVideoWindow();
-            emit needShowScreenPermissionsPopup();
-        });
-    }
 
     const QRect rc(detachedWndPos.x(), detachedWndPos.y(), detachedWndRect.width(), detachedWndRect.height());
     setGeometry(rc);
@@ -413,8 +456,9 @@ Ui::DetachedVideoWindow::DetachedVideoWindow(QWidget* parent)
 
 void Ui::DetachedVideoWindow::onVoipCallDestroyed(const voip_manager::ContactEx& _contactEx)
 {
-    if (_contactEx.call_count <= 1)
-    {   // in this moment destroyed call is active, e.a. call_count + 1
+    if (_contactEx.current_call)
+    {
+        // in this moment destroyed call is active, e.a. call_count + 1
         closedManualy_ = false;
     }
 }
@@ -488,6 +532,17 @@ void Ui::DetachedVideoWindow::leaveEvent(QEvent* _e)
     //showPanelTimer_.start();
 }
 
+void Ui::DetachedVideoWindow::paintEvent(QPaintEvent* _e)
+{
+    QWidget::paintEvent(_e);
+
+    if constexpr (platform::is_linux())
+    {
+        QPainter p(this);
+        p.fillRect(rect(), getPanelBackgroundColorLinux());
+    }
+}
+
 void Ui::DetachedVideoWindow::mouseDoubleClickEvent(QMouseEvent* /*e*/)
 {
     activateMainVideoWindow();
@@ -517,22 +572,19 @@ void Ui::DetachedVideoWindow::onVoipWindowAddComplete(quintptr _winId)
 
 void Ui::DetachedVideoWindow::showFrame()
 {
-#ifndef __linux__
     assert(rootWidget_->frameId());
     if (rootWidget_->frameId())
         Ui::GetDispatcher()->getVoipController().setWindowAdd((quintptr)rootWidget_->frameId(), "", false, false, 0);
     //shadow_->showShadow();
-#endif
 }
 
 void Ui::DetachedVideoWindow::hideFrame()
 {
-#ifndef __linux__
     assert(rootWidget_->frameId());
     if (rootWidget_->frameId())
         Ui::GetDispatcher()->getVoipController().setWindowRemove((quintptr)rootWidget_->frameId());
     //shadow_->hideShadow();
-#endif
+
     if (videoPanel_)
         videoPanel_->hide();
 }
@@ -540,6 +592,11 @@ void Ui::DetachedVideoWindow::hideFrame()
 void Ui::DetachedVideoWindow::showEvent(QShowEvent* _e)
 {
     QWidget::showEvent(_e);
+
+    if constexpr (platform::is_linux())
+        if (videoPanel_)
+            videoPanel_->show();
+
     updatePanels();
 }
 
@@ -587,18 +644,20 @@ void Ui::DetachedVideoWindow::updatePanels() const
         assert(false);
         return;
     }
-#ifdef __APPLE__
-    rootWidget_->clearPanels();
-    std::vector<QPointer<Ui::BaseVideoPanel>> panels;
 
-    if (videoPanel_ && videoPanel_->isVisible())
-        panels.push_back(videoPanel_);
+    if constexpr (platform::is_apple())
+    {
+        rootWidget_->clearPanels();
+        std::vector<QPointer<Ui::BaseVideoPanel>> panels;
 
-    rootWidget_->addPanels(panels);
+        if (videoPanel_ && videoPanel_->isVisible())
+            panels.push_back(videoPanel_);
 
-    if (videoPanel_ && videoPanel_->isVisible())
-        videoPanel_->updatePosition(*this);
-#endif
+        rootWidget_->addPanels(panels);
+
+        if (videoPanel_ && videoPanel_->isVisible())
+            videoPanel_->updatePosition(*this);
+    }
 }
 
 void Ui::DetachedVideoWindow::activateMainVideoWindow()
@@ -607,9 +666,9 @@ void Ui::DetachedVideoWindow::activateMainVideoWindow()
     {
         if (parent_->isMinimized())
         {
-            emit windowWillDeminiaturize();
+            Q_EMIT windowWillDeminiaturize();
             parent_->showNormal();
-            emit windowDidDeminiaturize();
+            Q_EMIT windowDidDeminiaturize();
         }
         parent_->raise();
         parent_->activateWindow();

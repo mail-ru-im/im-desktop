@@ -21,10 +21,10 @@ namespace core
     {
         class attach_phone : public wim_packet
         {
-            virtual int32_t init_request(std::shared_ptr<core::http_request_simple> _request) override;
+            virtual int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
             virtual int32_t parse_response_data(const rapidjson::Value& _data) override;
             virtual int32_t on_response_error_code() override;
-            int32_t execute_request(std::shared_ptr<core::http_request_simple> request) override;
+            int32_t execute_request(const std::shared_ptr<core::http_request_simple>& request) override;
             virtual int32_t on_empty_data() override;
 
             phone_info      phone_info_;
@@ -33,6 +33,7 @@ namespace core
             attach_phone(wim_packet_params _params, const phone_info& _info);
             int32_t get_response_error_code();
             bool is_valid() const override { return true; }
+            virtual bool is_post() const override { return true; }
             virtual ~attach_phone();
         };
 

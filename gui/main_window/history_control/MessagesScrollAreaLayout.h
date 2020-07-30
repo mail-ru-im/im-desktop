@@ -184,6 +184,8 @@ namespace Ui
         bool isInitState() const noexcept;
         void resetInitState() noexcept;
 
+        bool hasItems() const noexcept { return !LayoutItems_.empty(); }
+
         bool eventFilter(QObject* watcher, QEvent* e) override;
 
         int32_t getBottomWidgetsHeight() const;
@@ -202,7 +204,10 @@ namespace Ui
         void showSmartReplyWidgetAnimated();
         void hideSmartReplyWidgetAnimated();
 
+        void setSmartrepliesSemitransparent(bool _semi);
+
         void setSmartreplyButton(QWidget* _button);
+        void notifyQuotesResize();
 
     private:
 
@@ -229,11 +234,9 @@ namespace Ui
             bool isVisibleEnoughForRead_;
         };
 
-        typedef std::unique_ptr<ItemInfo> ItemInfoUptr;
-
-        typedef std::deque<ItemInfoUptr> ItemsInfo;
-
-        typedef ItemsInfo::iterator ItemsInfoIter;
+        using ItemInfoUptr = std::unique_ptr<ItemInfo>;
+        using ItemsInfo = std::deque<ItemInfoUptr>;
+        using ItemsInfoIter = ItemsInfo::iterator;
 
         std::set<QWidget*> Widgets_;
 
@@ -339,6 +342,8 @@ namespace Ui
         };
         void animateSmartReplyWidget(const SmartreplyAnimType _type);
         bool isSmartreplyVisible() const;
+        void initSmartreplyOpacity();
+        void initSmartreplyButtonOpacity();
 
         enum class SuspendAfterExtract
         {
@@ -363,11 +368,15 @@ namespace Ui
         SmartreplyAnimType smartreplyAnimType_ = SmartreplyAnimType::invalid;
         bool isSmartreplyAnimating_ = false;
         Utils::OpacityEffect* smartreplyOpacity_;
+        Utils::OpacityEffect* smartreplyButtonOpacity_;
+
+        int bottomOverflow_ = 0;
+        bool quoteHeightChangeWaited_ = false;
 
     public:
         size_t widgetsCount() const noexcept;
 
-private slots:
+private Q_SLOTS:
         void onDeactivateScrollingItems(QObject* obj);
         /// void onDestroyItemAndAlign(QObject* obj);
 

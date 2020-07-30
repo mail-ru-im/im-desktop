@@ -32,9 +32,9 @@ namespace
         return std::wstring_view(L".zdict");
     }
 
-    constexpr auto get_dict_timestamp_size() noexcept
+    constexpr size_t get_dict_timestamp_size() noexcept
     {
-        return 6u;
+        return 6;
     }
 
     constexpr auto get_delay_update_timeout() noexcept
@@ -89,8 +89,7 @@ zstd_helper::dict_info::dict_info(dict_location _location, std::string_view _pat
         if (pos_begin != std::string::npos && pos_end != std::string::npos && pos_begin < pos_end)
         {
             ++pos_begin;
-            auto info = name_.substr(pos_begin, pos_end - pos_begin);
-            if (info.size() >= get_dict_timestamp_size())
+            if (auto info = std::string_view(name_).substr(pos_begin, pos_end - pos_begin); info.size() >= get_dict_timestamp_size())
             {
                 // change DDMMYYN -> YYMMDDN for string comparation
                 auto ts = std::string(info);
@@ -175,10 +174,7 @@ void zstd_helper::reinit_dicts(std::string_view _fault_dict_name)
         return;
 
     if (!_fault_dict_name.empty())
-    {
-        std::string ss = su::concat("failure ", _fault_dict_name, "\r\n", get_dicts_list());
-        write_to_log(ss);
-    }
+        write_to_log(su::concat("failure ", _fault_dict_name, "\r\n", get_dicts_list()));
 
     g_core->execute_core_context([wr_this = weak_from_this()]()
     {
@@ -215,7 +211,7 @@ std::string zstd_helper::get_last_response_dict() const
     return std::string();
 }
 
-int zstd_helper::compress(const char* _data_in, size_t _data_in_size, char* _data_out, size_t _data_out_size, size_t* _data_size_written, const std::string& _dict_name, int _compress_level) const
+int zstd_helper::compress(const char* _data_in, size_t _data_in_size, char* _data_out, size_t _data_out_size, size_t* _data_size_written, std::string_view _dict_name, int _compress_level) const
 {
     if (auto dict = get_dict_info(_dict_name); dict.has_value())
     {
@@ -231,7 +227,7 @@ int zstd_helper::compress(const char* _data_in, size_t _data_in_size, char* _dat
     return -1;
 }
 
-int zstd_helper::decompress(const char* _data_in, size_t _data_in_size, char* _data_out, size_t _data_out_size, size_t* _data_size_written, const std::string& _dict_name) const
+int zstd_helper::decompress(const char* _data_in, size_t _data_in_size, char* _data_out, size_t _data_out_size, size_t* _data_size_written, std::string_view _dict_name) const
 {
     if (auto dict = get_dict_info(_dict_name); dict.has_value())
     {

@@ -35,10 +35,10 @@ namespace Utils
 
         if (preview.isNull())
         {
-            emit loadedSignal(QPixmap());
+            Q_EMIT loadedSignal(QPixmap());
             return;
         }
 
-        emit loadedSignal(preview);
+        Q_EMIT loadedSignal(preview);
     }
 }

@@ -155,7 +155,7 @@ namespace Logic
 
     QString MessageKey::toLogStringShort() const
     {
-        return ql1s("id=") % QString::number(id_) % ql1s(";prev=") % QString::number(prev_);
+        return u"id=" % QString::number(id_) % u";prev=" % QString::number(prev_);
     }
 
     bool MessageKey::isFileSharing() const noexcept

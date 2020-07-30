@@ -21,7 +21,7 @@ void LoadMediaPreviewFromFileTask::run()
 {
     if (!QFile::exists(path_))
     {
-        emit loaded(QPixmap(), QSize());
+        Q_EMIT loaded(QPixmap(), QSize());
         return;
     }
 
@@ -32,7 +32,7 @@ void LoadMediaPreviewFromFileTask::run()
     originalSize = reader.size();
 
     const auto cropThreshold = Ui::MessageStyle::Preview::mediaCropThreshold();
-    auto maxSize = QSize(Ui::MessageStyle::Preview::getImageWidthMax(), Ui::MessageStyle::Preview::getImageHeightMax());
+    auto maxSize = Utils::scale_bitmap(QSize(Ui::MessageStyle::Preview::getImageWidthMax(), Ui::MessageStyle::Preview::getImageHeightMax()));
     const auto scaledSize = originalSize.scaled(maxSize, Qt::KeepAspectRatio);
 
     if (std::min(scaledSize.width(), scaledSize.height()) < cropThreshold)
@@ -40,7 +40,7 @@ void LoadMediaPreviewFromFileTask::run()
 
     Utils::loadPixmapScaled(path_, maxSize, preview, originalSize, Utils::PanoramicCheck::no);
 
-    emit loaded(preview, originalSize);
+    Q_EMIT loaded(preview, originalSize);
 }
 
 }

@@ -68,6 +68,7 @@ namespace core
         std::string crash_handler::product_bundle_;
         std::wstring crash_handler::product_path_;
         bool crash_handler::is_sending_after_crash_ = false;
+        bool crash_handler::is_sys_handler_enabled_ = false;
 
         crash_handler::crash_handler(
             std::string_view _bundle,
@@ -94,6 +95,11 @@ namespace core
         void crash_handler::set_is_sending_after_crash(bool _is_sending_after_crash)
         {
             is_sending_after_crash_ = _is_sending_after_crash;
+        }
+
+        void crash_handler::set_is_sys_handler_enabled(bool _is_sys_handler_enabled)
+        {
+            is_sys_handler_enabled_ = _is_sys_handler_enabled;
         }
 
         std::wstring get_report_path()
@@ -479,6 +485,9 @@ namespace core
         // Structured exception handler
         LONG WINAPI crash_handler::seh_handler(PEXCEPTION_POINTERS pExceptionPtrs)
         {
+            if (is_sys_handler_enabled_)
+                return EXCEPTION_CONTINUE_SEARCH;
+
             process_exception_pointers(pExceptionPtrs);
 
             // Unreacheable code
@@ -488,6 +497,9 @@ namespace core
         // CRT terminate() call handler
         void __cdecl crash_handler::terminate_handler()
         {
+            if (is_sys_handler_enabled_)
+                return;
+
             // Abnormal program termination (terminate() function was called)
 
             // Retrieve exception information
@@ -500,6 +512,9 @@ namespace core
         // CRT unexpected() call handler
         void __cdecl crash_handler::unexpected_handler()
         {
+            if (is_sys_handler_enabled_)
+                return;
+
             // Unexpected error (unexpected() function was called)
 
             // Retrieve exception information
@@ -512,6 +527,9 @@ namespace core
         // CRT Pure virtual method call handler
         void __cdecl crash_handler::pure_call_handler()
         {
+            if (is_sys_handler_enabled_)
+                return;
+
             // Pure virtual function call
 
             // Retrieve exception information
@@ -530,6 +548,8 @@ namespace core
             uintptr_t pReserved)
         {
             pReserved;
+            if (is_sys_handler_enabled_)
+                return;
 
             // Invalid parameter exception
 
@@ -544,6 +564,8 @@ namespace core
         // CRT new operator fault handler
         int __cdecl crash_handler::new_handler(size_t)
         {
+            if (is_sys_handler_enabled_)
+                return 0;
             // 'new' operator memory allocation exception
 
             // Retrieve exception information
@@ -559,6 +581,9 @@ namespace core
         // CRT SIGABRT signal handler
         void crash_handler::sigabrt_handler(int)
         {
+            if (is_sys_handler_enabled_)
+                return;
+
             // Caught SIGABRT C++ signal
 
             // Retrieve exception information
@@ -572,6 +597,9 @@ namespace core
         // CRT SIGFPE signal handler
         void crash_handler::sigfpe_handler(int /*code*/, int /* subcode */)
         {
+            if (is_sys_handler_enabled_)
+                return;
+
             // Floating point exception (SIGFPE)
 
             EXCEPTION_POINTERS* pExceptionPtrs = (PEXCEPTION_POINTERS)_pxcptinfoptrs;
@@ -583,6 +611,9 @@ namespace core
         // CRT sigill signal handler
         void crash_handler::sigill_handler(int)
         {
+            if (is_sys_handler_enabled_)
+                return;
+
             // Illegal instruction (SIGILL)
 
             // Retrieve exception information
@@ -596,6 +627,9 @@ namespace core
         // CRT sigint signal handler
         void crash_handler::sigint_handler(int)
         {
+            if (is_sys_handler_enabled_)
+                return;
+
             // Interruption (SIGINT)
 
             // Retrieve exception information
@@ -609,6 +643,9 @@ namespace core
         // CRT SIGSEGV signal handler
         void crash_handler::sigsegv_handler(int)
         {
+            if (is_sys_handler_enabled_)
+                return;
+
             // Invalid storage access (SIGSEGV)
 
             PEXCEPTION_POINTERS pExceptionPtrs = (PEXCEPTION_POINTERS)_pxcptinfoptrs;
@@ -619,6 +656,9 @@ namespace core
         // CRT SIGTERM signal handler
         void crash_handler::sigterm_handler(int)
         {
+            if (is_sys_handler_enabled_)
+                return;
+
             // Termination request (SIGTERM)
 
             // Retrieve exception information

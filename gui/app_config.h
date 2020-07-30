@@ -37,6 +37,7 @@ public:
     bool IsSaveCallRTPEnabled() const noexcept;
     bool IsServerSearchEnabled() const noexcept;
     bool IsShowHiddenThemes() const noexcept;
+    bool IsSysCrashHandleEnabled() const noexcept;
 
     bool WatchGuiMemoryEnabled() const noexcept;
 
@@ -72,8 +73,10 @@ public:
     void SetCacheHistoryControlPagesFor(int secs) noexcept;
     void SetWatchGuiMemoryEnabled(bool _watch) noexcept;
     void SetCustomDeviceId(bool _custom) noexcept;
+    void SetConnectByIp(bool _enabled) noexcept;
 
     bool hasCustomDeviceId() const;
+    bool connectByIp() const;
 
 private:
     bool IsContextMenuFeaturesUnlocked_;
@@ -86,6 +89,7 @@ private:
     bool IsSaveCallRTPEnabled_;
     bool IsServerSearchEnabled_;
     bool IsShowHiddenThemes_;
+    bool IsSysCrashHandleEnabled_;
 
     bool WatchGuiMemoryEnabled_;
 
@@ -94,6 +98,7 @@ private:
     bool GDPR_UserHasAgreed_;
     int32_t GDPR_AgreementReportedToServer_;
     bool GDPR_UserHasLoggedInEver_;
+    bool ConnectByIp_;
 
     int CacheHistoryContolPagesFor_;
 

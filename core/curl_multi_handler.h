@@ -14,11 +14,16 @@ namespace core
         virtual void reset() override;
 
         virtual void process_stopped_tasks() override;
-
         virtual bool is_stopped() const override;
 
     private:
+        void add_task();
         void add_task_to_queue(std::shared_ptr<core::curl_task> _task);
+
+        void cancel_tasks();
+        void process_stopped_tasks_internal();
+
+        void notify();
 
     private:
         std::thread service_thread_;

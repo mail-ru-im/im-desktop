@@ -22,7 +22,7 @@ hide_chat::~hide_chat()
 
 }
 
-int32_t hide_chat::init_request(std::shared_ptr<core::http_request_simple> _request)
+int32_t hide_chat::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     std::stringstream ss_url;
     ss_url << urls::get_url(urls::url_type::wim_host) << "buddylist/hideChat" <<

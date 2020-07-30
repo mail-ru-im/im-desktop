@@ -33,7 +33,7 @@ validate_phone::~validate_phone()
 }
 
 
-int32_t validate_phone::init_request(std::shared_ptr<core::http_request_simple> _request)
+int32_t validate_phone::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     std::stringstream ss_url;
     ss_url << urls::get_url(urls::url_type::smsreg_host) << std::string_view("/requestPhoneValidation.php?") <<
@@ -89,7 +89,7 @@ get_code_by_phone_call::~get_code_by_phone_call()
 {
 }
 
-int32_t get_code_by_phone_call::init_request(std::shared_ptr<core::http_request_simple> _request)
+int32_t get_code_by_phone_call::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     _request->set_url(ivr_url_);
     _request->set_keep_alive();

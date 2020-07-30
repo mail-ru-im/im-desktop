@@ -24,12 +24,19 @@
 #include "../events/fetch_event_mchat.h"
 #include "../events/fetch_event_smartreply_suggests.h"
 #include "../events/fetch_event_poll_update.h"
+#include "../events/fetch_event_async_response.h"
+#include "../events/fetch_event_recent_call_log.h"
+#include "../events/fetch_event_recent_call.h"
+#include "../events/fetch_event_reactions.h"
+#include "../events/fetch_event_status.h"
+#include "../events/fetch_event_call_room_info.h"
 
 #include "../events/webrtc.h"
 
 #include "../../../log/log.h"
 
 #include "../../../tools/json_helper.h"
+#include "../../../tools/coretime.h"
 #include "../../../common.shared/smartreply/smartreply_types.h"
 
 #include <time.h>
@@ -63,18 +70,17 @@ fetch::fetch(
     timezone_offset_(0),
     hidden_(_hidden),
     events_count_(0),
-    my_aimid_(_params.aimid_),
     next_fetch_timeout_(default_next_fetch_timeout),
-    suggest_types_(_fetch_params.suggest_types_)
+    suggest_types_(_fetch_params.suggest_types_),
+    hotstart_(_fetch_params.hotstart_),
+    hotstart_complete_(false)
 {
 }
 
 
-fetch::~fetch()
-{
-}
+fetch::~fetch() = default;
 
-int32_t fetch::init_request(std::shared_ptr<core::http_request_simple> _request)
+int32_t fetch::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     std::stringstream ss_url;
 
@@ -83,10 +89,12 @@ int32_t fetch::init_request(std::shared_ptr<core::http_request_simple> _request)
     else
         ss_url << trimmed << '&';
 
-    static int32_t request_id = 0;
-    ss_url << "f=json" << "&r=" << ++request_id << "&timeout=" << timeout_.count() << "&peek=" << '0';
+    static int64_t request_id = 0;
+    ss_url << "f=json&r=" << ++request_id << "&timeout=" << timeout_.count() << "&peek=0";
     if (hidden_)
         ss_url << "&hidden=1";
+    if (hotstart_)
+        ss_url << "&hotstart=1";
 
     if (!suggest_types_.empty())
     {
@@ -95,7 +103,7 @@ int32_t fetch::init_request(std::shared_ptr<core::http_request_simple> _request)
         {
             ss_url << smartreply::type_2_string(suggest_types_[i]);
             if (i != (suggest_types_.size() - 1))
-                ss_url << ",";
+                ss_url << ',';
         }
     }
 
@@ -103,7 +111,6 @@ int32_t fetch::init_request(std::shared_ptr<core::http_request_simple> _request)
     _request->set_normalized_url("fetchEvents");
     _request->set_timeout(timeout_ + std::chrono::seconds(5));
     _request->set_keep_alive();
-    _request->set_priority(priority_fetch());
 
     if (!params_.full_log_)
     {
@@ -116,7 +123,7 @@ int32_t fetch::init_request(std::shared_ptr<core::http_request_simple> _request)
     return 0;
 }
 
-int32_t fetch::execute_request(std::shared_ptr<core::http_request_simple> _request)
+int32_t fetch::execute_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     auto current_time = std::chrono::system_clock::now();
 
@@ -147,6 +154,11 @@ int32_t fetch::execute_request(std::shared_ptr<core::http_request_simple> _reque
     return 0;
 }
 
+priority_t fetch::get_priority() const
+{
+    return priority_fetch();
+}
+
 void fetch::on_session_ended(const rapidjson::Value &_data)
 {
     relogin_ = relogin::relogin_with_error;
@@ -159,17 +171,11 @@ void fetch::on_session_ended(const rapidjson::Value &_data)
         case 142:           // "endCode":142, "offReason":"Killed Sessions"
             relogin_ = relogin::relogin_without_error;
             break;
+
+        case 143:           // "endCode":143, "offReason": "Fired employee"
+            relogin_ = relogin::relogin_with_cleanup;
+            break;
     }
-}
-
-relogin fetch::need_relogin() const
-{
-    return relogin_;
-}
-
-int32_t fetch::get_events_count() const
-{
-    return events_count_;
 }
 
 std::shared_ptr<core::wim::fetch_event> fetch::push_event(std::shared_ptr<core::wim::fetch_event> _event)
@@ -182,12 +188,9 @@ std::shared_ptr<core::wim::fetch_event> fetch::push_event(std::shared_ptr<core::
 std::shared_ptr<core::wim::fetch_event> fetch::pop_event()
 {
     if (events_.empty())
-    {
         return nullptr;
-    }
 
-
-    auto evt = events_.front();
+    auto evt = std::move(events_.front());
 
     events_.pop_front();
 
@@ -244,13 +247,25 @@ int32_t fetch::parse_response_data(const rapidjson::Value& _data)
                     else if (event_type == "chatHeadsUpdate")
                         push_event(std::make_shared<fetch_event_chat_heads>())->parse(iter_event_data->value);
                     else if (event_type == "galleryNotify")
-                        push_event(std::make_shared<fetch_event_gallery_notify>(my_aimid_))->parse(iter_event_data->value);
+                        push_event(std::make_shared<fetch_event_gallery_notify>(get_params().aimid_))->parse(iter_event_data->value);
                     else if (event_type == "mchat")
                         push_event(std::make_shared<fetch_event_mchat>())->parse(iter_event_data->value);
                     else if (event_type == "suggest")
                         push_event(std::make_shared<fetch_event_smartreply_suggest>())->parse(iter_event_data->value);
                     else if (event_type == "pollUpdate")
                         push_event(std::make_shared<fetch_event_poll_update>())->parse(iter_event_data->value);
+                    else if (event_type == "asyncResponse")
+                        push_event(std::make_shared<fetch_event_async_response>())->parse(iter_event_data->value);
+                    else if (event_type == "recentCallLog")
+                        push_event(std::make_shared<fetch_event_recent_call_log>())->parse(iter_event_data->value);
+                    else if (event_type == "recentCall")
+                        push_event(std::make_shared<fetch_event_recent_call>())->parse(iter_event_data->value);
+                    else if (event_type == "reactions")
+                        push_event(std::make_shared<fetch_event_reactions>())->parse(iter_event_data->value);
+                    else if (event_type == "status")
+                        push_event(std::make_shared<fetch_event_status>())->parse(iter_event_data->value);
+                    else if (event_type == "callRoomInfo")
+                        push_event(std::make_shared<fetch_event_call_room_info>())->parse(iter_event_data->value);
                 }
             }
         }
@@ -275,7 +290,13 @@ int32_t fetch::parse_response_data(const rapidjson::Value& _data)
 
             now_ = time(nullptr);
 
-            timezone_offset_ = mktime(localtime(&now_)) - mktime(gmtime(&now_));
+            tm now_local_tm = { 0 };
+            tm now_gm_tm = { 0 };
+
+            tools::time::localtime(&now_, &now_local_tm);
+            tools::time::gmtime(&now_, &now_gm_tm);
+
+            timezone_offset_ = mktime(&now_local_tm) - mktime(&now_gm_tm);
 
             const auto diff = now_ - execute_time_ - std::round(request_time_);
 
@@ -283,6 +304,8 @@ int32_t fetch::parse_response_data(const rapidjson::Value& _data)
 
             time_offset_ = now_ - ts_ - diff;
             time_offset_local_ = now_local - ts_ - diff;
+
+            tools::unserialize_value(_data, "hotstartDataComplete", hotstart_complete_);
         }
 
         if (have_webrtc_event) {

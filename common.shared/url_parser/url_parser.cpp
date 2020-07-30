@@ -55,6 +55,10 @@ const char* to_string(common::tools::url::protocol _value)
         case common::tools::url::protocol::ftp:         return "ftp";
         case common::tools::url::protocol::https:       return "https";
         case common::tools::url::protocol::ftps:        return "ftps";
+        case common::tools::url::protocol::sftp:        return "sftp";
+        case common::tools::url::protocol::rdp:         return "rdp";
+        case common::tools::url::protocol::vnc:         return "vnc";
+        case common::tools::url::protocol::ssh:         return "ssh";
         case common::tools::url::protocol::icq:         return "icq";
         case common::tools::url::protocol::agent:       return "magent";
         case common::tools::url::protocol::biz:         return "myteam-messenger";
@@ -139,10 +143,17 @@ bool common::tools::url::is_ftp() const
 
 bool common::tools::url::has_prtocol() const
 {
-    if (original_.size() < 4)
+    constexpr auto http = std::string_view("http");
+    if (original_.size() < http.size())
         return false;
 
-    return std::string_view(original_.data(), 4) == "http";
+    const auto prefix = std::string_view(original_.data(), http.size());
+
+    return std::equal(prefix.begin(), prefix.end(), http.begin(), http.end(),
+        [](unsigned char a, unsigned char b)
+    {
+        return std::tolower(a) == std::tolower(b);
+    });
 }
 
 bool common::tools::url::operator==(const url& _right) const
@@ -333,6 +344,9 @@ void common::tools::url_parser::process()
         if (c == 'w' || c == 'W') { state_ = states::www_2; break; }
         else if (c == 'h' || c == 'H') { protocol_ = url::protocol::http; state_ = states::protocol_t1; break; }
         else if (c == 'f' || c == 'F') { protocol_ = url::protocol::ftp; state_ = states::protocol_t1; break; }
+        else if (c == 's' || c == 'S') { protocol_ = url::protocol::sftp; state_ = states::protocol_t1; break; }
+        else if (c == 'v' || c == 'V') { protocol_ = url::protocol::vnc; state_ = states::protocol_t1; break; }
+        else if (c == 'r' || c == 'R') { protocol_ = url::protocol::rdp; state_ = states::protocol_t1; break; }
         else if (c == 'i' || c == 'I') { protocol_ = url::protocol::icq; state_ = states::protocol_t1; break; }
         else if (c == 'm' || c == 'M') { protocol_ = url::protocol::agent; state_ = states::protocol_t1; break;}
         else if (c == LEFT_DOUBLE_QUOTE[0] && char_size_ == 2 && char_buf_[1] == LEFT_DOUBLE_QUOTE[1]) return;
@@ -341,6 +355,10 @@ void common::tools::url_parser::process()
         return;
     case states::protocol_t1:
         if (c == 't' || c == 'T') state_ = protocol_ == url::protocol::ftp ? states::protocol_p : states::protocol_t2;
+        else if (c == 'd' || c == 'D') state_ = states::protocol_d;
+        else if (c == 'f' || c == 'F') state_ = states::protocol_t2;
+        else if (c == 'n' || c == 'N') state_ = states::protocol_n;
+        else if (c == 's' || c == 'S') { protocol_ = url::protocol::ssh; state_ = states::protocol_h; }
         else if ((c == 'c' || c == 'C') && protocol_ == url::protocol::icq && is_supported_scheme("icq")) state_ = states::protocol_c;
         else if ((c == 'a' || c == 'A') && protocol_ == url::protocol::agent && is_supported_scheme("magent")) state_ = states::protocol_a;
         else if ((c == 'y' || c == 'Y') && is_supported_scheme("myteam-messenger")) { protocol_ = url::protocol::biz; state_ = states::protocol_y; }
@@ -354,13 +372,18 @@ void common::tools::url_parser::process()
         else { protocol_ = url::protocol::undefined; URL_PARSER_SET_STATE_AND_REPROCESS(states::host) }
         break;
     case states::protocol_p:
-        if (c == 'p' || c == 'P') state_ = states::protocol_s;
+        if (c == 'p' || c == 'P') state_ = protocol_ == url::protocol::sftp ? states::delimeter_colon : states::protocol_s;
         else if (c == 'd' || c == 'D') state_ = states::protocol_d;
         else if (is_space(c, is_utf8_)) URL_PARSER_RESET_PARSER
         else { protocol_ = url::protocol::undefined; URL_PARSER_SET_STATE_AND_REPROCESS(states::host) }
         break;
     case states::protocol_c:
         if (c == 'q' || c == 'Q') state_ = states::protocol_q;
+        else if (is_space(c, is_utf8_)) URL_PARSER_RESET_PARSER
+        else { protocol_ = url::protocol::undefined; URL_PARSER_SET_STATE_AND_REPROCESS(states::host) }
+        break;
+    case states::protocol_h:
+        if (c == 'h' || c == 'H') state_ = states::delimeter_colon;
         else if (is_space(c, is_utf8_)) URL_PARSER_RESET_PARSER
         else { protocol_ = url::protocol::undefined; URL_PARSER_SET_STATE_AND_REPROCESS(states::host) }
         break;
@@ -400,6 +423,7 @@ void common::tools::url_parser::process()
         break;
     case states::protocol_n:
         if (c == 't' || c == 'T') state_ = states::protocol_t;
+        if ((c == 'c' || c == 'C') && protocol_ == url::protocol::vnc) state_ = states::delimeter_colon;
         else if (c == 'g' || c == 'G') state_ = states::protocol_g;
         else if (is_space(c, is_utf8_)) URL_PARSER_RESET_PARSER
         else { protocol_ = url::protocol::undefined; URL_PARSER_SET_STATE_AND_REPROCESS(states::host) }
@@ -431,7 +455,8 @@ void common::tools::url_parser::process()
         else { protocol_ = url::protocol::undefined; URL_PARSER_SET_STATE_AND_REPROCESS(states::host) }
         break;
     case states::protocol_d:
-        if (c == '-' && is_supported_scheme("itd-messenger")) { protocol_ = url::protocol::dit; state_ = states::delimeter_dash; }
+        if ((c == 'p' || c == 'P') && protocol_ == url::protocol::rdp) { state_ = states::delimeter_colon; }
+        else if (c == '-' && is_supported_scheme("itd-messenger")) { protocol_ = url::protocol::dit; state_ = states::delimeter_dash; }
         else if (is_space(c, is_utf8_)) URL_PARSER_RESET_PARSER
         else { protocol_ = url::protocol::undefined; URL_PARSER_SET_STATE_AND_REPROCESS(states::host) }
         break;
@@ -463,10 +488,11 @@ void common::tools::url_parser::process()
         break;
     case states::compare:
         if (safe_position_ && compare_pos_ >= safe_position_) state_ = states::compare_safe;
+        [[fallthrough]];
     case states::compare_safe:
     {
         auto compare_result = compare_fixed_urls(compare_pos_);
-        if (compare_result == fixed_urls_compare_state::no_match) { fallback(*char_buf_); }
+        if (compare_result == fixed_urls_compare_state::no_match) { fallback(char_buf_.front()); }
         else if (compare_result == fixed_urls_compare_state::match) { state_ = ok_state_; }
         return;
     }
@@ -788,6 +814,10 @@ void common::tools::url_parser::reset()
 
     extension_ = url::extension::undefined;
 
+    ok_state_ = states::lookup;
+    fallback_state_ = states::lookup;
+    safe_position_ = 0;
+
     is_not_email_ = false;
     is_email_ = false;
 
@@ -798,6 +828,7 @@ void common::tools::url_parser::reset()
 
     id_length_ = 0;
 
+    char_buf_.fill(0);
     char_pos_ = 0;
     char_size_ = 0;
 
@@ -815,53 +846,40 @@ bool common::tools::url_parser::save_url()
     switch (state_)
     {
     case states::lookup:
-        return false;
     case states::protocol_t1:
-        return false;
     case states::protocol_t2:
-        return false;
     case states::protocol_p:
-        return false;
     case states::protocol_s:
-        return false;
     case states::protocol_c:
-        return false;
+    case states::protocol_d:
     case states::protocol_q:
-        return false;
     case states::protocol_a:
-        return false;
     case states::protocol_g:
-        return false;
     case states::protocol_e:
-        return false;
     case states::protocol_m:
-        return false;
     case states::protocol_m1:
-        return false;
     case states::protocol_r:
-        return false;
     case states::protocol_y:
-        return false;
     case states::protocol_s1:
-        return false;
     case states::protocol_n:
-        return false;
     case states::protocol_t:
-        return false;
+    case states::protocol_f:
+    case states::protocol_h:
+    case states::protocol_v:
     case states::check_www:
-        return false;
     case states::www_2:
-        return false;
     case states::www_3:
-        return false;
     case states::www_4:
-        return false;
     case states::compare:
         return false;
     case states::compare_safe:
-        url_ = make_url(protocol_ == url::protocol::ftp || protocol_ == url::protocol::ftps ? common::tools::url::type::ftp : common::tools::url::type::site);
+    {
+        const auto is_like_ftp = protocol_ == url::protocol::ftp || protocol_ == url::protocol::ftps || protocol_ == url::protocol::sftp || protocol_ == url::protocol::ssh || protocol_ == url::protocol::vnc || protocol_ == url::protocol::rdp;
+        url_ = make_url(is_like_ftp ? common::tools::url::type::ftp : common::tools::url::type::site);
         return true;
+    }
     case states::delimeter_colon:
+    case states::delimeter_dash:
         return false;
     case states::delimeter_slash1:
         return false;
@@ -1051,6 +1069,14 @@ common::tools::url common::tools::url_parser::make_url(url::type _type) const
             return url(buf_, "https://" + buf_, _type, protocol_, extension_);
         case url::protocol::ftps:
             return url(buf_, "ftps://" + buf_, _type, protocol_, extension_);
+        case url::protocol::sftp:
+            return url(buf_, "sftp://" + buf_, _type, protocol_, extension_);
+        case url::protocol::vnc:
+            return url(buf_, "vnc://" + buf_, _type, protocol_, extension_);
+        case url::protocol::rdp:
+            return url(buf_, "rdp://" + buf_, _type, protocol_, extension_);
+        case url::protocol::ssh:
+            return url(buf_, "ssh://" + buf_, _type, protocol_, extension_);
         case url::protocol::icq:
             return url(buf_, "icq://" + buf_, _type, protocol_, extension_);
         case url::protocol::agent:
@@ -1091,7 +1117,7 @@ bool common::tools::url_parser::is_equal(const char* _text) const
 
 void common::tools::url_parser::save_char_buf(std::string& _to)
 {
-    std::copy(char_buf_, char_buf_ + char_size_, std::back_inserter(_to));
+    std::copy(char_buf_.data(), char_buf_.data() + char_size_, std::back_inserter(_to));
 }
 
 void common::tools::url_parser::save_to_buf(char c)

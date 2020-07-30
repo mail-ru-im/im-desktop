@@ -5,8 +5,6 @@
 
 #include "del_history.h"
 
-#include "../../urls_cache.h"
-
 CORE_WIM_NS_BEGIN
 
 del_history::del_history(
@@ -22,21 +20,12 @@ del_history::del_history(
     assert(!contact_aimid_.empty());
 }
 
-int32_t del_history::init_request(std::shared_ptr<core::http_request_simple> _request)
+int32_t del_history::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     assert(_request);
 
-    constexpr char method[] = "delHistory";
-
-    _request->set_url(urls::get_url(urls::url_type::rapi_host));
-    _request->set_normalized_url(method);
-    _request->set_keep_alive();
-
     rapidjson::Document doc(rapidjson::Type::kObjectType);
     auto& a = doc.GetAllocator();
-
-    doc.AddMember("method", method, a);
-    doc.AddMember("reqId", get_req_id(), a);
 
     rapidjson::Value node_params(rapidjson::Type::kObjectType);
     node_params.AddMember("sn", contact_aimid_, a);
@@ -44,7 +33,7 @@ int32_t del_history::init_request(std::shared_ptr<core::http_request_simple> _re
 
     doc.AddMember("params", std::move(node_params), a);
 
-    sign_packet(doc, a, _request);
+    setup_common_and_sign(doc, a, _request, "delHistory");
 
     __INFO(
         "delete_history",

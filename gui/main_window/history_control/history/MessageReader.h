@@ -37,7 +37,7 @@ namespace hist
 
         void setDlgState(const Data::DlgState& _dlgState);
 
-    signals:
+    Q_SIGNALS:
         void mentionRead(qint64 _messageId, QPrivateSignal) const;
 
     private:

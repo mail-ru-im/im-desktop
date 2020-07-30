@@ -2,7 +2,7 @@
 #include "MessageAlertWidget.h"
 #include "RecentMessagesAlert.h"
 #include "../contact_list/RecentItemDelegate.h"
-#include "../contact_list/ContactList.h"
+#include "../contact_list/RecentsTab.h"
 #include "../../utils/InterConnector.h"
 #include "../../utils/utils.h"
 
@@ -20,9 +20,6 @@ namespace
     const int alert_visible_time = 5000; //5 sec
     const int alert_hide_animation_time = 2000; //2 sec
     const int view_all_widget_height = 40;
-    const int bottom_space_height = 8;
-    const int header_height = 28;
-    const int left_margin = 16;
 
     QSize getCloseButtonSize()
     {
@@ -77,7 +74,7 @@ namespace Ui
 
     void ViewAllWidget::mouseReleaseEvent(QMouseEvent* _e)
     {
-        emit clicked();
+        Q_EMIT clicked();
 
         QWidget::mouseReleaseEvent(_e);
     }
@@ -178,13 +175,13 @@ namespace Ui
 
     void RecentMessagesAlert::showEvent(QShowEvent *e)
     {
-        emit changed();
+        Q_EMIT changed();
         return QWidget::showEvent(e);
     }
 
     void RecentMessagesAlert::hideEvent(QHideEvent *e)
     {
-        emit changed();
+        Q_EMIT changed();
         return QWidget::hideEvent(e);
     }
 
@@ -267,7 +264,7 @@ namespace Ui
         closeAlert();
         Utils::InterConnector::instance().getMainWindow()->closePopups({ Utils::CloseWindowInfo::Initiator::Unknown, Utils::CloseWindowInfo::Reason::Keep_Sidebar });
 
-        emit messageClicked(aimId, mailId, mentionId, alertType_);
+        Q_EMIT messageClicked(aimId, mailId, mentionId, alertType_);
     }
 
     void RecentMessagesAlert::messageAlertClosed(const QString& /*aimId*/, const QString& /*mailId*/, qint64 /*mentionId*/)
@@ -362,7 +359,7 @@ namespace Ui
 
         closeButton_->raise();
 
-        emit changed();
+        Q_EMIT changed();
     }
 
     void RecentMessagesAlert::markShowed()
@@ -443,7 +440,7 @@ namespace Ui
 
         setFixedHeight(height_);
 
-        emit changed();
+        Q_EMIT changed();
 
         return true;
     }

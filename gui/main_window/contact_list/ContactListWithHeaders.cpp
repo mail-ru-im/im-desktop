@@ -126,7 +126,7 @@ namespace Logic
             if (row == getIndexTopContacts())
             {
                 if (Testing::isAccessibleRole(_role))
-                    return qsl("AS contacts top_contacts");
+                    return qsl("AS ContactsSearch topContacts");
 
                 static auto hdr = serviceHdr(qsl("~top~"), QT_TRANSLATE_NOOP("contact_list", "TOP CONTACTS"));
                 return QVariant::fromValue(&hdr);
@@ -134,7 +134,7 @@ namespace Logic
             else if (row == getIndexAllContacts())
             {
                 if (Testing::isAccessibleRole(_role))
-                    return qsl("AS contacts all_contacts");
+                    return qsl("AS ContactsSerach allContacts");
 
                 static auto hdr = serviceHdr(qsl("~all~"), QT_TRANSLATE_NOOP("contact_list", "ALL CONTACTS"));
                 return QVariant::fromValue(&hdr);
@@ -209,7 +209,7 @@ namespace Logic
 
         menu_ = _menu;
 
-        emit dataChanged(index(0), index(rowCount()));
+        Q_EMIT dataChanged(index(0), index(rowCount()));
     }
 
     ContactListWithHeaders::MenuButtons ContactListWithHeaders::getMenu() const
@@ -279,11 +279,11 @@ namespace Logic
 
     void ContactListWithHeaders::onSourceDataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRight, const QVector<int> &roles)
     {
-        emit dataChanged(mapFromSource(topLeft), mapFromSource(bottomRight));
+        Q_EMIT dataChanged(mapFromSource(topLeft), mapFromSource(bottomRight));
     }
 
     void ContactListWithHeaders::onSelectedContactChanged()
     {
-        emit dataChanged(index(0), index(rowCount()));
+        Q_EMIT dataChanged(index(0), index(rowCount()));
     }
 }

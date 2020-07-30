@@ -28,6 +28,9 @@ namespace
 
     constexpr auto outgoing_count_time_span = std::chrono::hours(24 * 21); // 21 days
     constexpr auto max_merged_percent = 0.1; // 10%
+
+    const auto reactions_header_version = 4;
+    const auto drop_headers_count = 100;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -151,7 +154,7 @@ void archive_index::insert_header(archive::message_header& header, const std::ch
 
     if (existing_iter == headers_index_.end())
     {
-        if (header.is_outgoing() && _current_time - std::chrono::seconds(header.get_time()) <= outgoing_count_time_span)
+        if (is_outgoing_header(header, _current_time))
             ++outgoing_count_;
 
         headers_index_.emplace_hint(
@@ -207,7 +210,8 @@ archive::storage::result_type archive_index::update(const archive::history_block
             hm->get_data_size(),
             hm->get_update_patch_version(),
             hm->has_shared_contact_with_sn(),
-            hm->has_poll_with_id()
+            hm->has_poll_with_id(),
+            hm->has_reactions()
         );
     }
 
@@ -375,6 +379,8 @@ bool archive_index::load_from_local()
 
     loaded_from_local_ = true;
 
+    drop_outdated_headers(now);
+
     notify_core_outgoing_msg_count();
 
     return true;
@@ -456,6 +462,31 @@ int32_t archive_index::get_outgoing_count() const
     if (!loaded_from_local_)
         return -1;
     return outgoing_count_;
+}
+
+bool archive_index::is_outgoing_header(message_header& header, const std::chrono::seconds _current_time) const
+{
+    return header.is_outgoing() && _current_time - std::chrono::seconds(header.get_time()) <= outgoing_count_time_span;
+}
+
+void archive_index::drop_outdated_headers(const std::chrono::seconds _current_time)
+{
+    if (headers_index_.empty())
+        return;
+
+    auto it = std::next(headers_index_.end(), -std::min(static_cast<long>(drop_headers_count), static_cast<long>(headers_index_.size())));
+    auto& last_header = it->second;
+
+    if (last_header.get_version() < reactions_header_version)
+    {
+        auto lastIt = std::next(headers_index_.end(), -1);
+        while (it != headers_index_.end() && it != lastIt)
+        {
+            if (is_outgoing_header(it->second, _current_time))
+                outgoing_count_--;
+            it = headers_index_.erase(it);
+        }
+    }
 }
 
 bool archive_index::get_next_hole(int64_t _from, archive_hole& _hole, int64_t _depth) const

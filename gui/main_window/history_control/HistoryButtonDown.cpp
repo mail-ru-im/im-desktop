@@ -41,7 +41,7 @@ HistoryButton::HistoryButton(QWidget* _parent, const QString& _imageName)
 {
     setFixedSize(Utils::scale_value(QSize(buttonSize, buttonSize)));
 
-    connect(this, &HistoryButton::hoverChanged, this, Utils::QOverload<>::of(&HistoryButton::update));
+    connect(this, &HistoryButton::hoverChanged, this, qOverload<>(&HistoryButton::update));
 }
 
 void HistoryButton::paintEvent(QPaintEvent *_event)
@@ -77,7 +77,7 @@ void HistoryButton::paintEvent(QPaintEvent *_event)
     {
         static auto font = Fonts::appFont(getCounterFontSize(), Fonts::FontWeight::SemiBold);
         static auto bgColor = Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY);
-        static auto textColor = Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT);
+        static auto textColor = Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE);
 
         const auto size = Utils::getUnreadsSize(font, true, counter_, getCounterBubbleSize());
         const auto x = width() - size.width();
@@ -106,7 +106,7 @@ int HistoryButton::getCounter() const
 
 void HistoryButton::wheelEvent(QWheelEvent* _event)
 {
-    emit sendWheelEvent(_event);
+    Q_EMIT sendWheelEvent(_event);
 }
 
 UI_NS_END

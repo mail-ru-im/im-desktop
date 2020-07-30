@@ -20,7 +20,7 @@ namespace core::wim
         const std::shared_ptr<core::archive::persons_map>& get_persons() const override;
 
     private:
-        int32_t init_request(std::shared_ptr<core::http_request_simple> _request) override;
+        int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
         int32_t parse_results(const rapidjson::Value& _node_results) override;
 
         std::string id_;

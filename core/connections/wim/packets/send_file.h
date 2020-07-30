@@ -38,9 +38,9 @@ namespace core
             std::string					file_url_;
 
 
-            int32_t init_request(std::shared_ptr<core::http_request_simple> _request) override;
-            int32_t parse_response(std::shared_ptr<core::tools::binary_stream> _response) override;
-            int32_t execute_request(std::shared_ptr<core::http_request_simple> _request) override;
+            int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
+            int32_t parse_response(const std::shared_ptr<core::tools::binary_stream>& _response) override;
+            int32_t execute_request(const std::shared_ptr<core::http_request_simple>& _request) override;
 
         public:
 
@@ -53,6 +53,7 @@ namespace core
             virtual ~send_file();
 
             const std::string& get_file_url() const;
+            virtual bool is_post() const override { return true; }
         };
     }
 }

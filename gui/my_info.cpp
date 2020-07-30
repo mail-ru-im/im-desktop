@@ -100,7 +100,7 @@ namespace Ui
         data_.userType_ = QString::fromUtf8(_collection->get_value_as_string("userType"));
         data_.phoneNumber_ = QString::fromUtf8(_collection->get_value_as_string("attachedPhoneNumber"));
         if (!data_.phoneNumber_.isEmpty())
-            emit Utils::InterConnector::instance().phoneAttached(true);
+            Q_EMIT Utils::InterConnector::instance().phoneAttached(true);
 
         const auto phoneDisabled = !Features::phoneAllowed();
         if (!data_.phoneNumber_.isEmpty() || phoneDisabled)
@@ -127,18 +127,16 @@ namespace Ui
             data_.need_to_accept_types_.push_back(static_cast<AgreementType>(val->get_as_int()));
         }
 
-        auto appConfig = GetAppConfig();
-
         auto it = std::find(data_.need_to_accept_types_.begin(), data_.need_to_accept_types_.end(), my_info::AgreementType::gdpr_pp);
         if (it != data_.need_to_accept_types_.end()
             && !gdprAgreement_
-            && !appConfig.GDPR_AgreedButAwaitingSend()
+            && !GetAppConfig().GDPR_AgreedButAwaitingSend()
             && config::get().is_on(config::features::need_gdpr_window))
         {
             needAttachPhone_ = phoneAttachment_ || needAttachPhone_;
             attachInfo_.close_dialog();
 
-            emit needGDPR();
+            Q_EMIT needGDPR();
         }
 
         if (needAttachPhone_)
@@ -157,7 +155,7 @@ namespace Ui
             }
         }
 
-        emit received();
+        Q_EMIT received();
     }
 
     my_info* MyInfo()
@@ -182,7 +180,7 @@ namespace Ui
             Ui::GetDispatcher()->post_message_to_core("avatars/remove", helper.get());
 
             Logic::GetAvatarStorage()->updateAvatar(aimId());
-            emit Logic::GetAvatarStorage()->avatarChanged(aimId());
+            Q_EMIT Logic::GetAvatarStorage()->avatarChanged(aimId());
         }
     }
 
@@ -232,7 +230,7 @@ namespace Ui
     {
         assert(!_friendly.isEmpty());
         data_.friendly_ = _friendly;
-        emit received();
+        Q_EMIT received();
     }
 
     void my_info::setAimId(const QString& _aimId)

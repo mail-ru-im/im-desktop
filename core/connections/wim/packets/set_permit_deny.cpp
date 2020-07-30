@@ -45,7 +45,7 @@ const char* operation_2_str(const set_permit_deny::operation _op)
     return "";
 }
 
-int32_t set_permit_deny::init_request(std::shared_ptr<core::http_request_simple> _request)
+int32_t set_permit_deny::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     std::stringstream ss_url;
 

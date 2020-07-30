@@ -42,8 +42,6 @@ public:
 
     bool isSharingEnabled() const override { return false; }
 
-    HistoryControl::StickerInfoSptr getStickerInfo() const override { return Info_; };
-
     int desiredWidth(int _width = 0) const override;
 
     PinPlaceholderType getPinPlaceholder() const override { return PinPlaceholderType::Sticker; }
@@ -54,7 +52,7 @@ public:
 
     ContentType getContentType() const override { return IItemBlock::ContentType::Sticker; }
 
-    QString getStickerId() const override;
+    Data::StickerId getStickerId() const override;
 
 protected:
     void drawBlock(QPainter &p, const QRect& _rect, const QColor& _quoteColor) override;
@@ -91,8 +89,6 @@ private:
     QPixmap Placeholder_;
 
     StickerBlockLayout *Layout_;
-
-    ComplexMessageItem* Parent_;
 
     QSize LastSize_;
 

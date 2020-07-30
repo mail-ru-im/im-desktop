@@ -24,6 +24,7 @@ namespace Ui
     {
         QString text_;
         bool isOutgoing_ = false;
+        bool isUnsupported_ = false;
         Data::QuotesVec quotes_;
         QPoint from_;
         QPoint to_;
@@ -196,13 +197,18 @@ namespace Ui
         std::vector<DeleteMessageInfo> getSelectedMessagesForDelete() const;
 
         int getSelectedCount() const;
+        int getSelectedUnsupportedCount() const;
 
         void setSmartreplyWidget(SmartReplyWidget* _widget);
         void showSmartReplies();
         void hideSmartReplies();
         void setSmartreplyButton(QWidget* _button);
+        void setSmartrepliesSemitransparent(bool _semi);
+        void notifyQuotesResize();
 
-    public slots:
+        bool hasItems() const noexcept;
+
+    public Q_SLOTS:
         void notifySelectionChanges();
 
     protected:

@@ -6,9 +6,11 @@
 #include "previewer/toast.h"
 #include "../ConnectionWidget.h"
 #include "../../utils/utils.h"
+#include "../../utils/InterConnector.h"
 #include "../../fonts.h"
 #include "styles/ThemeParameters.h"
 #include "../../core_dispatcher.h"
+#include "../MainWindow.h"
 
 namespace
 {
@@ -31,6 +33,8 @@ namespace
     {
         return Utils::fscale_value(18.0);
     }
+
+    constexpr auto defaultSeq = -1;
 }
 
 namespace Ui
@@ -70,6 +74,17 @@ namespace Ui
 
         QObject::connect(GetDispatcher(), &core_dispatcher::updateReady, this, &CheckForUpdateButton::onUpdateReady);
         QObject::connect(GetDispatcher(), &core_dispatcher::upToDate, this, &CheckForUpdateButton::onUpToDate);
+
+        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::onMacUpdateInfo, this, [this](Utils::MacUpdateState _state)
+        {
+            if (_state == Utils::MacUpdateState::Requested)
+                stopAnimation();
+            else if (_state == Utils::MacUpdateState::Ready)
+                onUpdateReady();
+            else
+                onUpToDate(defaultSeq, _state == Utils::MacUpdateState::LoadError);
+        });
+        Testing::setAccessibleName(this, qsl("AS AboutUsPage checkForUpdatesButton"));
     }
 
     CheckForUpdateButton::~CheckForUpdateButton() = default;
@@ -83,7 +98,12 @@ namespace Ui
         else if (!seq_)
         {
             startAnimation();
+#ifdef __APPLE__
+            seq_ = defaultSeq;
+            Utils::InterConnector::instance().getMainWindow()->checkForUpdatesInBackground();
+#else
             seq_ = GetDispatcher()->post_message_to_core("update/check", nullptr);
+#endif
         }
     }
 
@@ -102,7 +122,7 @@ namespace Ui
             seq_ = std::nullopt;
             stopAnimation();
             const auto text = _isNetworkError ? QT_TRANSLATE_NOOP("about_us", "Server error") : QT_TRANSLATE_NOOP("about_us", "You have the latest version");
-            Utils::showToastOverContactDialog(text);
+            Utils::showTextToastOverContactDialog(text);
         }
     }
 
@@ -124,6 +144,6 @@ namespace Ui
 
     void CheckForUpdateButton::showUpdateReadyToast()
     {
-        Utils::showToastOverContactDialog(QT_TRANSLATE_NOOP("about_us", "Update required"));
+        Utils::showTextToastOverContactDialog(QT_TRANSLATE_NOOP("about_us", "Update required"));
     }
 }

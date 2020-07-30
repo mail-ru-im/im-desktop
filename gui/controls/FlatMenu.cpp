@@ -27,7 +27,7 @@ namespace Ui
 
     int FlatMenu::shown_ = 0;
 
-    FlatMenu::FlatMenu(QWidget* _parent/* = nullptr*/)
+    FlatMenu::FlatMenu(QWidget* _parent/* = nullptr*/, BorderStyle _shape/* = BorderStyle::SOLID*/)
         : QMenu(_parent),
         iconSticked_(false),
         needAdjustSize_(false)
@@ -35,19 +35,7 @@ namespace Ui
         setWindowFlags(windowFlags() | Qt::NoDropShadowWindowHint | Qt::WindowStaysOnTopHint);
 
         Utils::SetProxyStyle(this, new FlatMenuStyle());
-
-        const QString MENU_STYLE = qsl(
-            "QMenu { background-color: %1; border: 2dip solid %2; }"
-            "QMenu::item { background-color: transparent;"
-            "height: 28dip; padding: 4dip 64dip 4dip 20dip; color: %4;}"
-            "QMenu::item:selected { background-color: %3;"
-            "height: 28dip; padding: 4dip 64dip 4dip 20dip;} color: %5;")
-           .arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE),
-                Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_BRIGHT),
-                Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_BRIGHT_INVERSE),
-                Styling::getParameters().getColorHex(Styling::StyleVariable::TEXT_SOLID),
-                Styling::getParameters().getColorHex(Styling::StyleVariable::TEXT_SOLID_PERMANENT)); // TODO: check
-        Utils::ApplyStyle(this, MENU_STYLE);
+        Utils::ApplyStyle(this, Styling::getParameters().getFlatMenuQss(_shape == BorderStyle::SOLID ? Styling::StyleVariable::BASE_BRIGHT : Styling::StyleVariable::GHOST_ULTRALIGHT_INVERSE));
 
         setFont(Fonts::appFontScaled(15));
         if constexpr (platform::is_apple())

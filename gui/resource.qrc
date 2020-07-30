@@ -71,6 +71,7 @@
         <file alias="add_user_icon">resources/add_user_icon.svg</file>
         <file alias="alert_icon">resources/alert_icon.svg</file>
         <file alias="chat_icon">resources/chat_icon.svg</file>
+        <file alias="favorites_icon">resources/favorites_icon.svg</file>
         <file alias="clear_chat_icon">resources/clear_chat_icon.svg</file>
         <file alias="colors_icon">resources/colors_icon.svg</file>
         <file alias="exit_icon">resources/exit_icon.svg</file>
@@ -95,6 +96,7 @@
         <file alias="lang_icon">resources/lang_icon.svg</file>
         <file alias="contact_us_icon">resources/contact_us.svg</file>
         <file alias="about_icon">resources/about_icon.svg</file>
+        <file alias="about_icon_small">resources/about_icon_small.svg</file>
         <file alias="appearance_icon">resources/appearance_icon.svg</file>
         <file alias="search_input">resources/search_input.svg</file>
         <file alias="phone_icon">resources/phone_icon.svg</file>
@@ -118,6 +120,13 @@
         <file alias="add_by_phone">resources/add_by_phone.svg</file>
         <file alias="add_by_nick">resources/add_by_nick.svg</file>
         <file alias="avatar_edit_icon">resources/avatar_edit_icon.svg</file>
+        <file alias="button_out">resources/button_out.svg</file>
+        <file alias="call_type">resources/call_type.svg</file>
+        <file alias="link_icon">resources/link_icon.svg</file>
+        <file alias="webinar">resources/webinar_icon.svg</file>
+        <file alias="groupcall">resources/groupcall.svg</file>
+        <file alias="reaction_icon">resources/reaction_icon.svg</file>
+        <file alias="arrow_small">resources/arrow_small.svg</file>
     </qresource>
     <qresource prefix="/input">
         <file alias="add">resources/input/add_member.svg</file>
@@ -133,6 +142,7 @@
 		<file alias="attach_contact">resources/input/attach_contact.svg</file>
 		<file alias="attach_camera">resources/input/attach_camera.svg</file>
 		<file alias="attach_poll">resources/input/attach_poll.svg</file>
+		<file alias="webinar">resources/input/ic_webinar_fill_line.svg</file>
     </qresource>
     <qresource prefix="/settings">
         <file alias="appearance">resources/settings/appearance.svg</file>
@@ -170,6 +180,7 @@
         <file alias="official_138">resources/avatar_badges/official_138.svg</file>
         <file alias="mute_32">resources/avatar_badges/mute_32.svg</file>
         <file alias="mute_52">resources/avatar_badges/mute_52.svg</file>
+        <file alias="add_status">resources/avatar_badges/add_status.svg</file>
     </qresource>
     <qresource prefix="/voip_events">
         <file alias="call">resources/voip_events/call_icon.svg</file>
@@ -221,9 +232,6 @@
     </qresource>
 
     <qresource prefix="/ptt">
-        <file alias="ptt_decode_icon">resources/ptt/ptt_decode_icon.svg</file>
-        <file alias="ptt_decode_icon_hover">resources/ptt/ptt_decode_icon_hover.svg</file>
-        <file alias="ptt_decode_icon_active">resources/ptt/ptt_decode_icon_active.svg</file>
         <file alias="delete_record">resources/ptt/ptt_delete_record.svg</file>
         <file alias="stop_record">resources/ptt/ptt_stop_record.svg</file>
         <file alias="play_record">resources/ptt/ptt_play_record.svg</file>
@@ -304,6 +312,9 @@
         <file alias="disappointed_cat_sticker_125">resources/contact_list/disappointed_cat_sticker_125.png</file>
         <file alias="disappointed_cat_sticker_150">resources/contact_list/disappointed_cat_sticker_150.png</file>
         <file alias="disappointed_cat_sticker_200">resources/contact_list/disappointed_cat_sticker_200.png</file>
+    </qresource>
+    <qresource prefix="/contact_list">
+        <file alias="favorites_avatar">resources/contact_list/favorites_avatar.svg</file>
     </qresource>
     <qresource prefix="/themes/stickers">
         <file alias="ghost_sticker">resources/placeholders/ghost_sticker.svg</file>
@@ -454,6 +465,16 @@
         <file alias="shaders">resources/videoplayer/shaders.metallib</file>
     </qresource>
     <qresource prefix="/voip">
+        <file alias="endcall_icon">resources/video_panel/ic_endcall_fill.svg</file>
+        <file alias="microphone_off_icon">resources/video_panel/ic_microphoneoff_fill.svg</file>
+        <file alias="microphone_icon">resources/video_panel/ic_microphone_fill.svg</file>
+        <file alias="morewide_icon">resources/video_panel/ic_morewide_fill.svg</file>
+        <file alias="sharescreen_icon">resources/video_panel/ic_sharescreen_fill.svg</file>
+        <file alias="speaker_off_icon">resources/video_panel/ic_speakeroff_fill.svg</file>
+        <file alias="speaker_icon">resources/video_panel/ic_speaker_fill.svg</file>
+        <file alias="videocall_off_icon">resources/video_panel/ic_videocalloff_fill.svg</file>
+        <file alias="videocall_icon">resources/video_panel/ic_videocall_fill.svg</file>
+        <file alias="share_to_chat">resources/video_panel/ic_share_to_chat.svg</file>
         <file alias="close_mask_100">resources/video_panel/close_mask_100.png</file>
         <file alias="close_mask_125">resources/video_panel/close_mask_125.png</file>
         <file alias="close_mask_150">resources/video_panel/close_mask_150.png</file>
@@ -702,6 +723,7 @@
         <file alias="videocall_125_hover">resources/video_panel/call_video_125_hover.png</file>
         <file alias="videocall_150_hover">resources/video_panel/call_video_150_hover.png</file>
         <file alias="videocall_200_hover">resources/video_panel/call_video_200_hover.png</file>
+        <file alias="videoconference">resources/video_panel/videoconference.png</file>
         <file alias="endcall_100">resources/video_panel/end_call_100.png</file>
         <file alias="endcall_125">resources/video_panel/end_call_125.png</file>
         <file alias="endcall_150">resources/video_panel/end_call_150.png</file>
@@ -728,10 +750,6 @@
         <file alias="close_mask_arrow_200_hover">resources/video_panel/close_mask_arrow_200_hover.png</file>
     </qresource>
     <qresource prefix="/placeholders">
-        <file alias="empty_livechat_100">resources/placeholders/illustration_empty_livechat_100.png</file>
-        <file alias="empty_livechat_125">resources/placeholders/illustration_empty_livechat_125.png</file>
-        <file alias="empty_livechat_150">resources/placeholders/illustration_empty_livechat_150.png</file>
-        <file alias="empty_livechat_200">resources/placeholders/illustration_empty_livechat_200.png</file>
         <file alias="good_100">resources/placeholders/illustration_good_100.png</file>
         <file alias="good_125">resources/placeholders/illustration_good_125.png</file>
         <file alias="good_150">resources/placeholders/illustration_good_150.png</file>
@@ -836,7 +854,6 @@
         <file alias="mstyles">main_window/mplayer/mstyles.qss</file>
         <file alias="incoming_call">voip/incoming_call.qss</file>
         <file alias="incoming_call_linux">voip/incoming_call_linux.qss</file>
-        <file alias="livechats">main_window/livechats/LiveChats.qss</file>
     </qresource>
     <qresource prefix="/menubar">
         <file alias="mail_black_100">resources/main_window/mac_tray/agent_osx_black_100.png</file>
@@ -916,6 +933,9 @@
         <file alias="email">resources/context_menu/mail_icon.svg</file>
         <file alias="cancel">resources/context_menu/cancel_icon.svg</file>
         <file alias="stop">resources/context_menu/stop_icon.svg</file>
+        <file alias="favorites">resources/context_menu/favorites_icon.svg</file>
+        <file alias="conference_one_icon">resources/context_menu/picture_in_picture_icon.svg</file>
+        <file alias="conference_all_icon">resources/context_menu/show_in_grid_icon.svg</file>
     </qresource>
     <qresource prefix="/phone_widget">
         <file alias="sim_100">resources/phone_widget/sim_icon_100.png</file>
@@ -931,6 +951,8 @@
     <qresource prefix="/tab">
         <file alias="chats_active">resources/tabs/chats_tab_icon_active.svg</file>
         <file alias="chats">resources/tabs/chats_tab_line_icon.svg</file>
+        <file alias="calls_active">resources/tabs/calls_tab_fill_icon.svg</file>
+        <file alias="calls">resources/tabs/calls_tab_line_icon.svg</file>
         <file alias="contacts_active">resources/tabs/contacts_tab_icon_active.svg</file>
         <file alias="contacts">resources/tabs/contacts_tab_line_icon.svg</file>
         <file alias="settings_active">resources/tabs/settings_tab_icon_active.svg</file>
@@ -944,9 +966,15 @@
         <file alias="pencil">resources/header/create_line_icon.svg</file>
         <file alias="mail">resources/header/envelope_line_icon.svg</file>
         <file alias="new_user">resources/header/new_user_line_icon.svg</file>
+        <file alias="call">resources/header/call_icon.svg</file>
     </qresource>
     <qresource prefix="/poll">
         <file alias="poll_icon">resources/poll/poll_icon.svg</file>
         <file alias="check_mark">resources/poll/check_mark.svg</file>
+    </qresource>
+    <qresource prefix="/statuses">
+        <file alias="default_statuses">resources/statuses/statuses.json</file>
+        <file alias="default_statuses_eng">resources/statuses/statuses_eng.json</file>
+        <file alias="empty_status_icon">resources/statuses/empty_status.svg</file>
     </qresource>
 </RCC>

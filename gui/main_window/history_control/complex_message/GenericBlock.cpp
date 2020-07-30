@@ -58,9 +58,7 @@ GenericBlock::GenericBlock()
     assert(!"program isn't supposed to reach this point");
 }
 
-GenericBlock::~GenericBlock()
-{
-}
+GenericBlock::~GenericBlock() = default;
 
 QSize GenericBlock::blockSizeForMaxWidth(const int32_t maxWidth)
 {
@@ -125,6 +123,11 @@ QString GenericBlock::getSourceText() const
     return SourceText_;
 }
 
+QString GenericBlock::getTextInstantEdit() const
+{
+    return getSourceText();
+}
+
 QString GenericBlock::getPlaceholderText() const
 {
     return getSourceText();
@@ -158,7 +161,7 @@ void GenericBlock::setBubbleRequired(bool required)
 
 bool GenericBlock::isOutgoing() const
 {
-    return getParentComplexMessage()->isOutgoing();
+    return getParentComplexMessage()->isOutgoingPosition();
 }
 
 bool GenericBlock::isDraggable() const
@@ -181,7 +184,7 @@ bool GenericBlock::isSenderVisible() const
     return getParentComplexMessage()->isSenderVisible();
 }
 
-IItemBlock::MenuFlags GenericBlock::getMenuFlags() const
+IItemBlock::MenuFlags GenericBlock::getMenuFlags(QPoint) const
 {
     return MenuFlags_;
 }
@@ -190,7 +193,7 @@ bool GenericBlock::onMenuItemTriggered(const QVariantMap &params)
 {
     const auto command = params[qsl("command")].toString();
 
-    if (command == ql1s("copy_link"))
+    if (command == u"copy_link")
     {
         if (const auto link = params[qsl("arg")].toString(); !link.isEmpty())
         {
@@ -204,7 +207,7 @@ bool GenericBlock::onMenuItemTriggered(const QVariantMap &params)
 
         return true;
     }
-    else if (command == ql1s("copy_email"))
+    else if (command == u"copy_email")
     {
         if (const auto email = params[qsl("arg")].toString(); !email.isEmpty())
         {
@@ -214,28 +217,28 @@ bool GenericBlock::onMenuItemTriggered(const QVariantMap &params)
 
         return true;
     }
-    else if (command == ql1s("copy_file"))
+    else if (command == u"copy_file")
     {
         onMenuCopyFile();
         return true;
     }
-    else if (command == ql1s("save_as"))
+    else if (command == u"save_as")
     {
         onMenuSaveFileAs();
         return true;
     }
-    else if (command == ql1s("open_in_browser"))
+    else if (command == u"open_in_browser")
     {
         onMenuOpenInBrowser();
     }
-    else if (command == ql1s("open_folder"))
+    else if (command == u"open_folder")
     {
         onMenuOpenFolder();
     }
-    else if (command == ql1s("open_profile"))
+    else if (command == u"open_profile")
     {
         if (const auto email = params[qsl("arg")].toString(); !email.isEmpty())
-            emit Utils::InterConnector::instance().openDialogOrProfileById(email);
+            Q_EMIT Utils::InterConnector::instance().openDialogOrProfileById(email);
     }
 
     return false;
@@ -450,7 +453,7 @@ bool GenericBlock::isInitialized() const
 }
 
 void GenericBlock::notifyBlockContentsChanged()
-{    
+{
     if (auto blockLayout = getBlockLayout())
         blockLayout->onBlockContentsChanged();
 
@@ -572,7 +575,7 @@ void GenericBlock::mousePressEvent(QMouseEvent *e)
 void GenericBlock::mouseReleaseEvent(QMouseEvent *e)
 {
     if (mouseClickPos_.x() == e->pos().x() && mouseClickPos_.y() == e->pos().y())
-        emit clicked();
+        Q_EMIT clicked();
 
     return QWidget::mouseReleaseEvent(e);
 }
@@ -592,7 +595,7 @@ void GenericBlock::startResourcesUnloadTimer()
 
     ResourcesUnloadingTimer_ = new QTimer(this);
     ResourcesUnloadingTimer_->setSingleShot(true);
-    ResourcesUnloadingTimer_->setInterval(resourcesUnloadDelay.count());
+    ResourcesUnloadingTimer_->setInterval(resourcesUnloadDelay);
 
     QObject::connect(ResourcesUnloadingTimer_, &QTimer::timeout, this, &GenericBlock::onResourceUnloadingTimeout);
 
@@ -645,7 +648,9 @@ QPoint GenericBlock::getShareButtonPos(const bool _isBubbleRequired, const QRect
     else
         buttonX = rect.right() + MessageStyle::getSharingButtonMargin();
 
-    const auto buttonY = blockGeometry.top();
+    auto buttonY = blockGeometry.top();
+    if (_isBubbleRequired)
+        buttonY += MessageStyle::getSharingButtonTopMargin();
 
     return QPoint(buttonX, buttonY);
 }

@@ -7,6 +7,7 @@
 
 #include <windows.h>
 #include <io.h>
+#include <VersionHelpers.h>
 #else
 #include <unistd.h>
 #include <sys/stat.h>
@@ -20,6 +21,7 @@
 #include <sstream>
 #include <fstream>
 #include <string>
+#include <vector>
 #include <codecvt>
 #include <locale>
 #include <map>

@@ -3,9 +3,9 @@
 #import <Foundation/Foundation.h>
 #import <AppKit/AppKit.h>
 #import <IOKit/pwr_mgt/IOPMLib.h>
-#include "../../../core/Voip/libvoip/include/render/VOIPRenderViewClasses.h"
+#include "render/VOIPRenderViewClasses.h"
 #include "../../utils/utils.h"
-#include "../external/platform_specific/macos/x64/iTunes.h"
+#include "platform_specific/macos/x64/iTunes.h"
 #include "styles/ThemeParameters.h"
 #include "voip/CommonUI.h"
 
@@ -589,8 +589,9 @@ class GraphicsPanelMacosImpl : public platform_specific::GraphicsPanel {
     virtual void mouseMoveEvent(QMouseEvent* _e) override;
     virtual bool eventFilter(QObject *obj, QEvent *event) override;
 
-    virtual void createdTalk() override;
+    virtual void createdTalk(bool is_vcs) override;
     virtual void startedTalk() override;
+    virtual void exitTalk() override;
 
     void _setPanelsAttached(bool attach);
     void _mouseMoveEvent(QMouseEvent* _e);
@@ -911,7 +912,7 @@ bool GraphicsPanelMacosImpl::eventFilter(QObject *obj, QEvent *event)
     return false;
 }
 
-void GraphicsPanelMacosImpl::createdTalk()
+void GraphicsPanelMacosImpl::createdTalk(bool is_vcs)
 {
     disableMouseEvents_ = false;
 }
@@ -919,6 +920,11 @@ void GraphicsPanelMacosImpl::createdTalk()
 void GraphicsPanelMacosImpl::startedTalk()
 {
     disableMouseEvents_ = false;
+}
+
+void GraphicsPanelMacosImpl::exitTalk()
+{
+    disableMouseEvents_ = true;
 }
 
 }

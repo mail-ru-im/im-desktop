@@ -10,6 +10,12 @@ namespace Ui
         int pixelMetric(PixelMetric _metric, const QStyleOption* _option = nullptr, const QWidget* _widget = nullptr) const override;
     };
 
+    enum class BorderStyle
+    {
+        SOLID = 0,
+        SHADOW
+    };
+
     class FlatMenu : public QMenu
     {
     private:
@@ -26,7 +32,7 @@ namespace Ui
         void hideEvent(QHideEvent* _event) override;
 
     public:
-        explicit FlatMenu(QWidget* _parent = nullptr);
+        explicit FlatMenu(QWidget* _parent = nullptr, BorderStyle _shape = BorderStyle::SOLID);
         ~FlatMenu();
 
         void setExpandDirection(Qt::Alignment _direction);

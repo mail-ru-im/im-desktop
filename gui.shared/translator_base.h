@@ -28,6 +28,8 @@ namespace translate
         QString formatDate(const QDate& target, bool currentYear) const;
         QString getNumberString(int number, const QString& one, const QString& two, const QString& five, const QString& twentyOne) const;
 
+        QString formatDifferenceToNow(const QDateTime& _dt, bool _withLongTimeAgo = true) const;
+
         const std::vector<QString>& getLanguages() const;
 
         virtual QString getLang() const;

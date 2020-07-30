@@ -1,6 +1,5 @@
 #include "stdafx.h"
 #include "local_peer.h"
-#include "../qt_overload.h"
 #include "../../common.shared/config/config.h"
 
 #include <QtNetwork/QLocalSocket>
@@ -11,7 +10,7 @@ using msglen_t = quint32;
 namespace
 {
     constexpr std::chrono::milliseconds answerTimeout = std::chrono::seconds(2);
-    const QString executeCmd = crossprocess_message_execute_url_command % ql1c(':');
+    const QString executeCmd = crossprocess_message_execute_url_command() % ql1c(':');
     const QByteArray shutdownResponse = QByteArrayLiteral("icq");
 
     QString get_crossprocess_pipe_name()
@@ -45,7 +44,7 @@ namespace Utils
 
         connect(socket_, &QLocalSocket::disconnected, this, &LocalConnection::onDisconnected);
         connect(socket_, &QLocalSocket::readyRead, this, &LocalConnection::onReadyRead);
-        connect(socket_, QOverload<QLocalSocket::LocalSocketError>::of(&QLocalSocket::error), this, [this](QLocalSocket::LocalSocketError _err)
+        connect(socket_, qOverload<QLocalSocket::LocalSocketError>(&QLocalSocket::error), this, [this](QLocalSocket::LocalSocketError _err)
         {
             qCDebug(localPeer) << this << "error" << _err << '-' << socket_->errorString();
             onError();
@@ -54,7 +53,7 @@ namespace Utils
         if (_writePolicy == ConnPolicy::DisconnectAfterWrite)
             connect(socket_, &QLocalSocket::bytesWritten, this, &LocalConnection::onBytesWritten);
 
-        timer_->setInterval(answerTimeout.count());
+        timer_->setInterval(answerTimeout);
         timer_->setSingleShot(true);
         connect(timer_, &QTimer::timeout, this, [this]()
         {
@@ -130,7 +129,7 @@ namespace Utils
             qCDebug(localPeer) << this << "all needed" << needBytes << "bytes read";
 
             timer_->stop();
-            emit dataReady(socket_->readAll());
+            Q_EMIT dataReady(socket_->readAll());
         }
     }
 
@@ -141,19 +140,19 @@ namespace Utils
         if (bytesWritten_ < bytesToSend_)
         {
             qCDebug(localPeer) << this << "error: disconnected before all needed" << bytesToSend_ << "bytes were written";
-            emit error();
+            Q_EMIT error();
         }
 
         if (exitOnDisconnect_)
             QApplication::exit(0);
 
-        emit disconnected();
+        Q_EMIT disconnected();
         deleteLater();
     }
 
     void LocalConnection::onError()
     {
-        emit error();
+        Q_EMIT error();
         disconnectFromServer();
     }
 
@@ -224,13 +223,13 @@ namespace Utils
             unsigned int procId = 0;
             ds.readRawData((char*)&procId, sizeof(procId));
 
-            emit processIdReceived(procId);
+            Q_EMIT processIdReceived(procId);
 
             conn->disconnectFromServer();
         });
 
         conn->setBytesToReceive(sizeof(unsigned int));
-        conn->connectAndSendCommand(crossprocess_message_get_process_id);
+        conn->connectAndSendCommand(crossprocess_message_get_process_id().toString());
     }
 
     void LocalPeer::getHwndAndActivate()
@@ -244,13 +243,13 @@ namespace Utils
             unsigned int hwnd = 0;
             ds.readRawData((char*)&hwnd, sizeof(hwnd));
 
-            emit hwndReceived(hwnd);
+            Q_EMIT hwndReceived(hwnd);
 
             conn->disconnectFromServer();
         });
 
         conn->setBytesToReceive(sizeof(unsigned int));
-        conn->connectAndSendCommand(crossprocess_message_get_hwnd_activate);
+        conn->connectAndSendCommand(crossprocess_message_get_hwnd_activate().toString());
     }
 
     void LocalPeer::sendShutdown()
@@ -261,16 +260,16 @@ namespace Utils
         connect(conn, &LocalConnection::dataReady, this, [conn, this](const QByteArray& _data)
         {
             if (_data == shutdownResponse)
-                emit commandSent();
+                Q_EMIT commandSent();
 
             conn->disconnectFromServer();
         });
 
         conn->setBytesToReceive(shutdownResponse.size());
-        conn->connectAndSendCommand(crossprocess_message_shutdown_process);
+        conn->connectAndSendCommand(crossprocess_message_shutdown_process().toString());
     }
 
-    void LocalPeer::sendUrlCommand(const QString& _command)
+    void LocalPeer::sendUrlCommand(QStringView _command)
     {
         auto conn = new LocalConnection(new QLocalSocket());
 
@@ -282,31 +281,31 @@ namespace Utils
 
     void LocalPeer::processMessage(LocalConnection* _conn, const QString& _message)
     {
-        if (_message == crossprocess_message_get_process_id)
+        if (_message == crossprocess_message_get_process_id())
         {
 #ifdef _WIN32
             unsigned int process_id = ::GetCurrentProcessId();
             _conn->writeRaw((const char*)&process_id, sizeof(process_id));
 #endif //_WIN32
         }
-        else if (_message == crossprocess_message_get_hwnd_activate)
+        else if (_message == crossprocess_message_get_hwnd_activate())
         {
             unsigned int hwnd = 0;
             if (mainWindow_)
             {
                 hwnd = (unsigned int)mainWindow_->winId();
-                emit needActivate();
+                Q_EMIT needActivate();
             }
             _conn->writeRaw((const char*)&hwnd, sizeof(hwnd));
         }
         else if (_message.startsWith(executeCmd) && _message.length() > executeCmd.length())
         {
             QString url = _message.mid(executeCmd.length());
-            emit schemeUrl(url);
+            Q_EMIT schemeUrl(url);
         }
         else
         {
-            if (_message == crossprocess_message_shutdown_process)
+            if (_message == crossprocess_message_shutdown_process())
                 _conn->exitOnDisconnect();
 
             _conn->writeRaw(shutdownResponse.constData(), shutdownResponse.size());

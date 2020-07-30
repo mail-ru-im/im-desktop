@@ -11,7 +11,7 @@ namespace core
     {
         struct mask_info;
     public:
-        masks(std::weak_ptr<wim::im> _im, const std::wstring& _root_path, unsigned _version);
+        masks(std::weak_ptr<wim::im> _im, std::wstring _root_path, unsigned _version);
 
         void get_mask_id_list(int64_t _seq);
         void get_mask_preview(int64_t _seq, const std::string& mask_id);

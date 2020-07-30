@@ -10,10 +10,24 @@ namespace Ui
     public:
         MenuStyle(const int _iconSize);
 
-        int pixelMetric(PixelMetric _metric, const QStyleOption* _option = 0, const QWidget* _widget = 0) const override;
+        int pixelMetric(PixelMetric _metric, const QStyleOption* _option, const QWidget* _widget) const override;
 
     private:
         int iconSize_;
+    };
+
+    class ClickableTextWidget;
+
+    class TextAction : public QWidgetAction
+    {
+        Q_OBJECT
+
+    public:
+        TextAction(const QString& text, QObject* parent);
+        void setHovered(bool _v);
+
+    private:
+        ClickableTextWidget* textWidget_ = nullptr;
     };
 
    class ContextMenu : public QMenu
@@ -47,9 +61,11 @@ namespace Ui
 
        QAction* addActionWithIcon(const QString& _iconPath, const QString& _name, const QVariant& _data);
 
-       bool hasAction(const QString& _command);
+       bool modifyAction(QStringView _command, const QString& _iconPath, const QString& _name, const QVariant& _data, bool _enable);
 
-       void removeAction(const QString& _command);
+       bool hasAction(QStringView _command) const;
+
+       void removeAction(QStringView _command);
 
        void invertRight(bool _invert);
        void setIndent(int _indent);
@@ -61,6 +77,7 @@ namespace Ui
 
        void setShowAsync(const bool _byTimeout);
        bool isShowAsync() const;
+
    protected:
        void showEvent(QShowEvent* _e) override;
        void hideEvent(QHideEvent* _e) override;
@@ -72,6 +89,8 @@ namespace Ui
        std::function<void(QWheelEvent*)> onWheel_;
        QIcon makeIcon(const QString& _iconPath) const;
        QAction* addActionWithIcon(const QIcon& _icon, const QString& _name, const QVariant& _data);
+
+       QAction* findAction(QStringView _command) const;
 
    private:
        bool InvertRight_ = false;

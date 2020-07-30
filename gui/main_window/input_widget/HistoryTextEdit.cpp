@@ -21,7 +21,7 @@
 
 namespace
 {
-    const auto symbolAt = ql1c('@');
+    constexpr auto symbolAt() noexcept { return u'@'; }
 
     QFont getInputTextFont()
     {
@@ -63,9 +63,10 @@ namespace Ui
     HistoryTextEdit::HistoryTextEdit(QWidget* _parent)
         : TextEditEx(_parent, getInputTextFont(), getInputTextColor(), true, false)
         , isEmpty_(true)
+        , isPreediting_(false)
         , phAnimEnabled_(true)
         , stackRedo_(std::make_unique<HistoryUndoStack>())
-        , emojiReplacer_(std::make_unique<Emoji::TextSymbolReplacer>(this))
+        , emojiReplacer_(std::make_unique<Emoji::TextSymbolReplacer>())
     {
         setPlaceholderTextEx(QT_TRANSLATE_NOOP("input_widget", "Message"));
         setAcceptDrops(false);
@@ -101,7 +102,7 @@ namespace Ui
 
     void HistoryTextEdit::updateLinkColor()
     {
-        document()->setDefaultStyleSheet(ql1s("a { color:") % Styling::getParameters().getColorHex(Styling::StyleVariable::TEXT_PRIMARY) % ql1s("; text-decoration:none;}"));
+        document()->setDefaultStyleSheet(u"a { color:" % Styling::getParameters().getColorHex(Styling::StyleVariable::TEXT_PRIMARY) % u"; text-decoration:none;}");
     }
 
     Emoji::TextSymbolReplacer& HistoryTextEdit::getReplacer()
@@ -125,7 +126,7 @@ namespace Ui
         {
             const auto forwardKeyToWidget = [_e](const auto _widget, const auto& _keys)
             {
-                if (_widget && std::any_of(std::begin(_keys), std::end(_keys), [key = _e->key()](const auto x) { return x == key; }))
+                if (_widget && !(_e->modifiers() & Qt::ShiftModifier) && std::any_of(std::begin(_keys), std::end(_keys), [key = _e->key()](const auto x) { return x == key; }))
                 {
                     QApplication::sendEvent(_widget, _e);
                     return _e->isAccepted();
@@ -304,10 +305,19 @@ namespace Ui
 
     void HistoryTextEdit::paintEvent(QPaintEvent* _event)
     {
-        const auto animRunning = placeholderAnim_.isRunning();
-        if (!customPlaceholderText_.isEmpty() && (animRunning || isEmpty_))
+        QPainter p(viewport());
+
+        if (hasFocus())
         {
-            QPainter p(viewport());
+            //draw cursor one more time to avoid some gui artifacts; maybe it'll go away in further Qt version
+            auto block = document()->findBlock(textCursor().position());
+            if (block.isValid())
+                block.layout()->drawCursor(&p, { 0, static_cast<qreal>(-verticalScrollBar()->value()) }, textCursor().positionInBlock());
+        }
+
+        const auto animRunning = placeholderAnim_.isRunning();
+        if (!customPlaceholderText_.isEmpty() && (animRunning || (isEmpty_ && !isPreediting_)))
+        {
             p.setFont(getFont());
 
             const auto colorVar = hasFocus() ? Styling::StyleVariable::BASE_PRIMARY : Styling::StyleVariable::BASE_PRIMARY_ACTIVE;
@@ -362,7 +372,7 @@ namespace Ui
         if (auto menu = getContextMenu(); menu)
         {
             const auto actions = menu->actions();
-            const auto it = std::find_if(actions.begin(), actions.end(), [](auto a) { return a->objectName() == ql1s("edit-paste"); });
+            const auto it = std::find_if(actions.begin(), actions.end(), [](auto a) { return a->objectName() == u"edit-paste"; });
             if (it != actions.end() && !(*it)->isEnabled())
             {
                 if (canPasteImage())
@@ -377,12 +387,12 @@ namespace Ui
     {
         auto cursor = textCursor();
         const auto pos = cursor.position();
-        if (getPlainText().contains(symbolAt))
+        if (getPlainText().contains(symbolAt()))
         {
             cursor.movePosition(QTextCursor::Left, QTextCursor::KeepAnchor);
 
             QChar currentChar;
-            while (currentChar != symbolAt)
+            while (currentChar != symbolAt())
             {
                 if (cursor.atStart())
                     break;
@@ -390,7 +400,7 @@ namespace Ui
                 cursor.movePosition(QTextCursor::PreviousCharacter, QTextCursor::KeepAnchor);
                 currentChar = *cursor.selectedText().begin();
 
-                if (currentChar == ql1c(' '))
+                if (currentChar == QChar::Space)
                 {
                     cursor.setPosition(pos);
                     setTextCursor(cursor);
@@ -400,7 +410,7 @@ namespace Ui
                 cursor.movePosition(QTextCursor::NoMove, QTextCursor::MoveAnchor);
             }
             setTextCursor(cursor);
-            emit needsMentionComplete(cursor.position(), QPrivateSignal());
+            Q_EMIT needsMentionComplete(cursor.position(), QPrivateSignal());
             cursor.setPosition(pos);
             setTextCursor(cursor);
         }
@@ -421,14 +431,25 @@ namespace Ui
         };
 
         const bool wasEmpty = isEmpty_;
+        const bool wasPreediting = isPreediting_;
         isEmpty_ = document()->isEmpty();
+        isPreediting_ = isPreediting();
 
         if (!phAnimEnabled_)
             return;
 
-        if (!wasEmpty && isEmpty_)
+        if (wasPreediting && !isPreediting_ && !isEmpty_)
+            return;
+
+        if ((!wasEmpty && isEmpty_) || (wasPreediting && !isPreediting_))
             animate(AnimType::Appear, getDurationAppear());
-        else if (wasEmpty && !isEmpty_)
+        else if ((wasEmpty && !isEmpty_) || (!wasPreediting && isPreediting_))
             animate(AnimType::Disappear, getDurationDisappear());
+    }
+
+    bool HistoryTextEdit::isPreediting() const
+    {
+        const auto l = textCursor().block().layout();
+        return l && !l->preeditAreaText().isEmpty();
     }
 }

@@ -5,11 +5,11 @@
 
 namespace
 {
-    Data::PollData::Type pollTypeFromStr(const QString& _str)
+    Data::PollData::Type pollTypeFromStr(QStringView _str)
     {
-        if (_str == ql1s("public"))
+        if (_str == u"public")
             return Data::PollData::PublicPoll;
-        else if (_str == ql1s("anon"))
+        else if (_str == u"anon")
             return Data::PollData::AnonymousPoll;
         else
             return Data::PollData::None;

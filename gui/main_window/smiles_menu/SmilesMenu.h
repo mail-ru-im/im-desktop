@@ -66,6 +66,7 @@ namespace Ui
             virtual void selectLastRowAtColumn(const int _column) = 0;
 
             virtual void clearSelection() = 0;
+            virtual bool isKeyboardActive() = 0;
 
             virtual ~SmilesMenuTable() = default;
         };
@@ -80,7 +81,6 @@ namespace Ui
             int emojisCount_;
             int needHeight_;
             bool singleLine_;
-            int spacing_;
 
             std::vector<emoji_category> emojiCategories_;
 
@@ -97,8 +97,6 @@ namespace Ui
             int getCategoryPos(int _index);
             const std::vector<emoji_category>& getCategories() const;
             void onEmojiAdded();
-            int spacing() const;
-            void setSpacing(int _spacing);
 
             QModelIndex index(int _row, int _column, const QModelIndex& _parent = QModelIndex()) const override;
 
@@ -183,6 +181,8 @@ namespace Ui
             void selectLastRowAtColumn(const int _column) override;
 
             void clearSelection() override;
+
+            bool isKeyboardActive() override;
         };
 
 
@@ -196,8 +196,8 @@ namespace Ui
             Q_OBJECT
 
         Q_SIGNALS:
-            void emojiSelected(const Emoji::EmojiRecord& _emoji, const QPoint _pos);
-            void scrollToGroup(const int _pos);
+            void emojiSelected(const Emoji::EmojiRecord& _emoji, const QPoint _pos, QPrivateSignal) const;
+            void scrollToGroup(const int _pos, QPrivateSignal) const;
             void emojiMouseMoved(QPrivateSignal) const;
 
         public:
@@ -211,11 +211,13 @@ namespace Ui
             bool toolbarAtBottom() const;
             void updateToolbarSelection();
 
+            bool isKeyboardActive() const;
+
         private:
             void updateToolbar(const QRect& _viewRect);
             void placeToolbar(const QRect& _viewRect);
 
-            void sendEmoji(const QModelIndex& _index, const EmojiSendSource _src);
+            void sendEmoji(const QModelIndex& _index, const EmojiSendSource _src) const;
 
         private:
             EmojiTableView* view_;
@@ -305,6 +307,8 @@ namespace Ui
             void clearSelection() override;
 
             void clearIfNotSelected(const QString& _stickerId);
+
+            bool isKeyboardActive() override;
         };
 
 
@@ -405,6 +409,8 @@ namespace Ui
             int selectedItemColumn() const override;
             void selectFirstRowAtColumn(const int _column) override;
             void selectLastRowAtColumn(const int _column) override;
+
+            bool isKeyboardActive() override;
         };
 
 
@@ -503,6 +509,7 @@ namespace Ui
 
         private Q_SLOTS:
             void im_created();
+            void onSetIconChanged(int _setId);
             void touchScrollStateChanged(QScroller::State);
             void stickersMetaEvent();
             void stickerEvent(const qint32 _error, const qint32 _setId, const QString& _stickerId);
@@ -575,6 +582,8 @@ namespace Ui
             void updateStickerPreview(const int32_t _setId, const QString& _stickerId);
             void onStickerHovered(const int32_t _setId, const QString& _stickerId);
             void onEmojiHovered();
+
+            bool iskeyboardActive() const;
 
         protected:
             void paintEvent(QPaintEvent* _e) override;

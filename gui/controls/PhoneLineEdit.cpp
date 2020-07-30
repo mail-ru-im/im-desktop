@@ -14,8 +14,6 @@
 namespace
 {
     constexpr int COUNTRY_CODE_WIDTH = 62;
-    constexpr int COUNTRY_CODE_LEFT_MARGIN = 32;
-    constexpr int PHONE_EDIT_MARGIN = 38;
     constexpr int PHONE_EDIT_LEFT_MARGIN = 8;
     constexpr int PHONE_EDIT_WIDTH = 242;
     constexpr int ABOUT_PHONE_NUMBER_WIDTH = 296;
@@ -94,7 +92,7 @@ namespace Ui
                 /* Intentionally queued, let LineEditEx handle click first */
                 Qt::QueuedConnection);
 
-        connect(completer_, Utils::QOverload<const QString&>::of(&QCompleter::activated), this, &PhoneLineEdit::focusOnPhoneWidget);
+        connect(completer_, qOverload<const QString&>(&QCompleter::activated), this, &PhoneLineEdit::focusOnPhoneWidget);
 
         globalLayout->addWidget(countryCode_);
         globalLayout->addSpacerItem(new QSpacerItem(Utils::scale_value(PHONE_EDIT_LEFT_MARGIN), 0, QSizePolicy::Fixed));
@@ -187,7 +185,7 @@ namespace Ui
 
     void PhoneLineEdit::onPhoneChanged()
     {
-        emit fullPhoneChanged(getFullPhone());
+        Q_EMIT fullPhoneChanged(getFullPhone());
     }
 
     void PhoneLineEdit::onPhoneEmptyTextBackspace()
@@ -219,7 +217,7 @@ namespace Ui
     QString PhoneLineEdit::getPhone() const
     {
         auto phone = phoneNumber_->text();
-        static const QRegularExpression reg(qsl("[\\s\\-\\(\\)]*"), QRegularExpression::UseUnicodePropertiesOption | QRegularExpression::OptimizeOnFirstUsageOption);
+        static const QRegularExpression reg(qsl("[\\s\\-\\(\\)]*"), QRegularExpression::UseUnicodePropertiesOption);
         return phone.remove(reg);
     }
 

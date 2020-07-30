@@ -9,11 +9,17 @@ namespace Logic
     class CommonChatsSearchModel;
 }
 
+namespace Data
+{
+    class LastSeen;
+}
+
 namespace Ui
 {
     class HeaderTitleBar;
     class HeaderTitleBarButton;
     class AvatarNameInfo;
+    class AvatarNamePlaceholder;
     class InfoBlock;
     class SidebarButton;
     class SidebarCheckboxButton;
@@ -40,8 +46,7 @@ namespace Ui
 
         UserProfile(QWidget* _parent, const QString& _phone, const QString& _aimid, const QString& _friendy);
 
-        void initFor(const QString& aimId) override;
-        void setSharedProfile(bool _sharedProfile) override;
+        void initFor(const QString& aimId, SidebarParams _params = {}) override;
         void setFrameCountMode(FrameCountMode _mode) override;
         void close() override;
 
@@ -70,8 +75,8 @@ namespace Ui
         void blockClicked();
         void reportCliked();
         void removeContact();
-        void favoriteChanged(const QString _aimid);
-        void unimportantChanged(const QString _aimid);
+        void favoriteChanged(const QString& _aimid);
+        void unimportantChanged(const QString& _aimid);
         void dialogGalleryState(const QString& _aimId, const Data::DialogGalleryState& _state);
         void userInfo(const int64_t, const QString& _aimid, const Data::UserInfo& _info);
         void menuAction(QAction*);
@@ -111,8 +116,21 @@ namespace Ui
         void closeGallery();
         void loadInfo();
         void updateControls();
-        void updateStatus(int32_t _lastseen);
+        void updateStatus(const Data::LastSeen& _lastseen);
         QString getShareLink() const;
+        bool isFavorites() const;
+
+        void setInfoPlaceholderVisible(bool _isVisible);
+        void updateGalleryVisibility();
+
+        enum class MessageOrCallMode
+        {
+            Message,
+            Call
+        };
+
+        void switchMessageOrCallMode(MessageOrCallMode _mode);
+        void hideControls();
 
     private:
         QStackedWidget* stackedWidget_;
@@ -123,12 +141,18 @@ namespace Ui
         QWidget* firstSpacer_;
         QWidget* secondSpacer_;
         AvatarNameInfo* info_;
+        AvatarNamePlaceholder* infoPlaceholder_;
+        QWidget* infoContainer_;
         QWidget* infoSpacer_;
         QWidget* controlsWidget_;
-        ColoredButton* message_;
+
+        MessageOrCallMode messageOrCallMode_ = MessageOrCallMode::Message;
+        ColoredButton* messageOrCall_;
+
         ColoredButton* audioCall_;
         ColoredButton* videoCall_;
         ColoredButton* unblock_;
+        ColoredButton* openFavorites_;
         std::unique_ptr<InfoBlock> about_;
         std::unique_ptr<InfoBlock> nick_;
         std::unique_ptr<InfoBlock> email_;
@@ -161,7 +185,8 @@ namespace Ui
         int currentGalleryPage_;
         bool galleryIsEmpty_;
         bool shortView_;
-        bool sharedProfile_;
+        bool replaceFavorites_;
+        bool isInfoPlaceholderVisible_;
 
         QTimer* lastseenTimer_;
         qint64 seq_;

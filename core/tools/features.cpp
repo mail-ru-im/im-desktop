@@ -47,4 +47,9 @@ namespace features
         }();
         return omicronlib::_o(omicron::keys::im_zstd_dict_response, default_link);
     }
+
+    bool is_fetch_hotstart_enabled()
+    {
+        return omicronlib::_o(omicron::keys::fetch_hotstart_enabled, true);
+    }
 }

@@ -2,6 +2,7 @@
 #include "VideoFrame.h"
 #include "CommonUI.h"
 #include "VoipProxy.h"
+#include "media/permissions/MediaCapturePermissions.h"
 
 namespace voip_manager
 {
@@ -23,7 +24,7 @@ namespace Ui
         Q_SIGNALS :
             void onMouseEnter();
             void onMouseLeave();
-            void needShowScreenPermissionsPopup();
+            void needShowScreenPermissionsPopup(media::permissions::DeviceType type);
 
 
         private Q_SLOTS:
@@ -34,18 +35,18 @@ namespace Ui
         void onVoipMediaLocalAudio(bool _enabled);
         void onVoipMediaLocalVideo(bool _enabled);
         void onShareScreen();
-        void onVoipVideoDeviceSelected(const voip_proxy::device_desc& desc);
+        void onVoipVideoDeviceSelected(const voip_proxy::device_desc& _desc);
 
     public:
         MiniWindowVideoPanel(QWidget* _parent);
         ~MiniWindowVideoPanel() = default;
 
-        void fadeIn(unsigned int kAnimationDefDuration) override;
-        void fadeOut(unsigned int kAnimationDefDuration) override;
+        void fadeIn(unsigned int _kAnimationDefDuration) override;
+        void fadeOut(unsigned int _kAnimationDefDuration) override;
         bool isFadedIn() override;
         bool isUnderMouse();
 
-        void updatePosition(const QWidget& parent) override;
+        void updatePosition(const QWidget& _parent) override;
 
     private:
         void resetHangupText();
@@ -70,10 +71,7 @@ namespace Ui
         QPushButton* videoButton_;
         QPushButton* shareScreenButton_;
 
-        std::unique_ptr<Ui::UIEffects> videoPanelEffect_;
-
-        bool isTakling;
-        bool isFadedVisible;
+        bool isFadedVisible_;
         bool localVideoEnabled_;
         bool isScreenSharingEnabled_;
         bool isCameraEnabled_;
@@ -89,12 +87,13 @@ namespace Ui
         void changeEvent(QEvent* _e) override;
         void enterEvent(QEvent* _e) override;
         void leaveEvent(QEvent* _e) override;
+        void paintEvent(QPaintEvent* _e) override;
 
     Q_SIGNALS:
 
         void windowWillDeminiaturize();
         void windowDidDeminiaturize();
-        void needShowScreenPermissionsPopup();
+        void needShowScreenPermissionsPopup(media::permissions::DeviceType type);
 
     private Q_SLOTS:
         void checkPanelsVis();
@@ -127,7 +126,6 @@ namespace Ui
         QWidget* parent_;
         QPoint posDragBegin_;
         bool closedManualy_;
-        QHBoxLayout *horizontalLayout_;
         MiniWindowVideoPanel* videoPanel_;
 
         std::unique_ptr<ShadowWindowParent> shadow_;

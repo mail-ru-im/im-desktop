@@ -1,8 +1,6 @@
 #include "stdafx.h"
 #include "robusto_packet.h"
 
-#include <sstream>
-
 #include "../../http_request.h"
 #include "../../tools/hmac_sha_base64.h"
 #include "../../utils.h"
@@ -10,15 +8,16 @@
 #include "../../tools/json_helper.h"
 #include "../../tools/features.h"
 #include "../urls_cache.h"
+#include "../common.shared/string_utils.h"
 
 using namespace core;
 using namespace wim;
 
 static robusto_packet_params make_robusto_params()
 {
-    static std::atomic<uint32_t> rubusto_req_id(0);
+    static std::atomic<uint32_t> robusto_req_id(0);
 
-    return robusto_packet_params(++rubusto_req_id);
+    return robusto_packet_params(++robusto_req_id);
 }
 
 
@@ -44,21 +43,21 @@ int32_t robusto_packet::parse_results(const rapidjson::Value& /*_node_results*/)
 
 std::string robusto_packet::get_req_id() const
 {
-    time_t ts = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()) - params_.time_offset_;
+    const time_t ts = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()) - params_.time_offset_;
 
     std::stringstream ss;
-    ss << robusto_params_.robusto_req_id_ << '-' << (uint32_t) ts;
+    ss << robusto_params_.robusto_req_id_ << '-' << ts;
 
     return ss.str();
 }
 
 
-int32_t robusto_packet::parse_response(std::shared_ptr<core::tools::binary_stream> _response)
+int32_t robusto_packet::parse_response(const std::shared_ptr<core::tools::binary_stream>& _response)
 {
     if (!_response->available())
         return wpie_http_empty_response;
 
-    uint32_t size = _response->available();
+    auto size = _response->available();
     load_response_str((const char*) _response->read(size), size);
     try
     {
@@ -70,16 +69,12 @@ int32_t robusto_packet::parse_response(std::shared_ptr<core::tools::binary_strea
         if (iter_status == doc.MemberEnd())
             return wpie_error_parse_response;
 
-        auto iter_code = iter_status->value.FindMember("code");
-        if (iter_code == iter_status->value.MemberEnd())
+        if (!tools::unserialize_value(iter_status->value, "code", status_code_))
             return wpie_error_parse_response;
-
-        status_code_ = iter_code->value.GetUint();
 
         if (status_code_ == 20000)
         {
-            auto iter_result = doc.FindMember("results");
-            if (iter_result != doc.MemberEnd())
+            if (const auto iter_result = doc.FindMember("results"); iter_result != doc.MemberEnd())
                 return parse_results(iter_result->value);
         }
         else
@@ -107,10 +102,13 @@ int32_t robusto_packet::on_response_error_code()
     if (status_code_ == 50000)
         return wpie_robusto_timeout;
 
+    if (status_code_ == 40401)
+        return wpie_error_robusto_target_not_found;
+
     return wpie_error_message_unknown;
 }
 
-int32_t robusto_packet::execute_request(std::shared_ptr<core::http_request_simple> _request)
+int32_t robusto_packet::execute_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     if (!_request->post())
         return wpie_network_error;
@@ -126,7 +124,7 @@ int32_t robusto_packet::execute_request(std::shared_ptr<core::http_request_simpl
     return 0;
 }
 
-void robusto_packet::execute_request_async(std::shared_ptr<http_request_simple> _request, wim_packet::handler_t _handler)
+void robusto_packet::execute_request_async(const std::shared_ptr<http_request_simple>& _request, wim_packet::handler_t _handler)
 {
     auto wr_this = weak_from_this();
 
@@ -134,7 +132,7 @@ void robusto_packet::execute_request_async(std::shared_ptr<http_request_simple> 
     if (!ptr_this)
         return;
 
-    _request->post_async([_request, _handler, wr_this](curl_easy::completion_code _completion_code)
+    _request->post_async([_request, _handler = std::move(_handler), wr_this](curl_easy::completion_code _completion_code)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -162,16 +160,14 @@ void robusto_packet::execute_request_async(std::shared_ptr<http_request_simple> 
     });
 }
 
-void robusto_packet::sign_packet(
-    rapidjson::Value& _node,
-    rapidjson_allocator& _a,
-    std::shared_ptr<core::http_request_simple> _request)
+void robusto_packet::setup_common_and_sign(rapidjson::Value& _node, rapidjson_allocator& _a, const std::shared_ptr<core::http_request_simple>& _request, std::string_view _method)
 {
     _node.AddMember("aimsid", params_.aimsid_, _a);
+    _node.AddMember("reqId", get_req_id(), _a);
 
     // for the best zstd-compression, json data should be sorted lexicographically
     if (features::is_zstd_request_enabled())
-        tools::sort_json_keys_by_name(&_node);
+        tools::sort_json_keys_by_name(_node);
 
     rapidjson::StringBuffer buffer;
     rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
@@ -179,28 +175,15 @@ void robusto_packet::sign_packet(
 
     std::string json_string = rapidjson_get_string(buffer);
 
-    char sha_buffer[65] = { 0 };
-    core::tools::sha256(json_string, sha_buffer);
-
     std::map<std::string, std::string> params;
-
-    const time_t ts = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()) - params_.time_offset_;
-    const auto host = urls::get_url(urls::url_type::rapi_host);
-
-    params["a"] = escape_symbols(params_.a_token_);
     params["k"] = params_.dev_id_;
-    params["ts"] = std::to_string((int64_t) ts);
     params["client"] = core::utils::get_client_string();
     params["lang"] = params_.locale_;
-    params["body_checksum"] = sha_buffer;
 
-    auto sha256 = escape_symbols(get_url_sign(host, params, params_, true));
-    params["sig_sha256"] = std::move(sha256);
+    _request->set_url(su::concat(urls::get_url(urls::url_type::rapi_host), _method, '?', format_get_params(params)));
+    _request->set_normalized_url(_method);
 
-    std::stringstream ss_url;
-    ss_url << host << '?' << format_get_params(params);
-
-    _request->set_url(ss_url.str());
+    _request->set_keep_alive();
 
     _request->set_custom_header_param("Content-Type: application/json;charset=utf-8");
 

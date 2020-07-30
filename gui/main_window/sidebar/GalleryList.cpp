@@ -12,14 +12,14 @@
 #include "../../controls/TextUnit.h"
 #include "../../controls/ContextMenu.h"
 #include "../../controls/TransparentScrollBar.h"
-#include "../friendly/FriendlyContainer.h"
+#include "../containers/FriendlyContainer.h"
 #include "../contact_list/ContactListModel.h"
+#include "../contact_list/FavoritesUtils.h"
+#include "previewer/toast.h"
 
 namespace
 {
-    const int PAGE_SIZE = 20;
-    const int ITEM_HEIGHT = 80;
-
+    constexpr int PAGE_SIZE = 20;
 
     QMap<QString, QVariant> makeData(const QString& _command, qint64 _msg, const QString& _link, const QString& _sender, time_t _time)
     {
@@ -70,34 +70,43 @@ namespace Ui
         const auto sender = params[qsl("sender")].toString();
         const auto time = params[qsl("time")].toLongLong();
 
+        auto makeQuote = [this, &sender, &link, &msg, &time]()
+        {
+            Data::Quote quote;
+            quote.chatId_ = aimId_;
+            quote.senderId_ = sender;
+            quote.text_ = link;
+            quote.msgId_ = msg;
+            quote.time_ = time;
+            quote.senderFriendly_ = Logic::GetFriendlyContainer()->getFriendly(sender);
+            return quote;
+        };
+
         if (!msg)
             return;
 
         core::stats::event_props_type props;
 
-        if (command == ql1s("go_to"))
+        if (command == u"go_to")
         {
-            emit Logic::getContactListModel()->select(aimId_, msg, Logic::UpdateChatSelection::No);
+            Q_EMIT Logic::getContactListModel()->select(aimId_, msg, Logic::UpdateChatSelection::No);
             props.emplace_back("Event", "Go_to_message");
 
             Ui::GetDispatcher()->post_stats_to_core(event_by_type(type_), { { "chat_type", Utils::chatTypeByAimId(aimId_) }, { "do", "go_to_message" } });
         }
-        else if (command == ql1s("forward"))
+        else if (command == u"forward")
         {
-            Data::Quote q;
-            q.chatId_ = aimId_;
-            q.senderId_ = sender;
-            q.text_ = link;
-            q.msgId_ = msg;
-            q.time_ = time;
-            q.senderFriendly_ = Logic::GetFriendlyContainer()->getFriendly(sender);
-
-            Ui::forwardMessage({ std::move(q) }, false, QString(), QString(), true);
+            Ui::forwardMessage({ makeQuote() }, false, QString(), QString(), !Favorites::isFavorites(aimId_));
             props.emplace_back("Event", "Forward");
 
             Ui::GetDispatcher()->post_stats_to_core(event_by_type(type_), { { "chat_type", Utils::chatTypeByAimId(aimId_) },{ "do", "forward" } });
         }
-        else if (command == ql1s("copy_link"))
+        else if (command == u"add_to_favorites")
+        {
+            Favorites::addToFavorites({ makeQuote() });
+            Favorites::showSavedToast();
+        }
+        else if (command == u"copy_link")
         {
             if (!link.isEmpty())
                 QApplication::clipboard()->setText(link);
@@ -106,7 +115,7 @@ namespace Ui
 
             Ui::GetDispatcher()->post_stats_to_core(event_by_type(type_), { { "chat_type", Utils::chatTypeByAimId(aimId_) }, { "do", "copy" } });
         }
-        else if (command == ql1s("delete") || command == ql1s("delete_all"))
+        else if (const auto is_shared = command == u"delete_all"; is_shared || command == u"delete")
         {
             QString text = QT_TRANSLATE_NOOP("popup_window", "Are you sure you want to delete message?");
 
@@ -117,8 +126,6 @@ namespace Ui
                 QT_TRANSLATE_NOOP("popup_window", "Delete message"),
                 nullptr
             );
-
-            const auto is_shared = (command == ql1s("delete_all"));
 
             props.emplace_back("Event", (is_shared ? "Remove_from_all" : "Remove_from_myself"));
 
@@ -156,7 +163,7 @@ namespace Ui
 
     void MediaContentWidget::showContextMenu(ItemData _data, const QPoint& _pos, bool _inverted)
     {
-        auto menu = makeContextMenu(_data.msg_, _data.link_, _data.sender_, _data.time_);
+        auto menu = makeContextMenu(_data.msg_, _data.link_, _data.sender_, _data.time_, aimId_);
 
         connect(menu, &ContextMenu::triggered, this, &MediaContentWidget::onMenuAction, Qt::QueuedConnection);
         connect(menu, &ContextMenu::triggered, menu, &ContextMenu::deleteLater, Qt::QueuedConnection);
@@ -167,7 +174,7 @@ namespace Ui
         menu->popup(mapToGlobal(_pos));
     }
 
-    ContextMenu *MediaContentWidget::makeContextMenu(qint64 _msg, const QString &_link, const QString& _sender, time_t _time)
+    ContextMenu *MediaContentWidget::makeContextMenu(qint64 _msg, const QString &_link, const QString& _sender, time_t _time, const QString& _aimid)
     {
         auto menu = new ContextMenu(this);
 
@@ -176,6 +183,12 @@ namespace Ui
 
         if (type_ == MediaContentWidget::Links)
             menu->addActionWithIcon(qsl(":/context_menu/link"), QT_TRANSLATE_NOOP("context_menu", "Copy link"), makeData(qsl("copy_link"), _msg, _link, _sender, _time));
+
+        if (!Favorites::isFavorites(_aimid))
+        {
+            menu->addSeparator();
+            menu->addActionWithIcon(qsl(":/context_menu/favorites"), QT_TRANSLATE_NOOP("context_menu", "Add to favorites"), makeData(qsl("add_to_favorites"), _msg, _link, _sender, _time));
+        }
 
         return menu;
     }
@@ -224,7 +237,7 @@ namespace Ui
         lastSeq_ = 0;
         exhausted_ = false;
 
-        requestId_ = Ui::GetDispatcher()->getDialogGallery(aimId_, types_, lastMsgId_, lastSeq_, PAGE_SIZE);
+        requestId_ = Ui::GetDispatcher()->getDialogGallery(aimId_, types_, lastMsgId_, lastSeq_, PAGE_SIZE, true);
     }
 
     void GalleryList::markClosed()
@@ -270,7 +283,7 @@ namespace Ui
             return QWidget::resizeEvent(_event);
 
         if(!exhausted() && !aimId_.isEmpty() && requestId_ == -1 && contentWidget_->height() <= area_->height())
-            requestId_ = Ui::GetDispatcher()->getDialogGallery(aimId_, types_, lastMsgId_, lastSeq_, PAGE_SIZE);
+            requestId_ = Ui::GetDispatcher()->getDialogGallery(aimId_, types_, lastMsgId_, lastSeq_, PAGE_SIZE, true);
 
         QWidget::resizeEvent(_event);
     }
@@ -294,7 +307,7 @@ namespace Ui
             return;
 
         if(contentWidget_->height() <= area_->height() && !aimId_.isEmpty())
-            requestId_ = Ui::GetDispatcher()->getDialogGallery(aimId_, types_, lastMsgId_, lastSeq_, PAGE_SIZE);
+            requestId_ = Ui::GetDispatcher()->getDialogGallery(aimId_, types_, lastMsgId_, lastSeq_, PAGE_SIZE, true);
     }
 
     void GalleryList::dialogGalleryUpdate(const QString& _aimid, const QVector<Data::DialogGalleryEntry>& _entries)
@@ -314,7 +327,7 @@ namespace Ui
             return;
 
         if (contentWidget_->height() <= area_->height() && !aimId_.isEmpty())
-            requestId_ = Ui::GetDispatcher()->getDialogGallery(aimId_, types_, lastMsgId_, lastSeq_, PAGE_SIZE);
+            requestId_ = Ui::GetDispatcher()->getDialogGallery(aimId_, types_, lastMsgId_, lastSeq_, PAGE_SIZE, true);
     }
 
     void GalleryList::scrolled(int value)
@@ -330,7 +343,7 @@ namespace Ui
 
         if (value > scroll->maximum() * 0.7 && requestId_ == -1 && !aimId_.isEmpty())
         {
-            requestId_ = Ui::GetDispatcher()->getDialogGallery(aimId_, types_, lastMsgId_, lastSeq_, PAGE_SIZE);
+            requestId_ = Ui::GetDispatcher()->getDialogGallery(aimId_, types_, lastMsgId_, lastSeq_, PAGE_SIZE, true);
         }
     }
 

@@ -1,9 +1,10 @@
 #include "stdafx.h"
 #include "TransitProfileShareWidget.h"
 
-#include "main_window/friendly/FriendlyContainer.h"
+#include "main_window/containers/FriendlyContainer.h"
 #include "core_dispatcher.h"
 #include "utils/utils.h"
+#include "utils/UrlParser.h"
 #include "utils/features.h"
 #include "utils/stat_utils.h"
 #include "utils/InterConnector.h"
@@ -175,7 +176,7 @@ void Ui::TransitProfileSharing::keyPressEvent(QKeyEvent * _e)
 {
     if (_e->key() == Qt::Key_Escape)
     {
-        emit declined();
+        Q_EMIT declined();
         close();
     }
 }
@@ -227,7 +228,7 @@ void TransitProfileSharing::setState(const TransitState _state)
             if (state_ == TransitState::EMPTY_PROFILE)
             {
                 userProfile_->hide();
-                emit openChat();
+                Q_EMIT openChat();
                 close();
             }
             else
@@ -236,7 +237,7 @@ void TransitProfileSharing::setState(const TransitState _state)
                 if (!nick_.isEmpty() || sharePhone)
                 {
                     userProfile_->close();
-                    emit accepted(nick_, sharePhone);
+                    Q_EMIT accepted(nick_, sharePhone);
                     close();
                 }
                 else
@@ -250,7 +251,7 @@ void TransitProfileSharing::setState(const TransitState _state)
         {
             userProfile_->hide();
             if (declinable_)
-                emit declined();
+                Q_EMIT declined();
             close();
         }
     }
@@ -266,7 +267,7 @@ void TransitProfileSharing::setState(const TransitState _state)
         if (errorUnchecked_->showInCenter())
         {
             errorUnchecked_->hide();
-            emit openChat();
+            Q_EMIT openChat();
             close();
         }
         else
@@ -381,6 +382,7 @@ void TransitProfileSharingWidget::paintEvent(QPaintEvent * _event)
             currentVOffset += friendlyHeight + Utils::scale_value(2);
 
             const auto nickHeight = nickTextUnit_->getHeight(maxTextWidth);
+            Q_UNUSED(nickHeight);
             nickTextUnit_->setOffsets(textX, currentVOffset);
             nickTextUnit_->draw(p, TextRendering::VerPosition::TOP);
         }
@@ -496,8 +498,8 @@ void TransitProfileSharingWidget::init()
         if (!nick.isEmpty())
         {
             nicknameVisible_ = true;
-            if (!nick.contains(ql1c('@')))
-                nick.prepend(ql1c('@'));
+            if (!nick.contains(u'@'))
+                nick.prepend(u'@');
             nickTextUnit_ = TextRendering::MakeTextUnit(nick, {}, TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
             nickTextUnit_->init(secondaryTextFont(), secondaryTextColor(), QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, 1);
         }

@@ -43,7 +43,7 @@ namespace Ui
     MentionCompleter* getMentionCompleter();
     bool showMentionCompleter(const QString& _initialPattern, const QPoint& _pos);
 
-    bool isEmoji(const QStringRef& _text, int& _pos);
+    bool isEmoji(QStringView _text, qsizetype& _pos);
 
     std::pair<QString, int> getLastWord(HistoryTextEdit* _textEdit);
     bool replaceEmoji(HistoryTextEdit* _textEdit);

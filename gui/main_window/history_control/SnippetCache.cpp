@@ -3,6 +3,8 @@
 #include "core_dispatcher.h"
 #include "SnippetCache.h"
 
+#include "../../../common.shared/config/config.h"
+
 namespace Ui
 {
 
@@ -43,6 +45,9 @@ std::optional<Data::LinkMetadata> SnippetCache::get(const QString& _url) const
 
 void SnippetCache::load(const QString& _url)
 {
+    if (!config::get().is_on(config::features::snippet_in_chat))
+        return;
+
     if (d->cache.contains(_url))
         return;
 

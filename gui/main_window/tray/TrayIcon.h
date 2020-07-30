@@ -50,7 +50,7 @@ namespace Ui
         void clearNotifications(const QString&);
         void activated(QSystemTrayIcon::ActivationReason);
         void loggedIn();
-        void loggedOut(const bool _is_auth_error);
+        void loggedOut();
         void updateAlertsPosition();
         void onEmailIconClick(QSystemTrayIcon::ActivationReason);
         void mailBoxOpened();
@@ -106,10 +106,8 @@ namespace Ui
         RecentMessagesAlert* MailAlert_;
 
         QHash<QString, qint64> ShowedMessages_;
-        QStringList Notifications_;
+        QVector<QString> Notifications_;
         MainWindow* MainWindow_;
-
-        bool first_start_;
 
         QIcon Base_;
         QIcon Unreads_;
@@ -125,7 +123,17 @@ namespace Ui
 #if defined (_WIN32)
 //        std::unique_ptr<ToastManager> ToastManager_;
         ITaskbarList3 *ptbl;
-        std::array<HICON, 2> winIcons_;
+
+        enum IconType
+        {
+            small = 0,
+            big = 1,
+            overlay = 2,
+
+            max
+        };
+        std::array<HICON, IconType::max> winIcons_;
+
         bool flashing_;
 #elif defined(__APPLE__)
         std::unique_ptr<NotificationCenterManager> NotificationCenterManager_;

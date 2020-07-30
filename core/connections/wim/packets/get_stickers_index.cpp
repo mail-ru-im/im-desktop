@@ -11,8 +11,8 @@ using namespace core;
 using namespace wim;
 
 get_stickers_index::get_stickers_index(wim_packet_params _params, const std::string& _md5)
-    : wim_packet(std::move(_params)),
-      md5_(_md5)
+    : wim_packet(std::move(_params))
+    , md5_(_md5)
 {
 }
 
@@ -20,12 +20,7 @@ get_stickers_index::~get_stickers_index()
 {
 }
 
-bool get_stickers_index::support_async_execution() const
-{
-    return true;
-}
-
-int32_t get_stickers_index::init_request(std::shared_ptr<core::http_request_simple> _request)
+int32_t get_stickers_index::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     std::map<std::string, std::string> params;
 
@@ -44,16 +39,10 @@ int32_t get_stickers_index::init_request(std::shared_ptr<core::http_request_simp
     params["suggest"] = "1";
 
     if (!md5_.empty())
-    {
         params["md5"] = md5_;
-    }
 
     params["client"] = core::utils::get_client_string();
-
     params["lang"] = params_.locale_;
-
-    auto sha256 = escape_symbols(get_url_sign(ss_host.str(), params, params_, false));
-    params["sig_sha256"] = std::move(sha256);
 
     std::stringstream ss_url;
     ss_url << ss_host.str() << '?' << format_get_params(params);
@@ -61,7 +50,6 @@ int32_t get_stickers_index::init_request(std::shared_ptr<core::http_request_simp
     _request->set_url(ss_url.str());
     _request->set_normalized_url("stikersStoreContentlist");
     _request->set_keep_alive();
-    _request->set_priority(high_priority());
 
     if (!params_.full_log_)
     {
@@ -73,7 +61,7 @@ int32_t get_stickers_index::init_request(std::shared_ptr<core::http_request_simp
     return 0;
 }
 
-int32_t get_stickers_index::parse_response(std::shared_ptr<core::tools::binary_stream> _response)
+int32_t get_stickers_index::parse_response(const std::shared_ptr<core::tools::binary_stream>& _response)
 {
     if (!_response->available())
         return wpie_http_empty_response;
@@ -83,7 +71,12 @@ int32_t get_stickers_index::parse_response(std::shared_ptr<core::tools::binary_s
     return 0;
 }
 
-std::shared_ptr<core::tools::binary_stream> get_stickers_index::get_response() const
+const std::shared_ptr<core::tools::binary_stream>& get_stickers_index::get_response() const noexcept
 {
     return response_;
+}
+
+priority_t get_stickers_index::get_priority() const
+{
+    return packets_priority_high();
 }

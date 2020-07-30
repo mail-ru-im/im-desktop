@@ -22,7 +22,7 @@ namespace Utils
     {
         if (!QFile::exists(Path_))
         {
-            emit loadedSignal(QPixmap(), QSize());
+            Q_EMIT loadedSignal(QPixmap(), QSize());
             return;
         }
 
@@ -33,6 +33,6 @@ namespace Utils
 
         assert(!preview.isNull());
 
-        emit loadedSignal(preview, originalImageSize);
+        Q_EMIT loadedSignal(preview, originalImageSize);
     }
 }

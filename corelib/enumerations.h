@@ -158,16 +158,22 @@ namespace core
         birthday,
 
         avatar_modified,
-
         generic,
-
         chat_description_modified,
-
         message_deleted,
-
         chat_rules_modified,
-
         chat_stamp_modified,
+        chat_join_moderation_modified,
+        chat_public_modified,
+
+        mchat_adm_granted,
+        mchat_adm_revoked,
+        mchat_allowed_to_write,
+        mchat_disallowed_to_write,
+        mchat_waiting_for_approve,
+        mchat_joining_approved,
+        mchat_joining_rejected,
+        mchat_joining_canceled,
 
         max
     };
@@ -322,6 +328,7 @@ namespace core
         network_error = 2,
         not_in_chat = 3,
         blocked = 4,
+        no_info = 5,
 
         max,
     };
@@ -490,9 +497,9 @@ namespace core
 
             strange_event = 27001,
 
-            favorites_set = 29001,
-            favorites_unset = 29002,
-            favorites_load = 29003,
+            chat_pinned = 29001,
+            chat_unpinned = 29002,
+            pinned_load = 29003,
 
             profile_avatar_changed = 31001,
             introduce_name_set = 31002,
@@ -628,8 +635,7 @@ namespace core
             fullmediascr_view = 56010,
             fullmediascr_tap_action = 56011,
 
-            settings_main_readall_action = 57000,
-            chat_scr_read_all_event = 57001,
+            chat_scr_read_all_event = 57000,
 
             chatscr_sendmedia_action = 58000,
             chatscr_sendmediawcapt_action = 58001,
@@ -709,6 +715,8 @@ namespace core
             chatscr_recordptt_action = 65013,
             chatscr_playptt_action = 65014,
             chatscr_recognptt_action = 65015,
+            chatscr_callbylink_action = 65016,
+            chatscr_webinar_action = 65017,
 
             sharecontactscr_contact_action = 66000,
 
@@ -907,9 +915,9 @@ namespace core
             case stats_event_names::proxy_open : return std::string_view("proxy_open");
             case stats_event_names::proxy_set : return std::string_view("proxy_set");
 
-            case stats_event_names::favorites_set : return std::string_view("favorites_set");
-            case stats_event_names::favorites_unset : return std::string_view("favorites_unset");
-            case stats_event_names::favorites_load : return std::string_view("favorites_load");
+            case stats_event_names::chat_pinned : return std::string_view("favorites_set");
+            case stats_event_names::chat_unpinned : return std::string_view("favorites_unset");
+            case stats_event_names::pinned_load : return std::string_view("favorites_load");
 
             case stats_event_names::profile_avatar_changed : return std::string_view("Profile_Avatar_Changed");
             case stats_event_names::introduce_name_set : return std::string_view("Introduce_Name_Set");
@@ -1045,7 +1053,6 @@ namespace core
             case stats_event_names::fullmediascr_view: return std::string_view("FullMediaScr_View");
             case stats_event_names::fullmediascr_tap_action: return std::string_view("FullMediaScr_Tap_Action");
 
-            case stats_event_names::settings_main_readall_action: return std::string_view("SettingsMain_ReadAll_Action");
             case stats_event_names::chat_scr_read_all_event: return std::string_view("ChatScr_ReadAll_Event");
 
             case stats_event_names::chatscr_sendmedia_action: return std::string_view("ChatScr_SendMedia_Action");
@@ -1126,6 +1133,8 @@ namespace core
             case stats_event_names::chatscr_recordptt_action: return std::string_view("ChatScr_PTTRecord_Action");
             case stats_event_names::chatscr_playptt_action: return std::string_view("ChatScr_PTTPlay_Action");
             case stats_event_names::chatscr_recognptt_action: return std::string_view("ChatScr_PTTRecogn_Action");
+            case stats_event_names::chatscr_callbylink_action: return std::string_view("ChatScr_CallByLink_Action");
+            case stats_event_names::chatscr_webinar_action: return std::string_view("ChatScr_Webinar_Action");
 
             case stats_event_names::sharecontactscr_contact_action: return std::string_view("ShareContactScr_Contact_Action");
 
@@ -1256,7 +1265,9 @@ namespace core
     {
         ok,
         config_host_invalid,
+        invalid_http_code,
         answer_not_enough_fields,
-        answer_parse_error
+        answer_parse_error,
+        empty_response,
     };
 }

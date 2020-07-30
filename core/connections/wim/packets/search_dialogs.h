@@ -24,17 +24,15 @@ namespace core::wim
         void set_dates_range(const std::string_view _start_date, const std::string_view _end_date);
         void reset_dates();
 
-        bool support_async_execution() const override { return true; }
         void set_hide_keyword(const bool _hide) { hide_keyword_ = _hide; }
 
     private:
-        int32_t init_request(std::shared_ptr<core::http_request_simple> _request) override;
+        int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
         int32_t parse_results(const rapidjson::Value& _node_results) override;
 
         bool parse_entries(const rapidjson::Value& _root_node, const std::string_view _contact, const std::string_view _cursor = std::string_view(), const int _entry_count = -1);
         bool parse_single_entry(const rapidjson::Value& _entry_node, const std::string_view _contact, const std::string_view _cursor, const int _entry_count);
 
-        std::string get_method_name() const;
         bool is_searching_all_dialogs() const;
 
         std::string keyword_;

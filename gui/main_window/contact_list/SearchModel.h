@@ -1,6 +1,7 @@
 #pragma once
 
 #include "AbstractSearchModel.h"
+#include "../../search/AbstractSearcher.h"
 #include "../../types/search_result.h"
 
 Q_DECLARE_LOGGING_CATEGORY(searchModel)
@@ -66,17 +67,31 @@ namespace Logic
         void setSearchInContacts(const bool _enabled);
         bool isSearchInContacts() const;
 
-        void setExcludeChats(const bool _exclude);
+        void setExcludeChats(SearchDataSource _exclude);
         void setHideReadonly(const bool _hide);
 
         QModelIndex contactIndex(const QString& _aimId) const;
         int getTotalMessagesCount() const;
         bool isAllDataReceived() const;
 
-        static const QString getContactsAndGroupsAimId();
-        static const QString getMessagesAimId();
+        static QString getContactsAndGroupsAimId();
+        static QString getMessagesAimId();
 
-        static const bool simpleSort(const Data::AbstractSearchResultSptr& _first, const Data::AbstractSearchResultSptr& _second, bool _sort_by_time, const QString& _searchPattern);
+        static const bool simpleSort(const Data::AbstractSearchResultSptr& _first,
+                                     const Data::AbstractSearchResultSptr& _second,
+                                     bool _sort_by_time,
+                                     const QString& _searchPattern,
+                                     bool _favorites_on_top = false);
+
+        void setFavoritesOnTop(bool _enable);
+        void setForceAddFavorites(bool _enable);
+
+        void addTemporarySearchData(const QString& _data) override;
+        void removeAllTemporarySearchData() override;
+
+    protected:
+        virtual void modifyResultsBeforeEmit(Data::SearchResultsV& _results) {}
+        void refreshComposeResults();
 
     private:
         bool isServerMessagesNeeded() const;
@@ -104,11 +119,14 @@ namespace Logic
         bool allContactResRcvd_;
         bool allMessageResRcvd_;
         bool messageResServerRcvd_;
+        bool favoritesOnTop_;
 
         Data::SearchResultsV contactLocalRes_;
         Data::SearchResultsV contactServerRes_;
         Data::SearchResultsV msgLocalRes_;
         Data::SearchResultsV msgServerRes_;
         Data::SearchResultsV results_;
+
+        Data::SearchResultsV temporaryLocalContacts_;
     };
 }

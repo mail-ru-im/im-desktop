@@ -17,7 +17,7 @@ LoadMovieFromFileTask::~LoadMovieFromFileTask()
 
 void LoadMovieFromFileTask::run()
 {
-    emit loadedSignal(QSharedPointer<QMovie>::create(Path_));
+    Q_EMIT loadedSignal(QSharedPointer<QMovie>::create(Path_));
 }
 
 UTILS_NS_END

@@ -81,14 +81,16 @@ namespace Ui
         {
             isHovered_ = true;
             setCursor(getHoverStateCursor());
-            emit hoverChanged(isHovered_, QPrivateSignal());
+            Q_EMIT hoverChanged(isHovered_, QPrivateSignal());
+            update();
         }
         break;
         case QEvent::HoverLeave:
         {
             isHovered_ = false;
             setCursor(Qt::ArrowCursor);
-            emit hoverChanged(isHovered_, QPrivateSignal());
+            Q_EMIT hoverChanged(isHovered_, QPrivateSignal());
+            update();
         }
         break;
         default:
@@ -210,9 +212,9 @@ namespace Ui
                 if (int(i) == pressedIndex_.index_)
                 {
                     if ((pressedIndex_.button_ == Qt::LeftButton) && (_event->button() == Qt::LeftButton))
-                        emit clicked(pressedIndex_.index_, QPrivateSignal());
+                        Q_EMIT clicked(pressedIndex_.index_, QPrivateSignal());
                     else if ((pressedIndex_.button_ == Qt::RightButton) && (_event->button() == Qt::RightButton))
-                        emit rightClicked(pressedIndex_.index_, QPrivateSignal());
+                        Q_EMIT rightClicked(pressedIndex_.index_, QPrivateSignal());
                 }
 
                 break;
@@ -227,7 +229,7 @@ namespace Ui
 
     void SimpleListWidget::showEvent(QShowEvent* _event)
     {
-        emit shown(QPrivateSignal());
+        Q_EMIT shown(QPrivateSignal());
     }
 
     void SimpleListWidget::updatePressedState()

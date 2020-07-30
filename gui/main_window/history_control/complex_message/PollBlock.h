@@ -46,7 +46,7 @@ public:
     QString getSourceText() const override;
 
     bool onMenuItemTriggered(const QVariantMap& _params) override;
-    MenuFlags getMenuFlags() const override;
+    MenuFlags getMenuFlags(QPoint p) const override;
 
     MediaType getMediaType() const override;
 

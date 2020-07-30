@@ -19,7 +19,7 @@ namespace Ui
         , CanScrollDown_(false)
         , IsHovered_(false)
     {
-        AutoscrollEnablerTimer_->setInterval(autoScrollTimeout.count());
+        AutoscrollEnablerTimer_->setInterval(autoScrollTimeout);
         AutoscrollEnablerTimer_->setSingleShot(true);
 
         connect(AutoscrollEnablerTimer_, &QTimer::timeout, this, &MessagesScrollbar::onAutoScrollTimer);
@@ -110,7 +110,7 @@ namespace Ui
             return;
 
         IsHovered_ = _hovered;
-        emit hoverChanged(_hovered);
+        Q_EMIT hoverChanged(_hovered);
     }
 
     void MessagesScrollbar::onAutoScrollTimer()

@@ -81,7 +81,7 @@ namespace Ui
         uint32_t flags() const noexcept { return data_.flags_; };
         bool auto_created() const noexcept { return data_.auto_created_; };
         const QString& largeIconId() const { return data_.largeIconId_; };
-        bool isEmailProfile() const { return aimId().contains(ql1c('@')); }
+        bool isEmailProfile() const { return aimId().contains(u'@'); }
 
         void CheckForUpdate() const;
         void attachPhoneInfo(const AttachPhoneInfo& _info);

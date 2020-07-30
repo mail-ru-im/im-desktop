@@ -1,14 +1,17 @@
 #include "stdafx.h"
 #include "CommonUI.h"
+#include "utils/features.h"
 #include "../gui_settings.h"
 #include "../core_dispatcher.h"
 #include "../../core/Voip/VoipManagerDefines.h"
 #include "../main_window/MainWindow.h"
 #include "SelectionContactsForConference.h"
-#include "../main_window/contact_list/ContactList.h"
+#include "../main_window/contact_list/RecentsTab.h"
 #include "../main_window/contact_list/ChatMembersModel.h"
 #include "../main_window/contact_list/ContactListModel.h"
+#include "../main_window/contact_list/FavoritesUtils.h"
 #include "../main_window/MainPage.h"
+#include "../main_window/GroupChatOperations.h"
 #include "../my_info.h"
 
 Ui::ResizeEventFilter::ResizeEventFilter(std::vector<QPointer<BaseVideoPanel>>& panels,
@@ -586,7 +589,6 @@ Ui::TransparentPanel::TransparentPanel(QWidget* _parent, BaseVideoPanel* _eventW
     auto rootWidget_ = new QWidget(this);
     rootWidget_->setContentsMargins(0, 0, 0, 0);
     rootWidget_->setSizePolicy(QSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred));
-    Testing::setAccessibleName(rootWidget_, qsl("AS cui rootWidget_"));
     layout()->addWidget(rootWidget_);
 }
 
@@ -659,46 +661,74 @@ void Ui::FullVideoWindowPanel::updatePosition(const QWidget& parent)
 
 void Ui::FullVideoWindowPanel::resizeEvent(QResizeEvent *event)
 {
-    emit(onResize());
+    Q_EMIT(onResize());
 }
 
-void showAddUserToVideoConverenceDialog(QObject* parent, QWidget* parentWindow,
-    std::function< void(Ui::SelectionContactsForConference*) > connectSignal,
-    std::function< void() > disconnectSignal)
+void showAddUserToVideoConverenceDialog(QObject* _parent, QWidget* _parentWindow,
+                                        std::function<void(Ui::SelectionContactsForConference*)> _connectSignal,
+                                        std::function<void()> _disconnectSignal)
 {
-    emit Utils::InterConnector::instance().searchEnd();
-    Logic::getContactListModel()->clearChecked();
+    Q_EMIT Utils::InterConnector::instance().searchEnd();
+    Logic::getContactListModel()->clearCheckedItems();
 
-    Logic::ChatMembersModel model(parent);
-    Ui::ContactsForVideoConference modelAll(parent, model);
+    Logic::ChatMembersModel conferenceMembers(_parent);
+    Logic::SearchModel searchModel(nullptr);
+    Logic::ChatMembersModel chatModel(_parent);
 
-    Ui::ConferenceSearchMember usersSearchModel;
-    usersSearchModel.setChatMembersModel(&modelAll);
-
-    Ui::SelectionContactsForConference contactsWidget(
-        &model, &modelAll,
-        QT_TRANSLATE_NOOP("voip_pages", "Add to call"),
-        parentWindow, usersSearchModel);
-
-    connectSignal(&contactsWidget);
-    contactsWidget.setMaximumSelectedCount(Ui::GetDispatcher()->getVoipController().maxVideoConferenceMembers());
-
-    if (contactsWidget.show() == QDialog::Accepted)
+    const auto chatRoomCall = Ui::GetDispatcher()->getVoipController().isCallPinnedRoom();
+    if (chatRoomCall)
     {
-        const auto selectedContacts = Logic::getContactListModel()->GetCheckedContacts();
-        Logic::getContactListModel()->clearChecked();
-
-        for (const auto& contact : selectedContacts)
-            Ui::GetDispatcher()->getVoipController().setStartV(contact.toUtf8().constData(), true);
+        chatModel.setAimId(QString::fromStdString(Ui::GetDispatcher()->getVoipController().getChatId()));
+        chatModel.loadAllMembers();
+        chatModel.setServerSearchEnabled(Features::isGlobalContactSearchAllowed());
+        chatModel.setSearchPattern(QString());
+    }
+    else
+    {
+        searchModel.setSearchInDialogs(false);
+        searchModel.setExcludeChats(Logic::SearchDataSource::localAndServer);
+        searchModel.setHideReadonly(false);
+        searchModel.setCategoriesEnabled(false);
+        searchModel.setServerSearchEnabled(Features::isGlobalContactSearchAllowed());
     }
 
-    disconnectSignal();
-    Logic::getContactListModel()->clearChecked();
+    Ui::ConferenceSearchModel conferenceSearchModel(chatRoomCall ? static_cast<Logic::AbstractSearchModel*>(&chatModel) : static_cast<Logic::AbstractSearchModel*>(&searchModel));
+
+    Ui::SelectionContactsForConference contactsWidget(&conferenceMembers, QT_TRANSLATE_NOOP("voip_pages", "Add to call"),
+                                                      _parentWindow, &conferenceSearchModel , chatRoomCall);
+
+    const auto maxMembers = Ui::GetDispatcher()->getVoipController().maxVideoConferenceMembers() - 1
+        - Ui::GetDispatcher()->getVoipController().currentCallContacts().size();
+
+    contactsWidget.setMaximumSelectedCount(maxMembers);
+    _connectSignal(&contactsWidget);
+
+    const auto action = contactsWidget.show();
+    std::vector<QString> selectedContacts = Logic::getContactListModel()->getCheckedContacts();
+    if (chatRoomCall)
+    {
+        selectedContacts = chatModel.getCheckedMembers();
+    }
+    else
+    {
+        selectedContacts = Logic::getContactListModel()->getCheckedContacts();
+        Logic::getContactListModel()->clearCheckedItems();
+        Logic::getContactListModel()->removeTemporaryContactsFromModel();
+    }
+
+    if (action == QDialog::Accepted)
+    {
+        for (const auto& contact : selectedContacts)
+            Ui::GetDispatcher()->getVoipController().setStartCall({ contact }, true, true);
+    }
+
+    _disconnectSignal();
 }
 
 void Ui::showAddUserToVideoConverenceDialogVideoWindow(QObject* parent, FullVideoWindowPanel* parentWindow)
 {
-    showAddUserToVideoConverenceDialog(parent, parentWindow, [parentWindow](Ui::SelectionContactsForConference* dialog)
+    showAddUserToVideoConverenceDialog(parent, parentWindow,
+        [parentWindow](Ui::SelectionContactsForConference* dialog)
         {
             QObject::connect(parentWindow, &FullVideoWindowPanel::onResize, dialog, &Ui::SelectionContactsForConference::updateSize);
         },
@@ -712,6 +742,37 @@ void Ui::showAddUserToVideoConverenceDialogVideoWindow(QObject* parent, FullVide
 void Ui::showAddUserToVideoConverenceDialogMainWindow(QObject* parent, QWidget* parentWindow)
 {
     showAddUserToVideoConverenceDialog(parent, parentWindow, [](Ui::SelectionContactsForConference* dialog) {}, []() {});
+}
+
+void Ui::showInviteVCSDialogVideoWindow(FullVideoWindowPanel* _parentWindow, const QString& _url)
+{
+    auto shareDialog = std::make_unique<SelectContactsWidget>(nullptr, Logic::MembersWidgetRegim::SHARE_VIDEO_CONFERENCE, QT_TRANSLATE_NOOP("voip_pages", "Forward"),
+                                                              QT_TRANSLATE_NOOP("voip_pages", "Forward"), _parentWindow);
+
+    if (_parentWindow)
+        QObject::connect(_parentWindow, &FullVideoWindowPanel::onResize, shareDialog.get(), &Ui::SelectContactsWidget::updateSize);
+
+    const auto action = shareDialog->show();
+    const auto selectedContacts = Logic::getContactListModel()->getCheckedContacts();
+    Logic::getContactListModel()->removeTemporaryContactsFromModel();
+    Logic::getContactListModel()->clearCheckedItems();
+
+    if (action == QDialog::Accepted)
+    {
+        if (!selectedContacts.empty())
+        {
+            Data::Quote q;
+            q.text_ = _url;
+            q.type_ = Data::Quote::Type::link;
+
+            sendForwardedMessages({ std::move(q) }, selectedContacts, ForwardWithAuthor::No, ForwardSeparately::No);
+        }
+
+        Q_EMIT Utils::InterConnector::instance().closeAnyPopupWindow(Utils::CloseWindowInfo());
+    }
+
+    if (_parentWindow)
+        _parentWindow->disconnect();
 }
 
 Ui::MoveablePanel::MoveablePanel(QWidget* _parent, Qt::WindowFlags f)
@@ -793,6 +854,6 @@ void Ui::MoveablePanel::keyReleaseEvent(QKeyEvent* _e)
     QWidget::keyReleaseEvent(_e);
     if (_e->key() == Qt::Key_Escape)
     {
-        emit onkeyEscPressed();
+        Q_EMIT onkeyEscPressed();
     }
 }

@@ -8,6 +8,7 @@
 #include "../../log/log.h"
 #include "../../utils.h"
 #include "../common.shared/config/config.h"
+#include "../common.shared/string_utils.h"
 
 #include "../../../libomicron/include/omicron/omicron.h"
 
@@ -24,19 +25,18 @@ wim_packet::wim_packet(wim_packet_params params)
     can_change_hosts_scheme_(false),
     params_(std::move(params))
 {
-
 }
 
 wim_packet::~wim_packet() = default;
 
 bool wim_packet::support_async_execution() const
 {
-    return false;
+    return get_priority() > priority_protocol();
 }
 
 int32_t wim_packet::execute()
 {
-    auto request = std::make_shared<core::http_request_simple>(params_.proxy_, utils::get_user_agent(params_.aimid_), params_.stop_handler_);
+    auto request = std::make_shared<core::http_request_simple>(params_.proxy_, utils::get_user_agent(params_.aimid_), get_priority(), params_.stop_handler_);
 
     ++repeat_count_;
 
@@ -71,16 +71,15 @@ void wim_packet::execute_async(handler_t _handler)
 {
     assert(support_async_execution());
 
-    auto request = std::make_shared<core::http_request_simple>(params_.proxy_, utils::get_user_agent(params_.aimid_), params_.stop_handler_);
+    auto request = std::make_shared<core::http_request_simple>(params_.proxy_, utils::get_user_agent(params_.aimid_), get_priority(), params_.stop_handler_);
 
-    int32_t err = init_request(request);
-    if (err != 0)
+    if (int32_t err = init_request(request); err != 0)
     {
         _handler(err);
         return;
     }
 
-    execute_request_async(request, [wr_this = weak_from_this(), request, _handler](int32_t _err)
+    execute_request_async(request, [wr_this = weak_from_this(), request, _handler = std::move(_handler)](int32_t _err)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -122,17 +121,17 @@ bool core::wim::wim_packet::has_valid_token() const
     return !params_.a_token_.empty();
 }
 
-bool wim_packet::needs_to_repeat_failed(const int32_t _error) noexcept
+bool wim_packet::needs_to_repeat_failed(int32_t _error) noexcept
 {
     return is_network_error_or_canceled(_error) || is_timeout_error(_error);
 }
 
-int32_t wim_packet::init_request(std::shared_ptr<core::http_request_simple> request)
+int32_t wim_packet::init_request(const std::shared_ptr<core::http_request_simple>& /*request*/)
 {
     return 0;
 }
 
-int32_t wim_packet::execute_request(std::shared_ptr<core::http_request_simple> request)
+int32_t wim_packet::execute_request(const std::shared_ptr<core::http_request_simple>& request)
 {
     if (!request->get())
         return wpie_network_error;
@@ -142,7 +141,7 @@ int32_t wim_packet::execute_request(std::shared_ptr<core::http_request_simple> r
     if (request->get_header()->available())
     {
         auto header = request->get_header();
-        uint32_t size = header->available();
+        auto size = header->available();
         auto buf = (const char *)header->read(size);
 
         if (buf && size)
@@ -166,9 +165,9 @@ int32_t wim_packet::execute_request(std::shared_ptr<core::http_request_simple> r
     return 0;
 }
 
-void wim_packet::execute_request_async(std::shared_ptr<core::http_request_simple> _request, handler_t _handler)
+void wim_packet::execute_request_async(const std::shared_ptr<core::http_request_simple>& _request, handler_t _handler)
 {
-    _request->get_async([_request, _handler, wr_this = weak_from_this()](curl_easy::completion_code _completion_code)
+    auto handler = [_request, _handler = std::move(_handler), wr_this = weak_from_this()](curl_easy::completion_code _completion_code)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -181,12 +180,12 @@ void wim_packet::execute_request_async(std::shared_ptr<core::http_request_simple
             return;
         }
 
-        ptr_this->http_code_ = (uint32_t) _request->get_response_code();
+        ptr_this->http_code_ = (uint32_t)_request->get_response_code();
 
         if (auto header = _request->get_header(); header->available())
         {
-            const uint32_t size = header->available();
-            auto buf = (const char *)header->read(size);
+            const auto size = header->available();
+            auto buf = (const char*)header->read(size);
 
             if (buf && size)
             {
@@ -215,10 +214,12 @@ void wim_packet::execute_request_async(std::shared_ptr<core::http_request_simple
         {
             _handler(wpie_http_error);
         }
-    });
+    };
+
+    is_post() ? _request->post_async(handler) :  _request->get_async(handler);
 }
 
-void wim_packet::load_response_str(const char* buf, unsigned size)
+void wim_packet::load_response_str(const char* buf, size_t size)
 {
     assert(buf && size);
     if (buf && size)
@@ -241,7 +242,7 @@ const std::string& wim_packet::header_str() const
     return header_str_;
 }
 
-int32_t wim_packet::parse_response(std::shared_ptr<core::tools::binary_stream> response)
+int32_t wim_packet::parse_response(const std::shared_ptr<core::tools::binary_stream>& response)
 {
     if (!response->available())
         return wpie_http_empty_response;
@@ -250,7 +251,7 @@ int32_t wim_packet::parse_response(std::shared_ptr<core::tools::binary_stream> r
 
     response->write((char) 0);
 
-    uint32_t size = response->available();
+    auto size = response->available();
 
     load_response_str((const char*) response->read(size), size);
 
@@ -407,25 +408,7 @@ std::string wim_packet::escape_symbols_data(std::string_view _data)
     return res;
 }
 
-std::string wim_packet::create_query_from_map(const str_2_str_map& _params)
-{
-    std::string query;
-
-    for (const auto& iter : _params)
-    {
-        query += iter.first;
-        query += '=';
-        query += iter.second;
-        query += '&';
-    }
-
-    if (!query.empty())
-        query.pop_back();
-
-    return query;
-}
-
-std::string wim_packet::detect_digest(const std::string& hashed_data, const std::string& session_key)
+std::string wim_packet::detect_digest(std::string_view hashed_data, std::string_view session_key)
 {
     if (hashed_data.empty() || session_key.empty())
     {
@@ -434,54 +417,26 @@ std::string wim_packet::detect_digest(const std::string& hashed_data, const std:
     }
 
     std::vector<uint8_t> hash_data_vector(hashed_data.size());
-    memcpy(&hash_data_vector[0], hashed_data.c_str(), hashed_data.size());
+    memcpy(&hash_data_vector[0], hashed_data.data(), hashed_data.size());
 
     std::vector<uint8_t> session_key_vector(session_key.size());
-    memcpy(&session_key_vector[0], session_key.c_str(), session_key.size());
+    memcpy(&session_key_vector[0], session_key.data(), session_key.size());
 
     return core::tools::base64::hmac_base64(hash_data_vector, session_key_vector);
 }
 
 
-std::string wim_packet::get_url_sign(std::string_view _host, const str_2_str_map& _params, const wim_packet_params& _wim_params,  bool _post_method, bool make_escape_symbols/* = true*/)
+std::string wim_packet::get_url_sign_impl(std::string_view _host, std::string_view _query_string, const wim_packet_params& _wim_params,  bool _post_method, bool make_escape_symbols/* = true*/)
 {
     const std::string_view http_method = _post_method ? "POST" : "GET";
-    std::string query_string = create_query_from_map(_params);
-
     std::string hash_data;
-    hash_data += http_method;
-    hash_data += '&';
+
     if (make_escape_symbols)
-    {
-        hash_data += escape_symbols(_host);
-        hash_data += '&';
-        hash_data += escape_symbols(query_string);
-    }
+        hash_data = su::concat(http_method, '&', escape_symbols(_host), '&', escape_symbols(_query_string));
     else
-    {
-        hash_data += _host;
-        hash_data += '&';
-        hash_data += query_string;
-    }
+        hash_data = su::concat(http_method, '&', _host, '&', _query_string);
 
     return detect_digest(hash_data, _wim_params.session_key_);
-}
-
-std::string wim_packet::format_get_params(const std::map<std::string, std::string>& _params)
-{
-    std::string result;
-
-    for (const auto& [key, value] : _params)
-    {
-        result += key;
-        result += '=';
-        result += value;
-        result += '&';
-    }
-    if (!result.empty())
-        result.pop_back();
-
-    return result;
 }
 
 int32_t wim_packet::parse_response_data(const rapidjson::Value& _data)
@@ -543,19 +498,9 @@ bool wim_packet::is_timeout_error(const int32_t _error) noexcept
     return _error == wim_protocol_internal_error::wpie_robusto_timeout;
 }
 
-static std::string make_marker(std::string_view _prepend, std::string_view _marker, std::string_view _append)
-{
-    std::string res;
-    res.reserve(_prepend.size() + _marker.size() + _append.size());
-    res += _prepend;
-    res += _marker;
-    res += _append;
-    return res;
-}
-
 void log_replace_functor::add_marker(std::string_view _marker, range_evaluator _re)
 {
-    markers_.push_back(std::make_pair(make_marker({}, _marker, std::string_view("=")), std::move(_re)));
+    markers_.push_back(std::make_pair(su::concat(_marker, '='), std::move(_re)));
 }
 
 void log_replace_functor::add_url_marker(std::string_view _marker, range_evaluator _re)
@@ -570,15 +515,15 @@ void log_replace_functor::add_json_marker(std::string_view _marker, range_evalua
     const static std::string json_delimeter_encoded = wim::wim_packet::escape_symbols("\":\"");
     const static std::string json_qoute_encoded = wim::wim_packet::escape_symbols("\"");
 
-    markers_json_.push_back(std::make_pair(make_marker("\"", _marker, json_delimeter), _re));
-    markers_json_.push_back(std::make_pair(make_marker("\"", _marker, json_delimeter_with_space), _re));
-    markers_json_encoded_.push_back(std::make_pair(make_marker(json_qoute_encoded, _marker, json_delimeter_encoded), std::move(_re)));
+    markers_json_.push_back(std::make_pair(su::concat('"', _marker, json_delimeter), _re));
+    markers_json_.push_back(std::make_pair(su::concat('"', _marker, json_delimeter_with_space), _re));
+    markers_json_encoded_.push_back(std::make_pair(su::concat(json_qoute_encoded, _marker, json_delimeter_encoded), std::move(_re)));
 }
 
 void log_replace_functor::add_json_array_marker(std::string_view _marker, range_evaluator _re)
 {
-    markers_json_.push_back(std::make_pair(make_marker({}, _marker, "\":["), _re));
-    markers_json_.push_back(std::make_pair(make_marker({}, _marker, "\": ["), _re));
+    markers_json_.push_back(std::make_pair(su::concat(_marker, "\":["), _re));
+    markers_json_.push_back(std::make_pair(su::concat(_marker, "\": ["), _re));
 }
 
 void log_replace_functor::add_message_markers()
@@ -700,14 +645,14 @@ void log_replace_functor::operator()(tools::binary_stream& _bs) const
                 bool ignore_next_quote = false;
                 bool in_quotes = false;
 
-                while (i <= (sz - json_value_end.size()) && !(!skip_value_end && strncmp(data + i, json_value_end.c_str(), json_value_end.size()) == 0))
+                while (i <= (sz - json_value_end.size()) && !(!skip_value_end && strncmp(data + i, json_value_end.data(), json_value_end.size()) == 0))
                 {
                     // check if there is excluded value end, for example we need to skip \" characters and don't treat " character as value end
                     if (count_to_skip > 0)
                     {
                         skip_value_end = --count_to_skip > 0;
                     }
-                    else if (i <= (sz - json_value_end_excluded.size()) && strncmp(data + i, json_value_end_excluded.c_str(), json_value_end_excluded.size()) == 0)
+                    else if (i <= (sz - json_value_end_excluded.size()) && strncmp(data + i, json_value_end_excluded.data(), json_value_end_excluded.size()) == 0)
                     {
                         count_to_skip = json_value_end_excluded.size() - 1;
                         skip_value_end = true;

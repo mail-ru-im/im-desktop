@@ -20,7 +20,7 @@ public:
 
 public:
     ServiceRequest(Id _id);
-    virtual ~ServiceRequest() = default;
+    virtual ~ServiceRequest();
 
     Type getType() const;
     Id getId() const;

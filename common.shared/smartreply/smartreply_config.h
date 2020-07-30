@@ -25,6 +25,6 @@ namespace feature
         constexpr omicron_field sticker_enabled() { return { omicron::keys::smartreply_suggests_stickers, true }; }              // is sticker suggests enabled
         constexpr omicron_field is_enabled_for_quotes() { return { omicron::keys::smartreply_suggests_for_quotes, true }; }      // is smartreplies for quotes enabled
         constexpr omicron_field click_hide_timeout() { return { omicron::keys::smartreply_suggests_click_hide_timeout, 150 }; } // timeout after click, milliseconds
-        constexpr omicron_field msgid_cache_size() { return { omicron::keys::smartreply_suggests_msgid_cache_size, 3 }; }        // cache size for when storing smartreplies in memory
+        constexpr omicron_field msgid_cache_size() { return { omicron::keys::smartreply_suggests_msgid_cache_size, 1 }; }        // cache size for when storing smartreplies in memory
     }
 }

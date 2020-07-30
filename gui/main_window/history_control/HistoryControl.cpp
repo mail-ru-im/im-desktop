@@ -10,7 +10,8 @@
 #include "../contact_list/ContactListModel.h"
 #include "../contact_list/UnknownsModel.h"
 #include "../contact_list/RecentsModel.h"
-#include "../friendly/FriendlyContainer.h"
+#include "../containers/FriendlyContainer.h"
+#include "../containers/LastseenContainer.h"
 #include "../../core_dispatcher.h"
 #include "../../gui_settings.h"
 #include "../../controls/BackgroundWidget.h"
@@ -53,9 +54,9 @@ namespace Ui
         selectDialogLabel_->setFont(Fonts::appFontScaled(16, Fonts::FontWeight::Normal));
         selectDialogLabel_->setText(QT_TRANSLATE_NOOP("history", "Please select a chat to start messaging"));
 
-        Testing::setAccessibleName(connectionWidget_, qsl("AS hc connectionWidget_"));
+        Testing::setAccessibleName(connectionWidget_, qsl("AS HistoryPage connectionWidget"));
         rootLayout_->addWidget(connectionWidget_);
-        Testing::setAccessibleName(selectDialogLabel_, qsl("AS hc selectDialogLabel_"));
+        Testing::setAccessibleName(selectDialogLabel_, qsl("AS HistoryPage selectDialogLabel"));
         rootLayout_->addWidget(selectDialogLabel_);
 
         connect(GetDispatcher(), &Ui::core_dispatcher::connectionStateChanged, this, &SelectDialogWidget::connectionStateChanged);
@@ -133,13 +134,13 @@ namespace Ui
 
         dialogLayout->addSpacerItem(new QSpacerItem(0, 0, QSizePolicy::Expanding));
 
-        Testing::setAccessibleName(selectDialogWidget_, qsl("AS hc selectDialogWidget_"));
+        Testing::setAccessibleName(selectDialogWidget_, qsl("AS HistoryPage selectDialogWidget"));
         dialogLayout->addWidget(selectDialogWidget_);
         dialogLayout->addSpacerItem(new QSpacerItem(0, 0, QSizePolicy::Expanding));
 
         dialogWidget_->setLayout(dialogLayout);
 
-        Testing::setAccessibleName(dialogWidget_, qsl("AS hc dialogWidget_"));
+        Testing::setAccessibleName(dialogWidget_, qsl("AS HistoryPage dialogWidget"));
         layout->addWidget(dialogWidget_);
     }
 
@@ -155,15 +156,15 @@ namespace Ui
         stackPages_ = new QStackedWidget(this);
         stackPages_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
-        Testing::setAccessibleName(emptyPage_, qsl("AS hc emptyPage_"));
+        Testing::setAccessibleName(emptyPage_, qsl("AS HistoryPage emptyPage"));
         stackPages_->addWidget(emptyPage_);
-        Testing::setAccessibleName(stackPages_, qsl("AS hc stackPages_"));
+        Testing::setAccessibleName(stackPages_, qsl("AS HistoryPage stackPages"));
         layout->addWidget(stackPages_);
 
         updateEmptyPageWallpaper();
 
         connect(timer_, &QTimer::timeout, this, &HistoryControl::updatePages);
-        timer_->setInterval(update_timer_timeout.count());
+        timer_->setInterval(update_timer_timeout);
         timer_->setSingleShot(false);
         timer_->start();
 
@@ -191,9 +192,7 @@ namespace Ui
         connect(Logic::getContactListModel(), &Logic::ContactListModel::contactChanged, this, &HistoryControl::updateUnreads);
     }
 
-    HistoryControl::~HistoryControl()
-    {
-    }
+    HistoryControl::~HistoryControl() = default;
 
     void HistoryControl::cancelSelection()
     {
@@ -255,7 +254,7 @@ namespace Ui
         QWidget::mouseReleaseEvent(e);
 
         if (getCurrentPage())
-            emit clicked();
+            Q_EMIT clicked();
     }
 
     void HistoryControl::updatePages()
@@ -299,7 +298,7 @@ namespace Ui
         auto oldPage = getCurrentPage();
         if (oldPage)
         {
-            const bool canScrollToBottom = scrollMode == hist::scroll_mode_type::unread && Ui::get_gui_settings()->get_value<bool>(settings_partial_read, settings_partial_read_default());
+            const bool canScrollToBottom = scrollMode == hist::scroll_mode_type::unread;
             if (_messageId == -1 || canScrollToBottom)
             {
                 if (oldPage->aimId() == _aimId)
@@ -336,16 +335,16 @@ namespace Ui
             connect(page, &HistoryControlPage::switchToPrevDialog, this, &HistoryControl::switchToPrevDialogPage);
             connect(page, &HistoryControlPage::messageIdsFetched, this, [this](const QString& _aimId, const Data::MessageBuddies& _resolves)
             {
-                emit messageIdsFetched(_aimId, _resolves, QPrivateSignal());
+                Q_EMIT messageIdsFetched(_aimId, _resolves, QPrivateSignal());
             });
 
-            Testing::setAccessibleName(page, qsl("AS HistoryControlPage") % _aimId);
+            Testing::setAccessibleName(page, qsl("AS HistoryPage ") % _aimId);
             stackPages_->addWidget(page);
 
             Logic::getContactListModel()->setCurrentCallbackHappened(newPage);
         }
 
-        emit Utils::InterConnector::instance().historyControlReady(_aimId, _messageId, dlgState, -1, createNewPage);
+        Q_EMIT Utils::InterConnector::instance().historyControlReady(_aimId, _messageId, dlgState, -1, createNewPage);
 
         page->resetMessageHighlights();
         if (!_highlights.empty())
@@ -370,7 +369,7 @@ namespace Ui
         }
 
         if (contactChanged)
-            Logic::GetFriendlyContainer()->unsubscribe(current_);
+            Logic::GetLastseenContainer()->unsubscribe(current_);
 
         rememberCurrentDialogTime();
         current_ = _aimId;
@@ -378,7 +377,7 @@ namespace Ui
         stackPages_->setCurrentWidget(page);
         page->updateState(false);
         page->open();
-        emit setTopWidget(current_, page->getTopWidget(), QPrivateSignal());
+        Q_EMIT setTopWidget(current_, page->getTopWidget(), QPrivateSignal());
 
         const auto& tc = Styling::getThemesContainer();
         const auto newWpId = tc.getContactWallpaperId(page->aimId());
@@ -428,7 +427,7 @@ namespace Ui
         if (dialogHistory_.empty() || dialogHistory_.back() != _aimId)
         {
             dialogHistory_.push_back(_aimId);
-            emit Utils::InterConnector::instance().pageAddedToDialogHistory();
+            Q_EMIT Utils::InterConnector::instance().pageAddedToDialogHistory();
         }
 
         while (dialogHistory_.size() > maxPagesInDialogHistory)
@@ -450,12 +449,12 @@ namespace Ui
         }
         else
         {
-            emit Utils::InterConnector::instance().closeLastDialog(_calledFromKeyboard);
+            Q_EMIT Utils::InterConnector::instance().closeLastDialog(_calledFromKeyboard);
         }
 
         if (dialogHistory_.empty())
         {
-            emit Utils::InterConnector::instance().noPagesInDialogHistory();
+            Q_EMIT Utils::InterConnector::instance().noPagesInDialogHistory();
         }
     }
 
@@ -494,7 +493,7 @@ namespace Ui
         page->deleteLater();
         pages_.erase(iter_page);
 
-        emit Utils::InterConnector::instance().dialogClosed(_aimId, isCurrent);
+        Q_EMIT Utils::InterConnector::instance().dialogClosed(_aimId, isCurrent);
     }
 
     void HistoryControl::mainPageChanged()
@@ -576,7 +575,7 @@ namespace Ui
 
     void HistoryControl::updateWallpaper(const QString& _aimId) const
     {
-        emit needUpdateWallpaper(_aimId, QPrivateSignal());
+        Q_EMIT needUpdateWallpaper(_aimId, QPrivateSignal());
     }
 
     void HistoryControl::updateEmptyPageWallpaper() const

@@ -20,10 +20,11 @@ namespace Ui
 
     private Q_SLOTS:
         void multiSelectCurrentElementChanged();
-        void selectedCount(int);
+        void selectedCount(int, int);
 
     private:
         RoundButton* delete_;
+        RoundButton* favorites_;
         RoundButton* copy_;
         RoundButton* reply_;
         RoundButton* forward_;

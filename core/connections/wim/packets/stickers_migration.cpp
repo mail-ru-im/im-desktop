@@ -6,6 +6,7 @@
 #include "../../../tools/system.h"
 #include "../../../utils.h"
 #include "../../urls_cache.h"
+#include "../common.shared/string_utils.h"
 
 using namespace core;
 using namespace wim;
@@ -19,23 +20,13 @@ stickers_migration::stickers_migration(wim_packet_params _params, std::vector<st
 
 stickers_migration::~stickers_migration() = default;
 
-std::shared_ptr<core::tools::binary_stream> core::wim::stickers_migration::get_response() const
+const std::shared_ptr<core::tools::binary_stream>& core::wim::stickers_migration::get_response() const
 {
     return response_;
 }
 
-bool stickers_migration::support_async_execution() const
+int32_t stickers_migration::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
-    return true;
-}
-
-int32_t stickers_migration::init_request(std::shared_ptr<core::http_request_simple> _request)
-{
-    std::map<std::string, std::string> params;
-
-    std::stringstream ss_host;
-    ss_host << urls::get_url(urls::url_type::stickers_store_host) << std::string_view("/openstore/matchtofiles");
-
     std::stringstream ss_stickers;
 
     for (auto [pack_id, sticker_id] : ids_)
@@ -45,15 +36,11 @@ int32_t stickers_migration::init_request(std::shared_ptr<core::http_request_simp
     if (!stickers.empty())
         stickers.pop_back();
 
-    params["stickers"] = escape_symbols(stickers);
+    std::pair<std::string_view, std::string> p[] = { { std::string_view("stickers"), escape_symbols(stickers) } };
 
-    std::stringstream ss_url;
-    ss_url << ss_host.str() << '?' << format_get_params(params);
-
-    _request->set_url(ss_url.str());
+    _request->set_url(su::concat(urls::get_url(urls::url_type::stickers_store_host), "/openstore/matchtofiles?", format_get_params(p)));
     _request->set_normalized_url("stickersMatchToFile");
     _request->set_keep_alive();
-    _request->set_priority(high_priority());
 
     if (!params_.full_log_)
     {
@@ -65,7 +52,7 @@ int32_t stickers_migration::init_request(std::shared_ptr<core::http_request_simp
     return 0;
 }
 
-int32_t stickers_migration::parse_response(std::shared_ptr<core::tools::binary_stream> _response)
+int32_t stickers_migration::parse_response(const std::shared_ptr<core::tools::binary_stream>& _response)
 {
     if (!_response->available())
         return wpie_http_empty_response;
@@ -73,4 +60,9 @@ int32_t stickers_migration::parse_response(std::shared_ptr<core::tools::binary_s
     response_ = _response;
 
     return 0;
+}
+
+priority_t stickers_migration::get_priority() const
+{
+    return packets_priority_high();
 }

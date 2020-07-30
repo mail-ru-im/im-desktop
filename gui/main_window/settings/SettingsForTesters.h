@@ -40,6 +40,7 @@ namespace Ui
         void onToggleSaveRTPDumps(bool checked);
         void onToggleServerSearch(bool checked);
         void onToggleDevId(bool checked);
+        void onToggleConnectByIp(bool checked);
 
     private:
         QVBoxLayout* mainLayout_ = nullptr;
@@ -55,6 +56,7 @@ namespace Ui
         Ui::SidebarCheckboxButton* devSaveCallRTPdumpsCheckbox_ = nullptr;
         Ui::SidebarCheckboxButton* devServerSearchCheckbox_ = nullptr;
         Ui::SidebarCheckboxButton* devCustomIdCheckbox_ = nullptr;
+        Ui::SidebarCheckboxButton* connectByIpCheckbox_ = nullptr;
 
         Ui::SidebarCheckboxButton* stickDockWidgets_;
         GeneralCreator::DropperInfo cacheDialogsDropper_;

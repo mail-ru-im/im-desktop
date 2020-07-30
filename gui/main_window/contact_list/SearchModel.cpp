@@ -3,6 +3,7 @@
 #include "SearchModel.h"
 #include "ContactListModel.h"
 #include "RecentsModel.h"
+#include "FavoritesUtils.h"
 
 #include "../../search/ContactSearcher.h"
 #include "../../search/MessageSearcher.h"
@@ -12,14 +13,15 @@
 #include "../../utils/SearchPatternHistory.h"
 #include "../../cache/avatars/AvatarStorage.h"
 #include "../../gui_settings.h"
+#include "../containers/FriendlyContainer.h"
+#include "../containers/StatusContainer.h"
+
+#include "../../../common.shared/config/config.h"
 
 Q_LOGGING_CATEGORY(searchModel, "searchModel")
 
 namespace
 {
-    constexpr auto minSymbolsServerMessages = 2;
-    constexpr auto minSymbolsServerContacts = 4;
-
     constexpr std::chrono::milliseconds typingTimeout = std::chrono::milliseconds(300);
 
     Data::ServiceSearchResultSptr makeServiceResult(const QString& _aimid, const QString& _text, const QString& _accessName)
@@ -46,9 +48,10 @@ namespace Logic
         , timerSearch_(new QTimer(this))
         , allContactResRcvd_(false)
         , allMessageResRcvd_(false)
+        , favoritesOnTop_(false)
     {
         timerSearch_->setSingleShot(true);
-        timerSearch_->setInterval(typingTimeout.count());
+        timerSearch_->setInterval(typingTimeout);
         connect(timerSearch_, &QTimer::timeout, this, &SearchModel::doSearch);
 
         connect(contactSearcher_, &ContactSearcher::localResults, this, &SearchModel::onContactsLocal);
@@ -65,6 +68,10 @@ namespace Logic
         connect(getContactListModel(), &ContactListModel::contact_removed, this, &SearchModel::contactRemoved);
 
         connect(GetAvatarStorage(), &Logic::AvatarStorage::avatarChanged, this, &SearchModel::avatarLoaded);
+        connect(Logic::GetStatusContainer(), &Logic::StatusContainer::statusChanged, this, [this](const QString& _aimid)
+        {
+            avatarLoaded(_aimid);
+        });
 
         for (auto v : { &results_, &contactLocalRes_, &contactServerRes_, &msgLocalRes_, &msgServerRes_})
             v->reserve(common::get_limit_search_results());
@@ -91,7 +98,7 @@ namespace Logic
                 qCDebug(searchModel) << this << "updated avatar for" << _aimId << "at index" << i;
 
                 const auto idx = index(i);
-                emit dataChanged(idx, idx);
+                Q_EMIT dataChanged(idx, idx);
             }
             ++i;
         }
@@ -129,9 +136,9 @@ namespace Logic
                 contactLocalRes_.erase(localIt);
 
             const auto newCount = rowCount();
-            emit dataChanged(index(0), index(newCount));
+            Q_EMIT dataChanged(index(0), index(newCount));
             if (newCount == 0)
-                emit showNoSearchResults();
+                Q_EMIT showNoSearchResults();
         }
     }
 
@@ -166,8 +173,8 @@ namespace Logic
                 Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::chat_search_dialog_server_first_req);
         }
 
-        emit hideNoSearchResults();
-        emit showSearchSpinner();
+        Q_EMIT hideNoSearchResults();
+        Q_EMIT showSearchSpinner();
     }
 
     void SearchModel::onContactsLocal()
@@ -176,9 +183,18 @@ namespace Logic
             return;
 
         contactLocalRes_ = contactSearcher_->getLocalResults();
+
+        if (searchPattern_.isEmpty())
+            for (const auto& temp : std::as_const(temporaryLocalContacts_))
+                contactLocalRes_.push_back(temp);
+
         const auto sortByTime = isSortByTime();
         const auto searchPattern = searchPattern_;
-        std::sort(contactLocalRes_.begin(), contactLocalRes_.end(), [sortByTime, searchPattern](const auto& first, const auto& second) { return simpleSort(first, second, sortByTime, searchPattern); });
+        std::sort(contactLocalRes_.begin(), contactLocalRes_.end(),
+                  [sortByTime, searchPattern, favoritesOnTop = favoritesOnTop_](const auto& first, const auto& second)
+        {
+            return simpleSort(first, second, sortByTime, searchPattern, favoritesOnTop);
+        });
 
         composeResults();
     }
@@ -276,8 +292,8 @@ namespace Logic
 
         if (isSearchInDialogs() && searchPattern_.isEmpty())
         {
-            emit hideSearchSpinner();
-            emit hideNoSearchResults();
+            Q_EMIT hideSearchSpinner();
+            Q_EMIT hideNoSearchResults();
 
             localMsgSearchNoMore_ = false;
 
@@ -380,7 +396,7 @@ namespace Logic
         for (auto v : { &results_, &contactLocalRes_, &contactServerRes_, &msgLocalRes_, &msgServerRes_ })
             v->clear();
 
-        emit dataChanged(index(0), index(rowCount()));
+        Q_EMIT dataChanged(index(0), index(rowCount()));
 
         qCDebug(searchModel) << this << "cleared";
     }
@@ -458,7 +474,7 @@ namespace Logic
         return isSearchInContactsEnabled_;
     }
 
-    void SearchModel::setExcludeChats(const bool _exclude)
+    void SearchModel::setExcludeChats(SearchDataSource _exclude)
     {
         contactSearcher_->setExcludeChats(_exclude);
     }
@@ -487,20 +503,33 @@ namespace Logic
         return allContactResRcvd_ && allMessageResRcvd_;
     }
 
-    const QString SearchModel::getContactsAndGroupsAimId()
+    QString SearchModel::getContactsAndGroupsAimId()
     {
         return qsl("~contgroups~");
     }
 
-    const QString SearchModel::getMessagesAimId()
+    QString SearchModel::getMessagesAimId()
     {
         return qsl("~messages~");
     }
 
-    const bool SearchModel::simpleSort(const Data::AbstractSearchResultSptr& _first, const Data::AbstractSearchResultSptr& _second, bool _sort_by_time, const QString& _searchPattern)
+    const bool SearchModel::simpleSort(const Data::AbstractSearchResultSptr& _first,
+                                       const Data::AbstractSearchResultSptr& _second,
+                                       bool _sort_by_time,
+                                       const QString& _searchPattern,
+                                       bool _favorites_on_top)
     {
         const auto fAimId = _first->getAimId();
         const auto sAimId = _second->getAimId();
+
+        if (_favorites_on_top)
+        {
+            if (Favorites::isFavorites(fAimId))
+                return true;
+
+            if (Favorites::isFavorites(sAimId))
+                return false;
+        }
 
         if (_sort_by_time)
         {
@@ -524,7 +553,7 @@ namespace Logic
         const auto firstFriendly = _first->getFriendlyName();
         const auto secondFriendly = _second->getFriendlyName();
 
-        const auto force_cyrillic = _searchPattern.isEmpty() ? Ui::get_gui_settings()->get_value<QString>(settings_language, QString()) == qsl("ru") : Utils::startsCyrillic(_searchPattern);
+        const auto force_cyrillic = _searchPattern.isEmpty() ? Ui::get_gui_settings()->get_value<QString>(settings_language, QString()) == u"ru" : Utils::startsCyrillic(_searchPattern);
 
         if (!_searchPattern.isEmpty())
         {
@@ -557,14 +586,42 @@ namespace Logic
         return firstFriendly.compare(secondFriendly, Qt::CaseInsensitive) < 0;
     }
 
+    void SearchModel::setFavoritesOnTop(bool _enable)
+    {
+        favoritesOnTop_ = _enable;
+    }
+
+    void SearchModel::setForceAddFavorites(bool _enable)
+    {
+        contactSearcher_->setForceAddFavorites(_enable);
+    }
+
+    void SearchModel::addTemporarySearchData(const QString& _data)
+    {
+        auto temp = std::make_shared<Data::SearchResultContactChatLocal>();
+        temp->aimId_ = _data;
+
+        temporaryLocalContacts_.push_back(std::move(temp));
+    }
+
+    void SearchModel::removeAllTemporarySearchData()
+    {
+        temporaryLocalContacts_.clear();
+    }
+
+    void SearchModel::refreshComposeResults()
+    {
+        composeResults();
+    }
+
     bool SearchModel::isServerMessagesNeeded() const
     {
-        return searchPattern_.length() >= minSymbolsServerMessages && isServerSearchEnabled();
+        return isServerSearchEnabled() && searchPattern_.size() >= config::get().number<int64_t>(config::values::server_search_messages_min_symbols);
     }
 
     bool SearchModel::isServerContactsNeeded() const
     {
-        return searchPattern_.length() >= minSymbolsServerContacts && isServerSearchEnabled();
+        return isServerSearchEnabled() && searchPattern_.size() >= config::get().number<int64_t>(config::values::server_search_contacts_min_symbols);
     }
 
     void SearchModel::composeResults()
@@ -580,24 +637,26 @@ namespace Logic
         if (allMessageResRcvd_)
             composeResultsMessages();
 
+        modifyResultsBeforeEmit(results_);
+
         qCDebug(searchModel) << this << "composed" << results_.size() << "items:\n"
             << msgLocalRes_.size() << "local messages" << (!msgServerRes_.isEmpty() ? "(unused)" : "")
             << msgServerRes_.size() << "server messages";
 
-        emit dataChanged(index(0), index(rowCount()));
+        Q_EMIT dataChanged(index(0), index(rowCount()));
 
         if (rowCount() > 0)
         {
-            emit hideSearchSpinner();
-            emit hideNoSearchResults();
+            Q_EMIT hideSearchSpinner();
+            Q_EMIT hideNoSearchResults();
 
-            emit results();
+            Q_EMIT results();
             qCDebug(searchModel) << this << "composed Results";
         }
         else if (isAllDataReceived())
         {
-            emit hideSearchSpinner();
-            emit showNoSearchResults();
+            Q_EMIT hideSearchSpinner();
+            Q_EMIT showNoSearchResults();
 
             qCDebug(searchModel) << this << "composed NoSearchResults";
         }
@@ -609,7 +668,7 @@ namespace Logic
         {
             const Data::AbstractSearchResultSptr hdr = makeServiceResult(
                 getContactsAndGroupsAimId(),
-                QT_TRANSLATE_NOOP("search", "CONTACTS AND GROUPS") % ql1s(": ") % QString::number(contactLocalRes_.size() + contactServerRes_.size()),
+                QT_TRANSLATE_NOOP("search", "CONTACTS AND GROUPS") % u": " % QString::number(contactLocalRes_.size() + contactServerRes_.size()),
                 qsl("search_results contactsAndGroups"));
 
             results_.append(hdr);
@@ -636,7 +695,7 @@ namespace Logic
             {
                 const Data::AbstractSearchResultSptr msgsHdr = makeServiceResult(
                     qsl("~messages~"),
-                    QT_TRANSLATE_NOOP("search", "MESSAGES") % ql1s(": ") % QString::number(getTotalMessagesCount()),
+                    QT_TRANSLATE_NOOP("search", "MESSAGES") % u": " % QString::number(getTotalMessagesCount()),
                     qsl("search_results messages"));
 
                 results_.append(msgsHdr);
@@ -677,13 +736,13 @@ namespace Logic
         for (const auto& pattern : lastPatterns)
         {
             auto sr = std::make_shared<Data::SearchResultSuggest>();
-            sr->suggestAimId_ = dialogAimId % ql1s("_suggest") % QString::number(i++);
+            sr->suggestAimId_ = dialogAimId % u"_suggest" % QString::number(i++);
             sr->suggestText_ = pattern;
             results_.append(sr);
         }
 
         qCDebug(searchModel) << this << "composed" << results_.size() - 1 << "suggests for" << dialogAimId;
-        emit dataChanged(index(0), index(rowCount()));
-        emit suggests(QPrivateSignal());
+        Q_EMIT dataChanged(index(0), index(rowCount()));
+        Q_EMIT suggests(QPrivateSignal());
     }
 }

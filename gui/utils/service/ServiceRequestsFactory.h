@@ -11,6 +11,6 @@ namespace Utils
     public:
         ServiceRequestsFactory() = delete;
 
-        static ServiceRequest* requestForUrl(const QString& _urlCommand);
+        static std::unique_ptr<ServiceRequest> requestForUrl(const QString& _urlCommand);
     };
 }

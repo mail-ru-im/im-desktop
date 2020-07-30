@@ -1,7 +1,7 @@
 QWidget#MaskPanel
 {
-    min-height: 74dip;
-    max-height: 74dip;
+    min-height: 86dip;
+    max-height: 86dip;
     margin: 0;
     padding: 0;
     background-color: rgba(38, 38, 38, 100%);

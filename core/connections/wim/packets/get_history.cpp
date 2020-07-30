@@ -29,7 +29,7 @@ get_history_params::get_history_params(
     const int32_t _count,
     const std::string &_patch_version,
     bool _init,
-    bool _from_deleted,
+    bool /*_from_deleted*/,
     bool _from_editing,
     bool _from_search,
     int64_t _seq
@@ -41,7 +41,6 @@ get_history_params::get_history_params(
     , count_(_count)
     , patch_version_(_patch_version)
     , init_(_init)
-    , from_deleted_(_from_deleted)
     , from_editing_(_from_editing)
     , from_search_(_from_search)
 {
@@ -61,26 +60,12 @@ get_history::get_history(wim_packet_params _params, const get_history_params& _h
 {
 }
 
+get_history::~get_history() = default;
 
-get_history::~get_history()
+int32_t get_history::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
-
-}
-
-int32_t get_history::init_request(std::shared_ptr<core::http_request_simple> _request)
-{
-    constexpr char method[] = "getHistory";
-
-    _request->set_normalized_url(method);
-    _request->set_keep_alive();
-    _request->set_priority(priority_protocol());
-
     rapidjson::Document doc(rapidjson::Type::kObjectType);
-
     auto& a = doc.GetAllocator();
-
-    doc.AddMember("method", method, a);
-    doc.AddMember("reqId", get_req_id(), a);
 
     rapidjson::Value node_params(rapidjson::Type::kObjectType);
 
@@ -101,7 +86,7 @@ int32_t get_history::init_request(std::shared_ptr<core::http_request_simple> _re
 
     doc.AddMember("params", std::move(node_params), a);
 
-    sign_packet(doc, a, _request);
+    setup_common_and_sign(doc, a, _request, "getHistory");
 
     __INFO(
         "delete_history",
@@ -206,4 +191,9 @@ int32_t get_history::parse_results(const rapidjson::Value& _node_results)
     apply_patches(history_patches_, *messages_, unpinned_, *dlg_state_);
 
     return 0;
+}
+
+priority_t get_history::get_priority() const
+{
+    return priority_protocol();
 }

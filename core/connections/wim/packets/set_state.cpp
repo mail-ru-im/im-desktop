@@ -20,7 +20,7 @@ set_state::~set_state()
 {
 }
 
-int32_t set_state::init_request(std::shared_ptr<core::http_request_simple> _request)
+int32_t set_state::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     std::string_view state = "online";
     std::string_view invisible = "0";
@@ -45,7 +45,6 @@ int32_t set_state::init_request(std::shared_ptr<core::http_request_simple> _requ
     _request->set_url(ss_url.str());
     _request->set_normalized_url("presenceSetState");
     _request->set_keep_alive();
-    _request->set_priority(priority_protocol());
 
     if (!params_.full_log_)
     {
@@ -60,4 +59,9 @@ int32_t set_state::init_request(std::shared_ptr<core::http_request_simple> _requ
 int32_t set_state::parse_response_data(const rapidjson::Value& _data)
 {
     return 0;
+}
+
+priority_t set_state::get_priority() const
+{
+    return top_priority();
 }

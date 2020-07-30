@@ -5,7 +5,7 @@
 #include "../main_window/ContactDialog.h"
 #include "../main_window/MainPage.h"
 #include "../main_window/MainWindow.h"
-#include "../main_window/friendly/FriendlyContainer.h"
+#include "../main_window/containers/FriendlyContainer.h"
 #include "../main_window/history_control/complex_message/FileSharingUtils.h"
 #include "../main_window/history_control/ActionButtonWidget.h"
 #include "../types/images.h"
@@ -15,6 +15,7 @@
 #include "../core_dispatcher.h"
 #include "../gui_settings.h"
 #include "../utils/memory_utils.h"
+#include "../main_window/contact_list/FavoritesUtils.h"
 
 #include "../main_window/contact_list/ContactListModel.h"
 #include "../main_window/GroupChatOperations.h"
@@ -24,7 +25,6 @@
 #include "Drawable.h"
 #include "DownloadWidget.h"
 #include "GalleryFrame.h"
-#include "ImageLoader.h"
 #include "ImageViewerWidget.h"
 
 #include "toast.h"
@@ -41,7 +41,7 @@
 namespace
 {
     const qreal backgroundOpacity = 0.92;
-    const QBrush backgroundColor(QColor(ql1s("#1E1E1E")));
+    const QBrush backgroundColor(QColor(u"#1E1E1E"));
     const int scrollTimeoutMsec = 500;
     const int delayTimeoutMsec = 500;
     const int navButtonWidth = 56;
@@ -83,6 +83,7 @@ GalleryWidget::GalleryWidget(QWidget* _parent)
     connect(controlsWidget_, &GalleryFrame::forward, this, &GalleryWidget::onForward);
     connect(controlsWidget_, &GalleryFrame::goToMessage, this, &GalleryWidget::onGoToMessage);
     connect(controlsWidget_, &GalleryFrame::saveAs, this, &GalleryWidget::onSaveAs);
+    connect(controlsWidget_, &GalleryFrame::saveToFavorites, this, &GalleryWidget::onSaveToFavorites);
     connect(controlsWidget_, &GalleryFrame::close, this, &GalleryWidget::onEscapeClick);
     connect(controlsWidget_, &GalleryFrame::save, this, &GalleryWidget::onSave);
     connect(controlsWidget_, &GalleryFrame::copy, this, &GalleryWidget::onCopy);
@@ -100,10 +101,10 @@ GalleryWidget::GalleryWidget(QWidget* _parent)
 
     const auto iconSize = Utils::scale_value(navButtonIconSize);
     auto prevPixmap = Utils::renderSvgScaled(qsl(":/controls/back_icon"), iconSize, QColor(255, 255, 255, 0.2 * 255));
-    auto nextPixmap = prevPixmap.transformed(QTransform().rotate(180));
+    auto nextPixmap = Utils::mirrorPixmapHor(prevPixmap);
 
     auto prevPixmapHovered = Utils::renderSvgScaled(qsl(":/controls/back_icon"), iconSize, Qt::white);
-    auto nextPixmapHovered = prevPixmapHovered.transformed(QTransform().rotate(180));
+    auto nextPixmapHovered = Utils::mirrorPixmapHor(prevPixmapHovered);
 
     nextButton_->setDefaultPixmap(nextPixmap);
     prevButton_->setDefaultPixmap(prevPixmap);
@@ -127,7 +128,7 @@ GalleryWidget::GalleryWidget(QWidget* _parent)
     });
 
     QVBoxLayout* layout = Utils::emptyVLayout();
-    Testing::setAccessibleName(imageViewer_, qsl("AS gw imageViewer_"));
+    Testing::setAccessibleName(imageViewer_, qsl("AS GalleryWidget imageViewer"));
     layout->addWidget(imageViewer_);
 
     setLayout(layout);
@@ -210,7 +211,10 @@ void GalleryWidget::closeGallery()
 {
     isClosing_ = true;
 
-    Ui::MainPage::instance()->getContactDialog()->setFocusOnInputWidget();
+    if (contentLoader_)
+        contentLoader_->cancelCurrentItemLoading();
+
+    Ui::MainPage::instance()->setFocusOnInput();
 
     imageViewer_->reset();
     showNormal();
@@ -218,10 +222,12 @@ void GalleryWidget::closeGallery()
     releaseKeyboard();
 
     Ui::ToastManager::instance()->hideToast();
-    emit closed();
+    Q_EMIT closed();
 
     // it fixes https://jira.mail.ru/browse/IMDESKTOP-8547, which is most propably caused by https://bugreports.qt.io/browse/QTBUG-49238
-    QMetaObject::invokeMethod(this, "deleteLater", Qt::QueuedConnection);
+    QMetaObject::invokeMethod(this, &GalleryWidget::deleteLater, Qt::QueuedConnection);
+
+    Ui::GetDispatcher()->cancelGalleryHolesDownloading(aimId_);
 }
 
 void GalleryWidget::showMinimized()
@@ -251,7 +257,7 @@ void GalleryWidget::escape()
     if (!imageViewer_->closeFullscreen())
     {
         closeGallery();
-        emit closed();
+        Q_EMIT closed();
     }
 }
 
@@ -306,6 +312,9 @@ void GalleryWidget::trackMenu(const QPoint& _globalPos, const bool _isAsync)
 
     if (const auto type = GalleryFrame::Action::SaveAs; actions & type)
         addAction(type, menu, this, &GalleryWidget::onSaveAs, Qt::QueuedConnection);
+
+    if (const auto type = GalleryFrame::Action::SaveToFavorites; actions & type)
+        addAction(type, menu, this, &GalleryWidget::onSaveToFavorites, Qt::QueuedConnection);
 
     connect(menu, &Ui::ContextMenu::aboutToHide, this, [parentW, mainWindowW]()
     {
@@ -405,7 +414,7 @@ void GalleryWidget::keyPressEvent(QKeyEvent* _event)
         if (_event->modifiers() == Qt::ControlModifier && key == Qt::Key_Q)
         {
             closeGallery();
-            emit finished();
+            Q_EMIT finished();
         }
     }
 }
@@ -438,7 +447,7 @@ bool GalleryWidget::event(QEvent* _event)
         auto ge = static_cast<QGestureEvent*>(_event);
         if (QGesture *pinch = ge->gesture(Qt::PinchGesture))
         {
-            emit closeContextMenu(QPrivateSignal());
+            Q_EMIT closeContextMenu(QPrivateSignal());
             auto pg = static_cast<QPinchGesture *>(pinch);
             imageViewer_->scaleBy(pg->scaleFactor(), QCursor::pos());
             return true;
@@ -478,13 +487,17 @@ void GalleryWidget::updateControls()
                 controlsWidget_->setAuthorText(Logic::GetFriendlyContainer()->getFriendly(sender));
 
             const auto t = QDateTime::fromTime_t(currentItem->time());
-            auto dateStr = t.date().toString(qsl("dd.MM.yyyy"));
-            auto timeStr = t.toString(qsl("hh:mm"));
+            auto dateStr = t.date().toString(u"dd.MM.yyyy");
+            auto timeStr = t.toString(u"hh:mm");
 
             controlsWidget_->setDateText(QT_TRANSLATE_NOOP("previewer", "%1 at %2").arg(dateStr, timeStr));
             controlsWidget_->setCaption(currentItem->caption());
 
             menuActions = {GalleryFrame::Copy, GalleryFrame::SaveAs, GalleryFrame::Forward, GalleryFrame::GoTo};
+
+            if (!Favorites::isFavorites(aimId_))
+                menuActions |= GalleryFrame::SaveToFavorites;
+
             controlsWidget_->setAuthorAndDateVisible(true);
         }
         else
@@ -659,19 +672,19 @@ void GalleryWidget::updateNavButtons()
 
 void GalleryWidget::onZoomIn()
 {
-    emit closeContextMenu(QPrivateSignal());
+    Q_EMIT closeContextMenu(QPrivateSignal());
     imageViewer_->zoomIn();
 }
 
 void GalleryWidget::onZoomOut()
 {
-    emit closeContextMenu(QPrivateSignal());
+    Q_EMIT closeContextMenu(QPrivateSignal());
     imageViewer_->zoomOut();
 }
 
 void GalleryWidget::onResetZoom()
 {
-    emit closeContextMenu(QPrivateSignal());
+    Q_EMIT closeContextMenu(QPrivateSignal());
     imageViewer_->resetZoom();
     controlsWidget_->setZoomInEnabled(true);
     controlsWidget_->setZoomOutEnabled(true);
@@ -737,7 +750,7 @@ void GalleryWidget::onForward()
 
     escape();
 
-    QTimer::singleShot(0, [quote = std::move(q)]() { Ui::forwardMessage({ std::move(quote) }, false, QString(), QString(), true); });
+    QTimer::singleShot(0, [quote = std::move(q), isFavorites = Favorites::isFavorites(aimId_)]() mutable { Ui::forwardMessage({ std::move(quote) }, false, QString(), QString(), !isFavorites); });
 
     Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::fullmediascr_tap_action, { { "chat_type", Utils::chatTypeByAimId(aimId_) },{ "do", "forward" } });
 }
@@ -751,7 +764,7 @@ void GalleryWidget::onGoToMessage()
     const auto msgId = item->msg();
     if (msgId > 0)
     {
-        Logic::getContactListModel()->setCurrent(aimId_, msgId, true, nullptr);
+        Logic::getContactListModel()->setCurrent(aimId_, msgId, true);
         escape();
     }
 
@@ -777,6 +790,25 @@ void GalleryWidget::onOpenContact()
 
     Utils::openDialogOrProfile(item->sender());
     escape();
+}
+
+void GalleryWidget::onSaveToFavorites()
+{
+    const auto item = contentLoader_->currentItem();
+    if (!item)
+        return;
+
+    Data::Quote q;
+    q.chatId_ = item->aimId();
+    q.senderId_ = item->sender();
+    q.text_ = item->link();
+    q.msgId_ = item->msg();
+    q.time_ = item->time();
+    q.senderFriendly_ = Logic::GetFriendlyContainer()->getFriendly(q.senderId_);
+
+    Favorites::addToFavorites({ q });
+
+    Ui::ToastManager::instance()->showToast(new Favorites::FavoritesToast(1), getToastPos());
 }
 
 void GalleryWidget::onDelayTimeout()
@@ -849,7 +881,7 @@ void GalleryWidget::prev()
 {
     assert(hasPrev());
 
-    emit closeContextMenu(QPrivateSignal());
+    Q_EMIT closeContextMenu(QPrivateSignal());
     showProgress();
 
     contentLoader_->prev();
@@ -867,7 +899,7 @@ void GalleryWidget::next()
 {
     assert(hasNext());
 
-    emit closeContextMenu(QPrivateSignal());
+    Q_EMIT closeContextMenu(QPrivateSignal());
     showProgress();
 
     contentLoader_->next();
@@ -1032,7 +1064,7 @@ void NavigationButton::mouseReleaseEvent(QMouseEvent *_event)
 {
     const auto mouseOver = rect().contains(_event->pos());
     if (mouseOver)
-        emit clicked();
+        Q_EMIT clicked();
 
     activePixmap_ = mouseOver ? hoveredPixmap_ : defaultPixmap_;
 

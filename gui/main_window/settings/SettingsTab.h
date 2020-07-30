@@ -37,6 +37,7 @@ namespace Ui
 
     private:
         void settingsProfileClicked();
+        void settingsFavoritesClicked();
         void settingsGeneralClicked();
         void settingsVoiceVideoClicked();
         void settingsNotificationsClicked();

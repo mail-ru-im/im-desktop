@@ -26,7 +26,7 @@ namespace core
             int64_t							time_offset_;
             bool need_fill_profile_;
 
-            virtual int32_t init_request(std::shared_ptr<core::http_request_simple> _request) override;
+            virtual int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
             virtual int32_t on_response_error_code() override;
             virtual int32_t parse_response_data(const rapidjson::Value& _data) override;
             virtual int32_t on_http_client_error() override;

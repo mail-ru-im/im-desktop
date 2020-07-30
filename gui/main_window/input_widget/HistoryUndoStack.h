@@ -33,10 +33,10 @@ namespace Ui
             Last
         };
         void clear(const ClearType _clearType = ClearType::Last);
+        bool isEmpty() const;
     private:
         std::vector<Replacable> vect_;
         int64_t currentPosition_;
-        bool currentRedoAvailable_;
         const size_t maxSize_;
     };
 }

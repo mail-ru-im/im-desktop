@@ -155,7 +155,7 @@ public:
 
     void onVisibilityChanged(const bool isVisible) override;
 
-    IItemBlock::MenuFlags getMenuFlags() const override;
+    IItemBlock::MenuFlags getMenuFlags(QPoint p) const override;
 
     //void setEmojiSizeType(const TextRendering::EmojiSizeType& _emojiSizeType) {};
 

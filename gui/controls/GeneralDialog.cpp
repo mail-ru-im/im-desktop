@@ -31,6 +31,11 @@ namespace
         return Utils::scale_value(8);
     }
 
+    int getExtendedVerMargin()
+    {
+        return Utils::scale_value(20);
+    }
+
     int getIconSize()
     {
         return Utils::scale_value(20);
@@ -71,7 +76,7 @@ namespace Ui
 
         mainHost_ = new QWidget(this);
         Utils::setDefaultBackground(mainHost_);
-        Testing::setAccessibleName(mainHost_, qsl("AS mainHost_"));
+        Testing::setAccessibleName(mainHost_, qsl("AS GeneralPopup"));
 
         if (_fixed_size)
         {
@@ -94,26 +99,25 @@ namespace Ui
         headerLabelHost_ = new QWidget(mainHost_);
         headerLabelHost_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Minimum);
         headerLabelHost_->setVisible(false);
-        Testing::setAccessibleName(headerLabelHost_, qsl("AS gd headerLabelHost_"));
+        Testing::setAccessibleName(headerLabelHost_, qsl("AS GeneralPopup headerLabel"));
         globalLayout->addWidget(headerLabelHost_);
 
         errorHost_ = new QWidget(mainHost_);
         errorHost_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
         Utils::ApplyStyle(errorHost_, qsl("height: 1dip;"));
         errorHost_->setVisible(false);
-        Testing::setAccessibleName(errorHost_, qsl("AS errorHost_"));
+        Testing::setAccessibleName(errorHost_, qsl("AS GeneralPopup errorLabel"));
         globalLayout->addWidget(errorHost_);
 
         textHost_ = new QWidget(mainHost_);
         textHost_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
         Utils::ApplyStyle(textHost_, qsl("height: 1dip;"));
         textHost_->setVisible(false);
-        Testing::setAccessibleName(textHost_, qsl("AS textHost_"));
+        Testing::setAccessibleName(textHost_, qsl("AS GeneralPopup textLabel"));
         globalLayout->addWidget(textHost_);
 
         if (mainWidget_)
         {
-            Testing::setAccessibleName(mainWidget_, qsl("AS mainWidget_"));
             if constexpr (platform::is_apple())
                 globalLayout->addSpacing(Utils::scale_value(5));
             globalLayout->addWidget(mainWidget_);
@@ -121,14 +125,14 @@ namespace Ui
 
         areaWidget_ = new QWidget(mainHost_);
         areaWidget_->setVisible(false);
-        Testing::setAccessibleName(areaWidget_, qsl("AS areaWidget_"));
+        Testing::setAccessibleName(areaWidget_, qsl("AS GeneralPopup areaWidget"));
         globalLayout->addWidget(areaWidget_);
 
         bottomWidget_ = new QWidget(mainHost_);
         bottomWidget_->setVisible(false);
         bottomWidget_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
         Utils::setDefaultBackground(bottomWidget_);
-        Testing::setAccessibleName(bottomWidget_, qsl("AS bottomWidget_"));
+        Testing::setAccessibleName(bottomWidget_, qsl("AS GeneralPopup bottomWidget"));
         globalLayout->addWidget(bottomWidget_);
 
         setWindowFlags(Qt::FramelessWindowHint | Qt::NoDropShadowWindowHint | Qt::WindowSystemMenuHint | Qt::SubWindow);
@@ -205,41 +209,49 @@ namespace Ui
         QDialog::done(r);
     }
 
-    void GeneralDialog::addLabel(const QString& _text)
+    void GeneralDialog::addLabel(const QString& _text, Qt::Alignment _alignment, int _maxLinesNumber)
     {
         headerLabelHost_->setVisible(true);
         auto hostLayout = Utils::emptyHLayout(headerLabelHost_);
-        hostLayout->setContentsMargins(getMargin(), getTopMargin(), 0, 0);
-        hostLayout->setAlignment(Qt::AlignLeft | Qt::AlignTop);
 
-        auto text = Ui::TextRendering::MakeTextUnit(_text);
-        text->init(Fonts::appFontScaled(22), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
+        auto text = Ui::TextRendering::MakeTextUnit(_text, {}, TextRendering::LinksVisible::DONT_SHOW_LINKS);
+        text->init(Fonts::appFontScaled(22), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID), QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, _maxLinesNumber, TextRendering::LineBreakType::PREFER_SPACES);
 
         const auto maxWidth = mainHost_->maximumWidth() - 2 * getMargin();
-        auto label = new TextUnitLabel(textHost_, std::move(text), Ui::TextRendering::VerPosition::TOP, maxWidth);
-        label->setFixedWidth(maxWidth);
+        auto label = new TextUnitLabel(textHost_, std::move(text), Ui::TextRendering::VerPosition::TOP, maxWidth, true);
+        label->setMaximumWidth(maxWidth);
         label->sizeHint();
 
-        Testing::setAccessibleName(label, qsl("AS addlabel label ") + _text);
+        const auto leftMargin = (_alignment & Qt::AlignHCenter) ? (maxWidth - label->width()) / 2 + getMargin() : getMargin();
+        const auto topMargin = (_alignment & Qt::AlignVCenter) ? getExtendedVerMargin() : getTopMargin();
+        hostLayout->setContentsMargins(leftMargin, topMargin, 0, 0);
+        hostLayout->setAlignment(Qt::AlignLeft | Qt::AlignTop);
+        Testing::setAccessibleName(label, qsl("AS GeneralPopup label"));
         hostLayout->addWidget(label);
     }
 
     void GeneralDialog::addText(const QString& _messageText, int _upperMarginPx)
     {
-        auto text = Ui::TextRendering::MakeTextUnit(_messageText);
-        text->init(Fonts::appFontScaled(15), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
+        addText(_messageText, _upperMarginPx, Fonts::appFontScaled(15), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
+    }
+
+    void GeneralDialog::addText(const QString& _messageText, int _upperMarginPx, const QFont& _font, const QColor& _color)
+    {
+        auto text = Ui::TextRendering::MakeTextUnit(_messageText, Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS);
+        text->init(_font, _color);
 
         const auto maxWidth = mainHost_->maximumWidth() - 2 * getMargin();
         auto label = new TextUnitLabel(textHost_, std::move(text), Ui::TextRendering::VerPosition::TOP, maxWidth);
         label->setFixedWidth(maxWidth);
         label->sizeHint();
-        Testing::setAccessibleName(label, qsl("AS addtext label"));
+        Testing::setAccessibleName(label, qsl("AS GeneralPopup textLabel"));
 
         auto textLayout = Utils::emptyHLayout(textHost_);
         textLayout->setContentsMargins(getMargin(), _upperMarginPx, getMargin(), 0);
         textLayout->addWidget(label);
         textHost_->setVisible(true);
     }
+
 
     DialogButton* GeneralDialog::addAcceptButton(const QString& _buttonText, const bool _isEnabled)
     {
@@ -251,7 +263,7 @@ namespace Ui
 
             connect(nextButton_, &DialogButton::clicked, this, &GeneralDialog::accept, Qt::QueuedConnection);
 
-            Testing::setAccessibleName(nextButton_, qsl("AS addaccept nextButton_"));
+            Testing::setAccessibleName(nextButton_, qsl("AS GeneralPopup nextButton"));
 
             auto bottomLayout = getBottomLayout();
             bottomLayout->addWidget(nextButton_);
@@ -272,7 +284,7 @@ namespace Ui
 
             connect(nextButton_, &DialogButton::clicked, this, &GeneralDialog::reject, Qt::QueuedConnection);
 
-            Testing::setAccessibleName(nextButton_, qsl("AS addcancel nextButton_ ") + _buttonText);
+            Testing::setAccessibleName(nextButton_, qsl("AS GeneralPopup cancelButton"));
 
             auto bottomLayout = getBottomLayout();
             bottomLayout->addWidget(nextButton_);
@@ -283,25 +295,25 @@ namespace Ui
         return nextButton_;
     }
 
-    QPair<DialogButton*, DialogButton*> GeneralDialog::addButtonsPair(const QString& _buttonTextLeft, const QString& _buttonTextRight, bool _isActive, bool _rejectable, bool _acceptable, QWidget* _area, const DialogButtonShape _shape)
+    QPair<DialogButton*, DialogButton*> GeneralDialog::addButtonsPair(const QString& _buttonTextLeft, const QString& _buttonTextRight, bool _isActive, bool _rejectable, bool _acceptable, QWidget* _area)
     {
         QPair<DialogButton*, DialogButton*> result;
         {
-            auto cancelButton = new DialogButton(bottomWidget_, _buttonTextLeft, DialogButtonRole::CANCEL, _shape);
+            auto cancelButton = new DialogButton(bottomWidget_, _buttonTextLeft, DialogButtonRole::CANCEL);
             cancelButton->setObjectName(qsl("left_button"));
             cancelButton->setSizePolicy(QSizePolicy::Policy::Minimum, QSizePolicy::Policy::Preferred);
             connect(cancelButton, &DialogButton::clicked, this, &GeneralDialog::leftButtonClick, Qt::QueuedConnection);
             if (_rejectable)
                 connect(cancelButton, &DialogButton::clicked, this, &GeneralDialog::reject, Qt::QueuedConnection);
-            Testing::setAccessibleName(nextButton_, qsl("AS addbuttonpair cancelButton"));
+            Testing::setAccessibleName(cancelButton, qsl("AS GeneralPopup cancelButton"));
 
-            nextButton_ = new DialogButton(bottomWidget_, _buttonTextRight, DialogButtonRole::CONFIRM, _shape);
+            nextButton_ = new DialogButton(bottomWidget_, _buttonTextRight, DialogButtonRole::CONFIRM);
             setButtonActive(_isActive);
             nextButton_->setSizePolicy(QSizePolicy::Policy::Minimum, QSizePolicy::Policy::Preferred);
             connect(nextButton_, &DialogButton::clicked, this, &GeneralDialog::rightButtonClick, Qt::QueuedConnection);
             if (_acceptable)
                 connect(nextButton_, &DialogButton::clicked, this, &GeneralDialog::accept, Qt::QueuedConnection);
-            Testing::setAccessibleName(nextButton_, qsl("AS addbuttonpair nextButton_"));
+            Testing::setAccessibleName(nextButton_, qsl("AS GeneralPopup nextButton"));
 
             auto bottomLayout = getBottomLayout();
             bottomLayout->addWidget(cancelButton);
@@ -314,7 +326,7 @@ namespace Ui
         if (_area)
         {
             auto v = Utils::emptyVLayout(areaWidget_);
-            Testing::setAccessibleName(_area, qsl("AS _area"));
+            Testing::setAccessibleName(_area, qsl("AS GeneralPopup area"));
             v->addWidget(_area);
             areaWidget_->setVisible(true);
         }
@@ -363,7 +375,10 @@ namespace Ui
 
         show();
         inExec_ = true;
+        const auto guard = QPointer(this);
         const auto result = (exec() == QDialog::Accepted);
+        if (!guard)
+            return false;
         inExec_ = false;
         close();
 
@@ -455,19 +470,19 @@ namespace Ui
     void GeneralDialog::showEvent(QShowEvent *event)
     {
         QDialog::showEvent(event);
-        emit shown(this);
+        Q_EMIT shown(this);
     }
 
     void GeneralDialog::hideEvent(QHideEvent *event)
     {
-        emit hidden(this);
+        Q_EMIT hidden(this);
         QDialog::hideEvent(event);
     }
 
     void GeneralDialog::moveEvent(QMoveEvent *_event)
     {
         QDialog::moveEvent(_event);
-        emit moved(this);
+        Q_EMIT moved(this);
     }
 
     void GeneralDialog::resizeEvent(QResizeEvent* _event)
@@ -475,7 +490,7 @@ namespace Ui
         QDialog::resizeEvent(_event);
         updateSize();
 
-        emit resized(this);
+        Q_EMIT resized(this);
     }
 
     void GeneralDialog::addError(const QString& _messageText)
@@ -490,12 +505,12 @@ namespace Ui
         textLayout->addSpacerItem(upperSpacer);
 
         const QString backgroundStyle = qsl("background-color: #fbdbd9; ");
-        const QString labelStyle = ql1s("QWidget { ") % backgroundStyle % ql1s("border: none; padding-left: 16dip; padding-right: 16dip; padding-top: 0dip; padding-bottom: 0dip; }");
+        const QString labelStyle = u"QWidget { " % backgroundStyle % u"border: none; padding-left: 16dip; padding-right: 16dip; padding-top: 0dip; padding-bottom: 0dip; }";
 
         auto upperSpacerRedUp = new QLabel();
         upperSpacerRedUp->setFixedHeight(Utils::scale_value(16));
         Utils::ApplyStyle(upperSpacerRedUp, backgroundStyle);
-        Testing::setAccessibleName(upperSpacerRedUp, qsl("AS adderror upperSpacerRedUp"));
+        Testing::setAccessibleName(upperSpacerRedUp, qsl("AS GeneralPopup upperSpacerRedUp"));
         textLayout->addWidget(upperSpacerRedUp);
 
         auto errorLabel = new Ui::TextEditEx(errorHost_, Fonts::appFontScaled(16), Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_ATTENTION), true, true);
@@ -508,7 +523,7 @@ namespace Ui
         Utils::ApplyStyle(errorLabel, labelStyle);
 
         errorLabel->setText(QT_TRANSLATE_NOOP("popup_window", "Unfortunately, an error occurred:"));
-        Testing::setAccessibleName(errorLabel, qsl("AS adderror errorLabel"));
+        Testing::setAccessibleName(errorLabel, qsl("AS GeneralPopup errorLabel"));
         textLayout->addWidget(errorLabel);
 
         auto errorText = new Ui::TextEditEx(errorHost_, Fonts::appFontScaled(16), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID), true, true);
@@ -521,13 +536,13 @@ namespace Ui
         Utils::ApplyStyle(errorText, labelStyle);
 
         errorText->setText(_messageText);
-        Testing::setAccessibleName(errorText, qsl("AS adderror errorText"));
+        Testing::setAccessibleName(errorText, qsl("AS GeneralPopup errorText"));
         textLayout->addWidget(errorText);
 
         auto upperSpacerRedBottom = new QLabel();
         Utils::ApplyStyle(upperSpacerRedBottom, backgroundStyle);
         upperSpacerRedBottom->setFixedHeight(Utils::scale_value(16));
-        Testing::setAccessibleName(upperSpacerRedBottom, qsl("AS adderror upperSpacerRedBottom"));
+        Testing::setAccessibleName(upperSpacerRedBottom, qsl("AS GeneralPopup upperSpacerRedBottom"));
         textLayout->addWidget(upperSpacerRedBottom);
 
         auto upperSpacer2 = new QSpacerItem(0, Utils::scale_value(16), QSizePolicy::Minimum);
@@ -539,13 +554,13 @@ namespace Ui
     {
         if (auto leftButton = bottomWidget_->findChild<DialogButton*>(qsl("left_button")))
             leftButton->setEnabled(!leftButtonDisableOnClicked_);
-        emit leftButtonClicked();
+        Q_EMIT leftButtonClicked();
     }
 
     void GeneralDialog::rightButtonClick()
     {
         nextButton_->setEnabled(!rightButtonDisableOnClicked_);
-        emit rightButtonClicked();
+        Q_EMIT rightButtonClicked();
     }
 
     void GeneralDialog::updateSize()
@@ -661,7 +676,7 @@ namespace Ui
             else if (QRect(0, getOptionHeight() + getMargin(), width(), getOptionHeight()).contains(_event->pos()))
                 secondSelected_ = true;
 
-            emit Utils::InterConnector::instance().acceptGeneralDialog();
+            Q_EMIT Utils::InterConnector::instance().acceptGeneralDialog();
         }
         QWidget::mouseReleaseEvent(_event);
     }

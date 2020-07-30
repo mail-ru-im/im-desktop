@@ -11,6 +11,8 @@ namespace Ui
     class HistoryControlPage;
     class ContactDialog;
     class MainPage;
+    struct SidebarParams;
+    class DialogPlayer;
 }
 
 namespace Data
@@ -19,9 +21,19 @@ namespace Data
     class DlgState;
 }
 
+namespace Statuses
+{
+    class Status;
+}
+
 namespace Logic
 {
     class SearchModel;
+}
+
+namespace Statuses
+{
+    class Status;
 }
 
 namespace Utils
@@ -44,18 +56,9 @@ namespace Utils
         CommonSettingsType_Updater,
         CommonSettingsType_Shortcuts,
         CommonSettingsType_Stickers,
+        CommonSettingsType_Favorites,
         CommonSettingsType_Debug,
-
-        max
-    };
-
-    enum class PlaceholdersType
-    {
-        min = -1,
-
-        PlaceholdersType_IntroduceYourself,
-        PlaceholdersType_SetExistanseOnIntroduceYourself,
-        PlaceholdersType_SetExistanseOffIntroduceYourself,
+        CommonSettingsType_Sessions,
 
         max
     };
@@ -65,9 +68,18 @@ namespace Utils
         Cancel = 0,
         Message,
         Delete,
+        Favorites,
         Copy,
         Reply,
         Forward
+    };
+
+    enum class MacUpdateState
+    {
+        Ready = 0,
+        Requested,
+        LoadError,
+        NotFound
     };
 
     class InterConnector : public QObject
@@ -78,9 +90,6 @@ Q_SIGNALS:
         void profileSettingsShow(const QString& uin);
         void sharedProfileShow(const QString& uin);
         void profileSettingsBack();
-
-        void needJoinLiveChatByStamp(const QString& _stamp);
-        void needJoinLiveChatByAimId(const QString& _aimId);
 
         void themesSettingsOpen();
 
@@ -99,7 +108,6 @@ Q_SIGNALS:
 
         void popPagesToRoot();
 
-        void showPlaceholder(PlaceholdersType);
         void showContactListPlaceholder();
         void hideContactListPlaceholder();
 
@@ -119,8 +127,6 @@ Q_SIGNALS:
         void mainWindowResized();
 
         void forceRefreshList(QAbstractItemModel *, bool);
-        void updateFocus();
-        void liveChatsShow();
 
         void schemeUrlClicked(const QString&);
 
@@ -132,9 +138,6 @@ Q_SIGNALS:
         void unknownsGoSeeThem();
         void unknownsGoBack();
         void unknownsDeleteThemAll();
-
-        void liveChatSelected();
-        void showLiveChat(std::shared_ptr<Data::ChatInfo> _info);
 
         void activateNextUnread();
 
@@ -180,9 +183,6 @@ Q_SIGNALS:
 
         void hideMentionCompleter();
         void showStickersStore();
-        void showSmartreplies();
-        void hideSmartReplies(const QString& _aimId);
-        void smartReplySettingShowChanged();
 
         void hideSearchDropdown();
         void showSearchDropdownAddContact();
@@ -211,7 +211,7 @@ Q_SIGNALS:
 
         void stopPttRecord();
 
-        void openDialogOrProfileById(const QString& _id);
+        void openDialogOrProfileById(const QString& _id, bool _forceDialogOpen = false, std::optional<QString> _botParams = {});
         void phoneAttached(bool);
         void phoneAttachmentCancelled();
 
@@ -221,6 +221,7 @@ Q_SIGNALS:
         void multiselectChanged();
 
         void multiselectDelete();
+        void multiselectFavorites();
         void multiselectCopy();
         void multiselectReply();
         void multiselectForward(QString);
@@ -235,7 +236,7 @@ Q_SIGNALS:
 
         void updateSelectedCount();
         void messageSelected(qint64, const QString&);
-        void selectedCount(int);
+        void selectedCount(int, int);
         void multiselectAnimationUpdate();
         void selectionStateChanged(qint64, const QString&, bool);
 
@@ -246,6 +247,31 @@ Q_SIGNALS:
         void addByNick();
 
         void showDebugSettings();
+
+        void sendBotCommand(const QString& _command);
+        void startBot();
+
+        void historyInsertedMessages(const QString& _aimid);
+        void historyCleared(const QString& _aimid);
+        void historyReady(const QString& _aimid);
+
+        void workspaceChanged();
+
+        void updateActiveChatMembersModel(const QString& _aimId);
+
+        void createGroupCall();
+        void createCallByLink();
+        void createWebinar();
+        void callContact(const std::vector<QString>& _aimids, const QString& _frienly, bool _video);
+
+        void omicronUpdated();
+
+        void openStatusPicker();
+        void changeMyStatus(const Statuses::Status& _status);
+        void updateWhenUserInactive();
+        void onMacUpdateInfo(MacUpdateState _state);
+
+        void addReactionPlateActivityChanged(const QString& _contact, bool _active);
 
     public:
         static InterConnector& instance();
@@ -261,6 +287,7 @@ Q_SIGNALS:
         bool isInBackground() const;
 
         void showSidebar(const QString& aimId);
+        void showSidebarWithParams(const QString& aimId, Ui::SidebarParams _params);
         void showMembersInSidebar(const QString& aimId);
         void setSidebarVisible(bool _visible);
         void setSidebarVisible(const SidebarVisibilityParams& _params);
@@ -300,6 +327,8 @@ Q_SIGNALS:
         void detachFromMultiselect(QWidget* _w);
 
         void clearPartialSelection(const QString& _aimid);
+
+        void openGallery(const QString &_aimId, const QString &_link, int64_t _msgId, Ui::DialogPlayer* _attachedPlayer = nullptr);
 
     private:
         InterConnector();

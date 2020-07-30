@@ -10,6 +10,8 @@ ServiceRequest::ServiceRequest(Id _id)
 
 }
 
+ServiceRequest::~ServiceRequest() = default;
+
 ServiceRequest::Type ServiceRequest::getType() const
 {
     return type_;

@@ -11,6 +11,7 @@
 #include "../../main_window/MainWindow.h"
 #include "../../utils/InterConnector.h"
 #include "main_window/history_control/complex_message/FileSharingUtils.h"
+#include "types/message.h"
 
 #include <boost/range/adaptor/map.hpp>
 #include <boost/range/adaptor/reversed.hpp>
@@ -154,6 +155,9 @@ const std::vector<QString>& Sticker::getEmojis()
 
 void Sticker::clearCache()
 {
+    if (cacheLocked_)
+        return;
+
     for (auto &pair : images_)
         pair.second = std::make_tuple(QImage(), false);
 }
@@ -166,6 +170,13 @@ const std::map<core::sticker_size, Sticker::image_data>& Sticker::getImages() co
 bool Sticker::isGif() const
 {
     return isGif_;
+}
+
+void Sticker::lockCache(bool _lock)
+{
+    cacheLocked_ = _lock;
+    if (!cacheLocked_)
+        clearCache();
 }
 
 Set::Set(int32_t _maxSize)
@@ -503,6 +514,11 @@ void setStickerData(core::coll_helper _coll)
     getCache().setStickerData(_coll);
 }
 
+void setSetIcon(core::coll_helper _coll)
+{
+    getCache().setSetIcon(_coll);
+}
+
 void setSetBigIcon(core::coll_helper _coll)
 {
     getCache().setSetBigIcon(_coll);
@@ -596,7 +612,7 @@ void Cache::setStickerData(const core::coll_helper& _coll)
 
     if (error == 0)
     {
-        const auto loadData = [&_coll, stickerSet, sticker, stickerId](std::string_view _id, const core::sticker_size _size)
+        const auto loadData = [&_coll, &stickerSet, &sticker, stickerId](std::string_view _id, const core::sticker_size _size)
         {
             if (_coll->is_value_exist(_id))
             {
@@ -656,6 +672,21 @@ void Cache::setStickerData(const core::coll_helper& _coll)
     }
 }
 
+void Cache::setSetIcon(const core::coll_helper& _coll)
+{
+    if (!_coll.is_value_exist("icon"))
+        return;
+
+    if (auto setPtr = getSet(_coll.get_value_as_int("set_id")))
+    {
+        if (core::istream* iconStream = _coll.get_value_as_stream("icon"))
+        {
+            if (const int32_t iconSize = iconStream->size(); iconSize > 0)
+                setPtr->loadIcon((const char*)iconStream->read(iconSize), iconSize);
+        }
+    }
+}
+
 void Cache::setSetBigIcon(const core::coll_helper& _coll)
 {
     const qint32 setId = _coll.get_value_as_int("set_id");
@@ -674,35 +705,28 @@ void Cache::setSetBigIcon(const core::coll_helper& _coll)
         stickerSet = iterSet->second;
     }
 
-    const qint32 error = _coll.get_value_as_int("error");
+    if (!_coll->is_value_exist("icon"))
+        return;
 
-    if (error == 0)
+    const auto data = _coll.get_value_as_stream("icon");
+
+    const auto dataSize = data->size();
+
+    QImage image;
+
+    if (image.loadFromData(data->read(dataSize), dataSize))
     {
-        if (!_coll->is_value_exist("icon"))
-        {
-            return;
-        }
+        stickerSet->setBigIcon(std::move(image));
+    }
+    else
+    {
+        stickerSet->setBigIcon(
+            QImage(
+                getSetIconEmptySize(),
+                getSetIconEmptySize(),
+                QImage::Format_ARGB32_Premultiplied));
 
-        const auto data = _coll.get_value_as_stream("icon");
-
-        const auto dataSize = data->size();
-
-        QImage image;
-
-        if (image.loadFromData(data->read(dataSize), dataSize))
-        {
-            stickerSet->setBigIcon(std::move(image));
-        }
-        else
-        {
-            stickerSet->setBigIcon(
-                QImage(
-                    getSetIconEmptySize(),
-                    getSetIconEmptySize(),
-                    QImage::Format_ARGB32_Premultiplied));
-
-            GetDispatcher()->cleanSetIconBig(setId);
-        }
+        GetDispatcher()->cleanSetIconBig(setId);
     }
 }
 
@@ -1039,7 +1063,7 @@ QString Cache::getTemplateSendBaseUrl() const
 {
     assert(!templateSendBaseUrl_.isEmpty());
     if (templateSendBaseUrl_.isEmpty())
-        return ql1s("https://") % Ui::getUrlConfig().getUrlFilesParser() % ql1c('/');
+        return u"https://" % Ui::getUrlConfig().getUrlFilesParser() % u'/';
 
     return templateSendBaseUrl_;
 }
@@ -1103,6 +1127,24 @@ QImage getStickerImage(const QString& _fsId, const core::sticker_size _size, con
     }
 
     return image;
+}
+
+void lockStickerCache(const QString& _fsId)
+{
+    auto s = getCache().getSticker(_fsId);
+    if (!s)
+        return;
+
+    s->lockCache(true);
+}
+
+void unlockStickerCache(const QString& _fsId)
+{
+    auto s = getCache().getSticker(_fsId);
+    if (!s)
+        return;
+
+    s->lockCache(false);
 }
 
 QPixmap getSetIcon(int32_t _setId)
@@ -1170,6 +1212,14 @@ void showStickersPackByFileId(const QString& _file_id, StatContext context)
 
         dlg.show();
     });
+}
+
+void showStickersPackByStickerId(const Data::StickerId& _sticker_id, StatContext context)
+{
+    if (_sticker_id.fsId_)
+        showStickersPackByFileId(*_sticker_id.fsId_, context);
+    else if (_sticker_id.obsoleteId_)
+        showStickersPack(_sticker_id.obsoleteId_->setId_, context);
 }
 
 std::shared_ptr<Set> parseSet(core::coll_helper _coll_set)

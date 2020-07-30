@@ -24,14 +24,7 @@ send_imstat::~send_imstat()
 {
 }
 
-
-bool send_imstat::support_async_execution() const
-{
-    return true;
-}
-
-
-int32_t send_imstat::init_request(std::shared_ptr<core::http_request_simple> _request)
+int32_t send_imstat::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     _request->set_url(im_stat_url);
     _request->set_normalized_url("imStat");
@@ -43,7 +36,7 @@ int32_t send_imstat::init_request(std::shared_ptr<core::http_request_simple> _re
 }
 
 
-void send_imstat::execute_request_async(std::shared_ptr<core::http_request_simple> _request, handler_t _handler)
+void send_imstat::execute_request_async(const std::shared_ptr<core::http_request_simple>& _request, handler_t _handler)
 {
     _request->post_async([_request, _handler, wr_this = weak_from_this()](curl_easy::completion_code _completion_code)
     {
@@ -69,7 +62,7 @@ void send_imstat::execute_request_async(std::shared_ptr<core::http_request_simpl
     });
 }
 
-int32_t send_imstat::parse_response(std::shared_ptr<core::tools::binary_stream> response)
+int32_t send_imstat::parse_response(const std::shared_ptr<core::tools::binary_stream>& response)
 {
     return 0;
 }

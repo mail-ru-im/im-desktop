@@ -1,8 +1,8 @@
 #pragma once
 
 #include "../../../corelib/collection_helper.h"
-#include "../../archive/storage.h"
 #include "user_agreement_info.h"
+#include "status.h"
 
 namespace core
 {
@@ -26,10 +26,9 @@ namespace core
             my_info();
 
             int32_t unserialize(const rapidjson::Value& _node);
-            void serialize(core::coll_helper _coll);
+            int32_t serialize(rapidjson::Value& _node, rapidjson_allocator& _a) const;
 
-            void serialize(core::tools::binary_stream& _data) const;
-            bool unserialize(core::tools::binary_stream& _data);
+            void serialize(core::coll_helper _coll);
 
             bool is_phone_number_exists() const;
 
@@ -45,29 +44,30 @@ namespace core
             bool operator!=(const my_info& _right) const;
         };
 
-        enum class is_equal
-        {
-            no,
-            yes
-        };
-
         class my_info_cache
         {
-            bool changed_;
+            bool changed_ = false;
 
             std::shared_ptr<my_info> info_;
+            status status_;
 
         public:
             my_info_cache();
 
-            bool is_changed() const;
+            bool is_changed() const noexcept { return changed_; }
+            void set_changed(bool _changed) { changed_ = _changed; }
+
             bool is_phone_number_exists() const;
 
-            std::shared_ptr<my_info> get_info() const;
+            const std::shared_ptr<my_info>& get_info() const noexcept { return info_; }
             void set_info(std::shared_ptr<my_info> _info);
 
-            int32_t save(const std::wstring& _filename);
-            int32_t load(const std::wstring& _filename);
+            const status& get_status() const noexcept { return status_; }
+            void set_status(status _status);
+
+            int32_t serialize(rapidjson::Value& _node, rapidjson_allocator& _a) const;
+
+            int32_t load(std::wstring_view _filename);
         };
     }
 }

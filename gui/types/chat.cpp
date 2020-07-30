@@ -18,8 +18,8 @@ namespace Data
             core::coll_helper value(membersArray->get_at(i)->get_as_collection(), false);
             member.AimId_ = QString::fromUtf8(value.get_value_as_string("aimid"));
             member.Role_ = QString::fromUtf8(value.get_value_as_string("role", ""));
-            member.Lastseen_ = value.get_value_as_int("lastseen", -1);
-            member.IsCreator_ = _creator.isEmpty() ? member.Role_ == qsl("admin") : member.AimId_ == _creator;
+            member.Lastseen_ = LastSeen(value);
+            member.IsCreator_ = _creator.isEmpty() ? member.Role_ == u"admin" : member.AimId_ == _creator;
             members.push_back(std::move(member));
         }
         return members;

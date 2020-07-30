@@ -51,7 +51,7 @@ namespace Ui
     enum ServiceItemType
     {
         recents,
-        favorites,
+        pinned,
         unknowns,
         more_people,
         messages,

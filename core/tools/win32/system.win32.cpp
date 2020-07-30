@@ -6,8 +6,6 @@
 #include "../../profiling/profiler.h"
 #include "../common.shared/common_defs.h"
 
-#pragma comment(lib, "Rpcrt4.lib")
-
 namespace fs = boost::filesystem;
 
 CORE_TOOLS_SYSTEM_NS_BEGIN
@@ -136,11 +134,8 @@ namespace
     {
         WCHAR path[MAX_PATH] = { 0 };
 
-        const auto error = ::SHGetFolderPath(nullptr, CSIDL_PERSONAL|CSIDL_FLAG_CREATE, nullptr, 0, Out path);
-        if (FAILED(error))
-        {
+        if (const auto error = SHGetFolderPath(nullptr, CSIDL_PERSONAL | CSIDL_FLAG_CREATE, nullptr, 0, Out path); FAILED(error))
             return std::wstring();
-        }
 
         boost::system::error_code e;
         assert(fs::is_directory(path, e));
@@ -151,17 +146,8 @@ namespace
     {
         PWSTR path = nullptr;
 
-        static auto proc = tools::win32::import_proc<decltype(&::SHGetKnownFolderPath)>(L"Shell32.dll", "SHGetKnownFolderPath");
-        if (!proc)
-        {
+        if (const auto error = SHGetKnownFolderPath(FOLDERID_Downloads, 0, nullptr, Out & path); FAILED(error))
             return std::wstring();
-        }
-
-        const auto error = proc->get()(FOLDERID_Downloads, 0, nullptr, Out &path);
-        if (FAILED(error))
-        {
-            return std::wstring();
-        }
 
         std::wstring result(path);
         boost::system::error_code e;
@@ -202,16 +188,8 @@ std::string get_short_file_name(const std::wstring& _file_name)
     if (length == 0)
         return result;
 
-    return result.assign(buffer.begin(), buffer.end());
-}
-
-bool is_windows_vista_or_higher()
-{
-    OSVERSIONINFO os_version;
-    ZeroMemory(&os_version, sizeof(OSVERSIONINFO));
-    os_version.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
-    GetVersionEx(&os_version);
-    return os_version.dwMajorVersion >= 6;
+    result.assign(buffer.begin(), buffer.end());
+    return result;
 }
 
 bool is_do_not_dirturb_on()

@@ -19,9 +19,9 @@ namespace core
     {
         class set_avatar : public wim_packet
         {
-            virtual int32_t init_request(std::shared_ptr<core::http_request_simple> _request) override;
-            virtual int32_t execute_request(std::shared_ptr<core::http_request_simple> request) override;
-            virtual int32_t parse_response(std::shared_ptr<core::tools::binary_stream> response) override;
+            virtual int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
+            virtual int32_t execute_request(const std::shared_ptr<core::http_request_simple>& request) override;
+            virtual int32_t parse_response(const std::shared_ptr<core::tools::binary_stream>& response) override;
             virtual int32_t parse_response_data(const rapidjson::Value& _data) override;
 
             std::string aimid_;
@@ -35,6 +35,8 @@ namespace core
             virtual ~set_avatar();
 
             inline const std::string &get_id() const { return id_; }
+            virtual bool is_post() const override { return true; }
+            virtual bool support_async_execution() const override { return false; }
         };
     }
 }

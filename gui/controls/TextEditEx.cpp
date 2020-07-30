@@ -102,7 +102,7 @@ namespace Ui
 
         if (height() != oldHeight)
         {
-            emit setSize(0, height() - oldHeight);
+            Q_EMIT setSize(0, height() - oldHeight);
         }
     }
 
@@ -133,10 +133,9 @@ namespace Ui
                     auto newPos = -1;
                     if (input_)
                     {
-                        const auto cursorWasOut = prevCursorPos_ <= mentionStart || prevCursorPos_ >= mentionEnd;
                         const auto cursorNowIn = curPos > mentionStart && curPos < mentionEnd;
 
-                        if (!cursorWasOut || !cursorNowIn)
+                        if (!cursorNowIn)
                             continue;
 
                         const auto selStart = cursor.selectionStart();
@@ -309,7 +308,7 @@ namespace Ui
     {
         if (_source->hasImage() && !Utils::haveText(_source))
         {
-            emit insertFiles();
+            Q_EMIT insertFiles();
             return;
         }
 
@@ -320,7 +319,7 @@ namespace Ui
             {
                 if (url.isLocalFile())
                 {
-                    emit insertFiles();
+                    Q_EMIT insertFiles();
                     return;
                 }
             }
@@ -402,7 +401,7 @@ namespace Ui
         const auto pos = textCursor().hasSelection() ? textCursor().selectionStart() : textCursor().position();
 
         if (!text.isEmpty())
-            Logic::Text4Edit(text, *this, Logic::Text2DocHtmlMode::Escape, false);
+            Logic::Text4Edit(text, *this, Logic::Text2DocHtmlMode::Escape, false, false, nullptr, Emoji::EmojiSizePx::Auto, QTextCharFormat::AlignBottom);
 
         auto nickPos = -1;
         auto nickRef = QStringRef(&text).trimmed();
@@ -410,7 +409,7 @@ namespace Ui
             nickPos = pos + nickRef.position();
 
         if (nickPos >= 0)
-            emit nickInserted(nickPos, nickRef.mid(1).toString(), QPrivateSignal());
+            Q_EMIT nickInserted(nickPos, nickRef.mid(1).toString(), QPrivateSignal());
     }
 
     void TextEditEx::insertPlainText_(const QString& _text)
@@ -421,14 +420,14 @@ namespace Ui
 
     void TextEditEx::focusInEvent(QFocusEvent* _event)
     {
-        emit focusIn();
+        Q_EMIT focusIn();
         QTextBrowser::focusInEvent(_event);
     }
 
     void TextEditEx::focusOutEvent(QFocusEvent* _event)
     {
         if (_event->reason() != Qt::ActiveWindowFocusReason)
-            emit focusOut();
+            Q_EMIT focusOut();
 
         QTextBrowser::focusOutEvent(_event);
     }
@@ -437,7 +436,7 @@ namespace Ui
     {
         if (_event->source() == Qt::MouseEventNotSynthesized)
         {
-            emit clicked();
+            Q_EMIT clicked();
             QTextBrowser::mousePressEvent(_event);
             if (!input_)
                 _event->ignore();
@@ -465,7 +464,7 @@ namespace Ui
 
     void TextEditEx::keyPressEvent(QKeyEvent* _event)
     {
-        emit keyPressed(_event->key());
+        Q_EMIT keyPressed(_event->key());
 
         if (_event->key() == Qt::Key_Backspace || _event->key() == Qt::Key_Delete)
         {
@@ -476,7 +475,7 @@ namespace Ui
 
             if (toPlainText().isEmpty())
             {
-                emit emptyTextBackspace();
+                Q_EMIT emptyTextBackspace();
             }
             else if (canDeleteMention)
             {
@@ -523,13 +522,13 @@ namespace Ui
         }
 
         if (_event->key() == Qt::Key_Escape)
-            emit escapePressed();
+            Q_EMIT escapePressed();
 
         if (_event->key() == Qt::Key_Up)
-            emit upArrow();
+            Q_EMIT upArrow();
 
         if (_event->key() == Qt::Key_Down)
-            emit downArrow();
+            Q_EMIT downArrow();
 
         if (_event->key() == Qt::Key_Return || _event->key() == Qt::Key_Enter)
         {
@@ -537,7 +536,7 @@ namespace Ui
 
             if (catchEnter(modifiers))
             {
-                emit enter();
+                Q_EMIT enter();
                 return;
             }
             else
@@ -599,8 +598,8 @@ namespace Ui
 
 #ifdef __APPLE__
         const auto& s = e->commitString();
-        int i = 0;
-        auto emoji = Emoji::getEmoji(QStringRef(&s), i);
+        qsizetype i = 0;
+        auto emoji = Emoji::getEmoji(s, i);
         if (!emoji.isNull())
             insertEmoji(emoji);
         else
@@ -644,7 +643,7 @@ namespace Ui
         }
 
         if (const auto newSize = document()->size(); newSize != prevSize)
-            emit document()->documentLayout()->documentSizeChanged(newSize);
+            Q_EMIT document()->documentLayout()->documentSizeChanged(newSize);
     }
 
     void TextEditEx::setMentions(Data::MentionMap _mentions)
@@ -670,9 +669,7 @@ namespace Ui
     void TextEditEx::insertMention(const QString& _aimId, const QString& _friendly)
     {
         mentions_.emplace(_aimId, _friendly);
-
-        const QString add = ql1s("@[") % _aimId % ql1s("] ");
-        Logic::Text4Edit(add, *this, Logic::Text2DocHtmlMode::Escape, false, Emoji::EmojiSizePx::Auto);
+        Logic::Text4Edit(u"@[" % _aimId % u"] ", *this, Logic::Text2DocHtmlMode::Escape, false, Emoji::EmojiSizePx::Auto);
     }
 
     void TextEditEx::insertEmoji(const Emoji::EmojiCode& _code)
@@ -897,12 +894,8 @@ namespace Ui
 
     void TextEditEx::setViewportMargins(int left, int top, int right, int bottom)
     {
-        QAbstractScrollArea::setViewportMargins(left, top, right, bottom);
-    }
-
-    QFont TextEditEx::getFont() const
-    {
-        return font_;
+        if (viewportMargins() != QMargins(left, top, right, bottom))
+            QAbstractScrollArea::setViewportMargins(left, top, right, bottom);
     }
 
     void TextEditEx::contextMenuEvent(QContextMenuEvent *e)

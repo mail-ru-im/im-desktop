@@ -37,15 +37,15 @@ namespace Ui
             panel = new InputPanelPttImpl(this, _contact, pttThread_, buttonSubmit_);
             QObject::connect(panel, &InputPanelPttImpl::pttReady, this, [this, _contact](const QString& _file, std::chrono::seconds _duration, const ptt::StatInfo& _statInfo)
             {
-                emit pttReady(_contact, _file, _duration, _statInfo, QPrivateSignal());
+                Q_EMIT pttReady(_contact, _file, _duration, _statInfo, QPrivateSignal());
             });
             QObject::connect(panel, &InputPanelPttImpl::stateChanged, this, [this, _contact](ptt::State2 _state)
             {
-                emit stateChanged(_contact, _state, QPrivateSignal());
+                Q_EMIT stateChanged(_contact, _state, QPrivateSignal());
             });
             QObject::connect(panel, &InputPanelPttImpl::pttRemoved, this, [this, _contact]()
             {
-                emit pttRemoved(_contact, QPrivateSignal());
+                Q_EMIT pttRemoved(_contact, QPrivateSignal());
             });
             addWidget(panel);
         }

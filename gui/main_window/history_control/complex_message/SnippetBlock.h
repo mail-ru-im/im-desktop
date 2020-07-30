@@ -38,7 +38,8 @@ public:
         Image,
         Video,
         GIF,
-        Article
+        Article,
+        Geo
     };
 
     SnippetBlock(ComplexMessageItem* _parent, const QString& _link, const bool _hasLinkInMessage, EstimatedType _estimatedType);
@@ -59,6 +60,7 @@ public:
     int getMaxWidth() const override;
 
     bool clicked(const QPoint& _p) override;
+    bool pressed(const QPoint& _p) override;
 
     bool isBubbleRequired() const override;
     bool isMarginRequired() const override;
@@ -103,7 +105,7 @@ protected:
 
     bool drag() override;
 
-    MenuFlags getMenuFlags() const override;
+    MenuFlags getMenuFlags(QPoint p) const override;
 
 private Q_SLOTS:
     void onLinkMetainfoMetaDownloaded(int64_t _seq, bool _success, Data::LinkMetadata _meta);
@@ -151,6 +153,7 @@ public:
     virtual void onBlockSizeChanged() {}
 
     virtual bool clicked() { return false; }
+    virtual bool pressed() { return false; }
 
     virtual bool isBubbleRequired() const { return false; }
     virtual bool isMarginRequired() const { return false; }
@@ -228,6 +231,7 @@ public:
     void onBlockSizeChanged() override;
 
     bool clicked() override;
+    bool pressed() override;
 
     bool isBubbleRequired() const override;
     bool isMarginRequired() const override;
@@ -280,6 +284,7 @@ public:
     void onBlockSizeChanged() override;
 
     bool clicked() override;
+    bool pressed() override;
 
     bool isBubbleRequired() const override;
     bool isMarginRequired() const override;
@@ -316,6 +321,7 @@ private Q_SLOTS:
     void onLoaded(const QString& _path);
     void onError();
     void onFilePath(int64_t _seq, const QString& _path);
+    void prepareBackground(const QPixmap& _result, qint64 _srcCacheKey);
 
 private:
     QSize calcContentSize(int _availableWidth) const;
@@ -342,6 +348,8 @@ private:
     QPainterPath clipPath_;
     bool fileLoaded_;
     int64_t seq_ = 0;
+    QPixmap background_;
+    int64_t backgroundSeq_ = 0;
 };
 
 //////////////////////////////////////////////////////////////////////////
@@ -359,6 +367,7 @@ public:
     void draw(QPainter& _p, const QRect& _rect) override;
 
     bool clicked() override;
+    bool pressed() override;
 
     bool isBubbleRequired() const override;
     bool isMarginRequired() const override;
@@ -381,6 +390,43 @@ private:
 };
 
 //////////////////////////////////////////////////////////////////////////
+// LocationContent
+//////////////////////////////////////////////////////////////////////////
+
+class LocationContent : public SnippetContent
+{
+    Q_OBJECT
+public:
+    LocationContent(SnippetBlock* _snippetBlock, const Data::LinkMetadata& _meta, const QString& _link);
+    ~LocationContent();
+
+    QSize setContentSize(const QSize& _available) override;
+    void draw(QPainter& _p, const QRect& _rect) override;
+
+    bool clicked() override;
+    bool pressed() override;
+
+    bool isBubbleRequired() const override;
+    bool isMarginRequired() const override;
+
+    MediaType mediaType() const override;
+
+    int desiredWidth(int _availableWidth) const override;
+
+    void updateStyle() override;
+
+private:
+    QSize calcPreviewSize(int _availableWidth) const;
+    QSize originSizeScaled() const;
+    bool isTimeInTitle() const;
+
+    void initTextUnits();
+
+    std::unique_ptr<TextRendering::TextUnit> titleUnit_;
+    QRect previewRect_;
+};
+
+//////////////////////////////////////////////////////////////////////////
 // ArticlePreloader
 //////////////////////////////////////////////////////////////////////////
 
@@ -395,6 +441,7 @@ public:
     void draw(QPainter& _p, const QRect& _rect) override;
 
     bool clicked() override;
+    bool pressed() override;
 
     bool isBubbleRequired() const override;
     bool isMarginRequired() const override;
@@ -430,6 +477,7 @@ public:
     void onBlockSizeChanged() override;
 
     bool clicked() override;
+    bool pressed() override;
 
     int desiredWidth(int _availableWidth) const override;
 

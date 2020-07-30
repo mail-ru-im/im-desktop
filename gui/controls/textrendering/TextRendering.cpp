@@ -5,6 +5,8 @@
 #include "TextWordRenderer.h"
 
 #include "utils/utils.h"
+#include "utils/features.h"
+#include "utils/UrlParser.h"
 #include "utils/InterConnector.h"
 
 namespace
@@ -22,33 +24,90 @@ namespace
         }
         _renderer.setPoint(p);
 
-        for (auto w = _line.begin(); w != _line.end(); ++w)
+        for (const auto& w : _line)
         {
-            const auto& subwords = w->getSubwords();
+            const auto& subwords = w.getSubwords();
             if (subwords.empty())
             {
-                _renderer.draw(*w);
+                _renderer.draw(w);
             }
             else
             {
-                for (auto s = subwords.begin(); s != subwords.end(); ++s)
-                {
-                    const auto sw = s + 1 == subwords.end() ? s : s + 1;
-                    const auto space = s + 1 == subwords.end();
-                    _renderer.draw(*s, space);
-                }
+                for (auto s = subwords.begin(), end = std::prev(subwords.end()); s != end; ++s)
+                    _renderer.draw(*s, false);
+
+                _renderer.draw(subwords.back(), true);
             }
         }
     }
 
-    const auto S_MARK = qsl("`");
-    const auto M_MARK = qsl("```");
+    constexpr int maxCommandSize() noexcept { return 32; }
 }
 
 namespace Ui
 {
 namespace TextRendering
 {
+    TextWord::TextWord(QString _text, Space _space, WordType _type, LinksVisible _showLinks, EmojiSizeType _emojiSizeType)
+        : code_(0)
+        , space_(_space)
+        , type_(_type)
+        , text_(std::move(_text))
+        , emojiSize_(defaultEmojiSize())
+        , cachedWidth_(0)
+        , selectedFrom_(-1)
+        , selectedTo_(-1)
+        , spaceWidth_(0)
+        , highlight_({ 0, 0 })
+        , isSpaceSelected_(false)
+        , isSpaceHighlighted_(false)
+        , isTruncated_(false)
+        , linkDisabled_(false)
+        , selectionFixed_(false)
+        , hasSpellError_(false)
+        , showLinks_(_showLinks)
+        , emojiSizeType_(_emojiSizeType)
+    {
+        trimmedText_ = text_;
+        trimmedText_.remove(QChar::Space);
+
+        if (type_ != WordType::LINK && _showLinks == LinksVisible::SHOW_LINKS)
+        {
+            Utils::UrlParser p;
+            p.process(trimmedText_);
+            if (p.hasUrl())
+            {
+                type_ = WordType::LINK;
+                originalUrl_ = QString::fromStdString(p.getUrl().original_);
+            }
+        }
+        assert(type_ != WordType::EMOJI);
+
+        checkSetClickable();
+    }
+
+    TextWord::TextWord(Emoji::EmojiCode _code, Space _space, EmojiSizeType _emojiSizeType)
+        : code_(std::move(_code))
+        , space_(_space)
+        , type_(WordType::EMOJI)
+        , emojiSize_(defaultEmojiSize())
+        , cachedWidth_(0)
+        , selectedFrom_(-1)
+        , selectedTo_(-1)
+        , spaceWidth_(0)
+        , highlight_({ 0, 0 })
+        , isSpaceSelected_(false)
+        , isSpaceHighlighted_(false)
+        , isTruncated_(false)
+        , linkDisabled_(false)
+        , selectionFixed_(false)
+        , hasSpellError_(false)
+        , showLinks_(LinksVisible::SHOW_LINKS)
+        , emojiSizeType_(_emojiSizeType)
+    {
+        assert(!code_.isNull());
+    }
+
     QString TextWord::getText(TextType _text_type) const
     {
         if (isEmoji())
@@ -57,25 +116,34 @@ namespace TextRendering
         if (_text_type == TextType::SOURCE && type_ == WordType::MENTION)
             return originalMention_;
 
-        if (!subwords_.empty())
-        {
-            QString result;
-            for (const auto& s : subwords_)
-            {
-                result += s.getText(_text_type);
-                if (s.isSpaceAfter())
-                    result += QChar::Space;
-            }
+        if (subwords_.empty())
+            return text_;
 
-            return result;
+        QString result;
+        for (const auto& s : subwords_)
+        {
+            result += s.getText(_text_type);
+            if (s.isSpaceAfter())
+                result += QChar::Space;
         }
 
-        return text_;
+        return result;
+    }
+
+    void TextWord::setText(QString _text)
+    {
+        text_ = std::move(_text);
+        subwords_ = {};
     }
 
     bool TextWord::equalTo(const QString& _sl) const
     {
         return text_ == _sl;
+    }
+
+    bool TextWord::equalTo(QChar _c) const
+    {
+        return text_.size() == 1 && text_.at(0) == _c;
     }
 
     QString TextWord::getLink() const
@@ -84,6 +152,8 @@ namespace TextRendering
             return originalMention_;
         else if (type_ == WordType::NICK)
             return text_;
+        else if (type_ == WordType::COMMAND)
+            return trimmedText_;
         else if (type_ != WordType::LINK)
             return QString();
 
@@ -98,12 +168,20 @@ namespace TextRendering
         if (!qFuzzyIsNull(cachedWidth_) && _emojiCount == 0)
             return cachedWidth_;
 
-        emojiSize_ = getEmojiSize(font_, isResizable() ? _emojiCount : 0);
-        if (isResizable() && _emojiCount == 0)
-            emojiSize_ += Utils::scale_value(1);
+        if (emojiSizeType_ == EmojiSizeType::SMARTREPLY)
+        {
+            emojiSize_ = getEmojiSizeSmartreply(font_, _emojiCount);
+        }
+        else
+        {
+            emojiSize_ = getEmojiSize(font_, isResizable() ? _emojiCount : 0);
+            if (isResizable() && _emojiCount == 0)
+                emojiSize_ += Utils::scale_value(1);
 
-        if (platform::is_apple() && isInTooltip())
-            emojiSize_ -= Utils::scale_value(1);
+            if constexpr (platform::is_apple())
+                if (isInTooltip())
+                    emojiSize_ -= Utils::scale_value(1);
+        }
 
         if (subwords_.empty())
         {
@@ -131,7 +209,7 @@ namespace TextRendering
         cachedWidth_ = isResizable() ? std::max(_width, static_cast<double>(emojiSize_)) : _width;
     }
 
-    int TextWord::getPosByX(int _x)
+    int TextWord::getPosByX(int _x) const
     {
         if (_x <= 0)
             return 0;
@@ -160,12 +238,12 @@ namespace TextRendering
     {
         if (selectionFixed_)
         {
-            isSpaceSelected_ = ((selectedTo_ == text_.length() || (isEmoji() && selectedTo_ == 1)) && _type == SelectionType::WITH_SPACE_AFTER && isSpaceAfter());
+            isSpaceSelected_ = ((selectedTo_ == text_.size() || (isEmoji() && selectedTo_ == 1)) && _type == SelectionType::WITH_SPACE_AFTER && isSpaceAfter());
             return;
         }
 
         if (type_ == WordType::MENTION  && (_from != 0 || _to != 0))
-            return selectAll((_type == SelectionType::WITH_SPACE_AFTER && isSpaceAfter() && _to == getText().length()) ? SelectionType::WITH_SPACE_AFTER : SelectionType::WITHOUT_SPACE_AFTER);
+            return selectAll((_type == SelectionType::WITH_SPACE_AFTER && isSpaceAfter() && _to == getText().size()) ? SelectionType::WITH_SPACE_AFTER : SelectionType::WITHOUT_SPACE_AFTER);
 
         if (_from == _to)
         {
@@ -177,7 +255,7 @@ namespace TextRendering
 
         selectedFrom_ = _from;
         selectedTo_ = isEmoji() ? 1 : _to;
-        isSpaceSelected_ = ((selectedTo_ == text_.length() || (isEmoji() && selectedTo_ == 1)) && _type == SelectionType::WITH_SPACE_AFTER && isSpaceAfter());
+        isSpaceSelected_ = ((selectedTo_ == text_.size() || (isEmoji() && selectedTo_ == 1)) && _type == SelectionType::WITH_SPACE_AFTER && isSpaceAfter());
     }
 
     void TextWord::selectAll(SelectionType _type)
@@ -225,27 +303,33 @@ namespace TextRendering
         }
         else if (type_ == WordType::NICK)
         {
-            emit Utils::InterConnector::instance().openDialogOrProfileById(trimmedText_);
+            Q_EMIT Utils::InterConnector::instance().openDialogOrProfileById(trimmedText_);
+        }
+        else if (type_ == WordType::COMMAND)
+        {
+            Q_EMIT Utils::InterConnector::instance().sendBotCommand(trimmedText_);
         }
         else if (type_ == WordType::LINK || !originalLink_.isEmpty())
         {
             if (Utils::isMentionLink(originalLink_))
-                return Utils::openUrl(originalLink_);
+            {
+                Utils::openUrl(originalLink_);
+                return;
+            }
 
             Utils::UrlParser parser;
             parser.process(originalLink_.isEmpty() ? trimmedText_ : originalLink_);
             if (parser.hasUrl())
             {
-                auto url = parser.getUrl();
-                if (url.is_email())
-                    return Utils::openUrl(ql1s("mailto:") % QString::fromStdString(url.url_));
-
-                Utils::openUrl(QString::fromStdString(url.url_));
+                if (const auto& url = parser.getUrl(); url.is_email())
+                    Utils::openUrl(u"mailto:" % QString::fromStdString(url.url_));
+                else
+                    Utils::openUrl(QString::fromStdString(url.url_));
             }
         }
     }
 
-    double TextWord::cachedWidth() const
+    double TextWord::cachedWidth() const noexcept
     {
         return cachedWidth_;
     }
@@ -269,8 +353,8 @@ namespace TextRendering
         {
             if (isEmoji())
             {
-                int pos = 0;
-                const auto code = Emoji::getEmoji(QStringRef(&hl), pos);
+                qsizetype pos = 0;
+                const auto code = Emoji::getEmoji(hl, pos);
                 if (code == getCode())
                 {
                     setHighlighted(true);
@@ -293,32 +377,31 @@ namespace TextRendering
         return ceilToInt(spaceWidth_);
     }
 
+    static bool isValidMention(const QStringRef& _text, const QString& _mention)
+    {
+        if (!Utils::isMentionLink(_text))
+            return false;
+
+        const auto mention = _text.mid(2, _text.size() - 3);
+        return mention == _mention;
+    }
+
     bool TextWord::applyMention(const std::pair<QString, QString>& _mention)
     {
-        if (!Utils::isMentionLink(text_))
+        if (!isValidMention(QStringRef(&text_), _mention.first))
             return false;
 
-        const auto mention = text_.midRef(2, text_.length() - 3);
-        if (mention != _mention.first)
-            return false;
-
-        originalMention_ = text_;
-        text_ = _mention.second;
+        originalMention_ = std::exchange(text_, _mention.second);
         type_ = WordType::MENTION;
         return true;
     }
 
     bool TextWord::applyMention(const QString& _mention, const std::vector<TextWord>& _mentionWords)
     {
-        if (!Utils::isMentionLink(text_))
+        if (!isValidMention(QStringRef(&text_), _mention))
             return false;
 
-        const auto mention = text_.midRef(2, text_.length() - 3);
-        if (mention != _mention)
-            return false;
-
-        originalMention_ = text_;
-        text_.clear();
+        originalMention_ = std::exchange(text_, {});
         setSubwords(_mentionWords);
         if (isSpaceAfter() && hasSubwords())
             subwords_.back().setSpace(Space::WITH_SPACE_AFTER);
@@ -340,11 +423,21 @@ namespace TextRendering
     void TextWord::disableLink()
     {
         linkDisabled_ = true;
-        if (type_ == WordType::LINK || type_ == WordType::NICK)
+        if (type_ == WordType::LINK || type_ == WordType::NICK || type_ == WordType::COMMAND)
         {
             type_ = WordType::TEXT;
             originalLink_.clear();
             showLinks_ = LinksVisible::DONT_SHOW_LINKS;
+        }
+    }
+
+    void TextWord::disableCommand()
+    {
+        if (type_ == WordType::COMMAND)
+        {
+            type_ = WordType::TEXT;
+            if (underline())
+                setUnderline(false);
         }
     }
 
@@ -362,6 +455,7 @@ namespace TextRendering
         setFont(_other.getFont());
         setColor(_other.getColor());
         setUnderline(_other.underline());
+        setSpellError(_other.hasSpellError());
     }
 
     std::vector<TextWord> TextWord::splitByWidth(int _width)
@@ -373,7 +467,7 @@ namespace TextRendering
         auto curwidth = 0;
         std::vector<TextWord> subwordsFirst;
 
-        auto finalize = [&result, &subwordsFirst, this](auto iter)
+        auto finalize = [&result, &subwordsFirst, this](auto iter) mutable
         {
             auto tw = *this;
             tw.setSubwords(subwordsFirst);
@@ -384,7 +478,7 @@ namespace TextRendering
             result.push_back(tw);
         };
 
-        for (std::vector<TextWord>::iterator iter = subwords_.begin(); iter != subwords_.end(); ++iter)
+        for (auto iter = subwords_.begin(); iter != subwords_.end(); ++iter)
         {
             auto wordWidth = iter->cachedWidth();
             if (curwidth + wordWidth <= _width)
@@ -427,32 +521,32 @@ namespace TextRendering
                 break;
             }
 
-            tw = TextWord(curWordText.mid(tmpWord.length()), getSpace(), getType(), linkDisabled_ ? LinksVisible::DONT_SHOW_LINKS : getShowLinks());
+            tw = TextWord(curWordText.mid(tmpWord.size()), getSpace(), getType(), linkDisabled_ ? LinksVisible::DONT_SHOW_LINKS : getShowLinks());
             tw.applyFontColor(*this);
             tw.width();
             if (tw.isLink())
                 tw.setOriginalLink(getText());
 
-            std::vector<TextWord> subwordsSecond = { tw };
+            std::vector<TextWord> subwordsSecond = { std::move(tw) };
             if (++iter != subwords_.end())
                 subwordsSecond.insert(subwordsSecond.end(), iter, subwords_.end());
 
             auto temp = *this;
-            temp.setSubwords(subwordsFirst);
+            temp.setSubwords(std::move(subwordsFirst));
             temp.width(WidthMode::FORCE);
             result.push_back(temp);
-            temp.setSubwords(subwordsSecond);
+            temp.setSubwords(std::move(subwordsSecond));
             temp.width(WidthMode::FORCE);
-            result.push_back(temp);
+            result.push_back(std::move(temp));
             break;
         }
 
         if (result.empty())
         {
             auto temp = *this;
-            temp.setSubwords(subwordsFirst);
+            temp.setSubwords(std::move(subwordsFirst));
             temp.width(WidthMode::FORCE);
-            result.push_back(temp);
+            result.push_back(std::move(temp));
         }
 
         return result;
@@ -470,21 +564,140 @@ namespace TextRendering
         return font_.underline();
     }
 
-    void TextWord::setEmojiSizeType(EmojiSizeType _emojiSizeType)
+    void TextWord::setEmojiSizeType(EmojiSizeType _emojiSizeType) noexcept
     {
         emojiSizeType_ = _emojiSizeType;
     }
 
-    void TextWord::checkSetNick()
+    void TextWord::checkSetClickable()
     {
-        if (showLinks_ == LinksVisible::SHOW_LINKS && type_ != WordType::EMOJI && trimmedText_.startsWith(ql1c('@')))
+        if (showLinks_ == LinksVisible::SHOW_LINKS && type_ != WordType::EMOJI && trimmedText_.size() > 1)
         {
-            if (Utils::isNick(&trimmedText_))
-                type_ = WordType::NICK;
+            if (trimmedText_.startsWith(u'@'))
+            {
+                if (Utils::isNick(&trimmedText_))
+                    type_ = WordType::NICK;
+            }
+            else if (trimmedText_.startsWith(u'/'))
+            {
+                if (const auto cmd = trimmedText_.midRef(1); cmd.size() <= maxCommandSize())
+                {
+                    static const auto isLetter = [](char c) { return c && ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')); };
+                    static const auto isDigit = [](char c) { return c && c >= '0' && c <= '9'; };
+                    static const auto check = [](QChar _c)
+                    {
+                        const auto sym = _c.toLatin1();
+                        return isLetter(sym) || isDigit(sym) || sym == '_';
+                    };
+
+                    if (isLetter(cmd.at(0).toLatin1()))
+                    {
+                        if (const auto posAfterCmd = std::find_if_not(std::next(cmd.begin()), cmd.end(), check); posAfterCmd == cmd.end())
+                        {
+                            type_ = WordType::COMMAND;
+                        }
+                        else
+                        {
+                            static const auto isAllowedPunct = [](QChar _c)
+                            {
+                                const auto sym = _c.toLatin1();
+                                return sym && std::ispunct(static_cast<unsigned char>(sym)) && sym != '_' && sym != '/';
+                            };
+                            if (std::all_of(posAfterCmd, cmd.end(), isAllowedPunct))
+                            {
+                                type_ = WordType::COMMAND;
+                                trimmedText_.chop(std::distance(posAfterCmd, cmd.end()));
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 
-    TextDrawingBlock::TextDrawingBlock(const QStringRef& _text, LinksVisible _showLinks, BlockType _blockType)
+    const std::vector<WordBoundary>& TextWord::getSyntaxWords() const
+    {
+        return const_cast<TextWord*>(this)->getSyntaxWords();
+    }
+
+    std::vector<WordBoundary>& TextWord::getSyntaxWords()
+    {
+        if (syntaxWords_.empty())
+        {
+            const auto text = getText();
+            syntaxWords_ = parseForSyntaxWords(QStringRef(&text));
+        }
+        return syntaxWords_;
+    }
+
+    bool TextWord::markAsSpellError(WordBoundary _w)
+    {
+        auto& words = getSyntaxWords();
+        const auto it = std::find_if(words.begin(), words.end(), [_w](auto x) { return _w.pos == x.pos && _w.size == x.size; });
+        if (it != words.end())
+        {
+            it->spellError = true;
+            return true;
+        }
+        return false;
+    }
+
+    std::optional<WordBoundary> TextWord::getSyntaxWordAt(int _x) const
+    {
+        const auto& words = getSyntaxWords();
+        if (words.empty())
+            return {};
+
+        const auto text = getText();
+        if (words.size() == 1 && words.front().pos == 0 && words.front().size == text.size())
+            return words.front();
+
+        const auto pos = getPosByX(_x);
+        for (auto w : words)
+            if (pos >= w.pos && pos < (w.pos + w.size))
+                return w;
+
+        return {};
+    }
+
+    std::vector<WordBoundary> TextWord::parseForSyntaxWords(const QStringRef& text)
+    {
+        const auto textSize = text.size();
+        auto finder = QTextBoundaryFinder(QTextBoundaryFinder::Word, text.data(), textSize);
+
+        auto atEnd = [&finder]
+        {
+            return finder.toNextBoundary() == -1;
+        };
+
+        std::vector<WordBoundary> res;
+
+        while (finder.position() < textSize)
+        {
+            if (!finder.boundaryReasons().testFlag(QTextBoundaryFinder::StartOfItem))
+            {
+                if (atEnd())
+                    break;
+                continue;
+            }
+
+            const auto start = finder.position();
+            const auto end = finder.toNextBoundary();
+            if (end == -1)
+                break;
+            const auto length = end - start;
+            if (length < 1)
+                continue;
+
+            res.push_back({ start, length, false });
+
+            if (atEnd())
+                break;
+        }
+        return res;
+    }
+
+    TextDrawingBlock::TextDrawingBlock(QStringView _text, LinksVisible _showLinks, BlockType _blockType)
         : BaseDrawingBlock(_blockType)
         , lineHeight_(0)
         , desiredWidth_(0)
@@ -515,8 +728,8 @@ namespace TextRendering
         , lastLineWidth_(-1)
         , needsEmojiMargin_(false)
     {
-        auto textBlock = dynamic_cast<TextDrawingBlock*>(_other);
-        if (textBlock)
+
+        if (auto textBlock = dynamic_cast<TextDrawingBlock*>(_other); textBlock)
         {
             type_ = textBlock->type_;
             linkColor_ = textBlock->linkColor_;
@@ -531,25 +744,24 @@ namespace TextRendering
 
     void TextDrawingBlock::init(const QFont& _font, const QColor& _color, const QColor& _linkColor, const QColor& _selectionColor, const QColor& _highlightColor, HorAligment _align, EmojiSizeType _emojiSizeType, const LinksStyle _linksStyle)
     {
-        for (auto& w : words_)
+        auto needUnderline = [_linksStyle](const auto& w)
         {
-            w.setFont(_font);
-            w.setColor(_color);
-            w.setEmojiSizeType(_emojiSizeType);
+            return w.getShowLinks() == LinksVisible::SHOW_LINKS && w.isLink() && _linksStyle == LinksStyle::UNDERLINED;
+        };
 
-            if (w.getShowLinks() == LinksVisible::SHOW_LINKS && w.isLink() && _linksStyle == LinksStyle::UNDERLINED)
-                w.setUnderline(true);
+        for (auto& words : { boost::make_iterator_range(words_), boost::make_iterator_range(originalWords_) })
+        {
+            for (auto& w : words)
+            {
+                w.setFont(_font);
+                w.setColor(_color);
+                w.setEmojiSizeType(_emojiSizeType);
+
+                if (needUnderline(w))
+                    w.setUnderline(true);
+            }
         }
 
-        for (auto& w : originalWords_)
-        {
-            w.setFont(_font);
-            w.setColor(_color);
-            w.setEmojiSizeType(_emojiSizeType);
-
-            if (w.getShowLinks() == LinksVisible::SHOW_LINKS && w.isLink() && _linksStyle == LinksStyle::UNDERLINED)
-                w.setUnderline(true);
-        }
 
         linkColor_ = _linkColor;
         selectionColor_ = _selectionColor;
@@ -604,7 +816,7 @@ namespace TextRendering
         else if (platform::is_apple() && !lines_.empty())
         {
             const auto& line = lines_.front();
-            if (std::any_of(line.begin(), line.end(), [](const auto &w) { return (w.isEmoji() && w.underline()); }))
+            if (std::any_of(line.begin(), line.end(), [](const auto &w) { return w.isEmoji() && w.underline(); }))
                 needsEmojiMargin_ = true;
         }
 
@@ -712,6 +924,7 @@ namespace TextRendering
                     }
 
                     auto tw = splitedWords.empty() ? TextWord(tmpWord, Space::WITHOUT_SPACE_AFTER, curWord.getType(), (curWord.isLinkDisabled() || curWord.getType() == WordType::TEXT) ? LinksVisible::DONT_SHOW_LINKS : curWord.getShowLinks()) : splitedWords[0];
+                    tw.setSpellError(w.hasSpellError());
                     if (splitedWords.empty())
                     {
                         tw.applyFontColor(w);
@@ -749,6 +962,7 @@ namespace TextRendering
                         return true;
 
                     curWord = splitedWords.size() <= 1 ? TextWord(curWordText.mid(tmpWord.size()), curWord.getSpace(), curWord.getType(), (curWord.isLinkDisabled() || curWord.getType() == WordType::TEXT) ? LinksVisible::DONT_SHOW_LINKS : curWord.getShowLinks()) : splitedWords[1];
+                    curWord.setSpellError(w.hasSpellError());
                     if (curWord.isLink())
                         curWord.setOriginalLink(w.getText());
 
@@ -769,12 +983,12 @@ namespace TextRendering
 
                 if (curWidth + wordWidth <= width)
                 {
-                    curLine.push_back(curWord);
                     if (curWord.isLink())
                     {
                         linkRects_.emplace_back(curWidth, lines_.size(), wordWidth, 0);
                         links_[linkRects_.size() - 1] = curWord.getLink();
                     }
+                    curLine.push_back(std::move(curWord));
                     curWidth += wordWidth;
                 }
                 else
@@ -786,13 +1000,14 @@ namespace TextRendering
                             return true;
                     }
 
-                    curLine.clear();
-                    curLine.push_back(curWord);
                     if (curWord.isLink())
                     {
                         linkRects_.emplace_back(0, lines_.size(), wordWidth, 0);
                         links_[linkRects_.size() - 1] = curWord.getLink();
                     }
+                    curLine.clear();
+                    curLine.push_back(std::move(curWord));
+
                     curWidth = wordWidth;
                 }
             }
@@ -825,8 +1040,11 @@ namespace TextRendering
         }
 
         auto cachedHeight = lineHeight_ * lines_.size() + margins_.top() + margins_.bottom();
-        if (lines_.size() == 1 && !_isMultiline && !linkRects_.empty())
-            cachedHeight += underlineOffset;
+        if (lines_.size() == 1 && !_isMultiline)
+        {
+            if (!linkRects_.empty() || Features::isSpellCheckEnabled())
+                cachedHeight += underlineOffset;
+        }
 
         cachedSize_ = QSize(width, cachedHeight);
         cachedMaxLineWidth_ = -1;
@@ -921,7 +1139,7 @@ namespace TextRendering
                     const auto selectSpace = bottomToTop || x2 > curWidth;
 
                     if (diff < x1 && curWidth > x1)
-                        w.select(w.getPosByX(x1 - diff), (x2 >= curWidth) ? w.getText().length() : w.getPosByX(x2 - diff), selectSpace ? SelectionType::WITH_SPACE_AFTER : SelectionType::WITHOUT_SPACE_AFTER);
+                        w.select(w.getPosByX(x1 - diff), (x2 >= curWidth) ? w.getText().size() : w.getPosByX(x2 - diff), selectSpace ? SelectionType::WITH_SPACE_AFTER : SelectionType::WITHOUT_SPACE_AFTER);
                     else if (diff < x1)
                         w.clearSelection();
                     else if (diff >= x1 && curWidth <= x2)
@@ -965,7 +1183,7 @@ namespace TextRendering
                     const auto selectSpace = (x2 > curWidth);
 
                     if (diff < x1 && curWidth > x1)
-                        w.select(w.getPosByX(x1 - diff), (x2 >= curWidth) ? w.getText().length() : w.getPosByX(x2 - diff), selectSpace ? SelectionType::WITH_SPACE_AFTER : SelectionType::WITHOUT_SPACE_AFTER);
+                        w.select(w.getPosByX(x1 - diff), (x2 >= curWidth) ? w.getText().size() : w.getPosByX(x2 - diff), selectSpace ? SelectionType::WITH_SPACE_AFTER : SelectionType::WITHOUT_SPACE_AFTER);
                     else if (diff < x1)
                         w.clearSelection();
                     else if (diff >= x1 && curWidth <= x2)
@@ -979,13 +1197,8 @@ namespace TextRendering
             else
             {
                 for (auto& w : l)
-                {
                     if (w.isSelected())
-                    {
                         w.clearSelection();
-                        continue;
-                    }
-                }
             }
             ++curLine;
         }
@@ -1071,6 +1284,25 @@ namespace TextRendering
         return result;
     }
 
+    QString TextDrawingBlock::textForInstantEdit() const
+    {
+        QString result;
+        for (const auto& l : lines_)
+        {
+            for (const auto& w : l)
+            {
+                result += w.getText(TextRendering::TextType::SOURCE);
+                if (w.isSpaceAfter())
+                    result += QChar::Space;
+            }
+        }
+
+        if (!result.isEmpty())
+            result += QChar::LineFeed;
+
+        return result;
+    }
+
     QString TextDrawingBlock::getText() const
     {
         QString result;
@@ -1105,52 +1337,8 @@ namespace TextRendering
 
     void TextDrawingBlock::clicked(const QPoint& _p) const
     {
-        if (_p.x() < 0)
-            return;
-
-        int i = 0;
-        for (auto& l : lines_)
-        {
-            ++i;
-            auto y1 = (i - 1) * lineHeight_;
-            auto y2 = i * lineHeight_;
-
-            if (_p.y() > y1 && _p.y() < y2)
-            {
-                int curWidth = 0;
-                auto x = _p.x();
-
-                if (align_ != Ui::TextRendering::HorAligment::LEFT)
-                {
-                    auto lineWidth = 0;
-                    for (const auto& w : l)
-                    {
-                        lineWidth += w.cachedWidth();
-                        if (w.isSpaceAfter())
-                            lineWidth += w.spaceWidth();
-                    }
-
-                    if (lineWidth < cachedSize_.width())
-                        x -= (align_ == Ui::TextRendering::HorAligment::CENTER) ? ((cachedSize_.width() - lineWidth) / 2) : (cachedSize_.width() - lineWidth);
-                }
-
-                if (x < 0)
-                    return;
-
-                for (auto& w : l)
-                {
-                    curWidth += w.cachedWidth();
-                    if (w.isSpaceAfter())
-                        curWidth += w.spaceWidth();
-
-                    if (curWidth > x)
-                    {
-                        w.clicked();
-                        return;
-                    }
-                }
-            }
-        }
+        if (const auto w = getWordAt(_p, WithBoundary::No); w)
+            w->word.clicked();
     }
 
     bool TextDrawingBlock::doubleClicked(const QPoint& _p, bool _fixSelection)
@@ -1311,7 +1499,7 @@ namespace TextRendering
 
         for (const auto& m : _mentions)
         {
-            const QString mention = ql1s("@[") % m.first % ql1c(']');
+            const QString mention = u"@[" % m.first % u']';
             auto iter = words_.begin();
             while (iter != words_.end())
             {
@@ -1327,7 +1515,7 @@ namespace TextRendering
                 auto type = iter->getType();
                 auto links = iter->getShowLinks();
 
-                auto func = [space, type, text, &iter, links, this](QString _left, QString _right)
+                auto func = [space, type, &iter, links, this](QString _left, QString _right)
                 {
                     auto w = TextWord(std::move(_left), Space::WITHOUT_SPACE_AFTER, type, links);
                     w.applyFontColor(*iter);
@@ -1357,7 +1545,7 @@ namespace TextRendering
                         iter = std::prev(words_.end());
                 };
 
-                const auto isLengthEqual = text.length() == mention.length();
+                const auto isLengthEqual = text.size() == mention.size();
                 if (isLengthEqual || !text.startsWith(mention))
                 {
                     if (isLengthEqual || !text.endsWith(mention))
@@ -1370,13 +1558,13 @@ namespace TextRendering
                     continue;
                 }
 
-                func(mention, text.mid(mention.length()));
+                func(mention, text.mid(mention.size()));
             }
         }
 
+        std::vector<TextWord> mentionWords;
         for (const auto& m : _mentions)
         {
-            std::vector<TextWord> mentionWords;
             QStringRef ref(&m.second);
             parseForWords(ref, LinksVisible::SHOW_LINKS, mentionWords, WordType::MENTION);
             if (mentionWords.size() == 1 && !mentionWords.front().isEmoji())
@@ -1389,6 +1577,7 @@ namespace TextRendering
                 for (auto& w : words_)
                     w.applyMention(m.first, mentionWords);
             }
+            mentionWords.clear();
         }
     }
 
@@ -1446,6 +1635,94 @@ namespace TextRendering
         getHeight(desiredWidth(), lineSpacing_, CallType::FORCE);
     }
 
+    void TextDrawingBlock::disableCommands()
+    {
+        for (auto& w : words_)
+            w.disableCommand();
+    }
+
+    std::optional<TextWordWithBoundary> TextDrawingBlock::getWordAt(QPoint _p, WithBoundary _mode) const
+    {
+        if (auto res = const_cast<TextDrawingBlock*>(this)->getWordAtImpl(_p, _mode); res)
+            return TextWordWithBoundary{ res->word.get(), res->syntaxWord };
+        return {};
+    }
+
+    bool TextDrawingBlock::replaceWordAt(const QString& _old, const QString& _new, QPoint _p)
+    {
+        if (auto word = getWordAtImpl(_p, WithBoundary::Yes))
+        {
+            auto text = word->word.get().getText();
+            QStringRef syntaxWord(&text);
+            if (word->syntaxWord)
+                syntaxWord = syntaxWord.mid(word->syntaxWord->pos, word->syntaxWord->size);
+
+            if (syntaxWord == _old)
+            {
+                if (syntaxWord.size() == text.size())
+                    word->word.get().setText(_new);
+                else
+                    word->word.get().setText(text.leftRef(word->syntaxWord->pos) % _new % text.midRef(word->syntaxWord->pos + word->syntaxWord->size));
+                return true;
+            }
+        }
+        return false;
+    }
+
+    std::optional<TextDrawingBlock::TextWordWithBoundaryInternal> TextDrawingBlock::getWordAtImpl(QPoint _p, WithBoundary _mode)
+    {
+        if (_p.x() < 0)
+            return {};
+
+        int i = 0;
+        for (auto& l : lines_)
+        {
+            ++i;
+            auto y1 = (i - 1) * lineHeight_;
+            auto y2 = i * lineHeight_;
+
+            if (_p.y() > y1 && _p.y() < y2)
+            {
+                int curWidth = 0;
+                auto x = _p.x();
+
+                if (align_ != Ui::TextRendering::HorAligment::LEFT)
+                {
+                    auto lineWidth = 0;
+                    for (const auto& w : l)
+                    {
+                        lineWidth += w.cachedWidth();
+                        if (w.isSpaceAfter())
+                            lineWidth += w.spaceWidth();
+                    }
+
+                    if (lineWidth < cachedSize_.width())
+                        x -= (align_ == Ui::TextRendering::HorAligment::CENTER) ? ((cachedSize_.width() - lineWidth) / 2) : (cachedSize_.width() - lineWidth);
+                }
+
+                if (x < 0)
+                    return {};
+
+                for (auto& w : l)
+                {
+                    curWidth += w.cachedWidth();
+                    if (w.isSpaceAfter())
+                        curWidth += w.spaceWidth();
+
+                    if (curWidth > x)
+                    {
+                        if (_mode == WithBoundary::No)
+                            return TextWordWithBoundaryInternal{ w };
+
+                        const auto diff = curWidth - w.cachedWidth();
+                        return TextWordWithBoundaryInternal{ w, w.getSyntaxWordAt(x - diff) };
+                    }
+                }
+            }
+        }
+        return {};
+    }
+
     void TextDrawingBlock::calcDesired()
     {
         desiredWidth_ = 0;
@@ -1463,26 +1740,32 @@ namespace TextRendering
         }
     }
 
-    void TextDrawingBlock::parseForWords(const QStringRef& _text, LinksVisible _showLinks, std::vector<TextWord>& _words, WordType _type)
+    void TextDrawingBlock::parseForWords(QStringView _text, LinksVisible _showLinks, std::vector<TextWord>& _words, WordType _type)
     {
         const auto textSize = _text.size();
 
         QString tmp;
-        for (int i = 0; i < textSize;)
+        const auto S_MARK = singleBackTick();
+        for (qsizetype i = 0; i < textSize;)
         {
             const auto isSpace = _text.at(i).isSpace();
-            if (!tmp.isEmpty() && (isSpace || (tmp.endsWith(S_MARK) && _text.at(i) != S_MARK)) || (!tmp.endsWith(S_MARK) && _text.at(i) == S_MARK))
+            if ((!tmp.isEmpty() && (isSpace || (tmp.endsWith(S_MARK) && _text.at(i) != S_MARK))) || (!tmp.endsWith(S_MARK) && _text.at(i) == S_MARK))
             {
                 while (tmp.startsWith(QChar::Space) && !tmp.isEmpty())
                 {
-                    _words.emplace_back(tmp.left(1), Space::WITHOUT_SPACE_AFTER, _type, _showLinks);
+                    _words.emplace_back(spaceAsString(), Space::WITHOUT_SPACE_AFTER, _type, _showLinks);
                     tmp.remove(0, 1);
                 }
                 if (!tmp.isEmpty())
                 {
-                    auto word = TextWord(tmp, isSpace ? Space::WITH_SPACE_AFTER : Space::WITHOUT_SPACE_AFTER, _type, _showLinks);
+                    auto word = TextWord(std::move(tmp), isSpace ? Space::WITH_SPACE_AFTER : Space::WITHOUT_SPACE_AFTER, _type, _showLinks);
                     if (!parseWordNick(word, _words) && (word.getType() != WordType::LINK || !parseWordLink(word, _words)))
-                        _words.emplace_back(std::move(word));
+                    {
+                        if (word.getType() != WordType::COMMAND)
+                            _words.emplace_back(std::move(word));
+                        else
+                            correctCommandWord(std::move(word), _words);
+                    }
                 }
                 else if (!_words.empty() && isSpace)
                 {
@@ -1506,7 +1789,7 @@ namespace TextRendering
                     const auto space = (i < textSize && _text.at(i) == QChar::Space) ? Space::WITH_SPACE_AFTER : Space::WITHOUT_SPACE_AFTER;
                     if (!tmp.isEmpty())
                     {
-                        _words.emplace_back(tmp, space, _type, _showLinks);
+                        _words.emplace_back(std::move(tmp), space, _type, _showLinks);
                         tmp.clear();
                     }
 
@@ -1531,14 +1814,19 @@ namespace TextRendering
         {
             while (tmp.startsWith(QChar::Space) && !tmp.isEmpty())
             {
-                _words.emplace_back(tmp.left(1), Space::WITHOUT_SPACE_AFTER, _type, _showLinks);
+                _words.emplace_back(spaceAsString(), Space::WITHOUT_SPACE_AFTER, _type, _showLinks);
                 tmp.remove(0, 1);
             }
             if (!tmp.isEmpty())
             {
-                auto word = TextWord(tmp, Space::WITHOUT_SPACE_AFTER, _type, _showLinks);
+                auto word = TextWord(std::move(tmp), Space::WITHOUT_SPACE_AFTER, _type, _showLinks);
                 if (!parseWordNick(word, _words) && (word.getType() != WordType::LINK || !parseWordLink(word, _words)))
-                    _words.emplace_back(std::move(word));
+                {
+                    if (word.getType() != WordType::COMMAND)
+                        _words.emplace_back(std::move(word));
+                    else
+                        correctCommandWord(std::move(word), _words);
+                }
             }
         }
     }
@@ -1573,7 +1861,7 @@ namespace TextRendering
         int index = 0;
         while (1)
         {
-            index = _text.indexOf(ql1c('@'), index);
+            index = _text.indexOf(u'@', index);
             if (index == -1 || index == 0)
                 return index;
             const auto prevChar = _text.at(index - 1);
@@ -1599,7 +1887,7 @@ namespace TextRendering
             if (!nick.isEmpty())
             {
                 const auto after = _text.mid(index + nick.size(), _text.size() - index - nick.size());
-                if (after.startsWith(ql1c('@')))
+                if (after.startsWith(u'@'))
                     return false;
 
                 if (!before.isEmpty())
@@ -1623,6 +1911,23 @@ namespace TextRendering
             return parseWordNickImpl(_word, _words, QStringRef(&wordText));
         }
         return parseWordNickImpl(_word, _words, _text);
+    }
+
+    void TextDrawingBlock::correctCommandWord(TextWord _word, std::vector<TextWord>& _words)
+    {
+        const auto fullText = _word.getText();
+        auto cmdText = _word.getLink();
+        if (fullText.size() == cmdText.size())
+        {
+            _words.emplace_back(std::move(_word));
+        }
+        else
+        {
+            assert(fullText.size() > cmdText.size());
+            auto tailText = fullText.right(fullText.size() - cmdText.size());
+            _words.emplace_back(std::move(cmdText), Space::WITHOUT_SPACE_AFTER, WordType::COMMAND, _word.getShowLinks());
+            _words.emplace_back(std::move(tailText), _word.getSpace(), WordType::TEXT, _word.getShowLinks());
+        }
     }
 
     std::vector<TextWord> TextDrawingBlock::elideWords(const std::vector<TextWord>& _original, int _width, int _desiredWidth, bool _forceElide, const ELideType& _type)
@@ -1666,6 +1971,7 @@ namespace TextRendering
             }
 
             auto tmp = w.getText();
+            const auto wordTextSize = tmp.size();
 
             if (_type == ELideType::ACCURATE)
             {
@@ -1674,7 +1980,7 @@ namespace TextRendering
             }
             else if (_type == ELideType::FAST)
             {
-                auto left = 0, right = tmp.length();
+                auto left = 0, right = tmp.size();
                 const auto chWidth = averageCharWidth(f);
                 while (left != right)
                 {
@@ -1682,14 +1988,14 @@ namespace TextRendering
                     if (mid == left || mid == right)
                         break;
 
-                    const auto t = tmp.left(mid);
+                    auto t = tmp.left(mid);
                     const auto width = textWidth(f, t);
                     const auto cmp = (_width - curWidth) - width;
                     const auto cmpCh = chWidth - abs(cmp);
 
                     if (cmpCh >= 0 && cmpCh <= chWidth)
                     {
-                        tmp = t;
+                        tmp = std::move(t);
                         break;
                     }
                     else if (width > (_width - curWidth))
@@ -1710,7 +2016,7 @@ namespace TextRendering
                 assert(!"Unexpected elide type");
             }
 
-            if (tmp.length() == w.getText().length())
+            if (tmp.size() == wordTextSize)
             {
                 result.push_back(w);
                 curWidth += wordWidth;
@@ -1793,8 +2099,8 @@ namespace TextRendering
                 auto found = false;
                 const auto text = w.getText();
                 QStringRef textRef(&text);
-                if (textRef.size() > 1 && (textRef.endsWith(ql1c(',')) || textRef.endsWith(ql1c('.'))))
-                    textRef.truncate(textRef.size() - 1);
+                if (textRef.size() > 1 && (textRef.endsWith(u',') || textRef.endsWith(u'.')))
+                    textRef.chop(1);
 
                 if ((link.isEmpty() && _key.startsWith(textRef)) || (!link.isEmpty() && _key.contains(textRef)))
                 {
@@ -1915,7 +2221,7 @@ namespace TextRendering
         if (desiredWidth_ == 0)
             desiredWidth_ = 1;
 
-        if (!words_.empty() && _words.size() == 1 && _words.front().getText() == qsl(" "))
+        if (!words_.empty() && _words.size() == 1 && _words.front().getText() == spaceAsString())
         {
             words_.back().setSpace(Space::WITH_SPACE_AFTER);
 
@@ -1926,9 +2232,7 @@ namespace TextRendering
             if (!words_.empty() && words_.back().isRightHighlighted() && !_words.empty() && _words.front().isLeftHighlighted())
                 words_.back().setSpaceHighlighted(true);
 
-            auto it = words_.insert(words_.end(), _words.begin(), _words.end());
-
-            for (; it != words_.end(); it++)
+            for (auto it = words_.insert(words_.end(), _words.begin(), _words.end()); it != words_.end(); ++it)
             {
                 desiredWidth_ += it->width();
                 if (it->isSpaceAfter())
@@ -1942,6 +2246,7 @@ namespace TextRendering
         std::vector<int> indexes;
         auto iter = words_.begin(), first = words_.end();
         auto found = false;
+        const auto S_MARK = singleBackTick();
         while (iter != words_.end())
         {
             if (iter->getFont() == _font)//already markdowned
@@ -2007,6 +2312,7 @@ namespace TextRendering
     bool TextDrawingBlock::markdownMulti(const QFont& _font, const QColor& _color, bool _split, std::pair<std::vector<TextWord>, std::vector<TextWord>>& _splitted)
     {
         auto begin = -1, end = -1, i = 0;
+        const auto M_MARK = tripleBackTick();
         for (const auto& w : words_)
         {
             if (w.equalTo(M_MARK))
@@ -2086,6 +2392,7 @@ namespace TextRendering
     int TextDrawingBlock::findForMarkdownMulti() const
     {
         auto result = 0;
+        const auto M_MARK = tripleBackTick();
         for (const auto& w : words_)
         {
             if (w.equalTo(M_MARK))
@@ -2098,6 +2405,7 @@ namespace TextRendering
     std::vector<TextWord> TextDrawingBlock::markdown(MarkdownType _type, const QFont& _font, const QColor& _color, bool _split)
     {
         std::vector<TextWord> splitted;
+        const auto M_MARK = tripleBackTick();
         switch (_type)
         {
         case Ui::TextRendering::MarkdownType::ALL:
@@ -2260,7 +2568,7 @@ namespace TextRendering
     double TextDrawingBlock::getLastLineWidth() const
     {
         if (lines_.empty())
-            return 0;
+            return 0.0;
 
         return getLineWidth(lines_.back());
     }
@@ -2282,29 +2590,6 @@ namespace TextRendering
         cachedMaxLineWidth_ = *std::max_element(lineSizes.begin(), lineSizes.end());
 
         return cachedMaxLineWidth_;
-    }
-
-    DebugInfoTextDrawingBlock::DebugInfoTextDrawingBlock(qint64 _id, Subtype _subtype, LinksVisible _showLinks)
-        : TextDrawingBlock(QString::number(_id).midRef(0), _showLinks, BlockType::TYPE_DEBUG_TEXT),
-          subtype_(_subtype),
-          messageId_(_id)
-    {
-
-    }
-
-    DebugInfoTextDrawingBlock::Subtype DebugInfoTextDrawingBlock::getSubtype() const
-    {
-        return subtype_;
-    }
-
-    qint64 DebugInfoTextDrawingBlock::getMessageId() const
-    {
-        return messageId_;
-    }
-
-    void DebugInfoTextDrawingBlock::setMessageId(qint64 _id)
-    {
-        messageId_ = _id;
     }
 
 
@@ -2396,6 +2681,11 @@ namespace TextRendering
         return getText();
     }
 
+    QString NewLineBlock::textForInstantEdit() const
+    {
+        return getText();
+    }
+
     void NewLineBlock::clicked(const QPoint&) const
     {
 
@@ -2431,9 +2721,27 @@ namespace TextRendering
 
     }
 
+    const std::vector<TextWord>& NewLineBlock::getWords() const
+    {
+        return const_cast<NewLineBlock*>(this)->getWords();
+    }
+
+    std::vector<TextWord>& NewLineBlock::getWords()
+    {
+        static auto empty = std::vector<TextWord>{};
+        return empty;
+    }
+
+    QString tripleBackTick()
+    {
+        return qsl("```");
+    }
+
     std::vector<BaseDrawingBlockPtr> parseForBlocks(const QString& _text, const Data::MentionMap& _mentions, LinksVisible _showLinks, ProcessLineFeeds _processLineFeeds)
     {
         std::vector<BaseDrawingBlockPtr> blocks;
+        if (_text.isEmpty())
+            return blocks;
         QString text;
         QStringRef textRef(&_text);
         if (_processLineFeeds == ProcessLineFeeds::REMOVE_LINE_FEEDS)
@@ -2454,7 +2762,7 @@ namespace TextRendering
             if (!skipNewLine)
                 blocks.push_back(std::make_unique<NewLineBlock>());
 
-            textRef = textRef.mid(i + 1, textRef.length() - i - 1);
+            textRef = textRef.mid(i + 1, textRef.size() - i - 1);
             i = textRef.indexOf(QChar::LineFeed);
             skipNewLine = (i != 0);
         }
@@ -2477,7 +2785,7 @@ namespace TextRendering
             return 0;
 
         int h = 0;
-        bool isMultiline = (_blocks.size() > 1);
+        const bool isMultiline = _blocks.size() > 1;
         for (auto& b : _blocks)
             h += b->getHeight(width, lineSpacing, _calltype, isMultiline);
 
@@ -2605,26 +2913,50 @@ namespace TextRendering
         return QString();
     }
 
+    std::optional<TextWordWithBoundary> getWord(const std::vector<BaseDrawingBlockPtr>& _blocks, QPoint _p)
+    {
+        for (auto& b : _blocks)
+        {
+            if (auto e = b->getWordAt(_p, WithBoundary::Yes); e)
+                return e;
+
+            _p.ry() -= b->getCachedHeight();
+        }
+        return {};
+    }
+
+    bool replaceWord(const std::vector<BaseDrawingBlockPtr>& _blocks, const QString& _old, const QString& _new, QPoint _p)
+    {
+        for (auto& b : _blocks)
+        {
+            if( b->replaceWordAt(_old, _new, _p))
+                return true;
+
+            _p.ry() -= b->getCachedHeight();
+        }
+        return false;
+    }
+
     static void trimLineFeeds(QString& str)
     {
         if (str.isEmpty())
             return;
 
-        QStringRef strRef(&str);
+        QStringView strView(str);
         int atStart = 0;
         int atEnd = 0;
-        while (strRef.startsWith(QChar::LineFeed))
+        while (strView.startsWith(QChar::LineFeed))
         {
-            strRef = strRef.mid(1, str.size() - 1);
+            strView = strView.mid(1);
             ++atStart;
         }
-        while (strRef.endsWith(QChar::LineFeed))
+        while (strView.endsWith(QChar::LineFeed))
         {
-            strRef.truncate(strRef.size() - 1);
+            strView.chop(1);
             ++atEnd;
         }
 
-        if (strRef.isEmpty())
+        if (strView.isEmpty())
         {
             str.clear();
         }
@@ -2642,6 +2974,21 @@ namespace TextRendering
         QString result;
         for (auto& b : _blocks)
             result += b->selectedText(_type);
+
+        trimLineFeeds(result);
+
+        return result;
+    }
+
+    QString getBlocksTextForInstantEdit(const std::vector<BaseDrawingBlockPtr>& _blocks)
+    {
+        QString result;
+        for (auto& b : _blocks)
+        {
+            if (b->getType() == BlockType::TYPE_DEBUG_TEXT)
+                continue;
+            result += b->textForInstantEdit();
+        }
 
         trimLineFeeds(result);
 
@@ -2666,7 +3013,6 @@ namespace TextRendering
         {
             if (b->getType() == BlockType::TYPE_DEBUG_TEXT)
                 continue;
-
             result += b->getSourceText();
         }
 
@@ -2768,11 +3114,9 @@ namespace TextRendering
             return;
 
         if (_to.empty())
-        {
-            return appendWholeBlocks(_to, _from);
-        }
-
-        (*_to.rbegin())->appendWords((*_from.begin())->getWords());
+            appendWholeBlocks(_to, _from);
+        else
+            _to.back()->appendWords(_from.front()->getWords());
     }
 
     void appendWholeBlocks(std::vector<BaseDrawingBlockPtr>& _to, std::vector<BaseDrawingBlockPtr>& _from)
@@ -2917,6 +3261,22 @@ namespace TextRendering
     {
         for (auto& b : _blocks)
             b->setHighlightedTextColor(_color);
+    }
+
+    void disableCommandsInBlocks(const std::vector<BaseDrawingBlockPtr>& _blocks)
+    {
+        for (auto& b : _blocks)
+            b->disableCommands();
+    }
+
+    std::optional<TextWordWithBoundary> BaseDrawingBlock::getWordAt(QPoint, WithBoundary) const
+    {
+        return {};
+    }
+
+    bool BaseDrawingBlock::replaceWordAt(const QString&, const QString&, QPoint)
+    {
+        return false;
     }
 }
 }

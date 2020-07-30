@@ -127,6 +127,17 @@ Bạn có thể để lại phản hồi hoặc báo cáo lỗi tại đây:</tr
     </message>
 </context>
 <context>
+    <name>active_call_plate</name>
+    <message>
+        <source>Join</source>
+        <translation>Đi vào</translation>
+    </message>
+    <message>
+        <source>Active call</source>
+        <translation>Cuộc gọi hoạt động</translation>
+    </message>
+</context>
+<context>
     <name>add_new_contact_dialogs</name>
     <message>
         <source>New contact</source>
@@ -251,8 +262,36 @@ Bạn có thể để lại phản hồi hoặc báo cáo lỗi tại đây:</tr
         <translation>Cam</translation>
     </message>
     <message>
-        <source>Dark blue</source>
+        <source>Default</source>
+        <translation>Theo mặc định</translation>
+    </message>
+    <message>
+        <source>Dark Turquoise</source>
+        <translation>Màu ngọc lam tối</translation>
+    </message>
+    <message>
+        <source>Dark Violet</source>
+        <translation>Màu hoa cà</translation>
+    </message>
+    <message>
+        <source>Dark Orange</source>
+        <translation>Màu cam đậm</translation>
+    </message>
+    <message>
+        <source>Pink</source>
+        <translation>Hồng</translation>
+    </message>
+    <message>
+        <source>Dark Pink</source>
+        <translation>Hồng đậm</translation>
+    </message>
+    <message>
+        <source>Dark Blue</source>
         <translation>Xanh đậm</translation>
+    </message>
+    <message>
+        <source>Turquoise</source>
+        <translation>Ngọc lam</translation>
     </message>
 </context>
 <context>
@@ -315,10 +354,6 @@ Bạn có thể để lại phản hồi hoặc báo cáo lỗi tại đây:</tr
         <translation>Xóa tin nhắn</translation>
     </message>
     <message>
-        <source>Block and delete?</source>
-        <translation>Chặn và xóa?</translation>
-    </message>
-    <message>
         <source>Cancel</source>
         <translation>Hủy bỏ</translation>
     </message>
@@ -334,23 +369,86 @@ Bạn có thể để lại phản hồi hoặc báo cáo lỗi tại đây:</tr
         <source>This member won&apos;t be able to join the group again. You could also delete his messages</source>
         <translation>Thành viên sẽ không thể trở lại nhóm. Bạn cũng có thể xóa tin nhắn của anh ấy</translation>
     </message>
+    <message>
+        <source>Delete?</source>
+        <translation>Xóa?</translation>
+    </message>
+</context>
+<context>
+    <name>bots</name>
+    <message>
+        <source>Cancel</source>
+        <translation>Hủy bỏ</translation>
+    </message>
+    <message>
+        <source>Ok</source>
+        <translation>Được rồi</translation>
+    </message>
+    <message>
+        <source>Open link</source>
+        <translation>Mở liên kết</translation>
+    </message>
+    <message>
+        <source>You are not a member of this chat or you was banned to write</source>
+        <translation>Bạn không phải là thành viên trò chuyện hoặc bạn không được phép viết</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to open an external link %1?</source>
+        <translation>Bạn có chắc chắn muốn mở liên kết ngoài %1 không?</translation>
+    </message>
+</context>
+<context>
+    <name>call_link</name>
+    <message>
+        <source>Link on call</source>
+        <translation>Liên kết cuộc gọi</translation>
+    </message>
+    <message>
+        <source>Link on webinar</source>
+        <translation>Liên kết đến hội thảo trên web</translation>
+    </message>
+    <message>
+        <source>Send the link to people you want to add to the call</source>
+        <translation>Gửi liên kết tới những người bạn muốn thêm vào cuộc gọi</translation>
+    </message>
+    <message>
+        <source>Send the link to people you want to invite to the webinar</source>
+        <translation>Gửi liên kết tới những người bạn muốn mời tham gia hội thảo trên web</translation>
+    </message>
+    <message>
+        <source>call</source>
+        <translation>chuông</translation>
+    </message>
+    <message>
+        <source>webinar</source>
+        <translation>hội thảo trên web</translation>
+    </message>
+    <message>
+        <source>Send the %1 link to current chat or copy it</source>
+        <translation>Gửi liên kết đến %1 trong trò chuyện trực tiếp hoặc sao chép nó</translation>
+    </message>
+    <message>
+        <source>Send the call link %1 to current chat or copy it</source>
+        <translation>Gửi liên kết để gọi %1 hoặc sao chép nó</translation>
+    </message>
+</context>
+<context>
+    <name>calls</name>
+    <message>
+        <source>Group call</source>
+        <translation>Bắt đầu cuộc gọi nhóm</translation>
+    </message>
+    <message>
+        <source>Create webinar</source>
+        <translation>Tạo một hội thảo trên web</translation>
+    </message>
+    <message>
+        <source>Create call link</source>
+        <translation>Tạo một liên kết cuộc gọi</translation>
+    </message>
 </context>
 <context>
     <name>chat_event</name>
-    <message>
-        <source> and </source>
-        <translation> và </translation>
-    </message>
-    <message>
-        <source>You</source>
-        <comment>active_voice</comment>
-        <translation>Bạn đã</translation>
-    </message>
-    <message>
-        <source>you</source>
-        <comment>passive_voice</comment>
-        <translation>bạn</translation>
-    </message>
     <message>
         <source>Missed call</source>
         <translation>Cuộc gọi nhỡ</translation>
@@ -364,20 +462,8 @@ Bạn có thể để lại phản hồi hoặc báo cáo lỗi tại đây:</tr
         <translation>Cuộc gọi đến</translation>
     </message>
     <message>
-        <source>You changed picture of group</source>
-        <translation>Bạn đã thay đổi ảnh của nhóm</translation>
-    </message>
-    <message>
         <source> has birthday!</source>
         <translation> có sinh nhật!</translation>
-    </message>
-    <message>
-        <source>You have joined group</source>
-        <translation>Bạn đã tham gia nhóm</translation>
-    </message>
-    <message>
-        <source>You deleted chat description</source>
-        <translation>Bạn đã xóa mô tả trò chuyện</translation>
     </message>
     <message>
         <source>Message was deleted</source>
@@ -390,58 +476,6 @@ Bạn có thể để lại phản hồi hoặc báo cáo lỗi tại đây:</tr
     <message>
         <source>%1 added you to contacts</source>
         <translation>%1 đã được thêm vào liên hệ</translation>
-    </message>
-    <message>
-        <source>%1 changed picture of group</source>
-        <translation>%1 đã thay đổi ảnh của nhóm</translation>
-    </message>
-    <message>
-        <source>You changed theme to &quot;%1&quot;</source>
-        <translation>Bạn đã thay đổi chủ đề thành %1</translation>
-    </message>
-    <message>
-        <source>%1 changed theme to &quot;%2&quot;</source>
-        <translation>%1 đã thay đổi chủ đề thành %2</translation>
-    </message>
-    <message>
-        <source>You added %1</source>
-        <translation>Bạn đã thêm %1</translation>
-    </message>
-    <message>
-        <source>%1 has joined group</source>
-        <translation>%1 đã tham gia nhóm</translation>
-    </message>
-    <message>
-        <source>%1 added %2</source>
-        <translation>%1 đã thêm %2</translation>
-    </message>
-    <message>
-        <source>%1 deleted chat description</source>
-        <translation>%1 đã xóa mô tả trò chuyện</translation>
-    </message>
-    <message>
-        <source>You changed description to &quot;%1&quot;</source>
-        <translation>Bạn đã thay đổi mô tả thành &quot;%1&quot;</translation>
-    </message>
-    <message>
-        <source>%1 changed description to &quot;%2&quot;</source>
-        <translation>%1 đã thay đổi mô tả thành &quot;%2&quot;</translation>
-    </message>
-    <message>
-        <source>You changed chat rules to &quot;%1&quot;</source>
-        <translation>Bạn đã thay đổi quy tắc trò chuyện thành &quot;%1&quot;</translation>
-    </message>
-    <message>
-        <source>You removed %1</source>
-        <translation>Bạn đã xóa bỏ %1</translation>
-    </message>
-    <message>
-        <source>%1 removed %2</source>
-        <translation>%1 đã xóa bỏ %2</translation>
-    </message>
-    <message>
-        <source>%1 changed chat rules to &quot;%2&quot;</source>
-        <translation>%1 đã thay đổi quy tắc trò chuyện thành &quot;%2&quot;</translation>
     </message>
     <message>
         <source>Your call was missed</source>
@@ -488,40 +522,12 @@ Bạn có thể để lại phản hồi hoặc báo cáo lỗi tại đây:</tr
         <translation>Bạn đã không trả lời cuộc gọi từ %1</translation>
     </message>
     <message>
-        <source>Theme was changed to &quot;%1&quot;</source>
-        <translation>Chủ đề đã thay đổi thành %1</translation>
-    </message>
-    <message>
-        <source>%1 was added</source>
-        <translation>%1 đã được thêm</translation>
-    </message>
-    <message>
-        <source>%1 were added</source>
-        <translation>%1 đã được thêm vào</translation>
-    </message>
-    <message>
-        <source>Chat description was deleted</source>
-        <translation>Mô tả trò chuyện đã xóa</translation>
-    </message>
-    <message>
         <source>%1 was removed</source>
         <translation>%1 đã bị xóa</translation>
     </message>
     <message>
         <source>%1 were removed</source>
         <translation>%1 đã bị xóa</translation>
-    </message>
-    <message>
-        <source>Channel avatar was changed</source>
-        <translation>Hình đại diện kênh đã được thay đổi</translation>
-    </message>
-    <message>
-        <source>Description was changed to &quot;%1&quot;</source>
-        <translation>Mô tả đã thay đổi thành %1</translation>
-    </message>
-    <message>
-        <source>Channel rules were changed to &quot;%1&quot;</source>
-        <translation>Quy tắc kênh đã thay đổi thành %1</translation>
     </message>
     <message>
         <source>You have recently added %1 to your phone contacts. Write a new message or make a call %2</source>
@@ -532,24 +538,418 @@ Bạn có thể để lại phản hồi hoặc báo cáo lỗi tại đây:</tr
         <translation>Vì vậy, %1 ở đây ngay bây giờ! Viết, gọi %2</translation>
     </message>
     <message>
-        <source>You changed chat link to %1</source>
-        <translation>Bạn đã thay đổi liên kết thành %1</translation>
-    </message>
-    <message>
-        <source>Channel link was changed to %1</source>
-        <translation>Liên kết đã thay đổi thành %1</translation>
-    </message>
-    <message>
-        <source>%1 changed chat link to %2</source>
-        <translation>%1 đã thay đổi liên kết thành %2</translation>
-    </message>
-    <message>
         <source>Add avatar</source>
         <translation>Thêm hình đại diện</translation>
     </message>
     <message>
         <source>Add description</source>
         <translation>Thêm mô tả</translation>
+    </message>
+    <message>
+        <source>You specified a new channel name - &quot;%1&quot;</source>
+        <translation>Bạn đã nhập tên kênh mới - &quot;%1&quot;</translation>
+    </message>
+    <message>
+        <source>%1 specified a new channel name - &quot;%2&quot;</source>
+        <translation>%1 chỉ ra tên kênh mới - &quot;%2&quot;</translation>
+    </message>
+    <message>
+        <source>You specified a new group name - &quot;%1&quot;</source>
+        <translation>Bạn đã nhập tên nhóm mới - &quot;%1&quot;</translation>
+    </message>
+    <message>
+        <source>%1 specified a new group name - &quot;%2&quot;</source>
+        <translation>%1 chỉ ra tên nhóm mới - &quot;%2&quot;</translation>
+    </message>
+    <message>
+        <source>%1 You have joined channel</source>
+        <translation>%1 Bạn đã tham gia kênh</translation>
+    </message>
+    <message>
+        <source>%1 %2 has joined channel</source>
+        <translation>%1 %2 đã tham gia kênh</translation>
+    </message>
+    <message>
+        <source>%1 You have joined group</source>
+        <translation>%1 Bạn đã tham gia nhóm</translation>
+    </message>
+    <message>
+        <source>%1 %2 has joined group</source>
+        <translation>%1 %2 tham gia nhóm</translation>
+    </message>
+    <message>
+        <source>%1 You added %2 to the channel</source>
+        <translation>%1 Bạn đã thêm %2 vào kênh</translation>
+    </message>
+    <message>
+        <source>%1 %2 added %3 to the channel</source>
+        <translation>%1 %2 đã thêm %3 vào kênh</translation>
+    </message>
+    <message>
+        <source>%1 You added %2 to the group</source>
+        <translation>%1 Bạn đã thêm %2 vào nhóm</translation>
+    </message>
+    <message>
+        <source>%1 %2 added %3 to the group</source>
+        <translation>%1 %2 đã thêm %3 vào nhóm</translation>
+    </message>
+    <message>
+        <source>You enabled join with approval</source>
+        <translation>Bạn đã bật kiểm duyệt tham gia</translation>
+    </message>
+    <message>
+        <source>You disabled join with approval</source>
+        <translation>Bạn đã tắt thành viên nhóm theo yêu cầu</translation>
+    </message>
+    <message>
+        <source>%1 enabled join with approval</source>
+        <translation>%1 đã bật kiểm duyệt tham gia</translation>
+    </message>
+    <message>
+        <source>%1 disabled join with approval</source>
+        <translation>%1 đã tắt kiểm duyệt tham gia</translation>
+    </message>
+    <message>
+        <source>You made the group public, now it is possible to find it through a search</source>
+        <translation>Bạn đã công khai nhóm, họ có thể tìm thấy nó thông qua tìm kiếm</translation>
+    </message>
+    <message>
+        <source>You made the group private, now it is impossible to find it through a search</source>
+        <translation>Bạn đã đặt nhóm ở chế độ riêng tư, họ không còn có thể tìm thấy thông qua tìm kiếm</translation>
+    </message>
+    <message>
+        <source>%1 made the group public, now it is possible to find it through a search</source>
+        <translation>%1 công khai nhóm, nó có thể được tìm thấy thông qua tìm kiếm</translation>
+    </message>
+    <message>
+        <source>%1 made the group private, now it is impossible to find it through a search</source>
+        <translation>%1 làm cho nhóm riêng tư, họ không còn có thể được tìm thấy thông qua tìm kiếm</translation>
+    </message>
+    <message>
+        <source>%1 You removed %2</source>
+        <translation>%1 Bạn đã xóa %2</translation>
+    </message>
+    <message>
+        <source>%1 %2 removed %3</source>
+        <translation>%1 %2 đã xóa %3</translation>
+    </message>
+    <message>
+        <source>You are no more an administrator of this group</source>
+        <translation>Bạn không còn là quản trị viên của nhóm này</translation>
+    </message>
+    <message>
+        <source>You removed administrator role from %1</source>
+        <translation>Bạn đã xóa quyền quản trị viên từ %1</translation>
+    </message>
+    <message>
+        <source>%1 removed administrator role from %2</source>
+        <translation>%1 đã rút quyền quản trị với %2</translation>
+    </message>
+    <message>
+        <source>%1 Wait for join request approval</source>
+        <translation>%1 Chờ xác nhận yêu cầu nhập cảnh</translation>
+    </message>
+    <message>
+        <source>%1 You asked to add %2 to the channel</source>
+        <translation>%1 Bạn đã yêu cầu thêm %2 vào kênh</translation>
+    </message>
+    <message>
+        <source>%1 You asked to add %2 to the group</source>
+        <translation>%1 Bạn đã yêu cầu thêm %2 vào nhóm</translation>
+    </message>
+    <message>
+        <source>%1 %2 asked to add %3 to the group</source>
+        <translation>%1 %2 yêu cầu thêm %3 vào nhóm</translation>
+    </message>
+    <message>
+        <source>%1 %2 is waiting for group join request approval</source>
+        <translation>%1 %2 đang chờ xác nhận tham gia nhóm</translation>
+    </message>
+    <message>
+        <source>%1 Your join request was approved</source>
+        <translation>%1 Yêu cầu thành viên của bạn được xác nhận</translation>
+    </message>
+    <message>
+        <source>%1 Request from %2 to add you to the channel was approved</source>
+        <translation>%1 Yêu cầu từ %2 để thêm bạn vào kênh được xác nhận</translation>
+    </message>
+    <message>
+        <source>%1 Request from %2 to add you to the group was approved</source>
+        <translation>%1 Yêu cầu từ %2 để thêm bạn vào nhóm được xác nhận</translation>
+    </message>
+    <message>
+        <source>%1 You approved join request from %2</source>
+        <translation>%1 Bạn đã xác nhận yêu cầu tham gia của mình từ %2</translation>
+    </message>
+    <message>
+        <source>%1 You approved join request from %2 to add %3 to the channel</source>
+        <translation>%1 Bạn đã xác nhận yêu cầu từ %2 để thêm %3 vào kênh</translation>
+    </message>
+    <message>
+        <source>%1 You approved join request from %2 to add %3 to the group</source>
+        <translation>%1 Bạn đã xác nhận yêu cầu từ %2 để thêm %3 vào nhóm</translation>
+    </message>
+    <message>
+        <source>%1 %2 approved join request from %3</source>
+        <translation>%1 %2 xác nhận yêu cầu tham gia từ %3</translation>
+    </message>
+    <message>
+        <source>%1 Your join request was rejected</source>
+        <translation>%1 Yêu cầu thành viên của bạn bị từ chối</translation>
+    </message>
+    <message>
+        <source>%1 Request from %2 to add you to the channel was rejected</source>
+        <translation>%1 Yêu cầu từ %2 để thêm bạn vào kênh bị từ chối</translation>
+    </message>
+    <message>
+        <source>%1 Request from %2 to add you to the group was rejected</source>
+        <translation>%1 Yêu cầu từ %2 để thêm bạn vào nhóm bị từ chối</translation>
+    </message>
+    <message>
+        <source>%1 You rejected join request from %2</source>
+        <translation>%1 Bạn đã từ chối tham gia từ %2</translation>
+    </message>
+    <message>
+        <source>%1 You rejected join request from %2 to add %3 to the channel</source>
+        <translation>%1 Bạn đã từ chối yêu cầu từ %2 để thêm %3 vào kênh</translation>
+    </message>
+    <message>
+        <source>%1 You rejected join request from %2 to add %3 to the group</source>
+        <translation>%1 Bạn đã từ chối yêu cầu từ %2 để thêm %3 vào nhóm</translation>
+    </message>
+    <message>
+        <source>%1 %2 rejected join request from %3</source>
+        <translation>%1 %2 từ chối yêu cầu tham gia từ %3</translation>
+    </message>
+    <message>
+        <source>%1 You have left channel</source>
+        <translation>%1 Bạn đã rời khỏi kênh</translation>
+    </message>
+    <message>
+        <source>%1 You have left group</source>
+        <translation>%1 Bạn rời nhóm</translation>
+    </message>
+    <message>
+        <source>you</source>
+        <translation>bạn</translation>
+    </message>
+    <message>
+        <source>Administrator</source>
+        <translation>Quản trị viên</translation>
+    </message>
+    <message>
+        <source>%1 %2 removed you</source>
+        <translation>%1 %2 đã xóa bạn</translation>
+    </message>
+    <message>
+        <source>%1 allowed you to write</source>
+        <translation>%1 cho phép bạn viết</translation>
+    </message>
+    <message>
+        <source>You allowed %1 to write</source>
+        <translation>Bạn được phép viết %1</translation>
+    </message>
+    <message>
+        <source>%1 allowed %2 to write</source>
+        <translation>%1 được phép viết %2</translation>
+    </message>
+    <message>
+        <source>%1 banned you to write</source>
+        <translation>%1 cấm bạn viết</translation>
+    </message>
+    <message>
+        <source>You banned %1 to write</source>
+        <translation>Bạn bị cấm viết %1</translation>
+    </message>
+    <message>
+        <source>%1 banned %2 to write</source>
+        <translation>%1 cấm (s) viết %2</translation>
+    </message>
+    <message>
+        <source>%1 %2 approved join request from %3 to add %4 to the group</source>
+        <translation>%1 %2 yêu cầu được xác nhận từ %3 để thêm %4 vào nhóm</translation>
+    </message>
+    <message>
+        <source>%1 %2 rejected join request from %3 to add %4 to the group</source>
+        <translation>%1 %2 từ chối yêu cầu từ %3 để thêm %4 vào nhóm</translation>
+    </message>
+    <message>
+        <source>%1 %2 asked to add %3 to the channel (this message is visible only to administrators)</source>
+        <translation>%1 %2 đã yêu cầu %3 được thêm vào kênh (chỉ quản trị viên mới thấy thông báo này)</translation>
+    </message>
+    <message>
+        <source>%1 %2 is waiting for channel join request approval (this message is visible only to administrators)</source>
+        <translation>%1 %2 chờ xác nhận yêu cầu tham gia kênh (chỉ quản trị viên mới thấy thông báo này)</translation>
+    </message>
+    <message>
+        <source>%1 %2 approved join request from %3 to add %4 to the channel (this message is visible only to administrators)</source>
+        <translation>%1 %2 yêu cầu được xác nhận từ %3 để thêm %4 vào kênh (chỉ quản trị viên mới thấy thông báo này)</translation>
+    </message>
+    <message>
+        <source>%1 %2 rejected join request from %3 to add %4 to the channel (this message is visible only to administrators)</source>
+        <translation>%1 %2 từ chối yêu cầu từ %3 để thêm %4 vào kênh (chỉ quản trị viên mới thấy thông báo này)</translation>
+    </message>
+    <message>
+        <source>%1 %2 have left group (this message is visible only to administrators)</source>
+        <comment>many</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 %2 has left group (this message is visible only to administrators)</source>
+        <comment>one</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 Your request to add %2 to the channel was approved</source>
+        <translation>%1 Yêu cầu của bạn để thêm %2 vào kênh được xác nhận</translation>
+    </message>
+    <message>
+        <source>%1 Your request to add %2 to the group was approved</source>
+        <translation>%1 Yêu cầu của bạn để thêm %2 vào nhóm được xác nhận</translation>
+    </message>
+    <message>
+        <source>%1 Your request to add %2 to the channel was rejected</source>
+        <translation>%1 Yêu cầu của bạn để thêm %2 vào kênh đã bị từ chối</translation>
+    </message>
+    <message>
+        <source>%1 Your request to add %2 to the group was rejected</source>
+        <translation>%1 Yêu cầu của bạn để thêm %2 vào nhóm đã bị từ chối</translation>
+    </message>
+    <message>
+        <source>%1 %2 approved join request from %3(this message is visible only to administrators)</source>
+        <translation>%1 %2 thừa nhận yêu cầu nhập từ %3 (chỉ quản trị viên mới thấy thông báo này)</translation>
+    </message>
+    <message>
+        <source>%1 %2 rejected join request from %3(this message is visible only to administrators)</source>
+        <translation>%1 %2 từ chối yêu cầu nhập từ %3 (chỉ quản trị viên mới thấy thông báo này)</translation>
+    </message>
+    <message>
+        <source>You changed the channel avatar</source>
+        <translation>Bạn đã thay đổi hình đại diện kênh</translation>
+    </message>
+    <message>
+        <source>%1 changed the channel avatar</source>
+        <translation>%1 thay đổi hình đại diện kênh</translation>
+    </message>
+    <message>
+        <source>You changed the group avatar</source>
+        <translation>Bạn đã thay đổi hình đại diện nhóm</translation>
+    </message>
+    <message>
+        <source>%1 changed the group avatar</source>
+        <translation>%1 thay đổi hình đại diện nhóm</translation>
+    </message>
+    <message>
+        <source>You deleted the channel description</source>
+        <translation>Bạn đã xóa mô tả kênh</translation>
+    </message>
+    <message>
+        <source>%1 deleted the channel description</source>
+        <translation>%1 đã xóa mô tả kênh</translation>
+    </message>
+    <message>
+        <source>You deleted the group description</source>
+        <translation>Bạn đã xóa mô tả nhóm</translation>
+    </message>
+    <message>
+        <source>%1 deleted the group description</source>
+        <translation>%1 đã xóa một mô tả nhóm</translation>
+    </message>
+    <message>
+        <source>You changed the channel description - &quot;%1&quot;</source>
+        <translation>Bạn đã thay đổi mô tả của kênh - &quot;%1&quot;</translation>
+    </message>
+    <message>
+        <source>%1 changed the channel description - &quot;%2&quot;</source>
+        <translation>%1 đã thay đổi mô tả kênh - &quot;%2&quot;</translation>
+    </message>
+    <message>
+        <source>You changed the group description - &quot;%1&quot;</source>
+        <translation>Bạn đã thay đổi mô tả của nhóm - &quot;%1&quot;</translation>
+    </message>
+    <message>
+        <source>%1 changed the group description - &quot;%2&quot;</source>
+        <translation>%1 đã thay đổi mô tả nhóm - &quot;%2&quot;</translation>
+    </message>
+    <message>
+        <source>You deleted the channel rules</source>
+        <translation>Bạn đã xóa quy tắc kênh</translation>
+    </message>
+    <message>
+        <source>%1 deleted the channel rules</source>
+        <translation>%1 đã xóa quy tắc kênh</translation>
+    </message>
+    <message>
+        <source>You deleted the group rules</source>
+        <translation>Bạn đã xóa các quy tắc nhóm</translation>
+    </message>
+    <message>
+        <source>%1 deleted the group rules</source>
+        <translation>%1 đã xóa quy tắc nhóm</translation>
+    </message>
+    <message>
+        <source>You changed the channel rules - &quot;%1&quot;</source>
+        <translation>Bạn đã thay đổi quy tắc kênh - &quot;%1&quot;</translation>
+    </message>
+    <message>
+        <source>%1 changed the channel rules - &quot;%2&quot;</source>
+        <translation>%1 đã thay đổi quy tắc kênh - &quot;%2&quot;</translation>
+    </message>
+    <message>
+        <source>You changed the group rules - &quot;%1&quot;</source>
+        <translation>Bạn đã thay đổi quy tắc nhóm - &quot;%1&quot;</translation>
+    </message>
+    <message>
+        <source>%1 changed the group rules - &quot;%2&quot;</source>
+        <translation>%1 đã thay đổi quy tắc nhóm - &quot;%2&quot;</translation>
+    </message>
+    <message>
+        <source>You changed the link to %1</source>
+        <translation>Bạn đã thay đổi liên kết thành %1</translation>
+    </message>
+    <message>
+        <source>%1 changed the link to %2</source>
+        <translation>%1 đã thay đổi liên kết thành %2</translation>
+    </message>
+    <message>
+        <source>You were assigned as an administrator of this channel</source>
+        <translation>Bạn đã được bổ nhiệm làm quản trị viên của kênh này</translation>
+    </message>
+    <message>
+        <source>You were assigned as an administrator of this group</source>
+        <translation>Bạn đã được bổ nhiệm làm quản trị viên của nhóm này.</translation>
+    </message>
+    <message>
+        <source>You assigned %1 administrator of this channel</source>
+        <translation>Bạn đã chỉ định %1 quản trị viên của kênh này</translation>
+    </message>
+    <message>
+        <source>You assigned %1 administrator of this group</source>
+        <translation>Bạn đã chỉ định %1 quản trị viên cho nhóm này.</translation>
+    </message>
+    <message>
+        <source>%1 assigned %2 administrator of this channel</source>
+        <translation>%1 được chỉ định %2 quản trị viên của kênh này</translation>
+    </message>
+    <message>
+        <source>%1 assigned %2 administrator of this group</source>
+        <translation>%1 được chỉ định %2 quản trị viên của nhóm này</translation>
+    </message>
+    <message>
+        <source>%1 You have canceled your join request</source>
+        <translation>%1 Bạn đã hủy yêu cầu thành viên của bạn</translation>
+    </message>
+    <message>
+        <source>%1 Wait for subscription request approval</source>
+        <translation>%1 Chờ xác nhận yêu cầu đăng ký</translation>
+    </message>
+    <message>
+        <source>%1 Your subscription request was rejected</source>
+        <translation>%1 Yêu cầu đăng ký của bạn bị từ chối</translation>
+    </message>
+    <message>
+        <source>%1 %2 has canceled join request</source>
+        <translation>%1 %2 yêu cầu thành viên bị hủy</translation>
     </message>
 </context>
 <context>
@@ -614,6 +1014,26 @@ Bạn có thể để lại phản hồi hoặc báo cáo lỗi tại đây:</tr
         <source>Quick send</source>
         <translation>Gửi nhanh</translation>
     </message>
+    <message>
+        <source>Message added to </source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Messages added to </source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Messages added to </source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Messages added to </source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>connection</name>
@@ -651,10 +1071,6 @@ Bạn có thể để lại phản hồi hoặc báo cáo lỗi tại đây:</tr
     <message>
         <source>Voice message</source>
         <translation>Tin nhắn thoại</translation>
-    </message>
-    <message>
-        <source>FAVORITES</source>
-        <translation>YÊU THÍCH</translation>
     </message>
     <message>
         <source>RECENTS</source>
@@ -735,6 +1151,10 @@ Bạn có thể để lại phản hồi hoặc báo cáo lỗi tại đây:</tr
     <message>
         <source>Create channel</source>
         <translation>Tạo kênh</translation>
+    </message>
+    <message>
+        <source>PINNED</source>
+        <translation>KIẾM</translation>
     </message>
 </context>
 <context>
@@ -977,6 +1397,10 @@ Bạn có thể để lại phản hồi hoặc báo cáo lỗi tại đây:</tr
         <source>Send</source>
         <translation>Gửi</translation>
     </message>
+    <message>
+        <source>Choose your problem</source>
+        <translation>Chọn một chủ đề kháng cáo</translation>
+    </message>
 </context>
 <context>
     <name>context_menu</name>
@@ -1147,6 +1571,26 @@ Bạn có thể để lại phản hồi hoặc báo cáo lỗi tại đây:</tr
     <message>
         <source>Stop poll</source>
         <translation>Dừng thăm dò ý kiến</translation>
+    </message>
+    <message>
+        <source>Add to favorites</source>
+        <translation>Để yêu thích</translation>
+    </message>
+    <message>
+        <source>Remove from dictionary</source>
+        <translation>Xóa khỏi từ điển</translation>
+    </message>
+    <message>
+        <source>Add to dictionary</source>
+        <translation>Thêm vào từ điển</translation>
+    </message>
+    <message>
+        <source>Ignore</source>
+        <translation>Mặc kệ</translation>
+    </message>
+    <message>
+        <source>Copy session info</source>
+        <translation>Sao chép thông tin phiên</translation>
     </message>
 </context>
 <context>
@@ -2183,6 +2627,46 @@ Bạn có thể để lại phản hồi hoặc báo cáo lỗi tại đây:</tr
     </message>
 </context>
 <context>
+    <name>favorites</name>
+    <message>
+        <source>
+%1, this is your personal space!
+
+%2 Save links, files and other messages
+%3 Write notes, to-do lists, store photos and videos
+%4 Draft messages and polls before sending them to chat with friends or to your channel</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Favorites</source>
+        <translation>Yêu thích</translation>
+    </message>
+    <message>
+        <source>save</source>
+        <translation>tiết kiệm</translation>
+    </message>
+    <message>
+        <source>saved</source>
+        <translation>lưu lại</translation>
+    </message>
+    <message>
+        <source>favorites</source>
+        <translation>yêu thích</translation>
+    </message>
+    <message>
+        <source>%1, this is your work space!
+
+%2 Save links, files and other messages
+%3 Write notes, to-do lists, store photos and videos
+%4 Draft messages and polls before sending them to chat with colleagues or to your channel</source>
+        <translation>%1, đây là không gian làm việc của bạn!
+
+%2 Lưu liên kết, tệp và tin nhắn khác
+%3 Viết ghi chú, danh sách việc cần làm, lưu trữ ảnh và video
+%4 Soạn thảo tin nhắn và cuộc thăm dò trước khi gửi chúng để trò chuyện với đồng nghiệp hoặc tới kênh của bạn</translation>
+    </message>
+</context>
+<context>
     <name>files_widget</name>
     <message>
         <source>Send with caption</source>
@@ -2240,6 +2724,10 @@ Bạn có thể để lại phản hồi hoặc báo cáo lỗi tại đây:</tr
         <source>Send</source>
         <translation>Gửi</translation>
     </message>
+    <message>
+        <source>Copied from clipboard</source>
+        <translation>Sao chép từ clipboard</translation>
+    </message>
 </context>
 <context>
     <name>gallery</name>
@@ -2253,13 +2741,6 @@ Bạn có thể để lại phản hồi hoặc báo cáo lỗi tại đây:</tr
     <message>
         <source>Copied to clipboard</source>
         <translation>Sao chép vào clipboard</translation>
-    </message>
-</context>
-<context>
-    <name>geolocation_block</name>
-    <message>
-        <source>Location</source>
-        <translation>Vị trí</translation>
     </message>
 </context>
 <context>
@@ -2289,14 +2770,6 @@ Bạn có thể để lại phản hồi hoặc báo cáo lỗi tại đây:</tr
         <translation>Tên trò chuyện</translation>
     </message>
     <message>
-        <source>Chat information is unavailable now, please try again later</source>
-        <translation>Thông tin trò chuyện hiện không khả dụng, hãy thử lại sau</translation>
-    </message>
-    <message>
-        <source>Chat does not exist or it is hidden by privacy settings</source>
-        <translation>Trò chuyện không tồn tại hoặc bị ẩn do cài đặt riêng tư</translation>
-    </message>
-    <message>
         <source>member</source>
         <comment>1</comment>
         <translation>thành viên</translation>
@@ -2315,26 +2788,6 @@ Bạn có thể để lại phản hồi hoặc báo cáo lỗi tại đây:</tr
         <source>members</source>
         <comment>21</comment>
         <translation>các thành viên</translation>
-    </message>
-    <message>
-        <source>friend</source>
-        <comment>1</comment>
-        <translation>bạn</translation>
-    </message>
-    <message>
-        <source>friends</source>
-        <comment>2</comment>
-        <translation>bạn</translation>
-    </message>
-    <message>
-        <source>friends</source>
-        <comment>5</comment>
-        <translation>bạn</translation>
-    </message>
-    <message>
-        <source>friends</source>
-        <comment>21</comment>
-        <translation>bạn</translation>
     </message>
     <message>
         <source>Channel name</source>
@@ -2384,6 +2837,14 @@ Bạn có thể để lại phản hồi hoặc báo cáo lỗi tại đây:</tr
         <source>Group name</source>
         <translation>Tên nhóm</translation>
     </message>
+    <message>
+        <source>Chat information is unavailable now, please try again later</source>
+        <translation>Thông tin trò chuyện hiện không khả dụng, hãy thử lại sau</translation>
+    </message>
+    <message>
+        <source>Chat does not exist or it is hidden by privacy settings</source>
+        <translation>Trò chuyện không tồn tại hoặc bị ẩn do cài đặt riêng tư</translation>
+    </message>
 </context>
 <context>
     <name>head</name>
@@ -2392,16 +2853,20 @@ Bạn có thể để lại phản hồi hoặc báo cáo lỗi tại đây:</tr
         <translation>Các liên hệ</translation>
     </message>
     <message>
-        <source>Chats</source>
-        <translation>Các trò chuyện</translation>
-    </message>
-    <message>
         <source>Settings</source>
         <translation>Cài đặt</translation>
     </message>
     <message>
         <source>Search</source>
         <translation>Tìm kiếm</translation>
+    </message>
+    <message>
+        <source>Calls</source>
+        <translation>Các cuộc gọi</translation>
+    </message>
+    <message>
+        <source>Chats</source>
+        <translation>Các trò chuyện</translation>
     </message>
 </context>
 <context>
@@ -2553,6 +3018,30 @@ Bạn có thể để lại phản hồi hoặc báo cáo lỗi tại đây:</tr
         <source>Unblock</source>
         <translation>Mở khóa</translation>
     </message>
+    <message>
+        <source>Start</source>
+        <translation>Bắt đầu</translation>
+    </message>
+    <message>
+        <source>Webinar</source>
+        <translation>Hội thảo trên web</translation>
+    </message>
+    <message>
+        <source>Error creating webinar</source>
+        <translation>Lỗi tạo webinar</translation>
+    </message>
+    <message>
+        <source>Call link</source>
+        <translation>Liên kết cuộc gọi</translation>
+    </message>
+    <message>
+        <source>Error creating call link</source>
+        <translation>Lỗi khi tạo liên kết cuộc gọi</translation>
+    </message>
+    <message>
+        <source>Cancel request</source>
+        <translation>Hủy yêu cầu</translation>
+    </message>
 </context>
 <context>
     <name>linux_desktop_file</name>
@@ -2655,20 +3144,12 @@ Bạn có thể để lại phản hồi hoặc báo cáo lỗi tại đây:</tr
         <translation>Nhớ lại trong %1</translation>
     </message>
     <message>
-        <source>Enter one-time password received by email</source>
-        <translation>Nhập mật khẩu một lần nhận được qua email</translation>
-    </message>
-    <message>
         <source>Enter your login and password</source>
         <translation>Hay nhập tên đăng nhập va mật khẩu của bạn</translation>
     </message>
     <message>
         <source>To login use you corporative account created at</source>
         <translation>Để đăng nhập, sử dụng tài khoản công ty được tạo trong</translation>
-    </message>
-    <message>
-        <source>Check the country code and enter your phone number</source>
-        <translation>Kiểm tra mã quốc gia và nhập số điện thoại của bạn</translation>
     </message>
     <message>
         <source>Phone</source>
@@ -2741,6 +3222,66 @@ Bạn có thể để lại phản hồi hoặc báo cáo lỗi tại đây:</tr
     <message>
         <source>Phone code</source>
         <translation>Mã số cuộc gọi</translation>
+    </message>
+    <message>
+        <source>OK</source>
+        <translation>Được rồi</translation>
+    </message>
+    <message>
+        <source>Configuration error</source>
+        <translation>Lỗi cấu hình</translation>
+    </message>
+    <message>
+        <source>Enter hostname</source>
+        <translation>Nhập địa chỉ máy chủ</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>Hủy bỏ</translation>
+    </message>
+    <message>
+        <source>It is necessary to supplement the server configuration for the application to work. Contact system administrator</source>
+        <translation>Để ứng dụng hoạt động, cần bổ sung cấu hình máy chủ. Liên hệ quản trị viên</translation>
+    </message>
+    <message>
+        <source>Invalid server configuration format. Contact system administrator</source>
+        <translation>Định dạng cấu hình máy chủ không hợp lệ. Liên hệ quản trị viên</translation>
+    </message>
+    <message>
+        <source>Unknown error. Contact system administrator</source>
+        <translation>Lỗi không xác định. Liên hệ quản trị viên</translation>
+    </message>
+    <message>
+        <source>Invalid server configuration hostname. Contact system administrator</source>
+        <translation>Kiểm tra địa chỉ với quản trị viên</translation>
+    </message>
+    <message>
+        <source>Check the country code and enter your phone number for registration and authorization</source>
+        <translation>Kiểm tra mã quốc gia và nhập số điện thoại của bạn để đăng ký và ủy quyền</translation>
+    </message>
+    <message>
+        <source>Enter your corporate email, a password will be sent to it</source>
+        <translation>Nhập email công ty của bạn, mật khẩu sẽ được gửi đến nó</translation>
+    </message>
+    <message>
+        <source>Enter one-time password sent to email</source>
+        <translation>Nhập mật khẩu một lần được gửi đến</translation>
+    </message>
+    <message>
+        <source>Enter email</source>
+        <translation>Nhập email</translation>
+    </message>
+    <message>
+        <source>Enter password</source>
+        <translation>Nhập mật khẩu</translation>
+    </message>
+    <message>
+        <source>Write us</source>
+        <translation>Viết thư cho chúng tôi</translation>
+    </message>
+    <message>
+        <source>Wrong password</source>
+        <translation>Sai mật khẩu</translation>
     </message>
 </context>
 <context>
@@ -2909,6 +3450,10 @@ Bạn có thể để lại phản hồi hoặc báo cáo lỗi tại đây:</tr
     <message>
         <source>Sticker</source>
         <translation>Nhãn dán</translation>
+    </message>
+    <message>
+        <source>The message is not supported on your version of ICQ. Update the app to see the message</source>
+        <translation>Không thể hiển thị một thông báo trong phiên bản ứng dụng của bạn. Cập nhật</translation>
     </message>
 </context>
 <context>
@@ -3138,10 +3683,6 @@ Bạn có thể để lại phản hồi hoặc báo cáo lỗi tại đây:</tr
 <context>
     <name>placeholders</name>
     <message>
-        <source>Install ICQ on mobile</source>
-        <translation>Cài đặt ICQ trên di động</translation>
-    </message>
-    <message>
         <source>Nothing found</source>
         <translation>Không tìm thấy gì</translation>
     </message>
@@ -3204,6 +3745,42 @@ Bạn có thể để lại phản hồi hoặc báo cáo lỗi tại đây:</tr
     <message>
         <source>Failed to download file or media</source>
         <translation>Không thể tải lên tập tin hoặc phương tiện truyền thông</translation>
+    </message>
+    <message>
+        <source>Install ICQ on mobile</source>
+        <translation>Cài đặt ICQ trên di động</translation>
+    </message>
+    <message>
+        <source>This group can be joined only after admin approval</source>
+        <translation>Bạn chỉ có thể tham gia nhóm này sau khi xác nhận</translation>
+    </message>
+    <message>
+        <source>Join the group to start chatting</source>
+        <translation>Tham gia một nhóm để bắt đầu trò chuyện</translation>
+    </message>
+    <message>
+        <source>Tell us about your problem. We will try to help you</source>
+        <translation>Hãy cho chúng tôi về vấn đề của bạn. Chúng tôi sẽ cố gắng giúp đỡ</translation>
+    </message>
+    <message>
+        <source>Start working with</source>
+        <translation>Bắt đầu với</translation>
+    </message>
+    <message>
+        <source>Start chatting with</source>
+        <translation>Bắt đầu trò chuyện với</translation>
+    </message>
+    <message>
+        <source>What this bot can do?</source>
+        <translation>Bot này có thể làm gì?</translation>
+    </message>
+    <message>
+        <source>Subscribe the channel to see the messages</source>
+        <translation>Đăng ký kênh để xem tin nhắn</translation>
+    </message>
+    <message>
+        <source>This channel can be subscribed only after admin approval</source>
+        <translation>Bạn chỉ có thể đăng ký kênh này sau khi xác nhận.</translation>
     </message>
 </context>
 <context>
@@ -3318,6 +3895,10 @@ Bạn có thể để lại phản hồi hoặc báo cáo lỗi tại đây:</tr
 </context>
 <context>
     <name>popup_window</name>
+    <message>
+        <source>Clear all data from this device</source>
+        <translation>Xóa tất cả dữ liệu khỏi thiết bị</translation>
+    </message>
     <message>
         <source>Are you sure you want to sign out?</source>
         <translation>Bạn có chắc muốn thoát?</translation>
@@ -3587,14 +4168,6 @@ Bạn có thể để lại phản hồi hoặc báo cáo lỗi tại đây:</tr
         <translation>Xóa</translation>
     </message>
     <message>
-        <source>Waiting</source>
-        <translation>Đang chờ đợi</translation>
-    </message>
-    <message>
-        <source>Join</source>
-        <translation>Nhập</translation>
-    </message>
-    <message>
         <source>If you stop the poll, nobody will be able to vote anymore. This action can not be undone</source>
         <translation>Nếu bạn dừng cuộc thăm dò, không ai có thể bỏ phiếu nữa. Hành động này không thể được hoàn tác</translation>
     </message>
@@ -3605,10 +4178,6 @@ Bạn có thể để lại phản hồi hoặc báo cáo lỗi tại đây:</tr
     <message>
         <source>Stop this poll?</source>
         <translation>Dừng cuộc thăm dò này?</translation>
-    </message>
-    <message>
-        <source>Open</source>
-        <translation>Mở</translation>
     </message>
     <message>
         <source>Are you sure you want to leave channel?</source>
@@ -3657,6 +4226,186 @@ Bạn có thể để lại phản hồi hoặc báo cáo lỗi tại đây:</tr
     <message>
         <source>Create</source>
         <translation>Tạo</translation>
+    </message>
+    <message>
+        <source>Do you want to join conference?</source>
+        <translation>Bạn có muốn tham gia hội nghị?</translation>
+    </message>
+    <message>
+        <source>Join confirmation</source>
+        <translation>Tham gia xác nhận</translation>
+    </message>
+    <message>
+        <source>All sessions except the current one will be closed</source>
+        <translation>Tất cả các phiên ngoại trừ phiên hiện tại sẽ bị đóng</translation>
+    </message>
+    <message>
+        <source>Close sessions</source>
+        <translation>Đóng phiên</translation>
+    </message>
+    <message>
+        <source>Close session</source>
+        <translation>Đóng phiên</translation>
+    </message>
+    <message>
+        <source>Session %1 will be closed</source>
+        <translation>Phiên %1 sẽ bị đóng</translation>
+    </message>
+    <message>
+        <source>Don&apos;t ask me again</source>
+        <translation>Đừng hỏi lại</translation>
+    </message>
+    <message>
+        <source>Run this file?</source>
+        <translation>Chạy tập tin?</translation>
+    </message>
+    <message>
+        <source>This file may be unsafe</source>
+        <translation>Tập tin này có thể không an toàn</translation>
+    </message>
+    <message>
+        <source>You cannot call this contact due to its privacy settings</source>
+        <translation>Bạn không thể gọi liên hệ này do cài đặt quyền riêng tư của nó.</translation>
+    </message>
+    <message>
+        <source>Ok</source>
+        <translation>Được rồi</translation>
+    </message>
+    <message>
+        <source>Maximum number of members selected</source>
+        <translation>Số lượng thành viên được chọn tối đa</translation>
+    </message>
+    <message>
+        <source>Start group call</source>
+        <translation>Bắt đầu cuộc gọi âm thanh nhóm</translation>
+    </message>
+    <message>
+        <source>Call</source>
+        <translation>Để gọi</translation>
+    </message>
+    <message>
+        <source>Start group video call</source>
+        <translation>Bắt đầu cuộc gọi video nhóm</translation>
+    </message>
+    <message>
+        <source>Error</source>
+        <translation>Lỗi</translation>
+    </message>
+    <message>
+        <source>Start</source>
+        <translation>Bắt đầu</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to delete the call?</source>
+        <translation>Bạn có chắc chắn muốn xóa cuộc gọi?</translation>
+    </message>
+    <message>
+        <source>Some problems with your link</source>
+        <translation>Vấn đề với liên kết của bạn</translation>
+    </message>
+    <message>
+        <source>Some problems with your link. Please check it and try again or ask for a new link</source>
+        <translation>Xin lỗi, có một vấn đề với liên kết của bạn. Kiểm tra nó và thử lại hoặc yêu cầu gửi cho bạn một liên kết khác</translation>
+    </message>
+    <message>
+        <source>It&apos;s not possible to connect now, please, try again later</source>
+        <translation>Hiện tại không thể kết nối, hãy thử lại sau</translation>
+    </message>
+    <message>
+        <source>Participants&apos; limit exceeded</source>
+        <translation>Vượt quá giới hạn về số lượng người tham gia</translation>
+    </message>
+    <message>
+        <source>Duration limit exceeded</source>
+        <translation>Vượt quá giới hạn thời lượng</translation>
+    </message>
+    <message>
+        <source>Sorry, something went wrong. Please, try again later</source>
+        <translation>Xin lỗi, đã xảy ra lỗi. Thử lại sau</translation>
+    </message>
+    <message>
+        <source>My status</source>
+        <translation>Trạng thái của tôi</translation>
+    </message>
+    <message>
+        <source>You cannot call these users because of privacy settings:</source>
+        <translation>Bạn không thể gọi những liên hệ này vì cài đặt quyền riêng tư của họ. Liên lạc:</translation>
+    </message>
+    <message>
+        <source>You cannot call these users. Try to write them:</source>
+        <translation>Để gọi, viết một tin nhắn cá nhân cho liên lạc và chờ câu trả lời. Liên lạc:</translation>
+    </message>
+    <message>
+        <source>Unknown error connecting to the following contacts:</source>
+        <translation>Lỗi không xác định kết nối với các liên hệ sau:</translation>
+    </message>
+    <message>
+        <source>You cannot call</source>
+        <translation>Bạn không thể gọi</translation>
+    </message>
+    <message>
+        <source>Call declined</source>
+        <translation>Cuộc gọi bị từ chối</translation>
+    </message>
+    <message>
+        <source>You cannot call this contact. Write %1 to the chat and, if answered, you can call</source>
+        <translation>Bạn không thể gọi liên hệ này. Viết %1 vào cuộc trò chuyện và nếu được trả lời, bạn có thể gọi</translation>
+    </message>
+    <message>
+        <source>Write</source>
+        <translation>Viết</translation>
+    </message>
+    <message>
+        <source>Cancel request?</source>
+        <translation>Hủy yêu cầu?</translation>
+    </message>
+    <message>
+        <source>%1 is now unavailable</source>
+        <translation>%1 hiện không khả dụng</translation>
+    </message>
+    <message>
+        <source>After canceling the request, the channel will disappear from the chat list</source>
+        <translation>Sau khi hủy yêu cầu, kênh sẽ biến mất khỏi danh sách trò chuyện</translation>
+    </message>
+    <message>
+        <source>After canceling the request, the group will disappear from the chat list</source>
+        <translation>Sau khi hủy yêu cầu, nhóm sẽ biến mất khỏi danh sách trò chuyện</translation>
+    </message>
+    <message>
+        <source>You were blocked by admins</source>
+        <translation>Quản trị viên chặn bạn</translation>
+    </message>
+    <message>
+        <source>Send link</source>
+        <translation>Gửi đường dẫn</translation>
+    </message>
+    <message>
+        <source>You can not join the call. It already has</source>
+        <translation>Bạn không thể kết nối với cuộc gọi. Trong đó rồi</translation>
+    </message>
+    <message>
+        <source>No</source>
+        <translation>không phải</translation>
+    </message>
+    <message>
+        <source>Do you want to join the call? Current call will be ended</source>
+        <translation>Tham gia cuộc gọi? Cuộc gọi hiện tại sẽ kết thúc</translation>
+    </message>
+    <message>
+        <source>Do you want to start a new call? Current call will be ended</source>
+        <translation>Bắt đầu một cuộc gọi mới? Cuộc gọi hiện tại sẽ kết thúc</translation>
+    </message>
+    <message>
+        <source>Use internal DNS cache</source>
+        <translation>Sử dụng bộ đệm DNS nội bộ</translation>
+    </message>
+    <message>
+        <source>To change this option you must restart the application. Continue?</source>
+        <translation>Để thay đổi cài đặt, bạn phải khởi động lại ứng dụng. Tiến hành?</translation>
+    </message>
+    <message>
+        <source>Global people search</source>
+        <translation>Tìm kiếm người toàn cầu</translation>
     </message>
 </context>
 <context>
@@ -3720,6 +4469,10 @@ Bạn có thể để lại phản hồi hoặc báo cáo lỗi tại đây:</tr
     <message>
         <source>Error file downloading</source>
         <translation>Lỗi tải lên tập tin</translation>
+    </message>
+    <message>
+        <source>Add to favorites</source>
+        <translation>Thêm vào mục yêu thích</translation>
     </message>
 </context>
 <context>
@@ -3875,6 +4628,57 @@ Bạn có thể để lại phản hồi hoặc báo cáo lỗi tại đây:</tr
     <message>
         <source>Forwarded message</source>
         <translation>Tin nhắn chuyển gửi tiếp</translation>
+    </message>
+</context>
+<context>
+    <name>reactions</name>
+    <message>
+        <source>Remove</source>
+        <translation>Xóa bỏ</translation>
+    </message>
+    <message>
+        <source>Reactions</source>
+        <translation>Phản ứng</translation>
+    </message>
+    <message>
+        <source>All</source>
+        <translation>Tất cả</translation>
+    </message>
+    <message>
+        <source>Like</source>
+        <translation>Giống</translation>
+    </message>
+    <message>
+        <source>Super</source>
+        <translation>siêu</translation>
+    </message>
+    <message>
+        <source>Funny</source>
+        <translation>Buồn cười</translation>
+    </message>
+    <message>
+        <source>Oops</source>
+        <translation>Giáo sư</translation>
+    </message>
+    <message>
+        <source>Sad</source>
+        <translation>Buồn</translation>
+    </message>
+    <message>
+        <source>Scandalous</source>
+        <translation>Tàn nhẫn</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation>Đóng</translation>
+    </message>
+    <message>
+        <source>Add reaction: an error occurred</source>
+        <translation>Thêm một phản ứng: xảy ra lỗi</translation>
+    </message>
+    <message>
+        <source>Remove reaction: an error occurred</source>
+        <translation>Phản hồi xóa: xảy ra lỗi</translation>
     </message>
 </context>
 <context>
@@ -4160,10 +4964,6 @@ Bạn có thể để lại phản hồi hoặc báo cáo lỗi tại đây:</tr
         <translation>Danh sách từ chối</translation>
     </message>
     <message>
-        <source>Consequently marking messages as read</source>
-        <translation>Đọc tuần tự cuộc trò chuyện</translation>
-    </message>
-    <message>
         <source>Auto play GIFs</source>
         <translation>Tự động phát GIFs</translation>
     </message>
@@ -4316,10 +5116,6 @@ Bạn có thể để lại phản hồi hoặc báo cáo lỗi tại đây:</tr
         <translation>Thêm tên hiệu</translation>
     </message>
     <message>
-        <source>Problem</source>
-        <translation>Vấn đề</translation>
-    </message>
-    <message>
         <source>Main window</source>
         <translation>Cửa sổ chính</translation>
     </message>
@@ -4362,6 +5158,74 @@ Bạn có thể để lại phản hồi hoặc báo cáo lỗi tại đây:</tr
     <message>
         <source>Advanced Settings</source>
         <translation>Cài đặt nâng cao</translation>
+    </message>
+    <message>
+        <source>Account Security</source>
+        <translation>Bảo mật tài khoản</translation>
+    </message>
+    <message>
+        <source>Session List</source>
+        <translation>Danh sách phiên</translation>
+    </message>
+    <message>
+        <source>Favorites</source>
+        <translation>Yêu thích</translation>
+    </message>
+    <message>
+        <source>Current session</source>
+        <translation>Phiên hiện tại</translation>
+    </message>
+    <message>
+        <source>Session closed</source>
+        <translation>Phiên họp đã kết thúc</translation>
+    </message>
+    <message>
+        <source>Error occurred</source>
+        <translation>Một lỗi đã xảy ra.</translation>
+    </message>
+    <message>
+        <source>Active session</source>
+        <translation>Phiên hoạt động</translation>
+    </message>
+    <message>
+        <source>Close all other sessions</source>
+        <translation>Đóng tất cả các phiên khác</translation>
+    </message>
+    <message>
+        <source>Active sessions</source>
+        <translation>Phiên hoạt động</translation>
+    </message>
+    <message>
+        <source>Session info copied</source>
+        <translation>Thông tin phiên được sao chép</translation>
+    </message>
+    <message>
+        <source>Do not ask when running executable files</source>
+        <translation>Đừng hỏi khi chạy tập tin thực thi</translation>
+    </message>
+    <message>
+        <source>Use system spell checker</source>
+        <translation>Kiểm tra chính tả hệ thống</translation>
+    </message>
+    <message>
+        <source>Calls</source>
+        <translation>Các cuộc gọi</translation>
+    </message>
+    <message>
+        <source>Show calls tab</source>
+        <translation>Hiển thị tab cuộc gọi</translation>
+    </message>
+    <message>
+        <source>Show reactions to messages</source>
+        <translation>Hiển thị phản ứng với tin nhắn</translation>
+    </message>
+    <message>
+        <source>Show statuses</source>
+        <translation>Hiển thị trạng thái</translation>
+    </message>
+    <message>
+        <source>Show unreads counter in window title</source>
+        <translation>Hiển thị số lượng chưa đọc trong tiêu đề cửa sổ</translation>
     </message>
 </context>
 <context>
@@ -4557,6 +5421,10 @@ Bạn có thể để lại phản hồi hoặc báo cáo lỗi tại đây:</tr
         <source>Mark all dialogs as read</source>
         <translation>Đánh dấu tất cả các hộp thoại là đã đọc</translation>
     </message>
+    <message>
+        <source>Set status</source>
+        <translation>Đặt trạng thái</translation>
+    </message>
 </context>
 <context>
     <name>sidebar</name>
@@ -4575,10 +5443,6 @@ Bạn có thể để lại phản hồi hoặc báo cáo lỗi tại đây:</tr
     <message>
         <source>Nickname</source>
         <translation>Biệt danh</translation>
-    </message>
-    <message>
-        <source>Blocked people</source>
-        <translation>Người bị chặn</translation>
     </message>
     <message>
         <source>Phone number</source>
@@ -4859,20 +5723,12 @@ Hãy chỉnh sửa số điện thoại và thử lại.</translation>
         <translation>Bạn không thể đọc hoặc viết tin nhắn trong nhóm này vì bạn bị chặn</translation>
     </message>
     <message>
-        <source>The join request has been sent to administrator</source>
-        <translation>Yêu cầu tham gia đã được gửi đến quản trị viên</translation>
-    </message>
-    <message>
         <source>Remove</source>
         <translation>Xóa bỏ</translation>
     </message>
     <message>
         <source>Leave and delete</source>
         <translation>Xóa và thoát</translation>
-    </message>
-    <message>
-        <source>Block and delete</source>
-        <translation>Chặn và xóa</translation>
     </message>
     <message>
         <source>Search</source>
@@ -4891,10 +5747,6 @@ Hãy chỉnh sửa số điện thoại và thử lại.</translation>
         <translation>Cài đặt kênh</translation>
     </message>
     <message>
-        <source>Block and delete from group</source>
-        <translation>Chặn và xóa khỏi nhóm</translation>
-    </message>
-    <message>
         <source>Group settings</source>
         <translation>Cài đặt nhóm</translation>
     </message>
@@ -4905,6 +5757,50 @@ Hãy chỉnh sửa số điện thoại và thử lại.</translation>
     <message>
         <source>Public group</source>
         <translation>Nhóm công cộng</translation>
+    </message>
+    <message>
+        <source>Favorites</source>
+        <translation>Yêu thích</translation>
+    </message>
+    <message>
+        <source>Open favorites</source>
+        <translation>Mở yêu thích</translation>
+    </message>
+    <message>
+        <source>Delete from group</source>
+        <translation>Xóa khỏi nhóm</translation>
+    </message>
+    <message>
+        <source>Deleted and blocked</source>
+        <translation>Đã xóa và bị chặn</translation>
+    </message>
+    <message>
+        <source>Delete</source>
+        <translation>Xóa</translation>
+    </message>
+    <message>
+        <source>You can&apos;t read messages in this channel because you are blocked</source>
+        <translation>Bạn không thể đọc tin nhắn trong kênh vì bạn bị chặn</translation>
+    </message>
+    <message>
+        <source>Wait for subscription request approval</source>
+        <translation>Chờ xác nhận yêu cầu đăng ký</translation>
+    </message>
+    <message>
+        <source>Wait for join request approval</source>
+        <translation>Chờ xác nhận yêu cầu nhập cảnh</translation>
+    </message>
+    <message>
+        <source>Your subscription request was rejected</source>
+        <translation>Yêu cầu đăng ký của bạn bị từ chối</translation>
+    </message>
+    <message>
+        <source>Your join request was rejected</source>
+        <translation>Yêu cầu thành viên của bạn bị từ chối</translation>
+    </message>
+    <message>
+        <source>Call</source>
+        <translation>Để gọi</translation>
     </message>
 </context>
 <context>
@@ -4947,6 +5843,10 @@ Hãy chỉnh sửa số điện thoại và thử lại.</translation>
         <source>Copied to clipboard</source>
         <translation>Sao chép vào clipboard</translation>
     </message>
+    <message>
+        <source>Location</source>
+        <translation>Địa điểm</translation>
+    </message>
 </context>
 <context>
     <name>state</name>
@@ -4969,6 +5869,57 @@ Hãy chỉnh sửa số điện thoại và thử lại.</translation>
     <message>
         <source>Invisible</source>
         <translation>Ẩn</translation>
+    </message>
+    <message>
+        <source>Blocked</source>
+        <translation>Bị chặn</translation>
+    </message>
+    <message>
+        <source>Have never been here</source>
+        <translation>Chưa từng đến thăm</translation>
+    </message>
+    <message>
+        <source>Bot</source>
+        <translation>Bot</translation>
+    </message>
+</context>
+<context>
+    <name>status</name>
+    <message>
+        <source>Add status</source>
+        <translation>Thêm trạng thái</translation>
+    </message>
+    <message>
+        <source>Custom status</source>
+        <translation>Tâm trạng người dùng</translation>
+    </message>
+    <message>
+        <source>Status timing</source>
+        <translation>Trạng thái</translation>
+    </message>
+    <message>
+        <source>No status</source>
+        <translation>Không có trạng thái</translation>
+    </message>
+    <message>
+        <source>Show always</source>
+        <translation>Luôn luôn hiển thị</translation>
+    </message>
+    <message>
+        <source>Week</source>
+        <translation>Một tuần</translation>
+    </message>
+    <message>
+        <source>undefined time</source>
+        <translation>thời gian không xác định</translation>
+    </message>
+    <message>
+        <source>%1 left</source>
+        <translation>Chỉ còn %1</translation>
+    </message>
+    <message>
+        <source>For %1 already</source>
+        <translation>Đã cho %1</translation>
     </message>
 </context>
 <context>
@@ -5040,6 +5991,10 @@ Hãy chỉnh sửa số điện thoại và thử lại.</translation>
         <source>Settings</source>
         <translation>Cài đặt</translation>
     </message>
+    <message>
+        <source>Calls</source>
+        <translation>Các cuộc gọi</translation>
+    </message>
 </context>
 <context>
     <name>tab header</name>
@@ -5062,6 +6017,10 @@ Hãy chỉnh sửa số điện thoại và thử lại.</translation>
     <message>
         <source>Emails</source>
         <translation>Email</translation>
+    </message>
+    <message>
+        <source>Group call</source>
+        <translation>Cuộc gọi nhóm</translation>
     </message>
 </context>
 <context>
@@ -5091,16 +6050,12 @@ Hãy chỉnh sửa số điện thoại và thử lại.</translation>
         <translation>ICQ New — sự phát triển của truyền thông</translation>
     </message>
     <message>
-        <source>Welcome to ICQ</source>
-        <translation>Chào mừng đến với ICQ</translation>
+        <source>Welcome to ICQ New</source>
+        <translation>Chào mừng đến với ICQ Mới</translation>
     </message>
 </context>
 <context>
     <name>title</name>
-    <message>
-        <source>ICQ</source>
-        <translation>ICQ</translation>
-    </message>
     <message>
         <source>Mail.ru Agent</source>
         <translation>Mail.ru Agent</translation>
@@ -5112,6 +6067,10 @@ Hãy chỉnh sửa số điện thoại và thử lại.</translation>
     <message>
         <source>Myteam</source>
         <translation>Myteam</translation>
+    </message>
+    <message>
+        <source>ICQ</source>
+        <translation>ICQ</translation>
     </message>
 </context>
 <context>
@@ -5140,6 +6099,10 @@ Hãy chỉnh sửa số điện thoại và thử lại.</translation>
         <source>There are no profiles with this email</source>
         <translation>Không có hồ sơ với email này</translation>
     </message>
+    <message>
+        <source>You are not a member or banned to write in this group</source>
+        <translation>Bạn không phải là thành viên trò chuyện hoặc bạn không được phép viết</translation>
+    </message>
 </context>
 <context>
     <name>tooltips</name>
@@ -5156,52 +6119,12 @@ Hãy chỉnh sửa số điện thoại và thử lại.</translation>
         <translation>Nụ cười và nhãn dán</translation>
     </message>
     <message>
-        <source>Open chat page</source>
-        <translation>Mở trang trò chuyện</translation>
-    </message>
-    <message>
-        <source>Turn off camera</source>
-        <translation>Tắt máy ảnh</translation>
-    </message>
-    <message>
-        <source>Turn on camera</source>
-        <translation>Bật máy ảnh</translation>
-    </message>
-    <message>
-        <source>Turn off microphone</source>
-        <translation>Tắt micrô</translation>
-    </message>
-    <message>
-        <source>Turn on microphone</source>
-        <translation>Bật micrô</translation>
-    </message>
-    <message>
-        <source>Turn off screen sharing</source>
-        <translation>Tắt chia sẻ màn hình</translation>
-    </message>
-    <message>
-        <source>Turn on screen sharing</source>
-        <translation>Bật chia sẻ màn hình</translation>
-    </message>
-    <message>
         <source>Call</source>
         <translation>Gọi</translation>
     </message>
     <message>
         <source>Search for messages</source>
         <translation>Tìm kiếm tin nhắn</translation>
-    </message>
-    <message>
-        <source>Exit full screen</source>
-        <translation>Thoát toàn màn hình</translation>
-    </message>
-    <message>
-        <source>Full screen</source>
-        <translation>Toàn màn hình</translation>
-    </message>
-    <message>
-        <source>End call</source>
-        <translation>Kết thúc gọi</translation>
     </message>
     <message>
         <source>Share</source>
@@ -5214,6 +6137,14 @@ Hãy chỉnh sửa số điện thoại và thử lại.</translation>
     <message>
         <source>Information</source>
         <translation>Thông tin</translation>
+    </message>
+    <message>
+        <source>Audio call</source>
+        <translation>Cuộc gọi âm thanh</translation>
+    </message>
+    <message>
+        <source>Link to call</source>
+        <translation>Liên kết cuộc gọi</translation>
     </message>
 </context>
 <context>
@@ -5289,10 +6220,6 @@ Hãy chỉnh sửa số điện thoại và thử lại.</translation>
         <translation>Thêm vào cuộc gọi</translation>
     </message>
     <message>
-        <source>MEMBERS</source>
-        <translation>THÀNH VIÊN</translation>
-    </message>
-    <message>
         <source>OTHERS</source>
         <translation>KHÁC</translation>
     </message>
@@ -5323,6 +6250,133 @@ Hãy chỉnh sửa số điện thoại và thử lại.</translation>
     <message>
         <source>To share screen you need to allow access to the screen recording in the system settings</source>
         <translation>Để chia sẻ màn hình, bạn cần cho phép truy cập vào bản ghi màn hình trong cài đặt hệ thống</translation>
+    </message>
+    <message>
+        <source>VCS call</source>
+        <translation>VCS gọi</translation>
+    </message>
+    <message>
+        <source>To use microphone you need to allow access to the microphone in the system settings</source>
+        <translation>Để sử dụng micrô, cho phép truy cập micrô trong cài đặt hệ thống</translation>
+    </message>
+    <message>
+        <source>Microphone permissions</source>
+        <translation>Truy cập micrô</translation>
+    </message>
+    <message>
+        <source>To use camera you need to allow access to the camera in the system settings</source>
+        <translation>Để sử dụng máy ảnh, cho phép truy cập vào camera trong cài đặt hệ thống</translation>
+    </message>
+    <message>
+        <source>Camera permissions</source>
+        <translation>Truy cập máy ảnh</translation>
+    </message>
+    <message>
+        <source>Forward</source>
+        <translation>Chuyển tiếp</translation>
+    </message>
+    <message>
+        <source>ALL GROUP MEMBERS</source>
+        <translation>TẤT CẢ CÁC THÀNH VIÊN NHÓM</translation>
+    </message>
+    <message>
+        <source>CALL MEMBERS</source>
+        <translation>GỌI THAM GIA</translation>
+    </message>
+</context>
+<context>
+    <name>voip_video_panel</name>
+    <message>
+        <source>Video</source>
+        <translation>Video</translation>
+    </message>
+    <message>
+        <source>Screen</source>
+        <translation>Màn hình</translation>
+    </message>
+    <message>
+        <source>More</source>
+        <translation>Hơn</translation>
+    </message>
+    <message>
+        <source>Go to chat</source>
+        <translation>Đi trò chuyện</translation>
+    </message>
+    <message>
+        <source>Open masks</source>
+        <translation>Kích hoạt mặt nạ</translation>
+    </message>
+    <message>
+        <source>Add user</source>
+        <translation>Thêm thành viên</translation>
+    </message>
+    <message>
+        <source>Settings</source>
+        <translation>Cài đặt</translation>
+    </message>
+    <message>
+        <source>End</source>
+        <translation>Kết thúc</translation>
+    </message>
+    <message>
+        <source>Show all</source>
+        <translation>Hiển thị tất cả</translation>
+    </message>
+    <message>
+        <source>Show one</source>
+        <translation>Hiển thị một</translation>
+    </message>
+    <message>
+        <source>Stop screen sharing</source>
+        <translation>Dừng chia sẻ màn hình</translation>
+    </message>
+    <message>
+        <source>Screen sharing enabled</source>
+        <translation>Kích hoạt chia sẻ màn hình</translation>
+    </message>
+    <message>
+        <source>Ask one of the participants to turn off the video. In calls with over %1 people only one video can be shown</source>
+        <translation>Yêu cầu một trong những người tham gia tắt video. Trong các cuộc gọi với hơn %1 người, chỉ một video có thể được hiển thị</translation>
+    </message>
+    <message>
+        <source>Masks aren&apos;t available in calls with more than %1 members</source>
+        <translation>Trong các cuộc gọi có hơn %1 người tham gia, mặt nạ không khả dụng</translation>
+    </message>
+    <message>
+        <source>Mic</source>
+        <translation>Micro</translation>
+    </message>
+    <message>
+        <source>Only the creator of the webinar can show the video</source>
+        <translation>Chỉ người tạo webinar mới có thể hiển thị video</translation>
+    </message>
+    <message>
+        <source>Only the creator of the webinar can use masks</source>
+        <translation>Chỉ người tạo webinar mới có thể sử dụng mặt nạ</translation>
+    </message>
+    <message>
+        <source>Only the creator of the webinar can use a microphone</source>
+        <translation>Chỉ người tạo webinar mới có thể sử dụng micrô</translation>
+    </message>
+    <message>
+        <source>Copy link</source>
+        <translation>Sao chép liên kết</translation>
+    </message>
+    <message>
+        <source>Invite</source>
+        <translation>Mời</translation>
+    </message>
+    <message>
+        <source>Link copied</source>
+        <translation>Liên kết được sao chép</translation>
+    </message>
+    <message>
+        <source>Sound</source>
+        <translation>Âm thanh</translation>
+    </message>
+    <message>
+        <source>Wait for connection</source>
+        <translation>Mong đợi kết nối</translation>
     </message>
 </context>
 <context>

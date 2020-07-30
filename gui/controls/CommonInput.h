@@ -1,5 +1,6 @@
 #pragma once
 #include "LineEditEx.h"
+#include "TextEditEx.h"
 
 namespace Ui
 {
@@ -17,6 +18,7 @@ namespace Ui
     class BaseInput : public QWidget
     {
         Q_OBJECT
+
     Q_SIGNALS:
         void textEdited();
         void textChanged(const QString &);
@@ -24,6 +26,7 @@ namespace Ui
         void enterPressed();
         void leftArrow();
         void rightArrow();
+
     public:
         explicit BaseInput(QWidget* _parent);
         virtual ~BaseInput() = default;
@@ -62,6 +65,7 @@ namespace Ui
         virtual void initInput(const int _size);
         virtual LineEditEx* current() const;
         virtual bool isLast() const;
+
     private:
         std::vector<LineEditEx*> inputs_;
         QHBoxLayout* globalLayout_;
@@ -71,12 +75,14 @@ namespace Ui
     class CommonInput : public BaseInput
     {
         Q_OBJECT
+
     public:
         CommonInput(QWidget* _parent, const InputRole _role = InputRole::Common);
         ~CommonInput() = default;
 
         void setCodeLength(int _len) override;
         void setText(const QString& _text) override;
+
     private:
         InputRole role_;
         int codeLength_;
@@ -85,11 +91,13 @@ namespace Ui
     class PhoneInput : public BaseInput
     {
         Q_OBJECT
+
     public:
         PhoneInput(QWidget* _parent);
         ~PhoneInput() = default;
 
         void setPhone(const QString& _phone) override;
+
     private:
         QString phone_;
     };
@@ -97,8 +105,10 @@ namespace Ui
     class CodeInput : public BaseInput
     {
         Q_OBJECT
+
     Q_SIGNALS:
         void codeChanged(const QString& _code);
+
     public:
         CodeInput(QWidget* _parent, const QString& _code = QString());
         ~CodeInput() = default;
@@ -112,9 +122,11 @@ namespace Ui
     class PhoneInputWidget : public QWidget
     {
         Q_OBJECT
+
     public:
         PhoneInputWidget(QWidget* _parent);
         ~PhoneInputWidget() = default;
+
     private:
         QLabel* countryPicker_;
         PhoneInput* input_;
@@ -123,11 +135,13 @@ namespace Ui
     class BaseInputContainer : public QWidget
     {
         Q_OBJECT
+
     Q_SIGNALS:
         void textEdited();
         void textChanged(const QString &);
         void emptyTextBackspace();
         void enterPressed();
+
     public:
         BaseInputContainer(QWidget* _parent, InputRole _role = InputRole::Common);
         virtual ~BaseInputContainer() = default;
@@ -163,6 +177,7 @@ namespace Ui
             Common
         };
         void updateSpacerWidth(const ResizeMode _force) const;
+
     private:
         QLayout* globalLayout_;
         QWidget* leftWidget_;
@@ -176,6 +191,7 @@ namespace Ui
     class CommonInputContainer : public BaseInputContainer
     {
         Q_OBJECT
+
     public:
         CommonInputContainer(QWidget* _parent, InputRole _role = InputRole::Common) : BaseInputContainer(_parent, _role) {};
         ~CommonInputContainer() = default;
@@ -184,6 +200,7 @@ namespace Ui
     class CodeInputContainer : public BaseInputContainer
     {
         Q_OBJECT
+
     public:
         CodeInputContainer(QWidget* _parent) : BaseInputContainer(_parent, InputRole::Code) {};
         ~CodeInputContainer() = default;
@@ -192,10 +209,43 @@ namespace Ui
     class PhoneInputContainer : public BaseInputContainer
     {
         Q_OBJECT
+
     Q_SIGNALS:
         void countrySelected(const QString&);
+
     public:
         PhoneInputContainer(QWidget* _parent) : BaseInputContainer(_parent, InputRole::Phone) {};
         ~PhoneInputContainer() = default;
+    };
+
+    class TextEditInputContainer : public QWidget
+    {
+        Q_OBJECT
+
+    Q_SIGNALS:
+        void textEdited();
+        void textChanged(const QString &);
+
+    public:
+        TextEditInputContainer(QWidget* _parent);
+        virtual ~TextEditInputContainer() = default;
+
+        virtual void setText(const QString& _text);
+        virtual QString getPlainText() const;
+        virtual void setPlaceholderText(const QString& _text);
+        virtual void clear();
+
+        QTextDocument* document() const;
+
+    protected:
+        void paintEvent(QPaintEvent* _event) override;
+        void focusInEvent(QFocusEvent* _event) override;
+        void mouseReleaseEvent(QMouseEvent *_event) override;
+
+    private:
+        void updateInputHeight();
+
+    private:
+        TextEditEx* input_;
     };
 }

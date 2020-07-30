@@ -2,12 +2,14 @@
 
 #ifdef _WIN32
 #include <WinSDKVer.h>
-#define WINVER 0x0500
-#define _WIN32_WINDOWS 0x0500
-#define _WIN32_WINNT 0x0600
-#define _ATL_XP_TARGETING
+#define WINVER 0x0601
+#define _WIN32_WINDOWS 0x0601
+#define _WIN32_WINNT 0x0601
+#define NTDDI_VERSION 0x06010000
+
 #include <SDKDDKVer.h>
 #include <Windows.h>
+#include <VersionHelpers.h>
 #endif //_WIN32
 
 #include <thread>
@@ -46,6 +48,7 @@
 #include <boost/range/adaptor/map.hpp>
 #include <boost/range/adaptor/reversed.hpp>
 #include <boost/range.hpp>
+#include <boost/filesystem.hpp>
 
 #if defined (_WIN32)
 #include <tchar.h>
@@ -65,6 +68,7 @@
 
 #define QT_WIDGETS_LIB
 #define QT_GUI_LIB
+#include <QtWinExtras/QtWin>
 #include <QResource>
 #include <QTranslator>
 #include <QScreen>
@@ -148,6 +152,7 @@
 #include <QDesktopWidget>
 #include <QSystemTrayIcon>
 #include <QMenu>
+#include <QWidgetAction>
 #include <QMovie>
 #include <QGestureEvent>
 #include <QtMultimedia/QMediaPlayer>
@@ -175,9 +180,11 @@
 #include <QTabWidget>
 #include <QCollator>
 #include <QTemporaryFile>
+#include <QTextBoundaryFinder>
 #include <QScopedValueRollback>
 #include <QtPlatformHeaders/QWindowsWindowFunctions>
 #include <QCache>
+#include <QScopeGuard>
 #if defined(IM_AUTO_TESTING)
     #include <QTest>
 #endif
@@ -288,6 +295,7 @@
 #include <QtWidgets/qsystemtrayicon.h>
 #include <QtWidgets/qmenu.h>
 #include <QtWidgets/qmenubar.h>
+#include <QtWidgets/qwidgetaction.h>
 #include <QtGui/qclipboard.h>
 #include <QtGui/qmovie.h>
 #include <QtWidgets/qgesture.h>
@@ -310,9 +318,12 @@
 #include <QtCore/qcollator.h>
 #include <QtCore/qsocketnotifier.h>
 #include <QtCore/qtemporaryfile.h>
+#include <QtCore/qtextboundaryfinder.h>
 #include <QtCore/qscopedvaluerollback.h>
 #include <QtGui/qwindow.h>
 #include <QtCore/qcache.h>
+#include <QtCore/qscopeguard.h>
+#include <QtDBus/qdbusinterface.h>
 #else
 #include "macconfig.h"
 #ifndef HOCKEY_APPID
@@ -415,6 +426,7 @@
 #import <QtWidgets/qsystemtrayicon.h>
 #import <QtWidgets/qmenu.h>
 #import <QtWidgets/qmenubar.h>
+#import <QtWidgets/qwidgetaction.h>
 #import <QtWidgets/qdockwidget.h>
 #import <QtGui/qclipboard.h>
 #import <QtCore/qobjectcleanuphandler.h>
@@ -447,8 +459,10 @@
 #import <QtWidgets/qtabwidget.h>
 #import <QtCore/qcollator.h>
 #import <QtCore/qtemporaryfile.h>
+#import <QtCore/qtextboundaryfinder.h>
 #import <QtCore/qscopedvaluerollback.h>
 #import <QtCore/qcache.h>
+#import <QtCore/qscopeguard.h>
 #endif // _WIN32
 
 #include "../common.shared/typedefs.h"
@@ -471,35 +485,13 @@
 do { if(!(condition)){ std::cerr << "ASSERT FAILED: " << #condition << " " << __FILE__ << ":" << __LINE__ << std::endl; } } while (0)
 #endif
 
-#ifndef __STRING_COMPARATOR__
-#define __STRING_COMPARATOR__
-
-struct StringComparator
-{
-    using is_transparent = std::true_type;
-
-    bool operator()(const QString& lhs, const QString& rhs) const { return lhs < rhs; }
-    bool operator()(const QStringRef& lhs, const QString& rhs) const { return lhs.compare(rhs) < 0; }
-    bool operator()(const QStringRef& lhs, const QStringRef& rhs) const { return lhs < rhs; }
-    bool operator()(const QString& lhs, const QStringRef& rhs) const { return lhs.compare(rhs) < 0; }
-    bool operator()(const QString& lhs, QLatin1String rhs) const { return lhs < rhs; }
-    bool operator()(QLatin1String lhs, const QString& rhs) const { return lhs < rhs; }
-    bool operator()(QLatin1String lhs, QLatin1String rhs) const { return lhs < rhs; }
-    bool operator()(QLatin1String lhs, const QStringRef& rhs) const { return rhs.compare(lhs) > 0; }
-    bool operator()(const QStringRef& lhs, QLatin1String rhs) const { return lhs.compare(rhs) < 0; }
-
-    template<typename T>
-    bool operator()(const char* lhs, const T& rhs) const { return operator()(ql1s(lhs), rhs); }
-
-    template<typename T>
-    bool operator()(const T& lhs, const char* rhs) const { return operator()(lhs, ql1s(rhs)); }
-
-    bool operator()(const char* lhs, const char* rhs) const { return operator()(ql1s(lhs), ql1s(rhs)); }
-};
-#endif // __STRING_COMPARATOR__
-
 namespace openal
 {
+#ifdef USE_SYSTEM_OPENAL
+#include <OpenAL/al.h>
+#include <OpenAL/alc.h>
+#else
 #include <AL/al.h>
 #include <AL/alc.h>
+#endif
 }

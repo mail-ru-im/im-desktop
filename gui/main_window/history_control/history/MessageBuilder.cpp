@@ -7,7 +7,7 @@
 #include "../../contact_list/ContactListModel.h"
 #include "../../contact_list/RecentsModel.h"
 #include "../../contact_list/UnknownsModel.h"
-#include "../../friendly/FriendlyContainer.h"
+#include "../../containers/FriendlyContainer.h"
 #include "../../history_control/ChatEventInfo.h"
 #include "../../history_control/FileSharingInfo.h"
 #include "../../history_control/VoipEventInfo.h"
@@ -18,6 +18,9 @@
 #include "../../../my_info.h"
 #include "../../../core_dispatcher.h"
 #include "History.h"
+#include "utils/features.h"
+#include "spellcheck/Spellchecker.h"
+#include "../../../gui_settings.h"
 
 namespace hist::MessageBuilder
 {
@@ -79,9 +82,13 @@ namespace hist::MessageBuilder
             return item;
         }
 
-        QString senderFriendly = _msg.Chat_ ? Logic::GetFriendlyContainer()->getFriendly(_msg.getSender())
-            : (Logic::GetFriendlyContainer()->getFriendly(_msg.IsOutgoing() ? Ui::MyInfo()->aimId() : _msg.AimId_));
 
+        auto senderAimidForFriendly = QString();
+        if (Logic::getContactListModel()->isChannel(_msg.AimId_))
+            senderAimidForFriendly = _msg.AimId_;
+        else
+            senderAimidForFriendly = _msg.Chat_ ? _msg.getSender() : (_msg.isOutgoingPosition() ? Ui::MyInfo()->aimId() : _msg.AimId_);
+        const auto senderFriendly = Logic::GetFriendlyContainer()->getFriendly(senderAimidForFriendly);
 
         auto item = Ui::ComplexMessage::ComplexMessageItemBuilder::makeComplexItem(_parent, _msg, Ui::ComplexMessage::ComplexMessageItemBuilder::ForcePreview::No);
 
@@ -110,12 +117,26 @@ namespace hist::MessageBuilder
             item->updateFriendly(_aimId, _friendly);
         });
 
+        if (Features::isSpellCheckEnabled()/* && item->isEditable()*/)
+        {
+            QObject::connect(Ui::get_gui_settings(), &Ui::qt_gui_settings::changed, item.get(), [item = item.get()](const QString& _text)
+            {
+                if (_text == ql1s(settings_spell_check))
+                    item->updateStyle();
+            });
+
+            QObject::connect(&spellcheck::Spellchecker::instance(), &spellcheck::Spellchecker::dictionaryChanged, item.get(), [item = item.get()]()
+            {
+                item->updateStyle();
+            });
+        }
+
         QObject::connect(
             item.get(),
             &Ui::ComplexMessage::ComplexMessageItem::removeMe,
             [aimId = _msg.AimId_, key = _msg.ToKey()]()
         {
-            emit Ui::GetDispatcher()->removePending(aimId, key);
+            Q_EMIT Ui::GetDispatcher()->removePending(aimId, key);
         });
 
         return item;
@@ -146,10 +167,9 @@ namespace hist::MessageBuilder
                 return { QT_TRANSLATE_NOOP("contact_list", "Video"), Ui::MediaType::mediaTypeVideo };
         }
 
-        const auto messageText = buddy.GetSourceText().trimmed();
         const auto emptyTextAllowed = buddy.IsSticker() || !buddy.Quotes_.isEmpty() || buddy.sharedContact_ || buddy.poll_;
 
-        if (!emptyTextAllowed && messageText.isEmpty())
+        if (!emptyTextAllowed && QStringView(buddy.GetSourceText()).trimmed().isEmpty())
             return {};
 
         auto item = Ui::ComplexMessage::ComplexMessageItemBuilder::makeComplexItem(nullptr, buddy, Ui::ComplexMessage::ComplexMessageItemBuilder::ForcePreview::Yes);

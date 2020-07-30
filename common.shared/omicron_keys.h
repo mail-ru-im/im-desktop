@@ -56,7 +56,6 @@ namespace omicron
         constexpr auto maximum_undo_size = "maximum_undo_size";
         constexpr auto use_apple_emoji = "use_apple_emoji";
         constexpr auto open_file_on_click = "open_file_on_click";
-        constexpr auto force_show_chat_popup = "force_show_chat_popup";
         constexpr auto show_notification_text = "show_notification_text";
         constexpr auto avatar_change_allowed = "avatar_change_allowed";
         constexpr auto cl_remove_contacts_allowed = "cl_remove_contacts_allowed";
@@ -73,5 +72,43 @@ namespace omicron
         constexpr auto server_suggests_max_allowed_words = "server_suggests_max_allowed_words";
         constexpr auto suggests_max_allowed_chars = "suggests_max_allowed_chars";
         constexpr auto suggests_max_allowed_words = "suggests_max_allowed_words";
+
+        constexpr auto spell_check_enabled = "spell_check_enabled";
+        constexpr auto spell_check_max_suggest_count = "spell_check_max_suggest_count";
+
+        constexpr auto new_message_fields  = "messages_features";
+        constexpr auto new_message_parts = "message_part_features";
+
+        constexpr auto favorites_image_id_english = "favorites_image_english";
+        constexpr auto favorites_image_id_russian = "favorites_image_russian";
+
+        constexpr auto async_response_timeout = "async_response_timeout";
+
+        constexpr auto voip_call_user_limit = "voip_call_user_limit";
+        constexpr auto voip_video_user_limit = "voip_video_user_limit";
+        constexpr auto voip_big_conference_boundary = "voip_big_conference_boundary";
+
+        constexpr auto fetch_hotstart_enabled = "fetch_hotstart_enabled";
+        constexpr auto fetch_timeout = "fetch_timeout";
+
+        constexpr auto vcs_call_by_link_enabled = "vcs_call_by_link_enabled";
+        constexpr auto vcs_webinar_enabled = "vcs_webinar_enabled";
+        constexpr auto vcs_room = "vcs_room";
+
+        constexpr auto reactions_initial_set = "reactions_initial_set";
+        constexpr auto show_reactions = "show_reactions";
+
+        constexpr auto subscr_renew_interval_status = "subscr_renew_interval_status";
+        constexpr auto subscr_renew_interval_antivirus = "subscr_renew_interval_antivirus";
+        constexpr auto subscr_renew_interval_call_room_info = "subscr_renew_interval_call_room_info";
+
+        constexpr auto statuses_json = "statuses_json";
+        constexpr auto statuses_enabled = "statuses_enabled";
+
+        constexpr auto global_contact_search_allowed = "global_contact_search_allowed";
+        constexpr auto force_update_check_allowed = "force_update_check_allowed";
+
+        constexpr auto call_room_info_enabled = "call_room_info_enabled";
+        constexpr auto has_connect_by_ip_option = "has_connect_by_ip_option";
     }
 }

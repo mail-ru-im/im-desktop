@@ -10,6 +10,7 @@
 #include "../../utils/InterConnector.h"
 #include "../../utils/utils.h"
 #include "../common.shared/config/config.h"
+#include "../containers/StatusContainer.h"
 
 namespace
 {
@@ -28,8 +29,12 @@ namespace Logic
         connect(GetAvatarStorage(), &Logic::AvatarStorage::avatarChanged, this, &UnknownsModel::contactChanged);
         connect(Ui::GetDispatcher(), &Ui::core_dispatcher::activeDialogHide, this, &UnknownsModel::activeDialogHide);
         connect(Ui::GetDispatcher(), &Ui::core_dispatcher::dlgStates, this, &UnknownsModel::dlgStates);
+        connect(Logic::GetStatusContainer(), &Logic::StatusContainer::statusChanged, this, [this](const QString& _aimid)
+        {
+            contactChanged(_aimid);
+        });
 
-        timer_->setInterval(SORT_TIMEOUT.count());
+        timer_->setInterval(SORT_TIMEOUT);
         timer_->setSingleShot(true);
         connect(timer_, &QTimer::timeout, this, &UnknownsModel::sortDialogs);
 
@@ -63,8 +68,8 @@ namespace Logic
             }
             if (wasNotEmpty && dialogs_.empty())
             {
-                emit updatedSize();
-                emit Utils::InterConnector::instance().unknownsGoBack();
+                Q_EMIT updatedSize();
+                Q_EMIT Utils::InterConnector::instance().unknownsGoBack();
             }
         };
 
@@ -86,16 +91,16 @@ namespace Logic
 
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::unknownsDeleteThemAll, this, [=]()
         {
-            for (const auto& it: dialogs_)
+            for (const auto& it : std::exchange(dialogs_, {}))
             {
                 Logic::getContactListModel()->removeContactFromCL(it.AimId_);
                 Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
                 collection.set_value_as_qstring("contact", it.AimId_);
                 Ui::GetDispatcher()->post_message_to_core("dialogs/hide", collection.get());
             }
-            dialogs_.clear();
-            emit updatedSize();
-            emit Utils::InterConnector::instance().unknownsGoBack();
+            indexes_.clear();
+            Q_EMIT updatedSize();
+            Q_EMIT Utils::InterConnector::instance().unknownsGoBack();
         });
     }
 
@@ -137,9 +142,13 @@ namespace Logic
 
         if (!cur && isHeaderVisible_)
         {
-            static Data::DlgState st;
-            st.AimId_ = qsl("~new_contacts~");
-            st.SetText(QT_TRANSLATE_NOOP("contact_list", "NEW CONTACTS"));
+            static const auto st = []() {
+                Data::DlgState s;
+                s.AimId_ = qsl("~new_contacts~");
+                s.SetText(QT_TRANSLATE_NOOP("contact_list", "NEW CONTACTS"));
+                return s;
+            }();
+
             return QVariant::fromValue(st);
         }
 
@@ -159,11 +168,11 @@ namespace Logic
     void UnknownsModel::contactChanged(const QString& _aimId)
     {
         const auto it = indexes_.constFind(_aimId);
-        if (it != indexes_.cend() && it.value() != -1)
+        if (it != indexes_.cend() && it.value() != -1 && size_t(it.value()) < dialogs_.size())
         {
-            emit dlgStateChanged(dialogs_[it.value()]);
+            Q_EMIT dlgStateChanged(dialogs_[it.value()]);
             const auto idx = index(it.value());
-            emit dataChanged(idx, idx);
+            Q_EMIT dataChanged(idx, idx);
         }
     }
 
@@ -174,7 +183,7 @@ namespace Logic
             if (const auto it = indexes_.constFind(_aimId); it != indexes_.cend() && it.value() != -1)
             {
                 const auto idx = index(it.value());
-                emit dataChanged(idx, idx);
+                Q_EMIT dataChanged(idx, idx);
             }
         };
 
@@ -196,14 +205,14 @@ namespace Logic
             if (Logic::getContactListModel()->selectedContact() == _aimId)
                 Logic::getContactListModel()->setCurrent(QString(), -1, true);
 
-            emit updatedSize();
+            Q_EMIT updatedSize();
         }
         if (wasNotEmpty && dialogs_.empty())
         {
-            emit updatedSize();
-            emit Utils::InterConnector::instance().unknownsGoBack();
+            Q_EMIT updatedSize();
+            Q_EMIT Utils::InterConnector::instance().unknownsGoBack();
             if (!Logic::getRecentsModel()->rowCount())
-                emit Utils::InterConnector::instance().showRecentsPlaceholder();
+                Q_EMIT Utils::InterConnector::instance().showRecentsPlaceholder();
         }
     }
 
@@ -234,10 +243,10 @@ namespace Logic
                 {
                     indexes_[iter->AimId_] = -1;
                     dialogs_.erase(iter);
-                    updatedItems++;
+                    ++updatedItems;
 
-                    emit updatedSize();
-                    emit Utils::InterConnector::instance().unknownsGoBack();
+                    Q_EMIT updatedSize();
+                    Q_EMIT Utils::InterConnector::instance().unknownsGoBack();
                 }
 
                 continue;
@@ -245,11 +254,11 @@ namespace Logic
 
             if (iter != dialogs_.end())
             {
-                updatedItems++;
+                ++updatedItems;
                 auto &existingDlgState = *iter;
 
                 if (existingDlgState.YoursLastRead_ != _dlgState.YoursLastRead_)
-                    emit readStateChanged(_dlgState.AimId_);
+                    Q_EMIT readStateChanged(_dlgState.AimId_);
 
                 const auto existingText = existingDlgState.GetText();
 
@@ -267,12 +276,12 @@ namespace Logic
                         timer_->start();
 
                     const auto idx = index((int)std::distance(dialogs_.begin(), iter));
-                    emit dataChanged(idx, idx);
+                    Q_EMIT dataChanged(idx, idx);
                 }
             }
             else if (!_dlgState.GetText().isEmpty())
             {
-                updatedItems++;
+                ++updatedItems;
                 dialogs_.push_back(_dlgState);
 
                 if (indexes_.empty())
@@ -285,59 +294,59 @@ namespace Logic
 
                 if (dialogs_.size() == 1)
                 {
-                    emit updatedSize();
+                    Q_EMIT updatedSize();
                     Logic::updatePlaceholders();
                 }
 
                 if (_dlgState.AimId_ == curSelected && _dlgState.Outgoing_)
-                    emit Utils::InterConnector::instance().unknownsGoSeeThem();
+                    Q_EMIT Utils::InterConnector::instance().unknownsGoSeeThem();
             }
 
             if (mainPageOpened && _dlgState.AimId_ == curSelected)
                 sendLastRead(_dlgState.AimId_);
 
-            emit dlgStateChanged(_dlgState);
+            Q_EMIT dlgStateChanged(_dlgState);
         }
 
         if (syncSort)
             sortDialogs();
 
         if (updatedItems > 0)
-            emit updatedMessages();
+            Q_EMIT updatedMessages();
 
-        emit dlgStatesHandled(_states);
+        Q_EMIT dlgStatesHandled(_states);
     }
 
     void UnknownsModel::sortDialogs()
     {
-        std::sort(dialogs_.begin(), dialogs_.end(), [](const Data::DlgState& first, const Data::DlgState& second)
+        std::stable_sort(dialogs_.begin(), dialogs_.end(), [](const Data::DlgState& first, const Data::DlgState& second)
         {
-            if (first.FavoriteTime_ == -1 && second.FavoriteTime_ == -1)
+            if (first.PinnedTime_ == -1 && second.PinnedTime_ == -1)
                 return first.Time_ > second.Time_;
 
-            if (first.FavoriteTime_ == -1)
+            if (first.PinnedTime_ == -1)
                 return false;
-            else if (second.FavoriteTime_ == -1)
+            else if (second.PinnedTime_ == -1)
                 return true;
 
-            if (first.FavoriteTime_ == second.FavoriteTime_)
+            if (first.PinnedTime_ == second.PinnedTime_)
                 return first.AimId_ > second.AimId_;
 
-            return first.FavoriteTime_ < second.FavoriteTime_;
+            return first.PinnedTime_ < second.PinnedTime_;
         });
         indexes_.clear();
         int i = 0;
         for (const auto& iter : dialogs_)
             indexes_[iter.AimId_] = i++;
 
-        emit dataChanged(index(0), index(rowCount()));
-        emit orderChanged();
+        Q_EMIT dataChanged(index(0), index(rowCount()));
+        Q_EMIT orderChanged();
     }
 
     void UnknownsModel::refresh()
     {
-        emit refreshAll();
-        emit dataChanged(index(0), index(rowCount()));
+        Q_EMIT refreshAll();
+        Q_EMIT dataChanged(index(0), index(rowCount()));
     }
 
     Data::DlgState UnknownsModel::getDlgState(const QString& _aimId, bool _fromDialog)
@@ -496,8 +505,8 @@ namespace Logic
         Ui::GetDispatcher()->post_message_to_core("dlg_state/set_last_read", collection.get());
 
         const auto idx = index(_index);
-        emit dataChanged(idx, idx);
-        emit updatedMessages();
+        Q_EMIT dataChanged(idx, idx);
+        Q_EMIT updatedMessages();
     }
 
     void UnknownsModel::setHeaderVisible(bool _isVisible)

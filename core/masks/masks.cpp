@@ -19,12 +19,13 @@
 #include "masks.h"
 #include "../connections/urls_cache.h"
 #include "../common.shared/omicron_keys.h"
+#include "../common.shared/string_utils.h"
 
 #include "../../libomicron/include/omicron/omicron.h"
 
-core::masks::masks(std::weak_ptr<wim::im> _im, const std::wstring& _root_path, unsigned _version)
-    : im_(_im)
-    , root_(_root_path)
+core::masks::masks(std::weak_ptr<wim::im> _im, std::wstring _root_path, unsigned _version)
+    : im_(std::move(_im))
+    , root_(std::move(_root_path))
     , version_(_version)
     , state_(state::not_loaded)
 {
@@ -175,7 +176,7 @@ void core::masks::get_mask_id_list(int64_t _seq)
 
     __INFO("masks", "getting the masks list %1%", _seq);
 
-    const std::string json_url = std::string(urls::get_url(urls::url_type::misc_www_host)) + std::string("/masks/list/v") + std::to_string(version_);
+    const auto json_url = su::concat(urls::get_url(urls::url_type::misc_www_host), "/masks/list/v", std::to_string(version_));
     const auto json_path = get_json_path();
 
     __INFO("masks", "downloading: %1%", json_url);

@@ -63,6 +63,9 @@ namespace core
 
             void notify_core_outgoing_msg_count();
             int32_t get_outgoing_count() const;
+            bool is_outgoing_header(archive::message_header& header, const std::chrono::seconds _current_time) const;
+
+            void drop_outdated_headers(const std::chrono::seconds _current_time);
 
         public:
 

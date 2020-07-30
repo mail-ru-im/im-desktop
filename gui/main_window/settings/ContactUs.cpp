@@ -11,6 +11,8 @@
 #include "../../controls/TextEditEx.h"
 #include "../../controls/TextEmojiWidget.h"
 #include "../../controls/TransparentScrollBar.h"
+#include "../../controls/CommonInput.h"
+#include "../../controls/DialogButton.h"
 #include "../../core_dispatcher.h"
 #include "../../gui_settings.h"
 #include "../../utils/gui_coll_helper.h"
@@ -23,7 +25,6 @@
 #include "../../../common.shared/string_utils.h"
 #include "../../../common.shared/omicron_keys.h"
 #include "styles/ThemeParameters.h"
-#include "../../controls/DialogButton.h"
 #include "previewer/toast.h"
 #include "ContactUs.h"
 
@@ -33,9 +34,6 @@ using namespace Ui;
 
 namespace
 {
-    constexpr int TEXTEDIT_MIN_HEIGHT = 88;
-    constexpr int TEXTEDIT_MAX_HEIGHT = 252;
-
     constexpr int MAX_FILE_SIZE = 1024 * 1024;
     constexpr int MAX_TOTAL_FILE_SIZE = 25 * 1024 * 1024;
 
@@ -67,11 +65,13 @@ namespace
         return f;
     }
 
+    static const QString defaultProblem = QT_TRANSLATE_NOOP("contactus_page", "Nothing selected");
+
     static const std::vector<QString>& getProblemsList()
     {
         static const std::vector<QString> problemsList =
         {
-            QT_TRANSLATE_NOOP("contactus_page", "Nothing selected"),
+            QT_TRANSLATE_NOOP("contactus_page", "Choose your problem"),
             QT_TRANSLATE_NOOP("contactus_page", "Emoji and stickers"),
             QT_TRANSLATE_NOOP("contactus_page", "Avatars"),
             QT_TRANSLATE_NOOP("contactus_page", "Videoplayer"),
@@ -140,9 +140,41 @@ namespace
     {
         return Utils::fscale_value(20);
     }
+
+    auto getMinWidth()
+    {
+        return Utils::scale_value(300);
+    }
+
+    auto getMaxWidth()
+    {
+        return Utils::scale_value(400);
+    }
+
+    auto getShadowWidth()
+    {
+        return Utils::scale_value(7);
+    }
+
+    auto getHorMargin()
+    {
+        return Utils::scale_value(13);
+    }
+
+    auto getVerMargin()
+    {
+        return Utils::scale_value(36);
+    }
+
+    auto getFullHorMargins()
+    {
+        return getShadowWidth() + getHorMargin();
+    }
+
+    constexpr auto feedbackTimeout = std::chrono::seconds(10);
 }
 
-ContactUsWidget::ContactUsWidget(QWidget *_parent)
+ContactUsWidget::ContactUsWidget(QWidget *_parent, bool _isPlain)
     : QWidget(_parent)
     , sendingPage_(nullptr)
     , successPage_(nullptr)
@@ -150,9 +182,12 @@ ContactUsWidget::ContactUsWidget(QWidget *_parent)
     , dropper_(nullptr)
     , debugInfoWidget_(nullptr)
     , hasProblemDropper_(false)
+    , isPlain_(_isPlain)
+    , timeoutTimer_(new QTimer(this))
 {
-
-    hasProblemDropper_ = config::get().is_on(config::features::feedback_selected) && (get_gui_settings()->get_value(settings_language, QString()) == ql1s("ru"));
+    setMinimumWidth(getMinWidth() + 2 * getFullHorMargins());
+    hasProblemDropper_ = config::get().is_on(config::features::feedback_selected) && (get_gui_settings()->get_value(settings_language, QString()) == u"ru") && !isPlain_;
+    timeoutTimer_->setInterval(feedbackTimeout);
 
     init();
     setState(State::Feedback);
@@ -161,57 +196,60 @@ ContactUsWidget::ContactUsWidget(QWidget *_parent)
 
     connect(GetDispatcher(), &core_dispatcher::feedbackSent, this, [this](bool succeeded)
     {
-        sendButton_->setVisible(true);
-        sendSpinner_->setVisible(false);
-        sendSpinner_->stopAnimation();
-
-        suggestioner_->setEnabled(true);
-        attachWidget_->setEnabled(true);
-        debugInfoWidget_->setEnabled(true);
-        email_->setEnabled(true);
+        resetState();
+        timeoutTimer_->stop();
 
         if (!succeeded)
         {
-            errorOccuredSign_->setVisible(true);
+            showError(ErrorReason::Feedback);
         }
         else
         {
             attachWidget_->clearFileList();
-            suggestioner_->setText(QString());
+            suggestioner_->clear();
             setState(State::Success);
         }
+    });
+
+    connect(timeoutTimer_, &QTimer::timeout, this, [this]()
+    {
+        timeoutTimer_->stop();
+        resetState(ClearData::No);
+        showError(ErrorReason::Feedback);
     });
 }
 
 void ContactUsWidget::init()
 {
-    auto scrollArea = CreateScrollAreaAndSetTrScrollBarV(this);
-    scrollArea->setWidgetResizable(true);
+    scrollArea_ = CreateScrollAreaAndSetTrScrollBarV(this);
+    scrollArea_->setWidgetResizable(true);
 
-    Utils::ApplyStyle(scrollArea, Styling::getParameters().getContactUsQss());
-    Utils::grabTouchWidget(scrollArea->viewport(), true);
+    Utils::ApplyStyle(scrollArea_, Styling::getParameters().getContactUsQss());
+    Utils::grabTouchWidget(scrollArea_->viewport(), true);
 
-    auto mainWidget = new QWidget(scrollArea);
-    Utils::grabTouchWidget(mainWidget);
+    mainWidget_ = new QWidget(scrollArea_);
+    Utils::grabTouchWidget(mainWidget_);
+    mainWidget_->installEventFilter(this);
 
-    auto mainLayout = Utils::emptyVLayout(mainWidget);
+    auto mainLayout = Utils::emptyVLayout(mainWidget_);
     mainLayout->setAlignment(Qt::AlignTop);
-    mainLayout->setContentsMargins(Utils::scale_value(20), Utils::scale_value(36), Utils::scale_value(20), Utils::scale_value(36));
+    if (!isPlain_)
+        mainLayout->setContentsMargins(getHorMargin(), getVerMargin(), getHorMargin(), getVerMargin());
 
-    scrollArea->setWidget(mainWidget);
+    scrollArea_->setWidget(mainWidget_);
 
     auto layout = Utils::emptyHLayout(this);
-    layout->setSpacing(0);
-    layout->setContentsMargins(0, 0, 0, 0);
-    Testing::setAccessibleName(scrollArea, qsl("AS contanctus scrollArea"));
-    layout->addWidget(scrollArea);
+    Testing::setAccessibleName(scrollArea_, qsl("AS ContactUsPage scrollArea"));
+    layout->addWidget(scrollArea_);
 
-    sendingPage_ = new QWidget(scrollArea);
-    successPage_ = new QWidget(scrollArea);
-    successPage_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
+    sendingPage_ = new QWidget(scrollArea_);
+    successPage_ = new QWidget(scrollArea_);
 
     Utils::grabTouchWidget(successPage_);
     Utils::grabTouchWidget(sendingPage_);
+
+    Testing::setAccessibleName(successPage_, qsl("AS ContactUsPage successPage"));
+    Testing::setAccessibleName(sendingPage_, qsl("AS ContactUsPage sendingPage"));
 
     initFeedback();
     initSuccess();
@@ -237,49 +275,49 @@ void ContactUsWidget::setState(const State &_state)
 
 void ContactUsWidget::initSuccess()
 {
+    successPage_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     auto successPageLayout = Utils::emptyVLayout(successPage_);
     successPageLayout->setAlignment(Qt::AlignCenter);
     {
+        successPageLayout->addSpacerItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Expanding));
         auto successWidget = new QWidget(successPage_);
         Utils::grabTouchWidget(successWidget);
         auto successImageLayout = Utils::emptyVLayout(successWidget);
-        successWidget->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
         successImageLayout->setAlignment(Qt::AlignCenter);
         {
             auto successImage = new QPushButton(successWidget);
             successImage->setObjectName(qsl("successImage"));
             successImage->setFlat(true);
             successImage->setFixedSize(Utils::scale_value(96), Utils::scale_value(96));
-            Testing::setAccessibleName(successImage, qsl("AS contanctus successImage"));
+            Testing::setAccessibleName(successImage, qsl("AS ContactUsPage successImage"));
             successImageLayout->addWidget(successImage);
         }
-        Testing::setAccessibleName(successWidget, qsl("AS contanctus successWidget"));
+        Testing::setAccessibleName(successWidget, qsl("AS ContactUsPage successWidget"));
         successPageLayout->addWidget(successWidget);
 
         auto thanksWidget = new QWidget(successPage_);
         auto thanksLayout = Utils::emptyVLayout(thanksWidget);
         Utils::grabTouchWidget(thanksWidget);
-        thanksWidget->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
         thanksLayout->setAlignment(Qt::AlignCenter);
         thanksLayout->addSpacing(Utils::scale_value(16));
         {
             auto thanksLabel = new QLabel(thanksWidget);
-            thanksLabel->setStyleSheet(qsl("color: %1").arg(Styling::getParameters().getColorHex(Styling::StyleVariable::TEXT_SOLID)));
+            thanksLabel->setStyleSheet(qsl("color: %1;").arg(Styling::getParameters().getColorHex(Styling::StyleVariable::TEXT_SOLID)));
             thanksLabel->setFont(labelFont());
             thanksLabel->setWordWrap(true);
             thanksLabel->setText(QT_TRANSLATE_NOOP("contactus_page", "Thank you for contacting us! We will reply as soon as possible."));
             thanksLabel->setAlignment(Qt::AlignCenter);
-            thanksLabel->setSizePolicy(QSizePolicy::Expanding, thanksLabel->sizePolicy().verticalPolicy());
-            Testing::setAccessibleName(thanksLabel, qsl("AS contanctus thanksLabel"));
+            thanksLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+            thanksLabel->setFixedHeight(thanksLabel->heightForWidth(width()));
+            Testing::setAccessibleName(thanksLabel, qsl("AS ContactUsPage thanksLabel"));
             thanksLayout->addWidget(thanksLabel);
         }
-        Testing::setAccessibleName(thanksWidget, qsl("AS contanctus thanksWidget"));
+        Testing::setAccessibleName(thanksWidget, qsl("AS ContactUsPage thanksWidget"));
         successPageLayout->addWidget(thanksWidget);
 
         auto resendWidget = new QWidget(successPage_);
         auto resendLayout = Utils::emptyVLayout(resendWidget);
         Utils::grabTouchWidget(resendWidget);
-        resendWidget->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
         resendLayout->setAlignment(Qt::AlignCenter);
         {
             auto resendLink = new TextEmojiWidget(resendWidget, captionFont(),
@@ -292,20 +330,24 @@ void ContactUsWidget::initSuccess()
             {
                 setState(State::Feedback);
             });
-            Testing::setAccessibleName(resendLink, qsl("AS contanctus resendLink"));
+            Testing::setAccessibleName(resendLink, qsl("AS ContactUsPage resendLink"));
             resendLayout->addWidget(resendLink);
         }
-        Testing::setAccessibleName(resendWidget, qsl("AS contanctus resendWidget"));
+        Testing::setAccessibleName(resendWidget, qsl("AS ContactUsPage resendWidget"));
+        successWidget->updateGeometry();
         successPageLayout->addWidget(resendWidget);
+        successPageLayout->addSpacerItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Expanding));
+        successPage_->updateGeometry();
     }
 }
 
 void ContactUsWidget::initFeedback()
 {
     auto sendingPageLayout = Utils::emptyVLayout(sendingPage_);
-    sendingPageLayout->setSpacing(Utils::scale_value(16));
-    sendingPageLayout->setContentsMargins(0, 0, 0, 0);
+    sendingPageLayout->setContentsMargins(getShadowWidth(), 0, getShadowWidth(), 0);
     sendingPageLayout->setAlignment(Qt::AlignTop);
+    const auto horAlignment = isPlain_ ? Qt::AlignHCenter : Qt::AlignLeft;
+
     static auto& problems = getProblemsList();
 
     if (hasProblemDropper_)
@@ -314,193 +356,164 @@ void ContactUsWidget::initFeedback()
         (
             sendingPage_
             , sendingPageLayout
-            , QT_TRANSLATE_NOOP("settings", "Problem")
+            , QString()
             , true
             , problems
             , 0
             , -1
-            , [=](QString _s, int _idx, TextEmojiWidget*)
-        {
-            selectedProblem_ = problems[_idx];
-        }
-        , [](bool) -> QString { return QString(); }
+            , [=](const QString&, int _idx) { selectedProblem_ = _idx == 0 ? defaultProblem : problems[_idx]; }
         );
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::closeAnyPopupMenu, dropper_, &QComboBox::hidePopup);
+        sendingPageLayout->addSpacerItem(new QSpacerItem(0, Utils::scale_value(13), QSizePolicy::Expanding, QSizePolicy::Fixed));
     }
 
-    suggestioner_ = new TextEditEx(sendingPage_, labelFont(), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID), true, false);
-
-    Testing::setAccessibleName(suggestioner_, qsl("feedback_suggestioner_"));
-
+    suggestioner_ = new TextEditInputContainer(sendingPage_);
     Utils::grabTouchWidget(suggestioner_);
-    suggestioner_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
-    suggestioner_->setMinimumHeight(Utils::scale_value(TEXTEDIT_MIN_HEIGHT));
-    suggestioner_->setMaximumHeight(Utils::scale_value(TEXTEDIT_MAX_HEIGHT));
     suggestioner_->setPlaceholderText(QT_TRANSLATE_NOOP("contactus_page", "Your comments or suggestions..."));
-    suggestioner_->setAutoFillBackground(false);
-    suggestioner_->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
-    suggestioner_->setTextInteractionFlags(Qt::TextEditable | Qt::TextEditorInteraction);
-    suggestioner_->setProperty("normal", true);
+    suggestioner_->setMaximumWidth(getMaxWidth());
     sendingPageLayout->addWidget(suggestioner_);
 
-    connect(&Utils::InterConnector::instance(), &Utils::InterConnector::generalSettingsContactUsShown, suggestioner_, Utils::QOverload<>::of(&TextEditEx::setFocus));
+    connect(&Utils::InterConnector::instance(), &Utils::InterConnector::generalSettingsContactUsShown, suggestioner_, qOverload<>(&TextEditEx::setFocus));
 
-    connect(suggestioner_->document(), &QTextDocument::contentsChanged, this, &ContactUsWidget::updateSuggesionHeight);
+    Testing::setAccessibleName(suggestioner_, qsl("AS ContactUsPage suggestionInput"));
 
-    Testing::setAccessibleName(suggestioner_, qsl("AS contanctus suggestioner_"));
-
-    suggestionSizeError_ = new TextEmojiWidget(suggestioner_, captionFont(),
+    suggestionSizeError_ = new TextEmojiWidget(sendingPage_, captionFont(),
         Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_ATTENTION), Utils::scale_value(12));
     Utils::grabTouchWidget(suggestionSizeError_);
     suggestionSizeError_->setVisible(false);
-    Testing::setAccessibleName(suggestionSizeError_, qsl("AS contanctus suggestionSizeError"));
+    Testing::setAccessibleName(suggestionSizeError_, qsl("AS ContactUsPage suggestionSizeError"));
     sendingPageLayout->addWidget(suggestionSizeError_);
+    sendingPageLayout->setAlignment(suggestionSizeError_, horAlignment);
+    sendingPageLayout->addSpacerItem(new QSpacerItem(0, Utils::scale_value(13), QSizePolicy::Expanding, QSizePolicy::Fixed));
 
     attachWidget_ = new AttachFileWidget(sendingPage_);
     Testing::setAccessibleName(attachWidget_, qsl("feedback_filer"));
     Utils::grabTouchWidget(attachWidget_);
-    attachWidget_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
+    attachWidget_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
     sendingPageLayout->addWidget(attachWidget_);
+    sendingPageLayout->addSpacerItem(new QSpacerItem(0, Utils::scale_value(20), QSizePolicy::Expanding, QSizePolicy::Fixed));
 
     debugInfoWidget_ = new GetDebugInfoWidget(sendingPage_);
-    Testing::setAccessibleName(debugInfoWidget_, qsl("debug_info"));
+    Testing::setAccessibleName(debugInfoWidget_, qsl("AS ContactUsPage debugInfoWidget"));
     Utils::grabTouchWidget(debugInfoWidget_);
     sendingPageLayout->addWidget(debugInfoWidget_);
+    sendingPageLayout->addSpacerItem(new QSpacerItem(0, Utils::scale_value(17), QSizePolicy::Expanding, QSizePolicy::Fixed));
 
-    email_ = new LineEditEx(sendingPage_);
+    email_ = new CommonInputContainer(sendingPage_);
     email_->setFont(labelFont());
-    email_->changeTextColor(getInfoTextColor());
-
-    email_->setContentsMargins(0, 0, 0, 0);
+    email_->setMaximumWidth(getMaxWidth());
     email_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
     email_->setPlaceholderText(QT_TRANSLATE_NOOP("contactus_page", "Your Email"));
-    email_->setAutoFillBackground(false);
 
     QString communication_email = get_gui_settings()->get_value(settings_feedback_email, QString());
     QString aimid = MyInfo()->aimId();
 
-    if (communication_email.isEmpty() && config::get().is_on(config::features::contact_us_via_mail_default) && aimid.contains(ql1c('@')))
+    if (communication_email.isEmpty() && config::get().is_on(config::features::contact_us_via_mail_default) && aimid.contains(u'@'))
         communication_email = aimid;
     email_->setText(communication_email);
-    email_->setProperty("normal", true);
-    Testing::setAccessibleName(email_, qsl("AS contanctus email"));
+    Testing::setAccessibleName(email_, qsl("AS ContactUsPage email"));
     sendingPageLayout->addWidget(email_);
 
-    emailError_ = new TextEmojiWidget(sendingPage_, captionFont(), Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_ATTENTION), Utils::scale_value(12));
-    Utils::grabTouchWidget(emailError_);
-    emailError_->setText(QT_TRANSLATE_NOOP("contactus_page", "Please enter a valid email address"));
-    emailError_->setVisible(false);
-    Testing::setAccessibleName(emailError_, qsl("AS contanctus emailError"));
-    sendingPageLayout->addWidget(emailError_);
+    sendWidget_ = new QWidget(sendingPage_);
+    auto sendLayout = Utils::emptyVLayout(sendWidget_);
+    Utils::grabTouchWidget(sendWidget_);
+    sendWidget_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
 
+    errorOccuredWidget_ = new QWidget(sendWidget_);
+    auto errorLayout = Utils::emptyVLayout(errorOccuredWidget_);
+    errorOccuredSign_ = new TextEmojiWidget(errorOccuredWidget_, captionFont(),
+                                            Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_ATTENTION), Utils::scale_value(12));
+    Utils::grabTouchWidget(errorOccuredSign_);
+    Testing::setAccessibleName(errorOccuredSign_, qsl("AS ContactUsPage errorOccuredSign"));
+    errorLayout->addSpacerItem(new QSpacerItem(0, Utils::scale_value(9), QSizePolicy::Expanding, QSizePolicy::Fixed));
+    errorLayout->addWidget(errorOccuredSign_);
+    errorLayout->addSpacerItem(new QSpacerItem(0, Utils::scale_value(16)));
+    errorLayout->setAlignment(errorOccuredSign_, horAlignment);
+    sendLayout->addWidget(errorOccuredWidget_);
+    errorOccuredSign_->setVisible(false);
+    QFontMetrics metrics(captionFont());
+    errorOccuredWidget_->setFixedHeight(metrics.height() + Utils::scale_value(25));
     connect(&Utils::InterConnector::instance(), &Utils::InterConnector::generalSettingsShow, this,
-        [this](int type)
+    [this](int type)
     {
         if ((Utils::CommonSettingsType)type == Utils::CommonSettingsType::CommonSettingsType_ContactUs && !Utils::isValidEmailAddress(email_->text()))
             email_->setText(QString());
-        if (!email_->property("normal").toBool())
-            Utils::ApplyPropertyParameter(email_, "normal", true);
-        emailError_->setVisible(false);
+        errorOccuredSign_->setVisible(false);
     });
 
-    auto sendWidget = new QWidget(sendingPage_);
-    auto sendLayout = Utils::emptyHLayout(sendWidget);
-    Utils::grabTouchWidget(sendWidget);
-    sendWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
-    sendLayout->setContentsMargins(0, 0, 0, 0);
-    sendLayout->setSpacing(Utils::scale_value(12));
-    sendLayout->setAlignment(Qt::AlignLeft);
-
-    sendButton_ = new DialogButton(sendWidget, QT_TRANSLATE_NOOP("contactus_page", "Send"), (suggestioner_->getPlainText().length() && email_->text().length()) ? DialogButtonRole::CONFIRM : DialogButtonRole::DISABLED);
+    sendButton_ = new DialogButton(sendWidget_, QT_TRANSLATE_NOOP("contactus_page", "Send"));
     sendButton_->setCursor(Qt::PointingHandCursor);
     sendButton_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
     sendButton_->setMinimumWidth(Utils::scale_value(100));
     sendButton_->setFixedHeight(Utils::scale_value(40));
+    sendButton_->setContentsMargins(Utils::scale_value(32), 0, Utils::scale_value(32), 0);
+    sendButton_->setEnabled(!suggestioner_->getPlainText().isEmpty() && !email_->text().isEmpty());
+    sendButton_->updateWidth();
 
-    Testing::setAccessibleName(sendButton_, qsl("AS contanctus sendButton"));
+    Testing::setAccessibleName(sendButton_, qsl("AS ContactUsPage sendButton"));
     sendLayout->addWidget(sendButton_);
+    sendLayout->setAlignment(sendButton_, horAlignment);
 
     connect(suggestioner_->document(), &QTextDocument::contentsChanged, this, [this]()
     {
-        bool state = suggestioner_->getPlainText().length();
-        if (state && suggestioner_->property("normal").toBool() != state)
-        {
-            Utils::ApplyPropertyParameter(suggestioner_, "normal", state);
+        bool state = !suggestioner_->getPlainText().isEmpty();
+        if (state)
             suggestionSizeError_->setVisible(false);
-        }
 
-        updateSendButton(state && email_->text().length());
+        errorOccuredSign_->setVisible(false);
+        sendButton_->setEnabled(state && !email_->text().isEmpty());
     });
 
-    connect(email_, &QLineEdit::textChanged, this, [this](const QString &)
+    connect(email_, &Ui::CommonInputContainer::textChanged, this, [this](const QString &)
     {
-        bool state = email_->text().length();
-
-        if (state && email_->property("normal").toBool() != state)
-        {
-            Utils::ApplyPropertyParameter(email_, "normal", state);
-            emailError_->setVisible(false);
-        }
-        updateSendButton(suggestioner_->getPlainText().length() && state);
+        errorOccuredSign_->setVisible(false);
+        sendButton_->setEnabled(!suggestioner_->getPlainText().isEmpty() && !email_->text().isEmpty());
     });
 
-    errorOccuredSign_ = new TextEmojiWidget(sendWidget, captionFont(),
-                                                Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_ATTENTION), Utils::scale_value(16));
-    Utils::grabTouchWidget(errorOccuredSign_);
-    errorOccuredSign_->setText(QT_TRANSLATE_NOOP("contactus_page", "Error occurred, try again later"));
-    errorOccuredSign_->setVisible(false);
-    Testing::setAccessibleName(errorOccuredSign_, qsl("AS contanctus errorOccuredSign"));
-    sendLayout->addWidget(errorOccuredSign_);
-
-    sendSpinner_ = new RotatingSpinner(sendWidget);
-    sendSpinner_->hide();
-    Testing::setAccessibleName(sendSpinner_, qsl("AS contanctus sendSpinner"));
+    sendSpinner_ = new RotatingSpinner(sendWidget_);
+    sendSpinner_->setVisible(false);
+    Testing::setAccessibleName(sendSpinner_, qsl("AS ContactUsPage sendSpinner"));
     sendLayout->addWidget(sendSpinner_);
+    sendLayout->setAlignment(sendSpinner_, horAlignment);
 
-    auto sendingSign = new TextEmojiWidget(sendWidget, labelFont(),
-                                            Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY), Utils::scale_value(16));
+    auto sendingSign = new TextEmojiWidget(sendWidget_, labelFont(),
+                                           Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY), Utils::scale_value(16));
     Utils::grabTouchWidget(sendingSign);
     sendingSign->setText(QT_TRANSLATE_NOOP("contactus_page", "Sending..."));
     sendingSign->setVisible(false);
-    Testing::setAccessibleName(sendingSign, qsl("AS contanctus sendingSign"));
+    Testing::setAccessibleName(sendingSign, qsl("AS ContactUsPage sendingSign"));
     sendLayout->addWidget(sendingSign);
 
-    sendingPageLayout->addWidget(sendWidget);
+    sendingPageLayout->addWidget(sendWidget_);
 }
 
 void ContactUsWidget::sendFeedback()
 {
     get_gui_settings()->set_value(settings_feedback_email, email_->text());
-
-    const auto sb = suggestioner_->property("normal").toBool();
-    const auto eb = email_->property("normal").toBool();
-    if (!sb)
-        suggestioner_->setProperty("normal", true);
-    if (!eb)
-        email_->setProperty("normal", true);
     suggestionSizeError_->setVisible(false);
-    emailError_->setVisible(false);
+    errorOccuredSign_->setVisible(false);
     attachWidget_->hideError();
     auto sg = suggestioner_->getPlainText();
     sg.remove(ql1c(' '));
 
-    if (sg.isEmpty() || sg.length() > 2048)
+    if (sg.isEmpty() || sg.size() > 2048)
     {
         suggestionSizeError_->setText(suggestionSizeErrorText(!sg.isEmpty()));
-        suggestioner_->setProperty("normal", false);
         suggestionSizeError_->setVisible(true);
     }
     else if (!Utils::isValidEmailAddress(email_->text()))
     {
-        email_->setProperty("normal", false);
-        emailError_->setVisible(true);
+        showError(ErrorReason::Email);
     }
     else
     {
         sendButton_->setVisible(false);
         errorOccuredSign_->setVisible(false);
-        sendSpinner_->setVisible(true);
-        sendSpinner_->startAnimation();
+        if (sendSpinner_)
+        {
+            sendSpinner_->setVisible(true);
+            sendSpinner_->startAnimation();
+        }
 
         suggestioner_->setEnabled(false);
         attachWidget_->setEnabled(false);
@@ -522,7 +535,7 @@ void ContactUsWidget::sendFeedback()
             const auto appName = config::get().string(config::values::product_name);
             const QString icqVer = QString::fromUtf8(appName.data(), appName.size()) + QString::fromUtf8(VERSION_INFO_STR);
             auto osv = QSysInfo::prettyProductName();
-            if (osv.isEmpty() || osv == ql1s("unknown"))
+            if (osv.isEmpty() || osv == u"unknown")
                 osv = qsl("%1 %2 (%3 %4)").arg(QSysInfo::productType(), QSysInfo::productVersion(), QSysInfo::kernelType(), QSysInfo::kernelVersion());
 
             const auto concat = qsl("%1 %2 %3:%4").arg(osv, icqVer, QString::fromUtf8(shortName.data(), shortName.size()), myInfo->aimId());
@@ -552,6 +565,8 @@ void ContactUsWidget::sendFeedback()
         // fb.user_name
         col.set_value_as_qstring("user_name", username);
 
+        col.set_value_as_qstring("aimid", myInfo->aimId());
+
         // fb.message
         col.set_value_as_qstring("message", suggestioner_->getPlainText());
 
@@ -579,30 +594,65 @@ void ContactUsWidget::sendFeedback()
             col.set_value_as_array("attachement", farray.get());
         }
         GetDispatcher()->post_message_to_core("feedback/send", col.get());
+        timeoutTimer_->start();
     }
-    if (sb != suggestioner_->property("normal").toBool())
-        Utils::ApplyStyle(suggestioner_, suggestioner_->styleSheet());
-    if (eb != email_->property("normal").toBool())
-        Utils::ApplyStyle(email_, email_->styleSheet());
 }
 
-void ContactUsWidget::updateSuggesionHeight()
+void ContactUsWidget::resizeEvent(QResizeEvent *_event)
 {
-    if (!suggestioner_->property("normal").toBool())
-        Utils::ApplyPropertyParameter(suggestioner_, "normal", true);
+    QWidget::resizeEvent(_event);
+    const auto currentWidth = width();
+    const auto currentMargins = isPlain_ ? 2 * getShadowWidth() : 2 * getFullHorMargins();
+    const auto maxWidth = (currentWidth > (getMaxWidth() + currentMargins)) ? getMaxWidth() : currentWidth - currentMargins;
 
-    auto textControlHeight = suggestioner_->document()->size().height() + Utils::scale_value(12 + 10 + 2); // paddings + border_width*2
-    if (textControlHeight > suggestioner_->maximumHeight())
-        suggestioner_->setMinimumHeight(suggestioner_->maximumHeight());
-    else if (textControlHeight > Utils::scale_value(TEXTEDIT_MIN_HEIGHT))
-        suggestioner_->setMinimumHeight(textControlHeight);
-    else
-        suggestioner_->setMinimumHeight(Utils::scale_value(TEXTEDIT_MIN_HEIGHT));
+    suggestioner_->setFixedWidth(maxWidth);
+    email_->setFixedWidth(maxWidth);
 }
 
-void ContactUsWidget::updateSendButton(bool _state)
+void ContactUsWidget::resetState(ClearData _mode)
 {
-    sendButton_->changeRole(_state ? DialogButtonRole::CONFIRM : DialogButtonRole::DISABLED);
+    if (_mode == ClearData::Yes)
+    {
+        suggestioner_->clear();
+        attachWidget_->clearFileList();
+    }
+    if (sendSpinner_)
+    {
+        sendSpinner_->setVisible(false);
+        sendSpinner_->stopAnimation();
+    }
+    suggestioner_->setEnabled(true);
+    suggestionSizeError_->setVisible(false);
+    attachWidget_->setEnabled(true);
+    debugInfoWidget_->reset();
+    debugInfoWidget_->setEnabled(true);
+    email_->setEnabled(true);
+    errorOccuredSign_->setVisible(false);
+    sendButton_->setVisible(true);
+    sendButton_->setEnabled(!suggestioner_->getPlainText().isEmpty() && !email_->text().isEmpty());
+    setState(State::Feedback);
+}
+
+void ContactUsWidget::focusInEvent(QFocusEvent *_event)
+{
+    suggestioner_->setFocus();
+    QWidget::focusInEvent(_event);
+}
+
+bool ContactUsWidget::eventFilter(QObject* _obj, QEvent* _event)
+{
+    if (_obj == mainWidget_ && _event->type() == QEvent::Resize)
+        scrollArea_->ensureWidgetVisible(sendButton_);
+    return QWidget::eventFilter(_obj, _event);
+}
+
+void ContactUsWidget::showError(ErrorReason _reason)
+{
+    const auto error = _reason == ErrorReason::Email
+                        ? QT_TRANSLATE_NOOP("contactus_page", "Please enter a valid email address")
+                        : QT_TRANSLATE_NOOP("contactus_page", "Error occurred, try again later");
+    errorOccuredSign_->setText(error);
+    errorOccuredSign_->setVisible(true);
 }
 
 AttachFileWidget::AttachFileWidget(QWidget *_parent)
@@ -613,37 +663,45 @@ AttachFileWidget::AttachFileWidget(QWidget *_parent)
     attachWidget_ = new QWidget(this);
     attachWidget_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
     attachLayout_ = Utils::emptyVLayout(attachWidget_);
-    attachLayout_->setContentsMargins(0, 0, 0, 0);
+    attachLayout_->setAlignment(Qt::AlignBottom);
 
-    attachSizeError_ = new TextEmojiWidget(attachWidget_, captionFont(),
+    errorWidget_ = new QWidget(attachWidget_);
+    auto errorLayout = Utils::emptyVLayout(errorWidget_);
+    attachSizeError_ = new TextEmojiWidget(errorWidget_, captionFont(),
             Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_ATTENTION), Utils::scale_value(12));
-    Testing::setAccessibleName(attachSizeError_, qsl("AS contanctus attachSizeError"));
-    attachLayout_->addWidget(attachSizeError_);
+    Testing::setAccessibleName(attachSizeError_, qsl("AS ContactUsPage attachSizeError"));
+    errorLayout->addWidget(attachSizeError_);
+    errorLayout->addSpacerItem(new QSpacerItem(0, Utils::scale_value(8), QSizePolicy::Expanding, QSizePolicy::Fixed));
+    errorWidget_->setFixedHeight(attachSizeError_->height() + Utils::scale_value(8));
+    attachLayout_->addWidget(errorWidget_);
     attachSizeError_->setVisible(false);
 
+    filesLayout_ = Utils::emptyVLayout();
+    attachLayout_->addLayout(filesLayout_);
+
+    attachLayout_->addSpacerItem(new QSpacerItem(0, Utils::scale_value(8), QSizePolicy::Expanding, QSizePolicy::Fixed));
     auto attachLinkWidget = new QWidget(attachWidget_);
     auto attachLinkLayout = Utils::emptyHLayout(attachLinkWidget);
     Utils::grabTouchWidget(attachLinkWidget);
     attachLinkWidget->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
     attachLinkWidget->setCursor(Qt::PointingHandCursor);
-    attachLinkLayout->setContentsMargins(0, 0, 0, 0);
     attachLinkLayout->setSpacing(Utils::scale_value(12));
 
     auto attachImage = new CustomButton(attachLinkWidget);
-    attachImage->setDefaultImage(qsl(":/background_icon"), getIconsColor(), getIconsSize());
+    attachImage->setDefaultImage(qsl(":/input/attach_photo"), getIconsColor(), getIconsSize());
     attachImage->setFixedSize(Utils::scale_value(getIconsSize()));
     connect(attachImage, &QPushButton::clicked, this, &AttachFileWidget::attachFile);
-    Testing::setAccessibleName(attachImage, qsl("AS contanctus attachImage"));
+    Testing::setAccessibleName(attachImage, qsl("AS ContactUsPage attachImage"));
     attachLinkLayout->addWidget(attachImage);
 
     auto attachLink = new TextEmojiWidget(attachLinkWidget, labelFont(), getInfoTextColor(), Utils::scale_value(16));
     Utils::grabTouchWidget(attachLink);
     attachLink->setText(QT_TRANSLATE_NOOP("contactus_page", "Attach screenshot"));
     connect(attachLink, &TextEmojiWidget::clicked, this, &AttachFileWidget::attachFile);
-    Testing::setAccessibleName(attachLink, qsl("AS contanctus attachLink"));
+    Testing::setAccessibleName(attachLink, qsl("AS ContactUsPage attachLink"));
     attachLinkLayout->addWidget(attachLink);
 
-    Testing::setAccessibleName(attachLinkWidget, qsl("AS contanctus attachLinkWidget"));
+    Testing::setAccessibleName(attachLinkWidget, qsl("AS ContactUsPage attachLinkWidget"));
     attachLayout_->addWidget(attachLinkWidget);
 
     layout->addWidget(attachWidget_);
@@ -686,7 +744,6 @@ void AttachFileWidget::processFile(const QString& _filePath)
         fileWidget->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
         fileWidget->setFixedHeight(Utils::scale_value(32));
         fileWidget->setProperty("fileWidget", true);
-        fileLayout->setContentsMargins(Utils::scale_value(12), 0, 0, 0);
         fileLayout->setAlignment(Qt::AlignVCenter);
 
         if (fileSize > MAX_FILE_SIZE)
@@ -694,13 +751,15 @@ void AttachFileWidget::processFile(const QString& _filePath)
             attachSizeError_->setText(errorText(fileSize));
             attachSizeError_->updateGeometry();
             attachSizeError_->setVisible(true);
+            filesToSend_.erase(fileName);
             return;
         }
         if (totalFileSize_ + fileSize > MAX_TOTAL_FILE_SIZE)
         {
-            attachSizeError_->setText(errorText(fileSize));
+            attachSizeError_->setText(errorText(totalFileSize_ + fileSize));
             attachSizeError_->updateGeometry();
             attachSizeError_->setVisible(true);
+            filesToSend_.erase(fileName);
             return;
         }
         totalFileSize_ += fileSize;
@@ -725,7 +784,7 @@ void AttachFileWidget::processFile(const QString& _filePath)
 
         const auto metrics = QFontMetrics(labelFont());
         const auto maxFilenameLength = parentWidget()->width() - Utils::scale_value(144);
-        if (metrics.width(fileName) > maxFilenameLength)
+        if (metrics.horizontalAdvance(fileName) > maxFilenameLength)
             fileName = metrics.elidedText(fileName, Qt::ElideMiddle, maxFilenameLength);
 
         auto fileNameLabel = new QLabel(fileInfoWidget);
@@ -737,19 +796,19 @@ void AttachFileWidget::processFile(const QString& _filePath)
         pal.setColor(QPalette::Foreground, getInfoTextColor());
         fileNameLabel->setPalette(pal);
 
-        Testing::setAccessibleName(fileNameLabel, qsl("AS contanctus fileName"));
+        Testing::setAccessibleName(fileNameLabel, qsl("AS ContactUsPage fileName"));
         fileInfoLayout->addWidget(fileNameLabel);
 
         auto fileSizeLabel = new LabelEx(fileInfoWidget);
         Utils::grabTouchWidget(fileSizeLabel);
         fileSizeLabel->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Preferred);
-        fileSizeLabel->setText(ql1s(" - ") % sizeString);
+        fileSizeLabel->setText(u" - " % sizeString);
         fileSizeLabel->setColor(getInfoTextColor());
         fileSizeLabel->setFont(labelFont());
-        Testing::setAccessibleName(fileSizeLabel, qsl("AS contanctus fileSize"));
+        Testing::setAccessibleName(fileSizeLabel, qsl("AS ContactUsPage fileSize"));
         fileInfoLayout->addWidget(fileSizeLabel);
 
-        Testing::setAccessibleName(fileInfoWidget, qsl("AS contanctus fileInfoWidget"));
+        Testing::setAccessibleName(fileInfoWidget, qsl("AS ContactUsPage fileInfoWidget"));
         fileLayout->addWidget(fileInfoWidget);
 
         auto deleteFile = new CustomButton(fileWidget, qsl(":/controls/close_icon"), QSize(12, 12), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY));
@@ -758,18 +817,21 @@ void AttachFileWidget::processFile(const QString& _filePath)
 
         connect(deleteFile, &CustomButton::clicked, this, [this, fileWidget, fileSize]()
         {
+            attachLayout_->invalidate();
+            parentWidget()->layout()->invalidate();
             filesToSend_.erase(fileWidget->objectName());
             totalFileSize_ -= fileSize;
             attachSizeError_->setVisible(false);
-            fileWidget->setVisible(false);
-            delete fileWidget;
+            filesLayout_->removeWidget(fileWidget);
+            fileWidget->deleteLater();
+            update();
         });
 
-        Testing::setAccessibleName(deleteFile, qsl("AS contanctus deleteFile"));
+        Testing::setAccessibleName(deleteFile, qsl("AS ContactUsPage deleteFile"));
         fileLayout->addWidget(deleteFile);
         fileLayout->addSpacerItem(new QSpacerItem(Utils::scale_value(8), 0, QSizePolicy::Fixed));
 
-        attachLayout_->insertWidget(0, fileWidget); // always insert at the top
+        filesLayout_->insertWidget(0, fileWidget); // always insert at the top
     }
 }
 
@@ -780,8 +842,8 @@ void AttachFileWidget::clearFileList()
         auto f = attachWidget_->findChild<QWidget *>(p.first);
         if (f)
         {
-            f->setVisible(false);
-            delete f;
+            filesLayout_->removeWidget(f);
+            f->deleteLater();
         }
     }
 
@@ -790,7 +852,7 @@ void AttachFileWidget::clearFileList()
 
 void AttachFileWidget::hideError() const
 {
-    attachSizeError_->setVisible(true);
+    attachSizeError_->setVisible(false);
 }
 
 GetDebugInfoWidget::GetDebugInfoWidget(QWidget* _parent)
@@ -802,21 +864,19 @@ GetDebugInfoWidget::GetDebugInfoWidget(QWidget* _parent)
     setSizePolicy(QSizePolicy::Policy::Expanding, QSizePolicy::Policy::Minimum);
 
     auto rootVLayout = Utils::emptyVLayout(this);
-    rootVLayout->setContentsMargins(QMargins());
     rootVLayout->setAlignment(Qt::AlignTop);
 
     auto commonWidget = new QWidget(this);
     auto commonLayout = Utils::emptyHLayout(commonWidget);
     {
-        commonLayout->setContentsMargins(QMargins());
         commonLayout->setSpacing(Utils::scale_value(12));
         commonWidget->setCursor(Qt::PointingHandCursor);
 
         icon_ = new CustomButton(commonWidget);
-        icon_->setDefaultImage(qsl(":/get_logs_icon"), getIconsColor(), getIconsSize());
+        icon_->setDefaultImage(qsl(":/input/attach_documents"), getIconsColor(), getIconsSize());
         icon_->setFixedSize(Utils::scale_value(getIconsSize()));
         connect(icon_, &QPushButton::clicked, this, &GetDebugInfoWidget::onClick);
-        Testing::setAccessibleName(icon_, qsl("AS contanctus debug_icon"));
+        Testing::setAccessibleName(icon_, qsl("AS ContactUsPage debug_icon"));
         commonLayout->addWidget(icon_);
 
         progress_ = new ProgressAnimation(commonWidget);
@@ -825,18 +885,18 @@ GetDebugInfoWidget::GetDebugInfoWidget(QWidget* _parent)
         progress_->hide();
         commonLayout->addWidget(progress_);
 
-        auto info = new TextEmojiWidget(commonWidget, labelFont(), getInfoTextColor(), Utils::scale_value(16));
-        Utils::grabTouchWidget(info);
-        info->setText(QT_TRANSLATE_NOOP("contactus_page", "Get debug information"));
-        connect(info, &TextEmojiWidget::clicked, this, &GetDebugInfoWidget::onClick);
-        Testing::setAccessibleName(info, qsl("AS contanctus debug_info"));
-        commonLayout->addWidget(info);
+        auto getLogsButton = new TextEmojiWidget(commonWidget, labelFont(), getInfoTextColor(), Utils::scale_value(16));
+        Utils::grabTouchWidget(getLogsButton);
+        getLogsButton->setText(QT_TRANSLATE_NOOP("contactus_page", "Get debug information"));
+        connect(getLogsButton, &TextEmojiWidget::clicked, this, &GetDebugInfoWidget::onClick);
+        Testing::setAccessibleName(getLogsButton, qsl("AS ContactUsPage getLogsButton"));
+        commonLayout->addWidget(getLogsButton);
     }
 
     rootVLayout->addWidget(commonWidget);
 
     checkTimer_->setSingleShot(true);
-    checkTimer_->setInterval(getDebugInfoTimeout().count());
+    checkTimer_->setInterval(getDebugInfoTimeout());
 
     connect(checkTimer_, &QTimer::timeout, this, &GetDebugInfoWidget::onTimeout);
 }
@@ -881,6 +941,11 @@ void GetDebugInfoWidget::startAnimation()
     progress_->setProgressPenColor(getIconsColor());
     progress_->setProgressPenWidth(getDebugInfoSpinnerPenWidth());
     progress_->start();
+}
+
+void GetDebugInfoWidget::reset()
+{
+    stopAnimation();
 }
 
 void GetDebugInfoWidget::stopAnimation()

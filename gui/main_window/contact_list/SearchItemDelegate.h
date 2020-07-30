@@ -61,6 +61,10 @@ namespace Logic
 
         std::pair<bool, bool> getMouseState(const QStyleOptionViewItem& _option, const QModelIndex& _index) const;
 
+        void drawAvatar(QPainter& _painter, const Ui::ContactListParams& _params, const QString& _aimid, const int _itemHeight, const bool _isSelected, const bool _isMessage) const;
+
+        QString getSenderName(const Data::MessageBuddySptr& _msg, const bool _fromDialogSearch) const;
+
         mutable ContactsMap contactCache;
         mutable MessagesMap messageCache;
 

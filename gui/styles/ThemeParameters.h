@@ -43,6 +43,7 @@ namespace Styling
 
         [[nodiscard]] QString getContextMenuQss(int _itemHeight, int _paddingLeft, int _paddingRight, int _paddingIcon) const;
         [[nodiscard]] QString getContextMenuDarkQss(int _itemHeight, int _paddingLeft, int _paddingRight, int _paddingIcon) const;
+        [[nodiscard]] QString getFlatMenuQss(const StyleVariable _borderColor) const;
 
         [[nodiscard]] QString getStickersQss() const;
         [[nodiscard]] QString getSmilesQss() const;
@@ -59,6 +60,8 @@ namespace Styling
         [[nodiscard]] QString getPhoneComboboxQss() const;
 
         [[nodiscard]] QColor getPrimaryTabFocusColor() const;
+
+        [[nodiscard]] QColor getAppTitlebarColor() const;
 
     private:
         ThemePtr theme_;

@@ -53,7 +53,7 @@ namespace Ui
     void LineEditEx::focusInEvent(QFocusEvent* _event)
     {
         QLineEdit::focusInEvent(_event);
-        emit focusIn();
+        Q_EMIT focusIn();
     }
 
     void LineEditEx::focusOutEvent(QFocusEvent* _event)
@@ -61,32 +61,32 @@ namespace Ui
         QLineEdit::focusOutEvent(_event);
 
         if (_event->reason() != Qt::ActiveWindowFocusReason)
-            emit focusOut();
+            Q_EMIT focusOut();
     }
 
     void LineEditEx::mousePressEvent(QMouseEvent* _event)
     {
-        emit clicked();
+        Q_EMIT clicked();
         QLineEdit::mousePressEvent(_event);
     }
 
     void LineEditEx::keyPressEvent(QKeyEvent* _event)
     {
         if (_event->key() == Qt::Key_Backspace && text().isEmpty())
-            emit emptyTextBackspace();
+            Q_EMIT emptyTextBackspace();
 
         if (_event->key() == Qt::Key_Escape && !_event->isAutoRepeat())
-            emit escapePressed();
+            Q_EMIT escapePressed();
 
         if (_event->key() == Qt::Key_Up)
-            emit upArrow();
+            Q_EMIT upArrow();
 
         if (_event->key() == Qt::Key_Down)
-            emit downArrow();
+            Q_EMIT downArrow();
 
         if ((_event->key() == Qt::Key_Enter || _event->key() == Qt::Key_Return) &&
             (_event->modifiers() == Qt::NoModifier || _event->modifiers() == Qt::KeypadModifier))
-            emit enter();
+            Q_EMIT enter();
 
         if (options_.noPropagateKeys_.find(_event->key()) != options_.noPropagateKeys_.end())
             return;
@@ -164,9 +164,9 @@ namespace Ui
             if (keyEvent->key() == Qt::Key_Tab || keyEvent->key() == Qt::Key_Backtab)
             {
                 if (keyEvent->key() == Qt::Key_Tab)
-                    emit tab();
+                    Q_EMIT tab();
                 else
-                    emit backtab();
+                    Q_EMIT backtab();
 
                 if (options_.noPropagateKeys_.find(keyEvent->key()) != options_.noPropagateKeys_.end())
                 {

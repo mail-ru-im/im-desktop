@@ -5,6 +5,7 @@
 #include "../../types/contact.h"
 #include "../../types/message.h"
 #include "../../types/typing.h"
+#include "../../utils/utils.h"
 
 namespace Ui
 {
@@ -49,7 +50,8 @@ namespace Logic
         void selectedContactChanged(const QString& _new, const QString& _prev);
         void contactAvatarChanged(const QString&);
         void dlgStates(const QVector<Data::DlgState>&);
-        void messageBuddies(const Data::MessageBuddies&, const QString&, Ui::MessagesBuddiesOpt, bool, qint64, int64_t);
+        void messageBuddies(const Data::MessageBuddies&, const QString&, Ui::MessagesBuddiesOpt, bool _havePending, qint64 _seq, int64_t _lastMsgId);
+        void messagesEmpty(const QString& _aimId, qint64 _seq);
         void sortDialogs();
         void contactRemoved(const QString&);
         void typingStatus(const Logic::TypingFires& _typing, bool _isTyping);
@@ -63,7 +65,7 @@ namespace Logic
         Data::DlgState getDlgState(const QString& aimId = QString(), bool fromDialog = false);
         void unknownToRecents(const Data::DlgState&);
 
-        void toggleFavoritesVisible();
+        void togglePinnedVisible();
         void toggleUnimportantVisible();
 
         void unknownAppearance();
@@ -87,15 +89,13 @@ namespace Logic
         bool isStranger(const QString& _aimid);
         bool isServiceItem(const QModelIndex& _index) const override;
         bool isClickableItem(const QModelIndex& _index) const override;
-        bool isFavoritesGroupButton(const QModelIndex& i) const;
-        bool isFavoritesVisible() const;
-        quint16 getFavoritesCount() const;
+        bool isPinnedGroupButton(const QModelIndex& i) const;
+        bool isPinnedVisible() const;
+        quint16 getPinnedCount() const;
         bool isUnimportantGroupButton(const QModelIndex& i) const;
         bool isUnimportantVisible() const;
         quint16 getUnimportantCount() const;
         bool isRecentsHeader(const QModelIndex& i) const;
-
-        bool isServiceAimId(const QString& _aimId) const;
 
         bool contains(const QString& _aimId) const override;
         QModelIndex contactIndex(const QString& _aimId) const;
@@ -106,16 +106,16 @@ namespace Logic
 
         int totalUnreads() const;
         int unimportantUnreads() const;
-        int favoritesUnreads() const;
+        int pinnedUnreads() const;
 
         bool hasAttentionDialogs() const;
-        bool hasAttentionFavorites() const;
+        bool hasAttentionPinned() const;
         bool hasAttentionUnimportant() const;
 
-        bool hasMentionsInFavorites() const;
+        bool hasMentionsInPinned() const;
         bool hasMentionsInUnimportant() const;
 
-        int getMutedFavoritesWithMentions() const;
+        int getMutedPinnedWithMentions() const;
         int getMutedUnimportantWithMentions() const;
 
         QString firstContact() const;
@@ -135,26 +135,30 @@ namespace Logic
     private:
         int correctIndex(int i) const;
         int getVisibleIndex(int i) const;
-        int visibleContactsInFavorites() const;
+        int visiblePinnedContacts() const;
         int visibleContactsInUnimportant() const;
 
-        int getFavoritesHeaderIndex() const;
+        int getPinnedHeaderIndex() const;
         int getUnimportantHeaderIndex() const;
         int getRecentsHeaderIndex() const;
         int getVisibleServiceItems() const;
 
         void scheduleRefreshTimer();
-
         void makeIndexes();
+        void requestFavoritesLastMessage();
+
+        bool isSpecialAndHidden(const Data::DlgState& _s) const;
 
         std::vector<Data::DlgState> Dialogs_;
         std::vector<Data::DlgState> HiddenDialogs_;
-        QHash<QString, int> Indexes_;
+        std::unordered_map<QString, size_t, Utils::QStringHasher> Indexes_;
         QTimer* Timer_;
-        quint16 FavoritesCount_;
-        bool FavoritesVisible_;
+        quint16 PinnedCount_;
+        bool PinnedVisible_;
         quint16 UnimportantCount_;
         bool UnimportantVisible_;
+        bool needToAddFavorites_;
+        int64_t favoritesLastMessageSeq_;
 
         std::map<QString, Recents::FriendlyItemText> friendlyTexts_;
         QTimer* refreshTimer_;

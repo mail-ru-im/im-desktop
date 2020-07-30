@@ -7,7 +7,7 @@ using namespace core;
 
 core::collection_value::collection_value()
     :  type_(collection_value_type::vt_empty),
-       log_data_(0),
+       log_data_(nullptr),
        ref_count_(1)
 {
 
@@ -37,7 +37,7 @@ int32_t core::collection_value::release()
 void core::collection_value::clear()
 {
     free(log_data_);
-    log_data_ = 0;
+    log_data_ = nullptr;
 
     switch (type_)
     {
@@ -514,25 +514,27 @@ bool core::collection::is_value_exist(std::string_view name) const
 
 const char* core::collection::log() const
 {
-    auto iter_val = values_.find("not_log");
-    if (iter_val != values_.end())
+    if (const auto iter_val = values_.find("not_log"); iter_val != values_.end())
         return "";
 
-    std::stringstream ss;
+    std::string s;
 
     for (const auto& [name, value] : values_)
-        ss << name << '=' << value->log() << '\n';
+    {
+        s += name;
+        s += '=';
+        s += value->log();
+        s += '\n';
+    }
 
-    std::string s = ss.str();
-
-    const auto text_size = s.size();
-    if (!text_size)
+    if (s.empty())
         return "";
 
+    const auto text_size = s.size();
     free(log_data_);
     log_data_ = (char*) malloc(text_size + 1);
 
-    memcpy(log_data_, s.c_str(), text_size);
+    memcpy(log_data_, s.data(), text_size);
     log_data_[text_size] = 0;
 
     return log_data_;

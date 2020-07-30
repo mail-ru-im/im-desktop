@@ -22,8 +22,8 @@ namespace core
                 std::string _contact, bool _value);
             ~set_attention_attribute();
 
-            int32_t init_request(std::shared_ptr<core::http_request_simple> _request) override;
-            int32_t parse_response(std::shared_ptr<core::tools::binary_stream> _response) override;
+            int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
+            int32_t parse_response(const std::shared_ptr<core::tools::binary_stream>& _response) override;
 
         private:
             const std::string contact_;

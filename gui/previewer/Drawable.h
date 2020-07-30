@@ -118,7 +118,7 @@ protected:
 
     void updateColor();
 
-    bool clickable_;
+    bool clickable_ = false;
     QColor defaultColor_;
     QColor hoveredColor_;
     QColor pressedColor_;
@@ -156,6 +156,7 @@ public:
     void draw(QPainter& _p) override;
     void setPixmap(const QPixmap& _pixmap);
     QSize pixmapSize() { return pixmap_.size() / pixmap_.devicePixelRatio(); }
+    bool isNullPixmap() { return pixmap_.isNull(); }
 
 protected:
     QPixmap pixmap_;

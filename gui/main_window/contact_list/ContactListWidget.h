@@ -1,5 +1,5 @@
 #pragma once
-#include "ContactList.h"
+#include "RecentsTab.h"
 #include "../../animation/animation.h"
 
 namespace Logic
@@ -9,6 +9,8 @@ namespace Logic
     class SearchItemDelegate;
     enum class UpdateChatSelection;
     class CommonChatsModel;
+    class CallsModel;
+    class StatusProxyModel;
 }
 
 namespace Ui
@@ -27,8 +29,7 @@ namespace Ui
     Q_SIGNALS:
         void searchEnd();
         void itemSelected(const QString& _aimid, qint64 _msgid, const highlightsV& _highlights);
-        void liveChatSelected(const QString& _aimid);
-        void itemClicked(const QString&);
+        void itemClicked(const QString& _aimid);
         void groupClicked(int);
         void changeSelected(const QString&);
         void searchSuggestSelected(const QString& _pattern);
@@ -49,6 +50,8 @@ namespace Ui
         void connectSearchWidget(SearchWidget* _widget);
 
         void installEventFilterToView(QObject* _filter);
+
+        QWidget* indexWidget(int _index);
         void setIndexWidget(int index, QWidget* widget);
 
         void setClDelegate(Logic::AbstractItemDelegateWithRegim* _delegate);
@@ -67,6 +70,9 @@ namespace Ui
         Logic::MembersWidgetRegim getRegim() const;
         void setRegim(const Logic::MembersWidgetRegim _regim);
 
+        void enableCLDelegateOpacity(bool _enable);
+        bool isCLDelegateOpacityEnabled() const;
+
         Logic::AbstractSearchModel* getSearchModel() const;
         FocusableListView* getView() const;
 
@@ -77,14 +83,17 @@ namespace Ui
 
         void rewindToTop();
 
+        void updateSelectedItem();
+
     public Q_SLOTS:
         void searchResult();
         void searchUpPressed();
         void searchDownPressed();
         void selectionChanged(const QModelIndex &);
-        void select(const QString&);
-        void select(const QString&, const qint64 _message_id, const highlightsV& _highlights, Logic::UpdateChatSelection _mode);
+        void select(const QString& _aimId);
+        void select(const QString& _aimId, const qint64 _messageId, const highlightsV& _highlights, Logic::UpdateChatSelection _mode);
         void showContactsPopupMenu(const QString& aimId, bool _is_chat);
+        void showCallsPopupMenu(Data::CallInfoPtr _call);
 
     private Q_SLOTS:
         void onItemClicked(const QModelIndex&);
@@ -157,6 +166,7 @@ namespace Ui
         Logic::AbstractSearchModel* searchModel_;
         Logic::ContactListWithHeaders* clModel_;
         Logic::CommonChatsModel* commonChatsModel_;
+        Logic::CallsModel* callsModel_;
 
         ContextMenu* popupMenu_;
 

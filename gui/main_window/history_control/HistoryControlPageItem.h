@@ -3,8 +3,10 @@
 #include "QuoteColorAnimation.h"
 #include "../../types/chat.h"
 #include "../../types/chatheads.h"
+#include "types/reactions.h"
 #include "../../animation/animation.h"
 #include "history/Message.h"
+#include "reactions/MessageReactions.h"
 
 namespace Ui
 {
@@ -35,39 +37,34 @@ namespace Ui
     Q_SIGNALS:
         void mention(const QString&, const QString&) const;
         void selectionChanged() const;
+        void pressedDestroyed();
 
     public:
-
         explicit HistoryControlPageItem(QWidget *parent);
 
-        virtual void clearSelection(bool _keepSingleSelection);
-
         virtual bool isOutgoing() const = 0;
-
-        virtual bool nextIsOutgoing() const = 0;
-
+        bool isOutgoingPosition() const;
         virtual QString formatRecentsText() const = 0;
-
         virtual MediaType getMediaType(MediaRequestMode _mode  = MediaRequestMode::Chat) const = 0;
+        virtual void setQuoteSelection() = 0;
+        virtual void updateStyle() = 0;
+        virtual void updateFonts() = 0;
+        virtual int32_t getTime() const = 0;
 
         bool hasAvatar() const;
-
         bool hasSenderName() const;
-
         bool hasTopMargin() const;
 
+        virtual void clearSelection(bool _keepSingleSelection);
         virtual void selectByPos(const QPoint& from, const QPoint& to, const QPoint& areaFrom, const QPoint& areaTo);
-
+        virtual void setSelected(const bool _isSelected);
         virtual bool isSelected() const;
 
         virtual void onActivityChanged(const bool isActive);
-
         virtual void onVisibilityChanged(const bool isVisible);
-
         virtual void onDistanceToViewportChanged(const QRect& _widgetAbsGeometry, const QRect& _viewportVisibilityAbsRect);
 
         virtual void setHasAvatar(const bool value);
-
         virtual void setHasSenderName(const bool _hasSender);
 
         virtual void setChainedToPrev(const bool _isChained);
@@ -75,15 +72,12 @@ namespace Ui
         virtual void setPrev(const Logic::MessageKey& _key);
         virtual void setNext(const Logic::MessageKey& _next);
 
-        virtual void setSelected(const bool _isSelected);
-
         virtual void setTopMargin(const bool value);
 
         virtual void setContact(const QString& _aimId);
         const QString& getContact() const { return aimId_; }
 
         virtual void setSender(const QString& _sender);
-
         virtual void updateFriendly(const QString& _aimId, const QString& _friendly);
 
         virtual void setDeliveredToServer(const bool _delivered);
@@ -95,41 +89,34 @@ namespace Ui
         QString idImpl() const { return QString::number(getId()); }
 
         void setDeleted(const bool _isDeleted);
-
         bool isDeleted() const;
 
         virtual void setEdited(const bool _isEdited);
-
         virtual bool isEdited() const;
 
         virtual void setLastStatus(LastStatus _lastStatus);
-
         virtual LastStatus getLastStatus() const;
 
-        virtual void setQuoteSelection() = 0;
         virtual void highlightText(const highlightsV& _highlights) {}
         virtual void resetHighlight() {}
 
         virtual int bottomOffset() const;
 
         virtual void setHeads(const Data::HeadsVector& _heads);
-
         virtual void addHeads(const Data::HeadsVector& _heads);
-
         virtual void removeHeads(const Data::HeadsVector& _heads);
-
         virtual bool areTheSameHeads(const QVector<Data::ChatHead>& _heads) const;
 
         virtual void updateSize();
 
         virtual bool hasPictureContent() const { return false; };
 
-        void setIsChat(bool _isChat);
+        virtual void startSpellChecking();
 
+        void setIsChat(bool _isChat);
         bool isChat() const { return isChat_; }
 
         bool hasHeads() const noexcept;
-
         bool headsAtBottom() const;
 
         virtual void cancelRequests() {}
@@ -145,85 +132,102 @@ namespace Ui
         bool isMultiselectEnabled() const noexcept { return  isMultiselectEnabled_; }
         bool isContextMenuReplyOnly() const noexcept;
 
-        virtual void updateStyle() = 0;
-        virtual void updateFonts() = 0;
-
         void setSelectionCenter(int _center);
+
+        void setIsUnsupported(bool _unsupported);
+        bool isUnsupported() const;
+
+        virtual bool isEditable() const;
+        virtual bool isUpdateable() const { return true; }
+
+        virtual void callEditing() {}
+
+        virtual void setNextHasSenderName(bool _nextHasSenderName);
+
+        void setBuddy(const Data::MessageBuddy& _msg);
+        const Data::MessageBuddy& buddy() const;
+        Data::MessageBuddy& buddy();
+
+        bool nextHasSenderName() const;
+
+        virtual void setNextIsOutgoing(bool _nextIsOutgoing);
+        virtual bool nextIsOutgoing() const;
+
+        virtual QRect messageRect() const;
+
+        void setReactions(const Data::Reactions& _reactions);
+
+        void onSizeChanged();
+
+        virtual ReactionsPlateType reactionsPlateType() const;        
+        bool hasReactions() const;
+        QRect reactionsPlateRect() const;
+
+        virtual void setSpellErrorsVisible(bool _visible) {}
 
     protected:
 
         virtual void drawLastStatusIcon(QPainter& _p, LastStatus _lastStatus, const QString& _aimid, const QString& _friendly, int _rightPadding);
 
-        virtual void mouseMoveEvent(QMouseEvent*) override;
-
-        virtual void mousePressEvent(QMouseEvent*) override;
-
-        virtual void mouseReleaseEvent(QMouseEvent*) override;
-
-        virtual void enterEvent(QEvent*) override;
+        void mouseMoveEvent(QMouseEvent*) override;
+        void mousePressEvent(QMouseEvent*) override;
+        void mouseReleaseEvent(QMouseEvent*) override;
+        void enterEvent(QEvent*) override;
+        void leaveEvent(QEvent*) override;
 
         void showMessageStatus();
         void hideMessageStatus();
 
         virtual void drawSelection(QPainter& _p, const QRect& _rect);
-
         virtual void drawHeads(QPainter& _p) const;
 
         virtual bool showHeadsTooltip(const QRect& _rc, const QPoint& _pos);
-
         virtual bool clickHeads(const QRect& _rc, const QPoint& _pos, bool _left);
 
         virtual void onChainsChanged() {}
 
         virtual bool handleSelectByPos(const QPoint& from, const QPoint& to, const QPoint& areaFrom, const QPoint& areaTo);
 
+        virtual void initialize();
+
+        virtual bool supportsReactions() const { return true; }
+
+
+        QuoteColorAnimation QuoteAnimation_;
+        bool isChat_;
+
+    private Q_SLOTS:
+        void avatarChanged(const QString& _aimid);
+        void onReactionsEnabledChanged();
+
     private:
         void drawLastStatusIconImpl(QPainter& _p, int _rightPadding, int _bottomPadding);
         int maxHeadsCount() const;
 
-    private Q_SLOTS:
-        void avatarChanged(const QString& _aimid);
-
-    private:
         bool Selected_;
-
         bool HasTopMargin_;
-
         bool HasAvatar_;
-
         bool hasSenderName_;
-
         bool isChainedToPrev_;
-
         bool isChainedToNext_;
-
         bool HasAvatarSet_;
-
         bool isDeleted_;
-
         bool isEdited_;
-
         bool isContextMenuEnabled_;
-
         bool isMultiselectEnabled_;
-
         bool selectedTop_;
-
         bool selectedBottom_;
-
         bool hoveredTop_;
-
         bool hoveredBottom_;
-
         int selectionCenter_;
 
         LastStatus lastStatus_;
-
         QString aimId_;
 
         QPointer<LastStatusAnimation> lastStatusAnimation_;
 
         Data::HeadsVector heads_;
+        std::unique_ptr<MessageReactions> reactions_;
 
         anim::Animation addAnimation_;
         anim::Animation removeAnimation_;
@@ -239,9 +243,11 @@ namespace Ui
         QPoint prevFrom_;
         bool intersected_;
         bool wasSelected_;
+        bool isUnsupported_;
 
-    protected:
-        QuoteColorAnimation QuoteAnimation_;
-        bool isChat_;
+        bool nextHasSenderName_;
+        Data::MessageBuddy msg_;
+        bool nextIsOutgoing_;
+        bool initialized_;
     };
 }

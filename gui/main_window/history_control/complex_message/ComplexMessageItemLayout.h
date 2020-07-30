@@ -65,7 +65,7 @@ private:
 
     bool hasSeparator(const IItemBlock *block) const;
 
-    bool isOutgoing() const;
+    bool isOutgoingPosition() const;
 
     bool isHeaderOrSticker() const;
 

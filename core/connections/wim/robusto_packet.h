@@ -25,18 +25,19 @@ namespace core
 
             robusto_packet_params robusto_params_;
 
-            virtual int32_t parse_response(std::shared_ptr<core::tools::binary_stream> _response) override;
-            virtual int32_t on_response_error_code() override;
-            virtual int32_t execute_request(std::shared_ptr<core::http_request_simple> _request) override;
-            virtual void execute_request_async(std::shared_ptr<core::http_request_simple> request, handler_t _handler) override;
+            int32_t parse_response(const std::shared_ptr<core::tools::binary_stream>& _response) override;
+            int32_t on_response_error_code() override;
+            int32_t execute_request(const std::shared_ptr<core::http_request_simple>& _request) override;
+            void execute_request_async(const std::shared_ptr<core::http_request_simple>& request, handler_t _handler) override;
 
             virtual int32_t parse_results(const rapidjson::Value& _node_results);
             std::string get_req_id() const;
 
-            void sign_packet(
+            void setup_common_and_sign(
                 rapidjson::Value& _node,
                 rapidjson_allocator& _a,
-                std::shared_ptr<core::http_request_simple> _request);
+                const std::shared_ptr<core::http_request_simple>& _request,
+                std::string_view _method);
 
         public:
 
@@ -44,6 +45,7 @@ namespace core
             virtual ~robusto_packet();
 
             void set_robusto_params(const robusto_packet_params& _params);
+            virtual bool is_post() const override { return true; }
         };
 
     }

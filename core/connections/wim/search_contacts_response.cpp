@@ -55,6 +55,8 @@ namespace core::wim
                         c.highlights_.push_back(rapidjson_get_string(hl));
                 }
 
+                tools::unserialize_value(node, "bot", c.bot_);
+
                 contacts_data_.emplace_back(std::move(c));
             }
         }
@@ -116,6 +118,7 @@ namespace core::wim
             }
             coll.set_value_as_string("about", c.about_);
             coll.set_value_as_int("mutual_count", c.mutual_friend_count_);
+            coll.set_value_as_bool("bot", c.bot_);
 
             if (!c.highlights_.empty())
             {

@@ -259,7 +259,7 @@ namespace Ui
 
         void setFillClient(const bool _fill);
 
-        QString mediaPath();
+        const QString& mediaPath() const;
 
         void setDuration(int32_t _duration);
 

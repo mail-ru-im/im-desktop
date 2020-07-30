@@ -333,23 +333,33 @@ namespace omicronlib
 
     bool omicron_impl::load()
     {
-        if (!tools::is_exist(file_name_))
-            return false;
+        std::string json_str;
+        if (const auto load_helper = config_->get_load_helper())
+        {
+            json_str = load_helper(file_name_);
+        }
+        else
+        {
+            if (!tools::is_exist(file_name_))
+                return false;
 
-        auto ifile = tools::open_file_for_read(file_name_);
-        if (!ifile.is_open())
-            return false;
+            auto ifile = tools::open_file_for_read(file_name_);
+            if (!ifile.is_open())
+                return false;
 
-        std::stringstream data;
-        data << ifile.rdbuf();
-        ifile.close();
+            std::stringstream data;
+            data << ifile.rdbuf();
+            ifile.close();
 
-        if (!parse_json(data.str()))
+            json_str = data.str();
+        }
+
+        if (!parse_json(json_str))
             return false;
 
         std::string log;
         log += "loaded data from the cache:\n";
-        log += data.str();
+        log += json_str;
         write_to_log(log);
 
         return true;
@@ -357,6 +367,9 @@ namespace omicronlib
 
     bool omicron_impl::save(const std::string& _data) const
     {
+        if (const auto save_helper = config_->get_save_helper())
+            return save_helper(file_name_, _data);
+
         if (!tools::create_parent_directories_for_file(file_name_))
             return false;
 
@@ -409,7 +422,7 @@ namespace omicronlib
             return OMICRON_DOWNLOAD_NOT_IMPLEMENTED;
 
         std::string data;
-        long code;
+        long code = -1;
         auto request_str = config_->generate_request_string();
         write_to_log("send request:\n" + request_str);
         auto download_res = downloader(config_->get_proxy_settings(), request_str, data, code);
@@ -458,6 +471,9 @@ namespace omicronlib
 
     bool omicron_impl::parse_json(const std::string& _json)
     {
+        if (_json.empty())
+            return false;
+
         rapidjson::Document doc;
         const auto& parse_result = doc.Parse(_json.c_str());
         if (parse_result.HasParseError())

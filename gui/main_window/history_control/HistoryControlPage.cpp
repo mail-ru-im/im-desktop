@@ -16,8 +16,10 @@
 #include "PinnedMessageWidget.h"
 #include "CloseChatWidget.h"
 #include "TypingWidget.h"
+#include "ChatPlaceholder.h"
 #include "complex_message/ComplexMessageItem.h"
 #include "selection_panel/SelectionPanel.h"
+#include "ActiveCallPlate.h"
 #include "../ContactDialog.h"
 #include "../GroupChatOperations.h"
 #include "../MainPage.h"
@@ -25,14 +27,16 @@
 #include "../MainWindow.h"
 #include "../ConnectionWidget.h"
 #include "../contact_list/ChatContactsModel.h"
-#include "../contact_list/ContactList.h"
+#include "../contact_list/RecentsTab.h"
 #include "../contact_list/ContactListModel.h"
 #include "../contact_list/RecentsModel.h"
 #include "../contact_list/UnknownsModel.h"
 #include "../contact_list/IgnoreMembersModel.h"
 #include "../contact_list/SelectionContactsForGroupChat.h"
 #include "../contact_list/contact_profile.h"
-#include "../friendly/FriendlyContainer.h"
+#include "../contact_list/FavoritesUtils.h"
+#include "../containers/FriendlyContainer.h"
+#include "../containers/LastseenContainer.h"
 #include "../sidebar/Sidebar.h"
 #include "../sidebar/SidebarUtils.h"
 #include "../input_widget/InputWidget.h"
@@ -48,6 +52,7 @@
 #include "../../controls/PictureWidget.h"
 #include "../../controls/ClickWidget.h"
 #include "../../controls/CustomButton.h"
+#include "../../controls/StartCallButton.h"
 #include "../../controls/GeneralDialog.h"
 #include "../../utils/gui_coll_helper.h"
 #include "../../utils/InterConnector.h"
@@ -60,6 +65,8 @@
 #include "../../styles/ThemeParameters.h"
 #include "../../styles/ThemesContainer.h"
 #include "../../app_config.h"
+#include "../proxy/AvatarStorageProxy.h"
+#include "../proxy/FriendlyContaInerProxy.h"
 
 #include "history/Heads.h"
 #include "history/MessageReader.h"
@@ -69,6 +76,8 @@
 #include "main_window/smartreply/SmartReplyWidget.h"
 #include "main_window/smartreply/SmartReplyItem.h"
 #include "main_window/smartreply/ShowHideButton.h"
+
+#include "previewer/toast.h"
 
 #include <boost/range/adaptor/reversed.hpp>
 
@@ -82,7 +91,6 @@ namespace
 {
     constexpr auto button_shift = 20;
 
-    const auto prevChatButtonSize = QSize(24, 24);
     constexpr auto chatNamePaddingLeft = 16;
 
     bool isRemovableWidget(QWidget *w);
@@ -102,6 +110,7 @@ namespace
     constexpr std::chrono::milliseconds typingInterval = std::chrono::seconds(3);
     constexpr std::chrono::milliseconds lookingInterval = std::chrono::seconds(10);
     constexpr std::chrono::milliseconds statusUpdateInterval = std::chrono::minutes(1);
+    constexpr std::chrono::milliseconds placeholderAvatarTimeout = std::chrono::milliseconds(500);
 
 #ifdef STRIP_VOIP
     constexpr bool voipEnabled = false;
@@ -116,7 +125,7 @@ namespace
         if (!_info)
             return false;
 
-        return _info->YouMember_ || (!_info->YourRole_.isEmpty() && _info->YourRole_ != ql1s("notamember"));
+        return _info->YouMember_ || (!_info->YourRole_.isEmpty() && _info->YourRole_ != u"notamember" && _info->YourRole_ != u"pending");
     }
 
     bool isYouAdmin(std::shared_ptr<Data::ChatInfo> _info)
@@ -124,7 +133,7 @@ namespace
         if (!_info)
             return false;
 
-        return _info->YourRole_ == ql1s("admin") || _info->Creator_ == Ui::MyInfo()->aimId();
+        return _info->YourRole_ == u"admin" || _info->Creator_ == Ui::MyInfo()->aimId();
     }
 
     bool isYouModer(std::shared_ptr<Data::ChatInfo> _info)
@@ -132,7 +141,7 @@ namespace
         if (!_info)
             return false;
 
-        return _info->YourRole_ == ql1s("moder");
+        return _info->YourRole_ == u"moder";
     }
 
     bool isYouAdminOrModer(std::shared_ptr<Data::ChatInfo> _info)
@@ -167,9 +176,77 @@ namespace
         return nullptr;
     }
 
-    constexpr std::chrono::milliseconds getLoaderOverlayDelay()
+    constexpr std::chrono::milliseconds getLoaderOverlayDelay() noexcept
     {
         return std::chrono::milliseconds(100);
+    }
+
+    auto getMinimalChatAreaWidthForVideoCallButton() noexcept
+    {
+        return Utils::scale_value(520);
+    }
+
+    constexpr auto getTopIconsSize() noexcept
+    {
+        return QSize(24, 24);
+    }
+
+    constexpr auto getTopButtonsSize() noexcept
+    {
+        return QSize(24, 24);
+    }
+
+    auto getTopButtonsLeftSpace() noexcept
+    {
+        return Utils::scale_value(12);
+    }
+
+    auto getTopButtonsSpacing() noexcept
+    {
+        return Utils::scale_value(16);
+    }
+
+    void sendSmartreplyStats(const Data::SmartreplySuggest& _suggest)
+    {
+        using namespace core::stats;
+
+        im_stat_event_names imStatName = im_stat_event_names::min;
+        stats_event_names statName = stats_event_names::min;
+        event_props_type props;
+
+        if (_suggest.isStickerType())
+        {
+            props.push_back({ "stickerId", _suggest.getData().toStdString() });
+            imStatName = im_stat_event_names::stickers_smartreply_sticker_sent;
+            statName = stats_event_names::stickers_smartreply_sticker_sent;
+        }
+        else if (_suggest.isTextType())
+        {
+            imStatName = im_stat_event_names::smartreply_text_sent;
+            statName = stats_event_names::smartreply_text_sent;
+        }
+
+        if (imStatName != im_stat_event_names::min)
+        {
+            Ui::GetDispatcher()->post_im_stats_to_core(imStatName, props);
+            Ui::GetDispatcher()->post_stats_to_core(statName, props);
+        }
+    }
+
+    constexpr Ui::PlaceholderState joinEventToPlaceholderState(core::chat_event_type _type) noexcept
+    {
+        switch (_type)
+        {
+        case core::chat_event_type::mchat_waiting_for_approve:
+            return Ui::PlaceholderState::pending;
+        case core::chat_event_type::mchat_joining_rejected:
+            return Ui::PlaceholderState::rejected;
+        case core::chat_event_type::mchat_joining_canceled:
+            return Ui::PlaceholderState::canceled;
+
+        default:
+            return Ui::PlaceholderState::hidden;
+        }
     }
 }
 
@@ -208,12 +285,12 @@ namespace Ui
 
     OverlayTopChatWidget::OverlayTopChatWidget(QWidget* _parent)
         : QWidget(_parent)
-        , textUnit_(TextRendering::MakeTextUnit(QString(), Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS))
+        , textUnit_(TextRendering::MakeTextUnit(QString(), {}, TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS))
     {
         setStyleSheet(qsl("background: transparent; border-style: none;"));
         setAttribute(Qt::WA_TransparentForMouseEvents);
 
-        textUnit_->init(Fonts::appFontScaled(11), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT), QColor(), QColor(), QColor(), TextRendering::HorAligment::CENTER);
+        textUnit_->init(Fonts::appFontScaled(11), Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE), QColor(), QColor(), QColor(), TextRendering::HorAligment::CENTER);
     }
 
     OverlayTopChatWidget::~OverlayTopChatWidget()
@@ -263,39 +340,11 @@ namespace Ui
         , Dialog_(_dialog)
         , ContactNameWidget_(_contactNameWidget)
         , Overlay_(_overlay)
-        , Ref_(std::make_shared<bool>(false))
     {
         assert(ContactNameWidget_);
         assert(ScrollArea_);
 
-        if (_contactName.isEmpty())
-        {
-            std::weak_ptr<bool> wr_ref = Ref_;
-            Logic::getContactListModel()->getContactProfile(_aimId, [this, wr_ref, _aimId](Logic::profile_ptr profile, int32_t)
-            {
-                auto ref = wr_ref.lock();
-                if (!ref)
-                    return;
-
-                QString name;
-                if (profile)
-                {
-                    name = profile->get_friendly();
-                    if (name.isEmpty())
-                    {
-                        name = profile->get_first_name();
-                        const auto lastName = profile->get_last_name();
-                        if (!name.isEmpty() && !lastName.isEmpty())
-                            name += ql1c(' ') % lastName;
-                    }
-                }
-                setContactName(name.isEmpty() ? _aimId : name);
-            });
-        }
-        else
-        {
-            setContactName(_contactName);
-        }
+        setContactName(_contactName.isEmpty() ? Logic::GetFriendlyContainer()->getFriendly(_aimId) : _contactName);
 
         ContactNameWidget_->setContextMenuPolicy(Qt::ContextMenuPolicy::CustomContextMenu);
     }
@@ -303,11 +352,6 @@ namespace Ui
     void MessagesWidgetEventFilter::resetNewPlate()
     {
         NewPlateShowed_ = false;
-    }
-
-    QString MessagesWidgetEventFilter::getContactName() const
-    {
-        return ContactName_;
     }
 
     bool MessagesWidgetEventFilter::eventFilter(QObject* _obj, QEvent* _event)
@@ -323,7 +367,6 @@ namespace Ui
             qint64 prevItemId = -1;
             const bool isScrollAtBottom = ScrollArea_->isScrollAtBottom();
 
-            const auto aimId = Dialog_->aimId();
             const auto debugRectAvailable = GetAppConfig().IsShowMsgIdsEnabled();
 
             ScrollArea_->enumerateWidgets(
@@ -348,7 +391,7 @@ namespace Ui
                         dialog->drawDebugRectForHole(widget);
                 };
 
-                auto msgItemBase = qobject_cast<Ui::MessageItemBase*>(widget);
+                auto msgItemBase = qobject_cast<Ui::HistoryControlPageItem*>(widget);
 
                 if (!isVisible || widget->visibleRegion().isEmpty())
                 {
@@ -361,11 +404,7 @@ namespace Ui
                     {
                         const auto it = std::find(Dialog_->newMessageIds_.cbegin(), Dialog_->newMessageIds_.cend(), msgItemBase->getId());
                         if (it != Dialog_->newMessageIds_.cend())
-                        {
                             Dialog_->newMessageIds_.erase(it);
-                            if (!Ui::get_gui_settings()->get_value<bool>(settings_partial_read, settings_partial_read_default()))
-                                Dialog_->buttonDown_->setCounter(Dialog_->newMessageIds_.size());
-                        }
                     }
                 }
 
@@ -456,6 +495,8 @@ namespace Ui
             if (keyEvent->matches(QKeySequence::Copy))
             {
                 Dialog_->copy(QString());
+                if (!Utils::InterConnector::instance().isMultiselect(Dialog_->aimId()))
+                    Ui::MainPage::instance()->setFocusOnInput();
                 return true;
             }
             else if (keyEvent->matches(QKeySequence::Paste) || keyEvent->key() == Qt::Key_Return || keyEvent->key() == Qt::Key_Enter)
@@ -540,6 +581,7 @@ namespace Ui
         , isMessagesRequestPostponed_(false)
         , isMessagesRequestPostponedDown_(false)
         , isPublicChat_(false)
+        , chatMembersCount_(-1)
         , contactStatus_(nullptr)
         , messagesArea_(nullptr)
         , topWidgetLeftPadding_(nullptr)
@@ -547,7 +589,6 @@ namespace Ui
         , searchButton_(nullptr)
         , addMemberButton_(nullptr)
         , callButton_(nullptr)
-        , videoCallButton_(nullptr)
         , buttonsWidget_(nullptr)
         , aimId_(_aimId)
         , contactStatusTimer_(nullptr)
@@ -581,14 +622,19 @@ namespace Ui
         , isChatCreator_(false)
         , requestWithLoaderSequence_(-1)
         , avatar_(nullptr)
+        , activeCallPlate_(new ActiveCallPlate(_aimId, this))
+        , emptyArea_(nullptr)
+        , chatPlaceholder_(nullptr)
+        , chatPlaceholderTimer_(nullptr)
     {
         lookingId_ = QUuid::createUuid().toString();
         lookingId_ = lookingId_.mid(1, lookingId_.length() - 2);//remove braces
 
         auto layout = Utils::emptyVLayout(this);
         layout->addWidget(pinnedWidget_);
+        layout->addWidget(activeCallPlate_);
 
-        if constexpr (platform::is_apple())
+        if (platform::is_apple())
         {
             auto scrollArea = new ScrollAreaContainer(this);
             auto viewport = scrollArea->viewport();
@@ -606,17 +652,22 @@ namespace Ui
             layout->addWidget(messagesArea_);
         }
 
-        Testing::setAccessibleName(messagesArea_, qsl("AS hcp messagesArea_"));
+        Testing::setAccessibleName(messagesArea_, qsl("AS HistoryPage messagesArea"));
         messagesArea_->getLayout()->setHeadContainer(heads_);
         messagesArea_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
         messagesArea_->setFocusPolicy(Qt::ClickFocus);
+        messagesArea_->installEventFilter(this);
 
-        Testing::setAccessibleName(pinnedWidget_, qsl("AS hcp pinnedWidget_"));
+        Testing::setAccessibleName(pinnedWidget_, qsl("AS HistoryPage pinnedWidget"));
         pinnedWidget_->hide();
 
         initButtonDown();
         initMentionsButton();
         initTopWidget();
+
+        emptyArea_ = new QWidget(this);
+        emptyArea_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+        emptyArea_->hide();
 
         messagesOverlay_->setContact(_aimId);
         messagesOverlay_->raise();
@@ -624,7 +675,7 @@ namespace Ui
 
         eventFilter_ = new MessagesWidgetEventFilter(
             buttonsWidget_,
-            Logic::getContactListModel()->selectedContactName(),
+            Logic::getFriendlyContainerProxy(Logic::FriendlyContainerProxy::ReplaceFavorites).getFriendly(aimId_),
             contactName_,
             messagesArea_,
             messagesOverlay_,
@@ -633,6 +684,8 @@ namespace Ui
 
         typingWidget_->setParent(messagesArea_);
         typingWidget_->hide();
+
+        activeCallPlate_->hide();
 
         connect(&Styling::getThemesContainer(), &Styling::ThemesContainer::globalThemeChanged, this, &HistoryControlPage::onGlobalThemeChanged);
 
@@ -645,6 +698,7 @@ namespace Ui
         connect(history_, &hist::History::pendingResolves, this, &HistoryControlPage::pendingResolves);
         connect(history_, &hist::History::newMessagesReceived, this, &HistoryControlPage::onNewMessagesReceived);
         connect(history_, &hist::History::clearAll, this, &HistoryControlPage::clearAll);
+        connect(history_, &hist::History::emptyHistory, this, &HistoryControlPage::emptyHistory);
 
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::searchClosed, this, [this]()
         {
@@ -653,37 +707,35 @@ namespace Ui
         });
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::chatEvents, this, &HistoryControlPage::updateChatInfo);
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::chatFontParamsChanged, this, &HistoryControlPage::onFontParamsChanged);
-        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::emojiSizeChanged,
-                this, [this]()
-                {
-                    messagesArea_->enumerateWidgets([](QWidget *widget, const bool)
-                    {
-                        if (auto item = qobject_cast<Ui::HistoryControlPageItem*>(widget))
-                            item->updateStyle();
-                        return true;
-
-                    }, false);
-                });
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::loaderOverlayCancelled, this, [this]()
         {
-            requestWithLoaderAimId_ = -1;
+            requestWithLoaderSequence_ = -1;
         });
 
-        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::hideSmartReplies, this, [this](const QString& _aimId)
+        connect(get_gui_settings(), &qt_gui_settings::changed, this, [this](const QString& _key)
         {
-           if (aimId_ == _aimId || _aimId.isEmpty())
-               hideSmartreplies();
+            if (_key == ql1s(settings_show_smartreply))
+            {
+                if (get_gui_settings()->get_value<bool>(settings_show_smartreply, settings_show_smartreply_default()))
+                    showSmartreplies();
+                else
+                    hideSmartreplies();
+            }
         });
-        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::showSmartreplies, this, &HistoryControlPage::showSmartreplies);
+
+        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::sendBotCommand, this, &HistoryControlPage::sendBotCommand);
+        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::startBot, this, &HistoryControlPage::startBot);
 
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::multiselectChanged, this, &HistoryControlPage::multiselectChanged);
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::multiselectDelete, this, &HistoryControlPage::multiselectDelete);
+        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::multiselectFavorites, this, &HistoryControlPage::multiselectFavorites);
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::multiselectCopy, this, &HistoryControlPage::multiselectCopy);
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::multiselectReply, this, &HistoryControlPage::multiselectReply);
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::multiselectForward, this, &HistoryControlPage::multiselectForward);
 
         connect(history_, &hist::History::updateLastSeen, this, &HistoryControlPage::changeDlgState);
-        connect(Ui::GetDispatcher(), &Ui::core_dispatcher::dlgStates, this, [this](const QVector<Data::DlgState>& _states) {
+        connect(Ui::GetDispatcher(), &Ui::core_dispatcher::dlgStates, this, [this](const QVector<Data::DlgState>& _states)
+        {
             for (const auto& state : _states)
             {
                 if (state.AimId_ == aimId_)
@@ -691,7 +743,7 @@ namespace Ui
             }
         });
 
-        connect(Ui::GetDispatcher(), &Ui::core_dispatcher::pendingListResult, this, [this] { loadChatInfo(); });
+        connect(Ui::GetDispatcher(), &Ui::core_dispatcher::pendingListResult, this, &HistoryControlPage::loadChatInfo);
 
         connect(Logic::getContactListModel(), &Logic::ContactListModel::contactChanged, this, &HistoryControlPage::contactChanged);
         connect(Logic::getContactListModel(), &Logic::ContactListModel::youRoleChanged, this, &HistoryControlPage::onChatRoleChanged);
@@ -702,7 +754,8 @@ namespace Ui
         connect(messagesArea_, &MessagesScrollArea::updateHistoryPosition, this, &HistoryControlPage::onUpdateHistoryPosition);
         connect(messagesArea_, &MessagesScrollArea::fetchRequestedEvent, this, &HistoryControlPage::onReachedFetchingDistance);
         connect(messagesArea_, &MessagesScrollArea::scrollMovedToBottom, this, &HistoryControlPage::scrollMovedToBottom);
-        connect(messagesArea_, &MessagesScrollArea::itemRead, this, [this](qint64 _id, bool _visible) {
+        connect(messagesArea_, &MessagesScrollArea::itemRead, this, [this](qint64 _id, bool _visible)
+        {
             if (control_ && control_->currentAimId() == aimId())
                 reader_->onMessageItemRead(_id, _visible);
         });
@@ -726,9 +779,9 @@ namespace Ui
         connect(heads_, &Heads::HeadContainer::headChanged, this, &HistoryControlPage::chatHeads);
         connect(heads_, &Heads::HeadContainer::hide, this, &HistoryControlPage::hideHeads);
 
-        typedTimer_->setInterval(typingInterval.count());
+        typedTimer_->setInterval(typingInterval);
         connect(typedTimer_, &QTimer::timeout, this, &HistoryControlPage::onTypingTimer);
-        lookingTimer_->setInterval(lookingInterval.count());
+        lookingTimer_->setInterval(lookingInterval);
         connect(lookingTimer_, &QTimer::timeout, this, &HistoryControlPage::onLookingTimer);
         groupSubscribeTimer_->setSingleShot(true);
         connect(groupSubscribeTimer_, &QTimer::timeout, this, &HistoryControlPage::groupSubscribe);
@@ -771,8 +824,6 @@ namespace Ui
             mentionTimer_->stop();
         });
 
-        connect(pinnedWidget_, &PinnedMessageWidget::resized, this, &HistoryControlPage::updateOverlaySizes);
-
         connect(Ui::GetDispatcher(), &Ui::core_dispatcher::connectionStateChanged, this, &HistoryControlPage::connectionStateChanged);
         if (Ui::GetDispatcher()->getConnectionState() != Ui::ConnectionState::stateOnline)
             connectionStateChanged(Ui::GetDispatcher()->getConnectionState());
@@ -780,16 +831,21 @@ namespace Ui
         connect(Logic::GetFriendlyContainer(), &Logic::FriendlyContainer::friendlyChanged, this, [this](const QString& _aimid, const QString& _friendly)
         {
             if (_aimid == aimId_)
-                updateName(_friendly);
+                updateName();
         });
 
-        connect(Logic::GetFriendlyContainer(), &Logic::FriendlyContainer::lastseenChanged, this, &HistoryControlPage::lastseenChanged);
+        connect(Logic::GetLastseenContainer(), &Logic::LastseenContainer::lastseenChanged, this, &HistoryControlPage::lastseenChanged);
 
-        if (Logic::getContactListModel()->isChat(aimId_))
+        if (Utils::isChat(aimId_))
         {
             connect(Logic::getContactListModel(), &Logic::ContactListModel::youRoleChanged, this, &HistoryControlPage::onRoleChanged);
             connectToMessageBuddies();
+            GetDispatcher()->subscribeCallRoomInfo(aimId_);
         }
+
+        connect(Ui::GetDispatcher(), &Ui::core_dispatcher::subscribeResult, this, &HistoryControlPage::groupSubscribeResult);
+        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::addReactionPlateActivityChanged, this, &HistoryControlPage::onAddReactionPlateActivityChanged);
+        connect(GetDispatcher(), &core_dispatcher::callRoomInfo, this, &HistoryControlPage::onCallRoomInfo);
     }
 
     void HistoryControlPage::initButtonDown()
@@ -834,26 +890,25 @@ namespace Ui
             topWidgetLeftPadding_ = new QWidget(mainTopWidget);
             topWidgetLeftPadding_->setFixedWidth(Utils::scale_value(chatNamePaddingLeft));
             topWidgetLeftPadding_->setAttribute(Qt::WA_TransparentForMouseEvents);
-            Testing::setAccessibleName(topWidgetLeftPadding_, qsl("AS hcp topWidgetLeftPadding_"));
             topLayout->addWidget(topWidgetLeftPadding_);
 
             prevChatButtonWidget_ = new QWidget(mainTopWidget);
-            prevChatButtonWidget_->setFixedWidth(Utils::scale_value(prevChatButtonSize.width() + (12 * 2)));
+            prevChatButtonWidget_->setFixedWidth(Utils::scale_value(getTopButtonsSize().width() + (12 * 2)));
             auto prevButtonLayout = Utils::emptyHLayout(prevChatButtonWidget_);
 
             auto prevChatButton = new CustomButton(prevChatButtonWidget_, qsl(":/controls/back_icon"), QSize(20, 20));
             Styling::Buttons::setButtonDefaultColors(prevChatButton);
-            prevChatButton->setFixedSize(Utils::scale_value(prevChatButtonSize));
+            prevChatButton->setFixedSize(Utils::scale_value(getTopButtonsSize()));
             prevChatButton->setFocusPolicy(Qt::TabFocus);
             prevChatButton->setFocusColor(Styling::getParameters().getPrimaryTabFocusColor());
             connect(prevChatButton, &CustomButton::clicked, this, [this, prevChatButton]()
             {
-                emit switchToPrevDialog(prevChatButton->hasFocus(), QPrivateSignal());
+                Q_EMIT switchToPrevDialog(prevChatButton->hasFocus(), QPrivateSignal());
             });
 
-            Testing::setAccessibleName(prevChatButton, qsl("AS hcp prevChatButton"));
+            Testing::setAccessibleName(prevChatButton, qsl("AS HistoryPage backButton"));
             prevButtonLayout->addWidget(prevChatButton);
-            Testing::setAccessibleName(prevChatButtonWidget_, qsl("AS hcp prevChatButtonWidget_"));
+            Testing::setAccessibleName(prevChatButtonWidget_, qsl("AS HistoryPage backButtonWidget"));
             topLayout->addWidget(prevChatButtonWidget_);
         }
 
@@ -863,10 +918,10 @@ namespace Ui
             avatar_->SetOffset(Utils::scale_value(1));
             avatar_->SetSmallBadge(true);
             avatar_->setCursor(Qt::PointingHandCursor);
+            avatar_->setAvatarProxyFlags(Logic::AvatarStorageProxy::ReplaceFavorites);
             connect(avatar_, &ContactAvatarWidget::leftClicked, this, &HistoryControlPage::nameClicked);
-            connect(avatar_, &ContactAvatarWidget::rightClicked, this, &HistoryControlPage::nameClicked);
 
-            Testing::setAccessibleName(avatar_, qsl("AS hcp contactAvatar"));
+            Testing::setAccessibleName(avatar_, qsl("AS HistoryPage dialogAvatar"));
             topLayout->addWidget(avatar_);
 
             topLayout->addSpacing(Utils::scale_value(8) - (avatar_->width() - avatarSize));
@@ -882,15 +937,15 @@ namespace Ui
             contactName_->setFixedHeight(Utils::scale_value(20));
             contactName_->setCursor(Qt::PointingHandCursor);
             connect(contactName_, &ClickableWidget::clicked, this, &HistoryControlPage::nameClicked);
-            Testing::setAccessibleName(contactName_, qsl("AS hcp contactName_"));
+            Testing::setAccessibleName(contactName_, qsl("AS HistoryPage dialogName"));
             contactWidgetLayout->addWidget(contactName_);
 
             contactStatus_ = new ClickableTextWidget(this, contactStatusFont(), Styling::StyleVariable::BASE_PRIMARY);
             contactStatus_->setFixedHeight(Utils::scale_value(16));
-            Testing::setAccessibleName(contactStatus_, qsl("AS hcp contactStatus_"));
+            Testing::setAccessibleName(contactStatus_, qsl("AS HistoryPage dialogStatus"));
             contactWidgetLayout->addWidget(contactStatus_);
 
-            Testing::setAccessibleName(contactWidget_, qsl("AS hcp contactWidget"));
+            Testing::setAccessibleName(contactWidget_, qsl("AS HistoryPage dialogWidget"));
             topLayout->addWidget(contactWidget_);
         }
 
@@ -898,7 +953,7 @@ namespace Ui
             connectionWidget_ = new ConnectionWidget(mainTopWidget);
             connectionWidget_->setVisible(false);
 
-            Testing::setAccessibleName(connectionWidget_, qsl("AS hcp connectionWidget_"));
+            Testing::setAccessibleName(connectionWidget_, qsl("AS HistoryPage connectionWidget"));
             topLayout->addWidget(connectionWidget_);
         }
 
@@ -906,13 +961,14 @@ namespace Ui
             buttonsWidget_ = new QWidget(mainTopWidget);
 
             auto buttonsLayout = Utils::emptyHLayout(buttonsWidget_);
-            buttonsLayout->setSpacing(Utils::scale_value(16));
+            buttonsLayout->addSpacing(getTopButtonsLeftSpace());
+            buttonsLayout->setSpacing(getTopButtonsSpacing());
 
             const auto btn = [this](const QString& _iconName, const QSize& _iconSize, const QString& _tooltip, const QString& _accesibleName = QString())
             {
                 auto button = new CustomButton(buttonsWidget_, _iconName, _iconSize);
                 Styling::Buttons::setButtonDefaultColors(button);
-                button->setFixedSize(Utils::scale_value(QSize(24, 24)));
+                button->setFixedSize(Utils::scale_value(getTopButtonsSize()));
                 button->setCustomToolTip(_tooltip);
 
                 if (Testing::isEnabled() && !_accesibleName.isEmpty())
@@ -921,7 +977,7 @@ namespace Ui
                 return button;
             };
 
-            searchButton_ = btn(qsl(":/search_icon"), QSize(24, 24), QT_TRANSLATE_NOOP("tooltips", "Search for messages"), qsl("AS hc searchButton"));
+            searchButton_ = btn(qsl(":/search_icon"), getTopIconsSize(), QT_TRANSLATE_NOOP("tooltips", "Search for messages"), qsl("AS HistoryPage searchButton"));
             connect(searchButton_, &QPushButton::clicked, this, &HistoryControlPage::searchButtonClicked);
             connect(&Utils::InterConnector::instance(), &Utils::InterConnector::startSearchInDialog, searchButton_,
                 [button = searchButton_, dialogAimId = aimId_](const QString& _searchedDialog)
@@ -939,34 +995,29 @@ namespace Ui
             });
             buttonsLayout->addWidget(searchButton_, 0, Qt::AlignRight);
 
-            pendingButton_ = btn(qsl(":/pending_icon"), QSize(24, 24), QT_TRANSLATE_NOOP("sidebar", "Waiting for approval"), qsl("AS hcp pendingButton"));
+            pendingButton_ = btn(qsl(":/pending_icon"), getTopIconsSize(), QT_TRANSLATE_NOOP("sidebar", "Waiting for approval"), qsl("AS HistoryPage pendingButton"));
             connect(pendingButton_, &QPushButton::clicked, this, &HistoryControlPage::pendingButtonClicked);
             buttonsLayout->addWidget(pendingButton_, 0, Qt::AlignRight);
             pendingButton_->hide();
 
-            callButton_ = btn(qsl(":/phone_icon"), QSize(24, 24), QT_TRANSLATE_NOOP("tooltips", "Call"), qsl("AS hcp callButton"));
-            connect(callButton_, &QPushButton::clicked, this, &HistoryControlPage::callAudioButtonClicked);
-            buttonsLayout->addWidget(callButton_, 0, Qt::AlignRight);
-
-            videoCallButton_ = btn(qsl(":/video_icon"), QSize(24, 24), QT_TRANSLATE_NOOP("tooltips", "Video call"), qsl("AS hcp videoCallButton"));
-            connect(videoCallButton_, &QPushButton::clicked, this, &HistoryControlPage::callVideoButtonClicked);
-            buttonsLayout->addWidget(videoCallButton_, 0, Qt::AlignRight);
-
-            addMemberButton_ = btn(qsl(":/header/add_user"), QSize(24, 24), QT_TRANSLATE_NOOP("tooltips", "Add member"), qsl("AS hcp addMemberButton_"));
+            addMemberButton_ = btn(qsl(":/header/add_user"), getTopIconsSize(), QT_TRANSLATE_NOOP("tooltips", "Add member"), qsl("AS HistoryPage addMemberButton"));
             connect(addMemberButton_, &CustomButton::clicked, this, &HistoryControlPage::addMember);
             buttonsLayout->addWidget(addMemberButton_, 0, Qt::AlignRight);
 
-            auto moreButton = btn(qsl(":/controls/more_icon"), QSize(24, 24), QT_TRANSLATE_NOOP("tooltips", "Information"), qsl("AS hcp moreButton"));
+            callButton_ = new StartCallButton(buttonsWidget_, CallButtonType::Standalone);
+            callButton_->setAimId(aimId_);
+            Testing::setAccessibleName(callButton_, qsl("AS HistoryPage callButton"));
+
+            buttonsLayout->addWidget(callButton_, 0, Qt::AlignRight);
+
+            auto moreButton = btn(qsl(":/about_icon_small"), getTopIconsSize(), QT_TRANSLATE_NOOP("tooltips", "Information"), qsl("AS HistoryPage moreButton"));
             connect(moreButton, &QPushButton::clicked, this, &HistoryControlPage::moreButtonClicked);
             buttonsLayout->addWidget(moreButton, 0, Qt::AlignRight);
 
-            const bool isChat = Utils::isChat(aimId_);
-            const bool myInfo = aimId_ == MyInfo()->aimId();
-            callButton_->setVisible(!isChat && !myInfo && voipEnabled);
-            videoCallButton_->setVisible(!isChat && !myInfo && voipEnabled);
-            addMemberButton_->setVisible(isChat);
+            addMemberButton_->setVisible(Utils::isChat(aimId_));
+            updateCallButtonsVisibility();
 
-            Testing::setAccessibleName(buttonsWidget_, qsl("AS hcp buttonsWidget_"));
+            Testing::setAccessibleName(buttonsWidget_, qsl("AS HistoryPage buttonsWidget"));
             topLayout->addWidget(buttonsWidget_, 0, Qt::AlignRight);
         }
 
@@ -1001,7 +1052,7 @@ namespace Ui
 
     void HistoryControlPage::hideHeads()
     {
-        if (!Logic::getContactListModel()->isChat(aimId_))
+        if (!Utils::isChat(aimId_))
             return;
 
         messagesArea_->enumerateWidgets([](QWidget* _item, const bool)
@@ -1021,7 +1072,7 @@ namespace Ui
     {
         if (const auto nextMention = reader_->getNextUnreadMention())
         {
-            emit Logic::getContactListModel()->select(aimId_, nextMention->Id_);
+            Q_EMIT Logic::getContactListModel()->select(aimId_, nextMention->Id_);
         }
         else
         {
@@ -1081,6 +1132,9 @@ namespace Ui
 
         updateSmartreplyStyle();
 
+        if (chatPlaceholder_)
+            chatPlaceholder_->updateStyle();
+
         Utils::ApplyStyle(this, Styling::getParameters(aimId()).getScrollBarQss());
     }
 
@@ -1114,6 +1168,8 @@ namespace Ui
     {
         mentionCompleter_->deleteLater();
         mentionCompleter_ = nullptr;
+
+        GetDispatcher()->unsubscribeCallRoomInfo(aimId_);
     }
 
     void HistoryControlPage::initFor(qint64 _id, hist::scroll_mode_type _type, FirstInit _firstInit)
@@ -1249,6 +1305,9 @@ namespace Ui
         Ui::GetDispatcher()->post_message_to_core("dlg_state/close_stranger", collection.get());
         GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::chatscr_blockbar_action, { { "type", "cancel" },{ "chat_type", Utils::chatTypeByAimId(aimId_) } });
         chatscrBlockbarActionTracked_ = true;
+
+        if (activeCallPlate_ && activeCallPlate_->participantsCount() > 0)
+            showActiveCallPlate();
     }
 
     void HistoryControlPage::strangerBlock()
@@ -1268,7 +1327,7 @@ namespace Ui
         GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::spam_contact, { { "From", "Auth_Widget" } });
         GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::ignore_contact, { { "From", "Auth_Widget" } });
 
-        emit Utils::InterConnector::instance().profileSettingsBack();
+        Q_EMIT Utils::InterConnector::instance().profileSettingsBack();
     }
 
     void HistoryControlPage::authDeleteContact(const QString& _aimId)
@@ -1311,20 +1370,41 @@ namespace Ui
     {
         const auto quotes = messagesArea_->getQuotes();
         messagesArea_->clearSelection();
-        emit quote(quotes.isEmpty() ? q : quotes);
+        Q_EMIT quote(quotes.isEmpty() ? q : quotes);
+
+        QTimer::singleShot(0, this, []()
+        {
+            if (auto inputWidget = getInputWidget(); inputWidget && inputWidget->getInputQuotes().size() != 1)
+            {
+                if (auto contactDialog = Utils::InterConnector::instance().getContactDialog())
+                    contactDialog->hideSmartrepliesForQuoteAnimated();
+            }
+        });
     }
 
     void HistoryControlPage::forwardText(const Data::QuotesVec& q)
     {
-        emit Utils::InterConnector::instance().stopPttRecord();
+        Q_EMIT Utils::InterConnector::instance().stopPttRecord();
         const auto quotes = messagesArea_->getQuotes(MessagesScrollArea::IsForward::Yes);
-        if (forwardMessage(quotes.isEmpty() ? q : quotes, true) != 0)
+
+        const auto& quotesToSend = quotes.isEmpty() ? q : quotes;
+
+        // disable author setting for single favorites messages which are not forwards
+        const auto disableAuthor = Favorites::isFavorites(aimId_) && quotesToSend.size() == 1 && Favorites::isFavorites(quotesToSend.front().senderId_);
+
+        if (forwardMessage(quotesToSend, true, QString(), QString(), !disableAuthor) != 0)
         {
             messagesArea_->clearSelection();
             Utils::InterConnector::instance().setMultiselect(false, aimId_);
         }
         if (auto contactDialog = Utils::InterConnector::instance().getContactDialog())
             contactDialog->setFocusOnInputWidget();
+    }
+
+    void HistoryControlPage::addToFavorites(const Data::QuotesVec& _quotes)
+    {
+        Favorites::addToFavorites(_quotes);
+        Favorites::showSavedToast(_quotes.size());
     }
 
     void HistoryControlPage::pin(const QString& _chatId, const int64_t _msgId, const bool _isUnpin)
@@ -1341,10 +1421,15 @@ namespace Ui
         const auto isMultiselect = Utils::InterConnector::instance().isMultiselect(aimId_);
         topWidget_->setCurrentIndex(isMultiselect ? TopWidget::Selection : TopWidget::Main);
 
-        if (isMultiselect)
-            hideSmartreplies();
+        auto quotesCount = 0;
+        if (auto inputWidget = getInputWidget())
+            quotesCount = inputWidget->getQuotesCount();
+        setSmartrepliesSemitransparent(isMultiselect || quotesCount > 0);
 
-        emit Utils::InterConnector::instance().updateSelectedCount();
+        if (isMultiselect)
+            setFocusOnArea();
+
+        Q_EMIT Utils::InterConnector::instance().updateSelectedCount();
     }
 
     void HistoryControlPage::multiselectDelete()
@@ -1354,14 +1439,19 @@ namespace Ui
 
         auto canDeleteForMe = 0, canDeleteForAll = 0;
         messagesArea_->countSelected(canDeleteForMe, canDeleteForAll);
-        auto w = new Utils::DeleteMessagesWidget(nullptr, canDeleteForMe, canDeleteForAll);
+        const auto showInfoText = Favorites::isFavorites(aimId_) ? Utils::DeleteMessagesWidget::ShowInfoText::No : Utils::DeleteMessagesWidget::ShowInfoText::Yes;
+        auto w = new Utils::DeleteMessagesWidget(nullptr, canDeleteForAll > 0, showInfoText);
+        w->setCheckBoxText(QT_TRANSLATE_NOOP("context_menu", "Delete for all"));
+        w->setCheckBoxChecked(true);
+        if (canDeleteForAll > 0 && showInfoText == Utils::DeleteMessagesWidget::ShowInfoText::Yes)
+            w->setInfoText(QT_TRANSLATE_NOOP("delete_messages", "Messages will be deleted only for you"));
+
         GeneralDialog generalDialog(w, Utils::InterConnector::instance().getMainWindow());
         generalDialog.addLabel(QT_TRANSLATE_NOOP("delete_messages", "Delete messages"));
         generalDialog.addButtonsPair(QT_TRANSLATE_NOOP("delete_messages", "Cancel"), QT_TRANSLATE_NOOP("delete_messages", "OK"), true);
-        auto result = generalDialog.showInCenter();
-        if (result)
+        if (generalDialog.showInCenter())
         {
-            if (w->isDeleteForAll() && canDeleteForMe != canDeleteForAll)
+            if (w->isChecked() && canDeleteForMe != canDeleteForAll)
             {
                 const auto confirmed = Utils::GetConfirmationWithTwoButtons(
                     QT_TRANSLATE_NOOP("popup_window", "Cancel"),
@@ -1375,7 +1465,7 @@ namespace Ui
             }
 
             auto messagesToDelete = messagesArea_->getSelectedMessagesForDelete();
-            if (!w->isDeleteForAll())
+            if (!w->isChecked())
             {
                 for (auto& m : messagesToDelete)
                     m.ForAll_ = false;
@@ -1384,6 +1474,16 @@ namespace Ui
             Ui::GetDispatcher()->deleteMessages(aimId_, messagesToDelete);
             Utils::InterConnector::instance().setMultiselect(false);
         }
+    }
+
+    void HistoryControlPage::multiselectFavorites()
+    {
+        if (aimId_ != Logic::getContactListModel()->selectedContact())
+            return;
+
+        const auto quotes = messagesArea_->getQuotes(MessagesScrollArea::IsForward::Yes);
+        addToFavorites(quotes);
+        Utils::InterConnector::instance().setMultiselect(false);
     }
 
     void HistoryControlPage::multiselectCopy()
@@ -1404,7 +1504,7 @@ namespace Ui
         Utils::InterConnector::instance().setMultiselect(false);
     }
 
-    void HistoryControlPage::multiselectForward(QString _aimid)
+    void HistoryControlPage::multiselectForward(const QString& _aimid)
     {
         if (aimId_ != _aimid)
             return;
@@ -1412,21 +1512,21 @@ namespace Ui
         forwardText({});
     }
 
-    void HistoryControlPage::edit(const int64_t _msgId, const QString& _internalId, const common::tools::patch_version& _patchVersion, const QString& _text, const Data::MentionMap& _mentions, const Data::QuotesVec& _quotes, qint32 _time, const Data::FilesPlaceholderMap& _files, MediaType _mediaType)
+    void HistoryControlPage::edit(const int64_t _msgId, const QString& _internalId, const common::tools::patch_version& _patchVersion, const QString& _text, const Data::MentionMap& _mentions, const Data::QuotesVec& _quotes, qint32 _time, const Data::FilesPlaceholderMap& _files, MediaType _mediaType, bool instantEdit)
     {
         if (auto inputWidget = getInputWidget())
         {
             messagesArea_->clearSelection();
-            inputWidget->edit(_msgId, _internalId, _patchVersion, _text, _mentions, _quotes, _time, _files, _mediaType);
+            inputWidget->edit(_msgId, _internalId, _patchVersion, _text, _mentions, _quotes, _time, _files, _mediaType, instantEdit);
         }
     }
 
-    void HistoryControlPage::editWithCaption(const int64_t _msgId, const QString& _internalId, const common::tools::patch_version& _patchVersion, const QString& _url, const QString& _description, const Data::QuotesVec& _quotes, qint32 _time, const Data::FilesPlaceholderMap& _files, MediaType _mediaType)
+    void HistoryControlPage::editWithCaption(const int64_t _msgId, const QString& _internalId, const common::tools::patch_version& _patchVersion, const QString& _url, const QString& _description, const Data::MentionMap& _mentions, const Data::QuotesVec& _quotes, qint32 _time, const Data::FilesPlaceholderMap& _files, MediaType _mediaType, bool instantEdit)
     {
         if (auto inputWidget = getInputWidget())
         {
             messagesArea_->clearSelection();
-            inputWidget->editWithCaption(_msgId, _internalId, _patchVersion, _url, _description, _quotes, _time, _files, _mediaType);
+            inputWidget->editWithCaption(_msgId, _internalId, _patchVersion, _url, _description, _mentions, _quotes, _time, _files, _mediaType, instantEdit);
         }
     }
 
@@ -1490,10 +1590,10 @@ namespace Ui
         else
             newPlateId_ = std::nullopt;
 
-        switchToInsertingState(__FUNCLINEA__);
-
         const auto id = _mess_id > 0 ? std::make_optional(_mess_id) : std::nullopt;
         const auto messages = history_->getInitMessages(id);
+
+        switchToInsertingState(__FUNCLINEA__);
 
         InsertHistMessagesParams params;
         params.scrollToMesssageId = id;
@@ -1510,17 +1610,13 @@ namespace Ui
         switchToIdleState(__FUNCLINEA__);
         setHighlights({});
 
-        if (!messages.isEmpty())
-        {
-            if (!messagesArea_->isViewportFull())
-                fetch(hist::FetchDirection::toOlder);
-        }
-        else if (aimId_ == Utils::getStickerBotAimId())
-        {
-            GetDispatcher()->sendMessageToContact(Utils::getStickerBotAimId(), qsl("/start"));
-        }
-    }
+        updateChatPlaceholder();
 
+        if (!messages.isEmpty() && !messagesArea_->isViewportFull())
+            fetch(hist::FetchDirection::toOlder);
+
+        Q_EMIT Utils::InterConnector::instance().historyReady(aimId_);
+    }
 
     void HistoryControlPage::updatedBuddies(const Data::MessageBuddies& _buddies)
     {
@@ -1530,16 +1626,13 @@ namespace Ui
         params.widgets = makeWidgets(aimId_, _buddies, width(), heads_, newPlateId_, messagesArea_);
         params.newPlateId = newPlateId_;
         params.updateExistingOnly = true;
-        params.scrollOnInsert = std::make_optional(ScrollOnInsert::ScrollToBottomIfNeeded);
+        params.scrollOnInsert = std::make_optional(addReactionPlateActive_ ? ScrollOnInsert::None : ScrollOnInsert::ScrollToBottomIfNeeded);
 
         insertMessages(std::move(params));
         switchToIdleState(__FUNCLINEA__);
 
-        if (!_buddies.isEmpty())
-        {
-            if (!messagesArea_->isViewportFull())
-                fetch(hist::FetchDirection::toOlder);
-        }
+        if (!_buddies.isEmpty() && !messagesArea_->isViewportFull())
+            fetch(hist::FetchDirection::toOlder);
     }
 
     void HistoryControlPage::insertedBuddies(const Data::MessageBuddies& _buddies)
@@ -1551,7 +1644,7 @@ namespace Ui
         params.newPlateId = newPlateId_;
         params.updateExistingOnly = false;
         params.forceUpdateItems = true;
-        params.scrollOnInsert = std::make_optional(ScrollOnInsert::ScrollToBottomIfNeeded);
+        params.scrollOnInsert = std::make_optional(addReactionPlateActive_ ? ScrollOnInsert::None : ScrollOnInsert::ScrollToBottomIfNeeded);
 
         if (params.isBackgroundMode)
         {
@@ -1611,6 +1704,7 @@ namespace Ui
             connect(_item, &VoipEventItem::copy, this, &HistoryControlPage::copy),
             connect(_item, &VoipEventItem::quote, this, &HistoryControlPage::quoteText),
             connect(_item, &VoipEventItem::forward, this, &HistoryControlPage::forwardText),
+            connect(_item, &VoipEventItem::addToFavorites, this, &HistoryControlPage::addToFavorites),
             connect(_item, &VoipEventItem::pressedDestroyed, this, &HistoryControlPage::pressedDestroyed)
         };
         return std::all_of(list.begin(), list.end(), [](const auto& x) { return x; });
@@ -1633,7 +1727,10 @@ namespace Ui
             connect(complexMessageItem, &ComplexMessage::ComplexMessageItem::editWithCaption, this, &HistoryControlPage::editWithCaption),
             connect(complexMessageItem, &ComplexMessage::ComplexMessageItem::needUpdateRecentsText, this, &HistoryControlPage::onNeedUpdateRecentsText),
             connect(complexMessageItem, &ComplexMessage::ComplexMessageItem::pressedDestroyed, this, &HistoryControlPage::pressedDestroyed),
-            connect(complexMessageItem, &ComplexMessage::ComplexMessageItem::layoutChanged, this, &HistoryControlPage::onItemLayoutChanged)
+            connect(complexMessageItem, &ComplexMessage::ComplexMessageItem::layoutChanged, this, &HistoryControlPage::onItemLayoutChanged),
+            connect(complexMessageItem, &ComplexMessage::ComplexMessageItem::addToFavorites, this, &HistoryControlPage::addToFavorites),
+            connect(complexMessageItem, &ComplexMessage::ComplexMessageItem::readOnlyUser, this, &HistoryControlPage::onReadOnlyUser),
+            connect(complexMessageItem, &ComplexMessage::ComplexMessageItem::blockUser, this, &HistoryControlPage::onBlockUser),
         };
         return std::all_of(list.begin(), list.end(), [](const auto& x) { return x; });
     }
@@ -1642,7 +1739,7 @@ namespace Ui
     {
         /*if (isScrolling())
         {
-            emit needRemove(_key);
+            Q_EMIT needRemove(_key);
             return;
         }
         */
@@ -1659,135 +1756,145 @@ namespace Ui
 
     void HistoryControlPage::insertMessages(InsertHistMessagesParams&& _params)
     {
-        std::scoped_lock lock(*(messagesArea_->getLayout()));
-        if (_params.removeOthers == RemoveOthers::Yes)
+        auto doInsertWidgets = [this, &_params]()
         {
-            messagesArea_->getLayout()->removeAllExcluded(_params);
-        }
+            const auto isStranger = Logic::getRecentsModel()->isStranger(aimId_);
+            InsertHistMessagesParams::WidgetsList insertWidgets;
+            insertWidgets.reserve(_params.widgets.size());
 
-        if (_params.newPlateId)
-            removeNewPlateItem();
-
-        const auto isStranger = Logic::getRecentsModel()->isStranger(aimId_);
-
-        InsertHistMessagesParams::WidgetsList insertWidgets;
-        while (!_params.widgets.empty())
-        {
-            auto itemData = std::move(_params.widgets.back());
-            _params.widgets.pop_back();
-
-            if (isStranger)
+            while (!_params.widgets.empty())
             {
-                auto pageItem = qobject_cast<Ui::HistoryControlPageItem*>(itemData.second.get());
-                if (pageItem && pageItem->isOutgoing())
+                auto itemData = std::move(_params.widgets.back());
+                _params.widgets.pop_back();
+
+                if (isStranger)
                 {
-                    GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::chatscr_blockbar_action, { { "type", "send" },{ "chat_type", Utils::chatTypeByAimId(aimId_) } });
-                    chatscrBlockbarActionTracked_ = true;
-                }
-            }
-
-            if (auto existing = getWidgetByKey(itemData.first))
-            {
-                auto isNewItemChatEvent = qobject_cast<Ui::ChatEventItem*>(itemData.second.get());
-
-                if (!isUpdateableWidget(existing) && !isNewItemChatEvent)
-                {
-                    auto messageItem = qobject_cast<Ui::ComplexMessage::ComplexMessageItem*>(existing);
-                    auto newMessageItem = qobject_cast<Ui::ComplexMessage::ComplexMessageItem*>(itemData.second.get());
-
-                    if (messageItem && newMessageItem)
+                    auto pageItem = qobject_cast<Ui::HistoryControlPageItem*>(itemData.second.get());
+                    if (pageItem && pageItem->isOutgoing())
                     {
-                        messageItem->setDeliveredToServer(!itemData.first.isPending());
-                        newMessageItem->setDeliveredToServer(!itemData.first.isPending());
-                        //messageItem->updateWith(*newMessageItem);
+                        GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::chatscr_blockbar_action, { { "type", "send" },{ "chat_type", Utils::chatTypeByAimId(aimId_) } });
+                        chatscrBlockbarActionTracked_ = true;
+                    }
+                }
 
-                        connectToComplexMessageItem(newMessageItem);
+                if (auto existing = getWidgetByKey(itemData.first))
+                {
+                    auto isNewItemChatEvent = qobject_cast<Ui::ChatEventItem*>(itemData.second.get());
+
+                    if (!isUpdateableWidget(existing) && !isNewItemChatEvent)
+                    {
+                        auto messageItem = qobject_cast<Ui::ComplexMessage::ComplexMessageItem*>(existing);
+                        auto newMessageItem = qobject_cast<Ui::ComplexMessage::ComplexMessageItem*>(itemData.second.get());
+
+                        if (messageItem && newMessageItem)
+                        {
+                            messageItem->setDeliveredToServer(!itemData.first.isPending());
+                            newMessageItem->setDeliveredToServer(!itemData.first.isPending());
+                            //messageItem->updateWith(*newMessageItem);
+
+                            connectToComplexMessageItem(newMessageItem);
+                            messagesArea_->replaceWidget(itemData.first, std::move(itemData.second));
+                            continue;
+                        }
+
+                        assert(false);
+                        continue;
+                    }
+
+                    auto exisitingPageItem = qobject_cast<Ui::HistoryControlPageItem*>(existing);
+                    auto newPageItem = qobject_cast<Ui::HistoryControlPageItem*>(itemData.second.get());
+
+                    if (exisitingPageItem && newPageItem)
+                    {
+                        newPageItem->setHasAvatar(exisitingPageItem->hasAvatar());
+                        newPageItem->setHasSenderName(exisitingPageItem->hasSenderName());
+                    }
+
+                    auto complexMessageItem = qobject_cast<Ui::ComplexMessage::ComplexMessageItem*>(existing);
+                    auto newComplexMessageItem = qobject_cast<Ui::ComplexMessage::ComplexMessageItem*>(itemData.second.get());
+
+                    if (complexMessageItem && newComplexMessageItem && isUpdateableWidget(existing))
+                    {
+                        complexMessageItem->setDeliveredToServer(!itemData.first.isPending());
+                        if (complexMessageItem->canBeUpdatedWith(*newComplexMessageItem))
+                        {
+                            complexMessageItem->updateWith(*newComplexMessageItem);
+                        }
+                        else
+                        {
+                            newComplexMessageItem->getUpdatableInfoFrom(*complexMessageItem);
+                            connectToComplexMessageItem(newComplexMessageItem);
+                            messagesArea_->replaceWidget(itemData.first, std::move(itemData.second));
+                        }
+                        continue;
+                    }
+
+                    auto chatEventItem = qobject_cast<Ui::ChatEventItem*>(existing);
+                    auto newChatEventItem = qobject_cast<Ui::ChatEventItem*>(itemData.second.get());
+                    if (chatEventItem && newChatEventItem)
+                    {
+                        connect(newPageItem, &HistoryControlPageItem::mention, this, &HistoryControlPage::mentionHeads);
                         messagesArea_->replaceWidget(itemData.first, std::move(itemData.second));
                         continue;
                     }
 
-                    assert(false);
-
-                    continue;
-                }
-
-                auto exisitingPageItem = qobject_cast<Ui::HistoryControlPageItem*>(existing);
-                auto newPageItem = qobject_cast<Ui::HistoryControlPageItem*>(itemData.second.get());
-
-                if (exisitingPageItem && newPageItem)
-                {
-                    newPageItem->setHasAvatar(exisitingPageItem->hasAvatar());
-                    newPageItem->setHasSenderName(exisitingPageItem->hasSenderName());
-                }
-
-                auto complexMessageItem = qobject_cast<Ui::ComplexMessage::ComplexMessageItem*>(existing);
-                auto newComplexMessageItem = qobject_cast<Ui::ComplexMessage::ComplexMessageItem*>(itemData.second.get());
-
-                if (complexMessageItem && newComplexMessageItem && isUpdateableWidget(existing))
-                {
-                    complexMessageItem->setDeliveredToServer(!itemData.first.isPending());
-                    if (complexMessageItem->canBeUpdatedWith(*newComplexMessageItem))
+                    auto voipItem = qobject_cast<Ui::VoipEventItem*>(existing);
+                    auto newVoipItem = qobject_cast<Ui::VoipEventItem*>(itemData.second.get());
+                    if (voipItem && newVoipItem)
                     {
-                        complexMessageItem->updateWith(*newComplexMessageItem);
+                        voipItem->updateWith(*newVoipItem);
                         auto w = messagesArea_->extractItemByKey(itemData.first);
                         messagesArea_->insertWidget(itemData.first, std::unique_ptr<QWidget>(w));
+                        continue;
                     }
-                    else
-                    {
-                        connectToComplexMessageItem(newComplexMessageItem);
-                        messagesArea_->replaceWidget(itemData.first, std::move(itemData.second));
-                    }
-                    continue;
-                }
 
-                auto chatEventItem = qobject_cast<Ui::ChatEventItem*>(existing);
-                auto newChatEventItem = qobject_cast<Ui::ChatEventItem*>(itemData.second.get());
-                if (chatEventItem && newChatEventItem)
+                    removeExistingWidgetByKey(itemData.first);
+                }
+                else if (_params.updateExistingOnly)
                 {
-                    if (auto item = qobject_cast<const Ui::HistoryControlPageItem*>(itemData.second.get()))
-                        connect(item, &HistoryControlPageItem::mention, this, &HistoryControlPage::mentionHeads);
-                    messagesArea_->replaceWidget(itemData.first, std::move(itemData.second));
-
-                    continue;
+                    if (itemData.first.getControlType() != Logic::control_type::ct_new_messages) // insert new plate anyway since we deleted it at start of this method
+                        continue;
                 }
 
-                auto voipItem = qobject_cast<Ui::VoipEventItem*>(existing);
-                auto newVoipItem = qobject_cast<Ui::VoipEventItem*>(itemData.second.get());
-                if (voipItem && newVoipItem)
+                if (auto childVoipItem = qobject_cast<const Ui::VoipEventItem*>(itemData.second.get()))
                 {
-                    voipItem->updateWith(*newVoipItem);
-                    auto w = messagesArea_->extractItemByKey(itemData.first);
-                    messagesArea_->insertWidget(itemData.first, std::unique_ptr<QWidget>(w));
-                    continue;
+                    if (!connectToVoipItem(childVoipItem))
+                        assert(!"can not connect to VoipEventItem");
+                }
+                else
+                {
+                    connectToComplexMessageItem(itemData.second.get());
                 }
 
-                removeExistingWidgetByKey(itemData.first);
-            }
-            else if (_params.updateExistingOnly)
-            {
-                if (itemData.first.getControlType() != Logic::control_type::ct_new_messages) // insert new plate anyway since we deleted it at start of this method
-                    continue;
+                if (auto item = qobject_cast<const Ui::HistoryControlPageItem*>(itemData.second.get()))
+                    connect(item, &HistoryControlPageItem::mention, this, &HistoryControlPage::mentionHeads);
+
+                insertWidgets.emplace_back(std::move(itemData));
             }
 
-            if (auto childVoipItem = qobject_cast<const Ui::VoipEventItem*>(itemData.second.get()))
-            {
-                if (!connectToVoipItem(childVoipItem))
-                    assert(!"can not connect to VoipEventItem");
-            }
-            else
-            {
-                connectToComplexMessageItem(itemData.second.get());
-            }
+            return insertWidgets;
+        };
 
-            if (auto item = qobject_cast<const Ui::HistoryControlPageItem*>(itemData.second.get()))
-                connect(item, &HistoryControlPageItem::mention, this, &HistoryControlPage::mentionHeads);
+        bool isInserted = false;
+        {
+            std::scoped_lock lock(*(messagesArea_->getLayout()));
+            if (_params.removeOthers == RemoveOthers::Yes)
+                messagesArea_->getLayout()->removeAllExcluded(_params);
 
-            insertWidgets.emplace_back(std::move(itemData));
+            if (_params.newPlateId)
+                removeNewPlateItem();
+
+            _params.widgets = doInsertWidgets();
+
+            isInserted = !_params.widgets.empty();
+            messagesArea_->insertWidgets(std::move(_params));
         }
 
-        _params.widgets = std::move(insertWidgets);
-
-        messagesArea_->insertWidgets(std::move(_params));
+        if (isInserted)
+        {
+            Q_EMIT Utils::InterConnector::instance().historyInsertedMessages(aimId_);
+            updateChatPlaceholder();
+        }
     }
 
     void HistoryControlPage::unloadAfterInserting()
@@ -1898,19 +2005,7 @@ namespace Ui
 
     qint64 Ui::HistoryControlPage::loadChatMembersInfo(const std::vector<QString>& _members)
     {
-        if (_members.empty())
-            return -1;
-
-        Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
-        collection.set_value_as_qstring("aimid", aimId_);
-
-        core::ifptr<core::iarray> members(collection->create_array());
-        members->reserve(_members.size());
-        for (const auto& m : _members)
-            members->push_back(collection.create_qstring_value(m).get());
-        collection.set_value_as_array("members", members.get());
-
-        return Ui::GetDispatcher()->post_message_to_core("chats/member/info", collection.get());
+        return Ui::GetDispatcher()->loadChatMembersInfo(aimId_, _members);
     }
 
     void HistoryControlPage::initStatus()
@@ -1920,10 +2015,11 @@ namespace Ui
             if (!contactStatusTimer_)
             {
                 contactStatusTimer_ = new QTimer(this);
-                contactStatusTimer_->setInterval(statusUpdateInterval.count());
+                contactStatusTimer_->setInterval(statusUpdateInterval);
                 connect(contactStatusTimer_, &QTimer::timeout, this, &HistoryControlPage::initStatus);
             }
-            contactStatusTimer_->start();
+            if (!contactStatusTimer_->isActive())
+                contactStatusTimer_->start();
         };
 
         const auto stopTimer = [this]()
@@ -1932,52 +2028,41 @@ namespace Ui
                 contactStatusTimer_->stop();
         };
 
-        if (!Utils::isChat(aimId_))
+        if (Favorites::isFavorites(aimId_))
         {
-            const auto lastSeen = Logic::GetFriendlyContainer()->getLastSeen(aimId_, true);
-            if (lastSeen != -1)
-            {
-                if (lastSeen > 0) // offline
-                {
-                    constexpr std::chrono::seconds hour = std::chrono::hours(1);
-                    const auto secs = std::chrono::seconds(QDateTime::fromTime_t(lastSeen).secsTo(QDateTime::currentDateTime()));
-
-                    if (secs >= hour)
-                        stopTimer();
-                    else if (!contactStatusTimer_ || !contactStatusTimer_->isActive())
-                        startTimer();
-                }
-                else // online
-                {
-                    stopTimer();
-                }
-            }
-            else
-            {
-                stopTimer();
-            }
-
-            const auto statusText = Logic::GetFriendlyContainer()->getStatusString(lastSeen);
-
-            contactStatus_->setVisible(!statusText.isEmpty());
-            if (!statusText.isEmpty())
-            {
-                contactStatus_->setText(statusText);
-                contactStatus_->setColor(lastSeen == 0 ? Styling::StyleVariable::TEXT_PRIMARY : Styling::StyleVariable::BASE_PRIMARY);
-            }
-            if (avatar_)
-                avatar_->update();
+            stopTimer();
+            contactStatus_->hide();
         }
-        else
+        else if (Utils::isChat(aimId_))
         {
             stopTimer();
             loadChatInfo();
+        }
+        else
+        {
+            const auto lastSeen = Logic::GetLastseenContainer()->getLastSeen(aimId_, Logic::LastSeenRequestType::Subscribe);
+
+            if (!lastSeen.isValid() || lastSeen.isOnline() || lastSeen.isBlocked() || lastSeen.isAbsent() || lastSeen.isBot())
+                stopTimer();
+            else // offline
+                startTimer();
+
+            const auto statusText = lastSeen.getStatusString();
+            if (!statusText.isEmpty())
+            {
+                contactStatus_->setText(statusText);
+                contactStatus_->setColor(lastSeen.isOnline() ? Styling::StyleVariable::TEXT_PRIMARY : Styling::StyleVariable::BASE_PRIMARY);
+            }
+            contactStatus_->setVisible(!statusText.isEmpty());
+
+            if (avatar_)
+                avatar_->update();
         }
     }
 
     void HistoryControlPage::updateName()
     {
-        updateName(Logic::GetFriendlyContainer()->getFriendly(aimId_));
+        updateName(Logic::getFriendlyContainerProxy(Logic::FriendlyContainerProxy::ReplaceFavorites).getFriendly(aimId_));
     }
 
     void Ui::HistoryControlPage::updateName(const QString& _friendly)
@@ -1996,6 +2081,9 @@ namespace Ui
             Logic::getContactListModel()->setYourRole(aimId_, qsl("notamember"));
             setContactStatusClickable(false);
             addMemberButton_->hide();
+            isMember_ = false;
+
+            updateChatPlaceholder();
         }
     }
 
@@ -2015,9 +2103,15 @@ namespace Ui
         eventFilter_->setContactName(_info->Name_);
         setContactStatusClickable(!_info->Members_.isEmpty() && youMember);
 
+        if (youMember && !isMember_)
+            GetDispatcher()->subscribeCallRoomInfo(aimId_);
+
+        isMember_ = youMember;
+
         QString stateText;
         if (youMember)
         {
+            chatMembersCount_ = _info->MembersCount_;
             stateText = QString::number(_info->MembersCount_) % ql1c(' ')
                 % Utils::GetTranslator()->getNumberString(
                     _info->MembersCount_,
@@ -2030,6 +2124,7 @@ namespace Ui
         else
         {
             stateText = QT_TRANSLATE_NOOP("groupchats", "You are not a member of this chat");
+            chatMembersCount_ = 0;
         }
         contactStatus_->setText(stateText);
         contactStatus_->show();
@@ -2067,8 +2162,12 @@ namespace Ui
             addMemberButton_->setVisible(youMember);
         }
 
+        updateCallButtonsVisibility();
+        updateChatPlaceholder();
+        updateSpellCheckVisibility();
+
         if (youMember)
-            emit updateMembers();
+            Q_EMIT updateMembers();
     }
 
     void HistoryControlPage::contactChanged(const QString& _aimId)
@@ -2089,6 +2188,8 @@ namespace Ui
 
         if (Logic::getContactListModel()->isReadonly(aimId_))
             hideAndClearSmartreplies();
+
+        updateSpellCheckVisibility();
     }
 
     void HistoryControlPage::editMembers()
@@ -2113,8 +2214,6 @@ namespace Ui
                 newMessageIds_.insert(newMessageIds_.end(), _ids.begin(), _ids.end());
                 std::sort(newMessageIds_.begin(), newMessageIds_.end());
                 newMessageIds_.erase(std::unique(newMessageIds_.begin(), newMessageIds_.end()), newMessageIds_.end());
-                if (!Ui::get_gui_settings()->get_value<bool>(settings_partial_read, settings_partial_read_default()))
-                    buttonDown_->setCounter(newMessageIds_.size());
             }
 
             // in background or after reconnecting mark messages by "new" plate
@@ -2124,15 +2223,15 @@ namespace Ui
                 if (!(state.LastMsgId_ == state.YoursLastRead_ && *std::max_element(_ids.begin(), _ids.end()) <= state.LastMsgId_))
                     newPlateId_ = state.YoursLastRead_;
             }
-            emit lastMsgId(_ids.back());
         }
     }
 
     void HistoryControlPage::open()
     {
-        const auto contactDialog = Utils::InterConnector::instance().getContactDialog();
         mentionCompleter_->setDialogAimId(aimId_);
-        positionMentionCompleter(contactDialog->getInputWidget()->tooltipArrowPosition());
+        if (auto inputWidget = getInputWidget())
+            positionMentionCompleter(inputWidget->tooltipArrowPosition());
+
         const auto dlgstate = Logic::getRecentsModel()->getDlgState(aimId_);
         if (dlgstate.YoursLastRead_ == -1 && Logic::getRecentsModel()->isStranger(aimId_))
             GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::chatscr_blockbar_event, { { "type", "appeared" }, { "chat_type", Utils::chatTypeByAimId(aimId_) } });
@@ -2161,8 +2260,9 @@ namespace Ui
         resumeVisibleItems();
 
         updateMentionsButtonDelayed();
+        updatePlaceholderPosition();
 
-        if (smartreplyWidget_ && canShowSmartreplies())
+        if (smartreplyWidget_ && Utils::canShowSmartreplies(aimId_))
         {
             smartreplyWidget_->scrollToNewest();
 
@@ -2172,7 +2272,7 @@ namespace Ui
 
         messagesArea_->invalidateLayout();
 
-        emit Utils::InterConnector::instance().updateSelectedCount();
+        Q_EMIT Utils::InterConnector::instance().updateSelectedCount();
     }
 
     void HistoryControlPage::showMainTopPanel()
@@ -2212,11 +2312,17 @@ namespace Ui
 
         if (!messagesArea_->isViewportFull())
             fetch(hist::FetchDirection::toOlder);
+
+        if (!hasMessages())
+        {
+            Q_EMIT Utils::InterConnector::instance().historyCleared(aimId_);
+            updateChatPlaceholder();
+        }
     }
 
     void HistoryControlPage::pendingResolves(const Data::MessageBuddies& _inView, const Data::MessageBuddies& _all)
     {
-        emit messageIdsFetched(aimId_, _all, QPrivateSignal());
+        Q_EMIT messageIdsFetched(aimId_, _all, QPrivateSignal());
 
         switchToInsertingState(__FUNCLINEA__);
         InsertHistMessagesParams params;
@@ -2239,7 +2345,17 @@ namespace Ui
 
         messagesArea_->removeAll();
 
+        setHighlights({});
+
         switchToIdleState(__FUNCLINEA__);
+    }
+
+    void HistoryControlPage::emptyHistory()
+    {
+        if (Favorites::isFavorites(aimId_))
+            GetDispatcher()->sendMessageToContact(aimId_, Favorites::firstMessageText());
+        else
+            updateChatPlaceholder();
     }
 
     void HistoryControlPage::fetch(hist::FetchDirection _direction)
@@ -2278,11 +2394,11 @@ namespace Ui
             switchToIdleState(__FUNCLINEA__);
 
             if (!buddies.isEmpty() && !messagesArea_->isViewportFull())
-                emit postponeFetch(_direction, QPrivateSignal());
+                Q_EMIT postponeFetch(_direction, QPrivateSignal());
         }
         else
         {
-            emit postponeFetch(_direction, QPrivateSignal());
+            Q_EMIT postponeFetch(_direction, QPrivateSignal());
         }
     }
 
@@ -2313,11 +2429,11 @@ namespace Ui
     {
         if (!searchButton_->isActive())
         {
-            emit Utils::InterConnector::instance().startSearchInDialog(aimId_);
+            Q_EMIT Utils::InterConnector::instance().startSearchInDialog(aimId_);
         }
         else
         {
-            emit Utils::InterConnector::instance().searchEnd();
+            Q_EMIT Utils::InterConnector::instance().searchEnd();
         }
     }
 
@@ -2326,30 +2442,7 @@ namespace Ui
         if (!Utils::InterConnector::instance().isSidebarVisible())
             Utils::InterConnector::instance().showSidebar(aimId_);
 
-        emit Utils::InterConnector::instance().showPendingMembers();
-    }
-
-    void HistoryControlPage::callAudioButtonClicked()
-    {
-        Ui::GetDispatcher()->getVoipController().setStartA(aimId_.toUtf8().constData(), false, "Chat");
-        if (MainPage* mainPage = MainPage::instance())
-            mainPage->raiseVideoWindow(voip_call_type::audio_call);
-
-        GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::call_audio, { { "From", "Chat_Button" } });
-
-        if (Logic::getRecentsModel()->isSuspicious(aimId_))
-            GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::chat_unknown_call, { { "From", "Chat" }, { "Type", "Audio" } });
-    }
-    void HistoryControlPage::callVideoButtonClicked()
-    {
-        Ui::GetDispatcher()->getVoipController().setStartV(aimId_.toUtf8().constData(), false, "ChatVideo");
-        if (MainPage* mainPage = MainPage::instance())
-            mainPage->raiseVideoWindow(voip_call_type::video_call);
-
-        GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::call_video, { { "From", "Chat_Button" } });
-
-        if (Logic::getRecentsModel()->isSuspicious(aimId_))
-            GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::chat_unknown_call, { { "From", "Chat" }, { "Type", "Video" } });
+        Q_EMIT Utils::InterConnector::instance().showPendingMembers();
     }
 
     void HistoryControlPage::moreButtonClicked()
@@ -2383,28 +2476,38 @@ namespace Ui
 
     void HistoryControlPage::addMember()
     {
-        const auto contact = Logic::getContactListModel()->getContactItem(aimId_);
-        if (!contact || !contact->is_chat())
+        if (!Utils::isChat(aimId_))
             return;
 
         Logic::ChatContactsModel membersModel;
         membersModel.loadChatContacts(aimId_);
 
-        SelectContactsWidget selectMembersDialog(&membersModel, Logic::MembersWidgetRegim::SELECT_MEMBERS,
+        auto selectMembersDialog = new SelectContactsWidget(&membersModel, Logic::MembersWidgetRegim::SELECT_MEMBERS,
             QT_TRANSLATE_NOOP("groupchats", "Add to chat"), QT_TRANSLATE_NOOP("popup_window", "Done"), this);
 
-        connect(&membersModel, &Logic::ChatContactsModel::dataChanged, &selectMembersDialog, &SelectContactsWidget::UpdateMembers);
+        connect(&membersModel, &Logic::ChatContactsModel::dataChanged, selectMembersDialog, &SelectContactsWidget::UpdateMembers);
         connect(this, &HistoryControlPage::updateMembers, &membersModel, [&membersModel, aimId = aimId_]() { membersModel.loadChatContacts(aimId); });
 
-        if (selectMembersDialog.show() == QDialog::Accepted)
+        const auto guard = QPointer(this);
+        const auto res = selectMembersDialog->show();
+        if (!guard)
+        {
+            Logic::getContactListModel()->removeTemporaryContactsFromModel();
+            return;
+        }
+
+        if (res == QDialog::Accepted)
         {
             postAddChatMembersFromCLModelToCore(aimId_);
             GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::chats_add_member_dialog);
         }
         else
         {
-            Logic::getContactListModel()->clearChecked();
+            Logic::getContactListModel()->clearCheckedItems();
+            Logic::getContactListModel()->removeTemporaryContactsFromModel();
         }
+
+        selectMembersDialog->deleteLater();
     }
 
     void HistoryControlPage::renameContact()
@@ -2531,24 +2634,24 @@ namespace Ui
             {
                 if (const auto& cont = sender->second)
                 {
-                    if (cont->Role_ != ql1s("admin") && isChatCreator_)
+                    if (cont->Role_ != u"admin" && isChatCreator_)
                     {
-                        if (cont->Role_ == ql1s("moder"))
+                        if (cont->Role_ == u"moder")
                             menu->addActionWithIcon(qsl(":/context_menu/admin_off"), QT_TRANSLATE_NOOP("sidebar", "Revoke admin role"), makeData(qsl("revoke_admin"), _aimId));
                         else
                             menu->addActionWithIcon(qsl(":/context_menu/admin"), QT_TRANSLATE_NOOP("sidebar", "Assign admin role"), makeData(qsl("make_admin"), _aimId));
                     }
 
-                    if (cont->Role_ == ql1s("member"))
+                    if (cont->Role_ == u"member")
                         menu->addActionWithIcon(qsl(":/context_menu/readonly"), QT_TRANSLATE_NOOP("sidebar", "Ban to write"), makeData(qsl("make_readonly"), _aimId));
-                    else if (cont->Role_ == ql1s("readonly"))
+                    else if (cont->Role_ == u"readonly")
                         menu->addActionWithIcon(qsl(":/context_menu/readonly_off"), QT_TRANSLATE_NOOP("sidebar", "Allow to write"), makeData(qsl("revoke_readonly"), _aimId));
 
                     const bool myInfo = MyInfo()->aimId() == _aimId;
                     if (!myInfo)
                         menu->addActionWithIcon(qsl(":/context_menu/profile"), QT_TRANSLATE_NOOP("sidebar", "Profile"), makeData(qsl("profile"), _aimId));
-                    if (cont->Role_ != ql1s("admin") && cont->Role_ != ql1s("moder"))
-                        menu->addActionWithIcon(qsl(":/context_menu/block"), QT_TRANSLATE_NOOP("sidebar", "Block and delete from group"), makeData(qsl("block"), _aimId));
+                    if (cont->Role_ != u"admin" && cont->Role_ != u"moder")
+                        menu->addActionWithIcon(qsl(":/context_menu/block"), QT_TRANSLATE_NOOP("sidebar", "Delete from group"), makeData(qsl("block"), _aimId));
 
                     if (!myInfo && Features::clRemoveContactsAllowed())
                         menu->addActionWithIcon(qsl(":/context_menu/spam"), QT_TRANSLATE_NOOP("sidebar", "Report"), makeData(qsl("spam"), _aimId));
@@ -2581,17 +2684,18 @@ namespace Ui
         if (dlgState_.AimId_.isEmpty() || (dlgState_.Outgoing_ && dlgState_.LastMsgId_ > _suggests.front().getMsgId()))
             return;
 
-        if (!canShowSmartreplies())
+        if (!Utils::canShowSmartreplies(aimId_))
             return;
 
         if (!smartreplyWidget_)
         {
-            smartreplyWidget_ = new SmartReplyWidget(messagesArea_);
+            smartreplyWidget_ = new SmartReplyWidget(messagesArea_, true);
             smartreplyWidget_->hide();
             updateSmartreplyStyle();
             messagesArea_->setSmartreplyWidget(smartreplyWidget_);
 
             connect(smartreplyWidget_, &SmartReplyWidget::needHide, this, &HistoryControlPage::onSmartreplyHide);
+            connect(smartreplyWidget_, &SmartReplyWidget::sendSmartreply, this, &HistoryControlPage::sendSmartreply);
         }
 
         if (!smartreplyWidget_->isUnderMouse())
@@ -2662,43 +2766,37 @@ namespace Ui
         }
     }
 
-    bool HistoryControlPage::canShowSmartreplies() const
-    {
-        if (!Features::isSmartreplyEnabled())
-            return false;
-
-        if (Utils::InterConnector::instance().isMultiselect(aimId_))
-            return false;
-
-        if (Logic::getIgnoreModel()->contains(aimId_) || (Utils::isChat(aimId_) && (!Logic::getContactListModel()->contains(aimId_) || Logic::getContactListModel()->isReadonly(aimId_))))
-            return false;
-
-        return true;
-    }
-
     void HistoryControlPage::onSmartreplyButtonClicked()
     {
         const auto val = get_gui_settings()->get_value<bool>(settings_show_smartreply, settings_show_smartreply_default());
         if (val && !isSmartrepliesVisible())
-        {
             showSmartreplies();
-        }
         else
-        {
             get_gui_settings()->set_value<bool>(settings_show_smartreply, !val);
-
-            if (val)
-                emit Utils::InterConnector::instance().hideSmartReplies(QString());
-            else
-                emit Utils::InterConnector::instance().showSmartreplies();
-
-            emit Utils::InterConnector::instance().smartReplySettingShowChanged();
-        }
     }
 
     void HistoryControlPage::onSmartreplyHide()
     {
         hideSmartrepliesButton();
+    }
+
+    void HistoryControlPage::sendSmartreply(const Data::SmartreplySuggest& _suggest)
+    {
+        if (!isPageOpen())
+            return;
+
+        GetDispatcher()->sendSmartreplyToContact(aimId_, _suggest);
+        sendSmartreplyStats(_suggest);
+
+        Ui::MainPage::instance()->setFocusOnInput();
+    }
+
+    void HistoryControlPage::showActiveCallPlate()
+    {
+        if (!activeCallPlate_->isVisible() && pinnedWidget_->isVisible())
+            pinnedWidget_->showCollapsed();
+
+        activeCallPlate_->show();
     }
 
     void HistoryControlPage::updateChatInfo(const QString& _aimId, const QVector<::HistoryControl::ChatEventInfoSptr>& _events)
@@ -2777,26 +2875,19 @@ namespace Ui
 
     void HistoryControlPage::nameClicked()
     {
-        if (Logic::getContactListModel()->isChat(aimId_))
-        {
-            if (Utils::InterConnector::instance().isSidebarVisible())
-                Utils::InterConnector::instance().setSidebarVisible(false);
-            else
-                Utils::InterConnector::instance().showSidebar(aimId_);
-        }
+        if (Utils::InterConnector::instance().isSidebarVisible())
+            Utils::InterConnector::instance().setSidebarVisible(false);
+        else if (Utils::isChat(aimId_))
+            Utils::InterConnector::instance().showSidebar(aimId_);
         else
-        {
-            if (Utils::InterConnector::instance().isSidebarVisible())
-                Utils::InterConnector::instance().setSidebarVisible(false);
-            else
-                emit Utils::InterConnector::instance().profileSettingsShow(aimId_);
-        }
+            Q_EMIT Utils::InterConnector::instance().profileSettingsShow(aimId_);
     }
 
     void HistoryControlPage::showEvent(QShowEvent* _event)
     {
         showStrangerIfNeeded();
         updateFooterButtonsPositions();
+        updateCallButtonsVisibility();
 
         QWidget::showEvent(_event);
     }
@@ -2809,6 +2900,16 @@ namespace Ui
         overlayTopChatWidget_->setPosition({ badgeLeftOffset(), badgeTopOffset() });
 
         updatePendingButtonPosition();
+        updateCallButtonsVisibility();
+        updatePlaceholderPosition();
+    }
+
+    bool HistoryControlPage::eventFilter(QObject* _object, QEvent* _event)
+    {
+        if (_object == messagesArea_ && _event->type() == QEvent::Resize)
+            updateOverlaySizes();
+
+        return QWidget::eventFilter(_object, _event);
     }
 
     void HistoryControlPage::updateFooterButtonsPositions()
@@ -2854,6 +2955,15 @@ namespace Ui
         mentionCompleter_->move(x, y);
     }
 
+    void HistoryControlPage::updatePlaceholderPosition()
+    {
+        if (chatPlaceholder_)
+        {
+            chatPlaceholder_->resize(chatPlaceholder_->sizeHint());
+            chatPlaceholder_->move((width() - chatPlaceholder_->width()) / 2, (height() - chatPlaceholder_->height()) / 2);
+        }
+    }
+
     void HistoryControlPage::setUnreadBadgeText(const QString& _text)
     {
         overlayTopChatWidget_->setBadgeText(_text);
@@ -2872,22 +2982,22 @@ namespace Ui
         reader_->onReadAllMentionsLess(_dlgState.LastReadMention_, false);
         reader_->setDlgState(_dlgState);
 
-        if (Ui::get_gui_settings()->get_value<bool>(settings_partial_read, settings_partial_read_default()))
-            buttonDown_->setCounter(_dlgState.UnreadCount_);
+        buttonDown_->setCounter(_dlgState.UnreadCount_);
 
-        auto contact = Logic::getContactListModel()->getContactItem(aimId_);
-        if (!contact)
-            return;
+        if (!messagesArea_->isScrollAtBottom() && !newPlateId_)
+        {
+            if (_dlgState.LastMsgId_ != _dlgState.YoursLastRead_)
+                newPlateId_ = _dlgState.YoursLastRead_;
+        }
 
         if (dlgState_.LastMsgId_ != _dlgState.LastMsgId_ && dlgState_.LastMsgId_ != -1 && (_dlgState.Outgoing_ || dlgState_.LastMsgId_ > _dlgState.LastMsgId_))
             hideAndClearSmartreplies();
 
-        if (contact->is_chat())
+        if (Utils::isChat(aimId_))
             changeDlgStateChat(_dlgState);
         else
             changeDlgStateContact(_dlgState);
 
-        emit lastMsgId(_dlgState.LastMsgId_);
         showStrangerIfNeeded();
     }
 
@@ -2895,6 +3005,12 @@ namespace Ui
     {
         if (_dlgState.AimId_ != aimId_)
             return;
+
+        const auto membersVersionChanged = dlgState_.membersVersion_ != _dlgState.membersVersion_;
+        const auto infoVersionChanged = dlgState_.infoVersion_ != _dlgState.infoVersion_;
+
+        if (infoVersionChanged || membersVersionChanged)
+            loadChatInfo();
 
         dlgState_ = _dlgState;
 
@@ -2907,9 +3023,7 @@ namespace Ui
         messagesArea_->enumerateWidgets([&incomingFound, maxRead](QWidget* _item, const bool)
         {
             if (qobject_cast<Ui::ServiceMessageItem*>(_item))
-            {
                 return true;
-            }
 
             auto pageItem = qobject_cast<Ui::HistoryControlPageItem*>(_item);
             if (!pageItem)
@@ -2918,11 +3032,11 @@ namespace Ui
             auto isOutgoing = false;
             if (auto complexMessageItem = qobject_cast<Ui::ComplexMessage::ComplexMessageItem*>(_item))
             {
-                isOutgoing = complexMessageItem->isOutgoing();
+                isOutgoing = complexMessageItem->isOutgoingPosition();
             }
             else if (auto voipMessageItem = qobject_cast<Ui::VoipEventItem*>(_item))
             {
-                isOutgoing = voipMessageItem->isOutgoing();
+                isOutgoing = voipMessageItem->isOutgoingPosition();
             }
             else if (auto chatEvent = qobject_cast<Ui::ChatEventItem*>(_item))
             {
@@ -2962,6 +3076,15 @@ namespace Ui
             return true;
 
         }, false);
+
+        if (auto state = updateChatPlaceholder(); state != PlaceholderState::hidden)
+        {
+            if (state == PlaceholderState::rejected || state == PlaceholderState::pending || state == PlaceholderState::canceled)
+            {
+                if (dlgState_.HasLastMsgId())
+                    reader_->onMessageItemRead(dlgState_.LastMsgId_, true);
+            }
+        }
     }
 
     void HistoryControlPage::changeDlgStateContact(const Data::DlgState& _dlgState)
@@ -3037,7 +3160,7 @@ namespace Ui
 
     void HistoryControlPage::avatarMenuRequest(const QString& _aimId)
     {
-        if (aimId_ == _aimId && Logic::getContactListModel()->isChat(aimId_))
+        if (aimId_ == _aimId && Utils::isChat(aimId_))
             return;
 
         if (auto contactDialog = Utils::InterConnector::instance().getContactDialog())
@@ -3051,10 +3174,10 @@ namespace Ui
             requestWithLoaderAimId_ = _aimId;
             requestWithLoaderSequence_ = loadChatMembersInfo({ _aimId });
 
-            QTimer::singleShot(getLoaderOverlayDelay().count(), this, [this, id = requestWithLoaderSequence_]()
+            QTimer::singleShot(getLoaderOverlayDelay(), this, [this, seq = requestWithLoaderSequence_]()
             {
-                if (requestWithLoaderSequence_ == id)
-                    emit Utils::InterConnector::instance().loaderOverlayShow();
+                if (requestWithLoaderSequence_ == seq)
+                    Q_EMIT Utils::InterConnector::instance().loaderOverlayShow();
             });
         }
         else
@@ -3069,15 +3192,16 @@ namespace Ui
         const auto command = params[qsl("command")].toString();
         const auto memberAimId = params[qsl("aimid")].toString();
 
-        if (command == ql1s("mention"))
+        bool needUpdateInfo = false;
+        if (command == u"mention")
         {
             mention(memberAimId);
         }
-        else if (command == ql1s("profile"))
+        else if (command == u"profile")
         {
             Utils::InterConnector::instance().showSidebar(memberAimId);
         }
-        else if (command == ql1s("spam"))
+        else if (command == u"spam")
         {
             const auto friendly = Logic::GetFriendlyContainer()->getFriendly(memberAimId);
             if (Ui::ReportContact(memberAimId, friendly))
@@ -3086,39 +3210,39 @@ namespace Ui
                 GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::spam_contact, { { "From", "ChatAvatar_Menu" } });
             }
         }
-        else if (command == ql1s("block"))
+        else if (command == u"block")
         {
-            blockUser(memberAimId, true);
+            needUpdateInfo = blockUser(memberAimId, true);
         }
-        else if (command == ql1s("make_admin"))
+        else if (command == u"make_admin")
         {
-            changeRole(memberAimId, true);
+            needUpdateInfo = changeRole(memberAimId, true);
         }
-        else if (command == ql1s("make_readonly"))
+        else if (command == u"make_readonly")
         {
-            readonly(memberAimId, true);
+            needUpdateInfo = readonly(memberAimId, true);
         }
-        else if (command == ql1s("revoke_readonly"))
+        else if (command == u"revoke_readonly")
         {
-            readonly(memberAimId, false);
+            needUpdateInfo = readonly(memberAimId, false);
         }
-        else if (command == ql1s("revoke_admin"))
+        else if (command == u"revoke_admin")
         {
-            changeRole(memberAimId, false);
+            needUpdateInfo = changeRole(memberAimId, false);
         }
 
-        // update info for clicked member
-        loadChatMembersInfo({ memberAimId });
+        if (needUpdateInfo) // update info for clicked member
+            loadChatMembersInfo({ memberAimId });
     }
 
-    void HistoryControlPage::blockUser(const QString& _aimId, bool _blockUser)
+    bool HistoryControlPage::blockUser(const QString& _aimId, bool _blockUser)
     {
         bool confirmed = false, removeMessages = false;
         if (_blockUser)
         {
             auto w = new Ui::BlockAndDeleteWidget(nullptr, Logic::GetFriendlyContainer()->getFriendly(_aimId), aimId_);
             GeneralDialog generalDialog(w, Utils::InterConnector::instance().getMainWindow());
-            generalDialog.addLabel(QT_TRANSLATE_NOOP("block_and_delete", "Block and delete?"));
+            generalDialog.addLabel(QT_TRANSLATE_NOOP("block_and_delete", "Delete?"));
             generalDialog.addButtonsPair(QT_TRANSLATE_NOOP("block_and_delete", "Cancel"), QT_TRANSLATE_NOOP("block_and_delete", "Yes"), true);
             confirmed = generalDialog.showInCenter();
             removeMessages = w->needToRemoveMessages();
@@ -3143,9 +3267,11 @@ namespace Ui
             Ui::GetDispatcher()->post_message_to_core("chats/block", collection.get());
             chatSenders_.erase(_aimId);
         }
+
+        return confirmed;
     }
 
-    void HistoryControlPage::changeRole(const QString& _aimId, bool _moder)
+    bool HistoryControlPage::changeRole(const QString& _aimId, bool _moder)
     {
         const auto confirmed = Utils::GetConfirmationWithTwoButtons(
             QT_TRANSLATE_NOOP("popup_window", "Cancel"),
@@ -3160,12 +3286,14 @@ namespace Ui
             collection.set_value_as_qstring("aimid", aimId_);
             collection.set_value_as_qstring("contact", _aimId);
             const auto isChannel = Logic::getContactListModel()->isChannel(aimId_);
-            collection.set_value_as_qstring("role", _moder ? qsl("moder") : (isChannel ? qsl("readonly") : qsl("member")));
+            collection.set_value_as_qstring("role", _moder ? u"moder" : (isChannel ? u"readonly" : u"member"));
             Ui::GetDispatcher()->post_message_to_core("chats/role/set", collection.get());
         }
+
+        return confirmed;
     }
 
-    void HistoryControlPage::readonly(const QString& _aimId, bool _readonly)
+    bool HistoryControlPage::readonly(const QString& _aimId, bool _readonly)
     {
         const auto confirmed = Utils::GetConfirmationWithTwoButtons(
             QT_TRANSLATE_NOOP("popup_window", "Cancel"),
@@ -3179,9 +3307,11 @@ namespace Ui
             Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
             collection.set_value_as_qstring("aimid", aimId_);
             collection.set_value_as_qstring("contact", _aimId);
-            collection.set_value_as_qstring("role", _readonly ? qsl("readonly") : qsl("member"));
+            collection.set_value_as_qstring("role", _readonly ? u"readonly" : u"member");
             Ui::GetDispatcher()->post_message_to_core("chats/role/set", collection.get());
         }
+
+        return confirmed;
     }
 
 
@@ -3213,6 +3343,49 @@ namespace Ui
         overlayPendings_->resize(topWidget_->size());
         auto pendingBadgeOffset = mapFromGlobal(pendingButton_->mapToGlobal(pendingButton_->rect().topRight())).x() - pendingButton_->width() / 2;
         overlayPendings_->setPosition({ pendingBadgeOffset, badgeTopOffset() });
+    }
+
+    void HistoryControlPage::updateCallButtonsVisibility()
+    {
+        bool isVisible = false;
+        if constexpr (voipEnabled)
+        {
+            isVisible = GetDispatcher()->getConnectionState() == ConnectionState::stateOnline
+                        && !Logic::getContactListModel()->isChannel(aimId_)
+                        && !Logic::GetLastseenContainer()->isBot(aimId_)
+                        && aimId_ != MyInfo()->aimId();
+
+            if (isVisible && Utils::isChat(aimId_) && chatMembersCount_ < 2)
+                isVisible = false;
+        }
+        callButton_->setVisible(isVisible);
+    }
+
+    void HistoryControlPage::sendBotCommand(const QString& _command)
+    {
+        if (!isPageOpen() || _command.isEmpty())
+            return;
+
+        if (Utils::isChat(aimId_) && (!Logic::getContactListModel()->contains(aimId_) || Logic::getContactListModel()->isReadonly(aimId_)))
+            Utils::showTextToastOverContactDialog(QT_TRANSLATE_NOOP("toast", "You are not a member or banned to write in this group"));
+        else
+            GetDispatcher()->sendMessageToContact(aimId_, _command);
+    }
+
+    void HistoryControlPage::startBot()
+    {
+        if (!isPageOpen())
+            return;
+
+        if (const auto nick = Logic::GetFriendlyContainer()->getNick(aimId_); !nick.isEmpty())
+        {
+            gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
+            collection.set_value_as_qstring("nick", nick);
+            collection.set_value_as_qstring("params", botParams_.value_or(QString()));
+            Ui::GetDispatcher()->post_message_to_core("bot/start", collection.get());
+
+            botParams_ = {};
+        }
     }
 
     void HistoryControlPage::mentionHeads(const QString& _aimId, const QString& _friendly)
@@ -3409,7 +3582,7 @@ namespace Ui
 
 
             buttonDown_->move(p);
-            Testing::setAccessibleName(buttonDown_, qsl("AS hc buttonDown_"));
+            Testing::setAccessibleName(buttonDown_, qsl("AS HistoryPage buttonDown"));
 
             if (!(buttonDownTime_ > 0.f && buttonDownTime_ < 1.f))
             {
@@ -3443,7 +3616,7 @@ namespace Ui
         const auto cond = _initialPattern.isEmpty() ? Logic::MentionModel::SearchCondition::Force : Logic::MentionModel::SearchCondition::IfPatternChanged;
         mentionCompleter_->setSearchPattern(_initialPattern, cond);
 
-        QTimer::singleShot(mentionCompleterTimeout.count(), this, [this, _position]()
+        QTimer::singleShot(mentionCompleterTimeout, this, [this, _position]()
         {
             mentionCompleter_->showAnimated(_position);
         });
@@ -3492,18 +3665,23 @@ namespace Ui
         Ui::GetDispatcher()->post_message_to_core("group/subscribe", collection.get());
     }
 
+    void HistoryControlPage::cancelGroupSubscription()
+    {
+        Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
+        collection.set_value_as_qstring("stamp", Logic::getContactListModel()->getChatStamp(aimId_));
+        Ui::GetDispatcher()->post_message_to_core("group/cancel_subscription", collection.get());
+    }
+
     void HistoryControlPage::groupSubscribeResult(int _error, int _resubscribeIn)
     {
         if (Logic::getContactListModel()->youAreNotAMember(aimId_))
         {
-            if (_error)
+            if (!_error)
             {
-                groupSubscribe();
-            }
-            else
-            {
-                std::chrono::milliseconds interval = std::chrono::seconds(_resubscribeIn);
-                groupSubscribeTimer_->start(interval.count());
+                if (groupSubscribeTimer_->isActive() || !isPageOpen())
+                    return;
+
+                groupSubscribeTimer_->start(std::chrono::seconds(_resubscribeIn));
             }
         }
     }
@@ -3538,6 +3716,7 @@ namespace Ui
         reader_->setEnabled(true);
         messagesArea_->checkVisibilityForRead();
         updateFonts();
+        updateCallButtonsVisibility();
     }
 
     void HistoryControlPage::pageLeave()
@@ -3550,6 +3729,9 @@ namespace Ui
 
         postTypingState(aimId_, core::typing_status::none);
 
+        if (Logic::getContactListModel()->youAreNotAMember(aimId_))
+            cancelGroupSubscription();
+
         if (mentionCompleter_)
             mentionCompleter_->hideAnimated();
 
@@ -3558,9 +3740,7 @@ namespace Ui
         if (Logic::getRecentsModel()->isStranger(aimId_) && !chatscrBlockbarActionTracked_)
             GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::chatscr_blockbar_action, { { "type", "ignor" },{ "chat_type", Utils::chatTypeByAimId(aimId_) } });
 
-        qint64 msgid = -1;
-        if (Ui::get_gui_settings()->get_value<bool>(settings_partial_read, settings_partial_read_default()))
-            msgid = dlg.YoursLastRead_;
+        qint64 msgid = dlg.YoursLastRead_;
 
         reader_->onReadAllMentionsLess(msgid, false);
 
@@ -3568,6 +3748,9 @@ namespace Ui
 
         clearSelection();
         Utils::InterConnector::instance().setMultiselect(false, aimId_);
+
+        if (hasMessages() && botParams_)
+            botParams_ = {};
 
         connectionWidget_->suspend();
     }
@@ -3617,24 +3800,11 @@ namespace Ui
 
     void HistoryControlPage::connectionStateChanged(const Ui::ConnectionState& _state)
     {
-        if (_state != Ui::ConnectionState::stateOnline)
-        {
-            contactWidget_->setVisible(false);
-            connectionWidget_->setVisible(true);
+        const auto isOnline = _state == Ui::ConnectionState::stateOnline;
+        contactWidget_->setVisible(isOnline);
+        connectionWidget_->setVisible(!isOnline);
 
-            callButton_->setVisible(false);
-            videoCallButton_->setVisible(false);
-        }
-        else
-        {
-            connectionWidget_->setVisible(false);
-            contactWidget_->setVisible(true);
-
-            const auto isChat = Logic::getContactListModel()->isChat(aimId_);
-            const auto myInfo = aimId_ == MyInfo()->aimId();
-            callButton_->setVisible(!isChat && !myInfo && voipEnabled);
-            videoCallButton_->setVisible(!isChat && !myInfo && voipEnabled);
-        }
+        updateCallButtonsVisibility();
     }
 
     void HistoryControlPage::lastseenChanged(const QString& _aimid)
@@ -3654,7 +3824,7 @@ namespace Ui
         fontsHaveChanged_ = true;
 
         // if open - update, else - defer update till page opens
-        if (isPageOpen_)
+        if (isPageOpen())
             updateFonts();
     }
 
@@ -3675,18 +3845,53 @@ namespace Ui
         }
     }
 
+    void Ui::HistoryControlPage::onAddReactionPlateActivityChanged(const QString& _contact, bool _active)
+    {
+        if (_contact == aimId_)
+            addReactionPlateActive_ = _active;
+    }
+
+    void Ui::HistoryControlPage::onCallRoomInfo(const QString& _roomId, int64_t _membersCount, bool _failed)
+    {
+        if (_roomId != aimId_)
+            return;
+
+        if (activeCallPlate_)
+        {
+            activeCallPlate_->setParticipantsCount(_failed ? 0 : _membersCount);
+
+            if (!_failed && _membersCount > 0 && !pinnedWidget_->isStrangerVisible())
+                showActiveCallPlate();
+            else
+                activeCallPlate_->hide();
+        }
+    }
+
+    void Ui::HistoryControlPage::updateSpellCheckVisibility()
+    {
+        if (Features::isSpellCheckEnabled())
+        {
+            messagesArea_->enumerateWidgets([](QWidget* _item, const bool)
+            {
+                if (auto pageItem = qobject_cast<Ui::HistoryControlPageItem*>(_item))
+                    pageItem->setSpellErrorsVisible(pageItem->isEditable());
+
+                return true;
+            }, false);
+        }
+    }
+
     void HistoryControlPage::onMessageBuddies(const Data::MessageBuddies& _buddies, const QString& _aimId, Ui::MessagesBuddiesOpt _option, bool _havePending, qint64 _seq, int64_t _last_msgid)
     {
         if (aimId_ != _aimId)
             return;
 
         bool isNewSenders = false;
-        emit lastMsgId(_last_msgid);
         for (const auto& msg : _buddies)
         {
             if (msg && !msg->IsChatEvent() && !msg->IsOutgoing())
             {
-                const auto sender = Data::normalizeAimId(msg->Chat_ ? msg->GetChatSender() : msg->AimId_);
+                auto sender = Data::normalizeAimId(msg->Chat_ ? msg->GetChatSender() : msg->AimId_);
                 const auto end = chatSenders_.end();
                 auto it = std::find_if(chatSenders_.begin(), end, [&sender](const auto &x) { return x.first == sender; });
                 if (it == end)
@@ -3712,14 +3917,14 @@ namespace Ui
         }
     }
 
-    void Ui::HistoryControlPage::onChatMemberInfo(const qint64 _seq, const std::shared_ptr<Data::ChatMembersPage>& _info)
+    void HistoryControlPage::onChatMemberInfo(const qint64 _seq, const std::shared_ptr<Data::ChatMembersPage>& _info)
     {
         bool isShowAvatarMenu = false;
         if (requestWithLoaderSequence_ == _seq)
         {
             requestWithLoaderSequence_ = -1;
             isShowAvatarMenu = true;
-            emit Utils::InterConnector::instance().loaderOverlayHide();
+            Q_EMIT Utils::InterConnector::instance().loaderOverlayHide();
         }
 
         if (_info && aimId_ == _info->AimId_)
@@ -3733,6 +3938,18 @@ namespace Ui
             if (Logic::getContactListModel()->selectedContact() == aimId_)
                 showAvatarMenu(requestWithLoaderAimId_);
         }
+    }
+
+    void HistoryControlPage::onReadOnlyUser(const QString& _aimId, bool _isReadOnly)
+    {
+        if (readonly(_aimId, _isReadOnly))
+            loadChatMembersInfo({ _aimId });
+    }
+
+    void HistoryControlPage::onBlockUser(const QString& _aimId, bool _isBlock)
+    {
+        if (blockUser(_aimId, _isBlock))
+            loadChatMembersInfo({ _aimId });
     }
 
     void HistoryControlPage::clearSelection()
@@ -3766,12 +3983,20 @@ namespace Ui
 
         messagesOverlay_->updateFonts();
 
+        if (chatPlaceholder_)
+            chatPlaceholder_->updateStyle();
+
         fontsHaveChanged_ = false;
     }
 
     QWidget* Ui::HistoryControlPage::getTopWidget() const
     {
         return topWidget_;
+    }
+
+    int Ui::HistoryControlPage::chatRoomCallParticipantsCount() const
+    {
+        return activeCallPlate_ ? activeCallPlate_->participantsCount() : 0;
     }
 
     bool HistoryControlPage::hasMessageUnderCursor() const
@@ -3807,14 +4032,22 @@ namespace Ui
 
     void HistoryControlPage::showSmartreplies()
     {
-        if (!canShowSmartreplies())
+        if (!Utils::canShowSmartreplies(aimId_))
+            return;
+
+        if (!smartreplyWidget_ || smartreplyWidget_->itemCount() == 0)
             return;
 
         if (get_gui_settings()->get_value<bool>(settings_show_smartreply, settings_show_smartreply_default()))
             messagesArea_->showSmartReplies();
 
-        if (smartreplyWidget_ && smartreplyWidget_->itemCount() > 0)
-            showSmartrepliesButton();
+        showSmartrepliesButton();
+
+        auto quotesCount = 0;
+        if (auto inputWidget = getInputWidget())
+            quotesCount = inputWidget->getInputQuotes().size();
+
+        setSmartrepliesSemitransparent(Utils::InterConnector::instance().isMultiselect(aimId_) || quotesCount > 0);
     }
 
     void HistoryControlPage::hideSmartreplies()
@@ -3823,6 +4056,9 @@ namespace Ui
 
         if (smartreplyButton_)
             smartreplyButton_->setArrowState(ShowHideButton::ArrowState::up);
+
+        if (auto contactDialog = Utils::InterConnector::instance().getContactDialog())
+            contactDialog->hideSmartrepliesForQuoteAnimated();
     }
 
     bool HistoryControlPage::isSmartrepliesVisible() const
@@ -3841,6 +4077,7 @@ namespace Ui
             connect(smartreplyButton_, &ShowHideButton::clicked, this, &HistoryControlPage::onSmartreplyButtonClicked);
         }
         smartreplyButton_->show();
+        smartreplyButton_->setEnabled(true);
         smartreplyButton_->setArrowState(isSmartrepliesVisible() ? ShowHideButton::ArrowState::down : ShowHideButton::ArrowState::up);
     }
 
@@ -3848,6 +4085,187 @@ namespace Ui
     {
         if (smartreplyButton_)
             smartreplyButton_->hide();
+    }
+
+    void HistoryControlPage::setSmartrepliesSemitransparent(bool _semi)
+    {
+        messagesArea_->setSmartrepliesSemitransparent(_semi);
+    }
+
+    void HistoryControlPage::notifyQuotesResize()
+    {
+        messagesArea_->notifyQuotesResize();
+    }
+
+    bool HistoryControlPage::hasMessages() const noexcept
+    {
+        return messagesArea_->hasItems();
+    }
+
+    void HistoryControlPage::setBotParameters(std::optional<QString> _parameters)
+    {
+        botParams_ = std::move(_parameters);
+    }
+
+    void HistoryControlPage::initChatPlaceholder()
+    {
+        if (!chatPlaceholder_)
+        {
+            chatPlaceholder_ = new ChatPlaceholder(this, aimId_);
+            connect(chatPlaceholder_, &ChatPlaceholder::resized, this, &HistoryControlPage::updatePlaceholderPosition);
+        }
+    }
+
+    void HistoryControlPage::showChatPlaceholder(PlaceholderState _state)
+    {
+        initChatPlaceholder();
+
+        chatPlaceholder_->setState(_state);
+
+        chatPlaceholder_->show();
+        chatPlaceholder_->raise();
+
+        updatePlaceholderPosition();
+
+        setEmptyAreaVisible(true);
+    }
+
+    void HistoryControlPage::hideChatPlaceholder()
+    {
+        if (chatPlaceholderTimer_)
+        {
+            chatPlaceholderTimer_->stop();
+            chatPlaceholderTimer_->deleteLater();
+            chatPlaceholderTimer_ = nullptr;
+        }
+
+        if (chatPlaceholder_)
+        {
+            chatPlaceholder_->deleteLater();
+            chatPlaceholder_ = nullptr;
+
+            scrollToBottom();
+            fetch(hist::FetchDirection::toNewer);
+        }
+
+        setEmptyAreaVisible(false);
+    }
+
+    PlaceholderState HistoryControlPage::updateChatPlaceholder()
+    {
+        const auto state = getPlaceholderState();
+        if (state != PlaceholderState::hidden)
+        {
+            if (state == PlaceholderState::avatar)
+            {
+                if (!chatPlaceholderTimer_)
+                {
+                    chatPlaceholderTimer_ = new QTimer(this);
+                    chatPlaceholderTimer_->setSingleShot(true);
+                    chatPlaceholderTimer_->setInterval(placeholderAvatarTimeout);
+                    connect(chatPlaceholderTimer_, &QTimer::timeout, this, [this]()
+                    {
+                        if (!hasMessages())
+                            showChatPlaceholder(PlaceholderState::avatar);
+                        else
+                            hideChatPlaceholder();
+                    });
+                }
+
+                if (!chatPlaceholderTimer_->isActive())
+                {
+                    initChatPlaceholder();
+                    chatPlaceholder_->hide();
+                    chatPlaceholderTimer_->start();
+                }
+            }
+            else
+            {
+                if (chatPlaceholderTimer_)
+                    chatPlaceholderTimer_->stop();
+
+                showChatPlaceholder(state);
+            }
+        }
+        else
+        {
+            hideChatPlaceholder();
+        }
+
+        return state;
+    }
+
+    PlaceholderState HistoryControlPage::getPlaceholderState() const
+    {
+        const auto dlg = dlgState_.AimId_.isEmpty() ? hist::getDlgState(aimId_) : dlgState_;
+        assert(!dlg.AimId_.isEmpty());
+
+        const auto hasHistory = dlg.HasLastMsgId();
+        if (Utils::isChat(aimId_))
+        {
+            if (Logic::getContactListModel()->isYouBlocked(aimId_))
+                return hasHistory ? PlaceholderState::hidden : PlaceholderState::avatar;
+
+            if (hasHistory)
+            {
+                auto isMember = false;
+                if (Logic::getContactListModel()->contains(aimId_))
+                {
+                    const auto role = Logic::getContactListModel()->getYourRole(aimId_);
+                    isMember =
+                        role == u"readonly" ||
+                        role == u"member" ||
+                        !(role == u"notamember" || role == u"pending" || Logic::getContactListModel()->youAreNotAMember(aimId_));
+                }
+
+                if (!isMember)
+                {
+                    const auto joinModEventState = [&dlg]()
+                    {
+                        auto msg = dlg.lastMessage_;
+                        if (msg && msg->IsChatEvent())
+                            if (auto event = msg->GetChatEvent(); event && event->isForMe())
+                                return joinEventToPlaceholderState(event->eventType());
+                        return PlaceholderState::hidden;
+                    }();
+
+                    if (joinModEventState != PlaceholderState::hidden)
+                        return joinModEventState;
+                    else if (Logic::getContactListModel()->isJoinModeration(aimId_))
+                        return PlaceholderState::needJoin;
+                    else if (!Logic::getContactListModel()->isPublic(aimId_))
+                        return PlaceholderState::privateChat;
+                }
+            }
+            else
+            {
+                if (!Logic::getContactListModel()->hasContact(aimId_))
+                {
+                    if (Logic::getContactListModel()->isJoinModeration(aimId_))
+                        return PlaceholderState::needJoin;
+                    else if (!Logic::getContactListModel()->isPublic(aimId_))
+                        return PlaceholderState::privateChat;
+                }
+                return PlaceholderState::avatar;
+            }
+        }
+        else
+        {
+            if (!hasHistory)
+                return PlaceholderState::avatar;
+        }
+
+        return PlaceholderState::hidden;
+    }
+
+    void HistoryControlPage::setEmptyAreaVisible(bool _visible)
+    {
+        const auto msgAreaVisChanged = messagesArea_->isVisible() != !_visible;
+        messagesArea_->setVisible(!_visible);
+        emptyArea_->setVisible(_visible);
+
+        if (msgAreaVisChanged)
+            messagesArea_->invalidateLayout();
     }
 }
 
@@ -3860,7 +4278,7 @@ namespace
 
     bool isUpdateableWidget(QWidget* _w)
     {
-        if (const auto mi = qobject_cast<Ui::MessageItemBase*>(_w))
+        if (const auto mi = qobject_cast<Ui::HistoryControlPageItem*>(_w))
             return mi->isUpdateable();
 
         return true;

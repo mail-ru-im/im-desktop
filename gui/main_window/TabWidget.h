@@ -15,7 +15,7 @@ namespace Ui
         void hideTabbar();
         void showTabbar();
 
-        int addTab(QWidget* _widget, const QString& _name, const QString& _icon, const QString& _iconActive);
+        std::pair<int, QWidget*> addTab(QWidget* _widget, const QString& _name, const QString& _icon, const QString& _iconActive);
 
         void setCurrentIndex(int _index);
         int currentIndex() const noexcept;

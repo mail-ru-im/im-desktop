@@ -11,12 +11,14 @@
 }
 
 @property (retain) NSArray *videoCaptureDevices;
+@property (retain) NSArray *audioDevices;
 
 @end
 
 @implementation CaptureDeviceMonitor
 
 @synthesize videoCaptureDevices = _videoCaptureDevices;
+@synthesize audioDevices = _audioDevices;
 
 - (id)init
 {
@@ -42,6 +44,7 @@
     // Remove Observers
     [[NSNotificationCenter defaultCenter] removeObserver:self];
     self.videoCaptureDevices = nil;
+    self.audioDevices = nil;
     [super dealloc];
 }
 
@@ -57,10 +60,22 @@
         if(NSNotFound == [self.videoCaptureDevices indexOfObject:device])
         {
             self.videoCaptureDevices = vdevices;
-            if(_captureObserver) {
+            if (_captureObserver)
                 _captureObserver->DeviceMonitoringListChanged();
-            }
             return;
+        }
+    }
+
+    {
+        NSArray *adevices = [AVCaptureDevice devicesWithMediaType:AVMediaTypeAudio];
+        for (AVCaptureDevice *adevice in adevices) {
+            if(NSNotFound == [self.audioDevices indexOfObject:adevice])
+            {
+                self.audioDevices = adevices;
+                if (_captureObserver)
+                    _captureObserver->DeviceMonitoringListChanged();
+                return;
+            }
         }
     }
 }
@@ -71,10 +86,22 @@
         if(NSNotFound == [vdevices indexOfObject:device])
         {
             self.videoCaptureDevices = vdevices;
-            if(_captureObserver) {
+            if (_captureObserver)
                 _captureObserver->DeviceMonitoringListChanged();
-            }
             return;
+        }
+    }
+
+    {
+        NSArray *adevices = [AVCaptureDevice devicesWithMediaType:AVMediaTypeAudio];
+        for (AVCaptureDevice *adevice in self.audioDevices) {
+            if(NSNotFound == [adevices indexOfObject:adevice])
+            {
+                self.audioDevices = adevices;
+                if (_captureObserver)
+                    _captureObserver->DeviceMonitoringListChanged();
+                return;
+            }
         }
     }
 }
@@ -146,7 +173,7 @@ OSStatus DeviceMonitoringMacos::objectListenerProc(
         void* clientData)
 {
     auto* ptrThis = (DeviceMonitoringMacos*)clientData;
-    ptrThis->DeviceMonitoringListChanged();
+    ptrThis->DeviceMonitoringAudioPropChanged();
     return 0;
 }
 

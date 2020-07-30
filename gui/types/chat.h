@@ -1,7 +1,7 @@
 #pragma once
 
-#include "utils/utils.h"
 #include "message.h"
+#include "lastseen.h"
 
 class QPixmap;
 
@@ -23,7 +23,7 @@ namespace Data
 
         QString AimId_;
         QString Role_;
-        int32_t Lastseen_ = -1;
+        LastSeen Lastseen_;
 
         bool IsCreator_ = false;
     };
@@ -60,6 +60,8 @@ namespace Data
         bool YouMember_ = false;
 
         QVector<ChatMemberInfo> Members_;
+
+        bool isChannel() const { return DefaultRole_ == u"readonly"; }
     };
 
     QVector<ChatMemberInfo> UnserializeChatMembers(core::coll_helper* helper, const QString& _creator = QString());
@@ -99,8 +101,8 @@ namespace Data
 
     struct DialogGalleryEntry
     {
-        qint64 msg_id_;
-        qint64 seq_;
+        qint64 msg_id_ = -1;
+        qint64 seq_ = -1;
         QString url_;
         QString type_;
         QString sender_;

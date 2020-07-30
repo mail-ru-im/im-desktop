@@ -1,5 +1,7 @@
 #pragma once
 
+#include "lastseen.h"
+
 class QPixmap;
 
 namespace core
@@ -31,7 +33,6 @@ namespace Data
             , Unreads_(0)
             , OutgoingMsgCount_(0)
             , Is_chat_(false)
-            , HasLastSeen_(false)
             , Muted_(false)
             , IsChecked_(false)
             , IsLiveChat_(false)
@@ -39,6 +40,8 @@ namespace Data
             , IsPublic_(false)
             , isChannel_(false)
             , isDeleted_(false)
+            , isAutoAdded_(false)
+            , isTemporary_(false)
         {
         }
 
@@ -59,10 +62,8 @@ namespace Data
             StatusMsg_ = other->StatusMsg_;
             OtherNumber_ = other->OtherNumber_;
             LastSeen_ = other->LastSeen_;
-            LastSeenCore_ = other->LastSeenCore_;
             GroupId_ = other->GroupId_;
             Is_chat_ = other->Is_chat_;
-            HasLastSeen_ = other->HasLastSeen_;
             Unreads_ = other->Unreads_;
             Muted_ = other->Muted_;
             IsLiveChat_ = other->IsLiveChat_;
@@ -73,6 +74,8 @@ namespace Data
             OutgoingMsgCount_ = other->OutgoingMsgCount_;
             IsPublic_ = other->IsPublic_;
             isDeleted_ = other->isDeleted_;
+            isAutoAdded_ = other->isAutoAdded_;
+            isTemporary_ = other->isTemporary_;
             isChannel_ = other->isChannel_;
             // Intentionally ignoring IsChecked_
         }
@@ -83,13 +86,11 @@ namespace Data
         QString		UserType_;
         QString		StatusMsg_;
         QString		OtherNumber_;
-        QDateTime	LastSeen_;
-        int32_t         LastSeenCore_;
+        LastSeen    LastSeen_;
         int             GroupId_;
-        int     	Unreads_;
+        int     	    Unreads_;
         int             OutgoingMsgCount_;
         bool            Is_chat_;
-        bool            HasLastSeen_;
         bool            Muted_;
         bool            IsChecked_;
         bool            IsLiveChat_;
@@ -97,6 +98,8 @@ namespace Data
         bool            IsPublic_;
         bool            isChannel_;
         bool            isDeleted_;
+        bool            isAutoAdded_;
+        bool            isTemporary_;
         QString         iconId_;
         QString         bigIconId_;
         QString         largeIconId_;
@@ -140,20 +143,8 @@ namespace Data
             contactType_ = _type;
         }
 
-        virtual QDateTime GetLastSeen() const
-        {
-            return LastSeen_;
-        }
-
-        virtual int32_t GetLastSeenCore() const
-        {
-            return LastSeenCore_;
-        }
-
-        virtual QString GetOtherNumber() const
-        {
-            return OtherNumber_;
-        }
+        [[nodiscard]] const LastSeen& GetLastSeen() const noexcept { return LastSeen_; }
+        [[nodiscard]] const QString& GetOtherNumber() const noexcept { return OtherNumber_; }
 
     protected:
         ContactType contactType_ = BASE;
@@ -226,11 +217,12 @@ namespace Data
         QString phone_;
         QString phoneNormalized_;
 
-        int32_t lastseen_ = -1;
+        LastSeen lastseen_;
         int32_t commonChats_ = 0;
 
         bool mute_ = false;
         bool official_ = false;
+        bool isEmpty_ = true;
     };
 
     using GroupPtr = std::shared_ptr<GroupBuddy>;

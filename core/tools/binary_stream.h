@@ -16,9 +16,7 @@ namespace core
         class stream
         {
         public:
-            virtual ~stream()
-            {
-            }
+            virtual ~stream() = default;
 
             virtual void write(const char* _data, int64_t _size) = 0;
 
@@ -33,13 +31,12 @@ namespace core
             virtual void close() {}
         };
 
-        class file_output_stream
+        class file_output_stream final
             : public stream
         {
         public:
             explicit file_output_stream(std::ofstream&& _file)
-                : file_(std::forward<std::ofstream>(_file))
-                , bytes_writed_(0)
+                : file_(std::move(_file))
             {
             }
 
@@ -85,10 +82,10 @@ namespace core
 
         private:
             std::ofstream file_;
-            int64_t bytes_writed_;
+            int64_t bytes_writed_ = 0;
         };
 
-        class binary_stream
+        class binary_stream final
             : public stream
         {
             using data_buffer = std::vector<char>;
@@ -154,7 +151,7 @@ namespace core
 
             int64_t available() const noexcept override
             {
-                return (input_cursor_ - output_cursor_);
+                return input_cursor_ - output_cursor_;
             }
 
             void reserve(int64_t _size)
@@ -186,7 +183,7 @@ namespace core
 
             char* alloc_buffer(int64_t _size)
             {
-                int64_t size_need = input_cursor_ + _size;
+                const auto size_need = input_cursor_ + _size;
                 if (size_need > buffer_.size())
                     buffer_.resize(size_need * 2);
 
@@ -218,7 +215,7 @@ namespace core
                 if (_size == 0)
                     return;
 
-                int64_t size_need = input_cursor_ + _size;
+                const auto size_need = input_cursor_ + _size;
                 if (size_need > buffer_.size())
                     buffer_.resize(size_need + 1, '\0'); // +1 it '\0' at the end of the buffer
 
@@ -247,7 +244,7 @@ namespace core
                 return out;
             }
 
-            char* read_available()
+            char* read_available() const
             {
                 const int64_t available_size = available();
 
@@ -272,6 +269,8 @@ namespace core
             }
 
             bool save_2_file(const std::wstring& _file_name) const;
+
+            static bool save_2_file(std::string_view _buf, const std::wstring& _file_name);
 
             bool load_from_file(std::wstring_view _file_name);
 
@@ -358,10 +357,10 @@ namespace core
             return _bs.is_compressed();
         }
 
-        bool compress_zstd(const char* _data, size_t _size, const std::string& _dict, binary_stream& _compressed_bs);
-        bool compress_zstd(const stream& _bs, const std::string& _dict, binary_stream& _compressed_bs);
-        bool decompress_zstd(const char* _data, size_t _size, const std::string& _dict, binary_stream& _uncompressed_bs);
-        bool decompress_zstd(const stream& _bs, const std::string& _dict, binary_stream& _uncompressed_bs);
+        bool compress_zstd(const char* _data, size_t _size, std::string_view _dict, binary_stream& _compressed_bs);
+        bool compress_zstd(const stream& _bs, std::string_view _dict, binary_stream& _compressed_bs);
+        bool decompress_zstd(const char* _data, size_t _size, std::string_view _dict, binary_stream& _uncompressed_bs);
+        bool decompress_zstd(const stream& _bs, std::string_view _dict, binary_stream& _uncompressed_bs);
     }
 
 }

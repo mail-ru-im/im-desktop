@@ -35,10 +35,7 @@ namespace core
 
         bool is_latin(char _c)
         {
-            if ((_c >= 'a' && _c <= 'z') || (_c >= 'A' && _c <= 'Z'))
-                return true;
-
-            return false;
+            return (_c >= 'a' && _c <= 'z') || (_c >= 'A' && _c <= 'Z');
         }
 
         bool is_phone(const std::string_view _value)

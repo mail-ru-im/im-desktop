@@ -41,6 +41,7 @@ public:
         MenuFlagOpenFolder = (1 << 4),
         MenuFlagRevokeVote = (1 << 5),
         MenuFlagStopPoll = (1 << 6),
+        MenuFlagSpellItems = (1 << 7),
     };
 
     enum class ContentType
@@ -85,9 +86,9 @@ public:
 
     virtual void onDistanceToViewportChanged(const QRect& _widgetAbsGeometry, const QRect& _viewportVisibilityAbsRect) = 0;
 
-    virtual QRect setBlockGeometry(const QRect &ltr) = 0;    
+    virtual QRect setBlockGeometry(const QRect &ltr) = 0;
 
-    virtual MenuFlags getMenuFlags() const = 0;
+    virtual MenuFlags getMenuFlags(QPoint p = {}) const = 0;
 
     virtual ComplexMessageItem* getParentComplexMessage() const = 0;
 
@@ -99,6 +100,8 @@ public:
     virtual QString getSelectedText(const bool _isFullSelect = false, const TextDestination _dest = TextDestination::selection) const = 0;
 
     virtual QString getSourceText() const = 0;
+
+    virtual QString getTextInstantEdit() const = 0;
 
     virtual QString getPlaceholderText() const = 0;
 
@@ -132,8 +135,6 @@ public:
 
     virtual Data::Quote getQuote() const;
 
-    virtual ::HistoryControl::StickerInfoSptr getStickerInfo() const;
-
     virtual bool needFormatQuote() const { return true; }
 
     virtual IItemBlock* findBlockUnder(const QPoint &pos) const { return nullptr; }
@@ -162,6 +163,9 @@ public:
 
     virtual QString linkAtPos(const QPoint& pos) const { return QString(); }
 
+    [[nodiscard]] virtual std::optional<QString> getWordAt(QPoint) const { return {}; }
+    [[nodiscard]] virtual bool replaceWordAt(const QString&, const QString&, QPoint) { return false; }
+
     virtual int desiredWidth(int _width = 0) const { return 0; }
 
     virtual bool isSizeLimited() const { return false; }
@@ -177,7 +181,7 @@ public:
 
     virtual QString getSenderAimid() const = 0;
 
-    virtual QString getStickerId() const { return QString(); }
+    virtual Data::StickerId getStickerId() const { return {}; }
 
     virtual void resetClipping() {}
 
@@ -188,6 +192,8 @@ public:
     virtual void shiftHorizontally(const int _shift) {}
 
     virtual void setText(const QString& _text) {}
+
+    virtual void startSpellChecking() {}
 
     virtual void updateStyle() = 0;
     virtual void updateFonts() = 0;
@@ -218,6 +224,12 @@ public:
     virtual void resizeBlock(const QSize& _size) {}
 
     virtual void onBlockSizeChanged(const QSize& _size) {}
+
+    virtual bool hasSourceText() const { return true; }
+
+    virtual int effectiveBlockWidth() const { return 0; }
+
+    virtual void setSpellErrorsVisible(bool _visible) {}
 
 protected:
     virtual IItemBlockLayout* getBlockLayout() const = 0;

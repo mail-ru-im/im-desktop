@@ -1,20 +1,16 @@
 #include "stdafx.h"
 #include "async_task.h"
 #include "core.h"
+#include "../common.shared/string_utils.h"
 
 using namespace core;
 
 //////////////////////////////////////////////////////////////////////////
 // async_task
 //////////////////////////////////////////////////////////////////////////
-async_task::async_task()
-{
-}
+async_task::async_task() = default;
 
-
-async_task::~async_task()
-{
-}
+async_task::~async_task() = default;
 
 
 
@@ -22,8 +18,8 @@ async_task::~async_task()
 //////////////////////////////////////////////////////////////////////////
 // async_executer
 //////////////////////////////////////////////////////////////////////////
-async_executer::async_executer(const std::string_view _name, size_t _count, bool _task_trace)
-    : threadpool("ae_" + std::string(_name), _count, []()
+async_executer::async_executer(std::string_view _name, size_t _count, bool _task_trace)
+    : threadpool(su::concat("ae_", _name), _count, []()
 {
     g_core->on_thread_finish();
 }, _task_trace)
@@ -44,9 +40,7 @@ std::shared_ptr<async_task_handlers> core::async_executer::run_async_function(st
 
     push_back([f = std::move(func), handler]
     {
-        auto result = f();
-
-        g_core->execute_core_context([handler, result]
+        g_core->execute_core_context([handler, result = f()]
         {
             if (handler->on_result_)
                 handler->on_result_(result);

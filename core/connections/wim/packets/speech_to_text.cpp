@@ -22,7 +22,7 @@ speech_to_text::speech_to_text(
 
 speech_to_text::~speech_to_text() = default;
 
-int32_t speech_to_text::init_request(std::shared_ptr<core::http_request_simple> _request)
+int32_t speech_to_text::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     std::string ss_url;
 
@@ -37,17 +37,11 @@ int32_t speech_to_text::init_request(std::shared_ptr<core::http_request_simple> 
 
     std::map<std::string, std::string> params;
 
-    const time_t ts = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()) - params_.time_offset_;
-
-    params["a"] = escape_symbols(params_.a_token_);
+    params["aimsid"] = escape_symbols(params_.aimsid_);
     params["f"] = "json";
     params["k"] = params_.dev_id_;
-    params["ts"] = tools::from_int64(ts);
     params["type"] = "ptt";
     params["locale"] = Locale_;
-
-    auto sha256 = escape_symbols(get_url_sign(ss_url, params, params_, false));
-    params["sig_sha256"] = std::move(sha256);
 
     ss_url += '?';
     ss_url += format_get_params(params);
@@ -60,13 +54,14 @@ int32_t speech_to_text::init_request(std::shared_ptr<core::http_request_simple> 
     {
         log_replace_functor f;
         f.add_marker("a");
+        f.add_marker("aimsid", aimsid_range_evaluator());
         _request->set_replace_log_function(f);
     }
 
     return 0;
 }
 
-int32_t speech_to_text::execute_request(std::shared_ptr<core::http_request_simple> request)
+int32_t speech_to_text::execute_request(const std::shared_ptr<core::http_request_simple>& request)
 {
     if (!request->get())
         return wpie_network_error;
@@ -86,7 +81,7 @@ int32_t speech_to_text::execute_request(std::shared_ptr<core::http_request_simpl
                 return wpie_http_empty_response;
 
             response->write((char) 0);
-            uint32_t size = response->available();
+            auto size = response->available();
             load_response_str((const char*) response->read(size), size);
             response->reset_out();
 
@@ -115,13 +110,13 @@ int32_t speech_to_text::execute_request(std::shared_ptr<core::http_request_simpl
     return 0;
 }
 
-int32_t speech_to_text::parse_response(std::shared_ptr<core::tools::binary_stream> _response)
+int32_t speech_to_text::parse_response(const std::shared_ptr<core::tools::binary_stream>& _response)
 {
     if (!_response->available())
         return wpie_http_empty_response;
 
     _response->write((char) 0);
-    uint32_t size = _response->available();
+    auto size = _response->available();
     load_response_str((const char*) _response->read(size), size);
     _response->reset_out();
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "MessageItemBase.h"
+#include "HistoryControlPageItem.h"
 
 namespace Ui
 {
@@ -11,7 +11,7 @@ namespace Ui
         class TextUnit;
     }
 
-    class ServiceMessageItem : public MessageItemBase
+    class ServiceMessageItem : public HistoryControlPageItem
     {
         Q_OBJECT
 
@@ -40,6 +40,7 @@ namespace Ui
     protected:
         void setQuoteSelection() override {}
         void paintEvent(QPaintEvent* _event) override;
+        bool supportsReactions() const override { return false; }
 
     private:
         void updateDateTranslation();

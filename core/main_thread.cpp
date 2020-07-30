@@ -20,16 +20,12 @@ main_thread::main_thread()
             ss << *_st;
 
             g_core->write_string_to_network_log(ss.str());
-
- //           assert(false);
         }
     });
 }
 
 
-main_thread::~main_thread()
-{
-}
+main_thread::~main_thread() = default;
 
 void main_thread::execute_core_context(std::function<void()> task)
 {
@@ -38,10 +34,13 @@ void main_thread::execute_core_context(std::function<void()> task)
 
 std::thread::id main_thread::get_core_thread_id() const
 {
-    assert(get_threads_ids().size() == 1);
-
     if (const auto& thread_ids = get_threads_ids(); thread_ids.size() == 1)
+    {
         return thread_ids[0];
-
-    return std::thread::id(); // nobody
+    }
+    else
+    {
+        assert(thread_ids.size() == 1);
+        return std::thread::id(); // nobody
+    }
 }

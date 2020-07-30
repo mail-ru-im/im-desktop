@@ -6,6 +6,8 @@
 
 #include "../../../corelib/core_face.h"
 #include "../../../corelib/collection_helper.h"
+#include "../common.shared/string_utils.h"
+#include "../../log/log.h"
 #include "../../tools/json_helper.h"
 #include "../../tools/system.h"
 #include "../libomicron/include/omicron/omicron.h"
@@ -26,7 +28,6 @@ void cl_presence::serialize(icollection* _coll)
     cl.set_value_as_bool("is_chat", is_chat_);
     cl.set_value_as_bool("mute", muted_);
     cl.set_value_as_bool("official", official_);
-    cl.set_value_as_int("lastseen", lastseen_);
     cl.set_value_as_int("outgoingCount", outgoing_msg_count_);
     cl.set_value_as_bool("livechat", is_live_chat_);
     cl.set_value_as_string("iconId", icon_id_);
@@ -36,35 +37,57 @@ void cl_presence::serialize(icollection* _coll)
     cl.set_value_as_bool("channel", is_channel_);
     cl.set_value_as_bool("autoAddition", auto_added_);
     cl.set_value_as_bool("deleted", deleted_);
+    lastseen_.serialize(cl);
+
+    if (!status_.is_empty())
+        status_.serialize(cl);
 }
 
 void cl_presence::serialize(rapidjson::Value& _node, rapidjson_allocator& _a)
 {
-    _node.AddMember("userType",  usertype_, _a);
-    _node.AddMember("statusMsg",  status_msg_, _a);
-    _node.AddMember("otherNumber",  other_number_, _a);
-    _node.AddMember("smsNumber", sms_number_, _a);
-    _node.AddMember("friendly",  friendly_, _a);
-    _node.AddMember("abContactName",  ab_contact_name_, _a);
-    _node.AddMember("lastseen",  lastseen_, _a);
-    _node.AddMember("outgoingCount", outgoing_msg_count_, _a);
-    _node.AddMember("mute",  muted_, _a);
-    _node.AddMember("livechat", is_live_chat_ ? 1 : 0, _a);
-    _node.AddMember("official", official_ ? 1 : 0, _a);
-    _node.AddMember("iconId",  icon_id_, _a);
-    _node.AddMember("bigIconId",  big_icon_id_, _a);
-    _node.AddMember("largeIconId",  large_icon_id_, _a);
+    const auto save_bool = [&_node, &_a](std::string_view _name, const bool _value)
+    {
+        if (_value)
+            _node.AddMember(tools::make_string_ref(_name), _value, _a);
+    };
+    const auto save_string = [&_node, &_a](std::string_view _name, const auto& _value)
+    {
+        if (!_value.empty())
+            _node.AddMember(tools::make_string_ref(_name), _value, _a);
+    };
+
+    save_string("userType",  usertype_);
+    save_string("friendly",  friendly_);
+    save_string("iconId",  icon_id_);
+    save_string("bigIconId",  big_icon_id_);
+    save_string("largeIconId",  large_icon_id_);
+    save_string("statusMsg",  status_msg_);
+    save_string("nick", nick_);
+    save_bool("mute", muted_);
+    save_bool("official", official_);
+    save_bool("deleted", deleted_);
+
+    if (outgoing_msg_count_ > 0)
+        _node.AddMember("outgoingCount", outgoing_msg_count_, _a);
 
     if (is_chat_)
     {
-        _node.AddMember("public", public_ ? 1 : 0, _a);
-        _node.AddMember("readonly", is_channel_ ? 1 : 0, _a);
+        save_bool("public", public_);
+        save_bool("livechat", is_live_chat_);
+        save_string("chatType", chattype_);
+    }
+    else
+    {
+        lastseen_.serialize(_node, _a);
+
+        save_string("abContactName", ab_contact_name_);
+        save_string("smsNumber", sms_number_);
+        save_string("otherNumber", other_number_);
     }
 
-    if (!nick_.empty())
-        _node.AddMember("nick", nick_, _a);
+    if (!status_.is_empty())
+        status_.serialize(_node, _a);
 
-    _node.AddMember("deleted", deleted_, _a);
     if (auto_added_)
         _node.AddMember("autoAddition", "autoAddSaved", _a);
 
@@ -72,13 +95,8 @@ void cl_presence::serialize(rapidjson::Value& _node, rapidjson_allocator& _a)
     {
         rapidjson::Value node_capabilities(rapidjson::Type::kArrayType);
         node_capabilities.Reserve(capabilities_.size(), _a);
-        for (const auto& x : capabilities_)
-        {
-            rapidjson::Value capa;
-            capa.SetString(x, _a);
-
-            node_capabilities.PushBack(std::move(capa), _a);
-        }
+        for (const auto& c : capabilities_)
+            node_capabilities.PushBack(tools::make_string_ref(c), _a);
 
         _node.AddMember("capabilities", std::move(node_capabilities), _a);
     }
@@ -101,11 +119,14 @@ void cl_presence::unserialize(const rapidjson::Value& _node)
     tools::unserialize_value(_node, "official", official_);
     tools::unserialize_value(_node, "livechat", is_live_chat_);
     tools::unserialize_value(_node, "public", public_);
-    tools::unserialize_value(_node, "readonly", is_channel_);
     tools::unserialize_value(_node, "deleted", deleted_);
     tools::unserialize_value(_node, "mute", muted_);
-    tools::unserialize_value(_node, "lastseen", lastseen_);
     tools::unserialize_value(_node, "outgoingCount", outgoing_msg_count_);
+
+    tools::unserialize_value(_node, "chatType", chattype_);
+    is_channel_ = chattype_ == "channel";
+
+    lastseen_.unserialize(_node);
 
     const auto end = _node.MemberEnd();
     const auto iter_capabilities = _node.FindMember("capabilities");
@@ -115,8 +136,12 @@ void cl_presence::unserialize(const rapidjson::Value& _node)
             capabilities_.insert(rapidjson_get_string(cap));
     }
 
-    const auto iter_auto_add = _node.FindMember("autoAddition");
-    auto_added_ = iter_auto_add != end && iter_auto_add->value.IsString() && !rapidjson_get_string_view(iter_auto_add->value).empty();
+    const auto iter_status = _node.FindMember("status");
+    if (iter_status != end && iter_status->value.IsObject())
+        status_.unserialize(iter_status->value);
+
+    if (std::string_view aa; tools::unserialize_value(_node, "autoAddition", aa))
+        auto_added_ = !aa.empty();
 }
 
 bool cl_presence::are_icons_equal(const cl_presence& _other) const
@@ -229,6 +254,12 @@ void contactlist::set_changed_status(changed_status _status) noexcept
         // don't drop status
         return;
     }
+
+    g_core->write_string_to_network_log(su::concat("contact-list-debug",
+        " set_changed_status ",
+        (_status == changed_status::none ? "'none'" : (_status == changed_status::presence ? "'presence'" : "'full'")),
+        "\r\n"));
+
     changed_status_ = _status;
 }
 
@@ -242,7 +273,12 @@ void contactlist::update_presence(const std::string& _aimid, const std::shared_p
 {
     auto contact_presence = get_presence(_aimid);
     if (!contact_presence)
+    {
+        g_core->write_string_to_network_log(su::concat("contact-list-debug",
+            " update_presence failed: cannot get presence for ", _aimid,
+            "\r\n"));
         return;
+    }
 
     if (_presence->friendly_ != contact_presence->friendly_ ||
         _presence->ab_contact_name_ != contact_presence->ab_contact_name_ ||
@@ -252,21 +288,26 @@ void contactlist::update_presence(const std::string& _aimid, const std::shared_p
     }
 
     contact_presence->usertype_ = _presence->usertype_;
+    contact_presence->chattype_ = _presence->chattype_;
     contact_presence->status_msg_ = _presence->status_msg_;
     contact_presence->other_number_ = _presence->other_number_;
     contact_presence->sms_number_ = _presence->sms_number_;
     contact_presence->capabilities_ = _presence->capabilities_;
     contact_presence->friendly_ = _presence->friendly_;
     contact_presence->nick_ = _presence->nick_;
-    contact_presence->lastseen_ = _presence->lastseen_;
     contact_presence->is_chat_ = _presence->is_chat_;
     contact_presence->muted_ = _presence->muted_;
     contact_presence->is_live_chat_ = _presence->is_live_chat_;
     contact_presence->official_ = _presence->official_;
     contact_presence->public_ = _presence->public_;
-    contact_presence->is_channel_ = _presence->is_channel_;
     contact_presence->auto_added_ = _presence->auto_added_;
     contact_presence->deleted_ = _presence->deleted_;
+
+    if (!contact_presence->lastseen_.is_bot())
+        contact_presence->lastseen_ = _presence->lastseen_;
+
+    contact_presence->status_ = _presence->status_;
+
     // no need to update outgoing_msg_count_ here
     {
         need_update_avatar_ = !cl_presence::are_icons_equal(*contact_presence, *_presence);
@@ -1115,6 +1156,9 @@ void contactlist::merge_from_diff(const std::string& _type, const std::shared_pt
 
                 for (const auto& diff_buddy : diff_group->buddies_)
                 {
+                    g_core->write_string_to_network_log(su::concat("contact-list-debug",
+                        " merge_from_diff add person. buddie, cl index ", diff_buddy->aimid_,
+                        "\r\n"));
                     add_to_persons(diff_buddy);
                     group->buddies_.push_back(diff_buddy);
                     contacts_index_[diff_buddy->aimid_] = diff_buddy;

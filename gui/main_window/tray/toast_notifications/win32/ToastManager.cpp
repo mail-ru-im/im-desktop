@@ -64,7 +64,7 @@ namespace Ui
 
     void ToastManager::Activated(const QString& aimId)
     {
-        emit messageClicked(aimId);
+        Q_EMIT messageClicked(aimId);
     }
 
     void ToastManager::Remove(Microsoft::WRL::ComPtr<ABI::Windows::UI::Notifications::IToastNotification> notification, const QString& aimId)

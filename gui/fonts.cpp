@@ -1,6 +1,5 @@
 #include "stdafx.h"
 
-#include "platform.h"
 #include "utils/utils.h"
 #include "gui_settings.h"
 #include "fonts.h"
@@ -26,8 +25,6 @@ namespace
     const QssWeightsMapT& getSegoeUIWeightsMap();
 
     QString evalQssFontWeight(const FontFamily _fontFamily, const FontWeight _fontStyle);
-
-    QFont::Weight icqWeight2QtWeight(const FontWeight _internalWeight);
 
     QString segoeUiFamilyName(const FontWeight _weight);
 
@@ -132,13 +129,13 @@ QString appFontFullQss(const int32_t _sizePx, const FontFamily _fontFamily, cons
 
 
     const auto weight = evalQssFontWeight(_fontFamily, _fontWeight);
-    const auto weight_qss = weight.isEmpty() ? QLatin1String() : ql1s("; font-weight: ");
+    const auto weight_qss = weight.isEmpty() ? QStringView() : QStringView(u"; font-weight: ");
 
-    return ql1s("font-size: ")
+    return u"font-size: "
         % QString::number(_sizePx)
-        % ql1s("px; font-family: \"")
+        % u"px; font-family: \""
         % appFontFamilyNameQss(_fontFamily, _fontWeight)
-        % ql1c('"')
+        % u'"'
         % weight_qss
         % weight;
 }
@@ -337,29 +334,6 @@ namespace
 
         assert(!"unknown font family / style comnbination");
         return defaultAppFontQssWeight();
-    }
-
-    QFont::Weight icqWeight2QtWeight(const FontWeight _internalWeight)
-    {
-        assert(_internalWeight > FontWeight::Min);
-        assert(_internalWeight < FontWeight::Max);
-
-        switch (_internalWeight)
-        {
-            case FontWeight::Light: return QFont::Weight::Light;
-
-            case FontWeight::Normal: return QFont::Weight::Normal;
-
-            case FontWeight::SemiBold: return QFont::Weight::Medium;
-
-            case FontWeight::Bold: return QFont::Weight::Bold;
-
-            default:
-                break;
-        }
-
-        assert(!"unknown enum value");
-        return QFont::Weight::Normal;
     }
 
     QString segoeUiFamilyName(const FontWeight _weight)

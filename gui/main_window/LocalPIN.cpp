@@ -102,6 +102,7 @@ public:
     {
         const auto wrongPasswordDescription = QT_TRANSLATE_NOOP("local_pin", "Wrong passcode");
         error_->setText(wrongPasswordDescription);
+        Testing::setAccessibleName(error_, qsl("AS LocalPin errorWrongPassword"));
         if (code_)
             Utils::ApplyStyle(code_, Styling::getParameters().getLineEditCommonQss(true, lineEditHeight));
     }
@@ -110,6 +111,7 @@ public:
     {
         static auto passwordsDontMatchDescription = QT_TRANSLATE_NOOP("local_pin", "Passcodes don't match");
         error_->setText(passwordsDontMatchDescription);
+        Testing::setAccessibleName(error_, qsl("AS LocalPin errorPasswordDontMatch"));
         if (newCode_)
             Utils::ApplyStyle(newCode_, Styling::getParameters().getLineEditCommonQss(true, lineEditHeight));
         if (newCodeRepeat_)
@@ -169,6 +171,7 @@ LocalPINWidget::LocalPINWidget(LocalPINWidget::Mode _mode, QWidget* _parent)
     {
         d->code_ = d->createLineEdit(this, QT_TRANSLATE_NOOP("local_pin", "Current passcode"));
         connect(d->code_, &LineEditEx::textChanged, this, &LocalPINWidget::onInputChanged);
+        Testing::setAccessibleName(d->code_, qsl("AS LocalPin pinInput"));
         mainLayout->addWidget(d->code_, 0, Qt::AlignHCenter);
 
         connect(GetDispatcher(), &core_dispatcher::localPINChecked, this, &LocalPINWidget::onPINChecked);
@@ -176,7 +179,9 @@ LocalPINWidget::LocalPINWidget(LocalPINWidget::Mode _mode, QWidget* _parent)
     if(_mode == Mode::ChangePIN || _mode == Mode::SetPIN)
     {
         d->newCode_ = d->createLineEdit(this, QT_TRANSLATE_NOOP("local_pin", "New passcode"));
+        Testing::setAccessibleName(d->newCode_, qsl("AS LocalPin newPinInput"));
         d->newCodeRepeat_ = d->createLineEdit(this, QT_TRANSLATE_NOOP("local_pin", "Re-enter new passcode"));
+        Testing::setAccessibleName(d->newCodeRepeat_, qsl("AS LocalPin newPinRepeatInput"));
 
         connect(d->newCode_, &LineEditEx::textChanged, this, &LocalPINWidget::onInputChanged);
         connect(d->newCodeRepeat_, &LineEditEx::textChanged, this, &LocalPINWidget::onInputChanged);
@@ -206,6 +211,7 @@ LocalPINWidget::LocalPINWidget(LocalPINWidget::Mode _mode, QWidget* _parent)
     if(_mode == Mode::ChangePIN || _mode == Mode::SetPIN || _mode == Mode::RemovePIN)
     {
         d->cancelButton_ = d->createButton(this, QT_TRANSLATE_NOOP("local_pin", "Cancel"), DialogButtonRole::CANCEL);
+        Testing::setAccessibleName(d->cancelButton_, qsl("AS LocalPin cancel"));
         connect(d->cancelButton_, &DialogButton::clicked, this, &LocalPINWidget::onCancel);
 
         buttonsLayout->addWidget(d->cancelButton_);
@@ -213,6 +219,7 @@ LocalPINWidget::LocalPINWidget(LocalPINWidget::Mode _mode, QWidget* _parent)
     }
 
     d->okButton_ = d->createButton(this, QT_TRANSLATE_NOOP("local_pin", "Apply"), DialogButtonRole::CONFIRM, false);
+    Testing::setAccessibleName(d->okButton_, qsl("AS LocalPin apply"));
     connect(d->okButton_, &DialogButton::clicked, this, &LocalPINWidget::onOk);
 
     if (d->mode_ == Mode::VerifyPIN)
@@ -272,7 +279,7 @@ void LocalPINWidget::onLogOut()
     {
         get_gui_settings()->set_value(settings_feedback_email, QString());
         GetDispatcher()->post_message_to_core("logout", nullptr);
-        emit Utils::InterConnector::instance().logout();
+        Q_EMIT Utils::InterConnector::instance().logout();
         close();
     }
     else
@@ -284,7 +291,7 @@ void LocalPINWidget::onLogOut()
 
 void LocalPINWidget::onCancel()
 {
-    emit Utils::InterConnector::instance().closeAnyPopupWindow(Utils::CloseWindowInfo());
+    Q_EMIT Utils::InterConnector::instance().closeAnyPopupWindow(Utils::CloseWindowInfo());
 }
 
 void LocalPINWidget::onOk()
@@ -303,7 +310,7 @@ void LocalPINWidget::onOk()
     {
         GetDispatcher()->setLocalPIN(d->newCode_->text());
         LocalPIN::instance()->setEnabled(true);
-        emit Utils::InterConnector::instance().closeAnyPopupWindow(Utils::CloseWindowInfo());
+        Q_EMIT Utils::InterConnector::instance().closeAnyPopupWindow(Utils::CloseWindowInfo());
         close();
     }
 }
@@ -355,7 +362,7 @@ void LocalPINWidget::onPINChecked(qint64 _seq, bool _result)
 
     if (d->mode_ != Mode::VerifyPIN)
     {
-        emit Utils::InterConnector::instance().closeAnyPopupWindow(Utils::CloseWindowInfo());
+        Q_EMIT Utils::InterConnector::instance().closeAnyPopupWindow(Utils::CloseWindowInfo());
         close();
     }
     else
@@ -497,7 +504,7 @@ void LocalPIN::onCheckActivityTimeout()
 
 LocalPIN::LocalPIN()
 {
-    checkActivityTimer_.setInterval(activityCheckInterval.count());
+    checkActivityTimer_.setInterval(activityCheckInterval);
     connect(&checkActivityTimer_, &QTimer::timeout, this, &LocalPIN::onCheckActivityTimeout);
 }
 
@@ -571,7 +578,7 @@ void FooterWidget::mouseReleaseEvent(QMouseEvent* _event)
     const auto overLink = d->textUnit_->isOverLink(_event->pos());
 
     if (overLink && d->pressed_)
-        emit logOutClicked();
+        Q_EMIT logOutClicked();
 
     d->pressed_ = false;
 

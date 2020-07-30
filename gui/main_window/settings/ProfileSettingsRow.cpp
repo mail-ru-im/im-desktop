@@ -140,12 +140,12 @@ namespace
 
     QString getProfileDomain()
     {
-        return ql1s("https://") % Features::getProfileDomain() % ql1c('/');
+        return u"https://" % Features::getProfileDomain() % u'/';
     }
 
     QString getProfileDomainAgent()
     {
-        return ql1s("https://") % Features::getProfileDomainAgent() % ql1c('/');
+        return u"https://" % Features::getProfileDomainAgent() % u'/';
     }
 
     const auto getToastVerOffset() noexcept
@@ -165,6 +165,7 @@ namespace Ui
         , avatar_(new ContactAvatarWidget(this, MyInfo()->aimId(), MyInfo()->friendly(), avatarHeight(), true))
     {
         avatar_->setAttribute(Qt::WA_TransparentForMouseEvents);
+        avatar_->setFixedHeight(avatarHeight() + Utils::scale_value(4));
 
         friendlyTextUnit_ = TextRendering::MakeTextUnit(MyInfo()->friendly(), {}, TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
         friendlyTextUnit_->init(friendlyTextFont(), normalFriendlyTextColor(), QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, 1);
@@ -348,9 +349,9 @@ namespace Ui
         }
         else
         {
-            EditNicknameWidget::FormData data;
-            data.fixedSize_ = true;
-            auto form = new EditNicknameWidget(this, data);
+            EditNicknameWidget::FormData formData;
+            formData.fixedSize_ = true;
+            auto form = new EditNicknameWidget(this, formData);
             form->setStatFrom("settings_scr");
 
             connect(form, &EditNicknameWidget::changed, this, [this, form]()
@@ -391,18 +392,18 @@ namespace Ui
 
         const QString link = (isEmailProfile() ? getProfileDomainAgent() : getProfileDomain()) % getNickname();
 
-        if (command == ql1s("copy_link"))
+        if (command == u"copy_link")
         {
             QApplication::clipboard()->setText(link);
             Utils::showToastOverMainWindow(link % QChar::LineFeed % QT_TRANSLATE_NOOP("toast", "Link copied"), getToastVerOffset());
             Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::settingsscr_nick_action, { {"do", "copy_url"} });
         }
-        else if (command == ql1s("share_link"))
+        else if (command == u"share_link")
         {
             forwardMessage(link, QString(), QString(), false);
             Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::settingsscr_nick_action, { {"do", "in_share"} });
         }
-        else if (command == ql1s("copy_nick"))
+        else if (command == u"copy_nick")
         {
             copyNickToClipboard();
         }

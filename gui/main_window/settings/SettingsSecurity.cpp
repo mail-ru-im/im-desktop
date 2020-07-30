@@ -2,24 +2,27 @@
 #include "GeneralSettingsWidget.h"
 
 #include "PrivacySettingsManager.h"
+#include "PageOpenerWidget.h"
 
-#include "../../core_dispatcher.h"
-#include "../../gui_settings.h"
-#include "../../controls/GeneralCreator.h"
-#include "../../controls/TextEmojiWidget.h"
-#include "../../controls/TransparentScrollBar.h"
-#include "../../controls/SimpleListWidget.h"
-#include "../../controls/RadioTextRow.h"
+#include "core_dispatcher.h"
+#include "gui_settings.h"
+#include "controls/GeneralCreator.h"
+#include "controls/TextEmojiWidget.h"
+#include "controls/TransparentScrollBar.h"
+#include "controls/SimpleListWidget.h"
+#include "controls/RadioTextRow.h"
 #include "controls/GeneralDialog.h"
-#include "utils/InterConnector.h"
+#include "controls/LabelEx.h"
 #include "main_window/LocalPIN.h"
 #include "main_window/MainWindow.h"
+#include "main_window/sidebar/SidebarUtils.h"
 #include "main_window/contact_list/IgnoreMembersModel.h"
 #include "main_window/contact_list/ContactListModel.h"
 #include "main_window/contact_list/SelectionContactsForGroupChat.h"
 #include "main_window/contact_list/ContactListUtils.h"
-#include "../../utils/utils.h"
-#include "../../styles/ThemeParameters.h"
+#include "utils/InterConnector.h"
+#include "utils/utils.h"
+#include "styles/ThemeParameters.h"
 
 using namespace Ui;
 
@@ -43,32 +46,18 @@ namespace
             return QString();
         }
     };
+
+    QString getSessionsButtonCaption()
+    {
+        return QT_TRANSLATE_NOOP("settings", "Session List");
+    }
 }
 
-void GeneralSettingsWidget::Creator::initSecurity(QWidget* _parent)
+static void initPrivacy(QVBoxLayout* _layout, QWidget* _parent)
 {
-    auto scrollArea = CreateScrollAreaAndSetTrScrollBarV(_parent);
-    scrollArea->setStyleSheet(qsl("QWidget{border: none; background-color: %1;}").arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE)));
-    scrollArea->setWidgetResizable(true);
-    Utils::grabTouchWidget(scrollArea->viewport(), true);
-
-    auto mainWidget = new QWidget(scrollArea);
-    Utils::grabTouchWidget(mainWidget);
-    Utils::ApplyStyle( mainWidget, Styling::getParameters().getGeneralSettingsQss());
-
-    auto mainLayout = Utils::emptyVLayout(mainWidget);
-    mainLayout->setAlignment(Qt::AlignTop);
-    mainLayout->setContentsMargins(0, Utils::scale_value(36), 0, Utils::scale_value(36));
-
-    scrollArea->setWidget(mainWidget);
-
-    auto layout = Utils::emptyHLayout(_parent);
-    Testing::setAccessibleName(scrollArea, qsl("AS settings scrollArea"));
-    layout->addWidget(scrollArea);
-
     static auto privacyManager = new Logic::PrivacySettingsManager();
 
-    const auto addPrivacySetting = [scrollArea, mainLayout](const auto& _settingName, const auto& _caption)
+    const auto addPrivacySetting = [scrollArea = _parent, mainLayout = _layout](const auto& _settingName, const auto& _caption)
     {
         auto headerWidget = new QWidget(scrollArea);
         auto headerLayout = Utils::emptyVLayout(headerWidget);
@@ -89,8 +78,18 @@ void GeneralSettingsWidget::Creator::initSecurity(QWidget* _parent)
 
         const auto& varList = Utils::getPrivacyAllowVariants();
         auto list = new SimpleListWidget(Qt::Vertical);
-        for (const auto& [name, _] : varList)
-            list->addItem(new RadioTextRow(name));
+        for (const auto& [name, type] : varList)
+        {
+            auto radioTextRow = new RadioTextRow(name);
+            if (Testing::isEnabled)
+            {
+                auto typeQString = QString::fromStdString(to_string(type));
+                if (!typeQString.isEmpty())
+                    typeQString[0] = typeQString.at(0).toUpper();
+                Testing::setAccessibleName(radioTextRow, qsl("AS PrivacyPage ") % _settingName % typeQString);
+            }
+            list->addItem(radioTextRow);
+        }
 
         const auto setIndex = [list](const auto _index)
         {
@@ -115,7 +114,7 @@ void GeneralSettingsWidget::Creator::initSecurity(QWidget* _parent)
             });
 
             {
-                const auto statName = _settingName == qsl("groups")
+                const auto statName = _settingName == u"groups"
                     ? core::stats::stats_event_names::privacyscr_grouptype_action
                     : core::stats::stats_event_names::privacyscr_calltype_action;
 
@@ -165,52 +164,50 @@ void GeneralSettingsWidget::Creator::initSecurity(QWidget* _parent)
 
     addPrivacySetting(qsl("groups"), QT_TRANSLATE_NOOP("settings", "Who can add me to groups"));
     addPrivacySetting(qsl("calls"), QT_TRANSLATE_NOOP("settings", "Who can call me"));
+}
 
-
-    auto secondLayout = Utils::emptyVLayout();
-    secondLayout->setAlignment(Qt::AlignTop);
-    secondLayout->setContentsMargins(0, 0, 0, 0);
-    mainLayout->addLayout(secondLayout);
-
+static void initPasscode(QVBoxLayout* _layout, QWidget* _parent)
+{
     auto autoLockWidget = new QWidget(_parent);
     autoLockWidget->setVisible(LocalPIN::instance()->enabled());
+    Testing::setAccessibleName(autoLockWidget, qsl("AS PrivacyPage autoPinLock"));
 
     auto changePINWidget = new QWidget(_parent);
     changePINWidget->setVisible(LocalPIN::instance()->enabled());
 
     auto pinSwitcher = GeneralCreator::addSwitcher(
-            scrollArea,
-            secondLayout,
-            QT_TRANSLATE_NOOP("settings", "Local passcode"),
-            LocalPIN::instance()->enabled(),
-            [](bool checked) -> QString { return QString(); });
+        _parent,
+        _layout,
+        QT_TRANSLATE_NOOP("settings", "Local passcode"),
+        LocalPIN::instance()->enabled());
+    Testing::setAccessibleName(pinSwitcher, qsl("AS PrivacyPage pinLockSetting"));
 
-    connect(pinSwitcher, &Ui::SidebarCheckboxButton::checked, _parent, [_parent, pinSwitcher, changePINWidget, autoLockWidget](bool _state)
+    QObject::connect(pinSwitcher, &Ui::SidebarCheckboxButton::checked, _parent, [pinSwitcher, changePINWidget, autoLockWidget](bool _checked)
     {
         QSignalBlocker blocker(pinSwitcher);
-        pinSwitcher->setChecked(LocalPIN::instance()->enabled() ? true : false);
+        pinSwitcher->setChecked(LocalPIN::instance()->enabled());
 
-        auto codeWidget = new LocalPINWidget(_state != true ? LocalPINWidget::Mode::RemovePIN : LocalPINWidget::Mode::SetPIN, _parent);
+        auto codeWidget = new LocalPINWidget(_checked ? LocalPINWidget::Mode::SetPIN : LocalPINWidget::Mode::RemovePIN, nullptr);
 
-        auto generalDialog = std::make_unique<GeneralDialog>(codeWidget, Utils::InterConnector::instance().getMainWindow(), true);
-        generalDialog->showInCenter();
+        GeneralDialog d(codeWidget, Utils::InterConnector::instance().getMainWindow(), true);
+        d.showInCenter();
 
-        pinSwitcher->setChecked(LocalPIN::instance()->enabled() ? true : false);
+        pinSwitcher->setChecked(LocalPIN::instance()->enabled());
 
         changePINWidget->setVisible(LocalPIN::instance()->enabled());
         autoLockWidget->setVisible(LocalPIN::instance()->enabled());
     });
 
-    auto changePINLink = new TextEmojiWidget(scrollArea, Fonts::appFontScaled(15), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY));
+    auto changePINLink = new TextEmojiWidget(_parent, Fonts::appFontScaled(15), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY));
+    Testing::setAccessibleName(changePINLink, qsl("AS PrivacyPage changePinLock"));
     Utils::grabTouchWidget(changePINLink);
     changePINLink->setCursor(QCursor(Qt::CursorShape::PointingHandCursor));
     changePINLink->setText(QT_TRANSLATE_NOOP("settings", "Change passcode"));
-    QObject::connect(changePINLink, &TextEmojiWidget::clicked, scrollArea, [scrollArea]()
+    QObject::connect(changePINLink, &TextEmojiWidget::clicked, []()
     {
-        auto codeWidget = new LocalPINWidget(LocalPINWidget::Mode::ChangePIN, scrollArea);
-
-        auto generalDialog = std::make_unique<GeneralDialog>(codeWidget, Utils::InterConnector::instance().getMainWindow(), true);
-        generalDialog->showInCenter();
+        auto codeWidget = new LocalPINWidget(LocalPINWidget::Mode::ChangePIN, nullptr);
+        GeneralDialog d(codeWidget, Utils::InterConnector::instance().getMainWindow(), true);
+        d.showInCenter();
     });
 
     auto changePINLayout = Utils::emptyVLayout(changePINWidget);
@@ -220,8 +217,8 @@ void GeneralSettingsWidget::Creator::initSecurity(QWidget* _parent)
     auto hotkeyHintLabel = new QLabel(_parent);
     hotkeyHintLabel->setWordWrap(true);
     hotkeyHintLabel->setFont(Fonts::appFontScaled(15, Fonts::FontWeight::Normal));
-    hotkeyHintLabel->setStyleSheet(qsl("color: #7e848f"));
-    const QString hotkey = (platform::is_apple() ? KeySymbols::Mac::command : qsl("Ctrl")) + ql1s(" + L");
+    hotkeyHintLabel->setStyleSheet(qsl("color: %1").arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_PRIMARY)));
+    const QString hotkey = (platform::is_apple() ? KeySymbols::Mac::command : qsl("Ctrl")) % u" + L";
     hotkeyHintLabel->setText(QT_TRANSLATE_NOOP("settings", "To manually lock the screen press %1").arg(hotkey));
 
     auto thirdLayout = Utils::emptyHLayout();
@@ -233,7 +230,7 @@ void GeneralSettingsWidget::Creator::initSecurity(QWidget* _parent)
     extraLayout->addSpacing(Utils::scale_value(36));
     extraLayout->addWidget(autoLockWidget);
     thirdLayout->addLayout(extraLayout);
-    secondLayout->addLayout(thirdLayout);
+    _layout->addLayout(thirdLayout);
 
     auto autoLockLayout = Utils::emptyVLayout(autoLockWidget);
 
@@ -256,51 +253,141 @@ void GeneralSettingsWidget::Creator::initSecurity(QWidget* _parent)
 
     auto current = it - lockTimeoutValues.begin();
     GeneralCreator::addDropper(
-                _parent,
-                autoLockLayout,
-                QT_TRANSLATE_NOOP("settings", "Auto lock"),
-                true,
-                lockTimeoutDescriptions,
-                current /* selected index */,
-                -1 /* width */,
-                [lockTimeoutValues](QString v, int index, TextEmojiWidget*)
-    {
-        LocalPIN::instance()->setLockTimeout(lockTimeoutValues[index]);
-    }, [](bool) -> QString { return QString(); });
+        _parent,
+        autoLockLayout,
+        QT_TRANSLATE_NOOP("settings", "Auto lock"),
+        true,
+        lockTimeoutDescriptions,
+        current /* selected index */,
+        -1 /* width */,
+        [values = std::move(lockTimeoutValues)](const QString&, int index, TextEmojiWidget*)
+        {
+            LocalPIN::instance()->setLockTimeout(values[index]);
+        });
 
     autoLockLayout->addSpacing(Utils::scale_value(36));
+}
 
+static void initIgnored(QVBoxLayout* _layout, QWidget* _parent)
+{
+    auto ignorelistLink = new LabelEx(_parent);
+    Testing::setAccessibleName(ignorelistLink, qsl("AS PrivacyPage ignoreList"));
+    ignorelistLink->setFont(Fonts::appFontScaled(15));
+    ignorelistLink->setColors(Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY),
+        Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY_HOVER),
+        Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY_ACTIVE));
+    ignorelistLink->setText(QT_TRANSLATE_NOOP("settings", "Ignore list"));
+    ignorelistLink->setCursor(Qt::PointingHandCursor);
+    Utils::grabTouchWidget(ignorelistLink);
+
+    auto thirdLayout = Utils::emptyHLayout();
+    thirdLayout->addSpacing(Utils::scale_value(20));
+    thirdLayout->addWidget(ignorelistLink);
+    _layout->addLayout(thirdLayout);
+
+    QObject::connect(ignorelistLink, &LabelEx::clicked, _parent, [_parent]()
     {
-        auto ignorelistLink = new TextEmojiWidget(scrollArea, Fonts::appFontScaled(15), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY));
-
-        Utils::grabTouchWidget(ignorelistLink);
-        ignorelistLink->setCursor(Qt::PointingHandCursor);
-        ignorelistLink->setText(QT_TRANSLATE_NOOP("settings", "Ignore list"));
-        extraLayout->addWidget(ignorelistLink);
-
-        QObject::connect(ignorelistLink, &TextEmojiWidget::clicked, scrollArea, [scrollArea]()
+        auto conn = std::make_shared<QMetaObject::Connection>();
+        *conn = QObject::connect(GetDispatcher(), &core_dispatcher::recvPermitDeny, _parent, [conn, _parent](const bool _isEmpty)
         {
-            auto conn = std::make_shared<QMetaObject::Connection>();
-            *conn = QObject::connect(GetDispatcher(), &core_dispatcher::recvPermitDeny, scrollArea, [conn, scrollArea](const bool _isEmpty)
+            QObject::disconnect(*conn);
+
+            GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::ignorelist_open);
+
+            SelectContactsWidget* ignoredDialog = new SelectContactsWidget(
+                Logic::getIgnoreModel(),
+                Logic::MembersWidgetRegim::IGNORE_LIST,
+                QT_TRANSLATE_NOOP("popup_window", "Ignore list"),
+                QT_TRANSLATE_NOOP("popup_window", "Close"),
+                _parent);
+
+            ignoredDialog->UpdateViewForIgnoreList(_isEmpty);
+            ignoredDialog->show();
+            ignoredDialog->deleteLater();
+        });
+
+        Logic::updateIgnoredModel({});
+        Logic::ContactListModel::getIgnoreList();
+    });
+}
+
+static void initAccountSecurity(QVBoxLayout* _layout, QWidget* _parent)
+{
+    _layout->addSpacing(Utils::scale_value(40));
+    GeneralCreator::addHeader(_parent, _layout, QT_TRANSLATE_NOOP("settings", "Account Security"), 20);
+    _layout->addSpacing(Utils::scale_value(8));
+
+    auto sessionsBtn = new PageOpenerWidget(_parent, getSessionsButtonCaption());
+    Testing::setAccessibleName(sessionsBtn, qsl("AS PrivacyPage sessionsList"));
+    QObject::connect(sessionsBtn, &PageOpenerWidget::clicked, _parent, []()
+    {
+        Q_EMIT Utils::InterConnector::instance().showSettingsHeader(QT_TRANSLATE_NOOP("settings", "Session List"));
+        Q_EMIT Utils::InterConnector::instance().generalSettingsShow((int)Utils::CommonSettingsType::CommonSettingsType_Sessions);
+    });
+    QObject::connect(sessionsBtn, &PageOpenerWidget::shown, GetDispatcher(), &core_dispatcher::requestSessionsList);
+    QObject::connect(GetDispatcher(), &core_dispatcher::activeSessionsList, sessionsBtn, [sessionsBtn](const std::vector<Data::SessionInfo>& _sessions)
+    {
+        if (_sessions.empty())
+            sessionsBtn->setText(getSessionsButtonCaption());
+        else
+            sessionsBtn->setText(getSessionsButtonCaption() % u" (" % QString::number(_sessions.size()) % u')');
+    });
+
+    _layout->addWidget(sessionsBtn);
+}
+
+void GeneralSettingsWidget::Creator::initSecurity(QWidget* _parent)
+{
+    auto scrollArea = CreateScrollAreaAndSetTrScrollBarV(_parent);
+    scrollArea->setStyleSheet(qsl("QWidget{border: none; background-color: %1;}").arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE)));
+    scrollArea->setWidgetResizable(true);
+    Utils::grabTouchWidget(scrollArea->viewport(), true);
+
+    auto mainWidget = new QWidget(scrollArea);
+    Utils::grabTouchWidget(mainWidget);
+    Utils::ApplyStyle( mainWidget, Styling::getParameters().getGeneralSettingsQss());
+
+    auto mainLayout = Utils::emptyVLayout(mainWidget);
+    mainLayout->setAlignment(Qt::AlignTop);
+    mainLayout->setContentsMargins(0, Utils::scale_value(36), 0, Utils::scale_value(36));
+
+    scrollArea->setWidget(mainWidget);
+
+    auto layout = Utils::emptyHLayout(_parent);
+    Testing::setAccessibleName(scrollArea, qsl("AS PrivacyPage scrollArea"));
+    layout->addWidget(scrollArea);
+
+    initPrivacy(mainLayout, scrollArea);
+
+    auto secondLayout = Utils::emptyVLayout();
+    secondLayout->setAlignment(Qt::AlignTop);
+    mainLayout->addLayout(secondLayout);
+
+    if constexpr (platform::is_windows())
+    {
+        auto exeFileSwitcher = GeneralCreator::addSwitcher(
+            scrollArea,
+            secondLayout,
+            QT_TRANSLATE_NOOP("settings", "Do not ask when running executable files"),
+            Ui::get_gui_settings()->get_value<bool>(settings_exec_files_without_warning, settings_exec_files_without_warning_default()),
+            [](bool checked) -> QString
+        {
+            Ui::get_gui_settings()->set_value<bool>(settings_exec_files_without_warning, checked);
+            return {};
+        });
+        Testing::setAccessibleName(exeFileSwitcher, qsl("AS PrivacyPage askExucutableRunSetting"));
+
+        connect(Ui::get_gui_settings(), &Ui::qt_gui_settings::changed, exeFileSwitcher, [exeFileSwitcher](const auto& key)
+        {
+            if (key == ql1s(settings_exec_files_without_warning))
             {
-                QObject::disconnect(*conn);
-
-                GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::ignorelist_open);
-
-                SelectContactsWidget* ignoredDialog = new SelectContactsWidget(
-                    Logic::getIgnoreModel(),
-                    Logic::MembersWidgetRegim::IGNORE_LIST,
-                    QT_TRANSLATE_NOOP("popup_window", "Ignore list"),
-                    QT_TRANSLATE_NOOP("popup_window", "Close"),
-                    scrollArea);
-
-                ignoredDialog->UpdateViewForIgnoreList(_isEmpty);
-                ignoredDialog->show();
-                ignoredDialog->deleteLater();
-            });
-
-            Logic::updateIgnoredModel({});
-            Logic::ContactListModel::getIgnoreList();
+                QSignalBlocker sb(exeFileSwitcher);
+                exeFileSwitcher->setChecked(get_gui_settings()->get_value<bool>(settings_exec_files_without_warning, settings_exec_files_without_warning_default()));
+            }
         });
     }
+
+    initPasscode(secondLayout, scrollArea);
+    initIgnored(secondLayout, scrollArea);
+    initAccountSecurity(secondLayout, scrollArea);
 }

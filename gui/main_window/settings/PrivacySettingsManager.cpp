@@ -27,7 +27,7 @@ namespace Logic
         const auto it = setCallbacks_.emplace(Ui::GetDispatcher()->post_message_to_core("privacy_settings/set", collection.get()), setCallbackInfo(std::move(_callback), _object));
         assert(it.second);
 
-        QTimer::singleShot(getTimeout().count(), this, [this, _seq = it.first->first]()
+        QTimer::singleShot(getTimeout(), this, [this, _seq = it.first->first]()
         {
             onSetValueResult(_seq, false);
         });
@@ -78,7 +78,7 @@ namespace Logic
             }
         });
 
-        QTimer::singleShot(getTimeout().count(), this, [seq = getSeq_, onFailure, this]()
+        QTimer::singleShot(getTimeout(), this, [seq = getSeq_, onFailure, this]()
         {
             if (seq == getSeq_)
                 onFailure();

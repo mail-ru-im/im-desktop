@@ -48,7 +48,7 @@ namespace Previewer
 
         void closeContextMenu(QPrivateSignal) const;
 
-    public slots:
+    public Q_SLOTS:
         void closeGallery();
 
         void showMinimized();
@@ -65,7 +65,7 @@ namespace Previewer
         void paintEvent(QPaintEvent* _event) override;
         bool event(QEvent* _event) override;
 
-    private slots:
+    private Q_SLOTS:
         void updateControlsHeight(int _add);
 
         void onPrevClicked();
@@ -92,6 +92,7 @@ namespace Previewer
         void onGoToMessage();
         void onCopy();
         void onOpenContact();
+        void onSaveToFavorites();
 
         void onDelayTimeout();
 

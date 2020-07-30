@@ -17,8 +17,8 @@ namespace core
     {
         class mrim_get_key : public wim_packet
         {
-            virtual int32_t init_request(std::shared_ptr<core::http_request_simple> _request) override;
-            virtual int32_t parse_response(std::shared_ptr<core::tools::binary_stream> response) override;
+            virtual int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
+            virtual int32_t parse_response(const std::shared_ptr<core::tools::binary_stream>& response) override;
 
             std::string email_;
             std::string mrim_key_;

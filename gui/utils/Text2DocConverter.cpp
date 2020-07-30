@@ -138,7 +138,7 @@ namespace Logic
             _edit.setUpdatesEnabled(true);
         }
 
-        emit (_edit.document()->contentsChanged());
+        Q_EMIT (_edit.document()->contentsChanged());
     }
 
     void Text4Edit(const QString& _text, Ui::TextEditEx& _edit, const Text2DocHtmlMode _htmlMode, const bool _convertLinks, Emoji::EmojiSizePx _emojiSize)
@@ -161,7 +161,7 @@ namespace Logic
 
             _cursor.beginEditBlock();
 
-            converter.Convert(_text, _cursor, _htmlMode, _convertLinks, false, nullptr, _emojiSize, QTextCharFormat::AlignBaseline);
+            converter.Convert(_text, _cursor, _htmlMode, _convertLinks, false, nullptr, _emojiSize, QTextCharFormat::AlignBottom);
 
             _cursor.endEditBlock();
 
@@ -170,7 +170,7 @@ namespace Logic
             _edit.setUpdatesEnabled(true);
         }
 
-        emit (_edit.document()->contentsChanged());
+        Q_EMIT (_edit.document()->contentsChanged());
     }
 
     void Text4EditEmoji(const QString& text, Ui::TextEditEx& _edit, Emoji::EmojiSizePx _emojiSize, const QTextCharFormat::VerticalAlignment _aligment)
@@ -194,7 +194,7 @@ namespace Logic
             _edit.mergeResources(converter.GetResources());
             _edit.setUpdatesEnabled(true);
         }
-        emit (_edit.document()->contentsChanged());
+        Q_EMIT (_edit.document()->contentsChanged());
     }
 
     void Text2Doc(
@@ -208,9 +208,9 @@ namespace Logic
         Text2DocConverter converter;
         {
             QSignalBlocker sb(cursor.document());
-            converter.Convert(text, cursor, htmlMode, convertLinks, false, uriCallback, _emojiSize, QTextCharFormat::AlignBaseline);
+            converter.Convert(text, cursor, htmlMode, convertLinks, false, uriCallback, _emojiSize, QTextCharFormat::AlignBottom);
         }
-        emit (cursor.document()->contentsChanged());
+        Q_EMIT (cursor.document()->contentsChanged());
     }
 
     void CutText(
@@ -237,7 +237,7 @@ namespace Logic
         auto term_width = 0;
         while (term_width < _width && symb_index < term_pos + term_in_text.size())
         {
-            auto width = converter.GetSymbolWidth(text, symb_index, _term_metrics, htmlMode, convertLinks, false, uriCallback, Emoji::EmojiSizePx::Auto, QTextCharFormat::AlignBaseline, true);
+            auto width = converter.GetSymbolWidth(text, symb_index, _term_metrics, htmlMode, convertLinks, false, uriCallback, Emoji::EmojiSizePx::Auto, QTextCharFormat::AlignBottom, true);
             term_width += width;
         }
 
@@ -260,7 +260,7 @@ namespace Logic
                 auto copy_rigth_pos = rigth_pos;
                 if (rigth_pos < text.size())
                 {
-                    right_width += converter.GetSymbolWidth(text, rigth_pos, _term_metrics, htmlMode, convertLinks, false, uriCallback, Emoji::EmojiSizePx::Auto, QTextCharFormat::AlignBaseline, true);
+                    right_width += converter.GetSymbolWidth(text, rigth_pos, _term_metrics, htmlMode, convertLinks, false, uriCallback, Emoji::EmojiSizePx::Auto, QTextCharFormat::AlignBottom, true);
                     if (right_width + left_width + term_width > _width)
                     {
                         rigth_pos = copy_rigth_pos;
@@ -271,7 +271,7 @@ namespace Logic
                 auto copy_left_pos = left_pos;
                 if (left_pos > 0)
                 {
-                    left_width += converter.GetSymbolWidth(text, left_pos, _term_metrics, htmlMode, convertLinks, false, uriCallback, Emoji::EmojiSizePx::Auto, QTextCharFormat::AlignBaseline, false);
+                    left_width += converter.GetSymbolWidth(text, left_pos, _term_metrics, htmlMode, convertLinks, false, uriCallback, Emoji::EmojiSizePx::Auto, QTextCharFormat::AlignBottom, false);
                     if (right_width + left_width + term_width > _width)
                     {
                         left_pos = copy_left_pos;
@@ -410,7 +410,7 @@ namespace
                 return (int32_t)_emojiSize;
             }
 
-            auto result = metrics.width(text.mid(ind, 1));
+            auto result = metrics.horizontalAdvance(text.mid(ind, 1));
             ind += 1;
             return result;
         }
@@ -437,7 +437,7 @@ namespace
                 return (int32_t)_emojiSize;
             }
 
-            auto result = metrics.width(text.mid(ind, 1));
+            auto result = metrics.horizontalAdvance(text.mid(ind, 1));
             ind -= 1;
             return result;
         }
@@ -472,7 +472,7 @@ namespace
     {
         Writer_ = _cursor;
 
-        ReplaceEmoji(_code, Emoji::EmojiSizePx::Auto, QTextCharFormat::AlignBaseline);
+        ReplaceEmoji(_code, Emoji::EmojiSizePx::Auto, QTextCharFormat::AlignBottom);
 
         return Resources_;
     }
@@ -887,7 +887,7 @@ namespace
         else
         {
             QString str = Emoji::EmojiCode::toQString(_code);
-            resource_name = str % ql1c('_') % QString::number(++uniq_index);
+            resource_name = str % u'_' % QString::number(++uniq_index);
             Resources_[resource_name] = std::move(str);
         }
 
@@ -912,9 +912,9 @@ namespace
 
         const auto bufferPos1 = Buffer_.length();
 
-        const auto prefix = _url.is_email() ? ql1s("<a type=\"email\" href=\"mailto:") : ql1s("<a href=\"");
+        const QStringView prefix = _url.is_email() ? u"<a type=\"email\" href=\"mailto:" : u"<a href=\"";
 
-        Buffer_ += prefix % QString::fromUtf8(_url.url_.c_str()) % ql1s("\">") % displayText % ql1s("</a>");
+        Buffer_ += prefix % QString::fromUtf8(_url.url_.c_str()) % u"\">" % displayText % u"</a>";
 
         const auto bufferPos2 = Buffer_.length();
 
@@ -926,7 +926,7 @@ namespace
 
     void Text2DocConverter::ConvertMention(const QStringRef & _sn, const QString & _friendly)
     {
-        Buffer_ += ql1s("<a href=\"@[") % _sn % ql1s("]\">") % _friendly.toHtmlEscaped() % ql1s("</a>");
+        Buffer_ += u"<a href=\"@[" % _sn % u"]\">" % _friendly.toHtmlEscaped() % u"</a>";
     }
 
     void Text2DocConverter::MakeUniqueResources(const bool _make)

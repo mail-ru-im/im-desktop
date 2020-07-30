@@ -20,10 +20,10 @@ namespace Ui
         qreal currentOpacity() const;
         void setOpacity(const double _opacity);
 
-    signals:
+    Q_SIGNALS:
         void fadeOutStarted();
 
-    public slots:
+    public Q_SLOTS:
         void fadeIn();
         void fadeOut();
 
@@ -51,10 +51,10 @@ namespace Ui
     {
         Q_OBJECT
 
-    signals:
+    Q_SIGNALS:
         void fadeOutStarted();
 
-    public slots:
+    public Q_SLOTS:
 
         void fadeIn();
         void fadeOut();
@@ -66,7 +66,7 @@ namespace Ui
         virtual void hoverOn() = 0;
         virtual void hoverOff() = 0;
 
-    signals:
+    Q_SIGNALS:
         void moved(QPoint);
 
     protected:
@@ -169,7 +169,7 @@ namespace Ui
 
         virtual void init();
 
-    public slots:
+    public Q_SLOTS:
 
         void updatePos();
 
@@ -195,7 +195,7 @@ namespace Ui
         std::function<QSize()> getContentSize_;
         QScrollBar* scrollBar_;
 
-    private slots:
+    private Q_SLOTS:
         void onScrollBtnMoved(QPoint);
 
     private:

@@ -53,21 +53,11 @@ namespace
 
 namespace Ui::Smiles
 {
-    StickerPreview::StickerPreview(
-        QWidget* _parent,
-        const int32_t _setId,
-        const QString& _stickerId,
-        Context _context)
+    StickerPreview::StickerPreview(QWidget* _parent, const int32_t _setId, const QString& _stickerId, Context _context)
         : QWidget(_parent)
-        , setId_(_setId)
-        , stickerId_(_stickerId)
         , context_(_context)
     {
-        QObject::connect(GetDispatcher(), &core_dispatcher::onSticker, this, [this](
-            const qint32 _error,
-            const qint32 _setId,
-            const qint32 _stickerId,
-            const QString& _fsId)
+        connect(GetDispatcher(), &core_dispatcher::onSticker, this, [this](const qint32, const qint32, const qint32, const QString& _fsId)
         {
             if (_fsId == stickerId_)
             {
@@ -147,9 +137,7 @@ namespace Ui::Smiles
 
         QPainter p(this);
         p.setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
-        QColor color = Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT_INVERSE);
-        color.setAlphaF(0.9);
-        p.fillRect(clientRect, color);
+        p.fillRect(clientRect, Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT_INVERSE, 0.9));
 
         if (!player_)
             drawSticker(p);
@@ -159,7 +147,7 @@ namespace Ui::Smiles
 
     void StickerPreview::mouseReleaseEvent(QMouseEvent* _e)
     {
-        emit needClose();
+        Q_EMIT needClose();
     }
 
     void StickerPreview::onGifLoaded(const QString &_path)

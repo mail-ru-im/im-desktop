@@ -24,12 +24,12 @@ namespace Logic
 
     bool MentionSuggest::isServiceItem() const
     {
-        return aimId_.startsWith(ql1c('~'));
+        return aimId_.startsWith(u'~');
     }
 
     void MentionSuggest::checkNick()
     {
-        if (aimId_.contains(ql1c('@')))
+        if (aimId_.contains(u'@'))
             nick_ = aimId_;
     }
 }

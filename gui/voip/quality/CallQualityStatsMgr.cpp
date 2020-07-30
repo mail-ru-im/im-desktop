@@ -40,7 +40,7 @@ void CallQualityStatsMgr::onVoipCallEndedStat(const voip_manager::CallEndStat& _
 
     if (shouldShowStarsPopup(_stat))
     {
-        emit showCallQualityStarsPopup();
+        Q_EMIT showCallQualityStarsPopup();
     }
 }
 
@@ -205,7 +205,6 @@ bool CallQualityStatsMgr::shouldShowStarsPopup(const voip_manager::CallEndStat& 
                                              callsCount()) != qualityStarsPopupConfig_.showOnCallNumber().end();
 
     return showOnCurrentCallNumber &&
-           _stat.connectionEstablished() &&
             _stat.callTimeInSecs() > qualityStarsPopupConfig_.showOnDurationMin();
 }
 

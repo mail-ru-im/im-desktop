@@ -16,7 +16,9 @@ namespace Ui
         EnableNotifications,
         DisableNotifications,
         DeleteAndLeave,
+        CancelJoin,
         Unblock,
+        Start,
     };
 
     class InputPanelReadonly : public QWidget, public StyledInputElement
@@ -41,6 +43,8 @@ namespace Ui
         void notifClicked();
         void unblockClicked();
         void leaveClicked();
+        void cancelJoinClicked();
+        void startClicked();
 
         std::string getStatsChatTypeReadonly() const;
 

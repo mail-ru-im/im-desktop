@@ -12,7 +12,6 @@ namespace
 {
     constexpr std::chrono::milliseconds getAnimDuration() noexcept { return std::chrono::milliseconds(100); }
     constexpr std::chrono::milliseconds longTapTimeout() noexcept { return std::chrono::milliseconds(250); }
-    constexpr std::chrono::milliseconds autoDelayTimeout() noexcept { return std::chrono::milliseconds(100); }
 
     int normalIconSize()
     {
@@ -66,7 +65,7 @@ namespace
 
                 p.drawEllipse(Utils::unscale_bitmap(res.rect()));
 
-                const auto pm = Utils::renderSvgScaled(qsl(":/send"), QSize(20, 20), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT));
+                const auto pm = Utils::renderSvgScaled(qsl(":/send"), QSize(20, 20), Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE));
                 p.drawPixmap(Utils::scale_value(6), (res.height() - pm.height()) / 2 / Utils::scale_bitmap_ratio(), pm);
             }
             return res;
@@ -100,22 +99,22 @@ namespace Ui
         connect(this, &ClickableWidget::pressChanged, this, &SubmitButton::onMouseStateChanged);
 
         longTapTimer_.setSingleShot(true);
-        longTapTimer_.setInterval(longTapTimeout().count());
+        longTapTimer_.setInterval(longTapTimeout());
 
         connect(&longTapTimer_, &QTimer::timeout, this, [this]()
         {
             if (isHovered())
-                emit longTapped(QPrivateSignal());
+                Q_EMIT longTapped(QPrivateSignal());
         });
 
         longPressTimer_.setSingleShot(true);
-        longPressTimer_.setInterval(longTapTimeout().count());
+        longPressTimer_.setInterval(longTapTimeout());
         connect(&longPressTimer_, &QTimer::timeout, this, [this]()
         {
             if (hasFocus())
             {
                 setIsUnderLongPress(true);
-                emit longPressed(QPrivateSignal());
+                Q_EMIT longPressed(QPrivateSignal());
             }
         });
     }
@@ -267,7 +266,7 @@ namespace Ui
         if (isPressed())
         {
             onHoverChanged();
-            emit mouseMovePressed(QPrivateSignal());
+            Q_EMIT mouseMovePressed(QPrivateSignal());
         }
     }
 

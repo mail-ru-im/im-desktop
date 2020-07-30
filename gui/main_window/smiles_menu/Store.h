@@ -244,8 +244,6 @@ namespace Ui
 
             bool syncedWithServer_;
 
-            std::shared_ptr<bool> ref_;
-
             anim::Animation scrollAnimationUp_;
             anim::Animation scrollAnimationDown_;
 
@@ -282,7 +280,6 @@ namespace Ui
 
             PacksView* packs_;
             bool syncedWithServer_;
-            std::shared_ptr<bool> ref_;
             QWidget* noResultsWidget_;
             bool searchRequested_;
 
@@ -316,7 +313,7 @@ namespace Ui
         private Q_SLOTS:
 
             void touchScrollStateChanged(QScroller::State _state);
-            void onSetBigIcon(const qint32 _error, const qint32 _setId);
+            void onSetBigIcon(const qint32 _setId);
             void onStickers();
             void onStore();
             void onSearchStore();

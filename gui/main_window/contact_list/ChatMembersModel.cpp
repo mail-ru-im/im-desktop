@@ -5,7 +5,9 @@
 #include "../../my_info.h"
 #include "../../cache/avatars/AvatarStorage.h"
 #include "../../utils/utils.h"
-#include "../friendly/FriendlyContainer.h"
+#include "../containers/StatusContainer.h"
+#include "../containers/LastseenContainer.h"
+#include "../../search/ContactSearcher.h"
 
 namespace
 {
@@ -22,18 +24,29 @@ namespace Logic
     ChatMembersModel::ChatMembersModel(const std::shared_ptr<Data::ChatInfo>& _info, QObject *_parent)
         : AbstractSearchModel(_parent)
         , membersCount_(0)
+        , countFirstCheckedMembers_(0)
         , isDoingRequest_(false)
         , mode_(MembersMode::All)
         , timerSearch_(new QTimer(this))
+        , contactSearcher_(new ContactSearcher(this))
+        , checkMode_(CheckMode::Force)
     {
         updateInfo(_info);
         connect(GetAvatarStorage(), &AvatarStorage::avatarChanged, this, &ChatMembersModel::onAvatarLoaded);
         connect(Ui::GetDispatcher(), &Ui::core_dispatcher::chatMembersPage, this, &ChatMembersModel::onChatMembersPage);
         connect(Ui::GetDispatcher(), &Ui::core_dispatcher::searchChatMembersPage, this, &ChatMembersModel::onSearchChatMembersPage);
+        connect(Logic::GetStatusContainer(), &Logic::StatusContainer::statusChanged, this, [this](const QString& _aimid)
+        {
+            onAvatarLoaded(_aimid);
+        });
+        connect(contactSearcher_, &ContactSearcher::allResults, this, &ChatMembersModel::onContactsServer);
 
         timerSearch_->setSingleShot(true);
-        timerSearch_->setInterval(typingTimeout.count());
+        timerSearch_->setInterval(typingTimeout);
         connect(timerSearch_, &QTimer::timeout, this, &ChatMembersModel::doSearch);
+
+        contactSearcher_->setExcludeChats(SearchDataSource::localAndServer);
+        contactSearcher_->setSearchSource(SearchDataSource::localAndServer);
     }
 
     ChatMembersModel::~ChatMembersModel()
@@ -51,7 +64,7 @@ namespace Logic
             if (item->getAimId() == _aimId)
             {
                 const auto idx = index(i);
-                emit dataChanged(idx, idx);
+                Q_EMIT dataChanged(idx, idx);
                 break;
             }
             ++i;
@@ -60,7 +73,7 @@ namespace Logic
 
     void ChatMembersModel::onChatMembersPage(const qint64 _seq, const std::shared_ptr<Data::ChatMembersPage>& _page, const int _pageSize, const bool _resetPages)
     {
-        if (!isSeqRelevant(_seq) || _pageSize < 0)
+        if (!isDoingRequest_ || !isSeqRelevant(_seq) || _pageSize < 0)
             return;
 
         if (_resetPages)
@@ -71,19 +84,34 @@ namespace Logic
 
     void ChatMembersModel::onSearchChatMembersPage(const qint64 _seq, const std::shared_ptr<Data::ChatMembersPage>& _page, const int _pageSize, const bool _resetPages)
     {
-        if (!isSeqRelevant(_seq) || _pageSize < 0 || searchPattern_.isEmpty())
+        if (!isDoingRequest_ || !isSeqRelevant(_seq) || _pageSize < 0 || searchPattern_.isEmpty())
+        {
+            if (!searchPattern_.isEmpty() && contactSearcher_->getSearchPattern() == searchPattern_)
+            {
+                Q_EMIT hideSearchSpinner();
+
+                addSearcherResults();
+                checkMode_ = CheckMode::Normal;
+
+                if (results_.empty() && results_.empty())
+                    Q_EMIT showNoSearchResults();
+            }
             return;
+        }
 
         if (_resetPages)
             clearResults();
 
+        checkMode_ = CheckMode::Normal;
         addResults(_page);
     }
 
     void ChatMembersModel::doSearch()
     {
+        if (isServerSearchEnabled_ && !searchPattern_.isEmpty())
+            contactSearcher_->search(searchPattern_);
         searchChatMembersPage();
-        emit showSearchSpinner();
+        Q_EMIT showSearchSpinner();
     }
 
     int ChatMembersModel::rowCount(const QModelIndex& _parent) const
@@ -103,6 +131,62 @@ namespace Logic
         return QVariant::fromValue(results_[curIndex]);
     }
 
+    void ChatMembersModel::clearCheckedItems()
+    {
+        checkedMembers_.clear();
+    }
+
+    int ChatMembersModel::getCheckedItemsCount() const
+    {
+        return checkedMembers_.size();
+    }
+
+    void ChatMembersModel::setCheckedItem(const QString& _name, bool _isChecked)
+    {
+        if (std::none_of(results_.cbegin(), results_.cend(), [&_name](const auto& _el) {return _el->getAimId() == _name; })
+            && std::none_of(checkedMembers_.cbegin(), checkedMembers_.cend(), [&_name](const auto& _el) {return _el == _name; }))
+            return;
+
+        if (_isChecked)
+            checkedMembers_.insert(_name);
+        else
+            checkedMembers_.erase(_name);
+    }
+
+    bool ChatMembersModel::isCheckedItem(const QString& _name) const
+    {
+        return checkedMembers_.find(_name) != checkedMembers_.end();
+    }
+
+    std::vector<QString> ChatMembersModel::getCheckedMembers() const
+    {
+        std::vector<QString> members;
+        members.reserve(getCheckedItemsCount());
+
+        std::copy(checkedMembers_.cbegin(), checkedMembers_.cend(), std::back_inserter(members));
+
+        return members;
+    }
+
+    void ChatMembersModel::setCheckedFirstMembers(int _count)
+    {
+        clearCheckedItems();
+
+        countFirstCheckedMembers_ = std::max(_count, 0);
+
+        if (!results_.isEmpty() && countFirstCheckedMembers_)
+        {
+            auto it = results_.cbegin();
+            const size_t limit = std::min(results_.size(), countFirstCheckedMembers_);
+            for (size_t i = 0; i < limit; ++i, ++it)
+                checkedMembers_.insert((*it)->getAimId());
+
+            countFirstCheckedMembers_ = 0;
+        }
+
+        Q_EMIT dataChanged(index(0), index(rowCount()));
+    }
+
     void ChatMembersModel::setFocus()
     {
         results_.clear();
@@ -118,13 +202,9 @@ namespace Logic
         searchPattern_ = _pattern.trimmed();
 
         if (searchPattern_.isEmpty())
-        {
             loadChatMembersPage();
-        }
         else
-        {
             timerSearch_->start();
-        }
     }
 
     unsigned int ChatMembersModel::getVisibleRowsCount() const
@@ -155,6 +235,7 @@ namespace Logic
     {
         mode_ = MembersMode::Blocked;
         clearResults();
+        clearCheckedItems();
         loadChatMembersPage();
     }
 
@@ -162,6 +243,7 @@ namespace Logic
     {
         mode_ = MembersMode::Pending;
         clearResults();
+        clearCheckedItems();
         loadChatMembersPage();
     }
 
@@ -169,6 +251,7 @@ namespace Logic
     {
         mode_ = MembersMode::Admins;
         clearResults();
+        clearCheckedItems();
         loadChatMembersPage();
     }
 
@@ -188,11 +271,26 @@ namespace Logic
         return cursorNextPage_.isEmpty();
     }
 
+    void ChatMembersModel::addIgnoredMember(const QString& _aimId)
+    {
+        ignoredMembers_.insert(_aimId);
+    }
+
+    bool ChatMembersModel::isIgnoredMember(const QString& _aimId)
+    {
+        return ignoredMembers_.find(_aimId) != ignoredMembers_.end();
+    }
+
+    void ChatMembersModel::clearIgnoredMember()
+    {
+        ignoredMembers_.clear();
+    }
+
     void ChatMembersModel::loadChatMembersPage()
     {
         Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
         collection.set_value_as_qstring("aimid", AimId_);
-        collection.set_value_as_uint("page_size", Logic::MembersPageSize);
+        collection.set_value_as_uint("page_size", std::max(Logic::MembersPageSize, static_cast<unsigned int>(countFirstCheckedMembers_)));
 
         if (cursorNextPage_.isEmpty())
             collection.set_value_as_qstring("role", getRoleName(mode_));
@@ -227,6 +325,7 @@ namespace Logic
     {
         mode_ = MembersMode::All;
         clearResults();
+        clearCheckedItems();
         loadChatMembersPage();
     }
 
@@ -241,14 +340,27 @@ namespace Logic
         YourRole_ = _info->YourRole_;
         membersCount_ = _info->MembersCount_;
 
+        std::vector<QString> firstCheckedInOrder;
+        firstCheckedInOrder.reserve(countFirstCheckedMembers_);
+
         if (mode_ == MembersMode::All)
         {
             for (const auto& member : _info->Members_)
             {
+                if (isIgnoredMember(member.AimId_))
+                    continue;
+
                 auto resItem = std::make_shared<Data::SearchResultChatMember>();
                 resItem->info_ = member;
                 if (!searchPattern_.isEmpty())
                     resItem->highlights_ = { searchPattern_ };
+
+                if (countFirstCheckedMembers_ > 0)
+                {
+                    countFirstCheckedMembers_--;
+                    firstCheckedInOrder.push_back(member.AimId_);
+                    checkedMembers_.insert(member.AimId_);
+                }
 
                 results_.push_back(std::move(resItem));
             }
@@ -256,7 +368,10 @@ namespace Logic
             //!! todo: temporarily for voip
             members_.assign(_info->Members_.cbegin(), _info->Members_.cend());
 
-            emit dataChanged(index(0), index(rowCount()));
+            Q_EMIT dataChanged(index(0), index(rowCount()));
+
+            if (!firstCheckedInOrder.empty())
+                Q_EMIT containsPreCheckedItems(firstCheckedInOrder);
         }
     }
 
@@ -282,51 +397,73 @@ namespace Logic
 
     bool ChatMembersModel::isAdmin() const
     {
-        return YourRole_ == ql1s("admin");
+        return YourRole_ == u"admin";
     }
 
     bool ChatMembersModel::isModer() const
     {
-        return YourRole_ == ql1s("moder");
+        return YourRole_ == u"moder";
     }
 
-    QString ChatMembersModel::getRoleName(MembersMode _mode) const
+    QStringView ChatMembersModel::getRoleName(MembersMode _mode) const
     {
         switch (_mode)
         {
         case MembersMode::All:
-            return qsl("members");
+            return u"members";
         case MembersMode::Admins:
-            return qsl("admins");
+            return u"admins";
         case MembersMode::Pending:
-            return qsl("pending");
+            return u"pending";
         case MembersMode::Blocked:
-            return qsl("blocked");
+            return u"blocked";
         }
-        return QString();
+        return {};
     }
 
     void ChatMembersModel::addResults(const std::shared_ptr<Data::ChatMembersPage>& _page)
     {
         cursorNextPage_ = _page->Cursor_;
 
+        std::vector<QString> firstCheckedInOrder;
+        firstCheckedInOrder.reserve(countFirstCheckedMembers_);
+
         for (const auto& member : _page->Members_)
         {
+            if (isIgnoredMember(member.AimId_))
+                continue;
+
+            if (contains(member.AimId_))
+                continue;
+
             auto resItem = std::make_shared<Data::SearchResultChatMember>();
             resItem->info_ = member;
             if (!searchPattern_.isEmpty())
                 resItem->highlights_ = { searchPattern_ };
 
+            if (countFirstCheckedMembers_ > 0 && checkMode_ == CheckMode::Force)
+            {
+                countFirstCheckedMembers_--;
+                firstCheckedInOrder.push_back(member.AimId_);
+                checkedMembers_.insert(member.AimId_);
+            }
+
             results_.push_back(std::move(resItem));
             members_.push_back(member);
         }
 
-        emit dataChanged(index(0), index(rowCount()));
+        if (contactSearcher_->getSearchPattern() == searchPattern_)
+            addSearcherResults();
 
-        emit hideSearchSpinner();
+        Q_EMIT dataChanged(index(0), index(rowCount()));
+
+        if (!firstCheckedInOrder.empty())
+            Q_EMIT containsPreCheckedItems(firstCheckedInOrder);
+
+        Q_EMIT hideSearchSpinner();
 
         if (!searchPattern_.isEmpty() && results_.empty())
-            emit showNoSearchResults();
+            Q_EMIT showNoSearchResults();
 
         isDoingRequest_ = false;
     }
@@ -340,10 +477,11 @@ namespace Logic
         sequences_.clear();
         cursorNextPage_.clear();
         members_.clear();
+        contactSearcher_->clear();
 
-        emit dataChanged(index(0), index(rowCount()));
-        emit hideNoSearchResults();
-        emit hideSearchSpinner();
+        Q_EMIT dataChanged(index(0), index(rowCount()));
+        Q_EMIT hideNoSearchResults();
+        Q_EMIT hideSearchSpinner();
     }
 
     void ChatMembersModel::setAimId(const QString& _aimId)
@@ -354,5 +492,50 @@ namespace Logic
     const std::vector<Data::ChatMemberInfo>&ChatMembersModel::getMembers() const
     {
         return members_;
+    }
+
+    void ChatMembersModel::add(const QString& _aimId)
+    {
+        if (_aimId.isEmpty())
+            return;
+
+        if (contains(_aimId))
+            return;
+
+        Data::ChatMemberInfo member;
+        member.AimId_ = _aimId;
+        member.Lastseen_ = Logic::GetLastseenContainer()->getLastSeen(_aimId);
+
+        auto resItem = std::make_shared<Data::SearchResultChatMember>();
+        resItem->info_ = std::move(member);
+        if (!searchPattern_.isEmpty())
+            resItem->highlights_ = { searchPattern_ };
+
+        results_.push_back(std::move(resItem));
+    }
+
+    void ChatMembersModel::onContactsServer()
+    {
+        if (contactSearcher_->getSearchPattern() != searchPattern_)
+            return;
+
+        Q_EMIT hideNoSearchResults();
+
+        addSearcherResults();
+
+        Q_EMIT dataChanged(index(0), index(rowCount()));
+
+        Q_EMIT hideSearchSpinner();
+
+        if (!searchPattern_.isEmpty() && results_.empty())
+            Q_EMIT showNoSearchResults();
+    }
+
+    void ChatMembersModel::addSearcherResults()
+    {
+        auto contactSearcherResults = contactSearcher_->getLocalResults();
+        contactSearcherResults.append(contactSearcher_->getServerResults());
+        for (const auto &res : as_const(contactSearcherResults))
+            add(res->getAimId());
     }
 }

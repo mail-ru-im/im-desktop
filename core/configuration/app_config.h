@@ -2,6 +2,7 @@
 
 #include "../namespaces.h"
 #include <boost/any.hpp>
+#include <boost/property_tree/ptree_fwd.hpp>
 #include <unordered_map>
 
 CORE_CONFIGURATION_NS_BEGIN
@@ -31,6 +32,8 @@ public:
         task_trace = 17,
         hide_keyword_pattern = 18,
         show_hidden_themes = 19,
+        sys_crash_handler_enabled = 20,
+        connect_by_ip = 21,
     };
 
     enum class gdpr_report_to_server_state
@@ -59,6 +62,8 @@ public:
     bool is_task_trace_enabled() const;
     bool is_hide_keyword_pattern() const;
     bool is_show_hidden_themes() const;
+    bool is_sys_crash_handler_enabled() const;
+    bool is_connect_by_ip_enabled() const;
 
     bool gdpr_user_has_agreed() const;
     int32_t gdpr_agreement_reported_to_server() const;

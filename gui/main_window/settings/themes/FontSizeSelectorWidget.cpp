@@ -38,6 +38,16 @@ namespace Ui
         , font_(Fonts::appFontScaled(_size, Fonts::FontWeight::SemiBold))
     {
         setFixedSize(fontVariantSize());
+        if (Testing::isEnabled)
+        {
+            switch (_size)
+            {
+            case 15: Testing::setAccessibleName(this, qsl("AS AppearancePage smallFont"));  break;
+            case 18: Testing::setAccessibleName(this, qsl("AS AppearancePage mediumFont"));  break;
+            case 22: Testing::setAccessibleName(this, qsl("AS AppearancePage largeFont"));  break;
+            default: Testing::setAccessibleName(this, qsl("AS AppearancePage unknownFont"));
+            }   
+        }
     }
 
     void FontSizeVariant::setSelected(bool _value)
@@ -123,6 +133,6 @@ namespace Ui
 
         variantList_->setCurrentIndex(_idx);
 
-        emit sizeSelected(variants_[_idx].second);
+        Q_EMIT sizeSelected(variants_[_idx].second);
     }
 }

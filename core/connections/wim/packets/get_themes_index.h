@@ -30,17 +30,15 @@ namespace core
 
             std::shared_ptr<core::tools::binary_stream> response_;
 
-            virtual int32_t init_request(std::shared_ptr<core::http_request_simple> _request) override;
-            virtual int32_t parse_response(std::shared_ptr<core::tools::binary_stream> _response) override;
+            virtual int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
+            virtual int32_t parse_response(const std::shared_ptr<core::tools::binary_stream>& _response) override;
 
         public:
-            bool support_async_execution() const override;
-
             get_themes_index(wim_packet_params _params, const std::string &etag);
             virtual ~get_themes_index();
 
             std::shared_ptr<core::tools::binary_stream> get_response() const;
-            std::string get_header_etag() const;
+            const std::string& get_header_etag() const;
         };
     }
 }

@@ -80,6 +80,7 @@ private:
     int64_t frontLoadSeq_;
     int64_t backLoadSeq_;
     QString initialLink_;
+    bool isFirstItemInitialized_;
 
     bool exhaustedFront_;
     bool exhaustedBack_;

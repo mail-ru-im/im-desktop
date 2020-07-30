@@ -5,6 +5,7 @@
 #include <set>
 
 #include "utils/InterConnector.h"
+#include "utils/features.h"
 #include "main_window/MainWindow.h"
 #include "controls/GeneralDialog.h"
 #include "controls/GeneralCreator.h"
@@ -69,7 +70,7 @@ namespace Ui
         Utils::grabTouchWidget(scrollArea->viewport(), true);
 
         auto layout = Utils::emptyHLayout(this);
-        Testing::setAccessibleName(scrollArea, qsl("AS settings scrollArea"));
+        Testing::setAccessibleName(scrollArea, qsl("AS AdditionalSettingsPage scrollArea"));
         layout->addWidget(scrollArea);
 
         mainWidget_ = new QWidget(scrollArea);
@@ -105,12 +106,13 @@ namespace Ui
         mainLayout_->setSpacing(getMargin());
 
         openLogsBtn_ = setupButton(qsl(":/background_icon"), QT_TRANSLATE_NOOP("popup_window", "Open logs path"));
-        Testing::setAccessibleName(openLogsBtn_, qsl("AS testers openLogsBtn_"));
+        Testing::setAccessibleName(openLogsBtn_, qsl("AS AdditionalSettingsPage openLogsButton"));
         clearCacheBtn_ = setupButton(qsl(":/background_icon"), QT_TRANSLATE_NOOP("popup_window", "Clear cache"));
-        Testing::setAccessibleName(clearCacheBtn_, qsl("AS testers clearCacheBtn_"));
+        Testing::setAccessibleName(clearCacheBtn_, qsl("AS AdditionalSettingsPage clearCacheButton"));
         clearAvatarsBtn_ = setupButton(qsl(":/background_icon"), QT_TRANSLATE_NOOP("popup_window", "Clear avatars"));
-        Testing::setAccessibleName(clearAvatarsBtn_, qsl("AS testers clearAvatarsBtn_"));
+        Testing::setAccessibleName(clearAvatarsBtn_, qsl("AS AdditionalSettingsPage clearAvatarsButton"));
         logCurrentMessagesModel_ = setupButton(qsl(":/background_icon"), QT_TRANSLATE_NOOP("popup_window", "Log messagesModel"));
+        Testing::setAccessibleName(clearAvatarsBtn_, qsl("AS AdditionalSettingsPage logMessageModelButton"));
 
         connect(this, &SettingsForTesters::openLogsPath, this, &SettingsForTesters::onOpenLogsPath);
         connect(openLogsBtn_, &QPushButton::clicked, this, [this]() {
@@ -118,13 +120,13 @@ namespace Ui
                                                   [this](core::icollection* _coll) {
                 Ui::gui_coll_helper coll(_coll, false);
                 const QString logsPath = QString::fromUtf8(coll.get_value_as_string("path"));
-                emit openLogsPath(logsPath);
+                Q_EMIT openLogsPath(logsPath);
             });
         });
 
         connect(logCurrentMessagesModel_, &QPushButton::clicked, this, []() {
             if (const auto contact = Logic::getContactListModel()->selectedContact(); !contact.isEmpty())
-                emit Utils::InterConnector::instance().logHistory(contact);
+                Q_EMIT Utils::InterConnector::instance().logHistory(contact);
         });
 
         connect(clearCacheBtn_, &QPushButton::clicked, this, [this]() {
@@ -154,22 +156,25 @@ namespace Ui
         fullLogModeCheckbox_ = GeneralCreator::addSwitcher(this, mainLayout_,
                                                            QT_TRANSLATE_NOOP("popup_window", "Enable full log mode"),
                                                            appConfig.IsFullLogEnabled(),
-                                                           [](bool enabled) -> QString
-                                                           {
-                                                               Q_UNUSED(enabled);
-                                                               return QString();
-                                                           },
-                                                           Utils::scale_value(36));
+                                                           {},
+                                                           Utils::scale_value(36), qsl("AS AdditionalSettingsPage enableFulllogSetting"));
 
         devShowMsgIdsCheckbox_ = GeneralCreator::addSwitcher(this, mainLayout_,
                                                              QT_TRANSLATE_NOOP("popup_window", "Display message IDs"),
                                                              appConfig.IsShowMsgIdsEnabled(),
-                                                             [](bool enabled) -> QString
-                                                             {
-                                                                 Q_UNUSED(enabled);
-                                                                 return QString();
-                                                             },
-                                                             Utils::scale_value(36));
+                                                             {},
+                                                             Utils::scale_value(36), qsl("AS AdditionalSettingsPage displayMsgIdsSetting"));
+
+        if (Features::hasConnectByIpOption())
+        {
+            connectByIpCheckbox_ = GeneralCreator::addSwitcher(this, mainLayout_,
+                QT_TRANSLATE_NOOP("popup_window", "Use internal DNS cache"),
+                appConfig.connectByIp(),
+                {},
+                Utils::scale_value(36), qsl("AS AdditionalSettingsPage useInternalDNS"));
+
+            connect(connectByIpCheckbox_, &Ui::SidebarCheckboxButton::checked, this, &SettingsForTesters::onToggleConnectByIp);
+        }
 
         connect(fullLogModeCheckbox_, &Ui::SidebarCheckboxButton::checked, this, &SettingsForTesters::onToggleFullLogMode);
         connect(devShowMsgIdsCheckbox_, &Ui::SidebarCheckboxButton::checked, this, &SettingsForTesters::onToggleShowMsgIdsMenu);
@@ -179,41 +184,24 @@ namespace Ui
             updatebleCheckbox_ = GeneralCreator::addSwitcher(this, mainLayout_,
                                                              QT_TRANSLATE_NOOP("popup_window", "Updatable"),
                                                              appConfig.IsUpdateble(),
-                                                             [](bool enabled) -> QString
-                                                             {
-                                                                 Q_UNUSED(enabled);
-                                                                 return QString();
-                                                             },
-                                                             Utils::scale_value(36));
+                                                             {},
+                                                             Utils::scale_value(36), qsl("AS AdditionalSettingsPage updatableSetting"));
 
             devSaveCallRTPdumpsCheckbox_ = GeneralCreator::addSwitcher(this, mainLayout_,
                                                                        QT_TRANSLATE_NOOP("popup_window", "Save call RTP dumps"),
-                                                                       appConfig.IsSaveCallRTPEnabled(),
-                                                                       [](bool enabled) -> QString
-                                                                       {
-                                                                           Q_UNUSED(enabled);
-                                                                           return QString();
-                                                                       });
+                                                                       appConfig.IsSaveCallRTPEnabled());
 
             devServerSearchCheckbox_ = GeneralCreator::addSwitcher(this, mainLayout_,
                                                                    QT_TRANSLATE_NOOP("popup_window", "Server search"),
                                                                    appConfig.IsServerSearchEnabled(),
-                                                                   [](bool enabled) -> QString
-                                                                   {
-                                                                       Q_UNUSED(enabled);
-                                                                       return QString();
-                                                                   },
-                                                                   Utils::scale_value(36));
+                                                                   {},
+                                                                   Utils::scale_value(36), qsl("AS AdditionalSettingsPage serverSearchSetting"));
 
             devCustomIdCheckbox_ = GeneralCreator::addSwitcher(this, mainLayout_,
                                                                QT_TRANSLATE_NOOP("popup_window", "Set dev_id"),
                                                                appConfig.hasCustomDeviceId(),
-                                                               [](bool enabled) -> QString
-                                                               {
-                                                                   Q_UNUSED(enabled);
-                                                                   return QString();
-                                                               },
-                                                               Utils::scale_value(36));
+                                                               {},
+                                                               Utils::scale_value(36), qsl("AS AdditionalSettingsPage setDevIdSetting"));
 
             connect(updatebleCheckbox_, &Ui::SidebarCheckboxButton::checked, this, &SettingsForTesters::onToggleUpdateble);
             connect(devSaveCallRTPdumpsCheckbox_, &Ui::SidebarCheckboxButton::checked, this, &SettingsForTesters::onToggleSaveRTPDumps);
@@ -225,6 +213,8 @@ namespace Ui
             auto updateUrlEdit = new LineEditEx(this);
             updateUrlEdit->setPlaceholderText(QT_TRANSLATE_NOOP("popup_window", "Update url, empty for default"));
             auto checkUpdateButton = new DialogButton(this, QT_TRANSLATE_NOOP("popup_window", "Check"));
+            Testing::setAccessibleName(checkUpdateButton, qsl("AS AdditionalSettingsPage checkUpdateButton"));
+            Testing::setAccessibleName(updateUrlEdit, qsl("AS AdditionalSettingsPage updateUrlInput"));
 
             connect(checkUpdateButton, &DialogButton::clicked, this, [updateUrlEdit]()
             {
@@ -254,6 +244,9 @@ namespace Ui
 
         if (devCustomIdCheckbox_ && devCustomIdCheckbox_->isChecked() != appConfig.hasCustomDeviceId())
             devCustomIdCheckbox_->setChecked(appConfig.hasCustomDeviceId());
+
+        if (connectByIpCheckbox_ && connectByIpCheckbox_->isChecked() != appConfig.connectByIp())
+            connectByIpCheckbox_->setChecked(appConfig.connectByIp());
     }
 
     void SettingsForTesters::onOpenLogsPath(const QString &logsPath)
@@ -321,6 +314,33 @@ namespace Ui
             initViewElementsFrom(GetAppConfig());
         }, this);
         Utils::removeOmicronFile();
+    }
+
+    void SettingsForTesters::onToggleConnectByIp(bool checked)
+    {
+        AppConfig appConfig = GetAppConfig();
+        appConfig.SetConnectByIp(checked);
+
+        ModifyAppConfig(std::move(appConfig), [this](core::icollection* _coll) {
+            initViewElementsFrom(GetAppConfig());
+        }, this);
+
+        const QString text = QT_TRANSLATE_NOOP("popup_window", "To change this option you must restart the application. Continue?");
+
+        const auto confirmed = Utils::GetConfirmationWithTwoButtons(
+            QT_TRANSLATE_NOOP("popup_window", "Cancel"),
+            QT_TRANSLATE_NOOP("popup_window", "Yes"),
+            text,
+            QT_TRANSLATE_NOOP("popup_window", "Restart"),
+            nullptr
+        );
+
+        if (confirmed)
+        {
+            Utils::restartApplication();
+
+            return;
+        }
     }
 
     SettingsForTesters::~SettingsForTesters()

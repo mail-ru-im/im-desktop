@@ -22,7 +22,7 @@ phone_login::phone_login(wim_packet_params params, phone_info _info)
 
 phone_login::~phone_login() = default;
 
-int32_t phone_login::init_request(std::shared_ptr<core::http_request_simple> _request)
+int32_t phone_login::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     std::stringstream ss_url;
     ss_url << urls::get_url(urls::url_type::smsreg_host) << std::string_view("/loginWithPhoneNumber.php?") <<

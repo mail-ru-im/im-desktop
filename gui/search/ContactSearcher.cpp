@@ -2,29 +2,81 @@
 
 #include "main_window/contact_list/ContactListModel.h"
 #include "main_window/contact_list/RecentsModel.h"
+#include "main_window/contact_list/FavoritesUtils.h"
 
 #include "ContactSearcher.h"
 #include "core_dispatcher.h"
 #include "utils/gui_coll_helper.h"
 #include "utils/utils.h"
 
+namespace
+{
+    bool compareWithPatternsFromOffset(const QString& _str, int _pos, const std::vector<std::vector<QString>>& _patterns)
+    {
+        const auto end = std::min(_pos + _patterns.size(), static_cast<size_t>(_str.size()));
+        auto match = false;
+        for (size_t i = _pos; i < end; i++)
+        {
+            match = false;
+
+            for (auto& pattern : _patterns[i - _pos])
+            {
+                if (pattern.size() != 1)
+                    continue;
+
+                match = (_str.at(i).toLower() == pattern.at(0).toLower());
+
+                if (match)
+                    break;
+            }
+
+            if (!match)
+                return false;
+        }
+
+        return match;
+    }
+
+    struct CompareResult
+    {
+        bool match_ = false;
+        size_t from_ = 0;
+    };
+
+    CompareResult compareWithPatterns(const QString& _str, const std::vector<std::vector<QString>>& _patterns)
+    {
+        if (static_cast<size_t>(_str.size()) < _patterns.size())
+            return CompareResult{false, 0};
+
+        for (auto i = 0u; i <= _str.size() - _patterns.size(); ++i)
+        {
+            if (compareWithPatternsFromOffset(_str, i, _patterns))
+                return CompareResult{true, i};
+        }
+
+        return CompareResult{false, 0};
+    }
+}
+
+
 namespace Logic
 {
     ContactSearcher::ContactSearcher(QObject * _parent)
         : AbstractSearcher(_parent)
-        , excludeChats_(false)
+        , excludeChats_(SearchDataSource::none)
         , hideReadonly_(false)
+        , forceAddFavorites_(false)
     {
         connect(Ui::GetDispatcher(), &Ui::core_dispatcher::searchedContactsLocal, this, &ContactSearcher::onLocalResults);
         connect(Ui::GetDispatcher(), &Ui::core_dispatcher::searchedContactsServer, this, &ContactSearcher::onServerResults);
     }
 
-    void ContactSearcher::setExcludeChats(const bool _exclude)
+    void ContactSearcher::setExcludeChats(SearchDataSource _exclude)
     {
         excludeChats_ = _exclude;
     }
 
-    bool ContactSearcher::getExcludeChats() const
+    SearchDataSource ContactSearcher::getExcludeChats() const
     {
         return excludeChats_;
     }
@@ -47,6 +99,11 @@ namespace Logic
     void ContactSearcher::setPhoneNumber(const QString &_phoneNumber)
     {
         phoneNumber_ = _phoneNumber;
+    }
+
+    void ContactSearcher::setForceAddFavorites(bool _enable)
+    {
+        forceAddFavorites_ = _enable;
     }
 
     void ContactSearcher::doLocalSearchRequest()
@@ -101,16 +158,20 @@ namespace Logic
 
         localResults_.reserve(localResults_.size() + _localResults.size());
 
+        auto hasFavorites = false;
+
         for (const auto& res : _localResults)
         {
             if (!res->isContact() && !res->isChat())
                 continue;
 
+            hasFavorites |= Favorites::isFavorites(res->getAimId());
+
             if (const auto ci = getContactListModel()->getContactItem(res->getAimId()))
             {
                 if (res->isChat())
                 {
-                    if (excludeChats_)
+                    if (excludeChats_ & SearchDataSource::local)
                         continue;
 
                     if (hideReadonly_ && ci->is_readonly())
@@ -121,7 +182,33 @@ namespace Logic
             }
         }
 
-        emit localResults();
+        if (forceAddFavorites_)
+        {
+            const auto& favoritesMatchingWords = Favorites::matchingWords();
+            unsigned int fixedPatternsCount = 0;
+            const auto searchPatterns = Utils::GetPossibleStrings(searchPattern_, fixedPatternsCount);
+
+            auto favoritesMatch = !searchPattern_.isEmpty() && !hasFavorites &&
+                    std::any_of(favoritesMatchingWords.begin(), favoritesMatchingWords.end(), [&searchPatterns](const auto& word)
+            {
+                return compareWithPatterns(word, searchPatterns).match_;
+            });
+
+            if (!hasFavorites && searchPattern_.isEmpty() || favoritesMatch)
+            {
+                auto favorites = std::make_shared<Data::SearchResultContactChatLocal>();
+                favorites->aimId_ = Favorites::aimId();
+
+                auto nameResult = compareWithPatterns(Favorites::name(), searchPatterns);
+
+                if (favoritesMatch && nameResult.match_)
+                    favorites->highlights_.push_back(Favorites::name().mid(nameResult.from_, searchPattern_.size()));
+
+                localResults_.push_back(favorites);
+            }
+        }
+
+        Q_EMIT localResults();
         onRequestReturned();
     }
 
@@ -136,21 +223,23 @@ namespace Logic
 
         for (const auto& res : _serverResults)
         {
-            const auto ci = getContactListModel()->getContactItem(res->getAimId());
-
             if (res->isChat())
             {
                 if (auto chat = std::static_pointer_cast<Data::SearchResultChat>(res))
                     getContactListModel()->updateChatInfo(chat->chatInfo_);
 
-                if (ci || excludeChats_)
+                const auto wasFoundLocally = std::any_of(localResults_.cbegin(), localResults_.cend(),
+                    [aimid = res->getAimId()](const auto& localResult) {
+                        return localResult->getAimId() == aimid;
+                    });
+                if (wasFoundLocally || (excludeChats_ & SearchDataSource::server))
                     continue;
             }
 
             serverResults_.push_back(res);
         }
 
-        emit serverResults();
+        Q_EMIT serverResults();
         onRequestReturned();
     }
 }

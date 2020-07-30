@@ -36,12 +36,12 @@ namespace Logic
         const bool _breakDocument = false,
         const Text2HtmlUriCallback _uriCallback = nullptr,
         const Emoji::EmojiSizePx _emojiSize = Emoji::EmojiSizePx::Auto,
-        const QTextCharFormat::VerticalAlignment _aligment = QTextCharFormat::AlignBaseline);
+        const QTextCharFormat::VerticalAlignment _aligment = QTextCharFormat::AlignBottom);
 
     void Text4Edit(const QString& _text, Ui::TextEditEx& _edit, const Text2DocHtmlMode _htmlMode, const bool _convertLinks, Emoji::EmojiSizePx _emojiSize);
     void Text4Edit(const QString& _text, Ui::TextEditEx& _edit, QTextCursor& _cursor, const Text2DocHtmlMode _htmlMode, const bool _convertLinks, Emoji::EmojiSizePx _emojiSize);
 
-    void Text4EditEmoji(const QString& text, Ui::TextEditEx& _edit, Emoji::EmojiSizePx _emojiSize = Emoji::EmojiSizePx::Auto, const QTextCharFormat::VerticalAlignment _aligment = QTextCharFormat::AlignBaseline);
+    void Text4EditEmoji(const QString& text, Ui::TextEditEx& _edit, Emoji::EmojiSizePx _emojiSize = Emoji::EmojiSizePx::Auto, const QTextCharFormat::VerticalAlignment _aligment = QTextCharFormat::AlignBottom);
 
     void Text2Doc(
         const QString &text,

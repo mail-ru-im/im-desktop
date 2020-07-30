@@ -15,12 +15,14 @@ public:
         const std::string &_contact_aimid
     );
 
+    virtual priority_t get_priority() const override { return priority_protocol(); }
+
 private:
     const int64_t up_to_id_;
 
     const std::string contact_aimid_;
 
-    virtual int32_t init_request(std::shared_ptr<core::http_request_simple> _request) override;
+    virtual int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
 
     virtual int32_t parse_response_data(const rapidjson::Value& _data) override;
 

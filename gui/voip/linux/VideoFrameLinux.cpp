@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "VideoFrameLinux.h"
 #include "../CommonUI.h"
+#include "../../core_dispatcher.h"
 
 extern "C" {
 void glfwSetRoot(void *root);
@@ -32,12 +33,15 @@ platform_linux::GraphicsPanelLinux::GraphicsPanelLinux(QWidget* _parent,
 {
     //glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 2);
     //glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
-    glfwWindowHint(GLFW_RESIZABLE, 1);
+    glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
+    glfwWindowHint(GLFW_MOUSE_PASSTHRU, Ui::GetDispatcher()->getVoipController().isCallVCS() ? GLFW_TRUE : GLFW_FALSE);
     std::lock_guard<std::mutex> lock(g_wnd_mutex);
     glfwSetRoot((void*)QWidget::winId());
     videoWindow_ = glfwCreateWindow(600, 400, "Video", NULL, NULL);
     glfwMakeContextCurrent(videoWindow_);
     glfwSetKeyCallback(videoWindow_, keyCallback);
+    glfwSetInputMode(videoWindow_, GLFW_STICKY_MOUSE_BUTTONS, 1);
+    glfwSetInputMode(videoWindow_, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
     {
         fprintf(stderr, "error: glad init failed\n");
@@ -57,6 +61,11 @@ platform_linux::GraphicsPanelLinux::~GraphicsPanelLinux()
 WId platform_linux::GraphicsPanelLinux::frameId() const
 {
     return (WId)videoWindow_;
+}
+
+void platform_linux::GraphicsPanelLinux::createdTalk(bool is_vcs)
+{
+    glfwSetWindowAttrib(videoWindow_, GLFW_MOUSE_PASSTHRU, is_vcs ? GLFW_TRUE : GLFW_FALSE);
 }
 
 void platform_linux::GraphicsPanelLinux::resizeEvent(QResizeEvent* _e)

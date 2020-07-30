@@ -18,7 +18,7 @@ namespace core {
 
         }
 
-        int32_t wim_allocate::init_request(std::shared_ptr<core::http_request_simple> _request) {
+        int32_t wim_allocate::init_request(const std::shared_ptr<core::http_request_simple>& _request) {
             if (!_request) { assert(false); return 1; }
             if (params_.a_token_.empty()) { assert(false); return 1; }
             if (params_.dev_id_.empty()) { assert(false); return 1; }
@@ -26,14 +26,11 @@ namespace core {
             std::stringstream ss_host;
             ss_host << urls::get_url(urls::url_type::webrtc_host) << std::string_view("/webrtc/alloc");
 
-            const time_t ts = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()) - params_.time_offset_;
-
             std::map<std::string, std::string> params;
-            params["a"] = escape_symbols(params_.a_token_);
+            params["aimsid"] = escape_symbols(params_.aimsid_);
             params["f"] = "json";
             params["k"] = params_.dev_id_;
             params["r"] = core::tools::system::generate_guid();
-            params["ts"] = tools::from_int64(ts);
 
             if (!_internal_params.empty()) {
                 auto amp_pos = std::string::npos;
@@ -57,8 +54,6 @@ namespace core {
                 } while(amp_pos != std::string::npos);
             }
 
-            auto sha256 = escape_symbols(get_url_sign(ss_host.str(), params, params_, false));
-            params["sig_sha256"] = std::move(sha256);
             std::stringstream ss_url;
             ss_url << ss_host.str();
 
@@ -88,7 +83,7 @@ namespace core {
             return 0;
         }
 
-        int32_t wim_allocate::parse_response(std::shared_ptr<core::tools::binary_stream> response) {
+        int32_t wim_allocate::parse_response(const std::shared_ptr<core::tools::binary_stream>& response) {
             if (!response->available()) {
                 assert(false);
                 return wpie_http_empty_response;
@@ -98,7 +93,7 @@ namespace core {
             return 0;
         }
 
-        std::shared_ptr<core::tools::binary_stream> wim_allocate::getRawData() {
+        std::shared_ptr<core::tools::binary_stream> wim_allocate::getRawData() const {
             return _data;
         }
 
@@ -114,7 +109,7 @@ namespace core {
         }
 
 
-        int32_t wim_webrtc::init_request(std::shared_ptr<core::http_request_simple> _request) {
+        int32_t wim_webrtc::init_request(const std::shared_ptr<core::http_request_simple>& _request) {
             if (!_request) { assert(false); return 1; }
 
             std::stringstream ss_host;
@@ -139,7 +134,7 @@ namespace core {
             return 0;
         }
 
-        int32_t wim_webrtc::execute_request(std::shared_ptr<core::http_request_simple> request)
+        int32_t wim_webrtc::execute_request(const std::shared_ptr<core::http_request_simple>& request)
         {
             if (!request->post())
                 return wpie_network_error;
@@ -152,7 +147,7 @@ namespace core {
             return 0;
         }
 
-        int32_t wim_webrtc::parse_response(std::shared_ptr<core::tools::binary_stream> response) {
+        int32_t wim_webrtc::parse_response(const std::shared_ptr<core::tools::binary_stream>& response) {
             if (!response->available()) {
                 assert(false);
                 return wpie_http_empty_response;
@@ -162,7 +157,7 @@ namespace core {
             return 0;
         }
 
-        std::shared_ptr<core::tools::binary_stream> wim_webrtc::getRawData() {
+        std::shared_ptr<core::tools::binary_stream> wim_webrtc::getRawData() const {
             return _data;
         }
     }

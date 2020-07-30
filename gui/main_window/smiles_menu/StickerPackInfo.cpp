@@ -16,7 +16,7 @@
 #include "../../cache/stickers/stickers.h"
 #include "../../controls/CustomButton.h"
 #include "../contact_list/SelectionContactsForGroupChat.h"
-#include "../contact_list/ContactList.h"
+#include "../contact_list/RecentsTab.h"
 #include "../contact_list/ContactListModel.h"
 #include "../GroupChatOperations.h"
 #include "../../styles/ThemeParameters.h"
@@ -59,7 +59,7 @@ namespace
 
     QString getStickerpackUrl(const QString& _storeId)
     {
-        return ql1s("https://") % Ui::getUrlConfig().getUrlStickerShare() % ql1c('/') % _storeId;
+        return u"https://" % Ui::getUrlConfig().getUrlStickerShare() % u'/' % _storeId;
     }
 
     QMap<QString, QVariant> makeData(const QString& _command)
@@ -94,7 +94,7 @@ void StickersView::onStickerPreview(const QString& _stickerId)
 {
     previewActive_ = true;
 
-    emit stickerPreview(-1, _stickerId);
+    Q_EMIT stickerPreview(-1, _stickerId);
 }
 
 void StickersView::mouseReleaseEvent(QMouseEvent* _e)
@@ -105,7 +105,7 @@ void StickersView::mouseReleaseEvent(QMouseEvent* _e)
         {
             stickersPreviewClosed();
 
-            emit stickerPreviewClose();
+            Q_EMIT stickerPreviewClose();
         }
         else
         {
@@ -300,7 +300,7 @@ void PackWidget::onStickersPackInfo(std::shared_ptr<Ui::Stickers::Set> _set, con
             subtitleControl_->setFrameStyle(QFrame::NoFrame);
             Utils::ApplyStyle(subtitleControl_, qsl("QWidget { background-color:transparent; border: none; }"));
 
-            Testing::setAccessibleName(subtitleControl_, qsl("AS subtitleControl_"));
+            Testing::setAccessibleName(subtitleControl_, qsl("AS StickerPack subtitle"));
             textLayout->addWidget(subtitleControl_);
 
             rootVerticalLayout_->addLayout(textLayout);
@@ -343,6 +343,7 @@ void PackWidget::onStickersPackInfo(std::shared_ptr<Ui::Stickers::Set> _set, con
             closeButton->adjustSize();
 
             QObject::connect(closeButton, &QPushButton::clicked, this, &PackWidget::buttonClicked);
+            Testing::setAccessibleName(closeButton, qsl("AS StickerPack closeButton"));
 
             buttonsLayout->addWidget(closeButton);
         }
@@ -356,7 +357,7 @@ void PackWidget::onStickersPackInfo(std::shared_ptr<Ui::Stickers::Set> _set, con
             addButton_->setCursor(QCursor(Qt::PointingHandCursor));
             addButton_->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
             addButton_->adjustSize();
-            Testing::setAccessibleName(addButton_, qsl("AS addButton_"));
+            Testing::setAccessibleName(addButton_, qsl("AS StickerPack addButton"));
             buttonsLayout->addWidget(addButton_);
 
             QObject::connect(addButton_, &QPushButton::clicked, this, &PackWidget::onAddButton);
@@ -371,7 +372,7 @@ void PackWidget::onStickersPackInfo(std::shared_ptr<Ui::Stickers::Set> _set, con
 
             QObject::connect(removeButton_, &QPushButton::clicked, this, &PackWidget::onRemoveButton);
 
-            Testing::setAccessibleName(removeButton_, qsl("AS removeButton_"));
+            Testing::setAccessibleName(removeButton_, qsl("AS StickerPack removeButton"));
             buttonsLayout->addWidget(removeButton_);
 
         }
@@ -382,6 +383,7 @@ void PackWidget::onStickersPackInfo(std::shared_ptr<Ui::Stickers::Set> _set, con
         moreButton_->setFixedSize(getMoreButtonSizeScaled());
         moreButton_->show();
         moreButton_->raise();
+        Testing::setAccessibleName(moreButton_, qsl("AS StickerPack moreButton"));
 
         moveMoreButton();
 
@@ -422,7 +424,7 @@ void PackWidget::onAddButton(bool _checked)
 
     sendAddPackStats();
 
-    emit buttonClicked();
+    Q_EMIT buttonClicked();
 }
 
 void PackWidget::onRemoveButton(bool _checked)
@@ -431,7 +433,7 @@ void PackWidget::onRemoveButton(bool _checked)
 
     GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::stickers_pack_delete);
 
-    emit buttonClicked();
+    Q_EMIT buttonClicked();
 }
 
 void PackWidget::onStickerPreviewClose()
@@ -480,10 +482,10 @@ void PackWidget::contextMenuAction(QAction* _action)
 {
     const auto params = _action->data().toMap();
     const auto command = params[qsl("command")].toString();
-    if (command == ql1s("forward"))
-        emit forward();
-    else if (command == ql1s("report"))
-        emit report();
+    if (command == u"forward")
+        Q_EMIT forward();
+    else if (command == u"report")
+        Q_EMIT report();
 }
 
 void PackWidget::paintEvent(QPaintEvent* _e)
@@ -572,7 +574,7 @@ void StickerPackInfo::onShareClicked()
 {
     parentDialog_->hide();
 
-    emit Utils::InterConnector::instance().searchEnd();
+    Q_EMIT Utils::InterConnector::instance().searchEnd();
 
     QString sourceText = getStickerpackUrl(store_id_);
     forwardMessage(sourceText, QT_TRANSLATE_NOOP("stickers", "Share"), QT_TRANSLATE_NOOP("popup_window", "Send"), false);

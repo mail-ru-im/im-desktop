@@ -9,6 +9,8 @@
 
 #include "loader_helpers.h"
 
+#include "../common.shared/string_utils.h"
+
 CORE_WIM_NS_BEGIN
 
 namespace
@@ -133,31 +135,21 @@ std::string sign_loader_uri(std::string_view _host, const wim_packet_params &_pa
 {
     assert(!_host.empty());
 
-    const time_t ts = (std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()) - _params.time_offset_);
-
     str_2_str_map p;
+
+    // todo: remove when /misc/preview/getPreview will work without 'a'
+    const time_t ts = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()) - _params.time_offset_;
     p["a"] = _params.a_token_;
+    p["ts"] = std::to_string(ts);
+    // !!!
+
+    p["aimsid"] = wim_packet::escape_symbols(_params.aimsid_);
     p["k"] = _params.dev_id_;
-    p["ts"] = tools::from_int64(ts);
     p["client"] = "icq";
 
-    p.insert(std::make_move_iterator(_extra.begin()), std::make_move_iterator(_extra.end()));
-    /*
-    if constexpr (platform::is_windows())
-         p.insert(std::make_move_iterator(_extra.begin()), std::make_move_iterator(_extra.end()));// use merge in vs2019 https://developercommunity.visualstudio.com/content/problem/543975/stdmapmarge-has-critical-bug.html
-    else
-        p.merge(std::move(_extra));
-    */
+    p.merge(std::move(_extra));
 
-    auto sha256 = wim_packet::escape_symbols(wim_packet::get_url_sign(_host, p, _params, false));
-    p["sig_sha256"] = std::move(sha256);
-
-    std::string url;
-    url += _host;
-    url += '?';
-    url += wim_packet::format_get_params(p);
-
-    return url;
+    return su::concat(_host, '?', wim_packet::format_get_params(p));
 }
 
 CORE_WIM_NS_END

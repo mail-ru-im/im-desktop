@@ -17,12 +17,12 @@ namespace Previewer
         void startLoading();
         void stopLoading();
 
-    signals:
+    Q_SIGNALS:
         void cancelDownloading();
         void tryDownloadAgain();
         void clicked();
 
-    public slots:
+    public Q_SLOTS:
         void onDownloadingError();
 
     protected:

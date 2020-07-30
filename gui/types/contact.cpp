@@ -33,7 +33,6 @@ namespace Data
             for (core::iarray::size_type icontacts = 0; icontacts < contactsSize; ++icontacts)
             {
                 core::coll_helper value(contacts->get_at(icontacts)->get_as_collection(), false);
-                qlonglong lastSeen = value.get_value_as_int("lastseen");
                 auto contact = std::make_shared<Contact>();
                 contact->AimId_ = QString::fromUtf8(value.get_value_as_string("aimId"));
                 contact->Friendly_ = QString::fromUtf8(value.get_value_as_string("friendly"));
@@ -41,9 +40,7 @@ namespace Data
                 contact->UserType_ = QString::fromUtf8(value.get_value_as_string("userType"));
                 contact->StatusMsg_ = QString::fromUtf8(value.get_value_as_string("statusMsg"));
                 contact->OtherNumber_ = QString::fromUtf8(value.get_value_as_string("otherNumber"));
-                contact->HasLastSeen_ = lastSeen != -1;
-                contact->LastSeenCore_ = lastSeen;
-                contact->LastSeen_ = lastSeen > 0 ? QDateTime::fromTime_t(uint(lastSeen)) : QDateTime();
+                contact->LastSeen_ = Data::LastSeen(value);
                 contact->Is_chat_ = value.get_value_as_bool("is_chat");
                 contact->GroupId_ = group->Id_;
                 contact->Muted_ = value.get_value_as_bool("mute");
@@ -91,10 +88,7 @@ namespace Data
         result->UserType_ = QString::fromUtf8(helper->get_value_as_string("userType"));
         result->StatusMsg_ = QString::fromUtf8(helper->get_value_as_string("statusMsg"));
         result->OtherNumber_ = QString::fromUtf8(helper->get_value_as_string("otherNumber"));
-        qlonglong lastSeen = helper->get_value_as_int("lastseen");
-        result->HasLastSeen_ = lastSeen != -1;
-        result->LastSeenCore_ = lastSeen;
-        result->LastSeen_ = lastSeen > 0 ? QDateTime::fromTime_t(uint(lastSeen)) : QDateTime();
+        result->LastSeen_ = Data::LastSeen(*helper);
         result->Is_chat_ = helper->get_value_as_bool("is_chat");
         result->Muted_ = helper->get_value_as_bool("mute");
         result->IsLiveChat_ = helper->get_value_as_bool("livechat");
@@ -142,10 +136,11 @@ namespace Data
             info.about_ = QString::fromUtf8(helper->get_value_as_string("about"));
             info.phone_ = QString::fromUtf8(helper->get_value_as_string("phone"));
             info.phoneNormalized_ = PhoneFormatter::formatted(info.phone_);
-            info.lastseen_ = helper->get_value_as_int("lastseen");
+            info.lastseen_ = Data::LastSeen(*helper);
             info.commonChats_ = helper->get_value_as_int("commonChats");
             info.mute_ = helper->get_value_as_bool("mute");
             info.official_ = helper->get_value_as_bool("official");
+            info.isEmpty_ = false;
         }
 
         return info;

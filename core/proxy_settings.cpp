@@ -1,6 +1,6 @@
 #include "stdafx.h"
 
-#include "../external/curl/include/curl.h"
+#include "curl/include/curl.h"
 #include "../corelib/collection_helper.h"
 
 #include "core_settings.h"

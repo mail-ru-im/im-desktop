@@ -59,6 +59,14 @@
     <DisplayString Condition="_Ptr != 0">{_Ptr}</DisplayString>
   </Type>
 
+  <Type Name="Data::Buddy">
+    <DisplayString>{AimId_} "{Friendly_}" bot={isBot_}</DisplayString>
+  </Type>
+
+  <Type Name="Data::GroupBuddy">
+    <DisplayString>[{Id_}] {Name_}</DisplayString>
+  </Type>
+
   <!-- rapidjson::GenericValue - basic support -->
   <Type Name="rapidjson::GenericValue&lt;*,*&gt;">
     <DisplayString Condition="(data_.f.flags &amp; kTypeMask) == kNullType">null</DisplayString>

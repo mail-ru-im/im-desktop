@@ -152,7 +152,10 @@ namespace hist
 
         qint64 lastMessageId() const;
 
-    signals:
+        void clear();
+        void clearViewBounds();
+
+    Q_SIGNALS:
         void fetchedToNew(QPrivateSignal) const;
         void fetchedToOlder(QPrivateSignal) const;
         void clearAll(QPrivateSignal) const;
@@ -170,6 +173,8 @@ namespace hist
         void updateLastSeen(const Data::DlgState&, QPrivateSignal) const;
         void newMessagesReceived(const QVector<qint64>&, QPrivateSignal) const;
 
+        void emptyHistory(QPrivateSignal) const;
+
     private:
         void initForImpl(qint64 _messageId, hist::scroll_mode_type _type, ServerResultsOnly _serverResultsOnly);
         void messageBuddies(const Data::MessageBuddies& _buddies, const QString& _aimId, Ui::MessagesBuddiesOpt _option, bool _havePending, qint64 _seq, qint64 _lastMsgid);
@@ -185,7 +190,9 @@ namespace hist
         void messageContextError(const QString&, qint64 _seq, qint64 _id, Ui::MessagesNetworkError _error);
         void messageLoadAfterSearchError(const QString&, qint64 _seq, qint64 _from, qint64 _countLater, qint64 _countEarly, Ui::MessagesNetworkError _error);
 
-        void messagesClear(const QString& _aimId, qint64 _seq);
+        void messagesClear(const QString& _aimId);
+
+        void messagesEmpty(const QString& _aimId, qint64 _seq);
 
         void messagesModified(const QString&, const Data::MessageBuddies&);
 

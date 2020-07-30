@@ -23,13 +23,9 @@ send_file::send_file(
 {
 }
 
+send_file::~send_file() = default;
 
-send_file::~send_file()
-{
-}
-
-
-int32_t send_file::init_request(std::shared_ptr<core::http_request_simple> _request)
+int32_t send_file::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     _request->set_timeout(std::chrono::seconds(15));
 
@@ -60,16 +56,10 @@ int32_t send_file::init_request(std::shared_ptr<core::http_request_simple> _requ
 
     std::map<std::string, std::string> params;
 
-    const time_t ts = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()) - params_.time_offset_;
-
-    params["a"] = escape_symbols(params_.a_token_);
+    params["aimsid"] = escape_symbols(params_.aimsid_);
     params["f"] = "json";
     params["k"] = params_.dev_id_;
-    params["ts"] = tools::from_int64(ts);
     params["r"] = core::tools::system::generate_guid();
-
-    auto sha256 = escape_symbols(get_url_sign(ss_url.str(), params, params_, true));
-    params["sig_sha256"] = std::move(sha256);
 
     std::stringstream ss_url_signed;
     ss_url_signed << ss_url.str() << '?' << format_get_params(params);
@@ -80,20 +70,24 @@ int32_t send_file::init_request(std::shared_ptr<core::http_request_simple> _requ
     if (!params_.full_log_)
     {
         log_replace_functor f;
+        f.add_message_markers();
         f.add_marker("a");
+        f.add_marker("aimsid", aimsid_range_evaluator());
+        f.add_json_marker("fileid");
+        f.add_json_marker("static_url");
         _request->set_replace_log_function(f);
     }
 
     return 0;
 }
 
-int32_t send_file::parse_response(std::shared_ptr<core::tools::binary_stream> _response)
+int32_t send_file::parse_response(const std::shared_ptr<core::tools::binary_stream>& _response)
 {
     if (!_response->available())
         return wpie_http_empty_response;
 
     _response->write((char) 0);
-    uint32_t size = _response->available();
+    auto size = _response->available();
     load_response_str((const char*) _response->read(size), size);
     _response->reset_out();
 
@@ -101,12 +95,16 @@ int32_t send_file::parse_response(std::shared_ptr<core::tools::binary_stream> _r
     if (doc.ParseInsitu(_response->read(size)).HasParseError())
         return wpie_error_parse_response;
 
-    if (!tools::unserialize_value(doc, "status", status_code_))
+    const auto iter_status = doc.FindMember("status");
+    if (iter_status == doc.MemberEnd() || !iter_status->value.IsObject())
+        return wpie_http_parse_response;
+
+    if (!tools::unserialize_value(iter_status->value, "code", status_code_))
         return wpie_http_parse_response;
 
     if (status_code_ == 200)
     {
-        auto iter_data = doc.FindMember("data");
+        const auto iter_data = doc.FindMember("result");
         if (iter_data == doc.MemberEnd() || !iter_data->value.IsObject())
             return wpie_http_parse_response;
 
@@ -117,7 +115,7 @@ int32_t send_file::parse_response(std::shared_ptr<core::tools::binary_stream> _r
     return 0;
 }
 
-int32_t send_file::execute_request(std::shared_ptr<core::http_request_simple> _request)
+int32_t send_file::execute_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     if (!_request->post())
         return wpie_network_error;

@@ -30,7 +30,7 @@ namespace Ui
         void updateTitle();
 
     public:
-        IncomingCallWindow(const std::string& call_id, const std::string& _contact);
+        IncomingCallWindow(const std::string& call_id, const std::string& _contact, const std::string& call_type);
         ~IncomingCallWindow();
 
         void showFrame();
@@ -46,6 +46,7 @@ namespace Ui
 #endif
 
     private:
+        std::string call_type_;
         std::unique_ptr<VoipSysPanelHeader>  header_;
         std::unique_ptr<IncomingCallControls> controls_;
         std::unique_ptr<TransparentPanel>   transparentPanelOutgoingWidget_;
@@ -61,7 +62,8 @@ namespace Ui
         ShadowWindowParent shadow_;
 #ifndef STRIP_VOIP
         FrameControl_t* rootWidget_;
-#endif //STRIP_VOIP
+#endif
+        std::string vcs_conference_name_;
 
         QPoint posDragBegin_;
         // Search for the best position for window related of other windows.

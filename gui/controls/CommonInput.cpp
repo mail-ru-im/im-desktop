@@ -20,6 +20,11 @@ namespace
         return Utils::scale_value(20);
     }
 
+    int getHorLeftMarginMinor()
+    {
+        return Utils::scale_value(16);
+    }
+
     int getHorRightMargin(const Ui::InputRole _role)
     {
         return Utils::scale_value(_role == Ui::InputRole::Code ? 12 : 20);
@@ -28,6 +33,21 @@ namespace
     int getPadding()
     {
         return Utils::scale_value(4);
+    }
+
+    int getVerMargin()
+    {
+        return Utils::scale_value(12);
+    }
+
+    int getMinHeight()
+    {
+        return Utils::scale_value(88);
+    }
+
+    int getMaxHeight()
+    {
+        return Utils::scale_value(112);
     }
 
     constexpr int unknownCodeLength = 3;
@@ -116,7 +136,7 @@ namespace Ui
                 else if (atBegin())
                 {
                     if (inputs_.size() == 1)
-                        emit leftArrow();
+                        Q_EMIT leftArrow();
                     else
                         prevInput();
                 }
@@ -132,7 +152,7 @@ namespace Ui
                 else if (atEnd())
                 {
                     if (inputs_.size() == 1)
-                        emit rightArrow();
+                        Q_EMIT rightArrow();
                     else
                         nextInput();
                 }
@@ -214,7 +234,7 @@ namespace Ui
             connect(input_, &LineEditEx::enter, this, &BaseInput::enterPressed);
             connect(input_, &LineEditEx::textChanged, this, [this]()
             {
-                emit textChanged(text());
+                Q_EMIT textChanged(text());
             });
             connect(input_, &LineEditEx::textEdited, this, &BaseInput::textEdited);
             connect(input_, &LineEditEx::textEdited, this, &BaseInput::setText);
@@ -368,7 +388,7 @@ namespace Ui
             setFont(Fonts::appFontScaled(fontSize, platform::is_apple() ? Fonts::FontWeight::Medium : Fonts::FontWeight::Normal));
             const auto mask = qsl("_");
             setPlaceholderText(mask);
-            setFixedWidth((getFontMetrics().width(mask) + 2 * getPadding()) * codeLength_);
+            setFixedWidth((getFontMetrics().horizontalAdvance(mask) + 2 * getPadding()) * codeLength_);
         }
     }
 
@@ -434,15 +454,15 @@ namespace Ui
 
     void CodeInput::setText(const QString & _code)
     {
-        auto code = (_code == qsl("8")) ? qsl("+7") : _code;
-        if (!code.isEmpty() && !code.startsWith(ql1s("+")))
-            code = ql1s("+") + code;
+        auto code = _code == u"8" ? qsl("+7") : _code;
+        if (!code.isEmpty() && !code.startsWith(u'+'))
+            code = u'+' % code;
         if (code_ != code)
         {
             code_ = code;
             auto m = getFontMetrics();
-            setFixedWidth(m.width(code_) + Utils::scale_value(2));
-            emit codeChanged(code_);
+            setFixedWidth(m.horizontalAdvance(code_) + Utils::scale_value(2));
+            Q_EMIT codeChanged(code_);
         }
         BaseInput::setText(code_);
     }
@@ -467,17 +487,17 @@ namespace Ui
         {
             leftWidget_ = new PhoneCodePicker(_parent);
             leftWidget_->setFixedSize(Utils::scale_value(getFlagSize()));
-            Testing::setAccessibleName(leftWidget_, qsl("AS input leftWidget_"));
+            Testing::setAccessibleName(leftWidget_, qsl("AS General phoneCodePicker"));
             globalLayout_->addWidget(leftWidget_);
             globalLayout_->addItem(new QSpacerItem(Utils::scale_value(5), 0, QSizePolicy::Fixed, QSizePolicy::Minimum));
 
             code_ = new CodeInput(this);
             setPhoneCode(getPhoneCodePicker()->getCode());
-            Testing::setAccessibleName(code_, qsl("AS input Country"));
+            Testing::setAccessibleName(code_, qsl("AS General phoneCodeInput"));
             globalLayout_->addWidget(code_);
 
             input_ = new PhoneInput(this);
-            Testing::setAccessibleName(input_, qsl("AS input Phone"));
+            Testing::setAccessibleName(input_, qsl("AS General phoneInput"));
 
             connect(getPhoneCodePicker(), &PhoneCodePicker::countrySelected, code_, &CodeInput::setText);
             connect(getPhoneCodePicker(), &PhoneCodePicker::countrySelected, this, [this]()
@@ -499,11 +519,11 @@ namespace Ui
 
             if (_role == InputRole::Password)
             {
-                Testing::setAccessibleName(input_, qsl("AS input Password"));
+                Testing::setAccessibleName(input_, qsl("AS General passwordInput"));
             }
             else if (_role == InputRole::Common)
             {
-                Testing::setAccessibleName(input_, qsl("AS input Common"));
+                Testing::setAccessibleName(input_, qsl("AS General commonInput"));
             }
 
             if (_role == InputRole::Code)
@@ -515,7 +535,7 @@ namespace Ui
                 rightWidget_ = new RotatingSpinner(this);
                 rightWidget_->setFixedSize(Utils::scale_value(getControlSize()));
                 rightWidget_->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-                Testing::setAccessibleName(rightWidget_, qsl("AS input Code"));
+                Testing::setAccessibleName(rightWidget_, qsl("AS General code"));
             }
         }
 
@@ -622,7 +642,7 @@ namespace Ui
                 setPhone(phone);
                 input_->setFocus();
             }
-            else if (currentCode != qsl("+"))
+            else if (currentCode != u"+")
             {
                 lastKnownCode = currentCode;
                 if (picker->isKnownCode(lastKnownCode) || currentCode.size() >= unknownCodeLength + 1)
@@ -719,12 +739,113 @@ namespace Ui
     {
         if (leftSpacer_ && rightSpacer_)
         {
-            int dX = _force == ResizeMode::Force ? dX = getControlSize().width() - getHorLeftMargin() : 0;
+            int dX = _force == ResizeMode::Force ? getControlSize().width() - getHorLeftMargin() : 0;
 
             auto spacerW = (width() - input_->getWidth() - getHorRightMargin(InputRole::Code) - getHorLeftMargin()) / 2;
             leftSpacer_->changeSize(spacerW, 0, QSizePolicy::Fixed, QSizePolicy::Expanding);
             rightSpacer_->changeSize(spacerW - dX, 0, QSizePolicy::Preferred, QSizePolicy::Expanding);
             layout()->invalidate();
         }
+    }
+
+    TextEditInputContainer::TextEditInputContainer(QWidget* _parent)
+        :QWidget(_parent)
+    {
+        input_ = new TextEditEx(this, Fonts::appFontScaled(fontSize), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID), true, false);
+        input_->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+        input_->setMinimumHeight(getMinHeight());
+        input_->setMaxHeight(getMaxHeight() - getVerMargin());
+        input_->setTextInteractionFlags(Qt::TextEditable | Qt::TextEditorInteraction);
+        input_->setSizePolicy(QSizePolicy::Policy::Expanding, QSizePolicy::Policy::Preferred);
+        input_->setEnterKeyPolicy(TextEditEx::EnterKeyPolicy::CatchNewLine);
+        Utils::ApplyStyle(input_, qsl("background-color: transparent;"));
+        Testing::setAccessibleName(input_, qsl("AS input textEdit"));
+
+        auto globalLayout = Utils::emptyHLayout(this);
+        globalLayout->setAlignment(Qt::AlignTop | Qt::AlignLeft);
+        globalLayout->setContentsMargins(getHorLeftMarginMinor(), getVerMargin(), getHorRightMargin(Ui::InputRole::Code), 0);
+        globalLayout->addWidget(input_);
+
+        auto shadowEffect = new QGraphicsDropShadowEffect(this);
+        shadowEffect->setBlurRadius(Utils::scale_value(3 * shadowWidth));
+        shadowEffect->setOffset(0, Utils::scale_value(1));
+        auto shadowColor = QColor(0, 0, 0, 255 * 0.22);
+        shadowEffect->setColor(shadowColor);
+
+        setGraphicsEffect(shadowEffect);
+
+        connect(input_->document(), &QTextDocument::contentsChange, this, &TextEditInputContainer::updateInputHeight);
+        connect(input_, &TextEditEx::textChanged, this, &TextEditInputContainer::updateInputHeight);
+        setFixedHeight(getMaxHeight());
+        setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+        updateInputHeight();
+    }
+
+    void TextEditInputContainer::setText(const QString& _text)
+    {
+        input_->setPlainText(_text);
+    }
+
+    QString TextEditInputContainer::getPlainText() const
+    {
+        return input_->getPlainText();
+    }
+
+    QTextDocument* TextEditInputContainer::document() const
+    {
+        return input_->document();
+    }
+
+    void TextEditInputContainer::setPlaceholderText(const QString& _text)
+    {
+        input_->setPlaceholderText(_text);
+    }
+
+    void TextEditInputContainer::clear()
+    {
+        input_->clear();
+    }
+
+    void TextEditInputContainer::paintEvent(QPaintEvent *_event)
+    {
+        QPainter p(this);
+        p.setRenderHint(QPainter::Antialiasing);
+
+        const auto adjust = Utils::scale_value(shadowWidth);
+        QRect rRect = rect().adjusted(0, adjust, 0, -adjust);
+        const auto radius = Utils::scale_value(16);
+
+        QPainterPath path;
+        path.addRoundedRect(rRect, radius, radius);
+        Utils::drawBubbleShadow(p, path, radius, Utils::scale_value(1), QColor(0, 0, 0, 255 * 0.01));
+
+        p.setCompositionMode(QPainter::CompositionMode_Source);
+        auto bgColor = Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE_SECONDARY);
+        p.setPen(Qt::NoPen);
+        p.fillPath(path, bgColor);
+    }
+
+    void TextEditInputContainer::focusInEvent(QFocusEvent *_event)
+    {
+        input_->setFocus();
+    }
+
+    void TextEditInputContainer::mouseReleaseEvent(QMouseEvent *_event)
+    {
+        setFocus();
+    }
+
+    void TextEditInputContainer::updateInputHeight()
+    {
+        const int textControlHeight = input_->document()->size().height();
+        if (textControlHeight > input_->maximumHeight())
+            input_->setMinimumHeight(input_->maximumHeight());
+        else if (textControlHeight > getMinHeight())
+            input_->setMinimumHeight(textControlHeight);
+        else
+            input_->setMinimumHeight(getMinHeight());
+        const auto newHeight = std::min(std::max(textControlHeight, getMinHeight()), getMaxHeight() - 2 * getVerMargin());
+        input_->setFixedHeight(newHeight);
+        update();
     }
 }

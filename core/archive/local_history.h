@@ -41,6 +41,7 @@ namespace core
         struct gallery_state;
         struct gallery_entry_id;
         struct gallery_item;
+        struct reactions_data;
 
         struct message_stat_time;
         using message_stat_time_v = std::vector<message_stat_time>;
@@ -54,9 +55,10 @@ namespace core
         using headers_list = std::list<message_header>;
         using msgids_list = std::vector<int64_t>;
         using contact_and_msgs = std::vector<std::pair<std::string, int64_t>>;
-
         using contact_and_offset = std::tuple<std::string, std::shared_ptr<int64_t>, std::shared_ptr<int64_t>>;
         using contact_and_offsets_v = std::vector<contact_and_offset>;
+        using reactions_vector = std::vector<reactions_data>;
+        using reactions_vector_sptr = std::shared_ptr<reactions_vector>;
 
         using error_vector = std::vector<std::pair<int64_t, int32_t>>;
 
@@ -304,6 +306,28 @@ namespace core
             }
         };
 
+        struct request_gallery_is_hole_requested
+        {
+            using on_result_type = std::function<void(bool _is_hole_requested)>;
+            on_result_type on_result;
+
+            request_gallery_is_hole_requested()
+            {
+                on_result = [](bool _is_hole_requested) {};
+            }
+        };  
+
+        struct get_reactions_handler
+        {
+            using on_result_type = std::function<void(reactions_vector_sptr, std::shared_ptr<msgids_list>)>;
+            on_result_type on_result;
+
+            get_reactions_handler()
+            {
+                on_result = [](reactions_vector_sptr _reactions, std::shared_ptr<msgids_list> _ids) {};
+            }
+        };
+
         struct memory_usage
         {
             std::function<void(
@@ -440,9 +464,12 @@ namespace core
             void clear_hole_request(const std::string& _aimId);
             void make_gallery_hole(const std::string& _aimId, int64_t _from, int64_t _till);
             void make_holes(const std::string& _aimId);
+            void is_gallery_hole_requested(const std::string& _aimId, bool& _is_hole_requsted);
             void invalidate_message_data(const std::string& _aimId, const std::vector<int64_t>& _ids);
             void invalidate_message_data(const std::string& _aimId, int64_t _from, int64_t _before_count, int64_t _after_count);
             void get_memory_usage(int64_t& _index_size, int64_t& _gallery_size);
+            void insert_reactions(const std::string& _contact, const reactions_vector_sptr& _reactions);
+            void get_reactions(const std::string& _contact, const std::shared_ptr<msgids_list>& _msg_ids, /*out*/ reactions_vector_sptr _reactions, /*out*/ std::shared_ptr<core::archive::msgids_list> _missing);
         };
 
         class face : public std::enable_shared_from_this<face>
@@ -550,10 +577,16 @@ namespace core
             std::shared_ptr<async_task_handlers> make_gallery_hole(const std::string& _aimId, int64_t _from, int64_t _till);
 
             std::shared_ptr<async_task_handlers> make_holes(const std::string& _aimid);
+
+            std::shared_ptr<request_gallery_is_hole_requested> is_gallery_hole_requested(const std::string& _aimid);
+
             std::shared_ptr<async_task_handlers> invalidate_message_data(const std::string& _aimid, std::vector<int64_t> _ids);
             std::shared_ptr<async_task_handlers> invalidate_message_data(const std::string& _aimid, int64_t _from, int64_t _before_count, int64_t _after_count);
 
             std::shared_ptr<memory_usage> get_memory_usage();
+
+            void insert_reactions(const std::string& _contact, const reactions_vector_sptr& _reactions);
+            std::shared_ptr<get_reactions_handler> get_reactions(const std::string& _contact, const std::shared_ptr<msgids_list>& _msg_ids);
         };
     }
 }

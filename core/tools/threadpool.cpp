@@ -59,7 +59,6 @@ const std::unique_ptr<boost::stacktrace::stacktrace>& task::get_stack_trace() co
     return st_;
 }
 
-
 threadpool::threadpool(
     const std::string_view _name,
     const size_t count,

@@ -2,6 +2,7 @@
 #include "utils.h"
 
 #include "tools/system.h"
+#include "tools/coretime.h"
 #include "tools/hmac_sha_base64.h"
 #include "../common.shared/version_info.h"
 #include "../common.shared/common_defs.h"
@@ -48,7 +49,7 @@ namespace
         auto file_time = boost::filesystem::last_write_time(_file, ec);
         tm file_tm = { 0 };
 
-        if (localtime_r(&file_time, &file_tm))
+        if (core::tools::time::localtime(&file_time, &file_tm))
         {
             _tmzip->tm_sec = file_tm.tm_sec;
             _tmzip->tm_min = file_tm.tm_min;
@@ -74,21 +75,33 @@ namespace core
 
         std::wstring get_product_data_path(std::wstring_view relative)
         {
-            std::wstringstream res;
 #ifdef __linux__
-            res << core::tools::system::get_user_profile() << L"/.config/" << relative;
+            return su::wconcat(core::tools::system::get_user_profile(), L"/.config/", relative);
 #elif _WIN32
-            res << ::common::get_user_profile() << L'/' << relative;
+            return su::wconcat(::common::get_user_profile(), L'/', relative);
 #else
-            res << core::tools::system::get_user_profile() << L'/' << relative;
+            return su::wconcat(core::tools::system::get_user_profile(), L'/', relative);
 #endif //__linux__
-            return res.str();
         }
 
+        std::wstring get_local_product_data_path(std::wstring_view relative)
+        {
+#ifdef _WIN32
+            return su::wconcat(::common::get_local_user_profile(), L'/', relative);
+#else
+            return get_product_data_path(relative);
+#endif
+        }
         std::wstring get_product_data_path()
         {
             constexpr auto v = platform::is_apple() ? config::values::product_path_mac : config::values::product_path;
             return get_product_data_path(tools::from_utf8(config::get().string(v)));
+        }
+
+        std::wstring get_local_product_data_path()
+        {
+            constexpr auto v = platform::is_apple() ? config::values::product_path_mac : config::values::product_path;
+            return get_local_product_data_path(tools::from_utf8(config::get().string(v)));
         }
 
         std::string get_product_name()
@@ -175,7 +188,7 @@ namespace core
                 return "Unknown";
         }
 
-        std::string get_protocol_platform_string()
+        std::string_view get_protocol_platform_string()
         {
             if constexpr (platform::is_apple())
                 return "mac";
@@ -194,30 +207,35 @@ namespace core
 
         std::wstring get_report_path()
         {
-            return core::utils::get_product_data_path() + L"/reports";
+            return su::wconcat(core::utils::get_product_data_path(), L"/reports");
         }
 
         std::wstring get_report_log_path()
         {
-            return get_report_path() + L"/crash.log";
+            return su::wconcat(get_report_path(), L"/crash.log");
         }
 
         std::wstring get_themes_path()
         {
-            return (utils::get_product_data_path() + L"/themes");
+            return su::wconcat(utils::get_product_data_path(), L"/themes");
         }
 
         std::wstring get_themes_meta_path()
         {
-            return get_themes_path() + L"/themes.json";
+            return su::wconcat(get_themes_path(), L"/themes.json");
         }
 
         boost::filesystem::wpath get_logs_path()
         {
-            boost::filesystem::wpath logs_dir(get_product_data_path());
-
+            boost::filesystem::wpath logs_dir(get_local_product_data_path());
             logs_dir.append(L"logs");
+            return logs_dir;
+        }
 
+        boost::filesystem::wpath get_obsolete_logs_path()
+        {
+            boost::filesystem::wpath logs_dir(get_product_data_path());
+            logs_dir.append(L"logs");
             return logs_dir;
         }
 

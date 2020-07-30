@@ -102,9 +102,7 @@ std::wstring core::tools::system::get_temp_directory()
 
 std::wstring core::tools::system::get_user_profile()
 {
-	const char * home = ::getenv("HOME");
-	std::string result = home;
-	result.append("/Library/Application Support");
+    std::string result = get_home_directory() + "/Library/Application Support";
 
 	std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
 	std::wstring wide = converter.from_bytes(result);

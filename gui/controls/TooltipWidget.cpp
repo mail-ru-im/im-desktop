@@ -5,9 +5,18 @@
 #include "../fonts.h"
 #include "../utils/utils.h"
 #include "../utils/InterConnector.h"
+#include "../utils/graphicsEffects.h"
 #include "../styles/ThemeParameters.h"
 #include "../main_window/MainWindow.h"
+#include "../main_window/containers/FriendlyContainer.h"
+#include "../main_window/containers/LastseenContainer.h"
+#include "../main_window/containers/StatusContainer.h"
+#include "../main_window/contact_list/StatusListModel.h"
 #include "../main_window/history_control/MessageStyle.h"
+#include "../statuses/Status.h"
+#include "../statuses/StatusUtils.h"
+#include "../my_info.h"
+
 
 namespace
 {
@@ -228,6 +237,35 @@ namespace Tooltip
         }
     }
 
+    void drawStatusTooltip(const QString &_aimid, const QRect _objectRect)
+    {
+        if (!Statuses::isStatusEnabled())
+            return;
+
+        const auto status = Logic::GetStatusContainer()->getStatus(_aimid);
+        QString text;
+        if (status.isEmpty() && MyInfo()->aimId() == _aimid)
+        {
+            text = QT_TRANSLATE_NOOP("status", "Add status");
+        }
+        else if (Logic::GetLastseenContainer()->isBot(_aimid))
+        {
+            text = Data::LastSeen::bot().getStatusString();
+        }
+        else if (!status.isEmpty())
+        {
+            const auto stat = Logic::getStatusModel()->getStatus(status.toString());
+            if (stat)
+                text = stat->getDescription();
+
+            if (text.isEmpty())
+                text = QT_TRANSLATE_NOOP("status", "Custom status");
+        }
+
+        if (!text.isEmpty())
+            Tooltip::show(text, _objectRect, {-1, -1}, Tooltip::ArrowDirection::Down);
+    }
+
     std::unique_ptr<TextTooltip> g_tooltip;
 
     TextTooltip* getDefaultTooltip()
@@ -296,7 +334,7 @@ namespace Ui
         , pointWidth_(_pointWidth)
         , gradientRight_(new GradientWidget(this, Qt::transparent, getBackgroundColor()))
         , gradientLeft_(new GradientWidget(this, getBackgroundColor(), Qt::transparent))
-        , opacityEffect_(new QGraphicsOpacityEffect(this))
+        , opacityEffect_(new Utils::OpacityEffect(this))
         , canClose_(_canClose)
         , bigArrow_(_bigArrow)
         , isCursorOver_(false)
@@ -610,7 +648,7 @@ namespace Ui
         }
         else if (_value >= maximum - step)
         {
-            emit scrolledToLastItem();
+            Q_EMIT scrolledToLastItem();
             if (_value == maximum)
                 gradientRightVisible = false;
         }
@@ -648,7 +686,8 @@ namespace Ui
     void TextWidget::setText(const QString& _text, const QColor& _color)
     {
         text_->setText(_text, _color);
-        text_->getHeight(maxWidth_ ? maxWidth_ : text_->desiredWidth());
+        desiredWidth_ = text_->desiredWidth();
+        text_->getHeight(maxWidth_ ? maxWidth_ : desiredWidth_);
         setFixedSize(text_->cachedSize());
         update();
     }
@@ -692,7 +731,7 @@ namespace Ui
     void TextWidget::mouseReleaseEvent(QMouseEvent* _e)
     {
         if (const auto pos = _e->pos(); text_->isOverLink(pos))
-            emit linkActivated(text_->getLink(pos), QPrivateSignal());
+            Q_EMIT linkActivated(text_->getLink(pos), QPrivateSignal());
     }
 
     TextTooltip::TextTooltip(QWidget* _parent, bool _general)

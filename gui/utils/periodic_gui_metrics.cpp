@@ -38,7 +38,7 @@ Periodic_Gui_Metrics::Periodic_Gui_Metrics(QObject *_parent)
 
     connect(timer, &QTimer::timeout, this, &Periodic_Gui_Metrics::onPoll);
 
-    timer->setInterval(PollInterval.count());
+    timer->setInterval(PollInterval);
     timer->setSingleShot(false);
     timer->start();
 }

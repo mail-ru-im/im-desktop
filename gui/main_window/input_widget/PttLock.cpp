@@ -27,7 +27,7 @@ namespace Ui
         setAttribute(Qt::WA_TransparentForMouseEvents);
 
         showTimer_.setSingleShot(true);
-        showTimer_.setInterval(delay().count());
+        showTimer_.setInterval(delay());
         QObject::connect(&showTimer_, &QTimer::timeout, this, &PttLock::showAnimatedImpl);
     }
 

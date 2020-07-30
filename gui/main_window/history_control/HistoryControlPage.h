@@ -4,6 +4,7 @@
 #include "styles/WallpaperId.h"
 #include "../../types/chat.h"
 #include "../../types/typing.h"
+#include "types/reactions.h"
 #include "../../controls/TextUnit.h"
 
 Q_DECLARE_LOGGING_CATEGORY(historyPage)
@@ -66,7 +67,12 @@ namespace Ui
     class SmartReplyWidget;
     class ShowHideButton;
     class ContactAvatarWidget;
+    class ActiveCallPlate;
     enum class ConnectionState;
+    enum class CallType;
+    class ChatPlaceholder;
+    enum class PlaceholderState;
+    class StartCallButton;
 
     using highlightsV = std::vector<QString>;
 
@@ -140,8 +146,6 @@ namespace Ui
 
         void setContactName(const QString& _contactName);
 
-        QString getContactName() const;
-
     protected:
         bool eventFilter(QObject* _obj, QEvent* _event) override;
 
@@ -159,7 +163,6 @@ namespace Ui
         QString ContactName_;
         ClickableTextWidget* ContactNameWidget_;
         ServiceMessageItem* Overlay_;
-        std::shared_ptr<bool> Ref_;
     };
 
     struct ItemData
@@ -207,7 +210,6 @@ namespace Ui
         void updateMembers();
 
         void switchToPrevDialog(const bool _byKeyboard, QPrivateSignal) const;
-        void lastMsgId(const qint64 _msgId) const;
 
     public Q_SLOTS:
         void scrollMovedToBottom();
@@ -227,8 +229,6 @@ namespace Ui
     private Q_SLOTS:
         void searchButtonClicked();
         void pendingButtonClicked();
-        void callVideoButtonClicked();
-        void callAudioButtonClicked();
         void moreButtonClicked();
         void sourceReadyHist(int64_t _mess_id, hist::scroll_mode_type _scrollMode);
         void updatedBuddies(const Data::MessageBuddies&);
@@ -236,6 +236,7 @@ namespace Ui
         void deleted(const Data::MessageBuddies&);
         void pendingResolves(const Data::MessageBuddies&, const Data::MessageBuddies&);
         void clearAll();
+        void emptyHistory();
 
         void fetch(hist::FetchDirection);
 
@@ -257,13 +258,15 @@ namespace Ui
         void copy(const QString&);
         void quoteText(const Data::QuotesVec&);
         void forwardText(const Data::QuotesVec&);
+        void addToFavorites(const Data::QuotesVec& _quotes);
         void pin(const QString& _chatId, const int64_t _msgId, const bool _isUnpin = false);
 
         void multiselectDelete();
+        void multiselectFavorites();
         void multiselectChanged();
         void multiselectCopy();
         void multiselectReply();
-        void multiselectForward(QString);
+        void multiselectForward(const QString&);
 
         void edit(
             const int64_t _msgId,
@@ -274,7 +277,8 @@ namespace Ui
             const Data::QuotesVec& _quotes,
             qint32 _time,
             const Data::FilesPlaceholderMap& _files,
-            MediaType _mediaType);
+            MediaType _mediaType,
+            bool instantEdit);
 
         void editWithCaption(
             const int64_t _msgId,
@@ -282,10 +286,12 @@ namespace Ui
             const common::tools::patch_version& _patchVersion,
             const QString& _url,
             const QString& _description,
+            const Data::MentionMap& _mentions,
             const Data::QuotesVec& _quotes,
             qint32 _time,
             const Data::FilesPlaceholderMap& _files,
-            MediaType _mediaType);
+            MediaType _mediaType,
+            bool instantEdit);
 
         void pressedDestroyed();
         void onItemLayoutChanged();
@@ -314,6 +320,7 @@ namespace Ui
         void onMentionRead(const qint64 _messageId);
 
         void groupSubscribe();
+        void cancelGroupSubscription();
         void groupSubscribeResult(int _error, int _resubscribeIn);
 
         void onNeedUpdateRecentsText();
@@ -328,6 +335,15 @@ namespace Ui
         void onRoleChanged(const QString& _aimId);
         void onMessageBuddies(const Data::MessageBuddies& _buddies, const QString& _aimId, Ui::MessagesBuddiesOpt _option, bool _havePending, qint64 _seq, int64_t _last_msgid);
         void onChatMemberInfo(const qint64 _seq, const std::shared_ptr<Data::ChatMembersPage>& _info);
+
+        void onReadOnlyUser(const QString& _aimId, bool _isReadOnly);
+        void onBlockUser(const QString& _aimId, bool _isBlock);
+
+        void onAddReactionPlateActivityChanged(const QString& _contact, bool _active);
+
+        void onCallRoomInfo(const QString& _roomId, int64_t _membersCount, bool _failed);
+
+        void updateSpellCheckVisibility();
 
     public:
         HistoryControlPage(QWidget* _parent, const QString& _aimId);
@@ -376,6 +392,7 @@ namespace Ui
         void setButtonDownPositions(int x_showed, int y_showed, int y_hided);
         void setButtonMentionPositions(int x_showed, int y_showed, int y_hided);
         void positionMentionCompleter(const QPoint& _atPos);
+        void updatePlaceholderPosition();
 
         void setUnreadBadgeText(const QString& _text);
 
@@ -404,7 +421,6 @@ namespace Ui
 
         int getMessagesAreaHeight() const;
 
-        qint64 getLastMsgId() const { return dlgState_.LastMsgId_; };
         void setFocusOnArea();
         void clearPartialSelection();
 
@@ -413,12 +429,23 @@ namespace Ui
         bool isSmartrepliesVisible() const;
         void showSmartrepliesButton();
         void hideSmartrepliesButton();
+        void setSmartrepliesSemitransparent(bool _semi);
+        void notifyQuotesResize();
+
+        bool hasMessages() const noexcept;
+
+        void setBotParameters(std::optional<QString> _parameters);
+
+        bool needStartButton() const noexcept { return botParams_.has_value(); }
+
+        int chatRoomCallParticipantsCount() const;
 
     protected:
         void focusOutEvent(QFocusEvent* _event) override;
         void wheelEvent(QWheelEvent *_event) override;
         void showEvent(QShowEvent* _event) override;
         void resizeEvent(QResizeEvent* _event) override;
+        bool eventFilter(QObject* _object, QEvent* _event) override;
 
     private:
         void changeDlgStateContact(const Data::DlgState& _dlgState);
@@ -426,9 +453,9 @@ namespace Ui
 
         void updateName();
         void updateName(const QString& _friendly);
-        void blockUser(const QString& _aimId, bool _blockUser);
-        void changeRole(const QString& _aimId, bool _moder);
-        void readonly(const QString& _aimId, bool _readonly);
+        bool blockUser(const QString& _aimId, bool _blockUser);
+        bool changeRole(const QString& _aimId, bool _moder);
+        bool readonly(const QString& _aimId, bool _readonly);
 
         void setRecvLastMessage(bool _value);
 
@@ -470,6 +497,10 @@ namespace Ui
         bool isInBackground() const;
 
         void updatePendingButtonPosition();
+        void updateCallButtonsVisibility();
+
+        void sendBotCommand(const QString& _command);
+        void startBot();
 
         class PositionInfo;
 
@@ -519,14 +550,28 @@ namespace Ui
         void onSmartreplies(const std::vector<Data::SmartreplySuggest>& _suggests);
         void hideAndClearSmartreplies();
         void clearSmartrepliesForMessage(const qint64 _msgId);
-        bool canShowSmartreplies() const;
         void onSmartreplyButtonClicked();
         void onSmartreplyHide();
+        void sendSmartreply(const Data::SmartreplySuggest& _suggest);
 
+        void showActiveCallPlate();
+
+        void startShowButtonDown();
+        void startHideButtonDown();
+
+        void initChatPlaceholder();
+        void showChatPlaceholder(PlaceholderState _state);
+        void hideChatPlaceholder();
+        PlaceholderState updateChatPlaceholder();
+        PlaceholderState getPlaceholderState() const;
+        void setEmptyAreaVisible(bool _visible);
+
+    private:
         bool isContactStatusClickable_;
         bool isMessagesRequestPostponed_;
         bool isMessagesRequestPostponedDown_;
         bool isPublicChat_;
+        int32_t chatMembersCount_;
         char const* dbgWherePostponed_;
         ClickableTextWidget* contactStatus_;
         MessagesScrollArea* messagesArea_;
@@ -537,8 +582,7 @@ namespace Ui
         CustomButton* searchButton_;
         CustomButton* addMemberButton_;
         CustomButton* pendingButton_;
-        CustomButton* callButton_;
-        CustomButton* videoCallButton_;
+        StartCallButton* callButton_;
         QWidget* buttonsWidget_;
         QSpacerItem* verticalSpacer_;
         QString aimId_;
@@ -567,9 +611,6 @@ namespace Ui
         int buttonDir_;
         /// time of buttonDown 0..1 show 1..0 hide
         float buttonDownTime_;
-
-        void startShowButtonDown();
-        void startHideButtonDown();
 
         QTimer* buttonDownTimer_;
         bool isFetchBlocked_;
@@ -609,9 +650,19 @@ namespace Ui
         std::unordered_map<QString, std::unique_ptr<Data::ChatMemberInfo>, Utils::QStringHasher> chatSenders_;
         bool isAdminRole_;
         bool isChatCreator_;
+        bool isMember_ = false;
         qint64 requestWithLoaderSequence_;
         QString requestWithLoaderAimId_;
         ContactAvatarWidget* avatar_;
+        ActiveCallPlate* activeCallPlate_;
+
+        std::optional<QString> botParams_;
+
+        QWidget* emptyArea_;
+        ChatPlaceholder* chatPlaceholder_;
+        QTimer* chatPlaceholderTimer_;
+
+        bool addReactionPlateActive_ = false;
 
         friend class MessagesWidgetEventFilter;
     };

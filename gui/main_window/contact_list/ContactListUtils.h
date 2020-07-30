@@ -24,16 +24,25 @@ namespace Logic
         COMMON_CHATS = 12,
         SHARE_CONTACT = 13,
         COUNTRY_LIST = 14,
+        SELECT_CHAT_MEMBERS = 15,
+        CALLS_LIST = 16,
+        SHARE_VIDEO_CONFERENCE = 17,
+        STATUS_LIST = 18,
     };
 
     bool is_members_regim(int _regim);
     bool is_admin_members_regim(int _regim);
     bool is_select_members_regim(int _regim);
+    bool is_select_chat_members_regim(int _regim);
     bool is_video_conference_regim(int _regim);
+    bool is_share_regims(int _regim);
+    bool isRegimWithGlobalContactSearch(int _regim);
+    bool isAddMembersRegim(int _regim);
 
     QString aimIdFromIndex(const QModelIndex& _current);
 
     QMap<QString, QVariant> makeData(const QString& _command, const QString& _aimid = QString());
+    QMap<QString, QVariant> makeData(const QString& _command, Data::CallInfoPtr _call);
     void showContactListPopup(QAction* _action);
 }
 

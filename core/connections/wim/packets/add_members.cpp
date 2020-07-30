@@ -22,7 +22,7 @@ add_members::~add_members()
 {
 }
 
-int32_t add_members::init_request(std::shared_ptr<core::http_request_simple> _request)
+int32_t add_members::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     std::stringstream ss_url;
 
@@ -60,7 +60,7 @@ int32_t core::wim::add_members::on_response_error_code()
     return wpie_http_error;
 }
 
-int32_t core::wim::add_members::execute_request(std::shared_ptr<core::http_request_simple> request)
+int32_t core::wim::add_members::execute_request(const std::shared_ptr<core::http_request_simple>& request)
 {
     if (!request->get())
         return wpie_network_error;

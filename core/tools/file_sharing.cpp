@@ -8,13 +8,12 @@
 #include "../../corelib/collection_helper.h"
 #include "../configuration/host_config.h"
 #include "../common.shared/config/config.h"
+#include "../common.shared/string_utils.h"
 #include "connections/urls_cache.h"
 
 #include <boost/algorithm/string.hpp>
 
 CORE_TOOLS_NS_BEGIN
-
-using namespace boost::xpressive;
 
 namespace
 {
@@ -53,12 +52,7 @@ std::string format_file_sharing_preview_uri(const std::string_view _id, const fi
         return result;
     }
 
-    result += urls::get_url(urls::url_type::files_preview);
-    result += "/max/";
-    result += it->url_path_;
-    result += '/';
-    result += _id;
-    return result;
+    return su::concat(urls::get_url(urls::url_type::files_preview), "/max/", it->url_path_, '/', _id);
 }
 
 bool get_content_type_from_uri(std::string_view _uri, Out core::file_sharing_content_type& _type)

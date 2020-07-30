@@ -11,9 +11,7 @@ namespace core::wim
 {
     class send_stat: public wim_packet
     {
-        bool support_async_execution() const override;
-
-        virtual int32_t init_request(std::shared_ptr<core::http_request_simple> _request) override;
+        virtual int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
         virtual int32_t parse_response_data(const rapidjson::Value& _data) override;
 
         const std::vector<std::string> audio_devices_;

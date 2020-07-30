@@ -10,9 +10,6 @@ RequestHandler::RequestHandler(QObject *_parent)
 
 }
 
-RequestHandler::~RequestHandler()
-{
-
-}
+RequestHandler::~RequestHandler() = default;
 
 }

@@ -65,6 +65,7 @@ namespace core
 
             static void set_product_bundle(const std::string& _product_bundle);
             static void set_is_sending_after_crash(bool _is_sending_after_crash);
+            static void set_is_sys_handler_enabled(bool _is_sys_handler_enabled);
             static std::wstring get_product_path();
 
         private:
@@ -75,6 +76,7 @@ namespace core
             static std::string product_bundle_;
             static std::wstring product_path_;
             static bool is_sending_after_crash_;
+            static bool is_sys_handler_enabled_;
         };
     }
 }

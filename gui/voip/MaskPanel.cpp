@@ -5,6 +5,17 @@
 #include "../core_dispatcher.h"
 #include "MaskManager.h"
 
+namespace
+{
+    auto getMaskPanelRootMargins() noexcept
+    {
+        if constexpr (platform::is_linux())
+            return QMargins(0, Utils::scale_value(12), 0, 0);
+        else
+            return QMargins();
+    }
+}
+
 // Items view settings.
 enum {
     /*NORMAL_ITEM_BORDER = 1,*/ SELECTED_ITEM_BORDER = 1,
@@ -20,7 +31,7 @@ enum {
     MASKS_ANIMATION_DURATION = 300, // In ms.
 };
 
-Ui::MaskWidget::MaskWidget(const voip_masks::Mask* mask) : mask_(mask), loadingProgress_(0.0),
+Ui::MaskWidget::MaskWidget(voip_masks::Mask* mask) : mask_(mask), loadingProgress_(0.0),
     maskEngineReady_(false), applyWhenEnebled_(false),
     closeIcon_(Utils::parse_image_name(qsl(":/voip/close_mask_100")))
 {
@@ -66,7 +77,7 @@ void Ui::MaskWidget::paintEvent(QPaintEvent * /*event*/)
     {
         Utils::PainterSaver ps(painter);
         QColor maskPenColor(Qt::transparent);
-        QColor maskBrushColor("#000000");
+        QColor maskBrushColor(u"#000000");
         maskBrushColor.setAlphaF(0.5);
         painter.setPen(QPen(maskPenColor));
         painter.setBrush(QBrush(maskBrushColor));
@@ -103,7 +114,7 @@ void Ui::MaskWidget::paintEvent(QPaintEvent * /*event*/)
     {
         Utils::PainterSaver ps(painter);
         painter.setPen(QPen(Qt::transparent));
-        QColor maskDisabledColor("#000000");
+        QColor maskDisabledColor(u"#000000");
         maskDisabledColor.setAlphaF(0.5);
         painter.setBrush(QBrush(maskDisabledColor));
 
@@ -119,7 +130,7 @@ void Ui::MaskWidget::paintEvent(QPaintEvent * /*event*/)
     {
         Utils::PainterSaver ps(painter);
 
-        QPen pen(QColor(ql1s("#ffffff")));
+        QPen pen(QColor(u"#ffffff"));
         pen.setWidth(Utils::scale_value(SELECTED_ITEM_BORDER) * 2);
 
         painter.setPen(pen);
@@ -133,7 +144,7 @@ void Ui::MaskWidget::paintEvent(QPaintEvent * /*event*/)
         // Draw border shadow
         int borderShadow = Utils::scale_value(BORDER_SHADOW);
         auto borderShadowRect = contentsRect().marginsRemoved(QMargins(borderShadow, borderShadow, borderShadow, borderShadow));
-        QColor shadowColor("#000000");
+        QColor shadowColor(u"#000000");
         shadowColor.setAlphaF(0.2);
         QPen shadowPen(shadowColor);
         shadowPen.setWidth(Utils::scale_value(BORDER_SHADOW));
@@ -154,7 +165,7 @@ void Ui::MaskWidget::paintEvent(QPaintEvent * /*event*/)
     }
 }
 
-QString Ui::MaskWidget::maskPath()
+const QString& Ui::MaskWidget::maskPath() const
 {
     return maskPath_;
 }
@@ -165,7 +176,7 @@ void Ui::MaskWidget::setPixmap(const QPixmap& image)
     update();
 }
 
-QPixmap Ui::MaskWidget::pixmap()
+const QPixmap& Ui::MaskWidget::pixmap() const
 {
     return image_;
 }
@@ -243,17 +254,17 @@ void Ui::MaskWidget::changeEvent(QEvent * event)
     QPushButton::changeEvent(event);
 }
 
-bool Ui::MaskWidget::isEmptyMask()
+bool Ui::MaskWidget::isEmptyMask() const
 {
     return mask_ == nullptr;
 }
 
-bool Ui::MaskWidget::isLoaded()
+bool Ui::MaskWidget::isLoaded() const
 {
     return mask_ == nullptr || !maskPath_.isEmpty();
 }
 
-const QString& Ui::MaskWidget::name()
+const QString& Ui::MaskWidget::name() const
 {
     return name_;
 }
@@ -268,7 +279,7 @@ void Ui::MaskWidget::setYCenter(int y)
     move(x(), y - height() / 2);
 }
 
-int  Ui::MaskWidget::yCenter()
+int  Ui::MaskWidget::yCenter() const
 {
     return y() + height() / 2;
 }
@@ -283,7 +294,7 @@ void Ui::MaskWidget::setXCenter(int x)
     move(x - width() / 2, y());
 }
 
-int  Ui::MaskWidget::xCenter()
+int  Ui::MaskWidget::xCenter() const
 {
     return x() + width() / 2;
 }
@@ -316,7 +327,7 @@ void Ui::MaskWidget::moveEvent(QMoveEvent *event)
 Ui::MaskPanel::MaskPanel(QWidget* _parent, QWidget* _container, int topOffset, int bottomOffset) :
 #ifdef __APPLE__
     // We use Qt::WindowDoesNotAcceptFocus for mac, bcause it fix ghost window after call stop on Sierra
-    BaseBottomVideoPanel(_parent, Qt::Window | Qt::FramelessWindowHint | Qt::WindowDoesNotAcceptFocus | Qt::NoDropShadowWindowHint)
+    BaseBottomVideoPanel(_parent, Qt::Window | Qt::FramelessWindowHint | Qt::NoDropShadowWindowHint)
 #elif defined(__linux__)
     BaseBottomVideoPanel(_parent, Qt::Widget)
 #else
@@ -363,7 +374,7 @@ Ui::MaskPanel::MaskPanel(QWidget* _parent, QWidget* _container, int topOffset, i
 
     rootWidget_ = new QWidget(this);
     rootWidget_->setObjectName(qsl("MaskPanelRoot"));
-    rootWidget_->setContentsMargins(0, 0, 0, 0);
+    rootWidget_->setContentsMargins(getMaskPanelRootMargins());
 
     QVBoxLayout* layoutTarget = Utils::emptyVLayout();
     //layoutTarget->setAlignment(Qt::AlignCenter);
@@ -433,14 +444,14 @@ void Ui::MaskPanel::enterEvent(QEvent* _e)
 {
     QWidget::enterEvent(_e);
     hidePreviewPrimaryTimer_->stop();
-    emit onMouseEnter();
+    Q_EMIT onMouseEnter();
 }
 
 void Ui::MaskPanel::leaveEvent(QEvent* _e)
 {
     QWidget::leaveEvent(_e);
     hidePreviewPrimaryTimer_->start();
-    emit onMouseLeave();
+    Q_EMIT onMouseLeave();
 }
 
 void Ui::MaskPanel::keyReleaseEvent(QKeyEvent* _e)
@@ -448,7 +459,7 @@ void Ui::MaskPanel::keyReleaseEvent(QKeyEvent* _e)
     QWidget::keyReleaseEvent(_e);
     if (_e->key() == Qt::Key_Escape)
     {
-        emit onkeyEscPressed();
+        Q_EMIT onkeyEscPressed();
     }
 }
 
@@ -491,7 +502,7 @@ void Ui::MaskPanel::showMaskList()
 }
 
 
-Ui::MaskWidget* Ui::MaskPanel::appendItem(const voip_masks::Mask* mask)
+Ui::MaskWidget* Ui::MaskPanel::appendItem(voip_masks::Mask* mask)
 {
     MaskWidget* icon = new MaskWidget(mask);
 
@@ -509,8 +520,8 @@ Ui::MaskWidget* Ui::MaskPanel::appendItem(const voip_masks::Mask* mask)
     if (mask)
     {
         icon->setMaskEngineReady(Ui::GetDispatcher()->getVoipController().isMaskEngineEnabled());
-        connect(&Ui::GetDispatcher()->getVoipController(), SIGNAL(onVoipMaskEngineEnable(bool)),
-            icon, SLOT(setMaskEngineReady(bool)), Qt::DirectConnection);
+        connect(&Ui::GetDispatcher()->getVoipController(), &voip_proxy::VoipController::onVoipMaskEngineEnable,
+            icon, &MaskWidget::setMaskEngineReady);
     } else
     {
         icon->setMaskEngineReady(true);
@@ -577,7 +588,7 @@ void Ui::MaskPanel::selectMask(MaskWidget* mask)
         //if (!mask->isEmptyMask())
         //{
         //    currentMaskButton_->setPixmap(mask->pixmap());
-        //    emit makePreviewPrimary();
+        //    Q_EMIT makePreviewPrimary();
         //}
         //else
         //{
@@ -703,12 +714,9 @@ void Ui::MaskPanel::setVideoStatus(bool bEnabled)
     hasLocalVideo_ = bEnabled;
 }
 
-void Ui::MaskPanel::updateMaskList(const voip_manager::ContactEx&  contactEx)
+void Ui::MaskPanel::updateMaskList(const voip_manager::ContactEx& contactEx)
 {
-    if (contactEx.connection_count == 1)
-    {
-        updateMaskList();
-    }
+    updateMaskList();
 }
 
 void Ui::MaskPanel::updateMaskList()

@@ -27,7 +27,7 @@ void SizedView::mouseReleaseEvent(QMouseEvent* _event)
     {
         auto selected = selectionModel()->selectedIndexes();
         if (!selected.isEmpty())
-            emit clicked(selected.constFirst());
+            Q_EMIT clicked(selected.constFirst());
     }
 }
 

@@ -9,7 +9,6 @@ namespace core
     {
         std::string from_utf16(std::wstring_view _source_16);
         std::wstring from_utf8(std::string_view _source_8);
-        inline std::string from_int64(const int64_t _val) { return std::to_string(_val); }
         std::string wstring_to_string(const std::wstring& wstr);
 
         bool is_digit(char _c);

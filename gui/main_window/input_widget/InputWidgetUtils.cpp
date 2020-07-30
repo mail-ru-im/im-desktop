@@ -6,6 +6,7 @@
 #include "utils/InterConnector.h"
 #include "styles/ThemeParameters.h"
 #include "controls/CustomButton.h"
+#include "controls/textrendering/TextRendering.h"
 #include "fonts.h"
 
 #include "main_window/history_control/HistoryControlPage.h"
@@ -13,12 +14,6 @@
 
 #include "core_dispatcher.h"
 #include "gui_settings.h"
-
-namespace
-{
-    const auto S_MARK = qsl("`");
-    const auto M_MARK = qsl("```");
-}
 
 namespace Ui
 {
@@ -120,6 +115,7 @@ namespace Ui
 
         bool isMD = false;
 
+        const auto M_MARK = Ui::TextRendering::tripleBackTick();
         const auto mmCount = leftPart.count(M_MARK);
 
         if (mmCount % 2 != 0)
@@ -131,16 +127,16 @@ namespace Ui
             if (mmCount % 2 == 0)
             {
                 auto lastLF = -1;
-                auto lastMM = _text.lastIndexOf(M_MARK);
                 auto textToCheck = _text;
 
-                if (lastMM != -1)
-                    textToCheck = _text.mid(lastMM + M_MARK.length());
+                if (const auto lastMM = _text.lastIndexOf(M_MARK); lastMM != -1)
+                    textToCheck = _text.mid(lastMM + M_MARK.size());
 
                 lastLF = textToCheck.lastIndexOf(ql1c('\n'));
 
                 lastLF = (lastLF == -1) ? 0 : lastLF;
                 const auto partAfterLF = textToCheck.mid(lastLF);
+                const auto S_MARK = Ui::TextRendering::singleBackTick();
                 const auto smCount = partAfterLF.count(S_MARK);
                 isMD = (smCount > 0 && smCount % 2 != 0);
             }
@@ -176,12 +172,12 @@ namespace Ui
         return false;
     }
 
-    bool isEmoji(const QStringRef& _text, int & _pos)
+    bool isEmoji(QStringView _text, qsizetype& _pos)
     {
         const auto emojiMaxSize = Emoji::EmojiCode::maxSize();
         for (size_t i = 0; i < emojiMaxSize; ++i)
         {
-            int position = _pos - i;
+            qsizetype position = _pos - i;
             if (Emoji::getEmoji(_text, position) != Emoji::EmojiCode())
             {
                 _pos = position;
@@ -241,7 +237,7 @@ namespace Ui
         const auto &emojiReplacer = _textEdit->getReplacer();
         if (emojiReplacer.isAutoreplaceAvailable())
         {
-            const auto &replacement = emojiReplacer.getReplacement(QStringRef(&lastWord));
+            const auto &replacement = emojiReplacer.getReplacement(lastWord);
             if (!replacement.isNull())
             {
                 const auto asCode = replacement.value<Emoji::EmojiCode>();
@@ -316,9 +312,9 @@ namespace Ui
             if (delim.isSpace())
             {
                 cursor.movePosition(QTextCursor::NextCharacter, QTextCursor::MoveAnchor);
-                auto endPosition = cursor.position();
+                qsizetype endPosition = cursor.position();
 
-                if (isEmoji(QStringRef(&currentText), endPosition) && (endPosition == currentTextLenght))
+                if (isEmoji(currentText, endPosition) && (endPosition == currentTextLenght))
                 {
                     if (currentText.startsWith(stackTopText))
                         _textEdit->getUndoRedoStack().top().Text() += delim;
@@ -376,16 +372,12 @@ namespace Ui
 
     QColor getPopupHoveredColor()
     {
-        auto color = Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID);
-        color.setAlphaF(0.05);
-        return color;
+        return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID, 0.05);
     }
 
     QColor getPopupPressedColor()
     {
-        auto color = Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID);
-        color.setAlphaF(0.08);
-        return color;
+        return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID, 0.08);
     }
 
     QColor focusColorPrimary()
@@ -395,9 +387,7 @@ namespace Ui
 
     QColor focusColorAttention()
     {
-        auto color = Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_ATTENTION);
-        color.setAlphaF(0.22);
-        return color;
+        return Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_ATTENTION, 0.22);
     }
 
     void sendStat(const core::stats::stats_event_names _event, const std::string_view _from)

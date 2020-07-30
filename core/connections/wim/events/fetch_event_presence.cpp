@@ -21,14 +21,10 @@ fetch_event_presence::~fetch_event_presence()
 
 int32_t fetch_event_presence::parse(const rapidjson::Value& _node_event_data)
 {
-    const auto iter_aimid = _node_event_data.FindMember("aimId");
-    if (iter_aimid == _node_event_data.MemberEnd() || !iter_aimid->value.IsString())
+    if (!tools::unserialize_value(_node_event_data, "aimId", aimid_))
         return wpie_error_parse_response;
 
-    aimid_ = rapidjson_get_string(iter_aimid->value);
-
     presense_->unserialize(_node_event_data);
-
     return 0;
 }
 

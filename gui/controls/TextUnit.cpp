@@ -3,6 +3,16 @@
 #include "textrendering/TextRenderingUtils.h"
 
 #include "../styles/ThemeParameters.h"
+#include "../spellcheck/Spellchecker.h"
+
+namespace
+{
+    auto counter() noexcept
+    {
+        static int64_t v = 0;
+        return ++v;
+    }
+}
 
 namespace Ui
 {
@@ -22,6 +32,7 @@ namespace TextRendering
         , lineSpacing_(0)
         , sourceModified_(false)
         , needsEmojiMargin_(false)
+        , blockId_(counter())
     {
     }
 
@@ -42,6 +53,7 @@ namespace TextRendering
         , lineSpacing_(0)
         , sourceModified_(false)
         , needsEmojiMargin_(false)
+        , blockId_(counter())
     {
     }
 
@@ -51,6 +63,7 @@ namespace TextRendering
             color_ = _color;
         originText_ = _text;
         blocks_ = parseForBlocks(_text, mentions_, showLinks_, processLineFeeds_);
+        blockId_ = counter();
         initBlocks(blocks_, font_, color_, linkColor_, selectionColor_, highlightColor_, align_, emojiSizeType_, linksStyle_);
         setBlocksMaxLinesCount(blocks_, maxLinesCount_, lineBreak_);
         evaluateDesiredSize();
@@ -215,16 +228,12 @@ namespace TextRendering
 
     int TextUnit::getLineCount() const
     {
-        int lineCount = 0;
-        for (auto & b : blocks_)
-            lineCount += b->getLineCount();
-
-        return lineCount;
+        return std::accumulate(blocks_.begin(), blocks_.end(), 0, [](auto currentValue, const auto& b) { return b->getLineCount() + currentValue; });
     }
 
     void TextUnit::select(const QPoint& _from, const QPoint& _to)
     {
-        return selectBlocks(blocks_, QPoint(_from.x() - horOffset_, _from.y() - verOffset_), QPoint(_to.x() - horOffset_, _to.y() - verOffset_));
+        return selectBlocks(blocks_, mapPoint(_from), mapPoint(_to));
     }
 
     void TextUnit::selectAll()
@@ -254,22 +263,32 @@ namespace TextRendering
 
     void TextUnit::clicked(const QPoint& _p)
     {
-        return blocksClicked(blocks_, QPoint(_p.x() - horOffset_, _p.y() - verOffset_));
+        return blocksClicked(blocks_, mapPoint(_p));
     }
 
     void TextUnit::doubleClicked(const QPoint& _p, bool _fixSelection, std::function<void(bool)> _callback)
     {
-        return blocksDoubleClicked(blocks_, QPoint(_p.x() - horOffset_, _p.y() - verOffset_), _fixSelection, std::move(_callback));
+        return blocksDoubleClicked(blocks_, mapPoint(_p), _fixSelection, std::move(_callback));
     }
 
     bool TextUnit::isOverLink(const QPoint& _p) const
     {
-        return Ui::TextRendering::isOverLink(blocks_, QPoint(_p.x() - horOffset_, _p.y() - verOffset_));
+        return TextRendering::isOverLink(blocks_, mapPoint(_p));
     }
 
     QString TextUnit::getLink(const QPoint& _p) const
     {
-        return getBlocksLink(blocks_, QPoint(_p.x() - horOffset_, _p.y() - verOffset_));
+        return getBlocksLink(blocks_, mapPoint(_p));
+    }
+
+    std::optional<TextWordWithBoundary> TextUnit::getWordAt(QPoint _p) const
+    {
+        return getWord(blocks_, mapPoint(_p));
+    }
+
+    bool TextUnit::replaceWordAt(const QString& _old, const QString& _new, QPoint _p)
+    {
+        return replaceWord(blocks_, _old, _new, mapPoint(_p));
     }
 
     QString TextUnit::getSelectedText(TextType _type) const
@@ -280,6 +299,11 @@ namespace TextRendering
     QString TextUnit::getText() const
     {
         return getBlocksText(blocks_);
+    }
+
+    QString TextUnit::getTextInstantEdit() const
+    {
+        return getBlocksTextForInstantEdit(blocks_);
     }
 
     QString TextUnit::getSourceText() const
@@ -424,9 +448,16 @@ namespace TextRendering
 
     void TextUnit::setEmojiSizeType(const EmojiSizeType _emojiSizeType)
     {
-        emojiSizeType_ = _emojiSizeType;
-        initBlocks(blocks_, font_, color_, linkColor_, selectionColor_, highlightColor_, align_, emojiSizeType_, linksStyle_);
-        setBlocksHighlightedTextColor(blocks_, highlightTextColor_);
+        if (emojiSizeType_ != _emojiSizeType)
+        {
+            emojiSizeType_ = _emojiSizeType;
+
+            if (hasEmoji())
+            {
+                initBlocks(blocks_, font_, color_, linkColor_, selectionColor_, highlightColor_, align_, emojiSizeType_, linksStyle_);
+                setBlocksHighlightedTextColor(blocks_, highlightTextColor_);
+            }
+        }
     }
 
     bool TextUnit::needsEmojiMargin() const
@@ -434,9 +465,105 @@ namespace TextRendering
         return needsEmojiMargin_;
     }
 
+    size_t TextUnit::getEmojiCount() const
+    {
+        if (isEmpty() || blocks_.size() > 1)
+            return 0;
+
+        return TextRendering::getEmojiCount(blocks_.front()->getWords());
+    }
+
     bool TextUnit::isEmpty() const
     {
         return blocks_.empty();
+    }
+
+    void TextUnit::disableCommands()
+    {
+        disableCommandsInBlocks(blocks_);
+    }
+
+    void TextUnit::startSpellChecking(std::function<bool()> isAlive, std::function<void(bool)> onFinish)
+    {
+        auto sharedActual = std::make_shared<spellcheck::ActualGuard>(std::move(onFinish));
+
+        if (!guard_)
+            guard_ = std::make_shared<bool>(false);
+
+        const auto weak = std::weak_ptr<bool>(guard_);
+        const auto id = blockId();
+        for (size_t blockIdx = 0; blockIdx < blocks_.size(); ++blockIdx)
+        {
+            const auto& words = blocks_[blockIdx]->getWords();
+            for (size_t wordIdx = 0; wordIdx < words.size(); ++wordIdx)
+            {
+                auto& w = words[wordIdx];
+                if (w.skipSpellCheck())
+                    continue;
+
+                const auto text = w.getText();
+                for (auto syntaxWord : w.getSyntaxWords())
+                {
+                    auto s = text.mid(syntaxWord.pos, syntaxWord.size);
+                    spellcheck::Spellchecker::instance().hasMisspelling(std::move(s), [this, weak, id, isAlive, wordIdx, blockIdx, text, sharedActual, syntaxWord](bool res)
+                    {
+                        if (!res || !sharedActual->isActual())
+                            return;
+
+                        const auto lock = weak.lock();
+                        if (!lock || id != blockId() || !isAlive || !isAlive())
+                        {
+                            sharedActual->ignore();
+                            return;
+                        }
+
+                        if (blockIdx >= blocks_.size() || wordIdx >= blocks_[blockIdx]->getWords().size())
+                        {
+                            sharedActual->ignore();
+                            return;
+                        }
+                        auto& w = blocks_[blockIdx]->getWords()[wordIdx];
+                        if (w.skipSpellCheck() || text != w.getText())
+                        {
+                            sharedActual->ignore();
+                            return;
+                        }
+
+                        if (w.markAsSpellError(syntaxWord))
+                        {
+                            w.setSpellError(true);
+                            sharedActual->setError();
+                        }
+                    });
+                }
+            }
+        }
+    }
+
+    bool TextUnit::isSkippableWordForSpellChecking(const TextWordWithBoundary& w)
+    {
+        if (w.word.skipSpellCheck())
+            return true;
+        const auto text = w.word.getText();
+        QStringView word(text);
+        if (w.syntaxWord)
+            word = word.mid(w.syntaxWord->pos, w.syntaxWord->size);
+
+        return spellcheck::Spellchecker::isWordSkippable(word);
+    }
+
+    bool TextUnit::hasEmoji() const
+    {
+        return std::any_of(blocks_.begin(), blocks_.end(), [](const auto& block)
+        {
+            const auto& words = block->getWords();
+            return std::any_of(words.begin(), words.end(), [](const auto& word) { return word.isEmoji(); });
+        });;
+    }
+
+    QPoint TextUnit::mapPoint(QPoint _p) const
+    {
+        return QPoint(_p.x() - horOffset_, _p.y() - verOffset_);
     }
 
     void TextUnit::setAlign(HorAligment _align)
@@ -450,84 +577,6 @@ namespace TextRendering
     {
         return std::make_unique<TextUnit>(_text, parseForBlocks(_text, _mentions, _showLinks, _processLineFeeds), _mentions, _showLinks, _processLineFeeds, _emojiSizeType);
     }
-
-    bool InsertOrUpdateDebugMsgIdBlockIntoUnit(TextUnitPtr& _textUnit, qint64 _id, size_t _atPosition)
-    {
-        bool hasDebugMsgIdBlock = false;
-
-        _textUnit->forEachBlockOfType(BlockType::TYPE_DEBUG_TEXT, [&hasDebugMsgIdBlock](BaseDrawingBlockPtr& block, size_t index) {
-            DebugInfoTextDrawingBlock *debugBlock = dynamic_cast<DebugInfoTextDrawingBlock *>(block.get());
-            assert(debugBlock);
-            if (!debugBlock)
-                return;
-
-            if (debugBlock->getSubtype() != DebugInfoTextDrawingBlock::Subtype::MessageId)
-                return;
-
-            hasDebugMsgIdBlock = true;
-        });
-
-        if (hasDebugMsgIdBlock)
-            return UpdateDebugMsgIdBlock(_textUnit, _id);
-        else
-            return InsertDebugMsgIdBlockIntoUnit(_textUnit, _id, _atPosition);
-    }
-
-    bool InsertDebugMsgIdBlockIntoUnit(TextUnitPtr& _textUnit, qint64 _id, size_t _atPosition)
-    {
-        return _textUnit->insertBlock(std::make_unique<DebugInfoTextDrawingBlock>(_id, DebugInfoTextDrawingBlock::Subtype::MessageId), _atPosition);
-    }
-
-    bool UpdateDebugMsgIdBlock(TextUnitPtr& _textUnit, qint64 _newId)
-    {
-        std::vector<size_t> debugBlockIndices;
-
-        _textUnit->forEachBlockOfType(BlockType::TYPE_DEBUG_TEXT, [&debugBlockIndices](BaseDrawingBlockPtr& block, size_t index) {
-            DebugInfoTextDrawingBlock *debugBlock = dynamic_cast<DebugInfoTextDrawingBlock *>(block.get());
-            assert(debugBlock);
-            if (!debugBlock)
-                return;
-
-            if (debugBlock->getSubtype() != DebugInfoTextDrawingBlock::Subtype::MessageId)
-                return;
-
-            debugBlockIndices.push_back(index);
-        });
-
-        bool hasReplaced = false;
-
-        std::for_each(debugBlockIndices.begin(), debugBlockIndices.end(), [&_textUnit, _newId, &hasReplaced](size_t &index) {
-            bool replaced = _textUnit->replaceBlock(index,
-                std::make_unique<DebugInfoTextDrawingBlock>(_newId, DebugInfoTextDrawingBlock::Subtype::MessageId),
-                [_newId](BaseDrawingBlockPtr& _block) {
-                if (_block->getType() != BlockType::TYPE_DEBUG_TEXT)
-                    return false;
-
-                DebugInfoTextDrawingBlock *dbgBlock = dynamic_cast<DebugInfoTextDrawingBlock *>(_block.get());
-                assert(dbgBlock);
-                if (!dbgBlock)
-                    return false;
-
-                return dbgBlock->getMessageId() != _newId;
-            });
-            hasReplaced = hasReplaced || replaced;
-        });
-
-        return hasReplaced;
-    }
-
-    bool RemoveDebugMsgIdBlocks(TextUnitPtr& _textUnit)
-    {
-        return _textUnit->removeBlocks(BlockType::TYPE_DEBUG_TEXT, [](BaseDrawingBlockPtr& block) {
-            DebugInfoTextDrawingBlock *debugBlock = dynamic_cast<DebugInfoTextDrawingBlock *>(block.get());
-            assert(debugBlock);
-            if (!debugBlock)
-                return false;
-
-            return debugBlock->getSubtype() == DebugInfoTextDrawingBlock::Subtype::MessageId;
-        });
-    }
-
 }
 QString getEllipsis()
 {

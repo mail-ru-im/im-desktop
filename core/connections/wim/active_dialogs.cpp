@@ -7,17 +7,6 @@
 using namespace core;
 using namespace wim;
 
-active_dialog::active_dialog()
-{
-
-}
-
-active_dialog::active_dialog(std::string _aimid)
-    : aimid_(std::move(_aimid))
-{
-}
-
-
 void active_dialog::serialize(rapidjson::Value& _node, rapidjson_allocator& _a) const
 {
     _node.AddMember("aimId", get_aimid(), _a);

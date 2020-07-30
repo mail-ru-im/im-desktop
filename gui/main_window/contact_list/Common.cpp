@@ -5,8 +5,11 @@
 #include "../../utils/utils.h"
 
 #include "Common.h"
-#include "ContactList.h"
+#include "RecentsTab.h"
 #include "../../gui_settings.h"
+#include "../proxy/AvatarStorageProxy.h"
+#include "../proxy/FriendlyContaInerProxy.h"
+#include "FavoritesUtils.h"
 
 #include "styles/ThemeParameters.h"
 
@@ -16,7 +19,6 @@ namespace Ui
         : IsHovered_(false)
         , IsSelected_(false)
         , IsOnline_(false)
-        , HasLastSeen_(false)
         , isCheckedBox_(false)
         , isChatMember_(false)
         , isOfficial_(false)
@@ -39,8 +41,7 @@ namespace Ui
         const QString& _contactName,
         const QString& _nick,
         const std::vector<QString>& _highlights,
-        const bool _hasLastSeen,
-        const QDateTime& _lastSeen,
+        const Data::LastSeen& _lastSeen,
         const bool _isWithCheckBox,
         const bool _isChatMember,
         const bool _isOfficial,
@@ -61,7 +62,6 @@ namespace Ui
         , IsHovered_(_isHovered)
         , IsSelected_(_isSelected)
         , IsOnline_(_isOnline)
-        , HasLastSeen_(_hasLastSeen)
         , LastSeen_(_lastSeen)
         , isCheckedBox_(_isWithCheckBox)
         , isChatMember_(_isChatMember)
@@ -165,11 +165,12 @@ namespace Ui
         return 0;
     }
 
-    QColor ContactListParams::getNameFontColor(bool _isSelected, bool _isMemberChecked) const
+    QColor ContactListParams::getNameFontColor(bool _isSelected, bool _isMemberChecked, bool _isFavorites) const
     {
         return _isSelected ?
             Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT) : _isMemberChecked ?
-            Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY) :
+            Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY) : _isFavorites ?
+            Favorites::nameColor() :
             Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID);
     }
 
@@ -266,28 +267,29 @@ namespace Ui
 
     bool IsSelectMembers(int regim)
     {
-        return (regim == Logic::MembersWidgetRegim::SELECT_MEMBERS) || (regim == Logic::MembersWidgetRegim::VIDEO_CONFERENCE);
+        return regim == Logic::MembersWidgetRegim::SELECT_MEMBERS || regim == Logic::MembersWidgetRegim::VIDEO_CONFERENCE
+            || regim == Logic::MembersWidgetRegim::SELECT_CHAT_MEMBERS;
     }
 
     QString getStateString(const QString& _state)
     {
-        if (_state == ql1s("online"))
+        if (_state == u"online")
         {
             return QT_TRANSLATE_NOOP("state", "Online");
         }
-        else if (_state == ql1s("offline"))
+        else if (_state == u"offline")
         {
             return QT_TRANSLATE_NOOP("state", "Offline");
         }
-        else if (_state == ql1s("away"))
+        else if (_state == u"away")
         {
             return QT_TRANSLATE_NOOP("state", "Away");
         }
-        else if (_state == ql1s("dnd"))
+        else if (_state == u"dnd")
         {
             return QT_TRANSLATE_NOOP("state", "Do not disturb");
         }
-        else if (_state == ql1s("invisible"))
+        else if (_state == u"invisible")
         {
             return QT_TRANSLATE_NOOP("state", "Invisible");
         }
@@ -314,4 +316,22 @@ namespace Ui
             return QString();
         }
     }
+}
+
+int32_t Logic::AbstractItemDelegateWithRegim::avatarProxyFlags() const
+{
+    int32_t flags = 0;
+    if (replaceFavorites_)
+        flags |= Logic::AvatarStorageProxy::ReplaceFavorites;
+
+    return flags;
+}
+
+int32_t Logic::AbstractItemDelegateWithRegim::friendlyProxyFlags() const
+{
+    int32_t flags = 0;
+    if (replaceFavorites_)
+        flags |= Logic::FriendlyContainerProxy::ReplaceFavorites;
+
+    return flags;
 }

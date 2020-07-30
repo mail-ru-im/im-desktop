@@ -63,6 +63,8 @@ base_im::base_im(const im_login_id& _login,
 
 base_im::~base_im()
 {
+    if (voip_manager_)
+        voip_manager_->unload_mask_engine();
 }
 
 void base_im::set_id(int32_t _id)
@@ -146,12 +148,12 @@ std::wstring core::base_im::get_my_info_file_name() const
     return su::wconcat(get_im_data_path(), L"/info/cache");
 }
 
-std::wstring base_im::get_active_dilaogs_file_name() const
+std::wstring base_im::get_active_dialogs_file_name() const
 {
     return su::wconcat(get_im_data_path(), L"/dialogs/", archive::cache_filename());
 }
 
-std::wstring base_im::get_favorites_file_name() const
+std::wstring base_im::get_pinned_chats_file_name() const
 {
     return su::wconcat(get_im_data_path(), L"/favorites/", archive::cache_filename());
 }
@@ -183,9 +185,8 @@ std::wstring base_im::get_file_name_by_url(const std::string& _url) const
 
 void base_im::create_masks(std::weak_ptr<wim::im> _im)
 {
-    const auto& path = get_masks_path();
     const auto version = voip_manager_ ? voip_manager_->version() : 0;
-    masks_ = std::make_shared<masks>(_im, path, version);
+    masks_ = std::make_shared<masks>(_im, get_masks_path(), version);
 }
 
 std::wstring base_im::get_masks_path() const
@@ -239,29 +240,28 @@ std::wstring core::base_im::get_search_history_path() const
     return su::wconcat(get_im_data_path(), L"/search");
 }
 
-// voip
-void core::base_im::on_voip_call_set_proxy(const voip_manager::VoipProxySettings& proxySettings)
+std::wstring core::base_im::get_call_log_file_name() const
 {
-#ifndef STRIP_VOIP
-    //voip_manager_->call_set_proxy(proxySettings);
-#endif
+    return su::wconcat(get_im_data_path(), L"/calls/call_log.cache");
 }
 
-void core::base_im::on_voip_call_start(std::string contact, bool video, bool attach)
+// voip
+/*void core::base_im::on_voip_call_set_proxy(const voip_manager::VoipProxySettings& proxySettings)
 {
 #ifndef STRIP_VOIP
-    assert(!contact.empty());
-    if (contact.empty())
-        return;
+    voip_manager_->call_set_proxy(proxySettings);
+#endif
+}*/
 
+void core::base_im::on_voip_call_start(const std::vector<std::string> &contacts, const voip_manager::CallStartParams &params)
+{
+#ifndef STRIP_VOIP
     auto account = _get_protocol_uid();
     assert(!account.empty());
-
-    if (!!voip_manager_ && !account.empty() && !contact.empty())
-    {
-        voip_manager_->call_create(voip_manager::Contact(account, contact), video, attach);
-        voip_manager_->set_device_mute(AudioPlayback, false);
-    }
+    if (!voip_manager_ || account.empty() || contacts.empty())
+        return;
+    voip_manager_->call_create(contacts, account, params);
+    voip_manager_->set_device_mute(AudioPlayback, false);
 #endif
 }
 
@@ -332,15 +332,10 @@ void core::base_im::on_voip_user_update_avatar_background(const std::string& con
     return __on_voip_user_bitmap(voip_manager_, contact, /*voip2::AvatarType_Background*/Img_UserBackground, data, size, h, w, theme);
 }
 
-void core::base_im::on_voip_call_end(std::string contact, bool busy, bool conference)
+void core::base_im::on_voip_call_end(const std::string &call_id, const std::string &contact, bool busy, bool conference)
 {
 #ifndef STRIP_VOIP
-    auto account = _get_protocol_uid();
-    assert(!account.empty());
-    if (!account.empty() && !contact.empty())
-    {
-        voip_manager_->call_decline(voip_manager::Contact(account, contact), busy, conference);
-    }
+    voip_manager_->call_decline(voip_manager::Contact(call_id, contact), busy, conference);
 #endif
 }
 
@@ -387,17 +382,11 @@ void core::base_im::on_voip_window_update_background(void* hwnd, const unsigned 
 #endif
 }
 
-void core::base_im::on_voip_call_accept(std::string contact, bool video)
+void core::base_im::on_voip_call_accept(const std::string &call_id, bool video)
 {
 #ifndef STRIP_VOIP
-    auto account = _get_protocol_uid();
-    assert(!account.empty());
-
-    if (!account.empty() && !contact.empty())
-    {
-        voip_manager_->call_accept(voip_manager::Contact(std::move(account), std::move(contact)), video);
-        voip_manager_->set_device_mute(AudioPlayback, false);
-    }
+    voip_manager_->call_accept(call_id, _get_protocol_uid(), video);
+    voip_manager_->set_device_mute(AudioPlayback, false);
 #endif
 }
 

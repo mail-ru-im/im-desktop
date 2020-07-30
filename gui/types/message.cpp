@@ -5,9 +5,11 @@
 
 #include "../utils/gui_coll_helper.h"
 #include "../../corelib/enumerations.h"
+#include "../../common.shared/config/config.h"
 #include "../utils/log/log.h"
 #include "../utils/UrlParser.h"
 #include "../utils/utils.h"
+#include "../utils/features.h"
 
 #include "../main_window/history_control/FileSharingInfo.h"
 #include "../main_window/history_control/StickerInfo.h"
@@ -17,7 +19,7 @@
 
 #include "../cache/avatars/AvatarStorage.h"
 #include "../main_window/contact_list/ContactListModel.h"
-#include "../main_window/friendly/FriendlyContainer.h"
+#include "../main_window/containers/FriendlyContainer.h"
 #include "../my_info.h"
 #include "../main_window/mediatype.h"
 #include "contact.h"
@@ -72,6 +74,26 @@ namespace Data
         long_ = helper.get_value_as_double("long");
     }
 
+    void ButtonData::unserialize(core::icollection* _collection)
+    {
+        Ui::gui_coll_helper helper(_collection, false);
+        text_ = helper.get<QString>("text");
+        url_ = helper.get<QString>("url");
+        callbackData_ = helper.get<QString>("callback_data");
+
+        auto style_str = helper.get<QString>("style");
+        if (style_str == u"attention")
+            style_ = style::ATTENTION;
+        else if (style_str == u"primary")
+            style_ = style::PRIMARY;
+        else
+            style_ = style::BASE;
+    }
+
+    ButtonData::style ButtonData::getStyle() const
+    {
+        return style_;
+    }
 
     DlgState::DlgState()
         : UnreadCount_(0)
@@ -81,7 +103,7 @@ namespace Data
         , TheirsLastRead_(-1)
         , TheirsLastDelivered_(-1)
         , DelUpTo_(-1)
-        , FavoriteTime_(-1)
+        , PinnedTime_(-1)
         , UnimportantTime_(-1)
         , Time_(-1)
         , Outgoing_(false)
@@ -120,6 +142,8 @@ namespace Data
         , IndentBefore_(false)
         , Outgoing_(false)
         , Edited_(false)
+        , Unsupported_(false)
+        , HideEdit_(false)
         , Type_(core::message_type::base)
     {
     }
@@ -357,6 +381,11 @@ namespace Data
         return Outgoing_;
     }
 
+    bool MessageBuddy::isOutgoingPosition() const
+    {
+        return IsOutgoing() && !Logic::getContactListModel()->isChannel(AimId_);
+    }
+
     bool MessageBuddy::IsOutgoingVoip() const
     {
         if (!VoipEvent_)
@@ -423,7 +452,7 @@ namespace Data
         return Text_;
     }
 
-    const QString MessageBuddy::GetText() const
+    QString MessageBuddy::GetText() const
     {
         return (Sticker_ ? QT_TRANSLATE_NOOP("message", "Sticker") : Text_.trimmed());
     }
@@ -509,6 +538,8 @@ namespace Data
         Date_ = buddy.Date_;
         Deleted_ = buddy.Deleted_;
         Edited_ = buddy.Edited_;
+        Unsupported_ = buddy.Unsupported_;
+        HideEdit_ = buddy.HideEdit_;
         UpdatePatchVersion_ = buddy.UpdatePatchVersion_;
 
         SetFileSharing(buddy.GetFileSharing());
@@ -644,7 +675,7 @@ namespace Data
         Desription_ = _description;
     }
 
-    QString MessageBuddy::GetDescription() const
+    const QString& MessageBuddy::GetDescription() const
     {
         return Desription_;
     }
@@ -654,7 +685,7 @@ namespace Data
         Url_ = _url;
     }
 
-    QString MessageBuddy::GetUrl() const
+    const QString& MessageBuddy::GetUrl() const
     {
         return Url_;
     }
@@ -671,6 +702,26 @@ namespace Data
     QString MessageBuddy::getSender() const
     {
         return (Chat_ && HasChatSender()) ? normalizeAimId(ChatSender_) : AimId_;
+    }
+
+    void MessageBuddy::setUnsupported(bool _unsupported)
+    {
+        Unsupported_ = _unsupported;
+    }
+
+    bool MessageBuddy::isUnsupported() const
+    {
+        return Unsupported_;
+    }
+
+    void MessageBuddy::setHideEdit(bool _hideEdit)
+    {
+        HideEdit_ = _hideEdit;
+    }
+
+    bool MessageBuddy::hideEdit() const
+    {
+        return HideEdit_;
     }
 
     void MessageBuddy::SetOutgoing(const bool isOutgoing)
@@ -729,22 +780,19 @@ namespace Data
     QString DlgState::getTypers() const
     {
         QString res;
-
+        const auto joiner = ql1s(", ");
         for (const auto& _typer : typings_)
         {
             const QString name = Utils::replaceLine(_typer.chatterName_);
-
-            auto tokens = name.split(ql1c(' '));
-
-            if (!res.isEmpty())
-                res += ql1s(", ");
-
-            if (!tokens.isEmpty())
-                res += tokens.at(0);
+            if (const auto idx = name.indexOf(u' '); idx != -1)
+                res += name.leftRef(idx);
             else
                 res += _typer.chatterName_;
+            res += joiner;
         }
 
+        if (!res.isEmpty())
+            res.chop(joiner.size());
         return res;
     }
 
@@ -897,6 +945,17 @@ namespace Data
             }
         }
 
+        if (msgColl->is_value_exist("unsupported") && msgColl.get_value_as_bool("unsupported"))
+        {
+            const auto url = Features::updateAppUrl();
+            auto text = QT_TRANSLATE_NOOP("message", "The message is not supported on your version of ICQ. Update the app to see the message");
+            message->SetText(url.isEmpty() ? text : text % QChar::Space % url);
+            message->SetUrl(QString());
+            message->SetDescription(QString());
+            message->setUnsupported(true);
+            return message;
+        }
+
         if (msgColl.is_value_exist("file_sharing"))
         {
             core::coll_helper file_sharing(msgColl.get_value_as_collection("file_sharing"), false);
@@ -932,7 +991,7 @@ namespace Data
             message->SetType(core::message_type::chat_event);
 
             message->SetChatEvent(
-                HistoryControl::ChatEventInfo::Make(
+                HistoryControl::ChatEventInfo::make(
                     chat_event,
                     message->IsOutgoing(),
                     myAimid,
@@ -1009,6 +1068,38 @@ namespace Data
             message->poll_ = std::move(poll);
         }
 
+        if (msgColl->is_value_exist("reactions"))
+        {
+            auto reactions_coll = msgColl.get_value_as_collection("reactions");
+            MessageReactionsData reactions;
+            reactions.unserialize(reactions_coll);
+            message->reactions_ = std::move(reactions);
+        }
+
+        if (msgColl->is_value_exist("buttons"))
+        {
+            core::iarray* buttons = msgColl.get_value_as_array("buttons");
+            const auto size = buttons->size();
+            message->buttons_.reserve(size);
+            for (auto i = 0; i < size; ++i)
+            {
+                std::vector<ButtonData> btns;
+                core::iarray* line = (const_cast<core::ivalue*>(buttons->get_at(i)))->get_as_array();
+                for (int j = 0; j < line->size(); ++j)
+                {
+                    Data::ButtonData data;
+                    data.unserialize(line->get_at(j)->get_as_collection());
+                    btns.push_back(std::move(data));
+                }
+                message->buttons_.push_back(std::move(btns));
+            }
+        }
+
+        if (msgColl->is_value_exist("hide_edit"))
+        {
+            message->setHideEdit(msgColl.get_value_as_bool("hide_edit"));
+        }
+
         return message;
     }
 
@@ -1073,8 +1164,8 @@ namespace Data
         state.isStranger_ = helper->get<bool>("stranger");
         state.noRecentsUpdate_ = helper->get<bool>("no_recents_update");
 
-        if (helper->is_value_exist("favorite_time"))
-            state.FavoriteTime_ = helper->get<int64_t>("favorite_time");
+        if (helper->is_value_exist("pinned_time"))
+            state.PinnedTime_ = helper->get<int64_t>("pinned_time");
 
         if (helper->is_value_exist("unimportant_time"))
             state.UnimportantTime_ = helper->get<int64_t>("unimportant_time");
@@ -1129,6 +1220,12 @@ namespace Data
                 state.heads_.emplace_back(std::move(headAimid), std::move(headFriendly));
             }
         }
+
+        if (helper->is_value_exist("members_version"))
+            state.membersVersion_ = helper->get<QString>("members_version");
+
+        if (helper->is_value_exist("info_version"))
+            state.infoVersion_ = helper->get<QString>("info_version");
 
         return state;
     }
@@ -1206,10 +1303,11 @@ namespace Data
 
         if (!chatId_.isEmpty() && Utils::isChat(chatId_))
         {
-            if (const auto name = Logic::GetFriendlyContainer()->getFriendly(chatId_); !name.isEmpty() && name != chatId_)
-                chatName_ = name;
-            else if (coll->is_value_exist("chatName"))
-                chatName_ = QString::fromUtf8(coll.get_value_as_string("chatName"));
+            if (coll->is_value_exist("chatName") && !std::string_view(coll.get_value_as_string("chatName")).empty() || Logic::getContactListModel()->contains(chatId_))
+            {
+                if (const auto name = Logic::GetFriendlyContainer()->getFriendly(chatId_); !name.isEmpty() && name != chatId_)
+                    chatName_ = name;
+            }
         }
 
         if (senderId_ == Ui::MyInfo()->aimId())
@@ -1293,5 +1391,203 @@ namespace Data
 
             messages.push_back(Data::unserializeMessage(value, aimId, myAimid, theirs_last_delivered, theirs_last_read));
         }
+    }
+
+    CallInfo::CallInfo()
+        : count_(1)
+    {
+    }
+
+    CallInfo::CallInfo(const QString& _aimid, MessageBuddySptr _message)
+        : count_(1)
+    {
+        AimId_ = _aimid;
+        Messages_.push_back(_message);
+
+        if (_message)
+            VoipSid_ = _message->GetVoipEvent()->getSid();
+
+        if (auto voip = GetVoipEvent())
+            Members_ = voip->getConferenceMembers();
+
+        if (std::find(Members_.begin(), Members_.end(), _aimid) == Members_.end())
+            Members_.push_back(_aimid);
+
+        if (!isSingleItem())
+            Members_.erase(std::remove(Members_.begin(), Members_.end(), Ui::MyInfo()->aimId()), Members_.end());
+
+        std::sort(Members_.begin(), Members_.end());
+    }
+
+    void CallInfo::addMessages(const std::vector<MessageBuddySptr>& _messages)
+    {
+        Messages_.insert(Messages_.begin(), _messages.begin(), _messages.end());
+        std::sort(Messages_.begin(), Messages_.end(), [](const auto& iter1, const auto& iter2) { return iter1->Time_ < iter2->Time_; });
+    }
+
+    void CallInfo::mergeMembers(const std::vector<QString>& _members)
+    {
+        if (Members_ != _members)
+        {
+            Members_.insert(Members_.end(), _members.begin(), _members.end());
+            std::sort(Members_.begin(), Members_.end());
+            Members_.erase(std::unique(Members_.begin(), Members_.end()), Members_.end());
+        }
+    }
+
+    void CallInfo::calcCount()
+    {
+        if (isSingleItem())
+        {
+            count_ = Messages_.size();
+        }
+        else
+        {
+            std::map<QString, int> counts;
+            for (const auto& m : Messages_)
+            {
+                const auto& aimid = m->AimId_;
+                if (std::find_if(counts.begin(), counts.end(), [aimid](const auto& iter) { return iter.first == aimid; }) == counts.end())
+                    counts[aimid] = 1;
+                else
+                    ++counts[aimid];
+            }
+
+            count_ = 0;
+            for (const auto& c : counts)
+                count_ = std::max(count_, c.second);
+        }
+    }
+
+    QString CallInfo::getFriendly(bool _withNumbers) const
+    {
+        QString result;
+
+        for (const auto& id : Members_)
+        {
+            result += Logic::GetFriendlyContainer()->getFriendly(id);
+            result += qsl(", ");
+        }
+
+        result = result.mid(0, result.size() - 2);
+
+        if (count_ > 1 && _withNumbers)
+            result += qsl(" (%1)").arg(count_);
+
+        return result;
+    }
+
+    const QString& CallInfo::getAimId() const
+    {
+        return AimId_;
+    }
+
+    QString CallInfo::getServiceAimid() const
+    {
+        return ServiceAimid_;
+    }
+
+    QString CallInfo::getButtonsText() const
+    {
+        return ButtonsText_;
+    }
+
+    HistoryControl::VoipEventInfoSptr CallInfo::GetVoipEvent() const
+    {
+        if (Messages_.empty())
+            return nullptr;
+
+        return Messages_.begin()->get()->GetVoipEvent();
+    }
+
+    const std::vector<QString>& CallInfo::getHightlights() const
+    {
+        return Highlights_;
+    }
+
+    const std::vector<MessageBuddySptr>& CallInfo::getMessages() const
+    {
+        return Messages_;
+    }
+
+    const std::vector<QString>& CallInfo::getMembers() const
+    {
+        return Members_;
+    }
+
+    qint32 CallInfo::time() const
+    {
+        if (Messages_.empty())
+            return -1;
+
+        return Messages_.begin()->get()->Time_;
+    }
+
+    bool CallInfo::isSingleItem() const
+    {
+        return Members_.size() == 1;
+    }
+
+    bool CallInfo::isOutgoing() const
+    {
+        if (Messages_.empty())
+            return false;
+
+        return Messages_.begin()->get()->IsOutgoing();
+    }
+
+    bool CallInfo::isService() const
+    {
+        return !ServiceAimid_.isEmpty();
+    }
+
+    bool CallInfo::isSpaceItem() const
+    {
+        return isService() && ServiceAimid_ == u"~space~";
+    }
+
+    bool CallInfo::isVideo() const
+    {
+        auto voip = GetVoipEvent();
+        if (voip)
+            return voip->isVideoCall();
+
+        return false;
+    }
+
+    bool CallInfo::isMissed() const
+    {
+        auto voip = GetVoipEvent();
+        return voip && voip->isMissed();
+    }
+
+    CallInfo UnserializeCallInfo(core::coll_helper* helper)
+    {
+        auto aimid = helper->get<QString>("aimid");
+        core::coll_helper message(helper->get_value_as_collection("message"), false);
+        return CallInfo(aimid, unserializeMessage(message, aimid, Ui::MyInfo()->aimId(), -1, -1));
+    }
+
+    CallInfoVec UnserializeCallLog(core::coll_helper* helper)
+    {
+        CallInfoVec result;
+
+        auto calls = helper->get_value_as_array("calls");
+        if (calls)
+        {
+            const auto size = calls->size();
+            result.reserve(size);
+            for (int32_t i = 0; i < size; ++i)
+            {
+                core::coll_helper value(
+                    calls->get_at(i)->get_as_collection(),
+                    false
+                );
+
+                result.push_back(UnserializeCallInfo(&value));
+            }
+        }
+
+        return result;
     }
 }

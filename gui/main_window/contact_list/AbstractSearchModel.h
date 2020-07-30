@@ -29,6 +29,10 @@ namespace Logic
         bool isServerSearchEnabled() const noexcept { return isServerSearchEnabled_; };
         void setServerSearchEnabled(const bool _enabled) noexcept { isServerSearchEnabled_ = _enabled; };
 
+        virtual void addTemporarySearchData(const QString& _data) {}
+        virtual void removeTemporarySearchData(const QString& _data) {}
+        virtual void removeAllTemporarySearchData() {}
+
     protected:
         QString searchPattern_;
         bool isServerSearchEnabled_;

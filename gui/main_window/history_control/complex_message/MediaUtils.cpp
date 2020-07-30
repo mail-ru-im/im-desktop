@@ -171,6 +171,23 @@ namespace
 namespace MediaUtils
 {
 
+QSize getTargetSize(const QRect& _rect, const QPixmap& _pixmap, const QSize& _originalSize)
+{
+
+    const auto sourceRect = mediaSourceRect(_pixmap.size(), _rect.size(), _originalSize);
+    const auto scaledSize = isSmallMedia(_originalSize) ? _originalSize : sourceRect.size().scaled(_rect.size(), Qt::KeepAspectRatio);
+
+    const auto minWidth = std::min(_rect.width(), scaledSize.width());
+    const auto minHeight = std::min(_rect.height(), scaledSize.height());
+
+    const auto xOffset = (std::max(_rect.width(), scaledSize.width()) - minWidth) / 2;
+    const auto yOffset = (std::max(_rect.height(), scaledSize.height()) - minHeight) / 2;
+
+    const auto targetRect = QRect(_rect.left() + xOffset, _rect.top() + yOffset, minWidth, minHeight);
+
+    return targetRect.size();
+}
+
 void drawMediaInRect(QPainter& _p, const QRect& _rect, const QPixmap& _pixmap, const QSize& _originalSize, BackgroundMode _backgroundMode)
 {
     if (_pixmap.isNull())

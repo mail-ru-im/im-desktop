@@ -6,6 +6,7 @@
 #include "../MessageStyle.h"
 
 #include "ComplexMessageUtils.h"
+#include "ComplexMessageItem.h"
 #include "FileSharingBlock.h"
 #include "MediaUtils.h"
 
@@ -90,7 +91,9 @@ QSize FileSharingImagePreviewBlockLayout::calcBlockSize(int _availableWidth)
     params.mediaSize = block.originSizeScaled();
     params.mediaType = block.mediaType();
     params.minBlockWidth = block.minControlsWidth();
-
+    auto parent = block.getParentComplexMessage();
+    if (parent)
+        params.minBlockWidth = std::max(params.minBlockWidth, parent->calcButtonsWidth(_availableWidth));
 
     return MediaUtils::calcMediaBlockSize(params);
 }

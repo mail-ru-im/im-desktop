@@ -1,30 +1,20 @@
 #include "stdafx.h"
 
 #include "set_privacy_settings.h"
-#include "../../urls_cache.h"
 #include "../../../http_request.h"
 
 namespace core::wim
 {
     set_privacy_settings::set_privacy_settings(wim_packet_params _params, privacy_settings _settings)
-        : robusto_packet(_params)
+        : robusto_packet(std::move(_params))
         , settings_(std::move(_settings))
     {
     }
 
-    int32_t set_privacy_settings::init_request(std::shared_ptr<core::http_request_simple> _request)
+    int32_t set_privacy_settings::init_request(const std::shared_ptr<core::http_request_simple>& _request)
     {
-        constexpr char method[] = "updatePrivacySettings";
-
-        _request->set_url(urls::get_url(urls::url_type::rapi_host));
-        _request->set_normalized_url(method);
-        _request->set_keep_alive();
-
         rapidjson::Document doc(rapidjson::Type::kObjectType);
         auto& a = doc.GetAllocator();
-
-        doc.AddMember("method", method, a);
-        doc.AddMember("reqId", get_req_id(), a);
 
         rapidjson::Value node_params(rapidjson::Type::kObjectType);
 
@@ -33,7 +23,7 @@ namespace core::wim
 
         doc.AddMember("params", std::move(node_params), a);
 
-        sign_packet(doc, a, _request);
+        setup_common_and_sign(doc, a, _request, "updatePrivacySettings");
 
         if (!params_.full_log_)
         {

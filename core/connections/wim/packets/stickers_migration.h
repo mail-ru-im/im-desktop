@@ -26,17 +26,17 @@ namespace core
             std::vector<std::pair<int32_t, int32_t>> ids_;
             std::shared_ptr<core::tools::binary_stream> response_;
 
-            int32_t init_request(std::shared_ptr<core::http_request_simple> _request) override;
-            int32_t parse_response(std::shared_ptr<core::tools::binary_stream> _response) override;
+            int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
+            int32_t parse_response(const std::shared_ptr<core::tools::binary_stream>& _response) override;
 
         public:
-
-            bool support_async_execution() const override;
 
             stickers_migration(wim_packet_params _params, std::vector<std::pair<int, int>> _ids);
             virtual ~stickers_migration();
 
-            std::shared_ptr<core::tools::binary_stream> get_response() const;
+            const std::shared_ptr<core::tools::binary_stream>& get_response() const;
+
+            virtual priority_t get_priority() const override;
         };
     }
 }

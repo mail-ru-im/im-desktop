@@ -95,14 +95,16 @@ bool gui_settings::get_value(std::string_view _name, tools::binary_stream& _data
 void gui_settings::serialize(tools::binary_stream& _bs) const
 {
     tools::tlvpack pack;
+    pack.reserve(values_.size());
 
     int32_t counter = 0;
 
-    for (auto iter = values_.begin(); iter != values_.end(); ++iter)
+    for (const auto& [name, val] : values_)
     {
         tools::tlvpack value_tlv;
-        value_tlv.push_child(tools::tlv(gui_settings_types::gst_name, iter->first));
-        value_tlv.push_child(tools::tlv(gui_settings_types::gst_value, iter->second));
+        value_tlv.reserve(2);
+        value_tlv.push_child(tools::tlv(gui_settings_types::gst_name, name));
+        value_tlv.push_child(tools::tlv(gui_settings_types::gst_value, val));
 
         tools::binary_stream bs_value;
         value_tlv.serialize(bs_value);
@@ -115,9 +117,7 @@ void gui_settings::serialize(tools::binary_stream& _bs) const
 bool gui_settings::unserialize(tools::binary_stream& _bs)
 {
     if (!_bs.available())
-    {
         return false;
-    }
 
     tools::tlvpack pack;
     if (!pack.unserialize(_bs))
@@ -234,7 +234,7 @@ void gui_settings::serialize(core::coll_helper _collection) const
 
     for (const auto [name, value_data] : values_)
     {
-        if (const int32_t len = value_data.available())
+        if (const auto len = value_data.available())
         {
             coll_helper coll_value(_collection->create_collection(), true);
 
@@ -283,6 +283,9 @@ void gui_settings::clear_personal_values()
     clear_value(login_page_last_entered_uin);
     clear_value(settings_recents_fs_stickers);
     clear_value(settings_old_recents_stickers);
+    clear_value(statuses_user_statuses);
+
+    save_if_needed();
 }
 
 void gui_settings::clear_value(const std::string_view _value)

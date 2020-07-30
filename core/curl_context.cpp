@@ -21,6 +21,7 @@
 #include "configuration/app_config.h"
 #include "../libomicron/include/omicron/omicron.h"
 #include "../common.shared/config/config.h"
+#include "../common.shared/string_utils.h"
 
 #include "zstd_helper.h"
 
@@ -63,12 +64,12 @@ namespace
         return CURLAUTH_BASIC;
     }
 
-    constexpr const char* get_request_dict_header_attribut() noexcept
+    constexpr std::string_view get_request_dict_header_attribut() noexcept
     {
         return "IM-ZSTD-Request-Dict";
     }
 
-    constexpr const char* get_response_dict_header_attribut() noexcept
+    constexpr std::string_view get_response_dict_header_attribut() noexcept
     {
         return "IM-ZSTD-Response-Dict";
     }
@@ -225,18 +226,12 @@ bool core::curl_context::init_handler(CURL* _curl)
     }
     else
     {
-        std::string accept_encoding;
-        accept_encoding += "Accept-Encoding: ";
-        accept_encoding += get_data_compression_method_name(data_compression_method::zstd);
-        accept_encoding += ", ";
-        accept_encoding += get_data_compression_method_name(data_compression_method::gzip);
-        set_custom_header_param(accept_encoding);
+        std::string accept_encoding = su::concat("Accept-Encoding: ", get_data_compression_method_name(data_compression_method::zstd),
+            ", ", get_data_compression_method_name(data_compression_method::gzip));
+        set_custom_header_param(std::move(accept_encoding));
 
-        std::string response_dict_param;
-        response_dict_param += get_response_dict_header_attribut();
-        response_dict_param += ": ";
-        response_dict_param += zstd_response_dict_;
-        set_custom_header_param(response_dict_param);
+        std::string response_dict_param  = su::concat(get_response_dict_header_attribut(), ": ", zstd_response_dict_);
+        set_custom_header_param(std::move(response_dict_param));
     }
 
     curl_easy_setopt(_curl, CURLOPT_USERAGENT, user_agent_.c_str());
@@ -267,7 +262,7 @@ bool core::curl_context::init_handler(CURL* _curl)
 
         if (proxy_settings_.need_auth_)
         {
-            curl_easy_setopt(_curl, CURLOPT_PROXYUSERPWD, tools::from_utf16(proxy_settings_.login_ + L':' + proxy_settings_.password_).c_str());
+            curl_easy_setopt(_curl, CURLOPT_PROXYUSERPWD, tools::from_utf16(su::wconcat(proxy_settings_.login_, L':', proxy_settings_.password_)).c_str());
 
             if (proxy_settings_.proxy_type_ == static_cast<int32_t>(core::proxy_type::http_proxy))
                 curl_easy_setopt(_curl, CURLOPT_PROXYAUTH, curl_auth_type(proxy_settings_.auth_type_));
@@ -275,6 +270,26 @@ bool core::curl_context::init_handler(CURL* _curl)
     }
 
     curl_easy_setopt(_curl, CURLOPT_URL, original_url_.c_str());
+    if (core::configuration::get_app_config().is_connect_by_ip_enabled())
+    {
+        auto to_resolve = config::get().url(config::urls::to_replace_hosts);
+        if (!to_resolve.empty())
+        {
+            auto pos = to_resolve.find(";");
+            struct curl_slist* host = NULL;
+            while (pos != to_resolve.npos)
+            {
+                host = curl_slist_append(host, std::string(to_resolve.substr(0, pos)).c_str());
+                to_resolve = to_resolve.substr(pos + 1, to_resolve.length() - pos - 1);
+                pos = to_resolve.find(";");
+            }
+
+            if (!to_resolve.empty())
+                host = curl_slist_append(host, to_resolve.data());
+
+            curl_easy_setopt(_curl, CURLOPT_RESOLVE, host);
+        }
+    }
 
     curl_easy_setopt(_curl, CURLOPT_FOLLOWLOCATION, 1L);
     curl_easy_setopt(_curl, CURLOPT_MAXREDIRS, 10L);
@@ -362,17 +377,9 @@ bool core::curl_context::is_need_log() const
     {
         constexpr std::string_view pattern = "curl_context: no log due to stop func";
         if (normalized_url_.empty())
-        {
             g_core->write_string_to_network_log(pattern);
-        }
         else
-        {
-            std::string log_str;
-            log_str += pattern;
-            log_str += ": url ";
-            log_str += normalized_url_;
-            g_core->write_string_to_network_log(log_str);
-        }
+            g_core->write_string_to_network_log(su::concat(pattern, ": url ", normalized_url_));
         return false;
     }
 
@@ -588,13 +595,17 @@ void core::curl_context::load_info(CURL* _curl, CURLcode _result)
             if (!stat_d)
                 return;
 
-            g_core->get_statistics()->increment_event_prop(stats::stats_event_names::send_used_traffic_size_event,
-                std::string("download"),
-                (*stat_d).total_downloaded_);
+            if (config::get().is_on(config::features::statistics))
+            {
+                g_core->get_statistics()->increment_event_prop(stats::stats_event_names::send_used_traffic_size_event,
+                    std::string("download"),
+                    (*stat_d).total_downloaded_);
 
-            g_core->get_statistics()->increment_event_prop(stats::stats_event_names::send_used_traffic_size_event,
-                std::string("upload"),
-                (*stat_d).total_uploaded_);
+                g_core->get_statistics()->increment_event_prop(stats::stats_event_names::send_used_traffic_size_event,
+                    std::string("upload"),
+                    (*stat_d).total_uploaded_);
+            }
+
         }, SAVE_AGGREGATED_STATS_INTERVAL);
     });
 
@@ -629,10 +640,7 @@ void core::curl_context::load_info(CURL* _curl, CURLcode _result)
 void core::curl_context::write_log(CURLcode res)
 {
     if (is_need_log())
-    {
-        const std::string res_str = std::to_string(res) + " (" + curl_easy_strerror(res) + ')';
-        write_log_message(res_str, start_time_);
-    }
+        write_log_message(su::concat(std::to_string(res), " (", curl_easy_strerror(res), ')'), start_time_);
 }
 
 bool core::curl_context::execute_request()
@@ -714,14 +722,16 @@ void core::curl_context::write_log_message(std::string_view _result, std::chrono
     const auto finish = std::chrono::steady_clock().now();
 
     std::stringstream message;
+    message << '\n';
     if (need_log_original_url_)
         message << "url: " << original_url_ << '\n';
     message << "curl_easy_perform result is " << _result << '\n';
+    message << "priority is " << priority_ << '\n';
 
     if (strlen(err_buf_) != 0)
         message << err_buf_ << '\n';
 
-    message << "completed in " << std::chrono::duration_cast<std::chrono::milliseconds>(finish -_start_time).count() << " ms" << std::endl;
+    message << "completed in " << std::chrono::duration_cast<std::chrono::milliseconds>(finish -_start_time).count() << " ms\n";
     write_log_string(message.str());
 
     if (replace_log_function_)
@@ -803,11 +813,7 @@ void core::curl_context::set_post_data(const char* _data, int64_t _size, bool _c
                 else if (is_zstd())
                 {
                     set_custom_header_param("Content-Encoding: zstd");
-                    std::string dict;
-                    dict += get_request_dict_header_attribut();
-                    dict += ": ";
-                    dict += zstd_request_dict_;
-                    set_custom_header_param(dict);
+                    set_custom_header_param(su::concat(get_request_dict_header_attribut(), ": ", zstd_request_dict_));
                 }
 
                 std::stringstream ss;
@@ -832,11 +838,7 @@ void core::curl_context::set_post_data(const char* _data, int64_t _size, bool _c
         else
         {
             compression_method_ = data_compression_method::none;
-            std::string ss;
-            ss += "\n*** failed to compress using ";
-            ss += get_data_compression_method_name(compression_method_);
-            ss += "; sent without compression\n";
-            write_log_string(ss);
+            write_log_string(su::concat("\n*** failed to compress using ", get_data_compression_method_name(compression_method_), "; sent without compression\n"));
         }
     }
 

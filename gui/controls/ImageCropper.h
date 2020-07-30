@@ -38,8 +38,8 @@ namespace Ui
             startResizeCropMousePos(QPoint()),
             proportion(INIT_PROPORTION),
             deltas(INIT_PROPORTION),
-            backgroundColor(QColor(ql1s("#000000"))),
-            croppingRectBorderColor(QColor(ql1s("#ffffff")))
+            backgroundColor(QColor(u"#000000")),
+            croppingRectBorderColor(QColor(u"#ffffff"))
         {}
 
     public:
@@ -65,7 +65,7 @@ namespace Ui
         ImageCropper(QWidget *parent, const QSize &minimumSize = QSize());
         ~ImageCropper();
 
-        public slots:
+        public Q_SLOTS:
             void setImage(const QPixmap& _image);
             void setBackgroundColor(const QColor& _backgroundColor);
             void setCroppingRectBorderColor(const QColor& _borderColor);

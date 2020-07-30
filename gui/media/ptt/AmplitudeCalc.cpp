@@ -6,10 +6,9 @@
 
 namespace ptt
 {
-    AmplitudeCalc::AmplitudeCalc(const std::reference_wrapper<const QByteArray>& _data, size_t _offset, int _rate)
+    AmplitudeCalc::AmplitudeCalc(const std::reference_wrapper<const QByteArray>& _data, size_t _offset, int /*_rate*/)
         : data_(_data)
         , offset_(_offset)
-        , rate_(_rate)
     {
     }
 

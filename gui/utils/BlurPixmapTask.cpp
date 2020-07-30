@@ -20,11 +20,11 @@ namespace Utils
         const auto key = source_.cacheKey();
         if (radius_ < minRadius() || radius_ > maxRadius() || source_.isNull())
         {
-            emit blurred(source_, key, QPrivateSignal());
+            Q_EMIT blurred(source_, key, QPrivateSignal());
             return;
         }
 
-        emit blurred(blurPixmap(), key, QPrivateSignal());
+        Q_EMIT blurred(blurPixmap(), key, QPrivateSignal());
     }
 
     QPixmap BlurPixmapTask::blurPixmap() const

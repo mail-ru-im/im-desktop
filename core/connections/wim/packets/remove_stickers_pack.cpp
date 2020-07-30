@@ -22,7 +22,7 @@ remove_stickers_pack_packet::~remove_stickers_pack_packet()
 {
 }
 
-int32_t remove_stickers_pack_packet::init_request(std::shared_ptr<core::http_request_simple> _request)
+int32_t remove_stickers_pack_packet::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     std::map<std::string, std::string> params;
 
@@ -47,16 +47,12 @@ int32_t remove_stickers_pack_packet::init_request(std::shared_ptr<core::http_req
     std::stringstream ss_url;
     ss_url << urls::get_url(urls::url_type::stickers_store_host) << std::string_view("/store/deletepurchase");
 
-    auto sha256 = escape_symbols(get_url_sign(ss_url.str(), params, params_, false));
-    params["sig_sha256"] = std::move(sha256);
-
     std::stringstream ss_url_signed;
     ss_url_signed << ss_url.str() << '?' << format_get_params(params);
 
     _request->set_url(ss_url_signed.str());
     _request->set_normalized_url("stickersStoreDeletePurchase");
     _request->set_keep_alive();
-    _request->set_priority(high_priority());
 
     if (!params_.full_log_)
     {
@@ -68,7 +64,7 @@ int32_t remove_stickers_pack_packet::init_request(std::shared_ptr<core::http_req
     return 0;
 }
 
-int32_t remove_stickers_pack_packet::execute_request(std::shared_ptr<core::http_request_simple> _request)
+int32_t remove_stickers_pack_packet::execute_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     bool res = _request->post();
     if (!res)
@@ -83,7 +79,7 @@ int32_t remove_stickers_pack_packet::execute_request(std::shared_ptr<core::http_
 }
 
 
-int32_t remove_stickers_pack_packet::parse_response(std::shared_ptr<core::tools::binary_stream> _response)
+int32_t remove_stickers_pack_packet::parse_response(const std::shared_ptr<core::tools::binary_stream>& _response)
 {
     if (!_response->available())
         return wpie_http_empty_response;
@@ -91,4 +87,9 @@ int32_t remove_stickers_pack_packet::parse_response(std::shared_ptr<core::tools:
     response_ = _response;
 
     return 0;
+}
+
+priority_t remove_stickers_pack_packet::get_priority() const
+{
+    return packets_priority_high();
 }

@@ -8,9 +8,9 @@ namespace core {
     namespace wim {
 
         /*
-        virtual int32_t init_request(std::shared_ptr<core::http_request_simple> request) override;
+        virtual int32_t init_request(const std::shared_ptr<core::http_request_simple>& request) override;
         virtual int32_t parse_response_data(const rapidjson::Value& _data) override;
-        virtual int32_t execute_request(std::shared_ptr<core::http_request_simple> request) override;
+        virtual int32_t execute_request(const std::shared_ptr<core::http_request_simple>& request) override;
         virtual int32_t on_response_error_code() override;
 
         bool			need_relogin_;
@@ -33,29 +33,30 @@ namespace core {
             std::string _internal_params;
             std::shared_ptr<core::tools::binary_stream> _data;
 
-            int32_t init_request(std::shared_ptr<core::http_request_simple> request) override;
-            int32_t parse_response(std::shared_ptr<core::tools::binary_stream> response) override;
+            int32_t init_request(const std::shared_ptr<core::http_request_simple>& request) override;
+            int32_t parse_response(const std::shared_ptr<core::tools::binary_stream>& response) override;
 
         public:
             wim_allocate(wim_packet_params params, const std::string& internal_params);
             virtual ~wim_allocate();
 
-            std::shared_ptr<core::tools::binary_stream> getRawData() override;
+            std::shared_ptr<core::tools::binary_stream> getRawData() const override;
         };
 
         class wim_webrtc : public wim_packet {
             voip_manager::VoipProtoMsg _internal_params;
             std::shared_ptr<core::tools::binary_stream> _data;
 
-            int32_t init_request(std::shared_ptr<core::http_request_simple> request) override;
-            int32_t execute_request(std::shared_ptr<core::http_request_simple> request) override;
-            int32_t parse_response(std::shared_ptr<core::tools::binary_stream> response) override;
+            int32_t init_request(const std::shared_ptr<core::http_request_simple>& request) override;
+            int32_t execute_request(const std::shared_ptr<core::http_request_simple>& request) override;
+            int32_t parse_response(const std::shared_ptr<core::tools::binary_stream>& response) override;
 
         public:
             wim_webrtc(wim_packet_params params, const voip_manager::VoipProtoMsg& internal_params);
             virtual ~wim_webrtc();
 
-            std::shared_ptr<core::tools::binary_stream> getRawData() override;
+            std::shared_ptr<core::tools::binary_stream> getRawData() const override;
+            virtual bool is_post() const override { return true; }
         };
 
 

@@ -28,6 +28,24 @@ namespace Logic
         return false;
     }
 
+    void CustomAbstractListModel::clearCheckedItems()
+    {
+    }
+
+    int CustomAbstractListModel::getCheckedItemsCount() const
+    {
+        return -1;
+    }
+
+    void CustomAbstractListModel::setCheckedItem(const QString& _name, bool _isChecked)
+    {
+    }
+
+    bool CustomAbstractListModel::isCheckedItem(const QString& _name) const
+    {
+        return false;
+    }
+
     void CustomAbstractListModel::forceRefreshList(QAbstractItemModel *model, bool mouseOver)
     {
         if (model == this)
@@ -39,7 +57,7 @@ namespace Logic
 
     void CustomAbstractListModel::refreshList()
     {
-        emit dataChanged(index(0), index(rowCount()));
+        Q_EMIT dataChanged(index(0), index(rowCount()));
     }
 
     void CustomAbstractListModel::setCustomFlag(const int _flag)
@@ -52,9 +70,9 @@ namespace Logic
         flags_ &= (~_flag);
     }
 
-    void CustomAbstractListModel::emitChanged(const int _first, const int _last)
+    void CustomAbstractListModel::Q_EMITChanged(const int _first, const int _last)
     {
-        emit dataChanged(index(_first), index(_last));
+        Q_EMIT dataChanged(index(_first), index(_last));
     }
 
     void CustomAbstractListModel::setSelectEnabled(const bool _enabled)

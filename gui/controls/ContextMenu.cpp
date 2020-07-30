@@ -3,6 +3,8 @@
 
 #include "ContextMenu.h"
 
+#include "ClickWidget.h"
+
 #include "../fonts.h"
 #include "../utils/utils.h"
 #include "../utils/InterConnector.h"
@@ -13,6 +15,12 @@
 #ifdef __APPLE__
 #   include "../utils/macos/mac_support.h"
 #endif
+
+namespace
+{
+    auto itemHeight() noexcept { return Utils::scale_value(36); }
+    auto fontSize() noexcept { return Utils::scale_value(15);  }
+}
 
 namespace Ui
 {
@@ -29,13 +37,57 @@ namespace Ui
         return QProxyStyle::pixelMetric(_metric, _option, _widget);
     }
 
+    TextAction::TextAction(const QString& text, QObject* parent)
+        : QWidgetAction(parent)
+    {
+        textWidget_ = new ClickableTextWidget(nullptr, Fonts::appFont(fontSize()), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID), TextRendering::HorAligment::LEFT);
+        textWidget_->setFixedHeight(itemHeight());
+        textWidget_->setCursor(Qt::ArrowCursor);
+        textWidget_->setText(text);
+        textWidget_->setLeftPadding(Utils::scale_value(20));
+        textWidget_->setHoverColor(Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT_INVERSE));
+
+        QObject::connect(textWidget_, &ClickableTextWidget::clicked, this, &QAction::trigger);
+        QObject::connect(textWidget_, &ClickableTextWidget::hoverChanged, this, [this](bool _v)
+        {
+            if (_v)
+                if (auto m = qobject_cast<QMenu*>(parentWidget()))
+                    m->setActiveAction(this);
+        });
+
+        setDefaultWidget(textWidget_);
+    }
+
+    void TextAction::setHovered(bool _v)
+    {
+        textWidget_->setHovered(_v);
+    }
 
     ContextMenu::ContextMenu(QWidget* _parent, Color _color, int _iconSize)
         : QMenu(_parent)
         , color_(_color)
         , iconSize_(_iconSize, _iconSize)
     {
-        applyStyle(this, true, Utils::scale_value(15), Utils::scale_value(36), _color, iconSize_);
+        applyStyle(this, true, fontSize(), itemHeight(), _color, iconSize_);
+        QObject::connect(this, &QMenu::hovered, this, [this](QAction* action)
+        {
+            const auto actionList = actions();
+            for (auto a : actionList)
+            {
+                if (a == action)
+                {
+                    if (auto textAction = qobject_cast<TextAction*>(action))
+                    {
+                        QSignalBlocker blocker(textAction);
+                        textAction->setHovered(true);
+                    }
+                }
+                else if (auto textAction = qobject_cast<TextAction*>(a))
+                {
+                    textAction->setHovered(false);
+                }
+            }
+        });
     }
 
     ContextMenu::ContextMenu(QWidget* _parent)
@@ -56,8 +108,9 @@ namespace Ui
     void ContextMenu::applyStyle(QMenu* _menu, bool _withPadding, int _fontSize, int _height, Color color, const QSize& _iconSize)
     {
         const auto itemHeight = _height;
-        const auto iconPadding = Utils::scale_value(_withPadding ? 20 : 12) + Utils::scale_value(20);
-        auto itemPaddingLeft = Utils::scale_value(_withPadding ? 56 : 20);
+        const auto iconPadding = Utils::scale_value((_withPadding ? 20 : 12) + 20);
+
+        auto itemPaddingLeft = Utils::scale_value(_withPadding ? 36 : (platform::is_linux() ? 0 : 20));
         const auto itemPaddingRight = Utils::scale_value(_withPadding ? 28 : 12);
 
         if (platform::is_linux() && !_withPadding) // fix for linux native menu with icons
@@ -71,9 +124,7 @@ namespace Ui
         Utils::SetProxyStyle(_menu, new MenuStyle(_iconSize.width()));
         Utils::ApplyStyle(_menu, styleString);
 
-        auto font = Fonts::appFont(_fontSize);
-
-        _menu->setFont(font);
+        _menu->setFont(Fonts::appFont(_fontSize));
 
         if constexpr (platform::is_apple())
         {
@@ -94,57 +145,48 @@ namespace Ui
         return action;
     }
 
+    QAction* ContextMenu::findAction(QStringView _command) const
+    {
+        assert(!_command.isEmpty());
+        const auto actionList = actions();
+        for (const auto& action : actionList)
+        {
+            const auto actionParams = action->data().toMap();
+            if (const auto commandIter = actionParams.find(qsl("command")); commandIter != actionParams.end())
+                if (commandIter->toString() == _command)
+                    return action;
+        }
+        return nullptr;
+    }
+
     QAction* ContextMenu::addActionWithIcon(const QString& _iconPath, const QString& _name, const QVariant& _data)
     {
         return addActionWithIcon(makeIcon(_iconPath), _name, _data);
     }
 
-    bool ContextMenu::hasAction(const QString& _command)
+    bool ContextMenu::modifyAction(QStringView _command, const QString& _iconPath, const QString& _name, const QVariant& _data, bool _enable)
     {
-        assert(!_command.isEmpty());
-        const auto actions = this->actions();
-        for (const auto& action : actions)
+        if (auto action = findAction(_command); action)
         {
-            const auto actionParams = action->data().toMap();
-
-            const auto commandIter = actionParams.find(qsl("command"));
-            if (commandIter == actionParams.end())
-            {
-                continue;
-            }
-
-            const auto actionCommand = commandIter->toString();
-            if (actionCommand == _command)
-            {
-                return true;
-            }
+            action->setIcon(makeIcon(_iconPath));
+            action->setText(_name);
+            action->setData(_data);
+            action->setEnabled(_enable);
+            return true;
         }
 
         return false;
     }
 
-    void ContextMenu::removeAction(const QString& _command)
+    bool ContextMenu::hasAction(QStringView _command) const
     {
-        assert(!_command.isEmpty());
-        const auto actions = this->actions();
-        for (const auto& action : actions)
-        {
-            const auto actionParams = action->data().toMap();
+        return findAction(_command) != nullptr;
+    }
 
-            const auto commandIter = actionParams.find(qsl("command"));
-            if (commandIter == actionParams.end())
-            {
-                continue;
-            }
-
-            const auto actionCommand = commandIter->toString();
-            if (actionCommand == _command)
-            {
-                QWidget::removeAction(action);
-
-                return;
-            }
-        }
+    void ContextMenu::removeAction(QStringView _command)
+    {
+        if (auto action = findAction(_command); action)
+            QWidget::removeAction(action);
     }
 
     void ContextMenu::invertRight(bool _invert)

@@ -25,6 +25,7 @@ namespace Data
             unserializeCommon(user_helper, info);
 
             info.nick_ = user_helper.get<QString>("nick");
+            info.isBot_ = user_helper.get_value_as_bool("bot");
             info.type_ = IdInfo::IdType::User;
         }
         else if (helper.is_value_exist("chat"))
@@ -33,7 +34,7 @@ namespace Data
             unserializeCommon(chat_helper, info);
 
             info.stamp_ = chat_helper.get<QString>("stamp");
-            info.memberCount_ = chat_helper.get<int64_t>("member_count");
+            info.memberCount_ = chat_helper.get_value_as_int64("member_count");
             info.type_ = IdInfo::IdType::Chat;
         }
 

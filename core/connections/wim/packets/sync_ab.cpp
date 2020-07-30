@@ -3,14 +3,13 @@
 
 #include "../../../http_request.h"
 #include "../../../tools/system.h"
-
-#include "../../urls_cache.h"
+#include "../../../tools/json_helper.h"
 
 using namespace core;
 using namespace wim;
 
-core::wim::sync_ab::sync_ab(wim_packet_params _packet_params, const std::string& _keyword, const std::vector<std::string>& _phone)
-    : robusto_packet(std::move(_packet_params))
+core::wim::sync_ab::sync_ab(wim_packet_params _params, const std::string& _keyword, const std::vector<std::string>& _phone)
+    : robusto_packet(std::move(_params))
     , keyword_(_keyword)
     , phone_(_phone)
     , status_code_(0)
@@ -22,22 +21,13 @@ int32_t core::wim::sync_ab::get_status_code()
     return status_code_;
 }
 
-int32_t core::wim::sync_ab::init_request(std::shared_ptr<core::http_request_simple> _request)
+int32_t core::wim::sync_ab::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     if (keyword_.empty() && phone_.empty())
         return -1;
 
-    constexpr char method[] = "addressBookSync";
-
-    _request->set_url(urls::get_url(urls::url_type::rapi_host));
-    _request->set_normalized_url(method);
-    _request->set_keep_alive();
-
     rapidjson::Document doc(rapidjson::Type::kObjectType);
     auto& a = doc.GetAllocator();
-
-    doc.AddMember("method", method, a);
-    doc.AddMember("reqId", get_req_id(), a);
 
     rapidjson::Value node_update(rapidjson::Type::kArrayType);
 
@@ -49,21 +39,17 @@ int32_t core::wim::sync_ab::init_request(std::shared_ptr<core::http_request_simp
     {
         rapidjson::Value phones(rapidjson::Type::kArrayType);
         phones.Reserve(phone_.size(), a);
-        for (const auto &phone : phone_)
-        {
-            rapidjson::Value member_params(rapidjson::Type::kStringType);
-            member_params.SetString(phone.c_str(), phone.size());
-            phones.PushBack(std::move(member_params), a);
-        }
+        for (const auto& phone : phone_)
+            phones.PushBack(tools::make_string_ref(phone), a);
         member_update.AddMember("phoneList", std::move(phones), a);
     }
 
     node_update.PushBack(std::move(member_update), a);
     rapidjson::Value node_params(rapidjson::Type::kObjectType);
-    node_params.AddMember("update", node_update, a);
-    doc.AddMember("params", node_params, a);
+    node_params.AddMember("update", std::move(node_update), a);
+    doc.AddMember("params", std::move(node_params), a);
 
-    sign_packet(doc, a, _request);
+    setup_common_and_sign(doc, a, _request, "addressBookSync");
 
     if (!robusto_packet::params_.full_log_)
     {
@@ -77,7 +63,7 @@ int32_t core::wim::sync_ab::init_request(std::shared_ptr<core::http_request_simp
     return 0;
 }
 
-int32_t core::wim::sync_ab::execute_request(std::shared_ptr<core::http_request_simple> request)
+int32_t core::wim::sync_ab::execute_request(const std::shared_ptr<core::http_request_simple>& request)
 {
     if (!request->post())
         return wpie_network_error;
@@ -90,12 +76,12 @@ int32_t core::wim::sync_ab::execute_request(std::shared_ptr<core::http_request_s
     return 0;
 }
 
-int32_t core::wim::sync_ab::parse_response(std::shared_ptr<core::tools::binary_stream> _response)
+int32_t core::wim::sync_ab::parse_response(const std::shared_ptr<core::tools::binary_stream>& _response)
 {
     if (!_response->available())
         return wpie_http_empty_response;
 
-    uint32_t size = _response->available();
+    auto size = _response->available();
     load_response_str((const char*)_response->read(size), size);
     try
     {
@@ -107,11 +93,8 @@ int32_t core::wim::sync_ab::parse_response(std::shared_ptr<core::tools::binary_s
         if (iter_status == doc.MemberEnd())
             return wpie_error_parse_response;
 
-        auto iter_code = iter_status->value.FindMember("code");
-        if (iter_code == iter_status->value.MemberEnd())
+        if (!tools::unserialize_value(iter_status->value, "code", status_code_))
             return wpie_error_parse_response;
-
-        status_code_ = iter_code->value.GetUint();
 
         if (status_code_ == 20000)
         {

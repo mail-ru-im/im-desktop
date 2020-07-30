@@ -58,7 +58,7 @@ namespace Ui
         void setPlaceholderText(const QString& _text);
 
         QString getPlainText() const;
-        void setPlainText(const QString& _text, bool _convertLinks = true, const QTextCharFormat::VerticalAlignment _aligment = QTextCharFormat::AlignBaseline);
+        void setPlainText(const QString& _text, bool _convertLinks = true, const QTextCharFormat::VerticalAlignment _aligment = QTextCharFormat::AlignBottom);
 
         void setMentions(Data::MentionMap _mentions);
         const Data::MentionMap& getMentions() const;
@@ -105,7 +105,7 @@ namespace Ui
 
         void setViewportMargins(int left, int top, int right, int bottom);
 
-        QFont getFont() const;
+        const QFont& getFont() const noexcept { return font_; }
 
     protected:
         void focusInEvent(QFocusEvent*) override;

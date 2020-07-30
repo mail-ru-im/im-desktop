@@ -27,8 +27,8 @@ std::wstring get_temp_directory();
 
 #ifdef _WIN32
     std::string get_short_file_name(const std::wstring& _file_name);
-    bool is_windows_vista_or_higher();
 #else
+    std::string get_home_directory();
     std::wstring get_user_profile();
 #endif // WIN32
 
@@ -64,6 +64,8 @@ bool create_directory(const boost::filesystem::wpath& path);
 bool create_directory_if_not_exists(const boost::filesystem::wpath& _path);
 
 bool delete_directory(const std::wstring& path);
+
+bool delete_directory(const boost::filesystem::wpath& path);
 
 bool create_empty_file(const std::wstring &_path);
 

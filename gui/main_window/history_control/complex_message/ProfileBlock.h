@@ -38,6 +38,8 @@ public:
 
     int desiredWidth(int _width = 0) const override;
 
+    int getMaxWidth() const override;
+
     int getHeightForWidth(int _width) const;
 
     QString formatRecentsText() const override;
@@ -49,6 +51,9 @@ public:
     bool clicked(const QPoint& _p) override;
 
     bool isSizeLimited() const override { return true; }
+
+    bool isNeedCheckTimeShift() const override { return true; }
+    bool needStretchToOthers() const override { return true; };
 
 protected Q_SLOTS:
     void onAvatarChanged(const QString& aimId);
@@ -123,6 +128,9 @@ protected Q_SLOTS:
     void chatInfo(qint64, const std::shared_ptr<Data::ChatInfo>&, const int);
 
 private:
+    void openChat() const;
+
+private:
     Data::IdInfo info_;
     std::shared_ptr<Data::ChatInfo> chatInfo_;
     QString link_;
@@ -140,6 +148,8 @@ public:
     QString getTextForCopy() const override;
 
     QString getSelectedText(const bool _isFullSelect = false, const TextDestination _dest = TextDestination::selection) const override;
+
+    bool hasSourceText() const override { return false; }
 
 protected:
     QString getButtonText() const override;

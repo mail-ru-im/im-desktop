@@ -60,7 +60,7 @@ namespace Ui
         firstName_->setAttribute(Qt::WA_MacShowFocusRect, false);
         firstName_->setFont(Fonts::appFontScaled(FORM_FONT_SIZE));
         Utils::ApplyStyle(firstName_, Styling::getParameters().getLineEditCommonQss());
-        Testing::setAccessibleName(firstName_, qsl("AS ancw firstName_"));
+        Testing::setAccessibleName(firstName_, qsl("AS AddNewContact firstName"));
         firstName_->setFixedWidth(Utils::scale_value(WIDGET_WIDTH) - horMargins);
         firstName_->setContextMenuPolicy(Qt::ContextMenuPolicy::NoContextMenu);
         firstName_->setContentsMargins(0, 0, 0, 0);
@@ -72,7 +72,7 @@ namespace Ui
         lastName_->setAttribute(Qt::WA_MacShowFocusRect, false);
         lastName_->setFont(Fonts::appFontScaled(FORM_FONT_SIZE));
         Utils::ApplyStyle(lastName_, Styling::getParameters().getLineEditCommonQss());
-        Testing::setAccessibleName(lastName_, qsl("AS ancw lastName_"));
+        Testing::setAccessibleName(lastName_, qsl("AS AddNewContact lastName"));
         lastName_->setFixedWidth(Utils::scale_value(WIDGET_WIDTH) - horMargins);
         lastName_->setContextMenuPolicy(Qt::ContextMenuPolicy::NoContextMenu);
         lastName_->setContentsMargins(0, 0, 0, 0);
@@ -96,6 +96,9 @@ namespace Ui
         phoneInput_->getPhoneNumberWidget()->setFont(Fonts::appFontScaled(FORM_FONT_SIZE));
         phoneInput_->getPhoneNumberWidget()->setAlignment(Qt::AlignLeft | Qt::AlignBottom);
         phoneInput_->getCountryCodeWidget()->setAlignment(Qt::AlignHCenter | Qt::AlignBottom);
+        Testing::setAccessibleName(phoneInput_, qsl("AS AddNewContact phone"));
+        Testing::setAccessibleName(phoneInput_->getPhoneNumberWidget(), qsl("AS AddNewContact phoneInput"));
+        Testing::setAccessibleName(phoneInput_->getCountryCodeWidget(), qsl("AS AddNewContact codeInput"));
 
         rawPhoneInput_ = new LineEditEx(this, lineEditOptions);
         Utils::ApplyStyle(rawPhoneInput_, Styling::getParameters().getLineEditCommonQss());
@@ -171,9 +174,9 @@ namespace Ui
     void AddNewContactWidget::onFormChanged()
     {
         if (isFormComplete())
-            emit formDataSufficient();
+            Q_EMIT formDataSufficient();
         else
-            emit formDataIncomplete();
+            Q_EMIT formDataIncomplete();
     }
 
     void AddNewContactWidget::onFullPhoneChanged(const QString& _fullPhone)
@@ -233,7 +236,7 @@ namespace Ui
             return;
         }
 
-        emit formDataIncomplete();
+        Q_EMIT formDataIncomplete();
 
         const QString text = Utils::GetTranslator()->getNumberString(
             std::abs(remaining),
@@ -262,7 +265,7 @@ namespace Ui
         bool isEnter = _event->key() == Qt::Key_Return || _event->key() == Qt::Key_Enter;
         if (isEnter && isFormComplete())
         {
-            emit formSubmissionRequested();
+            Q_EMIT formSubmissionRequested();
         }
     }
 
@@ -301,7 +304,7 @@ namespace Ui
 
         phoneInput_->getPhoneNumberWidget()->changeTextColor(getPhoneNumberTextColor());
         if (isFormComplete())
-            emit formDataSufficient();
+            Q_EMIT formDataSufficient();
 
         update();
     }
@@ -324,20 +327,20 @@ namespace Ui
         isPhoneCorrect_ = _correct;
 
         if (!_correct)
-            emit formDataIncomplete();
+            Q_EMIT formDataIncomplete();
     }
 
     void AddNewContactWidget::connectToLineEdit(LineEditEx *_lineEdit, LineEditEx *_onUp, LineEditEx *_onDown) const
     {
         if (_onUp)
         {
-            connect(_lineEdit, &LineEditEx::upArrow, _onUp, Utils::QOverload<>::of(&LineEditEx::setFocus));
+            connect(_lineEdit, &LineEditEx::upArrow, _onUp, qOverload<>(&LineEditEx::setFocus));
             connect(_lineEdit, &LineEditEx::backtab, _onUp, [_onUp](){ _onUp->setFocus(Qt::BacktabFocusReason); });
         }
 
         if (_onDown)
         {
-            connect(_lineEdit, &LineEditEx::downArrow, _onDown, Utils::QOverload<>::of(&LineEditEx::setFocus));
+            connect(_lineEdit, &LineEditEx::downArrow, _onDown, qOverload<>(&LineEditEx::setFocus));
             connect(_lineEdit, &LineEditEx::tab, _onDown, [_onDown](){ _onDown->setFocus(Qt::TabFocusReason); });
         }
     }

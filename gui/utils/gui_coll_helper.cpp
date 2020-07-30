@@ -9,7 +9,7 @@ namespace Ui
 
     }
 
-    void gui_coll_helper::set_value_as_qstring(std::string_view _name, const QString& _value)
+    void gui_coll_helper::set_value_as_qstring(std::string_view _name, QStringView _value)
     {
         const auto value = _value.toUtf8();
         return core::coll_helper::set_value_as_string(_name, value.data(), value.size());
@@ -21,13 +21,7 @@ namespace Ui
         return core::coll_helper::set_value_as_string(_name, value.data(), value.size());
     }
 
-    void gui_coll_helper::set_value_as_qstring(std::string_view _name, const QStringRef& _value)
-    {
-        const auto value = _value.toUtf8();
-        return core::coll_helper::set_value_as_string(_name, value.data(), value.size());
-    }
-
-    core::ifptr<core::ivalue> gui_coll_helper::create_qstring_value(const QString& _value)
+    core::ifptr<core::ivalue> gui_coll_helper::create_qstring_value(QStringView _value)
     {
         const auto valueText = _value.toUtf8();
         core::ifptr<core::ivalue> val(get()->create_value());

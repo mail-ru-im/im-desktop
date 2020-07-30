@@ -3,7 +3,7 @@
 
 #include <QWidget>
 #include "../VideoFrame.h"
-#include <GLFW/glfw3.h>
+#include "glfw3.h"
 #include <mutex>
 
 namespace Ui
@@ -21,7 +21,8 @@ public:
     GraphicsPanelLinux(QWidget* _parent, std::vector<QPointer<Ui::BaseVideoPanel>>& _panels, bool primaryVideo);
     virtual ~GraphicsPanelLinux();
 
-    WId frameId() const;
+    WId frameId() const override;
+    void createdTalk(bool is_vcs) override;
     void resizeEvent(QResizeEvent * event) override;
 
 private:

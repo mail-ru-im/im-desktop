@@ -120,6 +120,7 @@ namespace Ui
         Q_OBJECT
     Q_SIGNALS:
         void avatarClicked();
+        void badgeClicked();
         void clicked();
 
     public:
@@ -135,18 +136,18 @@ namespace Ui
         void setFrienlyAndSize(const QString& _friendly, int _size);
         void setInfo(const QString& _info, const QColor& _color = QColor());
 
-        QString getFriendly() const;
+        const QString& getFriendly() const;
         void makeClickable();
         void nameOnly();
 
     protected:
-        virtual void paintEvent(QPaintEvent* _event) override;
-        virtual void resizeEvent(QResizeEvent* _event) override;
-        virtual void mousePressEvent(QMouseEvent* _event) override;
-        virtual void mouseReleaseEvent(QMouseEvent* _event) override;
-        virtual void mouseMoveEvent(QMouseEvent* _event) override;
-        virtual void enterEvent(QEvent* _event) override;
-        virtual void leaveEvent(QEvent* _event) override;
+        void paintEvent(QPaintEvent* _event) override;
+        void resizeEvent(QResizeEvent* _event) override;
+        void mousePressEvent(QMouseEvent* _event) override;
+        void mouseReleaseEvent(QMouseEvent* _event) override;
+        void mouseMoveEvent(QMouseEvent* _event) override;
+        void enterEvent(QEvent* _event) override;
+        void leaveEvent(QEvent* _event) override;
 
     private Q_SLOTS:
         void avatarChanged(const QString& aimId);
@@ -154,6 +155,7 @@ namespace Ui
 
     private:
         void loadAvatar();
+        void setBadgeRect();
 
     private:
         QMargins margins_;
@@ -172,6 +174,18 @@ namespace Ui
         bool clickable_;
         bool hovered_;
         bool nameOnly_;
+
+        QRect badgeRect_;
+    };
+
+    class AvatarNamePlaceholder : public QWidget
+    {
+        Q_OBJECT
+    public:
+        AvatarNamePlaceholder(QWidget* _parent);
+
+    protected:
+        void paintEvent(QPaintEvent*) override;
     };
 
     class TextLabel : public QWidget
@@ -188,7 +202,8 @@ namespace Ui
         TextLabel(QWidget* _parent, int _maxLinesCount = -1);
 
         void setMargins(int _left, int _top, int _right, int _bottom);
-        QMargins getMargins() const;
+        void setMargins(QMargins _m) { setMargins(_m.left(), _m.top(), _m.right(), _m.bottom()); }
+        QMargins getMargins() const noexcept { return margins_; }
 
         void init(const QFont& _font, const QColor& _color, const QColor& _linkColor = QColor());
         void setText(const QString& _text, const QColor& _color = QColor());
@@ -201,32 +216,43 @@ namespace Ui
         void addMenuAction(const QString& _iconPath, const QString& _name, const QVariant& _data);
         void makeCopyable();
         void showButtons();
+        void allowOnlyCopy();
         QString getText() const;
 
+        void setTextAlign(TextRendering::HorAligment _align) { textAlign_ = _align; }
+        void setBackgroundColor(QColor _color) { bgColor_ = _color; }
+        void setIconColors(QColor _normal, QColor _hover, QColor _pressed);
+
     protected:
-        virtual void paintEvent(QPaintEvent* _event) override;
-        virtual void resizeEvent(QResizeEvent* _event) override;
-        virtual void mousePressEvent(QMouseEvent* _event) override;
-        virtual void mouseReleaseEvent(QMouseEvent* _event) override;
-        virtual void mouseMoveEvent(QMouseEvent* _event) override;
-        virtual void enterEvent(QEvent* _event) override;
-        virtual void leaveEvent(QEvent* _event) override;
+        void paintEvent(QPaintEvent* _event) override;
+        void resizeEvent(QResizeEvent* _event) override;
+        void mousePressEvent(QMouseEvent* _event) override;
+        void mouseReleaseEvent(QMouseEvent* _event) override;
+        void mouseMoveEvent(QMouseEvent* _event) override;
+        void enterEvent(QEvent* _event) override;
+        void leaveEvent(QEvent* _event) override;
 
     private:
         void updateSize(bool _forceCollapsed = false);
 
     private:
         QMargins margins_;
-        Ui::TextRendering::TextUnitPtr text_;
-        Ui::TextRendering::TextUnitPtr collapsedText_;
-        Ui::TextRendering::TextUnitPtr readMore_;
+        TextRendering::TextUnitPtr text_;
+        TextRendering::TextUnitPtr collapsedText_;
+        TextRendering::TextUnitPtr readMore_;
+        TextRendering::HorAligment textAlign_ = TextRendering::HorAligment::LEFT;
         QPoint clicked_;
         int maxLinesCount_;
         bool collapsed_;
         bool copyable_;
         bool buttonsVisible_;
+        bool onlyCopyButton_;
         bool cursorForText_;
         ContextMenu* menu_;
+        QColor bgColor_;
+        QColor iconNormalColor_;
+        QColor iconHoverColor_;
+        QColor iconPressedColor_;
     };
 
     class InfoBlock
@@ -472,8 +498,10 @@ namespace Ui
     QByteArray avatarToByteArray(const QPixmap &_avatar);
     int getIconSize();
 
+    QString formatTimeStr(const QDateTime& _dt);
+
     AvatarNameInfo* addAvatarInfo(QWidget* _parent, QLayout* _layout);
-    TextLabel* addLabel(const QString& _text, QWidget* _parent, QLayout* _layout, int _addLeftOffset = 0);
+    TextLabel* addLabel(const QString& _text, QWidget* _parent, QLayout* _layout, int _addLeftOffset = 0, TextRendering::HorAligment _align = TextRendering::HorAligment::LEFT);
     TextLabel* addText(const QString& _text, QWidget* _parent, QLayout* _layout, int _addLeftOffset = 0, int _maxLineNumbers = 0);
     std::unique_ptr<InfoBlock> addInfoBlock(const QString& _header, const QString& _text, QWidget* _parent, QLayout* _layout, int _addLeftOffset = 0);
     QWidget* addSpacer(QWidget* _parent, QLayout* _layout, int height = -1);

@@ -1,7 +1,7 @@
 #include "chatheads.h"
 
 #include "../../corelib/collection_helper.h"
-#include "../main_window/friendly/FriendlyContainer.h"
+#include "../main_window/containers/FriendlyContainer.h"
 
 namespace Data
 {

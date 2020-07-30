@@ -24,8 +24,10 @@ namespace Ui
         void clicked(const ClickType _type, QPrivateSignal) const;
         void pressed(QPrivateSignal) const;
         void released(QPrivateSignal) const;
+        void moved(QPrivateSignal) const;
         void hoverChanged(bool, QPrivateSignal) const;
         void pressChanged(bool, QPrivateSignal) const;
+        void shown(QPrivateSignal) const;
 
     public:
         explicit ClickableWidget(QWidget* _parent);
@@ -34,10 +36,13 @@ namespace Ui
         void setHovered(const bool _isHovered);
 
         bool isPressed() const;
+        void setPressed(const bool _isPressed);
 
         void click(const ClickType _how);
 
         void setFocusColor(const QColor& _color);
+        void setHoverColor(const QColor& _color);
+        void setBackgroundColor(const QColor& _color);
 
         void setTooltipText(const QString& _text);
         const QString& getTooltipText() const;
@@ -55,6 +60,7 @@ namespace Ui
         void keyPressEvent(QKeyEvent* _event) override;
         void focusInEvent(QFocusEvent* _event) override;
         void focusOutEvent(QFocusEvent* _event) override;
+        void showEvent(QShowEvent* _e) override;
 
         bool focusNextPrevChild(bool _next) override;
 
@@ -69,6 +75,8 @@ namespace Ui
 
     protected:
         QColor focusColor_;
+        QColor hoverColor_;
+        QColor bgColor_;
         anim::Animation animFocus_;
 
         QTimer tooltipTimer_;
@@ -96,6 +104,7 @@ namespace Ui
         void setColor(const Styling::StyleVariable _color);
 
         void setFont(const QFont& _font);
+        void setLeftPadding(int _x);
 
     protected:
         void paintEvent(QPaintEvent* _e) override;
@@ -105,6 +114,7 @@ namespace Ui
         void elideText();
 
         TextRendering::TextUnitPtr text_;
-        int fullWidth_;
+        int fullWidth_ = 0;
+        int leftPadding_ = 0;
     };
 }

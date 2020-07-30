@@ -8,25 +8,35 @@
 #include <lm.h>
 #include "common_defs.h"
 #pragma comment(lib, "netapi32.lib")
+#else
+#include <pwd.h>
 #endif // _WIN32
 
-#ifdef _WIN32
 namespace common
 {
-    std::wstring get_user_profile()
+#ifdef _WIN32
+    static std::wstring get_profile_impl(int _param)
     {
         wchar_t fullPath[MAX_PATH + 1];
 
-        const auto error = ::SHGetFolderPath( NULL, CSIDL_APPDATA, NULL, 0, fullPath);
+        const auto error = ::SHGetFolderPath(NULL, _param, NULL, 0, fullPath);
         if (FAILED(error))
-        {
             return std::wstring();
-        }
 
         wchar_t shortPath[MAX_PATH + 1];
         GetShortPathNameW(fullPath, shortPath, MAX_PATH);
 
         return shortPath;
+    }
+
+    std::wstring get_user_profile()
+    {
+        return get_profile_impl(CSIDL_APPDATA);
+    }
+
+    std::wstring get_local_user_profile()
+    {
+        return get_profile_impl(CSIDL_LOCAL_APPDATA);
     }
 
     namespace
@@ -203,8 +213,34 @@ namespace common
 
         return device_id;
     }
-}
+#else
+
+    static std::optional<std::string> get_user_homedir(const char *user)
+    {
+        struct passwd *pw = getpwnam(user);
+        if (pw && pw->pw_dir)
+            return pw->pw_dir;
+        return {};
+    }
+
+    std::string get_home_directory()
+    {
+        static std::mutex mutex;
+        std::scoped_lock lock(mutex);
+        if (const char *homedir = getenv("HOME"))
+            return homedir;
+
+        if (const char *user = getenv("USER"))
+            if (auto dir = get_user_homedir(user); dir)
+                return std::move(*dir);
+
+        struct passwd *pw = getpwuid(getuid());
+        if (pw && pw->pw_dir)
+            return pw->pw_dir;
+        return {};
+    }
 #endif // _WIN32
+}
 
 namespace common
 {

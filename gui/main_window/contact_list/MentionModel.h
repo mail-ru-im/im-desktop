@@ -64,6 +64,7 @@ namespace Logic
         void composeResults();
 
         void filterLocal();
+        bool isGlobalContactSearchAllowed() const;
 
     private:
         ContactSearcher* localSearcher_;

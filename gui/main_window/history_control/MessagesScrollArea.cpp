@@ -71,7 +71,7 @@ namespace
 
     const auto scrollAnimationInterval = 10;
     const auto wheelEventsBufferInterval = 300;
-    constexpr std::chrono::milliseconds hideScrollBarTimeoutMs = std::chrono::seconds(2);
+    constexpr auto hideScrollBarTimeout = std::chrono::seconds(2);
 }
 
 namespace Ui
@@ -108,7 +108,7 @@ namespace Ui
 
     void ScrollAreaContainer::scrollContentsBy(const int, const int _dy)
     {
-        emit scrollViewport(-_dy, QPrivateSignal());
+        Q_EMIT scrollViewport(-_dy, QPrivateSignal());
     }
 
     enum class MessagesScrollArea::ScrollingMode
@@ -153,7 +153,7 @@ namespace Ui
         connect(&ScrollAnimationTimer_, &QTimer::timeout, this, &MessagesScrollArea::onAnimationTimer);
 
         HideScrollbarTimer_.setSingleShot(true);
-        HideScrollbarTimer_.setInterval(hideScrollBarTimeoutMs.count());
+        HideScrollbarTimer_.setInterval(hideScrollBarTimeout);
         connect(&HideScrollbarTimer_, &QTimer::timeout, this, &MessagesScrollArea::onHideScrollbarTimer);
 
         WheelEventsBufferResetTimer_.setInterval(wheelEventsBufferInterval);
@@ -185,7 +185,7 @@ namespace Ui
 
     void MessagesScrollArea::onUpdateHistoryPosition(int32_t position, int32_t offset)
     {
-        emit updateHistoryPosition(position, offset);
+        Q_EMIT updateHistoryPosition(position, offset);
     }
 
     void MessagesScrollArea::onHideScrollbarTimer()
@@ -300,6 +300,7 @@ namespace Ui
             {
                 SelectedMessageInfo info;
                 info.isOutgoing_ = item->isOutgoing();
+                info.isUnsupported_ = item->isUnsupported();
                 if (!isMultiselect)
                 {
                     auto selectionBegin = Layout_->absolute2Viewport(SelectionBeginAbsPos_);
@@ -338,7 +339,7 @@ namespace Ui
     void MessagesScrollArea::updateSelectedCount()
     {
         if (aimid_ == Logic::getContactListModel()->selectedContact())
-            emit Utils::InterConnector::instance().selectedCount(getSelectedCount());
+            Q_EMIT Utils::InterConnector::instance().selectedCount(getSelectedCount(), getSelectedUnsupportedCount());
     }
 
     void MessagesScrollArea::multiselectChanged()
@@ -374,6 +375,18 @@ namespace Ui
         return selected_.size();
     }
 
+    int MessagesScrollArea::getSelectedUnsupportedCount() const
+    {
+        auto count = 0;
+        for (const auto& selected : selected_)
+        {
+            if (selected.second.isUnsupported_)
+                ++count;
+        }
+
+        return count;
+    }
+
     void MessagesScrollArea::setSmartreplyWidget(SmartReplyWidget* _widget)
     {
         Layout_->setSmartreplyWidget(_widget);
@@ -394,12 +407,27 @@ namespace Ui
         Layout_->setSmartreplyButton(_button);
     }
 
+    void MessagesScrollArea::setSmartrepliesSemitransparent(bool _semi)
+    {
+        Layout_->setSmartrepliesSemitransparent(_semi);
+    }
+
+    void MessagesScrollArea::notifyQuotesResize()
+    {
+        Layout_->notifyQuotesResize();
+    }
+
+    bool MessagesScrollArea::hasItems() const noexcept
+    {
+        return Layout_->hasItems();
+    }
+
     void MessagesScrollArea::onSelectionChanged(int _selectedCount)
     {
         if (_selectedCount > 0)
-            emit messagesSelected();
+            Q_EMIT messagesSelected();
         else
-            emit messagesDeselected();
+            Q_EMIT messagesDeselected();
     }
 
     void MessagesScrollArea::insertWidget(const Logic::MessageKey &key, std::unique_ptr<QWidget> widget)
@@ -419,9 +447,10 @@ namespace Ui
                 widgets[iter.first] = (iter.second.get());
         }
 
-        Layout_->lock();
-        Layout_->insertWidgets(std::move(_params));
-        Layout_->unlock();
+        {
+            std::scoped_lock locker(*Layout_);
+            Layout_->insertWidgets(std::move(_params));
+        }
 
         updateScrollbar();
 
@@ -433,8 +462,7 @@ namespace Ui
             else if (auto voipItem = qobject_cast<Ui::VoipEventItem*>(iter.second))
                 contacts_.insert(voipItem->getContact());
 
-            auto selectedInfo = selected_.find(iter.first);
-            if (selectedInfo != selected_.end())
+            if (const auto selectedInfo = selected_.find(iter.first); selectedInfo != selected_.end())
             {
                 if (auto item = qobject_cast<Ui::HistoryControlPageItem*>(iter.second))
                 {
@@ -454,7 +482,7 @@ namespace Ui
         }
 
         for (const auto& key : toEmit)
-            emit Utils::InterConnector::instance().selectionStateChanged(key.getId(), key.getInternalId(), true);
+            Q_EMIT Utils::InterConnector::instance().selectionStateChanged(key.getId(), key.getInternalId(), true);
     }
 
     bool MessagesScrollArea::isScrolling() const
@@ -506,7 +534,7 @@ namespace Ui
 
         updateScrollbar();
 
-        emit widgetRemoved();
+        Q_EMIT widgetRemoved();
     }
 
     void MessagesScrollArea::cancelWidgetRequests(const QVector<Logic::MessageKey>& keys)
@@ -540,7 +568,7 @@ namespace Ui
             w->deleteLater();
         });
 
-        emit widgetRemoved();
+        Q_EMIT widgetRemoved();
     }
 
     void MessagesScrollArea::removeAll()
@@ -733,7 +761,10 @@ namespace Ui
         auto isQuote = [](const Data::Quote& _quote) { return _quote.type_ == Data::Quote::quote && _quote.hasReply_; };
 
         for (const auto&[_, info] : selected_)
-            result += info.quotes_;
+        {
+            if (!info.isUnsupported_)
+                result += info.quotes_;
+        }
 
         if (_isForward == IsForward::No)
         {
@@ -880,9 +911,9 @@ namespace Ui
 
         if (isLeftButton)
         {
-            emit Utils::InterConnector::instance().hideMentionCompleter();
+            Q_EMIT Utils::InterConnector::instance().hideMentionCompleter();
             if (Ui::get_gui_settings()->get_value<bool>(settings_fast_drop_search_results, settings_fast_drop_search_default()))
-                emit Utils::InterConnector::instance().searchEnd();
+                Q_EMIT Utils::InterConnector::instance().searchEnd();
         }
 
         if (!isSelectionStart)
@@ -1178,12 +1209,12 @@ namespace Ui
         if ((scrollValue_ == -1 || scrollValue_ < value) && Scrollbar_->isInFetchRangeToBottom(value))
         {
             // to newer
-            emit fetchRequestedEvent(false /* don't move to bottom */);
+            Q_EMIT fetchRequestedEvent(false /* don't move to bottom */);
         }
         else if ((scrollValue_ == -1 || scrollValue_ > value) && Scrollbar_->isInFetchRangeToTop(value))
         {
             // to older
-            emit fetchRequestedEvent(true);
+            Q_EMIT fetchRequestedEvent(true);
         }
 
         if (Mode_ == ScrollingMode::Selection && ScrollAnimationTimer_.isActive())
@@ -1194,7 +1225,7 @@ namespace Ui
 
         if (isAtBottom)
         {
-            emit scrollMovedToBottom();
+            Q_EMIT scrollMovedToBottom();
         }
 
         // Check that value changed due to mouse press
@@ -1366,7 +1397,7 @@ namespace Ui
             selected_.clear();
         Utils::InterConnector::instance().setMultiselect(false, aimid_);
 
-        emit messagesDeselected();
+        Q_EMIT messagesDeselected();
     }
 
     void MessagesScrollArea::clearPartialSelection()
@@ -1569,8 +1600,7 @@ namespace Ui
     void MessagesScrollArea::updateItems()
     {
         Layout_->updateItemsWidth();
-        if (Ui::get_gui_settings()->get_value<bool>(settings_partial_read, settings_partial_read_default()))
-            Layout_->readVisibleItems();
+        Layout_->readVisibleItems();
     }
 
     void MessagesScrollArea::enableViewportShifting(bool enable)
@@ -1594,7 +1624,7 @@ namespace Ui
 
         enumerateWidgets([&editCalled](QWidget* _item, const bool)
         {
-            if (auto messageItem = qobject_cast<Ui::MessageItemBase*>(_item))
+            if (auto messageItem = qobject_cast<Ui::HistoryControlPageItem*>(_item))
             {
                 if (!messageItem->isOutgoing())
                     return true; // skip

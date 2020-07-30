@@ -17,11 +17,6 @@
 
 using namespace Ui;
 
-constexpr double heightPartOfMainWindowForFullView = 0.6;
-constexpr int DIALOG_WIDTH = 360;
-constexpr int search_padding_ver = 8;
-constexpr int search_padding_hor = 4;
-constexpr int itemHeight = 44;
 constexpr int iconSize = 32;
 
 namespace
@@ -106,20 +101,17 @@ void PhoneCodePicker::setIcon(const QString & _country)
 
 void PhoneCodePicker::openCountryPicker()
 {
-    auto countrySearch_ = new SelectContactsWidget(
+    SelectContactsWidget countrySearch(
         nullptr,
         Logic::MembersWidgetRegim::COUNTRY_LIST,
         QT_TRANSLATE_NOOP("popup_window", "Choose country"),
         QT_TRANSLATE_NOOP("popup_window", "Cancel"),
         parentWidget());
 
-    const auto result = countrySearch_->show();
-    countrySearch_->deleteLater();
-
-    if (result)
+    if (countrySearch.show())
     {
         const auto c = Logic::getCountryModel()->getSelected();
-        emit countrySelected(c.phone_code_);
+        Q_EMIT countrySelected(c.phone_code_);
         setIcon(c.name_);
     }
 }

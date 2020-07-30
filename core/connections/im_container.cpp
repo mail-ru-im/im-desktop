@@ -17,11 +17,13 @@
 #include "../utils.h"
 #include "../archive/contact_archive.h"
 #include "../archive/history_message.h"
+#include "../smartreply/smartreply_suggest.h"
 #include "../statistics.h"
 #include "../proxy_settings.h"
 
 #include "../configuration/app_config.h"
 #include "../configuration/host_config.h"
+#include "../configuration/external_config.h"
 #include "../common.shared/config/config.h"
 #include "../common.shared/string_utils.h"
 #include "accept_agreement_info.h"
@@ -30,36 +32,21 @@ namespace
 {
     constexpr int VOIP_RATING_STARS_SCORE_COEFFICIENT = 10;
 
-    bool load_external_url_config(std::string_view _host)
+    std::vector<std::string> to_string_vector(core::coll_helper& _params, std::string_view _name)
     {
-        if (_host.empty())
-            return false;
+        std::vector<std::string> res;
 
-        using namespace core;
-
-        const auto send_error = [](const auto _err)
+        if (_params.is_value_exist(_name))
         {
-            coll_helper coll(g_core->create_collection(), true);
-            coll.set_value_as_int("error", int(_err));
-            g_core->post_message_to_gui("external_url_config/error", 0, coll.get());
-        };
-
-        auto err = config::hosts::load_external_config_from_url(su::concat("u.", _host));
-        if (err == ext_url_config_error::ok)
-            return true;
-
-        if (err == ext_url_config_error::config_host_invalid)
-        {
-            err = config::hosts::load_external_config_from_url(_host);
-            if (err == ext_url_config_error::ok)
-                return true;
-
-            send_error(err);
-            return false;
+            if (auto arr = _params.get_value_as_array(_name))
+            {
+                const auto size = arr->size();
+                res.reserve(size);
+                for (std::remove_const_t<decltype(size)> i = 0; i < size; ++i)
+                    res.emplace_back(arr->get_at(i)->get_as_string());
+            }
         }
-
-        send_error(err);
-        return false;
+        return res;
     }
 }
 
@@ -69,7 +56,7 @@ voip_manager::BitmapDescription get_bitmap_from_stream(core::istream* stream, in
 {
     voip_manager::BitmapDescription res;
     res.size = stream->size();
-    res.data = (void*)stream->read(stream->size());
+    res.data = (void*)stream->read(res.size);
     res.w = w;
     res.h = h;
 
@@ -93,7 +80,6 @@ im_container::im_container(const std::shared_ptr<voip_manager::VoipManager>& voi
     REGISTER_IM_MESSAGE("send_message", on_send_message);
     REGISTER_IM_MESSAGE("update_message", on_update_message);
     REGISTER_IM_MESSAGE("message/typing", on_message_typing);
-    REGISTER_IM_MESSAGE("feedback/send", on_feedback);
     //REGISTER_IM_MESSAGE("set_state", on_set_state);
     REGISTER_IM_MESSAGE("archive/buddies/get", on_get_archive_messages_buddies);
     REGISTER_IM_MESSAGE("archive/messages/get", on_get_archive_messages);
@@ -145,10 +131,11 @@ im_container::im_container(const std::shared_ptr<voip_manager::VoipManager>& voi
     REGISTER_IM_MESSAGE("stickers/big_set_icon/get", on_get_set_icon_big);
     REGISTER_IM_MESSAGE("stickers/big_set_icon/clean", on_clean_set_icon_big);
     REGISTER_IM_MESSAGE("stickers/set/order", on_set_sticker_order);
-    REGISTER_IM_MESSAGE("smartreply/suggests/get", on_get_smartreply_suggests);
+    REGISTER_IM_MESSAGE("stickers/suggests/get", on_get_sticker_suggests);
     REGISTER_IM_MESSAGE("smartreply/suggests/clearall", on_clear_smartreply_suggests);
     REGISTER_IM_MESSAGE("smartreply/suggests/clear", on_clear_smartreply_suggests);
     REGISTER_IM_MESSAGE("smartreply/suggests/load", on_load_smartreply_suggests);
+    REGISTER_IM_MESSAGE("smartreply/get", on_get_smartreplies);
 
     REGISTER_IM_MESSAGE("chats/info/get", on_get_chat_info);
     REGISTER_IM_MESSAGE("chats/home/get", on_get_chat_home);
@@ -159,7 +146,6 @@ im_container::im_container(const std::shared_ptr<voip_manager::VoipManager>& voi
     REGISTER_IM_MESSAGE("chats/contacts/get", on_get_chat_contacts);
     REGISTER_IM_MESSAGE("contacts/search/server", on_search_contacts_server);
     REGISTER_IM_MESSAGE("contacts/search/local", on_search_contacts_local);
-    REGISTER_IM_MESSAGE("contacts/profile/get", on_profile);
     REGISTER_IM_MESSAGE("contacts/add", on_add_contact);
     REGISTER_IM_MESSAGE("contacts/remove", on_remove_contact);
     REGISTER_IM_MESSAGE("contacts/rename", on_rename_contact);
@@ -170,7 +156,6 @@ im_container::im_container(const std::shared_ptr<voip_manager::VoipManager>& voi
     REGISTER_IM_MESSAGE("remove_members", on_remove_members);
     REGISTER_IM_MESSAGE("add_members", on_add_members);
     REGISTER_IM_MESSAGE("add_chat", on_add_chat);
-    REGISTER_IM_MESSAGE("sign_url", on_sign_url);
     REGISTER_IM_MESSAGE("stats", on_stats);
     REGISTER_IM_MESSAGE("im_stats", on_im_stats);
     REGISTER_IM_MESSAGE("addressbook/sync", on_syncronize_addressbook);
@@ -182,13 +167,14 @@ im_container::im_container(const std::shared_ptr<voip_manager::VoipManager>& voi
     REGISTER_IM_MESSAGE("themes/wallpaper/user/remove", on_set_user_wallpaper);
 
     REGISTER_IM_MESSAGE("files/speech_to_text", on_speech_to_text);
-    REGISTER_IM_MESSAGE("favorite", on_favorite);
+    REGISTER_IM_MESSAGE("pin_chat", on_pin_chat);
     REGISTER_IM_MESSAGE("unfavorite", on_unfavorite);
     REGISTER_IM_MESSAGE("update_profile", on_update_profile);
     REGISTER_IM_MESSAGE("mark_unimportant", on_mark_unimportant);
     REGISTER_IM_MESSAGE("remove_from_unimportant", on_remove_from_unimportant);
     REGISTER_IM_MESSAGE("set_user_proxy_settings", on_set_user_proxy);
     REGISTER_IM_MESSAGE("livechat/join", on_join_livechat);
+    REGISTER_IM_MESSAGE("livechat/join/cancel", on_cancel_join_livechat);
     REGISTER_IM_MESSAGE("set_locale", on_set_locale);
     REGISTER_IM_MESSAGE("set_avatar", on_set_avatar);
 
@@ -214,13 +200,11 @@ im_container::im_container(const std::shared_ptr<voip_manager::VoipManager>& voi
     REGISTER_IM_MESSAGE("masks/get", on_get_mask);
     REGISTER_IM_MESSAGE("masks/get/existent", on_get_existent_masks);
     REGISTER_IM_MESSAGE("mrim/get_key", on_mrim_get_key);
-    REGISTER_IM_MESSAGE("merge_account", on_merge_account);
 
     REGISTER_IM_MESSAGE("mentions/suggests/get", on_get_mentions_suggests);
     REGISTER_IM_MESSAGE("get_code_by_phone_call", on_get_code_by_phone_call);
 
     REGISTER_IM_MESSAGE("get_logs_path", on_get_logs_path);
-    REGISTER_IM_MESSAGE("create_logs_archive", on_create_logs_archive);
     REGISTER_IM_MESSAGE("change_app_config", on_change_app_config);
     REGISTER_IM_MESSAGE("remove_content_cache", on_remove_content_cache);
     REGISTER_IM_MESSAGE("clear_avatars", on_clear_avatars);
@@ -241,6 +225,7 @@ im_container::im_container(const std::shared_ptr<voip_manager::VoipManager>& voi
     REGISTER_IM_MESSAGE("request_gallery_state", on_request_gallery_state);
     REGISTER_IM_MESSAGE("get_gallery_index", on_get_gallery_index);
     REGISTER_IM_MESSAGE("make_gallery_hole", on_make_gallery_hole);
+    REGISTER_IM_MESSAGE("stop_gallery_holes_downloading", on_stop_gallery_holes_downloading);
 
     REGISTER_IM_MESSAGE("request_memory_usage", on_request_memory_usage);
     REGISTER_IM_MESSAGE("report_memory_usage", on_report_memory_usage);
@@ -277,7 +262,29 @@ im_container::im_container(const std::shared_ptr<voip_manager::VoipManager>& voi
     REGISTER_IM_MESSAGE("poll/stop", on_stop_poll);
 
     REGISTER_IM_MESSAGE("group/subscribe", on_group_subscribe);
+    REGISTER_IM_MESSAGE("group/cancel_subscription", on_group_cancel_subscription);
     REGISTER_IM_MESSAGE("suggest_group_nick", on_suggest_group_nick);
+
+    REGISTER_IM_MESSAGE("get_bot_callback_answer", on_get_bot_callback_answer);
+    REGISTER_IM_MESSAGE("bot/start", on_start_bot);
+
+    REGISTER_IM_MESSAGE("conference/create", on_create_confrence);
+
+    REGISTER_IM_MESSAGE("sessions/get", on_get_sessions);
+    REGISTER_IM_MESSAGE("sessions/reset", on_reset_session);
+    REGISTER_IM_MESSAGE("sessions/resetall", on_reset_session);
+
+    REGISTER_IM_MESSAGE("reaction/get", on_get_reactions);
+    REGISTER_IM_MESSAGE("reaction/add", on_add_reaction);
+    REGISTER_IM_MESSAGE("reaction/remove", on_remove_reaction);
+    REGISTER_IM_MESSAGE("reaction/list", on_list_reactions);
+
+    REGISTER_IM_MESSAGE("status/set", on_status_set);
+
+    REGISTER_IM_MESSAGE("subscribe/status", on_subscribe_status);
+    REGISTER_IM_MESSAGE("unsubscribe/status", on_unsubscribe_status);
+    REGISTER_IM_MESSAGE("subscribe/call_room_info", on_subscribe_call_room_info);
+    REGISTER_IM_MESSAGE("unsubscribe/call_room_info", on_unsubscribe_call_room_info);
 }
 
 
@@ -399,24 +406,38 @@ void core::im_container::on_voip_call_message(int64_t _seq, coll_helper& _params
 {
     auto im = get_im(_params);
     const std::string_view type = _params.get_value_as_string("type");
-    if (!im && type != "voip_reset") {
+    if (!im && type != "voip_reset")
         return;
-    }
 
-    if (type == "voip_call_start") {
-        const std::string call_type = _params.get_value_as_string("call_type");
-        const std::string mode = _params.get_value_as_string("mode");
-        const std::string contact = _params.get_value_as_string("contact");
+    if (type == "voip_call_start")
+    {
+        const auto contacts = to_string_vector(_params, "contacts");
 
-        assert(!contact.empty());
-        if (!contact.empty()) {
-            core::proxy_settings            proxySettings = g_core->get_proxy_settings();
-            voip_manager::VoipProxySettings voipProxySettings;
-            fromInternalProxySettings2Voip(proxySettings, voipProxySettings);
+        assert(!contacts.empty());
+        if (contacts.empty())
+            return;
 
-            im->on_voip_call_set_proxy(voipProxySettings);
-            im->on_voip_call_start(contact, call_type == "video", mode == "attach");
-        };
+        /*core::proxy_settings proxySettings = g_core->get_proxy_settings();
+        voip_manager::VoipProxySettings voipProxySettings;
+        fromInternalProxySettings2Voip(proxySettings, voipProxySettings);
+        im->on_voip_call_set_proxy(voipProxySettings);*/
+        const std::string_view call_type = _params.get_value_as_string("call_type");
+        voip_manager::CallStartParams params;
+        if (call_type == "vcs")
+        {
+            params.is_vcs = true;
+            im->on_voip_call_start(contacts, params);
+        } else if (call_type == "pinned_room")
+        {
+            params.is_pinned_room = true;
+            params.video  = _params.get_value_as_bool("video");
+            im->on_voip_call_start(contacts, params);
+        } else
+        {
+            params.video  = _params.get_value_as_bool("video");
+            params.attach = _params.get_value_as_bool("attach");
+            im->on_voip_call_start(contacts, params);
+        }
     }
     else if (type == "voip_add_window") {
         voip_manager::WindowParams windowParams = {};
@@ -431,10 +452,10 @@ void core::im_container::on_voip_call_message(int64_t _seq, coll_helper& _params
         // Function to get bitmap from params.
         auto getBitmapDescription = [&_params, &steramsForFree](const std::string& prefix, voip_manager::BitmapDescription& outBitmap) -> bool {
             bool res = false;
-            if (_params.is_value_exist(prefix.c_str())) {
-                core::istream* statusStream = _params.get_value_as_stream(prefix.c_str());
-                const auto h = _params.get_value_as_int((prefix + "_height").c_str());
-                const auto w = _params.get_value_as_int((prefix + "_width").c_str());
+            if (_params.is_value_exist(prefix)) {
+                core::istream* statusStream = _params.get_value_as_stream(prefix);
+                const auto h = _params.get_value_as_int((prefix + "_height"));
+                const auto w = _params.get_value_as_int((prefix + "_width"));
                 assert(statusStream);
                 if (statusStream) {
                     const auto stream_size = statusStream->size();
@@ -510,7 +531,9 @@ void core::im_container::on_voip_call_message(int64_t _seq, coll_helper& _params
     else if (type == "voip_call_decline") {
         const std::string_view mode = _params.get_value_as_string("mode");
         const std::string_view conference = _params.get_value_as_string("conference");
-        im->on_voip_call_end(_params.get_value_as_string("contact"), mode == "busy", conference == "true");
+        const std::string call_id = _params.get_value_as_string("call_id");
+        const std::string contact = _params.get_value_as_string("contact");
+        im->on_voip_call_end(call_id, contact, mode == "busy", conference == "true");
     }
     else if (type == "converted_avatar") {
         on_voip_avatar_msg(im, _params);
@@ -520,17 +543,16 @@ void core::im_container::on_voip_call_message(int64_t _seq, coll_helper& _params
     }
     else if (type == "voip_call_accept") {
         const std::string_view mode = _params.get_value_as_string("mode");
-        std::string contact = _params.get_value_as_string("contact");
+        std::string call_id = _params.get_value_as_string("call_id");
 
-        assert(!contact.empty());
-        if (!contact.empty()) {
-            core::proxy_settings            proxySettings = g_core->get_proxy_settings();
-            voip_manager::VoipProxySettings voipProxySettings;
-            fromInternalProxySettings2Voip(proxySettings, voipProxySettings);
-
-            im->on_voip_call_set_proxy(voipProxySettings);
-            im->on_voip_call_accept(std::move(contact), mode == "video");
-        }
+        assert(!call_id.empty());
+        if (call_id.empty())
+            return;
+        /*core::proxy_settings proxySettings = g_core->get_proxy_settings();
+        voip_manager::VoipProxySettings voipProxySettings;
+        fromInternalProxySettings2Voip(proxySettings, voipProxySettings);
+        im->on_voip_call_set_proxy(voipProxySettings);*/
+        im->on_voip_call_accept(std::move(call_id), mode == "video");
     }
     else if (type == "device_change") {
         const std::string_view dev_type = _params.get_value_as_string("dev_type");
@@ -855,6 +877,20 @@ static core::archive::message_pack make_pack(const coll_helper& _params)
             poll = std::move(poll_data);
     }
 
+    smartreply::marker_opt marker;
+    if (_params.is_value_exist("smartreply"))
+    {
+        smartreply::marker marker_data;
+        core::icollection* coll = _params.get_value_as_collection("smartreply");
+        coll_helper helper(coll, false);
+        if (marker_data.unserialize(helper))
+            marker = std::move(marker_data);
+    }
+
+    auto is_channel = false;
+    if (_params.is_value_exist("channel"))
+        is_channel = _params.get_value_as_bool("channel");
+
     core::archive::message_pack pack;
     pack.message_ = std::move(message);
     pack.quotes_ = std::move(quotes);
@@ -868,6 +904,8 @@ static core::archive::message_pack make_pack(const coll_helper& _params)
     pack.shared_contact_ = std::move(shared_contact);
     pack.geo_ = std::move(geo);
     pack.poll_ = std::move(poll);
+    pack.smartreply_marker_ = std::move(marker);
+    pack.channel_ = is_channel;
 
     return pack;
 }
@@ -887,16 +925,8 @@ void core::im_container::on_send_message(int64_t _seq, coll_helper& _params)
     }
     else if (_params->is_value_exist("contacts"))
     {
-        std::vector<std::string> contacts_to_send;
-        const core::iarray* array = _params.get_value_as_array("contacts");
-        const auto size = array->size();
-        contacts_to_send.reserve(size);
-        for (auto i = 0; i < size; ++i)
-            contacts_to_send.push_back(array->get_at(i)->get_as_string());
-        im->send_message_to_contacts(
-            _seq,
-            contacts_to_send,
-            make_pack(_params));
+        const auto contacts_to_send = to_string_vector(_params, "contacts");
+        im->send_message_to_contacts(_seq, contacts_to_send, make_pack(_params));
     }
 }
 
@@ -921,47 +951,6 @@ void core::im_container::on_update_message(int64_t _seq, coll_helper& _params)
         msgid,
         contact,
         pack);
-}
-
-void core::im_container::on_feedback(int64_t _seq, coll_helper& _params)
-{
-    auto im = get_im(_params);
-    if (!im)
-        return;
-
-    std::map<std::string, std::string> fields;
-    std::vector<std::string> files;
-
-    std::string url = _params.get_value_as_string("url");
-
-    fields.insert(std::make_pair("fb.screen_resolution", _params.get_value_as_string("screen_resolution")));
-    fields.insert(std::make_pair("fb.referrer", _params.get_value_as_string("referrer")));
-    fields.insert(std::make_pair(std::string(config::get().string(config::values::feedback_version_id)), _params.get_value_as_string("version")));
-    fields.insert(std::make_pair("fb.question.159", _params.get_value_as_string("os_version")));
-    fields.insert(std::make_pair("fb.question.178", _params.get_value_as_string("build_type")));
-    fields.insert(std::make_pair(std::string(config::get().string(config::values::feedback_platform_id)), _params.get_value_as_string("platform")));
-    fields.insert(std::make_pair("fb.user_name", _params.get_value_as_string("user_name")));
-    fields.insert(std::make_pair("fb.message", _params.get_value_as_string("message")));
-    fields.insert(std::make_pair("fb.communication_email", _params.get_value_as_string("communication_email")));
-    fields.insert(std::make_pair("Lang", _params.get_value_as_string("language")));
-    fields.insert(std::make_pair("attachements_count", _params.get_value_as_string("attachements_count")));
-
-    if (config::get().is_on(config::features::feedback_selected))
-    {
-        const auto problem = config::get().string(config::values::feedback_selected_id);
-        fields.insert(std::make_pair(std::string(problem), _params.get_value_as_string(problem)));
-    }
-
-    if (_params.is_value_exist("attachement"))
-    {
-        core::iarray* array = _params.get_value_as_array("attachement");
-        const auto size = array->size();
-        files.reserve(size);
-        for (auto i = 0; i < size; ++i)
-            files.emplace_back(array->get_at(i)->get_as_string());
-    }
-
-    im->send_feedback(_seq, url, fields, files);
 }
 
 void core::im_container::on_phoneinfo(int64_t seq, coll_helper& _params)
@@ -1025,25 +1014,8 @@ void core::im_container::on_add_members(int64_t _seq, coll_helper& _params)
 
 void core::im_container::on_add_chat(int64_t _seq, coll_helper& _params)
 {
-    auto im = get_im(_params);
-    if (!im)
-        return;
-
-    std::vector<std::string> members;
-
-    if (const auto member_array = _params.get_value_as_array("m_chat_members"))
-    {
-        const auto size = member_array->size();
-        members.reserve(size);
-        for (core::iarray::size_type i = 0; i < size; ++i)
-            members.emplace_back(member_array->get_at(i)->get_as_string());
-    }
-
-
-    im->add_chat(
-        _seq,
-        _params.get_value_as_string("m_chat_name"),
-        std::move(members));
+    if (auto im = get_im(_params))
+        im->add_chat(_seq, _params.get_value_as_string("m_chat_name"), to_string_vector(_params, "m_chat_members"));
 }
 
 void core::im_container::on_mrim_get_key(int64_t _seq, coll_helper& _params)
@@ -1059,39 +1031,90 @@ void core::im_container::on_mrim_get_key(int64_t _seq, coll_helper& _params)
 
 void core::im_container::on_login_by_password(int64_t _seq, coll_helper& _params)
 {
-    std::string login = _params.get_value_as_string("login");
-    if (config::get().is_on(config::features::external_url_config))
-    {
-        if (const auto at_idx = login.find('@'); at_idx != std::string::npos)
-        {
-            std::string config_host;
-
-            if (const auto hash_idx = login.find('#'); hash_idx != std::string::npos && hash_idx > at_idx)
-            {
-                config_host = login.substr(hash_idx + 1);
-                login = login.substr(0, hash_idx);
-            }
-            else
-            {
-                config_host = login.substr(at_idx + 1);
-            }
-
-            if (!config_host.empty() && !load_external_url_config(config_host))
-                return;
-        }
-    }
-
     login_info info;
     info.set_login_type(login_type::lt_login_password);
-    info.set_login(login);
+    info.set_login(_params.get_value_as_string("login"));
     info.set_password(_params.get_value_as_string("password"));
     info.set_save_auth_data(_params.get_value_as_bool("save_auth_data"));
     info.set_token_type(_params.get_value_as_enum<token_type>("token_type", token_type::basic));
 
-    std::shared_ptr<base_im> im = std::make_shared<wim::im>(im_login_id(std::string()), voip_manager_, memory_stats_collector_);
-    ims_.clear();
-    im->login(_seq, info);
-    ims_.push_back(im);
+    auto do_login = [_seq, wr_this = weak_from_this()](login_info&& _info)
+    {
+        auto ptr_this = wr_this.lock();
+        if (!ptr_this)
+            return;
+
+        std::shared_ptr<base_im> im = std::make_shared<wim::im>(im_login_id(std::string()), ptr_this->voip_manager_, ptr_this->memory_stats_collector_);
+        ptr_this->ims_.clear();
+        im->login(_seq, _info);
+        ptr_this->ims_.emplace_back(std::move(im));
+    };
+
+    if (config::get().is_on(config::features::external_url_config) && info.get_token_type() == token_type::otp_via_email)
+    {
+        const auto& login = info.get_login();
+        if (const auto at_idx = login.find('@'); at_idx != std::string::npos)
+        {
+            std::string login_domain;
+
+            if (const auto hash_idx = login.find('#'); hash_idx != std::string::npos && hash_idx > at_idx
+                && !config::get().is_on(config::features::external_config_use_preset_url))
+            {
+                login_domain = login.substr(hash_idx + 1);
+                info.set_login(login.substr(0, hash_idx));
+            }
+            else
+            {
+                login_domain = login.substr(at_idx + 1);
+            }
+
+            if (!login_domain.empty())
+            {
+                std::vector<std::string> urls;
+
+                if (auto url_preset = config::hosts::external_url_config::make_url_preset(login_domain); !url_preset.empty())
+                {
+                    urls.emplace_back(url_preset);
+                }
+                else 
+                {
+                    urls.emplace_back(config::hosts::external_url_config::make_url(su::concat("u.", login_domain)));
+                    urls.emplace_back(config::hosts::external_url_config::make_url(login_domain));
+                    std::reverse(urls.begin(), urls.end());
+                }
+
+                config::hosts::load_external_url_config(std::move(urls), [do_login, info = std::move(info)](ext_url_config_error _err, std::string_view _url) mutable
+                {
+                    if (_err == ext_url_config_error::ok)
+                    {
+                        assert(!_url.empty());
+                        g_core->set_external_config_host(_url);
+                        do_login(std::move(info));
+                    }
+                    else
+                    {
+                        coll_helper coll(g_core->create_collection(), true);
+                        coll.set_value_as_int("error", int(_err));
+                        g_core->post_message_to_gui("external_url_config/error", 0, coll.get());
+                    }
+                });
+                return;
+            }
+        }
+    }
+    else
+    {
+        const auto& login = info.get_login();
+        if (const auto at_idx = login.find('@'); at_idx != std::string::npos)
+        {
+            if (const auto hash_idx = login.find('#'); hash_idx != std::string::npos && hash_idx > at_idx)
+            {
+                info.set_login(login.substr(0, hash_idx));
+            }
+        }
+    }
+
+    do_login(std::move(info));
 }
 
 void core::im_container::on_login_get_sms_code(int64_t _seq, coll_helper& _params)
@@ -1151,7 +1174,7 @@ void core::im_container::on_logout(int64_t _seq, coll_helper& _params)
         return;
 
     std::weak_ptr<base_im> wr_im = im;
-    auto __onlogout = [wr_this = weak_from_this(), wr_im]()
+    auto __onlogout = [wr_this = weak_from_this(), wr_im, clear_data = !_params.get() || _params.get_value_as_bool("clear")]()
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -1166,8 +1189,10 @@ void core::im_container::on_logout(int64_t _seq, coll_helper& _params)
 
         ptr_this->ims_.clear();
 
-        if (!g_core->is_keep_local_data())
+        if (clear_data)
             g_core->remove_local_data();
+
+        g_core->update_gui_settings();
     };
 
     g_core->post_message_to_gui("need_login", 0, nullptr);
@@ -1218,18 +1243,10 @@ void core::im_container::logout(const bool _is_auth_error)
 
         ptr_this->ims_.clear();
 
-        if (!ptr_this->logins_->empty() && !g_core->is_keep_local_data())
-            g_core->remove_local_data();
-
         config::hosts::clear_external_config();
     };
 
     voip_manager_->call_stop_smart(logout);
-}
-
-void core::im_container::on_sign_url(int64_t _seq, coll_helper& _params)
-{
-    (*ims_.begin())->sign_url(_seq, _params.get_value_as_string("url"));
 }
 
 void core::im_container::on_stats(int64_t _seq, coll_helper& _params)
@@ -1249,7 +1266,7 @@ void core::im_container::on_stats(int64_t _seq, coll_helper& _params)
         }
     }
 
-    g_core->insert_event((core::stats::stats_event_names)_params.get_value_as_int("event"), props);
+    g_core->insert_event((core::stats::stats_event_names)_params.get_value_as_int("event"), std::move(props));
 }
 
 void core::im_container::on_im_stats(int64_t _seq, coll_helper& _params)
@@ -1675,17 +1692,6 @@ void im_container::on_download_image(int64_t _seq, coll_helper& _params)
         _params.get_value_as_bool("with_data", true));
 }
 
-void im_container::on_cancel_loader_task(int64_t /*_seq*/, coll_helper& _params)
-{
-    auto im = get_im(_params);
-    if (!im)
-        return;
-
-    const auto url = _params.get_value_as_string("url");
-
-    im->cancel_loader_task(url);
-}
-
 void im_container::on_get_external_file_path(int64_t _seq, coll_helper& _params)
 {
     auto im = get_im(_params);
@@ -1710,6 +1716,24 @@ void im_container::on_download_link_preview(int64_t _seq, coll_helper& _params)
         _params.get_value_as_string("log_str", ""));
 }
 
+static std::optional<int64_t> get_int64_optional(const coll_helper& _params, std::string_view _name)
+{
+    if (_params.is_value_exist(_name))
+        return _params.get_value_as_int64(_name);
+    return std::nullopt;
+}
+
+void im_container::on_cancel_loader_task(int64_t /*_seq*/, coll_helper& _params)
+{
+    auto im = get_im(_params);
+    if (!im)
+        return;
+
+    const auto url = _params.get_value_as_string("url");
+
+    im->cancel_loader_task(url, get_int64_optional(_params, "seq"));
+}
+
 void im_container::on_abort_file_downloading(int64_t /*_seq*/, coll_helper& _params)
 {
     auto im = get_im(_params);
@@ -1718,7 +1742,7 @@ void im_container::on_abort_file_downloading(int64_t /*_seq*/, coll_helper& _par
 
     const auto url = _params.get_value_as_string("url");
 
-    im->abort_file_sharing_download(url);
+    im->abort_file_sharing_download(url, get_int64_optional(_params, "seq"));
 }
 
 void im_container::on_download_raise_priority(int64_t _seq, coll_helper& _params)
@@ -1794,7 +1818,7 @@ void im_container::on_set_user_wallpaper(int64_t _seq, coll_helper& _params)
     }
 
     tools::binary_stream bs_data;
-    uint32_t size = stream->size();
+    auto size = stream->size();
     if (stream && size)
     {
         bs_data.write((const char*)stream->read(size), size);
@@ -1980,14 +2004,7 @@ void im_container::on_resolve_pending(int64_t _seq, coll_helper& _params)
     if (!im)
         return;
 
-    std::vector<std::string> contacts;
-    if (_params.is_value_exist("contacts"))
-    {
-        auto contacts_array = _params.get_value_as_array("contacts");
-        for (auto i = 0; contacts_array && i < contacts_array->size(); ++i)
-            contacts.push_back(contacts_array->get_at(i)->get_as_string());
-    }
-
+    const auto contacts = to_string_vector(_params, "contacts");
     im->resolve_pending(_seq, _params.get_value_as_string("aimid"), contacts, _params.get_value_as_bool("approve"));
 }
 
@@ -1997,16 +2014,8 @@ void core::im_container::on_get_chat_member_info(int64_t _seq, coll_helper& _par
     if (!im)
         return;
 
-    if (auto arr = _params.get_value_as_array("members"))
-    {
-        std::vector<std::string> members;
-        const auto size = arr->size();
-        members.reserve(size);
-        for (int i = 0; i < size; ++i)
-            members.emplace_back(arr->get_at(i)->get_as_string());
-
+    if (const auto members = to_string_vector(_params, "members"); !members.empty())
         im->get_chat_member_info(_seq, _params.get_value_as_string("aimid"), members);
-    }
 }
 
 void im_container::on_get_chat_members(int64_t _seq, coll_helper& _params)
@@ -2078,25 +2087,18 @@ void core::im_container::on_search_contacts_local(int64_t _seq, coll_helper& _pa
 
     g_core->begin_cl_search();
 
-    std::vector<std::vector<std::string>> searchSymbolsPatterns;
+    std::vector<std::vector<std::string>> symbols_patterns;
     std::string pattern;
     uint32_t fix_pat_count = 0;
     if (_params.is_value_exist("symbols_array"))
     {
         const auto searchSymbolsArray = _params.get_value_as_array("symbols_array");
         const auto search_symbol_size = searchSymbolsArray->size();
-        searchSymbolsPatterns.reserve(search_symbol_size);
+        symbols_patterns.reserve(search_symbol_size);
         for (auto i = 0; i < search_symbol_size; ++i)
         {
-            std::vector<std::string> patternForSymbol;
             core::coll_helper symbol_value(searchSymbolsArray->get_at(i)->get_as_collection(), false);
-
-            const auto symbols_patterns = symbol_value.get_value_as_array("symbols_patterns");
-            const auto patterns_size = symbols_patterns->size();
-            patternForSymbol.reserve(patterns_size);
-            for (auto j = 0; j < patterns_size; ++j)
-                patternForSymbol.emplace_back(symbols_patterns->get_at(j)->get_as_string());
-            searchSymbolsPatterns.push_back(std::move(patternForSymbol));
+            symbols_patterns.push_back(to_string_vector(symbol_value, "symbols_patterns"));
         }
 
         fix_pat_count = _params.get_value_as_uint("fixed_patterns_count", 0);
@@ -2106,13 +2108,13 @@ void core::im_container::on_search_contacts_local(int64_t _seq, coll_helper& _pa
         pattern = _params.get_value_as_string("init_pattern");
     }
 
-    for (auto& symbol_iter : searchSymbolsPatterns)
+    for (auto& symbol_iter : symbols_patterns)
     {
         for (auto& iter : symbol_iter)
             iter = ::core::tools::system::to_upper(iter);
     }
 
-    im->search_contacts_local(searchSymbolsPatterns, _seq, fix_pat_count, pattern);
+    im->search_contacts_local(symbols_patterns, _seq, fix_pat_count, pattern);
 }
 
 void core::im_container::on_syncronize_addressbook(int64_t _seq, coll_helper & _params)
@@ -2121,25 +2123,8 @@ void core::im_container::on_syncronize_addressbook(int64_t _seq, coll_helper & _
     if (!im)
         return;
 
-    std::vector<std::string> phones;
-    if (auto arr = _params.get_value_as_array("phones"))
-    {
-        const auto size = arr->size();
-        phones.reserve(size);
-        for (int i = 0; i < size; ++i)
-            phones.emplace_back(arr->get_at(i)->get_as_string());
-    }
-
+    const auto phones = to_string_vector(_params, "phones");
     im->syncronize_address_book(_seq, _params.get_value_as_string("name"), phones);
-}
-
-void im_container::on_profile(int64_t _seq, coll_helper& _params)
-{
-    auto im = get_im(_params);
-    if (!im)
-        return;
-
-    im->get_profile(_seq, _params.get_value_as_string("aimid"));
 }
 
 void im_container::on_hide_dlg_state(int64_t _seq, coll_helper& _params)
@@ -2148,12 +2133,9 @@ void im_container::on_hide_dlg_state(int64_t _seq, coll_helper& _params)
     if (!im)
         return;
 
-    if (_params->is_value_exist("contacts"))
-    {
-        const auto contacts_array = _params.get_value_as_array("contacts");
-        for (auto i = 0; i < contacts_array->size(); ++i)
-            im->hide_dlg_state(contacts_array->get_at(i)->get_as_string());
-    }
+    const auto contacts = to_string_vector(_params, "contacts");
+    for (const auto& c : contacts)
+        im->hide_dlg_state(c);
 }
 
 void im_container::on_set_attention_attribute(int64_t _seq, coll_helper& _params)
@@ -2219,13 +2201,13 @@ void im_container::on_get_ignore_contacts(int64_t _seq, coll_helper& _params)
     im->get_ignore_list(_seq);
 }
 
-void im_container::on_favorite(int64_t _seq, core::coll_helper &_params)
+void im_container::on_pin_chat(int64_t _seq, core::coll_helper &_params)
 {
     auto im = get_im(_params);
     if (!im)
         return;
 
-    im->favorite(_params.get_value_as_string("contact"));
+    im->pin_chat(_params.get_value_as_string("contact"));
 }
 
 void im_container::on_unfavorite(int64_t _seq, core::coll_helper &_params)
@@ -2234,7 +2216,7 @@ void im_container::on_unfavorite(int64_t _seq, core::coll_helper &_params)
     if (!im)
         return;
 
-    im->unfavorite(_params.get_value_as_string("contact"));
+    im->unpin_chat(_params.get_value_as_string("contact"));
 }
 
 void im_container::on_mark_unimportant(int64_t _seq, coll_helper& _params)
@@ -2290,6 +2272,15 @@ void core::im_container::on_join_livechat(int64_t _seq, coll_helper& _params)
     im->join_live_chat(_seq, stamp);
 }
 
+void im_container::on_cancel_join_livechat(int64_t _seq, coll_helper& _params)
+{
+    auto im = get_im(_params);
+    if (!im)
+        return;
+
+    im->cancel_pending_join(_params.get_value_as_string("sn"));
+}
+
 void core::im_container::on_set_locale(int64_t _seq, coll_helper& _params)
 {
     auto im = get_im(_params);
@@ -2335,7 +2326,7 @@ void core::im_container::on_set_avatar(int64_t _seq, coll_helper& _params)
         return;
     }
 
-    uint32_t size = stream->size();
+    auto size = stream->size();
     if (stream && size)
     {
         bs_data.write((const char*)stream->read(size), size);
@@ -2352,15 +2343,8 @@ void core::im_container::on_create_chat(int64_t _seq, coll_helper& _params)
         return;
 
     auto params = core::wim::chat_params::create(_params);
-    std::vector<std::string> members;
-    if (const auto member_array = _params.get_value_as_array("members"))
-    {
-        const auto size = member_array->size();
-        members.reserve(size);
-        for (auto i = 0; i < size; ++i)
-            members.push_back(member_array->get_at(i)->get_as_string());
-    }
-    im->create_chat(_seq, _params.get_value_as_string("aimid"), _params.get_value_as_string("name"), members, std::move(params));
+    auto members = to_string_vector(_params, "members");
+    im->create_chat(_seq, _params.get_value_as_string("aimid"), _params.get_value_as_string("name"), std::move(members), std::move(params));
 }
 
 void core::im_container::on_mod_chat_params(int64_t _seq, coll_helper& _params)
@@ -2537,19 +2521,6 @@ std::string core::im_container::get_login() const
     return im->get_login();
 }
 
-void im_container::on_merge_account(int64_t _seq, coll_helper& _params)
-{
-    auto im = get_im(_params);
-    if (!im)
-        return;
-
-    core::wim::auth_parameters auth;
-    auth.unserialize(_params);
-
-    return im->merge_exported_account(auth);
-}
-
-
 void im_container::on_get_mentions_suggests(int64_t _seq, coll_helper& _params)
 {
     auto im = get_im(_params);
@@ -2577,15 +2548,6 @@ void im_container::on_get_logs_path(int64_t _seq, coll_helper& _params)
     im->get_logs_path(_seq);
 }
 
-void im_container::on_create_logs_archive(int64_t _seq, coll_helper& _params)
-{
-    auto im = get_im(_params);
-    if (!im)
-        return;
-
-    im->create_logs_archive(_seq, _params.get_value_as_string("path"));
-}
-
 void im_container::on_change_app_config(const int64_t _seq, coll_helper& _params)
 {
     // TODO: normal serialize / deserialize into a struct
@@ -2600,6 +2562,7 @@ void im_container::on_change_app_config(const int64_t _seq, coll_helper& _params
     core::configuration::set_config_option(core::configuration::app_config::AppConfigOption::cache_history_pages_secs, _params.get_value_as_int("dev.cache_history_pages_secs"));
     core::configuration::set_config_option(core::configuration::app_config::AppConfigOption::is_server_search_enabled, _params.get_value_as_bool("dev.server_search"));
     core::configuration::set_config_option(core::configuration::app_config::AppConfigOption::dev_id, std::string(_params.get_value_as_string("dev_id")));
+    core::configuration::set_config_option(core::configuration::app_config::AppConfigOption::connect_by_ip, _params.get_value_as_bool("dev.connect_by_ip"));
 
     const auto app_ini_path = utils::get_app_ini_path();
 
@@ -2784,15 +2747,8 @@ void im_container::on_send_voip_calls_quality_report(const int64_t _seq, coll_he
     auto im = get_im(_params);
     if (im)
     {
-        int score = VOIP_RATING_STARS_SCORE_COEFFICIENT * _params.get_value_as_int("starsCount", -1);
-
-        iarray* arr = _params.get_value_as_array("reasons");
-        std::vector<std::string> reasons;
-        reasons.reserve(arr->size());
-
-        for (int i = 0; i < arr->size(); ++i)
-            reasons.push_back(arr->get_at(i)->get_as_string());
-
+        const int score = VOIP_RATING_STARS_SCORE_COEFFICIENT * _params.get_value_as_int("starsCount", -1);
+        const auto reasons = to_string_vector(_params, "reasons");
         im->send_voip_calls_quality_report(score,
                                            _params.get_value_as_string("survey_id"),
                                            reasons,
@@ -2808,18 +2764,13 @@ void im_container::on_get_dialog_gallery(const int64_t _seq, coll_helper &_param
     if (_params.is_value_exist("after_msg"))
         after = archive::gallery_entry_id(_params.get_value_as_int64("after_msg"), _params.get_value_as_int64("after_seq"));
 
-    std::vector<std::string> type;
-    {
-        const core::iarray* array = _params.get_value_as_array("type");
-        const auto size = array->size();
-        type.reserve(size);
-        for (auto i = 0; i < size; ++i)
-            type.emplace_back(array->get_at(i)->get_as_string());
-    }
+    const auto type = to_string_vector(_params, "type");
+
+    bool download_holes = _params.get_value_as_bool("download_holes");
 
     auto im = get_im(_params);
     if (im)
-        im->get_dialog_gallery(_seq, aimid, type, after, page_size);
+        im->get_dialog_gallery(_seq, aimid, type, after, page_size, download_holes);
 }
 
 void im_container::on_get_dialog_gallery_by_msg(const int64_t _seq, coll_helper &_params)
@@ -2827,14 +2778,7 @@ void im_container::on_get_dialog_gallery_by_msg(const int64_t _seq, coll_helper 
     const auto aimid = _params.get_value_as_string("aimid");
     int64_t msg_id = _params.get_value_as_int64("msg");
 
-    std::vector<std::string> type;
-    {
-        const core::iarray* array = _params.get_value_as_array("type");
-        const auto size = array->size();
-        type.reserve(size);
-        for (auto i = 0; i < size; ++i)
-            type.emplace_back(array->get_at(i)->get_as_string());
-    }
+    const auto type = to_string_vector(_params, "type");
 
     auto im = get_im(_params);
     if (im)
@@ -2855,14 +2799,7 @@ void im_container::on_get_gallery_index(const int64_t _seq, coll_helper& _params
     const auto aimid = _params.get_value_as_string("aimid");
     const auto msg = _params.get_value_as_int64("msg");
     const auto seq = _params.get_value_as_int64("seq");
-    std::vector<std::string> type;
-    {
-        const core::iarray* array = _params.get_value_as_array("type");
-        const auto size = array->size();
-        type.reserve(size);
-        for (auto i = 0; i < size; ++i)
-            type.emplace_back(array->get_at(i)->get_as_string());
-    }
+    const auto type = to_string_vector(_params, "type");
 
     auto im = get_im(_params);
     if (im)
@@ -2878,6 +2815,14 @@ void im_container::on_make_gallery_hole(const int64_t _seq, coll_helper& _params
     auto im = get_im(_params);
     if (im)
         im->make_gallery_hole(aimid, from, till);
+}
+
+void im_container::on_stop_gallery_holes_downloading(const int64_t _seq, coll_helper& _params)
+{
+    const auto aimid = _params.get_value_as_string("aimid");
+    auto im = get_im(_params);
+    if (im)
+        im->stop_gallery_holes_downloading(aimid);
 }
 
 void im_container::on_ui_activity(const int64_t _seq, coll_helper& _params)
@@ -2959,20 +2904,8 @@ void im_container::on_get_privacy_settings(const int64_t _seq, coll_helper& _par
 void im_container::on_get_user_last_seen(const int64_t _seq, coll_helper& _params)
 {
     auto im = get_im(_params);
-
     if (im)
-    {
-        std::vector<std::string> ids;
-        if (auto arr = _params.get_value_as_array("ids"))
-        {
-            const auto size = arr->size();
-            ids.reserve(size);
-            for (int i = 0; i < size; ++i)
-                ids.emplace_back(arr->get_at(i)->get_as_string());
-        }
-
-        im->get_user_last_seen(_seq, ids);
-    }
+        im->get_user_last_seen(_seq, to_string_vector(_params, "contacts"));
 }
 
 void im_container::on_nickname_check(const int64_t _seq, coll_helper &_params)
@@ -3001,21 +2934,11 @@ void im_container::on_reset_connection(const int64_t _seq, coll_helper& _params)
     g_core->reset_connection();
 }
 
-void im_container::on_get_smartreply_suggests(int64_t _seq, coll_helper& _params)
+void im_container::on_get_sticker_suggests(int64_t _seq, coll_helper& _params)
 {
     auto im = get_im(_params);
     if (im)
-    {
-        std::vector<smartreply::type> types;
-        if (auto arr = _params.get_value_as_array("types"))
-        {
-            const auto size = arr->size();
-            types.reserve(size);
-            for (int i = 0; i < size; ++i)
-                types.emplace_back((smartreply::type)arr->get_at(i)->get_as_int());
-        }
-        im->get_smartreply_suggests(_params.get_value_as_string("contact"), std::move(types), _params.get_value_as_string("text"));
-    }
+        im->get_sticker_suggests(_params.get_value_as_string("contact"), _params.get_value_as_string("text"));
 }
 
 void im_container::on_clear_smartreply_suggests(int64_t _seq, coll_helper& _params)
@@ -3035,6 +2958,23 @@ void im_container::on_load_smartreply_suggests(int64_t _seq, coll_helper& _param
     auto im = get_im(_params);
     if (im)
         im->load_cached_smartreplies(_params.get_value_as_string("contact"));
+}
+
+void im_container::on_get_smartreplies(int64_t _seq, coll_helper& _params)
+{
+    auto im = get_im(_params);
+    if (im)
+    {
+        std::vector<smartreply::type> types;
+        if (auto arr = _params.get_value_as_array("types"))
+        {
+            const auto size = arr->size();
+            types.reserve(size);
+            for (int i = 0; i < size; ++i)
+                types.emplace_back((smartreply::type)arr->get_at(i)->get_as_int());
+        }
+        im->get_smartreplies(_params.get_value_as_string("contact"), _params.get_value_as_int64("msgid"), std::move(types));
+    }
 }
 
 void im_container::on_update_recent_avatars_size(const int64_t _seq, coll_helper& _params)
@@ -3084,9 +3024,144 @@ void im_container::on_group_subscribe(const int64_t _seq, coll_helper& _params)
         im->group_subscribe(_seq, _params.get_value_as_string("stamp"));
 }
 
+void im_container::on_group_cancel_subscription(const int64_t _seq, coll_helper& _params)
+{
+    auto im = get_im(_params);
+    if (im)
+        im->cancel_group_subscription(_seq, _params.get_value_as_string("stamp"));
+}
+
 void im_container::on_suggest_group_nick(const int64_t _seq, coll_helper& _params)
 {
     auto im = get_im(_params);
     if (im)
         im->suggest_group_nick(_seq, _params.get_value_as_string("sn"), _params.get_value_as_bool("public"));
+}
+
+void im_container::on_get_bot_callback_answer(const int64_t _seq, coll_helper& _params)
+{
+    auto im = get_im(_params);
+    if (im)
+        im->get_bot_callback_answer(_seq, _params.get_value_as_string("chat_id"), _params.get_value_as_string("callback_data"), _params.get_value_as_int64("msg_id"));
+}
+
+void im_container::on_start_bot(const int64_t _seq, coll_helper& _params)
+{
+    auto im = get_im(_params);
+    if (im)
+        im->start_bot(_seq, _params.get_value_as_string("nick"), _params.get_value_as_string("params"));
+}
+
+void im_container::on_create_confrence(const int64_t _seq, coll_helper& _params)
+{
+    if (auto im = get_im(_params))
+    {
+        im->create_conference(
+            _seq,
+            _params.get_value_as_string("name"),
+            _params.get_value_as_bool("is_webinar"),
+            to_string_vector(_params, "participants"),
+            _params.get_value_as_bool("call_participants")
+            );
+    }
+}
+
+void im_container::on_get_sessions(const int64_t _seq, coll_helper& _params)
+{
+    if (auto im = get_im(_params))
+        im->get_sessions();
+}
+
+void im_container::on_reset_session(const int64_t _seq, coll_helper& _params)
+{
+    if (auto im = get_im(_params))
+    {
+        std::string_view hash = _params.is_value_exist("hash") ? _params.get_value_as_string("hash") : std::string_view();
+        im->reset_session(hash);
+    }
+}
+
+void im_container::on_status_set(const int64_t _seq, coll_helper &_params)
+{
+    if (auto im = get_im(_params))
+        im->set_status(_params.get_value_as_string("status"), std::chrono::seconds(_params.get_value_as_int64("duration")));
+}
+
+void im_container::on_subscribe_status(const int64_t _seq, coll_helper &_params)
+{
+    if (auto im = get_im(_params))
+        im->subscribe_status(to_string_vector(_params, "contacts"));
+}
+
+void im_container::on_unsubscribe_status(const int64_t _seq, coll_helper &_params)
+{
+    if (auto im = get_im(_params))
+        im->unsubscribe_status(to_string_vector(_params, "contacts"));
+}
+
+void im_container::on_subscribe_call_room_info(const int64_t _seq, coll_helper& _params)
+{
+    if (auto im = get_im(_params))
+        im->subscribe_call_room_info(_params.get_value_as_string("room_id"));
+}
+
+void im_container::on_unsubscribe_call_room_info(const int64_t _seq, coll_helper& _params)
+{
+    if (auto im = get_im(_params))
+        im->unsubscribe_call_room_info(_params.get_value_as_string("room_id"));
+}
+
+void im_container::on_get_reactions(const int64_t _seq, coll_helper& _params)
+{
+    if (auto im = get_im(_params))
+    {
+        core::archive::msgids_list ids;
+        if (auto idsArray = _params.get_value_as_array("ids"))
+        {
+            const auto size = idsArray->size();
+            ids.reserve(size);
+            for (std::remove_const_t<decltype(size)> i = 0; i < size; ++i)
+                ids.push_back(idsArray->get_at(i)->get_as_int64());
+        }
+
+        im->get_reactions(_params.get_value_as_string("chat_id"), std::make_shared<core::archive::msgids_list>(std::move(ids)), _params.get_value_as_bool("first_load"));
+    }
+}
+
+void im_container::on_add_reaction(const int64_t _seq, coll_helper& _params)
+{
+    if (auto im = get_im(_params))
+    {
+
+        std::vector<std::string> reactions;
+        if (auto array = _params.get_value_as_array("reactions"))
+        {
+            const auto size = array->size();
+            reactions.reserve(size);
+            for (int i = 0; i < size; ++i)
+                reactions.emplace_back(array->get_at(i)->get_as_string());
+        }
+
+        im->add_reaction(_seq, _params.get_value_as_int64("msg_id"), _params.get_value_as_string("chat_id"), _params.get_value_as_string("reaction"), reactions);
+    }
+}
+
+void im_container::on_remove_reaction(const int64_t _seq, coll_helper& _params)
+{
+    if (auto im = get_im(_params))
+        im->remove_reaction(_seq, _params.get_value_as_int64("msg_id"), _params.get_value_as_string("chat_id"));
+}
+
+void im_container::on_list_reactions(const int64_t _seq, coll_helper& _params)
+{
+    if (auto im = get_im(_params))
+    {
+        im->list_reactions(_seq,
+                           _params.get_value_as_int64("msg_id"),
+                           _params.get_value_as_string("chat_id"),
+                           _params.get_value_as_string("reaction"),
+                           _params.get_value_as_string("newer_than"),
+                           _params.get_value_as_string("older_than"),
+                           _params.get_value_as_int64("limit"));
+    }
 }

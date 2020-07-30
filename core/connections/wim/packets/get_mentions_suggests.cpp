@@ -7,7 +7,6 @@
 #include "../../../archive/history_message.h"
 #include "../wim_history.h"
 
-#include "../../urls_cache.h"
 
 using namespace core;
 using namespace wim;
@@ -25,19 +24,10 @@ const mention_suggest_vec& get_mentions_suggests::get_suggests() const
     return suggests_;
 }
 
-int32_t get_mentions_suggests::init_request(std::shared_ptr<core::http_request_simple> _request)
+int32_t get_mentions_suggests::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
-    constexpr char method[] = "getRecentWriters";
-
-    _request->set_url(urls::get_url(urls::url_type::rapi_host));
-    _request->set_normalized_url(method);
-    _request->set_keep_alive();
-
     rapidjson::Document doc(rapidjson::Type::kObjectType);
     auto& a = doc.GetAllocator();
-
-    doc.AddMember("method", method, a);
-    doc.AddMember("reqId", get_req_id(), a);
 
     rapidjson::Value node_params(rapidjson::Type::kObjectType);
     node_params.AddMember("sn", aimid_, a);
@@ -47,7 +37,7 @@ int32_t get_mentions_suggests::init_request(std::shared_ptr<core::http_request_s
 
     doc.AddMember("params", std::move(node_params), a);
 
-    sign_packet(doc, a, _request);
+    setup_common_and_sign(doc, a, _request, "getRecentWriters");
 
     if (!params_.full_log_)
     {

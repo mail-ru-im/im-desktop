@@ -3,7 +3,6 @@
 
 #include "../../../http_request.h"
 #include "../../../tools/json_helper.h"
-#include "../../urls_cache.h"
 
 using namespace core;
 using namespace wim;
@@ -18,36 +17,19 @@ suggest_group_nick::suggest_group_nick(
 {
 }
 
-suggest_group_nick::~suggest_group_nick()
+suggest_group_nick::~suggest_group_nick() = default;
+
+int32_t suggest_group_nick::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
-}
-
-std::string suggest_group_nick::get_nick() const
-{
-    return nick_;
-}
-
-int32_t suggest_group_nick::init_request(std::shared_ptr<core::http_request_simple> _request)
-{
-    std::string public_method = "suggestPublicGroupStamp";
-    std::string private_method = "suggestPrivateGroupStamp";
-
-    _request->set_url(urls::get_url(urls::url_type::rapi_host));
-    _request->set_normalized_url(public_ ? public_method : private_method);
-    _request->set_keep_alive();
-
     rapidjson::Document doc(rapidjson::Type::kObjectType);
     auto& a = doc.GetAllocator();
-
-    doc.AddMember("method", (public_ ? public_method : private_method), a);
-    doc.AddMember("reqId", get_req_id(), a);
 
     rapidjson::Value node_params(rapidjson::Type::kObjectType);
     node_params.AddMember("sn", aimid_, a);
 
     doc.AddMember("params", std::move(node_params), a);
 
-    sign_packet(doc, a, _request);
+    setup_common_and_sign(doc, a, _request, public_ ? "suggestPublicGroupStamp" : "suggestPrivateGroupStamp");
 
     if (!params_.full_log_)
     {

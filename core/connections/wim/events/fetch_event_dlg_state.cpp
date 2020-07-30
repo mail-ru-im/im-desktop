@@ -106,6 +106,9 @@ int32_t fetch_event_dlg_state::parse(const rapidjson::Value& _node_event_data)
     {
         if (std::string info_version; tools::unserialize_value(it_mchat_state->value, "infoVersion", info_version))
             state_.set_info_version(info_version);
+
+        if (std::string members_version; tools::unserialize_value(it_mchat_state->value, "membersVersion", members_version))
+            state_.set_members_version(members_version);
     }
 
     *persons_ = parse_persons(_node_event_data);

@@ -20,7 +20,7 @@ namespace Logic
         , reqReturnedNeeded_(0)
     {
         serverTimeoutTimer_->setSingleShot(true);
-        serverTimeoutTimer_->setInterval(serverResultsTimeoutDef.count());
+        serverTimeoutTimer_->setInterval(serverResultsTimeoutDef);
         connect(serverTimeoutTimer_, &QTimer::timeout, this, &AbstractSearcher::onServerTimeoutSlot);
 
         localResults_.reserve(common::get_limit_search_results());
@@ -39,7 +39,7 @@ namespace Logic
             doLocalSearchRequest();
         }
 
-        if (source_ & SearchDataSource::server)
+        if ((source_ & SearchDataSource::server) && !searchPattern_.isEmpty())
         {
             reqReturnedNeeded_++;
             doServerSearchRequest();
@@ -79,7 +79,7 @@ namespace Logic
 
     void AbstractSearcher::setServerTimeout(const std::chrono::milliseconds _timeoutMs)
     {
-        serverTimeoutTimer_->setInterval(_timeoutMs.count());
+        serverTimeoutTimer_->setInterval(_timeoutMs);
     }
 
     std::chrono::milliseconds AbstractSearcher::getServerTimeout() const
@@ -114,7 +114,7 @@ namespace Logic
         reqReturnedCount_++;
 
         if (reqReturnedCount_ >= reqReturnedNeeded_)
-            emit allResults();
+            Q_EMIT allResults();
     }
 
     void AbstractSearcher::onServerTimeoutSlot()
@@ -124,7 +124,7 @@ namespace Logic
 
         onServerTimedOut();
 
-        emit serverResults();
+        Q_EMIT serverResults();
         onRequestReturned();
     }
 }

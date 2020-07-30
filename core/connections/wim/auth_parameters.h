@@ -66,6 +66,7 @@ namespace core
             std::chrono::seconds next_fetch_timeout_;
             time_t last_successful_fetch_;
             std::vector<smartreply::type> suggest_types_;
+            bool hotstart_ = false;
 
             fetch_parameters();
             bool is_valid() const;

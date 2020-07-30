@@ -112,7 +112,7 @@ int32_t client_login::parse_response_data(const rapidjson::Value& _data)
 }
 
 
-int32_t client_login::init_request(std::shared_ptr<core::http_request_simple> _request)
+int32_t client_login::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     if (login_.empty() || password_.empty() && token_type_ == token_type::basic)
         return wpie_invalid_login;
@@ -185,7 +185,7 @@ int32_t client_login::on_response_error_code()
 }
 
 
-int32_t client_login::execute_request(std::shared_ptr<core::http_request_simple> request)
+int32_t client_login::execute_request(const std::shared_ptr<core::http_request_simple>& request)
 {
     if (!request->post())
         return wpie_network_error;

@@ -16,6 +16,7 @@ namespace core::wim
 
         // optional user fields
         std::string nick_;
+        bool bot_ = false;
 
         // optional chat fields
         std::string stamp_;

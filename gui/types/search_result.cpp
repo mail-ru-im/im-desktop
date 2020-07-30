@@ -2,7 +2,7 @@
 
 #include "search_result.h"
 #include "../main_window/contact_list/contact_profile.h"
-#include "../main_window/friendly/FriendlyContainer.h"
+#include "../main_window/containers/FriendlyContainer.h"
 #include "../my_info.h"
 
 namespace Data
@@ -105,12 +105,12 @@ namespace Data
         return Logic::GetFriendlyContainer()->getNick(getAimId());
     }
 
-    QString SearchResultChatMember::getRole() const
+    const QString& SearchResultChatMember::getRole() const noexcept
     {
         return info_.Role_;
     }
 
-    int32_t SearchResultChatMember::getLastseen() const
+    const LastSeen& SearchResultChatMember::getLastseen() const noexcept
     {
         return info_.Lastseen_;
     }

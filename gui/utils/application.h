@@ -36,8 +36,8 @@ namespace Utils
         Q_OBJECT
 
     private Q_SLOTS:
-        void applicationStateChanged(Qt::ApplicationState state);
-        void coreLogins(const bool _has_valid_login, const bool _locked, const QString& _validOrFirstLogin);
+        void applicationStateChanged(Qt::ApplicationState _state);
+        void coreLogins(const bool _hasValidLogin, const bool _locked, const QString& _validOrFirstLogin);
         void guiSettings();
 
         void receiveUrlCommand(const QString& _urlCommand);
@@ -54,12 +54,19 @@ namespace Utils
         bool isMainInstance();
         int switchInstance(launch::CommandLineParser& _cmdParser);
 
-        static bool updating();
+        enum class MainWindowMode
+        {
+            Normal,
+            Minimized
+        };
+
+        static bool updating(MainWindowMode _mode);
         void parseUrlCommand(const QString& _urlCommand);
 
     private:
-        void initMainWindow(const bool _has_valid_login, const bool _locked, const QString& _validOrFirstLogin);
+        void initMainWindow(const bool _hasValidLogin, const bool _locked, const QString& _validOrFirstLogin);
         void init_win7_features();
+        void initFonts();
 
         std::unique_ptr<Ui::MainWindow> mainWindow_;
         std::unique_ptr<LocalPeer> peer_;

@@ -102,18 +102,18 @@ namespace HistoryControl
 
     QString FileSharingInfo::ToLogString() const
     {
-        return ql1s("\toutgoing=<")
+        return u"\toutgoing=<"
         % ql1s(logutils::yn(IsOutgoing_))
-        % ql1s(">\n")
-        % ql1s("\tlocal_path=<")
+        % u">\n"
+        % u"\tlocal_path=<"
         % LocalPath_
-        % ql1s(">\n")
-        % ql1s("\tuploading_id=<")
+        % u">\n"
+        % u"\tuploading_id=<"
         % UploadingProcessId_
-        % ql1s(">\n")
-        % ql1s("\turi=<")
+        % u">\n"
+        % u"\turi=<"
         % Uri_
-        % ql1c('>');
+        % u'>';
     }
 
     core::file_sharing_content_type& FileSharingInfo::getContentType() const

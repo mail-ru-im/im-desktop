@@ -21,6 +21,7 @@ public:
         unpinned,
         updated,
         clear,
+        set_reactions,
 
         max
     };

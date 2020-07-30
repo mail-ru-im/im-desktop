@@ -205,7 +205,7 @@ namespace Ui
         setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
 
         auto rootLayout = Utils::emptyVLayout(this);
-        Testing::setAccessibleName(topHost_, qsl("AS inputwidget topHost_"));
+        Testing::setAccessibleName(topHost_, qsl("AS ChatInput topHost"));
         rootLayout->addWidget(topHost_);
         rootLayout->setAlignment(Qt::AlignTop);
 
@@ -213,7 +213,7 @@ namespace Ui
         topRowLayout->setAlignment(Qt::AlignTop);
 
         emptyTop_->setFixedHeight(getVerMargin());
-        Testing::setAccessibleName(emptyTop_, qsl("AS inputwidget emptyTop_"));
+        Testing::setAccessibleName(emptyTop_, qsl("AS ChatInput emptyTop"));
         topRowLayout->addWidget(emptyTop_);
         topHost_->setFixedHeight(getVerMargin());
 
@@ -234,11 +234,11 @@ namespace Ui
             buttonAttach_ = new AttachFileButton(leftSide_);
             connect(buttonAttach_, &AttachFileButton::clicked, this, &InputPanelMain::onAttachClicked);
 
-            Testing::setAccessibleName(buttonAttach_, qsl("AS inputwidget buttonAttach_"));
+            Testing::setAccessibleName(buttonAttach_, qsl("AS ChatInput plusButton"));
             leftLayout->addWidget(buttonAttach_);
             leftLayout->addSpacing((getDefaultInputHeight() - buttonAttach_->height()) / 2);
 
-            Testing::setAccessibleName(leftSide_, qsl("AS inputwidget leftHost_"));
+            Testing::setAccessibleName(leftSide_, qsl("AS ChatInput leftHost"));
             inputRowLayout->addWidget(leftSide_);
         }
 
@@ -264,7 +264,7 @@ namespace Ui
             {
                 textEdit_ = new HistoryTextEdit(this);
                 textEdit_->setFixedHeight(curEditHeight_);
-                Testing::setAccessibleName(textEdit_, qsl("AS inputwidget textEdit_"));
+                Testing::setAccessibleName(textEdit_, qsl("AS ChatInput input"));
                 updateTextEditViewportMargins();
 
                 editViewport_ = new TextEditViewport(centerHost, this);
@@ -277,16 +277,36 @@ namespace Ui
 
                 centerLayout->addLayout(inputLayout);
 
-                connect(leftWidget, &ClickableWidget::clicked, this, [this]()
+                connect(leftWidget, &ClickableWidget::pressed, this, [this]()
                 {
                     const auto target = textEdit_->viewport();
                     auto mousePos = target->mapFromGlobal(QCursor::pos());
                     mousePos.rx() = 1;
                     mousePos.ry() = std::clamp(mousePos.y(), 1, target->height() - 1);
                     QMouseEvent pressEvent(QEvent::MouseButtonPress, mousePos, Qt::LeftButton, Qt::LeftButton, Qt::NoModifier);
-                    QMouseEvent releaseEvent(QEvent::MouseButtonPress, mousePos, Qt::LeftButton, Qt::LeftButton, Qt::NoModifier);
                     QApplication::sendEvent(target, &pressEvent);
+                });
+
+                connect(leftWidget, &ClickableWidget::released, this, [this]()
+                {
+                    const auto target = textEdit_->viewport();
+                    auto mousePos = target->mapFromGlobal(QCursor::pos());
+                    mousePos.rx() = 1;
+                    mousePos.ry() = std::clamp(mousePos.y(), 1, target->height() - 1);
+                    QMouseEvent releaseEvent(QEvent::MouseButtonRelease, mousePos, Qt::LeftButton, Qt::LeftButton, Qt::NoModifier);
                     QApplication::sendEvent(target, &releaseEvent);
+                });
+
+                connect(leftWidget, &ClickableWidget::moved, this, [this]()
+                {
+                    if (QApplication::mouseButtons() & Qt::LeftButton)
+                    {
+                        const auto target = textEdit_->viewport();
+                        auto mousePos = target->mapFromGlobal(QCursor::pos());
+                        QMouseEvent moveEvent(QEvent::MouseMove, mousePos, Qt::LeftButton, Qt::LeftButton,
+                            Qt::NoModifier);
+                        QApplication::sendEvent(target, &moveEvent);
+                    }
                 });
             }
 
@@ -299,35 +319,33 @@ namespace Ui
             buttonEmoji_->setFocusColor(focusColorPrimary());
 
             updateButtonColors(buttonEmoji_, InputStyleMode::Default);
-            Testing::setAccessibleName(buttonEmoji_, qsl("EmojiButton"));
             connect(buttonEmoji_, &CustomButton::clicked, this, [this]()
             {
                 const auto fromKb = buttonEmoji_->hasFocus();
 
                 setFocusOnInput();
-                emit emojiButtonClicked(fromKb, QPrivateSignal());
+                Q_EMIT emojiButtonClicked(fromKb, QPrivateSignal());
             });
 
             auto emojiLayout = Utils::emptyVLayout();
             emojiLayout->setAlignment(Qt::AlignBottom);
-            Testing::setAccessibleName(buttonEmoji_, qsl("AS inputwidget buttonEmoji_"));
+            Testing::setAccessibleName(buttonEmoji_, qsl("AS ChatInput emojiAndStickerPicker"));
             emojiLayout->addWidget(buttonEmoji_);
             emojiLayout->addSpacing((getDefaultInputHeight() - buttonEmoji_->height()) / 2);
 
             centerLayout->addLayout(emojiLayout);
             centerLayout->addSpacing(Utils::scale_value(6));
 
-            Testing::setAccessibleName(centerHost, qsl("AS inputwidget centerHost"));
+            Testing::setAccessibleName(centerHost, qsl("AS ChatInput inputHost"));
             inputRowLayout->addWidget(centerHost);
         }
 
         {
             rightSide_ = new InputSide(this);
-            Testing::setAccessibleName(rightSide_, qsl("AS inputwidget rightHost"));
+            Testing::setAccessibleName(rightSide_, qsl("AS ChatInput pttButton"));
             inputRowLayout->addWidget(rightSide_);
         }
 
-        Testing::setAccessibleName(bottomHost_, qsl("AS inputwidget bottomHost_"));
         rootLayout->addWidget(bottomHost_);
 
         connect(textEdit_, &HistoryTextEdit::clicked, this, &InputPanelMain::onTextEditClicked);
@@ -380,17 +398,17 @@ namespace Ui
             edit_ = new EditMessageWidget(this);
             edit_->updateStyle(currentStyle());
 
-            Testing::setAccessibleName(edit_, qsl("AS inputwidget edit_"));
+            Testing::setAccessibleName(edit_, qsl("AS ChatInput edit"));
             topHost_->layout()->addWidget(edit_);
 
             connect(edit_, &EditMessageWidget::cancelClicked, this, [this]()
             {
-                emit editCancelClicked(QPrivateSignal());
+                Q_EMIT editCancelClicked(QPrivateSignal());
             });
 
             connect(edit_, &EditMessageWidget::messageClicked, this, [this]()
             {
-                emit editedMessageClicked(QPrivateSignal());
+                Q_EMIT editedMessageClicked(QPrivateSignal());
             });
 
             connect(textEdit_->document(), &QTextDocument::contentsChanged, this, &InputPanelMain::editContentChanged);
@@ -416,7 +434,7 @@ namespace Ui
     void InputPanelMain::onTextEditClicked()
     {
         if (Ui::get_gui_settings()->get_value<bool>(settings_fast_drop_search_results, settings_fast_drop_search_default()))
-            emit Utils::InterConnector::instance().searchEnd();
+            Q_EMIT Utils::InterConnector::instance().searchEnd();
     }
 
     void InputPanelMain::resizeAnimated(const int _height, const ResizeCondition _condition)
@@ -427,11 +445,19 @@ namespace Ui
         const auto th = std::clamp(_height, viewportMinHeight(), viewportMaxHeight());
         textEdit_->setFixedHeight(th);
 
-        animResize_.finish();
-        animResize_.start([this]()
+        const auto animateStep = [this]()
         {
             setEditHeight(animResize_.current());
-        }, curEditHeight_, _height, heightAnimDuration().count(), anim::sineInOut);
+        };
+        const auto finishStep = [this]()
+        {
+            const auto newPolicy = curEditHeight_ >= viewportMaxHeight() ? Qt::ScrollBarAsNeeded : Qt::ScrollBarAlwaysOff;
+            if (newPolicy != textEdit_->verticalScrollBarPolicy())
+                textEdit_->setVerticalScrollBarPolicy(newPolicy);
+        };
+
+        animResize_.finish();
+        animResize_.start(animateStep, finishStep, curEditHeight_, _height, heightAnimDuration().count(), anim::sineInOut);
 
         curEditHeight_ = _height;
     }
@@ -451,12 +477,8 @@ namespace Ui
         scrollToBottomIfNeeded();
 
         const auto targetH = std::clamp(_newSize.toSize().height(), viewportMinHeight(), viewportMaxHeight());
-        if (targetH == curEditHeight_)
-            return;
-
-        textEdit_->setVerticalScrollBarPolicy(targetH == viewportMaxHeight() ? Qt::ScrollBarAsNeeded : Qt::ScrollBarAlwaysOff);
-
-        resizeAnimated(targetH);
+        if (targetH != curEditHeight_)
+            resizeAnimated(targetH);
     }
 
     void InputPanelMain::onDocumentContentsChanged()
@@ -567,7 +589,7 @@ namespace Ui
         if (const auto h = bottomHost_->height() + topHost_->height(); h != height())
         {
             setFixedHeight(h);
-            emit panelHeightChanged(h, QPrivateSignal());
+            Q_EMIT panelHeightChanged(h, QPrivateSignal());
         }
     }
 

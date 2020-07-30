@@ -115,9 +115,7 @@ public:
         wc.lpszClassName = className();
 
         if (!RegisterClass(&wc))
-        {
             return false;
-        }
 
         hwnd = CreateWindowEx(
             WS_EX_CLIENTEDGE,
@@ -127,13 +125,7 @@ public:
             CW_USEDEFAULT, CW_USEDEFAULT, 240, 120,
             nullptr, nullptr, nullptr, this);
 
-        if (hwnd == nullptr)
-        {
-            return false;
-        }
-
-        _deviceChangedCallback.DeviceMonitoringListChanged();
-        return true;
+        return hwnd != nullptr;
     }
 
     void Destroy()

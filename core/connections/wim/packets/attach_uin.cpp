@@ -36,21 +36,21 @@ attach_uin::~attach_uin()
 {
 }
 
-int32_t attach_uin::init_request(std::shared_ptr<core::http_request_simple> _request)
+int32_t attach_uin::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     if (from_params_.a_token_.empty())
         return wpie_invalid_login;
 
     auto from_uin_signed_url = std::string();
     {
-        core::http_request_simple request_from(_request->get_user_proxy(), utils::get_user_agent(params_.aimid_));
+        core::http_request_simple request_from(_request->get_user_proxy(), utils::get_user_agent(params_.aimid_), default_priority());
         const std::string host = get_replace_account_host();
         request_from.set_url(host);
         request_from.push_post_parameter("a", escape_symbols(from_params_.a_token_));
         request_from.push_post_parameter("k", escape_symbols(from_params_.dev_id_));
 
         time_t ts = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()) - from_params_.time_offset_;
-        request_from.push_post_parameter("ts", tools::from_int64(ts));
+        request_from.push_post_parameter("ts", std::to_string(ts));
 
         request_from.push_post_parameter("sig_sha256", escape_symbols(get_url_sign(host, request_from.get_post_parameters(), from_params_, true)));
         from_uin_signed_url = request_from.get_post_url();
@@ -67,7 +67,7 @@ int32_t attach_uin::init_request(std::shared_ptr<core::http_request_simple> _req
         _request->push_post_parameter("r", core::tools::system::generate_guid());
 
         time_t ts = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()) - params_.time_offset_;
-        _request->push_post_parameter("ts", tools::from_int64(ts));
+        _request->push_post_parameter("ts", std::to_string(ts));
 
         _request->push_post_parameter("fromUinSignedUrl", escape_symbols(from_uin_signed_url));
 
@@ -81,7 +81,7 @@ int32_t attach_uin::parse_response_data(const rapidjson::Value& _data)
     return 0;
 }
 
-int32_t attach_uin::execute_request(std::shared_ptr<core::http_request_simple> request)
+int32_t attach_uin::execute_request(const std::shared_ptr<core::http_request_simple>& request)
 {
     if (!request->post())
         return wpie_network_error;

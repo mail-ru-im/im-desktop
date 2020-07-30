@@ -13,7 +13,7 @@ namespace Ui
         SelectionPanel(QWidget* _parent);
 
     private Q_SLOTS:
-        void setSelectedCount(int _count);
+        void setSelectedCount(int _count, int);
         void multiSelectCurrentElementChanged();
 
     private:

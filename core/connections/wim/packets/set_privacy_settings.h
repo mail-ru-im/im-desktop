@@ -11,7 +11,7 @@ namespace core::wim
         set_privacy_settings(wim_packet_params _params, privacy_settings _settings);
 
     private:
-        int32_t init_request(std::shared_ptr<core::http_request_simple> _request) override;
+        int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
 
         privacy_settings settings_;
     };

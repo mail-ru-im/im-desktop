@@ -323,13 +323,13 @@ Ui::SecureCallWnd::~SecureCallWnd()
 void Ui::SecureCallWnd::showEvent(QShowEvent* _e)
 {
     QMenu::showEvent(_e);
-    emit onSecureCallWndOpened();
+    Q_EMIT onSecureCallWndOpened();
 }
 
 void Ui::SecureCallWnd::hideEvent(QHideEvent* _e)
 {
     QMenu::hideEvent(_e);
-    emit onSecureCallWndClosed();
+    Q_EMIT onSecureCallWndClosed();
 }
 
 void Ui::SecureCallWnd::changeEvent(QEvent* _e)

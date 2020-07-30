@@ -5,7 +5,6 @@
 #include "../../../http_request.h"
 
 #include "../../../tools/json_helper.h"
-#include "../../urls_cache.h"
 
 namespace
 {
@@ -40,20 +39,13 @@ namespace core::wim
         set_dates_range(std::string_view(), std::string_view());
     }
 
-    int32_t search_dialogs::init_request(std::shared_ptr<core::http_request_simple> _request)
+    int32_t search_dialogs::init_request(const std::shared_ptr<core::http_request_simple>& _request)
     {
         if (keyword_.empty() && cursor_.empty())
             return -1;
 
-        _request->set_url(urls::get_url(urls::url_type::rapi_host));
-        _request->set_normalized_url(get_method_name());
-        _request->set_keep_alive();
-
         rapidjson::Document doc(rapidjson::Type::kObjectType);
         auto& a = doc.GetAllocator();
-
-        doc.AddMember("method", get_method_name(), a);
-        doc.AddMember("reqId", get_req_id(), a);
 
         rapidjson::Value node_params(rapidjson::Type::kObjectType);
 
@@ -91,7 +83,7 @@ namespace core::wim
 
         doc.AddMember("params", std::move(node_params), a);
 
-        sign_packet(doc, a, _request);
+        setup_common_and_sign(doc, a, _request, is_searching_all_dialogs() ? "searchAllDialogs" : "searchOneDialog");
 
         if (!robusto_packet::params_.full_log_)
         {
@@ -203,11 +195,6 @@ namespace core::wim
             results_.messages_.emplace_back(std::move(msg));
 
         return true;
-    }
-
-    std::string search_dialogs::get_method_name() const
-    {
-        return is_searching_all_dialogs() ? "searchAllDialogs" : "searchOneDialog";
     }
 
     bool search_dialogs::is_searching_all_dialogs() const

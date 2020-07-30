@@ -39,7 +39,7 @@ void GeneralSettingsWidget::Creator::initAbout(QWidget* _parent)
 
     auto layout = Utils::emptyHLayout(_parent);
     layout->setContentsMargins(0, 0, 0, 0);
-    Testing::setAccessibleName(scrollArea, qsl("AS settings about scrollArea"));
+    Testing::setAccessibleName(scrollArea, qsl("AS AboutUsPage scrollArea"));
     layout->addWidget(scrollArea);
 
     {
@@ -63,7 +63,7 @@ void GeneralSettingsWidget::Creator::initAbout(QWidget* _parent)
                 versionText->setText(Utils::getVersionLabel());
                 versionText->setSelectable(true);
                 Utils::grabTouchWidget(versionText);
-                Testing::setAccessibleName(versionText, qsl("AS settings about us versionText"));
+                Testing::setAccessibleName(versionText, qsl("AS AboutUsPage versionText"));
                 aboutLayout->addWidget(versionText);
             }
             {
@@ -71,7 +71,7 @@ void GeneralSettingsWidget::Creator::initAbout(QWidget* _parent)
                 Utils::grabTouchWidget(opensslLabel);
                 opensslLabel->setMultiline(true);
                 opensslLabel->setText(QT_TRANSLATE_NOOP("about_us", "This product includes software developed by the OpenSSL project for use in the OpenSSL Toolkit"));
-                Testing::setAccessibleName(opensslLabel, qsl("AS settings about us opensslLabel"));
+                Testing::setAccessibleName(opensslLabel, qsl("AS AboutUsPage opensslLabel"));
                 aboutLayout->addWidget(opensslLabel);
                 aboutLayout->addSpacing(Utils::scale_value(20));
             }
@@ -94,10 +94,10 @@ void GeneralSettingsWidget::Creator::initAbout(QWidget* _parent)
                         QDesktopServices::openUrl(opensslLink->text());
                     });
                     opensslButton->setFixedHeight(opensslLink->height());
-                    Testing::setAccessibleName(opensslLink, qsl("AS settings about us opensslLink"));
+                    Testing::setAccessibleName(opensslLink, qsl("AS AboutUsPage opensslLink"));
                     opensslLayout->addWidget(opensslLink);
                 }
-                Testing::setAccessibleName(opensslButton, qsl("AS settings about us opensslButton"));
+                Testing::setAccessibleName(opensslButton, qsl("AS AboutUsPage opensslButton"));
                 aboutLayout->addWidget(opensslButton);
                 aboutLayout->addSpacing(Utils::scale_value(20));
             }
@@ -106,7 +106,7 @@ void GeneralSettingsWidget::Creator::initAbout(QWidget* _parent)
                 Utils::grabTouchWidget(voipCopyrightLabel);
                 voipCopyrightLabel->setMultiline(true);
                 voipCopyrightLabel->setText(QT_TRANSLATE_NOOP("about_us", "Copyright © 2012, the WebRTC project authors. All rights reserved."));
-                Testing::setAccessibleName(voipCopyrightLabel, qsl("AS settings about us voipCopyrightLabel"));
+                Testing::setAccessibleName(voipCopyrightLabel, qsl("AS AboutUsPage voipCopyrightLabel"));
                 aboutLayout->addWidget(voipCopyrightLabel);
                 aboutLayout->addSpacing(Utils::scale_value(20));
             }
@@ -115,7 +115,7 @@ void GeneralSettingsWidget::Creator::initAbout(QWidget* _parent)
                 Utils::grabTouchWidget(emojiLabel);
                 emojiLabel->setMultiline(true);
                 emojiLabel->setText(QT_TRANSLATE_NOOP("about_us", "Emoji provided free by Emoji One"));
-                Testing::setAccessibleName(emojiLabel, qsl("AS settings about us emojiLabel"));
+                Testing::setAccessibleName(emojiLabel, qsl("AS AboutUsPage emojiLabel"));
                 aboutLayout->addWidget(emojiLabel);
                 aboutLayout->addSpacing(Utils::scale_value(20));
             }
@@ -123,13 +123,13 @@ void GeneralSettingsWidget::Creator::initAbout(QWidget* _parent)
                 auto copyrightLabel = new TextEmojiWidget(aboutWidget, Fonts::appFontScaled(15), textColor);
                 Utils::grabTouchWidget(copyrightLabel);
                 const auto aboutUs = QT_TRANSLATE_NOOP("about_us", "© Mail.ru LLC");
-                copyrightLabel->setText(aboutUs % ql1s(", ") % QDate::currentDate().toString(qsl("yyyy")));
-                Testing::setAccessibleName(copyrightLabel, qsl("AS settings about us copyrightLabel"));
+                copyrightLabel->setText(aboutUs % u", " % QDate::currentDate().toString(u"yyyy"));
+                Testing::setAccessibleName(copyrightLabel, qsl("AS AboutUsPage copyrightLabel"));
                 aboutLayout->addWidget(copyrightLabel);
                 aboutLayout->addSpacing(Utils::scale_value(20));
             }
 
-            Testing::setAccessibleName(aboutWidget, qsl("AS settings about us aboutWidget"));
+            Testing::setAccessibleName(aboutWidget, qsl("AS AboutUsPage aboutWidget"));
             mainLayout->addWidget(aboutWidget);
             generalLayout->addWidget(mainWidget);
 
@@ -142,10 +142,8 @@ void GeneralSettingsWidget::Creator::initAbout(QWidget* _parent)
                     mainLayout,
                     QT_TRANSLATE_NOOP("settings", "Install beta updates"),
                     Ui::GetDispatcher()->isInstallBetaUpdatesEnabled(),
-                    [](bool checked) {
-                    Ui::GetDispatcher()->setInstallBetaUpdates(checked);
-                    return QString();
-                });
+                    [](bool checked) { Ui::GetDispatcher()->setInstallBetaUpdates(checked); }, -1, qsl("AS AboutUsPage betaSwitcher")
+                );
 
                 auto betaWidget = new QWidget(mainWidget);
                 auto betaLayout = Utils::emptyVLayout(betaWidget);
@@ -182,23 +180,24 @@ void GeneralSettingsWidget::Creator::initAbout(QWidget* _parent)
                         betachatLayout->addWidget(betachatLink);
                     }
                     betaLayout->addWidget(betachatButton);
+                    Testing::setAccessibleName(betachatButton, qsl("AS AboutUsPage betaChatButton"));
                 }
 
                 mainLayout->addWidget(betaWidget);
             }
 
-            if (!platform::is_apple() && Features::updateAllowed())
+            if ((platform::is_apple() && Utils::supportUpdates()) || (!platform::is_apple() && Features::updateAllowed()))
             {
                 auto widget = new QWidget(mainWidget);
-                auto layout = Utils::emptyHLayout(widget);
-                layout->setAlignment(Qt::AlignTop);
-                layout->setSpacing(0);
-                layout->setContentsMargins(Utils::scale_value(12), 0, 0, 0);
-                layout->addWidget(new CheckForUpdateButton(mainWidget));
+                auto l = Utils::emptyHLayout(widget);
+                l->setAlignment(Qt::AlignTop);
+                l->setSpacing(0);
+                l->setContentsMargins(Utils::scale_value(12), 0, 0, 0);
+                l->addWidget(new CheckForUpdateButton(mainWidget));
                 mainLayout->addWidget(widget);
             }
         }
-        Testing::setAccessibleName(generalWidget, qsl("AS settings about us mainWidget"));
+        Testing::setAccessibleName(generalWidget, qsl("AS AboutUsPage"));
         scrollAreaLayout->addWidget(generalWidget);
     }
 }

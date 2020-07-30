@@ -13,9 +13,10 @@
 #include "../../my_info.h"
 #include "../../fonts.h"
 #include "../mediatype.h"
-#include "../friendly/FriendlyContainer.h"
+#include "../containers/FriendlyContainer.h"
 #include "../contact_list/ContactListModel.h"
 #include "../contact_list/RecentsModel.h"
+#include "../contact_list/FavoritesUtils.h"
 
 #include "MessageStatusWidget.h"
 #include "MessageStyle.h"
@@ -24,6 +25,8 @@
 
 namespace
 {
+    constexpr size_t maxVisibleConfMembers = 6;
+
     QSize getIconSize()
     {
         return Utils::scale_value(QSize(40, 40));
@@ -47,6 +50,11 @@ namespace
     int32_t confMemberCutWidth()
     {
         return Utils::scale_value(1);
+    }
+
+    int32_t confMembersPlusMargin()
+    {
+        return Utils::scale_value(2);
     }
 
     int32_t buttonHeight()
@@ -134,16 +142,6 @@ namespace
         );
     }
 
-    int32_t getTextBaselineY()
-    {
-        return Utils::scale_value(21);
-    }
-
-    int getTimeLeftSpacing()
-    {
-        return Utils::scale_value(8);
-    }
-
     QColor callButtonDefTextColor()
     {
         return Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_INVERSE);
@@ -168,6 +166,11 @@ namespace
     }
 
     QFont getDurationFont()
+    {
+        return Fonts::adjustedAppFont(13);
+    }
+
+    QFont getMembersFont()
     {
         return Fonts::adjustedAppFont(13);
     }
@@ -199,7 +202,6 @@ namespace Ui
         const auto normal = isOutgoing ? Styling::StyleVariable::PRIMARY_BRIGHT : Styling::StyleVariable::BASE_BRIGHT;
         const auto hover = isOutgoing ? Styling::StyleVariable::PRIMARY_BRIGHT_HOVER : Styling::StyleVariable::BASE_BRIGHT_HOVER;
         const auto active = isOutgoing ? Styling::StyleVariable::PRIMARY_BRIGHT_ACTIVE : Styling::StyleVariable::BASE_BRIGHT_ACTIVE;
-        const auto select = Styling::StyleVariable::GHOST_SECONDARY;
 
         auto bgVariable = isHovered() ? (isPressed_ ? active : hover) : normal;
         if (Utils::InterConnector::instance().isMultiselect())
@@ -238,7 +240,7 @@ namespace Ui
     }
 
     VoipEventItem::VoipEventItem(QWidget *parent, const HistoryControl::VoipEventInfoSptr& eventInfo)
-        : MessageItemBase(parent)
+        : HistoryControlPageItem(parent)
         , EventInfo_(eventInfo)
         , isAvatarHovered_(false)
         , id_(-1)
@@ -281,7 +283,7 @@ namespace Ui
     VoipEventItem::~VoipEventItem()
     {
         if (callButton_->isPressed() || !pressPoint_.isNull())
-            emit pressedDestroyed();
+            Q_EMIT pressedDestroyed();
 
         Utils::InterConnector::instance().detachFromMultiselect(callButton_);
     }
@@ -293,7 +295,7 @@ namespace Ui
 
     QString VoipEventItem::formatCopyText() const
     {
-        const auto header = qsl("%1 (%2):\n").arg(friendlyName_, QDateTime::fromTime_t(getTime()).toString(qsl("dd.MM.yyyy hh:mm")));
+        const auto header = qsl("%1 (%2):\n").arg(friendlyName_, QDateTime::fromTime_t(getTime()).toString(u"dd.MM.yyyy hh:mm"));
         return header % formatRecentsText();
     }
 
@@ -373,6 +375,12 @@ namespace Ui
         if (GetAppConfig().IsContextMenuFeaturesUnlocked())
             menu->addActionWithIcon(qsl(":/context_menu/copy"), qsl("Copy Message ID"), makeData(qsl("dev:copy_message_id")));
 
+        if (!Favorites::isFavorites(aimId))
+        {
+            menu->addSeparator();
+            menu->addActionWithIcon(qsl(":/context_menu/favorites"), QT_TRANSLATE_NOOP("context_menu", "Add to favorites"), makeData(qsl("add_to_favorites")));
+        }
+
         connect(menu, &ContextMenu::triggered, this, &VoipEventItem::menu, Qt::QueuedConnection);
         connect(menu, &ContextMenu::triggered, menu, &ContextMenu::deleteLater, Qt::QueuedConnection);
         connect(menu, &ContextMenu::aboutToHide, menu, &ContextMenu::deleteLater, Qt::QueuedConnection);
@@ -410,13 +418,13 @@ namespace Ui
         isAvatarHovered_ = isAvatarHovered(_event->pos());
         setCursor(isAvatarHovered_ ? Qt::PointingHandCursor : Qt::ArrowCursor);
 
-        MessageItemBase::mouseMoveEvent(_event);
+        HistoryControlPageItem::mouseMoveEvent(_event);
     }
 
     void VoipEventItem::mousePressEvent(QMouseEvent* _event)
     {
         pressPoint_ = _event->pos();
-        MessageItemBase::mousePressEvent(_event);
+        HistoryControlPageItem::mousePressEvent(_event);
     }
 
     void VoipEventItem::mouseReleaseEvent(QMouseEvent *_event)
@@ -429,7 +437,7 @@ namespace Ui
 
         pressPoint_ = QPoint();
 
-        MessageItemBase::mouseReleaseEvent(_event);
+        HistoryControlPageItem::mouseReleaseEvent(_event);
     }
 
     void VoipEventItem::mouseDoubleClickEvent(QMouseEvent* _e)
@@ -460,15 +468,15 @@ namespace Ui
             }
 
             if (emitQuote)
-                emit quote({ getQuote() });
+                Q_EMIT quote({ getQuote() });
         }
 
-        MessageItemBase::mouseDoubleClickEvent(_e);
+        HistoryControlPageItem::mouseDoubleClickEvent(_e);
     }
 
     void VoipEventItem::leaveEvent(QEvent* _event)
     {
-        MessageItemBase::leaveEvent(_event);
+        HistoryControlPageItem::leaveEvent(_event);
 
         isAvatarHovered_ = false;
     }
@@ -576,6 +584,7 @@ namespace Ui
 
         updateTimePosition();
         updateCallButton();
+        onSizeChanged();
     }
 
     void VoipEventItem::resizeEvent(QResizeEvent* _event)
@@ -605,12 +614,33 @@ namespace Ui
         updateColors();
 
         confMembers_.clear();
-        if (const auto& members = EventInfo_->getConferenceMembers(); !members.empty())
+
+        auto members = EventInfo_->getConferenceMembers();
+        members.erase(std::remove_if(members.begin(), members.end(),[](const auto& m){ return m == MyInfo()->aimId(); }), members.end());
+        if (!members.empty())
         {
+            auto maxMembers = maxVisibleConfMembers;
+            if (members.size() > maxVisibleConfMembers)
+            {
+                maxMembers = maxVisibleConfMembers - 1;
+
+                membersPlus_ = TextRendering::MakeTextUnit(ql1c('+') % QString::number(members.size() - maxMembers));
+                membersPlus_->init(getMembersFont(), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
+                membersPlus_->evaluateDesiredSize();
+            }
+            else
+            {
+                membersPlus_.reset();
+            }
+
+            size_t i = 0;
             for (const auto& m : members)
             {
-                if (m != MyInfo()->aimId())
-                    confMembers_[m] = getAvatar(m, Logic::GetFriendlyContainer()->getFriendly(m), Utils::scale_bitmap(confMemberSize()));
+                if (i >= maxMembers)
+                    break;
+
+                confMembers_[m] = getAvatar(m, Logic::GetFriendlyContainer()->getFriendly(m), Utils::scale_bitmap(confMemberSize()));
+                ++i;
             }
         }
 
@@ -740,6 +770,7 @@ namespace Ui
 
         setChainedToPrev(_voipItem.isChainedToNextMessage());
         setChainedToPrev(_voipItem.isChainedToPrevMessage());
+        setBuddy(_voipItem.buddy());
 
         EventInfo_ = _voipItem.EventInfo_;
         init();
@@ -757,6 +788,11 @@ namespace Ui
         updateHeight();
     }
 
+    QRect VoipEventItem::messageRect() const
+    {
+        return BubbleRect_;
+    }
+
     void VoipEventItem::onChainsChanged()
     {
         resetBubblePath();
@@ -764,7 +800,7 @@ namespace Ui
 
     QColor VoipEventItem::getTextColor(const bool isHovered)
     {
-        return isHovered ? QColor(ql1s("#ffffff")) : MessageStyle::getTextColor();
+        return isHovered ? QColor(u"#ffffff") : MessageStyle::getTextColor();
     }
 
     void VoipEventItem::updateText()
@@ -820,6 +856,8 @@ namespace Ui
 
         if (const auto confMembers = confMembers_.size())
             size -= (confMembers * confMemberSize() - (confMembers - 1) * confMemberOverlap()) + Utils::scale_value(6);
+        if (membersPlus_)
+            size -= membersPlus_->cachedSize().width() + confMembersPlusMargin();
 
         return size;
     }
@@ -882,15 +920,23 @@ namespace Ui
         _p.setPen(Qt::NoPen);
         _p.setBrush(_bodyBrush);
 
+        auto rMargin = BubbleRect_.width() - MessageStyle::getBubbleHorPadding();
+        if (membersPlus_)
+        {
+            membersPlus_->setOffsets(rMargin - membersPlus_->cachedSize().width(), confMemberTopMargin() + confMemberSize() / 2);
+            membersPlus_->draw(_p, TextRendering::VerPosition::MIDDLE);
+
+            rMargin -= membersPlus_->cachedSize().width() + confMembersPlusMargin();
+        }
+
         int i = 0;
         for (const auto& [_, avatar] : confMembers_)
         {
             assert(!avatar.isNull());
 
-            const auto x = BubbleRect_.width()
-                - MessageStyle::getBubbleHorPadding()
-                - i * (confMemberSize() - confMemberOverlap())
-                - confMemberSize();
+            const auto x = rMargin
+                           - i * (confMemberSize() - confMemberOverlap())
+                           - confMemberSize();
             const auto y = confMemberTopMargin();
 
             if (i > 0)
@@ -941,10 +987,7 @@ namespace Ui
     {
         const auto &contactAimid = getContact();
         assert(!contactAimid.isEmpty());
-        if (EventInfo_->isVideoCall())
-            Ui::GetDispatcher()->getVoipController().setStartV(contactAimid.toUtf8().constData(), false, "ChatVideo");
-        else
-            Ui::GetDispatcher()->getVoipController().setStartA(contactAimid.toUtf8().constData(), false, "ChatVideo");
+        Ui::GetDispatcher()->getVoipController().setStartCall({ contactAimid }, EventInfo_->isVideoCall(), false, "ChatVideo");
     }
 
     void VoipEventItem::menu(QAction* _action)
@@ -952,28 +995,30 @@ namespace Ui
         const auto params = _action->data().toMap();
         const auto command = params[qsl("command")].toString();
 
-        if (command == ql1s("dev:copy_message_id"))
+        if (command == u"dev:copy_message_id")
         {
             const auto idStr = QString::number(getId());
 
             QApplication::clipboard()->setText(idStr);
             qDebug() << "message id" << idStr;
         }
-        else if (command == ql1s("copy"))
+        else if (command == u"copy")
         {
-            emit copy(formatCopyText());
+            Q_EMIT copy(formatCopyText());
         }
-        else if (command == ql1s("quote"))
+        else if (command == u"quote")
         {
-            emit quote({ getQuote() });
+            Q_EMIT quote({ getQuote() });
         }
-        else if (command == ql1s("forward"))
+        else if (command == u"forward")
         {
-            emit forward({ getQuote() });
+            Q_EMIT forward({ getQuote() });
         }
-        else if (command == ql1s("delete") || command == ql1s("delete_all"))
+        else if (const auto is_shared = (command == u"delete_all"); is_shared || command == u"delete")
         {
             QString text = QT_TRANSLATE_NOOP("popup_window", "Are you sure you want to delete message?");
+
+            const auto guard = QPointer(this);
 
             auto confirm = Utils::GetConfirmationWithTwoButtons(
                 QT_TRANSLATE_NOOP("popup_window", "Cancel"),
@@ -983,11 +1028,15 @@ namespace Ui
                 nullptr
             );
 
+            if (!guard)
+                return;
+
             if (confirm)
-            {
-                const auto is_shared = (command == ql1s("delete_all"));
                 GetDispatcher()->deleteMessages(getContact(), { DeleteMessageInfo(getId(), internalId_, is_shared) });
-            }
+        }
+        else if (command == u"add_to_favorites")
+        {
+            Q_EMIT addToFavorites({ getQuote() });
         }
     }
 }

@@ -36,6 +36,8 @@ namespace Ui
         void checkMentionNeeded();
         void onEditContentChanged();
 
+        bool isPreediting() const;
+
     private:
         QString customPlaceholderText_;
         anim::Animation placeholderAnim_;
@@ -47,6 +49,7 @@ namespace Ui
         };
         AnimType phAnimType_;
         bool isEmpty_;
+        bool isPreediting_;
         bool phAnimEnabled_;
 
         std::unique_ptr<HistoryUndoStack> stackRedo_;

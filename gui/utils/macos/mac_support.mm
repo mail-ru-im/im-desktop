@@ -20,6 +20,7 @@
 
 #include "../gui/utils/gui_metrics.h"
 #include "../gui/gui_settings.h"
+#include "../features.h"
 
 #include "../gui/app_config.h"
 #include "../libomicron/include/omicron/omicron.h"
@@ -41,15 +42,6 @@
 
 namespace
 {
-    constexpr bool supportUpdates() noexcept
-    {
-#ifdef UPDATES
-        return true;
-#else
-        return false;
-#endif
-    }
-
     constexpr std::chrono::seconds checkUpdateInterval()
     {
         return std::chrono::hours(24);
@@ -99,10 +91,20 @@ static NSString * fromQString(const QString & src)
     return (NSString *)CFBridgingRelease(src.toCFString());
 }
 
+void setEditMenuEnabled(bool _enabled)
+{
+    for (auto &[key, action] : menuItems_)
+    {
+        if (key >= edit_undo && key <= edit_pasteEmoji)
+            action->setEnabled(_enabled);
+    }
+}
+
 @interface AppDelegate: NSObject<NSApplicationDelegate>
 - (void)handleURLEvent:(NSAppleEventDescriptor *)event withReplyEvent:(NSAppleEventDescriptor *)replyEvent;
 //- (void)applicationDidFinishLaunching:(NSNotification *)notification;
 - (NSApplicationTerminateReply)applicationShouldTerminate:(NSApplication *)sender;
+- (void)activateMainWindow;
 @end
 
 @implementation AppDelegate
@@ -112,7 +114,7 @@ static NSString * fromQString(const QString & src)
     NSString* url = [[event paramDescriptorForKeyword:keyDirectObject]
                      stringValue];
 
-    emit Utils::InterConnector::instance().schemeUrlClicked(QString::fromNSString(url));
+    Q_EMIT Utils::InterConnector::instance().schemeUrlClicked(QString::fromNSString(url));
 }
 
 //- (void)applicationDidFinishLaunching:(NSNotification *)notification
@@ -143,7 +145,14 @@ static NSString * fromQString(const QString & src)
     {
         mainWindow_->exit();
     }
+    [[NSNotificationCenter defaultCenter] postNotificationName:@"NSApplicationWillTerminateNotification" object:nil];
     return NSTerminateCancel;
+}
+
+- (void)activateMainWindow
+{
+    if (mainWindow_ != nil)
+        mainWindow_->activate();
 }
 
 @end
@@ -307,21 +316,30 @@ static NSString * fromQString(const QString & src)
 
 // sparkle
 
+#ifdef UPDATES
+
 @interface SparkleUpdaterDelegate : NSObject <SUUpdaterDelegate>
 @end
 
 @implementation SparkleUpdaterDelegate
 - (void)updaterDidNotFindUpdate:(SUUpdater *)__unused updater
 {
-
+    Q_EMIT Utils::InterConnector::instance().onMacUpdateInfo(Utils::MacUpdateState::NotFound);
 }
 
--(void)updater:(SUUpdater *)__unused updater didFindValidUpdate:(SUAppcastItem *)__unused item
+- (void)updater:(SUUpdater *)__unused updater failedToDownloadUpdate:(SUAppcastItem *)__unused item error:(NSError *)__unused error
 {
-
+    Q_EMIT Utils::InterConnector::instance().onMacUpdateInfo(Utils::MacUpdateState::LoadError);
 }
+
+- (void)updater:(SUUpdater *)__unused updater didExtractUpdate:(SUAppcastItem *)__unused item
+{
+    Q_EMIT Utils::InterConnector::instance().onMacUpdateInfo(Utils::MacUpdateState::Ready);
+}
+
 @end
 // end of sparkle
+#endif
 
 BOOL isNetworkAvailable()
 {
@@ -339,30 +357,42 @@ BOOL isNetworkAvailable()
 
 @interface EventsCatcher : NSObject
 
-@property (nonatomic, copy) void(^sleep)(void);
-@property (nonatomic, copy) void(^wake)(void);
+@property (nonatomic, copy) void(^sleepAction)(void);
+@property (nonatomic, copy) void(^wakeAction)(void);
+@property (nonatomic, copy) void(^changeWorkspaceAction)(void);
 
-- (instancetype)initWithSleepLambda:(void(^)(void))sleep andWakeLambda:(void(^)(void))wake;
+- (instancetype)init;
+
+- (void)setSleep:(void(^)(void))action;
+- (void)setWake:(void(^)(void))action;
+- (void)setChangeWorkspace:(void(^)(void))action;
+
 - (void)receiveSleepEvent:(NSNotification *)notification;
 - (void)receiveWakeEvent:(NSNotification *)notification;
+- (void)receiveWorkspaceChangeEvent:(NSNotification *)notification;
 
 @end
 
 @implementation EventsCatcher
 
-- (instancetype)initWithSleepLambda:(void (^)())sleep andWakeLambda:(void (^)())wake
+- (instancetype)init
 {
     self = [super init];
     if (self)
     {
-        self.sleep = sleep;
-        self.wake = wake;
+        self.sleepAction = nil;
+        self.wakeAction = nil;
+        self.changeWorkspaceAction = nil;
+
         [[[NSWorkspace sharedWorkspace] notificationCenter] addObserver:self
                                                                selector:@selector(receiveSleepEvent:)
                                                                    name:NSWorkspaceWillSleepNotification object:nil];
         [[[NSWorkspace sharedWorkspace] notificationCenter] addObserver:self
                                                                selector:@selector(receiveWakeEvent:)
                                                                    name:NSWorkspaceDidWakeNotification object:nil];
+        [[[NSWorkspace sharedWorkspace] notificationCenter] addObserver:self
+                                                               selector:@selector(receiveWorkspaceChangeEvent:)
+                                                                   name:NSWorkspaceActiveSpaceDidChangeNotification object:nil];
         [[NSDistributedNotificationCenter defaultCenter] addObserver:self
                                                             selector:@selector(receiveSleepEvent:)
                                                                 name:@"com.apple.screenIsLocked"
@@ -383,10 +413,29 @@ BOOL isNetworkAvailable()
     return self;
 }
 
+- (void)setSleep:(void(^)(void))action
+{
+    if (self)
+        self.sleepAction = action;
+}
+
+- (void)setWake:(void(^)(void))action
+{
+    if (self)
+        self.wakeAction = action;
+}
+
+- (void)setChangeWorkspace:(void(^)(void))action
+{
+    if (self)
+        self.changeWorkspaceAction = action;
+}
+
 - (void)receiveSleepEvent:(NSNotification *)notification
 {
     statistic::getGuiMetrics().eventAppSleep();
-    self.sleep();
+    if (self.sleepAction)
+        self.sleepAction();
 }
 
 - (void)receiveWakeEvent:(NSNotification *)notification
@@ -401,11 +450,18 @@ BOOL isNetworkAvailable()
 
         dispatch_async(dispatch_get_main_queue(), ^{
             //
-            self.wake();
+            if (self.wakeAction)
+                self.wakeAction();
             //
         });
         //
     });
+}
+
+- (void)receiveWorkspaceChangeEvent:(NSNotification *)notification;
+{
+    if (self.changeWorkspaceAction)
+        self.changeWorkspaceAction();
 }
 
 @end
@@ -436,7 +492,8 @@ static MacPreviewProxy * macPreviewProxy_ = nil;
 
 MacSupport::MacSupport(Ui::MainWindow * mainWindow):
     mainMenu_(nullptr),
-    title_(std::make_unique<MacTitlebar>(mainWindow))
+    title_(std::make_unique<MacTitlebar>(mainWindow)),
+    updateRequested_(false)
 {
     sparkleUpdater_ = nil;
     mainWindow_ = mainWindow;
@@ -490,16 +547,18 @@ namespace
 
 void MacSupport::enableMacUpdater()
 {
-    if constexpr (!supportUpdates())
+#ifdef UPDATES
+    if (!Utils::supportUpdates())
         return;
 
     if (sparkleUpdater_ != nil)
         return;
 
     sparkleUpdater_ = [[SUUpdater alloc] init];
+    [sparkleUpdater_ setAutomaticallyDownloadsUpdates:YES];
 
-    //SparkleUpdaterDelegate* delegate = [SparkleUpdaterDelegate new];
-    //[sparkleUpdater_ setDelegate: delegate];
+    SparkleUpdaterDelegate* delegate = [SparkleUpdaterDelegate new];
+    [sparkleUpdater_ setDelegate: delegate];
 
     if (!updateFeedUrl_)
     {
@@ -513,6 +572,7 @@ void MacSupport::enableMacUpdater()
     }
 
     checkForUpdates();
+#endif
 }
 
 bool MacSupport::setFeedUrl()
@@ -538,24 +598,23 @@ void MacSupport::enableMacCrashReport()
     return;
 }
 
-void MacSupport::listenSleepAwakeEvents()
+void MacSupport::listenSystemEvents()
 {
     static EventsCatcher *eventsCatcher = nil;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         //
-        eventsCatcher = [[EventsCatcher alloc] initWithSleepLambda:^{
-
+        eventsCatcher = [[EventsCatcher alloc] init];
+        [eventsCatcher setSleep:^{
             if (mainWindow_)
-            {
                 mainWindow_->gotoSleep();
-            }
-
-        } andWakeLambda:^{
+        }];
+        [eventsCatcher setWake:^{
             if (mainWindow_)
-            {
                 mainWindow_->gotoWakeup();
-            }
+        }];
+        [eventsCatcher setChangeWorkspace:^{
+            Q_EMIT Utils::InterConnector::instance().workspaceChanged();
         }];
         //
     });
@@ -563,16 +622,30 @@ void MacSupport::listenSleepAwakeEvents()
 
 void MacSupport::checkForUpdates()
 {
-    if (isDoNotDisturbOn())
+    if (isDoNotDisturbOn() && !Features::forceCheckMacUpdates())
         return;
+    checkForUpdatesInBackground();
+}
+
+void MacSupport::checkForUpdatesInBackground()
+{
     if (sparkleUpdater_ && setFeedUrl())
+    {
         [sparkleUpdater_ checkForUpdatesInBackground];
+        updateRequested_ = true;
+    }
 }
 
 void MacSupport::runMacUpdater()
 {
     if (sparkleUpdater_ && setFeedUrl())
         [sparkleUpdater_ checkForUpdates:nil];
+}
+
+void MacSupport::installUpdates()
+{
+    if (sparkleUpdater_ && setFeedUrl())
+        [sparkleUpdater_ installUpdatesIfAvailable];
 }
 
 void MacSupport::cleanMacUpdater()
@@ -629,8 +702,8 @@ void MacSupport::toggleFullScreen()
 {
     if (auto mainWindow = Utils::InterConnector::instance().getMainWindow())
     {
-        emit Utils::InterConnector::instance().closeAnyPopupMenu();
-        emit Utils::InterConnector::instance().closeAnyPopupWindow(Utils::CloseWindowInfo());
+        Q_EMIT Utils::InterConnector::instance().closeAnyPopupMenu();
+        Q_EMIT Utils::InterConnector::instance().closeAnyPopupWindow(Utils::CloseWindowInfo());
         void *pntr = (void *)mainWindow->winId();
         NSView *view = (__bridge NSView *)pntr;
         [view.window toggleFullScreen:nil];
@@ -743,7 +816,7 @@ QString MacSupport::defaultDownloadsPath()
 }
 
 template<typename MenuT, typename Object, typename Method>
-QAction * createAction(MenuT * menu, const QString& title, const QString& shortcut, const Object * receiver, Method method)
+QAction* createAction(MenuT* menu, const QString& title, const QString& shortcut, const Object* receiver, Method method)
 {
     return menu->addAction(title, receiver, std::move(method), QKeySequence(shortcut));
 }
@@ -753,9 +826,6 @@ void MacSupport::createMenuBar(bool simple)
     if (!mainMenu_)
     {
         mainMenu_ = new QMenuBar();
-        mainWindow_->setMenuBar(mainMenu_);
-
-        QAction *action = nullptr;;
 
         auto menu = mainMenu_->addMenu(Utils::Translations::Get(qsl("&Edit")));
         menuItems_.insert({edit_undo, createAction(menu, Utils::Translations::Get(qsl("Undo")), qsl("Ctrl+Z"), mainWindow_, &Ui::MainWindow::undo)});
@@ -769,7 +839,7 @@ void MacSupport::createMenuBar(bool simple)
         menuItems_.insert({edit_pasteEmoji, createAction(menu, Utils::Translations::Get(qsl("Emoji && Symbols")), qsl("Meta+Ctrl+Space"), mainWindow_, &Ui::MainWindow::pasteEmoji)});
         extendedMenus_.push_back(menu);
         editMenu_ = menu;
-        QObject::connect(menu, &QMenu::aboutToShow, menu, []() { emit Utils::InterConnector::instance().closeAnyPopupMenu(); });
+        QObject::connect(menu, &QMenu::aboutToShow, menu, []() { Q_EMIT Utils::InterConnector::instance().closeAnyPopupMenu(); });
 
         menu = mainMenu_->addMenu(Utils::Translations::Get(qsl("Contact")));
 
@@ -788,13 +858,13 @@ void MacSupport::createMenuBar(bool simple)
         menuItems_.insert({contact_close, createAction(menu, Utils::getShortcutsCloseActionName(closeAct_), qsl("Ctrl+W"), mainWindow_, &Ui::MainWindow::activateShortcutsClose)});
 
         extendedMenus_.push_back(menu);
-        QObject::connect(menu, &QMenu::aboutToShow, menu, []() { emit Utils::InterConnector::instance().closeAnyPopupMenu(); });
+        QObject::connect(menu, &QMenu::aboutToShow, menu, []() { Q_EMIT Utils::InterConnector::instance().closeAnyPopupMenu(); });
 
         menu = mainMenu_->addMenu(Utils::Translations::Get(qsl("View")));
         menuItems_.insert({view_unreadMessage, createAction(menu, Utils::Translations::Get(qsl("Next Unread Message")), qsl("Ctrl+]"), mainWindow_, &Ui::MainWindow::activateNextUnread)});
         menuItems_.insert({view_fullScreen, createAction(menu, Utils::Translations::Get(qsl("Enter Full Screen")), qsl("Meta+Ctrl+F"), mainWindow_, &Ui::MainWindow::toggleFullScreen)});
         extendedMenus_.push_back(menu);
-        QObject::connect(menu, &QMenu::aboutToShow, menu, []() { emit Utils::InterConnector::instance().closeAnyPopupMenu(); });
+        QObject::connect(menu, &QMenu::aboutToShow, menu, []() { Q_EMIT Utils::InterConnector::instance().closeAnyPopupMenu(); });
 
         menu = mainMenu_->addMenu(Utils::Translations::Get(qsl("Window")));
         menuItems_.insert({window_minimizeWindow, createAction(menu, Utils::Translations::Get(qsl("Minimize")), qsl("Ctrl+M"), mainWindow_, &Ui::MainWindow::minimize)});
@@ -815,32 +885,17 @@ void MacSupport::createMenuBar(bool simple)
 
         windowMenu_ = menu;
         extendedMenus_.push_back(menu);
-        QObject::connect(menu, &QMenu::aboutToShow, menu, []() { emit Utils::InterConnector::instance().closeAnyPopupMenu(); });
+        QObject::connect(menu, &QMenu::aboutToShow, menu, []() { Q_EMIT Utils::InterConnector::instance().closeAnyPopupMenu(); });
 
-        if constexpr (false)
-        {
-            action = createAction(menu, Utils::Translations::Get(qsl("About app")), QString(), mainWindow_, &Ui::MainWindow::activateAbout);
-            action->setMenuRole(QAction::MenuRole::ApplicationSpecificRole);
-            menuItems_.insert({global_about, action});
-            extendedActions_.push_back(action);
+        auto action = createAction(menu, qsl("about.*"), QString(), mainWindow_, &Ui::MainWindow::activateAbout);
+        menuItems_.insert({global_about, action});
+        extendedActions_.push_back(action);
 
-            action = createAction(menu, Utils::Translations::Get(qsl("Settings")), QString(), mainWindow_, &Ui::MainWindow::activateSettings);
-            action->setMenuRole(QAction::MenuRole::ApplicationSpecificRole);
-            menuItems_.insert({global_settings, action});
-            extendedActions_.push_back(action);
-        }
-        else
-        {
-            action = createAction(menu, qsl("about.*"), QString(), mainWindow_, &Ui::MainWindow::activateAbout);
-            menuItems_.insert({global_about, action});
-            extendedActions_.push_back(action);
+        action = createAction(menu, qsl("settings"), QString(), mainWindow_, &Ui::MainWindow::activateSettings);
+        menuItems_.insert({global_settings, action});
+        extendedActions_.push_back(action);
 
-            action = createAction(menu, qsl("settings"), QString(), mainWindow_, &Ui::MainWindow::activateSettings);
-            menuItems_.insert({global_settings, action});
-            extendedActions_.push_back(action);
-        }
-
-        if constexpr (supportUpdates())
+        if (Utils::supportUpdates())
         {
             action = createAction(menu, Utils::Translations::Get(qsl("Check For Updates...")), QString(), mainWindow_, &Ui::MainWindow::checkForUpdates);
             action->setMenuRole(QAction::MenuRole::ApplicationSpecificRole);
@@ -919,8 +974,6 @@ void MacSupport::updateMainMenu()
         const bool isPttActive = contDialog && contDialog->isRecordingPtt();
         editMenu_->setEnabled(!isPttActive);
     }
-
-    auto actions = mainWindow_->menuBar()->actions();
 
     QAction *nextChat = menuItems_[window_nextChat];
     QAction *prevChat = menuItems_[window_prevChat];
@@ -1045,18 +1098,24 @@ void MacSupport::updateMainMenu()
         {
             auto nsmenu = (*menuWindow)->toNSMenu();
 
-            NSMenuItem* winMainItem = [nsmenu itemWithTitle: Utils::getAppTitle().toNSString()];
-            NSMenuItem* winCallItem = [nsmenu itemWithTitle: Utils::Translations::Get(qsl("ICQ VOIP")).toNSString()];
+            const QString appTitle = Utils::getAppTitle();
+            NSMenuItem* winMainItem = [nsmenu itemWithTitle:appTitle.toNSString()];
+            NSMenuItem* winCallItem = [nsmenu itemWithTitle:Utils::Translations::Get(qsl("ICQ VOIP")).toNSString()];
 
-            [winMainItem setMixedStateImage: composedImage];
-            [winCallItem setMixedStateImage: composedImage];
-
+            [winMainItem setMixedStateImage:composedImage];
+            [winCallItem setMixedStateImage:composedImage];
 
             if (mainWindow_ && mainWindow_->isMinimized())
-                [winMainItem setState: NSMixedState];
+                [winMainItem setState:NSMixedState];
 
             if (mainPage && mainPage->isVideoWindowMinimized())
-                [winCallItem setState: NSMixedState];
+                [winCallItem setState:NSMixedState];
+
+            // workaround to prevent two items with the application name from being disabled in the Window menu
+            const QString appTitleWithSpace = appTitle % ql1c(' ');
+            auto winMainWithSpaceItem = [nsmenu itemWithTitle:appTitleWithSpace.toNSString()];
+            [winMainWithSpaceItem setAction:@selector(activateMainWindow)];
+            [winMainItem setAction:@selector(activateMainWindow)];
         }
     }
 }
@@ -1284,29 +1343,29 @@ bool MacSupport::nativeEventFilter(const QByteArray &data, void *message, long *
 
             if (possibles.find(e.keyCode) != possibles.end())
             {
-                emit Utils::InterConnector::instance().closeAnyPopupMenu();
-                emit Utils::InterConnector::instance().closeAnyPopupWindow(Utils::CloseWindowInfo({ Utils::CloseWindowInfo::Initiator::MacEventFilter,
+                Q_EMIT Utils::InterConnector::instance().closeAnyPopupMenu();
+                Q_EMIT Utils::InterConnector::instance().closeAnyPopupWindow(Utils::CloseWindowInfo({ Utils::CloseWindowInfo::Initiator::MacEventFilter,
                                                                                                     Utils::CloseWindowInfo::Reason::MacEventFilter }));
             }
             else if (mainWindow_ && ([e modifierFlags] & NSCommandKeyMask) && e.keyCode == kVK_ANSI_1)
             {
                 mainWindow_->activate();
-                emit Utils::InterConnector::instance().applicationActivated();
+                Q_EMIT Utils::InterConnector::instance().applicationActivated();
             }
             else if (e.keyCode == kVK_ANSI_M)
             {
-                emit Utils::InterConnector::instance().closeAnyPopupMenu();
+                Q_EMIT Utils::InterConnector::instance().closeAnyPopupMenu();
             }
         }
     }
     else if ([e type] == NSAppKitDefined && [e subtype] == NSApplicationDeactivatedEventType)
     {
-        emit Utils::InterConnector::instance().applicationDeactivated();
-        emit Utils::InterConnector::instance().closeAnyPopupMenu();
+        Q_EMIT Utils::InterConnector::instance().applicationDeactivated();
+        Q_EMIT Utils::InterConnector::instance().closeAnyPopupMenu();
     }
     else if ([e type] == NSAppKitDefined && [e subtype] == NSApplicationActivatedEventType)
     {
-        emit Utils::InterConnector::instance().applicationActivated();
+        Q_EMIT Utils::InterConnector::instance().applicationActivated();
     }
     return false;
 }
@@ -1353,6 +1412,8 @@ void MacSupport::saveFileName(const QString &caption, const QString &qdir, const
     [panel setShowsTagField:NO];
     [panel setNameFieldStringValue:filename];
 
+    setEditMenuEnabled(false);
+
     [panel beginSheetModalForWindow:[NSApp mainWindow] completionHandler:^(NSInteger result) {
         if (result == NSFileHandlingPanelOKButton)
         {
@@ -1375,6 +1436,8 @@ void MacSupport::saveFileName(const QString &caption, const QString &qdir, const
         {
             _cancel_callback();
         }
+
+        setEditMenuEnabled(true);
     }];
 
     if (auto editor = [panel fieldEditor:NO forObject:nil])
@@ -1428,6 +1491,18 @@ void MacSupport::showOverAll(QWidget* w)
     NSWindow *wnd = [reinterpret_cast<NSView *>(w->winId()) window];
     [wnd setLevel:NSScreenSaverWindowLevel];
     [wnd setHidesOnDeactivate:NO];
+}
+
+void MacSupport::showInAllWorkspaces(QWidget *w)
+{
+    auto wnd = [reinterpret_cast<NSView *>(w->winId()) window];
+    [wnd setLevel:NSScreenSaverWindowLevel];
+    [wnd setCollectionBehavior:NSWindowCollectionBehaviorCanJoinAllSpaces | NSWindowCollectionBehaviorFullScreenAuxiliary
+                               | NSWindowCollectionBehaviorStationary];
+    [wnd setHidesOnDeactivate:NO];
+    [wnd makeKeyAndOrderFront:nil];
+
+    w->show();
 }
 
 bool MacSupport::isMetalSupported()

@@ -15,15 +15,13 @@ namespace Ui
 
         QSplitterHandle *createHandle() override;
 
-        QWidget* replaceWidgetImpl(int _index, QWidget* _widget);  // use replaceWidget since qt 5.9
-
-    signals:
+    Q_SIGNALS:
         void moved(int desiredPos, int resultPos, int index, QPrivateSignal) const;
 
     private:
         void movedImpl(int desiredPos, int resultPos, int index) const
         {
-            emit moved(desiredPos, resultPos, index, QPrivateSignal());
+            Q_EMIT moved(desiredPos, resultPos, index, QPrivateSignal());
         }
 
         bool shouldShowWidget(const QWidget *w) const;

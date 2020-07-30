@@ -4,28 +4,32 @@
 #include "../../../corelib/enumerations.h"
 #include "../../../tools/json_helper.h"
 #include "../../../archive/history_message.h"
+#include "../../../../common.shared/smartreply/smartreply_types.h"
 #include "../../urls_cache.h"
 #include "send_message.h"
 
+#include "../common.shared/string_utils.h"
+
 namespace
 {
-    rapidjson::Value createPollParams(const core::archive::poll& _poll, rapidjson_allocator& a)
+    rapidjson::Value create_poll_params(const core::archive::poll& _poll, rapidjson_allocator& _a)
     {
         rapidjson::Value poll_params(rapidjson::Type::kObjectType);
 
         if (_poll->id_.empty())
         {
-            poll_params.AddMember("type", "anon", a);
+            poll_params.AddMember("type", "anon", _a);
 
             rapidjson::Value responses_array(rapidjson::Type::kArrayType);
+            responses_array.Reserve(_poll->answers_.size(), _a);
             for (const auto& response : _poll->answers_)
-                responses_array.PushBack(rapidjson::Value{}.SetString(response.text_.c_str(), response.text_.length(), a), a);
+                responses_array.PushBack(core::tools::make_string_ref(response.text_), _a);
 
-            poll_params.AddMember("responses", responses_array, a);
+            poll_params.AddMember("responses", std::move(responses_array), _a);
         }
         else
         {
-            poll_params.AddMember("id", _poll->id_, a);
+            poll_params.AddMember("id", _poll->id_, _a);
         }
 
         return poll_params;
@@ -47,7 +51,8 @@ send_message::send_message(wim_packet_params _params,
     const std::string& _url,
     const archive::shared_contact& _shared_contact,
     const core::archive::geo& _geo,
-    const core::archive::poll& _poll)
+    const core::archive::poll& _poll,
+    const smartreply::marker_opt& _smartreply_marker)
     :
         wim_packet(std::move(_params)),
         updated_id_(_updated_id),
@@ -66,38 +71,28 @@ send_message::send_message(wim_packet_params _params,
         url_(_url),
         shared_contact_(_shared_contact),
         geo_(_geo),
-        poll_(_poll)
+        poll_(_poll),
+        smartreply_marker_(_smartreply_marker)
 {
     assert(!internal_id_.empty());
 }
 
+send_message::~send_message() = default;
 
-send_message::~send_message()
-{
-
-}
-
-int32_t send_message::init_request(std::shared_ptr<core::http_request_simple> _request)
+int32_t send_message::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     const auto is_sticker = (type_ == message_type::sticker);
     const auto is_sms = (type_ == message_type::sms);
 
     const auto method = is_sticker && quotes_.empty() ? std::string_view("sendSticker") : std::string_view("sendIM");
 
-    std::string url;
-    url += urls::get_url(urls::url_type::wim_host);
-    url += "im/";
-    url += method;
-
-    _request->set_url(url);
+    _request->set_url(su::concat(urls::get_url(urls::url_type::wim_host), "im/", method));
     _request->set_normalized_url(method);
     _request->set_keep_alive();
     _request->set_compression_auto();
-    _request->set_priority(priority_send_message());
     _request->push_post_parameter("f", "json");
     _request->push_post_parameter("aimsid", escape_symbols(get_params().aimsid_));
     _request->push_post_parameter("t", escape_symbols(aimid_));
-
     _request->push_post_parameter("r", internal_id_);
 
     if (updated_id_ > 0)
@@ -120,7 +115,7 @@ int32_t send_message::init_request(std::shared_ptr<core::http_request_simple> _r
                 rapidjson::Value caption_params(rapidjson::Type::kObjectType);
                 caption_params.AddMember("caption", quote.get_description(), a);
                 caption_params.AddMember("url", quote.get_url(), a);
-                quote_params.AddMember("captionedContent", caption_params, a);
+                quote_params.AddMember("captionedContent", std::move(caption_params), a);
             }
             else if (quote.get_shared_contact())
             {
@@ -134,14 +129,14 @@ int32_t send_message::init_request(std::shared_ptr<core::http_request_simple> _r
             }
             else if (quote.get_geo())
             {
-                quote_params.AddMember("text", "", a);
+                quote_params.AddMember("text", quote.get_text(), a);
                 rapidjson::Value geo_params(rapidjson::Type::kObjectType);
                 geo_params.AddMember("name", quote.get_geo()->name_, a);
                 geo_params.AddMember("lat", quote.get_geo()->lat_, a);
                 geo_params.AddMember("long", quote.get_geo()->long_, a);
                 quote_params.AddMember("geo", std::move(geo_params), a);
             }
-            else if(quote.get_poll())
+            else if (quote.get_poll())
             {
                 quote_params.AddMember("text", quote.get_text(), a);
                 rapidjson::Value poll_params(rapidjson::Type::kObjectType);
@@ -150,8 +145,7 @@ int32_t send_message::init_request(std::shared_ptr<core::http_request_simple> _r
             }
             else
             {
-                auto sticker = quote.get_sticker();
-                if (!sticker.empty())
+                if (auto sticker = quote.get_sticker(); !sticker.empty())
                     quote_params.AddMember("stickerId", std::move(sticker), a);
                 else
                     quote_params.AddMember("text", quote.get_text(), a);
@@ -160,13 +154,11 @@ int32_t send_message::init_request(std::shared_ptr<core::http_request_simple> _r
             quote_params.AddMember("msgId", quote.get_msg_id(), a);
             quote_params.AddMember("time", quote.get_time(), a);
 
-            const auto& chat_sn = quote.get_chat();
-            if (chat_sn.find("@chat.agent") != chat_sn.npos)
+            if (const auto& chat_sn = quote.get_chat(); chat_sn.find("@chat.agent") != chat_sn.npos)
             {
                 rapidjson::Value chat_params(rapidjson::Type::kObjectType);
                 chat_params.AddMember("sn", chat_sn, a);
-                const auto& chat_stamp = quote.get_stamp();
-                if (!chat_stamp.empty())
+                if (const auto& chat_stamp = quote.get_stamp(); !chat_stamp.empty())
                     chat_params.AddMember("stamp", chat_stamp, a);
                 quote_params.AddMember("chat", std::move(chat_params), a);
             }
@@ -190,7 +182,7 @@ int32_t send_message::init_request(std::shared_ptr<core::http_request_simple> _r
                     text_params.AddMember("text", message_text_, a);
 
                     if (poll_)
-                        text_params.AddMember("poll", createPollParams(poll_, a), a);
+                        text_params.AddMember("poll", create_poll_params(poll_, a), a);
                 }
                 doc.PushBack(std::move(text_params), a);
             }
@@ -238,7 +230,7 @@ int32_t send_message::init_request(std::shared_ptr<core::http_request_simple> _r
         text_params.AddMember("mediaType", "text", a);
         text_params.AddMember("text", message_text_, a);
 
-        text_params.AddMember("poll", createPollParams(poll_, a), a);
+        text_params.AddMember("poll", create_poll_params(poll_, a), a);
         doc.PushBack(std::move(text_params), a);
 
         rapidjson::StringBuffer buffer;
@@ -279,7 +271,7 @@ int32_t send_message::init_request(std::shared_ptr<core::http_request_simple> _r
             rapidjson::Value caption_params(rapidjson::Type::kObjectType);
             caption_params.AddMember("caption", description_, a);
             caption_params.AddMember("url", url_, a);
-            text_params.AddMember("captionedContent", caption_params, a);
+            text_params.AddMember("captionedContent", std::move(caption_params), a);
             doc.PushBack(std::move(text_params), a);
 
             rapidjson::StringBuffer buffer;
@@ -336,6 +328,21 @@ int32_t send_message::init_request(std::shared_ptr<core::http_request_simple> _r
         _request->push_post_parameter("parts", escape_symbols(rapidjson_get_string_view(buffer)));
     }
 
+    if (smartreply_marker_)
+    {
+        rapidjson::Document doc(rapidjson::Type::kObjectType);
+        auto& a = doc.GetAllocator();
+
+        doc.AddMember("messageId", smartreply_marker_->msgid_, a);
+        doc.AddMember("type", std::string(smartreply::type_2_string(smartreply_marker_->type_)), a);
+
+        rapidjson::StringBuffer buffer;
+        rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+        doc.Accept(writer);
+
+        _request->push_post_parameter("smartReplyMeta", escape_symbols(rapidjson_get_string_view(buffer)));
+    }
+
     if (is_sms)
     {
         _request->push_post_parameter("displaySMSSegmentData", "true");
@@ -349,9 +356,9 @@ int32_t send_message::init_request(std::shared_ptr<core::http_request_simple> _r
     if (!params_.full_log_)
     {
         log_replace_functor f;
-        f.add_marker("message");
+        f.add_message_markers();
         f.add_marker("aimsid", aimsid_range_evaluator());
-        f.add_json_marker("text");
+        f.add_marker("message");
         _request->set_replace_log_function(f);
     }
 
@@ -370,7 +377,7 @@ int32_t send_message::parse_response_data(const rapidjson::Value& _data)
     return 0;
 }
 
-int32_t send_message::execute_request(std::shared_ptr<core::http_request_simple> request)
+int32_t send_message::execute_request(const std::shared_ptr<core::http_request_simple>& request)
 {
     if (!request->post())
         return wpie_network_error;
@@ -381,4 +388,9 @@ int32_t send_message::execute_request(std::shared_ptr<core::http_request_simple>
         return wpie_http_error;
 
     return 0;
+}
+
+priority_t send_message::get_priority() const
+{
+    return priority_send_message();
 }

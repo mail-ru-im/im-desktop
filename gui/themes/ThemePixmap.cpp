@@ -27,16 +27,13 @@ namespace
 
         const auto scale = QString::number(current_scale);
 
-        QString resPath;
-
         for (const auto &pair : index)
         {
             const auto resId = std::get<0>(pair);
             const auto resDir = std::get<1>(pair);
             const auto resFilename = std::get<2>(pair);
 
-            resPath.clear();
-            resPath += ql1s(":/themes/standard/") % scale % ql1c('/') % QString::fromUtf8(resDir) % ql1c('/') % QString::fromUtf8(resFilename) % ql1s(".png");
+            QString resPath = u":/themes/standard/" % scale % u'/' % QString::fromUtf8(resDir) % u'/' % QString::fromUtf8(resFilename) % u".png";
 
             if (Ui::GetAppConfig().IsFullLogEnabled())
             {
@@ -46,7 +43,7 @@ namespace
                 Log::write_network_log(logData.str());
             }
 
-            const auto emplaceResult = ResourcePaths_.emplace((int)resId, resPath);
+            const auto emplaceResult = ResourcePaths_.emplace((int)resId, std::move(resPath));
             assert(emplaceResult.second);
         }
     }

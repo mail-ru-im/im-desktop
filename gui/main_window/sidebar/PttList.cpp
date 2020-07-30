@@ -8,12 +8,13 @@
 #include "../../controls/ContextMenu.h"
 #include "../../fonts.h"
 #include "../../utils/utils.h"
+#include "../../utils/UrlParser.h"
 #include "../../my_info.h"
 #include "../GroupChatOperations.h"
-#include "../friendly/FriendlyContainer.h"
+#include "../containers/FriendlyContainer.h"
 #include "../contact_list/ContactListModel.h"
 #include "../history_control/complex_message/FileSharingUtils.h"
-#include "../friendly/FriendlyContainer.h"
+#include "../containers/FriendlyContainer.h"
 #include "../sounds/SoundsManager.h"
 #include "../../utils/translator.h"
 #include "utils/stat_utils.h"
@@ -29,6 +30,7 @@ namespace
     const int MORE_BUTTON_SIZE = 20;
     const int BUTTON_SIZE = 40;
     const int SUB_BUTTON_SIZE = 20;
+    const int TEXT_BUTTON_SIZE = 32;
     const int PREVIEW_RIGHT_OFFSET = 12;
     const int NAME_OFFSET = 8;
     const int DATE_TOP_OFFSET = 12;
@@ -122,8 +124,8 @@ namespace Ui
         height_ += Utils::scale_value(DATE_OFFSET);
         height_ += Utils::scale_value(VER_OFFSET);
 
-        playIcon_ = Utils::renderSvgScaled(qsl(":/videoplayer/video_play"), QSize(SUB_BUTTON_SIZE, SUB_BUTTON_SIZE), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT));
-        textIcon_ = Utils::renderSvgScaled(qsl(":/ptt/text_icon"), QSize(SUB_BUTTON_SIZE, SUB_BUTTON_SIZE), Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_INVERSE));
+        playIcon_ = Utils::renderSvgScaled(qsl(":/videoplayer/video_play"), QSize(SUB_BUTTON_SIZE, SUB_BUTTON_SIZE), Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE));
+        textIcon_ = Utils::renderSvgScaled(qsl(":/ptt/text_icon"), QSize(BUTTON_SIZE, BUTTON_SIZE), Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY));
 
         name_ = TextRendering::MakeTextUnit(Logic::GetFriendlyContainer()->getFriendly(_sender), Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS);
         name_->init(Fonts::appFontScaled(16), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
@@ -187,7 +189,7 @@ namespace Ui
 
             _p.drawEllipse(QPoint(width_ - Utils::scale_value(HOR_OFFSET + BUTTON_SIZE / 2 + RIGHT_OFFSET - PREVIEW_RIGHT_OFFSET), Utils::scale_value(ICON_VER_OFFSET + BUTTON_SIZE / 2) + _rect.y()), Utils::scale_value(BUTTON_SIZE / 2), Utils::scale_value(BUTTON_SIZE / 2));
 
-            QRect textIconRect(width_ - Utils::scale_value(HOR_OFFSET + BUTTON_SIZE / 2 + SUB_BUTTON_SIZE / 2 + RIGHT_OFFSET - PREVIEW_RIGHT_OFFSET), Utils::scale_value(ICON_VER_OFFSET + SUB_BUTTON_SIZE / 2) + _rect.y(), Utils::scale_value(SUB_BUTTON_SIZE), Utils::scale_value(SUB_BUTTON_SIZE));
+            QRect textIconRect(width_ - Utils::scale_value(HOR_OFFSET + BUTTON_SIZE / 2 + TEXT_BUTTON_SIZE / 2 + RIGHT_OFFSET - PREVIEW_RIGHT_OFFSET), Utils::scale_value(TEXT_BUTTON_SIZE / 2) + _rect.y(), Utils::scale_value(TEXT_BUTTON_SIZE), Utils::scale_value(TEXT_BUTTON_SIZE));
             _p.drawPixmap(textIconRect, textIcon_);
         }
 
@@ -463,7 +465,7 @@ namespace Ui
         for (const auto& e : _entries)
         {
             auto time = QDateTime::fromTime_t(e.time_);
-            auto item = std::make_unique<PttItem>(e.url_, time.toString(qsl("d MMM, ")) + time.time().toString(qsl("hh:mm")), e.msg_id_, e.seq_, width(), e.sender_, e.outgoing_, e.time_);
+            auto item = std::make_unique<PttItem>(e.url_, formatTimeStr(time), e.msg_id_, e.seq_, width(), e.sender_, e.outgoing_, e.time_);
             h += item->getHeight();
             Items_.push_back(std::move(item));
         }
@@ -476,7 +478,7 @@ namespace Ui
         auto h = height();
         for (const auto& e : _entries)
         {
-            if (e.action_ == qsl("del"))
+            if (e.action_ == u"del")
             {
                 Items_.erase(std::remove_if(Items_.begin(), Items_.end(), [e](const auto& i) { return i->getMsg() == e.msg_id_; }), Items_.end());
                 h = 0;
@@ -490,7 +492,7 @@ namespace Ui
             parser.process(QStringRef(&e.url_));
 
             const auto isFilesharing = parser.hasUrl() && parser.getUrl().is_filesharing();
-            if (!isFilesharing || e.type_ != qsl("ptt"))
+            if (!isFilesharing || e.type_ != u"ptt")
                 continue;
 
             auto time = QDateTime::fromTime_t(e.time_);
@@ -513,7 +515,7 @@ namespace Ui
                 break;
             }
 
-            auto item = std::make_unique<PttItem>(e.url_, time.toString(qsl("d MMM, ")) + time.time().toString(qsl("hh:mm")), e.msg_id_, e.seq_, width(), e.sender_, e.outgoing_, e.time_);
+            auto item = std::make_unique<PttItem>(e.url_, formatTimeStr(time), e.msg_id_, e.seq_, width(), e.sender_, e.outgoing_, e.time_);
             h += item->getHeight();
 
             Items_.insert(iter, std::move(item));
@@ -680,7 +682,7 @@ namespace Ui
                 }
                 if (i->isOverDate(_event->pos()))
                 {
-                    emit Logic::getContactListModel()->select(aimId_, i->getMsg(), Logic::UpdateChatSelection::No);
+                    Q_EMIT Logic::getContactListModel()->select(aimId_, i->getMsg(), Logic::UpdateChatSelection::No);
                     i->setDateState(true, false);
                 }
                 else

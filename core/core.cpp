@@ -12,6 +12,7 @@
 #include "connections/base_im.h"
 #include "connections/login_info.h"
 #include "connections/im_login.h"
+#include "connections/send_feedback.h"
 
 #include "Voip/VoipManager.h"
 #include "voip/voip3.h"
@@ -33,6 +34,7 @@
 #include "statistics.h"
 #include "stats/im/im_stats.h"
 #include "tools/md5.h"
+#include "tools/hmac_sha_base64.h"
 #include "../corelib/enumerations.h"
 #include "tools/system.h"
 #include "proxy_settings.h"
@@ -45,6 +47,7 @@
 #include "connections/wim/auth_parameters.h"
 #include "../../../common.shared/version_info.h"
 #include "connections/urls_cache.h"
+#include "connections/wim/wim_packet.h"
 
 
 #ifdef _WIN32
@@ -87,11 +90,10 @@ namespace
                 {
                     fs::path path = (*dir_it);
 
-                    const auto dir_name = path.leaf().wstring();
-                    if (dir_name.find(L"u") == 0)
+                    if (const auto dir_name = path.leaf().wstring(); dir_name.find(L"u") == 0)
                     {
                         auto str = core::tools::from_utf16(dir_name);
-                        const auto id = std::string_view(str.data() + 1, str.length() - 1);
+                        const auto id = std::string_view(str.data() + 1, str.size() - 1);
                         if (core::tools::is_uin(id) || core::tools::is_email(id) || core::tools::is_phone(id))
                             folders.push_back(std::move(str));
                     }
@@ -108,40 +110,98 @@ namespace
 
     void write_additional_coregui_message_data(core::tools::binary_stream& bs, core::icollection* _message_data)
     {
-        if (_message_data)
-        {
-            if (_message_data->is_value_exist("error"))
-            {
-                if (const auto value = _message_data->get_value("error"))
-                {
-                    if (const auto intval = value->get_as_int())
-                    {
-                        bs.write<std::string_view>(" [");
-                        bs.write<std::string>(std::to_string(intval));
-                        bs.write<std::string_view>("]");
-                    }
-                }
-            }
+        if (!_message_data)
+            return;
 
-            if (_message_data->is_value_exist("contact"))
+        if (_message_data->is_value_exist("error"))
+        {
+            if (const auto value = _message_data->get_value("error"))
             {
-                if (const auto value = _message_data->get_value("contact"))
+                if (const auto intval = value->get_as_int())
                 {
-                    bs.write<std::string_view>(" <");
-                    bs.write<std::string_view>(value->get_as_string());
-                    bs.write<std::string_view>(">");
-                }
-            }
-            else if (_message_data->is_value_exist("aimid"))
-            {
-                if (const auto value = _message_data->get_value("aimid"))
-                {
-                    bs.write<std::string_view>(" <");
-                    bs.write<std::string_view>(value->get_as_string());
-                    bs.write<std::string_view>(">");
+                    bs.write<std::string_view>(" [");
+                    bs.write<std::string_view>(std::to_string(intval));
+                    bs.write<std::string_view>("]");
                 }
             }
         }
+
+        const auto write_contact = [_message_data, &bs](std::string_view _name)
+        {
+            if (_message_data->is_value_exist(_name))
+            {
+                if (const auto value = _message_data->get_value(_name))
+                {
+                    bs.write<std::string_view>(" <");
+                    bs.write<std::string_view>(value->get_as_string());
+                    bs.write<std::string_view>(">");
+                    return true;
+                }
+            }
+            return false;
+        };
+
+        constexpr std::string_view fields[] = { "contact", "aimid", "aimId", "sn", "stamp" };
+        for (std::string_view c : fields)
+            if (write_contact(c))
+                break;
+
+        if (_message_data->is_value_exist("contacts"))
+        {
+            std::stringstream s;
+            if (const auto value = _message_data->get_value("contacts"))
+            {
+                if (const auto contacts = value->get_as_array())
+                {
+                    if (const auto size = contacts->size())
+                    {
+                        for (core::iarray::size_type i = 0; i < size; ++i)
+                            s << contacts->get_at(i)->get_as_string() << "; ";
+                    }
+                }
+            }
+            bs.write<std::string_view>("\r\nfor: ");
+            bs.write<std::string_view>(s.str());
+        }
+    }
+
+    constexpr auto contains_history_messages(std::string_view message_string)
+    {
+        return message_string == "archive/messages/get/result"
+               || message_string == "archive/buddies/get/result"
+               || message_string == "messages/received/dlg_state"
+               || message_string == "messages/received/init"
+               || message_string == "messages/received/message_status";
+    };
+
+    constexpr auto is_loading_progress(std::string_view _message_string)
+    {
+        return _message_string == "image/download/progress"
+            || _message_string == "files/download/progress";
+    };
+
+    constexpr auto is_loading_result(std::string_view _message_string)
+    {
+        return _message_string == "image/download/result"
+            || _message_string == "files/download/result"
+            || _message_string == "files/preview_size/result";
+    };
+
+    std::vector<std::string> to_string_vector(core::coll_helper& _params, std::string_view _name)
+    {
+        std::vector<std::string> res;
+
+        if (_params.is_value_exist(_name))
+        {
+            if (auto arr = _params.get_value_as_array(_name))
+            {
+                const auto size = arr->size();
+                res.reserve(size);
+                for (std::remove_const_t<decltype(size)> i = 0; i < size; ++i)
+                    res.emplace_back(arr->get_at(i)->get_as_string());
+            }
+        }
+        return res;
     }
 }
 
@@ -331,6 +391,8 @@ void core::core_dispatcher::start(const common::core_gui_settings& _settings)
     im_container_ = std::make_shared<im_container>(voip_manager_,
                                                    memory_stats_collector_);
 
+    post_app_config();
+
     im_container_->create();
 
     if (config::get().is_external())
@@ -346,14 +408,12 @@ void core::core_dispatcher::start(const common::core_gui_settings& _settings)
     core::dump::set_os_version(core::tools::system::get_os_version_string());
 #endif
 
-#if defined _WIN32 || defined __linux__
+#if defined _WIN32 || defined __linux__ || BUILD_FOR_STORE
     report_sender_ = std::make_shared<dump::report_sender>(g_core->get_login_after_start());
     report_sender_->send_report();
 #endif
 
     load_gui_settings();
-
-    post_app_config();
 
     load_theme_settings();
     post_theme_settings_and_meta();
@@ -369,6 +429,14 @@ void core::core_dispatcher::start(const common::core_gui_settings& _settings)
     setup_memory_stats_collector();
 
     post_install_action();
+
+    if (utils::get_logs_path() != utils::get_obsolete_logs_path())
+    {
+        run_async([]() {
+            tools::system::delete_directory(utils::get_obsolete_logs_path());
+            return 0;
+        });
+    }
 }
 
 
@@ -426,21 +494,58 @@ void core::core_dispatcher::post_message_to_gui(std::string_view _message, int64
     bs.write<std::string_view>("CORE->GUI: message=");
     bs.write<std::string_view>(_message);
     write_additional_coregui_message_data(bs, _message_data);
-    bs.write<std::string_view>("\r\n");
 
     const bool is_pending = "archive/messages/pending" == _message;
 
-    const auto containsHistoryMessages = [](std::string_view message_string)
-    {
-        return message_string == "archive/messages/get/result"
-            || message_string == "archive/buddies/get/result"
-            || message_string == "messages/received/dlg_state"
-            || message_string == "messages/received/init"
-            || message_string == "messages/received/message_status";
-    };
+    if(_message_data && !is_loading_progress(_message))
+        bs.write<std::string_view>("\r\n");
 
-    // Added type of voip call to log.
-    if (_message_data && _message == "voip_signal")
+    if(_message_data && (is_loading_progress(_message) || is_loading_result(_message)))
+    {
+        const auto write_progress = [_message_data, &bs](std::string_view _field_total, std::string_view _field_transferred)
+        {
+            if (_message_data->is_value_exist(_field_total) && _message_data->is_value_exist(_field_transferred))
+            {
+                const auto value_total = _message_data->get_value(_field_total)->get_as_int64();
+                std::stringstream transferred;
+                if (value_total > 0)
+                {
+                    const auto value_transferred = _message_data->get_value(_field_transferred)->get_as_int64();
+                    transferred << ' ' << 100 * value_transferred / value_total << '%';
+                    transferred << " (" << std::to_string(value_transferred) << "/" << std::to_string(value_total) << ")\n";
+                }
+                else
+                {
+                    transferred << " Incorrect file size " << value_total << '\n';
+                }
+                bs.write<std::string_view>(transferred.str());
+            }
+        };
+
+        const auto write_url = [_message_data, &bs](std::string_view _header, std::string_view _field)
+        {
+            if (_message_data->is_value_exist(_field))
+            {
+                bs.write<std::string_view>(_header);
+                bs.write<std::string_view>(_message_data->get_value(_field)->get_as_string());
+                bs.write<std::string_view>("\n");
+            }
+        };
+
+        write_progress("bytes_total", "bytes_transferred");
+        write_progress("file_size", "bytes_transfer");
+        const auto full_log = core::configuration::get_app_config().is_full_log_enabled();
+        if (full_log)
+        {
+            write_url("URL: ", "url");
+            write_url("File URL: ", "file_url");
+            write_url("Preview URL: ", "full_preview_uri");
+        }
+        write_url("Path: ", "local");
+        write_url("Path: ", "local_path");
+        write_url("Path: ", "file_name");
+    }
+    else if (_message_data && _message == "voip_signal") // Added type of voip call to log.
     {
         auto value = _message_data->get_value("sig_type");
         if (value)
@@ -461,7 +566,7 @@ void core::core_dispatcher::post_message_to_gui(std::string_view _message, int64
                 s << param->get_as_bool();
             }
 
-            bs.write<std::string>(s.str());
+            bs.write<std::string_view>(s.str());
             bs.write<std::string_view>("\r\n");
         }
     }
@@ -479,10 +584,10 @@ void core::core_dispatcher::post_message_to_gui(std::string_view _message, int64
                 }
             }
         }
-        bs.write<std::string>(s.str());
+        bs.write<std::string_view>(s.str());
         bs.write<std::string_view>("\r\n");
     }
-    else if (_message_data && (is_pending || containsHistoryMessages(_message)))
+    else if (_message_data && (is_pending || contains_history_messages(_message)))
     {
         std::stringstream s;
         if (_message_data->is_value_exist("messages"))
@@ -521,7 +626,7 @@ void core::core_dispatcher::post_message_to_gui(std::string_view _message, int64
                 }
             }
         }
-        bs.write<std::string>(s.str());
+        bs.write<std::string_view>(s.str());
         bs.write<std::string_view>("\r\n");
     }
     else if (_message_data && _message == "dlg_states")
@@ -617,7 +722,7 @@ void core_dispatcher::load_gui_settings()
 
 bool core_dispatcher::is_stats_enabled() const
 {
-    return true;
+    return config::get().is_on(config::features::statistics);
 }
 
 void core_dispatcher::load_statistics()
@@ -647,7 +752,7 @@ void core_dispatcher::load_statistics()
 
 bool core_dispatcher::is_im_stats_enabled() const
 {
-    return true;
+    return config::get().is_on(config::features::statistics);
 }
 
 void core_dispatcher::load_im_stats()
@@ -683,29 +788,26 @@ void core_dispatcher::start_session_stats(bool _delayed)
         props.emplace_back(std::make_pair("Sys_Video_Capture", std::to_string(voip_manager_->get_devices_number(DeviceType::VideoCapturing))));
 
     insert_event(_delayed ? core::stats::stats_event_names::start_session_params_loaded
-        : core::stats::stats_event_names::start_session, props);
+        : core::stats::stats_event_names::start_session, std::move(props));
 }
 
 void core_dispatcher::insert_event(core::stats::stats_event_names _event)
 {
-    core::stats::event_props_type props;
-    insert_event(_event, props);
+    insert_event(_event, {});
 }
 
-void core_dispatcher::insert_event(core::stats::stats_event_names _event, const core::stats::event_props_type& _props)
+void core_dispatcher::insert_event(core::stats::stats_event_names _event, core::stats::event_props_type&& _props)
 {
     if (!is_stats_enabled())
         return;
 
-    auto wr_stats = std::weak_ptr<core::stats::statistics>(statistics_);
-
-    g_core->execute_core_context([wr_stats, _event, _props]
+    g_core->execute_core_context([wr_stats = std::weak_ptr<core::stats::statistics>(statistics_), _event, _props = std::move(_props)]() mutable
     {
         auto ptr_stats = wr_stats.lock();
         if (!ptr_stats)
             return;
 
-        ptr_stats->insert_event(_event, _props);
+        ptr_stats->insert_event(_event, std::move(_props));
     });
 }
 
@@ -719,9 +821,7 @@ void core_dispatcher::insert_im_stats_event(core::stats::im_stat_event_names _ev
     if (!is_im_stats_enabled())
         return;
 
-    auto wr_stats = std::weak_ptr<core::stats::im_stats>(im_stats_);
-
-    g_core->execute_core_context([wr_stats, _event, _props = std::move(_props)]() mutable
+    g_core->execute_core_context([wr_stats = std::weak_ptr<core::stats::im_stats>(im_stats_), _event, _props = std::move(_props)]() mutable
     {
         auto ptr_stats = wr_stats.lock();
         if (!ptr_stats)
@@ -733,7 +833,7 @@ void core_dispatcher::insert_im_stats_event(core::stats::im_stat_event_names _ev
 
 void core_dispatcher::load_theme_settings()
 {
-    theme_settings_ = std::make_shared<core::theme_settings>(utils::get_product_data_path() + L"/settings/" + tools::from_utf8(theme_settings_file_name));
+    theme_settings_ = std::make_shared<core::theme_settings>(su::wconcat(utils::get_product_data_path(), L"/settings/", tools::from_utf8(theme_settings_file_name)));
     theme_settings_->load();
     theme_settings_->clear_value("image"); // clear legacy value
     theme_settings_->start_save();
@@ -881,7 +981,55 @@ void core::core_dispatcher::on_message_set_wallpaper_urls(int64_t _seq, coll_hel
     theme_settings_->set_wallpaper_urls(wallpaper_urls);
 }
 
-void core::core_dispatcher::save_themes_etag(const std::string &etag)
+void core::core_dispatcher::on_feedback(int64_t _seq, coll_helper& _params)
+{
+    std::map<std::string, std::string> fields;
+    fields.insert({"fb.screen_resolution", _params.get_value_as_string("screen_resolution")});
+    fields.insert({"fb.referrer", _params.get_value_as_string("referrer")});
+    fields.insert({std::string(config::get().string(config::values::feedback_version_id)), _params.get_value_as_string("version")});
+    fields.insert({"fb.question.159", _params.get_value_as_string("os_version")});
+    fields.insert({"fb.question.178", _params.get_value_as_string("build_type")});
+    fields.insert({std::string(config::get().string(config::values::feedback_platform_id)), _params.get_value_as_string("platform")});
+    fields.insert({"fb.user_name", _params.get_value_as_string("user_name")});
+    fields.insert({"fb.message", _params.get_value_as_string("message")});
+    fields.insert({"fb.communication_email", _params.get_value_as_string("communication_email")});
+    fields.insert({"Lang", _params.get_value_as_string("language")});
+    fields.insert({"attachements_count", _params.get_value_as_string("attachements_count")});
+
+    if (config::get().is_on(config::features::feedback_selected))
+    {
+        const auto problem = config::get().string(config::values::feedback_selected_id);
+        fields.insert(std::make_pair(std::string(problem), _params.get_value_as_string(problem)));
+    }
+
+    auto request = std::make_shared<core::send_feedback>(_params.get_value_as_string("aimid"), _params.get_value_as_string("url"), std::move(fields), to_string_vector(_params, "attachement"));
+    request->send([_seq, request](bool _success)
+     {
+        coll_helper coll(g_core->create_collection(), true);
+        coll.set_value_as_bool("succeeded", _success);
+        g_core->post_message_to_gui("feedback/sent", _seq, coll.get());
+
+        if (_success)
+            g_core->insert_event(stats::stats_event_names::feedback_sent);
+        else
+            g_core->insert_event(stats::stats_event_names::feedback_error);
+     });
+}
+
+void core::core_dispatcher::on_create_logs_archive(int64_t _seq, coll_helper& _params)
+{
+    g_core->run_async([_seq, path = boost::filesystem::wpath(tools::from_utf8(_params.get_value_as_string("path")))]()
+    {
+        coll_helper cl_coll(g_core->create_collection(), true);
+        cl_coll.set_value_as_string("archive", tools::from_utf16(utils::create_logs_archive(path).wstring()));
+
+        g_core->post_message_to_gui("logs_archive", _seq, cl_coll.get());
+
+        return 0;
+    });
+}
+
+void core::core_dispatcher::save_themes_etag(std::string_view etag)
 {
     settings_->set_value(core_settings_values::themes_settings_etag, etag);
     settings_->save();
@@ -988,7 +1136,7 @@ void core::core_dispatcher::receive_message_from_gui(std::string_view _message, 
                 s << " count_later: ";
                 s << params.get_value_as_int64("count_later");
 
-                bs.write<std::string>(s.str());
+                bs.write<std::string_view>(s.str());
                 bs.write<std::string_view>("\r\n");
             }
             else if (message_string == "archive/buddies/get" || message_string == "archive/log/model")
@@ -1024,7 +1172,7 @@ void core::core_dispatcher::receive_message_from_gui(std::string_view _message, 
                 if (params.is_value_exist("hint"))
                     s << "\r\nhint: " << params.get_value_as_string("hint");
 
-                bs.write<std::string>(s.str());
+                bs.write<std::string_view>(s.str());
                 bs.write<std::string_view>("\r\n");
             }
             // Added type of voip call to log.
@@ -1036,25 +1184,7 @@ void core::core_dispatcher::receive_message_from_gui(std::string_view _message, 
 
                 voip_manager::addVoipStatistic(s, params);
 
-                bs.write<std::string>(s.str());
-                bs.write<std::string_view>("\r\n");
-            }
-            else if (message_string == "dlg_states/hide")
-            {
-                std::stringstream s;
-                if (const auto value = _message_data->get_value("contacts"))
-                {
-                    if (const auto contacts = value->get_as_array())
-                    {
-                        if (const auto size = contacts->size())
-                        {
-                            for (iarray::size_type i = 0; i < size; ++i)
-                                s << contacts->get_at(i)->get_as_string() << "; ";
-                        }
-                    }
-                }
-                bs.write<std::string_view>("for: ");
-                bs.write<std::string>(s.str());
+                bs.write<std::string_view>(s.str());
                 bs.write<std::string_view>("\r\n");
             }
 
@@ -1096,6 +1226,14 @@ void core::core_dispatcher::receive_message_from_gui(std::string_view _message, 
         else if (message_string == "themes/wallpaper/urls")
         {
             on_message_set_wallpaper_urls(_seq, params);
+        }
+        else if (message_string == "feedback/send")
+        {
+            on_feedback(_seq, params);
+        }
+        else if (message_string == "create_logs_archive")
+        {
+            on_create_logs_archive(_seq, params);
         }
         else
         {
@@ -1204,8 +1342,15 @@ void core::core_dispatcher::on_thread_finish()
 {
 }
 
-void core::core_dispatcher::unlogin(const bool _is_auth_error)
+void core::core_dispatcher::unlogin(const bool _is_auth_error, const bool _force_clean_local_data)
 {
+    if (_force_clean_local_data)
+    {
+        auto stream_val = tools::binary_stream();
+        stream_val.write(false);
+        gui_settings_->set_value(settings_keep_logged_in, std::move(stream_val));
+    }
+
     execute_core_context([this, _is_auth_error]()
     {
         im_container_->logout(_is_auth_error);
@@ -1244,7 +1389,9 @@ std::shared_ptr<core::stats::statistics> core::core_dispatcher::get_statistics()
 
 proxy_settings core_dispatcher::get_proxy_settings() const
 {
-    return proxy_settings_manager_->get_current_settings();
+    if (proxy_settings_manager_)
+        return proxy_settings_manager_->get_current_settings();
+    return {};
 }
 
 bool core_dispatcher::try_to_apply_alternative_settings()
@@ -1362,7 +1509,7 @@ static void omicron_update_helper(const std::string& _data)
 
 static bool omicron_download_helper(const omicronlib::omicron_proxy_settings& /*_proxy_settings*/, const std::string& _url, std::string& _json_data, long& _response_code)
 {
-    core::http_request_simple request(g_core->get_proxy_settings(), utils::get_user_agent());
+    core::http_request_simple request(g_core->get_proxy_settings(), utils::get_user_agent(), top_priority());
     request.set_url(_url);
     request.set_send_im_stats(false);
     request.set_normalized_url("omicron_dl");
@@ -1383,15 +1530,50 @@ static bool omicron_download_helper(const omicronlib::omicron_proxy_settings& /*
     return true;
 }
 
+static const std::string& omicron_encrypt_hash()
+{
+    static const std::string hash = []()
+    {
+        char buffer[65] = { 0 };
+        core::tools::sha256(get_omicron_dev_id(), buffer);
+        return std::string(buffer);
+    }();
+
+    return hash;
+}
+
+static bool omicron_save_helper(const std::wstring& _path, const std::string& _json_data)
+{
+    core::tools::binary_stream bstream;
+    bstream.write(_json_data);
+    bstream.encrypt_aes256(omicron_encrypt_hash());
+    return bstream.save_2_file(_path);
+}
+
+static std::string omicron_load_helper(const std::wstring& _path)
+{
+    std::string res;
+    core::tools::binary_stream bstream;
+    if (bstream.load_from_file(_path))
+    {
+        if (bstream.decrypt_aes256(omicron_encrypt_hash()))
+        {
+            bstream.write<char>('\0');
+            res = bstream.read(bstream.available());
+        }
+    }
+    return res;
+}
+
 void core::core_dispatcher::start_omicron_service()
 {
     std::string inifile_dev_id = core::configuration::get_app_config().device_id();
     const auto app_id = inifile_dev_id.empty() ? std::string(get_omicron_dev_id()) : inifile_dev_id;
 
-    omicronlib::omicron_config conf("https://" + std::string(configuration::get_app_config().get_url_omicron_data()), app_id, get_omicron_app_environment());
+    omicronlib::omicron_config conf(su::concat("https://", configuration::get_app_config().get_url_omicron_data()), app_id, get_omicron_app_environment());
 
-    auto app_version = core::tools::version_info().get_major_version() + '.' + core::tools::version_info().get_minor_version();
-    conf.add_fingerprint("app_version", app_version);
+    auto app_version = su::concat(core::tools::version_info().get_major_version(), '.', core::tools::version_info().get_minor_version());
+    conf.add_fingerprint("app_version", std::move(app_version));
     conf.add_fingerprint("app_build", core::tools::version_info().get_build_version());
     conf.add_fingerprint("os_version", core::tools::system::get_os_version_string());
     conf.add_fingerprint("device_id", g_core->get_uniq_device_id());
@@ -1401,12 +1583,16 @@ void core::core_dispatcher::start_omicron_service()
     conf.add_fingerprint("lang", g_core->get_locale());
 
     conf.set_logger(omicron_log_helper);
-
     conf.set_callback_updater(omicron_update_helper);
-
     conf.set_json_downloader(omicron_download_helper);
 
-    omicronlib::omicron_init(conf, utils::get_product_data_path() + L"/settings/" + tools::from_utf8(omicron_cache_file_name));
+    if constexpr (!build::is_debug() && !environment::is_develop())
+    {
+        conf.set_save_helper(omicron_save_helper);
+        conf.set_load_helper(omicron_load_helper);
+    }
+
+    omicronlib::omicron_init(conf, su::wconcat(utils::get_product_data_path(), L"/settings/", tools::from_utf8(omicron_cache_file_name)));
 
     auto inifile_update_interval = core::configuration::get_app_config().update_interval();
     auto update_period = (inifile_update_interval == 0) ? omicronlib::default_update_interval() : std::chrono::seconds(inifile_update_interval);
@@ -1486,6 +1672,17 @@ bool core_dispatcher::verify_local_pin(const std::string& _password) const
     return utils::calc_local_pin_hash(_password, salt) == settings_->get_value(local_pin_hash, std::string());
 }
 
+void core_dispatcher::set_external_config_host(std::string_view _host)
+{
+    settings_->set_value(external_config_host, _host);
+    settings_->save();
+}
+
+std::string core_dispatcher::get_external_config_host() const
+{
+    return settings_->get_value(external_config_host, std::string());
+}
+
 int64_t core_dispatcher::get_voip_init_memory_usage() const
 {
     if (!voip_manager_)
@@ -1501,7 +1698,7 @@ void core_dispatcher::check_update(int64_t _seq, std::optional<std::string> _url
 
 bool core_dispatcher::is_keep_local_data() const
 {
-    return get_gui_settings_bool_value(settings_keep_logged_in, true);
+    return get_gui_settings_bool_value(settings_keep_logged_in, settings_keep_logged_in_default());
 }
 
 void core_dispatcher::remove_local_data(bool _is_exit)
@@ -1516,9 +1713,14 @@ void core_dispatcher::remove_local_data(bool _is_exit)
 
     if (_is_exit)
     {
-        tools::system::delete_directory(utils::get_logs_path().wstring());
         tools::system::delete_directory(data_path + L"/stats");
     }
+}
+
+void core_dispatcher::update_gui_settings()
+{
+    if (gui_settings_)
+        post_gui_settings();
 }
 
 void core_dispatcher::reset_connection()

@@ -10,6 +10,11 @@ namespace core
     }
 }
 
+namespace Ui
+{
+    class gui_coll_helper;
+}
+
 namespace Data
 {
     class SmartreplySuggest
@@ -23,6 +28,7 @@ namespace Data
         }
 
         void unserialize(core::coll_helper& _coll);
+        void serialize(Ui::gui_coll_helper& _coll) const;
 
         core::smartreply::type getType() const noexcept { return type_; }
         qint64 getMsgId() const noexcept { return msgId_; }

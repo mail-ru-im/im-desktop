@@ -16,6 +16,8 @@
 #include "core_dispatcher.h"
 #include "gui_settings.h"
 
+#include "smartreply/SmartReplyForQuote.h"
+
 #include "utils/gui_coll_helper.h"
 #include "utils/InterConnector.h"
 #include "utils/features.h"
@@ -40,6 +42,7 @@ namespace Ui
         , suggestsWidget_(nullptr)
         , frameCountMode_(FrameCountMode::_1)
         , suggestWidgetShown_(false)
+        , smartreplyForQuotePopup_(nullptr)
     {
         setFrameCountMode(frameCountMode_);
         setPalette(Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE));
@@ -47,11 +50,15 @@ namespace Ui
 
         auto layout = Utils::emptyVLayout(this);
 
-        Testing::setAccessibleName(historyControlWidget_, qsl("AS historyControlWidget_"));
+        Testing::setAccessibleName(historyControlWidget_, qsl("AS Dialog historyControlWidget"));
         layout->addWidget(historyControlWidget_);
 
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::dialogClosed, this, &ContactDialog::removeTopWidget);
+        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::dialogClosed, this, &ContactDialog::hideSmartrepliesForQuoteForce);
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::currentPageChanged, this, &ContactDialog::hideSuggest);
+        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::currentPageChanged, this, &ContactDialog::hideSmartrepliesForQuoteForce);
+        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::multiselectChanged, this, &ContactDialog::onMultiselectChanged);
+
         connect(this, &ContactDialog::contactSelected, historyControlWidget_, &HistoryControl::contactSelected);
         connect(historyControlWidget_, &HistoryControl::setTopWidget, this, &ContactDialog::insertTopWidget);
         connect(historyControlWidget_, &HistoryControl::clicked, this, &ContactDialog::historyControlClicked, Qt::QueuedConnection);
@@ -59,27 +66,29 @@ namespace Ui
 
         updateWallpaper(QString());
 
-        overlayUpdateTimer_.setInterval(overlayUpdateTimeout().count());
+        overlayUpdateTimer_.setInterval(overlayUpdateTimeout());
         connect(&overlayUpdateTimer_, &QTimer::timeout, this, &ContactDialog::updateDragOverlay);
 
         connect(Utils::InterConnector::instance().getMainWindow(), &MainWindow::mouseReleased, this, [this]()
         {
             if (!rect().contains(mapFromGlobal(QCursor::pos())) && !isPttRecordingHold())
-                emit Utils::InterConnector::instance().stopPttRecord();
+                Q_EMIT Utils::InterConnector::instance().stopPttRecord();
         });
 
         connect(Utils::InterConnector::instance().getMainWindow(), &MainWindow::mousePressed, this, [this]()
         {
             if (isPttRecordingHoldByKeyboard())
             {
-                emit Utils::InterConnector::instance().stopPttRecord();
+                Q_EMIT Utils::InterConnector::instance().stopPttRecord();
             }
             else if (const auto buttons = qApp->mouseButtons(); buttons != Qt::MouseButtons(Qt::LeftButton))
             {
                 if (!historyControlWidget_->hasMessageUnderCursor())
-                    emit Utils::InterConnector::instance().stopPttRecord();
+                    Q_EMIT Utils::InterConnector::instance().stopPttRecord();
             }
         });
+
+        connect(Ui::GetDispatcher(), &Ui::core_dispatcher::smartreplyRequestedResult, this, &ContactDialog::onSmartrepliesForQuote);
     }
 
     ContactDialog::~ContactDialog() = default;
@@ -87,7 +96,9 @@ namespace Ui
     void ContactDialog::onContactSelected(const QString& _aimId, qint64 _messageId, const highlightsV& _highlights)
     {
         initInputWidget();
-        emit contactSelected(_aimId, _messageId, _highlights);
+        hideSmartrepliesForQuoteForce();
+
+        Q_EMIT contactSelected(_aimId, _messageId, _highlights);
 
         setFocusOnInputWidget();
     }
@@ -95,7 +106,9 @@ namespace Ui
     void ContactDialog::onContactSelectedToLastMessage(const QString& _aimId, qint64 _messageId)
     {
         initInputWidget();
-        emit contactSelectedToLastMessage(_aimId, _messageId);
+        hideSmartrepliesForQuoteForce();
+
+        Q_EMIT contactSelectedToLastMessage(_aimId, _messageId);
 
         setFocusOnInputWidget();
     }
@@ -107,7 +120,7 @@ namespace Ui
 
         topWidget_ = new QStackedWidget(this);
         topWidget_->setFixedHeight(Utils::getTopPanelHeight());
-        Testing::setAccessibleName(topWidget_, qsl("AS topWidget_"));
+        Testing::setAccessibleName(topWidget_, qsl("AS Dialog topWidget"));
 
         if (auto vLayout = qobject_cast<QVBoxLayout*>(layout()))
             vLayout->insertWidget(0, topWidget_);
@@ -120,7 +133,7 @@ namespace Ui
 
         smilesMenu_ = new Smiles::SmilesMenu(this);
         smilesMenu_->setFixedHeight(0);
-        Testing::setAccessibleName(smilesMenu_, qsl("AS smilesMenu_"));
+        Testing::setAccessibleName(smilesMenu_, qsl("AS EmojiAndStickerPicker"));
 
         if (auto vLayout = qobject_cast<QVBoxLayout*>(layout()))
         {
@@ -153,6 +166,9 @@ namespace Ui
         connect(inputWidget_, &InputWidget::editFocusOut, this, &ContactDialog::onInputEditFocusOut);
         connect(inputWidget_, &InputWidget::sendMessage, this, &ContactDialog::onSendMessage);
         connect(inputWidget_, &InputWidget::inputTyped, this, &ContactDialog::inputTyped);
+        connect(inputWidget_, &InputWidget::inputTyped, this, &ContactDialog::hideSmartrepliesForQuoteAnimated);
+        connect(inputWidget_, &InputWidget::quotesAdded, this, &ContactDialog::onQuotesAdded);
+        connect(inputWidget_, &InputWidget::quotesDropped, this, &ContactDialog::onQuotesDropped);
         connect(inputWidget_, &InputWidget::needSuggets, this, &ContactDialog::onSuggestShow);
         connect(inputWidget_, &InputWidget::hideSuggets, this, &ContactDialog::onSuggestHide);
 
@@ -161,7 +177,7 @@ namespace Ui
         connect(historyControlWidget_, &HistoryControl::messageIdsFetched, inputWidget_, &InputWidget::messageIdsFetched);
         connect(historyControlWidget_, &HistoryControl::quote, inputWidget_, &InputWidget::quote);
 
-        Testing::setAccessibleName(inputWidget_, qsl("AS inputWidget_"));
+        Testing::setAccessibleName(inputWidget_, qsl("AS ChatInput"));
 
         if (auto vLayout = qobject_cast<QVBoxLayout*>(layout()))
             vLayout->addWidget(inputWidget_);
@@ -195,7 +211,7 @@ namespace Ui
 
         smilesMenu_->showHideAnimated(_fromKeyboard);
 
-        emit Utils::InterConnector::instance().hideMentionCompleter();
+        Q_EMIT Utils::InterConnector::instance().hideMentionCompleter();
         hideSuggest();
     }
 
@@ -220,14 +236,14 @@ namespace Ui
 
     void ContactDialog::historyControlClicked()
     {
-        emit clicked();
+        Q_EMIT clicked();
     }
 
     void ContactDialog::onSendMessage(const QString& _contact)
     {
         historyControlWidget_->scrollHistoryToBottom(_contact);
 
-        emit sendMessage(_contact);
+        Q_EMIT sendMessage(_contact);
     }
 
     void ContactDialog::cancelSelection()
@@ -277,7 +293,7 @@ namespace Ui
         if (!topWidgetsCache_.contains(_aimId))
         {
             topWidgetsCache_.insert(_aimId, _widget);
-            Testing::setAccessibleName(_widget, qsl("AS cd _widget"));
+            Testing::setAccessibleName(_widget, qsl("AS Dialog widget"));
             topWidget_->addWidget(_widget);
         }
 
@@ -314,7 +330,7 @@ namespace Ui
         }
 
         auto role = Logic::getContactListModel()->getYourRole(Logic::getContactListModel()->selectedContact());
-        if (role == ql1s("notamember") || role == ql1s("readonly"))
+        if (role == u"notamember" || role == u"readonly")
         {
             _e->setDropAction(Qt::IgnoreAction);
             return;
@@ -346,7 +362,7 @@ namespace Ui
     {
         BackgroundWidget::resizeEvent(_e);
 
-        emit resized();
+        Q_EMIT resized();
         hideSuggest();
 
         const auto needUpdateInputBg =
@@ -359,6 +375,12 @@ namespace Ui
             inputWidget_->updateBackground();
 
         updateDragOverlayGeometry();
+
+        if (smartreplyForQuotePopup_ && smartreplyForQuotePopup_->isTooltipVisible())
+        {
+            const auto params = getSmartreplyForQuoteParams();
+            smartreplyForQuotePopup_->adjustTooltip(params.pos_, params.maxSize_, params.areaRect_);
+        }
     }
 
     HistoryControlPage* ContactDialog::getHistoryPage(const QString& _aimId) const
@@ -400,25 +422,35 @@ namespace Ui
     void ContactDialog::notifyApplicationWindowActive(const bool isActive)
     {
         if (historyControlWidget_)
-        {
             historyControlWidget_->notifyApplicationWindowActive(isActive);
-        }
 
         if (!isActive)
-            emit Utils::InterConnector::instance().stopPttRecord();
+            Q_EMIT Utils::InterConnector::instance().stopPttRecord();
     }
 
     void ContactDialog::notifyUIActive(const bool _isActive)
     {
         if (historyControlWidget_)
-        {
             historyControlWidget_->notifyUIActive(_isActive);
-        }
     }
 
     void ContactDialog::inputTyped()
     {
-        historyControlWidget_->inputTyped();
+        if (historyControlWidget_)
+            historyControlWidget_->inputTyped();
+    }
+
+    void ContactDialog::onQuotesAdded()
+    {
+        if (auto page = getHistoryPage(Logic::getContactListModel()->selectedContact()))
+            page->setSmartrepliesSemitransparent(true);
+    }
+
+    void ContactDialog::onQuotesDropped()
+    {
+        hideSmartrepliesForQuoteAnimated();
+        if (auto page = getHistoryPage(Logic::getContactListModel()->selectedContact()))
+            page->setSmartrepliesSemitransparent(false);
     }
 
     void ContactDialog::suggestedStickerSelected(const QString& _stickerId)
@@ -441,6 +473,39 @@ namespace Ui
         inputWidget_->clearInputText();
     }
 
+    void ContactDialog::onSmartrepliesForQuote(const std::vector<Data::SmartreplySuggest>& _suggests)
+    {
+        if (!inputWidget_ || !Features::isSmartreplyForQuoteEnabled() || !Utils::canShowSmartreplies(currentAimId()))
+            return;
+
+        if (_suggests.empty() || _suggests.front().getContact() != currentAimId())
+            return;
+
+        if (const auto& quotes = inputWidget_->getInputQuotes(); quotes.size() != 1 || _suggests.front().getMsgId() != quotes.front().msgId_)
+            return;
+
+        if (!smartreplyForQuotePopup_)
+        {
+            smartreplyForQuotePopup_ = new SmartReplyForQuote(this);
+            connect(smartreplyForQuotePopup_, &SmartReplyForQuote::sendSmartreply, this, &ContactDialog::sendSmartreplyForQuote);
+        }
+
+        smartreplyForQuotePopup_->clear();
+        smartreplyForQuotePopup_->setSmartReplies(_suggests);
+
+        const auto params = getSmartreplyForQuoteParams();
+        smartreplyForQuotePopup_->showAnimated(params.pos_, params.maxSize_, params.areaRect_);
+    }
+
+    void ContactDialog::onMultiselectChanged()
+    {
+        const auto& contact = Logic::getContactListModel()->selectedContact();
+        const auto isMultiselect = Utils::InterConnector::instance().isMultiselect(contact);
+
+        if (isMultiselect)
+            hideSmartrepliesForQuoteAnimated();
+    }
+
     void ContactDialog::onSuggestShow(const QString& _text, const QPoint& _pos)
     {
         if (!suggestsWidget_)
@@ -448,7 +513,7 @@ namespace Ui
             suggestsWidget_ = new Stickers::StickersSuggest(this);
             suggestsWidget_->setArrowVisible(true);
             connect(suggestsWidget_, &Stickers::StickersSuggest::stickerSelected, this, &ContactDialog::suggestedStickerSelected);
-            connect(suggestsWidget_, &Stickers::StickersSuggest::scrolledToLastItem, inputWidget_, &InputWidget::requestSuggests);
+            connect(suggestsWidget_, &Stickers::StickersSuggest::scrolledToLastItem, inputWidget_, &InputWidget::requestMoreStickerSuggests);
         }
         const auto fromInput = inputWidget_ && QRect(inputWidget_->mapToGlobal(inputWidget_->rect().topLeft()), inputWidget_->size()).contains(_pos);
         const auto maxSize = QSize(!fromInput ? width() : std::min(width(), Tooltip::getMaxMentionTooltipWidth()), height());
@@ -488,7 +553,7 @@ namespace Ui
         }
 
         core::stats::event_props_type props;
-        const bool isEmoji = TextRendering::isEmoji(QStringRef(&_text));
+        const bool isEmoji = TextRendering::isEmoji(_text);
 
         props.push_back({ "type", isEmoji ? "emoji" : "word"});
         props.push_back({ "cont_server_suggest", inputWidget_->hasServerSuggests() ? "yes" : "no" });
@@ -615,10 +680,22 @@ namespace Ui
         return historyControlWidget_->currentAimId();
     }
 
+    void ContactDialog::hideSmartrepliesForQuoteAnimated()
+    {
+        if (smartreplyForQuotePopup_ && smartreplyForQuotePopup_->isTooltipVisible())
+            smartreplyForQuotePopup_->hideAnimated();
+    }
+
+    void ContactDialog::hideSmartrepliesForQuoteForce()
+    {
+        if (smartreplyForQuotePopup_ && smartreplyForQuotePopup_->isTooltipVisible())
+            smartreplyForQuotePopup_->hideForce();
+    }
+
     void ContactDialog::sendSuggestedStickerStats(const QString& _stickerId)
     {
         const QString inputText = inputWidget_->getInputText();
-        const bool isEmoji = TextRendering::isEmoji(QStringRef(&inputText));
+        const bool isEmoji = TextRendering::isEmoji(inputText);
         const bool isServerSuggest = inputWidget_->isServerSuggest(_stickerId);
         const auto& currentStickers = getStickersSuggests()->getStickers();
         const auto stickerPos = std::find(currentStickers.begin(), currentStickers.end(), _stickerId);
@@ -634,5 +711,35 @@ namespace Ui
 
         if (isServerSuggest)
             GetDispatcher()->post_im_stats_to_core(core::stats::im_stat_event_names::text_sticker_used);
+    }
+
+    ContactDialog::SmartreplyForQuoteParams ContactDialog::getSmartreplyForQuoteParams() const
+    {
+        const auto maxSize = QSize(std::min(width(), Tooltip::getMaxMentionTooltipWidth()), height());
+        auto areaRect = rect();
+        if (areaRect.width() > MessageStyle::getHistoryWidgetMaxWidth())
+        {
+            const auto center = areaRect.center();
+            areaRect.setWidth(MessageStyle::getHistoryWidgetMaxWidth());
+            areaRect.moveCenter(center);
+        }
+
+        assert(inputWidget_);
+
+        const auto x = Utils::scale_value(52);
+        const auto y = inputWidget_->pos().y() + Utils::scale_value(10);
+        return { QPoint(x, y), areaRect, maxSize };
+    }
+
+    void ContactDialog::sendSmartreplyForQuote(const Data::SmartreplySuggest& _suggest)
+    {
+        if (!inputWidget_ || currentAimId().isEmpty())
+            return;
+
+        GetDispatcher()->sendSmartreplyToContact(currentAimId(), _suggest, inputWidget_->getInputQuotes());
+
+        inputWidget_->dropReply();
+        historyControlWidget_->scrollHistoryToBottom(currentAimId());
+        Ui::MainPage::instance()->setFocusOnInput();
     }
 }

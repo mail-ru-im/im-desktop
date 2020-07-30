@@ -29,8 +29,8 @@ namespace Ui
 
         bubble_.addEllipse(bubbleRect);
 
-        connect(this, &ClickableWidget::hoverChanged, this, Utils::QOverload<>::of(&ScrollButton::update));
-        connect(this, &ClickableWidget::pressChanged, this, Utils::QOverload<>::of(&ScrollButton::update));
+        connect(this, &ClickableWidget::hoverChanged, this, qOverload<>(&ScrollButton::update));
+        connect(this, &ClickableWidget::pressChanged, this, qOverload<>(&ScrollButton::update));
     }
 
     void ScrollButton::setBackgroundVisible(const bool _visible)

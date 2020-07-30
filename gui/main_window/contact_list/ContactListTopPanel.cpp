@@ -13,17 +13,15 @@ namespace Ui
     {
         auto layout = Utils::emptyVLayout(this);
 
-        setFixedHeight(titleBar_->height() + searchWidget_->height());
-
         layout->setSpacing(0);
 
         titleBar_->setTitle(QT_TRANSLATE_NOOP("head", "Contacts"));
 
-        Testing::setAccessibleName(titleBar_, qsl("AS cltp titleBar_"));
+        Testing::setAccessibleName(titleBar_, qsl("AS General titleBar"));
         layout->addWidget(titleBar_);
 
         searchWidget_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
-        Testing::setAccessibleName(searchWidget_, qsl("AS cltp searchWidget_"));
+        Testing::setAccessibleName(searchWidget_, qsl("AS General searchWidget"));
         layout->addWidget(searchWidget_);
     }
 
@@ -37,6 +35,7 @@ namespace Ui
             return;
 
         TopPanelHeader::setState(_state);
+        setFixedHeight(titleBar_->height() + searchWidget_->height());
     }
 
     SearchWidget* ContactListTopPanel::getSearchWidget() const noexcept
@@ -52,5 +51,10 @@ namespace Ui
     void ContactListTopPanel::addButtonToRight(HeaderTitleBarButton* _button)
     {
         titleBar_->addButtonToRight(_button);
+    }
+
+    void ContactListTopPanel::setTitle(const QString& _title)
+    {
+        titleBar_->setTitle(_title);
     }
 }

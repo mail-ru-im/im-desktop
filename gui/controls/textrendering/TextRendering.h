@@ -1,7 +1,6 @@
 #pragma once
 
 #include "cache/emoji/Emoji.h"
-#include "utils/UrlParser.h"
 #include "types/message.h"
 
 namespace Ui
@@ -40,11 +39,12 @@ namespace Ui
 
         enum class WordType
         {
-            TEXT = 0,
-            LINK = 1,
-            MENTION = 2,
-            EMOJI = 3,
-            NICK = 4,
+            TEXT,
+            LINK,
+            MENTION,
+            EMOJI,
+            NICK,
+            COMMAND
         };
 
         enum class LinksVisible
@@ -93,9 +93,10 @@ namespace Ui
 
         enum class EmojiSizeType
         {
-            REGULAR = 0,
-            ALLOW_BIG = 1,
-            TOOLTIP = 2,
+            REGULAR,
+            ALLOW_BIG,
+            TOOLTIP,
+            SMARTREPLY,
         };
 
         enum class LineBreakType
@@ -123,73 +124,40 @@ namespace Ui
             FORCE = 1,
         };
 
+        enum class WithBoundary
+        {
+            No,
+            Yes
+        };
+
         using highlightsV = std::vector<QString>;
 
-        constexpr int defaultEmojiSize() noexcept { return 22; }
+        constexpr int defaultEmojiSize() noexcept
+        {
+            return platform::is_apple() ? 21 : 22;
+        }
+
+        [[nodiscard]] constexpr QChar singleBackTick() noexcept { return u'`'; }
+        [[nodiscard]] QString tripleBackTick();
+
+        class WordBoundary
+        {
+        public:
+            int pos = 0;
+            int size = 0;
+            bool spellError = false;
+        };
 
         class TextWord
         {
         public:
-            TextWord(QString _text, Space _space, WordType _type, LinksVisible _showLinks, EmojiSizeType _emojiSizeType = EmojiSizeType::REGULAR)
-                : code_(0)
-                , space_(_space)
-                , type_(_type)
-                , text_(std::move(_text))
-                , emojiSize_(defaultEmojiSize())
-                , cachedWidth_(0)
-                , selectedFrom_(-1)
-                , selectedTo_(-1)
-                , spaceWidth_(0)
-                , highlight_({0, 0})
-                , isSpaceSelected_(false)
-                , isSpaceHighlighted_(false)
-                , isTruncated_(false)
-                , linkDisabled_(false)
-                , selectionFixed_(false)
-                , showLinks_(_showLinks)
-                , emojiSizeType_(_emojiSizeType)
-            {
-                trimmedText_ = text_;
-                trimmedText_.remove(QChar::Space);
-
-                if (type_ != WordType::LINK && _showLinks == LinksVisible::SHOW_LINKS)
-                {
-                    Utils::UrlParser p;
-                    p.process(QStringRef(&trimmedText_));
-                    if (p.hasUrl())
-                    {
-                        type_ = WordType::LINK;
-                        originalUrl_ = QString::fromStdString(p.getUrl().original_);
-                    }
-                }
-                assert(type_ != WordType::EMOJI);
-
-                checkSetNick();
-            }
-
-            TextWord(Emoji::EmojiCode _code, Space _space, EmojiSizeType _emojiSizeType = EmojiSizeType::REGULAR)
-                : code_(std::move(_code))
-                , space_(_space)
-                , type_(WordType::EMOJI)
-                , emojiSize_(defaultEmojiSize())
-                , cachedWidth_(0)
-                , selectedFrom_(-1)
-                , selectedTo_(-1)
-                , spaceWidth_(0)
-                , highlight_({0, 0})
-                , isSpaceSelected_(false)
-                , isSpaceHighlighted_(false)
-                , isTruncated_(false)
-                , linkDisabled_(false)
-                , selectionFixed_(false)
-                , showLinks_(LinksVisible::SHOW_LINKS)
-                , emojiSizeType_(_emojiSizeType)
-            {
-                assert(!code_.isNull());
-            }
+            TextWord(QString _text, Space _space, WordType _type, LinksVisible _showLinks, EmojiSizeType _emojiSizeType = EmojiSizeType::REGULAR);
+            TextWord(Emoji::EmojiCode _code, Space _space, EmojiSizeType _emojiSizeType = EmojiSizeType::REGULAR);
 
             bool operator==(const TextWord& _other) const noexcept
             {
+                if (type_ == _other.type_ && type_ == WordType::EMOJI)
+                    return code_ == _other.code_;
                 return text_ == _other.text_;
             }
 
@@ -203,11 +171,15 @@ namespace Ui
 
             bool isNick() const noexcept { return type_ == WordType::NICK; }
 
+            bool isBotCommand() const noexcept { return type_ == WordType::COMMAND; }
+
             bool isSpaceAfter() const noexcept { return space_ == Space::WITH_SPACE_AFTER; }
 
             QString getText(TextType _text_type = TextType::VISIBLE) const;
+            void setText(QString _text); // set text without visible changes. it's needed to edit spell errors.
 
             bool equalTo(const QString& _sl) const;
+            bool equalTo(QChar _c) const;
 
             QString getLink() const;
 
@@ -219,7 +191,7 @@ namespace Ui
 
             void setWidth(double _width, int _emojiCount = 0);
 
-            int getPosByX(int _x);
+            int getPosByX(int _x) const;
 
             void select(int _from, int _to, SelectionType _type);
 
@@ -235,7 +207,7 @@ namespace Ui
 
             int emojiSize() const noexcept { return emojiSize_; }
 
-            double cachedWidth() const;
+            double cachedWidth() const noexcept;
 
             int selectedFrom() const noexcept { return selectedFrom_; }
 
@@ -257,7 +229,7 @@ namespace Ui
             void setHighlighted(const int _from, const int _to) noexcept;
             void setHighlighted(const highlightsV& _entries);
 
-            bool isLink() const noexcept { return type_ == WordType::LINK || isNick() || isMention() || !originalLink_.isEmpty(); }
+            bool isLink() const noexcept { return type_ == WordType::LINK || isNick() || isBotCommand() || isMention() || !originalLink_.isEmpty(); }
 
             bool isMention() const noexcept { return type_ == WordType::MENTION; }
 
@@ -284,6 +256,7 @@ namespace Ui
             bool isLinkDisabled() const noexcept { return linkDisabled_; }
 
             void disableLink();
+            void disableCommand();
 
             void setFont(const QFont& _font);
 
@@ -300,11 +273,11 @@ namespace Ui
 
             void applyFontColor(const TextWord& _other);
 
-            void setSubwords(const std::vector<TextWord>& _subwords) { subwords_ = std::move(_subwords); cachedWidth_ = 0; }
+            void setSubwords(std::vector<TextWord> _subwords) { subwords_ = std::move(_subwords); cachedWidth_ = 0; }
 
             const std::vector<TextWord>& getSubwords() const { return subwords_; }
 
-            bool hasSubwords() const { return !subwords_.empty(); }
+            bool hasSubwords() const noexcept { return !subwords_.empty(); }
 
             std::vector<TextWord> splitByWidth(int width);
 
@@ -312,7 +285,7 @@ namespace Ui
 
             bool underline() const;
 
-            void setEmojiSizeType(EmojiSizeType _emojiSizeType);
+            void setEmojiSizeType(EmojiSizeType _emojiSizeType) noexcept;
 
             EmojiSizeType getEmojiSizeType() const noexcept { return emojiSizeType_; }
 
@@ -320,8 +293,21 @@ namespace Ui
 
             bool isInTooltip() const { return  emojiSizeType_ == EmojiSizeType::TOOLTIP; }
 
+            void setSpellError(bool _value) { hasSpellError_ = _value; }
+
+            bool hasSpellError() const noexcept { return hasSpellError_;  }
+
+            bool skipSpellCheck() const noexcept { return getType() != WordType::TEXT; }
+
+            const std::vector<WordBoundary>& getSyntaxWords() const;
+            std::vector<WordBoundary>& getSyntaxWords();
+            bool markAsSpellError(WordBoundary);
+
+            std::optional<WordBoundary> getSyntaxWordAt(int _x) const;
+
         private:
-            void checkSetNick();
+            void checkSetClickable();
+            [[nodiscard]] static std::vector<WordBoundary> parseForSyntaxWords(const QStringRef& text);
 
             Emoji::EmojiCode code_;
             Space space_;
@@ -342,11 +328,19 @@ namespace Ui
             bool isTruncated_;
             bool linkDisabled_;
             bool selectionFixed_;
+            bool hasSpellError_;
             LinksVisible showLinks_;
             QFont font_;
             QColor color_;
             std::vector<TextWord> subwords_;
+            std::vector<WordBoundary> syntaxWords_;
             EmojiSizeType emojiSizeType_;
+        };
+
+        struct TextWordWithBoundary
+        {
+            TextWord word;
+            std::optional<WordBoundary> syntaxWord;
         };
 
         class BaseDrawingBlock
@@ -359,7 +353,7 @@ namespace Ui
 
             virtual ~BaseDrawingBlock() { }
 
-            BlockType getType() const { return type_; }
+            BlockType getType() const noexcept { return type_; }
 
             virtual void init(const QFont& _font, const QColor& _color, const QColor& _linkColor, const QColor& _selectionColor, const QColor& _highlightColor, HorAligment _align, EmojiSizeType _emojiSizeType = EmojiSizeType::REGULAR, const LinksStyle _linksStyle = LinksStyle::PLAIN) = 0;
 
@@ -388,6 +382,8 @@ namespace Ui
             virtual bool isFullSelected() const = 0;
 
             virtual QString selectedText(TextType _type = TextType::VISIBLE) const = 0;
+
+            virtual QString textForInstantEdit() const = 0;
 
             virtual QString getText() const = 0;
 
@@ -431,7 +427,8 @@ namespace Ui
 
             virtual void appendWords(const std::vector<TextWord>& _words) = 0;
 
-            virtual std::vector<TextWord> getWords() const = 0;
+            virtual const std::vector<TextWord>& getWords() const = 0;
+            virtual std::vector<TextWord>& getWords() = 0;
 
             virtual bool markdownSingle(const QFont& _font, const QColor& _color) = 0;
 
@@ -454,16 +451,21 @@ namespace Ui
 
             virtual bool needsEmojiMargin() const = 0;
 
+            virtual void disableCommands() = 0;
+
+            [[nodiscard]] virtual std::optional<TextWordWithBoundary> getWordAt(QPoint, WithBoundary _mode = WithBoundary::No) const;
+            [[nodiscard]] virtual bool replaceWordAt(const QString&, const QString&, QPoint);
+
         protected:
             BlockType type_;
         };
 
-        typedef std::unique_ptr<BaseDrawingBlock> BaseDrawingBlockPtr;
+        using BaseDrawingBlockPtr = std::unique_ptr<BaseDrawingBlock>;
 
-        class TextDrawingBlock : public BaseDrawingBlock
+        class TextDrawingBlock final : public BaseDrawingBlock
         {
         public:
-            TextDrawingBlock(const QStringRef& _text, LinksVisible _showLinks = LinksVisible::SHOW_LINKS, BlockType _blockType = BlockType::TYPE_TEXT);
+            TextDrawingBlock(QStringView _text, LinksVisible _showLinks = LinksVisible::SHOW_LINKS, BlockType _blockType = BlockType::TYPE_TEXT);
 
             TextDrawingBlock(const std::vector<TextWord>& _words, BaseDrawingBlock* _other);
 
@@ -496,6 +498,8 @@ namespace Ui
             bool isFullSelected() const override;
 
             QString selectedText(TextType _type) const override;
+
+            QString textForInstantEdit() const override;
 
             QString getText() const override;
 
@@ -539,7 +543,8 @@ namespace Ui
 
             void appendWords(const std::vector<TextWord>& _words) override;
 
-            std::vector<TextWord> getWords() const override { return words_; }
+            const std::vector<TextWord>& getWords() const override { return words_; }
+            std::vector<TextWord>& getWords() override { return words_; }
 
             bool markdownSingle(const QFont& _font, const QColor& _color) override;
 
@@ -562,12 +567,25 @@ namespace Ui
 
             bool needsEmojiMargin() const override { return needsEmojiMargin_; }
 
+            void disableCommands() override;
+
+            [[nodiscard]] std::optional<TextWordWithBoundary> getWordAt(QPoint, WithBoundary) const override;
+            [[nodiscard]] bool replaceWordAt(const QString&, const QString&, QPoint) override;
+
         private:
+            struct TextWordWithBoundaryInternal
+            {
+                std::reference_wrapper<TextWord> word;
+                std::optional<WordBoundary> syntaxWord;
+            };
+            [[nodiscard]] std::optional<TextWordWithBoundaryInternal> getWordAtImpl(QPoint, WithBoundary);
             void calcDesired();
-            void parseForWords(const QStringRef& _text, LinksVisible _showLinks, std::vector<TextWord>& _words, WordType _type = WordType::TEXT);
+            void parseForWords(QStringView _text, LinksVisible _showLinks, std::vector<TextWord>& _words, WordType _type = WordType::TEXT);
             bool parseWordLink(const TextWord& _wordWithLink, std::vector<TextWord>& _words);
             bool parseWordNickImpl(const TextWord& _word, std::vector<TextWord>& _words, const QStringRef& _text);
             bool parseWordNick(const TextWord& _word, std::vector<TextWord>& _words, const QStringRef& _text = QStringRef());
+
+            void correctCommandWord(TextWord _word, std::vector<TextWord>& _words);
 
             std::vector<TextWord> elideWords(const std::vector<TextWord>& _original, int _width, int _desiredWidth, bool _forceElide = false, const ELideType& _type = ELideType::ACCURATE);
 
@@ -598,31 +616,7 @@ namespace Ui
             bool needsEmojiMargin_;
         };
 
-        class DebugInfoTextDrawingBlock : public TextDrawingBlock
-        {
-        public:
-            const qint64 INVALID_MSG_ID = -1;
-
-            enum class Subtype
-            {
-                MessageId = 1,
-            };
-
-        public:
-            explicit DebugInfoTextDrawingBlock(qint64 _id, Subtype _subtype = Subtype::MessageId, LinksVisible _showLinks = LinksVisible::DONT_SHOW_LINKS);
-
-            Subtype getSubtype() const;
-            qint64 getMessageId() const;
-
-        private:
-            void setMessageId(qint64 _id);
-
-        private:
-            Subtype subtype_;
-            qint64 messageId_ = INVALID_MSG_ID;
-        };
-
-        class NewLineBlock : public BaseDrawingBlock
+        class NewLineBlock final : public BaseDrawingBlock
         {
         public:
 
@@ -659,6 +653,8 @@ namespace Ui
             QString getText() const override;
 
             QString getSourceText() const override;
+
+            QString textForInstantEdit() const override;
 
             void clicked(const QPoint& _p) const override;
 
@@ -698,7 +694,8 @@ namespace Ui
 
             void appendWords(const std::vector<TextWord>&) override { };
 
-            std::vector<TextWord> getWords() const override { return { }; }
+            const std::vector<TextWord>& getWords() const override;
+            std::vector<TextWord>& getWords() override;
 
             bool markdownSingle(const QFont&, const QColor&) override { return false; }
 
@@ -720,6 +717,8 @@ namespace Ui
             bool isEmpty() const override { return false; }
 
             bool needsEmojiMargin() const override { return false; }
+
+            void disableCommands() override {}
 
         private:
             QFont font_;
@@ -755,8 +754,12 @@ namespace Ui
         bool isOverLink(const std::vector<BaseDrawingBlockPtr>& _blocks, const QPoint& _p);
 
         QString getBlocksLink(const std::vector<BaseDrawingBlockPtr>& _blocks, const QPoint& _p);
+        [[nodiscard]] std::optional<TextWordWithBoundary> getWord(const std::vector<BaseDrawingBlockPtr>& _blocks, QPoint _p);
+        [[nodiscard]] bool replaceWord(const std::vector<BaseDrawingBlockPtr>& _blocks, const QString& _old, const QString& _new, QPoint _p);
 
         QString getBlocksSelectedText(const std::vector<BaseDrawingBlockPtr>& _blocks, TextType _type = TextType::VISIBLE);
+
+        QString getBlocksTextForInstantEdit(const std::vector<BaseDrawingBlockPtr>& _blocks);
 
         QString getBlocksText(const std::vector<BaseDrawingBlockPtr>& _blocks);
 
@@ -803,5 +806,7 @@ namespace Ui
         int getBlocksMaxLineWidth(const std::vector<BaseDrawingBlockPtr>& _blocks);
 
         void setBlocksHighlightedTextColor(const std::vector<BaseDrawingBlockPtr>& _blocks, const QColor& _color);
+
+        void disableCommandsInBlocks(const std::vector<BaseDrawingBlockPtr>& _blocks);
     }
 }

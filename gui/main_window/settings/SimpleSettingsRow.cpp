@@ -136,9 +136,7 @@ namespace Ui
         const auto iconY = (height() - iconW) / 2;
 
         p.setPen(Qt::NoPen);
-        auto bgColor = Styling::getParameters().getColor(isSelected() ? Styling::StyleVariable::PRIMARY_INVERSE : iconBg_);
-        bgColor.setAlpha(255 * 0.05);
-        p.setBrush(bgColor);
+        p.setBrush(Styling::getParameters().getColor(isSelected() ? Styling::StyleVariable::PRIMARY_INVERSE : iconBg_, 0.05));
         p.drawEllipse(iconX, iconY, iconW, iconW);
 
         const auto pmX = iconX + (iconW - pixmapWidth()) / 2;

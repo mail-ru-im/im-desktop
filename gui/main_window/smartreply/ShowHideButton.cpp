@@ -35,22 +35,16 @@ namespace Ui
         setFixedSize(buttonSize());
         updateTooltipText();
 
-        connect(this, &ClickableWidget::hoverChanged, this, Utils::QOverload<>::of(&ShowHideButton::update));
-        connect(this, &ClickableWidget::pressChanged, this, Utils::QOverload<>::of(&ShowHideButton::update));
+        connect(this, &ClickableWidget::hoverChanged, this, qOverload<>(&ShowHideButton::update));
+        connect(this, &ClickableWidget::pressChanged, this, qOverload<>(&ShowHideButton::update));
     }
 
     void ShowHideButton::updateBackgroundColor(const QColor& _color)
     {
         if (!_color.isValid() || _color.alpha() == 0)
-        {
-            auto color = Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE);
-            color.setAlphaF(getBlurAlpha());
-            bgColor_ = color;
-        }
+            bgColor_ = Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE, getBlurAlpha());
         else
-        {
             bgColor_ = QColor();
-        }
         update();
     }
 
@@ -87,17 +81,23 @@ namespace Ui
     {
         if (bgColor_.isValid())
         {
-            if (isPressed())
-                return Styling::getParameters().getColor(Styling::StyleVariable::GHOST_PRIMARY_INVERSE_ACTIVE);
-            else if (isHovered())
-                return Styling::getParameters().getColor(Styling::StyleVariable::GHOST_PRIMARY_INVERSE_HOVER);
+            if (isEnabled())
+            {
+                if (isPressed())
+                    return Styling::getParameters().getColor(Styling::StyleVariable::GHOST_PRIMARY_INVERSE_ACTIVE);
+                else if (isHovered())
+                    return Styling::getParameters().getColor(Styling::StyleVariable::GHOST_PRIMARY_INVERSE_HOVER);
+            }
             return Styling::getParameters().getColor(Styling::StyleVariable::GHOST_PRIMARY_INVERSE);
         }
 
-        if (isPressed())
-            return Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY_ACTIVE);
-        else if (isHovered())
-            return Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY_HOVER);
+        if (isEnabled())
+        {
+            if (isPressed())
+                return Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY_ACTIVE);
+            else if (isHovered())
+                return Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY_HOVER);
+        }
         return Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY);
     }
 

@@ -19,6 +19,7 @@
 #include "../gui/memory_stats/FFmpegPlayerMemMonitor.h"
 
 #include "previewer/Drawable.h"
+#include "previewer/toast.h"
 
 #ifdef __APPLE__
 #include "utils/macos/mac_support.h"
@@ -127,8 +128,8 @@ namespace Ui
 
             _event->accept();
 
-            emit sliderMoved(value);
-            emit sliderReleased();
+            Q_EMIT sliderMoved(value);
+            Q_EMIT sliderReleased();
         }
 
         QSlider::mousePressEvent(_event);
@@ -138,8 +139,8 @@ namespace Ui
     {
         QSlider::wheelEvent(_event);
 
-        emit sliderMoved(value());
-        emit sliderReleased();
+        Q_EMIT sliderMoved(value());
+        Q_EMIT sliderReleased();
     }
 
     //////////////////////////////////////////////////////////////////////////
@@ -158,7 +159,7 @@ namespace Ui
             lastSoundMode_(_copyFrom ? _copyFrom->lastSoundMode_ : SoundMode::ActiveOff),
             gotAudio_(_copyFrom ? _copyFrom->gotAudio_ : false),
             positionSliderTimer_(new QTimer(this)),
-            fullscreen_(_mode == ql1s("full_screen")),
+            fullscreen_(_mode == u"full_screen"),
             soundOnByUser_(false)
     {
         setProperty("mode", _mode);
@@ -410,7 +411,7 @@ namespace Ui
     void VideoPlayerControlPanel::mouseReleaseEvent(QMouseEvent* _event)
     {
         if (_event->button() == Qt::RightButton && rect().contains(_event->pos()))
-            emit mouseRightClicked();
+            Q_EMIT mouseRightClicked();
 
         QWidget::mouseReleaseEvent(_event);
     }
@@ -517,7 +518,7 @@ namespace Ui
 
         auto font = Fonts::appFontScaled((isFullscreen() ? 18 : 14), Fonts::FontWeight::SemiBold);
         QFontMetrics m(font);
-        timeRight_->setFixedWidth(m.width(getZeroTime(duration_)));
+        timeRight_->setFixedWidth(m.horizontalAdvance(getZeroTime(duration_)));
     }
 
     void VideoPlayerControlPanel::videoPositionChanged(const qint64 _position)
@@ -558,7 +559,7 @@ namespace Ui
                 player_->setPausedByUser(false);
             }
 
-            emit playClicked(_checked);
+            Q_EMIT playClicked(_checked);
         });
 
         connect(volumeSlider_, &QSlider::sliderMoved, this, [this](int _value)
@@ -593,26 +594,26 @@ namespace Ui
         {
             const QString mode = property("mode").toString();
 
-            if (mode != ql1s("dialog"))
+            if (mode != u"dialog")
             {
                 fullscreenButton_->setVisible(false);
                 normalscreenButton_->setVisible(true);
             }
 
-            emit signalFullscreen(true);
+            Q_EMIT signalFullscreen(true);
         });
 
         connect(normalscreenButton_, &QPushButton::clicked, this, [this](bool _checked)
         {
             const QString mode = property("mode").toString();
 
-            if (mode != ql1s("dialog"))
+            if (mode != u"dialog")
             {
                 normalscreenButton_->setVisible(false);
                 fullscreenButton_->setVisible(true);
             }
 
-            emit signalFullscreen(false);
+            Q_EMIT signalFullscreen(false);
         });
 
         connect(_player, &FFMpegPlayer::mediaFinished, this, [this]()
@@ -761,7 +762,7 @@ namespace Ui
         soundButton_->setHoverColor(Qt::white);
     }
 
-    const auto unloadTimeout = 20000;
+    static constexpr auto unloadTimeout = std::chrono::seconds(20);
 
     //////////////////////////////////////////////////////////////////////////
     // DialogPlayer
@@ -1046,6 +1047,11 @@ namespace Ui
         {
             controlPanel_->show();
             controlPanel_->raise();
+            if constexpr (platform::is_apple())
+            {
+                // Fix the toast not receiving mouse events
+                ToastManager::instance()->raiseBottomToastIfPresent();
+            }
         }
         else
         {
@@ -1118,7 +1124,7 @@ namespace Ui
 
             setPausedByUser(_byUser);
 
-            emit paused();
+            Q_EMIT paused();
         }
 
         if (dialogControls_ && !Utils::InterConnector::instance().isMultiselect())
@@ -1236,7 +1242,7 @@ namespace Ui
         connect(dialogControls, &MediaControls::fullscreen, this, [this]()
         {
             isGalleryView_ = !isGalleryView_;
-            emit openGallery();
+            Q_EMIT openGallery();
         });
         connect(dialogControls, &MediaControls::mute, this, &DialogPlayer::setMute);
         connect(dialogControls, &MediaControls::mute, this, [this]() { soundOnByUser_ = true; });
@@ -1272,18 +1278,18 @@ namespace Ui
                 if (isFullScreen())
                 {
                     setPaused(!controlPanel_->isPause(), true);
-                    emit playClicked(controlPanel_->isPause());
+                    Q_EMIT playClicked(controlPanel_->isPause());
                 }
 
                 if (!isGif())
-                    emit mouseClicked();
+                    Q_EMIT mouseClicked();
             }
 
         }
         else if (_event->button() == Qt::RightButton)
         {
             if (rect().contains(_event->pos()))
-                emit mouseRightClicked();
+                Q_EMIT mouseRightClicked();
         }
         QWidget::mouseReleaseEvent(_event);
     }
@@ -1293,7 +1299,7 @@ namespace Ui
         QWidget::mouseDoubleClickEvent(_event);
 
         if (_event->button() == Qt::LeftButton)
-            emit mouseDoubleClicked();
+            Q_EMIT mouseDoubleClicked();
     }
 
     void DialogPlayer::showAsFullscreen()
@@ -1343,7 +1349,7 @@ namespace Ui
 
     void DialogPlayer::fullScreen(const bool _checked)
     {
-        emit fullScreenClicked();
+        Q_EMIT fullScreenClicked();
     }
 
     void DialogPlayer::moveToTop()
@@ -1380,12 +1386,12 @@ namespace Ui
 
     void DialogPlayer::onLoaded()
     {
-        emit loaded();
+        Q_EMIT loaded();
     }
 
     void DialogPlayer::onFirstFrameReady()
     {
-        emit firstFrameReady();
+        Q_EMIT firstFrameReady();
     }
 
     void DialogPlayer::setLoadingState(bool _isLoad)
@@ -1446,6 +1452,10 @@ namespace Ui
             if (dialogControls_)
                 dialogControls_->raise();
         }
+        else
+        {
+            unloadTimer_.stop();
+        }
     }
 
     DialogPlayer* DialogPlayer::getAttachedPlayer() const
@@ -1474,7 +1484,7 @@ namespace Ui
         renderer_->setFillClient(_fill);
     }
 
-    QString DialogPlayer::mediaPath()
+    const QString& DialogPlayer::mediaPath() const
     {
         return mediaPath_;
     }
@@ -1535,7 +1545,7 @@ namespace Ui
 
     void DialogPlayer::wheelEvent(QWheelEvent* _event)
     {
-        emit mouseWheelEvent(_event->angleDelta());
+        Q_EMIT mouseWheelEvent(_event->angleDelta());
 
         QWidget::wheelEvent(_event);
     }
@@ -1561,14 +1571,14 @@ namespace Ui
         else
             renderer = std::make_unique<GDIRenderer>(_parent);
 #else
-        if (_useGPU && (platform::is_apple() || platform::is_windows_vista_or_late()))
+        if (_useGPU && (platform::is_apple() || platform::is_windows()))
         {
 #ifdef __APPLE__
             if (useMetalRenderer())
                 renderer = std::make_unique<MetalRenderer>(_parent);
             else
 #endif
-                if (platform::is_apple())
+                if constexpr (platform::is_apple())
                     renderer = std::make_unique<MacOpenGLRenderer>(_parent);
                 else
                     renderer = std::make_unique<OpenGLRenderer>(_parent);

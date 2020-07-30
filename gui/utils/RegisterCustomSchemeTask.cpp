@@ -13,5 +13,5 @@ void RegisterCustomSchemeTask::run()
     if (platform::is_linux())
         Utils::registerCustomScheme();
 
-    emit finished();
+    Q_EMIT finished();
 }

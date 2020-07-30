@@ -33,16 +33,6 @@ namespace
         return Utils::scale_value(2);
     }
 
-    int badgeTextPadding()
-    {
-        return Utils::scale_value(4);
-    }
-
-    int badgeBorderWidth()
-    {
-        return Utils::scale_value(1);
-    }
-
     int badgeHeight()
     {
         return Utils::scale_value(18);
@@ -51,11 +41,6 @@ namespace
     int badgeOffset()
     {
         return Utils::scale_value(16);
-    }
-
-    QColor itemBackground()
-    {
-        return Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE);
     }
 
     QFont getNameTextFont()
@@ -93,7 +78,7 @@ namespace
 
     QColor badgeTextColor()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT);
+        return Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE);
     }
 
     QColor badgeBalloonColor()
@@ -158,7 +143,7 @@ namespace Ui
                 {
                     {qsl("border"), Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE)},
                     {qsl("bg"), Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_ATTENTION)},
-                    {qsl("star"), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT)},
+                    {qsl("star"), Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE)},
                 },
                 {badgeHeight(), badgeHeight()}) : QPixmap();
             update();
@@ -211,7 +196,7 @@ namespace Ui
 
         if (nameTextUnit_)
         {
-            nameTextUnit_->setOffsets(0, padding + iconSize);
+            nameTextUnit_->setOffsets(0, padding + iconSize + Utils::scale_value(1));
             nameTextUnit_->getHeight(w);
             nameTextUnit_->draw(p);
         }

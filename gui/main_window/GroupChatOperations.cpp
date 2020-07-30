@@ -5,18 +5,23 @@
 #include "contact_list/ContactListModel.h"
 #include "contact_list/CustomAbstractListModel.h"
 #include "contact_list/RecentsModel.h"
-#include "friendly/FriendlyContainer.h"
+#include "containers/FriendlyContainer.h"
 #include "../my_info.h"
 #include "../utils/gui_coll_helper.h"
+#include "../../common.shared/string_utils.h"
 #include "MainPage.h"
 #include "../gui_settings.h"
-#include "contact_list/ContactList.h"
+#include "contact_list/RecentsTab.h"
 #include "contact_list/SelectionContactsForGroupChat.h"
+#include "contact_list/FavoritesUtils.h"
+#include "contact_list/ChatMembersModel.h"
 
 #include "history_control/MessageStyle.h"
+#include "history_control/HistoryControlPage.h"
 #include "../utils/InterConnector.h"
 #include "../utils/gui_metrics.h"
 #include "../utils/utils.h"
+#include "utils/features.h"
 
 #include "../controls/GeneralDialog.h"
 #include "../controls/TextEditEx.h"
@@ -24,19 +29,61 @@
 #include "../controls/SwitcherCheckbox.h"
 #include "MainWindow.h"
 #include "../styles/ThemeParameters.h"
+#include "previewer/toast.h"
 
 namespace
 {
     void switchToContact(const QString& _contact)
     {
-        Logic::getRecentsModel()->moveToTop(_contact);
+        auto switchTo = [](const QString& _aimId)
+        {
+            Logic::getRecentsModel()->moveToTop(_aimId);
 
-        const auto selectedContact = Logic::getContactListModel()->selectedContact();
-        if (selectedContact != _contact)
-            emit Utils::InterConnector::instance().addPageToDialogHistory(selectedContact);
+            const auto selectedContact = Logic::getContactListModel()->selectedContact();
+            if (selectedContact != _aimId)
+                Q_EMIT Utils::InterConnector::instance().addPageToDialogHistory(selectedContact);
 
-        Logic::getContactListModel()->setCurrent(_contact, -1, true);
-        Utils::InterConnector::instance().onSendMessage(_contact);
+            Logic::getContactListModel()->setCurrent(_aimId, -1, true);
+
+            Utils::InterConnector::instance().onSendMessage(_aimId);
+        };
+
+        if (Logic::getRecentsModel()->contains(_contact))
+        {
+            switchTo(_contact);
+        }
+        else
+        {
+            auto connection = std::make_shared<QMetaObject::Connection>();
+            *connection = QObject::connect(Logic::getRecentsModel(), &Logic::RecentsModel::dlgStateChanged, [connection, _contact, switchTo = std::move(switchTo)](const Data::DlgState& _dlgState)
+            {
+                if (_dlgState.AimId_ == _contact)
+                {
+                    switchTo(_contact);
+                    QObject::disconnect(*connection);
+                }
+            });
+        }
+    }
+
+    constexpr auto callTypeToString(Ui::CallType _type) -> std::string_view
+    {
+        switch (_type)
+        {
+        case Ui::CallType::Audio: return std::string_view("Audio");
+        case Ui::CallType::Video: return std::string_view("Video");
+        default: return std::string_view("Unknown");
+        }
+    }
+
+    constexpr auto callPlaceToString(Ui::CallPlace _place) -> std::string_view
+    {
+        switch (_place)
+        {
+        case Ui::CallPlace::Chat: return std::string_view("Chat");
+        case Ui::CallPlace::Profile: return std::string_view("Profile");
+        default: return std::string_view("Unknown");
+        }
     }
 }
 
@@ -66,7 +113,7 @@ namespace Ui
             photo_->SetVisibleShadow(false);
             photo_->SetVisibleSpinner(false);
             photo_->UpdateParams(QString(), QString());
-            Testing::setAccessibleName(photo_, qsl("AS gco photo_"));
+            Testing::setAccessibleName(photo_, qsl("AS GroupAndChannelCreation avatar"));
             subLayout->addWidget(photo_);
 
             chatName_ = new TextEditEx(subContent, Fonts::appFontScaled(18), MessageStyle::getTextColor(), true, true);
@@ -84,10 +131,9 @@ namespace Ui
             chatName_->setMinimumWidth(Utils::scale_value(200));
             chatName_->document()->setDocumentMargin(0);
             chatName_->addSpace(Utils::scale_value(4));
-            Testing::setAccessibleName(chatName_, qsl("AS gco chatName_"));
+            Testing::setAccessibleName(chatName_, qsl("AS GroupAndChannelCreation nameInput"));
             subLayout->addWidget(chatName_);
         }
-        Testing::setAccessibleName(subContent, qsl("AS gco subContent"));
         layout->addWidget(subContent);
 
         // settings
@@ -110,7 +156,6 @@ namespace Ui
                         t->setObjectName(qsl("topic"));
                         t->setContentsMargins(0, 0, 0, 0);
                         t->setContextMenuPolicy(Qt::NoContextMenu);
-                        Testing::setAccessibleName(t, qsl("AS gco t"));
                         textpartlayout->addWidget(t);
                     }
                     {
@@ -120,11 +165,9 @@ namespace Ui
                         t->setContentsMargins(0, 0, 0, 0);
                         t->setContextMenuPolicy(Qt::NoContextMenu);
                         t->setMultiline(true);
-                        Testing::setAccessibleName(t, qsl("AS gco t"));
                         textpartlayout->addWidget(t);
                     }
                 }
-                Testing::setAccessibleName(textpart, qsl("AS gco textpart"));
                 wholelayout->addWidget(textpart);
 
                 auto switchpart = new QWidget(whole);
@@ -135,10 +178,8 @@ namespace Ui
                 {
                     switcher = new SwitcherCheckbox(switchpart);
                     switcher->setChecked(false);
-                    Testing::setAccessibleName(switcher, qsl("AS gco switcher"));
                     switchpartlayout->addWidget(switcher);
                 }
-                Testing::setAccessibleName(switchpart, qsl("AS gco switchpart"));
                 wholelayout->addWidget(switchpart);
             }
             return whole;
@@ -154,7 +195,6 @@ namespace Ui
             approvedJoin->setChecked(chatData.approvedJoin);
             connect(approvedJoin, &SwitcherCheckbox::toggled, approvedJoin, [&chatData](bool checked) { chatData.approvedJoin = checked; });
 
-            Testing::setAccessibleName(approvedJoin, qsl("AS approvedJoin"));
         }
         else
         {
@@ -180,7 +220,6 @@ namespace Ui
                 publicChat));
             publicChat->setChecked(chatData.publicChat);
             connect(publicChat, &SwitcherCheckbox::toggled, publicChat, [&chatData](bool checked) { chatData.publicChat = checked; });
-            Testing::setAccessibleName(publicChat, qsl("AS publicChat"));
         }
 
 
@@ -221,7 +260,6 @@ namespace Ui
                 effect->setOpacity(.0);
                 editor->setGraphicsEffect(effect);
             }
-            Testing::setAccessibleName(editor, qsl("AS gco editor"));
             hollowlayout->addWidget(editor);
 
             // events
@@ -255,21 +293,17 @@ namespace Ui
             connect(dialog_.get(), &GeneralDialog::resized, this, [=](QWidget *p)
             {
                 hollow->setFixedSize(hollow->parentWidget()->width() - dialog_->x() + dialog_->width(), dialog_->height());
-                const auto preferredWidth = (dialog_->parentWidget()->geometry().size().width() - dialog_->geometry().size().width() - Utils::scale_value(24)*4);
-                //photo_->SetImageCropSize(QSize(preferredWidth, content_->height()));
             }, Qt::QueuedConnection);
             connect(dialog_.get(), &GeneralDialog::hidden, this, [=](QWidget *p)
             {
-                emit Utils::InterConnector::instance().closeAnyPopupWindow(Utils::CloseWindowInfo());
-                emit Utils::InterConnector::instance().closeAnySemitransparentWindow(Utils::CloseWindowInfo());
+                Q_EMIT Utils::InterConnector::instance().closeAnyPopupWindow(Utils::CloseWindowInfo());
+                Q_EMIT Utils::InterConnector::instance().closeAnySemitransparentWindow(Utils::CloseWindowInfo());
             }, Qt::QueuedConnection);
         }
         hollow->show();
 
-        Testing::setAccessibleName(content_, qsl("AS content_"));
-        Testing::setAccessibleName(subContent, qsl("AS subContent"));
-        Testing::setAccessibleName(chatName_, qsl("AS chatName_"));
-        Testing::setAccessibleName(hollow, qsl("AS hollow"));
+        Testing::setAccessibleName(content_, qsl("AS GroupAndChannelCreation content"));
+        Testing::setAccessibleName(subContent, qsl("AS GroupAndChannelCreation subContent"));
     }
 
     GroupChatSettings::~GroupChatSettings()
@@ -364,6 +398,24 @@ namespace Ui
             dialog_->accept();
     }
 
+    void createGroupVideoCall()
+    {
+        SelectContactsWidget select_members_dialog(nullptr, Logic::MembersWidgetRegim::SELECT_MEMBERS, QT_TRANSLATE_NOOP("popup_window", "Start group video call"), QT_TRANSLATE_NOOP("popup_window", "Start"), Ui::MainPage::instance(), true, nullptr, false, false, false);
+
+        const auto action = select_members_dialog.show();
+        const auto selectedContacts = Logic::getContactListModel()->getCheckedContacts();
+        Logic::getContactListModel()->clearCheckedItems();
+        Logic::getContactListModel()->removeTemporaryContactsFromModel();
+
+        if (action == QDialog::Accepted && !selectedContacts.empty())
+        {
+            const auto started = Ui::GetDispatcher()->getVoipController().setStartCall(selectedContacts, true, false);
+            auto mainPage = MainPage::instance();
+            if (mainPage && started)
+                mainPage->raiseVideoWindow(voip_call_type::video_call);
+        }
+    }
+
     void createGroupChat(const std::vector<QString>& _members_aimIds, const CreateChatSource _source)
     {
         if (_source != CreateChatSource::profile)
@@ -372,11 +424,11 @@ namespace Ui
         SelectContactsWidget select_members_dialog(nullptr, Logic::MembersWidgetRegim::SELECT_MEMBERS, QT_TRANSLATE_NOOP("contact_list", "Create group"), QT_TRANSLATE_NOOP("popup_window", "Create"), Ui::MainPage::instance(), true, nullptr, false, true, false);
 
         for (const auto& member_aimId : _members_aimIds)
-            Logic::getContactListModel()->setChecked(member_aimId, true /* is_checked */);
+            Logic::getContactListModel()->setCheckedItem(member_aimId, true /* is_checked */);
 
         if (select_members_dialog.show() == QDialog::Accepted)
         {
-            const auto selectedContacts = Logic::getContactListModel()->GetCheckedContacts();
+            const auto selectedContacts = Logic::getContactListModel()->getCheckedContacts();
             if (selectedContacts.empty())
             {
                 auto confirm = Utils::GetConfirmationWithTwoButtons(
@@ -415,7 +467,8 @@ namespace Ui
 
                     postCreateChatInfoToCore(MyInfo()->aimId(), chatData, avatarId);
 
-                    Logic::getContactListModel()->clearChecked();
+                    Logic::getContactListModel()->clearCheckedItems();
+                    Logic::getContactListModel()->removeTemporaryContactsFromModel();
 
                     Ui::MainPage::instance()->clearSearchMembers();
 
@@ -428,9 +481,14 @@ namespace Ui
             {
                 Ui::MainPage::instance()->openCreatedGroupChat();
                 postCreateChatInfoToCore(MyInfo()->aimId(), chatData);
-                Logic::getContactListModel()->clearChecked();
+                Logic::getContactListModel()->clearCheckedItems();
+                Logic::getContactListModel()->removeTemporaryContactsFromModel();
                 Ui::MainPage::instance()->clearSearchMembers();
             }
+        }
+        else
+        {
+            Logic::getContactListModel()->removeTemporaryContactsFromModel();
         }
     }
 
@@ -469,7 +527,7 @@ namespace Ui
 
     bool callChatNameEditor(QWidget* _parent, GroupChatOperations::ChatData &chatData, Out std::shared_ptr<GroupChatSettings> &groupChatSettings, bool _channel)
     {
-        const auto selectedContacts = Logic::getContactListModel()->GetCheckedContacts();
+        const auto selectedContacts = Logic::getContactListModel()->getCheckedContacts();
         chatData.name = MyInfo()->friendly();
         chatData.isChannel = _channel;
         if (chatData.name.isEmpty())
@@ -502,7 +560,7 @@ namespace Ui
         collection.set_value_as_qstring("name", chatData.name);
         collection.set_value_as_qstring("avatar", avatarId);
         {
-            const auto selectedContacts = Logic::getContactListModel()->GetCheckedContacts();
+            const auto selectedContacts = Logic::getContactListModel()->getCheckedContacts();
             core::ifptr<core::iarray> members_array(collection->create_array());
             members_array->reserve(static_cast<int>(selectedContacts.size()));
             for (const auto& contact : selectedContacts)
@@ -519,8 +577,9 @@ namespace Ui
 
     void postAddChatMembersFromCLModelToCore(const QString& _aimId)
     {
-        const auto selectedContacts = Logic::getContactListModel()->GetCheckedContacts();
-        Logic::getContactListModel()->clearChecked();
+        const auto selectedContacts = Logic::getContactListModel()->getCheckedContacts();
+        Logic::getContactListModel()->clearCheckedItems();
+        Logic::getContactListModel()->removeTemporaryContactsFromModel();
 
         Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
 
@@ -579,7 +638,7 @@ namespace Ui
             }
             else if (isVideoConference)
             {
-                Ui::GetDispatcher()->getVoipController().setDecline(_memberAimId.toStdString().c_str(), false, true);
+                Ui::GetDispatcher()->getVoipController().setDecline("" , _memberAimId.toStdString().c_str(), false, true);
             }
         }
     }
@@ -588,9 +647,7 @@ namespace Ui
 
     int forwardMessage(const Data::QuotesVec& quotes, bool fromMenu, const QString& _labelText, const QString& _buttonText, bool _enableAuthorSetting)
     {
-        auto result = 0;
         statistic::getGuiMetrics().eventStartForward();
-
 
         auto labelText = _labelText;
         if (labelText.isEmpty())
@@ -603,21 +660,26 @@ namespace Ui
         auto shareDialog = std::make_unique<SelectContactsWidget>(nullptr, Logic::MembersWidgetRegim::SHARE,
                                              labelText, buttonText, Ui::MainPage::instance(), true, nullptr, _enableAuthorSetting);
 
-        QString chatId = quotes.isEmpty() ? QString() : quotes.first().chatId_;
+        if (_enableAuthorSetting)
+        {
+            QString chatId = quotes.isEmpty() ? QString() : quotes.first().chatId_;
 
-        if (Utils::isChat(chatId))
-        {
-            const bool allSendersEqualToChat = std::all_of(quotes.begin(), quotes.end(), [&chatId](const auto & q) { return q.senderId_ == chatId; });
-            if (allSendersEqualToChat)
-                shareDialog->setAuthorWidgetMode(AuthorWidget::Mode::Channel);
+            if (Utils::isChat(chatId))
+            {
+                const bool allSendersEqualToChat = std::all_of(quotes.begin(), quotes.end(), [&chatId](const auto& q) { return q.senderId_ == chatId; });
+                if (allSendersEqualToChat)
+                    shareDialog->setAuthorWidgetMode(AuthorWidget::Mode::Channel);
+                else
+                    shareDialog->setAuthorWidgetMode(AuthorWidget::Mode::Group);
+            }
             else
-                shareDialog->setAuthorWidgetMode(AuthorWidget::Mode::Group);
+            {
+                shareDialog->setAuthorWidgetMode(AuthorWidget::Mode::Contact);
+            }
+
+            if (!chatId.isEmpty())
+                shareDialog->setChatName(Logic::GetFriendlyContainer()->getFriendly(chatId));
         }
-        else
-        {
-            shareDialog->setAuthorWidgetMode(AuthorWidget::Mode::Contact);
-        }
-        shareDialog->setChatName(Logic::GetFriendlyContainer()->getFriendly(chatId));
 
         QSet<QString> authors;
         authors.reserve(quotes.size());
@@ -628,9 +690,12 @@ namespace Ui
         statistic::getGuiMetrics().eventForwardLoaded();
 
         const auto action = shareDialog->show();
+        const auto selectedContacts = Logic::getContactListModel()->getCheckedContacts();
+        Logic::getContactListModel()->removeTemporaryContactsFromModel();
+
+        auto result = 0;
         if (action == QDialog::Accepted)
         {
-            const auto selectedContacts = Logic::getContactListModel()->GetCheckedContacts();
             result = selectedContacts.size();
 
             const auto onlyOne = selectedContacts.size() == 1;
@@ -638,126 +703,21 @@ namespace Ui
 
             if (!selectedContacts.empty())
             {
-                if (shareDialog->isAuthorsEnabled() && _enableAuthorSetting)
-                {
-                    Ui::gui_coll_helper  collection(Ui::GetDispatcher()->create_collection(), true);
-                    core::ifptr<core::iarray> contactsArray(collection->create_array());
-                    contactsArray->reserve(selectedContacts.size());
-                    for (const auto& contact : selectedContacts)
-                        contactsArray->push_back(collection.create_qstring_value(contact).get());
-                    collection.set_value_as_array("contacts", contactsArray.get());
-                    collection.set_value_as_string("message", std::string());
-                    if (!quotes.isEmpty())
-                    {
-                        core::ifptr<core::iarray> quotesArray(collection->create_array());
-                        quotesArray->reserve(quotes.size());
-
-                        Data::MentionMap mentions;
-
-                        for (auto quote : quotes)
-                        {
-                            mentions.insert(quote.mentions_.begin(), quote.mentions_.end());
-
-                            core::ifptr<core::icollection> quoteCollection(collection->create_collection());
-                            quote.isForward_ = true;
-                            quote.text_ = Utils::replaceFilesPlaceholders(quote.text_, quote.files_);
-                            quote.serialize(quoteCollection.get());
-                            core::coll_helper coll(collection->create_collection(), true);
-                            core::ifptr<core::ivalue> val(collection->create_value());
-                            val->set_as_collection(quoteCollection.get());
-                            quotesArray->push_back(val.get());
-                        }
-                        collection.set_value_as_array("quotes", quotesArray.get());
-
-                        if (!mentions.empty())
-                        {
-                            core::ifptr<core::iarray> mentArray(collection->create_array());
-                            mentArray->reserve(mentions.size());
-                            for (const auto& [aimid, friendly]: mentions)
-                            {
-                                core::ifptr<core::icollection> mentCollection(collection->create_collection());
-                                Ui::gui_coll_helper coll(mentCollection.get(), false);
-                                coll.set_value_as_qstring("aimid", aimid);
-                                coll.set_value_as_qstring("friendly", friendly);
-
-                                core::ifptr<core::ivalue> val(collection->create_value());
-                                val->set_as_collection(mentCollection.get());
-                                mentArray->push_back(val.get());
-                            }
-                            collection.set_value_as_array("mentions", mentArray.get());
-                        }
-                    }
-
-                    Ui::GetDispatcher()->post_message_to_core("send_message", collection.get());
-                }
-                else
-                {
-                    for (auto quote : quotes)
-                    {
-                        Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
-                        core::ifptr<core::iarray> contactsArray(collection->create_array());
-                        contactsArray->reserve(selectedContacts.size());
-                        for (const auto& contact : selectedContacts)
-                            contactsArray->push_back(collection.create_qstring_value(contact).get());
-                        collection.set_value_as_array("contacts", contactsArray.get());
-
-                        Data::MentionMap mentions;
-                        mentions.insert(quote.mentions_.begin(), quote.mentions_.end());
-
-                        if (!mentions.empty())
-                        {
-                            core::ifptr<core::iarray> mentArray(collection->create_array());
-                            mentArray->reserve(mentions.size());
-                            for (const auto&[aimid, friendly] : mentions)
-                            {
-                                core::ifptr<core::icollection> mentCollection(collection->create_collection());
-                                Ui::gui_coll_helper coll(mentCollection.get(), false);
-                                coll.set_value_as_qstring("aimid", aimid);
-                                coll.set_value_as_qstring("friendly", friendly);
-
-                                core::ifptr<core::ivalue> val(collection->create_value());
-                                val->set_as_collection(mentCollection.get());
-                                mentArray->push_back(val.get());
-                            }
-                            collection.set_value_as_array("mentions", mentArray.get());
-                        }
-
-                        if (quote.isSticker())
-                        {
-                            collection.set_value_as_bool("sticker", true);
-                            collection.set_value_as_int("sticker/set_id", quote.setId_);
-                            collection.set_value_as_int("sticker/id", quote.stickerId_);
-                        }
-                        else
-                        {
-                            collection.set_value_as_qstring("message", Utils::replaceFilesPlaceholders(quote.text_, quote.files_));
-                        }
-
-                        if (quote.sharedContact_)
-                            quote.sharedContact_->serialize(collection.get());
-
-                        if (quote.geo_)
-                            quote.geo_->serialize(collection.get());
-
-                        if (quote.poll_)
-                            quote.poll_->serialize(collection.get());
-
-                        collection.set_value_as_qstring("url", quote.url_);
-                        collection.set_value_as_qstring("description", quote.description_);
-
-                        Ui::GetDispatcher()->post_message_to_core("send_message", collection.get());
-                    }
-                }
-
-                Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::forward_messagescount, { { "Forward_MessagesCount", std::to_string(quotes.size()) } });
+                const auto authorMode = shareDialog->isAuthorsEnabled() && _enableAuthorSetting ? ForwardWithAuthor::Yes : ForwardWithAuthor::No;
+                sendForwardedMessages(quotes, selectedContacts, authorMode, ForwardSeparately::No);
 
                 Ui::GetDispatcher()->post_stats_to_core(fromMenu ? core::stats::stats_event_names::forward_send_frommenu : core::stats::stats_event_names::forward_send_frombutton);
 
                 if (onlyOne)
-                    switchToContact(first);
+                {
+                    if (Favorites::isFavorites(first))
+                        Favorites::showSavedToast(quotes.size());
+                    else
+                        switchToContact(first);
+                }
             }
-            Logic::getContactListModel()->clearChecked();
-            emit Utils::InterConnector::instance().closeAnyPopupWindow(Utils::CloseWindowInfo());
+            Logic::getContactListModel()->clearCheckedItems();
+            Q_EMIT Utils::InterConnector::instance().closeAnyPopupWindow(Utils::CloseWindowInfo());
         }
 
         return result;
@@ -789,7 +749,7 @@ namespace Ui
 
         Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::profilescr_sharecontact_action);
 
-        emit Utils::InterConnector::instance().closeAnyPopupWindow(Utils::CloseWindowInfo());
+        Q_EMIT Utils::InterConnector::instance().closeAnyPopupWindow(Utils::CloseWindowInfo());
     }
 
     int forwardMessage(const QString& _message, const QString& _labelText, const QString& _buttonText, bool _enableAuthorSetting)
@@ -813,9 +773,11 @@ namespace Ui
                                                                   QT_TRANSLATE_NOOP("popup_window", "Share"), QT_TRANSLATE_NOOP("popup_window", "Send"), Ui::MainPage::instance(), true, nullptr);
 
         const auto action = shareDialog->show();
+        const auto selectedContacts = Logic::getContactListModel()->getCheckedContacts();
+        Logic::getContactListModel()->removeTemporaryContactsFromModel();
+
         if (action == QDialog::Accepted)
         {
-            const auto selectedContacts = Logic::getContactListModel()->GetCheckedContacts();
             const auto onlyOne = selectedContacts.size() == 1;
             const auto first = onlyOne ? selectedContacts.front() : QString();
 
@@ -827,7 +789,6 @@ namespace Ui
                     switchToContact(selectedContacts.front());
             }
         }
-
     }
 
     void sharePhone(const QString& _name, const QString& _phone, const std::vector<QString>& _selectedContacts, const QString& _aimid, const Data::QuotesVec& _quotes)
@@ -856,4 +817,227 @@ namespace Ui
         Ui::GetDispatcher()->post_message_to_core("send_message", collection.get());
     }
 
+    void sendForwardedMessages(const Data::QuotesVec& _quotes, std::vector<QString> _contacts, ForwardWithAuthor _forwardWithAuthor, ForwardSeparately _forwardSeparately)
+    {
+        if (_forwardWithAuthor == ForwardWithAuthor::Yes)
+        {
+            auto createCollection = []()
+            {
+                Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
+                collection.set_value_as_string("message", std::string());
+
+                return collection;
+            };
+
+            auto serializeMentions = [](Ui::gui_coll_helper& _helper, const Data::MentionMap& _mentions)
+            {
+                if (_mentions.empty())
+                    return;
+
+                core::ifptr<core::iarray> mentArray(_helper->create_array());
+                mentArray->reserve(_mentions.size());
+                for (const auto& [aimid, friendly]: _mentions)
+                {
+                    core::ifptr<core::icollection> mentCollection(_helper->create_collection());
+                    Ui::gui_coll_helper coll(mentCollection.get(), false);
+                    coll.set_value_as_qstring("aimid", aimid);
+                    coll.set_value_as_qstring("friendly", friendly);
+
+                    core::ifptr<core::ivalue> val(_helper->create_value());
+                    val->set_as_collection(mentCollection.get());
+                    mentArray->push_back(val.get());
+                }
+
+                _helper.set_value_as_array("mentions", mentArray.get());
+            };
+
+            auto collection = createCollection();
+
+            core::ifptr<core::iarray> contactsArray(collection->create_array());
+            contactsArray->reserve(_contacts.size());
+
+            for (const auto& contact : _contacts)
+                contactsArray->push_back(collection.create_qstring_value(contact).get());
+
+            collection.set_value_as_array("contacts", contactsArray.get());
+
+            if (!_quotes.isEmpty())
+            {
+                core::ifptr<core::iarray> quotesArray(collection->create_array());
+                quotesArray->reserve(_quotes.size());
+
+                Data::MentionMap mentions;
+
+                for (auto quote : _quotes)
+                {
+                    mentions.insert(quote.mentions_.begin(), quote.mentions_.end());
+
+                    core::ifptr<core::icollection> quoteCollection(collection->create_collection());
+                    quote.isForward_ = true;
+                    quote.text_ = Utils::replaceFilesPlaceholders(quote.text_, quote.files_);
+                    quote.serialize(quoteCollection.get());
+                    core::ifptr<core::ivalue> val(collection->create_value());
+                    val->set_as_collection(quoteCollection.get());
+                    quotesArray->push_back(val.get());
+
+
+                    if (_forwardSeparately == ForwardSeparately::Yes)
+                    {
+                        serializeMentions(collection, quote.mentions_);
+                        core::ifptr<core::iarray> quotesArray(collection->create_array());
+                        quotesArray->push_back(val.get());
+                        collection.set_value_as_array("quotes", quotesArray.get());
+                        Ui::GetDispatcher()->post_message_to_core("send_message", collection.get());
+
+                        collection = createCollection();
+                        collection.set_value_as_array("contacts", contactsArray.get());
+                    }
+                }
+
+                if (_forwardSeparately == ForwardSeparately::No)
+                {
+                    collection.set_value_as_array("quotes", quotesArray.get());
+                    serializeMentions(collection, mentions);
+                }
+            }
+
+            if (_forwardSeparately == ForwardSeparately::No)
+                Ui::GetDispatcher()->post_message_to_core("send_message", collection.get());
+        }
+        else
+        {
+            for (auto quote : _quotes)
+            {
+                Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
+                core::ifptr<core::iarray> contactsArray(collection->create_array());
+                contactsArray->reserve(_contacts.size());
+                for (const auto& contact : _contacts)
+                    contactsArray->push_back(collection.create_qstring_value(contact).get());
+                collection.set_value_as_array("contacts", contactsArray.get());
+
+                Data::MentionMap mentions;
+                mentions.insert(quote.mentions_.begin(), quote.mentions_.end());
+
+                if (!mentions.empty())
+                {
+                    core::ifptr<core::iarray> mentArray(collection->create_array());
+                    mentArray->reserve(mentions.size());
+                    for (const auto&[aimid, friendly] : mentions)
+                    {
+                        core::ifptr<core::icollection> mentCollection(collection->create_collection());
+                        Ui::gui_coll_helper coll(mentCollection.get(), false);
+                        coll.set_value_as_qstring("aimid", aimid);
+                        coll.set_value_as_qstring("friendly", friendly);
+
+                        core::ifptr<core::ivalue> val(collection->create_value());
+                        val->set_as_collection(mentCollection.get());
+                        mentArray->push_back(val.get());
+                    }
+                    collection.set_value_as_array("mentions", mentArray.get());
+                }
+
+                if (quote.isSticker())
+                {
+                    collection.set_value_as_bool("sticker", true);
+                    collection.set_value_as_int("sticker/set_id", quote.setId_);
+                    collection.set_value_as_int("sticker/id", quote.stickerId_);
+                }
+                else
+                {
+                    collection.set_value_as_qstring("message", Utils::replaceFilesPlaceholders(quote.text_, quote.files_));
+                }
+
+                if (quote.sharedContact_)
+                    quote.sharedContact_->serialize(collection.get());
+
+                if (quote.geo_)
+                    quote.geo_->serialize(collection.get());
+
+                if (quote.poll_)
+                    quote.poll_->serialize(collection.get());
+
+                collection.set_value_as_qstring("url", quote.url_);
+                collection.set_value_as_qstring("description", quote.description_);
+
+                Ui::GetDispatcher()->post_message_to_core("send_message", collection.get());
+            }
+        }
+
+        Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::forward_messagescount, { { "Forward_MessagesCount", std::to_string(_quotes.size()) } });
+    }
+
+    bool selectChatMembers(const QString& _aimId, const QString& _title, const QString& _buttonName, ChatMembersShowMode _mode, std::vector<QString>& _contacts)
+    {
+        auto membersModel = new Logic::ChatMembersModel(nullptr);
+        membersModel->setAimId(_aimId);
+
+        if (_mode == ChatMembersShowMode::WithoutMe)
+            membersModel->addIgnoredMember(Ui::MyInfo()->aimId());
+
+        const auto maxMembersToAdd = Ui::GetDispatcher()->getVoipController().maxVideoConferenceMembers() - 1
+            - Ui::GetDispatcher()->getVoipController().currentCallContacts().size();
+        assert(maxMembersToAdd >= 0);
+
+        membersModel->setCheckedFirstMembers(maxMembersToAdd);
+        membersModel->loadAllMembers();
+
+        auto selectChatMembers = std::make_unique<SelectContactsWidget>(membersModel, Logic::MembersWidgetRegim::SELECT_CHAT_MEMBERS, _title, _buttonName, nullptr);
+        selectChatMembers->setMaximumSelectedCount(maxMembersToAdd);
+
+        const auto accepted = (selectChatMembers->show() == QDialog::Accepted);
+        if (accepted)
+            _contacts = membersModel->getCheckedMembers();
+
+        Q_EMIT Utils::InterConnector::instance().updateActiveChatMembersModel(_aimId);
+
+        return accepted;
+    }
+
+    void doVoipCall(const QString& _aimId, CallType _type, CallPlace _place)
+    {
+        std::vector<QString> contacts = { _aimId };
+        const auto isVideoCall = (_type == CallType::Video);
+        const auto isChat = Utils::isChat(_aimId);
+
+        auto page = Utils::InterConnector::instance().getHistoryPage(_aimId);
+        const auto joinChatRoom = page && page->chatRoomCallParticipantsCount() > 0;
+
+        if (isChat && !joinChatRoom)
+        {
+            const QString title = isVideoCall ? QT_TRANSLATE_NOOP("popup_window", "Start group video call") : QT_TRANSLATE_NOOP("popup_window", "Start group call");
+            if (!selectChatMembers(_aimId, title, QT_TRANSLATE_NOOP("popup_window", "Call"), ChatMembersShowMode::WithoutMe, contacts))
+                return;
+        }
+
+        const auto typeStr = std::string(callTypeToString(_type));
+        const auto placeStr = std::string(callPlaceToString(_place));
+        const auto whereStr = su::concat(placeStr, typeStr);
+
+        auto callStarted = false;
+
+        if (isChat && Features::callRoomInfoEnabled())
+        {
+            if (!joinChatRoom)
+                callStarted = Ui::GetDispatcher()->getVoipController().setStartChatRoomCall(_aimId, contacts, isVideoCall);
+            else
+                callStarted = Ui::GetDispatcher()->getVoipController().setStartChatRoomCall(_aimId, isVideoCall);
+        }
+        else
+        {
+            callStarted = Ui::GetDispatcher()->getVoipController().setStartCall(contacts, isVideoCall, false, whereStr.c_str());
+        }
+
+        auto mainPage = MainPage::instance();
+        if (mainPage && callStarted)
+            mainPage->raiseVideoWindow(isVideoCall ? voip_call_type::video_call : voip_call_type::audio_call);
+
+        const auto eventCallType = isVideoCall ? core::stats::stats_event_names::call_video : core::stats::stats_event_names::call_audio;
+        GetDispatcher()->post_stats_to_core(eventCallType, { { "From", placeStr } });
+
+        if (!Utils::isChat(_aimId) && Logic::getRecentsModel()->isSuspicious(_aimId))
+            GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::chat_unknown_call, { { "From", placeStr }, { "Type", typeStr } });
+
+        if (_place == CallPlace::Profile)
+            GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::profilescr_call_action, { { "chat_type", "chat" } , { "type", typeStr } });
+    }
 }

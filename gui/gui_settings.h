@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../corelib/collection_helper.h"
+#include "utils/StringComparator.h"
 
 namespace Ui
 {
@@ -26,7 +27,7 @@ Q_SIGNALS:
             std::vector<char> data_;
         };
 
-        std::map<QString, settings_value, StringComparator>   values_;
+        std::map<QString, settings_value, Utils::StringComparator>   values_;
 
         void post_value_to_core(const QString& _name, const settings_value& _val) const;
 
@@ -46,7 +47,7 @@ Q_SIGNALS:
             if (_postToCore)
                 post_value_to_core(_name, val);
 
-            emit changed(_name);
+            Q_EMIT changed(_name);
         }
 
         template <class t_>
@@ -100,7 +101,13 @@ Q_SIGNALS:
         }
 
         template <class t_>
-        t_ get_value(const QString& _name, const t_& _defaultValue) const
+        void set_value(const char* _name, const t_& _value, const QString& _prefix)
+        {
+            set_value(_prefix + QString::fromLatin1(_name), _value);
+        }
+
+        template <class t_>
+        t_ get_value(QStringView _name, const t_& _defaultValue) const
         {
             assert(false);
             return _defaultValue;
@@ -111,6 +118,12 @@ Q_SIGNALS:
         {
             assert(false);
             return _defaultValue;
+        }
+
+        template <class t_>
+        t_ get_value(const char* _name, const t_& _defaultValue, const QString& _prefix) const
+        {
+            return get_value(_prefix + QString::fromLatin1(_name), _defaultValue);
         }
 
         template <class t_>
@@ -128,6 +141,7 @@ Q_SIGNALS:
         qt_gui_settings();
 
         void unserialize(core::coll_helper _collection);
+        void clear();
 
         void set_shadow_width(int _width);
         int get_shadow_width() const;
@@ -138,28 +152,28 @@ Q_SIGNALS:
     };
 
     template<> void qt_gui_settings::set_value<QString>(const QString& _name, const QString& _value);
-    template<> QString qt_gui_settings::get_value<QString>(const QString& _name, const QString& _defaultValue) const;
+    template<> QString qt_gui_settings::get_value<QString>(QStringView _name, const QString& _defaultValue) const;
     template<> QString qt_gui_settings::get_value<QString>(const char* _name, const QString& _defaultValue) const;
     template<> void qt_gui_settings::set_value<std::string>(const QString& _name, const std::string& _value);
     template<> std::string qt_gui_settings::get_value<std::string>(const char* _name, const std::string& _defaultValue) const;
     template<> void qt_gui_settings::set_value<int>(const QString& _name, const int& _value);
-    template <> int qt_gui_settings::get_value<int>(const QString& _name, const int& _defaultValue) const;
+    template <> int qt_gui_settings::get_value<int>(QStringView _name, const int& _defaultValue) const;
     template <> int qt_gui_settings::get_value<int>(const char* _name, const int& _defaultValue) const;
     template<> void qt_gui_settings::set_value<double>(const QString& _name, const double& _value);
-    template <> double qt_gui_settings::get_value<double>(const QString& _name, const double& _defaultValue) const;
+    template <> double qt_gui_settings::get_value<double>(QStringView _name, const double& _defaultValue) const;
     template <> double qt_gui_settings::get_value<double>(const char* _name, const double& _defaultValue) const;
     template<> void qt_gui_settings::set_value<bool>(const QString& _name, const bool& _value);
-    template <> bool qt_gui_settings::get_value<bool>(const QString& _name, const bool& _defaultValue) const;
+    template <> bool qt_gui_settings::get_value<bool>(QStringView _name, const bool& _defaultValue) const;
     template <> bool qt_gui_settings::get_value<bool>(const char* _name, const bool& _defaultValue) const;
     template<> void qt_gui_settings::set_value<std::vector<int32_t>>(const QString& _name, const std::vector<int32_t>& _value);
-    template<> std::vector<int32_t> qt_gui_settings::get_value<std::vector<int32_t>>(const QString& _name, const std::vector<int32_t>& _defaultValue) const;
+    template<> std::vector<int32_t> qt_gui_settings::get_value<std::vector<int32_t>>(QStringView _name, const std::vector<int32_t>& _defaultValue) const;
     template<> std::vector<int32_t> qt_gui_settings::get_value<std::vector<int32_t>>(const char* _name, const std::vector<int32_t>& _defaultValue) const;
     template<> void qt_gui_settings::set_value<QRect>(const QString& _name, const QRect& _value);
-    template<> QRect qt_gui_settings::get_value<QRect>(const QString& _name, const QRect& _defaultValue) const;
+    template<> QRect qt_gui_settings::get_value<QRect>(QStringView _name, const QRect& _defaultValue) const;
     template<> QRect qt_gui_settings::get_value<QRect>(const char* _name, const QRect& _defaultValue) const;
     template<> void qt_gui_settings::set_value<qt_gui_settings::VoipCallsCountMap>(const QString& _name, const qt_gui_settings::VoipCallsCountMap& _value);
-    template<> qt_gui_settings::VoipCallsCountMap qt_gui_settings::get_value<qt_gui_settings::VoipCallsCountMap>(const QString& _name, const qt_gui_settings::VoipCallsCountMap& _default) const;
-    template<> std::map<int64_t, int64_t> qt_gui_settings::get_value<std::map<int64_t, int64_t>>(const QString &_name, const std::map<int64_t, int64_t>& _def) const;
+    template<> qt_gui_settings::VoipCallsCountMap qt_gui_settings::get_value<qt_gui_settings::VoipCallsCountMap>(QStringView _name, const qt_gui_settings::VoipCallsCountMap& _default) const;
+    template<> std::map<int64_t, int64_t> qt_gui_settings::get_value<std::map<int64_t, int64_t>>(QStringView _name, const std::map<int64_t, int64_t>& _def) const;
     template<> void qt_gui_settings::set_value<std::map<int64_t, int64_t>>(const QString& _name, const std::map<int64_t, int64_t>& _value);
 
     qt_gui_settings* get_gui_settings();

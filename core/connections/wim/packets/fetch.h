@@ -23,6 +23,7 @@ namespace core
             none,
             relogin_with_error,
             relogin_without_error,
+            relogin_with_cleanup,
         };
 
         class fetch : public wim_packet
@@ -33,10 +34,10 @@ namespace core
             timepoint fetch_time_;
             relogin relogin_;
 
-            virtual int32_t init_request(std::shared_ptr<core::http_request_simple> request) override;
+            virtual int32_t init_request(const std::shared_ptr<core::http_request_simple>& request) override;
             virtual int32_t parse_response_data(const rapidjson::Value& _data) override;
             virtual int32_t on_response_error_code() override;
-            virtual int32_t execute_request(std::shared_ptr<core::http_request_simple> request) override;
+            virtual int32_t execute_request(const std::shared_ptr<core::http_request_simple>& request) override;
 
             void on_session_ended(const rapidjson::Value& _data);
 
@@ -53,9 +54,10 @@ namespace core
             long long timezone_offset_;
             const bool hidden_;
             int32_t events_count_;
-            std::string my_aimid_;
             std::chrono::seconds next_fetch_timeout_;
             const std::vector<smartreply::type> suggest_types_;
+            bool hotstart_;
+            bool hotstart_complete_;
 
         public:
 
@@ -70,9 +72,9 @@ namespace core
             std::chrono::milliseconds timeout() const noexcept { return timeout_; }
             double get_request_time() const noexcept { return request_time_; }
             long long get_timezone_offset() const noexcept { return timezone_offset_; }
-            relogin need_relogin() const;
-            int32_t get_events_count() const;
-
+            relogin need_relogin() const noexcept { return relogin_; };
+            int32_t get_events_count() const noexcept { return events_count_; }
+            bool is_hotstart_complete() const noexcept { return hotstart_complete_; }
 
             std::shared_ptr<core::wim::fetch_event> push_event(std::shared_ptr<core::wim::fetch_event> _event);
             std::shared_ptr<core::wim::fetch_event> pop_event();
@@ -84,6 +86,8 @@ namespace core
                 const bool _hidden,
                 std::function<bool(std::chrono::milliseconds)> _wait_function);
             virtual ~fetch();
+
+            virtual priority_t get_priority() const override;
         };
 
     }

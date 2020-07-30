@@ -25,7 +25,7 @@ namespace Ui
             static std::map<QFont, double> spaces;
             auto width = spaces.find(_font);
             if (width == spaces.end())
-                width = spaces.insert({ _font, textWidth(_font, qsl(" ")) }).first;
+                width = spaces.insert({ _font, textWidth(_font, spaceAsString()) }).first;
 
             return width->second;
         }
@@ -65,7 +65,7 @@ namespace Ui
             return Styling::getThemesContainer().getCurrentTheme()->isLinksUnderlined();
         }
 
-        EmojiScale getEmojiScale(const int _emojiCount)
+        constexpr EmojiScale getEmojiScale(const int _emojiCount) noexcept
         {
             switch (_emojiCount)
             {
@@ -76,50 +76,70 @@ namespace Ui
             case 3:
                 return Ui::TextRendering::EmojiScale::REGULAR;
             default:
-                return Ui::TextRendering::EmojiScale::NORMAL;
+                break;
             }
+
+            return Ui::TextRendering::EmojiScale::NORMAL;
         }
 
-        int emojiHeight(const QFont& _font, const int _emojiCount)
+        constexpr int emojiHeight(int _emojiCount) noexcept
         {
-            int height = textHeight(_font) + Utils::scale_value(1);
-
-            const Ui::TextRendering::EmojiScale _scale = getEmojiScale(_emojiCount);
-
-            switch (_scale)
+            switch (getEmojiScale(_emojiCount))
             {
             case Ui::TextRendering::EmojiScale::REGULAR:
-                height = platform::is_apple() ? Utils::scale_value(37) : Utils::scale_value(32);
-                break;
+                return platform::is_apple() ? 39 : 32;
             case Ui::TextRendering::EmojiScale::MEDIUM:
-                height = platform::is_apple() ? Utils::scale_value(45) : Utils::scale_value(40);
-                break;
+                return platform::is_apple() ? 47 : 40;
             case Ui::TextRendering::EmojiScale::BIG:
-                height = platform::is_apple() ? Utils::scale_value(53) : Utils::scale_value(48);
-                break;
+                return platform::is_apple() ? 55 : 48;
             default:
                 break;
             }
-            return height;
+
+            return 0;
         }
 
-        int getEmojiSize(const QFont& _font, const int _emojiCount)
+        int getEmojiSize(const QFont& _font, int _emojiCount)
         {
-            auto result = emojiHeight(_font, _emojiCount);
-            if (platform::is_apple())
-                result += Utils::scale_value(2);
+            if (const auto h = emojiHeight(_emojiCount); h > 0)
+                return Utils::scale_value(h);
 
-            return result;
+            return textHeight(_font) + Utils::scale_value(platform::is_apple() ? 3 : 1);
         }
 
-        bool isEmoji(const QStringRef& _text)
+        constexpr int emojiHeightSmartreply(int _emojiCount) noexcept
         {
-            int pos = 0;
+            switch (getEmojiScale(_emojiCount))
+            {
+                case Ui::TextRendering::EmojiScale::REGULAR:
+                    return 31;
+                case Ui::TextRendering::EmojiScale::MEDIUM:
+                    return 35;
+                case Ui::TextRendering::EmojiScale::BIG:
+                    return 39;
+                default:
+                    break;
+            }
+
+            return 0;
+        }
+
+        int getEmojiSizeSmartreply(const QFont& _font, int _emojiCount)
+        {
+            if (const auto h = emojiHeightSmartreply(_emojiCount); h > 0)
+                return Utils::scale_value(h);
+
+            return getEmojiSize(_font, _emojiCount);
+        }
+
+        bool isEmoji(QStringView _text)
+        {
+            qsizetype pos = 0;
 
             return (Emoji::getEmoji(_text, pos) != Emoji::EmojiCode() && Emoji::getEmoji(_text, pos) == Emoji::EmojiCode());
         }
 
-        QString elideText(const QFont& _font, const QString& _text, const int _width)
+        QString elideText(const QFont& _font, const QString& _text, int _width)
         {
             const auto& metrics = getMetrics(_font);
             QString result;
@@ -142,23 +162,16 @@ namespace Ui
             return result;
         }
 
-        QString stringFromCode(const int _code)
+        QString stringFromCode(int _code)
         {
-            QString result;
-
             if (QChar::requiresSurrogates(_code))
-            {
-                result.reserve(2);
-                result += (QChar)(QChar::highSurrogate(_code));
-                result += (QChar)(QChar::lowSurrogate(_code));
-            }
-            else
-            {
-                result.reserve(1);
-                result += (QChar)_code;
-            }
+                return QChar(QChar::highSurrogate(_code)) % QChar((QChar::lowSurrogate(_code)));
+           return QString(QChar(_code));
+        }
 
-            return result;
+        QString spaceAsString()
+        {
+            return qsl(" ");
         }
 
         double getLineWidth(const std::vector<TextWord>& _line)
@@ -179,13 +192,10 @@ namespace Ui
             if (_words.size() > maximumEmojiCount())
                 return 0;
 
-            if (std::all_of(_words.begin(), _words.end(), [](const auto& w)
-            {
-                return (w.isEmoji() && !w.isSpaceAfter());
-            }))
+            if (std::all_of(_words.begin(), _words.end(), [](const auto& w) { return (w.isEmoji() && !w.isSpaceAfter()); }))
                 return _words.size();
-            else
-                return 0;
+
+            return 0;
         }
 
         int getHeightCorrection(const TextWord& _word, const int _emojiCount)

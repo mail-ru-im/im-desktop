@@ -4,9 +4,10 @@
 #include "VideoWindow.h"
 #include "../core_dispatcher.h"
 #include "../cache/avatars/AvatarStorage.h"
-#include "../main_window/friendly/FriendlyContainer.h"
+#include "../main_window/containers/FriendlyContainer.h"
 #include "../utils/utils.h"
 #include "../../core/Voip/VoipManagerDefines.h"
+#include "src/CallStateInternal.h"
 #include "VoipSysPanelHeader.h"
 
 enum
@@ -23,10 +24,11 @@ static const float defaultWindowOffset = 0.25f;
 
 QList<Ui::IncomingCallWindow*> Ui::IncomingCallWindow::instances_;
 
-Ui::IncomingCallWindow::IncomingCallWindow(const std::string& call_id, const std::string& _contact)
+Ui::IncomingCallWindow::IncomingCallWindow(const std::string& call_id, const std::string& _contact, const std::string& call_type)
     : QWidget(nullptr, Qt::Window)
     , contact_(_contact)
     , call_id_(call_id)
+    , call_type_(call_type)
     , header_(new(std::nothrow) VoipSysPanelHeader(this, Utils::scale_value(kIncomingCallWndDefW)))
     , controls_(new IncomingCallControls(this))
     , transparentPanelOutgoingWidget_(nullptr)
@@ -220,12 +222,10 @@ void Ui::IncomingCallWindow::changeEvent(QEvent* _e)
 void Ui::IncomingCallWindow::onVoipCallNameChanged(const voip_manager::ContactsList& _contacts)
 {
 #ifndef STRIP_VOIP
-    if(_contacts.contacts.empty()) {
+    if (_contacts.contacts.empty())
         return;
-    }
 
     auto res = std::find(_contacts.windows.begin(), _contacts.windows.end(), (void*)rootWidget_->frameId());
-
     if (res != _contacts.windows.end())
     {
         contacts_ = _contacts.contacts;
@@ -233,6 +233,7 @@ void Ui::IncomingCallWindow::onVoipCallNameChanged(const voip_manager::ContactsL
         users.reserve(contacts_.size());
         for (const auto& c : contacts_)
             users.push_back(c.contact);
+        vcs_conference_name_ = _contacts.conference_name;
 
         updateTitle();
 
@@ -247,7 +248,7 @@ void Ui::IncomingCallWindow::onAcceptVideoClicked()
     hideFrame();
     if (!contact_.empty())
     {
-        Ui::GetDispatcher()->getVoipController().setAcceptV(contact_.c_str());
+        Ui::GetDispatcher()->getVoipController().setAcceptCall(call_id_.c_str(), true);
     }
 }
 
@@ -257,7 +258,7 @@ void Ui::IncomingCallWindow::onAcceptAudioClicked()
     hideFrame();
     if (!contact_.empty())
     {
-        Ui::GetDispatcher()->getVoipController().setAcceptA(contact_.c_str());
+        Ui::GetDispatcher()->getVoipController().setAcceptCall(call_id_.c_str(), false);
     }
 }
 
@@ -268,12 +269,17 @@ void Ui::IncomingCallWindow::onDeclineButtonClicked()
     hideFrame();
     if (!contact_.empty())
     {
-        Ui::GetDispatcher()->getVoipController().setDecline(contact_.c_str(), false);
+        Ui::GetDispatcher()->getVoipController().setDecline(call_id_.c_str(), contact_.c_str(), false);
     }
 }
 
 void Ui::IncomingCallWindow::updateTitle()
 {
+    if (voip::kCallType_VCS == call_type_)
+    {
+        header_->setTitle(vcs_conference_name_.empty() ? QT_TRANSLATE_NOOP("voip_pages", "VCS call").toUtf8().constData() : vcs_conference_name_.c_str());
+        return;
+    }
     if (contacts_.empty())
         return;
 

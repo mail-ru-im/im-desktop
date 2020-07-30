@@ -34,7 +34,7 @@ QRect ComplexMessageItemLayout::evaluateAvatarRect(const QRect& _widgetContentLt
     assert(_widgetContentLtr.width() > 0 && _widgetContentLtr.height() >= 0);
 
     const auto avatarSize = MessageStyle::getAvatarSize();
-    return QRect(_widgetContentLtr.topLeft(), QSize(avatarSize, avatarSize));
+    return QRect(_widgetContentLtr.topLeft(), QSize(avatarSize, avatarSize + Utils::scale_value(4)));
 }
 
 QRect ComplexMessageItemLayout::evaluateBlocksBubbleGeometry(const bool isMarginRequired, const QRect& _blocksContentLtr) const
@@ -65,7 +65,7 @@ QRect ComplexMessageItemLayout::evaluateBlocksContainerLtr(const QRect& _avatarR
 {
     auto left = 0;
 
-    if (isOutgoing() || !_avatarRect.isValid())
+    if (isOutgoingPosition() || !_avatarRect.isValid())
         left = _widgetContentLtr.left();
     else
         left = _avatarRect.right() + 1 + MessageStyle::getAvatarRightMargin();
@@ -81,7 +81,7 @@ QRect ComplexMessageItemLayout::evaluateBlocksContainerLtr(const QRect& _avatarR
         auto diff = cur - desired;
         if (diff > 0)
         {
-            if (isOutgoing())
+            if (isOutgoingPosition())
                 left += diff;
             else
                 right -= diff;
@@ -128,7 +128,7 @@ QRect ComplexMessageItemLayout::evaluateBlockLtr(
     if (blockSize.isEmpty())
         return blockLtr;
 
-    if (isOutgoing() && !isBubbleRequired)
+    if (isOutgoingPosition() && !isBubbleRequired)
     {
         const auto outgoingBlockLeft = blockLtr.right() + 1 - blockSize.width();
         blockLeft = std::max(outgoingBlockLeft, blockLeft);
@@ -176,7 +176,7 @@ QRect ComplexMessageItemLayout::evaluateWidgetContentLtr(const int32_t widgetWid
 {
     assert(widgetWidth > 0);
 
-    const auto isOutgoing = this->isOutgoing();
+    const auto isOutgoing = this->isOutgoingPosition();
 
     auto widgetContentLeftMargin = MessageStyle::getLeftMargin(isOutgoing, widgetWidth);
     if (!isOutgoing)
@@ -349,10 +349,10 @@ bool ComplexMessageItemLayout::hasSeparator(const IItemBlock *block) const
     return hasSeparator;
 }
 
-bool ComplexMessageItemLayout::isOutgoing() const
+bool ComplexMessageItemLayout::isOutgoingPosition() const
 {
     assert(Item_);
-    return Item_->isOutgoing();
+    return Item_->isOutgoingPosition();
 }
 
 bool ComplexMessageItemLayout::isHeaderOrSticker() const
@@ -367,8 +367,8 @@ QRect ComplexMessageItemLayout::setBlocksGeometry(
 {
     const auto topY = _senderRect.isValid() ? _senderRect.bottom() + 1 : _messageRect.top();
     auto blocksHeight = 0;
-    auto blocksWidth = 0;
-    auto blocksLeft = isOutgoing() ? _messageRect.left() + _messageRect.width() : _messageRect.left();
+    auto blocksWidth = Item_->calcButtonsWidth(_messageRect.width());
+    auto blocksLeft = isOutgoingPosition() ? _messageRect.left() + _messageRect.width() : _messageRect.left();
 
     auto& blocks = Item_->Blocks_;
     for (auto block : blocks)
@@ -399,7 +399,7 @@ QRect ComplexMessageItemLayout::setBlocksGeometry(
 
         blocksWidth = std::max(blocksWidth, blockGeometry.width() - widthAdjust);
 
-        if (isOutgoing())
+        if (isOutgoingPosition())
             blocksLeft = std::min(blocksLeft, blockGeometry.left());
         else
             blocksLeft = std::max(blocksLeft, blockGeometry.left());
@@ -416,7 +416,7 @@ QRect ComplexMessageItemLayout::setBlocksGeometry(
 
     if (_isBubbleRequired && !blocks.empty())
     {
-        if (isOutgoing() && blocksWidth < _messageRect.width())
+        if (isOutgoingPosition() && blocksWidth < _messageRect.width())
         {
             const auto shift = _messageRect.width() - blocksWidth;
             for (auto block : blocks)
@@ -464,7 +464,7 @@ void ComplexMessageItemLayout::setGeometryInternal(const int32_t widgetWidth)
     if (!enoughSpace)
         return;
 
-    AvatarRect_ = (Item_->isChat() && !isOutgoing()) ? evaluateAvatarRect(widgetContentLtr) : QRect(); // vertical pos invalid at this point
+    AvatarRect_ = (Item_->isChat() && !isOutgoingPosition()) ? evaluateAvatarRect(widgetContentLtr) : QRect(); // vertical pos invalid at this point
 
     const auto senderRect = evaluateSenderContentLtr(widgetContentLtr, AvatarRect_); // including top and bottom margin
     auto messageContentRect = evaluateBlocksContainerLtr(AvatarRect_, widgetContentLtr);
@@ -489,7 +489,7 @@ void ComplexMessageItemLayout::setGeometryInternal(const int32_t widgetWidth)
     }
     else
     {
-        if (isOutgoing())
+        if (isOutgoingPosition())
         {
             messageContentRect.setLeft(blocksGeometry.left());
         }
@@ -532,9 +532,13 @@ void ComplexMessageItemLayout::setGeometryInternal(const int32_t widgetWidth)
             AvatarRect_.moveBottom(BubbleRect_.bottom());
     }
 
-    WidgetHeight_ = (bubbleRect.bottom() + 1) + Item_->bottomOffset();
+    WidgetHeight_ = (bubbleRect.bottom() + 1) + Item_->bottomOffset() + Item_->buttonsHeight();
+    if (Item_->isSingleSticker() && Item_->hasButtons())
+        WidgetHeight_ += MessageStyle::getBorderRadius();
 
     assert(WidgetHeight_ >= 0);
+
+    Item_->onSizeChanged();
 }
 
 void ComplexMessageItemLayout::setTimePosition(const QRect& _availableGeometry)

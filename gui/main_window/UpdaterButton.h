@@ -21,6 +21,10 @@ namespace Ui
         void paintEvent(QPaintEvent* _event) override;
 
     private:
+        void updateAction();
+        bool isInactiveUpdateAllowed() const;
+
+    private:
         std::unique_ptr<TextRendering::TextUnit> textUnit_;
     };
 }

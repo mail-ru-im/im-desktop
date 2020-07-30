@@ -3,7 +3,7 @@
 #include "../../utils/gui_coll_helper.h"
 #include "../../../corelib/enumerations.h"
 
-#include "../../main_window/friendly/FriendlyContainer.h"
+#include "../../main_window/containers/FriendlyContainer.h"
 
 #include "VoipEventInfo.h"
 
@@ -42,6 +42,7 @@ namespace HistoryControl
     {
         assert(Type_ == voip_event_type::invalid);
 
+        Sid_ = _coll.get<QString>("sid");
         Type_ = _coll.get<voip_event_type>("type");
 
         const auto isValidType = ((Type_ > voip_event_type::min) && (Type_ < voip_event_type::max));
@@ -80,6 +81,11 @@ namespace HistoryControl
         return true;
     }
 
+    QString VoipEventInfo::getSid() const
+    {
+        return Sid_;
+    }
+
     QString VoipEventInfo::formatRecentsText() const
     {
         assert(Type_ > voip_event_type::min && Type_ < voip_event_type::max);
@@ -113,7 +119,7 @@ namespace HistoryControl
         }
 
         if (hasDuration())
-            result += ql1s(" (") % formatDurationText() % ql1c(')');
+            result += u" (" % formatDurationText() % u')';
 
         return result;
     }
@@ -210,7 +216,7 @@ namespace HistoryControl
 
     bool VoipEventInfo::isMissed() const
     {
-        return Type_ == voip_event_type::missed_call;
+        return IsIncomingCall_ && Type_ == voip_event_type::missed_call;
     }
 
     bool VoipEventInfo::isVideoCall() const

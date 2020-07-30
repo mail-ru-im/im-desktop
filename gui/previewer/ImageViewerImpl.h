@@ -56,7 +56,7 @@ namespace Previewer
 
         void init(const QSize& _imageSize, const QSize &_viewport, const int _minSize);
 
-    protected slots:
+    protected Q_SLOTS:
         void repaint();
 
     protected:

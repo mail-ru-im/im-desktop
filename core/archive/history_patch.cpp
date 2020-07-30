@@ -36,6 +36,7 @@ bool history_patch::is_valid_type(const type _type)
     case type::unpinned:
     case type::updated:
     case type::clear:
+    case type::set_reactions:
         return true;
 
     default:

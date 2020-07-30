@@ -40,7 +40,7 @@ namespace Ui
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::multiSelectCurrentElementChanged, this, &SelectionPanel::multiSelectCurrentElementChanged);
     }
 
-    void SelectionPanel::setSelectedCount(int _count)
+    void SelectionPanel::setSelectedCount(int _count, int)
     {
         label_->setText(Utils::GetTranslator()->getNumberString(_count, QT_TRANSLATE_NOOP3("selection", "%1 message selected", "1"),
             QT_TRANSLATE_NOOP3("contactlist", "%1 messages selected", "2"),
@@ -53,11 +53,8 @@ namespace Ui
     {
         if (Utils::InterConnector::instance().currentMultiselectElement() == Utils::MultiselectCurrentElement::Cancel)
         {
-            static auto hoverColor = Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY);
-            hoverColor.setAlpha(0.18 * 255);
             cancel_->forceHover(true);
-            cancel_->setBackgroundColor(hoverColor);
-
+            cancel_->setBackgroundColor(Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY, 0.18));
         }
         else
         {

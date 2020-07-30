@@ -14,56 +14,11 @@ namespace Ui
     {
     }
 
-    Splitter::~Splitter()
-    {
-    }
+    Splitter::~Splitter() = default;
 
     QSplitterHandle* Splitter::createHandle()
     {
         return new SplitterHandle(orientation(), this);
-    }
-
-    QWidget* Splitter::replaceWidgetImpl(int _index, QWidget * _widget)
-    {
-        auto d = reinterpret_cast<QSplitterPrivate *>(qGetPtrHelper(d_ptr));
-        if (!_widget) {
-            qWarning("QSplitter::replaceWidget: Widget can't be null");
-            return nullptr;
-        }
-
-        if (_index < 0 || _index >= d->list.count()) {
-            qWarning("QSplitter::replaceWidget: Index %d out of range", _index);
-            return nullptr;
-        }
-
-        QSplitterLayoutStruct *s = d->list.at(_index);
-        QWidget *current = s->widget;
-        if (current == _widget) {
-            qWarning("QSplitter::replaceWidget: Trying to replace a widget with itself");
-            return nullptr;
-        }
-
-        if (_widget->parentWidget() == this) {
-            qWarning("QSplitter::replaceWidget: Trying to replace a widget with one of its siblings");
-            return nullptr;
-        }
-
-        QBoolBlocker b(d->blockChildAdd);
-
-        const QRect geom = current->geometry();
-        const bool shouldShow = shouldShowWidget(current);
-
-        s->widget = _widget;
-        current->setParent(nullptr);
-        _widget->setParent(this);
-
-        // The splitter layout struct's geometry is already set and
-        // should not change. Only set the geometry on the new widget
-        _widget->setGeometry(geom);
-        _widget->lower();
-        _widget->setVisible(shouldShow);
-
-        return current;
     }
 
     bool Splitter::shouldShowWidget(const QWidget* w) const

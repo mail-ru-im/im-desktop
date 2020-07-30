@@ -35,51 +35,91 @@ namespace core
         template <class U>
         inline bool unserialize_value(const rapidjson::Value& _node, const U& _name, Out std::string& _out_param)
         {
-            return common::json::unserialize_value(_node, _name, _out_param);
+            if (auto res = common::json::get_value<std::string>(_node, _name); res)
+            {
+                _out_param = std::move(*res);
+                return true;
+            }
+            return false;
         }
 
         template <class U>
         inline bool unserialize_value(const rapidjson::Value& _node, const U& _name, Out std::string_view& _out_param)
         {
-            return common::json::unserialize_value(_node, _name, _out_param);
+            if (auto res = common::json::get_value<std::string_view>(_node, _name); res)
+            {
+                _out_param = *res;
+                return true;
+            }
+            return false;
         }
 
         template <class U>
         inline bool unserialize_value(const rapidjson::Value& _node, const U& _name, Out int& _out_param)
         {
-            return common::json::unserialize_value(_node, _name, _out_param);
+            if (auto res = common::json::get_value<int>(_node, _name); res)
+            {
+                _out_param = *res;
+                return true;
+            }
+            return false;
         }
 
         template <class U>
         inline bool unserialize_value(const rapidjson::Value& _node, const U& _name, Out int64_t& _out_param)
         {
-            return common::json::unserialize_value(_node, _name, _out_param);
+            if (auto res = common::json::get_value<int64_t>(_node, _name); res)
+            {
+                _out_param = *res;
+                return true;
+            }
+            return false;
         }
 
         template <class U>
         inline bool unserialize_value(const rapidjson::Value& _node, const U& _name, Out uint64_t& _out_param)
         {
-            return common::json::unserialize_value(_node, _name, _out_param);
+            if (auto res = common::json::get_value<uint64_t>(_node, _name); res)
+            {
+                _out_param = *res;
+                return true;
+            }
+            return false;
         }
 
         template <class U>
         inline bool unserialize_value(const rapidjson::Value& _node, const U& _name, Out unsigned int& _out_param)
         {
-            return common::json::unserialize_value(_node, _name, _out_param);
+            if (auto res = common::json::get_value<unsigned int>(_node, _name); res)
+            {
+                _out_param = *res;
+                return true;
+            }
+            return false;
         }
 
         template <class U>
         inline bool unserialize_value(const rapidjson::Value& _node, const U& _name, Out double& _out_param)
         {
-            return common::json::unserialize_value(_node, _name, _out_param);
+            if (auto res = common::json::get_value<double>(_node, _name); res)
+            {
+                _out_param = *res;
+                return true;
+            }
+            return false;
         }
 
         template <class U>
         inline bool unserialize_value(const rapidjson::Value& _node, const U& _name, Out bool& _out_param)
         {
-            return common::json::unserialize_value(_node, _name, _out_param);
+            if (auto res = common::json::get_value<bool>(_node, _name); res)
+            {
+                _out_param = *res;
+                return true;
+            }
+            return false;
         }
 
-        void sort_json_keys_by_name(rapidjson::Value* _node);
+        void sort_json_keys_by_name(rapidjson::Value& _node);
     }
 }

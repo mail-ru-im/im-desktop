@@ -127,6 +127,17 @@ You can leave your feedback or report an error here:</source>
     </message>
 </context>
 <context>
+    <name>active_call_plate</name>
+    <message>
+        <source>Join</source>
+        <translation>输入</translation>
+    </message>
+    <message>
+        <source>Active call</source>
+        <translation>通话中</translation>
+    </message>
+</context>
+<context>
     <name>add_new_contact_dialogs</name>
     <message>
         <source>New contact</source>
@@ -251,8 +262,36 @@ You can leave your feedback or report an error here:</source>
         <translation>橘色</translation>
     </message>
     <message>
-        <source>Dark blue</source>
+        <source>Default</source>
+        <translation>默认</translation>
+    </message>
+    <message>
+        <source>Dark Turquoise</source>
+        <translation>深蓝绿色</translation>
+    </message>
+    <message>
+        <source>Dark Violet</source>
+        <translation>深紫丁香</translation>
+    </message>
+    <message>
+        <source>Dark Orange</source>
+        <translation>深橙色</translation>
+    </message>
+    <message>
+        <source>Pink</source>
+        <translation>粉</translation>
+    </message>
+    <message>
+        <source>Dark Pink</source>
+        <translation>深粉红色</translation>
+    </message>
+    <message>
+        <source>Dark Blue</source>
         <translation>深蓝</translation>
+    </message>
+    <message>
+        <source>Turquoise</source>
+        <translation>绿松石</translation>
     </message>
 </context>
 <context>
@@ -315,10 +354,6 @@ You can leave your feedback or report an error here:</source>
         <translation>删除讯息</translation>
     </message>
     <message>
-        <source>Block and delete?</source>
-        <translation>阻止并删除？</translation>
-    </message>
-    <message>
         <source>Cancel</source>
         <translation>取消</translation>
     </message>
@@ -334,23 +369,86 @@ You can leave your feedback or report an error here:</source>
         <source>This member won&apos;t be able to join the group again. You could also delete his messages</source>
         <translation>该成员将无法返回该群组。您也可以删除他的消息</translation>
     </message>
+    <message>
+        <source>Delete?</source>
+        <translation>删除？</translation>
+    </message>
+</context>
+<context>
+    <name>bots</name>
+    <message>
+        <source>Cancel</source>
+        <translation>取消</translation>
+    </message>
+    <message>
+        <source>Ok</source>
+        <translation>好啦</translation>
+    </message>
+    <message>
+        <source>Open link</source>
+        <translation>开启连结</translation>
+    </message>
+    <message>
+        <source>You are not a member of this chat or you was banned to write</source>
+        <translation>您不是聊天成员，或者不允许您写</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to open an external link %1?</source>
+        <translation>您确定要打开外部链接%1吗？</translation>
+    </message>
+</context>
+<context>
+    <name>call_link</name>
+    <message>
+        <source>Link on call</source>
+        <translation>通话连结</translation>
+    </message>
+    <message>
+        <source>Link on webinar</source>
+        <translation>链接到网络研讨会</translation>
+    </message>
+    <message>
+        <source>Send the link to people you want to add to the call</source>
+        <translation>将链接发送给您要添加到通话中的人</translation>
+    </message>
+    <message>
+        <source>Send the link to people you want to invite to the webinar</source>
+        <translation>将链接发送给您想邀请参加网络研讨会的人</translation>
+    </message>
+    <message>
+        <source>call</source>
+        <translation>钟</translation>
+    </message>
+    <message>
+        <source>webinar</source>
+        <translation>网络研讨会</translation>
+    </message>
+    <message>
+        <source>Send the %1 link to current chat or copy it</source>
+        <translation>将链接发送到实时聊天中的%1或将其复制</translation>
+    </message>
+    <message>
+        <source>Send the call link %1 to current chat or copy it</source>
+        <translation>发送链接以拨打%1或复制该链接</translation>
+    </message>
+</context>
+<context>
+    <name>calls</name>
+    <message>
+        <source>Group call</source>
+        <translation>发起群组通话</translation>
+    </message>
+    <message>
+        <source>Create webinar</source>
+        <translation>建立网路研讨会</translation>
+    </message>
+    <message>
+        <source>Create call link</source>
+        <translation>建立通话连结</translation>
+    </message>
 </context>
 <context>
     <name>chat_event</name>
-    <message>
-        <source> and </source>
-        <translation> 和 </translation>
-    </message>
-    <message>
-        <source>You</source>
-        <comment>active_voice</comment>
-        <translation>您</translation>
-    </message>
-    <message>
-        <source>you</source>
-        <comment>passive_voice</comment>
-        <translation>了您</translation>
-    </message>
     <message>
         <source>Missed call</source>
         <translation>未接来电</translation>
@@ -364,20 +462,8 @@ You can leave your feedback or report an error here:</source>
         <translation>来电</translation>
     </message>
     <message>
-        <source>You changed picture of group</source>
-        <translation>您更改了群组图片</translation>
-    </message>
-    <message>
         <source> has birthday!</source>
         <translation> 生日到了！</translation>
-    </message>
-    <message>
-        <source>You have joined group</source>
-        <translation>您已加入群组</translation>
-    </message>
-    <message>
-        <source>You deleted chat description</source>
-        <translation>您删除了聊天描述</translation>
     </message>
     <message>
         <source>Message was deleted</source>
@@ -390,58 +476,6 @@ You can leave your feedback or report an error here:</source>
     <message>
         <source>%1 added you to contacts</source>
         <translation>%1 添加了您到联系人</translation>
-    </message>
-    <message>
-        <source>%1 changed picture of group</source>
-        <translation>%1 更改了群组图片</translation>
-    </message>
-    <message>
-        <source>You changed theme to &quot;%1&quot;</source>
-        <translation>您将主题更改为 %1</translation>
-    </message>
-    <message>
-        <source>%1 changed theme to &quot;%2&quot;</source>
-        <translation>%1 将主题更改为 %2</translation>
-    </message>
-    <message>
-        <source>You added %1</source>
-        <translation>您添加了 %1</translation>
-    </message>
-    <message>
-        <source>%1 has joined group</source>
-        <translation>%1 已加入群组</translation>
-    </message>
-    <message>
-        <source>%1 added %2</source>
-        <translation>%1 添加了 %2</translation>
-    </message>
-    <message>
-        <source>%1 deleted chat description</source>
-        <translation>%1 删除了聊天描述</translation>
-    </message>
-    <message>
-        <source>You changed description to &quot;%1&quot;</source>
-        <translation>您将描述更改为 &quot;%1&quot;</translation>
-    </message>
-    <message>
-        <source>%1 changed description to &quot;%2&quot;</source>
-        <translation>%1 将描述更改为 &quot;%2&quot;</translation>
-    </message>
-    <message>
-        <source>You changed chat rules to &quot;%1&quot;</source>
-        <translation>您将聊天规则更改为 &quot;%1&quot;</translation>
-    </message>
-    <message>
-        <source>You removed %1</source>
-        <translation>您删除了 %1</translation>
-    </message>
-    <message>
-        <source>%1 removed %2</source>
-        <translation>%1 删除了 %2</translation>
-    </message>
-    <message>
-        <source>%1 changed chat rules to &quot;%2&quot;</source>
-        <translation>%1 将聊天规则更改为 &quot;%2&quot;</translation>
     </message>
     <message>
         <source>Your call was missed</source>
@@ -488,40 +522,12 @@ You can leave your feedback or report an error here:</source>
         <translation>你没有接听来自%1的电话</translation>
     </message>
     <message>
-        <source>Theme was changed to &quot;%1&quot;</source>
-        <translation>线程已更改为 %1</translation>
-    </message>
-    <message>
-        <source>%1 was added</source>
-        <translation>添加了%1</translation>
-    </message>
-    <message>
-        <source>%1 were added</source>
-        <translation>已添加 %1</translation>
-    </message>
-    <message>
-        <source>Chat description was deleted</source>
-        <translation>聊天说明已删除</translation>
-    </message>
-    <message>
         <source>%1 was removed</source>
         <translation>%1 已被删除</translation>
     </message>
     <message>
         <source>%1 were removed</source>
         <translation>%1 已被删除</translation>
-    </message>
-    <message>
-        <source>Channel avatar was changed</source>
-        <translation>频道头像已更改</translation>
-    </message>
-    <message>
-        <source>Description was changed to &quot;%1&quot;</source>
-        <translation>说明已更改为 %1</translation>
-    </message>
-    <message>
-        <source>Channel rules were changed to &quot;%1&quot;</source>
-        <translation>渠道规则已更改为 %1</translation>
     </message>
     <message>
         <source>You have recently added %1 to your phone contacts. Write a new message or make a call %2</source>
@@ -532,34 +538,418 @@ You can leave your feedback or report an error here:</source>
         <translation>所以 %1 现在在这里！写入，呼叫 %2</translation>
     </message>
     <message>
-        <source>%1 have left group (this message is visible only to group admins)</source>
-        <comment>many</comment>
-        <translation>%1 已离开群组（此消息仅对群组管理员可见）</translation>
-    </message>
-    <message>
-        <source>%1 has left group (this message is visible only to group admins)</source>
-        <comment>one</comment>
-        <translation>%1 已离开群组（此消息仅对群组管理员可见）</translation>
-    </message>
-    <message>
-        <source>You changed chat link to %1</source>
-        <translation>您已将链接更改为%1</translation>
-    </message>
-    <message>
-        <source>Channel link was changed to %1</source>
-        <translation>链接已更改为%1</translation>
-    </message>
-    <message>
-        <source>%1 changed chat link to %2</source>
-        <translation>%1已将链接更改为%2</translation>
-    </message>
-    <message>
         <source>Add avatar</source>
         <translation>添加头像</translation>
     </message>
     <message>
         <source>Add description</source>
         <translation>添加描述</translation>
+    </message>
+    <message>
+        <source>You specified a new channel name - &quot;%1&quot;</source>
+        <translation>您输入了新的频道名称- &quot;%1&quot;</translation>
+    </message>
+    <message>
+        <source>%1 specified a new channel name - &quot;%2&quot;</source>
+        <translation>%1表示一个新的频道名称- &quot;%2&quot;</translation>
+    </message>
+    <message>
+        <source>You specified a new group name - &quot;%1&quot;</source>
+        <translation>您输入了新的组名- &quot;%1&quot;</translation>
+    </message>
+    <message>
+        <source>%1 specified a new group name - &quot;%2&quot;</source>
+        <translation>%1表示一个新的组名- &quot;%2&quot;</translation>
+    </message>
+    <message>
+        <source>%1 You have joined channel</source>
+        <translation>%1您已加入频道</translation>
+    </message>
+    <message>
+        <source>%1 %2 has joined channel</source>
+        <translation>%1 %2加入了频道</translation>
+    </message>
+    <message>
+        <source>%1 You have joined group</source>
+        <translation>%1您已加入群组</translation>
+    </message>
+    <message>
+        <source>%1 %2 has joined group</source>
+        <translation>%1 %2加入了该群组</translation>
+    </message>
+    <message>
+        <source>%1 You added %2 to the channel</source>
+        <translation>%1您将%2添加到了频道</translation>
+    </message>
+    <message>
+        <source>%1 %2 added %3 to the channel</source>
+        <translation>%1 %2添加%3到频道</translation>
+    </message>
+    <message>
+        <source>%1 You added %2 to the group</source>
+        <translation>%1您已将%2添加到组</translation>
+    </message>
+    <message>
+        <source>%1 %2 added %3 to the group</source>
+        <translation>%1 %2将%3添加到组中</translation>
+    </message>
+    <message>
+        <source>You enabled join with approval</source>
+        <translation>您已根据要求加入了该小组</translation>
+    </message>
+    <message>
+        <source>You disabled join with approval</source>
+        <translation>您已根据要求关闭了组成员身份</translation>
+    </message>
+    <message>
+        <source>%1 enabled join with approval</source>
+        <translation>%1已开启加入审核</translation>
+    </message>
+    <message>
+        <source>%1 disabled join with approval</source>
+        <translation>%1根据要求禁用加入群组</translation>
+    </message>
+    <message>
+        <source>You made the group public, now it is possible to find it through a search</source>
+        <translation>您公开了该论坛，他们可以通过搜索找到它</translation>
+    </message>
+    <message>
+        <source>You made the group private, now it is impossible to find it through a search</source>
+        <translation>您将该论坛设为私有，因此无法通过搜索找到它们</translation>
+    </message>
+    <message>
+        <source>%1 made the group public, now it is possible to find it through a search</source>
+        <translation>%1将该群组公开，可以通过搜索找到</translation>
+    </message>
+    <message>
+        <source>%1 made the group private, now it is impossible to find it through a search</source>
+        <translation>%1将该论坛设为私有，因此无法通过搜索找到它们</translation>
+    </message>
+    <message>
+        <source>%1 You removed %2</source>
+        <translation>%1您已删除%2</translation>
+    </message>
+    <message>
+        <source>%1 %2 removed %3</source>
+        <translation>%1 %2已删除%3</translation>
+    </message>
+    <message>
+        <source>You are no more an administrator of this group</source>
+        <translation>您不再是该论坛的管理员</translation>
+    </message>
+    <message>
+        <source>You removed administrator role from %1</source>
+        <translation>您已从%1删除了管理员权限</translation>
+    </message>
+    <message>
+        <source>%1 removed administrator role from %2</source>
+        <translation>%1撤消了%2管理员权限</translation>
+    </message>
+    <message>
+        <source>%1 Wait for join request approval</source>
+        <translation>%1等待输入请求的确认</translation>
+    </message>
+    <message>
+        <source>%1 You asked to add %2 to the channel</source>
+        <translation>%1您要求将%2添加到频道</translation>
+    </message>
+    <message>
+        <source>%1 You asked to add %2 to the group</source>
+        <translation>%1您要求将%2添加到组中</translation>
+    </message>
+    <message>
+        <source>%1 %2 asked to add %3 to the group</source>
+        <translation>%1 %2要求将%3添加到组中</translation>
+    </message>
+    <message>
+        <source>%1 %2 is waiting for group join request approval</source>
+        <translation>%1 %2等待确认加入群组</translation>
+    </message>
+    <message>
+        <source>%1 Your join request was approved</source>
+        <translation>%1您的成员资格请求已确认</translation>
+    </message>
+    <message>
+        <source>%1 Request from %2 to add you to the channel was approved</source>
+        <translation>%1来自%2请求已确认将您添加到频道</translation>
+    </message>
+    <message>
+        <source>%1 Request from %2 to add you to the group was approved</source>
+        <translation>%1来自%2请求已确认将您添加到群组</translation>
+    </message>
+    <message>
+        <source>%1 You approved join request from %2</source>
+        <translation>%1您已确认来自%2加入请求</translation>
+    </message>
+    <message>
+        <source>%1 You approved join request from %2 to add %3 to the channel</source>
+        <translation>%1您已确认%2发出的向频道添加%3的请求</translation>
+    </message>
+    <message>
+        <source>%1 You approved join request from %2 to add %3 to the group</source>
+        <translation>%1您已确认%2提出的将%3添加到组的请求</translation>
+    </message>
+    <message>
+        <source>%1 %2 approved join request from %3</source>
+        <translation>%1 %2已确认来自%3加入请求</translation>
+    </message>
+    <message>
+        <source>%1 Your join request was rejected</source>
+        <translation>%1您的会员资格请求被拒绝</translation>
+    </message>
+    <message>
+        <source>%1 Request from %2 to add you to the channel was rejected</source>
+        <translation>%1来自%2请求，将您添加到被拒绝的频道</translation>
+    </message>
+    <message>
+        <source>%1 Request from %2 to add you to the group was rejected</source>
+        <translation>%1来自%2请求，将您添加到被拒绝的群组</translation>
+    </message>
+    <message>
+        <source>%1 You rejected join request from %2</source>
+        <translation>%1您已拒绝加入%2</translation>
+    </message>
+    <message>
+        <source>%1 You rejected join request from %2 to add %3 to the channel</source>
+        <translation>%1您拒绝了%2的请求，要求将%3添加到频道</translation>
+    </message>
+    <message>
+        <source>%1 You rejected join request from %2 to add %3 to the group</source>
+        <translation>%1您拒绝了%2的请求，要求将%3添加到组中</translation>
+    </message>
+    <message>
+        <source>%1 %2 rejected join request from %3</source>
+        <translation>%1 %2拒绝了%3加入请求</translation>
+    </message>
+    <message>
+        <source>%1 You have left channel</source>
+        <translation>%1您离开了频道</translation>
+    </message>
+    <message>
+        <source>%1 You have left group</source>
+        <translation>%1您离开了群组</translation>
+    </message>
+    <message>
+        <source>you</source>
+        <translation>你</translation>
+    </message>
+    <message>
+        <source>Administrator</source>
+        <translation>管理员</translation>
+    </message>
+    <message>
+        <source>%1 %2 removed you</source>
+        <translation>%1 %2删除了您</translation>
+    </message>
+    <message>
+        <source>%1 allowed you to write</source>
+        <translation>%1允许您写</translation>
+    </message>
+    <message>
+        <source>You allowed %1 to write</source>
+        <translation>您可以写%1</translation>
+    </message>
+    <message>
+        <source>%1 allowed %2 to write</source>
+        <translation>%1允许写作%2</translation>
+    </message>
+    <message>
+        <source>%1 banned you to write</source>
+        <translation>%1禁止您写作</translation>
+    </message>
+    <message>
+        <source>You banned %1 to write</source>
+        <translation>您被禁止写%1</translation>
+    </message>
+    <message>
+        <source>%1 banned %2 to write</source>
+        <translation>%1禁止（一个或多个）编写%2</translation>
+    </message>
+    <message>
+        <source>%1 %2 approved join request from %3 to add %4 to the group</source>
+        <translation>%1 %2已确认来自%3请求，要求将%4添加到组中的</translation>
+    </message>
+    <message>
+        <source>%1 %2 rejected join request from %3 to add %4 to the group</source>
+        <translation>%1 %2拒绝了%3提出的将%4添加到群组的请求</translation>
+    </message>
+    <message>
+        <source>%1 %2 asked to add %3 to the channel (this message is visible only to administrators)</source>
+        <translation>%1 %2要求将%3添加到频道（只有管理员才能看到此消息）</translation>
+    </message>
+    <message>
+        <source>%1 %2 is waiting for channel join request approval (this message is visible only to administrators)</source>
+        <translation>%1 %2等待确认加入频道的请求（只有管理员才能看到此消息）</translation>
+    </message>
+    <message>
+        <source>%1 %2 approved join request from %3 to add %4 to the channel (this message is visible only to administrators)</source>
+        <translation>%1 %2已确认%3提出的将%4添加到频道的请求（只有管理员才能看到此消息）</translation>
+    </message>
+    <message>
+        <source>%1 %2 rejected join request from %3 to add %4 to the channel (this message is visible only to administrators)</source>
+        <translation>%1 %2拒绝了来自%3的将%4添加到频道的请求（只有管理员才能看到此消息）</translation>
+    </message>
+    <message>
+        <source>%1 %2 have left group (this message is visible only to administrators)</source>
+        <comment>many</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 %2 has left group (this message is visible only to administrators)</source>
+        <comment>one</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>%1 Your request to add %2 to the channel was approved</source>
+        <translation>%1已确认您将%2添加到频道的请求</translation>
+    </message>
+    <message>
+        <source>%1 Your request to add %2 to the group was approved</source>
+        <translation>%1您将%2添加到组的请求</translation>
+    </message>
+    <message>
+        <source>%1 Your request to add %2 to the channel was rejected</source>
+        <translation>%1您向频道添加%2请求已被拒绝</translation>
+    </message>
+    <message>
+        <source>%1 Your request to add %2 to the group was rejected</source>
+        <translation>%1您向群组添加%2请求已被拒绝</translation>
+    </message>
+    <message>
+        <source>%1 %2 approved join request from %3(this message is visible only to administrators)</source>
+        <translation>%1 %2确认来自%3进入请求（只有管理员才能看到此消息）</translation>
+    </message>
+    <message>
+        <source>%1 %2 rejected join request from %3(this message is visible only to administrators)</source>
+        <translation>%1 %2拒绝了%3的输入请求（只有管理员看到此消息）</translation>
+    </message>
+    <message>
+        <source>You changed the channel avatar</source>
+        <translation>您更改了频道头像</translation>
+    </message>
+    <message>
+        <source>%1 changed the channel avatar</source>
+        <translation>%1更改了频道头像</translation>
+    </message>
+    <message>
+        <source>You changed the group avatar</source>
+        <translation>您更改了群组头像</translation>
+    </message>
+    <message>
+        <source>%1 changed the group avatar</source>
+        <translation>%1更改的群组头像</translation>
+    </message>
+    <message>
+        <source>You deleted the channel description</source>
+        <translation>您已删除频道说明</translation>
+    </message>
+    <message>
+        <source>%1 deleted the channel description</source>
+        <translation>%1删除了频道描述</translation>
+    </message>
+    <message>
+        <source>You deleted the group description</source>
+        <translation>您已删除组说明</translation>
+    </message>
+    <message>
+        <source>%1 deleted the group description</source>
+        <translation>%1删除了组描述</translation>
+    </message>
+    <message>
+        <source>You changed the channel description - &quot;%1&quot;</source>
+        <translation>您更改了通道的描述- &quot;%1&quot;</translation>
+    </message>
+    <message>
+        <source>%1 changed the channel description - &quot;%2&quot;</source>
+        <translation>%1更改了频道说明- &quot;%2&quot;</translation>
+    </message>
+    <message>
+        <source>You changed the group description - &quot;%1&quot;</source>
+        <translation>您已更改组的描述- &quot;%1&quot;</translation>
+    </message>
+    <message>
+        <source>%1 changed the group description - &quot;%2&quot;</source>
+        <translation>%1组描述已更改- &quot;%2&quot;</translation>
+    </message>
+    <message>
+        <source>You deleted the channel rules</source>
+        <translation>您已删除频道规则</translation>
+    </message>
+    <message>
+        <source>%1 deleted the channel rules</source>
+        <translation>%1删除了频道规则</translation>
+    </message>
+    <message>
+        <source>You deleted the group rules</source>
+        <translation>您已删除组规则</translation>
+    </message>
+    <message>
+        <source>%1 deleted the group rules</source>
+        <translation>%1已删除的组规则</translation>
+    </message>
+    <message>
+        <source>You changed the channel rules - &quot;%1&quot;</source>
+        <translation>您更改了渠道规则- &quot;%1&quot;</translation>
+    </message>
+    <message>
+        <source>%1 changed the channel rules - &quot;%2&quot;</source>
+        <translation>%1更改了渠道规则- &quot;%2&quot;</translation>
+    </message>
+    <message>
+        <source>You changed the group rules - &quot;%1&quot;</source>
+        <translation>您更改了组规则- &quot;%1&quot;</translation>
+    </message>
+    <message>
+        <source>%1 changed the group rules - &quot;%2&quot;</source>
+        <translation>%1更改了组规则- &quot;%2&quot;</translation>
+    </message>
+    <message>
+        <source>You changed the link to %1</source>
+        <translation>您已将链接更改为%1</translation>
+    </message>
+    <message>
+        <source>%1 changed the link to %2</source>
+        <translation>%1将链接更改为%2</translation>
+    </message>
+    <message>
+        <source>You were assigned as an administrator of this channel</source>
+        <translation>您已被任命为该频道的管理员</translation>
+    </message>
+    <message>
+        <source>You were assigned as an administrator of this group</source>
+        <translation>您已被任命为该组的管理员。</translation>
+    </message>
+    <message>
+        <source>You assigned %1 administrator of this channel</source>
+        <translation>您已将%1指定为该频道管理员</translation>
+    </message>
+    <message>
+        <source>You assigned %1 administrator of this group</source>
+        <translation>您已将%1指定为该组管理员。</translation>
+    </message>
+    <message>
+        <source>%1 assigned %2 administrator of this channel</source>
+        <translation>%1 为此频道分配了%2 管理员</translation>
+    </message>
+    <message>
+        <source>%1 assigned %2 administrator of this group</source>
+        <translation>%1指定了%2该组管理员</translation>
+    </message>
+    <message>
+        <source>%1 You have canceled your join request</source>
+        <translation>%1您已取消会员资格请求</translation>
+    </message>
+    <message>
+        <source>%1 Wait for subscription request approval</source>
+        <translation>%1等待确认订阅请求</translation>
+    </message>
+    <message>
+        <source>%1 Your subscription request was rejected</source>
+        <translation>%1您的订阅请求被拒绝</translation>
+    </message>
+    <message>
+        <source>%1 %2 has canceled join request</source>
+        <translation>%1 %2取消了会员资格请求</translation>
     </message>
 </context>
 <context>
@@ -624,6 +1014,26 @@ You can leave your feedback or report an error here:</source>
         <source>Quick send</source>
         <translation>快速发送</translation>
     </message>
+    <message>
+        <source>Message added to </source>
+        <comment>1</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Messages added to </source>
+        <comment>2</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Messages added to </source>
+        <comment>5</comment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Messages added to </source>
+        <comment>21</comment>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>connection</name>
@@ -661,10 +1071,6 @@ You can leave your feedback or report an error here:</source>
     <message>
         <source>Voice message</source>
         <translation>语音讯息</translation>
-    </message>
-    <message>
-        <source>FAVORITES</source>
-        <translation>收藏</translation>
     </message>
     <message>
         <source>RECENTS</source>
@@ -745,6 +1151,10 @@ You can leave your feedback or report an error here:</source>
     <message>
         <source>Create channel</source>
         <translation>建立频道</translation>
+    </message>
+    <message>
+        <source>PINNED</source>
+        <translation>附着</translation>
     </message>
 </context>
 <context>
@@ -987,6 +1397,10 @@ You can leave your feedback or report an error here:</source>
         <source>Send</source>
         <translation>发送</translation>
     </message>
+    <message>
+        <source>Choose your problem</source>
+        <translation>选择一个吸引人的话题</translation>
+    </message>
 </context>
 <context>
     <name>context_menu</name>
@@ -1157,6 +1571,26 @@ You can leave your feedback or report an error here:</source>
     <message>
         <source>Stop poll</source>
         <translation>停止投票</translation>
+    </message>
+    <message>
+        <source>Add to favorites</source>
+        <translation>至收藏夹</translation>
+    </message>
+    <message>
+        <source>Remove from dictionary</source>
+        <translation>从字典中删除</translation>
+    </message>
+    <message>
+        <source>Add to dictionary</source>
+        <translation>添加到字典</translation>
+    </message>
+    <message>
+        <source>Ignore</source>
+        <translation>忽略</translation>
+    </message>
+    <message>
+        <source>Copy session info</source>
+        <translation>复制会话信息</translation>
     </message>
 </context>
 <context>
@@ -2193,6 +2627,46 @@ You can leave your feedback or report an error here:</source>
     </message>
 </context>
 <context>
+    <name>favorites</name>
+    <message>
+        <source>
+%1, this is your personal space!
+
+%2 Save links, files and other messages
+%3 Write notes, to-do lists, store photos and videos
+%4 Draft messages and polls before sending them to chat with friends or to your channel</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Favorites</source>
+        <translation>最喜欢的</translation>
+    </message>
+    <message>
+        <source>save</source>
+        <translation>保存</translation>
+    </message>
+    <message>
+        <source>saved</source>
+        <translation>已保存</translation>
+    </message>
+    <message>
+        <source>favorites</source>
+        <translation>最喜欢的</translation>
+    </message>
+    <message>
+        <source>%1, this is your work space!
+
+%2 Save links, files and other messages
+%3 Write notes, to-do lists, store photos and videos
+%4 Draft messages and polls before sending them to chat with colleagues or to your channel</source>
+        <translation>%1，这是您的工作空间！
+
+%2 保存链接，文件和其他消息
+%3 撰写笔记，待办事项，存储照片和视频
+%4 草拟邮件和民意调查，然后将其发送给与同事或您的频道聊天</translation>
+    </message>
+</context>
+<context>
     <name>files_widget</name>
     <message>
         <source>Send with caption</source>
@@ -2250,6 +2724,10 @@ You can leave your feedback or report an error here:</source>
         <source>Send</source>
         <translation>发送</translation>
     </message>
+    <message>
+        <source>Copied from clipboard</source>
+        <translation>从剪贴板复制</translation>
+    </message>
 </context>
 <context>
     <name>gallery</name>
@@ -2263,13 +2741,6 @@ You can leave your feedback or report an error here:</source>
     <message>
         <source>Copied to clipboard</source>
         <translation>复制到剪贴板</translation>
-    </message>
-</context>
-<context>
-    <name>geolocation_block</name>
-    <message>
-        <source>Location</source>
-        <translation>地点</translation>
     </message>
 </context>
 <context>
@@ -2299,14 +2770,6 @@ You can leave your feedback or report an error here:</source>
         <translation>聊天昵称</translation>
     </message>
     <message>
-        <source>Chat information is unavailable now, please try again later</source>
-        <translation>聊天信息暂时不可用，请稍后再试</translation>
-    </message>
-    <message>
-        <source>Chat does not exist or it is hidden by privacy settings</source>
-        <translation>聊天不存在或在隐私设置下被隐藏</translation>
-    </message>
-    <message>
         <source>member</source>
         <comment>1</comment>
         <translation>名成员</translation>
@@ -2325,26 +2788,6 @@ You can leave your feedback or report an error here:</source>
         <source>members</source>
         <comment>21</comment>
         <translation>名成员</translation>
-    </message>
-    <message>
-        <source>friend</source>
-        <comment>1</comment>
-        <translation>好友</translation>
-    </message>
-    <message>
-        <source>friends</source>
-        <comment>2</comment>
-        <translation>好友</translation>
-    </message>
-    <message>
-        <source>friends</source>
-        <comment>5</comment>
-        <translation>好友</translation>
-    </message>
-    <message>
-        <source>friends</source>
-        <comment>21</comment>
-        <translation>好友</translation>
     </message>
     <message>
         <source>Channel name</source>
@@ -2394,6 +2837,14 @@ You can leave your feedback or report an error here:</source>
         <source>Group name</source>
         <translation>组名</translation>
     </message>
+    <message>
+        <source>Chat information is unavailable now, please try again later</source>
+        <translation>聊天信息暂时不可用，请稍后再试</translation>
+    </message>
+    <message>
+        <source>Chat does not exist or it is hidden by privacy settings</source>
+        <translation>聊天不存在或在隐私设置下被隐藏</translation>
+    </message>
 </context>
 <context>
     <name>head</name>
@@ -2402,16 +2853,20 @@ You can leave your feedback or report an error here:</source>
         <translation>联系人</translation>
     </message>
     <message>
-        <source>Chats</source>
-        <translation>聊天</translation>
-    </message>
-    <message>
         <source>Settings</source>
         <translation>设置</translation>
     </message>
     <message>
         <source>Search</source>
         <translation>搜索</translation>
+    </message>
+    <message>
+        <source>Calls</source>
+        <translation>来电</translation>
+    </message>
+    <message>
+        <source>Chats</source>
+        <translation>聊天</translation>
     </message>
 </context>
 <context>
@@ -2563,6 +3018,30 @@ You can leave your feedback or report an error here:</source>
         <source>Unblock</source>
         <translation>解锁</translation>
     </message>
+    <message>
+        <source>Start</source>
+        <translation>开始吧</translation>
+    </message>
+    <message>
+        <source>Webinar</source>
+        <translation>网络研讨会</translation>
+    </message>
+    <message>
+        <source>Error creating webinar</source>
+        <translation>建立网路研讨会时发生错误</translation>
+    </message>
+    <message>
+        <source>Call link</source>
+        <translation>通话连结</translation>
+    </message>
+    <message>
+        <source>Error creating call link</source>
+        <translation>建立通话连结时发生错误</translation>
+    </message>
+    <message>
+        <source>Cancel request</source>
+        <translation>取消请求</translation>
+    </message>
 </context>
 <context>
     <name>linux_desktop_file</name>
@@ -2665,20 +3144,12 @@ You can leave your feedback or report an error here:</source>
         <translation>召回 %1</translation>
     </message>
     <message>
-        <source>Enter one-time password received by email</source>
-        <translation>输入通过电子邮件收到的一次性密码</translation>
-    </message>
-    <message>
         <source>Enter your login and password</source>
         <translation>输入您的登录名和密码</translation>
     </message>
     <message>
         <source>To login use you corporative account created at</source>
         <translation>要登录，请使用在中创建的公司帐户</translation>
-    </message>
-    <message>
-        <source>Check the country code and enter your phone number</source>
-        <translation>检查国家代码并输入您的电话号码</translation>
     </message>
     <message>
         <source>Phone</source>
@@ -2751,6 +3222,66 @@ You can leave your feedback or report an error here:</source>
     <message>
         <source>Phone code</source>
         <translation>通话代码</translation>
+    </message>
+    <message>
+        <source>OK</source>
+        <translation>好啦</translation>
+    </message>
+    <message>
+        <source>Configuration error</source>
+        <translation>配置错误</translation>
+    </message>
+    <message>
+        <source>Enter hostname</source>
+        <translation>输入服务器地址</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>取消</translation>
+    </message>
+    <message>
+        <source>It is necessary to supplement the server configuration for the application to work. Contact system administrator</source>
+        <translation>为了使应用程序正常工作，有必要补充服务器配置。联络管理员</translation>
+    </message>
+    <message>
+        <source>Invalid server configuration format. Contact system administrator</source>
+        <translation>无效的服务器配置格式。联络管理员</translation>
+    </message>
+    <message>
+        <source>Unknown error. Contact system administrator</source>
+        <translation>未知错误。联络管理员</translation>
+    </message>
+    <message>
+        <source>Invalid server configuration hostname. Contact system administrator</source>
+        <translation>与管理员核对地址</translation>
+    </message>
+    <message>
+        <source>Check the country code and enter your phone number for registration and authorization</source>
+        <translation>检查国家代码并输入您的电话号码进行注册和授权</translation>
+    </message>
+    <message>
+        <source>Enter your corporate email, a password will be sent to it</source>
+        <translation>输入您的公司电子邮件，将向其发送密码</translation>
+    </message>
+    <message>
+        <source>Enter one-time password sent to email</source>
+        <translation>输入发送到的一次性密码</translation>
+    </message>
+    <message>
+        <source>Enter email</source>
+        <translation>输入电子邮件</translation>
+    </message>
+    <message>
+        <source>Enter password</source>
+        <translation>输入密码</translation>
+    </message>
+    <message>
+        <source>Write us</source>
+        <translation>写信给我们</translation>
+    </message>
+    <message>
+        <source>Wrong password</source>
+        <translation>密码错误</translation>
     </message>
 </context>
 <context>
@@ -2919,6 +3450,10 @@ You can leave your feedback or report an error here:</source>
     <message>
         <source>Sticker</source>
         <translation>贴图</translation>
+    </message>
+    <message>
+        <source>The message is not supported on your version of ICQ. Update the app to see the message</source>
+        <translation>无法在您的应用程序版本中显示消息。更新资料</translation>
     </message>
 </context>
 <context>
@@ -3148,10 +3683,6 @@ You can leave your feedback or report an error here:</source>
 <context>
     <name>placeholders</name>
     <message>
-        <source>Install ICQ on mobile</source>
-        <translation>在移动设备上安装 ICQ</translation>
-    </message>
-    <message>
         <source>Nothing found</source>
         <translation>未找到</translation>
     </message>
@@ -3214,6 +3745,42 @@ You can leave your feedback or report an error here:</source>
     <message>
         <source>Failed to download file or media</source>
         <translation>无法上传文件或媒体</translation>
+    </message>
+    <message>
+        <source>Install ICQ on mobile</source>
+        <translation>在移动设备上安装 ICQ</translation>
+    </message>
+    <message>
+        <source>This group can be joined only after admin approval</source>
+        <translation>您必须在确认后才能加入此群组</translation>
+    </message>
+    <message>
+        <source>Join the group to start chatting</source>
+        <translation>加入群组开始聊天</translation>
+    </message>
+    <message>
+        <source>Tell us about your problem. We will try to help you</source>
+        <translation>告诉我们您的问题。我们将尽力帮助</translation>
+    </message>
+    <message>
+        <source>Start working with</source>
+        <translation>开始使用</translation>
+    </message>
+    <message>
+        <source>Start chatting with</source>
+        <translation>开始与</translation>
+    </message>
+    <message>
+        <source>What this bot can do?</source>
+        <translation>这个机器人可以做什么？</translation>
+    </message>
+    <message>
+        <source>Subscribe the channel to see the messages</source>
+        <translation>订阅频道以查看消息</translation>
+    </message>
+    <message>
+        <source>This channel can be subscribed only after admin approval</source>
+        <translation>您必须在确认后才能订阅此频道。</translation>
     </message>
 </context>
 <context>
@@ -3328,6 +3895,10 @@ You can leave your feedback or report an error here:</source>
 </context>
 <context>
     <name>popup_window</name>
+    <message>
+        <source>Clear all data from this device</source>
+        <translation>删除设备中的所有数据</translation>
+    </message>
     <message>
         <source>Are you sure you want to sign out?</source>
         <translation>您确定要注销吗？</translation>
@@ -3597,14 +4168,6 @@ You can leave your feedback or report an error here:</source>
         <translation>删掉</translation>
     </message>
     <message>
-        <source>Waiting</source>
-        <translation>等待中</translation>
-    </message>
-    <message>
-        <source>Join</source>
-        <translation>进入</translation>
-    </message>
-    <message>
         <source>If you stop the poll, nobody will be able to vote anymore. This action can not be undone</source>
         <translation>如果您停止投票，则没有人可以投票了。此操作无法撤消</translation>
     </message>
@@ -3615,10 +4178,6 @@ You can leave your feedback or report an error here:</source>
     <message>
         <source>Stop this poll?</source>
         <translation>停止投票吗？</translation>
-    </message>
-    <message>
-        <source>Open</source>
-        <translation>开门</translation>
     </message>
     <message>
         <source>Are you sure you want to leave channel?</source>
@@ -3667,6 +4226,186 @@ You can leave your feedback or report an error here:</source>
     <message>
         <source>Create</source>
         <translation>建立</translation>
+    </message>
+    <message>
+        <source>Do you want to join conference?</source>
+        <translation>您要参加会议吗？</translation>
+    </message>
+    <message>
+        <source>Join confirmation</source>
+        <translation>加入确认</translation>
+    </message>
+    <message>
+        <source>All sessions except the current one will be closed</source>
+        <translation>除当前会话外的所有会话均将关闭</translation>
+    </message>
+    <message>
+        <source>Close sessions</source>
+        <translation>闭会</translation>
+    </message>
+    <message>
+        <source>Close session</source>
+        <translation>闭会</translation>
+    </message>
+    <message>
+        <source>Session %1 will be closed</source>
+        <translation>会话%1将关闭</translation>
+    </message>
+    <message>
+        <source>Don&apos;t ask me again</source>
+        <translation>不要再问了</translation>
+    </message>
+    <message>
+        <source>Run this file?</source>
+        <translation>运行文件？</translation>
+    </message>
+    <message>
+        <source>This file may be unsafe</source>
+        <translation>该文件可能不安全</translation>
+    </message>
+    <message>
+        <source>You cannot call this contact due to its privacy settings</source>
+        <translation>由于其隐私设置，您无法致电此联系人。</translation>
+    </message>
+    <message>
+        <source>Ok</source>
+        <translation>好啦</translation>
+    </message>
+    <message>
+        <source>Maximum number of members selected</source>
+        <translation>选择的最大成员数</translation>
+    </message>
+    <message>
+        <source>Start group call</source>
+        <translation>开始群组语音通话</translation>
+    </message>
+    <message>
+        <source>Call</source>
+        <translation>打电话</translation>
+    </message>
+    <message>
+        <source>Start group video call</source>
+        <translation>开始群组视讯通话</translation>
+    </message>
+    <message>
+        <source>Error</source>
+        <translation>失误</translation>
+    </message>
+    <message>
+        <source>Start</source>
+        <translation>开始吧</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to delete the call?</source>
+        <translation>您确定要删除通话吗？</translation>
+    </message>
+    <message>
+        <source>Some problems with your link</source>
+        <translation>您的链接有问题</translation>
+    </message>
+    <message>
+        <source>Some problems with your link. Please check it and try again or ask for a new link</source>
+        <translation>抱歉，您的链接有问题。检查一下，然后重试，或要求您发送其他链接</translation>
+    </message>
+    <message>
+        <source>It&apos;s not possible to connect now, please, try again later</source>
+        <translation>现在无法连接，请稍后再试</translation>
+    </message>
+    <message>
+        <source>Participants&apos; limit exceeded</source>
+        <translation>参加人数超过限制</translation>
+    </message>
+    <message>
+        <source>Duration limit exceeded</source>
+        <translation>超过持续时间限制</translation>
+    </message>
+    <message>
+        <source>Sorry, something went wrong. Please, try again later</source>
+        <translation>抱歉，出了点问题。请稍后再试</translation>
+    </message>
+    <message>
+        <source>My status</source>
+        <translation>我的状态</translation>
+    </message>
+    <message>
+        <source>You cannot call these users because of privacy settings:</source>
+        <translation>由于他们的隐私设置，您无法致电他们。联系人：</translation>
+    </message>
+    <message>
+        <source>You cannot call these users. Try to write them:</source>
+        <translation>要呼叫，请向联系人写一条个人消息，然后等待答案。联系人：</translation>
+    </message>
+    <message>
+        <source>Unknown error connecting to the following contacts:</source>
+        <translation>连接到以下联系人的未知错误：</translation>
+    </message>
+    <message>
+        <source>You cannot call</source>
+        <translation>你不能打电话</translation>
+    </message>
+    <message>
+        <source>Call declined</source>
+        <translation>通话被拒</translation>
+    </message>
+    <message>
+        <source>You cannot call this contact. Write %1 to the chat and, if answered, you can call</source>
+        <translation>您无法致电此联系人。将%1写入聊天室，如果已回答，您可以呼叫</translation>
+    </message>
+    <message>
+        <source>Write</source>
+        <translation>来写</translation>
+    </message>
+    <message>
+        <source>Cancel request?</source>
+        <translation>取消请求？</translation>
+    </message>
+    <message>
+        <source>%1 is now unavailable</source>
+        <translation>%1现在不可用</translation>
+    </message>
+    <message>
+        <source>After canceling the request, the channel will disappear from the chat list</source>
+        <translation>取消请求后，该频道将从聊天列表中消失</translation>
+    </message>
+    <message>
+        <source>After canceling the request, the group will disappear from the chat list</source>
+        <translation>取消请求后，该群组将从聊天列表中消失</translation>
+    </message>
+    <message>
+        <source>You were blocked by admins</source>
+        <translation>管理员阻止了您</translation>
+    </message>
+    <message>
+        <source>Send link</source>
+        <translation>发送链接</translation>
+    </message>
+    <message>
+        <source>You can not join the call. It already has</source>
+        <translation>您无法连接到呼叫。在它里面</translation>
+    </message>
+    <message>
+        <source>No</source>
+        <translation>不</translation>
+    </message>
+    <message>
+        <source>Do you want to join the call? Current call will be ended</source>
+        <translation>加入通话？当前通话将结束</translation>
+    </message>
+    <message>
+        <source>Do you want to start a new call? Current call will be ended</source>
+        <translation>发起新通话？当前通话将结束</translation>
+    </message>
+    <message>
+        <source>Use internal DNS cache</source>
+        <translation>使用内部DNS缓存</translation>
+    </message>
+    <message>
+        <source>To change this option you must restart the application. Continue?</source>
+        <translation>要更改设置，必须重新启动应用程序。继续？</translation>
+    </message>
+    <message>
+        <source>Global people search</source>
+        <translation>全球人员搜寻</translation>
     </message>
 </context>
 <context>
@@ -3730,6 +4469,10 @@ You can leave your feedback or report an error here:</source>
     <message>
         <source>Error file downloading</source>
         <translation>文件上传错误</translation>
+    </message>
+    <message>
+        <source>Add to favorites</source>
+        <translation>添加到收藏夹</translation>
     </message>
 </context>
 <context>
@@ -3885,6 +4628,57 @@ You can leave your feedback or report an error here:</source>
     <message>
         <source>Forwarded message</source>
         <translation>转发的消息</translation>
+    </message>
+</context>
+<context>
+    <name>reactions</name>
+    <message>
+        <source>Remove</source>
+        <translation>删除</translation>
+    </message>
+    <message>
+        <source>Reactions</source>
+        <translation>反应</translation>
+    </message>
+    <message>
+        <source>All</source>
+        <translation>所有</translation>
+    </message>
+    <message>
+        <source>Like</source>
+        <translation>喜欢</translation>
+    </message>
+    <message>
+        <source>Super</source>
+        <translation>超</translation>
+    </message>
+    <message>
+        <source>Funny</source>
+        <translation>滑稽</translation>
+    </message>
+    <message>
+        <source>Oops</source>
+        <translation>哎呀</translation>
+    </message>
+    <message>
+        <source>Sad</source>
+        <translation>伤心</translation>
+    </message>
+    <message>
+        <source>Scandalous</source>
+        <translation>令人发指</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation>关</translation>
+    </message>
+    <message>
+        <source>Add reaction: an error occurred</source>
+        <translation>添加反应：发生错误</translation>
+    </message>
+    <message>
+        <source>Remove reaction: an error occurred</source>
+        <translation>删除回应：发生错误</translation>
     </message>
 </context>
 <context>
@@ -4170,10 +4964,6 @@ You can leave your feedback or report an error here:</source>
         <translation>忽略名单</translation>
     </message>
     <message>
-        <source>Consequently marking messages as read</source>
-        <translation>按顺序阅读聊天内容</translation>
-    </message>
-    <message>
         <source>Auto play GIFs</source>
         <translation>自动播放GIF</translation>
     </message>
@@ -4326,10 +5116,6 @@ You can leave your feedback or report an error here:</source>
         <translation>添加昵称</translation>
     </message>
     <message>
-        <source>Problem</source>
-        <translation>问题所在</translation>
-    </message>
-    <message>
         <source>Main window</source>
         <translation>主窗口</translation>
     </message>
@@ -4372,6 +5158,74 @@ You can leave your feedback or report an error here:</source>
     <message>
         <source>Advanced Settings</source>
         <translation>进阶设定</translation>
+    </message>
+    <message>
+        <source>Account Security</source>
+        <translation>帐号安全</translation>
+    </message>
+    <message>
+        <source>Session List</source>
+        <translation>会话列表</translation>
+    </message>
+    <message>
+        <source>Favorites</source>
+        <translation>最喜欢的</translation>
+    </message>
+    <message>
+        <source>Current session</source>
+        <translation>本届会议</translation>
+    </message>
+    <message>
+        <source>Session closed</source>
+        <translation>会议闭幕</translation>
+    </message>
+    <message>
+        <source>Error occurred</source>
+        <translation>发生错误。</translation>
+    </message>
+    <message>
+        <source>Active session</source>
+        <translation>活动会议</translation>
+    </message>
+    <message>
+        <source>Close all other sessions</source>
+        <translation>关闭所有其他会议</translation>
+    </message>
+    <message>
+        <source>Active sessions</source>
+        <translation>活动会话</translation>
+    </message>
+    <message>
+        <source>Session info copied</source>
+        <translation>会话信息已复制</translation>
+    </message>
+    <message>
+        <source>Do not ask when running executable files</source>
+        <translation>运行可执行文件时不询问</translation>
+    </message>
+    <message>
+        <source>Use system spell checker</source>
+        <translation>系统拼写检查</translation>
+    </message>
+    <message>
+        <source>Calls</source>
+        <translation>来电</translation>
+    </message>
+    <message>
+        <source>Show calls tab</source>
+        <translation>显示通话标签</translation>
+    </message>
+    <message>
+        <source>Show reactions to messages</source>
+        <translation>显示对消息的反应</translation>
+    </message>
+    <message>
+        <source>Show statuses</source>
+        <translation>显示状态</translation>
+    </message>
+    <message>
+        <source>Show unreads counter in window title</source>
+        <translation>在窗口标题中显示未读的数目</translation>
     </message>
 </context>
 <context>
@@ -4567,6 +5421,10 @@ You can leave your feedback or report an error here:</source>
         <source>Mark all dialogs as read</source>
         <translation>将所有对话框标记为已读</translation>
     </message>
+    <message>
+        <source>Set status</source>
+        <translation>设定状态</translation>
+    </message>
 </context>
 <context>
     <name>sidebar</name>
@@ -4585,10 +5443,6 @@ You can leave your feedback or report an error here:</source>
     <message>
         <source>Nickname</source>
         <translation>昵称</translation>
-    </message>
-    <message>
-        <source>Blocked people</source>
-        <translation>被屏蔽用户</translation>
     </message>
     <message>
         <source>Phone number</source>
@@ -4869,20 +5723,12 @@ Please edit phone number and try again.</source>
         <translation>您无法在此组中读取或写入邮件，因为您已被阻止</translation>
     </message>
     <message>
-        <source>The join request has been sent to administrator</source>
-        <translation>加入请求已发送给管理员</translation>
-    </message>
-    <message>
         <source>Remove</source>
         <translation>移除</translation>
     </message>
     <message>
         <source>Leave and delete</source>
         <translation>退出并删除</translation>
-    </message>
-    <message>
-        <source>Block and delete</source>
-        <translation>阻止并删除</translation>
     </message>
     <message>
         <source>Search</source>
@@ -4901,10 +5747,6 @@ Please edit phone number and try again.</source>
         <translation>频道设定</translation>
     </message>
     <message>
-        <source>Block and delete from group</source>
-        <translation>阻止并从群组中删除</translation>
-    </message>
-    <message>
         <source>Group settings</source>
         <translation>组设置</translation>
     </message>
@@ -4915,6 +5757,50 @@ Please edit phone number and try again.</source>
     <message>
         <source>Public group</source>
         <translation>公众团体</translation>
+    </message>
+    <message>
+        <source>Favorites</source>
+        <translation>最喜欢的</translation>
+    </message>
+    <message>
+        <source>Open favorites</source>
+        <translation>打开收藏夹</translation>
+    </message>
+    <message>
+        <source>Delete from group</source>
+        <translation>从群组中删除</translation>
+    </message>
+    <message>
+        <source>Deleted and blocked</source>
+        <translation>删除和阻止</translation>
+    </message>
+    <message>
+        <source>Delete</source>
+        <translation>删掉</translation>
+    </message>
+    <message>
+        <source>You can&apos;t read messages in this channel because you are blocked</source>
+        <translation>您被封锁，因此无法阅读频道中的讯息</translation>
+    </message>
+    <message>
+        <source>Wait for subscription request approval</source>
+        <translation>等待确认订阅请求</translation>
+    </message>
+    <message>
+        <source>Wait for join request approval</source>
+        <translation>等待输入请求的确认</translation>
+    </message>
+    <message>
+        <source>Your subscription request was rejected</source>
+        <translation>您的订阅请求被拒绝</translation>
+    </message>
+    <message>
+        <source>Your join request was rejected</source>
+        <translation>您的会员要求被拒绝</translation>
+    </message>
+    <message>
+        <source>Call</source>
+        <translation>打电话</translation>
     </message>
 </context>
 <context>
@@ -4957,6 +5843,10 @@ Please edit phone number and try again.</source>
         <source>Copied to clipboard</source>
         <translation>复制到剪贴板</translation>
     </message>
+    <message>
+        <source>Location</source>
+        <translation>所在位置</translation>
+    </message>
 </context>
 <context>
     <name>state</name>
@@ -4979,6 +5869,57 @@ Please edit phone number and try again.</source>
     <message>
         <source>Invisible</source>
         <translation>隐身</translation>
+    </message>
+    <message>
+        <source>Blocked</source>
+        <translation>受阻</translation>
+    </message>
+    <message>
+        <source>Have never been here</source>
+        <translation>没来过</translation>
+    </message>
+    <message>
+        <source>Bot</source>
+        <translation>机器人</translation>
+    </message>
+</context>
+<context>
+    <name>status</name>
+    <message>
+        <source>Add status</source>
+        <translation>新增状态</translation>
+    </message>
+    <message>
+        <source>Custom status</source>
+        <translation>用户状态</translation>
+    </message>
+    <message>
+        <source>Status timing</source>
+        <translation>身份条款</translation>
+    </message>
+    <message>
+        <source>No status</source>
+        <translation>无状态</translation>
+    </message>
+    <message>
+        <source>Show always</source>
+        <translation>总是显示</translation>
+    </message>
+    <message>
+        <source>Week</source>
+        <translation>一周</translation>
+    </message>
+    <message>
+        <source>undefined time</source>
+        <translation>不确定的时间</translation>
+    </message>
+    <message>
+        <source>%1 left</source>
+        <translation>还剩 %1</translation>
+    </message>
+    <message>
+        <source>For %1 already</source>
+        <translation>已经为 %1</translation>
     </message>
 </context>
 <context>
@@ -5050,6 +5991,10 @@ Please edit phone number and try again.</source>
         <source>Settings</source>
         <translation>设置</translation>
     </message>
+    <message>
+        <source>Calls</source>
+        <translation>来电</translation>
+    </message>
 </context>
 <context>
     <name>tab header</name>
@@ -5072,6 +6017,10 @@ Please edit phone number and try again.</source>
     <message>
         <source>Emails</source>
         <translation>电子邮件</translation>
+    </message>
+    <message>
+        <source>Group call</source>
+        <translation>团体通话</translation>
     </message>
 </context>
 <context>
@@ -5101,16 +6050,12 @@ Please edit phone number and try again.</source>
         <translation>ICQ New — 通讯的发展</translation>
     </message>
     <message>
-        <source>Welcome to ICQ</source>
-        <translation>欢迎来到ICQ</translation>
+        <source>Welcome to ICQ New</source>
+        <translation>欢迎来到ICQ New</translation>
     </message>
 </context>
 <context>
     <name>title</name>
-    <message>
-        <source>ICQ</source>
-        <translation>ICQ</translation>
-    </message>
     <message>
         <source>Mail.ru Agent</source>
         <translation>Mail.ru Agent</translation>
@@ -5122,6 +6067,10 @@ Please edit phone number and try again.</source>
     <message>
         <source>Myteam</source>
         <translation>Myteam</translation>
+    </message>
+    <message>
+        <source>ICQ</source>
+        <translation>ICQ</translation>
     </message>
 </context>
 <context>
@@ -5150,6 +6099,10 @@ Please edit phone number and try again.</source>
         <source>There are no profiles with this email</source>
         <translation>该电子邮件没有个人资料</translation>
     </message>
+    <message>
+        <source>You are not a member or banned to write in this group</source>
+        <translation>您不是聊天成员，或者不允许您写</translation>
+    </message>
 </context>
 <context>
     <name>tooltips</name>
@@ -5166,52 +6119,12 @@ Please edit phone number and try again.</source>
         <translation>表情和贴纸</translation>
     </message>
     <message>
-        <source>Open chat page</source>
-        <translation>打开聊天页面</translation>
-    </message>
-    <message>
-        <source>Turn off camera</source>
-        <translation>关闭摄像头</translation>
-    </message>
-    <message>
-        <source>Turn on camera</source>
-        <translation>开启摄像头</translation>
-    </message>
-    <message>
-        <source>Turn off microphone</source>
-        <translation>关闭话筒</translation>
-    </message>
-    <message>
-        <source>Turn on microphone</source>
-        <translation>开启话筒</translation>
-    </message>
-    <message>
-        <source>Turn off screen sharing</source>
-        <translation>关闭屏幕分享</translation>
-    </message>
-    <message>
-        <source>Turn on screen sharing</source>
-        <translation>开启屏幕分享</translation>
-    </message>
-    <message>
         <source>Call</source>
         <translation>致电</translation>
     </message>
     <message>
         <source>Search for messages</source>
         <translation>搜索讯息</translation>
-    </message>
-    <message>
-        <source>Exit full screen</source>
-        <translation>退出全屏</translation>
-    </message>
-    <message>
-        <source>Full screen</source>
-        <translation>全屏</translation>
-    </message>
-    <message>
-        <source>End call</source>
-        <translation>结束通话</translation>
     </message>
     <message>
         <source>Share</source>
@@ -5224,6 +6137,14 @@ Please edit phone number and try again.</source>
     <message>
         <source>Information</source>
         <translation>信息</translation>
+    </message>
+    <message>
+        <source>Audio call</source>
+        <translation>语音通话</translation>
+    </message>
+    <message>
+        <source>Link to call</source>
+        <translation>通话连结</translation>
     </message>
 </context>
 <context>
@@ -5296,11 +6217,7 @@ Please edit phone number and try again.</source>
     </message>
     <message>
         <source>Add to call</source>
-        <translation>添加到通话</translation>
-    </message>
-    <message>
-        <source>MEMBERS</source>
-        <translation>成员</translation>
+        <translation>加入通话</translation>
     </message>
     <message>
         <source>OTHERS</source>
@@ -5333,6 +6250,133 @@ Please edit phone number and try again.</source>
     <message>
         <source>To share screen you need to allow access to the screen recording in the system settings</source>
         <translation>要共享屏幕，您需要允许访问系统设置中的屏幕录像</translation>
+    </message>
+    <message>
+        <source>VCS call</source>
+        <translation>VCS 电话</translation>
+    </message>
+    <message>
+        <source>To use microphone you need to allow access to the microphone in the system settings</source>
+        <translation>要使用麦克风，请在系统设置中允许访问麦克风</translation>
+    </message>
+    <message>
+        <source>Microphone permissions</source>
+        <translation>麦克风访问</translation>
+    </message>
+    <message>
+        <source>To use camera you need to allow access to the camera in the system settings</source>
+        <translation>要使用相机，请在系统设置中允许访问相机</translation>
+    </message>
+    <message>
+        <source>Camera permissions</source>
+        <translation>摄像头访问</translation>
+    </message>
+    <message>
+        <source>Forward</source>
+        <translation>前进</translation>
+    </message>
+    <message>
+        <source>ALL GROUP MEMBERS</source>
+        <translation>所有小组成员</translation>
+    </message>
+    <message>
+        <source>CALL MEMBERS</source>
+        <translation>通话参与者</translation>
+    </message>
+</context>
+<context>
+    <name>voip_video_panel</name>
+    <message>
+        <source>Video</source>
+        <translation>录影带</translation>
+    </message>
+    <message>
+        <source>Screen</source>
+        <translation>萤幕</translation>
+    </message>
+    <message>
+        <source>More</source>
+        <translation>更多</translation>
+    </message>
+    <message>
+        <source>Go to chat</source>
+        <translation>去聊天</translation>
+    </message>
+    <message>
+        <source>Open masks</source>
+        <translation>启用遮罩</translation>
+    </message>
+    <message>
+        <source>Add user</source>
+        <translation>新增成员</translation>
+    </message>
+    <message>
+        <source>Settings</source>
+        <translation>设定值</translation>
+    </message>
+    <message>
+        <source>End</source>
+        <translation>完成</translation>
+    </message>
+    <message>
+        <source>Show all</source>
+        <translation>全部显示</translation>
+    </message>
+    <message>
+        <source>Show one</source>
+        <translation>显示一个</translation>
+    </message>
+    <message>
+        <source>Stop screen sharing</source>
+        <translation>停止屏幕共享</translation>
+    </message>
+    <message>
+        <source>Screen sharing enabled</source>
+        <translation>屏幕共享已启用</translation>
+    </message>
+    <message>
+        <source>Ask one of the participants to turn off the video. In calls with over %1 people only one video can be shown</source>
+        <translation>要求关闭另一位参与者的视频。在通话人数超过%1通话中，只能显示一个视频</translation>
+    </message>
+    <message>
+        <source>Masks aren&apos;t available in calls with more than %1 members</source>
+        <translation>参加人数超过%1通话中，无法使用口罩</translation>
+    </message>
+    <message>
+        <source>Mic</source>
+        <translation>麦克风</translation>
+    </message>
+    <message>
+        <source>Only the creator of the webinar can show the video</source>
+        <translation>只有网络研讨会的创建者可以显示视频</translation>
+    </message>
+    <message>
+        <source>Only the creator of the webinar can use masks</source>
+        <translation>只有网络研讨会的创建者可以使用遮罩</translation>
+    </message>
+    <message>
+        <source>Only the creator of the webinar can use a microphone</source>
+        <translation>只有网络研讨会的创建者可以使用麦克风</translation>
+    </message>
+    <message>
+        <source>Copy link</source>
+        <translation>复制链接</translation>
+    </message>
+    <message>
+        <source>Invite</source>
+        <translation>邀请</translation>
+    </message>
+    <message>
+        <source>Link copied</source>
+        <translation>链接已复制</translation>
+    </message>
+    <message>
+        <source>Sound</source>
+        <translation>音效</translation>
+    </message>
+    <message>
+        <source>Wait for connection</source>
+        <translation>期望连接</translation>
     </message>
 </context>
 <context>

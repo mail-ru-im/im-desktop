@@ -42,8 +42,8 @@ namespace Ui
 
         elide();
 
-        connect(this, &EditBlockText::hoverChanged, this, Utils::QOverload<>::of(&EditBlockText::update));
-        connect(this, &EditBlockText::pressChanged, this, Utils::QOverload<>::of(&EditBlockText::update));
+        connect(this, &EditBlockText::hoverChanged, this, qOverload<>(&EditBlockText::update));
+        connect(this, &EditBlockText::pressChanged, this, qOverload<>(&EditBlockText::update));
     }
 
     void EditBlockText::setMessage(Data::MessageBuddySptr _message)
@@ -135,16 +135,16 @@ namespace Ui
 
         editBlockText_ = new EditBlockText(this);
         editBlockText_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
-        Testing::setAccessibleName(editBlockText_, qsl("AS editBlockText_"));
+        Testing::setAccessibleName(editBlockText_, qsl("AS Edit text"));
 
         auto btnWidget = new QWidget(this);
-        Testing::setAccessibleName(btnWidget, qsl("AS iw btnWidget"));
+        Testing::setAccessibleName(btnWidget, qsl("AS Edit cancelWidget"));
         btnWidget->setFixedWidth(getHorMargin());
 
         buttonCancel_ = new CustomButton(btnWidget, qsl(":/controls/close_icon"), getCancelBtnIconSize());
         buttonCancel_->setFixedSize(getCancelButtonSize());
         updateButtonColors(buttonCancel_, InputStyleMode::Default);
-        Testing::setAccessibleName(buttonCancel_, qsl("AS iw cancel"));
+        Testing::setAccessibleName(buttonCancel_, qsl("AS Edit cancel"));
 
         auto btnLayout = Utils::emptyVLayout(btnWidget);
         btnLayout->setAlignment(Qt::AlignCenter);
@@ -158,11 +158,11 @@ namespace Ui
 
         connect(buttonCancel_, &CustomButton::clicked, this, [this]()
         {
-            emit cancelClicked(QPrivateSignal());
+            Q_EMIT cancelClicked(QPrivateSignal());
         });
         connect(editBlockText_, &ClickableWidget::clicked, this, [this]()
         {
-            emit messageClicked(QPrivateSignal());
+            Q_EMIT messageClicked(QPrivateSignal());
         });
     }
 

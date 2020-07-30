@@ -76,7 +76,7 @@ bool storage::open(storage_mode _mode)
         return false;
     }
 
-    if (_mode.flags_.append_ && _mode.flags_.write_)
+    if ((_mode.flags_.append_ || _mode.flags_.at_end_) && _mode.flags_.write_)
         active_file_stream_->seekp(0, std::ios::end);
 
     return true;
@@ -136,6 +136,15 @@ storage::result_type storage::write_data_block(core::tools::binary_stream& _data
     }
 
     return { false, std::numeric_limits<std::int32_t>::max() };
+}
+
+storage::result_type storage::write_data_block_at(core::tools::binary_stream& _data, int64_t _offset)
+{
+    active_file_stream_->seekp(_offset);
+    auto res = write_data_block(_data, _offset);
+    active_file_stream_->seekp(0, std::ios_base::end);
+
+    return res;
 }
 
 bool storage::read_data_block(int64_t _offset, core::tools::binary_stream& _data)
@@ -247,4 +256,12 @@ bool storage::fast_read_data_block(core::tools::binary_stream& buffer, int64_t& 
     }
 
     return !is_small_file;
+}
+
+int64_t storage::get_offset() const
+{
+    if (active_file_stream_)
+        return active_file_stream_->tellp();
+
+    return 0;
 }

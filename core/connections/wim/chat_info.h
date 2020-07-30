@@ -2,6 +2,7 @@
 
 #include "../../../corelib/collection_helper.h"
 #include "persons.h"
+#include "lastseen.h"
 
 namespace core
 {
@@ -13,7 +14,7 @@ namespace core
             std::string role_;
             std::string nick_;
             std::string friendly_;
-            int32_t lastseen_ = -1;
+            lastseen lastseen_;
 
             bool friend_ = false;
             bool no_avatar_ = false;
@@ -23,7 +24,7 @@ namespace core
         {
             std::string aimid_;
             std::string role_;
-            int32_t lastseen_ = -1;
+            lastseen lastseen_;
         };
 
         class chat_info
@@ -41,20 +42,20 @@ namespace core
             std::string creator_;
             std::string default_role_;
 
-            uint32_t create_time_;
-            uint32_t admins_count_;
-            uint32_t members_count_;
-            uint32_t friend_count_;
-            uint32_t blocked_count_;
-            uint32_t pending_count_;
+            uint32_t create_time_ = 0;
+            uint32_t admins_count_ = 0;
+            uint32_t members_count_ = 0;
+            uint32_t friend_count_ = 0;
+            uint32_t blocked_count_ = 0;
+            uint32_t pending_count_ = 0;
 
-            bool you_blocked_;
-            bool you_pending_;
-            bool you_member_;
-            bool public_;
-            bool live_;
-            bool controlled_;
-            bool joinModeration_;
+            bool you_blocked_ = false;
+            bool you_pending_ = false;
+            bool you_member_ = false;
+            bool public_ = false;
+            bool live_ = false;
+            bool controlled_ = false;
+            bool joinModeration_ = false;
 
             std::vector<chat_member_info> members_;
             std::shared_ptr<core::archive::persons_map> persons_;
@@ -65,18 +66,17 @@ namespace core
             int32_t unserialize(const rapidjson::Value& _node);
             void serialize(core::coll_helper _coll) const;
 
-            const auto& get_persons() const { return persons_; }
+            const auto& get_persons() const noexcept { return persons_; }
+            const auto& get_aimid() const noexcept { return aimid_; }
         };
 
         class common_chat_info
         {
             std::string aimid_;
-            std::string friednly_;
-            int32_t members_count_;
+            std::string friendly_;
+            int32_t members_count_ = 0;
 
         public:
-            common_chat_info();
-
             int32_t unserialize(const rapidjson::Value& _node);
             void serialize(core::coll_helper _coll) const;
         };

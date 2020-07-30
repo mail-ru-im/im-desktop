@@ -5,29 +5,23 @@
 #include "../../../corelib/enumerations.h"
 
 #include "../../urls_cache.h"
+#include "../common.shared/string_utils.h"
 
 using namespace core;
 using namespace wim;
 
 end_session::end_session(wim_packet_params _params)
-    :
-    wim_packet(std::move(_params))
+    : wim_packet(std::move(_params))
 {
 }
 
-end_session::~end_session()
-{
-}
+end_session::~end_session() = default;
 
-int32_t end_session::init_request(std::shared_ptr<core::http_request_simple> _request)
+int32_t end_session::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
-    std::stringstream ss_url;
-    ss_url << urls::get_url(urls::url_type::wim_host) << "aim/endSession" <<
-        "?f=json" <<
-        "&aimsid=" << escape_symbols(get_params().aimsid_) <<
-        "&invalidateToken=1";
+    std::string url = su::concat(urls::get_url(urls::url_type::wim_host), "aim/endSession?f=json&aimsid=", escape_symbols(get_params().aimsid_), "&invalidateToken=1");
 
-    _request->set_url(ss_url.str());
+    _request->set_url(std::move(url));
     _request->set_normalized_url("endSession");
     _request->set_keep_alive();
 
@@ -46,7 +40,7 @@ int32_t end_session::parse_response_data(const rapidjson::Value& _data)
     return 0;
 }
 
-int32_t end_session::execute_request(std::shared_ptr<core::http_request_simple> request)
+int32_t end_session::execute_request(const std::shared_ptr<core::http_request_simple>& request)
 {
     if (!request->get())
         return wpie_network_error;

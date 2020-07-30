@@ -1,6 +1,9 @@
 #include "stdafx.h"
 
 #include "../common.shared/config/config.h"
+#ifdef _WIN32
+#include "../common.shared/crash_report/crash_reporter.h"
+#endif //_WIN32
 
 #include "../corelib/collection_helper.h"
 #include "../gui/core_dispatcher.h"
@@ -26,11 +29,13 @@ AppConfig::AppConfig(const core::coll_helper &collection)
     , IsSaveCallRTPEnabled_(collection.get<bool>("dev.save_rtp_dumps", false))
     , IsServerSearchEnabled_(collection.get<bool>("dev.server_search", true))
     , IsShowHiddenThemes_(collection.get<bool>("show_hidden_themes", false))
+    , IsSysCrashHandleEnabled_(collection.get<bool>("sys_crash_handler_enabled", false))
     , WatchGuiMemoryEnabled_(false)
     , ShowMsgOptionHasChanged_(false)
     , GDPR_UserHasAgreed_(collection.get<bool>("gdpr.user_has_agreed") || config::get().is_on(config::features::auto_accepted_gdpr))
     , GDPR_AgreementReportedToServer_(collection.get<int32_t>("gdpr.agreement_reported_to_server") || config::get().is_on(config::features::auto_accepted_gdpr))
     , GDPR_UserHasLoggedInEver_(collection.get<bool>("gdpr.user_has_logged_in_ever") || config::get().is_on(config::features::auto_accepted_gdpr))
+    , ConnectByIp_(collection.get<bool>("dev.connect_by_ip", false))
     , CacheHistoryContolPagesFor_(collection.get<int>("dev.cache_history_pages_secs"))
     , deviceId_(collection.get<std::string>("dev_id"))
     , urlMacUpdateAlpha_(collection.get<std::string>("urls.url_update_mac_alpha"))
@@ -38,7 +43,9 @@ AppConfig::AppConfig(const core::coll_helper &collection)
     , urlMacUpdateRelease_(collection.get<std::string>("urls.url_update_mac_release"))
     , urlAttachPhone_(collection.get<std::string>("urls.url_attach_phone"))
 {
-
+#ifdef _WIN32
+    crash_system::reporter::instance().set_sys_handler_enabled(IsSysCrashHandleEnabled_);
+#endif //_WIN32
 }
 
 bool AppConfig::IsContextMenuFeaturesUnlocked() const noexcept
@@ -89,6 +96,11 @@ bool AppConfig::IsServerSearchEnabled() const noexcept
 bool AppConfig::IsShowHiddenThemes() const noexcept
 {
     return IsShowHiddenThemes_;
+}
+
+bool AppConfig::IsSysCrashHandleEnabled() const noexcept
+{
+    return IsSysCrashHandleEnabled_;
 }
 
 bool AppConfig::WatchGuiMemoryEnabled() const noexcept
@@ -228,9 +240,19 @@ void AppConfig::SetCustomDeviceId(bool _custom) noexcept
         deviceId_.clear();
 }
 
+void AppConfig::SetConnectByIp(bool _enabled) noexcept
+{
+    ConnectByIp_ = _enabled;
+}
+
 bool AppConfig::hasCustomDeviceId() const
 {
     return !deviceId_.empty() && deviceId_ != common::get_dev_id();
+}
+
+bool AppConfig::connectByIp() const
+{
+    return ConnectByIp_;
 }
 
 const AppConfig& GetAppConfig()
@@ -267,6 +289,7 @@ void ModifyAppConfig(AppConfig _appConfig, message_processed_callback _callback,
     collection.set_value_as_int("dev.cache_history_pages_secs", _appConfig.CacheHistoryControlPagesFor());
     collection.set_value_as_bool("dev.server_search", _appConfig.IsServerSearchEnabled());
     collection.set_value_as_string("dev_id", _appConfig.getDevId());
+    collection.set_value_as_bool("dev.connect_by_ip", _appConfig.connectByIp());
 
     if (!postToCore)
     {

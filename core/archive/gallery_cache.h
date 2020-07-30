@@ -117,6 +117,7 @@ namespace core
             void make_hole(int64_t, int64_t);
 
             int64_t get_memory_usage() const;
+            bool is_hole_requested() const;
 
         private:
             bool load_cache_from_local();

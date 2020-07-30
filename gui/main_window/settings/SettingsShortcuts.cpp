@@ -12,11 +12,13 @@
 #include "../../controls/TransparentScrollBar.h"
 #include "../../utils/utils.h"
 #include "../../utils/InterConnector.h"
+#include "../../utils/features.h"
 #include "../../styles/ThemeParameters.h"
+#include "../../statuses/StatusUtils.h"
 
 using namespace Ui;
 
-void GeneralSettingsWidget::Creator::initShortcuts(QWidget* _parent)
+void GeneralSettingsWidget::Creator::initShortcuts(ShortcutsSettings* _parent)
 {
     auto scrollArea = CreateScrollAreaAndSetTrScrollBarV(_parent);
     scrollArea->setWidgetResizable(true);
@@ -32,11 +34,11 @@ void GeneralSettingsWidget::Creator::initShortcuts(QWidget* _parent)
     mainLayout->setAlignment(Qt::AlignTop);
     mainLayout->setContentsMargins(0, Utils::scale_value(36), 0, 0);
 
-    Testing::setAccessibleName(mainWidget, qsl("AS settings shortcuts mainWidget"));
+    Testing::setAccessibleName(mainWidget, qsl("AS ShortcutsPage mainWidget"));
     scrollArea->setWidget(mainWidget);
 
     auto layout = Utils::emptyHLayout(_parent);
-    Testing::setAccessibleName(scrollArea, qsl("AS settings shortcuts scrollArea"));
+    Testing::setAccessibleName(scrollArea, qsl("AS ShortcutsPage scrollArea"));
     layout->addWidget(scrollArea);
     auto keysHeader = QT_TRANSLATE_NOOP("settings", "Keys");
     {
@@ -48,9 +50,9 @@ void GeneralSettingsWidget::Creator::initShortcuts(QWidget* _parent)
         headerLayout->setContentsMargins(Utils::scale_value(20), 0, Utils::scale_value(20), 0);
 
         if constexpr (platform::is_apple())
-            GeneralCreator::addHeader(headerWidget, headerLayout, keysHeader % ql1c(' ') % KeySymbols::Mac::command % qsl(" + W"));
+            GeneralCreator::addHeader(headerWidget, headerLayout, keysHeader % u' ' % KeySymbols::Mac::command % u" + W");
         else
-            GeneralCreator::addHeader(headerWidget, headerLayout, keysHeader % ql1c(' ') % qsl("Ctrl + W"));
+            GeneralCreator::addHeader(headerWidget, headerLayout, keysHeader % u' ' % u"Ctrl + W");
 
         mainLayout->addWidget(headerWidget);
         mainLayout->addSpacing(Utils::scale_value(8));
@@ -72,7 +74,15 @@ void GeneralSettingsWidget::Creator::initShortcuts(QWidget* _parent)
         auto selectedIndex = 0, i = 0;
         for (const auto&[name, code] : actsList)
         {
-            list->addItem(new RadioTextRow(name));
+            auto row = new RadioTextRow(name);
+            switch (code)
+            {
+            case ShortcutsCloseAction::CloseChat: Testing::setAccessibleName(row, qsl("AS ShortcutsPage closeChat")); break;
+            case ShortcutsCloseAction::RollUpWindow: Testing::setAccessibleName(row, qsl("AS ShortcutsPage rollUpWindow")); break;
+            case ShortcutsCloseAction::RollUpWindowAndChat: Testing::setAccessibleName(row, qsl("AS ShortcutsPage rollUpWindowAndChat")); break;
+            default: Testing::setAccessibleName(row, qsl("AS ShortcutsPage unknown"));
+            }
+            list->addItem(row);
             if (currentAct == code)
                 selectedIndex = i;
             ++i;
@@ -100,9 +110,9 @@ void GeneralSettingsWidget::Creator::initShortcuts(QWidget* _parent)
         headerLayout->setContentsMargins(Utils::scale_value(20), 0, Utils::scale_value(20), 0);
 
         if constexpr (platform::is_apple())
-            GeneralCreator::addHeader(headerWidget, headerLayout, keysHeader % ql1c(' ') % KeySymbols::Mac::command % ql1s(" + F"));
+            GeneralCreator::addHeader(headerWidget, headerLayout, keysHeader % u' ' % KeySymbols::Mac::command % u" + F");
         else
-            GeneralCreator::addHeader(headerWidget, headerLayout, keysHeader % ql1c(' ') % ql1s("Ctrl + F"));
+            GeneralCreator::addHeader(headerWidget, headerLayout, keysHeader % u' ' % u"Ctrl + F");
 
         mainLayout->addWidget(headerWidget);
         mainLayout->addSpacing(Utils::scale_value(8));
@@ -121,7 +131,7 @@ void GeneralSettingsWidget::Creator::initShortcuts(QWidget* _parent)
 
         QString reverseSuffix;
         if constexpr (platform::is_apple())
-            reverseSuffix = ql1c('(') % KeySymbols::Mac::shift % KeySymbols::Mac::command % ql1s("F)");
+            reverseSuffix = u'(' % KeySymbols::Mac::shift % KeySymbols::Mac::command % u"F)";
         else
             reverseSuffix = qsl("(Ctrl + Shift + F)");
 
@@ -131,7 +141,12 @@ void GeneralSettingsWidget::Creator::initShortcuts(QWidget* _parent)
         for (const auto&[name, code] : actsList)
         {
             auto row = new RadioTextRow(name);
-
+            switch (code)
+            {
+            case ShortcutsSearchAction::GlobalSearch : Testing::setAccessibleName(row, qsl("AS ShortcutsPage ") % qsl("globalSearch")); break;
+            case ShortcutsSearchAction::SearchInChat : Testing::setAccessibleName(row, qsl("AS ShortcutsPage ") % qsl("searchInChat")); break;
+            default: Testing::setAccessibleName(row, qsl("AS ShortcutsPage unknown"));
+            }
             if (currentAct == code)
                 selectedIndex = i;
             else
@@ -189,11 +204,10 @@ void GeneralSettingsWidget::Creator::initShortcuts(QWidget* _parent)
             values,
             selectedIndex,
             -1,
-            [&keysIndex](QString v, int ix, TextEmojiWidget*)
+            [&keysIndex](const QString& v, int ix, TextEmojiWidget*)
             {
                 get_gui_settings()->set_value<int>(settings_key1_to_send_message, keysIndex[ix].second);
-            },
-            [](bool) -> QString { return QString(); });
+            });
 
         mainLayout->addWidget(keyWidget);
         mainLayout->addSpacing(Utils::scale_value(40));
@@ -308,6 +322,18 @@ void GeneralSettingsWidget::Creator::initShortcuts(QWidget* _parent)
                         KeySymbols::Mac::command % ql1c(','));
                 }
             }
+            {
+                QString keys;
+                if constexpr (platform::is_apple())
+                    keys = KeySymbols::Mac::command % ql1c('S');
+                else
+                    keys = qsl("Ctrl + S");
+
+                _parent->statuses_ = GeneralCreator::addHotkeyInfo(
+                        mainWindowW, mainWindowL,
+                        QT_TRANSLATE_NOOP("shortcuts", "Set status"),
+                        keys);
+            }
         }
 
         {
@@ -404,9 +430,9 @@ void GeneralSettingsWidget::Creator::initShortcuts(QWidget* _parent)
             {
                 QString keys;
                 if constexpr (platform::is_apple())
-                    keys = qsl("fn") % KeySymbols::arrow_up % ql1c('/') % KeySymbols::arrow_down;
+                    keys = u"fn" % KeySymbols::arrow_up % u'/' % KeySymbols::arrow_down;
                 else
-                    keys = qsl("PgUp") % ql1c('/') % qsl("PgDown");
+                    keys = qsl("PgUp/PgDown");
 
                 GeneralCreator::addHotkeyInfo(
                     chatHistoryW, chatHistoryL,
@@ -425,7 +451,7 @@ void GeneralSettingsWidget::Creator::initShortcuts(QWidget* _parent)
                 if constexpr (platform::is_apple())
                     keys = KeySymbols::Mac::shift % KeySymbols::Mac::option % KeySymbols::arrow_up;
                 else
-                    keys = qsl("Shift + Alt + ") % KeySymbols::arrow_up;
+                    keys = u"Shift + Alt + " % KeySymbols::arrow_up;
 
                 GeneralCreator::addHotkeyInfo(
                     chatHistoryW, chatHistoryL,
@@ -477,7 +503,7 @@ void GeneralSettingsWidget::Creator::initShortcuts(QWidget* _parent)
             {
                 QString keys;
                 if constexpr (platform::is_apple())
-                    keys = qsl("fn") % KeySymbols::arrow_right;
+                    keys = u"fn" % KeySymbols::arrow_right;
                 else
                     keys = qsl("Ctrl + End");
 
@@ -489,7 +515,7 @@ void GeneralSettingsWidget::Creator::initShortcuts(QWidget* _parent)
             {
                 QString keys;
                 if constexpr (platform::is_apple())
-                    keys = qsl("fn") % KeySymbols::arrow_left;
+                    keys = u"fn" % KeySymbols::arrow_left;
                 else
                     keys = qsl("Ctrl + Home");
 
@@ -503,7 +529,7 @@ void GeneralSettingsWidget::Creator::initShortcuts(QWidget* _parent)
                 if constexpr (platform::is_apple())
                     keys = KeySymbols::Mac::shift % KeySymbols::Mac::command % KeySymbols::arrow_up;
                 else
-                    keys = qsl("Ctrl + Shift + ") % KeySymbols::arrow_up;
+                    keys = u"Ctrl + Shift + " % KeySymbols::arrow_up;
 
                 GeneralCreator::addHotkeyInfo(
                     chatInputW, chatInputL,
@@ -515,7 +541,7 @@ void GeneralSettingsWidget::Creator::initShortcuts(QWidget* _parent)
                 if constexpr (platform::is_apple())
                     keys = KeySymbols::Mac::shift % KeySymbols::Mac::command % KeySymbols::arrow_down;
                 else
-                    keys = qsl("Ctrl + Shift + ") % KeySymbols::arrow_down;
+                    keys = u"Ctrl + Shift + " % KeySymbols::arrow_down;
 
                 GeneralCreator::addHotkeyInfo(
                     chatInputW, chatInputL,
@@ -527,7 +553,7 @@ void GeneralSettingsWidget::Creator::initShortcuts(QWidget* _parent)
                 if constexpr (platform::is_apple())
                     keys = KeySymbols::Mac::option % KeySymbols::Mac::shift % KeySymbols::arrow_right;
                 else
-                    keys = qsl("Ctrl + Shift + ") % KeySymbols::arrow_right;
+                    keys = u"Ctrl + Shift + " % KeySymbols::arrow_right;
 
                 GeneralCreator::addHotkeyInfo(
                     chatInputW, chatInputL,
@@ -539,7 +565,7 @@ void GeneralSettingsWidget::Creator::initShortcuts(QWidget* _parent)
                 if constexpr (platform::is_apple())
                     keys = KeySymbols::Mac::option % KeySymbols::Mac::shift % KeySymbols::arrow_left;
                 else
-                    keys = qsl("Ctrl + Shift + ") % KeySymbols::arrow_left;
+                    keys = u"Ctrl + Shift + " % KeySymbols::arrow_left;
 
                 GeneralCreator::addHotkeyInfo(
                     chatInputW, chatInputL,
@@ -574,7 +600,7 @@ void GeneralSettingsWidget::Creator::initShortcuts(QWidget* _parent)
             {
                 QString keys;
                 if constexpr (platform::is_apple())
-                    keys = qsl("fn") % KeySymbols::Mac::option % KeySymbols::Mac::backspace;
+                    keys = u"fn" % KeySymbols::Mac::option % KeySymbols::Mac::backspace;
                 else
                     keys = qsl("Ctrl + Delete");
 
@@ -588,7 +614,7 @@ void GeneralSettingsWidget::Creator::initShortcuts(QWidget* _parent)
                 if constexpr (platform::is_apple())
                     keys = KeySymbols::Mac::shift % KeySymbols::arrow_right;
                 else
-                    keys = qsl("Shift + ") % KeySymbols::arrow_right;
+                    keys = u"Shift + " % KeySymbols::arrow_right;
 
                 GeneralCreator::addHotkeyInfo(
                     chatInputW, chatInputL,
@@ -600,7 +626,7 @@ void GeneralSettingsWidget::Creator::initShortcuts(QWidget* _parent)
                 if constexpr (platform::is_apple())
                     keys = KeySymbols::Mac::shift % KeySymbols::arrow_left;
                 else
-                    keys = qsl("Shift + ") % KeySymbols::arrow_left;
+                    keys = u"Shift + " % KeySymbols::arrow_left;
 
                 GeneralCreator::addHotkeyInfo(
                     chatInputW, chatInputL,
@@ -610,9 +636,9 @@ void GeneralSettingsWidget::Creator::initShortcuts(QWidget* _parent)
             {
                 QString keys;
                 if constexpr (platform::is_apple())
-                    keys = KeySymbols::Mac::shift % KeySymbols::arrow_up % ql1c('/') % KeySymbols::arrow_down;
+                    keys = KeySymbols::Mac::shift % KeySymbols::arrow_up % u'/' % KeySymbols::arrow_down;
                 else
-                    keys = qsl("Shift + ") % KeySymbols::arrow_up % ql1c('/') % KeySymbols::arrow_down;
+                    keys = u"Shift + " % KeySymbols::arrow_up % u'/' % KeySymbols::arrow_down;
 
                 GeneralCreator::addHotkeyInfo(
                     chatInputW, chatInputL,
@@ -633,7 +659,7 @@ void GeneralSettingsWidget::Creator::initShortcuts(QWidget* _parent)
                 if constexpr (platform::is_apple())
                     keys = KeySymbols::Mac::command % KeySymbols::arrow_up;
                 else
-                    keys = qsl("Ctrl + ") % KeySymbols::arrow_up;
+                    keys = u"Ctrl + " % KeySymbols::arrow_up;
 
                 GeneralCreator::addHotkeyInfo(
                     chatInputW, chatInputL,
@@ -645,7 +671,7 @@ void GeneralSettingsWidget::Creator::initShortcuts(QWidget* _parent)
                 if constexpr (platform::is_apple())
                     keys = KeySymbols::Mac::command % KeySymbols::arrow_down;
                 else
-                    keys = qsl("Ctrl + ") % KeySymbols::arrow_down;
+                    keys = u"Ctrl + " % KeySymbols::arrow_down;
 
                 GeneralCreator::addHotkeyInfo(
                     chatInputW, chatInputL,
@@ -657,7 +683,7 @@ void GeneralSettingsWidget::Creator::initShortcuts(QWidget* _parent)
                 if constexpr (platform::is_apple())
                     keys = KeySymbols::Mac::option % KeySymbols::arrow_left;
                 else
-                    keys = qsl("Ctrl + ") % KeySymbols::arrow_left;
+                    keys = u"Ctrl + " % KeySymbols::arrow_left;
 
                 GeneralCreator::addHotkeyInfo(
                     chatInputW, chatInputL,
@@ -669,7 +695,7 @@ void GeneralSettingsWidget::Creator::initShortcuts(QWidget* _parent)
                 if constexpr (platform::is_apple())
                     keys = KeySymbols::Mac::option % KeySymbols::arrow_right;
                 else
-                    keys = qsl("Ctrl + ") % KeySymbols::arrow_right;
+                    keys = u"Ctrl + " % KeySymbols::arrow_right;
 
                 GeneralCreator::addHotkeyInfo(
                     chatInputW, chatInputL,

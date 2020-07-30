@@ -22,7 +22,7 @@ add_chat::~add_chat()
 {
 }
 
-int32_t add_chat::init_request(std::shared_ptr<core::http_request_simple> _request)
+int32_t add_chat::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     std::stringstream ss_url;
 

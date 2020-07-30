@@ -38,7 +38,7 @@ public:
     virtual bool gotAudio() { return gotAudio_; }
     virtual QString fileName() { return fileName_; }
 
-signals:
+Q_SIGNALS:
     void previewLoaded(const QPixmap& _preview, const QSize& _originSize);
     void fileLoaded(const QString& _path);
     void progress(int64_t _bytesTotal, int64_t _bytesTransferred);

@@ -6,7 +6,7 @@
 #include "tools/strings.h"
 #include "tools/system.h"
 #include "tools/tlv.h"
-#include "../external/curl/include/curl.h"
+#include "curl/include/curl.h"
 #include "http_request.h"
 #include "tools/hmac_sha_base64.h"
 #include "async_task.h"
@@ -14,6 +14,7 @@
 #include "../corelib/enumerations.h"
 #include "../common.shared/config/config.h"
 #include "../common.shared/common.h"
+#include "../common.shared/string_utils.h"
 
 using namespace core::stats;
 using namespace core;
@@ -33,29 +34,28 @@ enum statistics_info_types
 
 namespace
 {
-const event_prop_key_type StartAccumTimeProp("start_accum_time");
-const event_prop_key_type AccumulateFinishedProp("accumulate_finished");
-const static auto RamUsageThresholdLowerBoundMb = 200;
-const static auto RamUsageThresholdUpperBoundMb = 1500;
-const static auto RamUsageThresholdStepMb = 100;
-constexpr auto ThresholdSteps = (RamUsageThresholdUpperBoundMb - RamUsageThresholdLowerBoundMb) / RamUsageThresholdStepMb;
+    const event_prop_key_type StartAccumTimeProp("start_accum_time");
+    const event_prop_key_type AccumulateFinishedProp("accumulate_finished");
+    constexpr auto RamUsageThresholdLowerBoundMb = 200;
+    constexpr auto RamUsageThresholdUpperBoundMb = 1500;
+    constexpr auto RamUsageThresholdStepMb = 100;
+    constexpr auto ThresholdSteps = (RamUsageThresholdUpperBoundMb - RamUsageThresholdLowerBoundMb) / RamUsageThresholdStepMb;
 
-using AccumulationTime = std::chrono::milliseconds;
-static std::unordered_map<stats_event_names, AccumulationTime> Stat_Accumulated_Events = {
-  {
-        stats_event_names::send_used_traffic_size_event,
-#if defined(DEBUG)
-        AccumulationTime(std::chrono::minutes(3))
-#else
-        AccumulationTime(std::chrono::hours(24))
-#endif
-   }
-};
+    using AccumulationTime = std::chrono::milliseconds;
+    constexpr AccumulationTime traffic_send_time = build::is_debug() ? std::chrono::minutes(3) : std::chrono::hours(24);
+    static std::unordered_map<stats_event_names, AccumulationTime> Stat_Accumulated_Events = { { stats_event_names::send_used_traffic_size_event, traffic_send_time } };
 
-event_props_type::iterator get_property(event_props_type& _props, const event_prop_key_type& _key);
-bool has_property(event_props_type& _props, const event_prop_key_type& _key);
-bool is_accumulated_event(stats_event_names _name);
-void prepare_props_for_traffic(Out event_props_type &_props, const statistics::disk_stats &_disk_stats);
+    constexpr std::string_view flurry_url = "https://data.flurry.com/aah.do";
+    constexpr auto send_interval = build::is_debug() ? std::chrono::minutes(1) : std::chrono::hours(1);
+    constexpr auto fetch_ram_usage_interval = build::is_debug() ? std::chrono::seconds(30) : std::chrono::hours(1);
+    constexpr auto save_to_file_interval = std::chrono::seconds(10);
+    constexpr auto delay_send_on_start = std::chrono::seconds(10);
+    constexpr auto fetch_disk_size_interval = std::chrono::hours(24);
+
+    event_props_type::iterator get_property(event_props_type& _props, const event_prop_key_type& _key);
+    bool has_property(event_props_type& _props, const event_prop_key_type& _key);
+    bool is_accumulated_event(stats_event_names _name);
+    void prepare_props_for_traffic(Out event_props_type &_props, const statistics::disk_stats &_disk_stats);
 }
 
 long long statistics::stats_event::session_event_id_ = 0;
@@ -202,6 +202,7 @@ bool statistics::load()
 void statistics::serialize(tools::binary_stream& _bs) const
 {
     tools::tlvpack pack;
+    pack.reserve(events_.size() + accumulated_events_.size() + 1);
     int32_t counter = 0;
 
     // push stats info
@@ -216,21 +217,23 @@ void statistics::serialize(tools::binary_stream& _bs) const
 
     auto serialize_events = [&pack, &counter](const decltype(events_)& events)
     {
-        for (auto stat_event = events.begin(); stat_event != events.end(); ++stat_event)
+        for (const auto& stat_event : events)
         {
             tools::tlvpack value_tlv;
+            value_tlv.reserve(4);
+
             // TODO : push id, time, ..
-            value_tlv.push_child(tools::tlv(statistics_info_types::event_name, stat_event->get_name()));
-            value_tlv.push_child(tools::tlv(statistics_info_types::event_time, (int64_t)std::chrono::system_clock::to_time_t(stat_event->get_time())));
-            value_tlv.push_child(tools::tlv(statistics_info_types::event_id, (int64_t)stat_event->get_id()));
+            value_tlv.push_child(tools::tlv(statistics_info_types::event_name, stat_event.get_name()));
+            value_tlv.push_child(tools::tlv(statistics_info_types::event_time, (int64_t)std::chrono::system_clock::to_time_t(stat_event.get_time())));
+            value_tlv.push_child(tools::tlv(statistics_info_types::event_id, (int64_t)stat_event.get_id()));
 
             tools::tlvpack props_pack;
             int32_t prop_counter = 0;
-            auto props = stat_event->get_props();
 
-            for (auto prop : props)
+            for (const auto& prop : stat_event.get_props())
             {
                 tools::tlvpack value_tlv_prop;
+                value_tlv_prop.reserve(2);
                 value_tlv_prop.push_child(tools::tlv(statistics_info_types::event_prop_name, prop.first));
                 value_tlv_prop.push_child(tools::tlv(statistics_info_types::event_prop_value, prop.second));
 
@@ -352,7 +355,7 @@ bool statistics::unserialize(tools::binary_stream& _bs)
 
             auto read_event_time = std::chrono::system_clock::from_time_t(tlv_event_time->get_value<int64_t>());
             auto read_event_id = tlv_event_id->get_value<int64_t>();
-            insert_event(name, props, read_event_time, read_event_id);
+            insert_event(name, std::move(props), read_event_time, read_event_id);
         }
     }
 
@@ -367,9 +370,8 @@ void statistics::save_if_needed()
 
         auto bs_data = std::make_shared<tools::binary_stream>();
         serialize(*bs_data);
-        std::wstring file_name = file_name_;
 
-        g_core->run_async([bs_data, file_name]
+        g_core->run_async([bs_data, file_name = file_name_]
         {
             bs_data->save_2_file(file_name);
             return 0;
@@ -579,7 +581,7 @@ bool statistics::send(const proxy_settings& _user_proxy, const std::string& post
             return ptr_stop->is_stop_.load();
         };
 
-    core::http_request_simple post_request(_user_proxy, utils::get_user_agent(), stop_handler);
+    core::http_request_simple post_request(_user_proxy, utils::get_user_agent(), default_priority(), stop_handler);
     post_request.set_connect_timeout(std::chrono::seconds(5));
     post_request.set_timeout(std::chrono::seconds(5));
     post_request.set_keep_alive();
@@ -596,58 +598,55 @@ bool statistics::send(const proxy_settings& _user_proxy, const std::string& post
     }
 #endif // DEBUG
 
-    auto result_url = flurry_url
-        + "?d=" + core::tools::base64::encode64(post_data)
-        + "&c=" + core::tools::adler32(post_data);
-    post_request.set_url(result_url);
+    post_request.set_url(su::concat(flurry_url, "?d=", core::tools::base64::encode64(post_data), "&c=", core::tools::adler32(post_data)));
+    post_request.set_normalized_url("flurry");
     post_request.set_send_im_stats(false);
     return post_request.get();
 }
 
-void statistics::insert_event(stats_event_names _event_name, const event_props_type& _props,
+void statistics::insert_event(stats_event_names _event_name, event_props_type&& _props,
                               std::chrono::system_clock::time_point _event_time, int32_t _event_id)
 {
-    event_props_type props = _props;
+    event_props_type props = std::move(_props);
 
     if (is_accumulated_event(_event_name))
     {
         auto it = get_property(props, AccumulateFinishedProp);
         if (it == props.cend())
         {
-            accumulated_events_.emplace_back(_event_name, _event_time, _event_id, props);
+            accumulated_events_.emplace_back(_event_name, _event_time, _event_id, std::move(props));
             return;
         }
     }
 
-    events_.emplace_back(_event_name, _event_time, _event_id, props);
+    events_.emplace_back(_event_name, _event_time, _event_id, std::move(props));
     changed_ = true;
 }
 
-void statistics::insert_event(stats_event_names _event_name, const event_props_type& _props)
+void statistics::insert_event(stats_event_names _event_name, event_props_type _props)
 {
     if (_event_name == stats_event_names::start_session)
     {
         stats_event::reset_session_event_id();
         insert_event(core::stats::stats_event_names::service_session_start, _props);
     }
-    insert_event(_event_name, _props, std::chrono::system_clock::now(), -1);
+    insert_event(_event_name, std::move(_props), std::chrono::system_clock::now(), -1);
 }
 
 void statistics::insert_event(stats_event_names _event_name)
 {
-    event_props_type props;
-    insert_event(_event_name, props);
+    insert_event(_event_name, {});
 }
 
 void statistics::insert_accumulated_event(stats_event_names _event_name, core::stats::event_props_type _props)
 {
-    insert_event(_event_name, _props);
+    insert_event(_event_name, std::move(_props));
 }
 
 statistics::stats_event::stats_event(stats_event_names _name,
-                                     std::chrono::system_clock::time_point _event_time, int32_t _event_id, const event_props_type& _props)
+                                     std::chrono::system_clock::time_point _event_time, int32_t _event_id, event_props_type&& _props)
     : name_(_name)
-    , props_(_props)
+    , props_(std::move(_props))
     , event_time_(_event_time)
 {
     if (_event_id == -1)

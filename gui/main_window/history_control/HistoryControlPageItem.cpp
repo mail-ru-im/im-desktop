@@ -8,7 +8,8 @@
 #include "../../controls/TooltipWidget.h"
 #include "../../styles/ThemeParameters.h"
 #include "../contact_list/ContactListModel.h"
-#include "../friendly/FriendlyContainer.h"
+#include "../contact_list/FavoritesUtils.h"
+#include "../containers/FriendlyContainer.h"
 #include "../MainPage.h"
 #include "../ContactDialog.h"
 #include "MessageStyle.h"
@@ -26,6 +27,8 @@ namespace Ui
 {
     HistoryControlPageItem::HistoryControlPageItem(QWidget *parent)
         : QWidget(parent)
+        , QuoteAnimation_(parent)
+        , isChat_(false)
         , Selected_(false)
         , HasTopMargin_(false)
         , HasAvatar_(false)
@@ -46,8 +49,10 @@ namespace Ui
         , lastStatusAnimation_(nullptr)
         , intersected_(false)
         , wasSelected_(false)
-        , QuoteAnimation_(parent)
-        , isChat_(false)
+        , isUnsupported_(false)
+        , nextHasSenderName_(false)
+        , nextIsOutgoing_(false)
+        , initialized_(false)
     {
         connect(Logic::GetAvatarStorage(), &Logic::AvatarStorage::avatarChanged, this, &HistoryControlPageItem::avatarChanged);
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::multiselectSpaceClicked, this, [this]
@@ -56,7 +61,7 @@ namespace Ui
             {
                 setSelected(!isSelected());
                 if (isSelected())
-                    emit Utils::InterConnector::instance().messageSelected(getId(), getInternalId());
+                    Q_EMIT Utils::InterConnector::instance().messageSelected(getId(), getInternalId());
                 update();
             }
         });
@@ -100,7 +105,23 @@ namespace Ui
                 selectionCenter_ = 0;
         });
 
+        connect(get_gui_settings(), &qt_gui_settings::changed, this, [this](const QString& _key)
+        {
+            if (_key == ql1s(settings_show_reactions))
+                onReactionsEnabledChanged();
+        });
+
+        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::omicronUpdated, this, [this]()
+        {
+            onReactionsEnabledChanged();
+        });
+
         setMouseTracking(true);
+    }
+
+    bool HistoryControlPageItem::isOutgoingPosition() const
+    {
+        return msg_.isOutgoingPosition();
     }
 
     void HistoryControlPageItem::clearSelection(bool)
@@ -109,8 +130,8 @@ namespace Ui
             update();
 
         Selected_ = false;
-        emit selectionChanged();
-        emit Utils::InterConnector::instance().updateSelectedCount();
+        Q_EMIT selectionChanged();
+        Q_EMIT Utils::InterConnector::instance().updateSelectedCount();
     }
 
     bool HistoryControlPageItem::hasAvatar() const
@@ -134,15 +155,15 @@ namespace Ui
         if (prevState != _isSelected)
         {
             update();
-            emit selectionChanged();
+            Q_EMIT selectionChanged();
         }
 
         Selected_ = _isSelected;
 
         if (prevState != _isSelected)
         {
-            emit Utils::InterConnector::instance().selectionStateChanged(getId(), getInternalId(), Selected_);
-            emit Utils::InterConnector::instance().updateSelectedCount();
+            Q_EMIT Utils::InterConnector::instance().selectionStateChanged(getId(), getInternalId(), Selected_);
+            Q_EMIT Utils::InterConnector::instance().updateSelectedCount();
         }
     }
 
@@ -168,8 +189,16 @@ namespace Ui
         return Selected_;
     }
 
-    void HistoryControlPageItem::onActivityChanged(const bool /*isActive*/)
+    void HistoryControlPageItem::onActivityChanged(const bool isActive)
     {
+        const auto isInit = (isActive && !initialized_);
+        if (isInit)
+        {
+            initialized_ = true;
+            initialize();
+            if (isEditable())
+                startSpellChecking();
+        }
     }
 
     void HistoryControlPageItem::onVisibilityChanged(const bool /*isVisible*/)
@@ -292,6 +321,28 @@ namespace Ui
             update();
     }
 
+    void HistoryControlPageItem::onReactionsEnabledChanged()
+    {
+        if (!supportsReactions())
+            return;
+
+        if (MessageReactions::enabled() && !reactions_)
+        {
+            reactions_ = std::make_unique<MessageReactions>(this);
+
+            if (msg_.reactions_ && msg_.reactions_->exist_)
+                reactions_->subscribe();
+        }
+        else if (!MessageReactions::enabled())
+        {
+            if (reactions_)
+                reactions_->deleteControls();
+
+            reactions_.reset();
+            updateSize();
+        }
+    }
+
     void HistoryControlPageItem::drawLastStatusIcon(QPainter& _p,  LastStatus _lastStatus, const QString& _aimid, const QString& _friendly, int _rightPadding)
     {
         if (!heads_.isEmpty() || Utils::InterConnector::instance().isMultiselect())
@@ -325,12 +376,18 @@ namespace Ui
                 setCursor(Qt::PointingHandCursor);
         }
 
+        if (reactions_)
+            reactions_->onMouseMove(e->pos());
+
         return QWidget::mouseMoveEvent(e);
     }
 
     void HistoryControlPageItem::mousePressEvent(QMouseEvent* e)
     {
         pressPoint = e->pos();
+
+        if (reactions_)
+            reactions_->onMousePress(e->pos());
 
         return QWidget::mousePressEvent(e);
     }
@@ -346,7 +403,7 @@ namespace Ui
                 {
                     setSelected(!isSelected());
                     if (isSelected())
-                        emit Utils::InterConnector::instance().messageSelected(getId(), getInternalId());
+                        Q_EMIT Utils::InterConnector::instance().messageSelected(getId(), getInternalId());
 
                     update();
                 }
@@ -357,6 +414,9 @@ namespace Ui
             }
         }
 
+        if (!Utils::InterConnector::instance().isMultiselect() && reactions_)
+            reactions_->onMouseRelease(pos);
+
         return QWidget::mouseReleaseEvent(e);
     }
 
@@ -364,6 +424,14 @@ namespace Ui
     {
         Utils::InterConnector::instance().setCurrentMultiselectMessage(isMultiselectEnabled() ? getId() : -1);
         QWidget::enterEvent(_event);
+    }
+
+    void HistoryControlPageItem::leaveEvent(QEvent* _event)
+    {
+        if (reactions_)
+            reactions_->onMouseLeave();
+
+        QWidget::leaveEvent(_event);
     }
 
     bool HistoryControlPageItem::showHeadsTooltip(const QRect& _rc, const QPoint& _pos)
@@ -417,7 +485,7 @@ namespace Ui
                 }
                 else
                 {
-                    emit mention(heads_.at(i).aimid_, heads_.at(i).friendly_);
+                    Q_EMIT mention(heads_.at(i).aimid_, heads_.at(i).friendly_);
                 }
                 return true;
             }
@@ -462,6 +530,41 @@ namespace Ui
         }
 
         return false;
+    }
+
+    void HistoryControlPageItem::initialize()
+    {
+        if (supportsReactions() && MessageReactions::enabled())
+        {
+            reactions_ = std::make_unique<MessageReactions>(this);
+            const auto& reactions = buddy().reactions_;
+            if (reactions && reactions->exist_)
+                reactions_->subscribe();
+        }
+    }
+
+    void HistoryControlPageItem::onSizeChanged()
+    {
+        if (reactions_)
+            reactions_->onMessageSizeChanged();
+    }
+
+    ReactionsPlateType HistoryControlPageItem::reactionsPlateType() const
+    {
+        return ReactionsPlateType::Regular;
+    }
+
+    bool HistoryControlPageItem::hasReactions() const
+    {
+        return msg_.reactions_ && msg_.reactions_->exist_;
+    }
+
+    QRect HistoryControlPageItem::reactionsPlateRect() const
+    {
+        if (reactions_)
+            return reactions_->plateRect();
+
+        return QRect();
     }
 
     bool HistoryControlPageItem::hasHeads() const noexcept
@@ -514,6 +617,80 @@ namespace Ui
         selectionCenter_ = _center;
     }
 
+    void HistoryControlPageItem::setIsUnsupported(bool _unsupported)
+    {
+        isUnsupported_ = _unsupported;
+        setContextMenuEnabled(!isUnsupported_);
+    }
+
+    bool HistoryControlPageItem::isUnsupported() const
+    {
+        return isUnsupported_;
+    }
+
+    bool HistoryControlPageItem::isEditable() const
+    {
+        const auto channelAdmin = Logic::getContactListModel()->isChannel(aimId_) && Logic::getContactListModel()->isYouAdmin(aimId_);
+        const auto readOnlyChannel = Logic::getContactListModel()->isChannel(aimId_) && Logic::getContactListModel()->isReadonly(aimId_);
+        return !readOnlyChannel && (isOutgoing() || channelAdmin);
+    }
+
+    void HistoryControlPageItem::setNextHasSenderName(bool _nextHasSenderName)
+    {
+        nextHasSenderName_ = _nextHasSenderName;
+        updateSize();
+    }
+
+    void HistoryControlPageItem::setBuddy(const Data::MessageBuddy& _msg)
+    {
+        const auto reactionsAdedd = (!msg_.reactions_ || !msg_.reactions_->exist_) && _msg.reactions_ && _msg.reactions_->exist_;
+
+        msg_ = _msg;
+
+        if (reactions_ && initialized_ && reactionsAdedd)
+            reactions_->subscribe();
+    }
+
+    const Data::MessageBuddy& HistoryControlPageItem::buddy() const
+    {
+        return msg_;
+    }
+
+    Data::MessageBuddy& HistoryControlPageItem::buddy()
+    {
+        return msg_;
+    }
+
+    bool HistoryControlPageItem::nextHasSenderName() const
+    {
+        return nextHasSenderName_;
+    }
+
+    void HistoryControlPageItem::setNextIsOutgoing(bool _nextIsOutgoing)
+    {
+        nextIsOutgoing_ = _nextIsOutgoing;
+        updateSize();
+    }
+
+    bool HistoryControlPageItem::nextIsOutgoing() const
+    {
+        return nextIsOutgoing_;
+    }
+
+    QRect HistoryControlPageItem::messageRect() const
+    {
+        return QRect();
+    }
+
+    void HistoryControlPageItem::setReactions(const Data::Reactions& _reactions)
+    {
+        if (reactions_)
+        {
+            reactions_->setReactions(_reactions);
+            update();
+        }
+    }
+
     void HistoryControlPageItem::drawSelection(QPainter& _p, const QRect& _rect)
     {
         static auto size = QSize(Utils::scale_value(MULTISELECT_MARK_SIZE), Utils::scale_value(MULTISELECT_MARK_SIZE));
@@ -544,14 +721,9 @@ namespace Ui
             }
         }
 
-        static auto hoverColor = Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_PASTEL);
-        hoverColor.setAlpha(0.05 * 255 * current);
-
-        static auto hoverAndSelectedColor = Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_PASTEL);
-        hoverAndSelectedColor.setAlpha(0.15 * 255 * current);
-
-        static auto selectionColor = Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_PASTEL);
-        selectionColor.setAlpha(0.10 * 255 * current);
+        const auto hoverColor = Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_PASTEL, 0.05 * current);
+        const auto hoverAndSelectedColor = Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_PASTEL, 0.15 * current);
+        const auto selectionColor = Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_PASTEL, 0.10 * current);
 
         auto r = rect();
         if (HasTopMargin_ && !selectedTop_ && !hoveredTop_)
@@ -598,9 +770,13 @@ namespace Ui
         _p.fillRect(r, selectionColor);
     }
 
+    void HistoryControlPageItem::startSpellChecking()
+    {
+    }
+
     void HistoryControlPageItem::drawHeads(QPainter& _p) const
     {
-        if (heads_.isEmpty() || Utils::InterConnector::instance().isMultiselect())
+        if (heads_.isEmpty() || Utils::InterConnector::instance().isMultiselect() || Favorites::isFavorites(aimId_))
             return;
 
         const QRect rc = rect();
@@ -726,6 +902,10 @@ namespace Ui
             return;
 
         lastStatus_ = _lastStatus;
+
+        if (Favorites::isFavorites(aimId_) && lastStatus_ == LastStatus::Read)
+            lastStatus_ = LastStatus::DeliveredToPeer;
+
         if (lastStatus_ != LastStatus::None)
         {
             if (!lastStatusAnimation_)
@@ -777,7 +957,20 @@ namespace Ui
             margin += single ? MessageStyle::getTopMargin(true) : (MessageStyle::getLastReadAvatarSize() + MessageStyle::getLastReadAvatarOffset());
         }
 
-        return margin;
+        auto reactionsMargin = 0;
+
+        const auto emptyReactions = reactions_ && !reactions_->hasReactions();
+
+        if (hasReactions() && !emptyReactions && MessageReactions::enabled())
+        {
+            reactionsMargin += MessageStyle::Reactions::plateHeight();
+            if (reactionsPlateType() == ReactionsPlateType::Media)
+                reactionsMargin += MessageStyle::Reactions::mediaPlateYOffset();
+            else
+                reactionsMargin += MessageStyle::Reactions::plateYOffset() + MessageStyle::Reactions::shadowHeight();
+        }
+
+        return margin + reactionsMargin;
     }
 
     void HistoryControlPageItem::setHeads(const Data::HeadsVector& _heads)

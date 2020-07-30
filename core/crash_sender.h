@@ -1,6 +1,6 @@
 #pragma once
 
-#if defined _WIN32 || defined __linux__
+#if defined _WIN32 || defined __linux__ || BUILD_FOR_STORE
 
 namespace core
 {

@@ -25,7 +25,7 @@ normalize_phone::~normalize_phone()
 {
 }
 
-int32_t normalize_phone::init_request(std::shared_ptr<core::http_request_simple> _request)
+int32_t normalize_phone::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     std::stringstream ss_url;
     ss_url << urls::get_url(urls::url_type::smsreg_host) << std::string_view("/normalizePhoneNumber.php?") <<

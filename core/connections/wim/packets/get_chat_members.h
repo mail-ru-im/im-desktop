@@ -16,8 +16,8 @@ namespace core
     {
         class get_chat_members: public robusto_packet, public persons_packet
         {
-            virtual int32_t init_request(std::shared_ptr<core::http_request_simple> _request) override;
-            virtual int32_t parse_response(std::shared_ptr<core::tools::binary_stream> _response) override;
+            virtual int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
+            virtual int32_t parse_response(const std::shared_ptr<core::tools::binary_stream>& _response) override;
             virtual int32_t parse_results(const rapidjson::Value& _node_results) override;
             virtual int32_t on_response_error_code() override;
 
@@ -38,6 +38,8 @@ namespace core
             const auto& get_result() const { return result_; }
 
             bool is_reset_pages() const { return reset_pages_; }
+
+            virtual priority_t get_priority() const override { return top_priority(); }
         };
     }
 }

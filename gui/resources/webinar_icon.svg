@@ -1,0 +1,15 @@
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="ic_vebinar_fill_line">
+<g id="Group 215">
+<g id="Group 216">
+<rect id="Rectangle 795" x="1.98001" y="3.78" width="20.04" height="12.84" rx="1.62" stroke="#B7BCC9" stroke-width="1.56"/>
+<path id="Vector 3" d="M12 17.4V21" stroke="#B7BCC9" stroke-width="1.56"/>
+<path id="Vector 4" d="M7.20001 21H16.8" stroke="#B7BCC9" stroke-width="1.56" stroke-linecap="round"/>
+</g>
+</g>
+<g id="ic_contact_line">
+<path id="Stroke 1" fill-rule="evenodd" clip-rule="evenodd" d="M9.71088 9.05443C9.71088 7.82123 10.7139 6.82005 11.9492 6.82005C13.1846 6.82005 14.1875 7.82123 14.1875 9.05443V9.31766C14.1875 10.5508 13.1846 11.552 11.9492 11.552C10.7139 11.552 9.71088 10.5508 9.71088 9.31766V9.05443Z" stroke="#B7BCC9" stroke-width="1.56"/>
+<path id="Stroke 3" fill-rule="evenodd" clip-rule="evenodd" d="M8.18933 15.3877C8.18933 13.298 9.87407 11.6015 11.9492 11.6015C14.0243 11.6015 15.709 13.298 15.709 15.3877V15.7121C15.709 16.0804 15.4121 16.3795 15.0464 16.3795H8.85206C8.48631 16.3795 8.18933 16.0804 8.18933 15.7121V15.3877Z" stroke="#B7BCC9" stroke-width="1.56"/>
+</g>
+</g>
+</svg>

@@ -24,13 +24,13 @@ namespace voip_masks
 
         void setProgressSeq(quint64 _seq);
 
-    signals:
+    Q_SIGNALS:
         void previewLoaded();
 
         void loaded();
         void loadingProgress(unsigned _percent);
 
-    public slots:
+    public Q_SLOTS:
         void onLoadingProgress(quint64 _seq, unsigned _percent);
 
     private:

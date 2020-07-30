@@ -1,9 +1,8 @@
-#ifndef __WIM_CONTACTLIST_CACHE_H_
-#define __WIM_CONTACTLIST_CACHE_H_
-
 #pragma once
 
 #include "persons.h"
+#include "lastseen.h"
+#include "status.h"
 
 namespace core
 {
@@ -19,6 +18,7 @@ namespace core
         struct cl_presence
         {
             std::string usertype_;
+            std::string chattype_;
             std::string status_msg_;
             std::string other_number_;
             std::string sms_number_;
@@ -27,7 +27,9 @@ namespace core
             std::string friendly_;
             std::string nick_;
 
-            int32_t lastseen_ = -1;
+            lastseen lastseen_;
+            status status_;
+
             int32_t outgoing_msg_count_ = 0;
             bool is_chat_ = false;
             bool muted_ = false;
@@ -219,7 +221,3 @@ namespace core
         };
     }
 }
-
-
-
-#endif //__WIM_CONTACTLIST_CACHE_H_

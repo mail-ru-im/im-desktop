@@ -18,25 +18,17 @@ namespace core
 {
     namespace stickers
     {
-        sticker_size string_size_2_size(std::string_view _size)
+        set_icon_size icon_size_str_to_size(std::string_view _size)
         {
             if (_size == "small")
-            {
-                return sticker_size::small;
-            }
+                return set_icon_size::_32;
             else if (_size == "medium")
-            {
-                return sticker_size::medium;
-            }
+                return set_icon_size::_48;
             else if (_size == "large" || _size == "xlarge" || _size == "xxlarge")
-            {
-                return sticker_size::large;
-            }
-            else
-            {
-                assert(!"unknown type");
-                return sticker_size::large;
-            }
+                return set_icon_size::_64;
+
+            assert(!"unknown type");
+            return set_icon_size::_64;
         }
 
         constexpr std::wstring_view stickers_meta_file_name() noexcept { return L"meta.js"; }
@@ -298,30 +290,30 @@ namespace core
                 put_icon(set_icon(set_icon_size::_64, sp));
             }
 
-            if (const auto iter_stickers = _node.FindMember("stickers"); iter_stickers != _node.MemberEnd() && iter_stickers->value.IsArray())
+            const auto unserialize_stickers = [this, &_node, &_emojis](const auto _node_name)
             {
-                for (const auto& sticker : iter_stickers->value.GetArray())
+                if (const auto iter = _node.FindMember(_node_name); iter != _node.MemberEnd() && iter->value.IsArray())
                 {
-                    auto new_sticker = std::make_shared<stickers::sticker>();
+                    for (const auto& sticker : iter->value.GetArray())
+                    {
+                        auto new_sticker = std::make_shared<stickers::sticker>();
 
-                    if (!new_sticker->unserialize(sticker, _emojis))
-                        continue;
+                        auto success = false;
+                        if (sticker.IsString())
+                            success = new_sticker->unserialize(sticker, _emojis);
+                        else
+                            success = new_sticker->unserialize(sticker);
 
-                    stickers_.push_back(std::move(new_sticker));
+                        if (success)
+                            stickers_.push_back(std::move(new_sticker));
+                    }
+                    return true;
                 }
-            }
-            else if (const auto iter_content = _node.FindMember("content"); iter_content != _node.MemberEnd() && iter_content->value.IsArray())
-            {
-                for (const auto& sticker : iter_content->value.GetArray())
-                {
-                    auto new_sticker = std::make_shared<stickers::sticker>();
+                return false;
+            };
 
-                    if (!new_sticker->unserialize(sticker))
-                        continue;
-
-                    stickers_.push_back(std::move(new_sticker));
-                }
-            }
+            if (const auto res = unserialize_stickers("stickers"); !res)
+                unserialize_stickers("content");
 
             return true;
         }
@@ -537,23 +529,6 @@ namespace core
             return true;
         }
 
-        bool cache::is_meta_icons_exist() const
-        {
-            for (const auto& set : sets_)
-            {
-                if (!set->is_show() || !set->is_purchased())
-                    continue;
-
-                for (const auto& [_, icon] : set->get_icons())
-                {
-                    if (std::wstring icon_file = get_set_icon_path(*set, icon); !core::tools::system::is_exist(icon_file))
-                        return false;
-                }
-            }
-
-            return true;
-        }
-
         std::wstring cache::get_meta_file_name() const
         {
             std::wstringstream ss_out;
@@ -564,7 +539,7 @@ namespace core
         std::wstring cache::get_set_icon_path(const set& _set, const set_icon& _icon)
         {
             std::wstringstream ss_out;
-            ss_out << g_stickers_path << L'/' << _set.get_id() << L"/icons/_icon_" << _icon.get_size() << L".png";
+            ss_out << g_stickers_path << L'/' << _set.get_id() << L"/icons/_icon_" << (int)_icon.get_size() << L".png";
 
             return ss_out.str();
         }
@@ -637,16 +612,15 @@ namespace core
                 if (!set->is_show() || !set->is_purchased())
                     continue;
 
-                for (const auto& [_, icon] : set->get_icons())
-                {
-                    std::wstring icon_file = get_set_icon_path(*set, icon);
-                    if (!core::tools::system::is_exist(icon_file))
-                        meta_tasks_.push_back(download_task(icon.get_url(), "stikersMeta", std::move(icon_file)));
-                }
+                const auto& icon = set->get_icon(icon_size_str_to_size(_size));
+                std::wstring icon_file = get_set_icon_path(*set, icon);
+                if (!core::tools::system::is_exist(icon_file))
+                    meta_tasks_.push_back(download_task(icon.get_url(), "stikersMeta", std::move(icon_file), set->get_id()));
 
                 for (const auto& sticker : set->get_stickers())
                     res.push_back(template_url_send_ + sticker->fs_id());
             }
+
             return res;
         }
 
@@ -660,18 +634,9 @@ namespace core
             _coll_set.set_value_as_string("description", _set.get_description());
             _coll_set.set_value_as_string("subtitle", _set.get_subtitle());
 
-            set_icon_size icon_size = set_icon_size::invalid;
-
             if (!_size.empty())
             {
-                if (_size == "small")
-                    icon_size = set_icon_size::_32;
-                else if (_size == "medium")
-                    icon_size = set_icon_size::_48;
-                else if (_size == "large")
-                    icon_size = set_icon_size::_64;
-
-                std::wstring file_name = get_set_icon_path(_set, _set.get_icon(icon_size));
+                std::wstring file_name = get_set_icon_path(_set, _set.get_icon(icon_size_str_to_size(_size)));
 
                 core::tools::binary_stream bs_icon;
 
@@ -730,7 +695,7 @@ namespace core
                 return;
 
             ifptr<iarray> sets_array(_coll->create_array(), true);
-
+            sets_array->reserve(sets_.size());
             for (const auto& _set : sets_)
             {
                 if (!_set->is_show())
@@ -989,7 +954,7 @@ namespace core
         {
         }
 
-        std::shared_ptr<result_handler<const parse_result&>> face::parse(std::shared_ptr<core::tools::binary_stream> _data, bool _insitu)
+        std::shared_ptr<result_handler<const parse_result&>> face::parse(const std::shared_ptr<core::tools::binary_stream>& _data, bool _insitu)
         {
             auto handler = std::make_shared<result_handler<const parse_result&>>();
             auto up_to_date = std::make_shared<bool>();
@@ -1152,9 +1117,6 @@ namespace core
                 bool up_todate = false;
 
                 if (!stickers_cache->parse(bs, true, up_todate))
-                    return -1;
-
-                if (!stickers_cache->is_meta_icons_exist())
                     return -1;
 
                 *md5 = stickers_cache->get_md5();
@@ -1390,6 +1352,66 @@ namespace core
                 stickers_cache->update_template_urls(std::move(url_preview), std::move(url_original), std::move(url_send));
                 return 0;
             });
+        }
+
+        static void serialize_image(coll_helper& _coll, const tools::binary_stream& _data, std::string_view _id)
+        {
+            if (const auto data_size = _data.available(); data_size > 0)
+            {
+                ifptr<istream> sticker_data(_coll->create_stream(), true);
+                sticker_data->write((const uint8_t*)_data.read(data_size), data_size);
+                _coll.set_value_as_stream(_id, sticker_data.get());
+            }
+        }
+
+        static void post_sticker_impl(int64_t _seq, int32_t _set_id, int32_t _sticker_id, std::string_view _fs_id, core::sticker_size _size, int _error, const tools::binary_stream& _data)
+        {
+            assert(_size > sticker_size::min);
+            assert(_size < sticker_size::max);
+
+            coll_helper coll(g_core->create_collection(), true);
+
+            if (_set_id >= 0)
+                coll.set_value_as_int("set_id", _set_id);
+            coll.set_value_as_int("sticker_id", _sticker_id);
+            coll.set_value_as_string("fs_id", _fs_id);
+            coll.set_value_as_int("error", _error);
+
+            if (_size == sticker_size::small)
+                serialize_image(coll, _data, "data/small");
+            else if (_size == sticker_size::medium)
+                serialize_image(coll, _data, "data/medium");
+            else if (_size == sticker_size::large)
+                serialize_image(coll, _data, "data/large");
+            else if (_size == sticker_size::xlarge)
+                serialize_image(coll, _data, "data/xlarge");
+            else if (_size == sticker_size::xxlarge)
+                serialize_image(coll, _data, "data/xxlarge");
+
+            g_core->post_message_to_gui("stickers/sticker/get/result", _seq, coll.get());
+        }
+
+        void post_sticker_fail_2_gui(int64_t _seq, int32_t _set_id, int32_t _sticker_id, std::string_view _fs_id, loader_errors _error)
+        {
+            static const tools::binary_stream bs;
+            post_sticker_impl(_seq, _set_id, _sticker_id, _fs_id, core::sticker_size::small, (int)_error, bs);
+        }
+
+        void post_sticker_2_gui(int64_t _seq, int32_t _set_id, int32_t _sticker_id, std::string_view _fs_id, core::sticker_size _size, const tools::binary_stream& _data)
+        {
+            post_sticker_impl(_seq, _set_id, _sticker_id, _fs_id, _size, 0, _data);
+        }
+
+        void post_set_icon_2_gui(int32_t _set_id, std::string_view _message, const tools::binary_stream& _data)
+        {
+            assert(_set_id >= 0);
+
+            coll_helper coll(g_core->create_collection(), true);
+            coll.set_value_as_int("set_id", _set_id);
+
+            serialize_image(coll, _data, "icon");
+
+            g_core->post_message_to_gui(_message, 0, coll.get());
         }
     }
 }

@@ -5,6 +5,7 @@
 #include "main_window/MainWindow.h"
 #include "main_window/MainPage.h"
 #include "main_window/ContactDialog.h"
+#include "voip/VideoWindow.h"
 #include "main_window/history_control/HistoryControlPage.h"
 #include "main_window/input_widget/InputWidget.h"
 #include "Drawable.h"
@@ -64,21 +65,23 @@ namespace
     int toastVerPadding()
     {
         return Utils::scale_value(16);
-    };
+    }
 
-    int getToastShift(Ui::MainPage* _mainPage)
+    QPoint mainWindowShift()
     {
-        auto shift = 0;
-
-        const auto frameCount = _mainPage->getFrameCount();
-        if (frameCount == FrameCountMode::_3)
+        QPoint shift;
+        if (const auto mainPage = Utils::InterConnector::instance().getMainPage())
         {
-            shift += _mainPage->getCLWidth() / 2;
-            shift -= _mainPage->getSidebarWidth() / 2;
-        }
-        else if (frameCount == FrameCountMode::_2 && !_mainPage->isSidebarVisible())
-        {
-            shift += _mainPage->getCLWidth() / 2;
+            const auto frameCount = mainPage->getFrameCount();
+            if (frameCount == FrameCountMode::_3)
+            {
+                shift.rx() += mainPage->getCLWidth() / 2;
+                shift.rx() -= mainPage->getSidebarWidth() / 2;
+            }
+            else if (frameCount == FrameCountMode::_2 && !mainPage->isSidebarVisible())
+            {
+                shift.rx() += mainPage->getCLWidth() / 2;
+            }
         }
         return shift;
     }
@@ -91,6 +94,16 @@ namespace
     QColor pathColor()
     {
         return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY);
+    }
+
+    constexpr double getBgColorAlphaF() noexcept
+    {
+        return 0.7;
+    }
+
+    QColor defaultBgColor()
+    {
+        return Styling::getParameters().getColor(Styling::StyleVariable::GHOST_PRIMARY, getBgColorAlphaF());
     }
 
     QColor pathHoverColor()
@@ -109,7 +122,13 @@ namespace
     }
 }
 
-ToastBase::ToastBase(QWidget* _parent) : QWidget(_parent)
+//////////////////////////////////////////////////////////////////////////
+// ToastBase
+//////////////////////////////////////////////////////////////////////////
+
+ToastBase::ToastBase(QWidget* _parent)
+    : QWidget(_parent)
+    , bgColor_(defaultBgColor())
 {
     hideTimer_.setSingleShot(true);
     startHideTimer_.setSingleShot(true);
@@ -155,10 +174,13 @@ void ToastBase::showAt(const QPoint& _center, bool _onTop)
     if (!_onTop)
         opacityAnimation_.start([this](){ update(); }, 0, 1, 300);
 
-    moveAnimation_.start([this, _center, _onTop]()
+    if (isMoveAnimationEnabled_)
     {
-        move(_center.x() - width() / 2, moveAnimation_.current() - (_onTop ? 0 : height()));
-    }, _center.y() + (_onTop ? 0 : height() + padding()), _center.y(), animationDuration());
+        moveAnimation_.start([this, _center, _onTop]()
+        {
+            move(_center.x() - width() / 2, moveAnimation_.current() - (_onTop ? 0 : height()));
+        }, _center.y() + (_onTop ? 0 : height() + padding()), _center.y(), animationDuration());
+    }
 
     hideTimer_.start();
     startHideTimer_.start();
@@ -166,8 +188,24 @@ void ToastBase::showAt(const QPoint& _center, bool _onTop)
 
 void ToastBase::setVisibilityDuration(std::chrono::milliseconds _duration)
 {
-    hideTimer_.setInterval(_duration.count());
+    hideTimer_.setInterval(_duration);
     startHideTimer_.setInterval(_duration.count() - animationDuration());
+}
+
+void ToastBase::setUseMainWindowShift(bool _enable)
+{
+    useMainWindowShift_ = _enable;
+}
+
+void ToastBase::setBackgroundColor(const QColor& _color)
+{
+    bgColor_ = _color;
+    bgColor_.setAlphaF(getBgColorAlphaF());
+}
+
+void ToastBase::enableMoveAnimation(bool _enable)
+{
+    isMoveAnimationEnabled_ = _enable;
 }
 
 void ToastBase::paintEvent(QPaintEvent* _event)
@@ -180,9 +218,7 @@ void ToastBase::paintEvent(QPaintEvent* _event)
     QPainterPath path;
     path.addRoundedRect(rect(), toastRadius(), toastRadius());
 
-    static auto backgroundColor = Styling::getParameters().getColor(Styling::StyleVariable::GHOST_PRIMARY);
-    backgroundColor.setAlpha(0.7 * 255);
-    p.fillPath(path, backgroundColor);
+    p.fillPath(path, bgColor_);
 
     drawContent(p);
 }
@@ -200,10 +236,17 @@ void ToastBase::leaveEvent(QEvent* _event)
 
 bool ToastBase::eventFilter(QObject* _object, QEvent* _event)
 {
-    if (_object == parent() && _event->type() == QEvent::Resize)
+    if (_object == parent())
     {
-        auto resizeEvent = static_cast<QResizeEvent*>(_event);
-        handleParentResize(resizeEvent->size(), resizeEvent->oldSize());
+        if (_event->type() == QEvent::Resize)
+        {
+            auto resizeEvent = static_cast<QResizeEvent *>(_event);
+            handleParentResize(resizeEvent->size(), resizeEvent->oldSize());
+        }
+        else if (_event->type() == QEvent::FocusAboutToChange)
+        {
+            handleMouseLeave();
+        }
     }
 
     return false;
@@ -215,7 +258,7 @@ void ToastBase::handleParentResize(const QSize& _newSize, const QSize& _oldSize)
     updateSize();
     const auto newWidth = _newSize.width();
 
-    const auto shift = shiftToastPos();
+    const auto shift = useMainWindowShift_ ? mainWindowShift() : QPoint();
     const auto x = (newWidth - width()) / 2 + shift.x();
     const auto y = pos().y() + (_newSize.height() - _oldSize.height()) + (oldHeight - height()) + shift.y();
 
@@ -232,6 +275,10 @@ void ToastBase::startHide()
 {
     opacityAnimation_.start([this](){ update(); }, 1, 0, 300);
 }
+
+//////////////////////////////////////////////////////////////////////////
+// ToastManager
+//////////////////////////////////////////////////////////////////////////
 
 ToastManager* ToastManager::instance()
 {
@@ -262,8 +309,9 @@ void ToastManager::showToast(ToastBase* _toast, QPoint _pos)
         const auto mainWindow = Utils::InterConnector::instance().getMainWindow();
 
         int inputHeight = 0;
-        if (auto inputWidget = Utils::InterConnector::instance().getContactDialog()->getInputWidget())
-            inputHeight = inputWidget->height();
+        if (auto dialog = Utils::InterConnector::instance().getContactDialog())
+            if (auto inputWidget = dialog->getInputWidget())
+                inputHeight = inputWidget->height();
 
         topToast_->showAt(QPoint(_pos.x(), mainWindow->height() - inputHeight - bottomToast_->height() - padding() - toastVerPadding()), true);
     }
@@ -313,6 +361,16 @@ void ToastManager::moveToast()
     }
 }
 
+void ToastManager::raiseBottomToastIfPresent()
+{
+    if (bottomToast_)
+        bottomToast_->raise();
+}
+
+//////////////////////////////////////////////////////////////////////////
+// Toast
+//////////////////////////////////////////////////////////////////////////
+
 Toast::Toast(const QString& _text, QWidget* _parent, int _maxLineCount) : ToastBase(_parent)
 {
     const auto msgFont = getToastFont();
@@ -342,6 +400,10 @@ void Toast::updateSize()
     setFixedWidth(textWidth + 2 * xOffset);
 }
 
+//////////////////////////////////////////////////////////////////////////
+// SavedPathToast_p
+//////////////////////////////////////////////////////////////////////////
+
 class Ui::SavedPathToast_p
 {
 public:
@@ -352,6 +414,10 @@ public:
 
     QString path_;
 };
+
+//////////////////////////////////////////////////////////////////////////
+// SavedPathToast
+//////////////////////////////////////////////////////////////////////////
 
 SavedPathToast::SavedPathToast(const QString& _path, QWidget* _parent)
     : ToastBase(_parent)
@@ -484,6 +550,10 @@ void SavedPathToast::leaveEvent(QEvent* _event)
     ToastBase::leaveEvent(_event);
 }
 
+//////////////////////////////////////////////////////////////////////////
+// DownloadFinishedToast_p
+//////////////////////////////////////////////////////////////////////////
+
 class Ui::DownloadFinishedToast_p
 {
 public:
@@ -498,6 +568,10 @@ public:
     QString folder_;
     QString file_;
 };
+
+//////////////////////////////////////////////////////////////////////////
+// DownloadFinishedToast
+//////////////////////////////////////////////////////////////////////////
 
 DownloadFinishedToast::DownloadFinishedToast(const Data::FileSharingDownloadResult& _result, QWidget * _parent)
     : ToastBase(_parent)
@@ -583,13 +657,15 @@ DownloadFinishedToast::DownloadFinishedToast(const Data::FileSharingDownloadResu
     setMouseTracking(true);
 }
 
-DownloadFinishedToast::~DownloadFinishedToast()
-{
-}
+DownloadFinishedToast::~DownloadFinishedToast() = default;
 
 void DownloadFinishedToast::updateSize()
 {
-    const auto pageWidth = Utils::InterConnector::instance().getContactDialog()->width();
+    int pageWidth = 0;
+    if (auto dialog = Utils::InterConnector::instance().getContactDialog())
+        pageWidth = dialog->width();
+    else if (auto mainW = Utils::InterConnector::instance().getMainWindow())
+        pageWidth = mainW->width();
     bool isMinimal = pageWidth < widthLimit();
     const auto maxWidth = isMinimal ? std::min(maxToastWidth(), pageWidth) : maxDownloadToastWidth();
     const auto currHeight = isMinimal ? toastMaxHeight() : toastHeight();
@@ -609,11 +685,6 @@ void DownloadFinishedToast::updateSize()
     setFixedHeight(currHeight);
     totalWidth_ = xOffset_ + d->messageUnit1_->desiredWidth() + fileWidth_;
     compose(isMinimal, maxWidth, fm, fileWidth_, pathWidth_, totalWidth_);
-}
-
-QPoint DownloadFinishedToast::shiftToastPos() const
-{
-    return QPoint(getToastShift(Utils::InterConnector::instance().getMainPage()), 0);
 }
 
 void DownloadFinishedToast::compose(bool _isMinimal, const int maxWidth, const QFontMetrics fm, int fileWidth, int pathWidth, int _totalWidth)
@@ -777,7 +848,10 @@ void DownloadFinishedToast::compose(bool _isMinimal, const int maxWidth, const Q
             secondLineWidth += textWidth2;
         toastWidth = std::max(toastWidth, secondLineWidth);
     }
-    setFixedWidth(std::min(toastWidth, maxWidth));
+    if (maxWidth > 0)
+        setFixedWidth(std::min(toastWidth, maxWidth));
+    else
+        setFixedWidth(toastWidth);
 };
 
 QString Ui::DownloadFinishedToast::getPath() const
@@ -864,65 +938,73 @@ void DownloadFinishedToast::leaveEvent(QEvent * _event)
     ToastBase::leaveEvent(_event);
 }
 
-Ui::PlaceholderToast::PlaceholderToast(const QString& _text, QWidget* _parent, int _maxLineCount)
-    : Toast(_text, _parent, _maxLineCount)
-{
-}
-
-QPoint Ui::PlaceholderToast::shiftToastPos() const
-{
-    return QPoint(getToastShift(Utils::InterConnector::instance().getMainPage()), 0);
-}
-
-
 void Utils::showToastOverMainWindow(const QString &_text, int _bottomOffset, int _maxLineCount)
 {
     const auto mainWindow = Utils::InterConnector::instance().getMainWindow();
     if (mainWindow)
     {
         auto toast = new Ui::Toast(_text, mainWindow, _maxLineCount);
+        Testing::setAccessibleName(toast, qsl("AS General toast"));
         Ui::ToastManager::instance()->showToast(toast, QPoint(mainWindow->width() / 2, mainWindow->height() - toast->height() - _bottomOffset));
     }
 }
 
-static void showToastOverContactDialog(ToastBase* toast)
+void Utils::showToastOverVideoWindow(const QString& _text, int _maxLineCount)
 {
-    const auto mainPage = Utils::InterConnector::instance().getMainPage();
-    const auto mainWindow = Utils::InterConnector::instance().getMainWindow();
-    int inputHeight = 0;
-    if (auto inputWidget = Utils::InterConnector::instance().getContactDialog()->getInputWidget())
-        inputHeight = inputWidget->height();
-
-    Ui::ToastManager::instance()->showToast(toast, QPoint(mainWindow->width() / 2 + getToastShift(mainPage), mainWindow->height() - inputHeight - toastVerPadding()));
+    if (auto mainPage = Utils::InterConnector::instance().getMainPage())
+        if (auto videoWindow = mainPage->getVideoWindow())
+            videoWindow->showToast(_text);
 }
 
-void Utils::showToastOverContactDialog(const QString& _text, int _maxLineCount)
+void Utils::showToastOverContactDialog(ToastBase* _toast)
 {
     const auto mainWindow = Utils::InterConnector::instance().getMainWindow();
-    showToastOverContactDialog(new Ui::PlaceholderToast(_text, mainWindow, _maxLineCount));
+    int inputHeight = 0;
+    if (auto dialog = Utils::InterConnector::instance().getContactDialog())
+        if (auto inputWidget = dialog->getInputWidget())
+            inputHeight = inputWidget->height();
+
+    _toast->setUseMainWindowShift(true);
+
+    Ui::ToastManager::instance()->showToast(_toast, QPoint(mainWindow->width() / 2, mainWindow->height() - inputHeight - toastVerPadding()) + mainWindowShift());
+}
+
+void Utils::showTextToastOverContactDialog(const QString& _text, int _maxLineCount)
+{
+    const auto mainWindow = Utils::InterConnector::instance().getMainWindow();
+    auto toast = new Toast(_text, mainWindow, _maxLineCount);
+    toast->setUseMainWindowShift(true);
+    Testing::setAccessibleName(toast, qsl("AS General toast"));
+    showToastOverContactDialog(toast);
 }
 
 void Utils::showDownloadToast(const Data::FileSharingDownloadResult& _result)
 {
     const auto mainWindow = Utils::InterConnector::instance().getMainWindow();
     ToastBase* toast = nullptr;
-    if (!_result.filename_.isEmpty())
+    const auto success = !_result.filename_.isEmpty();
+    if (success)
         toast = new Ui::DownloadFinishedToast(_result, mainWindow);
     else
         toast = new Ui::Toast(QT_TRANSLATE_NOOP("previewer", "Error file downloading"), mainWindow);
 
+    Testing::setAccessibleName(toast, qsl("AS General fileToast_%1").arg(success ? qsl("success") : qsl("fail")));
     showToastOverContactDialog(toast);
 }
 
 void Utils::showCopiedToast(std::optional<std::chrono::milliseconds> _visibilityDuration)
 {
-    const auto mainPage = Utils::InterConnector::instance().getMainPage();
     const auto mainWindow = Utils::InterConnector::instance().getMainWindow();
-    const auto inputHeight = Utils::InterConnector::instance().getContactDialog()->getInputWidget()->height();
+    int inputHeight = 0;
+    if (auto dialog = Utils::InterConnector::instance().getContactDialog())
+        if (auto input = dialog->getInputWidget())
+            inputHeight = input->height();
     const auto toast = new Ui::Toast(QT_TRANSLATE_NOOP("previewer", "Copied to clipboard"), mainWindow);
 
     if (_visibilityDuration.has_value())
         toast->setVisibilityDuration(*_visibilityDuration);
 
-    Ui::ToastManager::instance()->showToast(toast, QPoint(mainWindow->width() / 2 + getToastShift(mainPage), mainWindow->height() - inputHeight - toastVerPadding()));
+    toast->setUseMainWindowShift(true);
+
+    Ui::ToastManager::instance()->showToast(toast, QPoint(mainWindow->width() / 2, mainWindow->height() - inputHeight - toastVerPadding()) + mainWindowShift());
 }

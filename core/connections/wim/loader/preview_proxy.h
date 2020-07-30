@@ -108,7 +108,7 @@ link_meta_uptr parse_json(InOut char *_json, const std::string &_uri);
 namespace uri
 {
     std::string get_preview();
-    std::string_view get_url_content();
+    std::string get_url_content();
 }
 
 CORE_WIM_PREVIEW_PROXY_NS_END

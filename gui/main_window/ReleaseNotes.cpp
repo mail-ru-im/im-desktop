@@ -65,7 +65,7 @@ ReleaseNotesWidget::ReleaseNotesWidget(QWidget *_parent)
     auto title = new TextWidget(this, QT_TRANSLATE_NOOP("release_notes", "What's new"));
     title->init(Fonts::appFontScaled(22, Fonts::FontWeight::SemiBold), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
     titleLayout->addSpacing(leftMargin());
-    Testing::setAccessibleName(title, qsl("AS rn title"));
+    Testing::setAccessibleName(title, qsl("AS ReleaseNots title"));
     titleLayout->addWidget(title);
     titleLayout->addStretch();
     layout->addLayout(titleLayout);
@@ -76,14 +76,14 @@ ReleaseNotesWidget::ReleaseNotesWidget(QWidget *_parent)
     scrollArea->setWidgetResizable(true);
     scrollArea->setStyleSheet(qsl("background-color: %1; border: none").arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE)));
 
-    auto text = new TextWidget(this, releaseNotesText());
+    auto text = new TextWidget(this, releaseNotesText(), Data::MentionMap(), Ui::TextRendering::LinksVisible::DONT_SHOW_LINKS);
     text->setMaxWidth(releaseNotesWidth() - leftMargin() - rightMargin());
     text->init(Fonts::appFontScaled(15, Fonts::FontWeight::Normal), MessageStyle::getTextColor());
 
     auto scrollAreaContent = new QWidget(scrollArea);
     auto scrollAreaContentLayout = Utils::emptyVLayout(scrollAreaContent);
     auto textLayout = Utils::emptyHLayout(scrollAreaContent);
-    Testing::setAccessibleName(text, qsl("AS rn text"));
+    Testing::setAccessibleName(text, qsl("AS ReleaseNots text"));
     textLayout->addWidget(text);
     scrollAreaContentLayout->addLayout(textLayout);
     scrollAreaContentLayout->addStretch();
@@ -93,7 +93,7 @@ ReleaseNotesWidget::ReleaseNotesWidget(QWidget *_parent)
     scrollArea->setWidget(scrollAreaContent);
 
     layout->addSpacing(textTopMargin());
-    Testing::setAccessibleName(scrollArea, qsl("AS rn scrollArea"));
+    Testing::setAccessibleName(scrollArea, qsl("AS ReleaseNots scrollArea"));
     layout->addWidget(scrollArea);
 }
 

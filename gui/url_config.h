@@ -21,6 +21,7 @@ namespace Ui
         [[nodiscard]] const QString& getUrlMailRedirect() const { return mailRedirect_; }
         [[nodiscard]] const QString& getUrlMailWin() const { return mailWin_; }
         [[nodiscard]] const QString& getUrlMailRead() const { return mailRead_; }
+        const QVector<QString>& getVCSUrls() const;
 
     	bool isMailConfigPresent() const;
 
@@ -33,6 +34,8 @@ namespace Ui
         QString mailRedirect_;
         QString mailWin_;
         QString mailRead_;
+
+        QVector<QString> vcsUrls_;
     };
 
     UrlConfig& getUrlConfig();

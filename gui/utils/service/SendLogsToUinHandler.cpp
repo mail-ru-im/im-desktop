@@ -13,8 +13,8 @@
 namespace Utils
 {
 
-SendLogsToUinHandler::SendLogsToUinHandler(SendLogsToUinRequest *_request)
-    : request_(_request)
+SendLogsToUinHandler::SendLogsToUinHandler(std::shared_ptr<SendLogsToUinRequest> _request)
+    : request_(std::move(_request))
 {
     assert(request_);
 }
@@ -22,16 +22,13 @@ SendLogsToUinHandler::SendLogsToUinHandler(SendLogsToUinRequest *_request)
 void SendLogsToUinHandler::start()
 {
     // 0. check if UIN is in the list of allowed
-    if (!uinIsAllowed(request_->getInfo().uin_))
-        return;
-
     // 1. get user consent
-    if (!getUserConsent())
+    if (!uinIsAllowed(request_->getInfo().uin_) || !getUserConsent())
     {
         Result res;
         res.status_ = Result::Status::Failed;
 
-        emit finished(request_->getId(), res);
+        Q_EMIT finished(request_->getId(), res);
         return;
     }
 
@@ -71,7 +68,7 @@ void SendLogsToUinHandler::onHaveLogsPath(const QString &_logsPath)
     {
         res.status_ = Result::Status::Failed;
 
-        emit finished(request_->getId(), res);
+        Q_EMIT finished(request_->getId(), res);
         return;
     }
 
@@ -89,7 +86,7 @@ void SendLogsToUinHandler::onHaveLogsPath(const QString &_logsPath)
         QDir rtpDir = logsDir;
         if (rtpDir.cdUp() && rtpDir.exists())
         {
-            rtpDir.setNameFilters(QStringList() << QString::fromLatin1("*.pcapng"));
+            rtpDir.setNameFilters({ QString::fromLatin1("*.pcapng") });
             const auto rtpFileEntries = rtpDir.entryList(QDir::Filter::Files, QDir::SortFlag::Time);
 
             for (QStringList::size_type i = 0;
@@ -104,7 +101,7 @@ void SendLogsToUinHandler::onHaveLogsPath(const QString &_logsPath)
     Utils::openDialogWithContact(request_->getInfo().uin_);
 
     res.status_ = Result::Status::Success;
-    emit finished(request_->getId(), res);
+    Q_EMIT finished(request_->getId(), res);
 }
 
 bool SendLogsToUinHandler::getUserConsent() const

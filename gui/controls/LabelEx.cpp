@@ -36,7 +36,7 @@ namespace Ui
             pressed_ = false;
             updateColor();
             if (rect().contains(_event->pos()) && rect().contains(pos_))
-                emit clicked();
+                Q_EMIT clicked();
         }
         QLabel::mouseReleaseEvent(_event);
     }

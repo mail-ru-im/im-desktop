@@ -10,7 +10,7 @@ class SendLogsToUinRequest;
 class SendLogsToUinHandler: public RequestHandler
 {
 public:
-    SendLogsToUinHandler(SendLogsToUinRequest* _request);
+    SendLogsToUinHandler(std::shared_ptr<SendLogsToUinRequest> _request);
     virtual ~SendLogsToUinHandler() = default;
 
     void start() override;
@@ -24,7 +24,7 @@ private:
     bool uinIsAllowed(const QString& _contactUin) const;
 
 private:
-    SendLogsToUinRequest* request_;
+    std::shared_ptr<SendLogsToUinRequest> request_;
 };
 
 }

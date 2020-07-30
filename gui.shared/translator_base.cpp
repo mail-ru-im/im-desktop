@@ -62,29 +62,54 @@ namespace translate
         return result;
     }
 
+    QString translator_base::formatDifferenceToNow(const QDateTime& _dt, bool _withLongTimeAgo) const
+    {
+        QString result;
+
+        QDateTime now = QDateTime::currentDateTime();
+        const auto days = _dt.daysTo(now);
+        const auto sameYear = _dt.date().year() == now.date().year();
+
+        if (days == 0)
+            result = QT_TRANSLATE_NOOP("date", "today");
+        else if (days == 1)
+            result = QT_TRANSLATE_NOOP("date", "yesterday");
+        else if (days < 7)
+            result = formatDayOfWeek(_dt.date());
+        else if (days > 365 && _withLongTimeAgo)
+            result = QT_TRANSLATE_NOOP("date", "a long time ago");
+        else
+            result = formatDate(_dt.date(), sameYear);
+
+        if (sameYear || days < 7)
+            result += QT_TRANSLATE_NOOP("date", " at ") % _dt.time().toString(Qt::SystemLocaleShortDate);
+
+        return result;
+    }
+
     QString translator_base::getCurrentYearDateFormat() const
     {
         const QString lang = getLang();
-        if (lang == ql1s("ru"))
+        if (lang == u"ru")
             return qsl("d MMM");
-        else if (lang == ql1s("de"))
+        else if (lang == u"de")
             return qsl("d. MMM");
-        else if (lang == ql1s("pt"))
+        else if (lang == u"pt")
             return qsl("d 'de' MMMM");
-        else if (lang == ql1s("uk"))
+        else if (lang == u"uk")
             return qsl("d MMM");
-        else if (lang == ql1s("cs"))
+        else if (lang == u"cs")
             return qsl("d. MMM");
-        else if (lang == ql1s("fr"))
+        else if (lang == u"fr")
             return qsl("Le d MMM");
-        else if (lang == ql1s("zh"))
-            return ql1s("MMMd'") % QT_TRANSLATE_NOOP("date", "day") % ql1c('\'');
-        else if (lang == ql1s("es"))
+        else if (lang == u"zh")
+            return u"MMMd'" % QT_TRANSLATE_NOOP("date", "day") % u'\'';
+        else if (lang == u"es")
             return qsl("d 'de' MMM");
-        else if (lang == ql1s("tr"))
+        else if (lang == u"tr")
             return qsl("d MMM");
-        else if (lang == ql1s("vi"))
-            return ql1c('\'') % QT_TRANSLATE_NOOP("date", "day") % ql1s("' d MMM");
+        else if (lang == u"vi")
+            return u'\'' % QT_TRANSLATE_NOOP("date", "day") % u"' d MMM";
 
         return qsl("MMM d");
     }
@@ -92,26 +117,26 @@ namespace translate
     QString translator_base::getOtherYearsDateFormat() const
     {
         const QString lang = getLang();
-        if (lang == ql1s("ru"))
+        if (lang == u"ru")
             return qsl("d MMM yyyy");
-        else if (lang == ql1s("de"))
+        else if (lang == u"de")
             return qsl("d. MMM yyyy");
-        else if (lang == ql1s("pt"))
+        else if (lang == u"pt")
             return qsl("d 'de' MMMM 'de' yyyy");
-        else if (lang == ql1s("uk"))
+        else if (lang == u"uk")
             return qsl("d MMM yyyy");
-        else if (lang == ql1s("cs"))
+        else if (lang == u"cs")
             return qsl("d. MMM yyyy");
-        else if (lang == ql1s("fr"))
+        else if (lang == u"fr")
             return qsl("Le d MMM yyyy");
-        else if (lang == ql1s("zh"))
-            return ql1s("yyyy'") % QT_TRANSLATE_NOOP("date", "year") % ql1s("'MMMd'") % QT_TRANSLATE_NOOP("date", "day") % ql1c('\'');
-        else if (lang == ql1s("es"))
+        else if (lang == u"zh")
+            return u"yyyy'" % QT_TRANSLATE_NOOP("date", "year") % u"'MMMd'" % QT_TRANSLATE_NOOP("date", "day") % u'\'';
+        else if (lang == u"es")
             return qsl("d 'de' MMM 'de' yyyy");
-        else if (lang == ql1s("tr"))
+        else if (lang == u"tr")
             return qsl("d MMM yyyy");
-        else if (lang == ql1s("vi"))
-            return ql1c('\'') % QT_TRANSLATE_NOOP("date", "day") % ql1s("' d MMM '") % QT_TRANSLATE_NOOP("date", "year") % ql1s("' yyyy");
+        else if (lang == u"vi")
+            return u'\'' % QT_TRANSLATE_NOOP("date", "day") % u"' d MMM '" % QT_TRANSLATE_NOOP("date", "year") % u"' yyyy";
 
         return qsl("MMM d, yyyy");
     }

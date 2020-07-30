@@ -13,7 +13,7 @@ class RequestHandlersFactory
 public:
     RequestHandlersFactory() = delete;
 
-    static RequestHandler *handlerForRequest(ServiceRequest* _request);
+    static std::unique_ptr<RequestHandler> handlerForRequest(const std::shared_ptr<ServiceRequest>& _request);
 };
 
 }

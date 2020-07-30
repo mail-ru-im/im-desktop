@@ -1,9 +1,12 @@
 #pragma once
-#include "../controls/TextUnit.h"
-#include "../controls/TextEditEx.h"
+
+#include "controls/TextUnit.h"
+#include "main_window/input_widget/FileToSend.h"
 
 namespace Ui
 {
+    class TextEditEx;
+
     class FilesAreaItem : public QWidget
     {
         Q_OBJECT
@@ -12,21 +15,24 @@ namespace Ui
         void needUpdate();
 
     public:
-        FilesAreaItem(const QString& _filePath, int _filepath);
+        FilesAreaItem(const FileToSend& _file, int _width);
         bool operator==(const FilesAreaItem& _other) const;
 
         void draw(QPainter& _p, const QPoint& _at);
-        QString path() const;
+        const FileToSend& getFile() const noexcept { return file_; }
 
     private Q_SLOTS:
         void localPreviewLoaded(QPixmap pixmap, const QSize _originalSize);
 
     private:
+        void initText(const QString& _name, int64_t _size, int _width);
+
+    private:
         QPixmap preview_;
         std::unique_ptr<TextRendering::TextUnit> name_;
         std::unique_ptr<TextRendering::TextUnit> size_;
-        QString path_;
-        bool iconPreview_;
+        FileToSend file_;
+        bool iconPreview_ = false;
     };
 
     class FilesArea : public QWidget
@@ -39,17 +45,18 @@ namespace Ui
     public:
         FilesArea(QWidget* _parent);
         void addItem(FilesAreaItem* _item);
-        QStringList getItems() const;
+
+        FilesToSend getItems() const;
 
         int count() const;
         void clear();
 
     protected:
-        virtual void paintEvent(QPaintEvent* _event) override;
-        virtual void mouseMoveEvent(QMouseEvent* _event) override;
-        virtual void leaveEvent(QEvent* _event) override;
-        virtual void mousePressEvent(QMouseEvent* _event) override;
-        virtual void mouseReleaseEvent(QMouseEvent* _event) override;
+        void paintEvent(QPaintEvent* _event) override;
+        void mouseMoveEvent(QMouseEvent* _event) override;
+        void leaveEvent(QEvent* _event) override;
+        void mousePressEvent(QMouseEvent* _event) override;
+        void mouseReleaseEvent(QMouseEvent* _event) override;
 
     private Q_SLOTS:
         void needUpdate();
@@ -71,13 +78,10 @@ namespace Ui
         void setPlaceholder(bool _placeholder);
 
     protected:
-        virtual void paintEvent(QPaintEvent* _event) override;
-        virtual void dragEnterEvent(QDragEnterEvent* _event) override;
-        virtual void dragLeaveEvent(QDragLeaveEvent* _event) override;
-        virtual void dropEvent(QDropEvent* _event) override;
-
-    private:
-        bool isDragDisallowed(const QMimeData* _mimeData) const;
+        void paintEvent(QPaintEvent* _event) override;
+        void dragEnterEvent(QDragEnterEvent* _event) override;
+        void dragLeaveEvent(QDragLeaveEvent* _event) override;
+        void dropEvent(QDropEvent* _event) override;
 
     private:
         bool dnd_;
@@ -92,17 +96,17 @@ namespace Ui
         void setButtonActive(bool);
 
     public:
-        FilesWidget(QWidget* _parent, const QStringList& _files, const QPixmap& _imageBuffer = QPixmap());
+        FilesWidget(QWidget* _parent, const FilesToSend& _files);
         ~FilesWidget();
 
-        QStringList getFiles() const;
+        FilesToSend getFiles() const;
         QString getDescription() const;
         const Data::MentionMap& getMentions() const;
         void setFocusOnInput();
         void setDescription(const QString& _text, const Data::MentionMap& _mentions = {});
 
     protected:
-        virtual void paintEvent(QPaintEvent* _event) override;
+        void paintEvent(QPaintEvent* _event) override;
 
     private Q_SLOTS:
         void descriptionChanged();
@@ -113,8 +117,9 @@ namespace Ui
         void scrollRangeChanged(int, int);
 
     private:
-        void initPreview(const QStringList& _files, const QPixmap& _imageBuffer = QPixmap());
+        void initPreview(const FilesToSend& _files);
         void updateDescriptionHeight();
+        void updateTitle();
         void updateSize();
         void setDuration(const QString& _duration);
 
@@ -122,8 +127,10 @@ namespace Ui
         std::unique_ptr<TextRendering::TextUnit> title_;
         std::unique_ptr<TextRendering::TextUnit> durationLabel_;
         TextEditEx* description_;
-        QPixmap preview_;
-        QString previewPath_;
+
+        FileToSend singleFile_;
+        QPixmap singlePreview_;
+
         FilesScroll* area_;
         FilesArea* filesArea_;
         int currentDocumentHeight_;

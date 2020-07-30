@@ -179,7 +179,7 @@ namespace Ui
         virtual void fadeIn(unsigned int duration)  override {}
         virtual void fadeOut(unsigned int duration) override {}
 
-    signals:
+    Q_SIGNALS:
 
         void onResize();
 
@@ -267,4 +267,6 @@ namespace Ui
     // Show dialog to add new users to video call.
     void showAddUserToVideoConverenceDialogVideoWindow(QObject* parent, FullVideoWindowPanel* parentWindow);
     void showAddUserToVideoConverenceDialogMainWindow(QObject* parent, QWidget* parentWindow);
+
+    void showInviteVCSDialogVideoWindow(FullVideoWindowPanel* _parentWindow, const QString& _url);
 }

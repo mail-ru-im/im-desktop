@@ -4,6 +4,7 @@
 #ifdef __APPLE__
 #include "macos/VideoFrameMacos.h"
 #endif
+#include "media/permissions/MediaCapturePermissions.h"
 
 namespace voip_manager
 {
@@ -18,8 +19,7 @@ namespace Ui
     class VoipSysPanelHeader;
     class VideoPanel;
     class MaskPanel;
-    class SecureCallWnd;
-    class VideoPanelHeader;
+    //class SecureCallWnd;
     class VideoWindowHeader;
     class TextEmojiWidget;
 
@@ -58,6 +58,7 @@ namespace Ui
         typedef platform_specific::GraphicsPanel FrameControl_t;
 
     protected:
+        bool nativeEvent(const QByteArray& _data, void* _message, long* _result) override;
         void showEvent(QShowEvent*) override;
         void hideEvent(QHideEvent*) override;
         void resizeEvent(QResizeEvent* _e) override;
@@ -71,10 +72,10 @@ namespace Ui
         void executeCommandList();
         void setWindowTitle(const QString& text);
 
-#ifndef _WIN32
 #ifndef __APPLE__
         void mouseDoubleClickEvent(QMouseEvent* _e) override;
 #endif
+#ifndef _WIN32
         void enterEvent(QEvent* _e) override;
         void leaveEvent(QEvent* _e) override;
         void mouseMoveEvent(QMouseEvent* _e) override;
@@ -82,6 +83,7 @@ namespace Ui
         void mousePressEvent(QMouseEvent * event) override;
         void wheelEvent(QWheelEvent * event) override;
         void moveEvent(QMoveEvent * event) override;
+        bool event(QEvent* _event) override;
 
         // @return true if we resend message to any transparent panel
         template <typename E> bool resendMouseEventToPanel(E* event_);
@@ -105,16 +107,13 @@ namespace Ui
         // we will save commands and call it later, after fullscreen animation
         void callMethodProxy(const QString& _method);
 
-        void showPanel(QWidget* widget);
-        void hidePanel(QWidget* widget);
-
         void fadeInPanels(int kAnimationDefDuration);
         void fadeOutPanels(int kAnimationDefDuration);
         void hidePanels();
 
         // call this method in all cases, when you need to hide panels
         void tryRunPanelsHideTimer();
-        void hideSecurityDialog();
+        //void hideSecurityDialog();
 
         bool hasRemoteVideoInCall(); // @return true for calls (not for conference), if remote camera is turned on.
         bool hasRemoteVideoForConference(); // @return true for conference, if any remote camera is turned on.
@@ -123,7 +122,7 @@ namespace Ui
         //void checkCurrentAspectState();
 
         void updateOutgoingState(const voip_manager::ContactEx& _contactEx);
-        void updateTopPanelSecureCall();
+        //void updateTopPanelSecureCall();
 
         void createdNewCall();
         void sendStatistic();
@@ -152,12 +151,11 @@ namespace Ui
 
         void onPanelMouseEnter();
         void onPanelMouseLeave();
-        void onPanelFullscreenClicked();
 
-        void onVoipUpdateCipherState(const voip_manager::CipherState& _state);
-        void onSecureCallClicked(const QRect&);
-        void onSecureCallWndOpened();
-        void onSecureCallWndClosed();
+        //void onVoipUpdateCipherState(const voip_manager::CipherState& _state);
+        //void onSecureCallClicked(const QRect&);
+        //void onSecureCallWndOpened();
+        //void onSecureCallWndClosed();
 
         // These methods are used under macos to close video window correctly from the fullscreen mode
         void fullscreenAnimationStart();
@@ -165,10 +163,6 @@ namespace Ui
         void activeSpaceDidChange();
         void windowWillDeminiaturize();
         void windowDidDeminiaturize();
-
-        void autoHideToolTip(bool& autoHide);
-        void companionName(QString& name);
-        void showToolTip(bool &show);
 
         void onScreenSharing();
         void onSetPreviewPrimary();
@@ -186,13 +180,16 @@ namespace Ui
         void onAddUserClicked();
         void onShowMaskPanel();
         void onHideMaskPanel();
+        void onCloseActiveMask();
 
         void setShowMaskPanelState();
         void setHideMaskPanelState();
 
         void resizeToDefaultSize();
 
-        void showScreenPermissionsPopup();
+        void showScreenPermissionsPopup(media::permissions::DeviceType type);
+
+        void onInviteVCSUrl(const QString& _url);
 
     public:
         VideoWindow();
@@ -203,11 +200,11 @@ namespace Ui
         bool isActiveWindow() const;
         bool isInFullscreen() const;
         bool isMinimized() const;
+        VideoPanel* getVideoPanel() const;
+        void showToast(const QString& _text, int _maxLineCount = 1);
 
     Q_SIGNALS:
 
-        void onCreateNewCall();
-        void onStartedTalk();
         void finished();
 
     private:
@@ -219,10 +216,9 @@ namespace Ui
 #ifndef _WIN32
         // Transparent widgets. We resend mouse events to these widgets under macos,
         // because we did not find any better way to catch mouse events for tranparent panels
-        std::vector<BaseVideoPanel*> transparentPanels_;
+        std::vector<QPointer<BaseVideoPanel>> transparentPanels_;
 #endif
 
-        std::unique_ptr<VideoPanelHeader>   headerPanel_;
         //std::unique_ptr<VoipSysPanelHeader> topPanelOutgoing_;
         std::unique_ptr<VideoPanel>          videoPanel_;
         std::unique_ptr<MaskPanel>           maskPanel_;
@@ -241,12 +237,7 @@ namespace Ui
         // Current contacts
         std::vector<voip_manager::Contact> currentContacts_;
 
-        //UIEffects* video_panel_header_effect_;
-        //UIEffects* video_panel_header_effect_with_avatars_;
-
-        QWidget *widget_;
-
-        SecureCallWnd* secureCallWnd_;
+        //SecureCallWnd* secureCallWnd_;
 
         struct
         {
@@ -262,12 +253,10 @@ namespace Ui
 
         // All is connected and talking now.
         bool startTalking;
-
-        // Load size from settings only one time per call. Actual for Mac.
-        bool isLoadSizeFromSettings_;
+        bool miniWindowShown = false;
 
         // true for security calls.
-        bool enableSecureCall_;
+        //bool enableSecureCall_;
 
         enum SHOW_MASK_PANEL {SMP_HIDE, SMP_ANIMATION, SMP_SHOW};
         SHOW_MASK_PANEL maskPanelState;
@@ -283,7 +272,7 @@ namespace Ui
 
 #ifdef __APPLE__
         // We use fullscreen notification to fix a problem on macos
-        platform_macos::FullScreenNotificaton _fullscreenNotification;
+        platform_macos::FullScreenNotificaton fullscreenNotification_;
         // Commands after fullscreen mode
         QList<QString> commandList_;
         bool isFullscreenAnimation_;

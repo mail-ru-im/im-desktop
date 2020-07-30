@@ -11,10 +11,15 @@
 
 #include "MpegLoader.h"
 
+Q_LOGGING_CATEGORY(soundManager, "soundManager")
+
 namespace openal
 {
+
+#ifndef USE_SYSTEM_OPENAL
     #define AL_ALEXT_PROTOTYPES
     #include <AL/alext.h>
+#endif
 }
 
 namespace
@@ -117,8 +122,10 @@ namespace Ui
     void PlayingData::clearData()
     {
         openal::alSourceStop(Source_);
+#ifndef USE_SYSTEM_OPENAL
         openal::ALuint buffer = 0;
         openal::alSourceUnqueueBuffers(Source_, 1, &buffer);
+#endif
     }
 
     bool PlayingData::isEmpty() const
@@ -131,15 +138,18 @@ namespace Ui
         openal::ALint sizeInBytes;
         openal::ALint channels;
         openal::ALint bits;
+        openal::ALint frequency;
 
         openal::alGetBufferi(Buffer_, AL_SIZE, &sizeInBytes);
         openal::alGetBufferi(Buffer_, AL_CHANNELS, &channels);
         openal::alGetBufferi(Buffer_, AL_BITS, &bits);
-
-        auto lengthInSamples = sizeInBytes * 8 / (channels * bits);
-        openal::ALint frequency;
         openal::alGetBufferi(Buffer_, AL_FREQUENCY, &frequency);
-        return std::chrono::milliseconds(size_t(((float)lengthInSamples / (float)frequency) * 1000));
+        if (channels > 0 && bits > 0 && frequency > 0)
+        {
+            const auto lengthInSamples = sizeInBytes * 8 / (channels * bits);
+            return std::chrono::milliseconds(size_t(((float)lengthInSamples / (float)frequency) * 1000));
+        }
+        return {};
     }
 
     openal::ALenum PlayingData::state() const
@@ -222,6 +232,8 @@ namespace Ui
 
     std::chrono::milliseconds SoundsManager::playSound(Sound _type)
     {
+        checkAudioDevice();
+
         if (!canPlaySound(_type))
             return std::chrono::milliseconds::zero();
 
@@ -266,15 +278,14 @@ namespace Ui
     void SoundsManager::onDeviceListChanged()
     {
         reinit();
-        emit deviceListChanged(QPrivateSignal());
+        Q_EMIT deviceListChanged(QPrivateSignal());
     }
 
     std::optional<int> SoundsManager::checkPlayPtt(int id, int &duration, const std::optional<size_t>& _sampleOffsett)
     {
-        if (!AlInited_)
-            initOpenAl();
+        checkAudioDevice();
 
-        emit Utils::InterConnector::instance().stopPttRecord();
+        Q_EMIT Utils::InterConnector::instance().stopPttRecord();
         if (!CurPlay_.isEmpty())
         {
             if (!PrevPlay_.isEmpty())
@@ -284,7 +295,7 @@ namespace Ui
                     if (CurPlay_.state() == AL_PLAYING)
                     {
                         CurPlay_.pause();
-                        emit pttPaused(CurPlay_.Id_, CurPlay_.currentSampleOffset(), QPrivateSignal());
+                        Q_EMIT pttPaused(CurPlay_.Id_, CurPlay_.currentSampleOffset(), QPrivateSignal());
                     }
 
                     using std::swap;
@@ -302,13 +313,13 @@ namespace Ui
                 if (!PrevPlay_.isEmpty())
                 {
                     PrevPlay_.stop();
-                    emit pttFinished(PrevPlay_.Id_, false, QPrivateSignal());
+                    Q_EMIT pttFinished(PrevPlay_.Id_, false, QPrivateSignal());
                     PrevPlay_.clear();
                     PrevPlay_.free();
                 }
 
                 CurPlay_.pause();
-                emit pttPaused(CurPlay_.Id_, CurPlay_.currentSampleOffset(), QPrivateSignal());
+                Q_EMIT pttPaused(CurPlay_.Id_, CurPlay_.currentSampleOffset(), QPrivateSignal());
                 using std::swap;
                 swap(PrevPlay_, CurPlay_);
             }
@@ -326,7 +337,7 @@ namespace Ui
                 if (!PrevPlay_.isEmpty())
                 {
                     PrevPlay_.stop();
-                    emit pttFinished(PrevPlay_.Id_, false, QPrivateSignal());
+                    Q_EMIT pttFinished(PrevPlay_.Id_, false, QPrivateSignal());
                     PrevPlay_.clear();
                     PrevPlay_.free();
                 }
@@ -336,7 +347,7 @@ namespace Ui
             }
             else if (CurPlay_.state() == AL_STOPPED)
             {
-                emit pttFinished(CurPlay_.Id_, false, QPrivateSignal());
+                Q_EMIT pttFinished(CurPlay_.Id_, false, QPrivateSignal());
             }
             CurPlay_.free();
         }
@@ -448,11 +459,11 @@ namespace Ui
             }
             else if (state == AL_PAUSED)
             {
-                emit pttPaused(CurPlay_.Id_, CurPlay_.currentSampleOffset(), QPrivateSignal());
+                Q_EMIT pttPaused(CurPlay_.Id_, CurPlay_.currentSampleOffset(), QPrivateSignal());
             }
             else if (state == AL_STOPPED)
             {
-                emit pttFinished(CurPlay_.Id_, true, QPrivateSignal());
+                Q_EMIT pttFinished(CurPlay_.Id_, true, QPrivateSignal());
                 if (!PrevPlay_.isEmpty())
                 {
                     CurPlay_.stop();
@@ -469,7 +480,7 @@ namespace Ui
         if (CurPlay_.state() == AL_PLAYING)
         {
             CurPlay_.stop();
-            emit pttPaused(CurPlay_.Id_, CurPlay_.currentSampleOffset(), QPrivateSignal());
+            Q_EMIT pttPaused(CurPlay_.Id_, CurPlay_.currentSampleOffset(), QPrivateSignal());
         }
     }
 
@@ -478,7 +489,12 @@ namespace Ui
         if (CurPlay_.state() == AL_PLAYING)
             return updateDeviceTimer();
 
+#ifndef USE_SYSTEM_OPENAL
         openal::alcDevicePauseSOFT(AlAudioDevice_);
+#else
+        if (AlInited_)
+            shutdownOpenAl();
+#endif
     }
 
     int SoundsManager::playPtt(const QString& file, int id, int& duration)
@@ -540,12 +556,16 @@ namespace Ui
 
     void SoundsManager::delayDeviceTimer()
     {
-        emit needUpdateDeviceTimer(QPrivateSignal());
+        Q_EMIT needUpdateDeviceTimer(QPrivateSignal());
     }
 
     void SoundsManager::sourcePlay(unsigned source)
     {
+#ifndef USE_SYSTEM_OPENAL
         openal::alcDeviceResumeSOFT(AlAudioDevice_);
+#else
+        checkAudioDevice();
+#endif
         openal::alSourcePlay(source);
 
         delayDeviceTimer();
@@ -554,6 +574,17 @@ namespace Ui
     void SoundsManager::callInProgress(bool value)
     {
         CallInProgress_ = value;
+    }
+
+    void SoundsManager::checkAudioDevice()
+    {
+#ifdef USE_SYSTEM_OPENAL
+        if (!AlInited_)
+        {
+            initOpenAl();
+            initSounds();
+        }
+#endif
     }
 
     void SoundsManager::reinit()
@@ -565,7 +596,7 @@ namespace Ui
 
     void SoundsManager::DeviceMonitoringListChanged()
     {
-        emit deviceListChangedInternal(QPrivateSignal());
+        Q_EMIT deviceListChangedInternal(QPrivateSignal());
     }
 
     void SoundsManager::DeviceMonitoringBluetoothHeadsetChanged(bool _connected)
@@ -574,11 +605,21 @@ namespace Ui
 
     void SoundsManager::initOpenAl()
     {
-        const openal::ALCchar *defaultDevice = openal::alcGetString(NULL, ALC_DEFAULT_DEVICE_SPECIFIER);
-        AlAudioDevice_ = openal::alcOpenDevice(defaultDevice);
-        deviceName_ = defaultDevice;
+        AlAudioDevice_ = openal::alcOpenDevice(nullptr);
+        if (!AlAudioDevice_)
+        {
+            qCDebug(soundManager) << "could not create default playback device";
+            return;
+        }
+
         AlAudioContext_ = openal::alcCreateContext(AlAudioDevice_, nullptr);
         openal::alcMakeContextCurrent(AlAudioContext_);
+        if (auto errCode = openal::alcGetError(AlAudioDevice_); errCode != ALC_NO_ERROR)
+        {
+            qCDebug(soundManager) << "audio context error:" << errCode << openal::alcGetString(AlAudioDevice_, errCode);
+            closeOpenAlDevice();
+            return;
+        }
 
         openal::ALfloat v[] = { 0.f, 0.f, -1.f, 0.f, 1.f, 0.f };
         openal::alListener3f(AL_POSITION, 0.f, 0.f, 0.f);
@@ -587,29 +628,15 @@ namespace Ui
 
         openal::alDistanceModel(AL_NONE);
 
-        if (openal::alGetError() == AL_NO_ERROR)
-        {
-            AlInited_ = true;
-            updateDeviceTimer();
-        }
+        AlInited_ = true;
+        updateDeviceTimer();
+
+        qCDebug(soundManager) << "inited OpenAl device:" << AlAudioDevice_ << AlAudioContext_;
     }
 
-    void SoundsManager::shutdownOpenAl()
+    void SoundsManager::closeOpenAlDevice()
     {
-        emit pttPaused(CurPlay_.Id_, CurPlay_.currentSampleOffset(), QPrivateSignal());
-        emit pttFinished(CurPlay_.Id_, false, QPrivateSignal());
-        emit pttPaused(PrevPlay_.Id_, CurPlay_.currentSampleOffset(), QPrivateSignal());
-        emit pttFinished(PrevPlay_.Id_, false, QPrivateSignal());
-
-        PrevPlay_.stop();
-        PrevPlay_.free();
-        PrevPlay_.clear();
-
-        CurPlay_.stop();
-        CurPlay_.free();
-        CurPlay_.clear();
-
-        deInitSounds();
+        qCDebug(soundManager) << "closed OpenAl device:" << AlAudioDevice_ << AlAudioContext_;
 
         if (AlAudioContext_)
         {
@@ -621,10 +648,28 @@ namespace Ui
         if (AlAudioDevice_)
         {
             openal::alcCloseDevice(AlAudioDevice_);
-            AlAudioDevice_ = 0;
+            AlAudioDevice_ = nullptr;
         }
+    }
 
-        deviceName_ = {};
+    void SoundsManager::shutdownOpenAl()
+    {
+        Q_EMIT pttPaused(CurPlay_.Id_, CurPlay_.currentSampleOffset(), QPrivateSignal());
+        Q_EMIT pttFinished(CurPlay_.Id_, false, QPrivateSignal());
+        Q_EMIT pttPaused(PrevPlay_.Id_, CurPlay_.currentSampleOffset(), QPrivateSignal());
+        Q_EMIT pttFinished(PrevPlay_.Id_, false, QPrivateSignal());
+
+        PrevPlay_.stop();
+        PrevPlay_.free();
+        PrevPlay_.clear();
+
+        CurPlay_.stop();
+        CurPlay_.free();
+        CurPlay_.clear();
+
+        deInitSounds();
+
+        closeOpenAlDevice();
 
         AlInited_ = false;
     }

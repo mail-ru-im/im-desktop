@@ -26,7 +26,7 @@ namespace voip_masks
         void loadMask(const QString& _id);
 
 
-    private slots:
+    private Q_SLOTS:
         void onImCreated();
         void onMaskListLoaded(const QVector<QString>& maskList);
         void onPreviewLoaded(qint64 _seq, const QString& _localPath);

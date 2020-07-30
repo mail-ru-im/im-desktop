@@ -1,4 +1,5 @@
-cmake_minimum_required(VERSION 3.8)
+cmake_minimum_required(VERSION 3.14)
+
 ### integrate to icq
 #set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMake;${CMAKE_MODULE_PATH}")
 #include(Utilities)
@@ -56,8 +57,9 @@ include_directories(${SUBPROJECT_ROOT}/include)
 include_directories(${SUBPROJECT_ROOT}/src)
 
 add_definitions(-DRAPIDJSON_HAS_STDSTRING=1)
-set(RAPID_JSON_DIR "${SUBPROJECT_ROOT}/external/rapidjson-master")
-include_directories(${RAPID_JSON_DIR}/include)
+# set(RAPID_JSON_DIR "${ICQ_EXTERNAL}/rapidjson-master")
+# include_directories(${RAPID_JSON_DIR}/include)
+include_directories(${ICQ_RAPID_JSON}/include)
 
 if(OMICRON_USE_LIBCURL)
     add_definitions(-DOMICRON_USE_LIBCURL)

@@ -98,7 +98,7 @@ void HorizontalImgList::mouseMoveEvent(QMouseEvent *_event)
      auto index = itemIndexForXPos(_event->pos().x());
      if (index != -1)
      {
-         emit itemHovered(index);
+         Q_EMIT itemHovered(index);
      }
 
      QWidget::mouseMoveEvent(_event);
@@ -108,14 +108,14 @@ void HorizontalImgList::mouseReleaseEvent(QMouseEvent *_event)
 {
     auto index = itemIndexForXPos(_event->pos().x());
     if (index != -1)
-        emit itemClicked(index);
+        Q_EMIT itemClicked(index);
 
     QWidget::mouseReleaseEvent(_event);
 }
 
 void HorizontalImgList::leaveEvent(QEvent *)
 {
-    emit mouseLeft();
+    Q_EMIT mouseLeft();
 
     if (options_.rememberClickedHighlight_ && options_.hlClicked_ != -1)
     {

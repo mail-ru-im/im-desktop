@@ -37,6 +37,7 @@ namespace Ui
         : QWidget(messageItem)
         , text_(nullptr)
         , isEdited_(false)
+        , hideEdit_(false)
         , withUnderlay_(false)
         , isOutgoing_(false)
         , isSelected_(false)
@@ -47,7 +48,7 @@ namespace Ui
 
     void MessageTimeWidget::setTime(const int32_t _timestamp)
     {
-        TimeText_ = QDateTime::fromTime_t(_timestamp).toString(qsl("HH:mm"));
+        TimeText_ = QDateTime::fromTime_t(_timestamp).toString(u"HH:mm");
         updateText();
     }
 
@@ -82,6 +83,20 @@ namespace Ui
     bool MessageTimeWidget::isEdited() const noexcept
     {
         return isEdited_;
+    }
+
+    void MessageTimeWidget::setHideEdit(const bool _hideEdit)
+    {
+        if (hideEdit_ == _hideEdit)
+            return;
+
+        hideEdit_ = _hideEdit;
+        updateText();
+    }
+
+    bool MessageTimeWidget::hideEdit() const noexcept
+    {
+        return hideEdit_;
     }
 
     int MessageTimeWidget::getHorMargin() const noexcept
@@ -146,13 +161,13 @@ namespace Ui
 
     void MessageTimeWidget::updateText()
     {
-        if (!isEdited_ && TimeText_.isEmpty())
+        if ((!isEdited_ || hideEdit_) && TimeText_.isEmpty())
             return;
 
         text_ = TextRendering::MakeTextUnit(TimeText_);
         text_->init(withUnderlay_ ? getTimeFontLarge() : getTimeFont(), getTimeColor());
 
-        if (isEdited_)
+        if (isEdited_ && !hideEdit_)
         {
             auto ed = TextRendering::MakeTextUnit(QT_TRANSLATE_NOOP("chat_page", "edited") % ql1c(' '));
             ed->init(getTimeFontLarge(), getTimeColor());

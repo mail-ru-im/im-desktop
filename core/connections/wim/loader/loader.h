@@ -69,7 +69,7 @@ class loader : public std::enable_shared_from_this<loader>
 
     void add_file_sharing_task(const std::shared_ptr<fs_loader_task>& _task);
 
-    void remove_file_sharing_task(const std::string &_id);
+    void remove_file_sharing_task(std::string_view _id);
 
     void on_file_sharing_task_result(const std::shared_ptr<fs_loader_task>& _task, int32_t _error);
 
@@ -93,9 +93,9 @@ public:
         upload_file_params&& _file_params,
         const wim_packet_params& _params);
 
-    void abort_file_sharing_process(const std::string &_process_id);
+    void abort_file_sharing_process(std::string_view _process_id);
 
-    bool has_file_sharing_task(const std::string &_id) const;
+    bool has_file_sharing_task(std::string_view _id) const;
 
     void resume_file_sharing_tasks();
 

@@ -444,7 +444,7 @@ namespace Ui
         if (align_ == Qt::AlignHCenter)
         {
             auto fm = fontMetrics();
-            auto textWidth = fm.width(text());
+            auto textWidth = fm.horizontalAdvance(text());
             leftMargin = (width() - (textWidth + indSize.width() + textPadding)) / 2;
         }
 

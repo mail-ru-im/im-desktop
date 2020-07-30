@@ -1,0 +1,65 @@
+<RCC>
+    <qresource prefix="/settings">
+        <file alias="product">settings/filled_icon.svg</file>
+    </qresource>
+    <qresource prefix="/themes">
+        <file alias="default_meta">themes/meta.json</file>
+    </qresource>
+    <qresource prefix="/menubar">
+        <file alias="offline_black_100">main_window/mac_tray/osxlogo_offline_black_100.png</file>
+        <file alias="offline_black_200">main_window/mac_tray/osxlogo_offline_black_200.png</file>
+        <file alias="offline_white_100">main_window/mac_tray/osxlogo_offline_white_100.png</file>
+        <file alias="offline_white_200">main_window/mac_tray/osxlogo_offline_white_200.png</file>
+        <file alias="online_black_100">main_window/mac_tray/osxlogo_online_black_100.png</file>
+        <file alias="online_black_200">main_window/mac_tray/osxlogo_online_black_200.png</file>
+        <file alias="online_black_unread_100">main_window/mac_tray/osxlogo_online_black_unread_100.png</file>
+        <file alias="online_black_unread_200">main_window/mac_tray/osxlogo_online_black_unread_200.png</file>
+        <file alias="online_white_100">main_window/mac_tray/osxlogo_online_white_100.png</file>
+        <file alias="online_white_200">main_window/mac_tray/osxlogo_online_white_200.png</file>
+        <file alias="online_white_unread_100">main_window/mac_tray/osxlogo_online_white_unread_100.png</file>
+        <file alias="online_white_unread_200">main_window/mac_tray/osxlogo_online_white_unread_200.png</file>
+    </qresource>
+    <qresource prefix="/logo">
+        <file alias="ico">main_window/appicon.ico</file>
+        <file alias="ico_tray">main_window/appicon_tray.ico</file>
+        <file alias="ico_unread_tray">main_window/appicon_tray_unread.ico</file>
+        <file alias="ico_unread">main_window/appicon_unread.ico</file>
+        <file alias="logo">main_window/logo.svg</file>
+        <file alias="logo_16">main_window/logo_16.svg</file>
+        <file alias="logo_small_100">main_window/logo_small_100.png</file>
+        <file alias="logo_small_125">main_window/logo_small_125.png</file>
+        <file alias="logo_small_150">main_window/logo_small_150.png</file>
+        <file alias="logo_small_200">main_window/logo_small_200.png</file>
+    </qresource>
+    <qresource prefix="/sounds">
+        <file alias="incoming">sounds/incoming.wav</file>
+    </qresource>
+    <qresource prefix="/product/placeholder">
+        <file alias="contacts_100">placeholders/search_100.png</file>
+        <file alias="contacts_125">placeholders/search_125.png</file>
+        <file alias="contacts_150">placeholders/search_150.png</file>
+        <file alias="contacts_200">placeholders/search_200.png</file>
+        <file alias="contacts_250">placeholders/search_250.png</file>
+        <file alias="contacts_300">placeholders/search_300.png</file>
+        <file alias="recents_100">placeholders/search_100.png</file>
+        <file alias="recents_125">placeholders/search_125.png</file>
+        <file alias="recents_150">placeholders/search_150.png</file>
+        <file alias="recents_200">placeholders/search_200.png</file>
+        <file alias="recents_250">placeholders/search_250.png</file>
+        <file alias="recents_300">placeholders/search_300.png</file>
+    </qresource>
+    <qresource prefix="/gdpr">
+        <file alias="gdpr_100">main_window/gdpr_100.png</file>
+        <file alias="gdpr_125">main_window/gdpr_125.png</file>
+        <file alias="gdpr_150">main_window/gdpr_150.png</file>
+        <file alias="gdpr_200">main_window/gdpr_200.png</file>
+        <file alias="gdpr_250">main_window/gdpr_250.png</file>
+        <file alias="gdpr_300">main_window/gdpr_300.png</file>
+        <file alias="gdpr_100_en">main_window/gdpr_100.png</file>
+        <file alias="gdpr_125_en">main_window/gdpr_125.png</file>
+        <file alias="gdpr_150_en">main_window/gdpr_150.png</file>
+        <file alias="gdpr_200_en">main_window/gdpr_200.png</file>
+        <file alias="gdpr_250_en">main_window/gdpr_250.png</file>
+        <file alias="gdpr_300_en">main_window/gdpr_300.png</file>
+    </qresource>
+</RCC>

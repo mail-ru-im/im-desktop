@@ -6,19 +6,19 @@ namespace
 {
     Data::LinkContentType contentTypeFromStr(const QString& _contentTypeStr)
     {
-        if (_contentTypeStr == ql1s("article"))
+        if (_contentTypeStr == u"article")
             return Data::LinkContentType::Article;
-        else if (_contentTypeStr == ql1s("article-video"))
+        else if (_contentTypeStr == u"article-video")
             return Data::LinkContentType::ArticleVideo;
-        else if (_contentTypeStr == ql1s("article-gif"))
+        else if (_contentTypeStr == u"article-gif")
             return Data::LinkContentType::ArticleGif;
-        else if (_contentTypeStr == ql1s("image"))
+        else if (_contentTypeStr == u"image")
             return Data::LinkContentType::Image;
-        else if (_contentTypeStr == ql1s("video"))
+        else if (_contentTypeStr == u"video")
             return Data::LinkContentType::Video;
-        else if (_contentTypeStr == ql1s("gif"))
+        else if (_contentTypeStr == u"gif")
             return Data::LinkContentType::Gif;
-        else if (_contentTypeStr == ql1s("file"))
+        else if (_contentTypeStr == u"file")
             return Data::LinkContentType::File;
         else
             return Data::LinkContentType::None;

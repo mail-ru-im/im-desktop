@@ -4,7 +4,10 @@
 #include "../../common.shared/patch_version.h"
 #include "../types/typing.h"
 #include "../main_window/mediatype.h"
+#include "reactions.h"
 #include "poll.h"
+
+#include "utils/StringComparator.h"
 
 namespace core
 {
@@ -24,6 +27,8 @@ namespace HistoryControl
 namespace Logic
 {
     class MessageKey;
+    class CallsModel;
+    class CallsSearchModel;
 
     enum class preview_type;
 }
@@ -63,8 +68,53 @@ namespace Data
     };
     using Geo = std::optional<GeoData>;
 
-    using MentionMap = std::map<QString, QString, StringComparator>; // uin - friendly
-    using FilesPlaceholderMap = std::map<QString, QString, StringComparator>; // link - placeholder
+    struct ButtonData
+    {
+        enum class style
+        {
+            BASE = 0,
+            PRIMARY = 1,
+            ATTENTION = 2,
+        };
+
+        QString text_;
+        QString url_;
+        QString callbackData_;
+        style style_ = style::BASE;
+
+        void unserialize(core::icollection* _collection);
+
+        style getStyle() const;
+    };
+
+    struct StickerId
+    {
+        std::optional<QString> fsId_;
+        struct StoreId
+        {
+            int32_t setId_ = -1;
+            int32_t id_ = -1;
+        };
+        std::optional<StoreId> obsoleteId_; // for old clients
+
+        StickerId() = default;
+        explicit StickerId(const QString& _fsId) : fsId_(_fsId) {}
+        StickerId(int32_t _setId, int32_t _id) : obsoleteId_(StoreId{ _setId , _id }) {}
+
+        bool isEmpty() const noexcept { return !fsId_ && !obsoleteId_; }
+
+        QString toString() const
+        {
+            if (fsId_)
+                return *fsId_;
+            if (obsoleteId_)
+                return u"ext:" % QString::number(obsoleteId_->setId_) % u":sticker:" % QString::number(obsoleteId_->id_);
+            return {};
+        }
+    };
+
+    using MentionMap = std::map<QString, QString, Utils::StringComparator>; // uin - friendly
+    using FilesPlaceholderMap = std::map<QString, QString, Utils::StringComparator>; // link - placeholder
 
     void serializeMentions(core::coll_helper& _collection, const Data::MentionMap& _mentions);
 
@@ -111,6 +161,8 @@ namespace Data
 
         bool IsOutgoing() const;
 
+        bool isOutgoingPosition() const;
+
         bool IsOutgoingVoip() const;
 
         bool IsSticker() const;
@@ -135,7 +187,7 @@ namespace Data
 
         const QString& GetSourceText() const;
 
-        const QString GetText() const;
+        QString GetText() const;
 
         qint32 GetTime() const;
 
@@ -206,14 +258,20 @@ namespace Data
         static qint64 makePendingId(const QString& _internalId);
 
         void SetDescription(const QString& _description);
-        QString GetDescription() const;
+        const QString& GetDescription() const;
 
         void SetUrl(const QString& _url);
-        QString GetUrl() const;
+        const QString& GetUrl() const;
 
         bool needUpdateWith(const MessageBuddy& _buddy) const;
 
         QString getSender() const;
+
+        void setUnsupported(bool _unsupported);
+        bool isUnsupported() const;
+
+        void setHideEdit(bool _hideEdit);
+        bool hideEdit() const;
 
         QString AimId_;
         QString InternalId_;
@@ -232,6 +290,8 @@ namespace Data
         SharedContact sharedContact_;
         Poll poll_;
         Geo geo_;
+        std::vector<std::vector<ButtonData>> buttons_;
+        MessageReactions reactions_;
 
         //filled by model
         bool Unread_;
@@ -267,6 +327,10 @@ namespace Data
         bool Outgoing_;
 
         bool Edited_;
+
+        bool Unsupported_;
+
+        bool HideEdit_;
 
         core::message_type Type_;
 
@@ -317,7 +381,7 @@ namespace Data
         qint64 TheirsLastRead_;
         qint64 TheirsLastDelivered_;
         qint64 DelUpTo_;
-        qint64 FavoriteTime_;
+        qint64 PinnedTime_;
         qint64 UnimportantTime_;
         qint32 Time_;
         bool Outgoing_;
@@ -334,6 +398,8 @@ namespace Data
         qint64 mentionMsgId_;
         QString MailId_;
         QString header_;
+        std::optional<QString> infoVersion_;
+        std::optional<QString> membersVersion_;
 
         bool hasMentionMe_;
         int unreadMentionsCount_;
@@ -479,8 +545,64 @@ namespace Data
     ServerMessagesIds UnserializeServerMessagesIds(const core::coll_helper& helper);
 
     DlgState UnserializeDlgState(core::coll_helper* helper, const QString &myAimId);
+
+    struct CallInfo
+    {
+    public:
+        CallInfo();
+        CallInfo(const QString& _aimid, MessageBuddySptr _message);
+
+        void addMessages(const std::vector<MessageBuddySptr>& _messages);
+        void mergeMembers(const std::vector<QString>& _members);
+        void calcCount();
+
+        QString getFriendly(bool _withNumbers = true) const;
+        QString getServiceAimid() const;
+        QString getButtonsText() const;
+
+        const std::vector<QString>& getHightlights() const;
+        const QString& getAimId() const;
+        const std::vector<MessageBuddySptr>& getMessages() const;
+        const std::vector<QString>& getMembers() const;
+
+        qint32 time() const;
+
+        bool isSingleItem() const;
+        bool isOutgoing() const;
+        bool isService() const;
+        bool isSpaceItem() const;
+        bool isVideo() const;
+        bool isMissed() const;
+
+    private:
+        HistoryControl::VoipEventInfoSptr GetVoipEvent() const;
+
+    private:
+        friend class Logic::CallsModel;
+        friend class Logic::CallsSearchModel;
+
+        QString VoipSid_;
+        QString AimId_;
+        std::vector<MessageBuddySptr> Messages_;
+        std::vector<QString> Members_;
+
+        QString ButtonsText_;
+        QString ServiceAimid_;
+
+        //for search
+        std::vector<QString> Highlights_;
+        int count_;
+    };
+
+    using CallInfoVec = std::vector<Data::CallInfo>;
+    using CallInfoPtr = std::shared_ptr<Data::CallInfo>;
+
+    CallInfo UnserializeCallInfo(core::coll_helper* helper);
+    CallInfoVec UnserializeCallLog(core::coll_helper* helper);
 }
 
 Q_DECLARE_METATYPE(Data::MessageBuddy);
 Q_DECLARE_METATYPE(Data::MessageBuddy*);
 Q_DECLARE_METATYPE(Data::DlgState);
+Q_DECLARE_METATYPE(Data::CallInfo);
+Q_DECLARE_METATYPE(Data::CallInfoPtr);

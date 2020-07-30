@@ -18,11 +18,14 @@
 
 namespace
 {
-    const QSize buttonSize(40, 40);
-    const QString imagePath = qsl(":/gallery/glr_");
+    constexpr QStringView imagePath = u":/gallery/glr_";
     const auto backgroundOpacity = 0.92;
-    const auto backgroundColor = QColor(qsl("#1E1E1E"));
+    const auto backgroundColor = QColor(u"#1E1E1E");
 
+    auto getMenuBorderRadius() noexcept
+    {
+        return Utils::scale_value(8);
+    }
 }
 
 namespace Previewer
@@ -145,12 +148,12 @@ void CaptionArea::setExpanded(bool _expanded)
             const auto startHeight = height();
             const auto endSpace = endHeight - getTopMargin() + Utils::scale_value(Margin::_32px);
             anim_.finish();
-            anim_.start([this, startHeight, endHeight, endSpace]() { emit needHeight(anim_.current()); setFixedHeight(startHeight + (endHeight - startHeight) * (anim_.current() / endSpace)); }, 0, endSpace, 300, anim::easeOutExpo, 1);
+            anim_.start([this, startHeight, endHeight, endSpace]() { Q_EMIT needHeight(anim_.current()); setFixedHeight(startHeight + (endHeight - startHeight) * (anim_.current() / endSpace)); }, 0, endSpace, 300, anim::easeOutExpo, 1);
         }
     }
     else
     {
-        emit needHeight(0);
+        Q_EMIT needHeight(0);
     }
 
     setVerticalScrollBarPolicy((expanded_ && textWidget_->height() > max_height) ? Qt::ScrollBarAsNeeded : Qt::ScrollBarAlwaysOff);
@@ -233,14 +236,14 @@ public:
         Pressed     = 0x20
     };
 
-    QString getImagePath(const QString& name, ButtonState state) const
+    QString getImagePath(QStringView name, ButtonState state) const
     {
         switch (state)
         {
-            case Default:   return imagePath % name % ql1s("_icon");
-            case Disabled:  return imagePath % name % ql1s("_icon") % ql1s("_disabled");
-            case Hover:     return imagePath % name % ql1s("_icon") % ql1s("_hover");
-            case Pressed:   return imagePath % name % ql1s("_icon") % ql1s("_active");
+            case Default:   return imagePath % name % u"_icon";
+            case Disabled:  return imagePath % name % u"_icon" % u"_disabled";
+            case Hover:     return imagePath % name % u"_icon" % u"_hover";
+            case Pressed:   return imagePath % name % u"_icon" % u"_active";
         }
         assert(!"invalid kind!");
         return QString();
@@ -275,7 +278,7 @@ public:
 
     auto solidRectHeight() const { return Utils::scale_value(40); }
 
-    void addButton(ControlType _type, const QString& _iconName)
+    void addButton(ControlType _type, QStringView _iconName)
     {
         auto button = std::make_unique<Button>();
         const auto size = objectSize(_type);
@@ -360,13 +363,13 @@ GalleryFrame::GalleryFrame(QWidget *_parent)
 {
     topMargin = getTopMargin();
 
-    d->addButton(ZoomOutButton, qsl("zoom_out"));
-    d->addButton(ZoomInButton, qsl("zoom_in"));
-    d->addButton(PrevButton, qsl("previous"));
-    d->addButton(NextButton, qsl("next"));
-    d->addButton(CloseButton, qsl("close"));
-    d->addButton(MenuButton, qsl("more"));
-    d->addButton(SaveButton, qsl("download"));
+    d->addButton(ZoomOutButton, u"zoom_out");
+    d->addButton(ZoomInButton, u"zoom_in");
+    d->addButton(PrevButton, u"previous");
+    d->addButton(NextButton, u"next");
+    d->addButton(CloseButton, u"close");
+    d->addButton(MenuButton, u"more");
+    d->addButton(SaveButton, u"download");
 
     const auto counterFont(Fonts::appFontScaled(20, Fonts::FontWeight::Normal));
     auto counterLabelUnit = TextRendering::MakeTextUnit(QString());
@@ -474,6 +477,8 @@ QString GalleryFrame::actionIconPath(Action action)
         return qsl(":/context_menu/forward");
     case SaveAs:
         return qsl(":/context_menu/download");
+    case SaveToFavorites:
+        return qsl(":/context_menu/favorites");
     default:
         Q_UNREACHABLE();
         return QString();
@@ -492,6 +497,8 @@ QString GalleryFrame::actionText(Action action)
         return QT_TRANSLATE_NOOP("previewer", "Forward");
     case SaveAs:
         return QT_TRANSLATE_NOOP("previewer", "Save as");
+    case SaveToFavorites:
+        return QT_TRANSLATE_NOOP("previewer", "Add to favorites");
     default:
         Q_UNREACHABLE();
         return QString();
@@ -689,28 +696,28 @@ void GalleryFrame::onClick(ControlType _type)
     switch (_type)
     {
         case AuthorLabel:
-            emit openContact();
+            Q_EMIT openContact();
             break;
         case DateLabel:
-            emit goToMessage();
+            Q_EMIT goToMessage();
             break;
         case ZoomOutButton:
-            emit zoomOut();
+            Q_EMIT zoomOut();
             break;
         case ZoomInButton:
-            emit zoomIn();
+            Q_EMIT zoomIn();
             break;
         case PrevButton:
-            emit prev();
+            Q_EMIT prev();
             break;
         case NextButton:
-            emit next();
+            Q_EMIT next();
             break;
         case CloseButton:
-            emit close();
+            Q_EMIT close();
             break;
         case SaveButton:
-            emit save();
+            Q_EMIT save();
             break;
         case MenuButton:
         {
@@ -754,6 +761,9 @@ CustomMenu* GalleryFrame::createMenu()
 
     if (d->menuActions_ & SaveAs)
         addAction(SaveAs, menu, this, &GalleryFrame::saveAs);
+
+    if (d->menuActions_ & SaveToFavorites)
+        addAction(SaveToFavorites, menu, this, &GalleryFrame::saveToFavorites);
 
     return menu;
 }
@@ -834,7 +844,7 @@ public:
         auto maxTextWidth = 0;
         auto maxTotalWidth = _width;
         for (auto & [action, menuItem] : items_)
-            maxTextWidth = std::max(maxTextWidth, fm.width(action->text()));
+            maxTextWidth = std::max(maxTextWidth, fm.horizontalAdvance(action->text()));
 
         const auto height = fm.height();
 
@@ -848,7 +858,7 @@ public:
             icon.setXOffset(xOffsetLeft);
             icon.setYOffset((itemHeight_ - icon.pixmapSize().height()) / 2); // center icon by height
 
-            icon.setRect(QRect(0, i * itemHeight_, xOffsetLeft + icon.pixmapSize().width(), itemHeight_));
+            icon.setRect(icon.isNullPixmap() ? QRect() : QRect(0, i * itemHeight_, xOffsetLeft + icon.pixmapSize().width(), itemHeight_));
             label.setRect(QRect(icon.rect().width(), i * itemHeight_, maxTextWidth + xOffsetLeft + xOffsetRight, itemHeight_));
 
             const auto itemWidth = icon.rect().width() + label.rect().width();
@@ -955,7 +965,7 @@ void CustomMenu::paintEvent(QPaintEvent *_event)
     auto r = rect();
     r.setBottom(r.bottom() - d->arrowSize_.height());
 
-    rectPath.addRoundRect(r, Utils::scale_value(8));
+    rectPath.addRoundedRect(r, getMenuBorderRadius(), getMenuBorderRadius());
     p.fillPath(rectPath, QBrush(d->backgroundColor_));                                      //    *********************
                                                                                             //    *                   *
     QPainterPath arrowPath;                                                                 //    *                   *

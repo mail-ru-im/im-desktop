@@ -43,6 +43,59 @@ enum MouseTapEnum {
     MouseTap_Over,
 };
 
+enum TerminateReason {
+    TR_HANGUP = 0,          // Use Call_Terminate(TR_HANGUP) to hangup active call (after it was accepted).
+                            // OnCallTerminated(TR_HANGUP) signaled when remote/local side hang up the call.
+
+    TR_REJECT,              // Use Call_Terminate(TR_REJECT) to reject incoming call.
+                            // OnCallTerminated(TR_REJECT) signaled when remote/local side rejects the call.
+
+    TR_BUSY,                // Use Call_Terminate(TR_BUSY) to terminate call by BUSY reason (e.g. GSM call is active)
+                            // OnCallTerminated(TR_BUSY) signaled when local/remote side terminated the call using BUSY
+    TR_HANDLED_BY_ANOTHER_INSTANCE, // Call was handled by another device of logged-in user.
+                                    // OnCallTerminated(TR_HANDLED_BY_ANOTHER_INSTANCE) is signaled when another device accepts the call.
+                                    // Note: this status requires signaling server's support.
+
+    TR_UNAUTHORIZED,        // Call was rejected due to security errors
+
+    TR_ALLOCATE_FAILED,     // OnCallTerminated(TR_ALLOCATE_FAILED) signaled if app didn't provide ALLOCATE data or it is invalid.
+
+    TR_ANSWER_TIMEOUT,      // OnCallTerminated(TR_ANSWER_TIMEOUT) signaled when:
+                            //      - remote side hasn't answered (accepted or rejected) for outgoing call
+                            //      - local user hasn't answered (so neither AcceptIncomingCall nor TerminateCall were called)
+
+    TR_CONNECT_TIMEOUT,     // OnCallTerminated(TR_CONNECT_TIMEOUT) signaled when connection cannot be established or lost
+
+    TR_NOT_FOUND,
+    TR_BLOCKED_BY_CALLER_IS_STRANGER,
+    TR_BLOCKED_BY_CALLEE_PRIVACY,
+    TR_CALLER_MUST_BE_AUTHORIZED_BY_CAPCHA,
+
+    // VCS reasons
+    TR_BAD_URI,
+    TR_NOT_AVAILABLE_NOW,
+    TR_PARTICIPANTS_LIMIT_EXCEEDED,
+    TR_DURATION_LIMIT_EXCEEDED,
+
+    TR_INTERNAL_ERROR       // OnCallTerminated(TR_INTERNAL_ERROR) signaled on internal error (todo: more info about that)
+};
+
+struct VoipDesc
+{
+    bool first_notify_send = false;
+    bool local_cam_en = false;
+    bool local_aud_en = true;
+    bool local_cam_allowed = true;
+    bool local_aud_allowed = true;
+    bool local_desktop_allowed = true;
+    bool mute_en = false;
+    bool incomingSoundsMuted = false;
+    float volume = 1.0f;
+
+    std::string aPlaybackDevice;
+    std::string vCaptureDevice;
+};
+
 namespace voip_manager
 {
     enum eNotificationTypes
@@ -50,7 +103,6 @@ namespace voip_manager
         kNotificationType_Undefined = 0,
 
         kNotificationType_CallCreated,
-        kNotificationType_CallInvite,
         kNotificationType_CallOutAccepted,
         kNotificationType_CallInAccepted,
         kNotificationType_CallConnected,
@@ -60,8 +112,7 @@ namespace voip_manager
 
         kNotificationType_QualityChanged,
 
-        kNotificationType_MediaLocAudioChanged,
-        kNotificationType_MediaLocVideoChanged,
+        kNotificationType_MediaLocParamsChanged,
         kNotificationType_MediaRemVideoChanged,
         kNotificationType_MediaLocVideoDeviceChanged,
 
@@ -77,14 +128,15 @@ namespace voip_manager
         kNotificationType_VoipResetComplete,
         kNotificationType_VoipWindowRemoveComplete,
         kNotificationType_VoipWindowAddComplete,
-        kNotificationType_CipherStateChanged,
+        //kNotificationType_CipherStateChanged,
 
-        kNotificationType_MinimalBandwidthChanged,
+        //kNotificationType_MinimalBandwidthChanged,
         kNotificationType_MaskEngineEnable,
         kNotificationType_LoadMask,
 
-        kNotificationType_ConnectionDestroyed,
+        //kNotificationType_ConnectionDestroyed,
         kNotificationType_MainVideoLayoutChanged,
+        kNotificationType_ConfPeerDisconnected,
     };
 
     struct VoipProxySettings
@@ -119,7 +171,7 @@ namespace voip_manager
         bool       mute;
     };
 
-    struct CipherState
+    /*struct CipherState
     {
         enum State
         {
@@ -129,7 +181,7 @@ namespace voip_manager
             kCipherStateNotSupportedByPeer
         } state;
         std::string secureCode;
-    };
+    };*/
 
     struct DeviceVol
     {
@@ -197,18 +249,23 @@ namespace voip_manager
     struct ContactEx
     {
         Contact  contact;
-        unsigned call_count;
-        unsigned connection_count;
-        bool     incoming;
+        std::string call_type;
+        std::string chat_id;
+        bool     current_call = false; // for kNotificationType_CallDestroyed, true for current active call
+        bool     incoming = false;
+        int      terminate_reason = 0; // for kNotificationType_CallDestroyed
 
         // Affected window for call with this contact.
         std::vector<void*> windows;
-
-        ContactEx() : call_count(0), connection_count(0), incoming(false)
-        {
-
-        }
     };
+
+    struct ConfPeerInfo
+    {
+        std::string peerId;
+        int terminate_reason = 0;
+    };
+
+    using ConfPeerInfoV = std::vector<ConfPeerInfo>;
 
     struct device_description
     {
@@ -233,7 +290,7 @@ namespace voip_manager
 
     enum { kAvatarRequestId = 0xb00b1e };
     enum { kAvatarDefaultSize = 116 };
-    enum { kAvatarRequestSize = 650 };
+    enum { kAvatarRequestSize = 160 };
     enum {
          kNickTextW = kAvatarDefaultSize * 2,
          kNickTextH = 36,
@@ -334,7 +391,12 @@ namespace voip_manager
     {
         std::vector<Contact> contacts;
         std::vector<void*>   windows;
-        bool                 isActive;
+        //@{ valid for VCS calls
+        std::string          conference_name;
+        std::string          conference_url;
+        bool                 is_webinar = false;
+        //@}
+        bool                 isActive = false;
     };
 
     enum VideoLayout
@@ -364,23 +426,12 @@ namespace voip_manager
     class CallEndStat
     {
     public:
-        explicit CallEndStat(unsigned _callCount, unsigned _callTimeElapsed, const std::string& _contact)
-            : callCount_(_callCount),
-              callTimeElapsed_(_callTimeElapsed),
+        explicit CallEndStat(unsigned _callTimeElapsed, const std::string& _contact)
+            : callTimeElapsed_(_callTimeElapsed),
               contact_(_contact)
         {}
 
         CallEndStat() = default;
-
-        bool callEnded() const
-        {
-            return callCount_ <= 1;
-        }
-
-        bool connectionEstablished() const
-        {
-            return callTimeElapsed_ > 0;
-        }
 
         unsigned callTimeInSecs() const
         {
@@ -393,7 +444,6 @@ namespace voip_manager
         }
 
     private:
-        unsigned callCount_ = 0;
         unsigned callTimeElapsed_ = 0;
         std::string contact_;
     };
@@ -418,15 +468,23 @@ namespace voip_manager
     };
     /* End Stats-specific*/
 
+    struct CallStartParams
+    {
+        bool video = false;    /* start call with video enabled */
+        bool attach = false;   /* add users to current call instead of creating new call */
+        bool is_vcs = false;   /* Call to IVA VCS, contacts[0] contains URL */
+        bool is_pinned_room = false; /* Call to pinned room, contacts[0] contains Chat ID */
+    };
+
     class VoipManager
     {
     public:
         virtual ~VoipManager() = default;
         // CallManager
-        virtual void call_create (const Contact& contact, bool video, bool add) = 0;
+        virtual void call_create (const std::vector<std::string> &contacts, std::string &account, const CallStartParams &params) = 0;
         virtual void call_stop () = 0;
         virtual void call_stop_smart (const std::function<void()>&) = 0;
-        virtual void call_accept (const Contact& contact, bool video) = 0;
+        virtual void call_accept (const std::string &call_id, const std::string &account, bool video) = 0;
         virtual void call_decline (const Contact& contact, bool busy, bool conference) = 0;
         virtual unsigned call_get_count () = 0;
         virtual bool call_have_call (const Contact& contact) = 0;
@@ -491,6 +549,7 @@ namespace voip_manager
         virtual unsigned version() = 0;
         virtual void set_model_path(const std::string& path) = 0;
         virtual void init_mask_engine() = 0;
+        virtual void unload_mask_engine() = 0;
 
         // VoipManager
         virtual void reset() = 0;

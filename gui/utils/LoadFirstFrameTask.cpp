@@ -10,18 +10,16 @@ namespace Utils
         : Path_(std::move(path))
     {
         assert(!Path_.isEmpty());
-        assert(QFile::exists(Path_));
+        assert(QFileInfo::exists(Path_));
     }
 
-    LoadFirstFrameTask::~LoadFirstFrameTask()
-    {
-    }
+    LoadFirstFrameTask::~LoadFirstFrameTask() = default;
 
     void LoadFirstFrameTask::run()
     {
-        if (!QFile::exists(Path_))
+        if (!QFileInfo::exists(Path_))
         {
-            emit loadedSignal(QPixmap(), QSize());
+            Q_EMIT loadedSignal(QPixmap(), QSize());
             return;
         }
 
@@ -32,8 +30,8 @@ namespace Utils
         assert(!frame.isNull());
 
         const auto frameSize = frame.size();
-        emit loadedSignal(QPixmap::fromImage(std::move(frame)), frameSize);
-        emit duration(dur);
-        emit gotAudio(audio);
+        Q_EMIT loadedSignal(QPixmap::fromImage(std::move(frame)), frameSize);
+        Q_EMIT duration(dur);
+        Q_EMIT gotAudio(audio);
     }
 }

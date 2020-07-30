@@ -22,9 +22,12 @@ void DeviceMonitoringImpl::DeviceMonitoringListChanged()
 {
     boost::shared_lock cs(_callbackLock);
     if (_captureDeviceCallback)
-    {
         _captureDeviceCallback->DeviceMonitoringListChanged();
-    }
+    Ui::GetDispatcher()->getVoipController().notifyDevicesChanged();
+}
+
+void DeviceMonitoringImpl::DeviceMonitoringAudioPropChanged()
+{
     Ui::GetDispatcher()->getVoipController().notifyDevicesChanged();
 }
 

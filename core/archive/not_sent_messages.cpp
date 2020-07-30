@@ -459,6 +459,16 @@ const core::archive::poll not_sent_message::get_poll() const
     return message_->get_poll();
 }
 
+void not_sent_message::set_smartreply_marker(const smartreply::marker_opt& _marker)
+{
+    smartreply_marker_ = _marker;
+}
+
+const smartreply::marker_opt& core::archive::not_sent_message::get_smartreply_marker() const
+{
+    return smartreply_marker_;
+}
+
 //////////////////////////////////////////////////////////////////////////
 // delete_message
 //////////////////////////////////////////////////////////////////////////

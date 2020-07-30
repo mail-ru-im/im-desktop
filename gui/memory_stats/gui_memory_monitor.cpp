@@ -44,9 +44,7 @@ GuiMemoryMonitor::GuiMemoryMonitor(QObject *_parent)
     : QObject(_parent)
     , statTimer_(new QTimer(this))
 {
-    const int ms = sendStatInterval.count();
-
-    statTimer_->start(build::is_debug() ? sendStatIntervalDebug.count() : sendStatInterval.count());
+    statTimer_->start(build::is_debug() ? sendStatIntervalDebug : sendStatInterval);
 
     QObject::connect(statTimer_, &QTimer::timeout, this, &GuiMemoryMonitor::onStatTimer);
 
@@ -125,7 +123,7 @@ void GuiMemoryMonitor::onRequestFinished(const Memory_Stats::RequestHandle &_req
     if (it == request_reports_.end())
         return;
 
-    emit reportsReadyFor(it->first,
+    Q_EMIT reportsReadyFor(it->first,
                          it->second);
 
     request_reports_.erase(it);

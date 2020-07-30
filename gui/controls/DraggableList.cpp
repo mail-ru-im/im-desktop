@@ -49,7 +49,7 @@ void DraggableList::removeItem(DraggableItem* _item)
     d->layout_->removeWidget(_item);
 }
 
-QWidget* DraggableList::itemAt(int _index)
+QWidget* DraggableList::itemAt(int _index) const
 {
     const auto itemsCount = d->layout_->count();
     if (_index >= 0 && _index < itemsCount)
@@ -197,7 +197,7 @@ void DraggableItem::onDragMove(const QPoint& _pos)
 {
     if (!std::exchange(d->drag_, true))
     {
-        emit dragStarted();
+        Q_EMIT dragStarted();
         raise();
     }
 
@@ -206,7 +206,7 @@ void DraggableItem::onDragMove(const QPoint& _pos)
 
     move(mapToParent(QPoint(currentPos.x(), newPos.y() - d->pressPos_.y())));
 
-    emit dragPositionChanged();
+    Q_EMIT dragPositionChanged();
 }
 
 void DraggableItem::onDragStart(const QPoint& _pos)
@@ -217,7 +217,7 @@ void DraggableItem::onDragStart(const QPoint& _pos)
 void DraggableItem::onDragStop()
 {
     if (std::exchange(d->drag_, false))
-        emit dragStopped();
+        Q_EMIT dragStopped();
 }
 
 }

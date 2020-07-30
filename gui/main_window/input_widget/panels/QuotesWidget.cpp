@@ -4,15 +4,18 @@
 
 #include "fonts.h"
 #include "main_window/contact_list/ContactListModel.h"
-#include "main_window/friendly/FriendlyContainer.h"
+#include "main_window/containers/FriendlyContainer.h"
 #include "cache/avatars/AvatarStorage.h"
 #include "styles/ThemeParameters.h"
 #include "controls/TransparentScrollBar.h"
 #include "controls/CustomButton.h"
 #include "utils/utils.h"
+#include "utils/InterConnector.h"
 
 namespace
 {
+    constexpr auto maxVisibleRows = 3.5;
+
     int verticalMargin()
     {
         return Utils::scale_value(2);
@@ -28,10 +31,16 @@ namespace
         return Utils::scale_value(6);
     }
 
+    int quotesHeight(double _count)
+    {
+        return _count * Ui::getQuoteRowHeight() +
+            (int(_count) - 1) * rowOffset() +
+            2 * (rowOffset() - verticalMargin());
+    }
+
     int maxQuotesHeight()
     {
-        const auto maxCount = 3.5;
-        return maxCount * Ui::getQuoteRowHeight() + (rowOffset() * (int(maxCount) - 1)) + 2 * (rowOffset() - verticalMargin());
+        return quotesHeight(maxVisibleRows);
     }
 
     int avatarSize()
@@ -107,7 +116,7 @@ namespace Ui
 
         const auto textColor = Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID);
 
-        textUnit_ = TextRendering::MakeTextUnit(getName() % ql1s(": "), {}, TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
+        textUnit_ = TextRendering::MakeTextUnit(getName() % u": ", {}, TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
         textUnit_->init(Fonts::appFontScaled(14, Fonts::FontWeight::Medium), textColor, textColor, textColor, QColor(), TextRendering::HorAligment::LEFT, 1);
 
         auto quoteText = TextRendering::MakeTextUnit(textFromQuote(_quote), {}, TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
@@ -164,7 +173,7 @@ namespace Ui
     {
         connect(Logic::GetAvatarStorage(), &Logic::AvatarStorage::avatarChanged, this, &QuotesContainer::onAvatarChanged);
         connect(this, &ClickableWidget::hoverChanged, this, &QuotesContainer::onHoverChanged);
-        connect(this, &ClickableWidget::pressChanged, this, Utils::QOverload<>::of(&QuotesContainer::update));
+        connect(this, &ClickableWidget::pressChanged, this, qOverload<>(&QuotesContainer::update));
         connect(this, &ClickableWidget::clicked, this, &QuotesContainer::onClicked);
     }
 
@@ -174,13 +183,11 @@ namespace Ui
             return false;
 
         setUpdatesEnabled(false);
-
         rows_.clear();
         for (const auto& q : _quotes)
             addQuote(q);
 
         adjustHeight();
-
         setUpdatesEnabled(true);
 
         return true;
@@ -188,12 +195,7 @@ namespace Ui
 
     void QuotesContainer::adjustHeight()
     {
-        const auto h =
-            rows_.size() * getQuoteRowHeight() +
-            (rows_.size() - 1) * rowOffset() +
-            2 * (rowOffset() - verticalMargin());
-
-        setFixedHeight(h);
+        setFixedHeight(quotesHeight(rows_.size()));
         update();
     }
 
@@ -290,7 +292,7 @@ namespace Ui
             if (const auto msgId = it->getMsgId(); msgId != -1)
             {
                 Logic::getContactListModel()->setCurrent(Logic::getContactListModel()->selectedContact(), msgId, true);
-                emit rowClicked(std::distance(rows_.begin(), it), QPrivateSignal());
+                Q_EMIT rowClicked(std::distance(rows_.begin(), it), QPrivateSignal());
             }
         }
     }
@@ -348,7 +350,7 @@ namespace Ui
         scrollArea_ = CreateScrollAreaAndSetTrScrollBarV(this);
         scrollArea_->setWidgetResizable(true);
         scrollArea_->setStyleSheet(qsl("background: transparent; border: none"));
-        Testing::setAccessibleName(scrollArea_, qsl("AS inputwidget scrollArea_"));
+        Testing::setAccessibleName(scrollArea_, qsl("AS Quote scrollArea"));
         Utils::grabTouchWidget(scrollArea_->viewport(), true);
 
         container_ = new QuotesContainer(this);
@@ -356,11 +358,11 @@ namespace Ui
         scrollArea_->setWidget(container_);
 
         auto buttonHost = new QWidget(this);
-        Testing::setAccessibleName(buttonHost, qsl("AS inputwidget buttonHost"));
+        Testing::setAccessibleName(buttonHost, qsl("AS Quote cancelButtonHost"));
         buttonHost->setFixedWidth(getHorMargin() - scrollAddedWidth());
 
         buttonCancel_ = new CustomButton(buttonHost, qsl(":/controls/close_icon"), getCancelBtnIconSize());
-        Testing::setAccessibleName(buttonCancel_, qsl("AS inputwidget buttonCancel_"));
+        Testing::setAccessibleName(buttonCancel_, qsl("AS Quote cancelButton"));
         updateButtonColors(buttonCancel_, InputStyleMode::Default);
         buttonCancel_->setFixedSize(getCancelButtonSize());
 
@@ -381,7 +383,7 @@ namespace Ui
 
         connect(buttonCancel_, &CustomButton::clicked, this, [this]()
         {
-            emit cancelClicked(QPrivateSignal());
+            Q_EMIT cancelClicked(QPrivateSignal());
         });
         connect(container_, &QuotesContainer::rowClicked, this, &QuotesWidget::scrollToItem);
         connect(scrollArea_->verticalScrollBar(), &QScrollBar::valueChanged, container_, &QuotesContainer::updateRowHover);
@@ -393,26 +395,26 @@ namespace Ui
     void QuotesWidget::setQuotes(const Data::QuotesVec& _quotes)
     {
         const auto prevCount = container_->rowCount();
-        if (container_->setQuotes(_quotes))
-        {
-            adjustHeight();
-            updateGeometry();
+        if (!container_->setQuotes(_quotes))
+            return;
 
-            emit needScrollToLastQuote(QPrivateSignal());
-        }
+        const auto newCount = container_->rowCount();
+        if (newCount > prevCount && quotesHeight(newCount) < quotesHeight(maxVisibleRows + 1))
+            Q_EMIT quoteHeightChanged(QPrivateSignal());
 
-        if (prevCount != container_->rowCount())
-            emit quoteCountChanged(QPrivateSignal());
+        adjustHeight();
+        updateGeometry();
+
+        Q_EMIT needScrollToLastQuote(QPrivateSignal());
+        if (newCount != prevCount)
+            Q_EMIT quoteCountChanged(QPrivateSignal());
     }
 
     void QuotesWidget::clearQuotes()
     {
+        if (container_->rowCount())
+            Q_EMIT quoteHeightChanged(QPrivateSignal());
         container_->clear();
-    }
-
-    bool QuotesWidget::isMaxHeight() const
-    {
-        return scrollArea_->height() == maxQuotesHeight();
     }
 
     void QuotesWidget::updateStyleImpl(const InputStyleMode _mode)
@@ -426,7 +428,8 @@ namespace Ui
         const auto maxHeight = maxQuotesHeight();
         const auto viewportHeight = std::clamp(curHeight, 0, maxHeight);
 
-        setFixedHeight(verticalMargin() * 2 + viewportHeight);
+        if (const auto newHeight = verticalMargin() * 2 + viewportHeight; newHeight != height())
+            setFixedHeight(newHeight);
     }
 
     void QuotesWidget::scrollToItem(const int _idx)

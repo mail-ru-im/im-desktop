@@ -23,6 +23,7 @@ namespace core
             std::optional<uint32_t> unread_count_;
             std::optional<int32_t> unread_mentions_count_;
             std::optional<std::string> info_version_;
+            std::optional<std::string> members_version_;
             int64_t last_read_mention_;
             int64_t last_msgid_;
             int64_t yours_last_read_;
@@ -150,6 +151,10 @@ namespace core
             const std::optional<std::string>& get_info_version() const noexcept { return info_version_; }
             bool has_info_version() const { return info_version_.has_value(); }
 
+            void set_members_version(const std::string& _members_version) noexcept { members_version_ = _members_version; }
+            void set_members_version(const std::optional<std::string>& _members_version) noexcept { members_version_ = _members_version; }
+            const std::optional<std::string>& get_members_version() const noexcept { return members_version_; }
+            bool has_members_version() const { return members_version_.has_value(); }
 
             void set_heads(std::vector<dlg_state_head>&& _heads);
             void set_heads(const std::vector<dlg_state_head>& _heads);

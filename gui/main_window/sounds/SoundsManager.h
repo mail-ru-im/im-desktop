@@ -83,6 +83,7 @@ Q_SIGNALS:
 
         void callInProgress(bool value);
 
+        void checkAudioDevice();
         void reinit();
 
         void DeviceMonitoringListChanged() override;
@@ -95,6 +96,7 @@ Q_SIGNALS:
         void deviceTimeOut();
 
         void initOpenAl();
+        void closeOpenAlDevice();
         void shutdownOpenAl();
         void updateDeviceTimer();
 
@@ -139,8 +141,6 @@ Q_SIGNALS:
         QTimer* DeviceTimer_;
 
         std::unique_ptr<device::DeviceMonitoring> deviceMonitoring_;
-
-        std::string deviceName_;
     };
 
     SoundsManager* GetSoundsManager();

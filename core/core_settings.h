@@ -30,6 +30,8 @@ namespace core
 
         install_beta_updates = 26,
 
+        external_config_host = 27,
+
         max
     };
 

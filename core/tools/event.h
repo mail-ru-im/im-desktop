@@ -13,16 +13,13 @@ namespace core
             std::mutex mtx_;
             std::condition_variable cv_;
 
-            bool signalled_;
+            bool signalled_ = false;
 
         public:
 
             void notify();
             void wait();
             bool wait_for(std::chrono::milliseconds _timeout);
-
-            autoreset_event();
-            virtual ~autoreset_event();
         };
     }
 }

@@ -30,6 +30,9 @@ namespace Ui
 
         virtual int draw(QPainter& _painter, int _x, int _y) override
         {
+            if (isEol())
+                return 0;
+
             auto fm = _painter.fontMetrics();
             _painter.fillRect(_x, _y - height(fm) + 1, width(fm) + 1, height(fm) + 1, _painter.brush());
             _painter.drawText(_x, _y, text_);
@@ -39,7 +42,7 @@ namespace Ui
         virtual int width(const QFontMetrics& _fontMetrics) override
         {
             if (width_ == -1)
-                width_ = _fontMetrics.width(text_);
+                width_ = _fontMetrics.horizontalAdvance(text_);
             return width_;
         }
 
@@ -83,9 +86,7 @@ namespace Ui
         const QImage& getImage(const QFontMetrics& _m)
         {
             if (image_.isNull())
-            {
                 image_ = Emoji::GetEmoji(Emoji::EmojiCode(mainCode_, extCode_), _m.ascent() - _m.descent());
-            }
             return image_;
         }
 
@@ -603,7 +604,7 @@ namespace Ui
     {
         QWidget::resizeEvent(_e);
         if (_e->oldSize().width() != -1 && _e->oldSize().height() != -1)
-            emit setSize(_e->size().width() - _e->oldSize().width(), _e->size().height() - _e->oldSize().height());
+            Q_EMIT setSize(_e->size().width() - _e->oldSize().width(), _e->size().height() - _e->oldSize().height());
     }
 
     void TextEmojiWidget::enterEvent(QEvent *_e)
@@ -622,7 +623,7 @@ namespace Ui
     {
         if (_e->button() == Qt::RightButton)
         {
-            emit rightClicked();
+            Q_EMIT rightClicked();
             return QWidget::mousePressEvent(_e);
         }
 
@@ -634,7 +635,7 @@ namespace Ui
         }
 
         active_ = true;
-        emit clicked();
+        Q_EMIT clicked();
         return QWidget::mousePressEvent(_e);
     }
 
@@ -650,7 +651,7 @@ namespace Ui
         {
             selection_ = QPoint(0, text_.count());
             QWidget::update();
-            emit events().selected(this);
+            Q_EMIT events().selected(this);
             return;
         }
         return QWidget::mouseDoubleClickEvent(_e);
@@ -763,7 +764,7 @@ namespace Ui
     void TextUnitLabel::mouseReleaseEvent(QMouseEvent* _e)
     {
         if (rect().contains(_e->pos()) && rect().contains(posClick_))
-            emit clicked();
+            Q_EMIT clicked();
         QLabel::mouseReleaseEvent(_e);
     }
 

@@ -4,8 +4,6 @@
 #include "../../../http_request.h"
 #include "../../../tools/system.h"
 
-#include "../../urls_cache.h"
-
 using namespace core;
 using namespace wim;
 
@@ -35,19 +33,10 @@ void create_chat::set_chat_params(chat_params _chat_params)
     chat_params_ = std::move(_chat_params);
 }
 
-int32_t create_chat::init_request(std::shared_ptr<core::http_request_simple> _request)
+int32_t create_chat::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
-    constexpr char method[] = "createChat";
-
-    _request->set_url(urls::get_url(urls::url_type::rapi_host));
-    _request->set_normalized_url(method);
-    _request->set_keep_alive();
-
     rapidjson::Document doc(rapidjson::Type::kObjectType);
     auto& a = doc.GetAllocator();
-
-    doc.AddMember("method", method, a);
-    doc.AddMember("reqId", get_req_id(), a);
 
     rapidjson::Value node_params(rapidjson::Type::kObjectType);
     {
@@ -81,7 +70,7 @@ int32_t create_chat::init_request(std::shared_ptr<core::http_request_simple> _re
     }
     doc.AddMember("params", std::move(node_params), a);
 
-    sign_packet(doc, a, _request);
+    setup_common_and_sign(doc, a, _request, "createChat");
 
     if (!params_.full_log_)
     {

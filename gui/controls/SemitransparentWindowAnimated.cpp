@@ -96,7 +96,7 @@ namespace Ui
         if (!isSemiWindowsTouchSwallowed())
         {
             setSemiwindowsTouchSwallowed(true);
-            emit Utils::InterConnector::instance().closeAnySemitransparentWindow(closeInfo_ ? *closeInfo_ : Utils::CloseWindowInfo());
+            Q_EMIT Utils::InterConnector::instance().closeAnySemitransparentWindow(closeInfo_ ? *closeInfo_ : Utils::CloseWindowInfo());
         }
     }
 

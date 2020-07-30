@@ -24,6 +24,9 @@ namespace Ui
         void setEdited(const bool _edited);
         bool isEdited() const noexcept;
 
+        void setHideEdit(const bool _hideEdit);
+        bool hideEdit() const noexcept;
+
         int getHorMargin() const noexcept;
         int getVerMargin() const noexcept;
 
@@ -46,6 +49,7 @@ namespace Ui
         QString TimeText_;
 
         bool isEdited_;
+        bool hideEdit_;
         bool withUnderlay_;
         bool isOutgoing_;
         bool isSelected_;

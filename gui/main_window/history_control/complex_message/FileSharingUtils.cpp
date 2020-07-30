@@ -126,7 +126,7 @@ namespace
         for (const auto qch : str)
         {
             auto value = arr.indexOf(qch);
-            const auto exp = arr.length() * (str.length() - i - 1);
+            const auto exp = arr.size() * (str.size() - i - 1);
             if (exp > 0)
                 value *= exp;
 

@@ -1,7 +1,5 @@
 #pragma once
 
-#include "semaphore.h"
-
 namespace core
 {
     namespace tools
@@ -17,9 +15,6 @@ namespace core
 
             task(task&&) = default;
             task& operator=(task&&) = default;
-
-            task(const task&) = default;
-            task& operator=(const task&) = default;
 
             void execute();
 

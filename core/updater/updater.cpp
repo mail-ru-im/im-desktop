@@ -156,7 +156,7 @@ namespace core
 
         error run(const update_params& _params, const proxy_settings& _proxy)
         {
-            http_request_simple request(_proxy, utils::get_user_agent(_params.login_), _params.must_stop_);
+            http_request_simple request(_proxy, utils::get_user_agent(_params.login_), default_priority(), _params.must_stop_);
             request.set_url(get_update_version_url(_params));
             request.set_normalized_url("update");
 
@@ -217,7 +217,7 @@ namespace core
 
         error do_update(std::string_view _file, std::string_view _md5, const update_params& _params, const proxy_settings& _proxy)
         {
-            http_request_simple request(_proxy, utils::get_user_agent(_params.login_), _params.must_stop_);
+            http_request_simple request(_proxy, utils::get_user_agent(_params.login_), default_priority(), _params.must_stop_);
             request.set_url(get_update_server(_params) + std::string(_file));
             request.set_normalized_url("https___mra_mail_ru_update");
             request.set_timeout(std::chrono::minutes(15));
@@ -280,11 +280,7 @@ namespace core
             STARTUPINFO si = {0};
             si.cb = sizeof(si);
 
-            std::wstring command;
-            command += L'"';
-            command += temp_file_name;
-            command += L'"';
-            command += L" -update -waitchild";
+            std::wstring command = su::wconcat(L'"', temp_file_name, L'"', L" -update -waitchild");
 
             if (!::CreateProcess(0, command.data(), 0, 0, 0, 0, 0, 0, &si, &pi))
                 return error::up_to_date;

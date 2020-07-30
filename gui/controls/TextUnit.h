@@ -91,9 +91,14 @@ namespace Ui
 
             [[nodiscard]] QString getLink(const QPoint& _p) const;//get link under cursor, returns QString() by default
 
+            [[nodiscard]] std::optional<TextWordWithBoundary> getWordAt(QPoint) const; //get word
+            [[nodiscard]] bool replaceWordAt(const QString& _old, const QString& _new, QPoint _p);
+
             [[nodiscard]] QString getSelectedText(TextType _type = TextType::VISIBLE) const;//get selected text, visible or source (depends on _type)
 
             [[nodiscard]] QString getText() const;//get visible text
+
+            [[nodiscard]] QString getTextInstantEdit() const;//get text for instant edit
 
             [[nodiscard]] QString getSourceText() const;//get source text
 
@@ -148,8 +153,18 @@ namespace Ui
             void setEmojiSizeType(const EmojiSizeType _emojiSizeType);
 
             bool needsEmojiMargin() const;
+            size_t getEmojiCount() const;
 
             bool isEmpty() const;
+
+            void disableCommands();
+
+            void startSpellChecking(std::function<bool()> isAlive, std::function<void(bool)> onFinish); // start async function to spell check
+            static bool isSkippableWordForSpellChecking(const TextWordWithBoundary& w);
+
+            int64_t blockId() const noexcept { return blockId_; }
+
+            [[nodiscard]] bool hasEmoji() const;
 
         private:
             QString originText_;
@@ -177,6 +192,13 @@ namespace Ui
             int lineSpacing_;
             bool sourceModified_;
             bool needsEmojiMargin_;
+
+            int64_t blockId_ = 0;
+
+            std::shared_ptr<bool> guard_;
+
+        private:
+            [[nodiscard]] QPoint mapPoint(QPoint) const;
         };
 
         using TextUnitPtr = std::unique_ptr<TextUnit>;
@@ -184,7 +206,7 @@ namespace Ui
         TextUnitPtr MakeTextUnit(
             const QString& _text,//text
             const Data::MentionMap& _mentions = Data::MentionMap(),//mentions
-            LinksVisible _showLinks = LinksVisible::SHOW_LINKS,//show links ot not
+            LinksVisible _showLinks = LinksVisible::SHOW_LINKS,//show links or not
             ProcessLineFeeds _processLineFeeds = ProcessLineFeeds::KEEP_LINE_FEEDS,//keep line feeds or cut
             EmojiSizeType _emojiSizeType = EmojiSizeType::REGULAR);//emoji size
 

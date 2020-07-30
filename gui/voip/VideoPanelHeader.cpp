@@ -8,19 +8,9 @@
 #define DEFAULT_BORDER Utils::scale_value(12)
 #define DEFAULT_WINDOW_ROUND_RECT Utils::scale_value(5)
 
-#define SECURE_BTN_BORDER_W    Utils::scale_value(24)
-#define SECURE_BTN_ICON_W      Utils::scale_value(16)
-#define SECURE_BTN_ICON_H      SECURE_BTN_ICON_W
-#define SECURE_BTN_TEXT_W      Utils::scale_value(50)
-#define SECURE_BTN_ICON2TEXT_W Utils::scale_value(12)
-#define SECURE_BTN_W           (2 * SECURE_BTN_BORDER_W + SECURE_BTN_ICON_W + SECURE_BTN_TEXT_W + SECURE_BTN_ICON2TEXT_W)
-
 Ui::VideoPanelHeader::VideoPanelHeader(QWidget* _parent, int offset)
     : BaseTopVideoPanel(_parent)
     , lowWidget_(NULL)
-    , secureCallEnabled_(false)
-    , isVideoConference_(false)
-    , startTalking_(false)
     , topOffset_(offset)
 {
 #ifdef __linux__
@@ -104,7 +94,7 @@ Ui::VideoPanelHeader::VideoPanelHeader(QWidget* _parent, int offset)
     };
 
     conferenceMode_ = addButton(qsl("ConferenceAllTheSame"), SLOT(onChangeConferenceMode()), leftWidg);
-    security_       = addButton(qsl("SecurityButton"), SLOT(_onSecureCallClicked()), centerWidg);
+    conferenceMode_->setVisible(!Ui::GetDispatcher()->getVoipController().isCallVCS());
 
     QHBoxLayout* rightLayout = qobject_cast<QHBoxLayout*>(rightWidg->layout());
 
@@ -117,9 +107,6 @@ Ui::VideoPanelHeader::VideoPanelHeader(QWidget* _parent, int offset)
     rightLayout->addSpacing(Utils::scale_value(16));
 
     QObject::connect(&Ui::GetDispatcher()->getVoipController(), SIGNAL(onVoipVolumeChanged(const std::string&, int)), this, SLOT(onVoipVolumeChanged(const std::string&, int)), Qt::DirectConnection);
-
-    updateSecurityButtonState();
-    //rootEffect_ = std::make_unique<UIEffects>(*lowWidget_, false, true);
 }
 
 Ui::VideoPanelHeader::~VideoPanelHeader()
@@ -129,33 +116,13 @@ Ui::VideoPanelHeader::~VideoPanelHeader()
 void Ui::VideoPanelHeader::enterEvent(QEvent* _e)
 {
     QWidget::enterEvent(_e);
-    emit onMouseEnter();
+    Q_EMIT onMouseEnter();
 }
 
 void Ui::VideoPanelHeader::leaveEvent(QEvent* _e)
 {
     QWidget::leaveEvent(_e);
-    emit onMouseLeave();
-}
-
-void Ui::VideoPanelHeader::enableSecureCall(bool _enable)
-{
-    secureCallEnabled_ = _enable;
-    updateSecurityButtonState();
-}
-
-void Ui::VideoPanelHeader::_onSecureCallClicked()
-{
-#ifdef __linux__
-    auto rc = QRect(mapToGlobal(pos()), size());
-    emit onSecureCallClicked(rc);
-#else
-    emit onSecureCallClicked(geometry());
-#endif
-}
-
-void Ui::VideoPanelHeader::setSecureWndOpened(const bool _opened)
-{
+    Q_EMIT onMouseLeave();
 }
 
 void Ui::VideoPanelHeader::updatePosition(const QWidget& parent)
@@ -182,7 +149,7 @@ void Ui::VideoPanelHeader::onChangeConferenceMode()
     Utils::ApplyPropertyParameter(conferenceMode_, "ConferenceAllTheSame", isAllTheSame);
     Utils::ApplyPropertyParameter(conferenceMode_, "ConferenceOneIsBig", !isAllTheSame);
 
-    emit updateConferenceMode(isAllTheSame ? voip_manager::AllTheSame : voip_manager::OneIsBig);
+    Q_EMIT updateConferenceMode(isAllTheSame ? voip_manager::AllTheSame : voip_manager::OneIsBig);
 }
 
 void Ui::VideoPanelHeader::changeConferenceMode(voip_manager::VideoLayout layout)
@@ -194,7 +161,7 @@ void Ui::VideoPanelHeader::changeConferenceMode(voip_manager::VideoLayout layout
 void Ui::VideoPanelHeader::onPlaybackAudioOnOffClicked()
 {
     Ui::GetDispatcher()->getVoipController().setSwitchAPlaybackMute();
-    emit onPlaybackClick();
+    Q_EMIT onPlaybackClick();
 }
 
 void Ui::VideoPanelHeader::onClickSettings()
@@ -224,7 +191,6 @@ void Ui::VideoPanelHeader::fadeIn(unsigned int duration)
 {
 #ifndef __linux__
     BaseVideoPanel::fadeIn(duration);
-    //rootEffect_->geometryTo(QRect(0, 0, width(), height()), duration);
 #endif
 }
 
@@ -232,21 +198,18 @@ void Ui::VideoPanelHeader::fadeOut(unsigned int duration)
 {
 #ifndef __linux__
     BaseVideoPanel::fadeOut(duration);
-    //rootEffect_->geometryTo(QRect(0, -height(), width(), height()), duration);
 #endif
 }
 
 void Ui::VideoPanelHeader::onAddUserClicked()
 {
-    emit addUserToConference();
+    Q_EMIT addUserToConference();
 }
 
 void Ui::VideoPanelHeader::setContacts(const std::vector<voip_manager::Contact>& contacts, bool active_call)
 {
     // Update button visibility.
-    addUsers_->setVisible(active_call);
-    isVideoConference_ = contacts.size() > 2;
-    updateSecurityButtonState();
+    addUsers_->setVisible(active_call && !Ui::GetDispatcher()->getVoipController().isCallVCS());
 }
 
 void Ui::VideoPanelHeader::setTopOffset(int offset)
@@ -257,23 +220,4 @@ void Ui::VideoPanelHeader::setTopOffset(int offset)
 void Ui::VideoPanelHeader::switchConferenceMode()
 {
     onChangeConferenceMode();
-}
-
-void Ui::VideoPanelHeader::updateSecurityButtonState()
-{
-    security_->setVisible(!isVideoConference_ && secureCallEnabled_ && startTalking_);
-}
-
-void Ui::VideoPanelHeader::onCreateNewCall()
-{
-    isVideoConference_ = false;
-    secureCallEnabled_ = false;
-    startTalking_ = false;
-    updateSecurityButtonState();
-}
-
-void Ui::VideoPanelHeader::onStartedTalk()
-{
-    startTalking_ = true;
-    updateSecurityButtonState();
 }

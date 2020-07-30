@@ -20,7 +20,7 @@ update_profile::~update_profile()
 {
 }
 
-int32_t update_profile::init_request(std::shared_ptr<core::http_request_simple> _request)
+int32_t update_profile::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     assert(!fields_.empty());
     if (fields_.empty())

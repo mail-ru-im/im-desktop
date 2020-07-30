@@ -3,7 +3,6 @@
 #include "../main_window/history_control/complex_message/ComplexMessageItem.h"
 
 #include "../main_window/history_control/complex_message/FileSharingBlock.h"
-#include "../main_window/history_control/complex_message/LinkPreviewBlock.h"
 #include "../main_window/history_control/complex_message/PttBlock.h"
 #include "../main_window/history_control/complex_message/TextBlock.h"
 #include "../main_window/history_control/complex_message/DebugTextBlock.h"

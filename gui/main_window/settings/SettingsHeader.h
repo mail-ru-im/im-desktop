@@ -20,7 +20,7 @@ namespace Ui
         void setText(const QString& _text);
         bool hasText() const;
 
-    signals:
+    Q_SIGNALS:
         void backClicked(QPrivateSignal) const;
 
     protected:

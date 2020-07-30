@@ -59,7 +59,7 @@ namespace core
     class async_executer : core::tools::threadpool
     {
     public:
-        explicit async_executer(const std::string_view _name, size_t _count = 1, bool _task_trace = false);
+        explicit async_executer(std::string_view _name, size_t _count = 1, bool _task_trace = false);
         virtual ~async_executer();
 
         virtual std::shared_ptr<async_task_handlers> run_async_task(std::shared_ptr<async_task> task, std::string_view _task_name = {}, std::function<bool()> _cancel = {});
@@ -73,9 +73,7 @@ namespace core
 
             push_back([f = std::move(func), handler]
             {
-                auto res = f();
-
-                g_core->execute_core_context([handler, result = std::move(res)]
+                g_core->execute_core_context([handler, result = f()]
                 {
                     if (handler->on_result_)
                         handler->on_result_(result);

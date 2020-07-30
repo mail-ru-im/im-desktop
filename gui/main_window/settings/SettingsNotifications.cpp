@@ -1,14 +1,16 @@
 #include "stdafx.h"
 #include "GeneralSettingsWidget.h"
-#include "../../core_dispatcher.h"
-#include "../../gui_settings.h"
-#include "../../controls/GeneralCreator.h"
-#include "../../controls/TextEmojiWidget.h"
-#include "../../controls/TransparentScrollBar.h"
-#include "../../utils/utils.h"
-#include "../../utils/features.h"
-#include "../../my_info.h"
-#include "../../styles/ThemeParameters.h"
+
+#include "core_dispatcher.h"
+#include "gui_settings.h"
+#include "controls/GeneralCreator.h"
+#include "controls/TextEmojiWidget.h"
+#include "controls/TransparentScrollBar.h"
+#include "utils/utils.h"
+#include "utils/features.h"
+#include "my_info.h"
+#include "styles/ThemeParameters.h"
+#include "main_window/sidebar/SidebarUtils.h"
 
 using namespace Ui;
 
@@ -29,7 +31,7 @@ void GeneralSettingsWidget::Creator::initNotifications(NotificationSettings* _pa
     scrollArea->setWidget(mainWidget);
 
     auto layout = Utils::emptyHLayout(_parent);
-    Testing::setAccessibleName(scrollArea, qsl("AS settings ntfc scrollArea"));
+    Testing::setAccessibleName(scrollArea, qsl("AS NotificationsPage scrollArea"));
     layout->addWidget(scrollArea);
 
     {
@@ -38,22 +40,22 @@ void GeneralSettingsWidget::Creator::initNotifications(NotificationSettings* _pa
                 mainLayout,
                 QT_TRANSLATE_NOOP("settings", "Play sounds"),
                 get_gui_settings()->get_value<bool>(settings_sounds_enabled, true),
-                [](bool enabled) -> QString {
+                [](bool enabled)
+                {
                     GetDispatcher()->getVoipController().setMuteSounds(!enabled);
                     if (get_gui_settings()->get_value<bool>(settings_sounds_enabled, true) != enabled)
                         get_gui_settings()->set_value<bool>(settings_sounds_enabled, enabled);
-                    return QString();
-                });
+                }, -1, qsl("AS NotificationsPage playSoundSetting"));
         auto outgoingSoundWidgets = GeneralCreator::addSwitcher(
                 scrollArea,
                 mainLayout,
                 QT_TRANSLATE_NOOP("settings", "Outgoing messages sound"),
                 get_gui_settings()->get_value<bool>(settings_outgoing_message_sound_enabled, false),
-                [](bool enabled) -> QString {
+                [](bool enabled)
+                {
                     if (get_gui_settings()->get_value(settings_outgoing_message_sound_enabled, false) != enabled)
                         get_gui_settings()->set_value(settings_outgoing_message_sound_enabled, enabled);
-                    return QString();
-                });
+                }, -1, qsl("AS NotificationsPage outgoingSoundSetting"));
         if (!get_gui_settings()->get_value(settings_sounds_enabled, true))
         {
             outgoingSoundWidgets->setChecked(false);
@@ -80,11 +82,11 @@ void GeneralSettingsWidget::Creator::initNotifications(NotificationSettings* _pa
                 mainLayout,
                 QT_TRANSLATE_NOOP("settings", "Show notifications"),
                 get_gui_settings()->get_value<bool>(settings_notify_new_messages, true),
-                [](bool enabled) -> QString {
+                [](bool enabled)
+                {
                     if (get_gui_settings()->get_value<bool>(settings_notify_new_messages, true) != enabled)
                         get_gui_settings()->set_value<bool>(settings_notify_new_messages, enabled);
-                    return QString();
-                });
+                }, -1, qsl("AS NotificationsPage showNotificationSetting"));
 
         if (Ui::MyInfo()->haveConnectedEmail())
         {
@@ -93,11 +95,11 @@ void GeneralSettingsWidget::Creator::initNotifications(NotificationSettings* _pa
                     mainLayout,
                     QT_TRANSLATE_NOOP("settings", "Show mail notifications"),
                     get_gui_settings()->get_value<bool>(settings_notify_new_mail_messages, true),
-                    [](bool enabled) -> QString {
+                    [](bool enabled)
+                    {
                         if (get_gui_settings()->get_value<bool>(settings_notify_new_mail_messages, true) != enabled)
                             get_gui_settings()->set_value<bool>(settings_notify_new_mail_messages, enabled);
-                        return QString();
-                    });
+                    }, -1, qsl("AS NotificationsPage showMailNotificationSettings"));
         }
 
         if (Features::showNotificationsTextSettings())
@@ -107,12 +109,11 @@ void GeneralSettingsWidget::Creator::initNotifications(NotificationSettings* _pa
                 mainLayout,
                 QT_TRANSLATE_NOOP("settings", "Hide message text in notifications"),
                 get_gui_settings()->get_value<bool>(settings_hide_message_notification, false),
-                [](bool enabled) -> QString {
-                if (get_gui_settings()->get_value<bool>(settings_hide_message_notification, false) != enabled)
-                    get_gui_settings()->set_value<bool>(settings_hide_message_notification, enabled);
-
-                return QString();
-            });
+                [](bool enabled)
+                {
+                    if (get_gui_settings()->get_value<bool>(settings_hide_message_notification, false) != enabled)
+                        get_gui_settings()->set_value<bool>(settings_hide_message_notification, enabled);
+                }, -1, qsl("AS NotificationsPage hideTextInNotificationSetting"));
         }
 
         if constexpr (!platform::is_linux())
@@ -122,13 +123,23 @@ void GeneralSettingsWidget::Creator::initNotifications(NotificationSettings* _pa
                 mainLayout,
                 QT_TRANSLATE_NOOP("settings", "Animate taskbar icon"),
                 get_gui_settings()->get_value<bool>(settings_alert_tray_icon, false),
-                [](bool enabled) -> QString {
-                if (get_gui_settings()->get_value<bool>(settings_alert_tray_icon, false) != enabled)
-                    get_gui_settings()->set_value<bool>(settings_alert_tray_icon, enabled);
-
-                return QString();
-            });
+                [](bool enabled)
+                {
+                    if (get_gui_settings()->get_value<bool>(settings_alert_tray_icon, false) != enabled)
+                        get_gui_settings()->set_value<bool>(settings_alert_tray_icon, enabled);
+                }, -1, qsl("AS NotificationsPage animateTaskbarIconSettings"));
         }
+
+        GeneralCreator::addSwitcher(
+            scrollArea,
+            mainLayout,
+            QT_TRANSLATE_NOOP("settings", "Show unreads counter in window title"),
+            get_gui_settings()->get_value<bool>(settings_show_unreads_in_title, false),
+            [](bool enabled)
+            {
+                if (get_gui_settings()->get_value<bool>(settings_show_unreads_in_title, false) != enabled)
+                    get_gui_settings()->set_value<bool>(settings_show_unreads_in_title, enabled);
+            }, -1, qsl("AS NotificationsPage showUnreadsCountItTitleSettings"));
     }
 }
 

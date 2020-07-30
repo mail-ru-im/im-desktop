@@ -61,25 +61,13 @@ get_history_batch::get_history_batch(wim_packet_params _params, get_history_batc
 {
 }
 
-get_history_batch::~get_history_batch()
+get_history_batch::~get_history_batch() = default;
+
+int32_t get_history_batch::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
-
-}
-
-int32_t get_history_batch::init_request(std::shared_ptr<core::http_request_simple> _request)
-{
-    constexpr char method[] = "getHistoryBatch";
-
-    _request->set_normalized_url(method);
-    _request->set_keep_alive();
-    _request->set_priority(priority_protocol());
-
     rapidjson::Document doc(rapidjson::Type::kObjectType);
 
     auto& a = doc.GetAllocator();
-
-    doc.AddMember("method", method, a);
-    doc.AddMember("reqId", get_req_id(), a);
 
     rapidjson::Value node_params(rapidjson::Type::kObjectType);
 
@@ -136,7 +124,7 @@ int32_t get_history_batch::init_request(std::shared_ptr<core::http_request_simpl
 
     doc.AddMember("params", std::move(node_params), a);
 
-    sign_packet(doc, a, _request);
+    setup_common_and_sign(doc, a, _request, "getHistoryBatch");
 
     if (!params_.full_log_)
     {
@@ -207,10 +195,8 @@ int32_t get_history_batch::parse_results(const rapidjson::Value& _node_results)
     {
         messages_->reserve(iter_subreqs->value.Size());
 
-        for (auto it = iter_subreqs->value.Begin(), end = iter_subreqs->value.End(); it != end; ++it)
+        for (const auto& subreq : iter_subreqs->value.GetArray())
         {
-            const auto& subreq = *it;
-
             int64_t older_msgid = -1;
             tools::unserialize_value(subreq, "olderMsgId", older_msgid);
 
@@ -246,4 +232,10 @@ int32_t get_history_batch::parse_results(const rapidjson::Value& _node_results)
     apply_patches(history_patches_, *messages_, unpinned_, *dlg_state_);
 
     return 0;
+}
+
+
+priority_t get_history_batch::get_priority() const
+{
+    return priority_protocol();
 }

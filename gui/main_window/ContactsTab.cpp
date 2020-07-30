@@ -27,6 +27,7 @@ namespace Ui
             addButton_->setDefaultImage(qsl(":/header/add_user"), QColor(), QSize(24, 24));
             addButton_->setCustomToolTip(QT_TRANSLATE_NOOP("tab header", "Add contact"));
             header_->addButtonToRight(addButton_);
+            Testing::setAccessibleName(addButton_, qsl("AS ContactsTab addContactButton"));
 
             connect(addButton_, &CustomButton::clicked,
                 this, []() {
@@ -38,7 +39,7 @@ namespace Ui
         contactListWidget_->connectSearchWidget(header_->getSearchWidget());
         QObject::connect(&Utils::InterConnector::instance(), &Utils::InterConnector::setContactSearchFocus, this, [this]() {
             header_->getSearchWidget()->setFocus();
-            emit Utils::InterConnector::instance().hideContactListPlaceholder();
+            Q_EMIT Utils::InterConnector::instance().hideContactListPlaceholder();
         });
 
 

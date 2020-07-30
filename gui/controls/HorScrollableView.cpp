@@ -57,7 +57,7 @@ namespace Ui
     {
         showScroll();
 
-        emit enter();
+        Q_EMIT enter();
 
         return QTableView::enterEvent(e);
     }
@@ -66,7 +66,7 @@ namespace Ui
     {
         hideScroll();
 
-        emit leave();
+        Q_EMIT leave();
 
         return QTableView::leaveEvent(e);
     }

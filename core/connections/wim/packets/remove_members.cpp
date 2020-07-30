@@ -22,7 +22,7 @@ remove_members::~remove_members()
 {
 }
 
-int32_t remove_members::init_request(std::shared_ptr<core::http_request_simple> _request)
+int32_t remove_members::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     std::stringstream ss_url;
 

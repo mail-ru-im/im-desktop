@@ -21,7 +21,7 @@ void voip_masks::Mask::setPreview(const QString _localPath)
 {
     preview_.load(_localPath);
     assert(!_localPath.isEmpty());
-    emit previewLoaded();
+    Q_EMIT previewLoaded();
 }
 
 const QPixmap& voip_masks::Mask::preview() const
@@ -32,7 +32,7 @@ const QPixmap& voip_masks::Mask::preview() const
 void voip_masks::Mask::setJsonPath(const QString _localPath)
 {
     jsonPath_ = _localPath;
-    emit loaded();
+    Q_EMIT loaded();
     progressSeq_ = 0;
 }
 
@@ -50,5 +50,5 @@ void voip_masks::Mask::onLoadingProgress(quint64 _seq, unsigned _percent)
 {
     if (progressSeq_ != _seq)
         return;
-    emit loadingProgress(_percent);
+    Q_EMIT loadingProgress(_percent);
 }

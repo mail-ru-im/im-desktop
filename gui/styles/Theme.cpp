@@ -1,11 +1,10 @@
 #include "stdafx.h"
 
 #include "Theme.h"
-#include "ThemesUtils.h"
 #include "StyleVariable.h"
 
 #include "../fonts.h"
-#include "../utils/utils.h"
+#include "../utils/JsonUtils.h"
 
 namespace
 {
@@ -27,9 +26,9 @@ namespace
     template <class T>
     void unserializeWallpaperId(const rapidjson::Value& _node, const T& _name, QString& _out)
     {
-        if (!StylingUtils::unserialize_value(_node, _name, _out))
+        if (!JsonUtils::unserialize_value(_node, _name, _out))
         {
-            if (auto intId = -1; StylingUtils::unserialize_value(_node, _name, intId))
+            if (auto intId = -1; JsonUtils::unserialize_value(_node, _name, intId))
                 _out = QString::number(intId);
         }
         //assert(!_out.isEmpty());
@@ -41,9 +40,9 @@ namespace Styling
     void Property::unserialize(const rapidjson::Value& _node)
     {
         if (_node.IsObject())
-            StylingUtils::unserialize_value(_node, "color", color_);
+            JsonUtils::unserialize_value(_node, "color", color_);
         else if (_node.IsString())
-            color_ = StylingUtils::getColor(_node);
+            color_ = JsonUtils::getColor(_node);
     }
 
     QColor Property::getColor() const
@@ -65,7 +64,7 @@ namespace Styling
 
         for (const auto& it : _node.GetObject())
         {
-            const auto propName = StylingUtils::getString(it.name);
+            const auto propName = JsonUtils::getString(it.name);
             if (const auto property = findProperty(props, propName); property != props.end())
             {
                 Property tmpProperty;
@@ -115,9 +114,9 @@ namespace Styling
         if (const auto nodeIter = _node.FindMember("style"); nodeIter->value.IsObject() && !nodeIter->value.ObjectEmpty())
             Style::unserialize(nodeIter->value);
 
-        StylingUtils::unserialize_value(_node, "id", id_);
-        StylingUtils::unserialize_value(_node, "name", name_);
-        StylingUtils::unserialize_value(_node, "underline", underlinedLinks_);
+        JsonUtils::unserialize_value(_node, "id", id_);
+        JsonUtils::unserialize_value(_node, "name", name_);
+        JsonUtils::unserialize_value(_node, "underline", underlinedLinks_);
 
         unserializeWallpaperId(_node, "defaultWallpaper", defaultWallpaperId_.id_);
     }
@@ -151,15 +150,15 @@ namespace Styling
 
         unserializeWallpaperId(_node, "id", id_.id_);
 
-        StylingUtils::unserialize_value(_node, "need_border", needBorder_);
-        StylingUtils::unserialize_value(_node, "preview", previewUrl_);
-        StylingUtils::unserialize_value(_node, "image", imageUrl_);
-        StylingUtils::unserialize_value(_node, "color", color_);
+        JsonUtils::unserialize_value(_node, "need_border", needBorder_);
+        JsonUtils::unserialize_value(_node, "preview", previewUrl_);
+        JsonUtils::unserialize_value(_node, "image", imageUrl_);
+        JsonUtils::unserialize_value(_node, "color", color_);
 
         if (hasWallpaper())
         {
-            StylingUtils::unserialize_value(_node, "tile", tile_);
-            StylingUtils::unserialize_value(_node, "tint", tint_);
+            JsonUtils::unserialize_value(_node, "tile", tile_);
+            JsonUtils::unserialize_value(_node, "tint", tint_);
         }
     }
 

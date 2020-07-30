@@ -192,10 +192,10 @@ int32_t Ui::ComplexMessage::TextChunk::length() const
 
 Ui::ComplexMessage::TextChunk Ui::ComplexMessage::TextChunk::mergeWith(const TextChunk &chunk) const
 {
-    if (Type_ != Type::Text && Type_ != Type::GenericLink && Type_ != Type::ProfileLink)
+    if (Type_ != Type::Text && Type_ != Type::GenericLink)
         return TextChunk::Empty;
 
-    if (chunk.Type_ != Type::Text && chunk.Type_ != Type::GenericLink && chunk.Type_ != Type::ProfileLink)
+    if (chunk.Type_ != Type::Text && chunk.Type_ != Type::GenericLink)
         return TextChunk::Empty;
 
     return TextChunk(Type::Text, text_ + chunk.text_, QString(), -1);

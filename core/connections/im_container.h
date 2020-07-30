@@ -56,7 +56,6 @@ namespace core
         void on_send_message(int64_t _seq, coll_helper& _params);
         void on_update_message(int64_t _seq, coll_helper& _params);
         void on_message_typing(int64_t _seq, coll_helper& _params);
-        void on_feedback(int64_t _seq, coll_helper& _params);
         void on_set_state(int64_t _seq, coll_helper& _params);
 
         void on_dialogs_search_local(int64_t _seq, coll_helper& _params);
@@ -90,11 +89,11 @@ namespace core
         void on_download_file(int64_t _seq, coll_helper& _params);
 
         void on_download_image(int64_t _seq, coll_helper& _params);
-        void on_cancel_loader_task(int64_t _seq, coll_helper& _params);
         void on_get_external_file_path(int64_t _seq, coll_helper& _params);
         void on_download_link_preview(int64_t _seq, coll_helper& _params);
         void on_download_raise_priority(int64_t _seq, coll_helper& _params);
         void on_contact_switched(int64_t _seq, coll_helper& _params);
+        void on_cancel_loader_task(int64_t _seq, coll_helper& _params);
         void on_abort_file_downloading(int64_t _seq, coll_helper& _params);
         void on_get_stickers_meta(int64_t _seq, coll_helper& _params);
 
@@ -114,9 +113,10 @@ namespace core
         void on_get_set_icon_big(int64_t _seq, coll_helper& _params);
         void on_clean_set_icon_big(int64_t _seq, coll_helper& _params);
         void on_set_sticker_order(int64_t _seq, coll_helper& _params);
-        void on_get_smartreply_suggests(int64_t _seq, coll_helper& _params);
+        void on_get_sticker_suggests(int64_t _seq, coll_helper& _params);
         void on_clear_smartreply_suggests(int64_t _seq, coll_helper& _params);
         void on_load_smartreply_suggests(int64_t _seq, coll_helper& _params);
+        void on_get_smartreplies(int64_t _seq, coll_helper& _params);
 
         void on_get_chat_info(int64_t _seq, coll_helper& _params);
         void on_get_chat_home(int64_t _seq, coll_helper& _params);
@@ -131,7 +131,6 @@ namespace core
 
         void on_syncronize_addressbook(int64_t _seq, coll_helper& _params);
 
-        void on_profile(int64_t _seq, coll_helper& _params);
         void on_hide_dlg_state(int64_t _seq, coll_helper& _params);
         void on_set_attention_attribute(int64_t _seq, coll_helper& _params);
         void on_add_contact(int64_t _seq, coll_helper& _params);
@@ -141,7 +140,7 @@ namespace core
         void on_speech_to_text(int64_t _seq, coll_helper& _params);
         void on_ignore_contact(int64_t _seq, coll_helper& _params);
         void on_get_ignore_contacts(int64_t _seq, coll_helper& _params);
-        void on_favorite(int64_t _seq, coll_helper& _params);
+        void on_pin_chat(int64_t _seq, coll_helper& _params);
         void on_unfavorite(int64_t _seq, coll_helper& _params);
         void on_mark_unimportant(int64_t _seq, coll_helper& _params);
         void on_remove_from_unimportant(int64_t _seq, coll_helper& _params);
@@ -164,6 +163,7 @@ namespace core
 
         void on_set_user_proxy(int64_t _seq, coll_helper& _params);
         void on_join_livechat(int64_t _seq, coll_helper& _params);
+        void on_cancel_join_livechat(int64_t _seq, coll_helper& _params);
         void on_set_locale(int64_t _seq, coll_helper& _params);
         void on_set_avatar(int64_t _seq, coll_helper& _params);
 
@@ -180,7 +180,6 @@ namespace core
         void on_mrim_get_key(int64_t _seq, coll_helper& _params);
 
         // tools
-        void on_sign_url(int64_t _seq, coll_helper& _params);
         void on_stats(int64_t _seq, coll_helper& _params);
         void on_im_stats(int64_t _seq, coll_helper& _params);
 
@@ -198,8 +197,6 @@ namespace core
         void on_get_mask(int64_t _seq, coll_helper& _params);
         void on_get_existent_masks(int64_t _seq, coll_helper& _params);
 
-        void on_merge_account(int64_t _seq, coll_helper& _params);
-
         void on_get_mentions_suggests(int64_t _seq, coll_helper& _params);
 
         void on_get_code_by_phone_call(int64_t _seq, coll_helper& _params);
@@ -207,7 +204,6 @@ namespace core
         void on_get_attach_phone_info(int64_t _seq, coll_helper& _params);
 
         void on_get_logs_path(int64_t _seq, coll_helper& _params);
-        void on_create_logs_archive(int64_t _seq, coll_helper& _params);
         void on_change_app_config(const int64_t _seq, coll_helper& _params);
         void on_remove_content_cache(const int64_t _seq, coll_helper& _params);
         void on_clear_avatars(const int64_t _seq, coll_helper& _params);
@@ -228,6 +224,7 @@ namespace core
         void on_request_gallery_state(const int64_t _seq, coll_helper& _params);
         void on_get_gallery_index(const int64_t _seq, coll_helper& _params);
         void on_make_gallery_hole(const int64_t _seq, coll_helper& _params);
+        void on_stop_gallery_holes_downloading(const int64_t _seq, coll_helper& _params);
 
         void on_request_memory_usage(const int64_t _seq, coll_helper& _params);
         void on_report_memory_usage(const int64_t _seq, coll_helper& _params);
@@ -271,7 +268,30 @@ namespace core
         void on_stop_poll(const int64_t _seq, coll_helper& _params);
 
         void on_group_subscribe(const int64_t _seq, coll_helper& _params);
+        void on_group_cancel_subscription(const int64_t _seq, coll_helper& _params);
         void on_suggest_group_nick(const int64_t _seq, coll_helper& _params);
+        void on_get_bot_callback_answer(const int64_t _seq, coll_helper& _params);
+
+        void on_start_bot(const int64_t _seq, coll_helper& _params);
+
+        void on_create_confrence(const int64_t _seq, coll_helper& _params);
+
+        void on_get_sessions(const int64_t _seq, coll_helper& _params);
+        void on_reset_session(const int64_t _seq, coll_helper& _params);
+
+        // reactions
+        void on_get_reactions(const int64_t _seq, coll_helper& _params);
+        void on_add_reaction(const int64_t _seq, coll_helper& _params);
+        void on_remove_reaction(const int64_t _seq, coll_helper& _params);
+        void on_list_reactions(const int64_t _seq, coll_helper& _params);
+
+        void on_status_set(const int64_t _seq, coll_helper& _params);
+
+        void on_subscribe_status(const int64_t _seq, coll_helper& _params);
+        void on_unsubscribe_status(const int64_t _seq, coll_helper& _params);
+
+        void on_subscribe_call_room_info(const int64_t _seq, coll_helper& _params);
+        void on_unsubscribe_call_room_info(const int64_t _seq, coll_helper& _params);
 
     public:
 

@@ -25,6 +25,7 @@ namespace core
 
 #define WIM_CAP_VOIP_VOICE         "094613504c7f11d18222444553540000"
 #define WIM_CAP_VOIP_VIDEO         "094613514c7f11d18222444553540000"
+#define WIM_CAP_VOIP_RINGING       "094613564c7f11d18222444553540000"
 #define WIM_CAP_FOCUS_GROUP_CALLS  "094613503c7f11d18222444553540000"
 #define WIM_CAP_FILETRANSFER       "094613434c7f11d18222444553540000"
 #define WIM_CAP_UNIQ_REQ_ID        "094613534c7f11d18222444553540000"
@@ -35,6 +36,8 @@ namespace core
 #define WIM_CAP_CHAT_HEADS         "0946135c4c7f11d18222444553540000"
 #define WIM_CAP_GALLERY_NOTIFY     "0946135e4c7f11d18222444553540000"
 #define WIM_CAP_GROUP_SUBSCRIPTION "1f99494e76cbc880215d6aeab8e42268"
+#define WIM_CAP_RECENT_CALLS       "0946135d4c7f11d18222444553540000"
+#define WIM_CAP_REACTIONS          "a20c362cd4944b6ea3d1e77642201fd8"
 
 #define SAAB_SESSION_OLDER_THAN_AUTH_UPDATE          1010
 
@@ -82,7 +85,7 @@ namespace core
             wpie_error_robusto_bad_sigsha = 28,
             wpie_error_robusto_bad_ts = 29,
 
-            wpie_error_internal_logic = 30,
+            wpie_error_profile_not_loaded = 30,
             wpie_error_invalid_request = 31,
             wpie_error_profile_not_found = 32,
 
@@ -102,6 +105,12 @@ namespace core
 
             wpie_error_cannot_add_member = 40,
 
+            wpie_error_robusto_target_not_found = 41,
+
+            wpie_error_invalid_session_hash = 42,
+
+            wpie_error_user_blocked = 43,
+
             wpie_client_http_error = 400,
             wpie_robusto_timeout = 500,
 
@@ -118,7 +127,6 @@ namespace core
             wpie_error_nickname_already_used = 9001,
             wpie_error_nickname_not_allowed = 9002,
             wpie_error_robuso_too_fast_sending = 9003,
-
         };
 
         enum wim_protocol_error
@@ -229,12 +237,14 @@ namespace core
             static bool is_timeout_error(const int32_t _error) noexcept;
             bool has_valid_token() const;
 
+            static std::string get_url_sign_impl(std::string_view host, std::string_view _query_string, const wim_packet_params& _wim_params, bool post_method, bool make_escape_symbols = true);
+
         public:
             using handler_t = std::function<void (int32_t _result)>;
 
         protected:
 
-            void load_response_str(const char* buf, unsigned size);
+            void load_response_str(const char* buf, size_t size);
             const std::string& response_str() const;
             const std::string& header_str() const;
 
@@ -247,10 +257,10 @@ namespace core
 
             wim_packet_params params_;
 
-            virtual int32_t init_request(std::shared_ptr<core::http_request_simple> request);
-            virtual int32_t execute_request(std::shared_ptr<core::http_request_simple> request);
-            virtual void execute_request_async(std::shared_ptr<core::http_request_simple> request, handler_t _handler);
-            virtual int32_t parse_response(std::shared_ptr<core::tools::binary_stream> response);
+            virtual int32_t init_request(const std::shared_ptr<core::http_request_simple>& request);
+            virtual int32_t execute_request(const std::shared_ptr<core::http_request_simple>& request);
+            virtual void execute_request_async(const std::shared_ptr<core::http_request_simple>& request, handler_t _handler);
+            virtual int32_t parse_response(const std::shared_ptr<core::tools::binary_stream>& response);
             virtual int32_t parse_response_data(const rapidjson::Value& _data);
             virtual void parse_response_data_on_error(const rapidjson::Value& _data);
 
@@ -270,14 +280,38 @@ namespace core
             int32_t execute() override final;
             void execute_async(handler_t _handler);
 
+            virtual priority_t get_priority() const { return packets_priority(); }
+            virtual bool is_post() const { return false; }
+
             static std::string escape_symbols(std::string_view data);
             static std::string escape_symbols_data(std::string_view data);
-            static std::string get_url_sign(std::string_view host, const str_2_str_map& params, const wim_packet_params& _wim_params, bool post_method, bool make_escape_symbols = true);
-            static std::string format_get_params(const str_2_str_map& _params);
-            static std::string detect_digest(const std::string& hashed_data, const std::string& session_key);
-            static std::string create_query_from_map(const str_2_str_map& params);
+            template<typename R>
+            static std::string format_get_params(const R& _params)
+            {
+                std::string result;
 
-            virtual std::shared_ptr<core::tools::binary_stream> getRawData() { return nullptr; }
+                for (const auto& [key, value] : _params)
+                {
+                    result += key;
+                    result += '=';
+                    result += value;
+                    result += '&';
+                }
+                if (!result.empty())
+                    result.pop_back();
+
+                return result;
+            }
+
+            template<typename R>
+            static inline std::string get_url_sign(std::string_view host, R&& params, const wim_packet_params& _wim_params, bool post_method, bool make_escape_symbols = true)
+            {
+                return get_url_sign_impl(host, format_get_params(std::forward<R>(params)), _wim_params, post_method, make_escape_symbols);
+            }
+
+            static std::string detect_digest(std::string_view hashed_data, std::string_view session_key);
+
+            virtual std::shared_ptr<core::tools::binary_stream> getRawData() const { return {}; }
             uint32_t get_status_code() const { return status_code_; }
             uint32_t get_status_detail_code() const { return status_detail_code_; }
             const std::string& get_status_text() const { return status_text_; }
@@ -287,8 +321,7 @@ namespace core
             void set_repeat_count(const uint32_t _count);
             bool is_stopped() const;
 
-            static bool needs_to_repeat_failed(const int32_t _error) noexcept;
-
+            static bool needs_to_repeat_failed(int32_t _error) noexcept;
 
             wim_packet(wim_packet_params _params);
             virtual ~wim_packet();

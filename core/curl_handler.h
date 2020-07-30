@@ -48,16 +48,11 @@ namespace core
         bool is_stopped() const;
         std::string normalized_url() const;
 
-        void set_socket(const curl_socket_t _socket) { socket_ = _socket; }
-        curl_socket_t get_socket() const noexcept { return socket_; }
-
 
     private:
         std::weak_ptr<curl_context> context_;
         curl_easy::completion_function completion_func_;
         curl_easy::promise_t promise_;
-
-        curl_socket_t socket_ = CURL_SOCKET_BAD;
 
         bool async_;
     };

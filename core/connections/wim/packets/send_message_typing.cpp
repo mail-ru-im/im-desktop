@@ -22,12 +22,7 @@ send_message_typing::~send_message_typing()
 {
 }
 
-bool send_message_typing::support_async_execution() const
-{
-    return true;
-}
-
-int32_t send_message_typing::init_request(std::shared_ptr<core::http_request_simple> _request)
+int32_t send_message_typing::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     std::string_view status;
     switch (status_)

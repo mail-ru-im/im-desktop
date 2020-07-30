@@ -20,30 +20,68 @@ namespace
         assert(_message);
 
         if (!_persons.empty())
-        {
             _message->set_sender_friendly(_persons.begin()->second.friendly_);
-        }
 
         auto chat_info = _message->get_chat_data();
         if (chat_info)
-        {
             chat_info->apply_persons(_persons);
-        }
 
         auto &chat_event = _message->get_chat_event_data();
         if (chat_event)
-        {
             chat_event->apply_persons(_persons);
-        }
 
         auto &voip = _message->get_voip_data();
         if (voip)
-        {
             voip->apply_persons(_persons);
-        }
 
         _message->apply_persons_to_quotes(_persons);
         _message->apply_persons_to_mentions(_persons);
+    }
+
+    template<typename R>
+    void parse_history_messages_array(R&& range, int64_t _older_msg_id, Out archive::history_block &_block, const archive::persons_map& _persons, const std::string &_sender_aimid)
+    {
+        auto prev_msg_id = _older_msg_id;
+
+        for (const auto& x : std::forward<R>(range))
+        {
+            auto msg = std::make_shared<archive::history_message>();
+
+            if (0 != msg->unserialize(x, _sender_aimid))
+            {
+                assert(!"parse message error");
+            }
+            else
+            {
+                assert(!msg->is_patch());
+
+                const auto is_same_as_prev = (prev_msg_id == msg->get_msgid());
+                assert(!is_same_as_prev);
+
+                if (is_same_as_prev)
+                {
+                    // workaround for the server issue
+
+                    __INFO(
+                        "delete_history",
+                        "server issue detected, message skipped\n"
+                        "    older_msg_id=<%1%>\n"
+                        "    prev_msg_id=<%2%>\n"
+                        "    msg_id=<%3%>",
+                        _older_msg_id % prev_msg_id % msg->get_msgid()
+                    );
+
+                    continue;
+                }
+
+                msg->set_prev_msgid(prev_msg_id);
+                _block.push_back(msg);
+
+                prev_msg_id = msg->get_msgid();
+            }
+
+            apply_persons(msg, _persons);
+        }
     }
 }
 
@@ -68,59 +106,12 @@ bool core::wim::parse_history_messages_json(
     if (iter_messages->value.Empty())
         return true;
 
-    auto prev_msg_id = _older_msg_id;
-
     _block.reserve(iter_messages->value.Size());
 
-    const bool is_reverse = message_order::reverse == _order;
-
-    auto iter_message = is_reverse ? iter_messages->value.End() : iter_messages->value.Begin();
-    const auto end = is_reverse ? iter_messages->value.Begin() : iter_messages->value.End();
-    do
-    {
-        if (is_reverse)
-            --iter_message;
-
-        auto msg = std::make_shared<archive::history_message>();
-
-        if (0 != msg->unserialize(*iter_message, _sender_aimid))
-        {
-            assert(!"parse message error");
-        }
-        else
-        {
-            assert(!msg->is_patch());
-
-            const auto is_same_as_prev = (prev_msg_id == msg->get_msgid());
-            assert(!is_same_as_prev);
-
-            if (is_same_as_prev)
-            {
-                // workaround for the server issue
-
-                __INFO(
-                    "delete_history",
-                    "server issue detected, message skipped\n"
-                    "    older_msg_id=<%1%>\n"
-                    "    prev_msg_id=<%2%>\n"
-                    "    msg_id=<%3%>",
-                    _older_msg_id % prev_msg_id % msg->get_msgid()
-                );
-
-                continue;
-            }
-
-            msg->set_prev_msgid(prev_msg_id);
-            _block.push_back(msg);
-
-            prev_msg_id = msg->get_msgid();
-        }
-
-        apply_persons(msg, _persons);
-        if (!is_reverse)
-            ++iter_message;
-    }
-    while (iter_message != end);
+    if (auto array = iter_messages->value.GetArray(); message_order::reverse == _order)
+        parse_history_messages_array(boost::adaptors::reverse(boost::make_iterator_range(array.begin(), array.end())), _older_msg_id, _block, _persons, _sender_aimid);
+    else
+        parse_history_messages_array(std::move(array), _older_msg_id, _block, _persons, _sender_aimid);
 
     return true;
 }
@@ -182,6 +173,8 @@ patch_container core::wim::parse_patches_json(const rapidjson::Value& _node_patc
             patch_type = history_patch::type::unpinned;
         else if (type == "clear")
             patch_type = history_patch::type::clear;
+        else if (type == "setReactions")
+            patch_type = history_patch::type::set_reactions;
 
         assert(history_patch::is_valid_type(patch_type));
 
@@ -228,13 +221,13 @@ void core::wim::apply_patches(const std::vector<std::pair<int64_t, archive::hist
         switch (patch->get_type())
         {
         case history_patch::type::deleted:
-             _block.emplace_back(history_message::make_deleted_patch(message_id, std::string()));
+            _block.emplace_back(history_message::make_deleted_patch(message_id, {}));
             break;
         case history_patch::type::modified:
-            _block.emplace_back(history_message::make_modified_patch(message_id, std::string()));
+            _block.emplace_back(history_message::make_modified_patch(message_id, {}));
             break;
         case history_patch::type::updated:
-            _block.emplace_back(history_message::make_updated_patch(message_id, std::string()));
+            _block.emplace_back(history_message::make_updated_patch(message_id, {}));
             break;
         case history_patch::type::pinned:
             break;
@@ -244,7 +237,10 @@ void core::wim::apply_patches(const std::vector<std::pair<int64_t, archive::hist
             _unpinned = true;
             break;
         case history_patch::type::clear:
-            _block.emplace_back(history_message::make_clear_patch(message_id, std::string()));
+            _block.emplace_back(history_message::make_clear_patch(message_id, {}));
+            break;
+        case history_patch::type::set_reactions:
+            _block.emplace_back(history_message::make_set_reactions_patch(message_id, std::string()));
             break;
         default:
             break;
@@ -261,22 +257,9 @@ void core::wim::set_last_message(const archive::history_block& _block, InOut arc
         return;
 
     const auto last_msgid = _dlg_state.get_last_msgid();
-    assert(last_msgid > 0);
-
-    for (const auto& message_ptr : boost::adaptors::reverse(_block))
-    {
-        const auto msg_id = message_ptr->get_msgid();
-        assert(msg_id > 0);
-
-        if (last_msgid != msg_id)
-        {
-            continue;
-        }
-
-        _dlg_state.set_last_message(*message_ptr);
-
-        break;
-    }
+    const auto it = std::find_if(_block.begin(), _block.end(), [last_msgid](const auto& m){ return m->get_msgid() == last_msgid; });
+    if (it != _block.end())
+        _dlg_state.set_last_message(*(*it));
 }
 
 std::vector<core::archive::dlg_state_head> core::wim::parse_heads(const rapidjson::Value& _node_heads, const archive::persons_map& _persons)

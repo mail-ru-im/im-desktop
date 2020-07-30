@@ -161,7 +161,7 @@ void StickersWidget::setSelected(const std::pair<int32_t, QString>& _sticker)
 {
     const auto stickerPosInSet = getStickerPosInSet(_sticker.second);
     if (stickerPosInSet >= 0)
-        emit stickerHovered(getStickerRect(stickerPosInSet));
+        Q_EMIT stickerHovered(getStickerRect(stickerPosInSet));
 
     StickersTable::setSelected(_sticker);
 }
@@ -176,6 +176,7 @@ StickersSuggest::StickersSuggest(QWidget* _parent)
     , stickers_(nullptr)
     , tooltip_(nullptr)
     , keyboardActive_(false)
+    , needScrollToTop_(false)
 {
     setStyleSheet(Styling::getParameters().getBackgroundCommonQss());
     stickers_ = new StickersWidget(_parent);
@@ -286,7 +287,7 @@ void StickersSuggest::keyPressEvent(QKeyEvent* _event)
             const auto selectedSticker = stickers_->getSelected();
             if (keyboardActive_ && !selectedSticker.second.isEmpty())
             {
-                emit stickerSelected(selectedSticker.second);
+                Q_EMIT stickerSelected(selectedSticker.second);
 
                 _event->accept();
             }

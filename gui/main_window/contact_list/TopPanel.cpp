@@ -19,36 +19,19 @@
 
 #include "styles/ThemeParameters.h"
 
+#include "../../controls/ContactAvatarWidget.h"
+
 namespace
 {
     constexpr auto left_margin = 16;
     constexpr auto right_margin = 12;
-    constexpr auto right_margin_linux = 4;
-    constexpr auto additional_spacing_linux = 8;
     constexpr auto arrow_top_margin = 2;
     constexpr auto arrow_left_margin = 4;
     constexpr auto arrow_size = 16;
 
-    constexpr auto key_combination_timeout_ms = 1000;
-
     QSize defaultHeaderButtonSize()
     {
         return Utils::scale_value(QSize(24, 24));
-    }
-
-    int badgeTextPadding()
-    {
-        return Utils::scale_value(4);
-    }
-
-    int badgeBorderWidth()
-    {
-        return Utils::scale_value(1);
-    }
-
-    int badgeHeight()
-    {
-        return Utils::scale_value(18);
     }
 
     int badgeOffset()
@@ -68,12 +51,7 @@ namespace
 
     QColor badgeTextColor()
     {
-        return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT);
-    }
-
-    QColor badgeBalloonColor()
-    {
-        return Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY);
+        return Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE);
     }
 
     int getHeaderHeight()
@@ -141,7 +119,7 @@ namespace Ui
         setStyleSheet(qsl("background: %1; border-style: none;").arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_BRIGHT_INVERSE)));
 
         titleBar_->setTitle(_text);
-        Testing::setAccessibleName(titleBar_, qsl("AS top search titleBar_"));
+        Testing::setAccessibleName(titleBar_, qsl("AS ResentSearch titleBar"));
         layout->addWidget(titleBar_);
 
         auto cancel = new HeaderTitleBarButton(this);
@@ -152,13 +130,14 @@ namespace Ui
         cancel->setNormalTextColor(Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY));
         cancel->setHoveredTextColor(Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY_HOVER));
         cancel->setPressedTextColor(Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY_ACTIVE));
-        Testing::setAccessibleName(cancel, qsl("AS headerbutton search cancel"));
+        Testing::setAccessibleName(cancel, qsl("AS ResentSearch cancelButton"));
 
         titleBar_->addButtonToRight(cancel);
         cancel->setFixedHeight(Utils::scale_value(20));
         cancel->setFixedWidth(cancel->sizeHint().width());
 
         connect(cancel, &CustomButton::clicked, this, &SearchHeader::cancelClicked);
+        setFixedHeight(getHeaderHeight());
     }
 
     //----------------------------------------------------------------------
@@ -170,18 +149,16 @@ namespace Ui
 
         leftSpacer_ = new QWidget(this);
         leftSpacer_->setFixedWidth(Utils::scale_value(left_margin));
-        Testing::setAccessibleName(leftSpacer_, qsl("AS top leftSpacer_"));
         layout->addWidget(leftSpacer_);
 
         backBtn_ = new CustomButton(this, qsl(":/controls/back_icon"), QSize(20, 20));
         backBtn_->setFixedSize(Utils::scale_value(QSize(12, 32)));
         Styling::Buttons::setButtonDefaultColors(backBtn_);
-        Testing::setAccessibleName(backBtn_, qsl("AS top backBtn_"));
+        Testing::setAccessibleName(backBtn_, qsl("AS Unknown backButton"));
         layout->addWidget(backBtn_);
 
         spacer_ = new QWidget(this);
         spacer_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
-        Testing::setAccessibleName(spacer_, qsl("AS top spacer_"));
         layout->addWidget(spacer_);
 
         delAllBtn_ = new QPushButton(QT_TRANSLATE_NOOP("contact_list", "CLOSE ALL"), this);
@@ -190,6 +167,7 @@ namespace Ui
         delAllBtn_->setCursor(Qt::PointingHandCursor);
         // FONT NOT FIXED
         delAllBtn_->setFont(Fonts::appFontScaled(15, Fonts::FontWeight::SemiBold));
+        Testing::setAccessibleName(delAllBtn_, qsl("AS Unknown closeAllButton"));
         Utils::ApplyStyle(delAllBtn_,
             qsl(
                 "QPushButton { color: %1; }"
@@ -201,12 +179,10 @@ namespace Ui
                 Styling::getParameters().getColorHex(Styling::StyleVariable::SECONDARY_ATTENTION_ACTIVE))
         );
 
-        Testing::setAccessibleName(delAllBtn_, qsl("AS top delAllBtn_"));
         layout->addWidget(delAllBtn_);
 
         rightSpacer_ = new QWidget(this);
         rightSpacer_->setFixedWidth(Utils::scale_value(right_margin));
-        Testing::setAccessibleName(rightSpacer_, qsl("AS top rightSpacer_"));
         layout->addWidget(rightSpacer_);
 
         connect(backBtn_, &CustomButton::clicked, this, &UnknownsHeader::backClicked);
@@ -215,7 +191,7 @@ namespace Ui
 
     void UnknownsHeader::deleteAllClicked()
     {
-        emit Utils::InterConnector::instance().unknownsDeleteThemAll();
+        Q_EMIT Utils::InterConnector::instance().unknownsDeleteThemAll();
         GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::unknowns_closeall);
         GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::chats_unknown_senders_close_all);
     }
@@ -243,8 +219,13 @@ namespace Ui
         auto layout = Utils::emptyVLayout(this);
 
         titleBar_->setTitle(QT_TRANSLATE_NOOP("head", "Chats"));
+        statusWidget_ = new ContactAvatarWidget(this, QString(), QString(), Utils::scale_value(24), true);
+        statusWidget_->SetMode(ContactAvatarWidget::Mode::ChangeStatus);
+        statusWidget_->setFixedSize(Utils::scale_value(32), Utils::scale_value(32));
+        titleBar_->addCentralWidget(statusWidget_);
 
-        Testing::setAccessibleName(titleBar_, qsl("AS top titleBar_"));
+        Testing::setAccessibleName(titleBar_, qsl("AS RecentsTab titleBar"));
+        Testing::setAccessibleName(statusWidget_, qsl("AS RecentsTab statusButton"));
         layout->addWidget(titleBar_);
 
         pencil_ = new HeaderTitleBarButton(this);
@@ -254,31 +235,53 @@ namespace Ui
 
         addButtonToRight(pencil_);
 
-        Testing::setAccessibleName(pencil_, qsl("AS headerbutton pencil_"));
+        Testing::setAccessibleName(pencil_, qsl("AS RecentsTab writeButton"));
 
         connect(pencil_, &CustomButton::clicked, this, &RecentsHeader::pencilClicked);
         connect(pencil_, &CustomButton::clicked, this, &RecentsHeader::onPencilClicked);
 
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::titleButtonsUpdated, this, &RecentsHeader::titleButtonsUpdated);
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::hideSearchDropdown, this, [this]() { pencil_->setActive(false); });
+        connect(MyInfo(), &my_info::received, this, [this]()
+        {
+            statusWidget_->UpdateParams(MyInfo()->aimId(), MyInfo()->friendly());
+        });
+
+        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::omicronUpdated, this, &RecentsHeader::updateTitle);
+        connect(get_gui_settings(), &qt_gui_settings::changed, this, [this](const QString& _key)
+        {
+            if (_key == ql1s(settings_allow_statuses))
+                updateTitle();
+        });
+
+        updateTitle();
     }
 
     void RecentsHeader::onPencilClicked()
     {
-        emit Utils::InterConnector::instance().setSearchFocus();
-        emit Utils::InterConnector::instance().showSearchDropdownFull();
+        Q_EMIT Utils::InterConnector::instance().setSearchFocus();
+        Q_EMIT Utils::InterConnector::instance().showSearchDropdownFull();
 
         if constexpr (platform::is_linux())
-            emit Utils::InterConnector::instance().hideTitleButtons();
+            Q_EMIT Utils::InterConnector::instance().hideTitleButtons();
 
         GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::pencil_click);
         pencil_->setActive(true);
     }
 
+    void RecentsHeader::updateTitle()
+    {
+        const auto showStatus = Statuses::isStatusEnabled();
+        titleBar_->setTitleVisible(!showStatus);
+        titleBar_->setCentralWidgetVisible(showStatus);
+        refresh();
+        update();
+    }
+
     void RecentsHeader::titleButtonsUpdated()
     {
         if (platform::is_linux() && state_ == LeftPanelState::picture_only)
-            emit Utils::InterConnector::instance().hideTitleButtons();
+            Q_EMIT Utils::InterConnector::instance().hideTitleButtons();
     }
 
     void RecentsHeader::addButtonToLeft(HeaderTitleBarButton* _button)
@@ -294,13 +297,15 @@ namespace Ui
     void RecentsHeader::refresh()
     {
         titleBar_->refresh();
+        update();
     }
 
     void RecentsHeader::setState(const LeftPanelState _state)
     {
         titleBar_->setCompactMode(_state == LeftPanelState::picture_only);
-
+        updateTitle();
         TopPanelHeader::setState(_state);
+        refresh();
     }
 
     //----------------------------------------------------------------------
@@ -314,40 +319,32 @@ namespace Ui
 
         auto addHeader = [this](auto _header, const QString& _accessibleName)
         {
-            _header->setFixedHeight(getHeaderHeight());
-
             _header->setStyleSheet(qsl("background: %1; border-style: none;").arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE)));
-            Testing::setAccessibleName(_header, qsl("AS top ") % _accessibleName);
+            Testing::setAccessibleName(_header, _accessibleName);
             stackWidget_->addWidget(_header);
 
             return _header;
         };
 
-        recentsHeader_ = addHeader(new RecentsHeader(this), qsl("recentsHeader_"));
-        unknownsHeader_ = addHeader(new UnknownsHeader(this), qsl("unknownsHeader_"));
-        searchHeader_ = addHeader(new SearchHeader(this, QT_TRANSLATE_NOOP("head", "Search")), qsl("searchHeader_"));
+        recentsHeader_ = addHeader(new RecentsHeader(this), qsl("AS Recents header"));
+        unknownsHeader_ = addHeader(new UnknownsHeader(this), qsl("AS Unknown header"));
+        searchHeader_ = addHeader(new SearchHeader(this, QT_TRANSLATE_NOOP("head", "Search")), qsl("AS Search header"));
 
         stackWidget_->setCurrentWidget(recentsHeader_);
 
-        stackWidget_->setFixedHeight(getHeaderHeight());
         layout->addWidget(stackWidget_);
 
         searchWidget_ = new SearchWidget(this);
 
         searchWidget_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+        stackWidget_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
+        setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
 
-        Testing::setAccessibleName(searchWidget_, qsl("AS top searchWidget_"));
+        Testing::setAccessibleName(searchWidget_, qsl("AS Search widget"));
         layout->addWidget(searchWidget_);
 
-        // BGCOLOR
-        Utils::ApplyStyle(this,
-            qsl("background-color: %1;"
-                /*"border-right-style: solid;"
-                "border-right-color: %2;"
-                "border-radius: 16dip;"*/)
-            .arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE))
-            //.arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE))
-        );
+        Utils::ApplyStyle(this, qsl("background-color: %1;")
+                .arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE)));
 
         connect(searchWidget_, &Ui::SearchWidget::activeChanged, this, &TopPanelWidget::searchActiveChanged);
         connect(searchWidget_, &Ui::SearchWidget::escapePressed, this, &TopPanelWidget::searchEscapePressed);
@@ -356,17 +353,25 @@ namespace Ui
         connect(unknownsHeader_, &UnknownsHeader::backClicked, this, &TopPanelWidget::back);
         connect(searchHeader_, &SearchHeader::cancelClicked, this, &TopPanelWidget::searchCancelled);
         connect(searchHeader_, &SearchHeader::cancelClicked, searchWidget_, &SearchWidget::searchCompleted);
+        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::omicronUpdated, this, &TopPanelWidget::updateHeader);
+        connect(get_gui_settings(), &qt_gui_settings::changed, this, [this](const QString& _key)
+        {
+            if (_key == ql1s(settings_allow_statuses))
+                updateHeader();
+        });
 
         setRegime(Regime::Recents);
         setState(LeftPanelState::normal);
-
-        setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
+        updateGeometry();
     }
 
     void TopPanelWidget::setState(const LeftPanelState _state)
     {
         if (state_ == _state)
+        {
+            updateHeader();
             return;
+        }
         TopPanelHeader::setState(_state);
 
         recentsHeader_->setState(_state);
@@ -376,16 +381,21 @@ namespace Ui
         updateSearchWidgetVisibility();
         if (searchWasVisible && !searchWidget_->isVisible())
             endSearch();
+        else
+            updateHeader();
     }
 
     void TopPanelWidget::setRegime(const Regime _regime)
     {
         assert(_regime != Regime::Invalid);
         if (regime_ == _regime)
+        {
+            updateHeader();
             return;
+        }
 
         if (isSearchRegime(regime_) && !isSearchRegime(_regime))
-            emit Utils::InterConnector::instance().searchClosed();
+            Q_EMIT Utils::InterConnector::instance().searchClosed();
 
         regime_ = _regime;
 
@@ -405,6 +415,7 @@ namespace Ui
             break;
         }
         updateSearchWidgetVisibility();
+        updateHeader();
     }
 
     TopPanelWidget::Regime TopPanelWidget::getRegime() const
@@ -450,7 +461,7 @@ namespace Ui
             if (const auto mp = mw->getMainPage())
             {
                 if (_active && mp->isSearchInDialog() && config::get().is_on(config::features::add_contact))
-                    emit Utils::InterConnector::instance().showSearchDropdownAddContact();
+                    Q_EMIT Utils::InterConnector::instance().showSearchDropdownAddContact();
             }
         }
     }
@@ -463,15 +474,30 @@ namespace Ui
 
     void TopPanelWidget::endSearch()
     {
-        emit needSwitchToRecents();
-        emit Utils::InterConnector::instance().hideSearchDropdown();
+        Q_EMIT needSwitchToRecents();
+        Q_EMIT Utils::InterConnector::instance().hideSearchDropdown();
 
         searchWidget_->setDefaultPlaceholder();
+        updateHeader();
     }
 
     void TopPanelWidget::updateSearchWidgetVisibility()
     {
-        searchWidget_->setVisible(state_ != LeftPanelState::picture_only && (regime_ == Regime::Recents || isSearchRegime(regime_)));
+        searchWidget_->setVisible(isSearchWidgetVisible());
+    }
+
+    void TopPanelWidget::updateHeader()
+    {
+        recentsHeader_->updateTitle();
+        stackWidget_->adjustSize();
+        stackWidget_->updateGeometry();
+        setFixedHeight(stackWidget_->height() + (isSearchWidgetVisible() ? searchWidget_->height() : 0));
+        update();
+    }
+
+    bool TopPanelWidget::isSearchWidgetVisible()
+    {
+        return state_ != LeftPanelState::picture_only && (regime_ == Regime::Recents || isSearchRegime(regime_));
     }
 
     //----------------------------------------------------------------------
@@ -539,35 +565,52 @@ namespace Ui
 
     HeaderTitleBar::HeaderTitleBar(QWidget* _parent)
         : QWidget(_parent)
-        , LeftLayout_(Utils::emptyHLayout())
-        , RightLayout_(Utils::emptyHLayout())
+        , mainLayout_(Utils::emptyGridLayout(this))
+        , leftWidget_(new QWidget())
+        , centerWidget_(new QWidget())
+        , rightWidget_(new QWidget())
+        , leftSpacer_(nullptr)
+        , rightSpacer_(nullptr)
         , overlayWidget_(new OverlayTopWidget(this))
         , isCompactMode_(false)
         , buttonSize_(defaultHeaderButtonSize())
         , arrowVisible_(false)
+        , titleVisible_(true)
     {
-        setFixedHeight(getHeaderHeight());
+        leftLayout_ = Utils::emptyHLayout(leftWidget_);
+        centerLayout_ = Utils::emptyHLayout(centerWidget_);
+        rightLayout_ = Utils::emptyHLayout(rightWidget_);
 
-        LeftLayout_->setContentsMargins(Utils::scale_value(16), 0, 0, 0);
-        RightLayout_->setContentsMargins(0, 0, Utils::scale_value(16), 0);
+        leftLayout_->addSpacerItem(new QSpacerItem(0, 0, QSizePolicy::Expanding));
+        centerLayout_->addSpacerItem(new QSpacerItem(0, 0, QSizePolicy::Expanding));
+        centerLayout_->addSpacerItem(new QSpacerItem(0, 0, QSizePolicy::Expanding));
+        rightLayout_->addSpacerItem(new QSpacerItem(0, 0, QSizePolicy::Expanding));
+        leftSpacer_ = new QSpacerItem(0, 0, QSizePolicy::Preferred);
+        rightSpacer_ = new QSpacerItem(0, 0, QSizePolicy::Preferred);
 
-        LeftLayout_->addSpacerItem(new QSpacerItem(0, height(), QSizePolicy::Expanding));
-        RightLayout_->addSpacerItem(new QSpacerItem(0, height(), QSizePolicy::Expanding));
+        leftLayout_->setSpacing(Utils::scale_value(8));
+        rightLayout_->setSpacing(Utils::scale_value(8));
 
-        LeftLayout_->setSpacing(Utils::scale_value(8));
-        RightLayout_->setSpacing(Utils::scale_value(8));
+        leftWidget_->setStyleSheet(qsl("background: transparent; border: none;"));
+        centerWidget_->setStyleSheet(qsl("background: transparent; border: none;"));
+        rightWidget_->setStyleSheet(qsl("background: transparent; border: none;"));
 
-        auto layout = Utils::emptyHLayout(this);
-        layout->addLayout(LeftLayout_);
-        layout->addSpacerItem(new QSpacerItem(0, height(), QSizePolicy::Expanding));
-        layout->addLayout(RightLayout_);
+        leftLayout_->setContentsMargins(Utils::scale_value(16), 0, 0, 0);
+        centerLayout_->setContentsMargins(Utils::scale_value(6), Utils::scale_value(8), 0, 0);
+        rightLayout_->setContentsMargins(0, 0, Utils::scale_value(16), 0);
+
+        mainLayout_->addWidget(leftWidget_, 0, 0);
+        mainLayout_->addItem(leftSpacer_, 0, 1);
+        mainLayout_->addWidget(centerWidget_, 0, 2);
+        mainLayout_->addItem(rightSpacer_, 0, 3);
+        mainLayout_->addWidget(rightWidget_, 0, 4);
 
         titleTextUnit_ = TextRendering::MakeTextUnit(title_);
-        // FONT
         titleTextUnit_->init(Fonts::appFontScaled(16, Fonts::FontWeight::SemiBold),
                              Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
 
         setMouseTracking(true);
+        refresh();
     }
 
     HeaderTitleBar::~HeaderTitleBar()
@@ -579,22 +622,29 @@ namespace Ui
         if (title_ != _title)
         {
             title_ = _title;
-            // FONT NOT FIXED
+            titleVisible_ = true;
             titleTextUnit_->setText(title_, Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
             update();
         }
+        refresh();
     }
 
     void HeaderTitleBar::addButtonToLeft(HeaderTitleBarButton* _button)
     {
-        LeftLayout_->insertWidget(LeftLayout_->count() - 1, _button);
+        leftLayout_->insertWidget(leftLayout_->count() - 1, _button);
         addButtonImpl(_button);
     }
 
     void HeaderTitleBar::addButtonToRight(HeaderTitleBarButton * _button)
     {
-        RightLayout_->insertWidget(1, _button);
+        rightLayout_->insertWidget(1, _button);
         addButtonImpl(_button);
+    }
+
+    void HeaderTitleBar::addCentralWidget(QWidget *_widget)
+    {
+        centerLayout_->insertWidget(1, _widget);
+        refresh();
     }
 
     void HeaderTitleBar::addButtonImpl(HeaderTitleBarButton * _button)
@@ -624,7 +674,6 @@ namespace Ui
         if (isCompactMode_ != _value)
         {
             isCompactMode_ = _value;
-
             refresh();
         }
     }
@@ -637,17 +686,44 @@ namespace Ui
                 b->setVisible(b->isPersistent() || (!isCompactMode_ && b->getVisibility()));
         }
 
+        leftWidget_->setVisible(!isCompactMode_);
         if (isCompactMode_)
         {
-            LeftLayout_->setContentsMargins(Utils::scale_value(22), 0, 0, 0);
-            RightLayout_->setContentsMargins(0, 0, Utils::scale_value(22), 0);
+            setFixedHeight(Statuses::isStatusEnabled() ? 2 * getHeaderHeight() : getHeaderHeight());
+            rightLayout_->setContentsMargins(0, 0, Utils::scale_value(22), 0);
+            mainLayout_->removeWidget(leftWidget_);
+            mainLayout_->removeWidget(centerWidget_);
+            mainLayout_->removeWidget(rightWidget_);
+            mainLayout_->removeItem(leftSpacer_);
+            mainLayout_->removeItem(rightSpacer_);
+            if (!titleVisible_)
+            {
+                mainLayout_->addWidget(centerWidget_, 0, 0);
+                mainLayout_->addWidget(rightWidget_, 1, 0);
+            }
+            else
+            {
+                mainLayout_->addWidget(rightWidget_, 0, 0);
+            }
         }
         else
         {
-            LeftLayout_->setContentsMargins(Utils::scale_value(16), 0, 0, 0);
-            RightLayout_->setContentsMargins(0, 0, Utils::scale_value(16), 0);
-        }
+            setFixedHeight(getHeaderHeight());
+            rightLayout_->setContentsMargins(0, 0, Utils::scale_value(16), 0);
 
+            mainLayout_->removeWidget(leftWidget_);
+            mainLayout_->removeWidget(centerWidget_);
+            mainLayout_->removeWidget(rightWidget_);
+            mainLayout_->removeItem(leftSpacer_);
+            mainLayout_->removeItem(rightSpacer_);
+            mainLayout_->addWidget(leftWidget_, 0, 0);
+            mainLayout_->addItem(leftSpacer_, 0, 1);
+            mainLayout_->addWidget(centerWidget_, 0, 2);
+            mainLayout_->addItem(rightSpacer_, 0, 3);
+            mainLayout_->addWidget(rightWidget_, 0, 4);
+        }
+        mainLayout_->invalidate();
+        updateSpacers();
         update();
     }
 
@@ -657,6 +733,19 @@ namespace Ui
         update();
     }
 
+    void HeaderTitleBar::setTitleVisible(bool _visible)
+    {
+        titleVisible_ = _visible;
+        update();
+    }
+
+    void HeaderTitleBar::setCentralWidgetVisible(bool _visible)
+    {
+        centerWidget_->setVisible(_visible);
+        update();
+    }
+
+    /*
     static void debugLayout(QPainter *painter, QLayoutItem *item)
     {
         QLayout *layout = item->layout();
@@ -666,6 +755,7 @@ namespace Ui
         }
         painter->drawRect(item->geometry());
     }
+    */
 
     void HeaderTitleBar::paintEvent(QPaintEvent* _event)
     {
@@ -683,8 +773,11 @@ namespace Ui
         {
             const auto r = rect();
 
-            titleTextUnit_->setOffsets(r.width() / 2 - titleTextUnit_->cachedSize().width() / 2, r.height() / 2);
-            titleTextUnit_->draw(p, TextRendering::VerPosition::MIDDLE);
+            if (!titleTextUnit_->getText().isEmpty() && titleVisible_)
+            {
+                titleTextUnit_->setOffsets(r.width() / 2 - titleTextUnit_->cachedSize().width() / 2, r.height() / 2);
+                titleTextUnit_->draw(p, TextRendering::VerPosition::MIDDLE);
+            }
 
             if (arrowVisible_)
             {
@@ -729,10 +822,20 @@ namespace Ui
                 titleTextUnit_->cachedSize().height() + Utils::scale_value(arrow_top_margin * 2));
 
             if (r.contains(_event->pos()))
-                emit arrowClicked();
+                Q_EMIT arrowClicked();
         }
 
         QWidget::mouseReleaseEvent(_event);
+    }
+
+    void HeaderTitleBar::updateSpacers()
+    {
+        const auto dX = (leftWidget_->width() - rightWidget_->width()) / 2;
+
+        auto spacerW = (width() - centerWidget_->width()) / 2 - leftWidget_->width();
+        leftSpacer_->changeSize(spacerW, 0, QSizePolicy::Fixed, QSizePolicy::Expanding);
+        rightSpacer_->changeSize(spacerW - dX, 0, QSizePolicy::Preferred, QSizePolicy::Expanding);
+        layout()->invalidate();
     }
 
     EmailTitlebarButton::EmailTitlebarButton(QWidget* _parent)

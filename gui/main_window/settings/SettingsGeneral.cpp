@@ -1,21 +1,21 @@
 #include "stdafx.h"
 #include "GeneralSettingsWidget.h"
 
-#include "../../controls/ConnectionSettingsWidget.h"
-#include "../../controls/GeneralCreator.h"
-#include "../../controls/TextEmojiWidget.h"
-#include "../../controls/TransparentScrollBar.h"
+#include "controls/ConnectionSettingsWidget.h"
+#include "controls/GeneralCreator.h"
+#include "controls/TextEmojiWidget.h"
+#include "controls/TransparentScrollBar.h"
 
-#include "../../../common.shared/config/config.h"
-
-#include "../../core_dispatcher.h"
-#include "../../gui_settings.h"
-#include "../../main_window/MainWindow.h"
-#include "../../utils/InterConnector.h"
-#include "../../utils/utils.h"
-#include "../../utils/translator.h"
-#include "../../utils/features.h"
-#include "../../styles/ThemeParameters.h"
+#include "core_dispatcher.h"
+#include "gui_settings.h"
+#include "main_window/MainWindow.h"
+#include "main_window/sidebar/SidebarUtils.h"
+#include "utils/InterConnector.h"
+#include "utils/utils.h"
+#include "utils/translator.h"
+#include "utils/features.h"
+#include "styles/ThemeParameters.h"
+#include "statuses/StatusUtils.h"
 
 using namespace Ui;
 
@@ -36,26 +36,35 @@ void GeneralSettingsWidget::Creator::initGeneral(GeneralSettings* _parent)
     scrollArea->setWidget(mainWidget);
 
     auto layout = Utils::emptyHLayout(_parent);
-    Testing::setAccessibleName(scrollArea, qsl("AS settings scrollArea"));
+    Testing::setAccessibleName(scrollArea, qsl("AS GeneralPage scrollArea"));
     layout->addWidget(scrollArea);
 
-    const auto addSimpleSwitcher = [scrollArea, mainLayout](const auto& _caption, const char* _name, const bool _defaultValue, const std::function<void(bool)> _func = {})
+    const auto addSimpleSwitcher = [scrollArea, mainLayout](const auto& _caption, const char* _name, const bool _defaultValue, const QString& _accName = QString(), std::function<void(bool)> _func = {})
     {
-        return GeneralCreator::addSwitcher(
+        auto switcher = GeneralCreator::addSwitcher(
             scrollArea,
             mainLayout,
             _caption,
             get_gui_settings()->get_value<bool>(_name, _defaultValue),
-            [_name, _defaultValue, _func](bool checked)
+            [_name, _defaultValue, _func = std::move(_func)](bool checked)
             {
                 if (get_gui_settings()->get_value<bool>(_name, _defaultValue) != checked)
                     get_gui_settings()->set_value<bool>(_name, checked);
 
                 if (_func)
                     _func(checked);
+            }, -1, _accName);
 
-                return QString();
-            });
+        connect(get_gui_settings(), &qt_gui_settings::changed, switcher, [switcher, _name, _defaultValue](const QString& _key)
+        {
+            if (_key == ql1s(_name))
+            {
+                QSignalBlocker sb(switcher);
+                switcher->setChecked(get_gui_settings()->get_value<bool>(_name, _defaultValue));
+            }
+        });
+
+        return switcher;
     };
 
     {
@@ -73,12 +82,12 @@ void GeneralSettingsWidget::Creator::initGeneral(GeneralSettings* _parent)
                     mainLayout,
                     QT_TRANSLATE_NOOP("settings", "Launch when system starts"),
                     Utils::isStartOnStartup(),
-                    [_parent](bool checked) -> QString {
+                    [_parent](bool checked) {
                         if (Utils::isStartOnStartup() != checked)
                             Utils::setStartOnStartup(checked);
 
-
-                        if (_parent->launchMinimized_ != nullptr) {
+                        if (_parent->launchMinimized_)
+                        {
                             {
                                 QSignalBlocker sb(_parent->launchMinimized_);
 
@@ -91,19 +100,14 @@ void GeneralSettingsWidget::Creator::initGeneral(GeneralSettings* _parent)
 
                             _parent->launchMinimized_->setEnabled(checked);
                         }
-
-                        return QString();
-                    });
+                    }, -1, qsl("AS GeneralPage launchWenSystemStartSetting"));
 
             _parent->launchMinimized_ = GeneralCreator::addSwitcher(
                     scrollArea,
                     mainLayout,
                     QT_TRANSLATE_NOOP("settings", "Launch minimized"),
                     get_gui_settings()->get_value<bool>(settings_start_minimazed, true),
-                    [](bool checked) -> QString {
-                        get_gui_settings()->set_value<bool>(settings_start_minimazed, checked);
-                        return QString();
-                    });
+                    [](bool checked) { get_gui_settings()->set_value<bool>(settings_start_minimazed, checked); }, -1, qsl("AS GeneralPage launchMinimizedSetting"));
 
             if (!Utils::isStartOnStartup())
             {
@@ -115,11 +119,11 @@ void GeneralSettingsWidget::Creator::initGeneral(GeneralSettings* _parent)
                     mainLayout,
                     QT_TRANSLATE_NOOP("settings", "Show taskbar icon"),
                     get_gui_settings()->get_value<bool>(settings_show_in_taskbar, true),
-                    [](bool checked) -> QString {
-                        emit Utils::InterConnector::instance().showIconInTaskbar(checked);
+                    [](bool checked)
+                    {
+                        Q_EMIT Utils::InterConnector::instance().showIconInTaskbar(checked);
                         get_gui_settings()->set_value<bool>(settings_show_in_taskbar, checked);
-                        return QString();
-                    });
+                    }, -1, qsl("AS GeneralPage launchWenSystemStartSetting"));
         }
 
         if constexpr (platform::is_apple())
@@ -129,13 +133,13 @@ void GeneralSettingsWidget::Creator::initGeneral(GeneralSettings* _parent)
                     mainLayout,
                     QT_TRANSLATE_NOOP("settings", "Show in menu bar"),
                     get_gui_settings()->get_value(settings_show_in_menubar, false),
-                    [](bool checked) -> QString {
+                    [](bool checked)
+                    {
                         if (Utils::InterConnector::instance().getMainWindow())
                             Utils::InterConnector::instance().getMainWindow()->showMenuBarIcon(checked);
                         if (get_gui_settings()->get_value(settings_show_in_menubar, false) != checked)
                             get_gui_settings()->set_value(settings_show_in_menubar, checked);
-                        return QString();
-                    });
+                    }, -1, qsl("AS GeneralPage showInMenubarSetting"));
         }
 
         mainLayout->addSpacing(Utils::scale_value(20));
@@ -144,56 +148,42 @@ void GeneralSettingsWidget::Creator::initGeneral(GeneralSettings* _parent)
         GeneralCreator::addHeader(scrollArea, mainLayout, QT_TRANSLATE_NOOP("settings", "Chat"), 20);
         mainLayout->addSpacing(Utils::scale_value(12));
 
+        _parent->previewLinks_ = addSimpleSwitcher(QT_TRANSLATE_NOOP("settings", "Preview links"), settings_show_video_and_images, true, qsl("AS GeneralPage previewLinksSetting"));
 
-        addSimpleSwitcher(QT_TRANSLATE_NOOP("settings", "Consequently marking messages as read"), settings_partial_read, settings_partial_read_default(), [](const bool _checked)
-        {
-            GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::settings_main_readall_action, { {"Change_Position", std::string(_checked ? "+" : "-")} });
-        });
-
-        if (config::get().is_on(config::features::snippet_in_chat))
-            addSimpleSwitcher(QT_TRANSLATE_NOOP("settings", "Preview links"), settings_show_video_and_images, true);
-
-        addSimpleSwitcher(QT_TRANSLATE_NOOP("settings", "Auto play videos"), settings_autoplay_video, true);
-        addSimpleSwitcher(QT_TRANSLATE_NOOP("settings", "Turn on video sound on hover"), settings_hoversound_video, settings_hoversound_video_default());
-        addSimpleSwitcher(QT_TRANSLATE_NOOP("settings", "Auto play GIFs"), settings_autoplay_gif, true);
-        addSimpleSwitcher(QT_TRANSLATE_NOOP("settings", "Show read status in groups"), settings_show_groupchat_heads, true, [](const bool _checked)
+        addSimpleSwitcher(QT_TRANSLATE_NOOP("settings", "Auto play videos"), settings_autoplay_video, true, qsl("AS GeneralPage autoplayVideoSetting"));
+        addSimpleSwitcher(QT_TRANSLATE_NOOP("settings", "Turn on video sound on hover"), settings_hoversound_video, settings_hoversound_video_default(), qsl("AS GeneralPage turnOnVideoSoundOnHoverSetting"));
+        addSimpleSwitcher(QT_TRANSLATE_NOOP("settings", "Auto play GIFs"), settings_autoplay_gif, true, qsl("AS GeneralPage autoplayGIFSetting"));
+        addSimpleSwitcher(QT_TRANSLATE_NOOP("settings", "Show read status in groups"), settings_show_groupchat_heads, true, qsl("AS GeneralPage showReadStatusInGroupSetting"), [](const bool _checked)
         {
             if (_checked)
-                emit Utils::InterConnector::instance().showHeads();
+                Q_EMIT Utils::InterConnector::instance().showHeads();
             else
-                emit Utils::InterConnector::instance().hideHeads();
+                Q_EMIT Utils::InterConnector::instance().hideHeads();
         });
 
-        if (Features::isSmartreplyEnabled())
+        _parent->smartreplySwitcher_ = addSimpleSwitcher(QT_TRANSLATE_NOOP("settings", "Show smart reply"), settings_show_smartreply, settings_show_smartreply_default(), qsl("AS GeneralPage showSmartReplySetting"), [](const bool _checked)
         {
-            auto switcher = addSimpleSwitcher(QT_TRANSLATE_NOOP("settings", "Show smart reply"), settings_show_smartreply, settings_show_smartreply_default(), [](const bool _checked)
-            {
-                if (_checked)
-                    emit Utils::InterConnector::instance().showSmartreplies();
-                else
-                    emit Utils::InterConnector::instance().hideSmartReplies(QString());
+            const core::stats::event_props_type props = { { "enabled", _checked ? "1" : "0" } };
+            GetDispatcher()->post_im_stats_to_core(core::stats::im_stat_event_names::smartreply_settings_swtich, props);
+            GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::settingsscr_smartreply_action, props);
+        });
 
-                const core::stats::event_props_type props = { { "enabled", _checked ? "1" : "0" } };
-                GetDispatcher()->post_im_stats_to_core(core::stats::im_stat_event_names::smartreply_settings_swtich, props);
-                GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::settingsscr_smartreply_action, props);
-            });
+        _parent->spellCheckerSwitcher_ = addSimpleSwitcher(QT_TRANSLATE_NOOP("settings", "Use system spell checker"), settings_spell_check, settings_spell_check_default(), qsl("AS GeneralPage useSpellCheckerSetting"));
 
-            connect(&Utils::InterConnector::instance(), &Utils::InterConnector::smartReplySettingShowChanged, switcher, [switcher]()
-            {
-                QSignalBlocker sb(switcher);
-                switcher->setChecked(get_gui_settings()->get_value<bool>(settings_show_smartreply, settings_show_smartreply_default()));
-            });
-        }
-        addSimpleSwitcher(QT_TRANSLATE_NOOP("settings", "Close search after result selection"), settings_fast_drop_search_results, settings_fast_drop_search_default());
+        addSimpleSwitcher(QT_TRANSLATE_NOOP("settings", "Close search after result selection"), settings_fast_drop_search_results, settings_fast_drop_search_default(), qsl("AS GeneralPage closeSearchAfterResultSelectionSetting"));
 
-        if (Features::isSuggestsEnabled())
+        _parent->suggestsEmojiSwitcher_ = addSimpleSwitcher(QT_TRANSLATE_NOOP("settings", "Show stickers suggests for emoji"), settings_show_suggests_emoji, true, qsl("AS GeneralPage showStickerSuggestsForEmojiSetting"));
+        _parent->suggestsWordsSwitcher_ = addSimpleSwitcher(QT_TRANSLATE_NOOP("settings", "Show stickers suggests for words"), settings_show_suggests_words, true, qsl("AS GeneralPage showStickerSuggestsForWordsSetting"));
+
+        addSimpleSwitcher(QT_TRANSLATE_NOOP("settings", "Automatically replace emojis"), settings_autoreplace_emoji, settings_autoreplace_emoji_default(), qsl("AS GeneralPage autoReplaceEmojiSetting"));
+        addSimpleSwitcher(QT_TRANSLATE_NOOP("settings", "Big emoji in chat"), settings_allow_big_emoji, settings_allow_big_emoji_default(), qsl("AS GeneralPage bigEmojiInChatSetting"), [](const bool)
         {
-            addSimpleSwitcher(QT_TRANSLATE_NOOP("settings", "Show stickers suggests for emoji"), settings_show_suggests_emoji, true);
-            addSimpleSwitcher(QT_TRANSLATE_NOOP("settings", "Show stickers suggests for words"), settings_show_suggests_words, true);
-        }
+            Q_EMIT Utils::InterConnector::instance().emojiSizeChanged();
+        });
 
-        addSimpleSwitcher(QT_TRANSLATE_NOOP("settings", "Automatically replace emojis"), settings_autoreplace_emoji, settings_autoreplace_emoji_default());
-        addSimpleSwitcher(QT_TRANSLATE_NOOP("settings", "Big emoji in chat"), settings_allow_big_emoji, settings_allow_big_emoji_default());
+        _parent->reactionsSwitcher_ = addSimpleSwitcher(QT_TRANSLATE_NOOP("settings", "Show reactions to messages"), settings_show_reactions, settings_show_reactions_default(), qsl("AS GeneralPage showReactionsSetting"));
+
+        _parent->statusSwitcher_ = addSimpleSwitcher(QT_TRANSLATE_NOOP("settings", "Show statuses"), settings_allow_statuses, settings_allow_statuses_default(), qsl("AS GeneralPage showStatusesSetting"));
 
         mainLayout->addSpacing(Utils::scale_value(20));
 
@@ -212,14 +202,24 @@ void GeneralSettingsWidget::Creator::initGeneral(GeneralSettings* _parent)
                 path->setText(r);
                 Ui::setDownloadPath(QDir::toNativeSeparators(r));
             }
-        });
+        }, qsl("AS GeneralPage downloadPath"));
         mainLayout->addSpacing(Utils::scale_value(20));
     }
+
+    {
+        GeneralCreator::addHeader(scrollArea, mainLayout, QT_TRANSLATE_NOOP("settings", "Calls"), 20);
+        mainLayout->addSpacing(Utils::scale_value(12));
+
+        addSimpleSwitcher(QT_TRANSLATE_NOOP("settings", "Show calls tab"), settings_show_calls_tab, true, qsl("AS GeneralPage showCallsTabSetting"));
+
+        mainLayout->addSpacing(Utils::scale_value(20));
+    }
+
     {
         GeneralCreator::addHeader(scrollArea, mainLayout, QT_TRANSLATE_NOOP("settings", "Contacts"), 20);
         mainLayout->addSpacing(Utils::scale_value(12));
 
-        addSimpleSwitcher(QT_TRANSLATE_NOOP("settings", "Show popular contacts"), settings_show_popular_contacts, true);
+        addSimpleSwitcher(QT_TRANSLATE_NOOP("settings", "Show popular contacts"), settings_show_popular_contacts, true, qsl("AS GeneralPage showPopularContactsSetting"));
 
         mainLayout->addSpacing(Utils::scale_value(20));
     }
@@ -237,6 +237,6 @@ void GeneralSettingsWidget::Creator::initGeneral(GeneralSettings* _parent)
             auto connection_settings_widget_ = new ConnectionSettingsWidget(_parent);
             connection_settings_widget_->show();
             GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::proxy_open);
-        });
+        }, qsl("AS GeneralPage proxy"));
     }
 }

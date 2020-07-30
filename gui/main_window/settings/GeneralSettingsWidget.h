@@ -2,7 +2,6 @@
 
 #include "../../controls/GeneralCreator.h"
 #include "../../voip/VoipProxy.h"
-#include "main_window/sidebar/SidebarUtils.h"
 
 namespace Utils
 {
@@ -17,7 +16,7 @@ namespace Ui
     }
 
     class TextEmojiWidget;
-
+    class SessionsPage;
     class ConnectionSettingsWidget;
 
     class GeneralSettings : public QWidget
@@ -30,10 +29,21 @@ namespace Ui
         TextEmojiWidget* connectionTypeChooser_;
         TextEmojiWidget* downloadPathChooser_;
         SidebarCheckboxButton* launchMinimized_;
+        SidebarCheckboxButton* smartreplySwitcher_;
+        SidebarCheckboxButton* spellCheckerSwitcher_;
+        SidebarCheckboxButton* suggestsEmojiSwitcher_;
+        SidebarCheckboxButton* suggestsWordsSwitcher_;
+        SidebarCheckboxButton* statusSwitcher_;
+        SidebarCheckboxButton* previewLinks_;
+        SidebarCheckboxButton* reactionsSwitcher_;
 
     public Q_SLOTS:
         void recvUserProxy();
         void downloadPathUpdated();
+        void onOmicronUpdate();
+
+    protected:
+        void showEvent(QShowEvent*) override;
     };
 
     class NotificationSettings : public QWidget
@@ -47,6 +57,23 @@ namespace Ui
 
     private Q_SLOTS:
        void value_changed(const QString&);
+    };
+
+    class ShortcutsSettings : public QWidget
+    {
+    Q_OBJECT
+
+    public:
+        ShortcutsSettings(QWidget* _parent);
+
+        QWidget* statuses_;
+
+    private Q_SLOTS:
+        void onSettingsChanged(const QString &_name);
+        void onOmicronUpdate();
+
+    protected:
+        void showEvent(QShowEvent *_event);
     };
 
     class GeneralSettingsWidget : public QStackedWidget
@@ -89,11 +116,11 @@ namespace Ui
         QWidget* contactus_ = nullptr;
         QWidget* attachPhone_ = nullptr;
         QWidget* language_ = nullptr;
-        QWidget* shortcuts_ = nullptr;
+        ShortcutsSettings* shortcuts_ = nullptr;
         QWidget* security_ = nullptr;
         Stickers::Store* stickersStore_ = nullptr;
         QWidget* debugSettings_ = nullptr;
-
+        SessionsPage* sessions_ = nullptr;
 
         struct Creator
         {
@@ -104,7 +131,7 @@ namespace Ui
             static void initNotifications(NotificationSettings* _parent);
             static void initContactUs(QWidget* _parent);
             static void initLanguage(QWidget* _parent);
-            static void initShortcuts(QWidget* _parent);
+            static void initShortcuts(ShortcutsSettings* _parent);
             static void initSecurity(QWidget* _parent);
         };
 
@@ -114,9 +141,12 @@ namespace Ui
 
         void setType(int _type);
         void setActiveDevice(const voip_proxy::device_desc& _description);
+        bool isSessionsShown() const;
 
     private:
         void initVoiceAndVideo();
+
+        void initSessionsPage();
 
         bool getDefaultDeviceFlag(const voip_proxy::EvoipDevTypes& type);
         void applyDefaultDeviceLogic(const voip_proxy::device_desc& _description);

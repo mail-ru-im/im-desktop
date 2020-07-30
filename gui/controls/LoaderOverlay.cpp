@@ -52,7 +52,7 @@ namespace Ui
 
     void LoaderOverlay::onClicked()
     {
-        emit cancelled(QPrivateSignal());
+        Q_EMIT cancelled(QPrivateSignal());
     }
 
     void LoaderOverlay::onResize()

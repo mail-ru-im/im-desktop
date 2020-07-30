@@ -5,39 +5,27 @@
 
 #include "del_message_batch.h"
 
-#include "../../urls_cache.h"
-
 CORE_WIM_NS_BEGIN
 
 del_message_batch::del_message_batch(
     wim_packet_params _params,
-    const std::vector<int64_t> _message_ids,
+    std::vector<int64_t>&& _message_ids,
     const std::string &_contact_aimid,
     const bool _for_all
 )
     : robusto_packet(std::move(_params))
-    , message_ids_(_message_ids)
+    , message_ids_(std::move(_message_ids))
     , contact_aimid_(_contact_aimid)
     , for_all_(_for_all)
 {
     assert(!contact_aimid_.empty());
 }
 
-int32_t del_message_batch::init_request(std::shared_ptr<core::http_request_simple> _request)
+int32_t del_message_batch::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     assert(_request);
-
-    constexpr char method[] = "delMsgBatch";
-
-    _request->set_url(urls::get_url(urls::url_type::rapi_host));
-    _request->set_normalized_url(method);
-    _request->set_keep_alive();
-
     rapidjson::Document doc(rapidjson::Type::kObjectType);
     auto& a = doc.GetAllocator();
-
-    doc.AddMember("method", method, a);
-    doc.AddMember("reqId", get_req_id(), a);
 
     rapidjson::Value node_params(rapidjson::Type::kObjectType);
     node_params.AddMember("sn", contact_aimid_, a);
@@ -56,7 +44,7 @@ int32_t del_message_batch::init_request(std::shared_ptr<core::http_request_simpl
 
     doc.AddMember("params", std::move(node_params), a);
 
-    sign_packet(doc, a, _request);
+    setup_common_and_sign(doc, a, _request, "delMsgBatch");
 
     if (!params_.full_log_)
     {

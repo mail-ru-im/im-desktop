@@ -10,6 +10,7 @@
 #include "../../../tools/system.h"
 #include "../../../tools/json_helper.h"
 #include "../../urls_cache.h"
+#include "subscriptions/subscr_types.h"
 
 
 std::string get_start_session_host()
@@ -17,11 +18,10 @@ std::string get_start_session_host()
     return su::concat(core::urls::get_url(core::urls::url_type::wim_host), "aim/startSession");
 }
 
-#define ICQ_APP_IDTYPE "ICQ"
 #define WIM_EVENTS "myInfo,presence,buddylist,typing,dataIM,userAddedToBuddyList,webrtcMsg,mchat,hist,hiddenChat,diff,permitDeny,imState,notification,apps"
-#define WIM_PRESENCEFIELDS "aimId,iconId,bigIconId,largeIconId,displayId,friendly,offlineMsg,state,statusMsg,userType,phoneNumber,cellNumber,smsNumber,workNumber,otherNumber,capabilities,ssl,abPhoneNumber,moodIcon,lastName,abPhones,abContactName,lastseen,mute,livechat,official,public,autoAddition,readonly,nick"
-#define WIM_INTERESTCAPS "8eec67ce70d041009409a7c1602a5c84," WIM_CAP_VOIP_VOICE "," WIM_CAP_VOIP_VIDEO "," WIM_CAP_FOCUS_GROUP_CALLS
-#define WIM_ASSERTCAPS WIM_CAP_VOIP_VOICE "," WIM_CAP_VOIP_VIDEO "," WIM_CAP_FOCUS_GROUP_CALLS "," WIM_CAP_UNIQ_REQ_ID "," WIM_CAP_EMOJI "," WIM_CAP_MAIL_NOTIFICATIONS "," WIM_CAP_MENTIONS "," WIM_CAP_INTRO_DLG_STATE "," WIM_CAP_CHAT_HEADS "," WIM_CAP_GALLERY_NOTIFY "," WIM_CAP_GROUP_SUBSCRIPTION
+#define WIM_PRESENCEFIELDS "aimId,iconId,bigIconId,largeIconId,displayId,friendly,offlineMsg,state,statusMsg,userType,phoneNumber,cellNumber,smsNumber,workNumber,otherNumber,capabilities,ssl,abPhoneNumber,moodIcon,lastName,abPhones,abContactName,lastseen,mute,livechat,official,public,autoAddition,readonly,nick,bot"
+#define WIM_INTERESTCAPS "8eec67ce70d041009409a7c1602a5c84," WIM_CAP_VOIP_VOICE "," WIM_CAP_VOIP_VIDEO "," WIM_CAP_VOIP_RINGING "," WIM_CAP_FOCUS_GROUP_CALLS
+#define WIM_ASSERTCAPS WIM_CAP_VOIP_VOICE "," WIM_CAP_VOIP_VIDEO "," WIM_CAP_VOIP_RINGING "," WIM_CAP_FOCUS_GROUP_CALLS "," WIM_CAP_UNIQ_REQ_ID "," WIM_CAP_EMOJI "," WIM_CAP_MAIL_NOTIFICATIONS "," WIM_CAP_MENTIONS "," WIM_CAP_INTRO_DLG_STATE "," WIM_CAP_CHAT_HEADS "," WIM_CAP_GALLERY_NOTIFY "," WIM_CAP_GROUP_SUBSCRIPTION "," WIM_CAP_RECENT_CALLS "," WIM_CAP_REACTIONS
 #define WIM_INVISIBLE "false"
 
 
@@ -60,7 +60,6 @@ int32_t start_session::init_request_full_start_session(std::shared_ptr<core::htt
     request->set_url(get_start_session_host());
     request->set_normalized_url("startSession");
     request->set_keep_alive();
-    request->set_priority(top_priority());
 
     request->push_post_parameter("f", "json");
     request->push_post_parameter("k", escape_symbols(params_.dev_id_));
@@ -77,15 +76,13 @@ int32_t start_session::init_request_full_start_session(std::shared_ptr<core::htt
     request->push_post_parameter("pointVersion", "0");
     request->push_post_parameter("clientVersion", WIM_APP_VER);
 
-    std::string interest_caps = WIM_INTERESTCAPS;
-    std::string assert_caps = WIM_ASSERTCAPS;
-
     request->push_post_parameter("events", escape_symbols(WIM_EVENTS));
     request->push_post_parameter("includePresenceFields", escape_symbols(WIM_PRESENCEFIELDS));
-    if (!assert_caps.empty())
+
+    if (std::string_view assert_caps = WIM_ASSERTCAPS; !assert_caps.empty())
         request->push_post_parameter("assertCaps", escape_symbols(assert_caps));
 
-    request->push_post_parameter("interestCaps", escape_symbols(interest_caps));
+    request->push_post_parameter("interestCaps", escape_symbols(WIM_INTERESTCAPS));
     request->push_post_parameter("invisible", WIM_INVISIBLE);
     request->push_post_parameter("language", escape_symbols(locale_.empty() ? "en-us" : locale_));
     request->push_post_parameter("mobile", "0");
@@ -103,11 +100,29 @@ int32_t start_session::init_request_full_start_session(std::shared_ptr<core::htt
     request->push_post_parameter("activeTimeout", std::to_string(activeTimeout.count()));
 
     time_t ts = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()) - params_.time_offset_;
-    request->push_post_parameter("ts", tools::from_int64(ts));
+    request->push_post_parameter("ts", std::to_string(ts));
     request->push_post_parameter("view", "online");
     request->push_post_parameter("nonce", core::tools::system::generate_guid());
 
-    request->push_post_parameter("sig_sha256", escape_symbols(get_url_sign(get_start_session_host(), request->get_post_parameters(), params_, true)));
+    if (const auto& types = subscriptions::types_for_start_session_subscribe(); !types.empty())
+    {
+        rapidjson::Document doc(rapidjson::Type::kArrayType);
+        auto& a = doc.GetAllocator();
+        doc.Reserve(types.size(), a);
+
+        for (const auto t : types)
+        {
+            rapidjson::Value obj(rapidjson::Type::kObjectType);
+            obj.AddMember("type", tools::make_string_ref(subscriptions::type_2_string(t)), a);
+            doc.PushBack(std::move(obj), a);
+        }
+
+        rapidjson::StringBuffer buffer;
+        rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+        doc.Accept(writer);
+
+        request->push_post_parameter("subscriptions", escape_symbols(rapidjson_get_string_view(buffer)));
+    }
 
     return 0;
 }
@@ -128,7 +143,7 @@ int32_t start_session::init_request_short_start_session(std::shared_ptr<core::ht
 }
 
 
-int32_t start_session::init_request(std::shared_ptr<core::http_request_simple> _request)
+int32_t start_session::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     if (!params_.full_log_)
     {
@@ -181,7 +196,7 @@ int32_t start_session::on_response_error_code()
     }
 }
 
-int32_t start_session::execute_request(std::shared_ptr<core::http_request_simple> _request)
+int32_t start_session::execute_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     wait_function_(timeout_);
 
@@ -238,3 +253,7 @@ void start_session::parse_response_data_on_error(const rapidjson::Value& _data)
     ts_ = iter_ts->value.GetUint();
 }
 
+priority_t start_session::get_priority() const
+{
+    return priority_protocol();
+}

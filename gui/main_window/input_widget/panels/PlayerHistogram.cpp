@@ -147,7 +147,7 @@ namespace Ui
         if (isActive())
         {
             currentPos = w;
-            const auto color = Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT);
+            const auto color = Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE);
             if (int(resampledAmpl_.size() * (sampleWidth + space)) > w)
             {
                 for (auto x : boost::adaptors::reverse(resampledAmpl_))

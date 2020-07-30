@@ -7,9 +7,10 @@ namespace Emoji
     enum class EmojiSizePx
     {
         Invalid,
-        Min = 16,
+        Min = 13,
 
-        _16 = Min,
+        _13 = Min,
+        _16 = 16,
         Auto = 21,
         _22 = 22,
         _27 = 27,
@@ -35,8 +36,8 @@ namespace Emoji
 
     QImage GetEmojiImage(const EmojiCode& _code, int32_t _sizePx); // should not use
 
-    uint32_t readCodepoint(const QStringRef& text, int& pos);
-    EmojiCode getEmoji(const QStringRef& text, int& pos);
+    uint32_t readCodepoint(QStringView text, qsizetype& pos);
+    EmojiCode getEmoji(QStringView text, qsizetype& pos);
 
     bool isSupported(QLatin1String _filename);
 

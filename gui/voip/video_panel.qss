@@ -28,16 +28,16 @@ QWidget[VoipPanelHeaderText_Has_Video="false"]
 
 QWidget[VideoPanelMain="true"]
 {
-    min-height: 53dip;
-    max-height: 53dip;
+    min-height: 98dip;
+    max-height: 98dip;
     background: transparent;
 }
 
 
 QWidget[VideoPanel="true"]
 {
-    min-height: 53dip;
-    max-height: 53dip;
+    min-height: 98dip;
+    max-height: 98dip;
     background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1.0,
                                      stop: 0 rgba(0, 0, 0, 0%), stop: 1.0 rgba(0, 0, 0, 20%));
 }

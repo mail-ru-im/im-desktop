@@ -1,5 +1,6 @@
 #pragma once
 #include "../../core/Voip/VoipManagerDefines.h"
+#include "src/CallStateInternal.h"
 
 #define DEFAULT_DEVICE_UID "default_device"
 
@@ -28,6 +29,8 @@ namespace voip_masks
 
 namespace voip_proxy
 {
+    extern const std::string kCallType_NONE;
+
     enum EvoipDevTypes
     {
         kvoipDevTypeUndefined     = 0,
@@ -43,6 +46,14 @@ namespace voip_proxy
         kvoipDeviceDesktop
     };
 
+    enum CheckActiveCallResult
+    {
+        CallEnded,
+        NoActiveCall,
+        Cancelled,
+        SameCall
+    };
+
     struct device_desc
     {
         std::string name;
@@ -52,6 +63,13 @@ namespace voip_proxy
     };
 
     using device_desc_vector = std::vector<voip_proxy::device_desc>;
+
+    enum class TermincationReasonGroup
+    {
+        PRIVACY = 0,
+        INVALID_CALLER,
+        UNKNOWN
+    };
 
     class VoipEmojiManager
     {
@@ -86,8 +104,8 @@ namespace voip_proxy
         void onVoipShowVideoWindow(bool _show);
         void onVoipVolumeChanged(const std::string& _deviceType, int _vol);
         void onVoipCallNameChanged(const voip_manager::ContactsList& _contacts);
-        void onVoipCallIncoming(const std::string& _account, const std::string& _contact);
-        void onVoipCallIncomingAccepted(const voip_manager::ContactEx& _contactEx);
+        void onVoipCallIncoming(const std::string& call_id, const std::string& _contact, const std::string& call_type);
+        void onVoipCallIncomingAccepted(const std::string& call_id);
         void onVoipDeviceListUpdated(voip_proxy::EvoipDevTypes deviceType, const voip_proxy::device_desc_vector& _devices);
         void onVoipMediaLocalAudio(bool _enabled);
         void onVoipMediaLocalVideo(bool _enabled);
@@ -102,8 +120,8 @@ namespace voip_proxy
         void onVoipResetComplete(); //hack for correct close
         void onVoipWindowRemoveComplete(quintptr _winId);
         void onVoipWindowAddComplete(quintptr _winId);
-        void onVoipUpdateCipherState(const voip_manager::CipherState& _state);
-        void onVoipMinimalBandwidthChanged(bool _enable);
+        //void onVoipUpdateCipherState(const voip_manager::CipherState& _state);
+        //void onVoipMinimalBandwidthChanged(bool _enable);
         void onVoipMaskEngineEnable(bool _enable);
         void onVoipLoadMaskResult(const std::string& path, bool result);
         void onVoipChangeWindowLayout(intptr_t hwnd, bool bTray, const std::string& layout);
@@ -122,28 +140,43 @@ namespace voip_proxy
         void onCallCreate(const voip_manager::ContactEx& _contactEx);
 
     private:
-        voip_manager::CipherState cipherState_;
+        //voip_manager::CipherState cipherState_;
         Ui::core_dispatcher& dispatcher_;
         QTimer               callTimeTimer_;
-        unsigned             callTimeElapsed_;
+        unsigned             callTimeElapsed_ = 0;
         VoipEmojiManager     voipEmojiManager_;
         voip_manager::ContactsList activePeerList_;
         // It is currenlty connected contacts, contacts, which do not accept call, are not contained in this list.
-        std::list<voip_manager::Contact> connectedPeerList_;
-        bool haveEstablishedConnection_;
-        bool iTunesWasPaused_;
         std::unique_ptr<voip_masks::MaskManager> maskManager_;
-        bool maskEngineEnable_;
-        bool voipIsKilled_; // Do we kill voip on exiting from programm.
         QList<voip_proxy::device_desc> screenList_;
         voip_proxy::device_desc currentSelectedVideoDevice_;
-        bool localCameraEnabled_;
-        bool localVideoEnabled_;
-        bool settingsLoaded_ = false;
+        std::unique_ptr<Ui::gui_coll_helper> pendingCallStart_;
+        std::string vcsConferenceUrl_;
+        std::string callType_ = kCallType_NONE;
+        std::string chatId_;
+        bool vcsWebinar_ = false;
+
+        // Map to store call termination reasons for groupcalls [reason, disconnected list]
+        std::map<TermincationReasonGroup, std::vector<std::string>> disconnectedPeers_;
 
         // For each device type.
         std::vector<device_desc> devices_[3];
         std::unordered_map<EvoipDevTypes, device_desc> activeDevices_;
+
+        bool haveEstablishedConnection_ = false;
+        bool iTunesWasPaused_ = false;
+        bool maskEngineEnable_ = false;
+        bool localAudioEnabled_ = false;
+        bool localCameraEnabled_ = false;
+        bool localVideoEnabled_ = false;
+        bool localAudAllowed_ = true;
+        bool localCamAllowed_ = true;
+        bool localDesktopAllowed_ = true;
+        bool localAudPermission_ = false;
+        bool localCamPermission_ = false;
+
+        bool settingsLoaded_ = false;
+        bool voipIsKilled_ = false; // Do we kill voip on exiting from programm.
 
         enum UserBitmapParams
         {
@@ -168,6 +201,8 @@ namespace voip_proxy
         void updateScreenList(const std::vector<voip_proxy::device_desc>& _devices);
         void _setSwitchVCaptureMute();
 
+        void updateDisconnectedPeers();
+
     public:
         VoipController(Ui::core_dispatcher& _dispatcher);
         virtual ~VoipController();
@@ -175,7 +210,7 @@ namespace voip_proxy
         void loadSettings(std::function<void(voip_proxy::device_desc &description)> callback);
         void voipReset();
         void updateActivePeerList();
-        void getSecureCode(voip_manager::CipherState& _state) const;
+        //void getSecureCode(voip_manager::CipherState& _state) const;
         VoipEmojiManager& getEmojiManager()
         {
             return voipEmojiManager_;
@@ -186,12 +221,14 @@ namespace voip_proxy
         void setWindowOffsets(quintptr _hwnd, int _lpx, int _tpx, int _rpx, int _bpx);
         void setAvatars(int _size, const char* _contact, bool forPreview = false);
 
-        void setStartA(const char* _contact, bool _attach, const char* _where = nullptr);
-        void setStartV(const char* _contact, bool _attach, const char* _where = nullptr);
+        bool checkPermissions(bool audio, bool video, bool *show_popup = nullptr);
+        bool setStartCall(const std::vector<QString>& _contacts, bool video, bool _attach, const char* _where = nullptr);
+        bool setStartChatRoomCall(const QStringView chatId, const std::vector<QString>& _contacts, bool video);
+        bool setStartChatRoomCall(const QStringView chatId, bool video = false);
+        void setStartVCS(const char* _urlConference);
         void setHangup();
-        void setAcceptA(const char* _contact);
-        void setAcceptV(const char* _contact);
-        void setDecline(const char* _contact, bool _busy, bool conference = false);
+        void setAcceptCall(const char* call_id, bool video);
+        void setDecline(const char* call_id, const char* _contact, bool _busy, bool conference = false);
 
         void setSwitchAPlaybackMute();
         void setSwitchACaptureMute();
@@ -219,6 +256,18 @@ namespace voip_proxy
         void resetMaskManager();
         bool isVoipKilled() const;
         bool isConnectionEstablished() const;
+        bool isCallVCS() const { return voip::kCallType_VCS == callType_; }
+        bool isCallPinnedRoom() const { return voip::kCallType_PINNED_ROOM == callType_; }
+        bool isLocalAudAllowed() const { return localAudAllowed_; }
+        bool isLocalCamAllowed() const { return localCamAllowed_; }
+        bool isLocalDesktopAllowed() const { return localDesktopAllowed_; }
+        bool isAudPermissionGranted() const { return localAudPermission_; }
+        bool isCamPermissionGranted() const { return localCamPermission_; }
+
+        bool isWebinar() const { return vcsWebinar_; }
+        std::string getChatId() const {return chatId_; }
+
+        QString getConferenceUrl() const { return QString::fromStdString(vcsConferenceUrl_); }
 
         void setWindowVideoLayout(quintptr _hwnd, voip_manager::VideoLayout& layout);
 
@@ -227,7 +276,9 @@ namespace voip_proxy
         const std::vector<voip_manager::Contact>& currentCallContacts() const;
 
         bool hasEstablishCall() const; // @return true is any of users are accepted call.
-        int maxVideoConferenceMembers() const; // For now max is 4 members.
+        int maxVideoConferenceMembers() const;
+        int maxUsersWithVideo() const;
+        int lowerBoundForBigConference() const;
 
         void openChat(const QString& contact); // Open chat with user
         void switchShareScreen(voip_proxy::device_desc const * _description); // Switch share screen mode.
@@ -239,6 +290,8 @@ namespace voip_proxy
 
         void notifyDevicesChanged();
         void trackDevices(bool track_video = true);
+
+        CheckActiveCallResult checkActiveCall(const std::string& _contact);
 
     Q_SIGNALS:
         // NOTE: Only for stats-specific tasks

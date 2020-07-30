@@ -119,7 +119,7 @@ namespace anim
         else
         {
             if (animations_.empty())
-                timer_.start(animationTimeout().count());
+                timer_.start(animationTimeout());
             animations_.insert(_animation);
         }
     }

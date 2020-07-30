@@ -40,12 +40,7 @@ send_stat::~send_stat()
 {
 }
 
-bool send_stat::support_async_execution() const
-{
-    return true;
-}
-
-int32_t send_stat::init_request(std::shared_ptr<http_request_simple> _request)
+int32_t send_stat::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     time_t server_time = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()) - params_.time_offset_;
     time_t time_offset = boost::posix_time::to_time_t(boost::posix_time::second_clock::local_time()) - server_time;

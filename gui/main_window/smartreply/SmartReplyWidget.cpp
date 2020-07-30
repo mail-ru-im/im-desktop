@@ -27,7 +27,7 @@ namespace
     int edgeGradientWidth() { return Utils::scale_value(20); }
     int edgeGradientOffset() { return Utils::scale_value(32); }
 
-    int edgeMargin() { return Utils::scale_value(52) - itemSpacing(); }
+    int sideMargin() { return Utils::scale_value(52) - itemSpacing(); }
     int arrowMargin() { return Utils::scale_value(10); }
 
     constexpr std::chrono::milliseconds scrollAnimDuration() { return std::chrono::milliseconds(100); }
@@ -35,13 +35,13 @@ namespace
 
 namespace Ui
 {
-    SmartReplyWidget::SmartReplyWidget(QWidget* _parent)
+    SmartReplyWidget::SmartReplyWidget(QWidget* _parent, bool _withSideSpacers)
         : QWidget(_parent)
         , scrollLeft_(new ScrollButton(this, ScrollButton::ButtonDirection::left))
         , scrollRight_(new ScrollButton(this, ScrollButton::ButtonDirection::right))
         , animScroll_(nullptr)
         , stickerPreview_(nullptr)
-        , isFlat_(false)
+        , hasSideSpacers_(_withSideSpacers)
         , bgTransparent_(false)
         , isUnderMouse_(false)
         , needHideOnLeave_(false)
@@ -60,13 +60,14 @@ namespace Ui
         contentLayout->setAlignment(Qt::AlignLeft);
         contentLayout->setSpacing(itemSpacing());
 
+        if (hasSideSpacers_)
         {
             auto fixLeft = new QWidget(this);
-            fixLeft->setFixedWidth(edgeMargin());
+            fixLeft->setFixedWidth(sideMargin());
             contentLayout->addWidget(fixLeft);
 
             auto fixRight = new QWidget(this);
-            fixRight->setFixedWidth(edgeMargin());
+            fixRight->setFixedWidth(sideMargin());
             contentLayout->addWidget(fixRight);
         }
 
@@ -85,7 +86,7 @@ namespace Ui
         connect(scrollArea_->horizontalScrollBar(), &QScrollBar::rangeChanged, this, &SmartReplyWidget::updateEdges);
 
         afterClickTimer_.setSingleShot(true);
-        afterClickTimer_.setInterval(Features::smartreplyHideTime().count());
+        afterClickTimer_.setInterval(Features::smartreplyHideTime());
         connect(&afterClickTimer_, &QTimer::timeout, this, &SmartReplyWidget::onAfterClickTimer);
     }
 
@@ -142,9 +143,9 @@ namespace Ui
         const auto i = std::count_if(items.crbegin(), items.crend(), [id = _newItem->getMsgId()](const auto item) { return item->getMsgId() >= id; });
 
         auto item = _newItem.release();
-        itemsLayout->insertWidget(i + 1, item);
+        itemsLayout->insertWidget(i + (hasSideSpacers_ ? 1 : 0), item);
 
-        item->setFlat(isFlat());
+        item->setFlat(!hasSideSpacers_);
         item->setUnderlayVisible(bgTransparent_);
         connect(item, &SmartReplyItem::selected, this, &SmartReplyWidget::onItemSelected);
         connect(item, &SmartReplyItem::showPreview, this, &SmartReplyWidget::showStickerPreview);
@@ -223,23 +224,16 @@ namespace Ui
         scrollArea_->horizontalScrollBar()->setValue(0);
     }
 
-    void SmartReplyWidget::setFlat(const bool _flat)
-    {
-        if (isFlat_ != _flat)
-        {
-            isFlat_ = _flat;
-
-            const auto items = getItems();
-            for (auto item : items)
-                item->setFlat(_flat);
-
-            update();
-        }
-    }
-
     void SmartReplyWidget::setNeedHideOnLeave()
     {
         needHideOnLeave_ = true;
+    }
+
+    int SmartReplyWidget::getTotalWidth() const
+    {
+        const auto items = getItems();
+        const int itemsWidth = std::accumulate(items.begin(), items.end(), 0, [](int _sum, const auto& _item) { return _sum + _item->width(); });
+        return itemsWidth + (items.size() + (hasSideSpacers_ ? 1 : -1)) * itemSpacing() + (hasSideSpacers_ ? sideMargin() * 2  : 0);
     }
 
     void SmartReplyWidget::showStickerPreview(const QString& _stickerId)
@@ -338,7 +332,6 @@ namespace Ui
     void SmartReplyWidget::hideEvent(QHideEvent*)
     {
         isUnderMouse_ = false;
-        setEnabled(true);
     }
 
     QList<SmartReplyItem*> SmartReplyWidget::getItems() const
@@ -348,30 +341,9 @@ namespace Ui
 
     void SmartReplyWidget::onItemSelected(const Data::SmartreplySuggest& _suggest)
     {
-        const auto contact = Logic::getContactListModel()->selectedContact();
-        if (contact.isEmpty())
-            return;
-
         setEnabled(false);
 
-        switch (_suggest.getType())
-        {
-        case core::smartreply::type::sticker:
-        case core::smartreply::type::sticker_by_text:
-            Ui::GetDispatcher()->sendStickerToContact(contact, _suggest.getData());
-            break;
-
-        case core::smartreply::type::text:
-            Ui::GetDispatcher()->sendMessageToContact(contact, _suggest.getData());
-            break;
-
-        default:
-            break;
-        }
-
-        sendStats(_suggest);
-
-        emit Utils::InterConnector::instance().setFocusOnInput();
+        Q_EMIT sendSmartreply(_suggest, QPrivateSignal());
 
         afterClickTimer_.start();
     }
@@ -380,7 +352,7 @@ namespace Ui
     {
         needHideOnLeave_ = false;
 
-        emit needHide(QPrivateSignal());
+        Q_EMIT needHide(QPrivateSignal());
     }
 
     void SmartReplyWidget::scrollToRight()
@@ -404,10 +376,7 @@ namespace Ui
         scrollLeft_->move(arrowMargin(), (height() - scrollLeft_->height()) / 2);
         scrollRight_->move(width() - arrowMargin() - scrollRight_->width(), (height() - scrollRight_->height()) / 2);
 
-        const auto items = getItems();
-        const int itemsWidth = std::accumulate(items.begin(), items.end(), 0, [](int _sum, const auto& _item) { return _sum + _item->width(); });
-        contentWidget_->setGeometry(0, 0, edgeMargin() * 2 + itemsWidth + (items.size() + 1) * itemSpacing(), height());
-
+        contentWidget_->setGeometry(0, 0, getTotalWidth(), height());
         scrollArea_->setGeometry(rect());
 
         updateEdgeGradients();
@@ -534,33 +503,6 @@ namespace Ui
         return viewRect.intersects(itemRect);
     }
 
-    void SmartReplyWidget::sendStats(const Data::SmartreplySuggest& _suggest)
-    {
-        using namespace core::stats;
-
-        im_stat_event_names imStatName = im_stat_event_names::min;
-        stats_event_names statName = stats_event_names::min;
-        event_props_type props;
-
-        if (_suggest.isStickerType())
-        {
-            props.push_back({ "stickerId", _suggest.getData().toStdString() });
-            imStatName = im_stat_event_names::stickers_smartreply_sticker_sent;
-            statName = stats_event_names::stickers_smartreply_sticker_sent;
-        }
-        else if (_suggest.isTextType())
-        {
-            imStatName = im_stat_event_names::smartreply_text_sent;
-            statName = stats_event_names::smartreply_text_sent;
-        }
-
-        if (imStatName != im_stat_event_names::min)
-        {
-            GetDispatcher()->post_im_stats_to_core(imStatName, props);
-            GetDispatcher()->post_stats_to_core(statName, props);
-        }
-    }
-
     void SmartReplyWidget::scrollStep(const Direction _direction)
     {
         QRect viewRect = scrollArea_->viewport()->geometry();
@@ -570,7 +512,7 @@ namespace Ui
         const int minVal = scrollbar->minimum();
         const int curVal = scrollbar->value();
 
-        const int step = viewRect.width() - edgeMargin() * 2;
+        const int step = viewRect.width() - (hasSideSpacers_ ? sideMargin() * 2 : 0);
 
         int to = 0;
 

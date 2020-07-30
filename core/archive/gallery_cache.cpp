@@ -924,6 +924,11 @@ int64_t gallery_storage::get_memory_usage() const
     return memory_usage;
 }
 
+bool gallery_storage::is_hole_requested() const
+{
+    return hole_requested_;
+}
+
 bool gallery_storage::load_cache_from_local()
 {
     if (!cache_storage_)
@@ -1143,6 +1148,9 @@ bool gallery_storage::check_consistency()
     if (!loaded_from_local_ || (std::chrono::system_clock::now() - last_consistency_check_time_) < consistency_check_period)
         return true;
 
+    if (items_.size() == max_items_size)
+        return true;
+
     const auto count_from_state = state_.audio_count_ + state_.files_count_ + state_.images_count_ + state_.links_count_ + state_.videos_count_ + state_.ptt_count_;
     auto consistency_value = 0.0;
     if (items_.size() <= (size_t)count_from_state)
@@ -1158,7 +1166,7 @@ bool gallery_storage::check_consistency()
         bs.write<std::string_view>("gallery inconsistency has been detected\r\n");
         std::stringstream s;
         s << "items in cache: " << items_.size() << "; items in state: " << count_from_state << "\r\n";
-        bs.write(s.str());
+        bs.write<std::string_view>(s.str());
         if (consistency_value < consistency_valid_value)
             bs.write<std::string_view>("gallery is going to be requested again\r\n");
 

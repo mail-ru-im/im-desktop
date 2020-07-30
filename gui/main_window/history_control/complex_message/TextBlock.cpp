@@ -1,44 +1,39 @@
 #include "stdafx.h"
 
-#include "../../../controls/TextUnit.h"
-#include "../../../utils/InterConnector.h"
-#include "../../../utils/log/log.h"
-#include "../../../utils/Text2DocConverter.h"
-#include "../../../utils/utils.h"
-#include "../../../gui_settings.h"
+#include "main_window/containers/LastseenContainer.h"
+#include "controls/TextUnit.h"
+#include "controls/textrendering/TextRendering.h"
+#include "utils/InterConnector.h"
+#include "utils/utils.h"
+#include "utils/features.h"
+#include "utils/async/AsyncTask.h"
+#include "styles/ThemesContainer.h"
+#include "gui_settings.h"
 
 #include "../MessageStyle.h"
 #include "../MessageStatusWidget.h"
 
-#include "../../../styles/ThemesContainer.h"
-
 #include "ComplexMessageItem.h"
 #include "TextBlockLayout.h"
-
 #include "TextBlock.h"
 #include "QuoteBlock.h"
 
 UI_COMPLEX_MESSAGE_NS_BEGIN
 
 TextBlock::TextBlock(ComplexMessageItem* _parent, const QString &text, const Ui::TextRendering::EmojiSizeType _emojiSizeType)
-    : GenericBlock(_parent, text, MenuFlagCopyable, false)
+    : GenericBlock(_parent, text, MenuFlags(MenuFlagCopyable), false)
     , Layout_(new TextBlockLayout())
-    , TripleClickTimer_(new QTimer(this))
     , emojiSizeType_(_emojiSizeType)
 {
     assert(!text.isEmpty());
 
-    adjustEmojiSize();
-
     setLayout(Layout_);
 
     connect(this, &TextBlock::selectionChanged, _parent, &ComplexMessageItem::selectionChanged);
+    connect(&Utils::InterConnector::instance(), &Utils::InterConnector::emojiSizeChanged, this, &TextBlock::adjustEmojiSize);
 
     if (!_parent->isHeadless())
         initTextUnit();
-
-    TripleClickTimer_->setInterval(QApplication::doubleClickInterval());
-    TripleClickTimer_->setSingleShot(true);
 }
 
 TextBlock::~TextBlock() = default;
@@ -79,8 +74,8 @@ bool TextBlock::updateFriendly(const QString& _aimId, const QString& _friendly)
         if (auto it = mentions.find(_aimId); it != mentions.end() && it->second != _friendly)
         {
             textUnit_->setTextAndMentions(GenericBlock::getSourceText(), getParentComplexMessage()->getMentions());
-            notifyBlockContentsChanged();
-            update();
+            onTextUnitChanged();
+            startSpellCheckingIfNeeded();
             return true;
         }
     }
@@ -95,18 +90,12 @@ bool TextBlock::isDraggable() const
 
 bool TextBlock::isSelected() const
 {
-    if (textUnit_)
-        return textUnit_->isSelected();
-
-    return false;
+    return textUnit_ && textUnit_->isSelected();
 }
 
 bool TextBlock::isAllSelected() const
 {
-    if (textUnit_)
-        return textUnit_->isAllSelected();
-
-    return false;
+    return textUnit_ && textUnit_->isAllSelected();
 }
 
 bool TextBlock::isSharingEnabled() const
@@ -133,6 +122,50 @@ void TextBlock::selectAll()
         textUnit_->selectAll();
 
     update();
+}
+
+IItemBlock::MenuFlags TextBlock::getMenuFlags(QPoint p) const
+{
+    auto flags = GenericBlock::getMenuFlags(p);
+    if (!textUnit_ || !ComplexMessageItem::isSpellCheckIsOn())
+        return flags;
+
+    if (textUnit_->sourceModified())
+        return flags;
+
+    if (const auto w = textUnit_->getWordAt(mapPoint(p)); w && (!textUnit_->isSkippableWordForSpellChecking(*w) || (w->syntaxWord && w->syntaxWord->spellError)))
+        return MenuFlags(flags | MenuFlags::MenuFlagSpellItems);
+
+    return flags;
+}
+
+void TextBlock::startSpellChecking()
+{
+    needSpellCheck_ = true;
+    if (!textUnit_ || textUnit_->sourceModified() || !ComplexMessageItem::isSpellCheckIsOn())
+        return;
+
+    textUnit_->startSpellChecking([guard = QPointer(this)]()
+    {
+        return guard && guard->textUnit_;
+    }, [weak_this = QPointer(this)](bool res) mutable
+    {
+        if (res && weak_this)
+            Async::runInMain([weak_this = std::move(weak_this)]()
+        {
+            if (weak_this && weak_this->textUnit_)
+            {
+                weak_this->textUnit_->getHeight(weak_this->textUnit_->cachedSize().width(), Ui::TextRendering::CallType::FORCE);
+                weak_this->onTextUnitChanged();
+            }
+        });
+    });
+}
+
+void TextBlock::setSpellErrorsVisible(bool _visible)
+{
+    if (std::exchange(needSpellCheck_, _visible) != _visible)
+        reinit();
 }
 
 void TextBlock::drawBlock(QPainter& p, const QRect&, const QColor&)
@@ -172,22 +205,25 @@ void TextBlock::leaveEvent(QEvent *e)
     return GenericBlock::leaveEvent(e);
 }
 
+void TextBlock::reinit()
+{
+    initTextUnit();
+    onTextUnitChanged();
+}
+
 void TextBlock::initTextUnit()
 {
-    adjustEmojiSize();
-
     textUnit_ = TextRendering::MakeTextUnit(
         GenericBlock::getSourceText(),
         getParentComplexMessage()->getMentions(),
         TextRendering::LinksVisible::SHOW_LINKS,
         TextRendering::ProcessLineFeeds::KEEP_LINE_FEEDS,
-        emojiSizeType_
-    );
+        emojiSizeType_);
 
     const auto linkStyle = Styling::getThemesContainer().getCurrentTheme()->isLinksUnderlined() ? TextRendering::LinksStyle::UNDERLINED : TextRendering::LinksStyle::PLAIN;
     textUnit_->init(MessageStyle::getTextFont()
                   , MessageStyle::getTextColor()
-                  , MessageStyle::getLinkColor(isOutgoing())
+                  , MessageStyle::getLinkColor()
                   , MessageStyle::getTextSelectionColor(getChatAimid())
                   , MessageStyle::getHighlightColor()
                   , TextRendering::HorAligment::LEFT
@@ -199,14 +235,38 @@ void TextBlock::initTextUnit()
     textUnit_->setHighlightedTextColor(MessageStyle::getHighlightTextColor());
     textUnit_->markdown(MessageStyle::getMarkdownFont(), MessageStyle::getTextColor());
     textUnit_->setLineSpacing(MessageStyle::getTextLineSpacing());
+
+    const auto& contact = getChatAimid();
+    const auto isCommandsEnabled = Logic::GetLastseenContainer()->isBot(contact) || Utils::isChat(contact);
+    if (!isCommandsEnabled)
+        textUnit_->disableCommands();
+
+    startSpellCheckingIfNeeded();
 }
 
 void TextBlock::adjustEmojiSize()
 {
-    if (!Ui::get_gui_settings()->get_value<bool>(settings_allow_big_emoji, settings_allow_big_emoji_default()))
-        emojiSizeType_ = Ui::TextRendering::EmojiSizeType::REGULAR;
-    else
-        emojiSizeType_ = Ui::TextRendering::EmojiSizeType::ALLOW_BIG;
+    if (isInsideForward() || isInsideQuote())
+        return;
+
+    const auto bigEmojiAllowed = Ui::get_gui_settings()->get_value<bool>(settings_allow_big_emoji, settings_allow_big_emoji_default());
+    setEmojiSizeType(bigEmojiAllowed ? TextRendering::EmojiSizeType::ALLOW_BIG : TextRendering::EmojiSizeType::REGULAR);
+}
+
+void TextBlock::initTripleClickTimer()
+{
+    if (TripleClickTimer_)
+        return;
+    TripleClickTimer_ = new QTimer(this);
+    TripleClickTimer_->setInterval(QApplication::doubleClickInterval());
+    TripleClickTimer_->setSingleShot(true);
+}
+
+void TextBlock::onTextUnitChanged()
+{
+    Layout_->markDirty();
+    notifyBlockContentsChanged();
+    update();
 }
 
 bool TextBlock::isBubbleRequired() const
@@ -218,7 +278,7 @@ bool TextBlock::pressed(const QPoint& _p)
 {
     if (textUnit_)
     {
-        if (TripleClickTimer_->isActive())
+        if (TripleClickTimer_ && TripleClickTimer_->isActive())
         {
             TripleClickTimer_->stop();
             textUnit_->selectAll();
@@ -255,7 +315,10 @@ void TextBlock::doubleClicked(const QPoint& _p, std::function<void(bool)> _callb
                 if (callback)
                     callback(result);
                 if (result)
+                {
+                    initTripleClickTimer();
                     TripleClickTimer_->start();
+                }
             };
 
             textUnit_->doubleClicked(mapPoint(_p), true, std::move(tripleClick));
@@ -277,6 +340,26 @@ QString TextBlock::linkAtPos(const QPoint& pos) const
         return textUnit_->getLink(mapFromGlobal(pos));
 
     return GenericBlock::linkAtPos(pos);
+}
+
+std::optional<QString> TextBlock::getWordAt(QPoint pos) const
+{
+    if (textUnit_)
+    {
+        if (auto w = textUnit_->getWordAt(mapFromGlobal(pos)); w)
+        {
+            auto text = w->word.getText();
+            if (w->syntaxWord)
+                return std::move(text).mid(w->syntaxWord->pos, w->syntaxWord->size);
+            return text;
+        }
+    };
+    return {};
+}
+
+bool TextBlock::replaceWordAt(const QString& _old, const QString& _new, QPoint pos)
+{
+    return textUnit_ && textUnit_->replaceWordAt(_old, _new, mapFromGlobal(pos));
 }
 
 QString TextBlock::getTrimmedText() const
@@ -330,11 +413,16 @@ QString TextBlock::getTextForCopy() const
         return textUnit_->getText();
 }
 
+QString TextBlock::getTextInstantEdit() const
+{
+    if (!textUnit_)
+        return GenericBlock::getTextInstantEdit();
+    return textUnit_->getTextInstantEdit();
+}
+
 bool TextBlock::getTextStyle() const
 {
-    if (textUnit_)
-        return textUnit_->sourceModified();
-    return false;
+    return textUnit_ && textUnit_->sourceModified();
 }
 
 void TextBlock::releaseSelection()
@@ -351,13 +439,18 @@ bool TextBlock::isOverLink(const QPoint& _mousePosGlobal) const
 void TextBlock::setText(const QString& _text)
 {
     setSourceText(_text);
-    updateStyle();
+    reinit();
 }
 
-void TextBlock::setEmojiSizeType(const TextRendering::EmojiSizeType & _emojiSizeType)
+void TextBlock::setEmojiSizeType(const TextRendering::EmojiSizeType _emojiSizeType)
 {
-    if (textUnit_)
-        textUnit_->setEmojiSizeType(_emojiSizeType);
+    if (textUnit_ && emojiSizeType_ != _emojiSizeType)
+    {
+        emojiSizeType_ = _emojiSizeType;
+
+        if (textUnit_ && textUnit_->hasEmoji())
+            reinit();
+    }
 }
 
 void TextBlock::highlight(const highlightsV& _hl)
@@ -380,19 +473,23 @@ void TextBlock::removeHighlight()
 
 void TextBlock::updateStyle()
 {
-    Layout_->markDirty();
-    initTextUnit();
-    notifyBlockContentsChanged();
+    reinit();
 }
 
 void TextBlock::updateFonts()
 {
-    updateStyle();
+    reinit();
 }
 
 QPoint TextBlock::mapPoint(const QPoint& _complexMsgPoint) const
 {
     return mapFromParent(_complexMsgPoint, Layout_->getBlockGeometry());
+}
+
+void TextBlock::startSpellCheckingIfNeeded()
+{
+    if (needSpellCheck_)
+        startSpellChecking();
 }
 
 UI_COMPLEX_MESSAGE_NS_END

@@ -11,6 +11,11 @@ namespace core
 }
 
 
+namespace Data
+{
+    struct  StickerId;
+}
+
 UI_STICKERS_NS_BEGIN
 class Sticker
 {
@@ -31,6 +36,8 @@ private:
     bool failed_ = false;
 
     bool isGif_ = false;
+
+    bool cacheLocked_ = false;
 
 public:
     Sticker();
@@ -60,6 +67,8 @@ public:
     const std::map<core::sticker_size, image_data>& getImages() const;
 
     bool isGif() const;
+
+    void lockCache(bool _lock);
 };
 
 typedef std::shared_ptr<Sticker> stickerSptr;
@@ -212,7 +221,7 @@ public:
     void clean_search_cache();
 
     void setStickerData(const core::coll_helper& _coll);
-
+    void setSetIcon(const core::coll_helper& _coll);
     void setSetBigIcon(const core::coll_helper& _coll);
 
     stickerSptr getSticker(uint32_t _setId, uint32_t _stickerId) const;
@@ -276,6 +285,7 @@ void clean_search_cache();
 
 void setStickerData(core::coll_helper _coll);
 
+void setSetIcon(core::coll_helper _coll);
 void setSetBigIcon(core::coll_helper _coll);
 
 std::shared_ptr<Sticker> getSticker(uint32_t _setId, uint32_t _stickerId);
@@ -308,11 +318,16 @@ QPixmap getSetIcon(int32_t _setId);
 
 QString getSetName(int32_t _setId);
 
+void lockStickerCache(const QString& _fsId);
+
+void unlockStickerCache(const QString& _fsId);
+
 bool isConfigHasSticker(int32_t _setId, int32_t _stickerId);
 
 void showStickersPack(const int32_t _set_id, StatContext context);
 void showStickersPackByStoreId(const QString& _store_id, StatContext context);
 void showStickersPackByFileId(const QString& _file_id, StatContext context);
+void showStickersPackByStickerId(const Data::StickerId& _sticker_id, StatContext context);
 
 std::shared_ptr<Set> parseSet(core::coll_helper _coll_set);
 

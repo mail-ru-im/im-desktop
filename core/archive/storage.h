@@ -17,6 +17,7 @@ namespace core
                 uint32_t write_ : 1;
                 uint32_t append_ : 1;
                 uint32_t truncate_ : 1;
+                uint32_t at_end_ : 1;
 
             } flags_;
 
@@ -52,12 +53,15 @@ namespace core
             void close();
 
             result_type write_data_block(core::tools::binary_stream& _data, int64_t& _offset);
+            result_type write_data_block_at(core::tools::binary_stream& _data, int64_t _offset); // write data block at offset
             bool read_data_block(int64_t _offset, core::tools::binary_stream& _data);
             static bool fast_read_data_block(core::tools::binary_stream& buffer, int64_t& current_pos, int64_t& _begin, int64_t _end_position);
 
             archive::error get_last_error() const { return last_error_; }
 
             const std::wstring& get_file_name() const { return file_name_; }
+
+            int64_t get_offset() const;
 
             storage(std::wstring _file_name);
             ~storage();

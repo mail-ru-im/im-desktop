@@ -29,6 +29,8 @@ private:
     QPointer<QMenu> editMenu_;
     QPointer<QMenu> windowMenu_;
 
+    bool updateRequested_;
+
 public:
     MacSupport(Ui::MainWindow * mainWindow);
     virtual ~MacSupport();
@@ -41,11 +43,14 @@ public:
 
     MacTitlebar* windowTitle();
 
-    void listenSleepAwakeEvents();
+    void listenSystemEvents();
 
     void checkForUpdates();
+    void checkForUpdatesInBackground();
     void runMacUpdater();
+    void installUpdates();
     void cleanMacUpdater();
+    bool isUpdateRequested() const { return updateRequested_; }
 
     void forceEnglishInputSource();
 
@@ -99,6 +104,8 @@ public:
     static void showNSFloatingWindowLevel(QWidget *w);
 
     static void showOverAll(QWidget *w);
+
+    static void showInAllWorkspaces(QWidget *w);
 
     static bool isMetalSupported();
 

@@ -4,7 +4,7 @@
 #include "../ReportWidget.h"
 #include "../MainWindow.h"
 #include "../contact_list/ContactListModel.h"
-#include "../friendly/FriendlyContainer.h"
+#include "../containers/FriendlyContainer.h"
 #include "../../fonts.h"
 #include "../../core_dispatcher.h"
 #include "../../controls/CheckboxList.h"

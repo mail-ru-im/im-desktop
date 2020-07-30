@@ -8,6 +8,11 @@ namespace Ui
 
     enum class FrameCountMode;
 
+    struct SidebarParams
+    {
+        bool showFavorites_ = true;
+    };
+
     class SidebarPage : public QWidget
     {
     public:
@@ -15,8 +20,7 @@ namespace Ui
         virtual ~SidebarPage() {}
 
         virtual void setPrev(const QString& aimId) { prevAimId_ = aimId; }
-        virtual void initFor(const QString& aimId) = 0;
-        virtual void setSharedProfile(bool _sharedProfile) { }
+        virtual void initFor(const QString& aimId, SidebarParams _params = {}) = 0;
         virtual void setFrameCountMode(FrameCountMode _mode) = 0;
         virtual void close() = 0;
         virtual void toggleMembersList() { }
@@ -37,7 +41,7 @@ namespace Ui
 
     public:
         explicit Sidebar(QWidget* _parent);
-        void preparePage(const QString& aimId, bool _selectionChanged = false, bool _sharedProfile = false);
+        void preparePage(const QString& aimId, SidebarParams _params = {}, bool _selectionChanged = false);
         void showMembers();
 
         QString currentAimId() const;

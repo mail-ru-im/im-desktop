@@ -10,11 +10,6 @@
 
 namespace
 {
-    int searchIconOffset()
-    {
-        return Utils::scale_value(12);
-    }
-
     QSize iconSize()
     {
         return Utils::scale_value(QSize(16, 16));
@@ -119,7 +114,7 @@ namespace Ui
 
         hSearchLayout_->addSpacing(0);
 
-        Testing::setAccessibleName(searchEdit_, qsl("AS sw searchEdit_"));
+        Testing::setAccessibleName(searchEdit_, qsl("AS Search searchEdit"));
 
         hSearchLayout_->addWidget(searchEdit_);
 
@@ -131,11 +126,10 @@ namespace Ui
         clearIcon_->setFixedSize(iconSize());
         clearIcon_->setStyleSheet(qsl("border: none;"));
 
-        Testing::setAccessibleName(clearIcon_, qsl("AS sw clearIcon_"));
+        Testing::setAccessibleName(clearIcon_, qsl("AS Search clearIcon"));
         hSearchLayout_->addWidget(clearIcon_);
         clearIcon_->hide();
 
-        //Testing::setAccessibleName(searchWidget_, qsl("AS sw searchWidget_"));
         hMainLayout->addWidget(searchWidget_);
         vMainLayout_->addLayout(hMainLayout);
 
@@ -216,7 +210,7 @@ namespace Ui
         if (_force)
         {
             setNeedClear(true);
-            emit searchCompleted();
+            Q_EMIT searchCompleted();
         }
         setNeedClear(false);
     }
@@ -294,7 +288,7 @@ namespace Ui
             else if (_e->key() == Qt::Key_Down)
             {
                 _e->accept();
-                emit selectFirstInRecents(QPrivateSignal());
+                Q_EMIT selectFirstInRecents(QPrivateSignal());
                 QWidget::clearFocus();
             }
             else if (_e->key() == Qt::Key_Escape)
@@ -334,10 +328,9 @@ namespace Ui
         const auto focused = hasFocus() && !active_;
         const auto bg = focused? Styling::getParameters().getPrimaryTabFocusColor() : getBackground(active_, hover);
 
-        const QString style = ql1s("QWidget { border-radius: 16dip;")
-            % ql1s("background-color: ") % bg.name(QColor::HexArgb) % ql1c(';')
-            % ql1s("color: ") % Styling::getParameters().getColorHex(Styling::StyleVariable::TEXT_SOLID)
-            % ql1c('}');
+        const QString style = u"QWidget { border-radius: 16dip; background-color: "
+            % bg.name(QColor::HexArgb) % u";color: " % Styling::getParameters().getColorHex(Styling::StyleVariable::TEXT_SOLID)
+            % u'}';
         Utils::ApplyStyle(this, style);
     }
 
@@ -351,9 +344,7 @@ namespace Ui
 
         updateClearIconVisibility();
 
-        setDefaultPlaceholder();
-
-        emit activeChanged(active_);
+        Q_EMIT activeChanged(active_);
 
         if (active_)
             Utils::InterConnector::instance().setCurrentMultiselectMessage(-1);
@@ -401,11 +392,11 @@ namespace Ui
         setActive(false);
         searchEdit_->clearFocus();
         clearIcon_->hide();
-        emit searchChanged(QString());
-        emit searchEnd();
+        searchChanged(QString());
+        Q_EMIT searchEnd();
 
         if (Utils::InterConnector::instance().isMultiselect())
-            emit Utils::InterConnector::instance().multiSelectCurrentElementChanged();
+            Q_EMIT Utils::InterConnector::instance().multiSelectCurrentElementChanged();
 
         if (_setFocus == SetFocusToInput::Yes)
             Utils::InterConnector::instance().setFocusOnInput();
@@ -415,7 +406,7 @@ namespace Ui
     {
         setNeedClear(true);
         searchCompleted();
-        emit escapePressed();
+        Q_EMIT escapePressed();
     }
 
     void SearchWidget::searchChanged(const QString& _text)
@@ -426,15 +417,16 @@ namespace Ui
         if (!_text.isEmpty())
             setActive(true);
 
-        if (!_text.isEmpty())
-            emit searchBegin();
-        else
-            emit inputEmpty();
-
         updateClearIconVisibility();
 
         searchedText_ = _text;
-        emit search(searchedText_);
+
+        if (!_text.isEmpty())
+            Q_EMIT searchBegin();
+        else
+            Q_EMIT inputEmpty();
+
+        Q_EMIT search(searchedText_);
     }
 
     void SearchWidget::focusedOut()

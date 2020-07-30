@@ -1,8 +1,10 @@
 #include "stdafx.h"
 #include "IgnoreMembersModel.h"
 #include "ContactListModel.h"
-#include "../friendly/FriendlyContainer.h"
+#include "../containers/FriendlyContainer.h"
+#include "../containers/StatusContainer.h"
 #include "../../cache/avatars/AvatarStorage.h"
+#include "utils/utils.h"
 
 namespace Logic
 {
@@ -14,7 +16,7 @@ namespace Logic
             if (item->getAimId() == _aimId)
             {
                 const auto idx = index(i);
-                emit dataChanged(idx, idx);
+                Q_EMIT dataChanged(idx, idx);
                 break;
             }
             ++i;
@@ -25,6 +27,10 @@ namespace Logic
         : AbstractSearchModel(_parent)
     {
         connect(GetAvatarStorage(), &Logic::AvatarStorage::avatarChanged, this, &IgnoreMembersModel::avatarLoaded);
+        connect(Logic::GetStatusContainer(), &Logic::StatusContainer::statusChanged, this, [this](const QString& _aimid)
+        {
+            avatarLoaded(_aimid);
+        });
     }
 
     int IgnoreMembersModel::rowCount(const QModelIndex &) const
@@ -66,7 +72,7 @@ namespace Logic
         if (members_.empty())
             return;
 
-        emit hideNoSearchResults();
+        Q_EMIT hideNoSearchResults();
 
         const auto addResult = [this](const auto& _item, const std::vector<QString>& _highlights)
         {
@@ -237,12 +243,12 @@ namespace Logic
             }
         }
 
-        emit dataChanged(index(0), index(rowCount()));
+        Q_EMIT dataChanged(index(0), index(rowCount()));
 
         if (!searchPattern_.isEmpty() && results_.empty())
-            emit showNoSearchResults();
+            Q_EMIT showNoSearchResults();
         else
-            emit hideNoSearchResults();
+            Q_EMIT hideNoSearchResults();
     }
 
     void IgnoreMembersModel::updateMembers(const QVector<QString>& _ignoredList)

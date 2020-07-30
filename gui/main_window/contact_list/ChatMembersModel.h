@@ -6,11 +6,14 @@
 #include "../../types/message.h"
 #include "../../types/chat.h"
 #include "../../types/search_result.h"
+#include "../../utils/utils.h"
 #include "../../core_dispatcher.h"
 #include "ContactItem.h"
 
 namespace Logic
 {
+    class ContactSearcher;
+
     const unsigned int InitMembersLimit = 20;
     const unsigned int MembersPageSize = 40;
 
@@ -24,6 +27,7 @@ namespace Logic
         void onSearchChatMembersPage(const qint64 _seq, const std::shared_ptr<Data::ChatMembersPage>& _page, const int _pageSize, const bool _resetPages);
 
         void doSearch();
+        void onContactsServer();
 
     public:
         ChatMembersModel(QObject* _parent);
@@ -33,6 +37,14 @@ namespace Logic
 
         int rowCount(const QModelIndex& _parent = QModelIndex()) const override;
         QVariant data(const QModelIndex& _index, int _role) const override;
+
+        void clearCheckedItems() override;
+        int getCheckedItemsCount() const override;
+        void setCheckedItem(const QString& _name, bool _isChecked) override;
+        bool isCheckedItem(const QString& _name) const override;
+
+        std::vector<QString> getCheckedMembers() const;
+        void setCheckedFirstMembers(int _count);
 
         void setFocus() override;
         void setSearchPattern(const QString& _pattern) override;
@@ -48,6 +60,10 @@ namespace Logic
 
         bool isFullMembersListLoaded() const;
 
+        void addIgnoredMember(const QString& _aimId);
+        bool isIgnoredMember(const QString& _aimId);
+        void clearIgnoredMember();
+
         bool contains(const QString& _aimId) const override;
         QString getChatAimId() const;
         void updateInfo(const std::shared_ptr<Data::ChatInfo> &_info);
@@ -60,7 +76,7 @@ namespace Logic
         bool isModer() const;
         void setAimId(const QString& _aimId);
 
-        //!! todo: temporarily for voip
+        //!! todo: temporarily for an old method "approve all" in GroupProfile::approveAllClicked()
         const std::vector<Data::ChatMemberInfo>& getMembers() const;
 
     private:
@@ -72,9 +88,17 @@ namespace Logic
             Blocked
         };
 
-        QString getRoleName(MembersMode _mode) const;
+        enum class CheckMode
+        {
+            Normal,
+            Force
+        };
+
+        QStringView getRoleName(MembersMode _mode) const;
 
         void addResults(const std::shared_ptr<Data::ChatMembersPage>& _page);
+        void addSearcherResults();
+        void add(const QString& _aimId);
         void clearResults();
 
         void loadChatMembersPage();
@@ -83,10 +107,11 @@ namespace Logic
         bool isSeqRelevant(qint64 _answerSeq) const;
 
         mutable Data::SearchResultsV results_;
-        //!! todo: temporarily for voip
+        //!! todo: temporarily for an old method "approve all" in GroupProfile::approveAllClicked()
         std::vector<Data::ChatMemberInfo> members_;
 
         int membersCount_;
+        int countFirstCheckedMembers_;
         QString AimId_;
         qint64 adminInfoSequence_;
         QString YourRole_;
@@ -99,5 +124,11 @@ namespace Logic
 
         /* sequences_[mode_] == last req sequence */
         std::map<MembersMode, qint64> sequences_;
+
+        std::unordered_set<QString, Utils::QStringHasher> checkedMembers_;
+        std::unordered_set<QString, Utils::QStringHasher> ignoredMembers_;
+
+        ContactSearcher* contactSearcher_;
+        CheckMode checkMode_;
     };
 }

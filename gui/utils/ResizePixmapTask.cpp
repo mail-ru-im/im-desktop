@@ -21,6 +21,6 @@ namespace Utils
             Qt::SmoothTransformation
             );
 
-        emit resizedSignal(preview_);
+        Q_EMIT resizedSignal(preview_);
     }
 }

@@ -223,7 +223,7 @@ void Previewer::ImageViewerWidget::mousePressEvent(QMouseEvent* _event)
 void Previewer::ImageViewerWidget::mouseReleaseEvent(QMouseEvent* _event)
 {
     if (_event->button() == Qt::LeftButton)
-        emit clicked();
+        Q_EMIT clicked();
 
     if (!viewer_ || _event->button() != Qt::LeftButton || !viewer_->canScroll())
     {
@@ -369,13 +369,13 @@ void Previewer::ImageViewerWidget::scaleBy(double _scaleFactorDiff, const QPoint
     {
         auto maxPossibleScale = getZoomValue(maxZoomSteps) / viewer_->getScaleFactor();
         if (viewer_->scaleBy(std::min(maxPossibleScale, _scaleFactorDiff), _anchor))
-            emit zoomChanged();
+            Q_EMIT zoomChanged();
     }
     else if (_scaleFactorDiff < 1 && canZoomOut())
     {
         auto maxPossibleScale = getZoomValue(-maxZoomSteps) / viewer_->getScaleFactor();
         if (viewer_->scaleBy(std::max(maxPossibleScale, _scaleFactorDiff), _anchor))
-            emit zoomChanged();
+            Q_EMIT zoomChanged();
     }
 }
 
@@ -385,7 +385,7 @@ void Previewer::ImageViewerWidget::scale(double _scaleFactor, const QPoint &_anc
         return;
 
     viewer_->scale(_scaleFactor, _anchor);
-    emit zoomChanged();
+    Q_EMIT zoomChanged();
 }
 
 bool Previewer::ImageViewerWidget::canZoomIn() const

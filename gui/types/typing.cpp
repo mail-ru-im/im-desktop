@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "typing.h"
 
-#include "../main_window/friendly/FriendlyContainer.h"
+#include "../main_window/containers/FriendlyContainer.h"
 
 QString Logic::TypingFires::getChatterName() const
 {

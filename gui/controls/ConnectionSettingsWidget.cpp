@@ -68,13 +68,12 @@ namespace Ui
                 typesNames_,
                 selectedProxyIndex_,
                 -1,
-                [this](QString v, int ix, TextEmojiWidget*)
-            {
-                selectedProxyIndex_ = ix;
-                updateVisibleParams(ix);
-                addressEdit_->setFocus();
-            },
-                [](bool) -> QString { return QString(); });
+                [this](const QString&, int ix, TextEmojiWidget*)
+                {
+                    selectedProxyIndex_ = ix;
+                    updateVisibleParams(ix);
+                    addressEdit_->setFocus();
+                });
         }
 
         {
@@ -87,7 +86,7 @@ namespace Ui
             addressEdit_->setFont(Fonts::appFontScaled(18));
             addressEdit_->setText(userProxy->proxyServer_);
             Utils::ApplyStyle(addressEdit_, Styling::getParameters().getLineEditCommonQss());
-            Testing::setAccessibleName(addressEdit_, qsl("AS csw addressEdit_"));
+            Testing::setAccessibleName(addressEdit_, qsl("AS ProxySettings addressInput"));
             proxyLayout->addWidget(addressEdit_);
 
             horizontalSpacer_ = new QSpacerItem(0, Utils::scale_value(SPACER_HEIGHT), QSizePolicy::Preferred, QSizePolicy::Minimum);
@@ -102,13 +101,13 @@ namespace Ui
             portEdit_->setText(userProxy->port_ == Utils::ProxySettings::invalidPort ? QString() : QString::number(userProxy->port_));
             Utils::ApplyStyle(portEdit_, Styling::getParameters().getLineEditCommonQss());
             portEdit_->setValidator(new QIntValidator(0, 65535));
-            Testing::setAccessibleName(portEdit_, qsl("AS csw portEdit_"));
+            Testing::setAccessibleName(portEdit_, qsl("AS ProxySettings portInput"));
             proxyLayout->addWidget(portEdit_);
 
             layout->addLayout(proxyLayout);
         }
         {
-            Testing::setAccessibleName(showPasswordCheckbox_, qsl("AS csw showPasswordCheckbox_"));
+            Testing::setAccessibleName(showPasswordCheckbox_, qsl("AS ProxySettings authorisationCheckbox"));
             layout->addWidget(showPasswordCheckbox_);
         }
         {
@@ -120,7 +119,7 @@ namespace Ui
             usernameEdit_->setFont(Fonts::appFontScaled(18));
             usernameEdit_->setText(userProxy->username_);
             Utils::ApplyStyle(usernameEdit_, Styling::getParameters().getLineEditCommonQss());
-            Testing::setAccessibleName(usernameEdit_, qsl("AS csw usernameEdit_"));
+            Testing::setAccessibleName(usernameEdit_, qsl("AS ProxySettings usernameInput"));
             layout->addWidget(usernameEdit_);
 
             passwordEdit_->setPlaceholderText(QT_TRANSLATE_NOOP("settings_connection", "Password"));
@@ -132,7 +131,7 @@ namespace Ui
             passwordEdit_->setText(userProxy->password_);
             Utils::ApplyStyle(passwordEdit_, Styling::getParameters().getLineEditCommonQss());
             passwordEdit_->setEchoMode(QLineEdit::Password);
-            Testing::setAccessibleName(passwordEdit_, qsl("AS csw passwordEdit_"));
+            Testing::setAccessibleName(passwordEdit_, qsl("AS ProxySettings passwordInput"));
             layout->addWidget(passwordEdit_);
         }
 
@@ -152,12 +151,11 @@ namespace Ui
                 authNames_,
                 selectedAuthTypeIndex_,
                 -1,
-                [this](QString v, int ix, TextEmojiWidget*)
-            {
-                selectedAuthTypeIndex_ = ix;
-                addressEdit_->setFocus();
-            },
-                [](bool) -> QString { return QString(); });
+                [this](const QString&, int ix, TextEmojiWidget*)
+                {
+                    selectedAuthTypeIndex_ = ix;
+                    addressEdit_->setFocus();
+                });
         }
 
         layout->addWidget(authTypeWidget_);

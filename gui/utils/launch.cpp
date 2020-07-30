@@ -8,6 +8,7 @@
 #include "../types/message.h"
 #include "../types/typing.h"
 #include "../types/masks.h"
+#include "../types/session_info.h"
 #include "../cache/stickers/stickers.h"
 #include "../main_window/contact_list/ContactListModel.h"
 #include "../main_window/history_control/history/History.h"
@@ -41,24 +42,30 @@
 
 #ifdef ICQ_QT_STATIC
 
+#ifdef _WIN32
+    Q_IMPORT_PLUGIN(QWindowsIntegrationPlugin)
+#endif //_WIN32
+
+#ifdef __linux__
+    Q_IMPORT_PLUGIN(QXcbIntegrationPlugin)
+#endif //__linux__
+
+#ifdef __APPLE__
+    Q_IMPORT_PLUGIN(QCocoaIntegrationPlugin)
+    Q_IMPORT_PLUGIN(QMacHeifPlugin)
+    Q_IMPORT_PLUGIN(QMacJp2Plugin)
+#endif //__APPLE__
+
+    Q_IMPORT_PLUGIN(QGifPlugin)
+    Q_IMPORT_PLUGIN(QICNSPlugin)
     Q_IMPORT_PLUGIN(QICOPlugin)
+    Q_IMPORT_PLUGIN(QJpegPlugin)
+    Q_IMPORT_PLUGIN(QTgaPlugin)
+    Q_IMPORT_PLUGIN(QTiffPlugin)
+    Q_IMPORT_PLUGIN(QWbmpPlugin)
+    Q_IMPORT_PLUGIN(QWebpPlugin)
     Q_IMPORT_PLUGIN(QSvgPlugin)
 
-    #ifdef _WIN32
-        Q_IMPORT_PLUGIN(QWindowsIntegrationPlugin)
-    #endif //_WIN32
-
-    #ifndef __linux__
-        Q_IMPORT_PLUGIN(QTiffPlugin)
-    #else
-        Q_IMPORT_PLUGIN(QXcbIntegrationPlugin)
-    #endif //__linux__
-
-    #ifdef __APPLE__
-        Q_IMPORT_PLUGIN(QCocoaIntegrationPlugin)
-        Q_IMPORT_PLUGIN(QJpegPlugin)
-        Q_IMPORT_PLUGIN(QGifPlugin)
-    #endif
 #endif
 
 namespace
@@ -127,37 +134,36 @@ const QString& launch::CommandLineParser::getExecutable() const
     return executable_;
 }
 
-static QString getLoggingCategoryFilter()
+static const QString& getLoggingCategoryFilter()
 {
-    static QString filter;
-    if (filter.isEmpty())
+    static const QString filter = []()
     {
-        const auto logCategory = [](std::string_view _cat, const bool _enabled) -> QString
+        const auto logCategory = [](QStringView _cat, const bool _enabled) -> QString
         {
-            const auto value = _enabled ? ql1s("true") : ql1s("false");
-            return QLatin1String(_cat.data(), int(_cat.size())) % ql1s(".debug=") % value;
+            const auto value = _enabled ? u"true" : u"false";
+            return _cat % u".debug=" % value;
         };
 
         const QStringList cats =
         {
-            logCategory("ffmpegPlayer", false),
-            logCategory("fileSharingBlock", false),
-            logCategory("friendlyContainer", false),
-            logCategory("clModel", false),
-            logCategory("history", false),
-            logCategory("historyPage", false),
-            logCategory("searchModel", false),
-            logCategory("messageSearcher", false),
-            logCategory("mentionsModel", false),
-            logCategory("maskManager", false),
-            logCategory("heads", false),
-            logCategory("bgWidget", false),
-            logCategory("ptt", false),
-
-            logCategory("localPeer", false)
+            logCategory(u"ffmpegPlayer", false),
+            logCategory(u"fileSharingBlock", false),
+            logCategory(u"friendlyContainer", false),
+            logCategory(u"clModel", false),
+            logCategory(u"history", false),
+            logCategory(u"historyPage", false),
+            logCategory(u"searchModel", false),
+            logCategory(u"messageSearcher", false),
+            logCategory(u"mentionsModel", false),
+            logCategory(u"maskManager", false),
+            logCategory(u"heads", false),
+            logCategory(u"bgWidget", false),
+            logCategory(u"ptt", false),
+            logCategory(u"localPeer", false),
+            logCategory(u"soundManager", false)
         };
-        filter = cats.join(ql1c('\n'));
-    }
+        return cats.join(u'\n');
+    }();
     return filter;
 }
 
@@ -168,11 +174,11 @@ static void debugMessageHandler(QtMsgType type, const QMessageLogContext &contex
     switch (type) {
     case QtWarningMsg:
     {
-        const static auto whiteList = {
-            ql1s("libpng warning:")
+        constexpr QStringView whiteList[] = {
+            u"libpng warning:"
         };
 
-        if (std::none_of(whiteList.begin(), whiteList.end(), [&msg](auto str) { return msg.startsWith(str); }))
+        if (std::none_of(std::begin(whiteList), std::end(whiteList), [&msg](auto str) { return msg.startsWith(str); }))
         {
             assert(false);
         }
@@ -199,9 +205,9 @@ int launch::main(int _argc, char* _argv[])
         sigaddset(&set, SIGPIPE);
         if (pthread_sigmask(SIG_BLOCK, &set, NULL) != 0)
             assert(false);
-#endif //__linux__
-
+#else
     crash_system::reporter::instance();
+#endif //__linux__
 
 #ifdef _WIN32
     crash_system::reporter::instance().set_process_exception_handlers();
@@ -236,11 +242,13 @@ int launch::main(int _argc, char* _argv[])
             v_args.push_back(strdup(_argv[0]));
         }
 
+        auto windowMode = Utils::Application::MainWindowMode::Normal;
         for (int i = 1; i < _argc; ++i)
         {
             if (std::string_view(_argv[i]) == std::string_view("/startup"))
             {
                 v_args.push_back(strdup(_argv[i]));
+                windowMode = Utils::Application::MainWindowMode::Minimized;
             }
         }
 
@@ -268,7 +276,7 @@ int launch::main(int _argc, char* _argv[])
         if (!app.isMainInstance())
             return app.switchInstance(cmd_parser);
 
-        if (app.updating())
+        if (app.updating(windowMode))
             return 0;
 
         if (app.init(cmd_parser))
@@ -322,6 +330,7 @@ int launch::main(int _argc, char* _argv[])
             qRegisterMetaType<ptt::Error2>("ptt::Error2");
             qRegisterMetaType<std::chrono::seconds>("std::chrono::seconds");
             qRegisterMetaType<std::chrono::milliseconds>("std::chrono::milliseconds");
+            qRegisterMetaType<std::function<void()>>("std::function<void()>");
             qRegisterMetaType<Data::MentionMap>("Data::MentionMap");
             qRegisterMetaType<QVector<double>>("QVector<double>");
             qRegisterMetaType<ptt::Buffer>("ptt::Buffer");
@@ -330,6 +339,12 @@ int launch::main(int _argc, char* _argv[])
             qRegisterMetaType<voip_proxy::EvoipDevTypes>("voip_proxy::EvoipDevTypes");
             qRegisterMetaType<voip_proxy::device_desc>("voip_proxy::device_desc");
             qRegisterMetaType<voip_proxy::device_desc_vector>("voip_proxy::device_desc_vector");
+            qRegisterMetaType<std::optional<QString>>("std::optional<QString>");
+            qRegisterMetaType<std::vector<Data::SessionInfo>>("std::vector<Data::SessionInfo>");
+            qRegisterMetaType<Data::CallInfo>("Data::CallInfo");
+            qRegisterMetaType<Data::CallInfoPtr>("Data::CallInfoPtr");
+            qRegisterMetaType<Data::CallInfoVec>("Data::CallInfoVec");
+            qRegisterMetaType<Statuses::Status>("Statuses::Status");
         }
         else
         {

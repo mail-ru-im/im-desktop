@@ -37,6 +37,7 @@ namespace core::wim
             int32_t mutual_friend_count_ = 0;
 
             std::vector<std::string> highlights_;
+            bool bot_ = false;
         };
         std::vector<contact_chunk> contacts_data_;
         std::vector<chat_info> chats_data_;

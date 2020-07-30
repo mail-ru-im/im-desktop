@@ -58,7 +58,7 @@ namespace core
         };
 
 
-        enum set_icon_size
+        enum class set_icon_size
         {
             invalid = 0,
 
@@ -275,7 +275,6 @@ namespace core
             std::string make_sticker_url(const int32_t _set_id, const int32_t _sticker_id, std::string_view _fs_id, const std::string& _size) const;
 
         public:
-
             std::vector<std::string> make_download_tasks(const std::string& _size);
 
             cache(const std::wstring& _stickers_path);
@@ -284,7 +283,6 @@ namespace core
             std::wstring get_meta_file_name() const;
             bool parse(core::tools::binary_stream& _data, bool _insitu, bool& _up_todate);
             bool parse_store(core::tools::binary_stream& _data);
-            bool is_meta_icons_exist() const;
 
             static void serialize_meta_set_sync(const stickers::set& _set, coll_helper _coll_set, const std::string& _size);
             void serialize_meta_sync(coll_helper _coll, const std::string& _size);
@@ -347,11 +345,7 @@ namespace core
             face(const std::wstring& _stickers_path);
 
             std::shared_ptr<result_handler<const parse_result&>> parse(
-                std::shared_ptr<core::tools::binary_stream> _data,
-                bool _insitu);
-
-            std::shared_ptr<result_handler<coll_helper>> parse_migration(
-                std::shared_ptr<core::tools::binary_stream> _data,
+                const std::shared_ptr<core::tools::binary_stream>& _data,
                 bool _insitu);
 
             std::shared_ptr<result_handler<const bool>> parse_store(std::shared_ptr<core::tools::binary_stream> _data);
@@ -404,5 +398,9 @@ namespace core
 
             void update_template_urls(const rapidjson::Value& _value);
         };
+
+        void post_sticker_2_gui(int64_t _seq, int32_t _set_id, int32_t _sticker_id, std::string_view _fs_id, core::sticker_size _size, const tools::binary_stream& _data);
+        void post_sticker_fail_2_gui(int64_t _seq, int32_t _set_id, int32_t _sticker_id, std::string_view _fs_id, loader_errors _error);
+        void post_set_icon_2_gui(int32_t _set_id, std::string_view _message, const tools::binary_stream& _data);
     }
 }

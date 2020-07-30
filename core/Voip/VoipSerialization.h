@@ -231,8 +231,10 @@ inline void operator<<(voip_manager::Contact& _contact, core::coll_helper& _coll
 inline void operator>>(const voip_manager::ContactEx& _contact_ex, core::coll_helper& _coll)
 {
     _contact_ex.contact >> _coll;
-    _coll.set_value_as_int("call_count", _contact_ex.call_count);
-    _coll.set_value_as_int("connection_count", _contact_ex.connection_count);
+    _coll.set_value_as_string("call_type", _contact_ex.call_type);
+    _coll.set_value_as_string("chat_id", _contact_ex.chat_id);
+    _coll.set_value_as_bool("current_call", _contact_ex.current_call);
+    _coll.set_value_as_int("terminate_reason", _contact_ex.terminate_reason);
     _coll.set_value_as_bool("incoming", _contact_ex.incoming);
     _coll.set_value_as_int("window_number", _contact_ex.windows.size());
     for (size_t i = 0, size = _contact_ex.windows.size(); i < size; ++i)
@@ -245,9 +247,11 @@ inline void operator>>(const voip_manager::ContactEx& _contact_ex, core::coll_he
 inline void operator<<(voip_manager::ContactEx& _contact_ex, core::coll_helper& _coll)
 {
     _contact_ex.contact << _coll;
-    _contact_ex.call_count       = _coll.get_value_as_int("call_count");
-    _contact_ex.connection_count = _coll.get_value_as_int("connection_count");
-    _contact_ex.incoming = _coll.get_value_as_bool("incoming");
+    _contact_ex.call_type        = _coll.get_value_as_string("call_type");
+    _contact_ex.chat_id          = _coll.get_value_as_string("chat_id");
+    _contact_ex.current_call     = _coll.get_value_as_bool("current_call");
+    _contact_ex.terminate_reason = _coll.get_value_as_int("terminate_reason");
+    _contact_ex.incoming         = _coll.get_value_as_bool("incoming");
     auto windowNumber = _coll.get_value_as_int("window_number");
     for (int i = 0; i < windowNumber; i++)
     {
@@ -262,7 +266,7 @@ inline void operator<<(voip_manager::FrameSize& _fs, core::coll_helper& _coll)
     _fs.hwnd = _coll.get_value_as_int64("wnd");
 }
 
-inline void operator>>(const voip_manager::CipherState& _val, core::coll_helper& _coll)
+/*inline void operator>>(const voip_manager::CipherState& _val, core::coll_helper& _coll)
 {
     _coll.set_value_as_int("state", int(_val.state));
     _coll.set_value_as_string("secure_code", _val.secureCode);
@@ -272,9 +276,9 @@ inline void operator<<(voip_manager::CipherState& val, core::coll_helper& _coll)
 {
     val.state = (voip_manager::CipherState::State)_coll.get_value_as_int("state");
     val.secureCode = _coll.get_value_as_string("secure_code");
-}
+}*/
 
-inline void operator>>(void* _hwnd, core::coll_helper& _coll)
+inline void operator >> (void* _hwnd, core::coll_helper& _coll)
 {
     _coll.set_value_as_int64("hwnd", (int64_t)_hwnd);
 }
@@ -284,6 +288,26 @@ inline void operator << (void*& _hwnd, core::coll_helper& _coll)
     _hwnd = (void *)_coll.get_value_as_int64("hwnd");
 }
 
+inline void operator >> (const VoipDesc& state, core::coll_helper& _coll)
+{
+    _coll.set_value_as_bool("local_cam_en", state.local_cam_en);
+    _coll.set_value_as_bool("local_aud_en", state.local_aud_en);
+    _coll.set_value_as_bool("local_cam_allowed", state.local_cam_allowed);
+    _coll.set_value_as_bool("local_aud_allowed", state.local_aud_allowed);
+    _coll.set_value_as_bool("local_desktop_allowed", state.local_desktop_allowed);
+}
+
+inline void operator>>(const voip_manager::ConfPeerInfo& _value, core::coll_helper& _coll)
+{
+    _coll.set_value_as_string("peerId", _value.peerId);
+    _coll.set_value_as_int("terminate_reason", (int)_value.terminate_reason);
+}
+
+inline void operator<<(voip_manager::ConfPeerInfo& _value, core::coll_helper& _coll)
+{
+    _value.peerId = _coll.get_value_as_string("peerId");
+    _value.terminate_reason = _coll.get_value_as_int("terminate_reason");
+}
 
 template <typename T> void appendVector (const std::vector<T>& _vector, core::coll_helper& _coll, const std::string& _prefix)
 {
@@ -339,6 +363,9 @@ inline void operator>>(const voip_manager::ContactsList& _contactsList, core::co
     auto windows = _contactsList.windows;
     appendVector(windows, _coll, "windows");
 
+    _coll.set_value_as_string("conference_name", _contactsList.conference_name);
+    _coll.set_value_as_string("conference_url", _contactsList.conference_url);
+    _coll.set_value_as_bool("is_webinar", _contactsList.is_webinar);
     _coll.set_value_as_bool("isActive", _contactsList.isActive);
 }
 
@@ -346,6 +373,9 @@ inline void operator<<(voip_manager::ContactsList& _contactsList, core::coll_hel
 {
     readVector(_contactsList.contacts, _coll, "contacts");
     readVector(_contactsList.windows, _coll, "windows");
+    _contactsList.conference_name = _coll.get_value_as_string("conference_name");
+    _contactsList.conference_url = _coll.get_value_as_string("conference_url");
+    _contactsList.is_webinar = _coll.get_value_as_bool("is_webinar");
     _contactsList.isActive = _coll.get_value_as_bool("isActive");
 }
 
@@ -386,6 +416,16 @@ inline void operator << (voip_manager::MainVideoLayout& _value, core::coll_helpe
     _value.layout = (voip_manager::VideoLayout)_coll.get_value_as_int("layout");
 }
 
+inline void operator>>(const voip_manager::ConfPeerInfoV& _value, core::coll_helper& _coll)
+{
+    appendVector(_value, _coll, "peers");
+}
+
+inline void operator<<(voip_manager::ConfPeerInfoV& _value, core::coll_helper& _coll)
+{
+    readVector(_value, _coll, "peers");
+}
+
 inline void operator>>(const voip_manager::eNotificationTypes& _type, core::coll_helper& _coll)
 {
     const char* name = "sig_type";
@@ -395,7 +435,6 @@ inline void operator>>(const voip_manager::eNotificationTypes& _type, core::coll
     {
     case kNotificationType_Undefined:   _coll.set_value_as_string(name, "undefined");    return;
     case kNotificationType_CallCreated: _coll.set_value_as_string(name, "call_created"); return;
-    case kNotificationType_CallInvite:  _coll.set_value_as_string(name, "call_invite");  return;
     case kNotificationType_CallOutAccepted: _coll.set_value_as_string(name, "call_out_accepted"); return;
     case kNotificationType_CallInAccepted: _coll.set_value_as_string(name, "call_in_accepted"); return;
     case kNotificationType_CallConnected: _coll.set_value_as_string(name, "call_connected"); return;
@@ -405,8 +444,7 @@ inline void operator>>(const voip_manager::eNotificationTypes& _type, core::coll
 
     case kNotificationType_QualityChanged: _coll.set_value_as_string(name, "quality_changed"); return;
 
-    case kNotificationType_MediaLocAudioChanged: _coll.set_value_as_string(name, "media_loc_a_changed"); return;
-    case kNotificationType_MediaLocVideoChanged: _coll.set_value_as_string(name, "media_loc_v_changed"); return;
+    case kNotificationType_MediaLocParamsChanged: _coll.set_value_as_string(name, "media_loc_params_changed"); return;
     case kNotificationType_MediaRemVideoChanged: _coll.set_value_as_string(name, "media_rem_v_changed"); return;
     case kNotificationType_MediaLocVideoDeviceChanged: _coll.set_value_as_string(name, "media_loc_v_device_changed"); return;
 
@@ -423,15 +461,16 @@ inline void operator>>(const voip_manager::eNotificationTypes& _type, core::coll
     case kNotificationType_VoipWindowRemoveComplete: _coll.set_value_as_string(name, "voip_window_remove_complete"); return;
     case kNotificationType_VoipWindowAddComplete: _coll.set_value_as_string(name, "voip_window_add_complete"); return;
 
-    case kNotificationType_CipherStateChanged:  _coll.set_value_as_string(name, "voip_cipher_state_changed"); return;
+    //case kNotificationType_CipherStateChanged:  _coll.set_value_as_string(name, "voip_cipher_state_changed"); return;
 
-    case kNotificationType_MinimalBandwidthChanged: _coll.set_value_as_string(name, "voip_minimal_bandwidth_state_changed"); return;
+    //case kNotificationType_MinimalBandwidthChanged: _coll.set_value_as_string(name, "voip_minimal_bandwidth_state_changed"); return;
     case kNotificationType_MaskEngineEnable: _coll.set_value_as_string(name, "voip_mask_engine_enable"); return;
     case kNotificationType_LoadMask: _coll.set_value_as_string(name, "voip_load_mask"); return;
 
-    case kNotificationType_ConnectionDestroyed: /* Nothing to do for now */ return;
+    //case kNotificationType_ConnectionDestroyed: /* Nothing to do for now */ return;
 
     case kNotificationType_MainVideoLayoutChanged: _coll.set_value_as_string(name, "voip_main_video_layout_changed"); return;
+    case kNotificationType_ConfPeerDisconnected: _coll.set_value_as_string(name, "conf_peer_disconnected"); return;
 
     default: assert(false); return;
     }

@@ -32,10 +32,10 @@ namespace
 
     QString getGDPRImagePath()
     {
-        if (get_gui_settings()->get_value(settings_language, QString()) == ql1s("ru"))
-            return ql1s(":/gdpr/gdpr_100");
+        if (get_gui_settings()->get_value(settings_language, QString()) == u"ru")
+            return qsl(":/gdpr/gdpr_100");
 
-        return ql1s(":/gdpr/gdpr_100_en");
+        return qsl(":/gdpr/gdpr_100_en");
     }
 }
 
@@ -44,7 +44,7 @@ const QString& legalTermsUrl()
     static const QString termsUrl = []() -> QString
     {
         const auto url = config::get().url(config::urls::legal_terms);
-        return ql1s("https://") % QString::fromUtf8(url.data(), url.size());
+        return u"https://" % QString::fromUtf8(url.data(), url.size());
     }();
 
     return termsUrl;
@@ -55,7 +55,7 @@ const QString& privacyPolicyUrl()
     static const QString ppUrl = []() -> QString
     {
         const auto url = config::get().url(config::urls::legal_privacy_policy);
-        return ql1s("https://") % QString::fromUtf8(url.data(), url.size());
+        return u"https://" % QString::fromUtf8(url.data(), url.size());
     }();
 
     return ppUrl;
@@ -81,7 +81,7 @@ TermsPrivacyWidget::TermsPrivacyWidget(const QString& _titleHtml,
     scrollArea->setStyleSheet(qsl("background: transparent; border: none;"));
     scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     Utils::grabTouchWidget(scrollArea->viewport(), true);
-    Testing::setAccessibleName(scrollArea, qsl("AS settings appearance scrollArea"));
+    Testing::setAccessibleName(scrollArea, qsl("AS GDPR scrollArea"));
     layout_->addWidget(scrollArea);
     scrollArea->setWidget(mainWidget);
 
@@ -95,7 +95,7 @@ TermsPrivacyWidget::TermsPrivacyWidget(const QString& _titleHtml,
     icon_->setFixedSize(Utils::scale_value(QSize(ICON_WIDTH, ICON_HEIGHT)));
     iconLayout->setAlignment(Qt::AlignBottom | Qt::AlignHCenter);
     iconLayout->addItem(new QSpacerItem(0, 0, QSizePolicy::Fixed, QSizePolicy::Expanding));
-    Testing::setAccessibleName(icon_, qsl("AS tpw icon_"));
+    Testing::setAccessibleName(icon_, qsl("AS GDPR icon"));
     iconLayout->addWidget(icon_);
 
     TextBrowserEx::Options titleOptions;
@@ -139,15 +139,15 @@ TermsPrivacyWidget::TermsPrivacyWidget(const QString& _titleHtml,
     description_->setContextMenuPolicy(Qt::ContextMenuPolicy::NoContextMenu);
     description_->setTextInteractionFlags(Qt::LinksAccessibleByMouse);
     TextBrowserExUtils::setAppropriateHeight(*description_);
-    Testing::setAccessibleName(description_, qsl("AS tpw description_"));
+    Testing::setAccessibleName(description_, qsl("AS GDPR description"));
     descLayout->addWidget(description_);
     descLayout->setAlignment(description_, Qt::AlignCenter);
 
     connect(description_, &QTextBrowser::anchorClicked, this, &TermsPrivacyWidget::onAnchorClicked);
 
     const auto text_ = QT_TRANSLATE_NOOP("terms_privacy_widget", "Accept and agree");
-    Testing::setAccessibleName(mainWidget, qsl("AS terms_privacy_widget"));
-    agreeButton_ = new DialogButton(mainWidget, text_, DialogButtonRole::CONFIRM, DialogButtonShape::ROUNDED);
+    Testing::setAccessibleName(mainWidget, qsl("AS GDPR"));
+    agreeButton_ = new DialogButton(mainWidget, text_, DialogButtonRole::CONFIRM);
     agreeButton_->setFixedHeight(Utils::scale_value(40));
     agreeButton_->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     agreeButton_->setContentsMargins(Utils::scale_value(32), Utils::scale_value(8), Utils::scale_value(32), Utils::scale_value(12));
@@ -162,22 +162,22 @@ TermsPrivacyWidget::TermsPrivacyWidget(const QString& _titleHtml,
     auto bottomLayout = Utils::emptyVLayout(bottomWidget);
     bottomWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
-    Testing::setAccessibleName(iconWidget, qsl("AS tpw iconWidget"));
+    Testing::setAccessibleName(iconWidget, qsl("AS GDPR iconWidget"));
     verticalLayout->addWidget(iconWidget);
     bottomLayout->addSpacerItem(new QSpacerItem(0, Utils::scale_value(20), QSizePolicy::Fixed, QSizePolicy::Fixed));
-    Testing::setAccessibleName(title_, qsl("AS tpw title_"));
+    Testing::setAccessibleName(title_, qsl("AS GDPR title"));
     bottomLayout->addWidget(title_);
     bottomLayout->addSpacerItem(new QSpacerItem(0, Utils::scale_value(16), QSizePolicy::Fixed, QSizePolicy::Fixed));
-    Testing::setAccessibleName(descriptionWidget, qsl("AS tpw descriptionWidget"));
+    Testing::setAccessibleName(descriptionWidget, qsl("AS GDPR descriptionWidget"));
     bottomLayout->addWidget(descriptionWidget);
     bottomLayout->addSpacerItem(new QSpacerItem(0, Utils::scale_value(20), QSizePolicy::Fixed, QSizePolicy::Fixed));
-    Testing::setAccessibleName(agreeButton_, qsl("AS tpw agreeButton_"));
+    Testing::setAccessibleName(agreeButton_, qsl("AS GDPR agreeButton"));
     bottomLayout->addWidget(agreeButton_);
     bottomLayout->setAlignment(title_, Qt::AlignHCenter | Qt::AlignTop);
     bottomLayout->setAlignment(descriptionWidget, Qt::AlignHCenter | Qt::AlignTop);
     bottomLayout->setAlignment(agreeButton_, Qt::AlignHCenter | Qt::AlignTop);
     bottomLayout->addSpacerItem(new QSpacerItem(0, 0, QSizePolicy::Fixed, QSizePolicy::Expanding));
-    Testing::setAccessibleName(bottomWidget, qsl("AS tpw bottomWidget"));
+    Testing::setAccessibleName(bottomWidget, qsl("AS GDPR bottomWidget"));
     verticalLayout->addWidget(bottomWidget);
 
     icon_->show();
@@ -208,7 +208,7 @@ void TermsPrivacyWidget::onAgreeClicked()
 
     GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::gdpr_accept_start);
 
-    emit agreementAccepted(params);
+    Q_EMIT agreementAccepted(params);
 
 #if defined(__APPLE__)
     macMenuBlocker_->unblock();

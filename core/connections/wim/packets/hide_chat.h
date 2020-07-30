@@ -20,7 +20,7 @@ namespace core
     {
         class hide_chat : public wim_packet
         {
-            virtual int32_t init_request(std::shared_ptr<core::http_request_simple> _request) override;
+            virtual int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
             virtual int32_t parse_response_data(const rapidjson::Value& _data) override;
             virtual int32_t on_empty_data() override;
 

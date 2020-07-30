@@ -6,6 +6,7 @@
 #include "../../../tools/system.h"
 #include "../../../utils.h"
 #include "../../urls_cache.h"
+#include "../common.shared/string_utils.h"
 
 using namespace core;
 using namespace wim;
@@ -19,14 +20,9 @@ set_stickers_order_packet::set_stickers_order_packet(wim_packet_params _params, 
 
 set_stickers_order_packet::~set_stickers_order_packet() = default;
 
-int32_t set_stickers_order_packet::init_request(std::shared_ptr<core::http_request_simple> _request)
+int32_t set_stickers_order_packet::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     std::map<std::string, std::string> params;
-
-    const time_t ts = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()) - params_.time_offset_;
-
-    const std::string_view host = urls::get_url(urls::url_type::stickers_store_host);
-
     params["a"] = escape_symbols(params_.a_token_);
     params["f"] = "json";
     params["k"] = params_.dev_id_;
@@ -42,6 +38,7 @@ int32_t set_stickers_order_packet::init_request(std::shared_ptr<core::http_reque
 
     _request->push_post_parameter("empty", "empty");  // to fix infinite waiting in case of post request without params
 
+    const time_t ts = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()) - params_.time_offset_;
     params["ts"] = std::to_string((int64_t) ts);
     params["r"] = core::tools::system::generate_guid();
 
@@ -49,18 +46,11 @@ int32_t set_stickers_order_packet::init_request(std::shared_ptr<core::http_reque
 
     params["lang"] = params_.locale_;
 
-    const std::string ss_url = std::string(host) + "/store/order_set";
+    const auto ss_url = su::concat(urls::get_url(urls::url_type::stickers_store_host), "/store/order_set");
 
-    auto sha256 = escape_symbols(get_url_sign(ss_url, params, params_, false));
-    params["sig_sha256"] = std::move(sha256);
-
-    std::stringstream ss_url_signed;
-    ss_url_signed << ss_url << '?' << format_get_params(params);
-
-    _request->set_url(ss_url_signed.str());
+    _request->set_url(su::concat(ss_url, '?', format_get_params(params)));
     _request->set_normalized_url("stickersStoreOrderSet");
     _request->set_keep_alive();
-    _request->set_priority(high_priority());
 
     if (!params_.full_log_)
     {
@@ -72,7 +62,7 @@ int32_t set_stickers_order_packet::init_request(std::shared_ptr<core::http_reque
     return 0;
 }
 
-int32_t set_stickers_order_packet::execute_request(std::shared_ptr<core::http_request_simple> _request)
+int32_t set_stickers_order_packet::execute_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     bool res = _request->post();
     if (!res)
@@ -87,7 +77,7 @@ int32_t set_stickers_order_packet::execute_request(std::shared_ptr<core::http_re
 }
 
 
-int32_t set_stickers_order_packet::parse_response(std::shared_ptr<core::tools::binary_stream> _response)
+int32_t set_stickers_order_packet::parse_response(const std::shared_ptr<core::tools::binary_stream>& _response)
 {
     if (!_response->available())
         return wpie_http_empty_response;
@@ -95,4 +85,9 @@ int32_t set_stickers_order_packet::parse_response(std::shared_ptr<core::tools::b
     response_ = _response;
 
     return 0;
+}
+
+priority_t set_stickers_order_packet::get_priority() const
+{
+    return packets_priority_high();
 }

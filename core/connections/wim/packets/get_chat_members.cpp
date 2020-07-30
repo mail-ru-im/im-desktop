@@ -1,7 +1,6 @@
 #include "stdafx.h"
 #include "get_chat_members.h"
 
-#include "../../urls_cache.h"
 #include "../../../http_request.h"
 
 using namespace core;
@@ -17,23 +16,12 @@ get_chat_members::get_chat_members(wim_packet_params _params, std::string_view _
 {
 }
 
-get_chat_members::~get_chat_members()
+get_chat_members::~get_chat_members() = default;
+
+int32_t get_chat_members::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
-}
-
-int32_t get_chat_members::init_request(std::shared_ptr<core::http_request_simple> _request)
-{
-    constexpr char method[] = "getChatMembers";
-
-    _request->set_url(urls::get_url(urls::url_type::rapi_host));
-    _request->set_normalized_url(method);
-    _request->set_keep_alive();
-
     rapidjson::Document doc(rapidjson::Type::kObjectType);
     auto& a = doc.GetAllocator();
-
-    doc.AddMember("method", method, a);
-    doc.AddMember("reqId", get_req_id(), a);
 
     rapidjson::Value node_params(rapidjson::Type::kObjectType);
 
@@ -53,7 +41,7 @@ int32_t get_chat_members::init_request(std::shared_ptr<core::http_request_simple
 
     doc.AddMember("params", std::move(node_params), a);
 
-    sign_packet(doc, a, _request);
+    setup_common_and_sign(doc, a, _request, "getChatMembers");
 
     if (!robusto_packet::params_.full_log_)
     {
@@ -66,12 +54,12 @@ int32_t get_chat_members::init_request(std::shared_ptr<core::http_request_simple
     return 0;
 }
 
-int32_t core::wim::get_chat_members::parse_response(std::shared_ptr<core::tools::binary_stream> _response)
+int32_t core::wim::get_chat_members::parse_response(const std::shared_ptr<core::tools::binary_stream>& _response)
 {
     if (!_response->available())
         return wpie_http_empty_response;
 
-    uint32_t size = _response->available();
+    auto size = _response->available();
     load_response_str((const char*)_response->read(size), size);
     try
     {
@@ -94,8 +82,7 @@ int32_t core::wim::get_chat_members::parse_response(std::shared_ptr<core::tools:
             if (status_code_ == 20002)
                 reset_pages_ = true;
 
-            auto iter_result = doc.FindMember("results");
-            if (iter_result != doc.MemberEnd())
+            if (const auto iter_result = doc.FindMember("results"); iter_result != doc.MemberEnd())
                 return parse_results(iter_result->value);
         }
         else

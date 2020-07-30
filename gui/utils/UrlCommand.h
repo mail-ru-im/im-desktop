@@ -5,7 +5,7 @@ class UrlCommand;
 namespace UrlCommandBuilder
 {
     enum class Context {External, Internal};
-    std::shared_ptr<UrlCommand> makeCommand(QString _url, Context _context = Context::Internal);
+    std::unique_ptr<UrlCommand> makeCommand(QString _url, Context _context = Context::Internal);
 }
 
 class UrlCommand
@@ -42,11 +42,13 @@ private:
 class OpenIdCommand : public UrlCommand
 {
 public:
-    OpenIdCommand(const QString& _id);
+    OpenIdCommand(QString _id, UrlCommandBuilder::Context _context = UrlCommandBuilder::Context::Internal, std::optional<QString> _botParams = {});
     void execute() override;
 
 private:
     QString id_;
+    UrlCommandBuilder::Context context_;
+    std::optional<QString> params_;
 };
 
 class PhoneAttachedCommand : public UrlCommand
@@ -74,6 +76,15 @@ class ServiceCommand : public UrlCommand
 {
 public:
     ServiceCommand(const QString& _url);
+    void execute() override;
+private:
+    QString url_;
+};
+
+class VCSCommand : public UrlCommand
+{
+public:
+    VCSCommand(const QString& _url);
     void execute() override;
 private:
     QString url_;

@@ -3,6 +3,7 @@
 #include "phonenumbers/phonenumberutil.h"
 #include "phonenumbers/asyoutypeformatter.h"
 #include "main_window/contact_list/CountryListModel.h"
+#include "utils/utils.h"
 
 namespace
 {
@@ -138,12 +139,15 @@ namespace
                     convertFullNumber13Digits(phone, _result);
                     break;
                 default:
-                    _result = qsl("+") % phone;
+                    _result = u'+' % phone;
                     break;
             }
 
             if (_result.isEmpty())
-                _result = (!phone.isEmpty() ? qsl("+") : qsl("")) % phone;
+            {
+                const auto prefix = !phone.isEmpty() ? QStringView(u"+") : QStringView();
+                _result = prefix % phone;
+            }
 
             return true;
         }

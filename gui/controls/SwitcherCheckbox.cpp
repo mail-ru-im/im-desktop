@@ -33,7 +33,7 @@ namespace Ui
         setFixedSize(getSize());
         setCursor(Qt::PointingHandCursor);
 
-        connect(this, &SwitcherCheckbox::toggled, this, Utils::QOverload<>::of(&SwitcherCheckbox::update));
+        connect(this, &SwitcherCheckbox::toggled, this, qOverload<>(&SwitcherCheckbox::update));
     }
 
     void SwitcherCheckbox::paintEvent(QPaintEvent*)

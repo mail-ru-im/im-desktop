@@ -58,7 +58,7 @@ qint64 getMemoryFootprint(const QPixmap* _pixmap)
         return res;
 
     QExplicitlySharedDataPointer<QPlatformPixmap> copy(_pixmap->*get(A_member()));
-    res += copy->buffer()->byteCount();
+    res += copy->buffer()->sizeInBytes();
 //    res += _pixmap->width() * _pixmap->height() * (_pixmap->depth() / 8.);
     res += sizeof(QPixmap);
 
@@ -106,7 +106,7 @@ qint64 getMemoryFootprint(const QImage& _image)
         return res;
 
     res += sizeof(QImage);
-    res += _image.byteCount();
+    res += _image.sizeInBytes();
 
     return res;
 }

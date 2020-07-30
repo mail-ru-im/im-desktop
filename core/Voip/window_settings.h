@@ -242,6 +242,7 @@ const char *priWindowSettings = R"({
             "trayOverlapped" : false,
             "traySize" : 0,
             "useHeaders" : false,
+            "compressedTrayOppositeSide" : true,
             "videoAspect" : "Aspect_Fill"
          },
          "WindowTheme_Four" : {
@@ -264,6 +265,7 @@ const char *priWindowSettings = R"({
             "trayOverlapped" : false,
             "traySize" : 0,
             "useHeaders" : false,
+            "compressedTrayOppositeSide" : true,
             "videoAspect" : "Aspect_Fill"
          },
          "WindowTheme_One" : {
@@ -286,6 +288,7 @@ const char *priWindowSettings = R"({
             "trayOverlapped" : true,
             "traySize" : 0,
             "useHeaders" : false,
+            "compressedTrayOppositeSide" : true,
             "videoAspect" : "Aspect_Fit"
          },
          "WindowTheme_Seven" : {
@@ -308,6 +311,7 @@ const char *priWindowSettings = R"({
             "trayOverlapped" : true,
             "traySize" : 0,
             "useHeaders" : false,
+            "compressedTrayOppositeSide" : true,
             "videoAspect" : "Aspect_Fill"
          },
          "WindowTheme_Six" : {
@@ -330,6 +334,7 @@ const char *priWindowSettings = R"({
             "trayOverlapped" : true,
             "traySize" : 0,
             "useHeaders" : false,
+            "compressedTrayOppositeSide" : true,
             "videoAspect" : "Aspect_Fill"
          },
          "WindowTheme_Three" : {
@@ -352,6 +357,7 @@ const char *priWindowSettings = R"({
             "trayOverlapped" : false,
             "traySize" : 0,
             "useHeaders" : false,
+            "compressedTrayOppositeSide" : true,
             "videoAspect" : "Aspect_Fill"
          },
          "WindowTheme_Two" : {
@@ -374,6 +380,7 @@ const char *priWindowSettings = R"({
             "trayOverlapped" : true,
             "traySize" : 0,
             "useHeaders" : false,
+            "compressedTrayOppositeSide" : true,
             "videoAspect" : "Aspect_Fill"
          }
       },
@@ -400,6 +407,7 @@ const char *priWindowSettings = R"({
       "highlight_color_bgra" : "225 158 47 0",
       "normal_color_bgra" : "0 0 0 0",
       "previewDisable" : false,
+      "previewEnabledAlways" : false,
       "previewSelfieMode" : false,
       "previewSolo" : false,
       "statusGlowRadius" : 0
@@ -648,6 +656,7 @@ const char *incomingWindowSettings = R"({
             "trayOverlapped" : false,
             "traySize" : 0,
             "useHeaders" : false,
+            "compressedTrayOppositeSide" : true,
             "videoAspect" : "Aspect_Fill"
          },
          "WindowTheme_Four" : {
@@ -670,6 +679,7 @@ const char *incomingWindowSettings = R"({
             "trayOverlapped" : false,
             "traySize" : 0,
             "useHeaders" : false,
+            "compressedTrayOppositeSide" : true,
             "videoAspect" : "Aspect_Fill"
          },
          "WindowTheme_One" : {
@@ -692,6 +702,7 @@ const char *incomingWindowSettings = R"({
             "trayOverlapped" : false,
             "traySize" : 0,
             "useHeaders" : false,
+            "compressedTrayOppositeSide" : true,
             "videoAspect" : "Aspect_Fill"
          },
          "WindowTheme_Seven" : {
@@ -714,6 +725,7 @@ const char *incomingWindowSettings = R"({
             "trayOverlapped" : false,
             "traySize" : 0,
             "useHeaders" : false,
+            "compressedTrayOppositeSide" : true,
             "videoAspect" : "Aspect_Fill"
          },
          "WindowTheme_Six" : {
@@ -736,6 +748,7 @@ const char *incomingWindowSettings = R"({
             "trayOverlapped" : false,
             "traySize" : 0,
             "useHeaders" : false,
+            "compressedTrayOppositeSide" : true,
             "videoAspect" : "Aspect_Fill"
          },
          "WindowTheme_Three" : {
@@ -758,6 +771,7 @@ const char *incomingWindowSettings = R"({
             "trayOverlapped" : false,
             "traySize" : 0,
             "useHeaders" : false,
+            "compressedTrayOppositeSide" : true,
             "videoAspect" : "Aspect_Fill"
          },
          "WindowTheme_Two" : {
@@ -780,6 +794,7 @@ const char *incomingWindowSettings = R"({
             "trayOverlapped" : false,
             "traySize" : 0,
             "useHeaders" : false,
+            "compressedTrayOppositeSide" : true,
             "videoAspect" : "Aspect_Fill"
          }
       },
@@ -1054,6 +1069,7 @@ const char *secWindowSettings = R"({
             "trayOverlapped" : false,
             "traySize" : 0,
             "useHeaders" : false,
+            "compressedTrayOppositeSide" : true,
             "videoAspect" : "Aspect_Fill"
          },
          "WindowTheme_Four" : {
@@ -1076,6 +1092,7 @@ const char *secWindowSettings = R"({
             "trayOverlapped" : false,
             "traySize" : 0,
             "useHeaders" : false,
+            "compressedTrayOppositeSide" : true,
             "videoAspect" : "Aspect_Fill"
          },
          "WindowTheme_One" : {
@@ -1098,6 +1115,7 @@ const char *secWindowSettings = R"({
             "trayOverlapped" : false,
             "traySize" : 0,
             "useHeaders" : false,
+            "compressedTrayOppositeSide" : true,
             "videoAspect" : "Aspect_Fill"
          },
          "WindowTheme_Seven" : {
@@ -1120,6 +1138,7 @@ const char *secWindowSettings = R"({
             "trayOverlapped" : false,
             "traySize" : 0,
             "useHeaders" : false,
+            "compressedTrayOppositeSide" : true,
             "videoAspect" : "Aspect_Fill"
          },
          "WindowTheme_Six" : {
@@ -1142,6 +1161,7 @@ const char *secWindowSettings = R"({
             "trayOverlapped" : false,
             "traySize" : 0,
             "useHeaders" : false,
+            "compressedTrayOppositeSide" : true,
             "videoAspect" : "Aspect_Fill"
          },
          "WindowTheme_Three" : {
@@ -1164,6 +1184,7 @@ const char *secWindowSettings = R"({
             "trayOverlapped" : false,
             "traySize" : 0,
             "useHeaders" : false,
+            "compressedTrayOppositeSide" : true,
             "videoAspect" : "Aspect_Fill"
          },
          "WindowTheme_Two" : {
@@ -1186,6 +1207,7 @@ const char *secWindowSettings = R"({
             "trayOverlapped" : false,
             "traySize" : 0,
             "useHeaders" : false,
+            "compressedTrayOppositeSide" : true,
             "videoAspect" : "Aspect_Fill"
          }
       },

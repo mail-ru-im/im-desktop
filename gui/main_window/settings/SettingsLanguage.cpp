@@ -65,9 +65,9 @@ void GeneralSettingsWidget::Creator::initLanguage(QWidget* _parent)
 
     auto scrollAreaWidget = new QWidget(scrollArea);
     Utils::grabTouchWidget(scrollAreaWidget);
-    Testing::setAccessibleName(scrollAreaWidget, qsl("AS settings scrollAreaWidget"));
+    Testing::setAccessibleName(scrollAreaWidget, qsl("AS LanguagePage scrollAreaWidget"));
     scrollArea->setStyleSheet(qsl("QWidget{border: none; background-color: %1;}").arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE)));
-    //scrollAreaWidget->setStyleSheet(scrollAreaWidget->styleSheet() + qsl("background-color: green;"));
+    //scrollAreaWidget->setStyleSheet(scrollAreaWidget->styleSheet() % u("background-color: green;");
 
     auto scrollAreaLayout = Utils::emptyVLayout(scrollAreaWidget);
     scrollAreaLayout->setAlignment(Qt::AlignTop);
@@ -76,7 +76,7 @@ void GeneralSettingsWidget::Creator::initLanguage(QWidget* _parent)
     scrollArea->setWidget(scrollAreaWidget);
 
     auto layout = Utils::emptyHLayout(_parent);
-    Testing::setAccessibleName(scrollArea, qsl("AS settings about scrollArea"));
+    Testing::setAccessibleName(scrollArea, qsl("AS LanguagePage scrollArea"));
     layout->addWidget(scrollArea);
 
     const auto& ls = getLanguagesStrings();
@@ -105,7 +105,9 @@ void GeneralSettingsWidget::Creator::initLanguage(QWidget* _parent)
 
         for (const auto& l : ls)
         {
-            list->addItem(new RadioTextRow(l));
+            auto row = new RadioTextRow(l);
+            Testing::setAccessibleName(row, qsl("AS LanguagePage ") % l);
+            list->addItem(row);
         }
 
         list->setCurrentIndex(li);
@@ -146,10 +148,9 @@ void GeneralSettingsWidget::Creator::initLanguage(QWidget* _parent)
             }
         }, Qt::UniqueConnection);
 
-        Testing::setAccessibleName(scrollArea, qsl("AS settings languageList"));
         mainLayout->addWidget(list);
 
-        Testing::setAccessibleName(mainWidget, qsl("AS settings mainWidget"));
+        Testing::setAccessibleName(mainWidget, qsl("AS LanguagePage mainWidget"));
         scrollAreaLayout->addWidget(mainWidget);
     }
 }

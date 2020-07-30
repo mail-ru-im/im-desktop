@@ -34,6 +34,7 @@
 #include "../cache/countries.h"
 #include "utils/PhoneFormatter.h"
 #include "IntroduceYourself.h"
+#include "settings/ContactUs.h"
 
 namespace
 {
@@ -46,7 +47,6 @@ namespace
     qint64 phoneInfoLastRequestSpecialId_ = 0; // using for settings only (last entered uin/phone)
     qint64 phoneInfoLastRequestId_ = 0;
     int phoneInfoRequestsCount_ = 0;
-    constexpr auto verOffset = 10;
 
     int controlsWidth()
     {
@@ -76,7 +76,8 @@ namespace
         EnterPhone,
         EnterSMSCode,
         EnterPhoneCode,
-        EnterOTPFromEmail,
+        EnterOTPEmail,
+        EnterOTPPassword,
         LoginByPhoneCall
     };
 
@@ -93,11 +94,13 @@ namespace
                 return QT_TRANSLATE_NOOP("login_page", "Enter your Email");
         }
         case HintType::EnterPhone:
-            return QT_TRANSLATE_NOOP("login_page", "Check the country code and enter your phone number");
+            return QT_TRANSLATE_NOOP("login_page", "Check the country code and enter your phone number for registration and authorization");
         case HintType::EnterSMSCode:
             return QT_TRANSLATE_NOOP("login_page", "Verification code was sent to number");
-        case HintType::EnterOTPFromEmail:
-            return QT_TRANSLATE_NOOP("login_page", "Enter one-time password received by email");
+        case HintType::EnterOTPEmail:
+            return QT_TRANSLATE_NOOP("login_page", "Enter your corporate email, a password will be sent to it");
+            case HintType::EnterOTPPassword:
+            return QT_TRANSLATE_NOOP("login_page", "Enter one-time password sent to email");
         case HintType::EnterPhoneCode:
         case HintType::LoginByPhoneCall:
             return QT_TRANSLATE_NOOP("login_page", "We called the number");
@@ -120,8 +123,10 @@ namespace
             return QT_TRANSLATE_NOOP("login_page", "SMS code");
         case HintType::EnterPhoneCode:
             return QT_TRANSLATE_NOOP("login_page", "Phone code");
-        case HintType::EnterOTPFromEmail:
-            return QT_TRANSLATE_NOOP("login_page", "Enter one-time password received by email");
+        case HintType::EnterOTPEmail:
+            return QT_TRANSLATE_NOOP("login_page", "Enter email");
+        case HintType::EnterOTPPassword:
+            return QT_TRANSLATE_NOOP("login_page", "Enter password");
         case HintType::LoginByPhoneCall:
             return QT_TRANSLATE_NOOP("login_page", "Enter last 6 digits of number that called you");
         default:
@@ -141,7 +146,7 @@ namespace
         int minutes = _seconds / 60;
         int seconds = _seconds % 60;
 
-        return QString::number(minutes) % qsl(":") % QString(qsl("%1")).arg(seconds, 2, 10, ql1c('0'));
+        return QString::number(minutes) % u':' % QString(qsl("%1")).arg(seconds, 2, 10, ql1c('0'));
     }
 
     const auto fontSize = 16;
@@ -163,7 +168,8 @@ namespace
     }
 
     constexpr int backIconSize = 20;
-    constexpr int iconSize = 32;
+    constexpr int buttonSize = 24;
+    constexpr int buttonSizeBig = 32;
 
     int buttonHorMargin()
     {
@@ -196,49 +202,54 @@ namespace Ui
         mainStakedWidget_ = new QStackedWidget();
         mainStakedWidget_->setMinimumWidth(getMinWindowWidth());
         mainStakedWidget_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-        Testing::setAccessibleName(mainStakedWidget_, qsl("AS lp mainStakedWidget_"));
+        Testing::setAccessibleName(mainStakedWidget_, qsl("AS LoginPage mainStakedWidget"));
         loginPageLayout->addWidget(mainStakedWidget_);
 
-        QWidget* loginWidget = new QWidget();
-        Testing::setAccessibleName(loginWidget, qsl("AS lp loginWidget"));
+        QWidget* loginWidget = new QWidget(this);
+        Testing::setAccessibleName(loginWidget, qsl("AS LoginPage loginWidget"));
         QVBoxLayout* verticalLayout = Utils::emptyVLayout(loginWidget);
 
-        auto topButtonWidget = new QWidget();
-        Testing::setAccessibleName(topButtonWidget, qsl("AS lp topButtonWidget"));
+        auto topButtonWidget = new QWidget(this);
+        Testing::setAccessibleName(topButtonWidget, qsl("AS LoginPage topButtonWidget"));
         auto topButtonLayout = Utils::emptyHLayout(topButtonWidget);
         Utils::ApplyStyle(topButtonWidget, qsl("border: none; background-color: transparent;"));
         topButtonWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
         topButtonWidget->setFixedHeight(topButtonWidgetHeight());
         topButtonLayout->setContentsMargins(Utils::scale_value(20), Utils::scale_value(12), Utils::scale_value(12), 0);
+        topButtonLayout->setSpacing(Utils::scale_value(8));
 
-        if (config::get().is_on(config::features::login_by_phone_allowed))
-        {
-            changePageButton_ = new CustomButton(topButtonWidget);
-            Styling::Buttons::setButtonDefaultColors(changePageButton_);
-            changePageButton_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
-            changePageButton_->setMinimumSize(Utils::scale_value(QSize(24, 24)));
-            changePageButton_->setFont(Fonts::appFontScaled(15));
-            Testing::setAccessibleName(changePageButton_, qsl("AS lp changePageButton_"));
-            topButtonLayout->addWidget(changePageButton_);
-        }
+        changePageButton_ = new CustomButton(topButtonWidget);
+        Styling::Buttons::setButtonDefaultColors(changePageButton_);
+        changePageButton_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
+        changePageButton_->setMinimumSize(Utils::scale_value(QSize(buttonSize, buttonSize)));
+        changePageButton_->setFont(Fonts::appFontScaled(15));
+        Testing::setAccessibleName(changePageButton_, qsl("AS LoginPage changePageButton"));
+        topButtonLayout->addWidget(changePageButton_);
 
         {
             auto buttonsSpacer = new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Minimum);
             topButtonLayout->addItem(buttonsSpacer);
         }
 
-        proxySettingsButton_ = new CustomButton(topButtonWidget, qsl(":/settings_icon_big"), QSize(iconSize, iconSize));
+        proxySettingsButton_ = new CustomButton(topButtonWidget, qsl(":/settings_icon_big"), QSize(buttonSizeBig, buttonSizeBig));
         proxySettingsButton_->setObjectName(qsl("settingsButton"));
         proxySettingsButton_->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
         proxySettingsButton_->setFocusPolicy(Qt::NoFocus);
         Styling::Buttons::setButtonDefaultColors(proxySettingsButton_);
-        Testing::setAccessibleName(proxySettingsButton_, qsl("AS lp proxySettingsButton_"));
+        Testing::setAccessibleName(proxySettingsButton_, qsl("AS LoginPage proxySettingsButton"));
         topButtonLayout->addWidget(proxySettingsButton_);
-        Testing::setAccessibleName(topButtonWidget, qsl("AS lp topButtonWidget"));
+
+        reportButton_ = new CustomButton(topButtonWidget, qsl(":/settings/report"), QSize(buttonSize, buttonSize));
+        reportButton_->setObjectName(qsl("settingsButton"));
+        reportButton_->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+        reportButton_->setFocusPolicy(Qt::NoFocus);
+        Styling::Buttons::setButtonDefaultColors(reportButton_);
+        Testing::setAccessibleName(reportButton_, qsl("AS LoginPage reportButton"));
+        topButtonLayout->addWidget(reportButton_);
         verticalLayout->addWidget(topButtonWidget);
 
-        QWidget* mainVerWidget = new QWidget();
-        Testing::setAccessibleName(mainVerWidget, qsl("AS lp mainVerWidget"));
+        QWidget* mainVerWidget = new QWidget(this);
+        Testing::setAccessibleName(mainVerWidget, qsl("AS LoginPage mainVerWidget"));
         QVBoxLayout* verticalIntroLayout = Utils::emptyVLayout(mainVerWidget);
         topSpacer_ = new QSpacerItem(0, 0, QSizePolicy::Fixed, QSizePolicy::Fixed);
         verticalIntroLayout->addItem(topSpacer_);
@@ -248,7 +259,7 @@ namespace Ui
         scrollArea->setStyleSheet(qsl("background: transparent; border: none;"));
         scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
         Utils::grabTouchWidget(scrollArea->viewport(), true);
-        Testing::setAccessibleName(scrollArea, qsl("AS settings appearance scrollArea"));
+        Testing::setAccessibleName(scrollArea, qsl("AS LoginPage scrollArea"));
         verticalLayout->addWidget(scrollArea);
         scrollArea->setWidget(mainVerWidget);
 
@@ -260,38 +271,37 @@ namespace Ui
         controlsWidget_ = new QWidget(mainWidget);
         controlsWidget_->setObjectName(qsl("controlsWidget"));
         controlsWidget_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-        Testing::setAccessibleName(controlsWidget_, qsl("AS lp controlsWidget"));
+        Testing::setAccessibleName(controlsWidget_, qsl("AS LoginPage controlsWidget"));
         auto controlsLayout = Utils::emptyVLayout(controlsWidget_);
 
-        QWidget* hintsWidget = new QWidget(controlsWidget_);
-        hintsWidget->setObjectName(qsl("hintsWidget"));
-        hintsWidget->setMinimumWidth(controlsWidth());
-        hintsWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-        Testing::setAccessibleName(hintsWidget, qsl("AS lp hintsWidget"));
-        auto hintsLayout = Utils::emptyVLayout(hintsWidget);
+        hintsWidget_ = new QWidget(controlsWidget_);
+        hintsWidget_->setObjectName(qsl("hintsWidget"));
+        hintsWidget_->setMinimumWidth(controlsWidth());
+        hintsWidget_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+        Testing::setAccessibleName(hintsWidget_, qsl("AS LoginPage hintsWidget"));
+        auto hintsLayout = Utils::emptyVLayout(hintsWidget_);
 
-        titleLabel_ = new TextWidget(hintsWidget, getTitleText(HintType::EnterEmailOrUin));
+        titleLabel_ = new TextWidget(hintsWidget_, getTitleText(HintType::EnterEmailOrUin));
         titleLabel_->init(Fonts::appFontScaled(titleFontSize, Fonts::FontWeight::SemiBold), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
         titleLabel_->setObjectName(qsl("hint"));
         titleLabel_->setAlignment(TextRendering::HorAligment::CENTER);
         titleLabel_->setFixedWidth(controlsWidth());
-        Testing::setAccessibleName(titleLabel_, qsl("AS lp titleLabel_"));
+        Testing::setAccessibleName(titleLabel_, qsl("AS LoginPage titleLabel"));
         hintsLayout->addWidget(titleLabel_);
         hintsLayout->setAlignment(titleLabel_, Qt::AlignBottom | Qt::AlignHCenter);
         hintsLayout->addItem(new QSpacerItem(0, Utils::scale_value(16), QSizePolicy::Fixed, QSizePolicy::Fixed));
 
-        entryHint_ = new EntryHintWidget(hintsWidget, hintLabelText(HintType::EnterEmailOrUin));
-        Testing::setAccessibleName(entryHint_, qsl("AS lp entryHint_"));
+        entryHint_ = new EntryHintWidget(hintsWidget_, hintLabelText(HintType::EnterEmailOrUin));
+        Testing::setAccessibleName(entryHint_, qsl("AS LoginPage entryHint"));
         hintsLayout->addWidget(entryHint_);
 
-        Testing::setAccessibleName(hintsWidget, qsl("AS lp hintsWidget"));
-        controlsLayout->addWidget(hintsWidget);
+        controlsLayout->addWidget(hintsWidget_);
 
-        QWidget* passwordLoginWidget = new QWidget();
+        QWidget* passwordLoginWidget = new QWidget(this);
         passwordLoginWidget->setObjectName(qsl("passwordLoginWidget"));
         passwordLoginWidget->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Ignored);
         passwordLoginWidget->setMinimumWidth(controlsWidth() + Utils::scale_value(14));
-        Testing::setAccessibleName(passwordLoginWidget, qsl("AS lp passwordLoginWidget"));
+        Testing::setAccessibleName(passwordLoginWidget, qsl("AS LoginPage passwordLoginWidget"));
         auto passwordLoginLayout = Utils::emptyVLayout(passwordLoginWidget);
 
         passwordLoginLayout->addItem(new QSpacerItem(0, Utils::scale_value(17), QSizePolicy::Minimum, QSizePolicy::Fixed));
@@ -300,7 +310,7 @@ namespace Ui
         uinInput_->setText(get_gui_settings()->get_value(login_page_last_entered_uin, QString()));
         uinInput_->setAttribute(Qt::WA_MacShowFocusRect, false);
         uinInput_->setFixedWidth(controlsWidth());
-        Testing::setAccessibleName(uinInput_, qsl("AS lp uinInput_"));
+        Testing::setAccessibleName(uinInput_, qsl("AS LoginPage uinInput"));
         passwordLoginLayout->addWidget(uinInput_);
         passwordLoginLayout->setAlignment(uinInput_, Qt::AlignTop | Qt::AlignHCenter);
         passwordLoginLayout->addItem(new QSpacerItem(0, Utils::scale_value(6), QSizePolicy::Minimum, QSizePolicy::Fixed));
@@ -308,7 +318,7 @@ namespace Ui
         passwordInput_ = new CommonInputContainer(passwordLoginWidget, Ui::InputRole::Password);
         passwordInput_->setPlaceholderText(QT_TRANSLATE_NOOP("login_page", "Password"));
         passwordInput_->setFixedWidth(controlsWidth());
-        Testing::setAccessibleName(passwordInput_, qsl("AS lp passwordInput_"));
+        Testing::setAccessibleName(passwordInput_, qsl("AS LoginPage passwordInput"));
         passwordLoginLayout->addWidget(passwordInput_);
         passwordLoginLayout->setAlignment(passwordInput_, Qt::AlignTop | Qt::AlignHCenter);
 
@@ -316,14 +326,14 @@ namespace Ui
         buttonsWidget_->setObjectName(qsl("buttonsWidget"));
         buttonsWidget_->setMinimumWidth(controlsWidth());
         buttonsWidget_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-        Testing::setAccessibleName(buttonsWidget_, qsl("AS lp buttonsWidget"));
+        Testing::setAccessibleName(buttonsWidget_, qsl("AS LoginPage buttonsWidget"));
         auto buttonsLayout = Utils::emptyVLayout(buttonsWidget_);
         buttonsLayout->setAlignment(Qt::AlignHCenter);
         buttonsLayout->addItem(new QSpacerItem(0, Utils::scale_value(5), QSizePolicy::Minimum, QSizePolicy::Fixed));
 
         errorWidget_ = new QWidget(buttonsWidget_);
         errorWidget_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-        Testing::setAccessibleName(errorWidget_, qsl("AS lp errorWidget_"));
+        Testing::setAccessibleName(errorWidget_, qsl("AS LoginPage errorWidget"));
         auto errorLayout = Utils::emptyVLayout(errorWidget_);
         errorLayout->setAlignment(Qt::AlignCenter);
 
@@ -337,9 +347,8 @@ namespace Ui
         errorLabel_->setFont(Fonts::appFontScaled(15));
         errorLabel_->setColor(Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_ATTENTION));
 
-        Testing::setAccessibleName(errorLabel_, qsl("AS lp errorLabel_"));
+        Testing::setAccessibleName(errorLabel_, qsl("AS LoginPage errorLabel"));
         errorLayout->addWidget(errorLabel_);
-        Testing::setAccessibleName(errorWidget_, qsl("AS lp errorWidget_"));
         buttonsLayout->addWidget(errorWidget_);
         buttonsLayout->addItem(new QSpacerItem(0, Utils::scale_value(12), QSizePolicy::Minimum, QSizePolicy::Fixed));
 
@@ -351,34 +360,34 @@ namespace Ui
         resendMenu_ = new ContextMenu(this, 20);
         resendMenu_->addActionWithIcon(qsl(":/context_menu/notice"), QT_TRANSLATE_NOOP("login_page", "Send code"), this, [this]() { sendCode(); });
         resendMenu_->addActionWithIcon(qsl(":/context_menu/call"), QT_TRANSLATE_NOOP("login_page", "Dictate over the phone"), this, [this]() { callPhone(); });
-        Testing::setAccessibleName(resendButton_, qsl("AS lp resendButton_"));
+        Testing::setAccessibleName(resendButton_, qsl("AS LoginPage resendCodeButton"));
+        Testing::setAccessibleName(resendMenu_, qsl("AS LoginPage resendCodeMenu"));
         buttonsLayout->addWidget(resendButton_);
         buttonsLayout->setAlignment(resendMenu_, Qt::AlignHCenter);
 
         keepLoggedWidget_ = new QWidget(buttonsWidget_);
         keepLoggedWidget_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-        Testing::setAccessibleName(keepLoggedWidget_, qsl("AS lp keepLoggedWidget_"));
+        Testing::setAccessibleName(keepLoggedWidget_, qsl("AS LoginPage keepLoggedWidget"));
         auto keepLoggedLayout = Utils::emptyVLayout(keepLoggedWidget_);
         keepLoggedLayout->setAlignment(Qt::AlignHCenter);
 
         keepLogged_ = new Ui::CheckBox(keepLoggedWidget_, Qt::AlignHCenter);
         keepLogged_->setText(QT_TRANSLATE_NOOP("login_page", "Keep me signed in"));
-        keepLogged_->setChecked(get_gui_settings()->get_value(settings_keep_logged_in, true));
+        keepLogged_->setChecked(get_gui_settings()->get_value(settings_keep_logged_in, settings_keep_logged_in_default()));
         keepLogged_->setFixedWidth(controlsWidth());
 
-        Testing::setAccessibleName(keepLogged_, qsl("AS lp keepLogged_"));
+        Testing::setAccessibleName(keepLogged_, qsl("AS LoginPage keepLogged"));
         keepLoggedLayout->addWidget(keepLogged_);
         keepLoggedLayout->addItem(new QSpacerItem(0, Utils::scale_value(28), QSizePolicy::Minimum, QSizePolicy::Fixed));
-        Testing::setAccessibleName(keepLoggedWidget_, qsl("AS lp keepLoggedWidget_"));
         buttonsLayout->addWidget(keepLoggedWidget_);
 
-        nextButton_ = new DialogButton(buttonsWidget_, QT_TRANSLATE_NOOP("login_page", "Sign in"), Ui::DialogButtonRole::DEFAULT, Ui::DialogButtonShape::ROUNDED);
+        nextButton_ = new DialogButton(buttonsWidget_, QT_TRANSLATE_NOOP("login_page", "Sign in"), Ui::DialogButtonRole::DEFAULT);
         nextButton_->setCursor(QCursor(Qt::PointingHandCursor));
         nextButton_->setFixedHeight(Utils::scale_value(40));
         nextButton_->setFont(Fonts::appFontScaled(fontSize, Fonts::FontWeight::Medium));
         nextButton_->setContentsMargins(buttonHorMargin(), Utils::scale_value(9), buttonHorMargin(), Utils::scale_value(11));
         nextButton_->adjustSize();
-        Testing::setAccessibleName(nextButton_, qsl("AS lp nextButton_"));
+        Testing::setAccessibleName(nextButton_, qsl("AS LoginPage nextButton"));
         buttonsLayout->addWidget(nextButton_);
         buttonsLayout->setAlignment(nextButton_, Qt::AlignHCenter);
 
@@ -396,70 +405,81 @@ namespace Ui
             Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY_ACTIVE));
         forgotPasswordLabel_->setCursor(Qt::PointingHandCursor);
 
-        Testing::setAccessibleName(forgotPasswordLabel_, qsl("AS lp forgotPasswordLabel_"));
+        Testing::setAccessibleName(forgotPasswordLabel_, qsl("AS LoginPage forgotPasswordLabel"));
         forgotPasswordLayout->addWidget(forgotPasswordLabel_);
         forgotPasswordLayout->setAlignment(forgotPasswordLabel_, Qt::AlignHCenter);
         buttonsLayout->addWidget(forgotPasswordWidget_);
         buttonsLayout->setAlignment(forgotPasswordWidget_, Qt::AlignHCenter);
 
-        QWidget* phoneLoginWidget = new QWidget();
+        QWidget* phoneLoginWidget = new QWidget(this);
         phoneLoginWidget->setObjectName(qsl("phoneLoginWidget"));
         phoneLoginWidget->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Ignored);
         phoneLoginWidget->setMinimumWidth(controlsWidth() + Utils::scale_value(14));
-        Testing::setAccessibleName(phoneLoginWidget, qsl("AS lp phoneLoginWidget"));
         auto phoneLoginLayout = Utils::emptyVLayout(phoneLoginWidget);
 
         phone_ = new PhoneInputContainer(phoneLoginWidget);
         phone_->setFixedWidth(controlsWidth());
         phoneLoginLayout->addItem(new QSpacerItem(0, Utils::scale_value(14), QSizePolicy::Minimum, QSizePolicy::Fixed));
-        Testing::setAccessibleName(phone_, qsl("AS lp phone_"));
+        Testing::setAccessibleName(phone_, qsl("AS LoginPage phoneContainer"));
         phoneLoginLayout->addWidget(phone_);
         phoneLoginLayout->setAlignment(phone_, Qt::AlignTop | Qt::AlignHCenter);
 
-        QWidget* phoneConfirmWidget = new QWidget();
+        QWidget* phoneConfirmWidget = new QWidget(this);
         phoneConfirmWidget->setObjectName(qsl("phoneConfirmWidget"));
         phoneConfirmWidget->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Ignored);
         phoneConfirmWidget->setMinimumWidth(controlsWidth() + Utils::scale_value(14));
-        Testing::setAccessibleName(phoneConfirmWidget, qsl("AS lp phoneConfirmWidget"));
         auto phoneConfirmLayout = Utils::emptyVLayout(phoneConfirmWidget);
 
         codeInput_ = new CodeInputContainer(phoneConfirmWidget);
         codeInput_->setObjectName(qsl("code"));
         codeInput_->setFixedWidth(controlsWidth());
         codeInput_->setAttribute(Qt::WA_MacShowFocusRect, false);
+        Testing::setAccessibleName(codeInput_, qsl("AS LoginPage smsCodeInput"));
         phoneConfirmLayout->addItem(new QSpacerItem(0, Utils::scale_value(14), QSizePolicy::Minimum, QSizePolicy::Fixed));
-        Testing::setAccessibleName(codeInput_, qsl("AS lp codeEdit"));
         phoneConfirmLayout->addWidget(codeInput_);
         phoneConfirmLayout->setAlignment(codeInput_, Qt::AlignTop | Qt::AlignHCenter);
 
-        QWidget* introduceWidget = new QWidget();
-        Testing::setAccessibleName(introduceWidget, qsl("AS lp introduceWidget"));
+        QWidget* introduceWidget = new QWidget(this);
+        Testing::setAccessibleName(introduceWidget, qsl("AS LoginPage introduceWidget"));
         auto introduceLayout = Utils::emptyVLayout(introduceWidget);
         introduceWidget->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Ignored);
         introduceMyselfWidget_ = new IntroduceYourself(MyInfo()->aimId(), QString(), introduceWidget);
         introduceWidget->setMinimumWidth(controlsWidth() + Utils::scale_value(14));
-        Testing::setAccessibleName(introduceMyselfWidget_, qsl("AS lp introduceMyselfWidget_"));
+        Testing::setAccessibleName(introduceMyselfWidget_, qsl("AS LoginPage introduceMyselfWidget"));
         introduceLayout->addWidget(introduceMyselfWidget_);
         introduceLayout->setAlignment(introduceMyselfWidget_, Qt::AlignCenter);
+
+        QWidget* reportWidget = new QWidget(this);
+        Testing::setAccessibleName(reportWidget, qsl("AS LoginPage reportWidget"));
+        auto reportLayout = Utils::emptyVLayout(reportWidget);
+        reportWidget->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Ignored);
+        contactUsWidget_ = new ContactUsWidget(reportWidget, true);
+        Testing::setAccessibleName(contactUsWidget_, qsl("AS ContactUsPage"));
+        reportWidget->setMinimumWidth(controlsWidth() + Utils::scale_value(14));
+        contactUsWidget_->setFixedHeight(Utils::scale_value(410)); // crutch bc of scrollarea in ContactUsWidget
+        reportLayout->addWidget(contactUsWidget_);
+        reportLayout->setAlignment(contactUsWidget_, Qt::AlignCenter);
 
         loginStakedWidget_ = new QStackedWidget(controlsWidget_);
         loginStakedWidget_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
         loginStakedWidget_->setObjectName(qsl("stackedWidget"));
         loginStakedWidget_->installEventFilter(this);
-        Testing::setAccessibleName(phoneLoginWidget, qsl("AS lp phoneLoginWidget"));
+        Testing::setAccessibleName(phoneLoginWidget, qsl("AS LoginPage phoneLoginWidget"));
         loginStakedWidget_->addWidget(phoneLoginWidget);
-        Testing::setAccessibleName(phoneConfirmWidget, qsl("AS lp phoneConfirmWidget"));
+        Testing::setAccessibleName(phoneConfirmWidget, qsl("AS LoginPage phoneConfirmWidget"));
         loginStakedWidget_->addWidget(phoneConfirmWidget);
-        Testing::setAccessibleName(passwordLoginWidget, qsl("AS lp passwordLoginWidget"));
+        Testing::setAccessibleName(passwordLoginWidget, qsl("AS LoginPage passwordLoginWidget"));
         loginStakedWidget_->addWidget(passwordLoginWidget);
-        Testing::setAccessibleName(introduceWidget, qsl("AS lp introduceWidget"));
+        Testing::setAccessibleName(introduceWidget, qsl("AS LoginPage introduceWidget"));
         loginStakedWidget_->addWidget(introduceWidget);
+        Testing::setAccessibleName(reportWidget, qsl("AS LoginPage reportWidget"));
+        loginStakedWidget_->addWidget(reportWidget);
 
-        Testing::setAccessibleName(loginStakedWidget_, qsl("AS lp loginStakedWidget_"));
+        Testing::setAccessibleName(loginStakedWidget_, qsl("AS LoginPage loginStakedWidget"));
         controlsLayout->addWidget(loginStakedWidget_);
         controlsLayout->setAlignment(loginStakedWidget_, Qt::AlignCenter);
 
-        Testing::setAccessibleName(buttonsWidget_, qsl("AS lp buttonsWidget"));
+        Testing::setAccessibleName(buttonsWidget_, qsl("AS LoginPage buttonsWidget"));
         controlsLayout->addWidget(buttonsWidget_);
         controlsLayout->setAlignment(buttonsWidget_, Qt::AlignHCenter);
         controlsLayout->addItem(new QSpacerItem(0, 0, QSizePolicy::Minimum, QSizePolicy::Expanding));
@@ -467,17 +487,17 @@ namespace Ui
         mainLayout->addWidget(controlsWidget_);
         mainLayout->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Minimum));
 
-        Testing::setAccessibleName(mainWidget, qsl("AS lp mainWidget"));
+        Testing::setAccessibleName(mainWidget, qsl("AS LoginPage mainWidget"));
         verticalIntroLayout->addWidget(mainWidget);
         bottomSpacer_ = new QSpacerItem(0, 0, QSizePolicy::Fixed, QSizePolicy::Fixed);
         verticalIntroLayout->addItem(bottomSpacer_);
 
-        Testing::setAccessibleName(loginWidget, qsl("AS lp loginWidget"));
+        Testing::setAccessibleName(loginWidget, qsl("AS LoginPage loginWidget"));
         mainStakedWidget_->addWidget(loginWidget);
 
         if (needGDPRPage())
         {
-            QWidget* gdprWidget = new QWidget();
+            QWidget* gdprWidget = new QWidget(this);
             auto gdprLayout = Utils::emptyHLayout(gdprWidget);
             gdprLayout->setAlignment(Qt::AlignCenter);
 
@@ -493,20 +513,18 @@ namespace Ui
                 .arg(legalTermsUrl(), privacyPolicyUrl()),
                 options);
 
-            Testing::setAccessibleName(termsWidget_, qsl("AS lp termsWidget_"));
+            Testing::setAccessibleName(termsWidget_, qsl("AS GDPR termsWidget"));
             gdprLayout->addWidget(termsWidget_);
-            Testing::setAccessibleName(gdprWidget, qsl("AS lp gdprWidget"));
+            Testing::setAccessibleName(gdprWidget, qsl("AS GDPR gdprWidget"));
             mainStakedWidget_->addWidget(gdprWidget);
             mainStakedWidget_->layout()->setAlignment(gdprWidget, Qt::AlignHCenter);
         }
 
         connect(keepLogged_, &QCheckBox::toggled, [](bool v)
         {
-            if (get_gui_settings()->get_value(settings_keep_logged_in, true) != v)
+            if (get_gui_settings()->get_value(settings_keep_logged_in, settings_keep_logged_in_default()) != v)
                 get_gui_settings()->set_value(settings_keep_logged_in, v);
         });
-
-        Q_UNUSED(this);
 
         init();
         setFocus();
@@ -543,10 +561,12 @@ namespace Ui
 
     void LoginPage::init()
     {
-        if (changePageButton_)
-            connect(changePageButton_, &Ui::CustomButton::clicked, this, &LoginPage::switchLoginType);
+        connect(changePageButton_, &Ui::CustomButton::clicked, this, &LoginPage::switchLoginType);
 
-        connect(loginStakedWidget_, &QStackedWidget::currentChanged, this, &LoginPage::updatePage);
+        connect(loginStakedWidget_, &QStackedWidget::currentChanged, this, [this]()
+        {
+            updatePage();
+        });
 
         connect(nextButton_, &DialogButton::clicked, this, &LoginPage::nextPage);
         connect(resendButton_, &QPushButton::clicked, this, &LoginPage::resendCode);
@@ -554,6 +574,10 @@ namespace Ui
         connect(timer_, &QTimer::timeout, this, &LoginPage::updateTimer);
 
         connect(proxySettingsButton_, &QPushButton::clicked, this, &LoginPage::openProxySettings);
+        connect(reportButton_, &QPushButton::clicked, this, [this]()
+        {
+            initLoginSubPage(LoginSubpage::SUBPAGE_REPORT);
+        });
         connect(forgotPasswordLabel_, &LabelEx::clicked, this, []()
         {
             QDesktopServices::openUrl(QUrl(getPasswordLink()));
@@ -578,13 +602,14 @@ namespace Ui
         connect(Ui::GetDispatcher(), &Ui::core_dispatcher::loginResultAttachUin, this, &LoginPage::loginResultAttachUin, Qt::DirectConnection);
         connect(Ui::GetDispatcher(), &Ui::core_dispatcher::loginResultAttachPhone, this, &LoginPage::loginResultAttachPhone, Qt::DirectConnection);
         connect(Ui::GetDispatcher(), &Ui::core_dispatcher::phoneInfoResult, this, &LoginPage::phoneInfoResult, Qt::DirectConnection);
-        connect(Ui::GetDispatcher(), &Ui::core_dispatcher::externalUrlConfigError, this, &LoginPage::onUrlConfigError);
+        connect(Ui::GetDispatcher(), &Ui::core_dispatcher::externalUrlConfigUpdated, this, &LoginPage::onUrlConfigError);
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::authError, this, &LoginPage::authError, Qt::QueuedConnection);
 
         connect(introduceMyselfWidget_, &IntroduceYourself::profileUpdated, this, [this]()
         {
             GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::reg_correct_name, {{ "type", statType(lastPage_) }});
             login();
+            Logic::updatePlaceholders();
         });
         connect(introduceMyselfWidget_, &IntroduceYourself::avatarSet, this, [this]()
         {
@@ -601,25 +626,12 @@ namespace Ui
         if (config::get().is_on(config::features::login_by_mail_default))
             lastPage_ = LoginSubpage::SUBPAGE_UIN_LOGIN_INDEX;
 
+        if (Features::loginMethod() == Features::LoginMethod::OTPViaEmail)
+            otpState_ = OTPAuthState::Email;
+
         initLoginSubPage(lastPage_);
 
-        if (Features::loginMethod() == Features::LoginMethod::OTPViaEmail)
-            updateOTPState(OTPAuthState::Email);
-
-        if (config::get().is_on(config::features::login_by_phone_allowed))
-        {
-            if (auto lastPhone = get_gui_settings()->get_value(login_page_last_entered_phone, QString()); !lastPhone.isEmpty())
-            {
-                QTimer::singleShot(500, this, [lastPhone]() // workaround: phoneinfo/set_can_change_hosts_scheme ( https://jira.mail.ru/browse/IMDESKTOP-3773 )
-                {
-                    phoneInfoRequestsCount_++;
-                    Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
-                    collection.set_value_as_qstring("phone", lastPhone);
-                    collection.set_value_as_qstring("gui_locale", get_gui_settings()->get_value(settings_language, QString()));
-                    phoneInfoLastRequestSpecialId_ = GetDispatcher()->post_message_to_core("phoneinfo", collection.get());
-                });
-            }
-        }
+        prepareLoginByPhone();
 
         connect(MyInfo(), &my_info::received, this, [this]()
         {
@@ -632,6 +644,12 @@ namespace Ui
         connect(GetDispatcher(), &core_dispatcher::sessionStarted, this, [this](const QString& _aimId)
         {
             introduceMyselfWidget_->UpdateParams(_aimId, MyInfo()->friendly());
+        });
+
+        connect(Ui::GetDispatcher(), &Ui::core_dispatcher::guiSettings, this, [this]()
+        {
+            uinInput_->setText(get_gui_settings()->get_value(login_page_last_entered_uin, QString()));
+            prepareLoginByPhone();
         });
     }
 
@@ -647,8 +665,10 @@ namespace Ui
         get_gui_settings()->set_value<int>(login_page_last_login_type, (int)lastPage_);
 
         clearErrors();
-        emit loggedIn();
+        Q_EMIT loggedIn();
         get_gui_settings()->set_value<bool>(login_page_need_fill_profile, false);
+        if (otpState_)
+            updateOTPState(OTPAuthState::Email);
 
         phoneInfoRequestsCount_ = 0;
         phoneInfoLastRequestId_ = 0;
@@ -661,9 +681,9 @@ namespace Ui
             lastPage_ = _index;
 
         loginStakedWidget_->setEnabled(true);
-        if (changePageButton_)
-            changePageButton_->setVisible(config::get().is_on(config::features::login_by_phone_allowed) && _index != LoginSubpage::SUBPAGE_PHONE_CONF_INDEX);
+        changePageButton_->setVisible((config::get().is_on(config::features::login_by_phone_allowed) && _index != LoginSubpage::SUBPAGE_PHONE_CONF_INDEX) || _index == LoginSubpage::SUBPAGE_REPORT);
         proxySettingsButton_->setVisible(_index == LoginSubpage::SUBPAGE_PHONE_LOGIN_INDEX || _index == LoginSubpage::SUBPAGE_UIN_LOGIN_INDEX);
+        reportButton_->setVisible(_index == LoginSubpage::SUBPAGE_PHONE_LOGIN_INDEX || _index == LoginSubpage::SUBPAGE_UIN_LOGIN_INDEX);
         titleLabel_->setVisible(true);
         entryHint_->setVisible(true);
         buttonsWidget_->setVisible(true);
@@ -675,6 +695,7 @@ namespace Ui
         errorLabel_->setVisible(false);
         resendButton_->setVisible(_index == LoginSubpage::SUBPAGE_PHONE_CONF_INDEX);
         errorLabel_->setMinimumHeight(errorLabelMinHeight(1));
+        contactUsWidget_->resetState(ClearData::Yes);
 
         if (loginStakedWidget_->currentWidget())
         {
@@ -701,13 +722,22 @@ namespace Ui
             break;
 
         case LoginSubpage::SUBPAGE_UIN_LOGIN_INDEX:
-            titleLabel_->setText(getTitleText(config::get().is_on(config::features::login_by_mail_default) ? HintType::EnterEmail : HintType::EnterEmailOrUin));
-            entryHint_->setText(hintLabelText(config::get().is_on(config::features::login_by_mail_default) ? HintType::EnterEmail : HintType::EnterEmailOrUin));
-            if (config::get().is_on(config::features::explained_forgot_password))
-                entryHint_->appendLink(QT_TRANSLATE_NOOP("login_page", "Mail.ru for business"), getPasswordLink());
-            forgotPasswordWidget_->setVisible(config::get().is_on(config::features::forgot_password));
+            if (otpState_)
+            {
+                updateOTPState(otpState_ == OTPAuthState::Email ? OTPAuthState::Email : OTPAuthState::Password);
+            }
+            else
+            {
+                titleLabel_->setText(getTitleText(config::get().is_on(config::features::login_by_mail_default) ? HintType::EnterEmail : HintType::EnterEmailOrUin));
+                entryHint_->setText(hintLabelText(config::get().is_on(config::features::login_by_mail_default) ? HintType::EnterEmail : HintType::EnterEmailOrUin));
+                if (config::get().is_on(config::features::explained_forgot_password))
+                {
+                    entryHint_->appendLink(QT_TRANSLATE_NOOP("login_page", "Mail.ru for business"), getPasswordLink());
+                }
+                forgotPasswordWidget_->setVisible(config::get().is_on(config::features::forgot_password));
 
-            keepLoggedWidget_->setVisible(true);
+                keepLoggedWidget_->setVisible(true);
+            }
             GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::reg_page_uin);
             break;
         case LoginSubpage::SUBPAGE_INTRODUCEYOURSELF:
@@ -718,13 +748,19 @@ namespace Ui
             GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::reg_page_set_name);
             GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::reg_page_set_photo);
             break;
+        case LoginSubpage::SUBPAGE_REPORT:
+            titleLabel_->setText( QT_TRANSLATE_NOOP("login_page", "Write us"));
+            entryHint_->setVisible(false);
+            buttonsWidget_->setVisible(false);
+            break;
         }
 
         const auto idx = (int)_index;
         loginStakedWidget_->widget(idx)->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
         loginStakedWidget_->widget(idx)->updateGeometry();
         titleLabel_->setMaxWidthAndResize(controlsWidth());
-        if (_index == LoginSubpage::SUBPAGE_PHONE_CONF_INDEX)
+        hintsWidget_->updateGeometry();
+        if (_index == LoginSubpage::SUBPAGE_PHONE_CONF_INDEX || _index == LoginSubpage::SUBPAGE_REPORT)
         {
             controlsWidget_->updateGeometry();
             resizeSpacers();
@@ -755,7 +791,7 @@ namespace Ui
     {
         if (termsWidget_ != nullptr)
         {
-            Testing::setAccessibleName(termsWidget_, qsl("AS lp termsWidget"));
+            Testing::setAccessibleName(termsWidget_, qsl("AS GDPR termsWidget"));
             connect(termsWidget_, &TermsPrivacyWidget::agreementAccepted,
                 this, [this](const TermsPrivacyWidget::AcceptParams & _params)
             {
@@ -814,11 +850,6 @@ namespace Ui
         gdprAccepted_ = _accepted;
     }
 
-    bool LoginPage::userAcceptedGDPR() const
-    {
-        return GetAppConfig().GDPR_UserHasAgreed() || gdprAcceptedThisSession();
-    }
-
     bool LoginPage::gdprAcceptedThisSession() const
     {
         return gdprAccepted_;
@@ -860,13 +891,13 @@ namespace Ui
             bool isMobile = false;
             for (const auto& status : receivedPhoneInfo_.prefix_state_)
             {
-                if (QString::fromStdString(status).toLower() == ql1s("mobile"))
+                if (QString::fromStdString(status).toLower() == u"mobile")
                 {
                     isMobile = true;
                     break;
                 }
             }
-            const auto isOk = QString::fromStdString(receivedPhoneInfo_.status_).toLower() == ql1s("ok");
+            const auto isOk = QString::fromStdString(receivedPhoneInfo_.status_).toLower() == u"ok";
             const auto message = !receivedPhoneInfo_.printable_.empty() ? QString::fromStdString(receivedPhoneInfo_.printable_[0]) : QString();
             if ((!isMobile || !isOk) && !message.isEmpty())
             {
@@ -905,6 +936,9 @@ namespace Ui
 
             collection.set_value_as_bool("not_log", true);
             sendSeq_ = GetDispatcher()->post_message_to_core("login_by_password", collection.get());
+
+            if (config::get().is_on(config::features::external_url_config))
+                nextButton_->setEnabled(false);
         }
     }
 
@@ -921,7 +955,12 @@ namespace Ui
 
         const auto curPage = currentPage();
         auto nextPage = LoginSubpage::SUBPAGE_UIN_LOGIN_INDEX;
-        if (curPage == LoginSubpage::SUBPAGE_UIN_LOGIN_INDEX || curPage == LoginSubpage::SUBPAGE_PHONE_CONF_INDEX)
+        if (otpState_ && curPage == LoginSubpage::SUBPAGE_UIN_LOGIN_INDEX)
+        {
+            updateOTPState(OTPAuthState::Email);
+            return;
+        }
+        else if (curPage == LoginSubpage::SUBPAGE_UIN_LOGIN_INDEX || curPage == LoginSubpage::SUBPAGE_PHONE_CONF_INDEX)
         {
             nextPage = LoginSubpage::SUBPAGE_PHONE_LOGIN_INDEX;
         }
@@ -929,8 +968,12 @@ namespace Ui
         {
             get_gui_settings()->set_value(settings_feedback_email, QString());
             GetDispatcher()->post_message_to_core("logout", nullptr);
-            emit Utils::InterConnector::instance().logout();
+            Q_EMIT Utils::InterConnector::instance().logout();
 
+            nextPage = lastPage_;
+        }
+        else if (curPage == LoginSubpage::SUBPAGE_REPORT)
+        {
             nextPage = lastPage_;
         }
 
@@ -1097,15 +1140,31 @@ namespace Ui
         }
     }
 
+    void LoginPage::prepareLoginByPhone()
+    {
+        if (config::get().is_on(config::features::login_by_phone_allowed))
+        {
+            if (auto lastPhone = get_gui_settings()->get_value(login_page_last_entered_phone, QString()); !lastPhone.isEmpty())
+            {
+                QTimer::singleShot(500, this, [lastPhone]() // workaround: phoneinfo/set_can_change_hosts_scheme ( https://jira.mail.ru/browse/IMDESKTOP-3773 )
+                {
+                    phoneInfoRequestsCount_++;
+                    Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
+                    collection.set_value_as_qstring("phone", lastPhone);
+                    collection.set_value_as_qstring("gui_locale", get_gui_settings()->get_value(settings_language, QString()));
+                    phoneInfoLastRequestSpecialId_ = GetDispatcher()->post_message_to_core("phoneinfo", collection.get());
+                });
+            }
+            else
+            {
+                phone_->setPhone(QString());
+            }
+        }
+    }
+
     void LoginPage::updateBackButton()
     {
-        if (currentPage() == LoginSubpage::SUBPAGE_INTRODUCEYOURSELF || currentPage() == LoginSubpage::SUBPAGE_PHONE_CONF_INDEX)
-        {
-            changePageButton_->setText(QString());
-            changePageButton_->setDefaultImage(qsl(":/controls/back_icon_thin"), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY), QSize(backIconSize, backIconSize));
-            Styling::Buttons::setButtonDefaultColors(changePageButton_);
-        }
-        else
+        if (!otpState_ && (currentPage() == LoginSubpage::SUBPAGE_PHONE_LOGIN_INDEX || currentPage() == LoginSubpage::SUBPAGE_UIN_LOGIN_INDEX))
         {
             changePageButton_->clearIcon();
             changePageButton_->setText(currentPage() == LoginSubpage::SUBPAGE_PHONE_LOGIN_INDEX
@@ -1115,9 +1174,16 @@ namespace Ui
             changePageButton_->setHoveredTextColor(Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY_HOVER));
             changePageButton_->setPressedTextColor(Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY_ACTIVE));
         }
+        else
+        {
+            changePageButton_->setText(QString());
+            changePageButton_->setDefaultImage(qsl(":/controls/back_icon_thin"), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY), QSize(backIconSize, backIconSize));
+            Styling::Buttons::setButtonDefaultColors(changePageButton_);
+        }
 
         changePageButton_->update();
-        changePageButton_->show();
+        if (config::get().is_on(config::features::login_by_phone_allowed) || (otpState_ && otpState_ == OTPAuthState::Password) || currentPage() == LoginSubpage::SUBPAGE_REPORT)
+            changePageButton_->show();
     }
 
     void LoginPage::updateNextButton()
@@ -1139,18 +1205,19 @@ namespace Ui
             setLoginPageFocus();
         else if (currentPage() == LoginSubpage::SUBPAGE_PHONE_LOGIN_INDEX)
             phone_->setFocus();
+        else if (currentPage() == LoginSubpage::SUBPAGE_REPORT)
+            contactUsWidget_->setFocus();
         else
             codeInput_->setFocus();
 
     }
 
-    void LoginPage::updatePage()
+    void LoginPage::updatePage(UpdateMode _mode)
     {
-        QTimer::singleShot(0, this, [this]()
+        const auto updateFunc = [this]()
         {
             updateInputFocus();
-            if (changePageButton_)
-                updateBackButton();
+            updateBackButton();
             updateNextButton();
 
             errorLabel_->setText(QString());
@@ -1158,7 +1225,12 @@ namespace Ui
             errorLabel_->adjustSize();
             errorLabel_->updateGeometry();
             errorWidget_->setFixedHeight(errorLabel_->height());
-        });
+        };
+
+        if (_mode == UpdateMode::Delayed)
+            QTimer::singleShot(0, this, updateFunc);
+        else
+            updateFunc();
     }
 
     void LoginPage::setLoginPageFocus() const
@@ -1177,21 +1249,31 @@ namespace Ui
     void LoginPage::updateOTPState(OTPAuthState _state)
     {
         otpState_ = _state;
-        uinInput_->setDisabled(_state == OTPAuthState::Password);
-        passwordInput_->setVisible(_state == OTPAuthState::Password);
-        keepLoggedWidget_->setVisible(_state == OTPAuthState::Password);
+        const bool isPassPage = _state == OTPAuthState::Password;
+        uinInput_->setVisible(!isPassPage);
+        passwordInput_->setVisible(isPassPage);
+        passwordInput_->clear();
+        keepLoggedWidget_->setVisible(!isPassPage);
 
-        titleLabel_->setText(getTitleText(_state == OTPAuthState::Password ? HintType::EnterOTPFromEmail : HintType::EnterEmail));
-        entryHint_->setText(hintLabelText(_state == OTPAuthState::Password ? HintType::EnterOTPFromEmail : HintType::EnterEmail));
+        titleLabel_->setText(getTitleText(isPassPage ? HintType::EnterOTPPassword : HintType::EnterOTPEmail));
+        entryHint_->setText(hintLabelText(isPassPage ? HintType::EnterOTPPassword : HintType::EnterOTPEmail));
 
-        if (_state == OTPAuthState::Email && config::get().is_on(config::features::explained_forgot_password))
+        if (!isPassPage && config::get().is_on(config::features::explained_forgot_password))
             entryHint_->appendLink(QT_TRANSLATE_NOOP("login_page", "Mail.ru for business"), getPasswordLink());
+        else if (isPassPage)
+            entryHint_->appendLink(uinInput_->text(), {});
 
-        if (_state == OTPAuthState::Email)
+        if (!isPassPage)
             uinInput_->setFocus();
         else
             passwordInput_->setFocus();
-        updateNextButton();
+
+        updatePage(UpdateMode::Instant);
+        changePageButton_->setVisible(isPassPage);
+        loginStakedWidget_->widget((int)LoginSubpage::SUBPAGE_UIN_LOGIN_INDEX)->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+        loginStakedWidget_->widget((int)LoginSubpage::SUBPAGE_UIN_LOGIN_INDEX)->updateGeometry();
+        loginStakedWidget_->updateGeometry();
+        updateButtonsWidgetHeight();
     }
 
     std::string LoginPage::statType(const LoginSubpage _page) const
@@ -1201,7 +1283,7 @@ namespace Ui
 
     bool LoginPage::isCallCheck(const QString& _checks)
     {
-        return _checks == ql1s("callui");
+        return _checks == u"callui";
     }
 
     void LoginPage::loginResult(int64_t _seq, int _result, bool _fillProfile)
@@ -1237,7 +1319,10 @@ namespace Ui
         }
 
         if (otpState_ && otpState_ == OTPAuthState::Password)
-            updateOTPState(OTPAuthState::Email);
+        {
+            updateOTPState(OTPAuthState::Password);
+            setErrorText(QT_TRANSLATE_NOOP("login_page", "Wrong password"));
+        }
     }
 
     void LoginPage::authError(const int _result)
@@ -1247,6 +1332,8 @@ namespace Ui
 
     void LoginPage::onUrlConfigError(const int _error)
     {
+        nextButton_->setEnabled(true);
+
         const auto err = (core::ext_url_config_error)_error;
         switch (err)
         {
@@ -1254,20 +1341,22 @@ namespace Ui
             break;
 
         case core::ext_url_config_error::config_host_invalid:
+        case core::ext_url_config_error::invalid_http_code:
             showUrlConfigHostDialog();
             break;
 
         case core::ext_url_config_error::answer_not_enough_fields:
             Utils::GetConfirmationWithOneButton(
                 QT_TRANSLATE_NOOP("login_page", "OK"),
-                QT_TRANSLATE_NOOP("login_page", "It is necessary to supplement the server configuration for the application to work. Contact system administrator."),
+                QT_TRANSLATE_NOOP("login_page", "It is necessary to supplement the server configuration for the application to work. Contact system administrator"),
                 QT_TRANSLATE_NOOP("login_page", "Configuration error"),
                 nullptr);
             break;
         case core::ext_url_config_error::answer_parse_error:
+        case core::ext_url_config_error::empty_response:
             Utils::GetConfirmationWithOneButton(
                 QT_TRANSLATE_NOOP("login_page", "OK"),
-                QT_TRANSLATE_NOOP("login_page", "Invalid server configuration format. Contact system administrator."),
+                QT_TRANSLATE_NOOP("login_page", "Invalid server configuration format. Contact system administrator"),
                 QT_TRANSLATE_NOOP("login_page", "Configuration error"),
                 nullptr);
             break;
@@ -1276,7 +1365,7 @@ namespace Ui
             assert(false);
             Utils::GetConfirmationWithOneButton(
                 QT_TRANSLATE_NOOP("login_page", "OK"),
-                QT_TRANSLATE_NOOP("login_page", "Unknown error. Contact system administrator."),
+                QT_TRANSLATE_NOOP("login_page", "Unknown error. Contact system administrator"),
                 QT_TRANSLATE_NOOP("login_page", "Configuration error"),
                 nullptr);
             break;
@@ -1291,6 +1380,10 @@ namespace Ui
         edit->setCustomPlaceholder(QT_TRANSLATE_NOOP("login_page", "Enter hostname"));
         edit->changeTextColor(Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
         edit->setCustomPlaceholderColor(Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
+
+        if (const auto suggested = config::get().string(config::values::external_config_preset_url); !suggested.empty())
+            edit->setText(QString::fromUtf8(suggested.data(), suggested.size()));
+
         Utils::ApplyStyle(edit, Styling::getParameters().getLineEditCommonQss() % qsl("QLineEdit{background-color:%1;}").arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_BRIGHT, 0.5)));
 
         auto layout = Utils::emptyVLayout(host);
@@ -1299,7 +1392,7 @@ namespace Ui
 
         GeneralDialog dialog(host, Utils::InterConnector::instance().getMainWindow(), true);
         dialog.addLabel(QT_TRANSLATE_NOOP("login_page", "Configuration error"));
-        dialog.addText(QT_TRANSLATE_NOOP("login_page", "Invalid server configuration hostname. Contact system administrator."), Utils::scale_value(12));
+        dialog.addText(QT_TRANSLATE_NOOP("login_page", "Invalid server configuration hostname. Contact system administrator"), Utils::scale_value(12));
         dialog.addButtonsPair(QT_TRANSLATE_NOOP("login_page", "Cancel"), QT_TRANSLATE_NOOP("login_page", "OK"), true);
 
         connect(edit, &LineEditEx::enter, &dialog, &GeneralDialog::accept);
@@ -1325,7 +1418,7 @@ namespace Ui
         updateErrors(_result);
         if (_result == 0)
         {
-            emit attached();
+            Q_EMIT attached();
         }
     }
 
@@ -1336,7 +1429,7 @@ namespace Ui
         updateErrors(_result);
         if (_result == 0)
         {
-            emit attached();
+            Q_EMIT attached();
         }
     }
 
@@ -1414,6 +1507,7 @@ namespace Ui
         const auto wrongEmailError = config::get().is_on(config::features::login_by_uin_allowed)
             ? QT_TRANSLATE_NOOP("login_page", "Wrong login or password")
             : QT_TRANSLATE_NOOP("login_page", "Wrong Email or password");
+        const auto commonError = QT_TRANSLATE_NOOP("login_page", "Error occurred, try again later");
         errorLabel_->setMinimumHeight(errorLabelMinHeight(1));
 
         const auto page = currentPage();
@@ -1423,8 +1517,8 @@ namespace Ui
         switch (_result)
         {
         case core::le_wrong_login:
-            errorLabel_->setText(page == LoginSubpage::SUBPAGE_UIN_LOGIN_INDEX ?
-                wrongEmailError
+            errorLabel_->setText(page == LoginSubpage::SUBPAGE_UIN_LOGIN_INDEX
+                ? (otpState_ ? commonError : wrongEmailError)
                 : QT_TRANSLATE_NOOP("login_page", "Incorrect code"));
 
             props.push_back({ "how", page == LoginSubpage::SUBPAGE_UIN_LOGIN_INDEX
@@ -1463,7 +1557,7 @@ namespace Ui
             resendButton_->setEnabled(false);
             break;
         default:
-            errorLabel_->setText(QT_TRANSLATE_NOOP("login_page", "Error occurred, try again later"));
+            errorLabel_->setText(commonError);
             GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::reg_error_other);
             break;
         }
@@ -1521,6 +1615,7 @@ namespace Ui
         if (_obj == loginStakedWidget_ && _event->type() == QEvent::Resize)
         {
             controlsWidget_->adjustSize();
+            controlsWidget_->updateGeometry();
             resizeSpacers();
             return true;
         }
@@ -1539,7 +1634,12 @@ namespace Ui
             buttonsWidgetHeight += resendButton_->height();
 
         if (curPage == LoginSubpage::SUBPAGE_UIN_LOGIN_INDEX)
-            buttonsWidgetHeight += (keepLoggedWidget_->height() + forgotPasswordWidget_->height());
+        {
+            if (keepLoggedWidget_->isVisible())
+            buttonsWidgetHeight += keepLoggedWidget_->height();
+            if (forgotPasswordWidget_->isVisible())
+                buttonsWidgetHeight += forgotPasswordWidget_->height();
+        }
 
         buttonsWidget_->setMinimumHeight(buttonsWidgetHeight);
         buttonsWidget_->updateGeometry();
@@ -1626,7 +1726,7 @@ namespace Ui
             }
             else
             {
-                emit changeClicked();
+                Q_EMIT changeClicked();
             }
         }
 

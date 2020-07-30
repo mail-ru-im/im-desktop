@@ -117,23 +117,39 @@ namespace Ui
         return fixed_;
     }
 
+    void TabButton::setPixmap(QPixmap _pixmap)
+    {
+        pixmap_ = std::move(_pixmap);
+        update();
+    }
+
     void TabButton::paintEvent(QPaintEvent* _e)
     {
         QPushButton::paintEvent(_e);
 
-        if (pixmap_.isNull())
-            return;
-
-        const double ratio = Utils::scale_bitmap_ratio();
-        const auto diffX = rect().width() - pixmap_.width() / ratio;
-        const auto diffY = rect().height() - pixmap_.height() / ratio;
-
-        // center by default
-        int x = diffX / 2;
-        int y = diffY / 2;
-
         QPainter p(this);
-        p.drawPixmap(x, y, pixmap_);
+        p.setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
+
+        if (!pixmap_.isNull())
+        {
+            const double ratio = Utils::scale_bitmap_ratio();
+            const auto diffX = rect().width() - pixmap_.width() / ratio;
+            const auto diffY = rect().height() - pixmap_.height() / ratio;
+
+            // center by default
+            const int x = diffX / 2;
+            const int y = diffY / 2;
+
+            p.drawPixmap(x, y, pixmap_);
+        }
+        else
+        {
+            const auto radius = Utils::fscale_value(8.);
+            const QMargins margins(Utils::scale_value(4), Utils::scale_value(4), Utils::scale_value(4), Utils::scale_value(4));
+            p.setPen(Qt::NoPen);
+            p.setBrush(Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT_INVERSE));
+            p.drawRoundedRect(rect().marginsRemoved(margins), radius, radius);
+        }
     }
 
     //////////////////////////////////////////////////////////////////////////
@@ -249,7 +265,7 @@ namespace Ui
     void Toolbar::buttonStoreClick()
     {
         GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::stickers_discover_icon_picker);
-        emit Utils::InterConnector::instance().showStickersStore();
+        Q_EMIT Utils::InterConnector::instance().showStickersStore();
     }
 
     void Toolbar::resizeEvent(QResizeEvent * _e)
@@ -366,6 +382,15 @@ namespace Ui
     TabButton* Toolbar::selectedButton() const
     {
         auto it = std::find_if(buttons_.begin(), buttons_.end(), [](const auto _btn) { return _btn->isChecked(); });
+        if (it != buttons_.end())
+            return *it;
+
+        return nullptr;
+    }
+
+    TabButton* Toolbar::getButton(int32_t _setId) const
+    {
+        auto it = std::find_if(buttons_.begin(), buttons_.end(), [_setId](const auto _btn) { return _btn->getSetId() == _setId; });
         if (it != buttons_.end())
             return *it;
 

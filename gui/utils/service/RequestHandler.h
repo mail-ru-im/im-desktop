@@ -31,8 +31,5 @@ namespace Utils
 
     Q_SIGNALS:
         void finished(ServiceRequest::Id _id, const Result& _result);
-
-    private:
-
     };
 }

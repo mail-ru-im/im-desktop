@@ -12,10 +12,7 @@ permit_info::permit_info()
 {
 }
 
-permit_info::~permit_info()
-{
-
-}
+permit_info::~permit_info() = default;
 
 int32_t permit_info::parse_response_data(const rapidjson::Value& _node_results)
 {

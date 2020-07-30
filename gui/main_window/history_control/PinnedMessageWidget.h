@@ -84,6 +84,7 @@ namespace Ui
         void setPreview(const QPixmap& _image);
 
         void openMedia();
+        bool openSticker() const;
 
         bool isSnippetSimple() const;
         bool isImage() const;
@@ -174,8 +175,6 @@ namespace Ui
         Q_OBJECT
 
     Q_SIGNALS:
-        void resized();
-
         void strangerBlockClicked();
         void strangerCloseClicked();
 
@@ -192,9 +191,6 @@ namespace Ui
         void clear();
 
         bool isStrangerVisible() const;
-
-    protected:
-        void resizeEvent(QResizeEvent*) override;
 
     private:
         void createStranger();

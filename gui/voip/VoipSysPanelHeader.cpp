@@ -1,7 +1,6 @@
 #include "stdafx.h"
 #include "VoipSysPanelHeader.h"
 #include "../utils/utils.h"
-#include "../../installer/utils/styles.h"
 
 #ifdef __APPLE__
 #   include <QtWidgets/qtoolbutton.h>
@@ -172,17 +171,17 @@ Ui::IncomingCallControls::~IncomingCallControls()
 
 void Ui::IncomingCallControls::_onDecline()
 {
-    emit onDecline();
+    Q_EMIT onDecline();
 }
 
 void Ui::IncomingCallControls::_onAudio()
 {
-    emit onAudio();
+    Q_EMIT onAudio();
 }
 
 void Ui::IncomingCallControls::_onVideo()
 {
-    emit onVideo();
+    Q_EMIT onVideo();
 }
 
 void Ui::IncomingCallControls::changeEvent(QEvent* _e)
@@ -261,13 +260,13 @@ Ui::VoipSysPanelHeader::~VoipSysPanelHeader()
 void Ui::VoipSysPanelHeader::enterEvent(QEvent* _e)
 {
     QWidget::enterEvent(_e);
-    emit onMouseEnter();
+    Q_EMIT onMouseEnter();
 }
 
 void Ui::VoipSysPanelHeader::leaveEvent(QEvent* _e)
 {
     QWidget::leaveEvent(_e);
-    emit onMouseLeave();
+    Q_EMIT onMouseLeave();
 }
 
 void Ui::VoipSysPanelHeader::setTitle(const char* _s)

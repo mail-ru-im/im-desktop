@@ -5,6 +5,7 @@
 #include "../../fonts.h"
 #include "../../utils/utils.h"
 #include "../../cache/emoji/Emoji.h"
+#include "types/lastseen.h"
 
 FONTS_NS_BEGIN
 
@@ -35,8 +36,7 @@ namespace Ui
             const QString& _contactName,
             const QString& _nick,
             const std::vector<QString>& _highlights,
-            const bool _hasLastSeen,
-            const QDateTime& _lastSeen,
+            const Data::LastSeen& _lastSeen,
             const bool _isWithCheckBox,
             const bool _isChatMember,
             const bool _official,
@@ -64,10 +64,9 @@ namespace Ui
         bool IsSelected_;
         bool IsOnline_;
 
-        bool HasLastSeen_;
-        QDateTime LastSeen_;
-        bool IsOnline() const { return HasLastSeen_ && !LastSeen_.isValid(); }
-        bool HasLastSeen() const { return HasLastSeen_; }
+        Data::LastSeen LastSeen_;
+        bool IsOnline() const noexcept { return LastSeen_.isOnline(); }
+        bool HasLastSeen() const noexcept { return LastSeen_.isValid(); }
 
         bool isCheckedBox_;
         bool isChatMember_;
@@ -129,6 +128,7 @@ namespace Ui
         int leftMargin_;
         int rightMargin_;
         bool pictOnly_;
+        bool replaceFavorites_ = false;
     };
 
     class ContactListParams
@@ -141,7 +141,7 @@ namespace Ui
         int itemWidth() const { return Utils::scale_value(320); }
         int itemHorPadding() const { return isCl_ ? Utils::scale_value(12) : Utils::scale_value(8); }
         int moreRightPadding() const { return Utils::scale_value(8); }
-        int itemHorPaddingRight() const { return isCl_ ? Utils::scale_value(12) : Utils::scale_value(12); }
+        int itemHorPaddingRight() const { return Utils::scale_value(12); }
         int itemContentPadding() const { return isCl_ ? Utils::scale_value(12) : Utils::scale_value(8); }
         int getItemMiddleY() const
         {
@@ -227,14 +227,14 @@ namespace Ui
 
             const auto fontQss = Fonts::appFontFullQss(contactNameFontSize(), Fonts::defaultAppFontFamily(), _fontWeight);
             return qsl("%1; color: %2; background-color: transparent;").arg(fontQss, _fontColor);
-        };
+        }
 
         QFont getContactNameFont(const Fonts::FontWeight _fontWeight) const
         {
             return Fonts::appFont(contactNameFontSize(), _fontWeight);
         }
 
-        QColor getNameFontColor(bool _isSelected, bool _isMemberChecked) const;
+        QColor getNameFontColor(bool _isSelected, bool _isMemberChecked, bool _isFavorites = false) const;
 
         //Message
         int messageFontSize() const
@@ -337,7 +337,7 @@ namespace Ui
             isCl_ = _isCl;
         }
 
-        int favoritesStatusPadding() { return  Utils::scale_value(2); }
+        int pinnedStatusPadding() { return  Utils::scale_value(2); }
 
         QRect& addContactFrame()
         {
@@ -389,6 +389,14 @@ namespace Logic
 
         virtual void setDragIndex(const QModelIndex& index) = 0;
 
+        int32_t avatarProxyFlags() const;
+        int32_t friendlyProxyFlags() const;
+
+        void setReplaceFavorites(bool _enable)
+        {
+            replaceFavorites_ = _enable;
+        }
+
         void setKeyboardFocus(const bool _focused)
         {
             keyboardFocused_ = _focused;
@@ -399,7 +407,19 @@ namespace Logic
             return keyboardFocused_;
         }
 
+        void setOpacityEnabled(bool _enable)
+        {
+            opacityEnabled_ = _enable;
+        }
+
+        bool isOpacityEnabled() const noexcept
+        {
+            return opacityEnabled_;
+        }
+
     protected:
         bool keyboardFocused_ = false;
+        bool replaceFavorites_ = false;
+        bool opacityEnabled_ = false;
     };
 }

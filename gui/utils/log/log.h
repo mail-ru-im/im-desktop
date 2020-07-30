@@ -32,25 +32,41 @@
 namespace Log
 {
 
-    void trace(const QString& area, const QString& text);
+    void trace(QStringView area, QStringView text);
+    inline void trace(const QString& area, const QString& text)
+    {
+        trace(QStringView(area), text);
+    }
     inline void trace(const char* area, const QString& text)
     {
         trace(ql1s(area), text);
     }
 
-    void info(const QString& area, const QString& text);
+    void info(QStringView area, QStringView text);
+    inline void info(const QString& area, const QString& text)
+    {
+        info(QStringView(area), text);
+    }
     inline void info(const char* area, const QString& text)
     {
         info(ql1s(area), text);
     }
 
-    void warn(const QString& area, const QString& text);
+    void warn(QStringView area, QStringView text);
+    inline void warn(const QString& area, const QString& text)
+    {
+        warn(QStringView(area), text);
+    }
     inline void warn(const char* area, const QString& text)
     {
         warn(ql1s(area), text);
     }
 
-    void error(const QString& area, const QString& text);
+    void error(QStringView area, QStringView text);
+    inline void error(const QString& area, const QString& text)
+    {
+        error(QStringView(area), text);
+    }
     inline void error(const char* area, const QString& text)
     {
         error(ql1s(area), text);

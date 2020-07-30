@@ -37,8 +37,8 @@ namespace core
             bool is_phone_valid_;
 
         private:
-            virtual int32_t init_request(std::shared_ptr<core::http_request_simple> request) override;
-            virtual int32_t parse_response(std::shared_ptr<core::tools::binary_stream> response) override;
+            virtual int32_t init_request(const std::shared_ptr<core::http_request_simple>& request) override;
+            virtual int32_t parse_response(const std::shared_ptr<core::tools::binary_stream>& response) override;
 
         public:
             phoneinfo(wim_packet_params params, const std::string &phone, const std::string &gui_locale);

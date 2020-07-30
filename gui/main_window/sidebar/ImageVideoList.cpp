@@ -83,7 +83,7 @@ void ImageVideoList::processUpdates(const QVector<Data::DialogGalleryEntry>& _en
 {
     for (const auto& e : _entries)
     {
-        if (e.action_ == qsl("del"))
+        if (e.action_ == u"del")
         {
             for (auto & b : blocks_)
                 b->removeItemByMsg(e.msg_id_);
@@ -113,13 +113,13 @@ void ImageVideoList::processUpdates(const QVector<Data::DialogGalleryEntry>& _en
             break;
         }
 
-        if (!block && e.action_ == qsl("add"))
+        if (!block && e.action_ == u"add")
         {
             block = new ImageVideoBlock(this, aimId_);
             block->setDate(messageDate);
         }
 
-        if ((e.type_ == qsl("image") || e.type_ == qsl("video")))
+        if ((e.type_ == u"image" || e.type_ == u"video"))
         {
             block->addItem(e.url_, e.msg_id_, e.seq_, e.outgoing_, e.sender_, e.time_);
         }
@@ -334,7 +334,7 @@ void ImageVideoBlock::addItem(const QString &_link, qint64 _msg, qint64 _seq, bo
 
     connect(item, &ImageVideoItem::needUpdate, this, [this](const QRect& _rect)
     {
-        emit needUpdate(_rect);
+        Q_EMIT needUpdate(_rect);
     });
 
     auto found = std::find_if(items_.begin(), items_.end(), [_msg, _seq](const auto& i) { return i->getMsg() == _msg && i->getSeq() == _seq; });
@@ -449,7 +449,7 @@ void ImageVideoBlock::onMousePress(const QPoint& _pos, const std::string& _media
         {
             cont.happened();
             item->setPressed(true);
-            emit needUpdate(item->rect());
+            Q_EMIT needUpdate(item->rect());
             break;
         }
     }
@@ -462,7 +462,7 @@ void ImageVideoBlock::onMouseRelease(const QPoint& _pos)
         const auto pressed = item->pressed();
         item->setPressed(false);
         if (pressed)
-            emit needUpdate(item->rect());
+            Q_EMIT needUpdate(item->rect());
     }
 }
 
@@ -481,7 +481,7 @@ bool ImageVideoBlock::onMouseMove(const QPoint &_pos)
         overAnyItem |= overItem;
 
         if (needUpdateItem)
-            emit needUpdate(item->rect());
+            Q_EMIT needUpdate(item->rect());
     }
 
     return overAnyItem;
@@ -495,7 +495,7 @@ void ImageVideoBlock::clearHovered()
         item->setHovered(false);
 
         if (needUpdateItem)
-            emit needUpdate(item->rect());
+            Q_EMIT needUpdate(item->rect());
     }
 }
 
@@ -768,7 +768,7 @@ void ImageVideoItem::onPreviewLoaded(const QPixmap& _preview)
         updateDurationLabel();
      }
 
-    emit needUpdate(rect_);
+    Q_EMIT needUpdate(rect_);
 }
 
 QPixmap ImageVideoItem::cropPreview(const QPixmap &_source, const int _toSize)
@@ -835,7 +835,7 @@ void ImageVideoItemVisitor::visit(ImageVideoList* _list)
     region = region.united(prevVisibleRect_);
     region = region.united(visibleRect_);
 
-    for (auto & rect : region.rects())
+    for (auto & rect : region)
     {
         auto firstBlock = std::lower_bound(blocks.begin(), blocks.end(), rect.top(), [](const auto & _block, auto value)
         {
@@ -903,13 +903,13 @@ void ImageVideoItemVisitor::visit(ImageVideoBlock* _block)
         if (!forceLoad_)
         {
             if (loadRegion.rectCount())
-                loadRect = loadRegion.rects().first();
+                loadRect = *loadRegion.begin();
             else
                 loadRect = QRect();
         }
 
         if (unloadRegion.rectCount())
-            unloadRect = unloadRegion.rects().first();
+            unloadRect = *unloadRegion.begin();
         else
             unloadRect = QRect();
 

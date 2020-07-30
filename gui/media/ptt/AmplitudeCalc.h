@@ -20,6 +20,5 @@ namespace ptt
         const std::reference_wrapper<const QByteArray> data_;
         const size_t offset_;
         mutable size_t pos_ = 0;
-        const int rate_;
     };
 }

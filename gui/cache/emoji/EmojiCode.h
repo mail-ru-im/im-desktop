@@ -43,11 +43,11 @@ namespace Emoji
 
         explicit constexpr EmojiCode() noexcept : code{ 0 } {}
 
-        EmojiCode(EmojiCode&&) = default;
-        EmojiCode& operator=(EmojiCode&&) = default;
+        EmojiCode(EmojiCode&&) noexcept = default;
+        EmojiCode& operator=(EmojiCode&&) noexcept = default;
 
-        EmojiCode(const EmojiCode&) = default;
-        EmojiCode& operator=(const EmojiCode&) = default;
+        EmojiCode(const EmojiCode&) noexcept = default;
+        EmojiCode& operator=(const EmojiCode&) noexcept = default;
 
         constexpr bool isNull() const noexcept
         {

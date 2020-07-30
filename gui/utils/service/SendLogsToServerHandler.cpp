@@ -7,6 +7,7 @@
 #include "../InterConnector.h"
 #include "main_window/ContactDialog.h"
 #include "main_window/MainWindow.h"
+#include "main_window/containers/FriendlyContainer.h"
 #include "main_window/contact_list/ContactListModel.h"
 #include "main_window/contact_list/contact_profile.h"
 #include "my_info.h"
@@ -19,8 +20,8 @@
 namespace Utils
 {
 
-SendLogsToServerHandler::SendLogsToServerHandler(SendLogsToServerRequest *_request)
-    : request_(_request)
+SendLogsToServerHandler::SendLogsToServerHandler(std::shared_ptr<SendLogsToServerRequest> _request)
+    : request_(std::move(_request))
 {
 
 }
@@ -35,7 +36,7 @@ void SendLogsToServerHandler::start()
         Result res;
         res.status_ = Result::Status::Failed;
 
-        emit finished(request_->getId(), res);
+        Q_EMIT finished(request_->getId(), res);
         return;
     }
 
@@ -59,104 +60,84 @@ void SendLogsToServerHandler::onHaveLogsPath(const QString &_logsPath)
     {
         res.status_ = Result::Status::Failed;
 
-        emit finished(request_->getId(), res);
+        Q_EMIT finished(request_->getId(), res);
         return;
     }
 
-    Logic::getContactListModel()->getContactProfile(QString(), [=](Logic::profile_ptr _profile, int32_t /*error*/)
+    const auto aimId = Ui::MyInfo()->aimId();
+    Ui::gui_coll_helper col(Ui::GetDispatcher()->create_collection(), true);
+
+    col.set_value_as_string("url", "https://" + std::string(config::get().url(config::urls::feedback)));
+    const auto productNameShort = config::get().string(config::values::product_name_short);
+    // fb.screen_resolution
+    col.set_value_as_qstring("screen_resolution", (qsl("%1x%2").arg(qApp->desktop()->screenGeometry().width()).arg(qApp->desktop()->screenGeometry().height())));
+    // fb.referrer
+    col.set_value_as_string("referrer", productNameShort);
     {
-        if (!_profile)
+        const auto product = config::get().string(config::values::product_name);
+        const QString icqVer = QString::fromUtf8(product.data(), product.size()) % ql1c(' ') % QString::fromUtf8(VERSION_INFO_STR);
+        auto osv = QSysInfo::prettyProductName();
+        if (!osv.length() || osv == u"unknown")
+            osv = qsl("%1 %2 (%3 %4)").arg(QSysInfo::productType(), QSysInfo::productVersion(), QSysInfo::kernelType(), QSysInfo::kernelVersion());
+
+        const auto concat = qsl("%1 %2 %3:%4").arg(osv, icqVer, QString::fromUtf8(productNameShort.data(), productNameShort.size()), aimId);
+        // fb.question.3004
+        col.set_value_as_qstring("version", concat);
+        // fb.question.159
+        col.set_value_as_qstring("os_version", osv);
+        // fb.question.178
+        col.set_value_as_string("build_type", build::is_debug() ? "beta" : "live");
+        // fb.question.3005
+        if constexpr (platform::is_apple())
+            col.set_value_as_string("platform", "OSx");
+        else if constexpr (platform::is_windows())
+            col.set_value_as_string("platform", "Windows");
+        else if constexpr (platform::is_linux())
+            col.set_value_as_string("platform", "Linux");
+        else
+            col.set_value_as_string("platform", "Unknown");
+    }
+
+    // fb.user_name
+    col.set_value_as_qstring("user_name", Logic::GetFriendlyContainer()->getFriendly(aimId));
+
+    // fb.message
+    col.set_value_as_string("message", "Logs");
+
+    // communication_email ==> UIN, no user interaction
+    col.set_value_as_qstring("communication_email", Ui::MyInfo()->aimId());
+    // Lang
+    col.set_value_as_qstring("language", QLocale::system().name());
+    // attachements_count
+
+    // 2. get all file paths
+    const auto fileEntries = logsDir.entryList(QDir::Filter::Files, QDir::SortFlag::Time);
+
+    int logsCount = (request_->getInfo().logsInfo_.haveNumLogsFilesLimit() ? std::min(request_->getInfo().logsInfo_.getNumLogsFilesLimit(), fileEntries.count())
+                                                                        : fileEntries.count());
+
+    col.set_value_as_string("attachements_count", std::to_string(logsCount + 1)); // +1 'coz we're sending log txt
+    if (!fileEntries.empty())
+    {
+        core::ifptr<core::iarray> farray(col->create_array());
+        farray->reserve(logsCount);
+
+        for (QStringList::size_type i = 0;
+                i < fileEntries.count() && (!request_->getInfo().logsInfo_.haveNumLogsFilesLimit() || i < request_->getInfo().logsInfo_.getNumLogsFilesLimit());
+                ++i)
         {
-            emit Ui::GetDispatcher()->feedbackSent(false);
-            return;
+            farray->push_back(col.create_qstring_value(fileEntries[i]).get());
         }
 
-        Ui::gui_coll_helper col(Ui::GetDispatcher()->create_collection(), true);
+        // fb.attachement
+        col.set_value_as_array("attachement", farray.get());
+    }
 
-        col.set_value_as_string("url", "https://" + std::string(config::get().url(config::urls::feedback)));
-        const auto productNameShort = config::get().string(config::values::product_name_short);
-        // fb.screen_resolution
-        col.set_value_as_qstring("screen_resolution", (qsl("%1x%2").arg(qApp->desktop()->screenGeometry().width()).arg(qApp->desktop()->screenGeometry().height())));
-        // fb.referrer
-        col.set_value_as_string("referrer", productNameShort);
-        {
-            const auto product = config::get().string(config::values::product_name);
-            const QString icqVer = QString::fromUtf8(product.data(), product.size()) % ql1c(' ') % QString::fromUtf8(VERSION_INFO_STR);
-            auto osv = QSysInfo::prettyProductName();
-            if (!osv.length() || osv == ql1s("unknown"))
-                osv = qsl("%1 %2 (%3 %4)").arg(QSysInfo::productType(), QSysInfo::productVersion(), QSysInfo::kernelType(), QSysInfo::kernelVersion());
-
-            const auto concat = qsl("%1 %2 %3:%4").arg(osv, icqVer, QString::fromUtf8(productNameShort.data(), productNameShort.size()), _profile ? _profile->get_aimid() : QString());
-            // fb.question.3004
-            col.set_value_as_qstring("version", concat);
-            // fb.question.159
-            col.set_value_as_qstring("os_version", osv);
-            // fb.question.178
-            col.set_value_as_string("build_type", build::is_debug() ? "beta" : "live");
-            // fb.question.3005
-            if constexpr (platform::is_apple())
-                col.set_value_as_string("platform", "OSx");
-            else if constexpr (platform::is_windows())
-                col.set_value_as_string("platform", "Windows");
-            else if constexpr (platform::is_linux())
-                col.set_value_as_string("platform", "Linux");
-            else
-                col.set_value_as_string("platform", "Unknown");
-        }
-
-        const auto& firstName = _profile->get_first_name();
-        const auto space = firstName.isEmpty() ? QLatin1String() : ql1s(" ");
-        QString fn = firstName % space % _profile->get_last_name();
-        if (fn.isEmpty())
-        {
-            if (!_profile->get_contact_name().isEmpty())
-                fn = _profile->get_contact_name();
-            else if (_profile->has_nick())
-                fn = _profile->get_nick_pretty();
-            else if (!_profile->get_friendly().isEmpty())
-                fn = _profile->get_friendly();
-        }
-        // fb.user_name
-        col.set_value_as_qstring("user_name", fn);
-
-        // fb.message
-        col.set_value_as_string("message", "Logs");
-
-        // communication_email ==> UIN, no user interaction
-        col.set_value_as_qstring("communication_email", Ui::MyInfo()->aimId());
-        // Lang
-        col.set_value_as_qstring("language", QLocale::system().name());
-        // attachements_count
-
-        // 2. get all file paths
-        const auto fileEntries = logsDir.entryList(QDir::Filter::Files, QDir::SortFlag::Time);
-
-        int logsCount = (request_->getInfo().logsInfo_.haveNumLogsFilesLimit() ? std::min(request_->getInfo().logsInfo_.getNumLogsFilesLimit(), fileEntries.count())
-                                                                           : fileEntries.count());
-
-        col.set_value_as_string("attachements_count", std::to_string(logsCount + 1)); // +1 'coz we're sending log txt
-        if (!fileEntries.empty())
-        {
-            core::ifptr<core::iarray> farray(col->create_array());
-            farray->reserve(logsCount);
-
-            for (QStringList::size_type i = 0;
-                 i < fileEntries.count() && (!request_->getInfo().logsInfo_.haveNumLogsFilesLimit() || i < request_->getInfo().logsInfo_.getNumLogsFilesLimit());
-                 ++i)
-            {
-                farray->push_back(col.create_qstring_value(fileEntries[i]).get());
-            }
-
-            // fb.attachement
-            col.set_value_as_array("attachement", farray.get());
-        }
-
-        Ui::GetDispatcher()->post_message_to_core("feedback/send", col.get());
-    });
+    Ui::GetDispatcher()->post_message_to_core("feedback/send", col.get());
 
 
     res.status_ = Result::Status::Success;
-    emit finished(request_->getId(), res);
+    Q_EMIT finished(request_->getId(), res);
 }
 
 void SendLogsToServerHandler::stop()

@@ -43,19 +43,19 @@ Previewer::DownloadWidget::DownloadWidget(QWidget* _parent)
         [this]()
         {
             startLoading();
-            emit tryDownloadAgain();
+            Q_EMIT tryDownloadAgain();
         });
 
     connect(button_, &Ui::ActionButtonWidget::stopClickedSignal, this,
         [this]()
         {
             stopLoading();
-            emit cancelDownloading();
+            Q_EMIT cancelDownloading();
         });
 
     auto buttonLayout = Utils::emptyHLayout();
     buttonLayout->setAlignment(Qt::AlignCenter);
-    Testing::setAccessibleName(button_, qsl("AS dw button_"));
+    Testing::setAccessibleName(button_, qsl("AS Download button"));
     buttonLayout->addWidget(button_);
 
     auto buttonHolder = new QFrame();
@@ -71,17 +71,17 @@ Previewer::DownloadWidget::DownloadWidget(QWidget* _parent)
 
     QVBoxLayout* layout = Utils::emptyVLayout();
     layout->addSpacerItem(topSpacer_);
-    Testing::setAccessibleName(buttonHolder, qsl("AS dw buttonHolder"));
+    Testing::setAccessibleName(buttonHolder, qsl("AS Download buttonHolder"));
     layout->addWidget(buttonHolder);
     layout->addSpacerItem(textSpacer_);
-    Testing::setAccessibleName(errorMessage_, qsl("AS dw errorMessage_"));
+    Testing::setAccessibleName(errorMessage_, qsl("AS Download errorMessage"));
     layout->addWidget(errorMessage_);
     layout->addStretch();
 
     holder_->setLayout(layout);
 
     QVBoxLayout* mainLayout = Utils::emptyVLayout();
-    Testing::setAccessibleName(holder_, qsl("AS dw holder_"));
+    Testing::setAccessibleName(holder_, qsl("AS Download holder"));
     mainLayout->addWidget(holder_);
     mainLayout->setAlignment(Qt::AlignCenter);
 
@@ -136,7 +136,7 @@ void Previewer::DownloadWidget::mousePressEvent(QMouseEvent* _event)
     const auto rect = holder_->frameRect();
     if (rect.contains(pos))
     {
-        emit clicked();
+        Q_EMIT clicked();
         _event->accept();
     }
     else

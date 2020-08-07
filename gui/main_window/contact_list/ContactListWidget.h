@@ -1,6 +1,5 @@
 #pragma once
 #include "RecentsTab.h"
-#include "../../animation/animation.h"
 
 namespace Logic
 {
@@ -148,7 +147,7 @@ namespace Ui
         EmptyIgnoreListLabel* emptyIgnoreListLabel_;
         DialogSearchViewHeader* dialogSearchViewHeader_;
         GlobalSearchViewHeader* globalSearchViewHeader_;
-        anim::Animation scrollToItemAnim_;
+        QVariantAnimation* scrollToItemAnim_;
 
         std::string scrollStatWhere_;
         QTimer* scrollStatsTimer_;

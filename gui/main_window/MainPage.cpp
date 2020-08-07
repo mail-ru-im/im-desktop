@@ -141,6 +141,11 @@ namespace
     {
         return Ui::get_gui_settings()->get_value<bool>(settings_fast_drop_search_results, settings_fast_drop_search_default());
     }
+
+    constexpr std::chrono::milliseconds getToastVisibilityDuration() noexcept
+    {
+        return std::chrono::seconds(1);
+    }
 }
 
 namespace Ui
@@ -2321,5 +2326,22 @@ namespace Ui
             updaterButton_ = new UpdaterButton(this);
             tabWidget_->insertAdditionalWidget(updaterButton_);
         }
+    }
+
+    void MainPage::keyPressEvent(QKeyEvent* _e)
+    {
+        if (_e->matches(QKeySequence::Copy))
+        {
+            if (isSidebarVisible() && !(contactDialog_ && contactDialog_->inputHasSelection()))
+            {
+                const auto text = sidebar_->getSelectedText();
+                if (!text.isEmpty())
+                {
+                    QApplication::clipboard()->setText(text);
+                    Utils::showCopiedToast(getToastVisibilityDuration());
+                }
+            }
+        }
+        QWidget::keyPressEvent(_e);
     }
 }

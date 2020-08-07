@@ -23,6 +23,7 @@ namespace Logic
         setObjectName(qsl("LastseenContainer"));
 
         connect(Ui::GetDispatcher(), &Ui::core_dispatcher::userLastSeen, this, &LastseenContainer::userLastSeen);
+        connect(Ui::GetDispatcher(), &Ui::core_dispatcher::userInfo, this, &LastseenContainer::userInfo);
 
         updateTimer_->setInterval(LAST_SEEN_UPDATE_TIMEOUT.count());
         connect(updateTimer_, &QTimer::timeout, this, &LastseenContainer::updateLastSeens);
@@ -118,6 +119,11 @@ namespace Logic
                 emitChanged(aimid);
             }
         }
+    }
+
+    void LastseenContainer::userInfo(const int64_t, const QString& _aimid, const Data::UserInfo& _info)
+    {
+        setContactLastSeen(_aimid, _info.lastseen_);
     }
 
     void LastseenContainer::updateLastSeens()

@@ -404,7 +404,7 @@ bool core::curl_context::is_stopped() const
     return false;
 }
 
-bool core::curl_context::is_write_data_log()
+bool core::curl_context::is_write_data_log() const
 {
     return write_data_log_;
 }

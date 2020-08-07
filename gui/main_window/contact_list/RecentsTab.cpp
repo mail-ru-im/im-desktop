@@ -684,8 +684,7 @@ namespace Ui
                 Ui::GetDispatcher()->uploadSharedFile(aimId, imageData, qsl(".png"), quotes);
                 mayQuotesSent = true;
                 Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::chatscr_sendmedia_action, { { "chat_type", Utils::chatTypeByAimId(aimId) }, { "count", "single" }, { "type", "dndrecents"} });
-                auto cd = Utils::InterConnector::instance().getContactDialog();
-                if (cd)
+                if (auto cd = Utils::InterConnector::instance().getContactDialog())
                     cd->onSendMessage(aimId);
             }
             else

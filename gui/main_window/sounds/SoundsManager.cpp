@@ -486,7 +486,7 @@ namespace Ui
 
     void SoundsManager::deviceTimeOut()
     {
-        if (CurPlay_.state() == AL_PLAYING)
+        if (CurPlay_.state() == AL_PLAYING || Utils::InterConnector::instance().isRecordingPtt())
             return updateDeviceTimer();
 
 #ifndef USE_SYSTEM_OPENAL

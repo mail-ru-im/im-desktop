@@ -46,7 +46,7 @@ namespace Ui
 
         void rotate(const RotateDirection _dir);
     private:
-        anim::Animation anim_;
+        QVariantAnimation* anim_;
         double currentAngle_;
         CallButtonType type_;
         QPointer<ContextMenu> menu_;

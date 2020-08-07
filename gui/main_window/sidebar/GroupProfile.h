@@ -49,9 +49,11 @@ namespace Ui
         void setFrameCountMode(FrameCountMode _mode) override;
         void close() override;
         void toggleMembersList() override;
+        QString getSelectedText() const override;
 
     protected:
         void resizeEvent(QResizeEvent* _event) override;
+        void mousePressEvent(QMouseEvent* _event) override;
 
     private:
         void init();

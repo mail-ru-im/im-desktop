@@ -26,6 +26,7 @@ namespace Ui
         , delegate_(new Logic::MentionItemDelegate(this))
         , arrowOffset_(Tooltip::getDefaultArrowOffset())
         , opacityEffect_(new Utils::OpacityEffect(this))
+        , opacityAnimation_(new QVariantAnimation(this))
     {
         Testing::setAccessibleName(this, qsl("AS Mention"));
 
@@ -259,17 +260,23 @@ namespace Ui
     {
         setArrowPosition(_pos);
 
-        if (opacityAnimation_.isRunning())
+        if (opacityAnimation_->state() == QAbstractAnimation::State::Running)
             return;
 
         opacityEffect_->setOpacity(0.0);
 
-        opacityAnimation_.finish();
-        opacityAnimation_.start(
-            [this]() { opacityEffect_->setOpacity(opacityAnimation_.current()); },
-            0.0,
-            1.0,
-            getDurationAppear().count());
+        opacityAnimation_->stop();
+        opacityAnimation_->setStartValue(0.0);
+        opacityAnimation_->setEndValue(1.0);
+        opacityAnimation_->setDuration(getDurationAppear().count());
+        opacityAnimation_->setEasingCurve(QEasingCurve::Linear);
+        opacityAnimation_->setLoopCount(1);
+        opacityAnimation_->disconnect(this);
+        connect(opacityAnimation_, &QVariantAnimation::valueChanged, this, [this](const QVariant& value)
+        {
+            opacityEffect_->setOpacity(value.toDouble());
+        });
+        opacityAnimation_->start();
 
         show();
     }
@@ -284,12 +291,22 @@ namespace Ui
 
     void MentionCompleter::hideAnimated()
     {
-        opacityAnimation_.finish();
-        opacityAnimation_.start(
-            [this]() { opacityEffect_->setOpacity(opacityAnimation_.current()); },
-            [this]() { hide(); },
-            1.0,
-            0.0,
-            getDurationDisappear().count());
+        opacityAnimation_->stop();
+        opacityAnimation_->setStartValue(1.0);
+        opacityAnimation_->setEndValue(0.0);
+        opacityAnimation_->setDuration(getDurationAppear().count());
+        opacityAnimation_->setEasingCurve(QEasingCurve::Linear);
+        opacityAnimation_->setLoopCount(1);
+        opacityAnimation_->disconnect(this);
+        connect(opacityAnimation_, &QVariantAnimation::valueChanged, this, [this](const QVariant& value)
+        {
+            opacityEffect_->setOpacity(value.toDouble());
+        });
+        connect(opacityAnimation_, &QVariantAnimation::stateChanged, [this](QAbstractAnimation::State newState, QAbstractAnimation::State oldState)
+        {
+            if (QAbstractAnimation::State::Stopped == newState)
+                hide();
+        });
+        opacityAnimation_->start();
     }
 }

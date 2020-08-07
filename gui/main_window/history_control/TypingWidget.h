@@ -1,7 +1,6 @@
 #pragma once
 
 #include "../../controls/TextUnit.h"
-#include "../../animation/animation.h"
 
 namespace Ui
 {
@@ -29,7 +28,7 @@ namespace Ui
 
         TextRendering::TextUnitPtr textUnit_;
 
-        anim::Animation anim_;
+        QVariantAnimation* anim_;
         int frame_;
         QColor animColor_;
 

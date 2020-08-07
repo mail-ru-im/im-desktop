@@ -1138,6 +1138,8 @@ void MyPacksHeader::resizeEvent(QResizeEvent* _e)
 MyPacksWidget::MyPacksWidget(QWidget* _parent)
     : QWidget(_parent)
     , syncedWithServer_(false)
+    , scrollAnimationUp_(new QVariantAnimation(this))
+    , scrollAnimationDown_(new QVariantAnimation(this))
 {
     auto rootLayout = Utils::emptyVLayout(this);
     rootLayout->setAlignment(Qt::AlignTop);
@@ -1153,6 +1155,22 @@ MyPacksWidget::MyPacksWidget(QWidget* _parent)
     QObject::connect(packs_, &PacksView::startScrollUp, this, &MyPacksWidget::onScrollUp);
     QObject::connect(packs_, &PacksView::startScrollDown, this, &MyPacksWidget::onScrollDown);
     QObject::connect(packs_, &PacksView::stopScroll, this, &MyPacksWidget::onStopScroll);
+
+    scrollAnimationUp_->setStartValue(0.0);
+    scrollAnimationUp_->setEndValue(1.0);
+    scrollAnimationUp_->setEasingCurve(QEasingCurve::Linear);
+    scrollAnimationUp_->setDuration(200);
+    QObject::connect(scrollAnimationUp_, &QVariantAnimation::valueChanged, this, [this]() {
+        Q_EMIT scrollStep(Utils::scale_value(-12));
+    });
+
+    scrollAnimationDown_->setStartValue(0.0);
+    scrollAnimationDown_->setEndValue(1.0);
+    scrollAnimationDown_->setEasingCurve(QEasingCurve::Linear);
+    scrollAnimationDown_->setDuration(200);
+    QObject::connect(scrollAnimationDown_, &QVariantAnimation::valueChanged, this, [this]() {
+        Q_EMIT scrollStep(Utils::scale_value(12));
+    });
 
     rootLayout->addWidget(packs_);
 
@@ -1201,36 +1219,28 @@ void MyPacksWidget::setScrollBarToView(QWidget *_scrollBar)
 
 void MyPacksWidget::onScrollUp()
 {
-    scrollAnimationDown_.finish();
+    scrollAnimationDown_->stop();
 
-    if (scrollAnimationUp_.isRunning())
+    if (scrollAnimationUp_->state() == QAbstractAnimation::Running)
         return;
 
-    scrollAnimationUp_.start([this]()
-    {
-        Q_EMIT scrollStep(Utils::scale_value(-12));
-
-    }, 0.0, 1.0, 200, anim::linear, 1);
+    scrollAnimationUp_->start();
 }
 
 void MyPacksWidget::onScrollDown()
 {
-    scrollAnimationUp_.finish();
+    scrollAnimationUp_->stop();
 
-    if (scrollAnimationDown_.isRunning())
+    if (scrollAnimationDown_->state() == QAbstractAnimation::Running)
         return;
 
-    scrollAnimationDown_.start([this]()
-    {
-        Q_EMIT scrollStep(Utils::scale_value(12));
-
-    }, 0.0, 1.0, 200, anim::linear, 1);
+    scrollAnimationDown_->start();
 }
 
 void MyPacksWidget::onStopScroll()
 {
-    scrollAnimationUp_.finish();
-    scrollAnimationDown_.finish();
+    scrollAnimationUp_->stop();
+    scrollAnimationDown_->stop();
 }
 
 

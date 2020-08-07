@@ -1,7 +1,5 @@
 #pragma once
 
-#include "../animation/animation.h"
-
 #include "../controls/ClickWidget.h"
 
 namespace Ui
@@ -86,7 +84,7 @@ namespace Ui
         void paintEvent(QPaintEvent* _event) override;
 
     private:
-        anim::Animation anim_;
+        QVariantAnimation* anim_;
         int currentAngle_;
         QColor mainColor_;
         QColor bgColor_;

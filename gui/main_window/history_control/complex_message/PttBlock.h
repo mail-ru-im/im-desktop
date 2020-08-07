@@ -3,7 +3,6 @@
 #include "../../../namespaces.h"
 #include "../../../controls/ClickWidget.h"
 #include "../../../controls/CustomButton.h"
-#include "../../../animation/animation.h"
 
 #include "FileSharingBlockBase.h"
 
@@ -88,7 +87,7 @@ namespace PttDetails
         ButtonType type_;
         double progress_;
         const bool isOutgoing_;
-        anim::Animation anim_;
+        QVariantAnimation* anim_;
     };
 }
 

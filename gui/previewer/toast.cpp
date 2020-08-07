@@ -129,6 +129,8 @@ namespace
 ToastBase::ToastBase(QWidget* _parent)
     : QWidget(_parent)
     , bgColor_(defaultBgColor())
+    , opacityAnimation_(new QVariantAnimation(this))
+    , moveAnimation_(new QVariantAnimation(this))
 {
     hideTimer_.setSingleShot(true);
     startHideTimer_.setSingleShot(true);
@@ -172,14 +174,30 @@ void ToastBase::showAt(const QPoint& _center, bool _onTop)
     raise();
 
     if (!_onTop)
-        opacityAnimation_.start([this](){ update(); }, 0, 1, 300);
+    {
+        opacityAnimation_->setStartValue(0.0);
+        opacityAnimation_->setEndValue(1.0);
+        opacityAnimation_->setDuration(300);
+        opacityAnimation_->setEasingCurve(QEasingCurve::Linear);
+        opacityAnimation_->setLoopCount(1);
+        opacityAnimation_->disconnect(this);
+        connect(opacityAnimation_, &QVariantAnimation::valueChanged, this, qOverload<>(&ToastBase::update));
+        opacityAnimation_->start();
+    }
 
     if (isMoveAnimationEnabled_)
     {
-        moveAnimation_.start([this, _center, _onTop]()
+        moveAnimation_->setStartValue(_center.y() + (_onTop ? 0 : height() + padding()));
+        moveAnimation_->setEndValue(_center.y());
+        moveAnimation_->setDuration(animationDuration());
+        moveAnimation_->setEasingCurve(QEasingCurve::Linear);
+        moveAnimation_->setLoopCount(1);
+        moveAnimation_->disconnect(this);
+        connect(moveAnimation_, &QVariantAnimation::valueChanged, this, [this, _center, _onTop](const QVariant& value)
         {
-            move(_center.x() - width() / 2, moveAnimation_.current() - (_onTop ? 0 : height()));
-        }, _center.y() + (_onTop ? 0 : height() + padding()), _center.y(), animationDuration());
+            move(_center.x() - width() / 2, value.toInt() - (_onTop ? 0 : height()));
+        });
+        moveAnimation_->start();
     }
 
     hideTimer_.start();
@@ -213,7 +231,7 @@ void ToastBase::paintEvent(QPaintEvent* _event)
     QPainter p(this);
     p.setRenderHint(QPainter::Antialiasing);
 
-    p.setOpacity(opacityAnimation_.current());
+    p.setOpacity(opacityAnimation_->currentValue().toDouble());
 
     QPainterPath path;
     path.addRoundedRect(rect(), toastRadius(), toastRadius());
@@ -273,7 +291,14 @@ void ToastBase::handleMouseLeave()
 
 void ToastBase::startHide()
 {
-    opacityAnimation_.start([this](){ update(); }, 1, 0, 300);
+    opacityAnimation_->setStartValue(1.0);
+    opacityAnimation_->setEndValue(0.0);
+    opacityAnimation_->setDuration(300);
+    opacityAnimation_->setEasingCurve(QEasingCurve::Linear);
+    opacityAnimation_->setLoopCount(1);
+    opacityAnimation_->disconnect(this);
+    connect(opacityAnimation_, &QVariantAnimation::valueChanged, this, qOverload<>(&ToastBase::update));
+    opacityAnimation_->start();
 }
 
 //////////////////////////////////////////////////////////////////////////

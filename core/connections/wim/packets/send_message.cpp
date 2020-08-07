@@ -359,6 +359,7 @@ int32_t send_message::init_request(const std::shared_ptr<core::http_request_simp
         f.add_message_markers();
         f.add_marker("aimsid", aimsid_range_evaluator());
         f.add_marker("message");
+        f.add_json_array_marker("responses", poll_responses_ranges_evaluator());
         _request->set_replace_log_function(f);
     }
 

@@ -4,7 +4,6 @@
 #include "../../types/chat.h"
 #include "../../types/chatheads.h"
 #include "types/reactions.h"
-#include "../../animation/animation.h"
 #include "history/Message.h"
 #include "reactions/MessageReactions.h"
 
@@ -229,9 +228,9 @@ namespace Ui
         Data::HeadsVector heads_;
         std::unique_ptr<MessageReactions> reactions_;
 
-        anim::Animation addAnimation_;
-        anim::Animation removeAnimation_;
-        anim::Animation heightAnimation_;
+        QVariantAnimation* addAnimation_;
+        QVariantAnimation* removeAnimation_;
+        QVariantAnimation* heightAnimation_;
 
         QPoint pressPoint;
         QRect selectionMarkRect_;

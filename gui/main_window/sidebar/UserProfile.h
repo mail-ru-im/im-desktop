@@ -49,6 +49,7 @@ namespace Ui
         void initFor(const QString& aimId, SidebarParams _params = {}) override;
         void setFrameCountMode(FrameCountMode _mode) override;
         void close() override;
+        QString getSelectedText() const override;
 
     protected:
         void resizeEvent(QResizeEvent* _event) override;

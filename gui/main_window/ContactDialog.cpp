@@ -419,6 +419,11 @@ namespace Ui
         return inputWidget_;
     }
 
+    bool ContactDialog::inputHasSelection() const
+    {
+        return inputWidget_ && inputWidget_->hasSelection();
+    }
+
     void ContactDialog::notifyApplicationWindowActive(const bool isActive)
     {
         if (historyControlWidget_)

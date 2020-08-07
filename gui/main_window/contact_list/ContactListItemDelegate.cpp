@@ -215,7 +215,7 @@ namespace Ui
             borderColor = (_viewParams.pictOnly_) ? Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY_SELECTED) : QColor();
         }
 
-        const auto bgColor = Styling::getParameters().getColor( _isSelected? Styling::StyleVariable::TEXT_SOLID :
+        const auto bgColor = Styling::getParameters().getColor( _isSelected ? Styling::StyleVariable::TEXT_SOLID :
                             (_isMuted ? Styling::StyleVariable::BASE_TERTIARY
                             : Styling::StyleVariable::PRIMARY));
 

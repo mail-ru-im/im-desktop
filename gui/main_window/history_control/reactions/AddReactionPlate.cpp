@@ -4,7 +4,6 @@
 #include "utils/features.h"
 #include "utils/InterConnector.h"
 #include "utils/DrawUtils.h"
-#include "animation/animation.h"
 #include "main_window/MainWindow.h"
 #include "main_window/ContactDialog.h"
 #include "controls/TooltipWidget.h"
@@ -472,7 +471,7 @@ void AddReactionPlate::onMultiselectChanged()
 class EmojiWidget_p
 {
 public:
-    EmojiWidget_p(QWidget* _q) : q(_q) {}
+    EmojiWidget_p(QWidget* _q) : animation_(new QVariantAnimation(_q)), q(_q) {}
 
     enum class AnimationType
     {
@@ -521,26 +520,32 @@ public:
 
         const auto sign = isHide ? 1 : -1;
 
-        auto updateCallback = [this, startGeometry, diffY, sign, isHide]()
-        {
-            const auto current = animation_.current();
+        animation_->disconnect(q);
+        animation_->stop();
+        animation_->setStartValue(0.0);
+        animation_->setEndValue(1.0);
+        animation_->setEasingCurve(QEasingCurve::InOutSine);
+        animation_->setDuration(animationDuration.count());
+
+        QObject::connect(animation_, &QVariantAnimation::valueChanged, q, [this, startGeometry, diffY, sign, isHide]() {
+            const auto current = animation_->currentValue().toDouble();
             q->setGeometry(startGeometry.translated(0, sign * diffY * current));
 
             if (isHide)
                 opacity_ = 1 - current;
             else
                 opacity_ = current;
-        };
+        });
 
-        auto finishedCallback = [this, isHide]()
-        {
-            hoverEnabled_ = !isHide;
-            currentAnimation_ = AnimationType::None;
-            startQueuedAnimation();
-        };
-
-        animation_.finish();
-        animation_.start(updateCallback, finishedCallback, 0, 1, animationDuration.count(), anim::sineInOut);
+        QObject::connect(animation_, &QVariantAnimation::stateChanged, q, [this, isHide]() {
+            if (animation_->state() == QAbstractAnimation::Stopped)
+            {
+                hoverEnabled_ = !isHide;
+                currentAnimation_ = AnimationType::None;
+                startQueuedAnimation();
+            }
+        });
+        animation_->start();
 
         hoverEnabled_ = false;
 
@@ -566,31 +571,37 @@ public:
             isLarge_= true;
         }
 
-        auto updateCallback = [this, startSize, diff]()
-        {
-            auto d = diff * animation_.current();
+        const auto coef = animation_->state() == QAbstractAnimation::Running ? animation_->currentValue().toDouble() : 1.;
+
+        animation_->disconnect(q);
+        animation_->stop();
+        animation_->setStartValue(1.0 - coef);
+        animation_->setEndValue(1.0);
+        animation_->setEasingCurve(QEasingCurve::InOutSine);
+        animation_->setDuration(animationDuration.count() * coef);
+
+        QObject::connect(animation_, &QVariantAnimation::valueChanged, q, [this, startSize, diff]() {
+            auto d = diff * animation_->currentValue().toDouble();
             emojiSize_ = startSize + QSize(d, d);
             q->update();
-        };
-
-        auto coef = animation_.isRunning() ? animation_.current() : 1.;
-
-        auto finishedCallback = [this, isHoverOut, startGeometry]()
-        {
-            if (isHoverOut)
+        });
+        QObject::connect(animation_, &QVariantAnimation::stateChanged, q, [this, isHoverOut, startGeometry]() {
+            if (animation_->state() == QAbstractAnimation::Stopped)
             {
-                QRect regularGeometry;
-                regularGeometry.setSize(emojiWidgetSize());
-                regularGeometry.moveCenter(startGeometry.center());
-                q->setGeometry(regularGeometry);
-                isLarge_ = false;
+                if (isHoverOut)
+                {
+                    QRect regularGeometry;
+                    regularGeometry.setSize(emojiWidgetSize());
+                    regularGeometry.moveCenter(startGeometry.center());
+                    q->setGeometry(regularGeometry);
+                    isLarge_ = false;
+                }
+
+                currentAnimation_ = AnimationType::None;
             }
+        });
 
-            currentAnimation_ = AnimationType::None;
-        };
-
-        animation_.finish();
-        animation_.start(updateCallback, finishedCallback, 1 - coef, 1, animationDuration.count() * coef, anim::sineInOut);
+        animation_->start();
 
         currentAnimation_ = _type;
     }
@@ -667,7 +678,7 @@ public:
     QString reaction_;
     double opacity_ = 0;
     QImage emoji_;
-    anim::Animation animation_;
+    QVariantAnimation* animation_;
     bool hovered_ = false;
     bool pressed_ = false;
     bool hoverEnabled_ = false;
@@ -838,7 +849,7 @@ class PlateWithShadow_p
 {
 public:
 
-    PlateWithShadow_p(PlateWithShadow* _q) : q(_q) {}
+    PlateWithShadow_p(PlateWithShadow* _q) : animation_(new QVariantAnimation(_q)), q(_q) {}
 
     void startShowAnimation()
     {
@@ -871,10 +882,15 @@ public:
                 Q_EMIT q->hideFinished();
         };
 
-        animation_.finish();
-        animation_.start([this, startGeometry, diffY, sign, isHide]()
-        {
-            const auto current = animation_.current();
+        animation_->disconnect(q);
+        animation_->stop();
+        animation_->setStartValue(startValue);
+        animation_->setEndValue(endValue);
+        animation_->setEasingCurve(QEasingCurve::InOutSine);
+        animation_->setDuration(animationDuration.count());
+
+        QObject::connect(animation_, &QVariantAnimation::valueChanged, q, [this, startGeometry, diffY, sign, isHide]() {
+            const auto current = animation_->currentValue().toDouble();
             q->setGeometry(startGeometry.translated(0, sign * diffY * current));
 
             if (isHide)
@@ -883,7 +899,16 @@ public:
                 opacity_ = current;
 
             shadow_->setColor(shadowColorWithAlpha());
-        }, finishedCallback, startValue, endValue, animationDuration.count(), anim::sineInOut);
+        });
+        QObject::connect(animation_, &QVariantAnimation::stateChanged, q, [this, isHide]() {
+            if (animation_->state() == QAbstractAnimation::Stopped)
+            {
+                if (isHide)
+                    Q_EMIT q->hideFinished();
+            }
+        });
+
+        animation_->start();
     }
 
     QColor shadowColorWithAlpha()
@@ -904,7 +929,7 @@ public:
     }
 
     double opacity_ = 0;
-    anim::Animation animation_;
+    QVariantAnimation* animation_;
     QGraphicsDropShadowEffect* shadow_ = nullptr;
 
     enum class AnimationType

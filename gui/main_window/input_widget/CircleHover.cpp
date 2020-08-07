@@ -11,9 +11,10 @@ namespace
 namespace Ui
 {
     CircleHover::CircleHover()
-        : QWidget(nullptr),
-        minDiameter_(Utils::scale_value(36)),
-        maxDiameter_(Utils::scale_value(92))
+        : QWidget(nullptr)
+        , minDiameter_(Utils::scale_value(36))
+        , maxDiameter_(Utils::scale_value(92))
+        , anim_(new QVariantAnimation(this))
     {
         setWindowFlags(Qt::FramelessWindowHint | Qt::SubWindow | Qt::WindowTransparentForInput);
         setAttribute(Qt::WA_NoSystemBackground);
@@ -23,6 +24,12 @@ namespace Ui
         setFocusPolicy(Qt::NoFocus);
 
         setFixedSize(maxDiameter_ * 1.1, maxDiameter_ * 1.1);
+
+        connect(anim_, &QVariantAnimation::valueChanged, this, [this]()
+        {
+            raise();
+            update();
+        });
     }
 
     CircleHover::~CircleHover() = default;
@@ -45,11 +52,13 @@ namespace Ui
     {
         if (dest_)
         {
-            anim_.start([this]()
-            {
-                raise();
-                update();
-            }, 0., 1., getAnimDuration().count(), anim::sineInOut);
+            anim_->stop();
+            anim_->setStartValue(0.0);
+            anim_->setEndValue(1.0);
+            anim_->setDuration(getAnimDuration().count());
+            anim_->setEasingCurve(QEasingCurve::InOutSine);
+            anim_->start();
+
             move(dest_->mapToGlobal(dest_->rect().center()) - rect().center());
             raise();
             show();
@@ -64,11 +73,12 @@ namespace Ui
             //show();
             //raise();
 
-            anim_.start([this]()
-            {
-                raise();
-                update();
-            }, 1., 0., getAnimDuration().count(), anim::sineInOut);
+            anim_->stop();
+            anim_->setStartValue(1.0);
+            anim_->setEndValue(0.0);
+            anim_->setDuration(getAnimDuration().count());
+            anim_->setEasingCurve(QEasingCurve::InOutSine);
+            anim_->start();
         }
         else
         {
@@ -78,7 +88,7 @@ namespace Ui
 
     void CircleHover::forceHide()
     {
-        anim_.finish();
+        anim_->stop();
         hide();
     }
 
@@ -87,12 +97,13 @@ namespace Ui
         QPainter p(this);
         p.setRenderHint(QPainter::Antialiasing, true);
         const auto r = rect();
+        const auto curAnim = anim_->currentValue().toInt();
         p.fillRect(r, Qt::transparent);
-        p.setOpacity(anim_.current());
+        p.setOpacity(curAnim);
         p.translate(r.center());
         p.setPen(Qt::NoPen);
         p.setBrush(color_);
-        const auto diameter = minDiameter_ + anim_.current() * (maxDiameter_ - minDiameter_);
+        const auto diameter = minDiameter_ + curAnim * (maxDiameter_ - minDiameter_);
         p.drawEllipse(QRect(-diameter / 2, -diameter / 2, diameter, diameter));
     }
 }

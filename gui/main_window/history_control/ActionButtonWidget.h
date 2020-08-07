@@ -2,8 +2,6 @@
 
 #include "../../namespaces.h"
 
-#include "../../animation/animation.h"
-
 namespace Themes
 {
     using ThemePixmapSptr = std::shared_ptr<class ThemePixmap>;
@@ -182,7 +180,7 @@ private:
 
     ActionButtonWidgetLayout *Layout_;
 
-    anim::Animation animation_;
+    QVariantAnimation* animation_;
 
 private Q_SLOTS:
     void onAnimationStartTimeout();

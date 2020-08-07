@@ -123,6 +123,7 @@ namespace Ui
         , suggestTimer_(nullptr)
         , selectContactsWidget_(nullptr)
         , transitionLabel_(nullptr)
+        , transitionAnim_(new QVariantAnimation(this))
         , callLinkCreator_(nullptr)
     {
         hide();
@@ -409,12 +410,13 @@ namespace Ui
 
         const auto text = getInputText();
         const auto words = text.splitRef(QChar::Space);
-        const QString suggestText = text.toLower().trimmed();
+        const auto suggestText = text.toLower().trimmed();
 
-        if (!TextRendering::isEmoji(suggestText))
+        auto isShowingSmileMenu = false;
+        if (auto contactDialog = Utils::InterConnector::instance().getContactDialog())
+            isShowingSmileMenu = contactDialog->isShowingSmileMenu();
+        if (!TextRendering::isEmoji(suggestText) || !isShowingSmileMenu)
             suggestPos_ = QPoint();
-
-        QPoint pos = suggestPos_;
 
         if (suggestText.isEmpty() || suggestText.size() > Features::maxAllowedLocalSuggestChars()
             || words.size() > Features::maxAllowedLocalSuggestWords())
@@ -442,10 +444,10 @@ namespace Ui
         if (suggest.empty())
             return;
 
+        auto pos = suggestPos_;
         if (pos.isNull())
         {
             pos = textEdit_->mapToGlobal(textEdit_->pos());
-
             pos.setY(textEdit_->mapToGlobal(textEdit_->geometry().topLeft()).y() + Utils::scale_value(10));
             if (pos.y() % 2 != 0)
                 pos.ry() += 1;
@@ -2230,21 +2232,29 @@ namespace Ui
                 if (auto panel = getCurrentPanel())
                     targetHeight = panel->height();
 
-                transitionAnim_.finish();
-                transitionAnim_.start(
-                    [this, effect, targetHeight, diff = currentHeight - targetHeight]()
-                    {
-                        const auto val = transitionAnim_.current();
-                        effect->setOpacity(val);
+                transitionAnim_->stop();
+                transitionAnim_->disconnect(this);
 
-                        if (diff != 0)
-                            setInputHeight(targetHeight + val * diff);
-                    },
-                    [this]() { transitionLabel_->hide(); },
-                    1.0,
-                    0.0,
-                    viewTransitDuration().count(),
-                    anim::sineInOut);
+                connect(transitionAnim_, &QVariantAnimation::valueChanged, this, [this, effect, targetHeight, diff = currentHeight - targetHeight]()
+                {
+                    const auto val = transitionAnim_->currentValue().toDouble();
+                    effect->setOpacity(val);
+
+                    if (diff != 0)
+                        setInputHeight(targetHeight + val * diff);
+                });
+                connect(transitionAnim_, &QVariantAnimation::stateChanged, this, [this]()
+                {
+                    if (transitionAnim_->state() == QAbstractAnimation::Stopped)
+                        transitionLabel_->hide();
+                });
+
+                transitionAnim_->setStartValue(1.0);
+                transitionAnim_->setEndValue(0.0);
+                transitionAnim_->setDuration(viewTransitDuration().count());
+                transitionAnim_->setEasingCurve(QEasingCurve::InOutSine);
+                transitionAnim_->start();
+
             }
         }
 
@@ -2980,5 +2990,10 @@ namespace Ui
     void InputWidget::clearLastSuggests()
     {
         lastRequestedSuggests_.clear();
+    }
+
+    bool InputWidget::hasSelection() const
+    {
+        return !textEdit_->selection().isEmpty();
     }
 }

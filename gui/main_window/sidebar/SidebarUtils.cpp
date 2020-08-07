@@ -24,6 +24,7 @@
 #include "../../main_window/contact_list/ChatMembersModel.h"
 #include "../../main_window/contact_list/ContactListItemDelegate.h"
 #include "../../main_window/contact_list/ContactListUtils.h"
+#include "../../main_window/history_control/MessageStyle.h"
 #include "../../controls/TextEditEx.h"
 #include "../../controls/ContactAvatarWidget.h"
 #include "../../controls/GeneralDialog.h"
@@ -574,6 +575,7 @@ namespace Ui
         , buttonsVisible_(false)
         , onlyCopyButton_(false)
         , cursorForText_(false)
+        , isTextField_(false)
         , menu_(nullptr)
     {
         text_ = TextRendering::MakeTextUnit(QString(), Data::MentionMap());
@@ -584,6 +586,14 @@ namespace Ui
         iconHoverColor_ = Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY_HOVER);
         iconPressedColor_ = Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY_ACTIVE);
         setMouseTracking(true);
+
+        if (QApplication::clipboard()->supportsSelection())
+        {
+            connect(this, &TextLabel::selectionChanged, this, [this]()
+            {
+                QApplication::clipboard()->setText(getSelectedText(), QClipboard::Selection);
+            });
+        }
     }
 
     void TextLabel::setMargins(int _left, int _top, int _right, int _bottom)
@@ -595,11 +605,24 @@ namespace Ui
 
     void TextLabel::init(const QFont& _font, const QColor& _color, const QColor& _linkColor)
     {
-        text_->init(_font, _color, _linkColor, QColor(), QColor(), textAlign_, -1, TextRendering::LineBreakType::PREFER_SPACES);
-        collapsedText_->init(_font, _color, _linkColor, QColor(), QColor(), textAlign_, maxLinesCount_, TextRendering::LineBreakType::PREFER_SPACES);
+        text_->init(_font, _color, _linkColor, MessageStyle::getTextSelectionColor(), QColor(), textAlign_, -1, TextRendering::LineBreakType::PREFER_SPACES);
+        collapsedText_->init(_font, _color, _linkColor, MessageStyle::getTextSelectionColor(), QColor(), textAlign_, maxLinesCount_, TextRendering::LineBreakType::PREFER_SPACES);
         readMore_->init(_font, _linkColor);
         readMore_->evaluateDesiredSize();
 
+        update();
+    }
+
+    void TextLabel::selectText(const QPoint& _from, const QPoint& _to)
+    {
+        if (isTextField_)
+        {
+            const auto isSelectionTopToBottom = (_from.y() <= _to.y());
+            const auto from = isSelectionTopToBottom ? _from : _to;
+            const auto to = isSelectionTopToBottom ? _to : _from;
+            text_->select(from, to);
+            Q_EMIT selectionChanged();
+        }
         update();
     }
 
@@ -681,6 +704,12 @@ namespace Ui
     void TextLabel::makeCopyable()
     {
         copyable_ = true;
+    }
+
+    void TextLabel::makeTextField()
+    {
+        makeCopyable();
+        isTextField_ = true;
     }
 
     void TextLabel::showButtons()
@@ -787,18 +816,42 @@ namespace Ui
 
     void TextLabel::mousePressEvent(QMouseEvent* _event)
     {
-        clicked_ = _event->pos();
-        if (buttonsVisible_)
-            update();
-
+        if (_event->button() == Qt::LeftButton)
+        {
+            if (TripleClickTimer_ && TripleClickTimer_->isActive())
+            {
+                TripleClickTimer_->stop();
+                text_->selectAll();
+                text_->fixSelection();
+            }
+            else
+            {
+                clearSelection();
+                selectFrom_ = _event->pos();
+            }
+        }
+        else
+        {
+            selectFrom_ = QPoint();
+            selectTo_ = QPoint();
+        }
+        update();
         QWidget::mousePressEvent(_event);
     }
 
     void TextLabel::mouseReleaseEvent(QMouseEvent* _event)
     {
-        if (Utils::clicked(clicked_, _event->pos()))
+        const auto pos = _event->pos();
+
+        if (Utils::clicked(selectFrom_, pos) || text_->isSelected())
         {
-            if (maxLinesCount_ != -1 && collapsed_ && readMore_->contains(_event->pos()))
+            if (_event->button() == Qt::LeftButton)
+            {
+                selectFrom_ = QPoint();
+                selectTo_ = QPoint();
+            }
+
+            if (maxLinesCount_ != -1 && collapsed_ && readMore_->contains(pos))
             {
                 collapsed_ = false;
                 updateSize();
@@ -819,19 +872,18 @@ namespace Ui
 
                         QMap<QString, QVariant> data;
                         data[qsl("command")] = qsl("copy");
-                        data[qsl("text")] = text_->getText();
+                        data[qsl("text")] = isTextField_ && text_->isSelected() ? text_->getSelectedText() : text_->getText();
 
                         menu->addActionWithIcon(qsl(":/copy_icon"), QT_TRANSLATE_NOOP("sidebar", "Copy"), data);
 
                         connect(menu, &ContextMenu::triggered, this, &TextLabel::menuAction);
                         connect(menu, &ContextMenu::triggered, menu, &ContextMenu::deleteLater, Qt::QueuedConnection);
                         connect(menu, &ContextMenu::aboutToHide, menu, &ContextMenu::deleteLater, Qt::QueuedConnection);
-
                     }
 
                     if (menu)
                     {
-                        if (_event->pos().x() >= width() / 2)
+                        if (pos.x() >= width() / 2)
                             menu->invertRight(true);
 
                         menu->popup(QCursor::pos());
@@ -843,22 +895,36 @@ namespace Ui
                     if (buttonsVisible_)
                     {
                         auto copyRect = QRect(width() - Utils::scale_value(ICON_SIZE) * (onlyCopyButton_ ? 2 : 4), margins_.top(), Utils::scale_value(ICON_SIZE), Utils::scale_value(ICON_SIZE));
-                        if (copyRect.contains(_event->pos()) && !std::exchange(buttonWasClicked, true))
+                        if (copyRect.contains(pos) && !std::exchange(buttonWasClicked, true))
                             Q_EMIT copyClicked(text_->getSourceText());
 
                         auto shareRect = QRect(width() - Utils::scale_value(ICON_SIZE) * 2, margins_.top(), Utils::scale_value(ICON_SIZE), Utils::scale_value(ICON_SIZE));
-                        if (!onlyCopyButton_ && shareRect.contains(_event->pos()) && !std::exchange(buttonWasClicked, true))
+                        if (!onlyCopyButton_ && shareRect.contains(pos) && !std::exchange(buttonWasClicked, true))
                             Q_EMIT shareClicked();
                     }
 
-                    if (!buttonWasClicked && text_->contains(_event->pos()))
-                        Q_EMIT textClicked();
+                    if (!buttonWasClicked && text_->contains(pos))
+                    {
+                        if (isTextField_ && !text_->isSelected() && text_->isOverLink(pos))
+                            text_->clicked(pos);
+                        else
+                            Q_EMIT textClicked();
+                    }
                 }
             }
         }
+        else if (_event->button() == Qt::LeftButton)
+        {
+            selectTo_ = pos;
+            if (isTextField_)
+            {
+                selectText(selectFrom_, selectTo_);
+                selectFrom_ = QPoint();
+                selectTo_ = QPoint();
+            }
+        }
 
-        if (buttonsVisible_)
-            update();
+        update();
 
         QWidget::mouseReleaseEvent(_event);
     }
@@ -867,8 +933,9 @@ namespace Ui
     {
         auto copyRect = QRect(width() - Utils::scale_value(ICON_SIZE) * (onlyCopyButton_ ? 2 :4), margins_.top(), Utils::scale_value(ICON_SIZE), Utils::scale_value(ICON_SIZE));
         auto shareRect = QRect(width() - Utils::scale_value(ICON_SIZE) * 2, margins_.top(), Utils::scale_value(ICON_SIZE), Utils::scale_value(ICON_SIZE));
+        const auto pos = _event->pos();
 
-        if (buttonsVisible_ && (copyRect.contains(_event->pos()) || shareRect.contains(_event->pos())))
+        if (buttonsVisible_ && (copyRect.contains(_event->pos()) || shareRect.contains(pos)))
         {
             setCursor(Qt::PointingHandCursor);
             if (copyRect.contains(_event->pos()))
@@ -878,17 +945,52 @@ namespace Ui
         }
         else
         {
-            const auto isOnText = ((maxLinesCount_ != -1 && collapsed_ && readMore_->contains(_event->pos()))
-                || (text_->contains(_event->pos()) && buttonsVisible_)
-                || (text_->contains(_event->pos()) && cursorForText_));
-            setCursor(isOnText ? Qt::PointingHandCursor : Qt::ArrowCursor);
+            const auto isOnText = ((maxLinesCount_ != -1 && collapsed_ && readMore_->contains(pos))
+                                   || (text_->contains(pos) && (buttonsVisible_ || cursorForText_))
+                                   || text_->isOverLink(pos));
+
+            if (isTextField_ && !selectFrom_.isNull())
+            {
+                selectTo_ = pos;
+                selectText(selectFrom_, selectTo_);
+            }
+            setCursor(isOnText && selectFrom_.isNull() ? Qt::PointingHandCursor : Qt::ArrowCursor);
             Tooltip::hide();
         }
 
-        if (buttonsVisible_)
-            update();
+        update();
 
         QWidget::mouseMoveEvent(_event);
+    }
+
+    void TextLabel::mouseDoubleClickEvent(QMouseEvent* _event)
+    {
+        if (isTextField_ && _event->button() == Qt::LeftButton && !text_->isAllSelected())
+        {
+            const auto pos = _event->pos();
+            selectFrom_ = pos;
+            selectFrom_.rx() = (pos.x() != 0) ? 0 : pos.x();
+            selectTo_ = pos;
+
+            const auto tripleClick = [this](bool result)
+            {
+                if (result)
+                {
+                    if (!TripleClickTimer_)
+                    {
+                        TripleClickTimer_ = new QTimer(this);
+                        TripleClickTimer_->setInterval(QApplication::doubleClickInterval());
+                        TripleClickTimer_->setSingleShot(true);
+                    }
+                    TripleClickTimer_->start();
+                }
+            };
+
+            text_->doubleClicked(pos, true, std::move(tripleClick));
+            tripleClick(true);
+        }
+
+        update();
     }
 
     void TextLabel::enterEvent(QEvent* _event)
@@ -909,6 +1011,26 @@ namespace Ui
         iconNormalColor_ = _normal;
         iconHoverColor_ = _hover;
         iconPressedColor_ = _pressed;
+    }
+
+    QString TextLabel::getSelectedText() const
+    {
+        return text_->getSelectedText();
+    }
+
+    void TextLabel::tryClearSelection(const QPoint& _pos)
+    {
+        if (!geometry().contains(_pos))
+            clearSelection();
+    }
+
+    void TextLabel::clearSelection()
+    {
+        text_->releaseSelection();
+        text_->clearSelection();
+        selectFrom_ = QPoint();
+        selectTo_ = QPoint();
+        update();
     }
 
     void InfoBlock::hide()
@@ -952,6 +1074,11 @@ namespace Ui
     bool InfoBlock::isVisible() const
     {
         return header_ && header_->isVisible();
+    }
+
+    QString InfoBlock::getSelectedText() const
+    {
+        return text_->getSelectedText();
     }
 
     GalleryPreviewItem::GalleryPreviewItem(QWidget* _parent, const QString& _link, qint64 _msg, qint64 _seq, const QString& _aimId, const QString& _sender, bool _outgoing, time_t _time, int previewSize)

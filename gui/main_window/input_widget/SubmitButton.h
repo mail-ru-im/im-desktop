@@ -1,7 +1,6 @@
 #pragma once
 
 #include "controls/ClickWidget.h"
-#include "animation/animation.h"
 #include "CircleHover.h"
 #include "InputWidgetUtils.h"
 
@@ -75,7 +74,7 @@ namespace Ui
         IconStates currentIcon_;
         QPixmap nextIcon_;
 
-        anim::Animation anim_;
+        QVariantAnimation* anim_;
 
         QTimer longTapTimer_;
         QTimer longPressTimer_;

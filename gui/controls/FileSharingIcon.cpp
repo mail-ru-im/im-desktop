@@ -158,13 +158,15 @@ namespace Ui
         , iconColor_(getTypeInfo(FileType::unknown).color_)
         , bytesTotal_(0)
         , bytesCurrent_(0)
+        , anim_(new QVariantAnimation(this))
     {
         setFixedSize(getIconSize());
+        connect(animFocus_, &QVariantAnimation::valueChanged, this, qOverload<>(&ClickableWidget::update));
     }
 
     FileSharingIcon::~FileSharingIcon()
     {
-        stopAnimation();
+        anim_->stop();
     }
 
     void FileSharingIcon::setBytes(const int64_t _bytesTotal, const int64_t _bytesCurrent)
@@ -228,26 +230,33 @@ namespace Ui
 
     void FileSharingIcon::startAnimation()
     {
-        if (!anim_.isRunning())
-            anim_.start([this]() { update(); }, 0.0, 360.0, animDuration.count(), anim::linear, -1);
+        if (!isAnimating())
+        {
+            anim_->setStartValue(0.0);
+            anim_->setEndValue(360.0);
+            anim_->setDuration(animDuration.count());
+            anim_->setEasingCurve(QEasingCurve::Linear);
+            anim_->setLoopCount(-1);
+            anim_->start();
+        }
     }
 
     void FileSharingIcon::stopAnimation()
     {
-        anim_.finish();
+        anim_->stop();
     }
 
     bool FileSharingIcon::isAnimating() const
     {
-        return anim_.state() != anim::State::Stopped;
+        return anim_->state() == QAbstractAnimation::State::Running;
     }
 
     void FileSharingIcon::onVisibilityChanged(const bool _isVisible)
     {
         if (_isVisible)
-            anim_.resume();
+            anim_->resume();
         else
-            anim_.pause();
+            anim_->pause();
     }
 
     void FileSharingIcon::paintEvent(QPaintEvent* event)
@@ -266,7 +275,7 @@ namespace Ui
 
         if (!isFileDownloaded())
         {
-            const auto animAngle = anim_.isRunning() ? anim_.current() : 0.0;
+            const auto animAngle = anim_->state() == QAbstractAnimation::State::Running ? anim_->currentValue().toDouble() : 0.0;
             const auto baseAngle = (animAngle * QT_ANGLE_MULT);
             const auto progress = bytesTotal_ == 0 ? 0 : std::max((double)bytesCurrent_ / (double)bytesTotal_, 0.03);
             const auto progressAngle = (int)std::ceil(progress * 360 * QT_ANGLE_MULT);

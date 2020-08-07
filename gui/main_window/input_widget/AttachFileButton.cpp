@@ -55,11 +55,23 @@ namespace Ui
 {
     AttachFileButton::AttachFileButton(QWidget* _parent)
         : ClickableWidget(_parent)
-        , currentAngle_(0)
+        , anim_(new QVariantAnimation(this))
+        , currentAngle_(0.0)
         , isActive_(false)
     {
         connect(this, &AttachFileButton::hoverChanged, this, qOverload<>(&AttachFileButton::update));
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::attachFilePopupVisiblityChanged, this, &AttachFileButton::onAttachVisibleChanged);
+
+        connect(anim_, &QVariantAnimation::valueChanged, this, [this]()
+        {
+            currentAngle_ = anim_->currentValue().toDouble();
+            update();
+        });
+        connect(anim_, &QVariantAnimation::stateChanged, this, [this]()
+        {
+            if (anim_->state() == QAbstractAnimation::Stopped)
+                currentAngle_ = 0.0;
+        });
 
         setFixedSize(buttonSize());
 
@@ -107,13 +119,12 @@ namespace Ui
     {
         const auto mod = _dir == RotateDirection::Left ? -1 : 1;
         const auto endAngle = 90 * mod;
-        anim_.start(
-            [this]() { currentAngle_ = anim_.current(); update(); },
-            [this]() { currentAngle_ = 0; },
-            currentAngle_,
-            endAngle,
-            animDuration().count(),
-            anim::sineInOut
-        );
+
+        anim_->stop();
+        anim_->setStartValue(currentAngle_);
+        anim_->setEndValue(endAngle);
+        anim_->setDuration(animDuration().count());
+        anim_->setEasingCurve(QEasingCurve::InOutSine);
+        anim_->start();
     }
 }

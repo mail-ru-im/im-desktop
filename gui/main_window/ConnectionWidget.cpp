@@ -99,11 +99,23 @@ namespace
 
 ProgressAnimation::ProgressAnimation(QWidget* _parent)
     : QWidget(_parent)
+    , animation_(new QVariantAnimation(this))
     , started_(false)
     , rate_(0)
     , progressWidth_(getProgressWidth())
     , pen_(getRotatingProgressBarPen(getProgressPenWidth()))
 {
+    connect(animation_, &QVariantAnimation::valueChanged, this, [this]() {
+        if constexpr (platform::is_apple())
+        {
+            if (++rate_ <= 2)
+                return;
+
+            rate_ = 0;
+        }
+
+        update();
+    });
 }
 
 ProgressAnimation::~ProgressAnimation()
@@ -151,32 +163,26 @@ void Ui::ProgressAnimation::setProgressPenColor(QColor _color)
 
 void ProgressAnimation::startAnimation()
 {
-    if (animation_.isRunning())
+    if (animation_->state() == QAbstractAnimation::State::Running)
         return;
 
-    animation_.start([this]()
-    {
-        if constexpr (platform::is_apple())
-        {
-            if (++rate_ <= 2)
-                return;
-
-            rate_ = 0;
-        }
-
-        update();
-
-    }, 0.0, 360.0, animationDuration(), anim::linear, -1);
+    animation_->stop();
+    animation_->setStartValue(0.0);
+    animation_->setEndValue(360.0);
+    animation_->setDuration(animationDuration());
+    animation_->setEasingCurve(QEasingCurve::Linear);
+    animation_->setLoopCount(-1);
+    animation_->start();
 }
 
 void ProgressAnimation::stopAnimation()
 {
-    animation_.finish();
+    animation_->stop();
 }
 
 void ProgressAnimation::paintEvent(QPaintEvent*)
 {
-    if (!animation_.isRunning())
+    if (animation_->state() != QAbstractAnimation::State::Running)
         return;
 
     QRectF progressRect(
@@ -191,7 +197,7 @@ void ProgressAnimation::paintEvent(QPaintEvent*)
     p.setRenderHint(QPainter::Antialiasing);
     p.setPen(pen_);
 
-    const auto angle = int(animation_.current() * QT_ANGLE_MULT);
+    const auto angle = int(animation_->currentValue().toDouble() * QT_ANGLE_MULT);
     p.drawArc(progressRect, -angle, -progressSpan);
 }
 

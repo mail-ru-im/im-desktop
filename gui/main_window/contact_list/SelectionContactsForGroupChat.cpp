@@ -93,6 +93,8 @@ namespace Ui
         : QWidget(_parent)
         , diff_(0)
         , avatarOffset_(0)
+        , heightAnimation_(new QVariantAnimation(this))
+        , avatarAnimation_(new QVariantAnimation(this))
         , replaceFavorites_(false)
         , membersModel_(_membersModel)
         , searchModel_(_searchModel)
@@ -101,6 +103,10 @@ namespace Ui
         setMouseTracking(true);
 
         connect(Logic::GetAvatarStorage(), &Logic::AvatarStorage::avatarChanged, this, &AvatarsArea::onAvatarChanged);
+        connect(avatarAnimation_, &QVariantAnimation::valueChanged, this, [this]() {
+            avatarOffset_ = avatarAnimation_->currentValue().toInt();
+            update();
+        });
     }
 
     void AvatarsArea::onAvatarChanged(const QString& _aimId)
@@ -130,23 +136,31 @@ namespace Ui
         if (avatars_.size() == 1)
         {
             auto h = Utils::scale_value(avatars_area_top_padding + avatars_area_bottom_padding + avatar_size);
-            heightAnimation_.start([this, h]() {
-                const auto cur = heightAnimation_.current();
+            heightAnimation_->stop();
+            heightAnimation_->setStartValue(0);
+            heightAnimation_->setEndValue(h);
+            heightAnimation_->setDuration(200);
+            heightAnimation_->setEasingCurve(QEasingCurve::Linear);
+            heightAnimation_->disconnect(this);
+            connect(heightAnimation_, &QVariantAnimation::valueChanged, this, [this, h]() {
+                const auto cur = heightAnimation_->currentValue().toInt();
                 setFixedHeight(cur);
                 if (h == cur)
                     Q_EMIT showed();
-            }, 0, h, 200, anim::linear, 1);
+            });
+            heightAnimation_->start();
         }
         else
         {
-            if (!avatarAnimation_.isRunning())
+            if (avatarAnimation_->state() != QAbstractAnimation::State::Running)
             {
-                avatarAnimation_.finish();
+                avatarAnimation_->stop();
                 avatarOffset_ = Utils::scale_value(avatar_size);
-                avatarAnimation_.start([this]() {
-                    avatarOffset_ = avatarAnimation_.current();
-                    update();
-                }, Utils::scale_value(avatar_size), 0, 300, anim::linear, 1);
+                avatarAnimation_->setStartValue(Utils::scale_value(avatar_size));
+                avatarAnimation_->setEndValue(0);
+                avatarAnimation_->setDuration(300);
+                avatarAnimation_->setEasingCurve(QEasingCurve::Linear);
+                avatarAnimation_->start();
             }
         }
 
@@ -162,10 +176,17 @@ namespace Ui
     {
         if (avatars_.size() == 1 && avatars_[0].aimId_ == _aimId)
         {
-            heightAnimation_.start([this, _aimId]() {
-                const auto cur = heightAnimation_.current();
+            heightAnimation_->stop();
+            heightAnimation_->setStartValue(height());
+            heightAnimation_->setEndValue(0);
+            heightAnimation_->setDuration(200);
+            heightAnimation_->setEasingCurve(QEasingCurve::Linear);
+            heightAnimation_->disconnect(this);
+            connect(heightAnimation_, &QVariantAnimation::valueChanged, this, [this]() {
+                const auto cur = heightAnimation_->currentValue().toInt();
                 setFixedHeight(cur);
-            }, height(), 0, 200, anim::linear, 1);
+                });
+            heightAnimation_->start();
         }
 
         avatars_.erase(std::remove_if(avatars_.begin(), avatars_.end(), [&_aimId](const AvatarData& _value) { return _value.aimId_ == _aimId; }), avatars_.end());

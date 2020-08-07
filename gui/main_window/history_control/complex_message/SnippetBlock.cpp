@@ -1742,6 +1742,7 @@ constexpr std::chrono::milliseconds animationDuration = std::chrono::seconds(2);
 
 ArticlePreloader::ArticlePreloader(SnippetBlock* _snippetBlock, const QString& _link)
     : SnippetContent(_snippetBlock, Data::LinkMetadata(), _link)
+    , animation_(new QVariantAnimation(this))
 {
     startAnimation();
 }
@@ -1774,7 +1775,7 @@ void ArticlePreloader::draw(QPainter& _p, const QRect& _rect)
     const auto &preloaderBrush = MessageStyle::Snippet::getPreloaderBrush();
     _p.setBrush(preloaderBrush);
 
-    _p.setBrushOrigin(_rect.width() * animation_.current(), 0);
+    _p.setBrushOrigin(_rect.width() * animation_->currentValue().toDouble(), 0);
     _p.drawRect(previewRect_);
     _p.drawRect(titleRect_);
     _p.drawRect(faviconRect_);
@@ -1805,9 +1806,9 @@ bool ArticlePreloader::isMarginRequired() const
 void ArticlePreloader::onVisibilityChanged(const bool _visible)
 {
     if (_visible)
-        animation_.resume();
+        animation_->resume();
     else
-        animation_.pause();
+        animation_->pause();
 }
 
 IItemBlock::MenuFlags ArticlePreloader::menuFlags() const
@@ -1817,7 +1818,14 @@ IItemBlock::MenuFlags ArticlePreloader::menuFlags() const
 
 void ArticlePreloader::startAnimation()
 {
-    animation_.start([this]() { snippetBlock_->update(); }, 0, 1, animationDuration.count(), anim::linear, -1);
+    animation_->setStartValue(0.0);
+    animation_->setEndValue(1.0);
+    animation_->setDuration(animationDuration.count());
+    animation_->setEasingCurve(QEasingCurve::Linear);
+    animation_->setLoopCount(-1);
+    animation_->disconnect(snippetBlock_);
+    connect(animation_, &QVariantAnimation::valueChanged, snippetBlock_, qOverload<>(&SnippetBlock::update));
+    animation_->start();
 }
 
 //////////////////////////////////////////////////////////////////////////

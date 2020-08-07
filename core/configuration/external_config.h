@@ -41,6 +41,7 @@ namespace config
             external_url_config();
             bool unserialize(const rapidjson::Value& _node);
             void override_features(const config_features& _values);
+            void reset_to_defaults(const config_features& _values);
 
         private:
             bool is_valid_ = false;

@@ -483,11 +483,7 @@ void ComplexMessageItemLayout::setGeometryInternal(const int32_t widgetWidth)
 
     messageContentRect.setHeight(blocksGeometry.height() + senderRect.height());
 
-    if (Item_->isSingleSticker())
-    {
-        messageContentRect.setWidth(std::min(messageContentRect.width(), MessageStyle::getSenderStickerWidth()));
-    }
-    else
+    if (!Item_->isSingleSticker())
     {
         if (isOutgoingPosition())
         {

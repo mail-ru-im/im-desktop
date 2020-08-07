@@ -1,7 +1,6 @@
 #pragma once
 
 #include "types/message.h"
-#include "animation/animation.h"
 #include "../InputWidgetUtils.h"
 
 namespace Ui
@@ -56,7 +55,7 @@ namespace Ui
         int getStateWidth(const SideState _state) const;
 
     private:
-        anim::Animation anim_;
+        QVariantAnimation* anim_;
         SideState state_;
     };
 
@@ -151,7 +150,7 @@ namespace Ui
 
         SubmitButton* buttonSubmit_;
 
-        anim::Animation animResize_;
+        QVariantAnimation* animResize_;
         int curEditHeight_;
         bool forceSendButton_;
     };

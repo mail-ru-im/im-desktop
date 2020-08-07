@@ -2768,8 +2768,7 @@ namespace Ui
     {
         if(auto focused = QApplication::focusWidget(); focused && focused->inputMethodHints() != Qt::ImhNone)
         {
-            const auto contDialog = Utils::InterConnector::instance().getContactDialog();
-            if (contDialog && contDialog->isRecordingPtt())
+            if (Utils::InterConnector::instance().isRecordingPtt())
                 return;
 
             QApplication::postEvent(focused, new QKeyEvent(QEvent::KeyPress, Qt::Key_X, Qt::ControlModifier));
@@ -2781,8 +2780,7 @@ namespace Ui
     {
         if(auto focused = QApplication::focusWidget(); focused && focused->inputMethodHints() != Qt::ImhNone)
         {
-            const auto contDialog = Utils::InterConnector::instance().getContactDialog();
-            if (contDialog && contDialog->isRecordingPtt())
+            if (Utils::InterConnector::instance().isRecordingPtt())
                 return;
 
             QApplication::postEvent(focused, new QKeyEvent(QEvent::KeyPress, Qt::Key_V, Qt::ControlModifier));
@@ -2795,8 +2793,7 @@ namespace Ui
     {
         if(auto focused = QApplication::focusWidget(); focused && focused->inputMethodHints() != Qt::ImhNone)
         {
-            const auto contDialog = Utils::InterConnector::instance().getContactDialog();
-            if (contDialog && contDialog->isRecordingPtt())
+            if (Utils::InterConnector::instance().isRecordingPtt())
                 return;
 
             QApplication::postEvent(focused, new QKeyEvent(QEvent::KeyPress, Qt::Key_Z, Qt::ControlModifier));
@@ -2809,8 +2806,7 @@ namespace Ui
     {
         if(auto focused = QApplication::focusWidget(); focused && focused->inputMethodHints() != Qt::ImhNone)
         {
-            const auto contDialog = Utils::InterConnector::instance().getContactDialog();
-            if (contDialog && contDialog->isRecordingPtt())
+            if (Utils::InterConnector::instance().isRecordingPtt())
                 return;
 
             QApplication::postEvent(focused, new QKeyEvent(QEvent::KeyPress, Qt::Key_Z, Qt::ControlModifier|Qt::ShiftModifier));

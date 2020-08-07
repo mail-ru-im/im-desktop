@@ -1,7 +1,6 @@
 #pragma once
 
 #include <unordered_map>
-#include "../animation/animation.h"
 #include "../utils/keyboard.h"
 #include "../utils/utils.h"
 
@@ -330,6 +329,8 @@ Q_SIGNALS:
 
         void openGallery(const QString &_aimId, const QString &_link, int64_t _msgId, Ui::DialogPlayer* _attachedPlayer = nullptr);
 
+        bool isRecordingPtt() const;
+
     private:
         InterConnector();
 
@@ -345,7 +346,7 @@ Q_SIGNALS:
         std::map<QString, bool> multiselectStates_;
         MultiselectCurrentElement currentElement_;
         qint64 currentMessage_;
-        anim::Animation multiselectAnimation_;
+        QVariantAnimation* multiselectAnimation_;
 
         std::map<QWidget*, QString> disabledWidgets_;
     };

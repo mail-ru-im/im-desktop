@@ -4,7 +4,6 @@
 #include "../../types/message.h"
 #include "types/filesharing_meta.h"
 #include "types/filesharing_download_result.h"
-#include "../../animation/animation.h"
 
 namespace Ui
 {
@@ -184,6 +183,6 @@ namespace Ui
         std::vector<std::unique_ptr<BaseFileItem>> Items_;
         std::vector<qint64> RequestIds_;
         std::vector<qint64> Downloading_;
-        anim::Animation anim_;
+        QVariantAnimation* anim_;
     };
 }

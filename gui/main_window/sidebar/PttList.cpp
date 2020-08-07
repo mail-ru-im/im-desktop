@@ -440,6 +440,7 @@ namespace Ui
         , playingId_(-1)
         , playingIndex_(std::make_pair(-1, -1))
         , lastProgress_(0)
+        , animation_(new QVariantAnimation(this))
     {
         connect(Ui::GetDispatcher(), &core_dispatcher::fileSharingFileDownloaded, this, &PttList::onFileDownloaded);
         connect(Ui::GetDispatcher(), &core_dispatcher::speechToText, this, &PttList::onPttText);
@@ -453,7 +454,7 @@ namespace Ui
     void PttList::initFor(const QString& _aimId)
     {
         MediaContentWidget::initFor(_aimId);
-        animation_.finish();
+        animation_->stop();
         Items_.clear();
         RequestIds_.clear();
         setFixedHeight(0);
@@ -654,8 +655,8 @@ namespace Ui
                     {
                         i->setPause(true);
                         GetSoundsManager()->pausePtt(playingId_);
-                        lastProgress_ = animation_.state() == anim::State::Stopped ? 0 : animation_.current();
-                        animation_.pause();
+                        lastProgress_ = animation_->state() == QAbstractAnimation::Stopped ? 0 : animation_->currentValue().toDouble();
+                        animation_->pause();
                         update();
                         i->setPlayState(ButtonState::HOVERED);
                     }
@@ -858,7 +859,7 @@ namespace Ui
             {
                 if (!i->isDateItem() && i->getMsg() == playingIndex_.first && i->getSeq() == playingIndex_.second)
                 {
-                    animation_.finish();
+                    animation_->stop();
                     i->setPlaying(false);
                     lastProgress_ = 0;
                     playingId_ = -1;
@@ -882,32 +883,36 @@ namespace Ui
         Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::chatscr_playptt_action, { { "from_gallery", "yes" },  { "chat_type", Ui::getStatsChatType() } });
         playingIndex_ = std::make_pair(_item->getMsg(), _item->getSeq());
 
-        if (!animation_.isRunning())
+        if (animation_->state() != QAbstractAnimation::Running)
         {
             auto from = 0;
-            if (animation_.state() == anim::State::Paused)
+            if (animation_->state() == QAbstractAnimation::Paused)
             {
                 from = lastProgress_;
                 duration = duration - duration * lastProgress_ / 100;
             }
 
-            animation_.finish();
-            animation_.start([this]()
-            {
+            animation_->stop();
+            animation_->disconnect(this);
+            animation_->setStartValue(from);
+            animation_->setEndValue(100);
+            animation_->setEasingCurve(QEasingCurve::Linear);
+            animation_->setDuration(duration);
+            QObject::connect(animation_, &QVariantAnimation::valueChanged, this, [this]() {
                 for (auto& i : Items_)
                 {
                     if (!i->isDateItem() && i->getMsg() == playingIndex_.first && i->getSeq() == playingIndex_.second)
                     {
-                        const auto cur = animation_.current();
+                        const auto cur = animation_->currentValue().toDouble();
                         i->setProgress(cur);
                         if (cur == 100)
-                            QTimer::singleShot(200, this, [this]() { finishPtt(playingId_); update();});
+                            QTimer::singleShot(200, this, [this]() { finishPtt(playingId_); update(); });
 
                         update();
                         break;
                     }
                 }
-            }, from, 100, duration);
+            });
         }
     }
 
@@ -988,8 +993,8 @@ namespace Ui
                 if (!i->isDateItem() && i->getMsg() == playingIndex_.first && i->getSeq() == playingIndex_.second)
                 {
                     i->setPause(true);
-                    lastProgress_ = animation_.state() == anim::State::Stopped ? 0 : animation_.current();
-                    animation_.pause();
+                    lastProgress_ = animation_->state() == QAbstractAnimation::Stopped ? 0 : animation_->currentValue().toDouble();
+                    animation_->pause();
                     update();
                     break;
                 }

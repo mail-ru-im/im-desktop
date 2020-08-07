@@ -1,7 +1,6 @@
 #pragma once
 
 #include "GenericBlock.h"
-#include "animation/animation.h"
 #include "../../../types/link_metadata.h"
 
 namespace Ui
@@ -453,7 +452,7 @@ public:
 private:
     void startAnimation();
 
-    anim::Animation animation_;
+    QVariantAnimation* animation_;
     QRect previewRect_;
     QRect titleRect_;
     QRect linkRect_;

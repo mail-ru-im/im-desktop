@@ -390,11 +390,18 @@ namespace Ui
 
     FilesList::FilesList(QWidget* _parent)
         : MediaContentWidget(Type::Files, _parent)
+        , anim_(new QVariantAnimation(this))
     {
         connect(Ui::GetDispatcher(), &core_dispatcher::fileSharingFileMetainfoDownloaded, this, &FilesList::fileSharingFileMetainfoDownloaded);
         connect(Ui::GetDispatcher(), &core_dispatcher::fileSharingFileDownloading, this, &FilesList::fileDownloading);
         connect(Ui::GetDispatcher(), &core_dispatcher::fileSharingFileDownloaded, this, &FilesList::fileDownloaded);
         connect(Ui::GetDispatcher(), &core_dispatcher::fileSharingError, this, &FilesList::fileError);
+        anim_->setStartValue(0.0);
+        anim_->setEndValue(360.0);
+        anim_->setDuration(700);
+        anim_->setEasingCurve(QEasingCurve::Linear);
+        anim_->setLoopCount(-1);
+        connect(anim_, &QVariantAnimation::valueChanged, this, qOverload<>(&FilesList::update));
         setMouseTracking(true);
     }
 
@@ -494,11 +501,13 @@ namespace Ui
         auto h = 0;
 
         const auto visibleRect = visibleRegion().boundingRect();
+
+        const auto val = anim_->state() == QAbstractAnimation::Running ? anim_->currentValue().toDouble() : 0.0;
         for (const auto& i : Items_)
         {
             auto r = QRect(0, h, width(), i->getHeight());
             if (visibleRect.intersects(r))
-                i->draw(p, r, anim_.isRunning() ? anim_.current() : 0.0);
+                i->draw(p, r, val);
 
             h += i->getHeight();
         }
@@ -569,7 +578,7 @@ namespace Ui
                             i->setDownloading(false);
                             Downloading_.erase(std::remove(Downloading_.begin(), Downloading_.end(), i->reqId()), Downloading_.end());
                             if (Downloading_.empty())
-                                anim_.finish();
+                                anim_->stop();
 
                             update();
                         }
@@ -724,8 +733,8 @@ namespace Ui
         if (std::find(Downloading_.begin(), Downloading_.end(), _seq) == Downloading_.end() || Items_.empty())
             return;
 
-        if (!anim_.isRunning())
-            anim_.start([this]() { update(); }, 0.0, 360.0, 700, anim::linear, -1);
+        if (anim_->state() != QAbstractAnimation::Running)
+            anim_->start();
 
         for (auto& i : Items_)
         {
@@ -756,7 +765,7 @@ namespace Ui
                     i->setLastModified(f.lastModified().toTime_t());
                     Downloading_.erase(std::remove(Downloading_.begin(), Downloading_.end(), i->reqId()), Downloading_.end());
                     if (Downloading_.empty())
-                        anim_.finish();
+                        anim_->stop();
                     Utils::showDownloadToast(_result);
                     break;
                 }
@@ -796,7 +805,7 @@ namespace Ui
             {
                 Downloading_.erase(std::remove(Downloading_.begin(), Downloading_.end(), i->reqId()), Downloading_.end());
                 if (Downloading_.empty())
-                    anim_.finish();
+                    anim_->stop();
 
                 auto reqId = Ui::GetDispatcher()->downloadSharedFile(aimId_, i->getLink(), false, QString(), true);
                 Downloading_.push_back(reqId);

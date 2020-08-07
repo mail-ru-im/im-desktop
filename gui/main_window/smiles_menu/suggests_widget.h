@@ -1,7 +1,6 @@
 #pragma once
 
 #include "SmilesMenu.h"
-#include "../../animation/animation.h"
 
 namespace Ui
 {

@@ -55,6 +55,8 @@ int32_t speech_to_text::init_request(const std::shared_ptr<core::http_request_si
         log_replace_functor f;
         f.add_marker("a");
         f.add_marker("aimsid", aimsid_range_evaluator());
+        f.add_json_marker("text");
+        f.add_url_marker("speechtotext/", speechtotext_fileid_range_evaluator());
         _request->set_replace_log_function(f);
     }
 

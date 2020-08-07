@@ -68,6 +68,7 @@ CaptionArea::CaptionArea(QWidget* _parent)
     : QScrollArea(_parent)
     , expanded_(false)
     , totalWidth_(0)
+    , anim_(new QVariantAnimation(this))
 {
     textWidget_ = new Ui::TextWidget(this, QString(), Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS);
     textWidget_->init(Fonts::appFontScaled(15, Fonts::FontWeight::Normal), Qt::white);
@@ -142,13 +143,24 @@ void CaptionArea::setExpanded(bool _expanded)
     move(totalWidth_ / 2 - width() / 2, expanded_ ? Utils::scale_value(Margin::_16px) : topMargin - height() - Utils::scale_value(_16px));
     if (expanded_)
     {
-        if (!anim_.isRunning())
+        if (anim_->state() != QAbstractAnimation::State::Running)
         {
             const auto endHeight = std::min(max_height, textWidget_->height());
             const auto startHeight = height();
             const auto endSpace = endHeight - getTopMargin() + Utils::scale_value(Margin::_32px);
-            anim_.finish();
-            anim_.start([this, startHeight, endHeight, endSpace]() { Q_EMIT needHeight(anim_.current()); setFixedHeight(startHeight + (endHeight - startHeight) * (anim_.current() / endSpace)); }, 0, endSpace, 300, anim::easeOutExpo, 1);
+            anim_->stop();
+            anim_->setStartValue(0);
+            anim_->setEndValue(endSpace);
+            anim_->setDuration(300);
+            anim_->setEasingCurve(QEasingCurve::OutExpo);
+            anim_->setLoopCount(1);
+            anim_->disconnect(this);
+            connect(anim_, &QVariantAnimation::valueChanged, this, [this, endSpace, endHeight, startHeight](const QVariant& value)
+            {
+                Q_EMIT needHeight(value.toInt());
+                setFixedHeight(startHeight + (endHeight - startHeight) * (value.toDouble() / endSpace));
+            });
+            anim_->start();
         }
     }
     else

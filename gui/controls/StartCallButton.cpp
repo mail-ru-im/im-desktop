@@ -78,11 +78,13 @@ namespace
 
 StartCallButton::StartCallButton(QWidget* _parent, CallButtonType _type)
     : ClickableWidget(_parent)
+    , anim_(new QVariantAnimation(this))
     , currentAngle_(0)
     , type_(_type)
     , menu_(nullptr)
     , callLinkCreator_(nullptr)
 {
+    connect(anim_, &QVariantAnimation::valueChanged, this, [this]() { currentAngle_ = anim_->currentValue().toDouble(); update(); });
     connect(this, &ClickableWidget::clicked, this, &StartCallButton::showContextMenu);
     setFixedSize(getCallButtonSize(isButton()));
     setTooltipText(QT_TRANSLATE_NOOP("tooltips", "Call"));
@@ -94,13 +96,13 @@ void StartCallButton::rotate(const RotateDirection _dir)
 {
     const auto mod = _dir == RotateDirection::Left ? -1 : 0;
     const auto endAngle = 180 * mod;
-    anim_.start(
-        [this]() { currentAngle_ = anim_.current(); update(); },
-        currentAngle_,
-        endAngle,
-        animDuration().count(),
-        anim::sineInOut
-    );
+    auto current = currentAngle_;
+    anim_->stop();
+    anim_->setStartValue(current);
+    anim_->setEndValue(endAngle);
+    anim_->setDuration(animDuration().count());
+    anim_->setEasingCurve(QEasingCurve::InOutSine);
+    anim_->start();
 }
 
 void Ui::StartCallButton::showContextMenu()

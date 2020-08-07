@@ -25,6 +25,7 @@ namespace Ui
         virtual void close() = 0;
         virtual void toggleMembersList() { }
         virtual bool isActive() { return isActive_; }
+        virtual QString getSelectedText() const { return QString(); }
 
     protected:
         QString prevAimId_;
@@ -55,6 +56,8 @@ namespace Ui
         void setWidth(int _width);
 
         static int getDefaultWidth();
+
+        QString getSelectedText() const;
 
     public Q_SLOTS:
         void showAnimated();

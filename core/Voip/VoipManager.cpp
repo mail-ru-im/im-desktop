@@ -2101,21 +2101,21 @@ namespace voip_manager
 
     void VoipManagerImpl::unloadMaskEngine()
     {
-        auto engine = _get_engine();
-        VOIP_ASSERT_RETURN(!!engine);
+        if (auto engine = _get_engine())
+        {
+            _async_tasks->run_async_function([engine = std::move(engine)] {
+                engine->UnloadMaskEngine();
+                return 0;
+                }
+            )->on_result_ = [wr_this = weak_from_this()](int32_t error)
+            {
+                auto ptr_this = wr_this.lock();
+                if (!ptr_this)
+                    return;
 
-        _async_tasks->run_async_function([engine] {
-            engine->UnloadMaskEngine();
-            return 0;
+                ptr_this->_masksEngineInited = false;
+            };
         }
-        )->on_result_ = [wr_this = weak_from_this()](int32_t error) 
-        { 
-            auto ptr_this = wr_this.lock();
-            if (!ptr_this)
-                return;
-
-            ptr_this->_masksEngineInited = false; 
-        };
     }
 
     void VoipManagerImpl::loadMask(const std::string& maskPath)

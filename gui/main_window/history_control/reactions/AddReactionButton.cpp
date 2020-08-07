@@ -7,7 +7,6 @@
 #include "../HistoryControlPageItem.h"
 #include "main_window/contact_list/ContactListModel.h"
 
-#include "animation/animation.h"
 #include "AddReactionButton.h"
 
 namespace
@@ -116,7 +115,7 @@ class ReactionButton_p
 {
 public:
 
-    ReactionButton_p(QWidget* _q) : q(_q) {}
+    ReactionButton_p(QWidget* _q) : animation_(new QVariantAnimation(_q)), q(_q) {}
 
     void startShowAnimation()
     {
@@ -127,30 +126,47 @@ public:
 
         q->move(calcPosition());
         q->setVisible(true);
-        auto updateCallback = [this]()
-        {
-            opacity_ = animation_.current();
+
+        animation_->disconnect(q);
+        animation_->stop();
+        animation_->setStartValue(0.0);
+        animation_->setEndValue(1.0);
+        animation_->setEasingCurve(QEasingCurve::InOutSine);
+        animation_->setDuration(animationDuration.count());
+
+        QObject::connect(animation_, &QVariantAnimation::valueChanged, q, [this]() {
+            opacity_ = animation_->currentValue().toDouble();
             shadow_->setColor(shadowColorWithAlpha());
             q->update();
-        };
-        auto finishedCallback = [this](){ startQueudAnimation(); };
+        });
 
-        animation_.finish();
-        animation_.start(std::move(updateCallback), std::move(finishedCallback), 0, 1, animationDuration.count(), anim::sineInOut);
+        QObject::connect(animation_, &QVariantAnimation::stateChanged, q, [this]() {
+            if (animation_->state() == QAbstractAnimation::Stopped)
+                startQueudAnimation();
+        });
+        animation_->start();
     }
 
     void startHideAnimation()
     {
-        auto updateCallback = [this]()
-        {
-            opacity_ = animation_.current();
+        animation_->disconnect(q);
+        animation_->stop();
+        animation_->setStartValue(1.0);
+        animation_->setEndValue(0.0);
+        animation_->setEasingCurve(QEasingCurve::InOutSine);
+        animation_->setDuration(animationDuration.count());
+
+        QObject::connect(animation_, &QVariantAnimation::valueChanged, q, [this]() {
+            opacity_ = animation_->currentValue().toDouble();
             shadow_->setColor(shadowColorWithAlpha());
             q->update();
-        };
-        auto finishedCallback = [this](){ q->setVisible(false); startQueudAnimation(); };
+        });
 
-        animation_.finish();
-        animation_.start(std::move(updateCallback), std::move(finishedCallback), 1, 0, animationDuration.count(), anim::sineInOut);
+        QObject::connect(animation_, &QVariantAnimation::stateChanged, q, [this]() {
+            if (animation_->state() == QAbstractAnimation::Stopped)
+                startQueudAnimation();
+            });
+        animation_->start();
     }
 
     void startQueudAnimation()
@@ -251,7 +267,7 @@ public:
     bool forcePressed_ = false;
     bool forceVisible_ = false;
     double opacity_ = 0;
-    anim::Animation animation_;
+    QVariantAnimation* animation_;
     QueuedAnimation queuedAnimation_ = QueuedAnimation::None;
     HistoryControlPageItem* item_;
     QGraphicsDropShadowEffect* shadow_;
@@ -296,7 +312,7 @@ void AddReactionButton::onMouseLeave()
 {
     if (isVisible() && !d->forceVisible_)
     {
-        if (!d->animation_.isRunning())
+        if (d->animation_->state() != QAbstractAnimation::Running)
             d->startHideAnimation();
         else
             d->queuedAnimation_ = ReactionButton_p::QueuedAnimation::Hide;
@@ -318,7 +334,7 @@ void AddReactionButton::onMouseMove(const QPoint& _pos, const QRegion& _hoverReg
     }
     else if (!mouseOverRegion && isVisible() && !d->forceVisible_)
     {
-        if (!d->animation_.isRunning())
+        if (d->animation_->state() != QAbstractAnimation::Running)
             d->startHideAnimation();
         else
             d->queuedAnimation_ = ReactionButton_p::QueuedAnimation::Hide;
@@ -345,7 +361,7 @@ void AddReactionButton::onMousePress(const QPoint& _pos)
 }
 
 void AddReactionButton::onMouseRelease(const QPoint& _pos)
-{    
+{
     if (d->pressed_ && d->pressRect().contains(_pos) && isVisible())
         Q_EMIT clicked();
 
@@ -450,7 +466,7 @@ void AddReactionButton::onHoverTimer()
     const auto pos = mapFromGlobal(mapToParent(QCursor::pos()));
     if (d->lastHoverRegion_.contains(pos))
     {
-        if (!d->animation_.isRunning())
+        if (d->animation_->state() != QAbstractAnimation::Running)
             d->startShowAnimation();
         else
             d->queuedAnimation_ = ReactionButton_p::QueuedAnimation::Show;

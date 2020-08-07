@@ -3,7 +3,6 @@
 #include "controls/ClickWidget.h"
 #include "controls/SimpleListWidget.h"
 #include "controls/TextUnit.h"
-#include "animation/animation.h"
 
 namespace Utils
 {
@@ -124,7 +123,7 @@ namespace Ui
             Hiding
         };
         AnimState animState_ = AnimState::None;
-        anim::Animation opacityAnimation_;
+        QVariantAnimation* opacityAnimation_;
 
         enum class MenuItemId
         {

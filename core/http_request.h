@@ -100,7 +100,7 @@ namespace core
         proxy_settings proxy_settings_;
 
         std::string user_agent_;
-        char* post_data_;
+        const char* post_data_;
         int32_t post_data_size_;
         bool copy_post_data_;
 
@@ -151,7 +151,7 @@ namespace core
         void set_compression_auto();
         void set_etag(std::string_view etag);
         void set_replace_log_function(replace_log_function _func);
-        void set_post_data(char* _data, int32_t _size, bool _copy);
+        void set_post_data(const char* _data, int32_t _size, bool _copy);
         void set_id(int64_t _id);
         void set_send_im_stats(bool _value);
 

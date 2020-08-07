@@ -15,6 +15,9 @@
 #include "../common.shared/config/config.h"
 #include "../common.shared/common.h"
 #include "../common.shared/string_utils.h"
+#include "connections/wim/wim_packet.h"
+#include "connections/wim/robusto_packet.h"
+#include "configuration/app_config.h"
 
 using namespace core::stats;
 using namespace core;
@@ -46,7 +49,11 @@ namespace
     static std::unordered_map<stats_event_names, AccumulationTime> Stat_Accumulated_Events = { { stats_event_names::send_used_traffic_size_event, traffic_send_time } };
 
     constexpr std::string_view flurry_url = "https://data.flurry.com/aah.do";
-    constexpr auto send_interval = build::is_debug() ? std::chrono::minutes(1) : std::chrono::hours(1);
+    constexpr std::string_view mytracker_url = "https://tracker-s2s.my.com/v1";
+    constexpr std::string_view mytracker_s2s_api_key = "SPaTOUt9cR0EpARsjJEjhgnQQ7vPP4G9Xu0KgujlyUFsb85zPg6rnmxdQ3kvzN11";
+    constexpr std::string_view mytracker_app_id = "https://tracker-s2s.my.com/v1";
+    constexpr auto send_flurry_interval = build::is_debug() ? std::chrono::minutes(1) : std::chrono::hours(1);
+    constexpr auto send_mytracker_interval = build::is_debug() ? std::chrono::minutes(1) : std::chrono::minutes(10);
     constexpr auto fetch_ram_usage_interval = build::is_debug() ? std::chrono::seconds(30) : std::chrono::hours(1);
     constexpr auto save_to_file_interval = std::chrono::seconds(10);
     constexpr auto delay_send_on_start = std::chrono::seconds(10);
@@ -55,15 +62,48 @@ namespace
     event_props_type::iterator get_property(event_props_type& _props, const event_prop_key_type& _key);
     bool has_property(event_props_type& _props, const event_prop_key_type& _key);
     bool is_accumulated_event(stats_event_names _name);
-    void prepare_props_for_traffic(Out event_props_type &_props, const statistics::disk_stats &_disk_stats);
+    void prepare_props_for_traffic(Out event_props_type& _props, const statistics::disk_stats& _disk_stats);
+
+    std::string_view get_mytracker_app_id()
+    {
+        if constexpr (platform::is_windows())
+            return config::get().string(config::values::mytracker_app_id_win);
+        else if constexpr (platform::is_apple())
+            return config::get().string(config::values::mytracker_app_id_mac);
+        else if constexpr (platform::is_linux())
+            return config::get().string(config::values::mytracker_app_id_linux);
+    }
+
+    std::string get_mytracker_custom_event_url()
+    {
+        return su::concat(mytracker_url, "/customEvent/?idApp=", get_mytracker_app_id());
+    }
+
+    void write_to_txt_debug_log(std::wstring base_stg_file, const std::string& message)
+    {
+#ifdef DEBUG
+        {   // For the purpose of simplifying testing
+            const auto path = base_stg_file + L".txt";
+            boost::system::error_code e;
+            boost::filesystem::ofstream fOut;
+            fOut.open(path, std::ios::app);
+            fOut << message << std::endl;
+            fOut.close();
+        }
+#endif // DEBUG
+    }
 }
 
 long long statistics::stats_event::session_event_id_ = 0;
 std::shared_ptr<statistics::stop_objects> statistics::stop_objects_;
 
-statistics::statistics(std::wstring _file_name)
-    : file_name_(std::move(_file_name))
-    , changed_(false)
+statistics::statistics(std::wstring _file_name_flurry, std::wstring _file_name_mytracker)
+    : file_name_flurry_(std::move(_file_name_flurry))
+    , file_name_mytracker_(std::move(_file_name_mytracker))
+    , changed_flurry_(false)
+    , changed_mytracker_(false)
+    , send_flurry_timer_(0)
+    , send_mytracker_timer_(0)
     , stats_thread_(std::make_unique<async_executer>("stats"))
     , last_sent_time_(std::chrono::system_clock::now())
 {
@@ -85,8 +125,11 @@ statistics::~statistics()
     if (save_timer_ > 0 && g_core)
         g_core->stop_timer(save_timer_);
 
-    if (send_timer_ > 0 && g_core)
-        g_core->stop_timer(send_timer_);
+    if (send_flurry_timer_ > 0 && g_core)
+        g_core->stop_timer(send_flurry_timer_);
+
+    if (send_mytracker_timer_ > 0 && g_core)
+        g_core->stop_timer(send_mytracker_timer_);
 
     if (disk_stats_timer_ > 0 && g_core)
         g_core->stop_timer(disk_stats_timer_);
@@ -177,29 +220,46 @@ void statistics::check_ram_usage()
 void statistics::start_send()
 {
     auto current_time = std::chrono::system_clock::now();
-    if (current_time - last_sent_time_ >= send_interval)
-        send_async();
+    if (current_time - last_sent_time_ >= send_flurry_interval)
+        send_flurry_async();
 
-    send_timer_ = g_core->add_timer([wr_this = weak_from_this()]
+    send_flurry_timer_ = g_core->add_timer([wr_this = weak_from_this()]
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
             return;
 
-        ptr_this->send_async();
-    }, send_interval);
+        ptr_this->send_flurry_async();
+    }, send_flurry_interval);
+
+    send_mytracker_timer_ = g_core->add_timer([wr_this = weak_from_this()]
+    {
+        auto ptr_this = wr_this.lock();
+        if (!ptr_this)
+            return;
+
+        ptr_this->resend_failed_mytracker_async();
+    }, send_mytracker_interval);
 }
 
 bool statistics::load()
 {
-    core::tools::binary_stream bstream;
-    if (!bstream.load_from_file(file_name_))
-        return false;
-
-    return unserialize(bstream);
+    auto is_flurry_loaded = false;
+    auto is_mytracker_loaded = false;
+    {
+        core::tools::binary_stream bstream;
+        if (bstream.load_from_file(file_name_flurry_))
+            is_flurry_loaded = unserialize_flurry(bstream);
+    }
+    {
+        core::tools::binary_stream bstream;
+        if (bstream.load_from_file(file_name_mytracker_))
+            is_mytracker_loaded = unserialize_mytracker(bstream);
+    }
+    return is_flurry_loaded && is_mytracker_loaded;
 }
 
-void statistics::serialize(tools::binary_stream& _bs) const
+void statistics::serialize_flurry(tools::binary_stream& _bs) const
 {
     tools::tlvpack pack;
     pack.reserve(events_.size() + accumulated_events_.size() + 1);
@@ -256,6 +316,53 @@ void statistics::serialize(tools::binary_stream& _bs) const
     pack.serialize(_bs);
 }
 
+void statistics::serialize_mytracker(tools::binary_stream& _bs) const
+{
+    tools::tlvpack pack;
+    pack.reserve(events_for_mytracker_.size());
+    int32_t counter = 0;
+
+    auto serialize_events = [&pack, &counter](const auto& events)
+    {
+        for (const auto& stat_event : events)
+        {
+            tools::tlvpack value_tlv;
+            value_tlv.reserve(4);
+
+            // TODO : push id, time, ..
+            value_tlv.push_child(tools::tlv(statistics_info_types::event_name, stat_event->get_name()));
+            value_tlv.push_child(tools::tlv(statistics_info_types::event_time,
+                                 (int64_t)std::chrono::system_clock::to_time_t(stat_event->get_time())));
+            value_tlv.push_child(tools::tlv(statistics_info_types::event_id, (int64_t)stat_event->get_id()));
+
+            tools::tlvpack props_pack;
+            int32_t prop_counter = 0;
+
+            for (const auto& prop : stat_event->get_props())
+            {
+                tools::tlvpack value_tlv_prop;
+                value_tlv_prop.reserve(2);
+                value_tlv_prop.push_child(tools::tlv(statistics_info_types::event_prop_name, prop.first));
+                value_tlv_prop.push_child(tools::tlv(statistics_info_types::event_prop_value, prop.second));
+
+                tools::binary_stream bs_value;
+                value_tlv_prop.serialize(bs_value);
+                props_pack.push_child(tools::tlv(++prop_counter, bs_value));
+            }
+
+            value_tlv.push_child(tools::tlv(statistics_info_types::event_props, props_pack));
+
+            tools::binary_stream bs_value;
+            value_tlv.serialize(bs_value);
+            pack.push_child(tools::tlv(++counter, bs_value));
+        }
+    };
+
+    serialize_events(events_for_mytracker_);
+
+    pack.serialize(_bs);
+}
+
 bool unserialize_props(tools::tlvpack& prop_pack, event_props_type* props)
 {
     assert(!!props);
@@ -273,8 +380,6 @@ bool unserialize_props(tools::tlvpack& prop_pack, event_props_type* props)
 
         auto tlv_event_name = pack_val.get_item(statistics_info_types::event_prop_name);
         auto tlv_event_value = pack_val.get_item(statistics_info_types::event_prop_value);
-//        auto tlv_event_
-
 
         if (!tlv_event_name || !tlv_event_value)
         {
@@ -287,7 +392,7 @@ bool unserialize_props(tools::tlvpack& prop_pack, event_props_type* props)
     return true;
 }
 
-bool statistics::unserialize(tools::binary_stream& _bs)
+bool statistics::unserialize_flurry(tools::binary_stream& _bs)
 {
     if (!_bs.available())
     {
@@ -355,31 +460,108 @@ bool statistics::unserialize(tools::binary_stream& _bs)
 
             auto read_event_time = std::chrono::system_clock::from_time_t(tlv_event_time->get_value<int64_t>());
             auto read_event_id = tlv_event_id->get_value<int64_t>();
-            insert_event(name, std::move(props), read_event_time, read_event_id);
+            insert_event_flurry(name, std::move(props), read_event_time, read_event_id);
         }
     }
 
     return true;
 }
 
+bool statistics::unserialize_mytracker(tools::binary_stream& _bs)
+{
+    if (!_bs.available())
+    {
+        return false;
+    }
+
+    tools::tlvpack pack;
+    if (!pack.unserialize(_bs))
+        return false;
+
+    auto num_events = 0;
+    for (auto tlv_val = pack.get_first(); tlv_val; tlv_val = pack.get_next())
+    {
+        tools::binary_stream val_data = tlv_val->get_value<tools::binary_stream>();
+
+        tools::tlvpack pack_val;
+        if (!pack_val.unserialize(val_data))
+            return false;
+
+        auto curr_event_name = pack_val.get_item(statistics_info_types::event_name);
+
+        if (!curr_event_name)
+        {
+            assert(false);
+            return false;
+        }
+        const auto name = curr_event_name->get_value<stats_event_names>();
+        const auto tlv_event_time = pack_val.get_item(statistics_info_types::event_time);
+        const auto tlv_event_id = pack_val.get_item(statistics_info_types::event_id);
+        if (!tlv_event_time || !tlv_event_id)
+        {
+            assert(false);
+            return false;
+        }
+
+        event_props_type props;
+        const auto tlv_prop_pack = pack_val.get_item(statistics_info_types::event_props);
+        assert(tlv_prop_pack);
+        if (tlv_prop_pack)
+        {
+            auto prop_pack = tlv_prop_pack->get_value<tools::tlvpack>();
+            if (!unserialize_props(prop_pack, &props))
+            {
+                assert(false);
+                return false;
+            }
+        }
+
+        auto read_event_time = std::chrono::system_clock::from_time_t(tlv_event_time->get_value<int64_t>());
+        auto read_event_id = tlv_event_id->get_value<int64_t>();
+        insert_event_mytracker(name, std::move(props), read_event_time, read_event_id);
+        num_events++;
+    }
+    if (num_events)
+        write_to_txt_debug_log(file_name_mytracker_, su::concat("\nloaded ", std::to_string(num_events), " unsent mytracker events\n"));
+
+    return true;
+}
+
 void statistics::save_if_needed()
 {
-    if (g_core && changed_)
-    {
-        changed_ = false;
+    if (g_core && changed_flurry_)
+        save_flurry();
+    if (g_core && changed_mytracker_)
+        save_mytracker();
+}
 
-        auto bs_data = std::make_shared<tools::binary_stream>();
-        serialize(*bs_data);
+void core::stats::statistics::save_flurry()
+{
+    changed_flurry_ = false;
+    auto bs_data = std::make_shared<tools::binary_stream>();
+    serialize_flurry(*bs_data);
 
-        g_core->run_async([bs_data, file_name = file_name_]
+    g_core->run_async([bs_data, file_name = file_name_flurry_]
         {
             bs_data->save_2_file(file_name);
             return 0;
         });
-    }
 }
 
-void statistics::clear()
+void core::stats::statistics::save_mytracker()
+{
+    changed_mytracker_ = false;
+    auto bs_data = std::make_shared<tools::binary_stream>();
+    serialize_mytracker(*bs_data);
+
+    g_core->run_async([bs_data, file_name = file_name_mytracker_]
+        {
+            bs_data->save_2_file(file_name);
+            return 0;
+        });
+}
+
+void statistics::clear_flurry()
 {
     last_sent_time_ = std::chrono::system_clock::now();
 
@@ -398,13 +580,13 @@ void statistics::clear()
         events_.push_back(last_service_event);
     }
 
-    changed_ = true;
+    changed_flurry_ = true;
 
     // reset_session_event_id();
     // TODO : mb need save map with counts here?
 }
 
-void statistics::send_async()
+void statistics::send_flurry_async()
 {
     if (events_.empty())
         return;
@@ -416,10 +598,10 @@ void statistics::send_async()
 
     auto user_proxy = g_core->get_proxy_settings();
 
-    stats_thread_->run_async_function([post_data_vector = std::move(post_data_vector), user_proxy, file_name = file_name_]
+    stats_thread_->run_async_function([post_data_vector = std::move(post_data_vector), user_proxy, file_name = file_name_flurry_]
     {
-        for (auto& post_data : post_data_vector)
-            statistics::send(user_proxy, post_data, file_name);
+        for (const auto& post_data : post_data_vector)
+            statistics::send_flurry(user_proxy, post_data, file_name);
         return 0;
 
     })->on_result_ = [wr_this = weak_from_this()](int32_t _error)
@@ -427,9 +609,75 @@ void statistics::send_async()
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
             return;
-        ptr_this->clear();
+        ptr_this->clear_flurry();
         ptr_this->save_if_needed();
     };
+}
+
+void core::stats::statistics::send_mytracker_async(std::shared_ptr<stats_event> event)
+{
+    const auto post_data = get_mytracker_post_data(*event);
+
+    stats_thread_->run_async_function([post_data = std::move(post_data), user_proxy = g_core->get_proxy_settings(), event_name = event->get_name(), debug_filename = file_name_mytracker_]
+        {
+            return static_cast<int32_t>(statistics::send_mytracker(user_proxy, post_data, event_name, debug_filename));
+
+    })->on_result_ = [wr_this = weak_from_this(), event](int32_t _http_code_or_zero_if_send_error)
+    {
+        auto ptr_this = wr_this.lock();
+        if (!ptr_this)
+            return;
+
+        if (0 == _http_code_or_zero_if_send_error || 500 == _http_code_or_zero_if_send_error)
+            event->increment_send_num_attempts();
+        else // succress code 200 or any non-500 API error
+        {
+            ptr_this->events_for_mytracker_.erase(event);
+            ptr_this->changed_mytracker_ = true;
+        }
+    };
+}
+
+void core::stats::statistics::resend_failed_mytracker_async()
+{
+    std::vector<std::shared_ptr<stats_event>> events_to_resend;
+    std::copy_if(events_for_mytracker_.cbegin(), events_for_mytracker_.cend(), std::back_inserter(events_to_resend),
+        [](const std::shared_ptr<stats_event>& sp) {
+            return sp->get_num_attempts_to_send() > 0;
+        });
+
+    stats_thread_->run_async_function([events_to_resend, user_proxy = g_core->get_proxy_settings(), debug_filename = file_name_mytracker_]
+    {
+        int32_t num_successfully_sent = 0;
+        for (const auto& event : events_to_resend)
+        {
+            const auto post_data = get_mytracker_post_data(*event);
+            const auto status = statistics::send_mytracker(user_proxy, post_data, event->get_name(), debug_filename);
+            if (200 == status)
+                ++num_successfully_sent;
+            else
+            {
+                event->increment_send_num_attempts();
+                const auto log_message = su::concat("failed to resend event ",
+                    stat_event_to_string(event->get_name()), ", attempt ", std::to_string(event->get_num_attempts_to_send()), "\n");
+                g_core->write_string_to_network_log(log_message);
+                write_to_txt_debug_log(debug_filename, log_message);
+                break;
+            }
+        }
+        return num_successfully_sent;
+
+    })->on_result_ = [wr_this = weak_from_this(), attempted_to_resend = events_to_resend](int32_t num_sent)
+    {
+        auto ptr_this = wr_this.lock();
+        if (!ptr_this)
+            return;
+        
+        for (auto it = attempted_to_resend.cbegin(); it < attempted_to_resend.cbegin() + num_sent; ++it)
+            ptr_this->events_for_mytracker_.erase(*it);
+        ptr_this->save_mytracker();
+    };
+
 }
 
 void statistics::set_disk_stats(const statistics::disk_stats &_stats)
@@ -452,7 +700,7 @@ void statistics::query_disk_size_async()
     });
 }
 
-std::string statistics::events_to_json(events_ci begin, events_ci end, time_t _start_time) const
+std::string statistics::dump_events_to_flurry_json(events_ci begin, events_ci end, time_t _start_time) const
 {
     std::stringstream data_stream;
     std::map<stats_event_names, int32_t> events_and_count;
@@ -461,7 +709,7 @@ std::string statistics::events_to_json(events_ci begin, events_ci end, time_t _s
 
     for (auto stat_event  = begin; stat_event != end; ++stat_event)
     {
-        const auto event_string = stat_event->to_string(_start_time);
+        const auto event_string = stat_event->to_flurry_string(_start_time);
         if (event_string.empty())
             continue;
 
@@ -470,7 +718,7 @@ std::string statistics::events_to_json(events_ci begin, events_ci end, time_t _s
 
         is_first = false;
 
-        data_stream << stat_event->to_string(_start_time);
+        data_stream << stat_event->to_flurry_string(_start_time);
 
         ++events_and_count[stat_event->get_name()];
     }
@@ -495,12 +743,54 @@ std::string statistics::events_to_json(events_ci begin, events_ci end, time_t _s
     return data_stream.str();
 }
 
+std::string core::stats::statistics::dump_events_to_mytracker_json(events_ci begin, events_ci end, time_t _start_time) const
+{
+    std::stringstream data_stream;
+    auto is_first = true;
+
+    for (auto stat_event = begin; stat_event != end; ++stat_event)
+    {
+        const auto event_string = stat_event->to_flurry_string(_start_time);
+        if (event_string.empty())
+            continue;
+
+        if (!is_first)
+            data_stream << ",";
+
+        is_first = false;
+        data_stream << stat_event->to_flurry_string(_start_time);
+    }
+
+    is_first = true;
+    return data_stream.str();
+}
+
+std::string core::stats::statistics::get_mytracker_post_data(const stats_event& event)
+{
+    std::stringstream stream;
+    stream << "{";
+    stream << "\"customUserId\":" << "\"" << g_core->get_root_login() << "\"";
+    stream << ",\"customEventName\":" << "\"" << stat_event_to_string(event.get_name()) << "\"";
+    if (event.has_props())
+        stream << ",\"customEventParams\":" << event.dump_params_to_json();
+    stream << ",\"eventTimestamp\":" << "\"" << std::chrono::duration_cast<std::chrono::seconds>(event.get_time().time_since_epoch()).count() << "\"";
+    const auto guidNoDashes = g_core->get_uniq_device_id();
+    stream << ",\"instanceId\":" << "\""
+        << guidNoDashes.substr(0, 8) << "-"
+        << guidNoDashes.substr(8, 4) << "-"
+        << guidNoDashes.substr(12, 4) << "-"
+        << guidNoDashes.substr(16, 4) << "-"
+        << guidNoDashes.substr(20, 12)
+        << "\"";
+    stream << "}";
+    return stream.str();
+}
+
 std::vector<std::string> statistics::get_post_data() const
 {
     std::vector<std::string> result;
 
     events_ci begin = events_.begin();
-
     while (begin != events_.end())
     {
         events_ci end = std::next(begin);
@@ -547,7 +837,7 @@ std::vector<std::string> statistics::get_post_data() const
             << "\"cg\":\"" << user_key
             << "\"},\"b\":[{\"bd\":\"\",\"be\":\"\",\"bk\":-1,\"bl\":0,\"bj\":\"ru\",\"bo\":[";
 
-        data_stream << events_to_json(begin, end, time);
+        data_stream << dump_events_to_flurry_json(begin, end, time);
 
         data_stream << "}"
             <<",\"bv\":[],\"bt\":false,\"bu\":{},\"by\":[],\"cd\":0,"
@@ -567,7 +857,7 @@ std::vector<std::string> statistics::get_post_data() const
     return result;
 }
 
-bool statistics::send(const proxy_settings& _user_proxy, const std::string& post_data, const std::wstring& _file_name)
+bool statistics::send_flurry(const proxy_settings& _user_proxy, const std::string& post_data, const std::wstring& _file_name)
 {
     const std::weak_ptr<stop_objects> wr_stop(stop_objects_);
 
@@ -586,17 +876,7 @@ bool statistics::send(const proxy_settings& _user_proxy, const std::string& post
     post_request.set_timeout(std::chrono::seconds(5));
     post_request.set_keep_alive();
 
-#ifdef DEBUG
-    {
-        auto path = _file_name + L".txt";
-        boost::system::error_code e;
-        boost::filesystem::ofstream fOut;
-
-        fOut.open(path.c_str(), std::ios::out);
-        fOut << post_data;
-        fOut.close();
-    }
-#endif // DEBUG
+    write_to_txt_debug_log(_file_name, post_data);
 
     post_request.set_url(su::concat(flurry_url, "?d=", core::tools::base64::encode64(post_data), "&c=", core::tools::adler32(post_data)));
     post_request.set_normalized_url("flurry");
@@ -604,8 +884,64 @@ bool statistics::send(const proxy_settings& _user_proxy, const std::string& post
     return post_request.get();
 }
 
-void statistics::insert_event(stats_event_names _event_name, event_props_type&& _props,
-                              std::chrono::system_clock::time_point _event_time, int32_t _event_id)
+long core::stats::statistics::send_mytracker(const proxy_settings& _user_proxy, std::string_view post_data, stats_event_names event_name, const std::wstring& _debug_log_file_name)
+{
+    const std::weak_ptr<stop_objects> wr_stop(stop_objects_);
+
+    const auto stop_handler =
+        [wr_stop]
+    {
+        auto ptr_stop = wr_stop.lock();
+        if (!ptr_stop)
+            return true;
+
+        return ptr_stop->is_stop_.load();
+    };
+
+    core::http_request_simple request(_user_proxy, utils::get_user_agent(), lowest_priority(), stop_handler);
+    request.set_connect_timeout(std::chrono::seconds(5));
+    request.set_timeout(std::chrono::seconds(5));
+    request.set_keep_alive();
+    request.set_url(get_mytracker_custom_event_url());
+    request.set_custom_header_param(su::concat("Authorization: ", mytracker_s2s_api_key));
+    request.set_send_im_stats(false);
+    request.set_post_data(post_data.data(), post_data.size(), false);
+
+
+    if (configuration::get_app_config().is_full_log_enabled())
+        request.set_need_log(true);
+    else
+        request.set_need_log(false);
+
+    const auto start = std::chrono::steady_clock().now();
+    const auto is_sent_ok = request.post();
+    const auto finish = std::chrono::steady_clock().now();
+
+    const auto response_code = request.get_response_code();
+    {
+        std::stringstream log_message;
+        log_message << "POST mytracker statistics " << stat_event_to_string(event_name) << ": ";
+        if (is_sent_ok)
+        {
+            if (200 == response_code)
+                log_message << std::to_string(response_code) << " (success)";
+            else
+                log_message << std::to_string(response_code) << " (API error)";
+        }
+        else
+        {
+            log_message << "network error";
+        }
+        log_message << ", completed in " << std::chrono::duration_cast<std::chrono::milliseconds>(finish - start).count() << " ms\n";
+
+        write_to_txt_debug_log(_debug_log_file_name, su::concat("\n", log_message.str(), post_data));
+        g_core->write_string_to_network_log(log_message.str());
+    }
+    return is_sent_ok ? response_code : 0;
+}
+
+void statistics::insert_event_flurry(stats_event_names _event_name, event_props_type&& _props,
+                                     std::chrono::system_clock::time_point _event_time, int32_t _event_id)
 {
     event_props_type props = std::move(_props);
 
@@ -620,7 +956,42 @@ void statistics::insert_event(stats_event_names _event_name, event_props_type&& 
     }
 
     events_.emplace_back(_event_name, _event_time, _event_id, std::move(props));
-    changed_ = true;
+    changed_flurry_ = true;
+}
+
+void statistics::insert_event_mytracker(stats_event_names _event_name, event_props_type&& _props,
+    std::chrono::system_clock::time_point _event_time, int32_t _event_id)
+{
+    if (g_core->get_root_login().empty())
+        return;  // Don't send as mytracker doesn't support such messages
+
+    event_props_type props = std::move(_props);
+
+    if (is_accumulated_event(_event_name))
+    {
+        auto it = get_property(props, AccumulateFinishedProp);
+        if (it == props.cend())
+        {
+            if (core::stats::stats_event_names::service_session_start != _event_name)
+            {
+                auto event = std::make_shared<stats_event>(_event_name, _event_time, _event_id, std::move(props));
+                events_for_mytracker_.insert(event);
+                changed_mytracker_ = true;
+                send_mytracker_async(event);
+            }
+            return;
+        }
+    }
+
+    if (core::stats::stats_event_names::service_session_start != _event_name)
+    {
+        auto event = std::make_shared<stats_event>(_event_name, _event_time, _event_id, std::move(props));
+        events_for_mytracker_.insert(event);
+        changed_mytracker_ = true;
+        send_mytracker_async(event);
+    }
+
+    changed_mytracker_ = true;
 }
 
 void statistics::insert_event(stats_event_names _event_name, event_props_type _props)
@@ -630,7 +1001,9 @@ void statistics::insert_event(stats_event_names _event_name, event_props_type _p
         stats_event::reset_session_event_id();
         insert_event(core::stats::stats_event_names::service_session_start, _props);
     }
-    insert_event(_event_name, std::move(_props), std::chrono::system_clock::now(), -1);
+    const auto event_time = std::chrono::system_clock::now();
+    insert_event_flurry(_event_name, event_props_type(_props), event_time, -1);
+    insert_event_mytracker(_event_name, event_props_type(_props), event_time, -1);
 }
 
 void statistics::insert_event(stats_event_names _event_name)
@@ -648,6 +1021,7 @@ statistics::stats_event::stats_event(stats_event_names _name,
     : name_(_name)
     , props_(std::move(_props))
     , event_time_(_event_time)
+    , num_attempt_to_send_(0)
 {
     if (_event_id == -1)
         event_id_ = session_event_id_++; // started from 1
@@ -655,7 +1029,7 @@ statistics::stats_event::stats_event(stats_event_names _name,
         event_id_ = _event_id;
 }
 
-std::string statistics::stats_event::to_string(time_t _start_time) const
+std::string statistics::stats_event::to_flurry_string(time_t _start_time) const
 {
     std::stringstream result;
 
@@ -664,27 +1038,32 @@ std::string statistics::stats_event::to_string(time_t _start_time) const
     {
         // TODO : use actual params here
         auto br = 0;
-
-        std::stringstream params_in_json;
-        for (auto prop = props_.begin(); prop != props_.end(); ++prop)
-        {
-            if (prop != props_.begin())
-                params_in_json << ",";
-
-            std::string val = prop->second;
-            boost::replace_all(val, "\"", "\\\"");
-
-            params_in_json << "\"" << prop->first << "\":\"" << val << "\"";
-        }
-
         result << "{\"ce\":" << event_id_
             << ",\"bp\":\"" << event_name
             << "\",\"bq\":" << std::chrono::system_clock::to_time_t(event_time_) * 1000 - _start_time// milliseconds
-            << ",\"bs\":{" << params_in_json.str() << "},"
+            << ",\"bs\":" << dump_params_to_json() << ","
             << "\"br\":" << br << "}";
     }
 
     return result.str();
+}
+
+std::string core::stats::statistics::stats_event::dump_params_to_json() const
+{
+    std::stringstream params_in_json;
+    params_in_json << "{";
+    for (auto prop = props_.begin(); prop != props_.end(); ++prop)
+    {
+        if (prop != props_.begin())
+            params_in_json << ",";
+
+        std::string val = prop->second;
+        boost::replace_all(val, "\"", "\\\"");
+
+        params_in_json << "\"" << prop->first << "\":\"" << val << "\"";
+    }
+    params_in_json << "}";
+    return params_in_json.str();
 }
 
 stats_event_names statistics::stats_event::get_name() const
@@ -695,6 +1074,11 @@ stats_event_names statistics::stats_event::get_name() const
 event_props_type statistics::stats_event::get_props() const
 {
     return props_;
+}
+
+bool core::stats::statistics::stats_event::has_props() const
+{
+    return !props_.empty();
 }
 
 void statistics::stats_event::reset_session_event_id()
@@ -828,7 +1212,7 @@ void statistics::increment_event_prop(stats_event_names _event_name,
         insert_event(_event_name, props);
     }
 
-    changed_ = true;
+    changed_flurry_ = true;
 }
 
 template void statistics::increment_event_prop<int32_t>(stats_event_names _event_name,
@@ -862,8 +1246,8 @@ void prepare_props_for_traffic(event_props_type& _props, const statistics::disk_
     assert(has_property(_props, "download"));
     assert(has_property(_props, "upload"));
 
-    auto d_p = get_property(_props, "download");
-    auto u_p = get_property(_props, "upload");
+    const auto d_p = get_property(_props, "download");
+    const auto u_p = get_property(_props, "upload");
 
     if (d_p != _props.end())
         downloaded = std::stoll(d_p->second);

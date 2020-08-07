@@ -2,7 +2,6 @@
 
 #include <QWidget>
 
-#include "animation/animation.h"
 #include "../controls/TextUnit.h"
 #include "../types/filesharing_download_result.h"
 
@@ -53,8 +52,8 @@ private:
     QTimer startHideTimer_;
     QColor bgColor_;
 
-    anim::Animation opacityAnimation_;
-    anim::Animation moveAnimation_;
+    QVariantAnimation* opacityAnimation_;
+    QVariantAnimation* moveAnimation_;
 
     QGraphicsOpacityEffect* opacity_;
 

@@ -518,7 +518,7 @@ void core::http_request_simple::set_replace_log_function(replace_log_function _f
     replace_log_function_ = std::move(_func);
 }
 
-void core::http_request_simple::set_post_data(char* _data, int32_t _size, bool _copy)
+void core::http_request_simple::set_post_data(const char* _data, int32_t _size, bool _copy)
 {
     post_data_ = _data;
     post_data_size_ = _size;

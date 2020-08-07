@@ -1,5 +1,4 @@
 #pragma once
-#include "../../animation/animation.h"
 
 namespace Logic
 {
@@ -76,8 +75,8 @@ namespace Ui
         QPoint pressPoint_;
         int diff_;
         int avatarOffset_;
-        anim::Animation heightAnimation_;
-        anim::Animation avatarAnimation_;
+        QVariantAnimation* heightAnimation_;
+        QVariantAnimation* avatarAnimation_;
         bool replaceFavorites_;
         Logic::CustomAbstractListModel* membersModel_;
         Logic::AbstractSearchModel* searchModel_;

@@ -598,7 +598,7 @@ namespace Logic
         if (selectedMessage_ != -1)
             isSelected = selectedMessage_ == item->getMessageId();
         else
-            isSelected = !item->isLocalResult_ && !item->isMessage() && item->getAimId() == Logic::getContactListModel()->selectedContact();
+            isSelected = !item->isMessage() && item->getAimId() == Logic::getContactListModel()->selectedContact();
 
         const auto isHovered = (_option.state & QStyle::State_Selected) && !isSelected && !item->isService();
 

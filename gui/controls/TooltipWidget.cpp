@@ -335,6 +335,7 @@ namespace Ui
         , gradientRight_(new GradientWidget(this, Qt::transparent, getBackgroundColor()))
         , gradientLeft_(new GradientWidget(this, getBackgroundColor(), Qt::transparent))
         , opacityEffect_(new Utils::OpacityEffect(this))
+        , opacityAnimation_(new QVariantAnimation(this))
         , canClose_(_canClose)
         , bigArrow_(_bigArrow)
         , isCursorOver_(false)
@@ -371,6 +372,20 @@ namespace Ui
         setFocusPolicy(Qt::NoFocus);
 
         QObject::connect(scrollArea_->horizontalScrollBar(), &QScrollBar::valueChanged, this, &TooltipWidget::onScroll);
+        connect(opacityAnimation_, &QVariantAnimation::valueChanged, this, [this]() {
+            const auto cur = opacityAnimation_->currentValue().toDouble();
+            opacityEffect_->setOpacity(cur);
+            });
+
+        connect(opacityAnimation_, &QVariantAnimation::stateChanged, this, [this]() {
+            if (opacityAnimation_->state() == QAbstractAnimation::State::Stopped)
+            {
+                const auto cur = opacityAnimation_->currentValue().toDouble();
+                const auto end = opacityAnimation_->endValue().toDouble();
+                if (qFuzzyCompare(cur, end) && qFuzzyCompare(end, 0.0))
+                    hide();
+            }
+            });
 
         setGraphicsEffect(opacityEffect_);
     }
@@ -585,12 +600,11 @@ namespace Ui
     {
         opacityEffect_->setOpacity(0.0);
 
-        opacityAnimation_.finish();
-        opacityAnimation_.start(
-            [this]() { opacityEffect_->setOpacity(opacityAnimation_.current()); },
-            0.0,
-            1.0,
-            getDurationAppear().count());
+        opacityAnimation_->stop();
+        opacityAnimation_->setStartValue(0.0);
+        opacityAnimation_->setEndValue(1.0);
+        opacityAnimation_->setDuration(getDurationAppear().count());
+        opacityAnimation_->start();
 
         showUsual(_pos, _maxSize, _rect, _direction);
     }
@@ -610,13 +624,11 @@ namespace Ui
 
     void TooltipWidget::hideAnimated()
     {
-        opacityAnimation_.finish();
-        opacityAnimation_.start(
-            [this]() { opacityEffect_->setOpacity(opacityAnimation_.current()); },
-            [this]() { hide(); },
-            1.0,
-            0.0,
-            getDurationDisappear().count());
+        opacityAnimation_->stop();
+        opacityAnimation_->setStartValue(1.0);
+        opacityAnimation_->setEndValue(0.0);
+        opacityAnimation_->setDuration(getDurationAppear().count());
+        opacityAnimation_->start();
     }
 
     void TooltipWidget::setPointWidth(int _width)

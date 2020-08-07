@@ -12,7 +12,6 @@
 #include "styles/ThemeParameters.h"
 #include "previewer/Drawable.h"
 #include "previewer/toast.h"
-#include "animation/animation.h"
 #include "main_window/ConnectionWidget.h"
 #include "fonts.h"
 

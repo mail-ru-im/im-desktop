@@ -25,6 +25,7 @@ namespace core
             post_request.set_normalized_url("crash_submit");
             post_request.set_post_form(true);
             post_request.set_need_log(true);
+            post_request.set_write_data_log(full_log_);
             post_request.set_send_im_stats(false);
 
             boost::system::error_code ec;
@@ -84,8 +85,9 @@ namespace core
             tools::system::clean_directory(utils::get_report_path());
         }
 
-        report_sender::report_sender(std::string _login)
-            : login_(std::move(_login))
+        report_sender::report_sender(std::string _login, bool _full_log)
+            : login_(std::move(_login)),
+            full_log_(_full_log)
         {
         }
 

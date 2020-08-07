@@ -1,7 +1,5 @@
 #pragma once
 
-#include "animation/animation.h"
-
 namespace Ui
 {
     class PttLock : public QWidget
@@ -27,7 +25,7 @@ namespace Ui
         void hideToolTip();
 
     private:
-        anim::Animation anim_;
+        QVariantAnimation* anim_;
         QPoint bottom_;
         QPixmap pixmap_;
         QTimer showTimer_;

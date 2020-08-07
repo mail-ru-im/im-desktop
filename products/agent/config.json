@@ -81,7 +81,10 @@
     "external_config_preset_url": "",
     "server_api_version": 20,
     "server_mention_timeout": 1000,
-    "support_uin": ""
+    "support_uin": "",
+    "mytracker_app_id_win": "53242",
+    "mytracker_app_id_mac": "53243",
+    "mytracker_app_id_linux": "53244"
   },
   "features": {
     "feedback_selected": true,

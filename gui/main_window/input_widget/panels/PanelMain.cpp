@@ -163,9 +163,14 @@ namespace Ui
 
     InputSide::InputSide(QWidget* _parent)
         : QWidget(_parent)
+        , anim_(new QVariantAnimation(this))
         , state_(SideState::Normal)
     {
         setFixedWidth(getStateWidth(state_));
+        connect(anim_, &QVariantAnimation::valueChanged, this, [this]()
+        {
+            setFixedWidth(anim_->currentValue().toInt());
+        });
     }
 
     InputSide::SideState InputSide::getState() const noexcept
@@ -179,10 +184,12 @@ namespace Ui
         {
             state_ = _state;
 
-            anim_.start([this]()
-            {
-                setFixedWidth(anim_.current());
-            }, width(), getStateWidth(_state), sideAnimDuration().count(), anim::sineInOut);
+            anim_->stop();
+            anim_->setStartValue(width());
+            anim_->setEndValue(getStateWidth(_state));
+            anim_->setDuration(sideAnimDuration().count());
+            anim_->setEasingCurve(QEasingCurve::InOutSine);
+            anim_->start();
         }
     }
 
@@ -199,6 +206,7 @@ namespace Ui
         , emptyTop_(new QWidget(this))
         , edit_(nullptr)
         , buttonSubmit_(_submit)
+        , animResize_(new QVariantAnimation(this))
         , curEditHeight_(viewportMinHeight())
         , forceSendButton_(false)
     {
@@ -352,12 +360,26 @@ namespace Ui
         connect(textEdit_->document()->documentLayout(), &QAbstractTextDocumentLayout::documentSizeChanged, this, &InputPanelMain::onDocumentSizeChanged);
         connect(textEdit_->document(), &QTextDocument::contentsChanged, this, &InputPanelMain::onDocumentContentsChanged);
 
+        connect(animResize_, &QVariantAnimation::valueChanged, this, [this]()
+        {
+            setEditHeight(animResize_->currentValue().toInt());
+        });
+        connect(animResize_, &QVariantAnimation::stateChanged, this, [this]()
+        {
+            if (animResize_->state() == QAbstractAnimation::Stopped)
+            {
+                const auto newPolicy = curEditHeight_ >= viewportMaxHeight() ? Qt::ScrollBarAsNeeded : Qt::ScrollBarAlwaysOff;
+                if (newPolicy != textEdit_->verticalScrollBarPolicy())
+                    textEdit_->setVerticalScrollBarPolicy(newPolicy);
+            }
+        });
+
         setButtonsTabOrder();
     }
 
     InputPanelMain::~InputPanelMain()
     {
-        animResize_.finish();
+        animResize_->stop();
     }
 
     void InputPanelMain::setSubmitButton(SubmitButton* _button)
@@ -445,19 +467,12 @@ namespace Ui
         const auto th = std::clamp(_height, viewportMinHeight(), viewportMaxHeight());
         textEdit_->setFixedHeight(th);
 
-        const auto animateStep = [this]()
-        {
-            setEditHeight(animResize_.current());
-        };
-        const auto finishStep = [this]()
-        {
-            const auto newPolicy = curEditHeight_ >= viewportMaxHeight() ? Qt::ScrollBarAsNeeded : Qt::ScrollBarAlwaysOff;
-            if (newPolicy != textEdit_->verticalScrollBarPolicy())
-                textEdit_->setVerticalScrollBarPolicy(newPolicy);
-        };
-
-        animResize_.finish();
-        animResize_.start(animateStep, finishStep, curEditHeight_, _height, heightAnimDuration().count(), anim::sineInOut);
+        animResize_->stop();
+        animResize_->setStartValue(curEditHeight_);
+        animResize_->setEndValue(_height);
+        animResize_->setDuration(heightAnimDuration().count());
+        animResize_->setEasingCurve(QEasingCurve::InOutSine);
+        animResize_->start();
 
         curEditHeight_ = _height;
     }

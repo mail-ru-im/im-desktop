@@ -122,6 +122,7 @@ namespace Ui
         , isInitState_(true)
         , scrollActivityFlag_(false)
         , heads_(nullptr)
+        , smartreplyAnim_(new QVariantAnimation(this))
         , smartreplyOpacity_(nullptr)
         , smartreplyButtonOpacity_(nullptr)
     {
@@ -1510,7 +1511,8 @@ namespace Ui
             {
                 if (smartreplyAnimType_ == SmartreplyAnimType::show)
                 {
-                    smartreplyAnim_.finish();
+                    smartreplyAnim_->disconnect(this);
+                    smartreplyAnim_->stop();
                     isSmartreplyAnimating_ = false;
                     doSet(smartreplyOpacity_, smartreplyWidget_);
 
@@ -1568,7 +1570,7 @@ namespace Ui
         const auto srwH = smartreplyWidget_->height();
         if (isSmartreplyAnimating_)
         {
-            const auto animH = smartreplyAnim_.current() * smartreplyWidget_->height();
+            const auto animH = smartreplyAnim_->currentValue().toDouble() * smartreplyWidget_->height();
             return (smartreplyAnimType_ == SmartreplyAnimType::hide ? srwH - animH : animH) + margins;
         }
 
@@ -2465,16 +2467,6 @@ namespace Ui
 
         const auto isHiding = _type == SmartreplyAnimType::hide;
 
-        const auto step = [this, isHiding]()
-        {
-            const auto val = smartreplyAnim_.current();
-            smartreplyOpacity_->setOpacity(isHiding ? 1.0 - val : val);
-
-            invalidate();
-            updateItemsGeometry();
-            moveViewportToBottom();
-        };
-
         const auto finish = [this, isHiding]()
         {
             smartreplyWidget_->setEnabled(true);
@@ -2494,14 +2486,34 @@ namespace Ui
         smartreplyWidget_->setEnabled(false);
         isSmartreplyAnimating_ = true;
 
-        smartreplyAnim_.finish();
-        smartreplyAnim_.start(
-            step,
-            finish,
-            0.0,
-            1.0,
-            smartreplyAnimDuration().count(),
-            anim::sineInOut);
+        smartreplyAnim_->disconnect(this);
+        smartreplyAnim_->stop();
+        smartreplyAnim_->setStartValue(0.0);
+        smartreplyAnim_->setEndValue(1.0);
+        smartreplyAnim_->setEasingCurve(QEasingCurve::InOutSine);
+        smartreplyAnim_->setDuration(smartreplyAnimDuration().count());
+        connect(smartreplyAnim_, &QVariantAnimation::valueChanged, this, [this, isHiding]() {
+            const auto val = smartreplyAnim_->currentValue().toDouble();
+            smartreplyOpacity_->setOpacity(isHiding ? 1.0 - val : val);
+
+            invalidate();
+            updateItemsGeometry();
+            moveViewportToBottom();
+        });
+        connect(smartreplyAnim_, &QVariantAnimation::stateChanged, this, [this, isHiding]() {
+            if (smartreplyAnim_->state() == QAbstractAnimation::Stopped)
+            {
+                smartreplyWidget_->setEnabled(true);
+                isSmartreplyAnimating_ = false;
+
+                if (isHiding)
+                {
+                    smartreplyWidget_->hide();
+                    smartreplyWidget_->clearDeletedItems();
+                }
+            }
+        });
+        smartreplyAnim_->start();
     }
 
     bool MessagesScrollAreaLayout::isSmartreplyVisible() const

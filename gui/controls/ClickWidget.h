@@ -1,7 +1,6 @@
 #pragma once
 
 #include "TextUnit.h"
-#include "animation/animation.h"
 
 namespace Styling
 {
@@ -77,7 +76,7 @@ namespace Ui
         QColor focusColor_;
         QColor hoverColor_;
         QColor bgColor_;
-        anim::Animation animFocus_;
+        QVariantAnimation* animFocus_;
 
         QTimer tooltipTimer_;
         bool enableTooltip_ = true;

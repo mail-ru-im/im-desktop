@@ -81,7 +81,7 @@ std::string external_url_config::make_url(std::string_view _domain, std::string_
 std::string external_url_config::make_url_preset(std::string_view _login_domain)
 {
     std::string url;
-    if (auto suggested_host = get().string(config::values::external_config_preset_url); 
+    if (auto suggested_host = get().string(config::values::external_config_preset_url);
         !suggested_host.empty() && config::get().is_on(config::features::external_config_use_preset_url))
     {
         url = make_url(suggested_host, su::concat("domain=", _login_domain));
@@ -200,7 +200,7 @@ void external_url_config::clear()
 {
     is_valid_ = false;
     config_.clear();
-    override_features(default_values_);
+    reset_to_defaults(default_values_);
 
     tools::system::delete_file(config_filename());
 }
@@ -212,7 +212,7 @@ bool external_url_config::unserialize(const rapidjson::Value& _node)
         return false;
 
     config_ = std::move(new_config);
-    override_features(default_values_);
+    reset_to_defaults(default_values_);
     override_features(config_.override_values_);
 
     is_valid_ = true;
@@ -225,6 +225,15 @@ void external_url_config::override_features(const config_features& _values)
     {
         assert(default_values_.find(feature) != default_values_.end());
         config::override_feature(feature, enabled);
+    }
+}
+
+void external_url_config::reset_to_defaults(const config_features& _values)
+{
+    for (const auto& [feature, _] : _values)
+    {
+        assert(default_values_.find(feature) != default_values_.end());
+        config::reset_feature_to_default(feature);
     }
 }
 

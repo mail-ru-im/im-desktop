@@ -7,7 +7,6 @@
 #include "main_window/contact_list/ContactListModel.h"
 #include "../HistoryControlPageItem.h"
 #include "utils/InterConnector.h"
-#include "animation/animation.h"
 #include "../MessageStyle.h"
 #include "utils/DrawUtils.h"
 #include "utils/utils.h"
@@ -186,7 +185,7 @@ namespace Ui
 class ReactionsPlate_p
 {
 public:
-    ReactionsPlate_p(ReactionsPlate* _q) : q(_q) {}
+    ReactionsPlate_p(ReactionsPlate* _q) : opacityAnimation_(new QVariantAnimation(_q)), geometryAnimation_(new QVariantAnimation(_q)), q(_q) {}
 
     struct ReactionItem
     {
@@ -197,8 +196,6 @@ public:
         QString reaction_;
         double opacity_ = 1;
         TextRendering::TextUnitPtr countUnit_;
-        anim::Animation opacityAnimation_;
-        anim::Animation geometryAnimation_;
     };
 
     ReactionItem createReactionItem(const Data::Reactions::Reaction& _reaction, const QString& _myReaction)
@@ -245,7 +242,7 @@ public:
         _xOffset += textRightMargin() + countWidth;
 
         return _xOffset - startXOffset;
-    }    
+    }
 
     std::vector<int> calcItemsOffsets(std::vector<ReactionItem>& _items, int& _xOffset)
     {
@@ -328,17 +325,27 @@ public:
         updateInProgress_ = true;
         opacity_ = 0;
 
-        opacityAnimation_.finish();
-        opacityAnimation_.start([this]()
-        {
-            opacity_ = opacityAnimation_.current();
+        opacityAnimation_->disconnect(q);
+        opacityAnimation_->stop();
+        opacityAnimation_->setStartValue(0);
+        opacityAnimation_->setEndValue(1);
+        opacityAnimation_->setEasingCurve(QEasingCurve::InOutSine);
+        opacityAnimation_->setDuration(animationDuration.count());
+
+        QObject::connect(opacityAnimation_, &QVariantAnimation::valueChanged, q, [this]() {
+            opacity_ = opacityAnimation_->currentValue().toDouble();
             shadow_->setColor(shadowColorWithAlpha());
             q->update();
-        },[this]()
-        {
-            updateInProgress_ = false;
-            startQueuedAnimation();
-        },0, 1, animationDuration.count(), anim::sineInOut);
+        });
+        QObject::connect(opacityAnimation_, &QVariantAnimation::stateChanged, q, [this]() {
+            if (opacityAnimation_->state() == QAbstractAnimation::Stopped)
+            {
+                updateInProgress_ = false;
+                startQueuedAnimation();
+            }
+        });
+
+        opacityAnimation_->start();
 
         q->show();
     }
@@ -347,22 +354,30 @@ public:
     {
         updateInProgress_ = true;
 
-        opacityAnimation_.finish();
-        opacityAnimation_.start([this]()
-        {
+        opacityAnimation_->disconnect(q);
+        opacityAnimation_->stop();
+        opacityAnimation_->setStartValue(1);
+        opacityAnimation_->setEndValue(0);
+        opacityAnimation_->setEasingCurve(QEasingCurve::InOutSine);
+        opacityAnimation_->setDuration(updateAnimationDuration.count());
+
+        QObject::connect(opacityAnimation_, &QVariantAnimation::valueChanged, q, [this]() {
             if (deletedReactions_.empty())
                 return;
 
             for (auto& item : items_)
             {
                 if (deletedReactions_.count(item.reaction_))
-                    item.opacity_ = opacityAnimation_.current();
+                    item.opacity_ = opacityAnimation_->currentValue().toDouble();
             }
             q->update();
-        },[this]()
-        {
-            startGeometryAnimation();
-        }, 1, 0, updateAnimationDuration.count(), anim::sineInOut);
+        });
+        QObject::connect(opacityAnimation_, &QVariantAnimation::stateChanged, q, [this]() {
+            if (opacityAnimation_->state() == QAbstractAnimation::Stopped)
+                startGeometryAnimation();
+        });
+
+        opacityAnimation_->start();
     }
 
     void startGeometryAnimation()
@@ -398,23 +413,31 @@ public:
 
         auto newWidth = sizeAfterDeletion + addedSize;
 
-        geometryAnimation_.finish();
-        geometryAnimation_.start([this, currentOffsets, newOffsets, currentWidth, newWidth]()
-        {
+        geometryAnimation_->disconnect(q);
+        geometryAnimation_->stop();
+        geometryAnimation_->setStartValue(0);
+        geometryAnimation_->setEndValue(1);
+        geometryAnimation_->setEasingCurve(QEasingCurve::InOutSine);
+        geometryAnimation_->setDuration(updateAnimationDuration.count());
+
+        QObject::connect(geometryAnimation_, &QVariantAnimation::valueChanged, q, [this, currentOffsets, newOffsets, currentWidth, newWidth]() {
             for (auto i = 0u; i < items_.size(); i++)
             {
-                auto itemNewX = currentOffsets[i] + (newOffsets[i] - currentOffsets[i]) * geometryAnimation_.current();
+                auto itemNewX = currentOffsets[i] + (newOffsets[i] - currentOffsets[i]) * geometryAnimation_->currentValue().toDouble();
                 updateItemGeometry(items_[i], itemNewX);
             }
 
-            auto width = currentWidth + (newWidth - currentWidth) * geometryAnimation_.current();
+            auto width = currentWidth + (newWidth - currentWidth) * geometryAnimation_->currentValue().toDouble();
             setPlateGeometry(QRect(calcPlatePosition(width), QSize(width, plateHeightWithShadow(item_->reactionsPlateType()))));
 
             q->update();
-        }, [this]()
-        {
-            startAddedItemsAnimation();
-        }, 0, 1, updateAnimationDuration.count(), anim::sineInOut);
+        });
+        QObject::connect(geometryAnimation_, &QVariantAnimation::stateChanged, q, [this]() {
+            if (geometryAnimation_->state() == QAbstractAnimation::Stopped)
+                startAddedItemsAnimation();
+        });
+
+        geometryAnimation_->start();
     }
 
     void startAddedItemsAnimation()
@@ -426,20 +449,30 @@ public:
         std::move(addedItems_.begin(), addedItems_.end(), std::back_inserter(items_));
         addedItems_.resize(0);
 
-        opacityAnimation_.finish();
-        opacityAnimation_.start([this, addedIndex]()
-        {
-            for (auto i = addedIndex; i < items_.size(); i++)
-                items_[i].opacity_ = opacityAnimation_.current();
-            q->update();
-        }, [this]()
-        {
-            updateItems(reactions_);
-            setPlateGeometry(updateGeometryHelper());
+        opacityAnimation_->disconnect(q);
+        opacityAnimation_->stop();
+        opacityAnimation_->setStartValue(0);
+        opacityAnimation_->setEndValue(1);
+        opacityAnimation_->setEasingCurve(QEasingCurve::InOutSine);
+        opacityAnimation_->setDuration(updateAnimationDuration.count());
 
-            updateInProgress_ = false;
-            startQueuedAnimation();
-        }, 0, 1, updateAnimationDuration.count(), anim::sineInOut);
+        QObject::connect(opacityAnimation_, &QVariantAnimation::valueChanged, q, [this, addedIndex]() {
+            for (auto i = addedIndex; i < items_.size(); ++i)
+                items_[i].opacity_ = opacityAnimation_->currentValue().toDouble();
+            q->update();
+        });
+        QObject::connect(opacityAnimation_, &QVariantAnimation::stateChanged, q, [this]() {
+            if (opacityAnimation_->state() == QAbstractAnimation::Stopped)
+            {
+                updateItems(reactions_);
+                setPlateGeometry(updateGeometryHelper());
+
+                updateInProgress_ = false;
+                startQueuedAnimation();
+            }
+        });
+
+        opacityAnimation_->start();
     }
 
     void startQueuedAnimation()
@@ -520,8 +553,8 @@ public:
     std::unordered_set<QString, Utils::QStringHasher> deletedReactions_;
     std::vector<Data::Reactions::Reaction> addedReactions_;
     std::optional<Data::Reactions> queuedData_;
-    anim::Animation opacityAnimation_;
-    anim::Animation geometryAnimation_;
+    QVariantAnimation* opacityAnimation_;
+    QVariantAnimation* geometryAnimation_;
     bool updateInProgress_ = false;
     double opacity_ = 0;
     bool outgoingPosition_;

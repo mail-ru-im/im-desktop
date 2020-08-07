@@ -3,7 +3,6 @@
 #include "HistoryUndoStack.h"
 #include "Text2Symbol.h"
 #include "controls/TextEditEx.h"
-#include "animation/animation.h"
 
 namespace Ui
 {
@@ -40,8 +39,8 @@ namespace Ui
 
     private:
         QString customPlaceholderText_;
-        anim::Animation placeholderAnim_;
-        anim::Animation placeholderOpacityAnim_;
+        QVariantAnimation* placeholderAnim_;
+        QVariantAnimation* placeholderOpacityAnim_;
         enum class AnimType
         {
             Appear,

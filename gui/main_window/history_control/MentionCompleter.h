@@ -1,7 +1,6 @@
 #pragma once
 
 #include "../contact_list/MentionModel.h"
-#include "animation/animation.h"
 
 namespace Logic
 {
@@ -36,7 +35,7 @@ namespace Ui
         FocusableListView* view_;
         int arrowOffset_;
         Utils::OpacityEffect* opacityEffect_;
-        anim::Animation opacityAnimation_;
+        QVariantAnimation* opacityAnimation_;
 
     public:
         MentionCompleter(QWidget* _parent);

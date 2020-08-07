@@ -1,7 +1,5 @@
 #pragma once
 
-#include "animation/animation.h"
-
 namespace Ui
 {
     class CircleHover;
@@ -38,6 +36,6 @@ namespace Ui
 
         QPointer<QWidget> dest_;
 
-        anim::Animation anim_;
+        QVariantAnimation* anim_;
     };
 }

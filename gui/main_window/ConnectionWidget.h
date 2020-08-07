@@ -1,7 +1,5 @@
 #pragma once
 
-#include "../animation/animation.h"
-
 namespace Ui
 {
     enum class ConnectionState;
@@ -12,7 +10,7 @@ namespace Ui
 
     private:
 
-        anim::Animation animation_;
+        QVariantAnimation* animation_;
         bool started_;
         int rate_;
         qreal progressWidth_;

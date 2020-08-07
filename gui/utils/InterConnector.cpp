@@ -2,6 +2,7 @@
 
 #include "../main_window/MainWindow.h"
 #include "../main_window/MainPage.h"
+#include "../main_window/ContactDialog.h"
 #include "../main_window/history_control/HistoryControlPage.h"
 #include "../main_window/contact_list/ContactListModel.h"
 #ifdef __APPLE__
@@ -24,6 +25,7 @@ namespace Utils
         , destroying_(false)
         , currentElement_(MultiselectCurrentElement::Message)
         , currentMessage_(-1)
+        , multiselectAnimation_(new QVariantAnimation(this))
     {
         //
     }
@@ -209,10 +211,18 @@ namespace Utils
                 Q_EMIT multiSelectCurrentElementChanged();
             }
 
-            auto from = _enable ? 0 : 100;
-            auto to = _enable ? 100 : 0;
-            multiselectAnimation_.finish();
-            multiselectAnimation_.start([this]() { Q_EMIT multiselectAnimationUpdate(); }, from, to, 100);
+            multiselectAnimation_->stop();
+            multiselectAnimation_->setStartValue(_enable ? 0 : 100);
+            multiselectAnimation_->setEndValue(_enable ? 100 : 0);
+            multiselectAnimation_->setDuration(100);
+            multiselectAnimation_->setEasingCurve(QEasingCurve::Linear);
+            multiselectAnimation_->setLoopCount(1);
+            multiselectAnimation_->disconnect(this);
+            connect(multiselectAnimation_, &QVariantAnimation::valueChanged, this, [this](const QVariant& value)
+            {
+                Q_EMIT multiselectAnimationUpdate();
+            });
+            multiselectAnimation_->start();
         }
     }
 
@@ -328,7 +338,7 @@ namespace Utils
         //if (!isMultiselect())
           //  return 0.0;
 
-        return multiselectAnimation_.current();
+        return multiselectAnimation_->currentValue().toDouble();
     }
 
     void InterConnector::disableInMultiselect(QWidget* _w, const QString& _aimid)
@@ -373,5 +383,12 @@ namespace Utils
 #ifdef __APPLE__
         });
 #endif //__APPLE
+    }
+
+    bool InterConnector::isRecordingPtt() const
+    {
+        if (auto contactDialog = getContactDialog())
+            return contactDialog->isRecordingPtt();
+        return false;
     }
 }

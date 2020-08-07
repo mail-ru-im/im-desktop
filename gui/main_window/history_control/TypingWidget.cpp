@@ -41,11 +41,21 @@ namespace Ui
     TypingWidget::TypingWidget(QWidget* _parent, const QString& _aimId)
         : QWidget(_parent)
         , aimId_(_aimId)
+        , anim_(new QVariantAnimation(this))
         , frame_(0)
     {
         setFixedHeight(Utils::scale_value(32));
 
         connect(GetDispatcher(), &core_dispatcher::typingStatus, this, &TypingWidget::onTypingStatus);
+        connect(anim_, &QVariantAnimation::valueChanged, this, [this]()
+        {
+            const auto val = anim_->currentValue().toInt();
+            if (val % frameCount != frame_ % frameCount)
+            {
+                frame_++;
+                update();
+            }
+        });
     }
 
     TypingWidget::~TypingWidget()
@@ -156,20 +166,19 @@ namespace Ui
     void TypingWidget::startAnimation()
     {
         frame_ = 0;
-        anim_.start([this]()
-        {
-            const auto val = (int)anim_.current();
-            if (val % frameCount != frame_ % frameCount)
-            {
-                frame_++;
-                update();
-            }
-        }, 0, frameCount, animDuration.count(), anim::linear, -1);
+
+        anim_->stop();
+        anim_->setStartValue(0);
+        anim_->setEndValue(frameCount);
+        anim_->setDuration(animDuration.count());
+        anim_->setEasingCurve(QEasingCurve::Linear);
+        anim_->setLoopCount(-1);
+        anim_->start();
     }
 
     void TypingWidget::stopAnimation()
     {
-        anim_.finish();
+        anim_->stop();
     }
 
     QColor TypingWidget::getTextColor() const

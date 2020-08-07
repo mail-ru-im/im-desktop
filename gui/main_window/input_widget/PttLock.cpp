@@ -20,6 +20,7 @@ namespace Ui
 {
     PttLock::PttLock(QWidget* _parent)
         : QWidget(_parent)
+        , anim_(new QVariantAnimation(this))
     {
         const auto size = QSize(40, 40);
         pixmap_ = Utils::renderSvgScaled(qsl(":/ptt/lock_icon"), size);
@@ -41,7 +42,7 @@ namespace Ui
 
     void PttLock::showAnimated()
     {
-        anim_.finish();
+        anim_->stop();
         showTimer_.start();
     }
 
@@ -49,46 +50,64 @@ namespace Ui
     {
         hideToolTip();
         showTimer_.stop();
-        anim_.finish();
-        anim_.start([this]()
+        anim_->stop();
+        anim_->disconnect(this);
+
+        connect(anim_, &QVariantAnimation::valueChanged, this, [this]()
         {
             auto p = bottom_;
             p.ry() -= getDistance();
-            p.ry() += (1 - anim_.current()) * getDistance();
+            p.ry() += (1 - anim_->currentValue().toInt()) * getDistance();
             move(p);
             update();
-        }, 1., 0., getAnimDuration().count(), anim::easeOutBack);
+        });
+
+        anim_->setStartValue(1.0);
+        anim_->setEndValue(0.0);
+        anim_->setDuration(getAnimDuration().count());
+        anim_->setEasingCurve(QEasingCurve::OutBack);
+        anim_->start();
     }
 
     void PttLock::hideForce()
     {
         hideToolTip();
         showTimer_.stop();
-        anim_.finish();
+        anim_->stop();
         hide();
     }
 
     void PttLock::paintEvent(QPaintEvent*)
     {
         QPainter p(this);
-        p.setOpacity(anim_.current());
+        p.setOpacity(anim_->currentValue().toDouble());
         p.drawPixmap(0, 0, pixmap_);
     }
 
     void PttLock::showAnimatedImpl()
     {
         show();
-        anim_.finish();
-        anim_.start([this]()
+        anim_->stop();
+        anim_->disconnect(this);
+
+        connect(anim_, &QVariantAnimation::valueChanged, this, [this]()
         {
             auto p = bottom_;
-            p.ry() -= (anim_.current()) * getDistance();
+            p.ry() -= (anim_->currentValue().toInt()) * getDistance();
             move(p);
             update();
-        }, [this]()
+        });
+        connect(anim_, &QVariantAnimation::stateChanged, this, [this]()
         {
-            showToolTip();
-        }, 0., 1., getAnimDuration().count(), anim::easeOutBack);
+            if (anim_->state() == QAbstractAnimation::Stopped)
+                showToolTip();
+        });
+
+        anim_->setStartValue(0.0);
+        anim_->setEndValue(1.0);
+        anim_->setDuration(getAnimDuration().count());
+        anim_->setEasingCurve(QEasingCurve::OutBack);
+        anim_->start();
     }
 
     void PttLock::showToolTip()

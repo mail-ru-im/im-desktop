@@ -2,7 +2,6 @@
 
 #include "controls/TextUnit.h"
 #include "types/message.h"
-#include "animation/animation.h"
 
 #include "InputWidgetUtils.h"
 #include "FileToSend.h"
@@ -312,6 +311,8 @@ namespace Ui
         bool isServerSuggest(const QString& _stickerId) const;
         void clearLastSuggests();
 
+        bool hasSelection() const;
+
     protected:
         void keyPressEvent(QKeyEvent * _e) override;
         void keyReleaseEvent(QKeyEvent * _e) override;
@@ -477,7 +478,7 @@ namespace Ui
         SelectContactsWidget* selectContactsWidget_;
 
         QLabel* transitionLabel_;
-        anim::Animation transitionAnim_;
+        QVariantAnimation* transitionAnim_;
         bool setFocusToSubmit_ = false;
 
         bool suggestRequested_ = false;

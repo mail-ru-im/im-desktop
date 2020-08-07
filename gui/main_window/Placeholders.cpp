@@ -209,11 +209,18 @@ ContactsPlaceholder::ContactsPlaceholder(QWidget *_parent)
 ////////////////////////////////////////////////////////////////////////////
 RotatingSpinner::RotatingSpinner(QWidget * _parent)
     : QWidget(_parent)
+    , anim_(new QVariantAnimation(this))
     , currentAngle_(0.)
 {
     setFixedSize(Utils::scale_value(QSize(32, 32)));
     setAttribute(Qt::WA_TransparentForMouseEvents);
     setStyleSheet(qsl("background: transparent;"));
+
+    connect(anim_, &QVariantAnimation::valueChanged, this, [this]()
+    {
+        currentAngle_ = anim_->currentValue().toInt();
+        update();
+    });
 }
 
 RotatingSpinner::~RotatingSpinner()
@@ -236,17 +243,18 @@ void RotatingSpinner::startAnimation(const QColor& _spinnerColor, const QColor& 
     else
         bgColor_ = Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT_INVERSE);
 
-    anim_.finish();
-    anim_.start([this]()
-    {
-        currentAngle_ = anim_.current();
-        update();
-    }, 0, 360, duration.count(), anim::linear, -1);
+    anim_->stop();
+    anim_->setStartValue(0);
+    anim_->setEndValue(360);
+    anim_->setDuration(duration.count());
+    anim_->setEasingCurve(QEasingCurve::Linear);
+    anim_->setLoopCount(-1);
+    anim_->start();
 }
 
 void RotatingSpinner::stopAnimation()
 {
-    anim_.finish();
+    anim_->stop();
 }
 
 void RotatingSpinner::paintEvent(QPaintEvent* _event)
@@ -265,7 +273,7 @@ void RotatingSpinner::paintEvent(QPaintEvent* _event)
 
     constexpr auto QT_ANGLE_MULT = 16;
     constexpr double idleProgressValue = 0.75;
-    const auto animAngle = anim_.isRunning() ? anim_.current() : 0.0;
+    const auto animAngle = anim_->state() == QAbstractAnimation::State::Running ? anim_->currentValue().toDouble() : 0.0;
     const auto baseAngle = (animAngle * QT_ANGLE_MULT);
     const auto progressAngle = (int)std::ceil(idleProgressValue * 360 * QT_ANGLE_MULT);
 

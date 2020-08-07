@@ -102,6 +102,7 @@ ActionButtonWidget::ActionButtonWidget(const ActionButtonResource::ResourceSet &
     , IsPressed_(false)
     , IsAnimating_(false)
     , Layout_(nullptr)
+    , animation_(new QVariantAnimation(this))
 {
     initResources();
 
@@ -120,6 +121,8 @@ ActionButtonWidget::ActionButtonWidget(const ActionButtonResource::ResourceSet &
 
     setCursor(Qt::PointingHandCursor);
     setMouseTracking(true);
+
+    connect(animation_, &QVariantAnimation::valueChanged, this, qOverload<>(&ActionButtonWidget::update));
 }
 
 ActionButtonWidget::~ActionButtonWidget()
@@ -158,7 +161,7 @@ void ActionButtonWidget::drawProgress(QPainter &p)
 
     const auto QT_ANGLE_MULT = 16;
 
-    const auto baseAngle = (animation_.current() * QT_ANGLE_MULT);
+    const auto baseAngle = (animation_->currentValue().toDouble() * QT_ANGLE_MULT);
 
     const auto progress = std::max(Progress_, PROGRESS_BAR_MIN_PERCENTAGE);
 
@@ -403,12 +406,12 @@ bool ActionButtonWidget::isWaitingForDelay()
 
 void ActionButtonWidget::pauseAnimation()
 {
-    animation_.pause();
+    animation_->pause();
 }
 
 void ActionButtonWidget::resumeAnimation()
 {
-    animation_.resume();
+    animation_->resume();
 }
 
 void ActionButtonWidget::enterEvent(QEvent *)
@@ -608,14 +611,17 @@ void ActionButtonWidget::startProgressBarAnimation()
     stopProgressBarAnimation();
 
     IsAnimating_ = true;
-    animation_.start([this]() {
-        update();
-    }, 0.0, 360.0, animationDuration(), anim::linear, -1);
+    animation_->setStartValue(0.0);
+    animation_->setEndValue(360.0);
+    animation_->setEasingCurve(QEasingCurve::Linear);
+    animation_->setDuration(animationDuration());
+    animation_->setLoopCount(-1);
+    animation_->start();
 }
 
 void ActionButtonWidget::stopProgressBarAnimation()
 {
-    animation_.finish();
+    animation_->stop();
 }
 
 void ActionButtonWidget::onAnimationStartTimeout()

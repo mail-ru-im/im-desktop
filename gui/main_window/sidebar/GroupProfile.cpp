@@ -369,11 +369,11 @@ namespace Ui
             }
 
             about_ = addInfoBlock(QString(), QString(), widget, layout);
-            about_->text_->makeCopyable();
+            about_->text_->makeTextField();
             connect(about_->text_, &TextLabel::menuAction, this, &GroupProfile::menuAction);
 
             rules_ = addInfoBlock(QT_TRANSLATE_NOOP("siderbar", "Rules"), QString(), widget, layout);
-            rules_->text_->makeCopyable();
+            rules_->text_->makeTextField();
             connect(rules_->text_, &TextLabel::menuAction, this, &GroupProfile::menuAction);
 
             link_ = addInfoBlock(QT_TRANSLATE_NOOP("siderbar", "Link"), QString(), widget, layout);
@@ -2041,5 +2041,20 @@ namespace Ui
             thirdSpacer_->setVisible(visible);
             fourthSpacer_->setVisible(Logic::getIgnoreModel()->contains(currentAimId_) && !chatInfo_->YouBlocked_ && !notAMember && (!isChannel(chatInfo_) || isYouAdminOrModer(chatInfo_)));
         }
+    }
+
+    QString GroupProfile::getSelectedText() const
+    {
+        return about_->getSelectedText() % rules_->getSelectedText();
+    }
+
+    void GroupProfile::mousePressEvent(QMouseEvent* _event)
+    {
+        auto pos = _event->pos();
+        pos.ry() -= titleBar_->height();
+        about_->text_->tryClearSelection(pos);
+        rules_->text_->tryClearSelection(pos);
+
+        QWidget::mousePressEvent(_event);
     }
 }

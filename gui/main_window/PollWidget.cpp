@@ -16,7 +16,6 @@
 #include "fonts.h"
 #include "input_widget/InputWidgetUtils.h"
 #include "PollWidget.h"
-#include "animation/animation.h"
 #include "omicron/omicron_helper.h"
 #include "../common.shared/omicron_keys.h"
 
@@ -104,7 +103,7 @@ public:
     DialogButton* cancelButton_ = nullptr;
     CustomButton* addWidget_ = nullptr;
     ScrollAreaWithTrScrollBar* scrollArea_ = nullptr;
-    anim::Animation scrollAnimation_;
+    QVariantAnimation* scrollAnimation_ = nullptr;
 
     struct InputData
     {
@@ -119,8 +118,8 @@ public:
 //////////////////////////////////////////////////////////////////////////
 
 PollWidget::PollWidget(const QString& _contact, QWidget* _parent)
-    : QWidget(_parent),
-      d(std::make_unique<PollWidget_p>())
+    : QWidget(_parent)
+    , d(std::make_unique<PollWidget_p>())
 {
     d->contact_ = _contact;
     setMinimumHeight(Utils::scale_value(533));
@@ -191,6 +190,8 @@ PollWidget::PollWidget(const QString& _contact, QWidget* _parent)
 
     layout->addWidget(d->scrollArea_);
 
+    d->scrollAnimation_ = new QVariantAnimation(this);
+
     auto buttonsFrame = new QFrame(this);
     buttonsFrame->setFixedWidth(Utils::scale_value(260));
     auto buttonsLayout = Utils::emptyHLayout(buttonsFrame);
@@ -240,11 +241,19 @@ void PollWidget::onAdd()
     d->addWidget_->setVisible(d->list_->count() < maxPollOptions());
     d->sendButton_->setEnabled(d->isSendEnabled());
 
-    d->scrollAnimation_.finish();
-    d->scrollAnimation_.start([this, startValue]() {
+    d->scrollAnimation_->stop();
+    d->scrollAnimation_->disconnect(this);
+    connect(d->scrollAnimation_, &QVariantAnimation::valueChanged, this, [this, startValue]()
+    {
         auto* scrollBar = d->scrollArea_->verticalScrollBar();
-        scrollBar->setValue(startValue + (scrollBar->maximum() - startValue) * d->scrollAnimation_.current());
-    }, 0, 1, 150);
+        scrollBar->setValue(startValue + (scrollBar->maximum() - startValue) * d->scrollAnimation_->currentValue().toInt());
+    });
+
+    d->scrollAnimation_->setStartValue(0);
+    d->scrollAnimation_->setEndValue(1);
+    d->scrollAnimation_->setDuration(150);
+    d->scrollAnimation_->setEasingCurve(QEasingCurve::Linear);
+    d->scrollAnimation_->start();
 }
 
 void PollWidget::onCancel()

@@ -69,6 +69,7 @@ namespace Ui
         , forceHover_(false)
         , bgRect_(rect())
         , shape_(ButtonShape::RECTANGLE)
+        , animFocus_(new QVariantAnimation(this))
     {
         if (!_svgName.isEmpty())
             setDefaultImage(_svgName, _defaultColor, _iconSize);
@@ -88,6 +89,7 @@ namespace Ui
         tooltipTimer_.setInterval(tooltipShowDelay());
 
         connect(&tooltipTimer_, &QTimer::timeout, this, &CustomButton::onTooltipTimer);
+        connect(animFocus_, &QVariantAnimation::valueChanged, this, qOverload<>(&CustomButton::update));
     }
 
     void CustomButton::paintEvent(QPaintEvent* _e)
@@ -111,15 +113,17 @@ namespace Ui
             }
         }
 
-        if (focusColor_.isValid() && (animFocus_.isRunning() || hasFocus()))
+        const auto isAnimRunning = animFocus_->state() == QAbstractAnimation::State::Running;
+
+        if (focusColor_.isValid() && (isAnimRunning || hasFocus()))
         {
             p.setPen(Qt::NoPen);
             p.setBrush(focusColor_);
 
             auto r = rect();
-            if (animFocus_.isRunning())
+            if (isAnimRunning)
             {
-                const auto cur = animFocus_.current();
+                const auto cur = animFocus_->currentValue().toDouble();
                 const auto w = width() * cur;
                 r.setSize(QSize(w, w));
                 r.moveCenter(rect().center());
@@ -442,8 +446,12 @@ namespace Ui
         if (!isVisible())
             return;
 
-        animFocus_.finish();
-        animFocus_.start([this]() { update(); }, 0.5, 1.0, focusInAnimDuration().count(), anim::sineInOut);
+        animFocus_->stop();
+        animFocus_->setStartValue(0.5);
+        animFocus_->setEndValue(1.0);
+        animFocus_->setDuration(focusInAnimDuration().count());
+        animFocus_->setEasingCurve(QEasingCurve::InOutSine);
+        animFocus_->start();
     }
 
     void CustomButton::animateFocusOut()
@@ -451,8 +459,12 @@ namespace Ui
         if (!isVisible())
             return;
 
-        animFocus_.finish();
-        animFocus_.start([this]() { update(); }, 1.0, 0.5, focusInAnimDuration().count(), anim::sineInOut);
+        animFocus_->stop();
+        animFocus_->setStartValue(1.0);
+        animFocus_->setEndValue(0.5);
+        animFocus_->setDuration(focusInAnimDuration().count());
+        animFocus_->setEasingCurve(QEasingCurve::InOutSine);
+        animFocus_->start();
     }
 
     void CustomButton::setDefaultColor(const QColor& _color)

@@ -4,7 +4,6 @@
 #include "../../../types/message.h"
 #include "../../../types/link_metadata.h"
 #include "../../../controls/TextUnit.h"
-#include "../../../animation/animation.h"
 #include "SnippetBlock.h"
 
 #include "../HistoryControlPageItem.h"
@@ -477,13 +476,13 @@ private:
     QString SenderFriendly_;
 
     CustomButton* shareButton_;
-    anim::Animation shareButtonAnimation_;
+    QVariantAnimation* shareButtonAnimation_;
     QGraphicsOpacityEffect* shareButtonOpacityEffect_;
 
     QString SourceText_;
 
     MessageTimeWidget* TimeWidget_;
-    anim::Animation timeAnimation_;
+    QVariantAnimation* timeAnimation_;
     QGraphicsOpacityEffect* timeOpacityEffect_;
 
     int32_t Time_;
@@ -520,7 +519,7 @@ private:
     TextRendering::TextUnitPtr buttonLabel_;
 
     QTimer* buttonsUpdateTimer_;
-    anim::Animation buttonsAnimation_;
+    QVariantAnimation* buttonsAnimation_;
 };
 
 UI_COMPLEX_MESSAGE_NS_END

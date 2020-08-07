@@ -284,6 +284,8 @@ namespace Ui
 
         bool eventFilter(QObject* _obj, QEvent* _event) override;
 
+        void keyPressEvent(QKeyEvent* _e) override;
+
     private:
 
         void animateVisibilityCL(int _newWidth, bool _withAnimation);

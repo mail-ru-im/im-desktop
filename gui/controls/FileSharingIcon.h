@@ -1,7 +1,6 @@
 #pragma once
 
 #include "ClickWidget.h"
-#include "../animation/animation.h"
 
 namespace Ui
 {
@@ -44,6 +43,6 @@ namespace Ui
         int64_t bytesTotal_;
         int64_t bytesCurrent_;
 
-        anim::Animation anim_;
+        QVariantAnimation* anim_;
     };
 }

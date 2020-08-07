@@ -970,8 +970,7 @@ void MacSupport::updateMainMenu()
 {
     if (editMenu_)
     {
-        const auto contDialog = Utils::InterConnector::instance().getContactDialog();
-        const bool isPttActive = contDialog && contDialog->isRecordingPtt();
+        const bool isPttActive = Utils::InterConnector::instance().isRecordingPtt();
         editMenu_->setEnabled(!isPttActive);
     }
 

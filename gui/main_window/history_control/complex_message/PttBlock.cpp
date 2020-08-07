@@ -211,15 +211,22 @@ namespace PttDetails
         , type_(_type)
         , progress_(0.)
         , isOutgoing_(_isOutgoing)
+        , anim_(new QVariantAnimation(this))
     {
         setFixedSize(getButtonSize());
 
-        anim_.start([this]() { update(); }, 0., 360., animDuration.count(), anim::linear, -1);
+        anim_->setStartValue(0.);
+        anim_->setEndValue(360.);
+        anim_->setDuration(animDuration.count());
+        anim_->setEasingCurve(QEasingCurve::Linear);
+        anim_->setLoopCount(-1);
+        connect(anim_, &QVariantAnimation::valueChanged, this, qOverload<>(&ProgressWidget::update));
+        anim_->start();
     }
 
     ProgressWidget::~ProgressWidget()
     {
-        anim_.finish();
+        anim_->stop();
     }
 
     void ProgressWidget::setProgress(const double _progress)
@@ -262,7 +269,7 @@ namespace PttDetails
         p.setBrush(bgColor);
         p.drawEllipse(rect());
 
-        const auto animAngle = anim_.isRunning() ? anim_.current() : 0.0;
+        const auto animAngle = anim_->state() == QAbstractAnimation::Running ? anim_->currentValue().toDouble() : 0.0;
         const auto baseAngle = (animAngle * QT_ANGLE_MULT);
         const auto progressAngle = (int)std::ceil(progress_ * 360 * QT_ANGLE_MULT);
 

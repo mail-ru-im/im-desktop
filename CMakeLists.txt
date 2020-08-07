@@ -301,7 +301,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${ICQ_BIN_DIR})
 # --------------------------  external  --------------------------
 set(DOWNLOAD_URL "https://hb.bizmrg.com/icq-www/external")
 
-set(EXT_LIBS_VERSION v9)
+set(EXT_LIBS_VERSION v10)
 
 set(EXT_LIBS_FNAME "external_${EXT_LIBS_VERSION}.zip")
 set(EXT_LIBS_MD5 "external_${EXT_LIBS_VERSION}.md5")
@@ -724,6 +724,8 @@ include_directories("${ICQ_QT_INCLUDE_DIR}/QtWidgets")
 include_directories("${ICQ_QT_INCLUDE_DIR}/QtWidgets/${ICQ_QT_VERSION}/QtWidgets")
 include_directories("${ICQ_QT_INCLUDE_DIR}/QtWidgets/${ICQ_QT_VERSION}")
 include_directories("${ICQ_QT_INCLUDE_DIR}/QtOpenGL")
+include_directories("${ICQ_QT_INCLUDE_DIR}/QtANGLE")
+include_directories("${ICQ_QT_INCLUDE_DIR}/QtEglSupport")
 include_directories("${ICQ_QT_INCLUDE_DIR}/QtNetwork")
 include_directories("${ICQ_QT_INCLUDE_DIR}/QtSvg")
 include_directories("${ICQ_QT_INCLUDE_DIR}/QtMacExtras")
@@ -751,6 +753,9 @@ if(MSVC)
         optimized ${ICQ_QT_LIB_DIR}/Qt5Widgets.lib debug ${ICQ_QT_LIB_DIR}/Qt5Widgetsd.lib
         optimized ${ICQ_QT_LIB_DIR}/Qt5WinExtras.lib debug ${ICQ_QT_LIB_DIR}/Qt5WinExtrasd.lib
         optimized ${ICQ_QT_LIB_DIR}/Qt5WindowsUIAutomationSupport.lib debug ${ICQ_QT_LIB_DIR}/Qt5WindowsUIAutomationSupportd.lib
+        optimized ${ICQ_QT_LIB_DIR}/Qt5EglSupport.lib debug ${ICQ_QT_LIB_DIR}/Qt5EglSupportd.lib
+        optimized ${ICQ_QT_LIB_DIR}/libEGL.lib debug ${ICQ_QT_LIB_DIR}/libEGLd.lib
+        optimized ${ICQ_QT_LIB_DIR}/libGLESv2.lib debug ${ICQ_QT_LIB_DIR}/libGLESv2d.lib
         optimized ${ICQ_QT_LIB_DIR}/qtpcre2.lib debug ${ICQ_QT_LIB_DIR}/qtpcre2d.lib
         optimized ${ICQ_QT_LIB_DIR}/qtmain.lib debug ${ICQ_QT_LIB_DIR}/qtmaind.lib
         optimized ${ICQ_QT_LIB_DIR}/qtharfbuzz.lib debug ${ICQ_QT_LIB_DIR}/qtharfbuzzd.lib

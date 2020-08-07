@@ -217,9 +217,11 @@ ComplexMessageItem::ComplexMessageItem(QWidget* _parent, const Data::MessageBudd
     , desiredSenderWidth_(0)
     , SenderAimid_(_msg.getSender())
     , shareButton_(nullptr)
+    , shareButtonAnimation_(new QVariantAnimation(this))
     , shareButtonOpacityEffect_(nullptr)
     , SourceText_(_msg.GetText())
     , TimeWidget_(nullptr)
+    , timeAnimation_(new QVariantAnimation(this))
     , timeOpacityEffect_(nullptr)
     , Time_(-1)
     , bQuoteAnimation_(false)
@@ -230,6 +232,7 @@ ComplexMessageItem::ComplexMessageItem(QWidget* _parent, const Data::MessageBudd
     , hideEdit_(false)
     , mentions_(_msg.Mentions_)
     , buttonsUpdateTimer_(nullptr)
+    , buttonsAnimation_(new QVariantAnimation(this))
 {
     assert(Id_ >= -1);
     assert(!SenderAimid_.isEmpty());
@@ -260,8 +263,8 @@ ComplexMessageItem::~ComplexMessageItem()
     if (!PressPoint_.isNull())
         Q_EMIT pressedDestroyed();
 
-    shareButtonAnimation_.finish();
-    timeAnimation_.finish();
+    shareButtonAnimation_->stop();
+    timeAnimation_->stop();
 
     if (!isHeadless())
         Logic::GetStatusContainer()->setAvatarVisible(SenderAimid_, false);
@@ -1815,17 +1818,20 @@ void ComplexMessageItem::updateButtons()
 
     if (hasPressedButtons)
     {
-        if (hasAnimatingButtons && !buttonsAnimation_.isRunning())
+        if (hasAnimatingButtons && buttonsAnimation_->state() != QAbstractAnimation::Running)
         {
-            buttonsAnimation_.start([this]() {
-                update();
-            }, 0.0, 360.0, 700, anim::linear, -1);
+            buttonsAnimation_->setStartValue(0.0);
+            buttonsAnimation_->setEndValue(360.0);
+            buttonsAnimation_->setDuration(700);
+            buttonsAnimation_->setEasingCurve(QEasingCurve::Linear);
+            buttonsAnimation_->setLoopCount(-1);
+            buttonsAnimation_->start();
         }
         startButtonsTimer(hasAnimatingButtons ? 1000 : 100);
     }
     else
     {
-        buttonsAnimation_.finish();
+        buttonsAnimation_->stop();
     }
 
     update();
@@ -1902,6 +1908,7 @@ void ComplexMessageItem::connectSignals()
     {
         update();
     });
+    connect(buttonsAnimation_, &QVariantAnimation::valueChanged, this, qOverload<>(&ComplexMessageItem::update));
 }
 
 bool ComplexMessageItem::containsShareableBlocks() const
@@ -2054,7 +2061,7 @@ void ComplexMessageItem::drawButtons(QPainter &p, const QColor& quote_color)
             auto animationRect = QRect(QPoint(_rect.center().x() - animationSize.width() / 2,
                 _rect.center().y() - animationSize.height() / 2),
                 animationSize);
-            drawAnimation(p, buttonsAnimation_.current(), animationRect);
+            drawAnimation(p, buttonsAnimation_->currentValue().toDouble(), animationRect);
         }
     };
 
@@ -2338,6 +2345,9 @@ int ComplexMessageItem::getMaxWidth() const
 {
     int maxWidth = -1;
 
+    if (isSingleSticker())
+        return maxWidth;
+
     for (const auto block : Blocks_)
     {
         int blockMaxWidth = block->getMaxWidth();
@@ -2510,7 +2520,7 @@ int ComplexMessageItem::desiredWidth() const
 
     result = std::max(result, buttonsDesiredWidth());
 
-    if (isBubbleRequired())
+    if (isBubbleRequired() || isSingleSticker())
         result += 2 * MessageStyle::getBubbleHorPadding();
 
     return result;
@@ -3085,7 +3095,7 @@ void ComplexMessageItem::trackMenu(const QPoint &globalPos)
     if (hasBlock && isOpenFolder)
         menu->addActionWithIcon(qsl(":/context_menu/open_folder"), QT_TRANSLATE_NOOP("context_menu", "Show in folder"), makeData(qsl("open_folder")))->setEnabled(!replyOnly);
 
-    
+
     if (editable)
         menu->addActionWithIcon(qsl(":/context_menu/edit"), QT_TRANSLATE_NOOP("context_menu", "Edit"), makeData(qsl("edit")))->setEnabled(!replyOnly && !notAMember);
 
@@ -3097,7 +3107,7 @@ void ComplexMessageItem::trackMenu(const QPoint &globalPos)
     const auto deleteText = Favorites::isFavorites(ChatAimid_) ? QT_TRANSLATE_NOOP("context_menu", "Delete") : QT_TRANSLATE_NOOP("context_menu", "Delete for me");
     menu->addActionWithIcon(qsl(":/context_menu/delete"), deleteText, makeData(qsl("delete")))->setEnabled(!replyOnly && !notAMember);
 
-    if ((editable || Logic::getContactListModel()->isYouAdmin(ChatAimid_)) && !Favorites::isFavorites(ChatAimid_))
+    if ((Logic::getContactListModel()->isYouAdmin(ChatAimid_) || (!isDisabled && isOutgoing())) && !Favorites::isFavorites(ChatAimid_))
         menu->addActionWithIcon(qsl(":/context_menu/deleteall"), QT_TRANSLATE_NOOP("context_menu", "Delete for all"), makeData(qsl("delete_all")))->setEnabled(!replyOnly && !notAMember);
 
     if (GetAppConfig().IsContextMenuFeaturesUnlocked())
@@ -3291,10 +3301,14 @@ void ComplexMessageItem::animateShareButton(const int _startPosX, const int _end
     if (!shareButton_)
         return;
 
-    shareButtonAnimation_.finish();
-    shareButtonAnimation_.start([_startPosX, _endPosX, _anim, this]()
-    {
-        const auto val = shareButtonAnimation_.current();
+    shareButtonAnimation_->stop();
+    shareButtonAnimation_->setStartValue(_startPosX);
+    shareButtonAnimation_->setEndValue(_endPosX);
+    shareButtonAnimation_->setEasingCurve(QEasingCurve::Linear);
+    shareButtonAnimation_->setDuration(MessageStyle::getHiddenControlsAnimationTime().count());
+    shareButtonAnimation_->disconnect(this);
+    connect(shareButtonAnimation_, &QVariantAnimation::valueChanged, this, [_startPosX, _endPosX, _anim, this]() {
+        const auto val = shareButtonAnimation_->currentValue().toDouble();
         shareButton_->move(val, shareButton_->pos().y());
 
         const auto opacity = abs((val - _startPosX) / (_endPosX - _startPosX));
@@ -3302,8 +3316,7 @@ void ComplexMessageItem::animateShareButton(const int _startPosX, const int _end
 
         if (_anim == WidgetAnimationType::hide && val == _endPosX)
             shareButton_->hide();
-
-    }, _startPosX, _endPosX, MessageStyle::getHiddenControlsAnimationTime().count(), anim::linear, 1);
+    });
 }
 
 void ComplexMessageItem::showTimeAnimated()
@@ -3348,10 +3361,14 @@ void ComplexMessageItem::animateTime(const int _startPosY, const int _endPosY, c
     if (!TimeWidget_)
         return;
 
-    timeAnimation_.finish();
-    timeAnimation_.start([_startPosY, _endPosY, _anim, this]()
-    {
-        const auto val = timeAnimation_.current();
+    timeAnimation_->stop();
+    timeAnimation_->setStartValue(_startPosY);
+    timeAnimation_->setEndValue(_endPosY);
+    timeAnimation_->setEasingCurve(QEasingCurve::Linear);
+    timeAnimation_->setDuration(MessageStyle::getHiddenControlsAnimationTime().count());
+    timeAnimation_->disconnect(this);
+    connect(timeAnimation_, &QVariantAnimation::valueChanged, this, [_startPosY, _endPosY, _anim, this]() {
+        const auto val = timeAnimation_->currentValue().toDouble();
         TimeWidget_->move(TimeWidget_->pos().x(), val);
 
         const auto opacity = abs((val - _startPosY) / (_endPosY - _startPosY));
@@ -3359,7 +3376,7 @@ void ComplexMessageItem::animateTime(const int _startPosY, const int _endPosY, c
 
         if (_anim == WidgetAnimationType::hide && val == _endPosY)
             TimeWidget_->hide();
-    }, _startPosY, _endPosY, MessageStyle::getHiddenControlsAnimationTime().count(), anim::linear, 1);
+    });
 }
 
 Data::Quote ComplexMessageItem::getQuoteFromBlock(IItemBlock* _block, const bool _selectedTextOnly) const
@@ -3471,7 +3488,7 @@ void ComplexMessageItem::updateTimeWidgetUnderlay()
 
         TimeWidget_->setUnderlayVisible(withUnderlay);
 
-        timeAnimation_.finish();
+        timeAnimation_->stop();
 
         if (withUnderlay)
         {

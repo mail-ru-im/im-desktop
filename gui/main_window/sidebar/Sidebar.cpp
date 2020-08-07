@@ -127,6 +127,11 @@ namespace Ui
         return Utils::scale_value(sidebar_width);
     }
 
+    QString Sidebar::getSelectedText() const
+    {
+        return pages_[currentIndex()]->getSelectedText();
+    }
+
     void Sidebar::onAnimationFinished()
     {
         if (animSidebar_->endValue() == min_step)

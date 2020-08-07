@@ -14,7 +14,7 @@ namespace core
         class report_sender : public std::enable_shared_from_this<report_sender>
         {
         public:
-            report_sender(std::string _login);
+            report_sender(std::string _login, bool _full_log);
             ~report_sender();
 
             void send_report();
@@ -25,7 +25,8 @@ namespace core
             bool send(std::string_view _login, const proxy_settings& _proxy);
 			void insert_imstat_event();
             std::unique_ptr<async_executer> send_thread_;
-            std::string login_;
+            const std::string login_;
+            const bool full_log_;
         };
     }
 }

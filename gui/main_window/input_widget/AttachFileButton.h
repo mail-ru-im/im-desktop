@@ -1,7 +1,6 @@
 #pragma once
 
 #include "controls/ClickWidget.h"
-#include "animation/animation.h"
 #include "InputWidgetUtils.h"
 
 namespace Ui
@@ -31,7 +30,7 @@ namespace Ui
         void rotate(const RotateDirection _dir);
 
     private:
-        anim::Animation anim_;
+        QVariantAnimation* anim_;
         double currentAngle_;
         bool isActive_;
     };

@@ -1076,7 +1076,7 @@ void core::im_container::on_login_by_password(int64_t _seq, coll_helper& _params
                 {
                     urls.emplace_back(url_preset);
                 }
-                else 
+                else
                 {
                     urls.emplace_back(config::hosts::external_url_config::make_url(su::concat("u.", login_domain)));
                     urls.emplace_back(config::hosts::external_url_config::make_url(login_domain));
@@ -1243,7 +1243,8 @@ void core::im_container::logout(const bool _is_auth_error)
 
         ptr_this->ims_.clear();
 
-        config::hosts::clear_external_config();
+        if (config::get().is_on(config::features::external_url_config))
+            config::hosts::clear_external_config();
     };
 
     voip_manager_->call_stop_smart(logout);

@@ -1,7 +1,6 @@
 #pragma once
 
 #include "../../controls/TextUnit.h"
-#include "../../animation/animation.h"
 
 namespace Ui
 {
@@ -244,8 +243,8 @@ namespace Ui
 
             bool syncedWithServer_;
 
-            anim::Animation scrollAnimationUp_;
-            anim::Animation scrollAnimationDown_;
+            QVariantAnimation* scrollAnimationUp_;
+            QVariantAnimation* scrollAnimationDown_;
 
         private Q_SLOTS:
 

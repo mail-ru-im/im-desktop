@@ -2,7 +2,6 @@
 
 #include "history/Message.h"
 #include "history/History.h"
-#include "animation/animation.h"
 
 namespace hist
 {
@@ -364,7 +363,7 @@ namespace Ui
 
         Heads::HeadContainer* heads_;
 
-        anim::Animation smartreplyAnim_;
+        QVariantAnimation* smartreplyAnim_;
         SmartreplyAnimType smartreplyAnimType_ = SmartreplyAnimType::invalid;
         bool isSmartreplyAnimating_ = false;
         Utils::OpacityEffect* smartreplyOpacity_;

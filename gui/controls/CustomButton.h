@@ -1,6 +1,5 @@
 #pragma once
 
-#include "animation/animation.h"
 #include "TextUnit.h"
 #include "ClickWidget.h"
 
@@ -128,7 +127,7 @@ namespace Ui
         ButtonShape shape_;
 
         QColor focusColor_;
-        anim::Animation animFocus_;
+        QVariantAnimation* animFocus_;
     };
 
     class RoundButton : public ClickableWidget

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "types/lastseen.h"
+#include "types/contact.h"
 
 namespace Logic
 {
@@ -34,7 +35,8 @@ namespace Logic
 
     private:
         void emitChanged(const QString& _aimid) const;
-        void userLastSeen(const int64_t _seq, const std::map<QString, Data::LastSeen>& _lastseens);
+        void userLastSeen(const int64_t, const std::map<QString, Data::LastSeen>& _lastseens);
+        void userInfo(const int64_t, const QString& _aimid, const Data::UserInfo& _info);
         void updateLastSeens();
         void requestLastSeens();
 

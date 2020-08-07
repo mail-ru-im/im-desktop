@@ -122,6 +122,7 @@ namespace Ui
         void setFocusOnInputFirstFocusable();
         bool canSetFocusOnInput() const;
         Ui::InputWidget* getInputWidget() const;
+        bool inputHasSelection() const;
 
         void notifyApplicationWindowActive(const bool isActive);
         void notifyUIActive(const bool _isActive);

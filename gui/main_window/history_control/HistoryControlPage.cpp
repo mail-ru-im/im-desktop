@@ -2153,7 +2153,6 @@ namespace Ui
             overlayPendings_->resize(topWidget_->size());
             overlayPendings_->setVisible(pendingCount != 0);
             overlayPendings_->setBadgeText(Utils::getUnreadsBadgeStr(pendingCount));
-            updatePendingButtonPosition();
         }
         else
         {
@@ -2165,6 +2164,9 @@ namespace Ui
         updateCallButtonsVisibility();
         updateChatPlaceholder();
         updateSpellCheckVisibility();
+
+        if (isAdmin)
+            updatePendingButtonPosition();
 
         if (youMember)
             Q_EMIT updateMembers();
@@ -2894,6 +2896,16 @@ namespace Ui
 
     void HistoryControlPage::resizeEvent(QResizeEvent * _event)
     {
+        if (topWidget_)
+        {
+            // Fix pending badge counter position not being updated correctly after going fullscreen
+            if (auto topWidgetRect = topWidget_->geometry(); topWidgetRect.width() != geometry().width())
+            {
+                topWidgetRect.setWidth(geometry().width());
+                topWidget_->setGeometry(topWidgetRect);
+            }
+        }
+
         updateOverlaySizes();
         updateFooterButtonsPositions();
         overlayTopChatWidget_->resize(topWidget_->size());
@@ -3163,11 +3175,8 @@ namespace Ui
         if (aimId_ == _aimId && Utils::isChat(aimId_))
             return;
 
-        if (auto contactDialog = Utils::InterConnector::instance().getContactDialog())
-        {
-            if (contactDialog->isRecordingPtt())
-                return;
-        }
+        if (Utils::InterConnector::instance().isRecordingPtt())
+            return;
 
         if (isAdminRole_ && chatSenders_.find(aimId_) == chatSenders_.end())
         {

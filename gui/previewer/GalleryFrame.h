@@ -1,6 +1,5 @@
 #pragma once
 #include "../controls/TextUnit.h"
-#include "../animation/animation.h"
 
 namespace Ui
 {
@@ -47,7 +46,7 @@ namespace Previewer
         bool expanded_;
         QPoint clicked_;
         int totalWidth_;
-        anim::Animation anim_;
+        QVariantAnimation* anim_;
     };
 
     class GalleryFrame : public QWidget

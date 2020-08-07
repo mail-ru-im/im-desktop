@@ -246,6 +246,9 @@ namespace config
                 std::pair(values::server_api_version, get_int64(it->value, "server_api_version")),
                 std::pair(values::server_mention_timeout, get_int64(it->value, "server_mention_timeout")),
                 std::pair(values::support_uin, get_string(it->value, "support_uin")),
+                std::pair(values::mytracker_app_id_win, get_string(it->value, "mytracker_app_id_win")),
+                std::pair(values::mytracker_app_id_mac, get_string(it->value, "mytracker_app_id_mac")),
+                std::pair(values::mytracker_app_id_linux, get_string(it->value, "mytracker_app_id_linux")),
             };
 
             if (std::is_sorted(std::cbegin(res), std::cend(res), is_less_by_first))
@@ -361,9 +364,15 @@ namespace config
     }
 }
 
+static const config::configuration& get_default_config()
+{
+    static const auto c = config::make_config();
+    return c;
+}
+
 static config::configuration& get_impl()
 {
-    static auto c = config::make_config();
+    static auto c = get_default_config();
     return c;
 }
 
@@ -377,12 +386,17 @@ void config::override_feature(config::features _f, bool _value)
     get_impl().override_feature(_f, _value);
 }
 
+void config::reset_feature_to_default(config::features _f)
+{
+    get_impl().reset_feature_to_default(_f);
+}
+
 bool config::is_overridden(values _v)
 {
-    const auto defaultConfig = config::make_config();
+    const auto& default_config = get_default_config();
     const auto value = config::get().value(_v);
 
-    return defaultConfig.value(_v) != value && value != value_type();
+    return default_config.value(_v) != value && value != value_type();
 }
 
 bool config::is_overridden(features _v)
@@ -392,9 +406,17 @@ bool config::is_overridden(features _v)
 
 bool config::is_overridden(urls _v)
 {
-    const auto defaultConfig = config::make_config();
+    const auto& default_config = get_default_config();
     const auto url = config::get().url(_v);
 
-    return defaultConfig.url(_v) != url && url != std::string_view();
+    return default_config.url(_v) != url && url != std::string_view();
 }
-
+namespace config
+{
+    void configuration::reset_feature_to_default(features _f)
+    {
+        const auto key = static_cast<size_t>(_f);
+        std::get<int(type_index::value)>(features_[key]) = get_default_config().is_on(_f);
+        std::get<int(type_index::override)>(features_[key]) = false;
+    }
+}

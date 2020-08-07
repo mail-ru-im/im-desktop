@@ -195,6 +195,7 @@ namespace Ui
         void textClicked();
         void copyClicked(const QString&);
         void shareClicked();
+        void selectionChanged();
 
         void menuAction(QAction*);
 
@@ -215,6 +216,7 @@ namespace Ui
         void clearMenuActions();
         void addMenuAction(const QString& _iconPath, const QString& _name, const QVariant& _data);
         void makeCopyable();
+        void makeTextField();
         void showButtons();
         void allowOnlyCopy();
         QString getText() const;
@@ -222,6 +224,8 @@ namespace Ui
         void setTextAlign(TextRendering::HorAligment _align) { textAlign_ = _align; }
         void setBackgroundColor(QColor _color) { bgColor_ = _color; }
         void setIconColors(QColor _normal, QColor _hover, QColor _pressed);
+        QString getSelectedText() const;
+        void tryClearSelection(const QPoint& _pos);
 
     protected:
         void paintEvent(QPaintEvent* _event) override;
@@ -229,11 +233,14 @@ namespace Ui
         void mousePressEvent(QMouseEvent* _event) override;
         void mouseReleaseEvent(QMouseEvent* _event) override;
         void mouseMoveEvent(QMouseEvent* _event) override;
+        void mouseDoubleClickEvent(QMouseEvent* _event) override;
         void enterEvent(QEvent* _event) override;
         void leaveEvent(QEvent* _event) override;
 
     private:
         void updateSize(bool _forceCollapsed = false);
+        void selectText(const QPoint& _from, const QPoint& _to);
+        void clearSelection();
 
     private:
         QMargins margins_;
@@ -241,18 +248,21 @@ namespace Ui
         TextRendering::TextUnitPtr collapsedText_;
         TextRendering::TextUnitPtr readMore_;
         TextRendering::HorAligment textAlign_ = TextRendering::HorAligment::LEFT;
-        QPoint clicked_;
+        QPoint selectFrom_;
+        QPoint selectTo_;
         int maxLinesCount_;
         bool collapsed_;
         bool copyable_;
         bool buttonsVisible_;
         bool onlyCopyButton_;
         bool cursorForText_;
+        bool isTextField_;
         ContextMenu* menu_;
         QColor bgColor_;
         QColor iconNormalColor_;
         QColor iconHoverColor_;
         QColor iconPressedColor_;
+        QTimer* TripleClickTimer_ = nullptr;
     };
 
     class InfoBlock
@@ -266,6 +276,7 @@ namespace Ui
         void setTextLinkColor(const QColor& _color);
         void setHeaderLinkColor(const QColor& _color);
         bool isVisible() const;
+        QString getSelectedText() const;
 
         TextLabel* header_ = nullptr;
         TextLabel* text_ = nullptr;

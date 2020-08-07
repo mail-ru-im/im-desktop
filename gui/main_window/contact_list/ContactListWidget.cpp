@@ -197,6 +197,7 @@ namespace Ui
         , emptyIgnoreListLabel_(nullptr)
         , dialogSearchViewHeader_(nullptr)
         , globalSearchViewHeader_(nullptr)
+        , scrollToItemAnim_(new QVariantAnimation(this))
         , scrollStatsTimer_(new QTimer(this))
         , clDelegate_(nullptr)
         , searchDelegate_(nullptr)
@@ -286,6 +287,11 @@ namespace Ui
                 Q_EMIT forceSearchClear(!getSearchInDialog() && _msgid == -1);
             });
         }
+
+        connect(scrollToItemAnim_, &QVariantAnimation::valueChanged, this, [this]() {
+            auto scrollbar = view_->verticalScrollBar();
+            scrollbar->setValue(scrollToItemAnim_->currentValue().toDouble());
+        });
     }
 
     ContactListWidget::~ContactListWidget()
@@ -1133,11 +1139,11 @@ namespace Ui
             }
             setUpdatesEnabled(true);
 
-            scrollToItemAnim_.finish();
-            scrollToItemAnim_.start([scrollbar, this]()
-            {
-                scrollbar->setValue(scrollToItemAnim_.current());
-            }, curValue, endValue, duration.count());
+            scrollToItemAnim_->stop();
+            scrollToItemAnim_->setStartValue(curValue);
+            scrollToItemAnim_->setEndValue(endValue);
+            scrollToItemAnim_->setDuration(duration.count());
+            scrollToItemAnim_->start();
         }
     }
 
@@ -1304,7 +1310,7 @@ namespace Ui
             if (auto srchDelegate = qobject_cast<Logic::SearchItemDelegate*>(_deleg))
             {
                 connect(this, &ContactListWidget::itemSelected, srchDelegate, &Logic::SearchItemDelegate::onContactSelected);
-                connect(this, &ContactListWidget::itemSelected, this, [this]() {view_->update(); });
+                connect(this, &ContactListWidget::itemSelected, this, [this]() { view_->update(); });
                 connect(this, &ContactListWidget::clearSearchSelection, srchDelegate, &Logic::SearchItemDelegate::clearSelection);
             }
         };

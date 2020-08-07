@@ -14,6 +14,7 @@ namespace Ui
 {
     ClickableWidget::ClickableWidget(QWidget* _parent)
         : QWidget(_parent)
+        , animFocus_(new QVariantAnimation(this))
     {
         setMouseTracking(true);
         setAttribute(Qt::WA_Hover, true);
@@ -23,6 +24,7 @@ namespace Ui
         tooltipTimer_.setSingleShot(true);
         tooltipTimer_.setInterval(tooltipShowDelay());
         connect(&tooltipTimer_, &QTimer::timeout, this, &ClickableWidget::onTooltipTimer);
+        connect(animFocus_, &QVariantAnimation::valueChanged, this, qOverload<>(&ClickableWidget::update));
     }
 
     bool ClickableWidget::isHovered() const
@@ -140,7 +142,9 @@ namespace Ui
             p.fillRect(rect(), bgColor_);
         }
 
-        if (focusColor_.isValid() && (animFocus_.isRunning() || hasFocus()))
+        const auto isAnimRunning = animFocus_->state() == QAbstractAnimation::State::Running;
+
+        if (focusColor_.isValid() && (isAnimRunning || hasFocus()))
         {
             QPainter p(this);
             p.setRenderHints(QPainter::Antialiasing);
@@ -148,9 +152,9 @@ namespace Ui
             p.setBrush(focusColor_);
 
             auto r = rect();
-            if (animFocus_.isRunning())
+            if (isAnimRunning)
             {
-                const auto cur = animFocus_.current();
+                const auto cur = animFocus_->currentValue().toDouble();
                 const auto w = width() * cur;
                 r.setSize(QSize(w, w));
                 r.moveCenter(rect().center());
@@ -265,8 +269,12 @@ namespace Ui
         if (!isVisible())
             return;
 
-        animFocus_.finish();
-        animFocus_.start([this]() { update(); }, 0.5, 1.0, focusInAnimDuration().count(), anim::sineInOut);
+        animFocus_->stop();
+        animFocus_->setStartValue(0.5);
+        animFocus_->setEndValue(1.0);
+        animFocus_->setDuration(focusInAnimDuration().count());
+        animFocus_->setEasingCurve(QEasingCurve::InOutSine);
+        animFocus_->start();
     }
 
     void ClickableWidget::animateFocusOut()
@@ -274,8 +282,12 @@ namespace Ui
         if (!isVisible())
             return;
 
-        animFocus_.finish();
-        animFocus_.start([this]() { update(); }, 1.0, 0.5, focusInAnimDuration().count(), anim::sineInOut);
+        animFocus_->stop();
+        animFocus_->setStartValue(1.0);
+        animFocus_->setEndValue(0.5);
+        animFocus_->setDuration(focusInAnimDuration().count());
+        animFocus_->setEasingCurve(QEasingCurve::InOutSine);
+        animFocus_->start();
     }
 
     ClickableTextWidget::ClickableTextWidget(QWidget* _parent, const QFont& _font, const QColor& _color, const TextRendering::HorAligment _textAlign)

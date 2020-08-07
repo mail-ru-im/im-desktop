@@ -85,6 +85,7 @@ namespace Ui
 {
     SubmitButton::SubmitButton(QWidget* _parent)
         : ClickableWidget(_parent)
+        , anim_(new QVariantAnimation(this))
     {
         setFocusPolicy(Qt::TabFocus);
         setFocusColor(focusColorPrimary());
@@ -117,6 +118,16 @@ namespace Ui
                 Q_EMIT longPressed(QPrivateSignal());
             }
         });
+
+        connect(anim_, &QVariantAnimation::valueChanged, this, qOverload<>(&ClickableWidget::update));
+        connect(anim_, &QVariantAnimation::stateChanged, this, [this]()
+        {
+            if (anim_->state() == QAbstractAnimation::Stopped)
+            {
+                currentIcon_.normal_ = nextIcon_;
+                update();
+            }
+        });
     }
 
     SubmitButton::~SubmitButton() = default;
@@ -126,7 +137,7 @@ namespace Ui
         if (_state == getState() && _transition != StateTransition::Force)
             return;
 
-        anim_.finish();
+        anim_->stop();
         if (state_ != _state)
             hideToolTip();
 
@@ -143,13 +154,12 @@ namespace Ui
             currentIcon_.hover_ = icons.hover_;
             currentIcon_.pressed_ = icons.pressed_;
 
-            anim_.start(
-                [this]() { update(); },
-                [this]() { currentIcon_.normal_ = nextIcon_; update(); },
-                0.,
-                1.,
-                getAnimDuration().count(),
-                anim::sineInOut);
+            anim_->stop();
+            anim_->setStartValue(0.0);
+            anim_->setEndValue(1.0);
+            anim_->setDuration(getAnimDuration().count());
+            anim_->setEasingCurve(QEasingCurve::InOutSine);
+            anim_->start();
         }
 
         setTooltipText(getStateTooltip());
@@ -209,20 +219,21 @@ namespace Ui
             p.drawPixmap(QRect(x, y, iconWidth, iconWidth), _icon);
         };
 
-        if (anim_.isRunning())
+        if (anim_->state() != QAbstractAnimation::State::Running)
         {
-            drawIcon(currentIcon_.normal_, 1. - anim_.current(), 1. - anim_.current());
-            drawIcon(nextIcon_, anim_.current(), anim_.current());
+            drawIcon(currentIcon_.normal_, 1. - anim_->currentValue().toDouble(), 1. - anim_->currentValue().toDouble());
+            drawIcon(nextIcon_, anim_->currentValue().toDouble(), anim_->currentValue().toDouble());
         }
         else
         {
             const auto& icon = isPressed() ? currentIcon_.pressed_ : (isHovered() ? currentIcon_.hover_ : currentIcon_.normal_);
-            if (customFocusDraw && (hasFocus() || animFocus_.isRunning()))
+            const auto isAnimFocusRunning = animFocus_->state() != QAbstractAnimation::State::Running;
+            if (customFocusDraw && (hasFocus() || isAnimFocusRunning))
             {
-                if (animFocus_.isRunning())
+                if (isAnimFocusRunning)
                 {
                     drawIcon(icon, 1.0, 1.0);
-                    drawIcon(currentIcon_.hover_, 1.0, animFocus_.current());
+                    drawIcon(currentIcon_.hover_, 1.0, animFocus_->currentValue().toDouble());
                 }
                 else
                 {
@@ -366,7 +377,7 @@ namespace Ui
 
     void SubmitButton::onMouseStateChanged()
     {
-        if (anim_.isRunning())
+        if (anim_->state() == QAbstractAnimation::State::Running)
             setState(getState(), StateTransition::Force);
 
         update();

@@ -23,7 +23,7 @@ namespace core
 
         bool is_stopped() const;
 
-        bool is_write_data_log();
+        bool is_write_data_log() const;
         void set_write_data_log(bool _enable);
 
         void write_log_data(const char* _data, int64_t _size);

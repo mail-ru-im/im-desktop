@@ -62,6 +62,8 @@ namespace Ui
 {
     HistoryTextEdit::HistoryTextEdit(QWidget* _parent)
         : TextEditEx(_parent, getInputTextFont(), getInputTextColor(), true, false)
+        , placeholderAnim_(new QVariantAnimation(this))
+        , placeholderOpacityAnim_(new QVariantAnimation(this))
         , isEmpty_(true)
         , isPreediting_(false)
         , phAnimEnabled_(true)
@@ -88,6 +90,8 @@ namespace Ui
         viewport()->setCursor(Qt::IBeamCursor);
 
         connect(document(), &QTextDocument::contentsChanged, this, &HistoryTextEdit::onEditContentChanged);
+        connect(placeholderAnim_, &QVariantAnimation::valueChanged, this, qOverload<>(&ClickableWidget::update));
+        connect(placeholderOpacityAnim_, &QVariantAnimation::valueChanged, this, qOverload<>(&ClickableWidget::update));
     }
 
     void HistoryTextEdit::setPlaceholderTextEx(const QString &_text)
@@ -315,7 +319,7 @@ namespace Ui
                 block.layout()->drawCursor(&p, { 0, static_cast<qreal>(-verticalScrollBar()->value()) }, textCursor().positionInBlock());
         }
 
-        const auto animRunning = placeholderAnim_.isRunning();
+        const auto animRunning = placeholderAnim_->state() == QAbstractAnimation::State::Running;
         if (!customPlaceholderText_.isEmpty() && (animRunning || (isEmpty_ && !isPreediting_)))
         {
             p.setFont(getFont());
@@ -325,14 +329,14 @@ namespace Ui
             auto color = Styling::getParameters().getColor(colorVar);
             if (animRunning)
             {
-                const auto val = placeholderAnim_.current();
+                const auto val = placeholderAnim_->currentValue().toDouble();
                 if (phAnimType_ == AnimType::Appear)
                 {
                     color.setAlphaF(val);
                 }
                 else
                 {
-                    const auto alphaVal = placeholderOpacityAnim_.current();
+                    const auto alphaVal = placeholderOpacityAnim_->currentValue().toDouble();
                     color.setAlphaF(1.0 - alphaVal);
                     p.translate(getPlaceholderAnimEndX() * val, 0);
                 }
@@ -422,12 +426,22 @@ namespace Ui
         {
             phAnimType_ = _type;
 
-            placeholderAnim_.finish();
-            placeholderAnim_.start([this]() { update(); }, 0.0, 1.0, _duration.count(), anim::sineInOut);
+            placeholderAnim_->stop();
+            placeholderAnim_->setStartValue(0.0);
+            placeholderAnim_->setEndValue(1.0);
+            placeholderAnim_->setDuration(_duration.count());
+            placeholderAnim_->setEasingCurve(QEasingCurve::InOutSine);
+            placeholderAnim_->start();
 
-            placeholderOpacityAnim_.finish();
+            placeholderOpacityAnim_->stop();
             if (phAnimType_ == AnimType::Disappear)
-                placeholderOpacityAnim_.start([this]() { update(); }, 0.0, 1.0, _duration.count() / 2);
+            {
+                placeholderOpacityAnim_->setStartValue(0.0);
+                placeholderOpacityAnim_->setEndValue(1.0);
+                placeholderOpacityAnim_->setDuration(_duration.count() / 2);
+                placeholderOpacityAnim_->setEasingCurve(QEasingCurve::Linear);
+                placeholderOpacityAnim_->start();
+            }
         };
 
         const bool wasEmpty = isEmpty_;

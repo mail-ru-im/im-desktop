@@ -178,6 +178,7 @@ namespace Ui
         : ClickableWidget(_parent)
         , input_(_input)
         , opacityEffect_(new Utils::OpacityEffect(this))
+        , opacityAnimation_ (new QVariantAnimation(this))
         , persistent_(false)
     {
         assert(!popupInstance);
@@ -308,14 +309,24 @@ namespace Ui
 
         animState_ = AnimState::Showing;
 
-        opacityAnimation_.finish();
-        opacityAnimation_.start(
-            [this]() { opacityEffect_->setOpacity(opacityAnimation_.current()); },
-            [this]() { animState_ = AnimState::None; },
-            startValue,
-            1.0,
-            showHideDuration().count(),
-            anim::sineInOut);
+        opacityAnimation_->stop();
+        opacityAnimation_->disconnect(this);
+
+        connect(opacityAnimation_, &QVariantAnimation::valueChanged, this, [this]()
+        {
+            opacityEffect_->setOpacity(opacityAnimation_->currentValue().toDouble());
+        });
+        connect(opacityAnimation_, &QVariantAnimation::stateChanged, this, [this]()
+        {
+            if (opacityAnimation_->state() == QAbstractAnimation::Stopped)
+                animState_ = AnimState::None;
+        });
+
+        opacityAnimation_->setStartValue(startValue);
+        opacityAnimation_->setEndValue(1.0);
+        opacityAnimation_->setDuration(showHideDuration().count());
+        opacityAnimation_->setEasingCurve(QEasingCurve::InOutSine);
+        opacityAnimation_->start();
 
         show();
     }
@@ -328,14 +339,27 @@ namespace Ui
         const auto startValue = animState_ == AnimState::Showing ? opacityEffect_->opacity() : 1.0;
         animState_ = AnimState::Hiding;
 
-        opacityAnimation_.finish();
-        opacityAnimation_.start(
-            [this]() { opacityEffect_->setOpacity(opacityAnimation_.current()); },
-            [this]() { animState_ = AnimState::None; hide(); },
-            startValue,
-            0.0,
-            showHideDuration().count(),
-            anim::sineInOut);
+        opacityAnimation_->stop();
+        opacityAnimation_->disconnect(this);
+
+        connect(opacityAnimation_, &QVariantAnimation::valueChanged, this, [this]()
+        {
+            opacityEffect_->setOpacity(opacityAnimation_->currentValue().toDouble());
+        });
+        connect(opacityAnimation_, &QVariantAnimation::stateChanged, this, [this]()
+        {
+            if (opacityAnimation_->state() == QAbstractAnimation::Stopped)
+            {
+                animState_ = AnimState::None;
+                hide();
+            }
+        });
+
+        opacityAnimation_->setStartValue(startValue);
+        opacityAnimation_->setEndValue(0.0);
+        opacityAnimation_->setDuration(showHideDuration().count());
+        opacityAnimation_->setEasingCurve(QEasingCurve::InOutSine);
+        opacityAnimation_->start();
     }
 
     void AttachFilePopup::selectFirstItem()

@@ -498,32 +498,41 @@ bool wim_packet::is_timeout_error(const int32_t _error) noexcept
     return _error == wim_protocol_internal_error::wpie_robusto_timeout;
 }
 
-void log_replace_functor::add_marker(std::string_view _marker, range_evaluator _re)
+void log_replace_functor::add_marker(std::string_view _marker, ranges_evaluator _re)
 {
     markers_.push_back(std::make_pair(su::concat(_marker, '='), std::move(_re)));
 }
 
-void log_replace_functor::add_url_marker(std::string_view _marker, range_evaluator _re)
+void log_replace_functor::add_url_marker(std::string_view _marker, ranges_evaluator _re)
 {
     markers_.push_back(std::make_pair(std::string(_marker), std::move(_re)));
 }
 
-void log_replace_functor::add_json_marker(std::string_view _marker, range_evaluator _re)
+void log_replace_functor::add_json_marker(std::string_view _marker, ranges_evaluator _re)
 {
-    static constexpr std::string_view json_delimeter = "\":\"";
-    static constexpr std::string_view json_delimeter_with_space = "\": \"";
-    const static std::string json_delimeter_encoded = wim::wim_packet::escape_symbols("\":\"");
-    const static std::string json_qoute_encoded = wim::wim_packet::escape_symbols("\"");
+    static const constexpr std::string_view json_delimeter = "\":\"";
+    static const constexpr std::string_view json_delimeter_with_space = "\": \"";
+    static const auto json_delimeter_encoded = wim::wim_packet::escape_symbols("\":\"");
+    static const auto json_qoute_encoded = wim::wim_packet::escape_symbols("\"");
 
     markers_json_.push_back(std::make_pair(su::concat('"', _marker, json_delimeter), _re));
     markers_json_.push_back(std::make_pair(su::concat('"', _marker, json_delimeter_with_space), _re));
     markers_json_encoded_.push_back(std::make_pair(su::concat(json_qoute_encoded, _marker, json_delimeter_encoded), std::move(_re)));
 }
 
-void log_replace_functor::add_json_array_marker(std::string_view _marker, range_evaluator _re)
+void log_replace_functor::add_json_array_marker(std::string_view _marker, ranges_evaluator _re)
 {
-    markers_json_.push_back(std::make_pair(su::concat(_marker, "\":["), _re));
-    markers_json_.push_back(std::make_pair(su::concat(_marker, "\": ["), _re));
+    static const constexpr std::string_view json_delimeter = "\":[";
+    static const constexpr std::string_view json_delimeter_with_space = "\": [";
+    static const auto json_delimeter_encoded = wim::wim_packet::escape_symbols(json_delimeter);
+    static const auto json_delimeter_encoded_with_space = wim::wim_packet::escape_symbols(json_delimeter_with_space);
+    static const auto json_qoute_encoded = wim::wim_packet::escape_symbols("\"");
+
+    markers_json_.push_back(std::make_pair(su::concat('"', _marker, json_delimeter), _re));
+    markers_json_.push_back(std::make_pair(su::concat('"', _marker, json_delimeter_with_space), _re));
+
+    markers_json_encoded_.push_back(std::make_pair(su::concat(json_qoute_encoded, _marker, json_delimeter_encoded), _re));
+    markers_json_encoded_.push_back(std::make_pair(su::concat(json_qoute_encoded, _marker, json_delimeter_encoded_with_space), std::move(_re)));
 }
 
 void log_replace_functor::add_message_markers()
@@ -556,9 +565,11 @@ void log_replace_functor::operator()(tools::binary_stream& _bs) const
         bool found = false;
         bool found_json = false;
 
-        range_evaluator range_eval = nullptr;
+        ranges_evaluator range_eval = nullptr;
 
         static const auto json_array_end_not_encoded = std::string("]");
+        static const auto json_array_end_encoded = wim::wim_packet::escape_symbols(json_array_end_not_encoded);
+        static const auto json_array_begin_encoded = wim::wim_packet::escape_symbols("[");
 
         for (const auto& [m, re] : markers_)
         {
@@ -605,8 +616,17 @@ void log_replace_functor::operator()(tools::binary_stream& _bs) const
                         range_eval = re;
                         static const auto json_value_end_encoded = wim::wim_packet::escape_symbols("\"");
                         static const auto json_value_end_encoded_excluded = wim::wim_packet::escape_symbols("\\\"");
-                        json_value_end = json_value_end_encoded;
-                        json_value_end_excluded = json_value_end_encoded_excluded;
+
+                        if (m.back() == json_array_begin_encoded.back())
+                        {
+                            json_value_end = json_array_end_encoded;
+                            json_value_end_excluded.clear();
+                        }
+                        else
+                        {
+                            json_value_end = json_value_end_encoded;
+                            json_value_end_excluded = json_value_end_encoded_excluded;
+                        }
                         break;
                     }
                 }
@@ -616,22 +636,25 @@ void log_replace_functor::operator()(tools::binary_stream& _bs) const
         {
             if (range_eval)
             {
-                auto [start, end] = range_eval(std::string_view(data + i, sz - i));
-
-                end += i;
-                i += start;
-
-                while (i < sz && i <= size_t(end))
+                const auto ranges = range_eval(std::string_view(data + i, sz - i));
+                auto max_ii = i;
+                for (auto [start, end] : ranges)
                 {
-                    replace(data + i);
-                    ++i;
+                    auto ii = i + start;
+                    end += i;
+                    while (ii < sz && ii <= size_t(end))
+                    {
+                        mask_char(data + ii);
+                        ++ii;
+                    }
+                    max_ii = std::max(ii, max_ii);
                 }
             }
             else if (!found_json)
             {
                 while (i < sz && *(data + i) != '&' && *(data + i) != ' ')
                 {
-                    replace(data + i);
+                    mask_char(data + i);
                     ++i;
                 }
             }
@@ -688,12 +711,12 @@ void log_replace_functor::operator()(tools::binary_stream& _bs) const
                         }
                         else
                         {
-                            replace(data + i);
+                            mask_char(data + i);
                         }
                     }
                     else
                     {
-                        replace(data + i);
+                        mask_char(data + i);
                     }
 
                     ++i;
@@ -712,19 +735,19 @@ bool log_replace_functor::is_null() const
     return markers_.empty() && markers_json_.empty() && markers_json_encoded_.empty();
 }
 
-void log_replace_functor::replace(char *c)
+void log_replace_functor::mask_char(char *c)
 {
     if (*c != ' ') // do not replace space character
         *c = '*';
 }
 
-std::pair<std::ptrdiff_t, std::ptrdiff_t> aimsid_range_evaluator::operator()(std::string_view s) const
+log_replace_functor::ranges aimsid_range_evaluator::operator()(std::string_view s) const
 {
     // 025.0643767406.2836549238:123456 -> 025.0643767406.**********:123456
 
     size_t point_count = 0;
-    size_t start = 0;
-    size_t end = 0;
+    std::ptrdiff_t start = 0;
+    std::ptrdiff_t end = 0;
 
     for (size_t i = 0; i < s.size(); ++i)
     {
@@ -741,7 +764,81 @@ std::pair<std::ptrdiff_t, std::ptrdiff_t> aimsid_range_evaluator::operator()(std
         }
     }
 
-    return std::make_pair(start, end);
+    return { { start, end } };
+}
+
+std::pair<std::ptrdiff_t, std::ptrdiff_t> aimsid_single_range_evaluator::operator()(std::string_view s) const
+{
+    const auto ranges = aimsid_range_evaluator::operator()(s);
+    return ranges.empty() ? std::make_pair(std::ptrdiff_t(0), std::ptrdiff_t(0)) : ranges.front();
+}
+
+log_replace_functor::ranges poll_responses_ranges_evaluator::operator()(std::string_view s) const
+{
+    // %22123%22%2C%22%D1%84%D1%83%22%2C%22bar%22%5D -> %22***%22%2C%22************%22%2C%22***%22%5D
+    
+    static const auto quote = wim::wim_packet::escape_symbols("\"");
+    static const auto backslash = wim::wim_packet::escape_symbols("\\");
+    static const auto braket_close = wim::wim_packet::escape_symbols("]");
+
+    static const auto invalid_offset = std::ptrdiff_t(0);
+    log_replace_functor::ranges result;
+
+    enum state_enum {
+        look_for_array_close_bracket,
+        look_for_string_close_quote,
+        look_for_what_is_escaped,
+    } state = look_for_array_close_bracket;
+
+    auto read_symbol = [end = s.cend()](auto& it)->std::string_view{
+        assert(it != end);
+        const auto step = *it == '%' ? 3 : 1;
+        return std::string_view(&(*it), step);
+    };
+
+    const auto begin = s.cbegin();
+    const auto end = s.cend();
+    auto it = begin;
+    while (it < end)
+    {
+        const auto symbol = read_symbol(it);
+        it += symbol.size();
+
+        if (look_for_array_close_bracket == state && symbol == braket_close)
+        {
+            break;
+        }
+        else if (look_for_array_close_bracket == state && symbol == quote)
+        {
+            result.emplace_back(std::distance(begin, it), invalid_offset);
+            state = look_for_string_close_quote;
+        }
+        else if (look_for_string_close_quote == state && symbol == quote)
+        {
+            assert(!result.empty());
+            if (result.empty())
+                break;
+            result.back().second = std::distance(begin, it - symbol.size()) - 1;
+            state = look_for_array_close_bracket;
+        }
+        else if (look_for_string_close_quote == state && symbol == backslash)
+        {
+            state = look_for_what_is_escaped;
+        }
+        else if (look_for_what_is_escaped == state)
+        {
+            state = look_for_string_close_quote;
+        }
+    }
+
+    return result;
+}
+
+log_replace_functor::ranges speechtotext_fileid_range_evaluator::operator()(std::string_view s) const
+{
+    // Z0201YB4Tty47Prq1f6hBN5f1ee20d1ac?aimsid=... -> *********************************?aimsid=...
+    const auto questionIt = std::find(s.cbegin(), s.cend(), '?');
+    return { { 0, std::distance(s.cbegin(), questionIt - 1) } };
 }
 
 tail_from_last_range_evaluator::tail_from_last_range_evaluator(const char _chr)
@@ -749,10 +846,10 @@ tail_from_last_range_evaluator::tail_from_last_range_evaluator(const char _chr)
 {
 }
 
-std::pair<std::ptrdiff_t, std::ptrdiff_t> tail_from_last_range_evaluator::operator()(std::string_view _str) const
+log_replace_functor::ranges tail_from_last_range_evaluator::operator()(std::string_view _str) const
 {
-    size_t start = 0;
-    size_t end = _str.size() - 1;
+    std::ptrdiff_t start = 0;
+    std::ptrdiff_t end = _str.size() - 1;
 
     for (size_t i = 0u; i < _str.size(); ++i)
     {
@@ -767,7 +864,7 @@ std::pair<std::ptrdiff_t, std::ptrdiff_t> tail_from_last_range_evaluator::operat
         }
     }
 
-    return std::make_pair(start, end);
+    return { { start, end } };
 }
 
 core::distance_range_evaluator::distance_range_evaluator(std::ptrdiff_t _distance)
@@ -775,9 +872,9 @@ core::distance_range_evaluator::distance_range_evaluator(std::ptrdiff_t _distanc
 {
 }
 
-std::pair<std::ptrdiff_t, std::ptrdiff_t> core::distance_range_evaluator::operator()(std::string_view) const
+log_replace_functor::ranges core::distance_range_evaluator::operator()(std::string_view) const
 {
     if (distance_ > 0)
-        return { 0, distance_ };
-    return { distance_, 0 };
+        return { { 0, distance_ } };
+    return { { distance_, 0 } };
 }

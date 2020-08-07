@@ -3,7 +3,6 @@
 #include "SidebarUtils.h"
 #include "../../types/message.h"
 #include "types/filesharing_download_result.h"
-#include "../../animation/animation.h"
 
 namespace Ui
 {
@@ -194,6 +193,6 @@ namespace Ui
         int playingId_;
         std::pair<qint64, qint64> playingIndex_;
         int lastProgress_;
-        anim::Animation animation_;
+        QVariantAnimation* animation_;
     };
 }

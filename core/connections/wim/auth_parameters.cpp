@@ -316,7 +316,7 @@ void fetch_parameters::serialize(core::tools::binary_stream& _stream) const
     core::tools::tlvpack pack;
     core::tools::binary_stream temp_stream;
 
-    pack.push_child(core::tools::tlv(fpt_fetch_url, hide_url_param(fetch_url_, "aimsid", aimsid_range_evaluator())));
+    pack.push_child(core::tools::tlv(fpt_fetch_url, hide_url_param(fetch_url_, "aimsid", aimsid_single_range_evaluator())));
     pack.push_child(core::tools::tlv(fpt_last_successful_fetch, (int64_t) last_successful_fetch_));
 
     pack.serialize(temp_stream);

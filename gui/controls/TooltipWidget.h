@@ -1,6 +1,5 @@
 #pragma once
 #include "TextUnit.h"
-#include "../animation/animation.h"
 
 namespace Ui
 {
@@ -109,7 +108,7 @@ namespace Ui
         GradientWidget* gradientRight_;
         GradientWidget* gradientLeft_;
         Utils::OpacityEffect* opacityEffect_;
-        anim::Animation opacityAnimation_;
+        QVariantAnimation* opacityAnimation_;
         bool canClose_;
         bool bigArrow_;
         bool isCursorOver_;

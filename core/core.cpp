@@ -212,19 +212,36 @@ std::unique_ptr<core::core_dispatcher>    core::g_core;
 constexpr std::string_view message_log("_log");
 constexpr std::string_view message_network_log("_network_log");
 
-std::string_view get_omicron_dev_id()
+static std::string_view get_omicron_dev_id()
 {
     constexpr auto key = platform::is_apple()
         ? config::values::omicron_dev_id_mac : (platform::is_windows() ? config::values::omicron_dev_id_win : config::values::omicron_dev_id_linux);
     return config::get().string(key);
 }
 
-constexpr auto get_omicron_app_environment() noexcept
+static constexpr auto get_omicron_app_environment() noexcept
 {
     return environment::is_alpha() ? omicronlib::environment_type::alpha
             : (environment::is_beta() ? omicronlib::environment_type::beta
                 : (environment::is_release() ? omicronlib::environment_type::release
                     : omicronlib::environment_type::develop));
+}
+
+static constexpr std::string_view get_omicron_arch() noexcept
+{
+#if defined(__x86_64__)
+    return "x64";
+#else
+    if constexpr (platform::is_apple())
+    {
+#if defined(__arm64)
+        return "arm64";
+#else
+        return "unkn";
+#endif // defined(__arm64)
+    }
+    return "x32";
+#endif // defined(__x86_64__)
 }
 
 core_dispatcher::core_dispatcher()
@@ -409,7 +426,7 @@ void core::core_dispatcher::start(const common::core_gui_settings& _settings)
 #endif
 
 #if defined _WIN32 || defined __linux__ || BUILD_FOR_STORE
-    report_sender_ = std::make_shared<dump::report_sender>(g_core->get_login_after_start());
+    report_sender_ = std::make_shared<dump::report_sender>(g_core->get_login_after_start(), core::configuration::get_app_config().is_full_log_enabled());
     report_sender_->send_report();
 #endif
 
@@ -673,6 +690,21 @@ void core::core_dispatcher::post_message_to_gui(std::string_view _message, int64
         if (size > 0)
             bs.write<std::string_view>("\r\n");
     }
+    else if (_message_data && _message == "core/logins")
+    {
+        const auto login = _message_data->get_value("login")->get_as_string();
+        const auto has_valid_login = _message_data->get_value("has_valid_login")->get_as_bool();
+        const auto locked = _message_data->get_value("locked")->get_as_bool();
+        bs.write<std::string_view>("login: ");
+        bs.write<std::string_view>(login);
+        bs.write<std::string_view>(";\r\n");
+        bs.write<std::string_view>("has_valid_login: ");
+        bs.write<std::string_view>(logutils::yn(has_valid_login));
+        bs.write<std::string_view>(";\r\n");
+        bs.write<std::string_view>("locked: ");
+        bs.write<std::string_view>(logutils::yn(locked));
+        bs.write<std::string_view>(";\r\n");
+    }
 
 //     if (_message_data)
 //     {
@@ -730,7 +762,8 @@ void core_dispatcher::load_statistics()
     if (!is_stats_enabled())
         return;
 
-    statistics_ = std::make_shared<core::stats::statistics>(utils::get_product_data_path() + L"/stats/stats.stg");
+    statistics_ = std::make_shared<core::stats::statistics>(
+        utils::get_product_data_path() + L"/stats/stats.stg", utils::get_product_data_path() + L"/stats/stats_mt.stg");
 
     execute_core_context([this]
     {
@@ -1577,6 +1610,7 @@ void core::core_dispatcher::start_omicron_service()
     conf.add_fingerprint("app_build", core::tools::version_info().get_build_version());
     conf.add_fingerprint("os_version", core::tools::system::get_os_version_string());
     conf.add_fingerprint("device_id", g_core->get_uniq_device_id());
+    conf.add_fingerprint("arch", std::string(get_omicron_arch()));
     auto account = g_core->get_root_login();
     if (!account.empty())
         conf.add_fingerprint("account", account);

@@ -5,7 +5,6 @@
 #include "launch.h"
 #include "utils.h"
 #include "log/log.h"
-#include "animation/animation.h"
 #include "../core_dispatcher.h"
 #include "../gui_settings.h"
 #include "../cache/emoji/Emoji.h"
@@ -161,7 +160,6 @@ namespace Utils
     Application::~Application()
     {
         mainWindow_.reset();
-        anim::AnimationManager::stopManager();
 
         Emoji::Cleanup();
 
@@ -304,8 +302,8 @@ namespace Utils
 
     void Application::initMainWindow(const bool _hasValidLogin, const bool _locked, const QString& _validOrFirstLogin)
     {
-        anim::AnimationManager::startManager();
         Logic::GetFriendlyContainer();
+        Logic::GetLastseenContainer();
 
         double dpi = app_->primaryScreen()->logicalDotsPerInchX();
 

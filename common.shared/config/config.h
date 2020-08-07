@@ -66,7 +66,7 @@ namespace config
         external_config_use_preset_url,
         store_version,
         has_connect_by_ip_option,
-        
+
         max_size
     };
 
@@ -164,6 +164,9 @@ namespace config
         server_api_version,
         server_mention_timeout,
         support_uin,
+        mytracker_app_id_win,
+        mytracker_app_id_mac,
+        mytracker_app_id_linux,
 
         max_size
     };
@@ -226,6 +229,7 @@ namespace config
         bool is_external() const noexcept;
 
         void override_feature(features _f, bool _value);
+        void reset_feature_to_default(features _f);
 
     private:
         bool is_external_ = false;
@@ -242,6 +246,7 @@ namespace config
 {
     const configuration& get();
     void override_feature(features _f, bool _value);
+    void reset_feature_to_default(features _f);
     bool is_overridden(urls _v);
     bool is_overridden(features _v);
     bool is_overridden(values _v);

@@ -367,7 +367,7 @@ namespace Ui
             if (!shortView_)
             {
                 about_ = addInfoBlock(QT_TRANSLATE_NOOP("sidebar", "About me"), QString(), widget, infoContainerLayout);
-                about_->text_->makeCopyable();
+                about_->text_->makeTextField();
                 connect(about_->text_, &TextLabel::menuAction, this, &UserProfile::menuAction);
 
                 nick_ = addInfoBlock(QT_TRANSLATE_NOOP("sidebar", "Nickname"), QString(), widget, infoContainerLayout);
@@ -1008,7 +1008,6 @@ namespace Ui
         }
 
         userInfo_ = _info;
-        Logic::GetLastseenContainer()->setContactLastSeen(_aimid, _info.lastseen_);
         updateLastSeen();
 
         setInfoPlaceholderVisible(false);
@@ -1313,5 +1312,10 @@ namespace Ui
             galleryWidget_->setVisible(!galleryIsEmpty_);
             secondSpacer_->setVisible(!galleryIsEmpty_);
         }
+    }
+
+    QString UserProfile::getSelectedText() const
+    {
+        return about_->getSelectedText();
     }
 }

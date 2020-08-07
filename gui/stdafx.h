@@ -184,6 +184,7 @@
 #include <QScopedValueRollback>
 #include <QtPlatformHeaders/QWindowsWindowFunctions>
 #include <QCache>
+#include <QVariantAnimation>
 #include <QScopeGuard>
 #if defined(IM_AUTO_TESTING)
     #include <QTest>

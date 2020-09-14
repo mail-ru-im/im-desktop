@@ -3,6 +3,7 @@
 
 #include "core.h"
 #include "tools/binary_stream.h"
+#include "tools/features.h"
 #include "tools/strings.h"
 #include "tools/system.h"
 #include "tools/tlv.h"
@@ -79,17 +80,16 @@ namespace
         return su::concat(mytracker_url, "/customEvent/?idApp=", get_mytracker_app_id());
     }
 
-    void write_to_txt_debug_log(std::wstring base_stg_file, const std::string& message)
+    void write_to_txt_debug_log(std::wstring_view base_stg_file, std::string_view message)
     {
 #ifdef DEBUG
-        {   // For the purpose of simplifying testing
-            const auto path = base_stg_file + L".txt";
-            boost::system::error_code e;
-            boost::filesystem::ofstream fOut;
-            fOut.open(path, std::ios::app);
-            fOut << message << std::endl;
-            fOut.close();
-        }
+        // For the purpose of simplifying testing
+        const auto path = su::wconcat(base_stg_file, L".txt");
+        boost::system::error_code e;
+        boost::filesystem::ofstream fOut;
+        fOut.open(path, std::ios::app);
+        fOut << message << std::endl;
+        fOut.close();
 #endif // DEBUG
     }
 }
@@ -550,6 +550,9 @@ void core::stats::statistics::save_flurry()
 
 void core::stats::statistics::save_mytracker()
 {
+    if (!features::is_statistics_mytracker_enabled())
+        return;
+
     changed_mytracker_ = false;
     auto bs_data = std::make_shared<tools::binary_stream>();
     serialize_mytracker(*bs_data);
@@ -614,11 +617,9 @@ void statistics::send_flurry_async()
     };
 }
 
-void core::stats::statistics::send_mytracker_async(std::shared_ptr<stats_event> event)
+void core::stats::statistics::send_mytracker_async(const std::shared_ptr<stats_event>& event)
 {
-    const auto post_data = get_mytracker_post_data(*event);
-
-    stats_thread_->run_async_function([post_data = std::move(post_data), user_proxy = g_core->get_proxy_settings(), event_name = event->get_name(), debug_filename = file_name_mytracker_]
+    stats_thread_->run_async_function([post_data = get_mytracker_post_data(*event), user_proxy = g_core->get_proxy_settings(), event_name = event->get_name(), debug_filename = file_name_mytracker_]
         {
             return static_cast<int32_t>(statistics::send_mytracker(user_proxy, post_data, event_name, debug_filename));
 
@@ -640,6 +641,9 @@ void core::stats::statistics::send_mytracker_async(std::shared_ptr<stats_event> 
 
 void core::stats::statistics::resend_failed_mytracker_async()
 {
+    if (!features::is_statistics_mytracker_enabled())
+        return;
+
     std::vector<std::shared_ptr<stats_event>> events_to_resend;
     std::copy_if(events_for_mytracker_.cbegin(), events_for_mytracker_.cend(), std::back_inserter(events_to_resend),
         [](const std::shared_ptr<stats_event>& sp) {
@@ -672,7 +676,7 @@ void core::stats::statistics::resend_failed_mytracker_async()
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
             return;
-        
+
         for (auto it = attempted_to_resend.cbegin(); it < attempted_to_resend.cbegin() + num_sent; ++it)
             ptr_this->events_for_mytracker_.erase(*it);
         ptr_this->save_mytracker();
@@ -857,7 +861,7 @@ std::vector<std::string> statistics::get_post_data() const
     return result;
 }
 
-bool statistics::send_flurry(const proxy_settings& _user_proxy, const std::string& post_data, const std::wstring& _file_name)
+bool statistics::send_flurry(const proxy_settings& _user_proxy, std::string_view post_data, std::wstring_view _file_name)
 {
     const std::weak_ptr<stop_objects> wr_stop(stop_objects_);
 
@@ -881,10 +885,10 @@ bool statistics::send_flurry(const proxy_settings& _user_proxy, const std::strin
     post_request.set_url(su::concat(flurry_url, "?d=", core::tools::base64::encode64(post_data), "&c=", core::tools::adler32(post_data)));
     post_request.set_normalized_url("flurry");
     post_request.set_send_im_stats(false);
-    return post_request.get();
+    return post_request.get() == curl_easy::completion_code::success;
 }
 
-long core::stats::statistics::send_mytracker(const proxy_settings& _user_proxy, std::string_view post_data, stats_event_names event_name, const std::wstring& _debug_log_file_name)
+long core::stats::statistics::send_mytracker(const proxy_settings& _user_proxy, std::string_view post_data, stats_event_names event_name, std::wstring_view _debug_log_file_name)
 {
     const std::weak_ptr<stop_objects> wr_stop(stop_objects_);
 
@@ -914,7 +918,7 @@ long core::stats::statistics::send_mytracker(const proxy_settings& _user_proxy, 
         request.set_need_log(false);
 
     const auto start = std::chrono::steady_clock().now();
-    const auto is_sent_ok = request.post();
+    const auto is_sent_ok = request.post() == curl_easy::completion_code::success;
     const auto finish = std::chrono::steady_clock().now();
 
     const auto response_code = request.get_response_code();
@@ -924,9 +928,9 @@ long core::stats::statistics::send_mytracker(const proxy_settings& _user_proxy, 
         if (is_sent_ok)
         {
             if (200 == response_code)
-                log_message << std::to_string(response_code) << " (success)";
+                log_message << response_code << " (success)";
             else
-                log_message << std::to_string(response_code) << " (API error)";
+                log_message << response_code << " (API error)";
         }
         else
         {
@@ -934,8 +938,10 @@ long core::stats::statistics::send_mytracker(const proxy_settings& _user_proxy, 
         }
         log_message << ", completed in " << std::chrono::duration_cast<std::chrono::milliseconds>(finish - start).count() << " ms\n";
 
-        write_to_txt_debug_log(_debug_log_file_name, su::concat("\n", log_message.str(), post_data));
-        g_core->write_string_to_network_log(log_message.str());
+        const auto log_str = log_message.str();
+
+        write_to_txt_debug_log(_debug_log_file_name, su::concat('\n', log_str, post_data));
+        g_core->write_string_to_network_log(log_str);
     }
     return is_sent_ok ? response_code : 0;
 }
@@ -962,6 +968,9 @@ void statistics::insert_event_flurry(stats_event_names _event_name, event_props_
 void statistics::insert_event_mytracker(stats_event_names _event_name, event_props_type&& _props,
     std::chrono::system_clock::time_point _event_time, int32_t _event_id)
 {
+    if (!features::is_statistics_mytracker_enabled())
+        return;
+
     if (g_core->get_root_login().empty())
         return;  // Don't send as mytracker doesn't support such messages
 

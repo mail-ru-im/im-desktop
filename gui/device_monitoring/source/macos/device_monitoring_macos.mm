@@ -7,7 +7,7 @@
 #define TRACEFXN
 
 @interface CaptureDeviceMonitor : NSObject {
-    device::DeviceMonitoringCallback *_captureObserver;
+    device::DeviceMonitoringMacos *_captureObserver;
 }
 
 @property (retain) NSArray *videoCaptureDevices;
@@ -34,6 +34,7 @@
                                                      name:AVCaptureDeviceWasDisconnectedNotification
                                                    object:nil];
         self.videoCaptureDevices = [AVCaptureDevice devicesWithMediaType:AVMediaTypeVideo];
+        self.audioDevices = [AVCaptureDevice devicesWithMediaType:AVMediaTypeAudio];
     }
     return self;
 }
@@ -48,7 +49,7 @@
     [super dealloc];
 }
 
-- (void)setCaptureObserver:(device::DeviceMonitoringCallback *)observer
+- (void)setCaptureObserver:(device::DeviceMonitoringMacos *)observer
 {
     _captureObserver = observer;
 }
@@ -61,7 +62,7 @@
         {
             self.videoCaptureDevices = vdevices;
             if (_captureObserver)
-                _captureObserver->DeviceMonitoringListChanged();
+                _captureObserver->DeviceMonitoringVideoListChanged();
             return;
         }
     }
@@ -73,7 +74,7 @@
             {
                 self.audioDevices = adevices;
                 if (_captureObserver)
-                    _captureObserver->DeviceMonitoringListChanged();
+                    _captureObserver->DeviceMonitoringAudioListChanged();
                 return;
             }
         }
@@ -87,7 +88,7 @@
         {
             self.videoCaptureDevices = vdevices;
             if (_captureObserver)
-                _captureObserver->DeviceMonitoringListChanged();
+                _captureObserver->DeviceMonitoringVideoListChanged();
             return;
         }
     }
@@ -99,7 +100,7 @@
             {
                 self.audioDevices = adevices;
                 if (_captureObserver)
-                    _captureObserver->DeviceMonitoringListChanged();
+                    _captureObserver->DeviceMonitoringAudioListChanged();
                 return;
             }
         }
@@ -121,7 +122,8 @@ DeviceMonitoringMacos::~DeviceMonitoringMacos()
 
 bool DeviceMonitoringMacos::Start()
 {
-    if(_isStarted) return false;
+    if (_isStarted)
+        return false;
     SetHandlers(true);
     _objcInstance = [[CaptureDeviceMonitor alloc] init];
     [(CaptureDeviceMonitor*)_objcInstance setCaptureObserver:this];
@@ -173,7 +175,7 @@ OSStatus DeviceMonitoringMacos::objectListenerProc(
         void* clientData)
 {
     auto* ptrThis = (DeviceMonitoringMacos*)clientData;
-    ptrThis->DeviceMonitoringAudioPropChanged();
+    ptrThis->DeviceMonitoringAudioListChanged();
     return 0;
 }
 

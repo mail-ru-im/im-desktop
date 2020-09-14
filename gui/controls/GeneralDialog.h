@@ -96,6 +96,8 @@ namespace Ui
 
         SemitransparentWindowAnimated* getSemiWindow() const { return semiWindow_; }
 
+        void setTransparentBackground(bool _enable);
+
     protected:
         void showEvent(QShowEvent *) override;
         void hideEvent(QHideEvent *) override;

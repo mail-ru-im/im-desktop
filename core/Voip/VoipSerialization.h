@@ -225,7 +225,6 @@ inline void operator<<(voip_manager::Contact& _contact, core::coll_helper& _coll
     _contact.contact = _coll.get_value_as_string("contact");
 
     assert(!_contact.call_id.empty());
-    assert(!_contact.contact.empty());
 }
 
 inline void operator>>(const voip_manager::ContactEx& _contact_ex, core::coll_helper& _coll)

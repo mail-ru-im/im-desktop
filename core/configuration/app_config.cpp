@@ -118,9 +118,6 @@ pt::ptree app_config::as_ptree() const
         case app_config::AppConfigOption::sys_crash_handler_enabled:
             result.add(option_name(key), is_sys_crash_handler_enabled());
             break;
-        case app_config::AppConfigOption::connect_by_ip:
-            result.add(option_name(key), is_connect_by_ip_enabled());
-            break;
 
         default:
             assert(!"unhandled option for as_ptree");
@@ -211,13 +208,6 @@ bool app_config::is_show_hidden_themes() const
 bool app_config::is_sys_crash_handler_enabled() const
 {
     auto it = app_config_options_.find(app_config::AppConfigOption::sys_crash_handler_enabled);
-    return it == app_config_options_.end() ? false
-        : boost::any_cast<bool>(it->second);
-}
-
-bool app_config::is_connect_by_ip_enabled() const
-{
-    auto it = app_config_options_.find(app_config::AppConfigOption::connect_by_ip);
     return it == app_config_options_.end() ? false
         : boost::any_cast<bool>(it->second);
 }
@@ -429,7 +419,6 @@ void app_config::serialize(Out core::coll_helper &_collection) const
     _collection.set<bool>(option_name(app_config::AppConfigOption::hide_keyword_pattern), is_hide_keyword_pattern());
     _collection.set<bool>(option_name(app_config::AppConfigOption::show_hidden_themes), is_show_hidden_themes());
     _collection.set<bool>(option_name(app_config::AppConfigOption::sys_crash_handler_enabled), is_sys_crash_handler_enabled());
-    _collection.set<bool>(option_name(app_config::AppConfigOption::connect_by_ip), is_connect_by_ip_enabled());
 
     // urls
     _collection.set<std::string_view>("urls.url_update_mac_alpha", get_update_mac_alpha_url());
@@ -612,10 +601,6 @@ namespace
             {
                 app_config::AppConfigOption::sys_crash_handler_enabled,
                 property_tree_.get<bool>(option_name(app_config::AppConfigOption::sys_crash_handler_enabled), false)
-            },
-            {
-                app_config::AppConfigOption::connect_by_ip,
-                property_tree_.get<bool>(option_name(app_config::AppConfigOption::connect_by_ip), false)
             }
         };
     }
@@ -666,8 +651,6 @@ namespace
             return "show_hidden_themes";
         case app_config::AppConfigOption::sys_crash_handler_enabled:
             return "sys_crash_handler_enabled";
-        case app_config::AppConfigOption::connect_by_ip:
-            return "dev.connect_by_ip";
 
         default:
             assert(!"unhandled option for option_name");

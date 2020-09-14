@@ -10,11 +10,40 @@ namespace
 
 namespace Logic
 {
+    std::unique_ptr<PrivacySettingsManager> g_privacy_settings_manager;
+
     PrivacySettingsManager::PrivacySettingsManager(QObject* _parent)
         : QObject(_parent)
         , getSeq_(-1)
     {
         connect(Ui::GetDispatcher(), &Ui::core_dispatcher::setPrivacyParamsResult, this, &PrivacySettingsManager::onSetValueResult);
+    }
+
+    void PrivacySettingsManager::requestPrivacySettings()
+    {
+        if (getSeq_ >= 0)
+            return;
+
+        getSeq_ = Ui::GetDispatcher()->post_message_to_core("privacy_settings/get", nullptr, this, [this](core::icollection* _coll)
+        {
+            getSeq_ = -1;
+
+            Ui::gui_coll_helper coll(_coll, false);
+            int32_t err = coll.get_value_as_int("error", 0);
+            if (err == 0)
+            {
+                const auto array = coll.get_value_as_array("privacy_groups");
+                for (auto i = 0, size = array->size(); i < size; ++i)
+                {
+                    auto grp_coll = array->get_at(i)->get_as_collection();
+                    Ui::gui_coll_helper grpHelper(grp_coll, false);
+                    auto grpName = grpHelper.get<QString>("name", "");
+                    const auto val = grpHelper.get_value_as_enum<core::privacy_access_right>("allowTo", core::privacy_access_right::not_set);
+
+                    cached_values_[std::move(grpName)] = val;
+                }
+            }
+        });
     }
 
     void PrivacySettingsManager::setValue(const QString& _settingsGroup, const core::privacy_access_right _value, const QObject* _object, setValueCallback _callback)
@@ -64,9 +93,11 @@ namespace Logic
                     auto grp_coll = array->get_at(i)->get_as_collection();
                     Ui::gui_coll_helper grpHelper(grp_coll, false);
                     const auto grpName = grpHelper.get<QString>("name", "");
+                    const auto val = grpHelper.get_value_as_enum<core::privacy_access_right>("allowTo", core::privacy_access_right::not_set);
+
+                    cached_values_[grpName] = val;
                     if (const auto it = getCallbacks_.find(grpName); it != getCallbacks_.end())
                     {
-                        const auto val = grpHelper.get_value_as_enum<core::privacy_access_right>("allowTo", core::privacy_access_right::not_set);
                         it->second.callback_(val);
                         getCallbacks_.erase(it);
                     }
@@ -83,6 +114,15 @@ namespace Logic
             if (seq == getSeq_)
                 onFailure();
         });
+    }
+
+    core::privacy_access_right PrivacySettingsManager::get_cached_value(const QString& _settingsGroup)
+    {
+        const auto iter = cached_values_.find(_settingsGroup);
+        if (iter == cached_values_.end())
+            return core::privacy_access_right::not_set;
+
+        return iter->second;
     }
 
     void PrivacySettingsManager::onSetValueResult(const int64_t _seq, const bool _success)
@@ -107,5 +147,19 @@ namespace Logic
 
         eraseFormMap(getCallbacks_);
         eraseFormMap(setCallbacks_);
+    }
+
+    PrivacySettingsManager* getPrivacySettingsManager()
+    {
+        if (!g_privacy_settings_manager)
+            g_privacy_settings_manager = std::make_unique<Logic::PrivacySettingsManager>(nullptr);
+
+        return g_privacy_settings_manager.get();
+    }
+
+    void ResetPrivacySettingsManager()
+    {
+        if (g_privacy_settings_manager)
+            g_privacy_settings_manager.reset();
     }
 }

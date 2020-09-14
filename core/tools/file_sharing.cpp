@@ -156,7 +156,7 @@ std::optional<std::string_view> parse_new_file_sharing_uri(std::string_view _uri
 
 std::string_view get_file_id(std::string_view _uri)
 {
-    const auto id = core::tools::trim_right(_uri, '/');
+    const auto id = core::tools::trim_right_copy(_uri, '/');
 
     if (const auto pos = id.rfind('/'); std::string_view::npos != pos)
         return id.substr(pos + 1);

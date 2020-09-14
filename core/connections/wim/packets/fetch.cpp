@@ -84,7 +84,7 @@ int32_t fetch::init_request(const std::shared_ptr<core::http_request_simple>& _r
 {
     std::stringstream ss_url;
 
-    if (auto trimmed = core::tools::trim_right(std::string_view(fetch_url_), '/'); trimmed.rfind('?') == std::string_view::npos)
+    if (auto trimmed = core::tools::trim_right_copy(std::string_view(fetch_url_), '/'); trimmed.rfind('?') == std::string_view::npos)
         ss_url << trimmed << '?';
     else
         ss_url << trimmed << '&';
@@ -138,8 +138,10 @@ int32_t fetch::execute_request(const std::shared_ptr<core::http_request_simple>&
 
     execute_time_ = time(nullptr);
 
-    if (!_request->get(request_time_))
-        return wpie_network_error;
+    url_ = _request->get_url();
+
+    if (auto error_code = get_error(_request->get(request_time_)))
+        return *error_code;
 
     http_code_ = (uint32_t)_request->get_response_code();
 

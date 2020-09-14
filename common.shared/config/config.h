@@ -5,6 +5,15 @@
 #include <string_view>
 #include <optional>
 #include <tuple>
+#include <memory>
+#include <vector>
+#include <mutex>
+#include <algorithm>
+
+namespace common::tools
+{
+    class spin_lock;
+}
 
 namespace config
 {
@@ -61,11 +70,13 @@ namespace config
         show_reactions,
         open_icqcom_link,
         statistics,
+        statistics_mytracker,
         force_update_check_allowed,
         call_room_info_enabled,
         external_config_use_preset_url,
         store_version,
-        has_connect_by_ip_option,
+        dns_workaround,
+        external_emoji,
 
         max_size
     };
@@ -108,7 +119,8 @@ namespace config
         attach_phone,
         update_app_url,
         vcs_room,
-        to_replace_hosts,
+        dns_cache,
+        external_emoji,
 
         // add type before this place
 
@@ -186,22 +198,26 @@ namespace config
     using value_type = std::variant<int64_t, double, std::string>;
 
     using urls_array = std::array<std::pair<urls, std::string>, static_cast<size_t>(urls::max_size)>;
-    using features_array = std::array<std::tuple<features, bool, bool>, static_cast<size_t>(features::max_size)>;
+    using features_array = std::array<std::pair<features, bool>, static_cast<size_t>(features::max_size)>;
     using values_array = std::array<std::pair<values, value_type>, static_cast<size_t>(values::max_size)>;
     using translations_array = std::array<std::pair<translations, std::string>, static_cast<size_t>(translations::max_size)>;
+
+    using features_vector = std::vector<std::pair<features, bool>>;
+
+    struct external_configuration
+    {
+        features_vector features;
+    };
+
+    void set_external(std::shared_ptr<external_configuration> _f);
 
     // all strings are null terminated
     class configuration
     {
     public:
-        enum class type_index
-        {
-            key,
-            value,
-            override
-        };
-
-        explicit configuration(std::string_view json, bool external);
+        explicit configuration(std::string_view json, bool _is_debug);
+        configuration(configuration&&) = default;
+        ~configuration();
 
         bool is_valid() const noexcept;
 
@@ -226,28 +242,36 @@ namespace config
 
         bool is_overridden(features) const noexcept;
 
-        bool is_external() const noexcept;
-
-        void override_feature(features _f, bool _value);
-        void reset_feature_to_default(features _f);
+        bool is_debug() const noexcept;
 
     private:
-        bool is_external_ = false;
+        configuration();
+        struct default_c
+        {
+            urls_array urls;
+            features_array features;
+            values_array values;
+            translations_array translations;
+        } c_;
+
+        bool is_debug_ = false;
         bool is_valid_ = false;
 
-        urls_array urls_;
-        features_array features_;
-        values_array values_;
-        translations_array translations_;
+        std::unique_ptr<common::tools::spin_lock> spin_lock_;
+        std::shared_ptr<external_configuration> e_;
+
+    private:
+        std::shared_ptr<external_configuration> get_external() const;
+
+        void set_external(std::shared_ptr<external_configuration>);
+
+        friend void config::set_external(std::shared_ptr<external_configuration> _f);
     };
 }
 
 namespace config
 {
     const configuration& get();
-    void override_feature(features _f, bool _value);
-    void reset_feature_to_default(features _f);
-    bool is_overridden(urls _v);
     bool is_overridden(features _v);
-    bool is_overridden(values _v);
+    void reset_external();
 }

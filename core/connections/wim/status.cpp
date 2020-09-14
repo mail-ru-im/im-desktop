@@ -28,7 +28,9 @@ namespace core
 
         coll_st.set_value_as_string("status", status_);
         coll_st.set_value_as_int64("startTime", to_seconds(start_time_));
-        coll_st.set_value_as_int64("endTime", to_seconds(end_time_));
+
+        if (end_time_)
+            coll_st.set_value_as_int64("endTime", to_seconds(*end_time_));
 
         _coll.set_value_as_collection("status", coll_st.get());
     }
@@ -39,7 +41,9 @@ namespace core
 
         status_node.AddMember("status", status_, _a);
         status_node.AddMember("startTime", to_seconds(start_time_), _a);
-        status_node.AddMember("endTime", to_seconds(end_time_), _a);
+
+        if (end_time_)
+            status_node.AddMember("endTime", to_seconds(*end_time_), _a);
         status_node.AddMember("isSending", my_status_sending_, _a);
 
         _node.AddMember("status", std::move(status_node), _a);

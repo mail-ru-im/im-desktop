@@ -936,6 +936,22 @@ You can leave your feedback or report an error here:</source>
         <translation>%1指定了%2该组管理员</translation>
     </message>
     <message>
+        <source>Block contact</source>
+        <translation>屏蔽联系人</translation>
+    </message>
+    <message>
+        <source>OK</source>
+        <translation>好</translation>
+    </message>
+    <message>
+        <source>%1 Send the user a message or press &quot;OK&quot; button to allow %2 to</source>
+        <translation>%1单击“确定”或回答，然后%2可以</translation>
+    </message>
+    <message>
+        <source>%1 From now on %2 is able to</source>
+        <translation>%1现在%2可以</translation>
+    </message>
+    <message>
         <source>%1 You have canceled your join request</source>
         <translation>%1您已取消会员资格请求</translation>
     </message>
@@ -4680,6 +4696,14 @@ You can leave your feedback or report an error here:</source>
         <source>Remove reaction: an error occurred</source>
         <translation>删除回应：发生错误</translation>
     </message>
+    <message>
+        <source>And %1 more...</source>
+        <translation>还有%1...</translation>
+    </message>
+    <message>
+        <source>Loading...</source>
+        <translation>载入中...</translation>
+    </message>
 </context>
 <context>
     <name>release_notes</name>
@@ -5920,6 +5944,24 @@ Please edit phone number and try again.</source>
     <message>
         <source>For %1 already</source>
         <translation>已经为 %1</translation>
+    </message>
+</context>
+<context>
+    <name>status_plate</name>
+    <message>
+        <source>Bot</source>
+        <translation>机器人</translation>
+    </message>
+</context>
+<context>
+    <name>status_popup</name>
+    <message>
+        <source>Select my status</source>
+        <translation>选择我的状态</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>消除</translation>
     </message>
 </context>
 <context>

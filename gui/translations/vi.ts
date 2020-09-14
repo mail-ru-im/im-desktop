@@ -936,6 +936,22 @@ Bạn có thể để lại phản hồi hoặc báo cáo lỗi tại đây:</tr
         <translation>%1 được chỉ định %2 quản trị viên của nhóm này</translation>
     </message>
     <message>
+        <source>Block contact</source>
+        <translation>Khoa liên lạc</translation>
+    </message>
+    <message>
+        <source>OK</source>
+        <translation>đồng ý</translation>
+    </message>
+    <message>
+        <source>%1 Send the user a message or press &quot;OK&quot; button to allow %2 to</source>
+        <translation>%1 Nhấp vào OK hoặc trả lời và %2 có thể</translation>
+    </message>
+    <message>
+        <source>%1 From now on %2 is able to</source>
+        <translation>%1 Bây giờ %2 có thể</translation>
+    </message>
+    <message>
         <source>%1 You have canceled your join request</source>
         <translation>%1 Bạn đã hủy yêu cầu thành viên của bạn</translation>
     </message>
@@ -4680,6 +4696,14 @@ Bạn có thể để lại phản hồi hoặc báo cáo lỗi tại đây:</tr
         <source>Remove reaction: an error occurred</source>
         <translation>Phản hồi xóa: xảy ra lỗi</translation>
     </message>
+    <message>
+        <source>And %1 more...</source>
+        <translation>Và %1...</translation>
+    </message>
+    <message>
+        <source>Loading...</source>
+        <translation>Đang tải...</translation>
+    </message>
 </context>
 <context>
     <name>release_notes</name>
@@ -5920,6 +5944,24 @@ Hãy chỉnh sửa số điện thoại và thử lại.</translation>
     <message>
         <source>For %1 already</source>
         <translation>Đã cho %1</translation>
+    </message>
+</context>
+<context>
+    <name>status_plate</name>
+    <message>
+        <source>Bot</source>
+        <translation>Bot</translation>
+    </message>
+</context>
+<context>
+    <name>status_popup</name>
+    <message>
+        <source>Select my status</source>
+        <translation>Chọn trạng thái của tôi</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>Huỷ bỏ</translation>
     </message>
 </context>
 <context>

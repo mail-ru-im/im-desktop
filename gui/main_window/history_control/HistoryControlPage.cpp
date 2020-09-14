@@ -1201,7 +1201,7 @@ namespace Ui
 
     void HistoryControlPage::showStrangerIfNeeded()
     {
-        if (!config::get().is_on((config::features::stranger_contacts)))
+        if (!config::get().is_on((config::features::stranger_contacts)) || !Utils::isChat(aimId_))
             return;
 
         if (Logic::getRecentsModel()->isStranger(aimId_) && !pinnedWidget_->isStrangerVisible())

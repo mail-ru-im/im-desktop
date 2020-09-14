@@ -175,6 +175,9 @@ namespace core
         mchat_joining_rejected,
         mchat_joining_canceled,
 
+        warn_about_stranger,
+        no_longer_stranger,
+
         max
     };
 
@@ -735,6 +738,11 @@ namespace core
             profilescr_groupname_action = 70000,
             profilescr_newgroupurl_action = 70001,
 
+            network_fallback_to_auto_dns_resolve = 80000,
+            network_dns_resolve_err_during_manual_resolving = 80001,
+            network_dns_resolve_err_during_auto_resolving = 80002,
+            network_dns_resolve_err_during_workaround = 80003,
+
             max,
         };
 
@@ -1155,6 +1163,11 @@ namespace core
             //group nicks
             case stats_event_names::profilescr_groupname_action: return std::string_view("ProfileScr_GroupName_Action");
             case stats_event_names::profilescr_newgroupurl_action: return std::string_view("ProfileScr_NewGroupUrl_Action");
+
+            case stats_event_names::network_fallback_to_auto_dns_resolve: return std::string_view("network_fallback_to_auto_dns_resolve");
+            case stats_event_names::network_dns_resolve_err_during_manual_resolving: return std::string_view("network_dns_resolve_err_during_manual_resolving");
+            case stats_event_names::network_dns_resolve_err_during_auto_resolving: return std::string_view("network_dns_resolve_err_during_auto_resolving");
+            case stats_event_names::network_dns_resolve_err_during_workaround: return std::string_view("network_dns_resolve_err_during_workaround");
 
             default:
                 return std::string_view();

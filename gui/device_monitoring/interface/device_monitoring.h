@@ -8,9 +8,7 @@ class DeviceMonitoringCallback
 {
 public:
     virtual ~DeviceMonitoringCallback() = default;
-    virtual void DeviceMonitoringListChanged() = 0;
-    virtual void DeviceMonitoringBluetoothHeadsetChanged(bool connected) = 0;
-    virtual void DeviceMonitoringAudioPropChanged() {};
+    virtual void DeviceMonitoringListChanged() = 0; // audio devices only if possible
 };
 
 class DeviceMonitoring

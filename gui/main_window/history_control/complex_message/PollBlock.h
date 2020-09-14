@@ -62,6 +62,10 @@ protected:
     void mousePressEvent(QMouseEvent* _event) override;
     void mouseReleaseEvent(QMouseEvent* _event) override;
 
+private:
+    void ensureResultsAnimationInitialized();
+    void ensureVoteAnimationInitialized();
+
 private Q_SLOTS:
     void onPollLoaded(const Data::PollData& _poll);
     void onVoteResult(int64_t, const Data::PollData& _poll, bool _success);

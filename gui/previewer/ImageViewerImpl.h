@@ -20,7 +20,7 @@ namespace Previewer
         void rightClicked();
         void loaded();
         void fullscreenToggled(bool _enabled);
-        void playCLicked(bool _paused);
+        void playClicked(bool _paused);
 
     public:
         virtual ~AbstractViewer();

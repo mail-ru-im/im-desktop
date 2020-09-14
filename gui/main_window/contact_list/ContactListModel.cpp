@@ -886,7 +886,7 @@ namespace Logic
         Ui::GetDispatcher()->post_message_to_core("contacts/remove", collection.get());
     }
 
-    void ContactListModel::removeContactsFromModel(const QVector<QString>& _vcontacts)
+    void ContactListModel::removeContactsFromModel(const QVector<QString>& _vcontacts, bool _emit)
     {
         if (_vcontacts.isEmpty())
             return;
@@ -897,8 +897,11 @@ namespace Logic
         rebuildIndex();
         forceSort();
 
-        for (const auto& _aimid : _vcontacts)
-            Q_EMIT contact_removed(_aimid);
+        if (_emit)
+        {
+            for (const auto& _aimid : _vcontacts)
+                Q_EMIT contact_removed(_aimid);
+        }
 
         Logic::updatePlaceholders({Logic::Placeholder::Contacts});
     }

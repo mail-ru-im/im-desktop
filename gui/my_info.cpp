@@ -107,7 +107,7 @@ namespace Ui
         {
             attachInfo_ = AttachPhoneInfo();
         }
-        else if (!phoneAttachment_)
+        else if (!phoneAttachment_ && !data_.aimId_.isEmpty())
         {
             needAttachPhone_ = true;
         }

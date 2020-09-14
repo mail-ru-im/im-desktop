@@ -410,13 +410,14 @@ void core::core_dispatcher::start(const common::core_gui_settings& _settings)
 
     post_app_config();
 
-    im_container_->create();
-
-    if (config::get().is_external())
-        get_network_log().write_string("external config is used\n");
-
     if (config::get().is_on(config::features::omicron_enabled))
         start_omicron_service();
+
+    im_container_->create();
+
+    if (config::get().is_debug())
+        get_network_log().write_string("debug config is used\n");
+
     load_im_stats();
 
     zstd_helper_->start_auto_updater(im_container_);
@@ -1415,7 +1416,7 @@ bool core_dispatcher::get_gui_settings_bool_value(std::string_view _name, const 
     return flag;
 }
 
-std::shared_ptr<core::stats::statistics> core::core_dispatcher::get_statistics()
+const std::shared_ptr<core::stats::statistics>& core::core_dispatcher::get_statistics() const
 {
     return statistics_;
 }
@@ -1548,7 +1549,8 @@ static bool omicron_download_helper(const omicronlib::omicron_proxy_settings& /*
     request.set_normalized_url("omicron_dl");
     request.set_use_curl_decompresion(true);
 
-    if (!request.get())
+    auto res = request.get();
+    if (res != curl_easy::completion_code::success)
         return false;
 
     _response_code = request.get_response_code();
@@ -1772,7 +1774,7 @@ bool core_dispatcher::is_suggests_available() const
     return get_gui_settings_bool_value(settings_show_suggests_words, true);
 }
 
-std::shared_ptr<zstd_helper> core_dispatcher::get_zstd_helper() const
+const std::shared_ptr<zstd_helper>& core_dispatcher::get_zstd_helper() const
 {
     return zstd_helper_;
 }

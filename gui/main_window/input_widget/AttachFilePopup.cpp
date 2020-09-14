@@ -204,6 +204,19 @@ namespace Ui
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::omicronUpdated, this, &AttachFilePopup::initItems);
         connect(Ui::GetDispatcher(), &Ui::core_dispatcher::externalUrlConfigUpdated, this, &AttachFilePopup::initItems);
 
+        opacityAnimation_->setDuration(showHideDuration().count());
+        opacityAnimation_->setEasingCurve(QEasingCurve::InOutSine);
+        connect(opacityAnimation_, &QVariantAnimation::valueChanged, this, [this](const QVariant& value)
+        {
+            opacityEffect_->setOpacity(value.toDouble());
+        });
+        connect(opacityAnimation_, &QVariantAnimation::finished, this, [this]()
+        {
+            if (animState_ == AnimState::Hiding)
+                hide();
+            animState_ = AnimState::None;
+        });
+
         widget_ = new AttachPopupBackground(this);
         auto layout = Utils::emptyVLayout(widget_);
         layout->addWidget(listWidget_);
@@ -306,26 +319,10 @@ namespace Ui
 
         const auto startValue = animState_ == AnimState::Hiding ? opacityEffect_->opacity() : 0.0;
         opacityEffect_->setOpacity(startValue);
-
-        animState_ = AnimState::Showing;
-
         opacityAnimation_->stop();
-        opacityAnimation_->disconnect(this);
-
-        connect(opacityAnimation_, &QVariantAnimation::valueChanged, this, [this]()
-        {
-            opacityEffect_->setOpacity(opacityAnimation_->currentValue().toDouble());
-        });
-        connect(opacityAnimation_, &QVariantAnimation::stateChanged, this, [this]()
-        {
-            if (opacityAnimation_->state() == QAbstractAnimation::Stopped)
-                animState_ = AnimState::None;
-        });
-
         opacityAnimation_->setStartValue(startValue);
         opacityAnimation_->setEndValue(1.0);
-        opacityAnimation_->setDuration(showHideDuration().count());
-        opacityAnimation_->setEasingCurve(QEasingCurve::InOutSine);
+        animState_ = AnimState::Showing;
         opacityAnimation_->start();
 
         show();
@@ -340,25 +337,8 @@ namespace Ui
         animState_ = AnimState::Hiding;
 
         opacityAnimation_->stop();
-        opacityAnimation_->disconnect(this);
-
-        connect(opacityAnimation_, &QVariantAnimation::valueChanged, this, [this]()
-        {
-            opacityEffect_->setOpacity(opacityAnimation_->currentValue().toDouble());
-        });
-        connect(opacityAnimation_, &QVariantAnimation::stateChanged, this, [this]()
-        {
-            if (opacityAnimation_->state() == QAbstractAnimation::Stopped)
-            {
-                animState_ = AnimState::None;
-                hide();
-            }
-        });
-
         opacityAnimation_->setStartValue(startValue);
         opacityAnimation_->setEndValue(0.0);
-        opacityAnimation_->setDuration(showHideDuration().count());
-        opacityAnimation_->setEasingCurve(QEasingCurve::InOutSine);
         opacityAnimation_->start();
     }
 

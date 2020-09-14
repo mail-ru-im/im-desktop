@@ -181,6 +181,7 @@ namespace Ui
         int                     codeLength_;
         bool                    phoneChangedAuto_;
         bool                    gdprAccepted_;
+        bool                    loggedIn_;
 
         Data::PhoneInfo         receivedPhoneInfo_;
         QString                 checks_;

@@ -47,9 +47,9 @@ namespace Ui
         , selectionCenter_(0)
         , lastStatus_(LastStatus::None)
         , lastStatusAnimation_(nullptr)
-        , addAnimation_(new QVariantAnimation(this))
-        , removeAnimation_(new QVariantAnimation(this))
-        , heightAnimation_(new QVariantAnimation(this))
+        , addAnimation_(nullptr)
+        , removeAnimation_(nullptr)
+        , heightAnimation_(nullptr)
         , intersected_(false)
         , wasSelected_(false)
         , isUnsupported_(false)
@@ -114,10 +114,8 @@ namespace Ui
                 onReactionsEnabledChanged();
         });
 
-        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::omicronUpdated, this, [this]()
-        {
-            onReactionsEnabledChanged();
-        });
+        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::omicronUpdated,
+                this, &HistoryControlPageItem::onReactionsEnabledChanged);
 
         setMouseTracking(true);
     }
@@ -316,6 +314,66 @@ namespace Ui
             return 4;
 
         return 3;
+    }
+
+    void HistoryControlPageItem::ensureAddAnimationInitialized()
+    {
+        if (addAnimation_)
+            return;
+
+        addAnimation_ = new QVariantAnimation(this);
+        addAnimation_->setStartValue(0);
+        addAnimation_->setEndValue(ANIM_MAX_VALUE);
+        addAnimation_->setDuration(200);
+        addAnimation_->setEasingCurve(QEasingCurve::OutExpo);
+        connect(addAnimation_, &QVariantAnimation::valueChanged, this, qOverload<>(&HistoryControlPageItem::update));
+        connect(addAnimation_, &QVariantAnimation::finished, this, [this]()
+        {
+            for (auto& h : heads_)
+                h.adding_ = false;
+
+            updateGeometry();
+            updateSize();
+        });
+    }
+
+    void HistoryControlPageItem::ensureRemoveAnimationInitialized()
+    {
+        if (removeAnimation_)
+            return;
+
+        removeAnimation_ = new QVariantAnimation(this);
+        removeAnimation_->setStartValue(ANIM_MAX_VALUE);
+        removeAnimation_->setEndValue(0);
+        removeAnimation_->setEasingCurve(QEasingCurve::OutExpo);
+        connect(removeAnimation_, &QVariantAnimation::valueChanged, this, qOverload<>(&HistoryControlPageItem::update));
+        connect(removeAnimation_, &QVariantAnimation::finished, this, [this]()
+        {
+            heads_.erase(std::remove_if(heads_.begin(), heads_.end(),
+                [](const auto& x) { return x.removing_; }),
+                heads_.end());
+
+            updateGeometry();
+            updateSize();
+        });
+    }
+
+    void HistoryControlPageItem::ensureHeightAnimationInitialized()
+    {
+        if (heightAnimation_)
+            return;
+        
+        heightAnimation_ = new QVariantAnimation(this);
+        heightAnimation_->setStartValue(0);
+        heightAnimation_->setEndValue(ANIM_MAX_VALUE);
+        heightAnimation_->setDuration(200);
+        heightAnimation_->setEasingCurve(QEasingCurve::OutExpo);
+        connect(heightAnimation_, &QVariantAnimation::valueChanged, this, [this](const QVariant&)
+        {
+            updateGeometry();
+            update();
+            updateSize();
+        });
     }
 
     void HistoryControlPageItem::avatarChanged(const QString& _aimid)
@@ -787,9 +845,9 @@ namespace Ui
 
         auto xMargin = avatarSize + MessageStyle::getLastReadAvatarMargin() - Utils::scale_value(1);
         auto addMargin = 0, addingCount = 0, delCount = 0;
-        const auto isAddAnimationRunning = addAnimation_->state() == QAbstractAnimation::State::Running;
+        const auto isAddAnimationRunning = addAnimation_ && addAnimation_->state() == QAbstractAnimation::State::Running;
         const auto curAdd = isAddAnimationRunning ? addAnimation_->currentValue().toDouble() / ANIM_MAX_VALUE : 0.0;
-        const auto isRemoveAnimationRunning = removeAnimation_->state() == QAbstractAnimation::State::Running;
+        const auto isRemoveAnimationRunning = removeAnimation_ && removeAnimation_->state() == QAbstractAnimation::State::Running;
         const auto curDel = isRemoveAnimationRunning ? removeAnimation_->currentValue().toDouble() / ANIM_MAX_VALUE : static_cast<double>(ANIM_MAX_VALUE);
         for (const auto& h : heads_)
         {
@@ -826,7 +884,7 @@ namespace Ui
                 avatar = *Logic::GetAvatarStorage()->GetRounded(heads_[i].aimid_, heads_[i].friendly_, size, isDefault, false, false);
 
             auto margin = xMargin;
-            const auto isAddAnimationRunning = addAnimation_->state() == QAbstractAnimation::State::Running;
+            const auto isAddAnimationRunning = addAnimation_ && addAnimation_->state() == QAbstractAnimation::State::Running;
             if (heads_[i].adding_ && isAddAnimationRunning && i != maxCount)
             {
                 _p.setOpacity(curAdd);
@@ -1020,52 +1078,24 @@ namespace Ui
 
         if (empty)
         {
-            const auto isHeightAnimationRunning = heightAnimation_->state() == QAbstractAnimation::State::Running;
-            if (headsAtBottom() && !isHeightAnimationRunning)
+            if (headsAtBottom())
             {
-                heightAnimation_->stop();
-                heightAnimation_->setStartValue(0);
-                heightAnimation_->setEndValue(ANIM_MAX_VALUE);
-                heightAnimation_->setDuration(200);
-                heightAnimation_->setEasingCurve(QEasingCurve::OutExpo);
-                heightAnimation_->setLoopCount(1);
-                heightAnimation_->disconnect(this);
-                connect(heightAnimation_, &QVariantAnimation::valueChanged, this, [this](const QVariant&)
+                ensureHeightAnimationInitialized();
+                if (heightAnimation_->state() != QAbstractAnimation::State::Running)
                 {
-                    updateGeometry();
-                    update();
-                    updateSize();
-                });
-                heightAnimation_->start();
+                    heightAnimation_->stop();
+                    heightAnimation_->setDirection(QAbstractAnimation::Forward);
+                    heightAnimation_->start();
+                }
             }
         }
         else
         {
-            const auto isAddAnimationRunning = addAnimation_->state() == QAbstractAnimation::State::Running;
-            if (!isAddAnimationRunning)
-            {
-                addAnimation_->stop();
-                addAnimation_->setStartValue(0);
-                addAnimation_->setEndValue(ANIM_MAX_VALUE);
-                addAnimation_->setDuration(200);
-                addAnimation_->setEasingCurve(QEasingCurve::OutExpo);
-                addAnimation_->setLoopCount(1);
-                addAnimation_->disconnect(this);
-                connect(addAnimation_, &QVariantAnimation::valueChanged, this, [this](const QVariant& value)
-                {
-                    if (value.toInt() == ANIM_MAX_VALUE)
-                    {
-                        for (auto& h : heads_)
-                            h.adding_ = false;
-
-                        updateGeometry();
-                        updateSize();
-                    }
-                    update();
-                });
+            ensureAddAnimationInitialized();
+            if (addAnimation_->state() != QAbstractAnimation::State::Running)
                 addAnimation_->start();
-            }
         }
+
 
         updateGeometry();
         update();
@@ -1083,49 +1113,25 @@ namespace Ui
             heads_[ind].removing_ = true;
             ++delCount;
         }
-        const auto isRemoveAnimationRunning = removeAnimation_->state() == QAbstractAnimation::State::Running;
-        if (!isRemoveAnimationRunning)
-        {
-            removeAnimation_->stop();
-            removeAnimation_->setStartValue(ANIM_MAX_VALUE);
-            removeAnimation_->setEndValue(0);
-            removeAnimation_->setDuration(isChat_ ? 200 : 0);
-            removeAnimation_->setEasingCurve(QEasingCurve::OutExpo);
-            removeAnimation_->setLoopCount(1);
-            removeAnimation_->disconnect(this);
-            connect(removeAnimation_, &QVariantAnimation::valueChanged, this, [this](const QVariant& value)
-            {
-                if (value.toInt() == 0)
-                {
-                    heads_.erase(std::remove_if(heads_.begin(), heads_.end(), [](const auto& x) { return x.removing_; }), heads_.end());
 
-                    updateGeometry();
-                    updateSize();
-                }
-                update();
-            });
+        ensureRemoveAnimationInitialized();
+        if (removeAnimation_->state() != QAbstractAnimation::State::Running)
+        {
+            removeAnimation_->setDuration(isChat_ ? 200 : 0);
             removeAnimation_->start();
         }
 
         if (delCount && delCount == heads_.size())
         {
-            const auto isHeightAnimationRunning = heightAnimation_->state() == QAbstractAnimation::State::Running;
-            if (headsAtBottom() && !isHeightAnimationRunning)
+            if (headsAtBottom())
             {
-                heightAnimation_->stop();
-                heightAnimation_->setStartValue(ANIM_MAX_VALUE);
-                heightAnimation_->setEndValue(0);
-                heightAnimation_->setDuration(200);
-                heightAnimation_->setEasingCurve(QEasingCurve::OutExpo);
-                heightAnimation_->setLoopCount(1);
-                heightAnimation_->disconnect(this);
-                connect(heightAnimation_, &QVariantAnimation::valueChanged, this, [this](const QVariant&)
+                ensureHeightAnimationInitialized();
+                if (heightAnimation_->state() != QAbstractAnimation::State::Running)
                 {
-                    updateGeometry();
-                    update();
-                    updateSize();
-                });
-                heightAnimation_->start();
+                    heightAnimation_->stop();
+                    heightAnimation_->setDirection(QAbstractAnimation::Backward);
+                    heightAnimation_->start();
+                }
             }
         }
 

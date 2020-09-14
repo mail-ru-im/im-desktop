@@ -82,7 +82,7 @@ int32_t get_stickers_pack_info_packet::parse_response(const std::shared_ptr<core
     return 0;
 }
 
-std::shared_ptr<core::tools::binary_stream> get_stickers_pack_info_packet::get_response() const
+const std::shared_ptr<core::tools::binary_stream>& get_stickers_pack_info_packet::get_response() const
 {
     return response_;
 }

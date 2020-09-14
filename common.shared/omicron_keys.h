@@ -52,6 +52,7 @@ namespace omicron
         constexpr auto attach_phone_number_popup_text = "attach_phone_number_popup_text";
         constexpr auto attach_phone_number_popup_title = "attach_phone_number_popup_title";
         constexpr auto sms_result_waiting_time = "sms_result_waiting_time";
+        constexpr auto external_phone_attachment = "external_phone_attachment";
 
         constexpr auto maximum_undo_size = "maximum_undo_size";
         constexpr auto use_apple_emoji = "use_apple_emoji";
@@ -106,9 +107,18 @@ namespace omicron
         constexpr auto statuses_enabled = "statuses_enabled";
 
         constexpr auto global_contact_search_allowed = "global_contact_search_allowed";
+
+        constexpr auto block_stranger_button_text = "block_stranger_button_text";
+
         constexpr auto force_update_check_allowed = "force_update_check_allowed";
 
         constexpr auto call_room_info_enabled = "call_room_info_enabled";
-        constexpr auto has_connect_by_ip_option = "has_connect_by_ip_option";
+        constexpr auto statistics_mytracker = "statistics_mytracker";
+        constexpr auto dns_workaround_option = "dns_workaround_enabled";
+        constexpr auto dns_resolve_timeout_sec = "dns_resolve_timeout_sec";
+        constexpr auto external_emoji_url = "external_emoji_url";
+
+        constexpr auto ivr_login_enabled = "ivr_login_enabled";
+        constexpr auto ivr_resend_count_to_show = "ivr_resend_count_to_show";
     }
 }

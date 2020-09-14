@@ -252,8 +252,8 @@ namespace Logic
 
         while (next_iter != calls_.end())
         {
-            auto cur_date = QDateTime::fromTime_t(iter->time());
-            auto next_date = QDateTime::fromTime_t(next_iter->time());
+            auto cur_date = QDateTime::fromSecsSinceEpoch(iter->time());
+            auto next_date = QDateTime::fromSecsSinceEpoch(next_iter->time());
 
             if (iter->isOutgoing() == next_iter->isOutgoing() &&
                 iter->isVideo() == next_iter->isVideo() &&

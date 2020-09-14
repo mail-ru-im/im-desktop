@@ -33,6 +33,7 @@ namespace Ui
         QColor animColor_;
 
         void updateText();
+        void ensureAnimationInitialized();
         void startAnimation();
         void stopAnimation();
 

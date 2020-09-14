@@ -54,7 +54,7 @@ start_session::~start_session()
 {
 }
 
-int32_t start_session::init_request_full_start_session(std::shared_ptr<core::http_request_simple> request)
+int32_t start_session::init_request_full_start_session(const std::shared_ptr<core::http_request_simple>& request)
 {
     request->set_compression_auto();
     request->set_url(get_start_session_host());
@@ -127,7 +127,7 @@ int32_t start_session::init_request_full_start_session(std::shared_ptr<core::htt
     return 0;
 }
 
-int32_t start_session::init_request_short_start_session(std::shared_ptr<core::http_request_simple> _request)
+int32_t start_session::init_request_short_start_session(const std::shared_ptr<core::http_request_simple>& _request)
 {
     std::stringstream ss_url;
     ss_url << urls::get_url(urls::url_type::wim_host) << "aim/pingSession" <<
@@ -200,9 +200,10 @@ int32_t start_session::execute_request(const std::shared_ptr<core::http_request_
 {
     wait_function_(timeout_);
 
-    bool res = (is_ping_ ? _request->get() : _request->post());
-    if (!res)
-        return wpie_network_error;
+    url_ = _request->get_url();
+
+    if (auto error_code = get_error(is_ping_ ? _request->get() : _request->post()))
+        return *error_code;
 
     http_code_ = (uint32_t)_request->get_response_code();
 

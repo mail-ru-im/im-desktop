@@ -59,13 +59,13 @@ namespace Ui
     // EmojiWidget
     //////////////////////////////////////////////////////////////////////////
 
-    class EmojiWidget : public QWidget
+    class ReactionEmojiWidget : public QWidget
     {
         Q_OBJECT
 
     public:
-        EmojiWidget(const QString& _reaction, const QString& _tooltip, QWidget* _parent);
-        ~EmojiWidget();
+        ReactionEmojiWidget(const QString& _reaction, const QString& _tooltip, QWidget* _parent);
+        ~ReactionEmojiWidget();
 
         void setMyReaction(bool _myReaction);
         void setStartGeometry(const QRect& _rect);

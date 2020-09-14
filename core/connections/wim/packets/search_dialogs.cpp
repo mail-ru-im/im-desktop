@@ -88,7 +88,6 @@ namespace core::wim
         if (!robusto_packet::params_.full_log_)
         {
             log_replace_functor f;
-            f.add_marker("a");
             f.add_json_marker("aimsid", aimsid_range_evaluator());
             f.add_json_array_marker("highlight");
             if (hide_keyword_)

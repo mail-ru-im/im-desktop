@@ -24,10 +24,11 @@ namespace core
     {
         auto result = [this](CURLcode _err)
         {
+            auto res = get_completion_code(_err);
             if (async_)
-                completion_func_(get_completion_code(_err));
+                completion_func_(res);
             else
-                promise_.set_value(_err);
+                promise_.set_value(res);
         };
 
         auto ctx = context_.lock();
@@ -52,10 +53,11 @@ namespace core
     {
         auto result = [this](CURLcode _err)
         {
+            auto res = get_completion_code(_err);
             if (async_)
-                completion_func_(get_completion_code(_err));
+                completion_func_(res);
             else
-                promise_.set_value(_err);
+                promise_.set_value(res);
         };
 
         auto ctx = context_.lock();
@@ -86,10 +88,11 @@ namespace core
     {
         auto result = [this](CURLcode _err)
         {
+            auto res = get_completion_code(_err);
             if (async_)
-                completion_func_(get_completion_code(_err));
+                completion_func_(res);
             else
-                promise_.set_value(_err);
+                promise_.set_value(res);
         };
 
         auto ctx = context_.lock();
@@ -119,10 +122,11 @@ namespace core
     {
         auto result = [this](CURLcode _err)
         {
+            auto res = get_completion_code(_err);
             if (async_)
-                completion_func_(get_completion_code(_err));
+                completion_func_(res);
             else
-                promise_.set_value(_err);
+                promise_.set_value(res);
         };
 
         auto ctx = context_.lock();
@@ -156,10 +160,11 @@ namespace core
 
     void curl_task::cancel()
     {
+        auto res = get_completion_code(CURLE_ABORTED_BY_CALLBACK);
         if (async_)
-            completion_func_(get_completion_code(CURLE_ABORTED_BY_CALLBACK));
+            completion_func_(res);
         else
-            promise_.set_value(CURLE_ABORTED_BY_CALLBACK);
+            promise_.set_value(res);
     }
 
     curl_easy::completion_code curl_task::get_completion_code(CURLcode _err)
@@ -170,6 +175,8 @@ namespace core
             return curl_easy::completion_code::success;
         case CURLE_ABORTED_BY_CALLBACK:
             return curl_easy::completion_code::cancelled;
+        case CURLE_COULDNT_RESOLVE_HOST:
+            return curl_easy::completion_code::resolve_failed;
         default:
             return curl_easy::completion_code::failed;
         }
@@ -203,7 +210,7 @@ namespace core
         return handler;
     }
 
-    curl_easy::future_t curl_handler::perform(std::shared_ptr<curl_context> _context)
+    curl_easy::future_t curl_handler::perform(const std::shared_ptr<curl_context>& _context)
     {
         if (_context->is_multi_task())
             return multi_handler_->perform(_context);
@@ -211,12 +218,17 @@ namespace core
         return easy_handler_->perform(_context);
     }
 
-    void curl_handler::perform_async(std::shared_ptr<curl_context> _context, curl_easy::completion_function _completion_func)
+    void curl_handler::perform_async(const std::shared_ptr<curl_context>& _context, curl_easy::completion_function _completion_func)
     {
         if (_context->is_multi_task())
-            multi_handler_->perform_async(_context, _completion_func);
+            multi_handler_->perform_async(_context, std::move(_completion_func));
         else
-            easy_handler_->perform_async(_context, _completion_func);
+            easy_handler_->perform_async(_context, std::move(_completion_func));
+    }
+
+    void curl_handler::resolve_host(std::string_view _host, std::function<void(std::string _result, int _error)> _callback)
+    {
+        multi_handler_->resolve_host(_host, std::move(_callback));
     }
 
     void curl_handler::raise_task(int64_t _id)

@@ -29,7 +29,7 @@ public:
     void enableMoveAnimation(bool _enable);
 
 Q_SIGNALS:
-    void dissapeared();
+    void disappeared();
 
 protected:
     void paintEvent(QPaintEvent* _event) override;

@@ -14,18 +14,18 @@ namespace core
         {
         public:
 
-            static uint8_t lobyte(uint16_t w);
-            static uint8_t hibyte(uint16_t w);
-            static uint16_t loword(uint32_t l);
-            static uint16_t hiword(uint32_t l);
+            [[nodiscard]] static uint8_t lobyte(uint16_t w);
+            [[nodiscard]] static uint8_t hibyte(uint16_t w);
+            [[nodiscard]] static uint16_t loword(uint32_t l);
+            [[nodiscard]] static uint16_t hiword(uint32_t l);
 
             static int32_t base64_decode(uint8_t* source, int32_t length, uint8_t* dst);
-            static int32_t base64_encode(uint8_t* source, int32_t length, uint8_t* dst);
+            [[nodiscard]]static int32_t base64_encode(uint8_t* source, int32_t length, uint8_t* dst);
 
-            static std::string hmac_base64(std::vector<uint8_t>& data, std::vector<uint8_t>& secret);
+            [[nodiscard]] static std::string hmac_base64(std::vector<uint8_t>& data, std::vector<uint8_t>& secret);
 
-            static std::string decode64(const std::string& val);
-            static std::string encode64(const std::string& val);
+            [[nodiscard]] static std::string decode64(std::string_view val);
+            [[nodiscard]] static std::string encode64(std::string_view val);
         };
     }
 }

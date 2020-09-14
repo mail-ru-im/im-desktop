@@ -29,5 +29,27 @@ namespace Utils
         core::istream *Stream_;
         QSize maxSize_;
     };
+
+    class LoadImageFromDataTask
+        : public QObject
+        , public QRunnable
+    {
+        Q_OBJECT
+
+    Q_SIGNALS:
+        void loaded(const QImage& _image);
+        void loadingFailed();
+
+    public:
+        LoadImageFromDataTask(core::istream* _stream, const QSize& _maxSize = Utils::getMaxImageSize());
+
+        virtual ~LoadImageFromDataTask();
+
+        void run() override;
+
+    private:
+        core::istream* stream_;
+        QSize maxSize_;
+    };
 }
 

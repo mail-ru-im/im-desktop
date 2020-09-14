@@ -1330,6 +1330,12 @@ bool MacSupport::nativeEventFilter(const QByteArray &data, void *message, long *
     {
         if ([e modifierFlags] & NSCommandKeyMask)
         {
+            if (e.keyCode == kVK_ANSI_Q && mainWindow_)
+            {
+                mainWindow_->exit();
+                return true;
+            }
+
             static std::set<uint> possibles =
             {
                 kVK_ANSI_Comma,

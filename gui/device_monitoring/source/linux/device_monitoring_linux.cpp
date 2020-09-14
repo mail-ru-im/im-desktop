@@ -1,15 +1,14 @@
 #include "stdafx.h"
 #include "device_monitoring_linux.h"
 #include <dlfcn.h>
+#include <string_view>
 
 namespace device
 {
 
 
 DeviceMonitoringLinux::DeviceMonitoringLinux()
-    : _registered(false)
 {
-
 }
 
 DeviceMonitoringLinux::~DeviceMonitoringLinux()
@@ -39,6 +38,7 @@ bool DeviceMonitoringLinux::Start()
     get_lib_sym(_libUdev, "udev_monitor_new_from_netlink", _udev_monitor_new_from_netlink);
     get_lib_sym(_libUdev, "udev_monitor_filter_add_match_subsystem_devtype", _udev_monitor_filter_add_match_subsystem_devtype);
     get_lib_sym(_libUdev, "udev_monitor_enable_receiving", _udev_monitor_enable_receiving);
+    get_lib_sym(_libUdev, "udev_device_get_subsystem", _udev_device_get_subsystem);
     get_lib_sym(_libUdev, "udev_monitor_unref", _udev_monitor_unref);
     get_lib_sym(_libUdev, "udev_device_unref", _udev_device_unref);
     get_lib_sym(_libUdev, "udev_unref", _udev_unref);
@@ -49,6 +49,7 @@ bool DeviceMonitoringLinux::Start()
     _udev = _udev_new();
     if (!_udev)
         return false;
+
     _monitor = _udev_monitor_new_from_netlink(_udev, "udev");
     if (!_monitor)
     {
@@ -56,7 +57,9 @@ bool DeviceMonitoringLinux::Start()
         return false;
     }
     _udev_monitor_filter_add_match_subsystem_devtype(_monitor, "sound", nullptr);
+    _udev_monitor_filter_add_match_subsystem_devtype(_monitor, "video4linux", nullptr);
     _udev_monitor_enable_receiving(_monitor);
+
     auto sd = GetDescriptor();
 
     _notifier = std::make_unique<QSocketNotifier>(sd, QSocketNotifier::Read);
@@ -98,18 +101,27 @@ void DeviceMonitoringLinux::OnEvent()
     struct udev_device *device = _udev_monitor_receive_device(_monitor);
     if (device == nullptr)
         return;
+    std::string_view subsys(_udev_device_get_subsystem(device));
+    if (subsys == "sound")
+    {
+        DeviceMonitoringAudioListChanged();
+    } else if (subsys == "video4linux")
+    {
 #ifdef _DEBUG
-    const char *cap = udev_device_get_property_value(device, "ID_V4L_CAPABILITIES");
-    printf("CAPABILITIES: %s\n", cap);
-    printf("%s (%s) (%s)\n",
-           udev_device_get_property_value(device, "ID_V4L_PRODUCT"),
-           udev_device_get_devnode(device),
-           udev_device_get_action(device));
-    fflush(stdout);
+        const char *cap = udev_device_get_property_value(device, "ID_V4L_CAPABILITIES");
+        printf("CAPABILITIES: %s\n", cap);
+        printf("%s (%s) (%s)\n",
+               udev_device_get_property_value(device, "ID_V4L_PRODUCT"),
+               udev_device_get_devnode(device),
+               udev_device_get_action(device));
+        fflush(stdout);
 #endif
+        DeviceMonitoringVideoListChanged();
+    } else
+    {
+       assert(0);
+    }
     _udev_device_unref(device);
-
-    DeviceMonitoringListChanged();
 }
 
 int DeviceMonitoringLinux::GetDescriptor()

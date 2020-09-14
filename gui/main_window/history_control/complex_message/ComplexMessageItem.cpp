@@ -126,7 +126,7 @@ namespace
     void drawAnimation(QPainter& _p, double _current, const QRect& _rect)
     {
         const auto QT_ANGLE_MULT = 16;
-        const auto baseAngle = (_current * QT_ANGLE_MULT);
+        const auto baseAngle = _current * QT_ANGLE_MULT;
         const auto progress = 0.75;
         const auto progressAngle = (int)std::ceil(progress * 360 * QT_ANGLE_MULT);
 
@@ -217,11 +217,11 @@ ComplexMessageItem::ComplexMessageItem(QWidget* _parent, const Data::MessageBudd
     , desiredSenderWidth_(0)
     , SenderAimid_(_msg.getSender())
     , shareButton_(nullptr)
-    , shareButtonAnimation_(new QVariantAnimation(this))
+    , shareButtonAnimation_(nullptr)
     , shareButtonOpacityEffect_(nullptr)
     , SourceText_(_msg.GetText())
     , TimeWidget_(nullptr)
-    , timeAnimation_(new QVariantAnimation(this))
+    , timeAnimation_(nullptr)
     , timeOpacityEffect_(nullptr)
     , Time_(-1)
     , bQuoteAnimation_(false)
@@ -232,7 +232,7 @@ ComplexMessageItem::ComplexMessageItem(QWidget* _parent, const Data::MessageBudd
     , hideEdit_(false)
     , mentions_(_msg.Mentions_)
     , buttonsUpdateTimer_(nullptr)
-    , buttonsAnimation_(new QVariantAnimation(this))
+    , buttonsAnimation_(nullptr)
 {
     assert(Id_ >= -1);
     assert(!SenderAimid_.isEmpty());
@@ -263,8 +263,11 @@ ComplexMessageItem::~ComplexMessageItem()
     if (!PressPoint_.isNull())
         Q_EMIT pressedDestroyed();
 
-    shareButtonAnimation_->stop();
-    timeAnimation_->stop();
+    if (shareButtonAnimation_)
+        shareButtonAnimation_->stop();
+
+    if (timeAnimation_)
+        timeAnimation_->stop();
 
     if (!isHeadless())
         Logic::GetStatusContainer()->setAvatarVisible(SenderAimid_, false);
@@ -550,7 +553,7 @@ const QString& ComplexMessageItem::getInternalId() const
 
 QString ComplexMessageItem::getQuoteHeader() const
 {
-    return getSenderFriendly() % u" (" % QDateTime::fromTime_t(Time_).toString(u"dd.MM.yyyy hh:mm") % u"):\n";
+    return getSenderFriendly() % u" (" % QDateTime::fromSecsSinceEpoch(Time_).toString(u"dd.MM.yyyy hh:mm") % u"):\n";
 }
 
 QString ComplexMessageItem::getSelectedText(const bool _isQuote, TextFormat _format) const
@@ -1818,20 +1821,18 @@ void ComplexMessageItem::updateButtons()
 
     if (hasPressedButtons)
     {
-        if (hasAnimatingButtons && buttonsAnimation_->state() != QAbstractAnimation::Running)
+        if (hasAnimatingButtons)
         {
-            buttonsAnimation_->setStartValue(0.0);
-            buttonsAnimation_->setEndValue(360.0);
-            buttonsAnimation_->setDuration(700);
-            buttonsAnimation_->setEasingCurve(QEasingCurve::Linear);
-            buttonsAnimation_->setLoopCount(-1);
-            buttonsAnimation_->start();
+            ensureButtonsAnimationInitialized();
+            if (buttonsAnimation_->state() != QAbstractAnimation::Running)
+                buttonsAnimation_->start();
         }
         startButtonsTimer(hasAnimatingButtons ? 1000 : 100);
     }
     else
     {
-        buttonsAnimation_->stop();
+        if (buttonsAnimation_)
+            buttonsAnimation_->stop();
     }
 
     update();
@@ -1908,7 +1909,6 @@ void ComplexMessageItem::connectSignals()
     {
         update();
     });
-    connect(buttonsAnimation_, &QVariantAnimation::valueChanged, this, qOverload<>(&ComplexMessageItem::update));
 }
 
 bool ComplexMessageItem::containsShareableBlocks() const
@@ -2057,11 +2057,11 @@ void ComplexMessageItem::drawButtons(QPainter &p, const QColor& quote_color)
 
         if (btn.animating_)
         {
-            auto animationSize = MessageStyle::getButtonsAnimationSize();
-            auto animationRect = QRect(QPoint(_rect.center().x() - animationSize.width() / 2,
+            const auto animationSize = MessageStyle::getButtonsAnimationSize();
+            const auto animationRect = QRect(QPoint(_rect.center().x() - animationSize.width() / 2,
                 _rect.center().y() - animationSize.height() / 2),
                 animationSize);
-            drawAnimation(p, buttonsAnimation_->currentValue().toDouble(), animationRect);
+            drawAnimation(p, buttonsAnimation_ ? buttonsAnimation_->currentValue().toDouble() : 0.0, animationRect);
         }
     };
 
@@ -2454,6 +2454,19 @@ void ComplexMessageItem::startButtonsTimer(int _timeout)
 {
     initButtonsTimerIfNeeded();
     buttonsUpdateTimer_->start(_timeout);
+}
+
+void ComplexMessageItem::ensureButtonsAnimationInitialized()
+{
+    if (buttonsAnimation_)
+        return;
+
+    buttonsAnimation_ = new QVariantAnimation(this);
+    buttonsAnimation_->setStartValue(0.0);
+    buttonsAnimation_->setEndValue(360.0);
+    buttonsAnimation_->setDuration(700);
+    buttonsAnimation_->setLoopCount(-1);
+    connect(buttonsAnimation_, &QVariantAnimation::valueChanged, this, qOverload<>(&ComplexMessageItem::update));
 }
 
 const Data::FilesPlaceholderMap& ComplexMessageItem::getFilesPlaceholders() const
@@ -3301,22 +3314,27 @@ void ComplexMessageItem::animateShareButton(const int _startPosX, const int _end
     if (!shareButton_)
         return;
 
+    if (!shareButtonAnimation_)
+        shareButtonAnimation_ = new QVariantAnimation(this);
+
     shareButtonAnimation_->stop();
     shareButtonAnimation_->setStartValue(_startPosX);
     shareButtonAnimation_->setEndValue(_endPosX);
-    shareButtonAnimation_->setEasingCurve(QEasingCurve::Linear);
     shareButtonAnimation_->setDuration(MessageStyle::getHiddenControlsAnimationTime().count());
     shareButtonAnimation_->disconnect(this);
-    connect(shareButtonAnimation_, &QVariantAnimation::valueChanged, this, [_startPosX, _endPosX, _anim, this]() {
-        const auto val = shareButtonAnimation_->currentValue().toDouble();
+    connect(shareButtonAnimation_, &QVariantAnimation::valueChanged, this, [_startPosX, _endPosX, _anim, this](const QVariant& value)
+    {
+        const auto val = value.toInt();
         shareButton_->move(val, shareButton_->pos().y());
-
-        const auto opacity = abs((val - _startPosX) / (_endPosX - _startPosX));
+        const auto opacity = std::abs(static_cast<double>(val - _startPosX) / (_endPosX - _startPosX));
         shareButtonOpacityEffect_->setOpacity(_anim == WidgetAnimationType::hide ? 1.0 - opacity : opacity);
-
-        if (_anim == WidgetAnimationType::hide && val == _endPosX)
+    });
+    connect(shareButtonAnimation_, &QVariantAnimation::finished, this, [_anim, this]()
+    {
+        if (_anim == WidgetAnimationType::hide)
             shareButton_->hide();
     });
+    shareButtonAnimation_->start();
 }
 
 void ComplexMessageItem::showTimeAnimated()
@@ -3361,22 +3379,28 @@ void ComplexMessageItem::animateTime(const int _startPosY, const int _endPosY, c
     if (!TimeWidget_)
         return;
 
+    if (!timeAnimation_)
+        timeAnimation_ = new QVariantAnimation(this);
+
     timeAnimation_->stop();
     timeAnimation_->setStartValue(_startPosY);
     timeAnimation_->setEndValue(_endPosY);
-    timeAnimation_->setEasingCurve(QEasingCurve::Linear);
     timeAnimation_->setDuration(MessageStyle::getHiddenControlsAnimationTime().count());
     timeAnimation_->disconnect(this);
-    connect(timeAnimation_, &QVariantAnimation::valueChanged, this, [_startPosY, _endPosY, _anim, this]() {
-        const auto val = timeAnimation_->currentValue().toDouble();
+    connect(timeAnimation_, &QVariantAnimation::valueChanged, this, [_startPosY, _endPosY, _anim, this](const QVariant& value)
+    {
+        const auto val = value.toDouble();
         TimeWidget_->move(TimeWidget_->pos().x(), val);
-
-        const auto opacity = abs((val - _startPosY) / (_endPosY - _startPosY));
+        const auto denominator = std::max(1, _endPosY - _startPosY);
+        const auto opacity = std::abs((val - _startPosY) / denominator);
         timeOpacityEffect_->setOpacity(_anim == WidgetAnimationType::hide ? 1.0 - opacity : opacity);
-
-        if (_anim == WidgetAnimationType::hide && val == _endPosY)
+    });
+    connect(timeAnimation_, &QVariantAnimation::finished, this, [_anim, this]()
+    {
+        if (_anim == WidgetAnimationType::hide)
             TimeWidget_->hide();
     });
+    timeAnimation_->start();
 }
 
 Data::Quote ComplexMessageItem::getQuoteFromBlock(IItemBlock* _block, const bool _selectedTextOnly) const
@@ -3488,7 +3512,8 @@ void ComplexMessageItem::updateTimeWidgetUnderlay()
 
         TimeWidget_->setUnderlayVisible(withUnderlay);
 
-        timeAnimation_->stop();
+        if (timeAnimation_)
+            timeAnimation_->stop();
 
         if (withUnderlay)
         {

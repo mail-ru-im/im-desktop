@@ -265,13 +265,6 @@ void core::base_im::on_voip_call_start(const std::vector<std::string> &contacts,
 #endif
 }
 
-void core::base_im::on_voip_call_request_calls()
-{
-#ifndef STRIP_VOIP
-    voip_manager_->call_request_calls();
-#endif
-}
-
 void core::base_im::on_voip_window_set_offsets(void* hwnd, unsigned l, unsigned t, unsigned r, unsigned b)
 {
 #ifndef STRIP_VOIP
@@ -361,10 +354,10 @@ void core::base_im::on_voip_device_changed(std::string_view dev_type, const std:
 #endif
 }
 
-void core::base_im::on_voip_devices_changed()
+void core::base_im::on_voip_devices_changed(DeviceClass deviceClass)
 {
 #ifndef STRIP_VOIP
-    voip_manager_->notify_devices_changed();
+    voip_manager_->notify_devices_changed(deviceClass);
 #endif
 }
 
@@ -432,14 +425,6 @@ void core::base_im::on_voip_mute_incoming_call_sounds(bool mute)
 {
 #if defined(_WIN32) && !defined(STRIP_VOIP)
     voip_manager_->mute_incoming_call_sounds(mute);
-#endif
-}
-
-void core::base_im::on_voip_volume_change(int vol)
-{
-#ifndef STRIP_VOIP
-    const float vol_fp = std::max(std::min(vol, 100), 0) / 100.0f;
-    voip_manager_->set_device_volume(AudioPlayback, vol_fp);
 #endif
 }
 

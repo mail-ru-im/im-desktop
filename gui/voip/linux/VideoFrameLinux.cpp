@@ -2,6 +2,7 @@
 #include "VideoFrameLinux.h"
 #include "../CommonUI.h"
 #include "../../core_dispatcher.h"
+#include <QtGui/private/qscreen_p.h>
 
 extern "C" {
 void glfwSetRoot(void *root);
@@ -71,7 +72,8 @@ void platform_linux::GraphicsPanelLinux::createdTalk(bool is_vcs)
 void platform_linux::GraphicsPanelLinux::resizeEvent(QResizeEvent* _e)
 {
     QWidget::resizeEvent(_e);
-    QRect r = rect();
+    QRect qt_r = rect();
+    QRect r = QHighDpi::toNativePixels(qt_r, window()->windowHandle());
     glfwSetWindowPos(videoWindow_, r.x(), r.y());
     glfwSetWindowSize(videoWindow_, r.width(), r.height());
 }

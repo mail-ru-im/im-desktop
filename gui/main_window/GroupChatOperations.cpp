@@ -625,10 +625,12 @@ namespace Ui
         {
             if (_regim == Logic::MembersWidgetRegim::MEMBERS_LIST || _regim == Logic::MembersWidgetRegim::SELECT_MEMBERS)
             {
-                Ui::gui_coll_helper collection(::Ui::GetDispatcher()->create_collection(), true);
+                Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
                 collection.set_value_as_qstring("aimid", _chatAimId);
-                collection.set_value_as_qstring("m_chat_members_to_remove", _memberAimId);
-                Ui::GetDispatcher()->post_message_to_core("remove_members", collection.get());
+                collection.set_value_as_qstring("contact", _memberAimId);
+                collection.set_value_as_bool("block", true);
+                collection.set_value_as_bool("remove_messages", false);
+                Ui::GetDispatcher()->post_message_to_core("chats/block", collection.get());
             }
             else if (_regim == Logic::MembersWidgetRegim::IGNORE_LIST)
             {

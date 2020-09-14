@@ -162,7 +162,6 @@ namespace Ui
         void checkPosition();
 
         void onOpenChat(const std::string& _contact);
-        void onShowVideoWindow();
 
         void checkNewVersion();
         void stateChanged(const Qt::WindowState& _state);
@@ -233,7 +232,6 @@ namespace Ui
         QWidget* getWidget() const;
 
         void lock();
-        void minimizeOnStartup();
 
         void updateWindowTitle();
 
@@ -326,7 +324,6 @@ namespace Ui
         bool uiActive_;
         bool uiActiveMainWindow_;
         bool maximizeLater_;
-        bool minimizeOnStartup_;
 
         ShowingAgreementInfo showingAgreementInfo_;
         LocalPINWidget* localPINWidget_;

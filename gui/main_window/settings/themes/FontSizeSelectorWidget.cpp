@@ -38,7 +38,7 @@ namespace Ui
         , font_(Fonts::appFontScaled(_size, Fonts::FontWeight::SemiBold))
     {
         setFixedSize(fontVariantSize());
-        if (Testing::isEnabled)
+        if constexpr (Testing::isEnabled())
         {
             switch (_size)
             {

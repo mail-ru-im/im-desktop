@@ -361,6 +361,8 @@ namespace Utils
 
     bool loadPixmapScaled(QByteArray& _data, const QSize& _maxSize, Out QPixmap& _pixmap, Out QSize& _originalSize);
 
+    bool loadImageScaled(QByteArray& _data, const QSize& _maxSize, Out QImage& _image, Out QSize& _originalSize);
+
     bool dragUrl(QObject* _parent, const QPixmap& _preview, const QString& _url);
 
     class StatsSender : public QObject
@@ -522,6 +524,7 @@ namespace Utils
         CanBeOff,
         AlwaysOn,
         StatusOnly,
+        BadgeOnly,
         Hovered,
         Pressed
     };
@@ -737,6 +740,17 @@ namespace Utils
         CallLinkFrom from_;
         QString aimId_;
     };
+
+    //! Find index of element in a container. Return -1 if not found
+    template<typename T, typename U>
+    int indexOf(T start, T end, const U& val)
+    {
+        int result = -1;
+        auto it = std::find(start, end, val);
+        if (it != end)
+            result = std::distance(start, it);
+        return result;
+    }
 }
 
 Q_DECLARE_METATYPE(Utils::CloseWindowInfo)

@@ -17,6 +17,7 @@
 #include "history_control/HistoryControlPage.h"
 #include "history_control/MessagesScrollArea.h"
 #include "history_control/MentionCompleter.h"
+#include "settings/PrivacySettingsManager.h"
 #include "mplayer/VideoPlayer.h"
 #include "sounds/SoundsManager.h"
 #include "tray/TrayIcon.h"
@@ -91,16 +92,6 @@ namespace
         return Utils::scale_value(NativeWindowBorderWidth);
     }
 
-    bool isNativeWindowShowCmd(HWND _hwnd, UINT _cmd)
-    {
-        WINDOWPLACEMENT placement;
-        placement.length = sizeof(WINDOWPLACEMENT);
-        if (!GetWindowPlacement(_hwnd, &placement))
-            return false;
-
-        return placement.showCmd == _cmd;
-    }
-
     std::optional<QRect> getMonitorWorkRect(HWND _hwnd)
     {
         if (RECT rect; GetWindowRect(_hwnd, &rect))
@@ -158,7 +149,7 @@ namespace
         if (!_hWnd || !_menu)
             return;
 
-        auto maximized = isNativeWindowShowCmd(_hWnd, SW_MAXIMIZE);
+        auto maximized = IsZoomed(_hWnd);
         for (int i = 0; i < GetMenuItemCount(_menu); ++i)
         {
             MENUITEMINFO itemInfo = { 0 };
@@ -584,13 +575,6 @@ namespace Ui
 #endif
     }
 
-    void MainWindow::minimizeOnStartup()
-    {
-        minimizeOnStartup_ = true;
-        minimize();
-        minimizeOnStartup_ = false;
-    }
-
     MainWindow::MainWindow(QApplication* _app, const bool _hasValidLogin, const bool _locked, const QString& _validOrFirstLogin)
         : mainPage_(nullptr)
         , loginPage_(nullptr)
@@ -615,7 +599,6 @@ namespace Ui
         , uiActive_(false)
         , uiActiveMainWindow_(false)
         , maximizeLater_(false)
-        , minimizeOnStartup_(false)
         , localPINWidget_(nullptr)
     {
         auto scopedExit = Utils::ScopeExitT([this]() { inCtor_ = false; });
@@ -770,6 +753,7 @@ namespace Ui
         setWindowFlags(windowFlags() | Qt::Window | Qt::FramelessWindowHint | Qt::WindowMinMaxButtonsHint | Qt::WindowSystemMenuHint);
 
         auto hwnd = reinterpret_cast<HWND>(winId());
+        SetMenu(hwnd, CreateMenu());//avoids window resizing by Qt on display changing; if menu exists Qt forces NCCALCSIZE instead of AdjustWindowRectEx (which adds margins for caption, box and other stuff which is virtual and actually doesn't exist)
         SetWindowLongPtr(hwnd, GWL_STYLE, static_cast<LONG>(isAeroEnabled_ ? Style::AeroBorderless : Style::BasicBorderless));
 
         if (isAeroEnabled_)
@@ -867,6 +851,8 @@ namespace Ui
             updateWhenUserInactiveTimer_->setSingleShot(true);
             connect(updateWhenUserInactiveTimer_, &QTimer::timeout, &Utils::InterConnector::instance(), &Utils::InterConnector::updateWhenUserInactive);
         }
+
+        Logic::getPrivacySettingsManager()->requestPrivacySettings();
     }
 
     MainWindow::~MainWindow()
@@ -940,7 +926,7 @@ namespace Ui
         ShowWindow(hwnd, SW_SHOW);
         if (isMaximized())
             showMaximized();
-        else if (isNativeWindowShowCmd(hwnd, SW_SHOWMINIMIZED))
+        else if (IsIconic(hwnd))
             SendMessage(hwnd, WM_SYSCOMMAND, SC_RESTORE, 0);
         else
             showNormal();
@@ -1072,8 +1058,8 @@ namespace Ui
 
     QRect MainWindow::getDefaultWindowSize()
     {
-        static auto defaultSize = QRect(0, 0, Utils::scale_value(1000), Utils::scale_value(600));
         auto available = screenAvailableGeometry();
+        const auto defaultSize = QRect(available.x(), available.y(), Utils::scale_value(1000), Utils::scale_value(600));
         if (!available.contains(defaultSize))
         {
             const auto margin = getWindowMarginOnScreen();
@@ -1189,7 +1175,7 @@ namespace Ui
             if (changeWindowSize)
                 rc.setSize(size);
 
-            rc.moveTo(platform::is_apple() ? pos() : geometry().topLeft());
+            rc.moveTo(!platform::is_windows() ? pos() : geometry().topLeft());
 
             get_gui_settings()->set_value(settings_main_window_rect, rc);
             get_gui_settings()->set_value(settings_desktop_rect, screenAvailableGeometry());
@@ -1376,7 +1362,7 @@ namespace Ui
                 // workaround for correcting the mapped cursor position:
                 // when the main window is maximized its borders are off-screen,
                 // so adjust the position by this offset value
-                if (isNativeWindowShowCmd(msg->hwnd, SW_MAXIMIZE))
+                if (IsZoomed(msg->hwnd))
                 {
                     RECT wRect;
                     GetWindowRect(msg->hwnd, &wRect);
@@ -1400,7 +1386,7 @@ namespace Ui
         }
         else if (msg->message == WM_NCCALCSIZE && msg->hwnd == hwnd && _result)
         {
-            if (isNativeWindowShowCmd(msg->hwnd, SW_MAXIMIZE))
+            if (IsZoomed(msg->hwnd))
             {
                 auto params = reinterpret_cast<LPNCCALCSIZE_PARAMS>(msg->lParam);
                 auto& rect = (msg->wParam == TRUE) ? params->rgrc[0] : *reinterpret_cast<LPRECT>(msg->lParam);
@@ -1449,7 +1435,7 @@ namespace Ui
         }
         else if (msg->message == WM_SIZE && msg->hwnd == hwnd && msg->wParam != SIZE_MINIMIZED)
         {
-            isMaximized_ = isNativeWindowShowCmd(msg->hwnd, SW_MAXIMIZE);
+            isMaximized_ = IsZoomed(msg->hwnd);
             updateState();
         }
         else if (((msg->message == WM_SYSCOMMAND && msg->wParam == SC_RESTORE) || (msg->message == WM_SHOWWINDOW && msg->wParam == TRUE)) && msg->hwnd == hwnd)
@@ -1586,7 +1572,7 @@ namespace Ui
         else if (msg->message == WM_NCLBUTTONDOWN && msg->hwnd == hwnd)
         {
             // remember the current geometry for possible correction when restoring the maximized main window
-            if (!isNativeWindowShowCmd(msg->hwnd, SW_MAXIMIZE))
+            if (!IsZoomed(msg->hwnd))
                 restoreGeometry = geometry();
         }
         else if (msg->message == WM_ENTERSIZEMOVE)
@@ -1600,7 +1586,7 @@ namespace Ui
             monitorChanged = false;
 
             // it is necessary to check the geometry after restoration if the main window is maximized by dragging it to the top of the screen
-            if (isNativeWindowShowCmd(msg->hwnd, SW_MAXIMIZE))
+            if (IsZoomed(msg->hwnd))
             {
                 checkGeometry = true;
 
@@ -1648,7 +1634,7 @@ namespace Ui
         else if (msg->message == WM_WINDOWPOSCHANGING && msg->hwnd == hwnd)
         {
             auto pos = reinterpret_cast<LPWINDOWPOS>(msg->lParam);
-            if (checkGeometry && isNativeWindowShowCmd(msg->hwnd, SW_SHOWNORMAL))
+            if (checkGeometry && (!IsIconic(msg->hwnd) && !IsZoomed(msg->hwnd)))
             {
                 if (restoreGeometry != QRect(pos->x, pos->y, pos->cx, pos->cy))
                 {
@@ -1660,7 +1646,7 @@ namespace Ui
 
                 checkGeometry = false;
             }
-            else if (isNativeWindowShowCmd(hwnd, SW_MAXIMIZE))
+            else if (IsZoomed(hwnd))
             {
                 if (!pos->cx && !pos->cy)
                     return false;
@@ -1696,7 +1682,7 @@ namespace Ui
         }
         else if (msg->message == WM_WINDOWPOSCHANGED && msg->hwnd == hwnd)
         {
-            if (isNativeWindowShowCmd(hwnd, SW_MAXIMIZE))
+            if (IsZoomed(hwnd))
             {
                 if (const auto screenRect = getMonitorWorkRect(msg->hwnd); screenRect)
                 {
@@ -1895,7 +1881,7 @@ namespace Ui
         if (!isMaximized())
         {
             auto rc = get_gui_settings()->get_value(settings_main_window_rect, QRect());
-            rc.moveTo(platform::is_apple() ? pos() : geometry().topLeft());
+            rc.moveTo(!platform::is_windows() ? pos() : geometry().topLeft());
 
 #ifdef _WIN32
             // when the main window is snapped to the left/right half of the screen
@@ -2201,17 +2187,25 @@ namespace Ui
         initSizes();
 
         const bool isMaximized = get_gui_settings()->get_value<bool>(settings_window_maximized, false);
+        const bool showTaskBarIcon = get_gui_settings()->get_value<bool>(settings_show_in_taskbar, true);
 
-        if (_need_to_show)
-            isMaximized ? showMaximized() : show();
+        if (!_need_to_show)
+        {
+            if (platform::is_windows() && !showTaskBarIcon)
+                hide();
+            else
+                QMainWindow::showMinimized();
+        }
         else
-            maximizeLater_ = isMaximized;
+        {
+            isMaximized ? showMaximized() : show();
+        }
 
         if constexpr (platform::is_windows())
         {
             updateMaximizeButton(isMaximized);
             maximizeButton_->setStyle(QApplication::style());
-            showIconInTaskbar(get_gui_settings()->get_value<bool>(settings_show_in_taskbar, true));
+            showIconInTaskbar(showTaskBarIcon);
         }
 
 #ifdef _WIN32
@@ -2291,13 +2285,10 @@ namespace Ui
 
     void MainWindow::showMinimized()
     {
-        if (!minimizeOnStartup_)
-        {
 #ifdef _WIN32
-            ShowWindow((HWND)winId(), SW_MINIMIZE);
-            return;
+        ShowWindow((HWND)winId(), SW_MINIMIZE);
+        return;
 #endif //_WIN32
-        }
         QMainWindow::showMinimized();
     }
 
@@ -2597,6 +2588,7 @@ namespace Ui
         Logic::ResetUnknownsModel();
         Logic::ResetCallsModel();
         Logic::resetLastSearchPatterns();
+        Logic::ResetPrivacySettingsManager();
         Ui::ResetMyInfo();
 
         Ui::GetDispatcher()->getVoipController().resetMaskManager();
@@ -2944,15 +2936,6 @@ namespace Ui
 #else
             getMainPage()->getContactDialog()->onSmilesMenu();
 #endif
-        }
-    }
-
-
-    void MainWindow::onShowVideoWindow()
-    {
-        if (mainPage_)
-        {
-            mainPage_->showVideoWindow();
         }
     }
 

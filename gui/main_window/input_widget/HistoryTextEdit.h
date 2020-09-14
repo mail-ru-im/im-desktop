@@ -25,6 +25,9 @@ namespace Ui
 
         bool tabWillFocusNext();
 
+        void setMarginScaleCorrection(qreal _koef);
+        qreal getMarginScaleCorrection() const;
+
     protected:
         void keyPressEvent(QKeyEvent*) override;
         void paintEvent(QPaintEvent* _event) override;
@@ -53,5 +56,10 @@ namespace Ui
 
         std::unique_ptr<HistoryUndoStack> stackRedo_;
         std::unique_ptr<Emoji::TextSymbolReplacer> emojiReplacer_;
+
+        QTimer* keyPressTimer_;
+
+        // use this value to correct the margin from the document layout in the multi-screen system
+        qreal marginScaleCorrection_;
     };
 }

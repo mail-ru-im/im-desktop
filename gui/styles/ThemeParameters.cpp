@@ -191,7 +191,7 @@ namespace Styling
     QColor ThemeParameters::getAppTitlebarColor() const
     {
         auto var = platform::is_apple() ? Styling::StyleVariable::APP_PRIMARY : Styling::StyleVariable::BASE_BRIGHT_INVERSE;
-        if (config::get().is_external())
+        if (config::get().is_debug())
             var = Styling::StyleVariable::SECONDARY_RAINBOW_BLUE;
         else if (Ui::GetAppConfig().hasCustomDeviceId())
             var = Styling::StyleVariable::SECONDARY_RAINBOW_WARM;
@@ -623,7 +623,7 @@ namespace Styling
 
         return qss;
     }
-    
+
     ThemeParameters getParameters(const QString& _aimId)
     {
         ThemeParameters params(getThemesContainer().getCurrentTheme(), _aimId.isEmpty() ? nullptr : getThemesContainer().getContactWallpaper(_aimId));

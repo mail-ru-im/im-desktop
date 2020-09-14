@@ -936,6 +936,22 @@ You can leave your feedback or report an error here:</source>
         <translation>%1 بتعيين %2 كمسؤول عن هذه القناة</translation>
     </message>
     <message>
+        <source>Block contact</source>
+        <translation>حظر الاتصال</translation>
+    </message>
+    <message>
+        <source>OK</source>
+        <translation>حسنا</translation>
+    </message>
+    <message>
+        <source>%1 Send the user a message or press &quot;OK&quot; button to allow %2 to</source>
+        <translation>%1 انقر فوق &quot;موافق&quot; أو الإجابة ويمكن لـ %2</translation>
+    </message>
+    <message>
+        <source>%1 From now on %2 is able to</source>
+        <translation>%1 الآن يستطيع %2</translation>
+    </message>
+    <message>
         <source>%1 You have canceled your join request</source>
         <translation>%1 قمت بإلغاء طلب عضويتك</translation>
     </message>
@@ -4676,6 +4692,14 @@ You can leave your feedback or report an error here:</source>
         <source>Remove reaction: an error occurred</source>
         <translation>حذف الرد: حدث خطأ</translation>
     </message>
+    <message>
+        <source>And %1 more...</source>
+        <translation>و %1...</translation>
+    </message>
+    <message>
+        <source>Loading...</source>
+        <translation>جار التحميل...</translation>
+    </message>
 </context>
 <context>
     <name>release_notes</name>
@@ -5916,6 +5940,24 @@ Please edit phone number and try again.</source>
     <message>
         <source>For %1 already</source>
         <translation>%1</translation>
+    </message>
+</context>
+<context>
+    <name>status_plate</name>
+    <message>
+        <source>Bot</source>
+        <translation>الروبوت</translation>
+    </message>
+</context>
+<context>
+    <name>status_popup</name>
+    <message>
+        <source>Select my status</source>
+        <translation>اختر حالتي</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>إلغاء</translation>
     </message>
 </context>
 <context>

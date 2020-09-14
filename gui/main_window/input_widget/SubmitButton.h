@@ -8,7 +8,7 @@ namespace Ui
 {
     class CircleHover;
 
-    class SubmitButton : public ClickableWidget, public StyledInputElement,  CircleHoverAnimated
+    class SubmitButton : public ClickableWidget, public StyledInputElement, CircleHoverAnimated
     {
         Q_OBJECT
 

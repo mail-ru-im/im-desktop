@@ -74,6 +74,44 @@ protected:
     QPixmap checkedPixmap_;
 };
 
+class ButtonAccessible : public QObject, public Button
+{
+    Q_OBJECT
+
+Q_SIGNALS:
+    void clicked() const;
+
+public:
+    ButtonAccessible(QObject* parent) : QObject(parent) { }
+    void setAccessibleName(const QString& name) { accessibleName_ = name; }
+    const QString& accessibleName() const { return accessibleName_; }
+
+protected:
+    QString accessibleName_;
+};
+
+class AccessibleButton : public QAccessibleObject
+{
+public:
+    AccessibleButton(ButtonAccessible* button) : QAccessibleObject(button) { assert(button); }
+
+    int childCount() const override { return 0; }
+
+    QAccessibleInterface* child(int index) const override { return nullptr; }
+
+    QAccessibleInterface* parent() const override;
+
+    QAccessible::State state() const override;
+
+    QAccessible::Role role() const override { return QAccessible::Role::Button; }
+
+    QRect rect() const override;
+
+    int indexOfChild(const QAccessibleInterface* child) const override { return -1; }
+
+    QString text(QAccessible::Text t) const override;
+};
+
 class Label : virtual public Drawable
 {
 public:
@@ -168,6 +206,5 @@ public:
     virtual ~BLabel() = default;
     void draw(QPainter& _p) override;
 };
-
 
 }

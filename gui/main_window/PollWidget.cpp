@@ -191,6 +191,11 @@ PollWidget::PollWidget(const QString& _contact, QWidget* _parent)
     layout->addWidget(d->scrollArea_);
 
     d->scrollAnimation_ = new QVariantAnimation(this);
+    d->scrollAnimation_->setDuration(150);
+    connect(d->scrollAnimation_, &QVariantAnimation::valueChanged, this, [this](const QVariant& value)
+    {
+        d->scrollArea_->verticalScrollBar()->setValue(value.toInt());
+    });
 
     auto buttonsFrame = new QFrame(this);
     buttonsFrame->setFixedWidth(Utils::scale_value(260));
@@ -234,25 +239,14 @@ void PollWidget::setInputData(const QString& _text, const Data::QuotesVec& _quot
 
 void PollWidget::onAdd()
 {
-    auto startValue = d->scrollArea_->verticalScrollBar()->value();
-
     d->list_->addItem();
 
     d->addWidget_->setVisible(d->list_->count() < maxPollOptions());
     d->sendButton_->setEnabled(d->isSendEnabled());
 
     d->scrollAnimation_->stop();
-    d->scrollAnimation_->disconnect(this);
-    connect(d->scrollAnimation_, &QVariantAnimation::valueChanged, this, [this, startValue]()
-    {
-        auto* scrollBar = d->scrollArea_->verticalScrollBar();
-        scrollBar->setValue(startValue + (scrollBar->maximum() - startValue) * d->scrollAnimation_->currentValue().toInt());
-    });
-
-    d->scrollAnimation_->setStartValue(0);
-    d->scrollAnimation_->setEndValue(1);
-    d->scrollAnimation_->setDuration(150);
-    d->scrollAnimation_->setEasingCurve(QEasingCurve::Linear);
+    d->scrollAnimation_->setStartValue(d->scrollArea_->verticalScrollBar()->value());
+    d->scrollAnimation_->setEndValue(d->scrollArea_->verticalScrollBar()->maximum());
     d->scrollAnimation_->start();
 }
 

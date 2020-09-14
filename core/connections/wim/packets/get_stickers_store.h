@@ -35,7 +35,7 @@ namespace core
             get_stickers_store_packet(wim_packet_params _params, std::string _search_term = std::string());
             virtual ~get_stickers_store_packet();
 
-            std::shared_ptr<core::tools::binary_stream> get_response() const;
+            const std::shared_ptr<core::tools::binary_stream>& get_response() const;
             virtual priority_t get_priority() const override;
 
         };

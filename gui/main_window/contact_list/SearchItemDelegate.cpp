@@ -525,7 +525,7 @@ namespace Logic
         const auto& params = Ui::GetRecentsParams();
         const auto leftOffset = params.getContactNameX();
 
-        auto timeText = Ui::FormatTime(QDateTime::fromTime_t(msg->message_->GetTime()));
+        auto timeText = Ui::FormatTime(QDateTime::fromSecsSinceEpoch(msg->message_->GetTime()));
         if (!timeText.isEmpty())
         {
             ci.time_ = MakeTextUnit(timeText, {}, LinksVisible::DONT_SHOW_LINKS, ProcessLineFeeds::REMOVE_LINE_FEEDS);

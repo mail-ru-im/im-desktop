@@ -14,25 +14,6 @@
 #include "../common.shared/smartreply/smartreply_config.h"
 #include "cache/emoji/EmojiCode.h"
 
-
-namespace
-{
-    std::vector<Features::ReactionWithTooltip> default_reactions_with_tooltip_set()
-    {
-        static const std::vector<Features::ReactionWithTooltip> reactions =
-        {
-            { Emoji::EmojiCode::toQString(Emoji::EmojiCode(0x1f44d)),           QT_TRANSLATE_NOOP("reactions", "Like") },
-            { Emoji::EmojiCode::toQString(Emoji::EmojiCode(0x2764, 0xfe0f)),    QT_TRANSLATE_NOOP("reactions", "Super") },
-            { Emoji::EmojiCode::toQString(Emoji::EmojiCode(0x1f923)),           QT_TRANSLATE_NOOP("reactions", "Funny") },
-            { Emoji::EmojiCode::toQString(Emoji::EmojiCode(0x1f633)),           QT_TRANSLATE_NOOP("reactions", "Oops") },
-            { Emoji::EmojiCode::toQString(Emoji::EmojiCode(0x1f622)),           QT_TRANSLATE_NOOP("reactions", "Sad") },
-            { Emoji::EmojiCode::toQString(Emoji::EmojiCode(0x1f621)),           QT_TRANSLATE_NOOP("reactions", "Scandalous") },
-        };
-
-        return reactions;
-    }
-}
-
 namespace Features
 {
     bool isNicksEnabled()
@@ -90,7 +71,7 @@ namespace Features
 
     bool externalPhoneAttachment()
     {
-        return Omicron::_o("external_phone_attachment", config::get().is_on(config::features::external_phone_attachment));
+        return Omicron::_o(omicron::keys::external_phone_attachment, config::get().is_on(config::features::external_phone_attachment));
     }
 
     bool showNotificationsTextSettings()
@@ -366,46 +347,9 @@ namespace Features
         return Omicron::_o(omicron::keys::vcs_room, default_value);
     }
 
-    std::vector<QString> getReactionsSet()
+    std::string getReactionsJson()
     {
-        auto reactionsWithTooltip = getReactionsWithTooltipsSet();
-
-        std::vector<QString> result;
-        result.reserve(reactionsWithTooltip.size());
-
-        for (auto& reactionWithTooltip : reactionsWithTooltip)
-            result.push_back(reactionWithTooltip.reaction_);
-
-        return result;
-    }
-
-    std::vector<ReactionWithTooltip> getReactionsWithTooltipsSet()
-    {
-        // json format example:  "{\"👍\" : \"tooltip\", \"❤️\" : \"tooltip\", \"🤣\" : \"tooltip\", \"😳\" : \"tooltip\", \"😢\" : \"tooltip\", \"😡\" : \"tooltip\"}"
-
-        auto json = Omicron::_o_json(omicron::keys::reactions_initial_set, std::string());
-        if (json.empty())
-            return default_reactions_with_tooltip_set();
-
-        std::vector<ReactionWithTooltip> result;
-
-        rapidjson::Document doc;
-        doc.Parse(json);
-
-        if (doc.HasParseError())
-            return default_reactions_with_tooltip_set();
-
-        for (auto it = doc.MemberBegin(); it != doc.MemberEnd(); ++it)
-        {
-            ReactionWithTooltip reaction;
-            reaction.reaction_ = QString::fromStdString(it->name.GetString());
-            if (it->value.IsString())
-                reaction.tooltip_ = QString::fromStdString(it->value.GetString());
-
-            result.push_back(reaction);
-        }
-
-        return result;
+        return Omicron::_o_json(omicron::keys::reactions_initial_set, std::string());
     }
 
     bool reactionsEnabled()
@@ -438,8 +382,13 @@ namespace Features
         return Omicron::_o(omicron::keys::call_room_info_enabled, config::get().is_on(config::features::call_room_info_enabled));
     }
 
-    bool hasConnectByIpOption()
+    bool IvrLoginEnabled()
     {
-        return Omicron::_o(omicron::keys::has_connect_by_ip_option, config::get().is_on(config::features::has_connect_by_ip_option));
+        return Omicron::_o(omicron::keys::ivr_login_enabled, false);
+    }
+
+    int IvrResendCountToShow()
+    {
+        return Omicron::_o(omicron::keys::ivr_resend_count_to_show, 2);
     }
 }

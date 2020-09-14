@@ -45,11 +45,12 @@ namespace Statuses
         void setDuration(const std::chrono::seconds _time);
         const std::chrono::seconds getDefaultDuration() const noexcept;
         QString getTimeString() const;
+        QString getDurationString() const;
 
         bool isEmpty() const;
 
         void setSelected(bool _selected);
-        bool isSelected() const { return selected_; };
+        bool isSelected() const { return selected_; }
 
         void setExpirationTime();
         void resetTime();
@@ -63,7 +64,7 @@ namespace Statuses
 
     private:
         Emoji::EmojiCode code_;
-        QString description_;
+        mutable QString description_;
         std::chrono::seconds defaultDuration_;
         std::chrono::seconds duration_;
         QDateTime startTime_;

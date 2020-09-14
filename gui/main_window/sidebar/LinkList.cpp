@@ -79,7 +79,7 @@ namespace Ui
         , msg_(_msg)
         , seq_(_seq)
     {
-        const auto date = QLocale().standaloneMonthName(QDateTime::fromTime_t(_time).date().month()).toUpper();
+        const auto date = QLocale().standaloneMonthName(QDateTime::fromSecsSinceEpoch(_time).date().month()).toUpper();
 
         date_ = Ui::TextRendering::MakeTextUnit(date);
         date_->init(Fonts::appFontScaled(11, Fonts::FontWeight::SemiBold), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
@@ -390,7 +390,7 @@ namespace Ui
         auto h = height();
         for (const auto& e : _entries)
         {
-            auto time = QDateTime::fromTime_t(e.time_);
+            auto time = QDateTime::fromSecsSinceEpoch(e.time_);
             auto item = std::make_unique<LinkItem>(e.url_, formatTimeStr(time), e.msg_id_, e.seq_, e.outgoing_, e.sender_, e.time_, width());
             h += item->getHeight();
 
@@ -427,14 +427,14 @@ namespace Ui
             if (e.type_ != u"link")
                 continue;
 
-            const auto time = QDateTime::fromTime_t(e.time_);
+            const auto time = QDateTime::fromSecsSinceEpoch(e.time_);
 
             auto iter = Items_.cbegin();
             for (; iter != Items_.cend(); ++iter)
             {
                 if (iter->get()->isDateItem())
                 {
-                    auto dt = QDateTime::fromTime_t(iter->get()->time());
+                    auto dt = QDateTime::fromSecsSinceEpoch(iter->get()->time());
                     if (dt.date().month() == time.date().month() && dt.date().year() == time.date().year())
                         continue;
                 }
@@ -747,13 +747,13 @@ namespace Ui
 
         auto iter = Items_.begin();
         auto prevIsDate = iter->get()->isDateItem();
-        auto prevDt = QDateTime::fromTime_t(iter->get()->time()).date();
+        auto prevDt = QDateTime::fromSecsSinceEpoch(iter->get()->time()).date();
         ++iter;
 
         while (iter != Items_.end())
         {
             auto isDate = iter->get()->isDateItem();
-            auto dt = QDateTime::fromTime_t(iter->get()->time()).date();
+            auto dt = QDateTime::fromSecsSinceEpoch(iter->get()->time()).date();
             if ((dt.month() == prevDt.month() && dt.year() == prevDt.year()) || prevIsDate != isDate)
             {
                 prevIsDate = isDate;

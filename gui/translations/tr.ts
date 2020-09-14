@@ -936,6 +936,22 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
         <translation>%1 bu grubun %2 yöneticisini atadı</translation>
     </message>
     <message>
+        <source>Block contact</source>
+        <translation>Kişiyi engelle</translation>
+    </message>
+    <message>
+        <source>OK</source>
+        <translation>tamam</translation>
+    </message>
+    <message>
+        <source>%1 Send the user a message or press &quot;OK&quot; button to allow %2 to</source>
+        <translation>%1 Tamam veya cevapla&apos;yı tıklayın ve %2 yapabilir:</translation>
+    </message>
+    <message>
+        <source>%1 From now on %2 is able to</source>
+        <translation>%1 Şimdi %2 şunları yapabilir:</translation>
+    </message>
+    <message>
         <source>%1 You have canceled your join request</source>
         <translation>%1 Üyelik isteğinizi iptal ettiniz</translation>
     </message>
@@ -4680,6 +4696,14 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
         <source>Remove reaction: an error occurred</source>
         <translation>Silme yanıtı: bir hata oluştu</translation>
     </message>
+    <message>
+        <source>And %1 more...</source>
+        <translation>Ve %1...</translation>
+    </message>
+    <message>
+        <source>Loading...</source>
+        <translation>Yükleniyor...</translation>
+    </message>
 </context>
 <context>
     <name>release_notes</name>
@@ -5920,6 +5944,24 @@ Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
     <message>
         <source>For %1 already</source>
         <translation>%1 için zaten</translation>
+    </message>
+</context>
+<context>
+    <name>status_plate</name>
+    <message>
+        <source>Bot</source>
+        <translation>Bot</translation>
+    </message>
+</context>
+<context>
+    <name>status_popup</name>
+    <message>
+        <source>Select my status</source>
+        <translation>Durumumu seç</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>İptal</translation>
     </message>
 </context>
 <context>

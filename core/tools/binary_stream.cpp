@@ -109,7 +109,8 @@ bool binary_stream::encrypt_aes256(std::string_view _key)
     auto result = utils::aes::encrypt(buffer_, encrypted, _key);
 
     buffer_.clear();
-    write(&encrypted[0], encrypted.size());
+    if (result)
+        write(&encrypted[0], encrypted.size());
 
     return result;
 }
@@ -126,7 +127,9 @@ bool binary_stream::decrypt_aes256(std::string_view _key)
     auto result = utils::aes::decrypt(buffer_, decrypted, _key);
 
     buffer_.clear();
-    write(&decrypted[0], decrypted.size());
+
+    if (result)
+        write(&decrypted[0], decrypted.size());
 
     return result;
 }

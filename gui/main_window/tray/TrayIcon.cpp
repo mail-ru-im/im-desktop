@@ -833,7 +833,22 @@ namespace Ui
             break;
         }
 
-        alert->show();
+        if (alert->isHidden())
+        {   // These weird dances around alert->show() help to avoid alert widget being shown
+            // with old content and not got repainted in proper time. It happened occasionally.
+            const auto oldOpacity = alert->windowOpacity();
+            alert->setWindowOpacity(0.0);
+            QCoreApplication::processEvents();
+            alert->show();
+            QCoreApplication::processEvents();
+            alert->setWindowOpacity(oldOpacity);
+        }
+        else
+        {
+            alert->show();
+        }
+
+
         if (Menu_ && Menu_->isVisible())
             Menu_->raise();
     }

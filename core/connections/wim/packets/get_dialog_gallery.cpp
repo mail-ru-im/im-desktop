@@ -78,7 +78,6 @@ int32_t get_dialog_gallery::init_request(const std::shared_ptr<core::http_reques
         log_replace_functor f;
         f.add_message_markers();
         f.add_json_marker("aimsid", aimsid_range_evaluator());
-        f.add_marker("a");
         _request->set_replace_log_function(f);
     }
 

@@ -153,7 +153,6 @@ im_container::im_container(const std::shared_ptr<voip_manager::VoipManager>& voi
     REGISTER_IM_MESSAGE("contacts/get_ignore", on_get_ignore_contacts);
     REGISTER_IM_MESSAGE("contact/switched", on_contact_switched);
     REGISTER_IM_MESSAGE("dlg_states/hide", on_hide_dlg_state);
-    REGISTER_IM_MESSAGE("remove_members", on_remove_members);
     REGISTER_IM_MESSAGE("add_members", on_add_members);
     REGISTER_IM_MESSAGE("add_chat", on_add_chat);
     REGISTER_IM_MESSAGE("stats", on_stats);
@@ -285,6 +284,8 @@ im_container::im_container(const std::shared_ptr<voip_manager::VoipManager>& voi
     REGISTER_IM_MESSAGE("unsubscribe/status", on_unsubscribe_status);
     REGISTER_IM_MESSAGE("subscribe/call_room_info", on_subscribe_call_room_info);
     REGISTER_IM_MESSAGE("unsubscribe/call_room_info", on_unsubscribe_call_room_info);
+
+    REGISTER_IM_MESSAGE("emoji/get", on_get_emoji);
 }
 
 
@@ -513,10 +514,6 @@ void core::im_container::on_voip_call_message(int64_t _seq, coll_helper& _params
     else if (type == "voip_call_stop") {
         im->on_voip_call_stop();
     }
-    else if (type == "voip_call_volume_change") {
-        const int vol = _params.get_value_as_int("volume");
-        im->on_voip_volume_change(vol);
-    }
     else if (type == "audio_playback_mute_switch") {
         im->on_voip_mute_switch();
     }
@@ -560,10 +557,8 @@ void core::im_container::on_voip_call_message(int64_t _seq, coll_helper& _params
         im->on_voip_device_changed(dev_type, uid);
     }
     else if (type == "voip_devices_changed") {
-        im->on_voip_devices_changed();
-    }
-    else if (type == "request_calls") {
-        im->on_voip_call_request_calls();
+        bool audio = _params.get_value_as_bool("audio");
+        im->on_voip_devices_changed(audio ? Audio : Video);
     }
     else if (type == "update") {
         im->on_voip_update();
@@ -986,18 +981,6 @@ void core::im_container::on_set_state(int64_t _seq, coll_helper& _params)
         state = profile_state::offline;
 
     im->set_state(_seq, state);
-}
-
-void core::im_container::on_remove_members(int64_t _seq, coll_helper& _params)
-{
-    auto im = get_im(_params);
-    if (!im)
-        return;
-
-    im->remove_members(
-        _seq,
-        _params.get_value_as_string("aimid"),
-        _params.get_value_as_string("m_chat_members_to_remove"));
 }
 
 void core::im_container::on_add_members(int64_t _seq, coll_helper& _params)
@@ -2563,7 +2546,6 @@ void im_container::on_change_app_config(const int64_t _seq, coll_helper& _params
     core::configuration::set_config_option(core::configuration::app_config::AppConfigOption::cache_history_pages_secs, _params.get_value_as_int("dev.cache_history_pages_secs"));
     core::configuration::set_config_option(core::configuration::app_config::AppConfigOption::is_server_search_enabled, _params.get_value_as_bool("dev.server_search"));
     core::configuration::set_config_option(core::configuration::app_config::AppConfigOption::dev_id, std::string(_params.get_value_as_string("dev_id")));
-    core::configuration::set_config_option(core::configuration::app_config::AppConfigOption::connect_by_ip, _params.get_value_as_bool("dev.connect_by_ip"));
 
     const auto app_ini_path = utils::get_app_ini_path();
 
@@ -3110,6 +3092,12 @@ void im_container::on_unsubscribe_call_room_info(const int64_t _seq, coll_helper
 {
     if (auto im = get_im(_params))
         im->unsubscribe_call_room_info(_params.get_value_as_string("room_id"));
+}
+
+void im_container::on_get_emoji(const int64_t _seq, coll_helper& _params)
+{
+    if (auto im = get_im(_params))
+        im->get_emoji(_seq, _params.get_value_as_string("code"), _params.get_value_as_int("size"));
 }
 
 void im_container::on_get_reactions(const int64_t _seq, coll_helper& _params)

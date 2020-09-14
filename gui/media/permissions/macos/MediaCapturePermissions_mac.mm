@@ -1,6 +1,7 @@
 #include "stdafx.h"
 
 #include "../MediaCapturePermissions.h"
+#include <libproc.h>
 
 #import <AVFoundation/AVFoundation.h>
 #import <AppKit/AppKit.h>
@@ -40,31 +41,43 @@ namespace
         return media::permissions::Permission::Allowed;
     }
 
+    // Hack from https://stackoverflow.com/questions/56597221/detecting-screen-recording-settings-on-macos-catalina
     media::permissions::Permission isScreenCaptureAllowed()
     {
-        if (@available(macOS 10.15, *))
+        if (@available(macos 10.15, *))
         {
-            CFArrayRef windowList = CGWindowListCopyWindowInfo(kCGWindowListOptionOnScreenOnly, kCGNullWindowID);
-            NSUInteger numberOfWindows = CFArrayGetCount(windowList);
-            NSUInteger numberOfWindowsWithName = 0;
-            for (int idx = 0; idx < numberOfWindows; ++idx) {
-                NSDictionary *windowInfo = (NSDictionary *)CFArrayGetValueAtIndex(windowList, idx);
-                NSString *windowName = windowInfo[(id)kCGWindowName];
-                if (windowName) {
-                    numberOfWindowsWithName++;
-                } else {
-                    //no kCGWindowName detected -> not enabled
-                    break; //breaking early, numberOfWindowsWithName not increased
+            bool bRet = false;
+            CFArrayRef list = CGWindowListCopyWindowInfo(kCGWindowListOptionAll, kCGNullWindowID);
+            if (list)
+            {
+                int n = (int)(CFArrayGetCount(list));
+                for (int i = 0; i < n; i++)
+                {
+                    NSDictionary* info = (NSDictionary*)(CFArrayGetValueAtIndex(list, (CFIndex)i));
+                    NSString* name = info[(id)kCGWindowName];
+                    NSNumber* pid = info[(id)kCGWindowOwnerPID];
+                    if (pid != nil && name != nil)
+                    {
+                        int nPid = [pid intValue];
+                        char path[PROC_PIDPATHINFO_MAXSIZE+1];
+                        int lenPath = proc_pidpath(nPid, path, PROC_PIDPATHINFO_MAXSIZE);
+                        if (lenPath > 0)
+                        {
+                            path[lenPath] = 0;
+                            if (strcmp(path, "/System/Library/CoreServices/SystemUIServer.app/Contents/MacOS/SystemUIServer") == 0)
+                            {
+                                bRet = true;
+                                break;
+                            }
+                        }
+                    }
                 }
-
+                CFRelease(list);
             }
-            CFRelease(windowList);
-
-            if (numberOfWindows != numberOfWindowsWithName)
-                return media::permissions::Permission::Denied;
+            return bRet ? media::permissions::Permission::Allowed : media::permissions::Permission::Denied;
+        } else {
+            return media::permissions::Permission::Allowed;
         }
-
-        return media::permissions::Permission::Allowed;
     }
 }
 

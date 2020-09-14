@@ -161,12 +161,17 @@ namespace Ui
         , anim_(new QVariantAnimation(this))
     {
         setFixedSize(getIconSize());
-        connect(animFocus_, &QVariantAnimation::valueChanged, this, qOverload<>(&ClickableWidget::update));
+
+        anim_->setStartValue(0.0);
+        anim_->setEndValue(360.0);
+        anim_->setDuration(animDuration.count());
+        anim_->setLoopCount(-1);
+        connect(anim_, &QVariantAnimation::valueChanged, this, qOverload<>(&ClickableWidget::update));
     }
 
     FileSharingIcon::~FileSharingIcon()
     {
-        anim_->stop();
+        stopAnimation();
     }
 
     void FileSharingIcon::setBytes(const int64_t _bytesTotal, const int64_t _bytesCurrent)
@@ -231,14 +236,7 @@ namespace Ui
     void FileSharingIcon::startAnimation()
     {
         if (!isAnimating())
-        {
-            anim_->setStartValue(0.0);
-            anim_->setEndValue(360.0);
-            anim_->setDuration(animDuration.count());
-            anim_->setEasingCurve(QEasingCurve::Linear);
-            anim_->setLoopCount(-1);
             anim_->start();
-        }
     }
 
     void FileSharingIcon::stopAnimation()
@@ -253,9 +251,9 @@ namespace Ui
 
     void FileSharingIcon::onVisibilityChanged(const bool _isVisible)
     {
-        if (_isVisible)
+        if (_isVisible && anim_->state() == QAbstractAnimation::Paused)
             anim_->resume();
-        else
+        else if (anim_->state() == QAbstractAnimation::Running)
             anim_->pause();
     }
 
@@ -275,7 +273,7 @@ namespace Ui
 
         if (!isFileDownloaded())
         {
-            const auto animAngle = anim_->state() == QAbstractAnimation::State::Running ? anim_->currentValue().toDouble() : 0.0;
+            const auto animAngle = isAnimating() ? anim_->currentValue().toDouble() : 0.0;
             const auto baseAngle = (animAngle * QT_ANGLE_MULT);
             const auto progress = bytesTotal_ == 0 ? 0 : std::max((double)bytesCurrent_ / (double)bytesTotal_, 0.03);
             const auto progressAngle = (int)std::ceil(progress * 360 * QT_ANGLE_MULT);

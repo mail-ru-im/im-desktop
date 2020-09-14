@@ -74,7 +74,7 @@ void Previewer::ImageViewerWidget::showMedia(const MediaData& _mediaData)
         viewer_ = FFMpegViewer::create(_mediaData, maxVideoSize(viewSize_), this, firstOpen_);
         connect(viewer_.get(), &FFMpegViewer::doubleClicked, this, &ImageViewerWidget::closeRequested);
         connect(viewer_.get(), &FFMpegViewer::fullscreenToggled, this, &ImageViewerWidget::fullscreenToggled);
-        connect(viewer_.get(), &FFMpegViewer::playCLicked, this, &ImageViewerWidget::playClicked);
+        connect(viewer_.get(), &FFMpegViewer::playClicked, this, &ImageViewerWidget::playClicked);
         connect(viewer_.get(), &FFMpegViewer::rightClicked, this, &ImageViewerWidget::rightClicked);
     }
     else
@@ -328,7 +328,7 @@ void Previewer::ImageViewerWidget::onViewerLoadTimeout()
     tmpViewer_ = FFMpegViewer::create(currentData_, maxVideoSize(viewSize_), this, firstOpen_);
     connect(tmpViewer_.get(), &FFMpegViewer::doubleClicked, this, &ImageViewerWidget::closeRequested);
     connect(tmpViewer_.get(), &FFMpegViewer::fullscreenToggled, this, &ImageViewerWidget::fullscreenToggled);
-    connect(tmpViewer_.get(), &FFMpegViewer::playCLicked, this, &ImageViewerWidget::playClicked);
+    connect(tmpViewer_.get(), &FFMpegViewer::playClicked, this, &ImageViewerWidget::playClicked);
     connect(tmpViewer_.get(), &FFMpegViewer::rightClicked, this, &ImageViewerWidget::rightClicked);
     connect(tmpViewer_.get(), &AbstractViewer::loaded, this, [this]()
     {

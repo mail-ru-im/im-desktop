@@ -38,11 +38,11 @@ namespace Ui
         bool succeeded() const { return state_ == PhoneWidgetState::FINISH_STATE || loggedOut_; }
 
     protected:
-        virtual void paintEvent(QPaintEvent* _e) override;
-        virtual void mouseReleaseEvent(QMouseEvent* _e) override;
-        virtual void mouseMoveEvent(QMouseEvent* _e) override;
-        virtual void showEvent(QShowEvent* _e) override;
-        virtual void keyPressEvent(QKeyEvent* _e) override;
+        void paintEvent(QPaintEvent* _e) override;
+        void mouseReleaseEvent(QMouseEvent* _e) override;
+        void mouseMoveEvent(QMouseEvent* _e) override;
+        void showEvent(QShowEvent* _e) override;
+        void keyPressEvent(QKeyEvent* _e) override;
 
     private:
         void init();

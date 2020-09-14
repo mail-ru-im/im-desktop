@@ -155,6 +155,17 @@ ToastBase::ToastBase(QWidget* _parent)
 
     setAttribute(Qt::WA_TranslucentBackground);
 
+    opacityAnimation_->setStartValue(0.0);
+    opacityAnimation_->setEndValue(1.0);
+    opacityAnimation_->setDuration(300);
+    connect(opacityAnimation_, &QVariantAnimation::valueChanged, this, qOverload<>(&ToastBase::update));
+
+    moveAnimation_->setDuration(animationDuration());
+    connect(moveAnimation_, &QVariantAnimation::valueChanged, this, [this](const QVariant& value)
+    {
+        move(x(), value.toInt());
+    });
+
     setMouseTracking(true);
 }
 
@@ -175,28 +186,16 @@ void ToastBase::showAt(const QPoint& _center, bool _onTop)
 
     if (!_onTop)
     {
-        opacityAnimation_->setStartValue(0.0);
-        opacityAnimation_->setEndValue(1.0);
-        opacityAnimation_->setDuration(300);
-        opacityAnimation_->setEasingCurve(QEasingCurve::Linear);
-        opacityAnimation_->setLoopCount(1);
-        opacityAnimation_->disconnect(this);
-        connect(opacityAnimation_, &QVariantAnimation::valueChanged, this, qOverload<>(&ToastBase::update));
+        opacityAnimation_->stop();
+        opacityAnimation_->setDirection(QAbstractAnimation::Forward);
         opacityAnimation_->start();
     }
 
     if (isMoveAnimationEnabled_)
     {
-        moveAnimation_->setStartValue(_center.y() + (_onTop ? 0 : height() + padding()));
-        moveAnimation_->setEndValue(_center.y());
-        moveAnimation_->setDuration(animationDuration());
-        moveAnimation_->setEasingCurve(QEasingCurve::Linear);
-        moveAnimation_->setLoopCount(1);
-        moveAnimation_->disconnect(this);
-        connect(moveAnimation_, &QVariantAnimation::valueChanged, this, [this, _center, _onTop](const QVariant& value)
-        {
-            move(_center.x() - width() / 2, value.toInt() - (_onTop ? 0 : height()));
-        });
+        moveAnimation_->stop();
+        moveAnimation_->setStartValue(_center.y() + (_onTop ? 0 : padding()));
+        moveAnimation_->setEndValue(_center.y() - (_onTop ? 0 : height()));
         moveAnimation_->start();
     }
 
@@ -291,13 +290,8 @@ void ToastBase::handleMouseLeave()
 
 void ToastBase::startHide()
 {
-    opacityAnimation_->setStartValue(1.0);
-    opacityAnimation_->setEndValue(0.0);
-    opacityAnimation_->setDuration(300);
-    opacityAnimation_->setEasingCurve(QEasingCurve::Linear);
-    opacityAnimation_->setLoopCount(1);
-    opacityAnimation_->disconnect(this);
-    connect(opacityAnimation_, &QVariantAnimation::valueChanged, this, qOverload<>(&ToastBase::update));
+    opacityAnimation_->stop();
+    opacityAnimation_->setDirection(QAbstractAnimation::Backward);
     opacityAnimation_->start();
 }
 

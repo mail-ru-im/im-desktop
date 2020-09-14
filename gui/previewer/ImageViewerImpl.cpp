@@ -352,7 +352,7 @@ Previewer::FFMpegViewer::FFMpegViewer(const MediaData& _mediaData,
 
     }, Qt::QueuedConnection);
 
-    connect(ffplayer_.get(), &Ui::DialogPlayer::playClicked, this, &FFMpegViewer::playCLicked);
+    connect(ffplayer_.get(), &Ui::DialogPlayer::playClicked, this, &FFMpegViewer::playClicked);
 
     connect(ffplayer_.get(), &Ui::DialogPlayer::mouseWheelEvent, this, [this](const QPoint& _delta)
     {

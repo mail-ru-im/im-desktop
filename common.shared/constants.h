@@ -178,4 +178,6 @@ namespace feature
     constexpr int default_voip_call_user_limit() noexcept { return 30; }
     constexpr int default_voip_video_user_limit() noexcept { return 5; }
     constexpr int default_voip_big_conference_boundary() noexcept { return 5; }
+
+    constexpr int default_dns_resolve_timeout_sec() noexcept { return 300; }
 }

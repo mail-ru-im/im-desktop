@@ -29,6 +29,32 @@ namespace
 
         return false;
     }
+
+    void alignedImageBufferCleanupHandler(void *data)
+    {
+        auto buffer = static_cast<uchar*>(data);
+        delete[] buffer;
+    }
+
+    QImage createAlignedImage(QSize size, const int _align)
+    {
+        const auto width = size.width();
+        const auto height = size.height();
+        const auto widthalign = _align / 4;
+        const auto neededwidth = width + ((width % widthalign) ? (widthalign - (width % widthalign)) : 0);
+        const auto bytesperline = neededwidth * 4;
+        auto buffer = new uchar[bytesperline * height + _align];
+        auto cleanupdata = static_cast<void*>(buffer);
+        auto bufferval = reinterpret_cast<uintptr_t>(buffer);
+        auto alignedbuffer = buffer + ((bufferval % _align) ? (_align - (bufferval % _align)) : 0);
+
+        return QImage(alignedbuffer, width, height, bytesperline, QImage::Format_ARGB32, alignedImageBufferCleanupHandler, cleanupdata);
+    }
+
+    bool isAlignedImage(const QImage &image, const int _align)
+    {
+        return !(reinterpret_cast<uintptr_t>(image.constBits()) % _align) && !(image.bytesPerLine() % _align);
+    }
 }
 
 class AVCodecScope
@@ -51,7 +77,7 @@ namespace Ui
 
     static ffmpeg::AVPacket quit_pkt;
 
-    const int64_t empty_pts = -1000000;
+    constexpr int64_t empty_pts = -1000000;
 
     bool ThreadMessagesQueue::getMessage(ThreadMessage& _message, std::function<bool()> _isQuit, int32_t _wait_timeout)
     {
@@ -62,17 +88,16 @@ namespace Ui
             std::scoped_lock lock(queue_mutex_);
 
             if (_isQuit() || messages_.empty())
-            {
                 return false;
-            }
 
-            tmpList.splice(tmpList.begin(), messages_, messages_.begin());
+            const auto itFirst = messages_.cbegin();
+            if (isCompressedType(itFirst->message_))
+                compressed_messages_[itFirst->message_] = false;
+
+            tmpList.splice(tmpList.cbegin(), messages_, itFirst);
         }
 
         _message = tmpList.front();
-
-        if (isCompressedType(_message.message_))
-            compressed_messages_[_message.message_] = false;
 
         return true;
     }
@@ -90,10 +115,8 @@ namespace Ui
             if (!skipMessage)
             {
                 if (_clear_others)
-                {
-                    const auto id = _message.videoId_;
-                    messages_.remove_if([id](const auto& x) { return x.videoId_ == id; });
-                }
+                    messages_.remove_if([id = _message.videoId_](const auto& x) { return x.videoId_ == id; });
+
                 messages_.splice(_forward ? messages_.begin() : messages_.end(), tmpList, tmpList.begin());
 
                 if (compressedType)
@@ -109,9 +132,9 @@ namespace Ui
         decltype(messages_) tmpList;
         {
             std::scoped_lock lock(queue_mutex_);
-            tmpList.splice(tmpList.begin(), messages_);
+            tmpList.splice(tmpList.cbegin(), messages_);
 
-            std::fill(compressed_messages_.begin(), compressed_messages_.end(), false);
+            compressed_messages_.fill(false);
         }
     }
 
@@ -127,21 +150,20 @@ namespace Ui
 
     PacketQueue::~PacketQueue()
     {
-        free([](ffmpeg::AVPacket& _packet){});
+        freeData();
     }
 
-    void PacketQueue::free(std::function<void(ffmpeg::AVPacket& _packet)> _callback)
+    void PacketQueue::freeData(std::function<void(ffmpeg::AVPacket& _packet)> _callback)
     {
         std::scoped_lock locker(mutex_);
 
         for (auto iter = list_.begin(); iter != list_.end(); ++iter)
         {
-            _callback(*iter);
+            if (_callback)
+                _callback(*iter);
 
             if (iter->data && iter->data != (uint8_t*) &flush_pkt_data && iter->data != (uint8_t*) &quit_pkt)
-            {
                 ffmpeg::av_packet_unref(&(*iter));
-            }
         }
 
         list_.clear();
@@ -264,24 +286,19 @@ namespace Ui
 
     uint32_t VideoContext::addVideo(uint32_t _id)
     {
+        const auto id = _id == 0 ? reserveId() : _id;
         {
             auto mediaData = std::make_shared<MediaData>();
             std::scoped_lock lock(mediaDataMutex_);
-            if (_id == 0)
-                mediaData_[++curr_id_] = std::move(mediaData);
-            else
-                mediaData_[_id] = std::move(mediaData);
+            mediaData_[id] = std::move(mediaData);
         }
 
         {
             std::scoped_lock lock(activeVideosMutex_);
-            if (_id == 0)
-                activeVideos_[curr_id_] = true;
-            else
-                activeVideos_[_id] = true;
+            activeVideos_[id] = true;
         }
 
-        return _id == 0 ? curr_id_ : _id;
+        return id;
     }
 
     uint32_t VideoContext::reserveId()
@@ -564,31 +581,31 @@ namespace Ui
 
     void VideoContext::clearAudioQueue(MediaData& _media)
     {
-        _media.audioQueue_->free([](ffmpeg::AVPacket& _packet){});
+        _media.audioQueue_->freeData();
     }
 
     void VideoContext::clearVideoQueue(MediaData& _media)
     {
-        _media.videoQueue_->free([](ffmpeg::AVPacket& _packet) {});
+        _media.videoQueue_->freeData();
     }
 
     void VideoContext::cleanupOnExit()
     {
         std::scoped_lock lock(mediaDataMutex_);
 
-        for (auto iter = mediaData_.begin(); iter != mediaData_.end(); ++iter)
+        for (const auto& [id, data] : mediaData_)
         {
-            qCDebug(ffmpegPlayer) << "cleanup active media id = " << iter->first;
+            qCDebug(ffmpegPlayer) << "cleanup active media id = " << id;
 
-            clearAudioQueue(*iter->second);
-            clearVideoQueue(*iter->second);
+            clearAudioQueue(*data);
+            clearVideoQueue(*data);
 
-            if (iter->second->streamClosed_)
+            if (data->streamClosed_)
                 continue;
 
-            iter->second->streamClosed_ = true;
+            data->streamClosed_ = true;
 
-            closeFile(*iter->second);
+            closeFile(*data);
         }
     }
 
@@ -1564,7 +1581,7 @@ namespace Ui
             return false;
         }
 
-        _media.videoQueue_->free([_videoId, this](ffmpeg::AVPacket& _packet)
+        _media.videoQueue_->freeData([_videoId, this](ffmpeg::AVPacket& _packet)
         {
             if (_packet.data == (uint8_t*) &flush_pkt_data)
             {
@@ -1575,7 +1592,7 @@ namespace Ui
 
         });
 
-        _media.audioQueue_->free([_videoId, this](ffmpeg::AVPacket& _packet)
+        _media.audioQueue_->freeData([_videoId, this](ffmpeg::AVPacket& _packet)
         {
             if (_packet.data == (uint8_t*) &flush_pkt_data)
             {
@@ -1742,27 +1759,15 @@ namespace Ui
     DemuxThread::DemuxThread(VideoContext& _ctx)
         :   ctx_(_ctx)
     {
-
+        setObjectName(qsl("Demux"));
     }
 
     struct DemuxData
     {
-        bool inited;
-
-        decode_thread_state state;
-
-        bool eof;
-
-        int64_t seekPosition;
-
-        DemuxData()
-            :   inited(false)
-                , state(decode_thread_state::dts_playing)
-                , eof(false)
-                , seekPosition(-1)
-        {
-
-        }
+        bool inited = false;
+        decode_thread_state state = decode_thread_state::dts_playing;
+        bool eof = false;
+        int64_t seekPosition = -1;
     };
 
     void DemuxThread::run()
@@ -1818,16 +1823,11 @@ namespace Ui
                     {
                         qCDebug(ffmpegPlayer) << "open stream videoId = " << msg.videoId_;
 
-                        auto mediaPath = msg.str_;
                         auto media_ptr = ctx_.getMediaData(msg.videoId_);
-
-                        if (!media_ptr)
+                        if (!media_ptr || media_ptr->demuxQuitRecv_)
                             continue;
 
-                        if (media_ptr->demuxQuitRecv_)
-                            continue;
-
-                        getMediaContainer()->ctx_.openStreams(msg.videoId_, mediaPath, *media_ptr);
+                        getMediaContainer()->ctx_.openStreams(msg.videoId_, msg.str_, *media_ptr);
                         continue;
                     }
                     case thread_message_type::tmt_close_streams:
@@ -1836,10 +1836,7 @@ namespace Ui
 
                         auto media_ptr = ctx_.getMediaData(msg.videoId_);
 
-                        if (!media_ptr)
-                            continue;
-
-                        if (media_ptr->streamClosed_)
+                        if (!media_ptr || media_ptr->streamClosed_)
                             continue;
 
                         media_ptr->streamClosed_ = true;
@@ -1861,17 +1858,16 @@ namespace Ui
                     }
                     case thread_message_type::tmt_quit:
                     {
+                        qCDebug(ffmpegPlayer) << "demux quit videoId = " << msg.videoId_;
                         if (videoDataFound)
                         {
-                            demuxData.erase(msg.videoId_);
+                            demuxData.erase(iterData);
 
                             iterData = demuxData.end();
                             videoDataFound = false;
                         }
 
-                        auto mediaPath = msg.str_;
                         auto media_ptr = ctx_.getMediaData(msg.videoId_);
-
                         if (!media_ptr)
                         {
                             Q_EMIT ctx_.demuxQuit(msg.videoId_);
@@ -1926,14 +1922,11 @@ namespace Ui
 
             waitMsgTimeout = demuxData.empty() ? 60000 : 10;
 
-            int playing = 0;
-            for (auto& elem : demuxData)
+            for (auto& [videoId, data] : demuxData)
             {
-                auto videoId = elem.first;
-
-                state = elem.second.state;
-                seekPosition = elem.second.seekPosition;
-                eof = elem.second.eof;
+                state = data.state;
+                seekPosition = data.seekPosition;
+                eof = data.eof;
 
                 auto media_ptr = ctx_.getMediaData(videoId);
 
@@ -1942,32 +1935,25 @@ namespace Ui
 
                 auto& media = *media_ptr;
 
-                if (elem.second.inited && media.formatContext_)
+                if (data.inited && media.formatContext_)
                 {
                     if (state == decode_thread_state::dts_paused)
-                    {
                         ctx_.readAVPacketPause(media);
-                    }
                     else
-                    {
                         ctx_.readAVPacketPlay(media);
-                        ++playing;
-                    }
                 }
 
                 if (state == decode_thread_state::dts_paused)
-                {
                     continue;
-                }
 
                 if (seekPosition >= 0)
                 {
                     ctx_.seekMs(videoId, seekPosition, media);
 
                     seekPosition = -1;
-                    elem.second.seekPosition = seekPosition;
+                    data.seekPosition = seekPosition;
                     eof = false;
-                    elem.second.eof = eof;
+                    data.eof = eof;
                 }
 
                 if (
@@ -2000,7 +1986,7 @@ namespace Ui
                         eof = true;
                     }
 
-                    elem.second.eof = eof;
+                    data.eof = eof;
                     // TODO : do smth with this error
                     if (ctx_.isStreamError(media))
                         continue;
@@ -2013,7 +1999,7 @@ namespace Ui
                 }
 
                 waitMsgTimeout = 1;
-                elem.second.eof = eof;
+                data.eof = eof;
 
                 int32_t videoStreamIndex = ctx_.getVideoStreamIndex(media);
                 int32_t audioStreamIndex = ctx_.getAudioStreamIndex(media);
@@ -2031,9 +2017,9 @@ namespace Ui
                     av_packet_unref(&packet);
                 }
 
-                if (demuxData.count(videoId) != 0 && !elem.second.inited)
+                if (demuxData.count(videoId) != 0 && !data.inited)
                 {
-                    elem.second.inited = true;
+                    data.inited = true;
 
                     Q_EMIT ctx_.dataReady(videoId);
                 }
@@ -2053,33 +2039,7 @@ namespace Ui
     VideoDecodeThread::VideoDecodeThread(VideoContext& _ctx)
         :   ctx_(_ctx)
     {
-
-    }
-
-    void alignedImageBufferCleanupHandler(void *data)
-    {
-        auto buffer = static_cast<uchar*>(data);
-        delete[] buffer;
-    }
-
-    QImage createAlignedImage(QSize size, const int _align)
-    {
-        auto width = size.width();
-        auto height = size.height();
-        auto widthalign = _align / 4;
-        auto neededwidth = width + ((width % widthalign) ? (widthalign - (width % widthalign)) : 0);
-        auto bytesperline = neededwidth * 4;
-        auto buffer = new uchar[bytesperline * height + _align];
-        auto cleanupdata = static_cast<void*>(buffer);
-        auto bufferval = reinterpret_cast<uintptr_t>(buffer);
-        auto alignedbuffer = buffer + ((bufferval % _align) ? (_align - (bufferval % _align)) : 0);
-
-        return QImage(alignedbuffer, width, height, bytesperline, QImage::Format_ARGB32, alignedImageBufferCleanupHandler, cleanupdata);
-    }
-
-    bool isAlignedImage(const QImage &image, const int _align)
-    {
-        return !(reinterpret_cast<uintptr_t>(image.constBits()) % _align) && !(image.bytesPerLine() % _align);
+        setObjectName(qsl("VideoDecode"));
     }
 
     void VideoDecodeThread::run()
@@ -2100,9 +2060,9 @@ namespace Ui
         {
             if (ctx_.getVideoThreadMessage(msg, waitMsgTimeout))
             {
-                auto videoId = msg.videoId_;
-
-                if (videoData.count(videoId) == 0)
+                const auto videoId = msg.videoId_;
+                auto it = videoData.find(videoId);
+                if (it == videoData.end())
                 {
                     if (msg.message_ == thread_message_type::tmt_init)
                     {
@@ -2110,12 +2070,11 @@ namespace Ui
                         data.current_state_ = decode_thread_state::dts_playing;
                         data.stream_finished_ = false;
                         data.eof_ = false;
-                        videoData[videoId] = data;
+                        it = videoData.insert({ videoId, std::move(data) }).first;
                     }
                     else if (msg.message_ == thread_message_type::tmt_quit)
                     {
                         Q_EMIT ctx_.videoQuit(videoId);
-
                         continue;
                     }
                     else
@@ -2123,27 +2082,21 @@ namespace Ui
                         continue;
                     }
                 }
+
                 auto media_ptr = ctx_.getMediaData(videoId);
                 if (!media_ptr)
-                {
                     continue;
-                }
 
                 auto& media = *media_ptr;
-
+                auto& data = it->second;
                 switch (msg.message_)
                 {
                     case thread_message_type::tmt_quit:
                     {
-                        if (videoData.count(msg.videoId_) > 0)
-                        {
-                            videoData.erase(msg.videoId_);
-
-                            ctx_.freeScaleContext(media);
-                        }
+                        videoData.erase(it);
+                        ctx_.freeScaleContext(media);
 
                         Q_EMIT ctx_.videoQuit(videoId);
-
                         break;
                     }
                     case thread_message_type::tmt_update_scaled_size:
@@ -2153,85 +2106,62 @@ namespace Ui
                         QSize newSize(msg.x_, msg.y_);
 
                         if (scaledSize != newSize)
-                        {
                             ctx_.updateScaleContext(media, newSize);
-                        }
                         break;
                     }
                     case thread_message_type::tmt_pause:
                     {
-                        if (decode_thread_state::dts_failed == videoData[videoId].current_state_)
-                        {
-                            break;
-                        }
-
-                        videoData[videoId].current_state_ = dts_paused;
-
+                        if (data.current_state_ != decode_thread_state::dts_failed)
+                            data.current_state_ = decode_thread_state::dts_paused;
                         break;
                     }
                     case thread_message_type::tmt_play:
                     {
-                        if (decode_thread_state::dts_failed == videoData[videoId].current_state_)
-                        {
-                            break;
-                        }
-
-                        videoData[videoId].current_state_ = dts_playing;
-
+                        if (data.current_state_ != decode_thread_state::dts_failed)
+                            data.current_state_ = decode_thread_state::dts_playing;
                         break;
                     }
                     case thread_message_type::tmt_seek_position:
                     {
-                        if (videoData[videoId].current_state_ == decode_thread_state::dts_end_of_media)
-                        {
-                            videoData[videoId].current_state_ = dts_playing;
-                        }
-
+                        if (data.current_state_ == decode_thread_state::dts_end_of_media)
+                            data.current_state_ = decode_thread_state::dts_playing;
                         break;
                     }
                     case thread_message_type::tmt_empty_frame:
                     {
-                        if (auto& data = videoData[videoId]; data.emptyFrames_.size() < 5)
+                        if (data.emptyFrames_.size() < 5)
                             data.emptyFrames_.push_back(msg.emptyFrame_);
 
                         break;
                     }
                     case thread_message_type::tmt_get_next_video_frame:
                     {
-                        if (videoData[videoId].current_state_ == decode_thread_state::dts_end_of_media ||
-                            videoData[videoId].current_state_ == decode_thread_state::dts_failed)
+                        if (data.current_state_ == decode_thread_state::dts_end_of_media ||
+                            data.current_state_ == decode_thread_state::dts_failed)
                         {
                             break;
                         }
 
                         ffmpeg::av_frame_unref(frame);
 
-                        videoData[videoId].eof_ = false;
+                        data.eof_ = false;
 
-                        if (ctx_.getNextVideoFrame(frame, &av_packet, videoData[videoId], media, videoId))
+                        if (ctx_.getNextVideoFrame(frame, &av_packet, data, media, videoId))
                         {
                             ctx_.setStartTimeVideo(frame->pkt_dts, media);
 
                             // Consider sync
                             double pts = frame->pkt_dts;
-
                             if (pts == AV_NOPTS_VALUE)
-                            {
                                 pts = frame->pkt_pts;
-                            }
                             if (pts == AV_NOPTS_VALUE)
-                            {
                                 pts = 0;
-                            }
 
                             pts *= ctx_.getVideoTimebase(media);
                             pts = ctx_.synchronizeVideo(frame, pts, media);
 
-
                             if (ctx_.isQuit())
-                            {
                                 break;
-                            }
 
                             auto scaledSize = ctx_.getTargetSize(media);
                             const auto sourceSize = ctx_.getSourceSize(media);
@@ -2253,12 +2183,12 @@ namespace Ui
                             if (scaledSize.height() == 0)
                                 scaledSize.setHeight(1);
 
-                            QImage lastFrame = videoData[videoId].emptyFrames_.empty() ? QImage() : videoData[videoId].emptyFrames_.front();
-                            if (!videoData[videoId].emptyFrames_.empty())
-                                videoData[videoId].emptyFrames_.pop_front();
+                            QImage lastFrame = data.emptyFrames_.empty() ? QImage() : data.emptyFrames_.front();
+                            if (!data.emptyFrames_.empty())
+                                data.emptyFrames_.pop_front();
 
                             int align = 256;
-                            if (platform::is_windows()) // spike for opengl
+                            if constexpr (platform::is_windows()) // spike for opengl
                             {
                                 align = 4;
                             }
@@ -2297,19 +2227,14 @@ namespace Ui
 
                             Q_EMIT ctx_.nextframeReady(videoId, lastFrame, pts, false);
                         }
-                        else if (videoData[videoId].eof_)
+                        else if (data.eof_)
                         {
-                            videoData[videoId].current_state_ = decode_thread_state::dts_end_of_media;
-
-                            videoData[videoId].stream_finished_ = false;
+                            data.current_state_ = decode_thread_state::dts_end_of_media;
+                            data.stream_finished_ = false;
 
                             ctx_.resetVideoClock(media);
 
                             Q_EMIT ctx_.nextframeReady(videoId, QImage(), 0, true);
-                        }
-                        else
-                        {
-                            break;
                         }
 
                         break;
@@ -2320,9 +2245,9 @@ namespace Ui
             }
         }
 
-        for (auto& data : videoData)
+        for (const auto& [videoId, _] : videoData)
         {
-            auto media = ctx_.getMediaData(data.first);
+            auto media = ctx_.getMediaData(videoId);
             if (media)
                 ctx_.freeScaleContext(*media);
         }
@@ -2331,7 +2256,6 @@ namespace Ui
         ffmpeg::av_frame_free(&frame);
 
         qCDebug(ffmpegPlayer) << "video decode thread finished";
-        return;
     }
 
 
@@ -2342,7 +2266,7 @@ namespace Ui
     AudioDecodeThread::AudioDecodeThread(VideoContext& _ctx)
         :   ctx_(_ctx)
     {
-
+        setObjectName(qsl("AudioDecode"));
     }
 
     void AudioDecodeThread::run()
@@ -2376,9 +2300,10 @@ namespace Ui
 
                 if (!flush && ctx_.getAudioThreadMessage(msg, has_playing ?  10 : 60000))
                 {
-                    auto videoId = msg.videoId_;
+                    const auto videoId = msg.videoId_;
 
-                    if (audioData.count(videoId) == 0)
+                    auto it = audioData.find(videoId);
+                    if (it == audioData.end())
                     {
                         if (msg.message_ == thread_message_type::tmt_init)
                         {
@@ -2390,14 +2315,14 @@ namespace Ui
                             AudioData data;
                             data.eof_ = false;
                             data.stream_finished_ = false;
-                            audioData[videoId] = data;
+                            it = audioData.insert({ videoId, std::move(data) }).first;
 
                             ctx_.setMute(msg.x_, *media);
                             ctx_.setVolume(msg.y_, *media);
                         }
                         else if (msg.message_ == thread_message_type::tmt_quit)
                         {
-                            ctx_.audioQuit(videoId);
+                            Q_EMIT ctx_.audioQuit(videoId);
                             continue;
                         }
                         else
@@ -2441,14 +2366,12 @@ namespace Ui
                         }
                         case thread_message_type::tmt_quit:
                         {
-                            if (audioData.count(msg.videoId_) > 0)
-                            {
-                                auto currentMedia = ctx_.getMediaData(msg.videoId_);
-                                if (currentMedia)
-                                    ctx_.freeDecodeAudioData(*currentMedia);
+                            auto currentMedia = ctx_.getMediaData(msg.videoId_);
+                            if (currentMedia)
+                                ctx_.freeDecodeAudioData(*currentMedia);
 
-                                audioData.erase(msg.videoId_);
-                            }
+                            audioData.erase(it);
+
                             Q_EMIT ctx_.audioQuit(videoId);
                             break;
                         }
@@ -2456,7 +2379,7 @@ namespace Ui
                         {
                             ctx_.setAudioThreadState(decode_thread_state::dts_end_of_media, media);
 
-                            audioData[videoId].eof_ = true;
+                            it->second.eof_ = true;
 
                             break;
                         }
@@ -2478,10 +2401,9 @@ namespace Ui
                     break;
 
                 bool has_audio_playing = false;
-                for (auto data : audioData)
+                for (auto& [videoId, data] : audioData)
                 {
-                    auto videoId = data.first;
-                    audioData[videoId].eof_ = false;
+                    data.eof_ = false;
 
                     auto media_ptr = ctx_.getMediaData(videoId);
                     if (!media_ptr)
@@ -2498,7 +2420,7 @@ namespace Ui
                         bool local_flush = false;
                         int seekCount = 0;
 
-                        if (!ctx_.playNextAudioFrame(&packet, audioData[videoId], local_flush, seekCount, media, videoId))
+                        if (!ctx_.playNextAudioFrame(&packet, data, local_flush, seekCount, media, videoId))
                         {
 
                         }
@@ -2507,14 +2429,14 @@ namespace Ui
 
                         constexpr int64_t sync_period = 1000 * 200; // 200 milliseconds
 
-                        if ((current_time - audioData[videoId].last_sync_time_) > sync_period)
+                        if ((current_time - data.last_sync_time_) > sync_period)
                         {
-                            audioData[videoId].last_sync_time_ = current_time;
+                            data.last_sync_time_ = current_time;
 
-                            //qDebug() << "Audio thread: Q_EMIT audioTime";
-                            //qDebug() << "Audio thread: offset = " <<  audioData[videoId].offset_;
+                            //qDebug() << "Audio thread: emit audioTime";
+                            //qDebug() << "Audio thread: offset = " <<  data.offset_;
 
-                            Q_EMIT ctx_.audioTime(videoId, current_time, audioData[videoId].offset_);
+                            Q_EMIT ctx_.audioTime(videoId, current_time, data.offset_);
                         }
 
                          if (seekCount)
@@ -2525,11 +2447,11 @@ namespace Ui
 
                         flush |= local_flush;
 
-                        if (audioData[videoId].eof_)
+                        if (data.eof_)
                         {
                             ctx_.setAudioThreadState(decode_thread_state::dts_end_of_media, media);
 
-                            audioData[videoId].stream_finished_ = false;
+                            data.stream_finished_ = false;
                         }
                     }
                 }
@@ -2537,9 +2459,8 @@ namespace Ui
 
             qCDebug(ffmpegPlayer) << "audio decode thread finish";
 
-            for (const auto& data : audioData)
+            for (const auto& [videoId, _] : audioData)
             {
-                auto videoId = data.first;
                 auto media = ctx_.getMediaData(videoId);
                 if (media)
                     ctx_.freeDecodeAudioData(*media);

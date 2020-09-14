@@ -1805,9 +1805,9 @@ bool ArticlePreloader::isMarginRequired() const
 
 void ArticlePreloader::onVisibilityChanged(const bool _visible)
 {
-    if (_visible)
+    if (_visible && animation_->state() == QAbstractAnimation::Paused)
         animation_->resume();
-    else
+    else if (animation_->state() == QAbstractAnimation::Running)
         animation_->pause();
 }
 
@@ -1821,7 +1821,6 @@ void ArticlePreloader::startAnimation()
     animation_->setStartValue(0.0);
     animation_->setEndValue(1.0);
     animation_->setDuration(animationDuration.count());
-    animation_->setEasingCurve(QEasingCurve::Linear);
     animation_->setLoopCount(-1);
     animation_->disconnect(snippetBlock_);
     connect(animation_, &QVariantAnimation::valueChanged, snippetBlock_, qOverload<>(&SnippetBlock::update));

@@ -16,10 +16,13 @@
 #include "../main_window/containers/FriendlyContainer.h"
 #include "../main_window/containers/LastseenContainer.h"
 #include "../main_window/containers/StatusContainer.h"
+
 #include "../my_info.h"
 #include "../../common.shared/version_info.h"
 #include "../../common.shared/config/config.h"
 #include "../../gui.shared/local_peer/local_peer.h"
+
+#include "../accessibility/AccessibilityFactory.h"
 
 #include "../main_window/mplayer/FFMpegPlayer.h"
 #include "../main_window/sounds/SoundsManager.h"
@@ -175,7 +178,6 @@ namespace Utils
         Ui::ResetSoundsManager();
     }
 
-
     int Application::exec()
     {
 #ifdef _WIN32
@@ -206,6 +208,8 @@ namespace Utils
 
         if (_cmdParser.isUrlCommand())
             urlCommand_ = _cmdParser.getUrlCommand();
+
+        QAccessible::installFactory(Ui::Accessibility::customWidgetsAccessibilityFactory);
 
         return true;
     }
@@ -349,11 +353,6 @@ namespace Utils
         mainWindow_->init(needToShow);
 
         Ui::GetDispatcher()->updateRecentAvatarsSize();
-
-#ifdef _WIN32
-        if (isAutoStart && !needToShow)
-            mainWindow_->minimizeOnStartup();
-#endif //_WIN32
 
         if (isAutoStart)
             statistic::getGuiMetrics().eventAppStartAutostart();

@@ -354,6 +354,7 @@ private:
     void handleBotAction(const QString& _url, const QString& _text = QString(), bool _showAlert = false);
     void initButtonsTimerIfNeeded();
     void startButtonsTimer(int _timeout);
+    void ensureButtonsAnimationInitialized();
 
     enum class InstantEdit
     {

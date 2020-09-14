@@ -2,6 +2,7 @@
 
 #include "Status.h"
 #include "StatusUtils.h"
+#include "main_window/contact_list/StatusListModel.h"
 #include "utils/JsonUtils.h"
 #include "utils/gui_coll_helper.h"
 #include "../styles/ThemeParameters.h"
@@ -46,6 +47,16 @@ QString Status::toString() const
 
 const QString& Status::getDescription() const noexcept
 {
+    if (description_.isEmpty())
+    {
+        auto code = toString();
+        const auto status = Logic::getStatusModel()->getStatus(code);
+        if (status)
+            description_ = status->getDescription();
+        else
+            description_ = QT_TRANSLATE_NOOP("status", "Custom status");
+    }
+
     return description_;
 }
 
@@ -71,15 +82,20 @@ QImage Status::getImage(int _size) const
 
 QString Status::getTimeString() const
 {
-    if (selected_ && !isEmpty() && !statusExpired())
+    if (endTime_.isNull())
     {
-        const auto isFor = startTime_.secsTo(QDateTime::currentDateTime());
-        if (duration_.count() == 0)
-            return Statuses::getTimeString(std::chrono::seconds(isFor), TimeMode::Passed);
-        else
-            return Statuses::getTimeString(std::chrono::seconds(duration_.count() - isFor), TimeMode::Left);
+        const auto secondsPassed = startTime_.secsTo(QDateTime::currentDateTime());
+        return Statuses::getTimeString(std::chrono::seconds(secondsPassed), TimeMode::Passed);
     }
+    else
+    {
+        const auto secondsLeft = QDateTime::currentDateTime().secsTo(endTime_);
+        return Statuses::getTimeString(std::chrono::seconds(secondsLeft), TimeMode::Left);
+    }
+}
 
+QString Status::getDurationString() const
+{
     return Statuses::getTimeString(duration_, timeMode_);
 }
 
@@ -109,8 +125,12 @@ void Status::setExpirationTime()
 {
     if (!startTime_.isValid() || startTime_.isNull())
         startTime_ = QDateTime::currentDateTime();
-    if (!endTime_.isValid() || endTime_.isNull())
+
+    if (duration_.count())
         endTime_ = startTime_.addSecs(duration_.count());
+    else
+        endTime_ = QDateTime();
+
     timeMode_ = duration_.count() == 0 ? TimeMode::Common : TimeMode::AlwaysOn;
 }
 
@@ -156,11 +176,10 @@ void Status::update(const Status& _other)
 {
     if (_other.startTime_.isValid())
         startTime_ = _other.startTime_;
-    if (_other.endTime_.isValid() && _other.endTime_ >= _other.startTime_)
-    {
-        endTime_ = _other.endTime_;
-        duration_ = std::chrono::seconds(startTime_.secsTo(endTime_));
-    }
+
+    endTime_ = _other.endTime_;
+    duration_ = std::chrono::seconds(startTime_.secsTo(endTime_));
+
     if (!_other.description_.isEmpty())
     {
         description_ = _other.description_;

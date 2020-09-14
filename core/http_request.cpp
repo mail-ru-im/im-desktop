@@ -197,7 +197,7 @@ std::string http_request_simple::get_post_param() const
     return result;
 }
 
-bool http_request_simple::send_request(bool _post, double& _request_time)
+curl_easy::completion_code http_request_simple::send_request(bool _post, double& _request_time)
 {
     if (!_post)
     {
@@ -205,7 +205,7 @@ bool http_request_simple::send_request(bool _post, double& _request_time)
         {
             g_core->write_string_to_network_log(su::concat("send_request: too long url ", std::to_string(url_.size()), " > ", std::to_string(max_size), " [GET ", normalized_url_, "]\r\n"));
             response_code_ = uri_too_long_code;
-            return true;
+            return curl_easy::completion_code::failed;
         }
     }
 
@@ -218,7 +218,7 @@ bool http_request_simple::send_request(bool _post, double& _request_time)
     {
         g_core->write_string_to_network_log("send_request: ctx init fail\r\n");
         assert(false);
-        return false;
+        return curl_easy::completion_code::failed;
     }
 
     ctx->set_post_data_compression(compression_method_);
@@ -264,14 +264,15 @@ bool http_request_simple::send_request(bool _post, double& _request_time)
 
     ctx->set_send_im_stats(is_send_im_stats_);
 
-    if (!ctx->execute_request())
-        return false;
+    auto res = ctx->execute_request();
+    if (res != curl_easy::completion_code::success)
+        return res;
 
     response_code_ = ctx->get_response_code();
     header_ = ctx->get_header();
     _request_time = ctx->get_request_time();
 
-    return true;
+    return res;
 }
 
 void http_request_simple::send_request_async(bool _post, completion_function _completion_function)
@@ -364,19 +365,19 @@ void http_request_simple::get_async(completion_function _completion_function)
     return send_request_async(false, std::move(_completion_function));
 }
 
-bool http_request_simple::post()
+curl_easy::completion_code http_request_simple::post()
 {
     double request_time = 0;
     return send_request(true, request_time);
 }
 
-bool http_request_simple::get()
+curl_easy::completion_code http_request_simple::get()
 {
     double request_time = 0;
     return send_request(false, request_time);
 }
 
-bool http_request_simple::get(double& _connect_time)
+curl_easy::completion_code http_request_simple::get(double& _connect_time)
 {
     return send_request(false, _connect_time);
 }
@@ -387,12 +388,12 @@ void http_request_simple::set_range(int64_t _from, int64_t _to)
     range_to_ = _to;
 }
 
-std::shared_ptr<tools::stream> http_request_simple::get_response() const
+const std::shared_ptr<tools::stream>& http_request_simple::get_response() const
 {
     return output_;
 }
 
-std::shared_ptr<tools::binary_stream> http_request_simple::get_header() const
+const std::shared_ptr<tools::binary_stream>& http_request_simple::get_header() const
 {
     return header_;
 }
@@ -551,6 +552,11 @@ std::string core::http_request_simple::get_normalized_url() const
         return normalized_url_;
 
     return normalized_url(url_, url_meta_info_);
+}
+
+const std::string& core::http_request_simple::get_url() const
+{
+    return url_;
 }
 
 proxy_settings core::http_request_simple::get_user_proxy() const

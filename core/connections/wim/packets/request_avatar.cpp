@@ -65,7 +65,7 @@ priority_t request_avatar::get_priority() const
     return packets_priority_high() + increase_priority();
 }
 
-std::shared_ptr<core::tools::binary_stream> core::wim::request_avatar::get_data() const
+const std::shared_ptr<core::tools::binary_stream>& core::wim::request_avatar::get_data() const
 {
     return data_;
 }

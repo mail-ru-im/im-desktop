@@ -184,7 +184,7 @@ namespace core
 
         virtual void erase_auth_data() = 0; // when logout
         virtual void start_session(wim::is_ping _is_ping, wim::is_login _is_login) = 0;
-        virtual void handle_net_error(int32_t err) = 0;
+        virtual void handle_net_error(const std::string& _url, int32_t err) = 0;
 
         virtual void phoneinfo(int64_t _seq, const std::string &phone, const std::string &gui_locale) = 0;
 
@@ -212,7 +212,6 @@ namespace core
         virtual void set_state(const int64_t, const core::profile_state) = 0;
 
         // group chat
-        virtual void remove_members(int64_t _seq, const std::string& _aimid, const std::string& _m_chat_members) = 0;
         virtual void add_members(int64_t _seq, const std::string& _aimid, const std::string& _m_chat_members_to_add) = 0;
         virtual void add_chat(int64_t _seq, const std::string& _m_chat_name, std::vector<std::string> _m_chat_members) = 0;
 
@@ -323,7 +322,6 @@ namespace core
 
         // voip
         //virtual void on_peer_list_updated(const std::vector<std::string>& peers) = 0;
-        virtual void on_voip_call_request_calls();
         //virtual void on_voip_call_set_proxy(const voip_manager::VoipProxySettings& proxySettings);
         virtual void on_voip_call_start(const std::vector<std::string> &contacts, const voip_manager::CallStartParams &params);
         virtual void on_voip_add_window(voip_manager::WindowParams& windowParams);
@@ -352,10 +350,9 @@ namespace core
         virtual void on_voip_window_set_large(void* hwnd, bool);
 
         virtual void on_voip_device_changed(std::string_view dev_type, const std::string& uid);
-        virtual void on_voip_devices_changed();
+        virtual void on_voip_devices_changed(DeviceClass deviceClass);
 
         virtual void on_voip_switch_media(bool video);
-        virtual void on_voip_volume_change(int vol);
         virtual void on_voip_mute_switch();
         virtual void on_voip_set_mute(bool mute);
         virtual void on_voip_mute_incoming_call_sounds(bool mute);
@@ -571,6 +568,8 @@ namespace core
 
         virtual void subscribe_call_room_info(const std::string& _room_id) = 0;
         virtual void unsubscribe_call_room_info(const std::string& _room_id) = 0;
+
+        virtual void get_emoji(int64_t _seq, std::string_view _code, int _size) = 0;
     };
 
 }

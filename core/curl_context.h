@@ -62,7 +62,7 @@ namespace core
         bool is_send_im_stats() const;
         void set_send_im_stats(bool _val);
 
-        std::shared_ptr<tools::binary_stream> get_header() const;
+        const std::shared_ptr<tools::binary_stream>& get_header() const;
 
         CURLcode execute_handler(CURL* _curl);
         CURLMcode execute_multi_handler(CURLM* _multi, CURL* _curl);
@@ -72,7 +72,7 @@ namespace core
         void load_info(CURL* _curl, CURLcode _resul);
         void write_log(CURLcode res);
 
-        bool execute_request();
+        core::curl_easy::completion_code execute_request();
         void execute_request_async(http_request_simple::completion_function _completion_function);
 
         void set_multi(bool _multi);
@@ -120,6 +120,7 @@ namespace core
         bool curl_http_post_;
 
         curl_slist* header_chunk_;
+        curl_slist* resolve_host_;
         struct curl_httppost* post;
         struct curl_httppost* last;
 

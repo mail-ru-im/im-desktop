@@ -52,7 +52,7 @@ namespace core
             const std::string& get_file_url() const;
 
             void set_handler(std::shared_ptr<upload_progress_handler> _handler);
-            std::shared_ptr<upload_progress_handler> get_handler() const;
+            const std::shared_ptr<upload_progress_handler>& get_handler() const;
 
             virtual void on_result(int32_t _error) override;
             virtual void on_progress() override;

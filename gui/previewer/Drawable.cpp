@@ -221,3 +221,42 @@ void BLabel::draw(QPainter &_p)
     BDrawable::draw(_p);
     Label::draw(_p);
 }
+
+QAccessibleInterface* AccessibleButton::parent() const
+{
+    auto result = QAccessible::queryAccessibleInterface(object()->parent());
+    assert(result);
+    return result;
+}
+
+QAccessible::State AccessibleButton::state() const
+{
+    QAccessible::State state;
+    auto button = qobject_cast<ButtonAccessible*>(object());
+    assert(button);
+    if (button && !button->clickable())
+        state.disabled = 1;
+    return state;
+}
+
+QRect Ui::AccessibleButton::rect() const
+{
+    auto button = qobject_cast<Ui::ButtonAccessible*>(object());
+    assert(button);
+    if (button)
+    {
+        auto parentWidget = qobject_cast<QWidget*>(button->parent());
+        assert(parentWidget);
+        if (parentWidget)
+            return QRect(parentWidget->mapToGlobal(button->rect().topLeft()), button->rect().size());
+    }
+    return QRect();
+}
+
+QString AccessibleButton::text(QAccessible::Text t) const
+{
+    QString result;
+    if (QAccessible::Text::Name == t)
+        result = qobject_cast<ButtonAccessible*>(object())->accessibleName();
+    return result;
+}

@@ -338,7 +338,7 @@ namespace Ui
                         auto r = rect();
                         r.setLeft(pos.x());
                         r.setRight(pos.x() + histograms_->playerHistogram()->getSampleWidth());
-                        Tooltip::show(durationStr, QRect(mapToGlobal(r.topLeft()), r.size()), { -1, -1 }, Tooltip::ArrowDirection::Down);
+                        Tooltip::show(durationStr, QRect(mapToGlobal(r.topLeft()), r.size()), {0, 0}, Tooltip::ArrowDirection::Down);
                     }
                 }
                 else

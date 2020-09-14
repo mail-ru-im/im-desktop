@@ -27,7 +27,10 @@ namespace Utils
         , currentMessage_(-1)
         , multiselectAnimation_(new QVariantAnimation(this))
     {
-        //
+        multiselectAnimation_->setStartValue(0);
+        multiselectAnimation_->setEndValue(100);
+        multiselectAnimation_->setDuration(100);
+        connect(multiselectAnimation_, &QVariantAnimation::valueChanged, this, &InterConnector::multiselectAnimationUpdate);
     }
 
     InterConnector::~InterConnector()
@@ -212,16 +215,7 @@ namespace Utils
             }
 
             multiselectAnimation_->stop();
-            multiselectAnimation_->setStartValue(_enable ? 0 : 100);
-            multiselectAnimation_->setEndValue(_enable ? 100 : 0);
-            multiselectAnimation_->setDuration(100);
-            multiselectAnimation_->setEasingCurve(QEasingCurve::Linear);
-            multiselectAnimation_->setLoopCount(1);
-            multiselectAnimation_->disconnect(this);
-            connect(multiselectAnimation_, &QVariantAnimation::valueChanged, this, [this](const QVariant& value)
-            {
-                Q_EMIT multiselectAnimationUpdate();
-            });
+            multiselectAnimation_->setDirection(_enable ? QAbstractAnimation::Forward : QAbstractAnimation::Backward);
             multiselectAnimation_->start();
         }
     }

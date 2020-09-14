@@ -1,12 +1,8 @@
 #include "stdafx.h"
 #include "DetachedVideoWnd.h"
 #include "../core_dispatcher.h"
-#include "../../core/Voip/VoipManagerDefines.h"
 #include "../utils/InterConnector.h"
 
-#include "../utils/utils.h"
-#include "VideoPanelHeader.h"
-#include "VideoWindow.h"
 #include "CommonUI.h"
 #include "../controls/ContextMenu.h"
 #include "../main_window/MainWindow.h"
@@ -17,7 +13,6 @@
 
 #ifdef __APPLE__
     #include "../utils/macos/mac_support.h"
-    #include "macos/VideoFrameMacos.h"
 #endif
 
 namespace
@@ -30,11 +25,6 @@ namespace
             return Utils::scale_value(QSize(240, 224));
         else
             return Utils::scale_value(QSize(240, 180));
-    }
-
-    auto getButtonSize() noexcept
-    {
-        return Utils::scale_value(QSize(40, 40));
     }
 
     auto getPanelBackgroundColorLinux() noexcept
@@ -565,7 +555,11 @@ void Ui::DetachedVideoWindow::onVoipWindowAddComplete(quintptr _winId)
     if (_winId == rootWidget_->frameId())
     {
         updatePanels();
+#ifdef __APPLE__
+        MacSupport::showInAllWorkspaces(this);
+#else
         showNormal();
+#endif
     }
     Utils::InterConnector::instance().getMainWindow()->updateMainMenu();
 }

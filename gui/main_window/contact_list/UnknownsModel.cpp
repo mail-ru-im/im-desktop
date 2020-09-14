@@ -81,10 +81,6 @@ namespace Logic
         {
             remover(_aimId, false);
         });
-        connect(Logic::getContactListModel(), &Logic::ContactListModel::ignore_contact, this, [=](const QString& _aimId)
-        {
-            remover(_aimId, false);
-        });
 
         connect(Logic::getContactListModel(), &ContactListModel::contactChanged, this, &UnknownsModel::contactChanged);
         connect(Logic::getContactListModel(), &ContactListModel::selectedContactChanged, this, &UnknownsModel::selectedContactChanged);

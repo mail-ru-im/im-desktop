@@ -48,7 +48,7 @@ namespace Ui
 
     void MessageTimeWidget::setTime(const int32_t _timestamp)
     {
-        TimeText_ = QDateTime::fromTime_t(_timestamp).toString(u"HH:mm");
+        TimeText_ = QDateTime::fromSecsSinceEpoch(_timestamp).toString(u"HH:mm");
         updateText();
     }
 

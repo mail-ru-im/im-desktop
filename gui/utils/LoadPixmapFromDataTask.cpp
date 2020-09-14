@@ -41,4 +41,36 @@ namespace Utils
 
         Q_EMIT loadedSignal(preview);
     }
+
+    LoadImageFromDataTask::LoadImageFromDataTask(core::istream* _stream, const QSize& _maxSize)
+        : stream_(_stream),
+          maxSize_(_maxSize)
+    {
+        assert(stream_);
+
+        stream_->addref();
+    }
+
+    LoadImageFromDataTask::~LoadImageFromDataTask()
+    {
+        stream_->release();
+    }
+
+    void LoadImageFromDataTask::run()
+    {
+        const auto size = stream_->size();
+        assert(size > 0);
+
+        auto data = QByteArray::fromRawData((const char *)stream_->read(size), (int)size);
+
+        QImage image;
+        QSize originalSize;
+        Utils::loadImageScaled(data, maxSize_, Out image, Out originalSize);
+
+        if (!image.isNull())
+            Q_EMIT loaded(image);
+        else
+            Q_EMIT loadingFailed();
+    }
+
 }

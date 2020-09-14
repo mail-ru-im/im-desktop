@@ -188,7 +188,7 @@ namespace Tooltip
 
         // arrow
         if (_direction != ArrowDirection::None)
-            _p.drawPixmap(QRect(_arrowOffset, _direction == ArrowDirection::Up ? (getInvertedOffset()) : (rcBubble.height() - Utils::unscale_bitmap(bottomSide.height())), Utils::unscale_bitmap(arrowP.width()), Utils::unscale_bitmap(arrowP.height())), arrowP);
+            _p.drawPixmap(QRect(_arrowOffset, _direction == ArrowDirection::Up ? 0 : (rcBubble.height() - Utils::unscale_bitmap(bottomSide.height())), Utils::unscale_bitmap(arrowP.width()), Utils::unscale_bitmap(arrowP.height())), arrowP);
     }
 
     void drawBigTooltip(QPainter& _p, const QRect& _tooltipRect, const int _arrowOffset, const ArrowDirection _direction)
@@ -263,7 +263,7 @@ namespace Tooltip
         }
 
         if (!text.isEmpty())
-            Tooltip::show(text, _objectRect, {-1, -1}, Tooltip::ArrowDirection::Down);
+            Tooltip::show(text, _objectRect, {0, 0}, Tooltip::ArrowDirection::Down);
     }
 
     std::unique_ptr<TextTooltip> g_tooltip;
@@ -289,7 +289,7 @@ namespace Tooltip
         if (auto w = Utils::InterConnector::instance().getMainWindow())
             r = QRect(w->mapToGlobal(w->rect().topLeft()), w->mapToGlobal(w->rect().bottomRight()));
 
-        t->showTooltip(_text, _objectRect, _maxSize.isValid() ? _maxSize : QSize(-1, getMaxTextTooltipHeight()), r, _direction, _arrowPos);
+        t->showTooltip(_text, _objectRect, !_maxSize.isNull() ? _maxSize : QSize(-1, getMaxTextTooltipHeight()), r, _direction, _arrowPos);
     }
 
     void forceShow(bool _force)
@@ -372,20 +372,18 @@ namespace Ui
         setFocusPolicy(Qt::NoFocus);
 
         QObject::connect(scrollArea_->horizontalScrollBar(), &QScrollBar::valueChanged, this, &TooltipWidget::onScroll);
-        connect(opacityAnimation_, &QVariantAnimation::valueChanged, this, [this]() {
-            const auto cur = opacityAnimation_->currentValue().toDouble();
-            opacityEffect_->setOpacity(cur);
-            });
 
-        connect(opacityAnimation_, &QVariantAnimation::stateChanged, this, [this]() {
-            if (opacityAnimation_->state() == QAbstractAnimation::State::Stopped)
-            {
-                const auto cur = opacityAnimation_->currentValue().toDouble();
-                const auto end = opacityAnimation_->endValue().toDouble();
-                if (qFuzzyCompare(cur, end) && qFuzzyCompare(end, 0.0))
-                    hide();
-            }
-            });
+        opacityAnimation_->setStartValue(0.0);
+        opacityAnimation_->setEndValue(1.0);
+        connect(opacityAnimation_, &QVariantAnimation::valueChanged, this, [this](const QVariant& value)
+        {
+            opacityEffect_->setOpacity(value.toDouble());
+        });
+        connect(opacityAnimation_, &QVariantAnimation::finished, this, [this]()
+        {
+            if (opacityAnimation_->direction() == QAbstractAnimation::Backward)
+                hide();
+        });
 
         setGraphicsEffect(opacityEffect_);
     }
@@ -601,8 +599,7 @@ namespace Ui
         opacityEffect_->setOpacity(0.0);
 
         opacityAnimation_->stop();
-        opacityAnimation_->setStartValue(0.0);
-        opacityAnimation_->setEndValue(1.0);
+        opacityAnimation_->setDirection(QAbstractAnimation::Forward);
         opacityAnimation_->setDuration(getDurationAppear().count());
         opacityAnimation_->start();
 
@@ -625,9 +622,8 @@ namespace Ui
     void TooltipWidget::hideAnimated()
     {
         opacityAnimation_->stop();
-        opacityAnimation_->setStartValue(1.0);
-        opacityAnimation_->setEndValue(0.0);
-        opacityAnimation_->setDuration(getDurationAppear().count());
+        opacityAnimation_->setDirection(QAbstractAnimation::Backward);
+        opacityAnimation_->setDuration(getDurationDisappear().count());
         opacityAnimation_->start();
     }
 

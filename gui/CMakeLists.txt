@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.8)
+cmake_minimum_required(VERSION 3.14)
 
 project(${APP_PROJECT_NAME})
 
@@ -226,13 +226,8 @@ elseif(APPLE)
         ${MAC_METAL}
         ${MAC_IOSURFACE}
         ${MAC_GSS}
-        ${ICQ_PLATFORM_SPECIFIC}/libqcocoa.a
         ${VOIP_LIBRARIES}
         libcups.2.dylib
-        ${ICQ_QT_LIB_DIR}/libQt5Gui.a
-        ${ICQ_QT_LIB_DIR}/libQt5Widgets.a
-        ${ICQ_QT_LIB_DIR}/libQt5Core.a
-        ${ICQ_QT_LIB_DIR}/libQt5MacExtras.a
         iconv
         bsm)
 
@@ -263,25 +258,19 @@ elseif(APPLE)
     set_source_files_properties(${MACOSX_BUNDLE_ICON_FILE} PROPERTIES XCODE_EXPLICIT_FILE_TYPE "compiled")
 
 elseif(LINUX)
-#   add_definitions(-include "stdafx.h")
+    # add_definitions(-include "stdafx.h")
+    message("Linux: Set SYSTEM_LIBRARIES")
     set(SYSTEM_LIBRARIES
         corelib
         core
         ${CURL_LIBRARIES}
         ${OPENSSL_LIBRARIES}
         ${LIBCRYPTO_LIBRARIES}
-        ${ICQ_PLATFORM_SPECIFIC}/libidn.a
-        ${ICQ_PLATFORM_SPECIFIC}/librtmp.a
-        ${ICQ_PLATFORM_SPECIFIC}/libgcrypt.a
-        ${ICQ_PLATFORM_SPECIFIC}/libgnutls.a
-        ${ICQ_PLATFORM_SPECIFIC}/libtasn1.a
         ${ICQ_PLATFORM_SPECIFIC}/libXi.a
         ${ICQ_PLATFORM_SPECIFIC}/libxkbcommon-x11.a
         ${ICQ_PLATFORM_SPECIFIC}/libxkbcommon.a
         ${ICQ_PLATFORM_SPECIFIC}/libdbus-1.a
         ${ICQ_PLATFORM_SPECIFIC}/libxcb-util.a
-        ${ICQ_PLATFORM_SPECIFIC}/libffi.a
-        ${ICQ_PLATFORM_SPECIFIC}/libpcre.a
         ${ICQ_PLATFORM_SPECIFIC}/libXext.a
         ${ICQ_PLATFORM_SPECIFIC}/libXau.a
         ${ICQ_PLATFORM_SPECIFIC}/libXdmcp.a
@@ -292,12 +281,13 @@ elseif(LINUX)
         message(STATUS "ICQ_DEBUG = ${ICQ_DEBUG}")
         set(SYSTEM_LIBRARIES ${SYSTEM_LIBRARIES} -ludev)
     endif()
+
     if(LINUX32)
         set(SYSTEM_LIBRARIES ${SYSTEM_LIBRARIES} ${ICQ_PLATFORM_SPECIFIC}/libp11-kit.a)
     endif()
 
     if(IM_AUTO_TESTING)
-        message(STATUS "... LINUX_TESTING: set ${ICQ_QT_LIB_DIR}/libQt5Test.a to QT_LIBRARIES")
+        message(STATUS "[testing] set ${ICQ_QT_LIB_DIR}/libQt5Test.a to QT_LIBRARIES")
         add_definitions(-DQT_CORE_LIB=1)
         add_definitions(-DQT_GUI_LIB=1)
         add_definitions(-DQT_WIDGETS_LIB=1)
@@ -600,6 +590,7 @@ if(ICQ_CORELIB_STATIC_LINKING)
             Iphlpapi.lib
             corelib)
     else()
+        message(STATUS "-> target_link_libraries [static linking]")
         if(IM_AUTO_TESTING)
             message(STATUS "... LINUX_TESTING: target_link_libraries with Qt5::Test STATIC_LINKING")
         endif()
@@ -626,6 +617,7 @@ else()
             ${BREAKPAD_LIBRARIES}
             ${CRASHPAD_LIBRARIES})
     else()
+        message(STATUS "-> target_link_libraries [dynamic linking]")
         if(IM_AUTO_TESTING)
             message(STATUS "... LINUX_TESTING: target_link_libraries with Qt5::Test DYNAMIC_LINKING")
             target_link_libraries(${PROJECT_NAME}

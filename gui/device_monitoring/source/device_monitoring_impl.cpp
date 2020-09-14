@@ -18,24 +18,17 @@ DeviceMonitoringImpl::~DeviceMonitoringImpl()
     _captureDeviceCallback = nullptr;
 }
 
-void DeviceMonitoringImpl::DeviceMonitoringListChanged()
+void DeviceMonitoringImpl::DeviceMonitoringVideoListChanged()
 {
+    Ui::GetDispatcher()->getVoipController().notifyDevicesChanged(false);
+}
+
+void DeviceMonitoringImpl::DeviceMonitoringAudioListChanged()
+{
+    Ui::GetDispatcher()->getVoipController().notifyDevicesChanged(true);
     boost::shared_lock cs(_callbackLock);
     if (_captureDeviceCallback)
         _captureDeviceCallback->DeviceMonitoringListChanged();
-    Ui::GetDispatcher()->getVoipController().notifyDevicesChanged();
-}
-
-void DeviceMonitoringImpl::DeviceMonitoringAudioPropChanged()
-{
-    Ui::GetDispatcher()->getVoipController().notifyDevicesChanged();
-}
-
-void DeviceMonitoringImpl::DeviceMonitoringBluetoothHeadsetChanged(bool connected)
-{
-    boost::shared_lock cs(_callbackLock);
-    if (_captureDeviceCallback)
-        _captureDeviceCallback->DeviceMonitoringBluetoothHeadsetChanged(connected);
 }
 
 void DeviceMonitoringImpl::RegisterCaptureDeviceInfoObserver(DeviceMonitoringCallback& viECaptureDeviceInfoCallback)

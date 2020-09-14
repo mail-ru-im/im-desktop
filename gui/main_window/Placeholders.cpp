@@ -216,9 +216,14 @@ RotatingSpinner::RotatingSpinner(QWidget * _parent)
     setAttribute(Qt::WA_TransparentForMouseEvents);
     setStyleSheet(qsl("background: transparent;"));
 
-    connect(anim_, &QVariantAnimation::valueChanged, this, [this]()
+    anim_->setStartValue(0);
+    anim_->setEndValue(360);
+    static constexpr const std::chrono::milliseconds duration = std::chrono::seconds(2);
+    anim_->setDuration(duration.count());
+    anim_->setLoopCount(-1);
+    connect(anim_, &QVariantAnimation::valueChanged, this, [this](const QVariant& value)
     {
-        currentAngle_ = anim_->currentValue().toInt();
+        currentAngle_ = value.toInt();
         update();
     });
 }
@@ -230,8 +235,6 @@ RotatingSpinner::~RotatingSpinner()
 
 void RotatingSpinner::startAnimation(const QColor& _spinnerColor, const QColor& _bgColor)
 {
-    constexpr std::chrono::milliseconds duration = std::chrono::seconds(2);
-
     if (_spinnerColor.isValid())
         mainColor_ = _spinnerColor;
     else
@@ -244,11 +247,6 @@ void RotatingSpinner::startAnimation(const QColor& _spinnerColor, const QColor& 
         bgColor_ = Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT_INVERSE);
 
     anim_->stop();
-    anim_->setStartValue(0);
-    anim_->setEndValue(360);
-    anim_->setDuration(duration.count());
-    anim_->setEasingCurve(QEasingCurve::Linear);
-    anim_->setLoopCount(-1);
     anim_->start();
 }
 

@@ -956,6 +956,34 @@ You can leave your feedback or report an error here:</source>
         <translation>%1 назначил(-а) %2 администратором этой группы</translation>
     </message>
     <message>
+        <source>Block contact</source>
+        <translation>Заблокировать контакт</translation>
+    </message>
+    <message>
+        <source>OK</source>
+        <translation>OK</translation>
+    </message>
+    <message>
+        <source>%1 Send the user a message or press &quot;OK&quot; button to allow %2 to</source>
+        <translation>%1 Нажмите «OK» или ответьте, и %2 сможет</translation>
+    </message>
+    <message>
+        <source> %3 call you</source>
+        <translation> %3 звонить</translation>
+    </message>
+    <message>
+        <source> %3 add you to groups</source>
+        <translation> %3 добавлять в группы</translation>
+    </message>
+    <message>
+        <source>%1 From now on %2 is able to</source>
+        <translation>%1 Теперь %2 может</translation>
+    </message>
+    <message>
+        <source> see if you read his messages</source>
+        <translation> видеть, что вы читаете сообщения</translation>
+    </message>
+    <message>
         <source>%1 You have canceled your join request</source>
         <translation>%1 Вы отменили запрос на вступление</translation>
     </message>
@@ -4463,14 +4491,6 @@ You can leave your feedback or report an error here:</source>
         <translation>Начать новый звонок? Текущий звонок будет закончен</translation>
     </message>
     <message>
-        <source>Use internal DNS cache</source>
-        <translation>Использовать внутренний DNS кэш</translation>
-    </message>
-    <message>
-        <source>To change this option you must restart the application. Continue?</source>
-        <translation>Чтобы изменить настройку, необходимо перезапустить приложение. Продолжить?</translation>
-    </message>
-    <message>
         <source>Global people search</source>
         <translation>Глобальный поиск людей</translation>
     </message>
@@ -4747,6 +4767,14 @@ You can leave your feedback or report an error here:</source>
         <source>Remove reaction: an error occurred</source>
         <translation>Удаление реакции: произошла ошибка</translation>
     </message>
+    <message>
+        <source>And %1 more...</source>
+        <translation>И еще %1...</translation>
+    </message>
+    <message>
+        <source>Loading...</source>
+        <translation>Загрузка...</translation>
+    </message>
 </context>
 <context>
     <name>release_notes</name>
@@ -4759,14 +4787,10 @@ You can leave your feedback or report an error here:</source>
         <translation>OK</translation>
     </message>
     <message>
-        <source> ﻿ ﻿— Reactions
-  — Statuses
-  — New themes
-  — Unreads counter in window title — turn it on in settings :) </source>
-        <translation> ﻿ ﻿— Реакции
-  — Статусы
-  — Новые темы оформления
-  — Счётчик количества непрочитанных в шапке окна — включите в настройках :) </translation>
+        <source> ﻿﻿— Displayed statuses in user's profile: now you can quickly view it and set the same :)
+ ﻿— Fixes and improvements </source>
+        <translation> ﻿﻿— Изменили отображение статуса в профиле пользователя: теперь вы можете быстро посмотреть статус и установить такой же :)
+ ﻿﻿— Другие исправления и улучшения</translation>
     </message>
 </context>
 <context>
@@ -6097,6 +6121,24 @@ Please edit phone number and try again.</source>
     <message>
         <source>For %1 already</source>
         <translation>Уже %1</translation>
+    </message>
+</context>
+<context>
+    <name>status_plate</name>
+    <message>
+        <source>Bot</source>
+        <translation>Бот</translation>
+    </message>
+</context>
+<context>
+    <name>status_popup</name>
+    <message>
+        <source>Select my status</source>
+        <translation>Выбрать мой статус</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>Отмена</translation>
     </message>
 </context>
 <context>

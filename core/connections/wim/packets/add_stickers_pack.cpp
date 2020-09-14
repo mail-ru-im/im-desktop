@@ -65,9 +65,10 @@ int32_t add_stickers_pack_packet::init_request(const std::shared_ptr<core::http_
 
 int32_t add_stickers_pack_packet::execute_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
-    bool res = _request->post();
-    if (!res)
-        return wpie_network_error;
+    url_ = _request->get_url();
+
+    if (auto error_code = get_error(_request->post()))
+        return *error_code;
 
     http_code_ = (uint32_t)_request->get_response_code();
 

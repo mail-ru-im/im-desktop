@@ -173,6 +173,26 @@ namespace Previewer
         int controlWidgetHeight_;
 
         bool isClosing_;
+
+        friend class AccessibleGalleryWidget;
+    };
+
+    class AccessibleGalleryWidget : public QAccessibleWidget
+    {
+    public:
+        AccessibleGalleryWidget(QWidget* widget = nullptr);
+
+        int childCount() const override { return children_.size(); }
+
+        QAccessibleInterface* child(int index) const override;
+
+        int indexOfChild(const QAccessibleInterface* child) const override;
+
+        QString text(QAccessible::Text t) const override { return qsl("AccessibleGalleryWidget"); }
+
+    protected:
+        GalleryWidget* galleryWidget_ = nullptr;
+        std::vector<QObject*> children_;
     };
 
 

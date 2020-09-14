@@ -26,7 +26,6 @@
 #include "remove_buddy.h"
 #include "set_buddy_attribute.h"
 #include "mute_buddy.h"
-#include "remove_members.h"
 #include "add_members.h"
 #include "add_chat.h"
 #include "mrim_get_key.h"

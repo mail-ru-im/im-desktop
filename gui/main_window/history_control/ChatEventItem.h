@@ -54,15 +54,17 @@ namespace Ui
 
         static QColor getTextColor(const QString& _contact);
         static QColor getLinkColor(const QString& _contact);
-        static QFont getTextFont();
-        static QFont getTextFontBold();
+        static QFont getTextFont(int _size = -1);
+        static QFont getTextFontBold(int _size = -1);
 
     private Q_SLOTS:
         void onChatInfo();
         void modChatAboutResult(qint64, int);
         void avatarChanged(const QString&);
-        void addAvatarClicked();
-        void addDescriptionClicked();
+        void leftButtonClicked();
+        void rightButtonClicked();
+        void dlgStateChanged(const Data::DlgState&);
+        void ignoreListChanged();
 
     protected:
         void paintEvent(QPaintEvent* _event) override;
@@ -93,6 +95,8 @@ namespace Ui
         RoundButton* btnRight_ = nullptr;
 
         bool buttonsVisible_ = false;
+        bool leftButtonVisible_ = false;
+        bool rightButtonVisible_ = false;
 
         qint64 modChatAboutSeq_ = -1;
 
@@ -103,9 +107,21 @@ namespace Ui
         int32_t evaluateTextWidth(const int32_t _widgetWidth);
         void updateSize(const QSize& _size);
 
-        void initButtons(const QString& _leftCaption, const QString& _rightCaption);
+        void initButtons();
+
         bool hasButtons() const;
+
         void updateButtons();
+
+        int textFontSize() const;
+
+        int buttonsfontSize() const;
+
+        int getButtonsHeight() const;
+
+        int lineSpacing() const;
+
+        TextRendering::HorAligment textAligment() const;
     };
 
 }

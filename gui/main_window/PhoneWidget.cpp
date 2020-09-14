@@ -102,10 +102,7 @@ namespace Ui
         setMouseTracking(true);
     }
 
-    PhoneWidget::~PhoneWidget()
-    {
-
-    }
+    PhoneWidget::~PhoneWidget() = default;
 
     void PhoneWidget::setState(const PhoneWidgetState& _state)
     {
@@ -141,7 +138,8 @@ namespace Ui
             if (showPhoneHint_)
                 phone_hint_->draw(p);
             send_again_->draw(p);
-            phone_call_->draw(p);
+            if (phone_call_)
+                phone_call_->draw(p);
             if (showSmsError_)
                 sms_error_->draw(p);
         }
@@ -180,7 +178,7 @@ namespace Ui
         {
             sendCode();
         }
-        else if (state_ == PhoneWidgetState::ENTER_CODE_SATE && secRemaining_ == 0 && phone_call_->contains(_e->pos()))
+        else if (state_ == PhoneWidgetState::ENTER_CODE_SATE && secRemaining_ == 0 && phone_call_ && phone_call_->contains(_e->pos()))
         {
             callPhone();
         }
@@ -195,7 +193,7 @@ namespace Ui
     {
 
         auto point = (state_ == PhoneWidgetState::ENTER_CODE_SATE && change_phone_->contains(_e->pos()));
-        point |= (state_ == PhoneWidgetState::ENTER_CODE_SATE && secRemaining_ == 0 && (send_again_->contains(_e->pos()) || phone_call_->contains(_e->pos())));
+        point |= (state_ == PhoneWidgetState::ENTER_CODE_SATE && secRemaining_ == 0 && (send_again_->contains(_e->pos()) || (phone_call_ && phone_call_->contains(_e->pos()))));
         point |= (state_ == PhoneWidgetState::ENTER_PHONE_STATE && attachState_ == AttachState::FORCE_LOGOUT && logout_->contains(_e->pos()));
 
         if (point)
@@ -394,10 +392,13 @@ namespace Ui
         send_again_->evaluateDesiredSize();
         send_again_->setOffsets((Utils::scale_value(DIALOG_WIDTH) - send_again_->desiredWidth()) / 2, Utils::scale_value(CODE_ACTIONS_TOP_MARGIN));
 
-        phone_call_ = TextRendering::MakeTextUnit(QT_TRANSLATE_NOOP("phone_widget", "Dictate over the phone"));
-        phone_call_->init(Fonts::appFontScaled(13), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
-        phone_call_->evaluateDesiredSize();
-        phone_call_->setOffsets((Utils::scale_value(DIALOG_WIDTH) - phone_call_->desiredWidth()) / 2, send_again_->verOffset() + send_again_->cachedSize().height() + Utils::scale_value(PHONE_CALL_SPACING));
+        if (Features::IvrLoginEnabled())
+        {
+            phone_call_ = TextRendering::MakeTextUnit(QT_TRANSLATE_NOOP("phone_widget", "Dictate over the phone"));
+            phone_call_->init(Fonts::appFontScaled(13), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
+            phone_call_->evaluateDesiredSize();
+            phone_call_->setOffsets((Utils::scale_value(DIALOG_WIDTH) - phone_call_->desiredWidth()) / 2, send_again_->verOffset() + send_again_->cachedSize().height() + Utils::scale_value(PHONE_CALL_SPACING));
+        }
 
         sms_error_ = TextRendering::MakeTextUnit(QT_TRANSLATE_NOOP("phone_widget", "Incorrect code"));
         sms_error_->init(Fonts::appFontScaled(13), Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_ATTENTION)
@@ -553,11 +554,14 @@ namespace Ui
     {
         showPhoneHint_ = LoginPage::isCallCheck(checks_);
         send_again_->setText((showPhoneHint_ ? QT_TRANSLATE_NOOP("phone_widget", "Recall") : QT_TRANSLATE_NOOP("phone_widget", "Resend code")) % u" 1:00", Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
-        phone_call_->setText(QT_TRANSLATE_NOOP("phone_widget", "Dictate over the phone"), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
 
         phone_hint_->setOffsets(Utils::scale_value(HOR_MARGIN), Utils::scale_value(CODE_ACTIONS_TOP_MARGIN));
         send_again_->setOffsets((Utils::scale_value(DIALOG_WIDTH) - send_again_->desiredWidth()) / 2, showPhoneHint_ ? (phone_hint_->verOffset() + phone_hint_->cachedSize().height() + Utils::scale_value(ACTIONS_SPACING)) : Utils::scale_value(CODE_ACTIONS_TOP_MARGIN));
-        phone_call_->setOffsets((Utils::scale_value(DIALOG_WIDTH) - phone_call_->desiredWidth()) / 2, send_again_->verOffset() + send_again_->cachedSize().height() + Utils::scale_value(PHONE_CALL_SPACING));
+        if (phone_call_)
+        {
+            phone_call_->setText(QT_TRANSLATE_NOOP("phone_widget", "Dictate over the phone"), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
+            phone_call_->setOffsets((Utils::scale_value(DIALOG_WIDTH) - phone_call_->desiredWidth()) / 2, send_again_->verOffset() + send_again_->cachedSize().height() + Utils::scale_value(PHONE_CALL_SPACING));
+        }
     }
 
     void PhoneWidget::nextClicked()
@@ -674,7 +678,8 @@ namespace Ui
             showSmsError_ = false;
             phone_hint_->setOffsets(Utils::scale_value(HOR_MARGIN), Utils::scale_value(CODE_ACTIONS_TOP_MARGIN));
             send_again_->setOffsets((Utils::scale_value(DIALOG_WIDTH) - send_again_->desiredWidth()) / 2, showPhoneHint_ ? (phone_hint_->verOffset() + phone_hint_->cachedSize().height() + Utils::scale_value(ACTIONS_SPACING)) : Utils::scale_value(CODE_ACTIONS_TOP_MARGIN));
-            phone_call_->setOffsets((Utils::scale_value(DIALOG_WIDTH) - phone_call_->desiredWidth()) / 2, send_again_->verOffset() + send_again_->cachedSize().height() + Utils::scale_value(PHONE_CALL_SPACING));
+            if (phone_call_)
+                phone_call_->setOffsets((Utils::scale_value(DIALOG_WIDTH) - phone_call_->desiredWidth()) / 2, send_again_->verOffset() + send_again_->cachedSize().height() + Utils::scale_value(PHONE_CALL_SPACING));
             update();
         }
     }
@@ -817,7 +822,8 @@ namespace Ui
                 timer_->stop();
                 secRemaining_ = SECONDS_TO_RESEND;
                 send_again_->setText(QString());
-                phone_call_->setText(QString());
+                if (phone_call_)
+                    phone_call_->setText(QString());
             }
             auto offset = (sms_error_->cachedSize().height() + Utils::scale_value(ACTIONS_SPACING));
 
@@ -827,7 +833,8 @@ namespace Ui
 
             phone_hint_->setOffsets(Utils::scale_value(HOR_MARGIN), phone_hint_->verOffset() + offset);
             send_again_->setOffsets((Utils::scale_value(DIALOG_WIDTH) - send_again_->desiredWidth()) / 2, send_again_->verOffset() + offset);
-            phone_call_->setOffsets((Utils::scale_value(DIALOG_WIDTH) - phone_call_->desiredWidth()) / 2, phone_call_->verOffset() + offset);
+            if (phone_call_)
+                phone_call_->setOffsets((Utils::scale_value(DIALOG_WIDTH) - phone_call_->desiredWidth()) / 2, phone_call_->verOffset() + offset);
         }
 
         update();
@@ -851,14 +858,16 @@ namespace Ui
         if (secRemaining_ == 0)
         {
             send_again_->setText(callCheck ? QT_TRANSLATE_NOOP("phone_widget", "Recall") : QT_TRANSLATE_NOOP("phone_widget", "Resend code"), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY));
-            phone_call_->setText(QT_TRANSLATE_NOOP("phone_widget", "Dictate over the phone"), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY));
+            if (phone_call_)
+                phone_call_->setText(QT_TRANSLATE_NOOP("phone_widget", "Dictate over the phone"), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY));
             timer_->stop();
         }
         else
         {
             auto ar = secRemaining_ >= 10 ? qsl(" 0:%1") : qsl(" 0:0%1");
             send_again_->setText((callCheck ? QT_TRANSLATE_NOOP("phone_widget", "Recall") : QT_TRANSLATE_NOOP("phone_widget", "Resend code")) + ar.arg(secRemaining_), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
-            phone_call_->setText(QT_TRANSLATE_NOOP("phone_widget", "Dictate over the phone"), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
+            if (phone_call_)
+                phone_call_->setText(QT_TRANSLATE_NOOP("phone_widget", "Dictate over the phone"), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
         }
 
         auto offset = 0;
@@ -867,7 +876,8 @@ namespace Ui
 
         phone_hint_->setOffsets(Utils::scale_value(HOR_MARGIN), Utils::scale_value(CODE_ACTIONS_TOP_MARGIN) + offset);
         send_again_->setOffsets((Utils::scale_value(DIALOG_WIDTH) - send_again_->desiredWidth()) / 2, showPhoneHint_ ? (phone_hint_->verOffset() + phone_hint_->cachedSize().height() + Utils::scale_value(ACTIONS_SPACING)) : Utils::scale_value(CODE_ACTIONS_TOP_MARGIN) + offset);
-        phone_call_->setOffsets((Utils::scale_value(DIALOG_WIDTH) - phone_call_->desiredWidth()) / 2, send_again_->verOffset() + send_again_->cachedSize().height() + Utils::scale_value(PHONE_CALL_SPACING));
+        if (phone_call_)
+            phone_call_->setOffsets((Utils::scale_value(DIALOG_WIDTH) - phone_call_->desiredWidth()) / 2, send_again_->verOffset() + send_again_->cachedSize().height() + Utils::scale_value(PHONE_CALL_SPACING));
 
         update();
     }

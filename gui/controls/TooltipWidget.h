@@ -44,7 +44,7 @@ namespace Tooltip
     Ui::TextTooltip* getDefaultTooltip();
     void resetDefaultTooltip();
 
-    void show(const QString& _text, const QRect& _objectRect, const QSize& _maxSize = QSize(-1, -1), ArrowDirection _direction = ArrowDirection::Auto, Tooltip::ArrowPointPos _arrowPos = Tooltip::ArrowPointPos::Top);
+    void show(const QString& _text, const QRect& _objectRect, const QSize& _maxSize = QSize(0, 0), ArrowDirection _direction = ArrowDirection::Auto, Tooltip::ArrowPointPos _arrowPos = Tooltip::ArrowPointPos::Top);
     void forceShow(bool _force);
     void hide();
 

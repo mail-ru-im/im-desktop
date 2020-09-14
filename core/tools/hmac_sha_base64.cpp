@@ -10,7 +10,7 @@
 using namespace core;
 using namespace tools;
 
-uint8_t *coding=(uint8_t*)"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";                   //52...63
+static uint8_t *coding=(uint8_t*)"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";                   //52...63
 
 enum
 {
@@ -206,17 +206,17 @@ std::string base64::hmac_base64(std::vector<uint8_t>& data, std::vector<uint8_t>
 
 using namespace boost::archive::iterators;
 
-std::string base64::decode64(const std::string& val)
+std::string base64::decode64(std::string_view val)
 {
-    typedef transform_width<binary_from_base64<std::string::const_iterator>, 8, 6> it;
+    using it = transform_width<binary_from_base64<std::string_view::const_iterator>, 8, 6>;
     return boost::algorithm::trim_right_copy_if(std::string(it(std::begin(val)), it(std::end(val))), [](char c) {
         return c == '\0';
     });
 }
 
-std::string base64::encode64(const std::string& val)
+std::string base64::encode64(std::string_view val)
 {
-    typedef base64_from_binary<transform_width<std::string::const_iterator, 6, 8>> it;
+    using it = base64_from_binary<transform_width<std::string_view::const_iterator, 6, 8>>;
     auto tmp = std::string(it(std::begin(val)), it(std::end(val)));
     return tmp.append((3 - val.size() % 3) % 3, '=');
 }

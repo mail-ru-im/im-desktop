@@ -256,7 +256,7 @@ namespace Ui
         return result;
     }
 
-    bool ReportContact(const QString& _aimId, const QString& _title)
+    bool ReportContact(const QString& _aimId, const QString& _title, bool _ignoreAndClose)
     {
         auto w = new ReportWidget(nullptr, _title);
         GeneralDialog generalDialog(w, Utils::InterConnector::instance().getMainWindow());
@@ -268,6 +268,7 @@ namespace Ui
             Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
             collection.set_value_as_qstring("contact", _aimId);
             collection.set_value_as_qstring("reason", getReasonString(w->getReason()));
+            collection.set_value_as_bool("ignoreAndClose", _ignoreAndClose);
             Ui::GetDispatcher()->post_message_to_core("report/contact", collection.get());
         }
         return result;

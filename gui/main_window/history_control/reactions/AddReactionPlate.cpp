@@ -10,16 +10,17 @@
 #include "styles/ThemeParameters.h"
 #include "../MessageStyle.h"
 #include "core_dispatcher.h"
+#include "DefaultReactions.h"
 
 #include "AddReactionPlate.h"
 
 namespace
 {
 
-constexpr std::chrono::milliseconds animationDuration = std::chrono::milliseconds(130);
-constexpr std::chrono::milliseconds itemAnimationStep = std::chrono::milliseconds(20);
-constexpr std::chrono::milliseconds tooltipShowDelay = std::chrono::milliseconds(400);
-constexpr std::chrono::milliseconds leaveHideDelay = std::chrono::milliseconds(150);
+constexpr const auto animationDuration = std::chrono::milliseconds(130);
+constexpr const auto itemAnimationStep = std::chrono::milliseconds(20);
+constexpr const auto tooltipShowDelay = std::chrono::milliseconds(400);
+constexpr const auto leaveHideDelay = std::chrono::milliseconds(150);
 
 QSize plateSize()
 {
@@ -182,13 +183,13 @@ public:
 
     AddReactionPlate_p(AddReactionPlate* _q) : q(_q) {}
 
-    EmojiWidget* createItem(const QString& _reaction, const QString& _tooltip)
+    ReactionEmojiWidget* createItem(const QString& _reaction, const QString& _tooltip)
     {
-        auto item = new EmojiWidget(_reaction, _tooltip, q);
+        auto item = new ReactionEmojiWidget(_reaction, _tooltip, q);
         item->setMyReaction(_reaction == reactions_.myReaction_);
-        QObject::connect(item, &EmojiWidget::clicked, q, &AddReactionPlate::onItemClicked);
-        QObject::connect(item, &EmojiWidget::hovered, q, &AddReactionPlate::onItemHovered);
-        QObject::connect(q, &AddReactionPlate::itemHovered, item, &EmojiWidget::onOtherItemHovered);
+        QObject::connect(item, &ReactionEmojiWidget::clicked, q, &AddReactionPlate::onItemClicked);
+        QObject::connect(item, &ReactionEmojiWidget::hovered, q, &AddReactionPlate::onItemHovered);
+        QObject::connect(q, &AddReactionPlate::itemHovered, item, &ReactionEmojiWidget::onOtherItemHovered);
 
         return item;
     }
@@ -198,7 +199,7 @@ public:
         if (!reactions_.reactions_.empty())
         {
             std::unordered_map<QString, QString, Utils::QStringHasher> tooltips;
-            for (auto& reactionWithTooltip : Features::getReactionsWithTooltipsSet())
+            for (auto& reactionWithTooltip : DefaultReactions::instance()->reactionsWithTooltip())
                 tooltips[reactionWithTooltip.reaction_] = reactionWithTooltip.tooltip_;
 
             const auto showTooltips = std::all_of(reactions_.reactions_.begin(), reactions_.reactions_.end(), [&tooltips](const Data::Reactions::Reaction& _reaction)
@@ -211,7 +212,7 @@ public:
         }
         else
         {
-            for (auto& reactionWithTooltip : Features::getReactionsWithTooltipsSet())
+            for (auto& reactionWithTooltip : DefaultReactions::instance()->reactionsWithTooltip())
                 items_.push_back(createItem(reactionWithTooltip.reaction_, reactionWithTooltip.tooltip_));
         }
     }
@@ -230,7 +231,7 @@ public:
 
     void startShowAnimation()
     {
-        currentAnimation_ = AnimationType::Show;
+        currentAnimationType_ = AnimationType::Show;
 
         startPlateAnimation();
 
@@ -241,13 +242,13 @@ public:
 
     void startHideAnimation()
     {
-        if (currentAnimation_ == AnimationType::Hide)
+        if (currentAnimationType_ == AnimationType::Hide)
             return;
 
         Q_EMIT q->plateClosed();
         Q_EMIT Utils::InterConnector::instance().addReactionPlateActivityChanged(chatId_, false);
 
-        currentAnimation_ = AnimationType::Hide;
+        currentAnimationType_ = AnimationType::Hide;
 
         nextAnimationIndex_ = 0;
         startNextItemAnimation();
@@ -258,7 +259,7 @@ public:
 
     void startPlateAnimation()
     {
-        if (currentAnimation_ == AnimationType::Hide)
+        if (currentAnimationType_ == AnimationType::Hide)
             plate_->hideAnimated();
         else
             plate_->showAnimated();
@@ -274,7 +275,7 @@ public:
 
         auto item = items_[index];
 
-        const bool isHide = currentAnimation_ == AnimationType::Hide;
+        const bool isHide = currentAnimationType_ == AnimationType::Hide;
 
         if (isHide)
             item->hideAnimated();
@@ -291,7 +292,7 @@ public:
             animationTimer_.stop();
     }
 
-    std::vector<EmojiWidget*> items_;
+    std::vector<ReactionEmojiWidget*> items_;
     Data::Reactions reactions_;
     QString chatId_;
     int64_t msgId_;
@@ -309,7 +310,7 @@ public:
         Hide
     };
 
-    AnimationType currentAnimation_ = AnimationType::None;
+    AnimationType currentAnimationType_ = AnimationType::None;
 
     AddReactionPlate* q;
 };
@@ -471,7 +472,7 @@ void AddReactionPlate::onMultiselectChanged()
 class EmojiWidget_p
 {
 public:
-    EmojiWidget_p(QWidget* _q) : animation_(new QVariantAnimation(_q)), q(_q) {}
+    EmojiWidget_p(QWidget* _q) : animation_(nullptr), q(_q) {}
 
     enum class AnimationType
     {
@@ -481,6 +482,14 @@ public:
         HoverIn,
         HoverOut
     };
+
+    void ensureAnimationInitialized()
+    {
+        if (animation_)
+            return;
+
+        animation_ = new QVariantAnimation(q);
+    }
 
     void startAnimation(AnimationType _type)
     {
@@ -501,11 +510,11 @@ public:
 
     void startVisibilityAnimation(AnimationType _type)
     {
-        switch (currentAnimation_)
+        switch (currentAnimationType_)
         {
             case AnimationType::Hide:
             case AnimationType::Show:
-                queuedAnimation_ = _type;
+                queuedAnimationType_ = _type;
                 return;
             default:
                 break;
@@ -520,6 +529,8 @@ public:
 
         const auto sign = isHide ? 1 : -1;
 
+        ensureAnimationInitialized();
+
         animation_->disconnect(q);
         animation_->stop();
         animation_->setStartValue(0.0);
@@ -527,8 +538,9 @@ public:
         animation_->setEasingCurve(QEasingCurve::InOutSine);
         animation_->setDuration(animationDuration.count());
 
-        QObject::connect(animation_, &QVariantAnimation::valueChanged, q, [this, startGeometry, diffY, sign, isHide]() {
-            const auto current = animation_->currentValue().toDouble();
+        QObject::connect(animation_, &QVariantAnimation::valueChanged, q, [this, startGeometry, diffY, sign, isHide](const QVariant& value)
+        {
+            const auto current = value.toDouble();
             q->setGeometry(startGeometry.translated(0, sign * diffY * current));
 
             if (isHide)
@@ -537,13 +549,10 @@ public:
                 opacity_ = current;
         });
 
-        QObject::connect(animation_, &QVariantAnimation::stateChanged, q, [this, isHide]() {
-            if (animation_->state() == QAbstractAnimation::Stopped)
-            {
-                hoverEnabled_ = !isHide;
-                currentAnimation_ = AnimationType::None;
-                startQueuedAnimation();
-            }
+        QObject::connect(animation_, &QVariantAnimation::finished, q, [this, isHide]() {
+            hoverEnabled_ = !isHide;
+            currentAnimationType_ = AnimationType::None;
+            startQueuedAnimation();
         });
         animation_->start();
 
@@ -552,7 +561,7 @@ public:
         if (!isHide)
             q->show();
 
-        currentAnimation_ = _type;
+        currentAnimationType_ = _type;
     }
 
     void startHoverAnimation(AnimationType _type)
@@ -571,6 +580,8 @@ public:
             isLarge_= true;
         }
 
+        ensureAnimationInitialized();
+
         const auto coef = animation_->state() == QAbstractAnimation::Running ? animation_->currentValue().toDouble() : 1.;
 
         animation_->disconnect(q);
@@ -580,38 +591,37 @@ public:
         animation_->setEasingCurve(QEasingCurve::InOutSine);
         animation_->setDuration(animationDuration.count() * coef);
 
-        QObject::connect(animation_, &QVariantAnimation::valueChanged, q, [this, startSize, diff]() {
-            auto d = diff * animation_->currentValue().toDouble();
+        QObject::connect(animation_, &QVariantAnimation::valueChanged, q, [this, startSize, diff](const QVariant& value)
+        {
+            const auto d = diff * value.toDouble();
             emojiSize_ = startSize + QSize(d, d);
             q->update();
         });
-        QObject::connect(animation_, &QVariantAnimation::stateChanged, q, [this, isHoverOut, startGeometry]() {
-            if (animation_->state() == QAbstractAnimation::Stopped)
+        QObject::connect(animation_, &QVariantAnimation::finished, q, [this, isHoverOut, startGeometry]()
+        {
+            if (isHoverOut)
             {
-                if (isHoverOut)
-                {
-                    QRect regularGeometry;
-                    regularGeometry.setSize(emojiWidgetSize());
-                    regularGeometry.moveCenter(startGeometry.center());
-                    q->setGeometry(regularGeometry);
-                    isLarge_ = false;
-                }
-
-                currentAnimation_ = AnimationType::None;
+                QRect regularGeometry;
+                regularGeometry.setSize(emojiWidgetSize());
+                regularGeometry.moveCenter(startGeometry.center());
+                q->setGeometry(regularGeometry);
+                isLarge_ = false;
             }
+
+            currentAnimationType_ = AnimationType::None;
         });
 
         animation_->start();
 
-        currentAnimation_ = _type;
+        currentAnimationType_ = _type;
     }
 
     void startQueuedAnimation()
     {
-        if (queuedAnimation_ != AnimationType::None)
+        if (queuedAnimationType_ != AnimationType::None)
         {
-            startAnimation(queuedAnimation_);
-            queuedAnimation_ = AnimationType::None;
+            startAnimation(queuedAnimationType_);
+            queuedAnimationType_ = AnimationType::None;
         }
     }
 
@@ -667,7 +677,7 @@ public:
     void showTooltip()
     {
         if (!tooltip_.isEmpty())
-            Tooltip::show(myReaction_ ? QT_TRANSLATE_NOOP("reactions", "Remove") : tooltip_, QRect(q->mapToGlobal({0, 0}), q->size()), {-1, -1}, Tooltip::ArrowDirection::Down);
+            Tooltip::show(myReaction_ ? QT_TRANSLATE_NOOP("reactions", "Remove") : tooltip_, QRect(q->mapToGlobal({0, 0}), q->size()), {0, 0}, Tooltip::ArrowDirection::Down);
     }
 
     void hideToolTip()
@@ -690,8 +700,8 @@ public:
     QSize emojiSize_;
     QImage scaledEmoji_;
 
-    AnimationType currentAnimation_ = AnimationType::None;
-    AnimationType queuedAnimation_ = AnimationType::None;
+    AnimationType currentAnimationType_ = AnimationType::None;
+    AnimationType queuedAnimationType_ = AnimationType::None;
 
     QWidget* q;
 };
@@ -700,7 +710,7 @@ public:
 // EmojiWidget
 //////////////////////////////////////////////////////////////////////////
 
-EmojiWidget::EmojiWidget(const QString& _reaction, const QString& _tooltip, QWidget* _parent)
+ReactionEmojiWidget::ReactionEmojiWidget(const QString& _reaction, const QString& _tooltip, QWidget* _parent)
     : QWidget(_parent),
       d(std::make_unique<EmojiWidget_p>(this))
 {
@@ -718,42 +728,42 @@ EmojiWidget::EmojiWidget(const QString& _reaction, const QString& _tooltip, QWid
 
     d->tooltipTimer_.setSingleShot(true);
     d->tooltipTimer_.setInterval(tooltipShowDelay.count());
-    connect(&d->tooltipTimer_, &QTimer::timeout, this, &EmojiWidget::onTooltipTimer);
+    connect(&d->tooltipTimer_, &QTimer::timeout, this, &ReactionEmojiWidget::onTooltipTimer);
 }
 
-EmojiWidget::~EmojiWidget()
+ReactionEmojiWidget::~ReactionEmojiWidget()
 {
 
 }
 
-void EmojiWidget::setMyReaction(bool _myReaction)
+void ReactionEmojiWidget::setMyReaction(bool _myReaction)
 {
     d->myReaction_ = _myReaction;
 }
 
-void EmojiWidget::setStartGeometry(const QRect& _rect)
+void ReactionEmojiWidget::setStartGeometry(const QRect& _rect)
 {
     setGeometry(_rect);
     d->startGeometry_ = _rect;
 }
 
-void EmojiWidget::showAnimated()
+void ReactionEmojiWidget::showAnimated()
 {
     d->startAnimation(EmojiWidget_p::AnimationType::Show);
 }
 
-void EmojiWidget::hideAnimated()
+void ReactionEmojiWidget::hideAnimated()
 {
     d->startAnimation(EmojiWidget_p::AnimationType::Hide);
     d->hideToolTip();
 }
 
-QString EmojiWidget::reaction() const
+QString ReactionEmojiWidget::reaction() const
 {
     return d->reaction_;
 }
 
-void EmojiWidget::onOtherItemHovered(bool _hovered)
+void ReactionEmojiWidget::onOtherItemHovered(bool _hovered)
 {
     if (!d->hovered_ && d->hoverEnabled_)
     {
@@ -762,13 +772,13 @@ void EmojiWidget::onOtherItemHovered(bool _hovered)
     }
 }
 
-void EmojiWidget::onTooltipTimer()
+void ReactionEmojiWidget::onTooltipTimer()
 {
     if (d->hovered_ && d->hoverEnabled_)
         d->showTooltip();
 }
 
-void EmojiWidget::mouseMoveEvent(QMouseEvent* _event)
+void ReactionEmojiWidget::mouseMoveEvent(QMouseEvent* _event)
 {
     if (d->hoverEnabled_)
     {
@@ -783,7 +793,7 @@ void EmojiWidget::mouseMoveEvent(QMouseEvent* _event)
     QWidget::mouseMoveEvent(_event);
 }
 
-void EmojiWidget::mousePressEvent(QMouseEvent* _event)
+void ReactionEmojiWidget::mousePressEvent(QMouseEvent* _event)
 {
     if (_event->button() == Qt::LeftButton)
     {
@@ -794,7 +804,7 @@ void EmojiWidget::mousePressEvent(QMouseEvent* _event)
     QWidget::mousePressEvent(_event);
 }
 
-void EmojiWidget::mouseReleaseEvent(QMouseEvent* _event)
+void ReactionEmojiWidget::mouseReleaseEvent(QMouseEvent* _event)
 {
     if (_event->button() == Qt::LeftButton)
     {
@@ -807,7 +817,7 @@ void EmojiWidget::mouseReleaseEvent(QMouseEvent* _event)
     QWidget::mouseReleaseEvent(_event);
 }
 
-void EmojiWidget::leaveEvent(QEvent* _event)
+void ReactionEmojiWidget::leaveEvent(QEvent* _event)
 {
     if (d->hoverEnabled_)
     {
@@ -819,7 +829,7 @@ void EmojiWidget::leaveEvent(QEvent* _event)
     QWidget::leaveEvent(_event);
 }
 
-void EmojiWidget::enterEvent(QEvent* _event)
+void ReactionEmojiWidget::enterEvent(QEvent* _event)
 {
     if (d->hoverEnabled_)
         Q_EMIT hovered(true);
@@ -827,7 +837,7 @@ void EmojiWidget::enterEvent(QEvent* _event)
     QWidget::enterEvent(_event);
 }
 
-void EmojiWidget::paintEvent(QPaintEvent* _event)
+void ReactionEmojiWidget::paintEvent(QPaintEvent* _event)
 {
     QPainter p(this);
     p.setRenderHint(QPainter::Antialiasing);
@@ -849,65 +859,67 @@ class PlateWithShadow_p
 {
 public:
 
-    PlateWithShadow_p(PlateWithShadow* _q) : animation_(new QVariantAnimation(_q)), q(_q) {}
+    PlateWithShadow_p(PlateWithShadow* _q)
+        : animation_(nullptr)
+        , q(_q)
+    {
+    }
+
+    void ensureAnimationInitialized()
+    {
+        if (animation_)
+            return;
+
+        animation_ = new Animation(q);
+        animation_->setStartValue(0.0);
+        animation_->setEndValue(1.0);
+        animation_->setEasingCurve(QEasingCurve::InOutSine);
+        animation_->setDuration(animationDuration.count());
+        QObject::connect(animation_, &QVariantAnimation::valueChanged, q, [this](const QVariant& value)
+        {
+            const auto val = value.toDouble();
+            const auto startY = animation_->startY;
+            const auto finishY = animation_->finishY;
+            const auto newY = startY + val * (finishY - startY);
+
+            auto geometry = q->geometry();
+            geometry.setY(newY);
+            q->setGeometry(geometry);
+
+            opacity_ = val;
+
+            shadow_->setColor(shadowColorWithAlpha());
+        });
+        QObject::connect(animation_, &QVariantAnimation::finished, q, [this]()
+        {
+            if (animation_->direction() == QAbstractAnimation::Backward)
+                Q_EMIT q->hideFinished();
+        });
+    }
 
     void startShowAnimation()
     {
-        currentAnimation_ = AnimationType::Show;
+        ensureAnimationInitialized();
 
-        startPlateAnimation();
+        const auto diffY = Utils::scale_value(32);
+        const auto currentY = q->geometry().y();
+
+        animation_->stop();
+        animation_->setDirection(QAbstractAnimation::Forward);
+        animation_->startY = currentY;
+        animation_->finishY = currentY - diffY;
+        animation_->start();
     }
 
     void startHideAnimation()
     {
-        currentAnimation_ = AnimationType::Hide;
-
-        startPlateAnimation();
-    }
-
-    void startPlateAnimation()
-    {
-        auto startValue = 0;
-        auto endValue = 1;
-
-        const auto isHide = currentAnimation_ == AnimationType::Hide;
-
         const auto diffY = Utils::scale_value(32);
-        auto startGeometry = q->geometry();
-        const auto sign = isHide ? 1 : -1;
+        const auto currentY = q->geometry().y();
 
-        auto finishedCallback = [this, isHide]()
-        {
-            if (isHide)
-                Q_EMIT q->hideFinished();
-        };
-
-        animation_->disconnect(q);
         animation_->stop();
-        animation_->setStartValue(startValue);
-        animation_->setEndValue(endValue);
-        animation_->setEasingCurve(QEasingCurve::InOutSine);
-        animation_->setDuration(animationDuration.count());
-
-        QObject::connect(animation_, &QVariantAnimation::valueChanged, q, [this, startGeometry, diffY, sign, isHide]() {
-            const auto current = animation_->currentValue().toDouble();
-            q->setGeometry(startGeometry.translated(0, sign * diffY * current));
-
-            if (isHide)
-                opacity_ = 1 - current;
-            else
-                opacity_ = current;
-
-            shadow_->setColor(shadowColorWithAlpha());
-        });
-        QObject::connect(animation_, &QVariantAnimation::stateChanged, q, [this, isHide]() {
-            if (animation_->state() == QAbstractAnimation::Stopped)
-            {
-                if (isHide)
-                    Q_EMIT q->hideFinished();
-            }
-        });
-
+        animation_->setDirection(QAbstractAnimation::Backward);
+        animation_->startY = currentY + diffY;
+        animation_->finishY = currentY;
         animation_->start();
     }
 
@@ -928,18 +940,14 @@ public:
         q->setGraphicsEffect(shadow_);
     }
 
-    double opacity_ = 0;
-    QVariantAnimation* animation_;
+    double opacity_ = 0.0;
+    struct Animation : public QVariantAnimation {
+        Animation(QObject* parent = nullptr) : QVariantAnimation(parent), startY(0), finishY(0) { }
+        int startY;
+        int finishY;
+    } * animation_;
+
     QGraphicsDropShadowEffect* shadow_ = nullptr;
-
-    enum class AnimationType
-    {
-        None,
-        Show,
-        Hide
-    };
-
-    AnimationType currentAnimation_ = AnimationType::None;
 
     PlateWithShadow* q;
 };

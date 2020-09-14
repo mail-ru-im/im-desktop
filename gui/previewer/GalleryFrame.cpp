@@ -102,6 +102,9 @@ CaptionArea::CaptionArea(QWidget* _parent)
     setExpanded(false);
     setMouseTracking(true);
     setAutoFillBackground(true);
+
+    anim_->setDuration(300);
+    anim_->setEasingCurve(QEasingCurve::OutExpo);
 }
 
 void CaptionArea::setCaption(const QString& _caption, int _totalWidth)
@@ -148,12 +151,10 @@ void CaptionArea::setExpanded(bool _expanded)
             const auto endHeight = std::min(max_height, textWidget_->height());
             const auto startHeight = height();
             const auto endSpace = endHeight - getTopMargin() + Utils::scale_value(Margin::_32px);
+
             anim_->stop();
             anim_->setStartValue(0);
             anim_->setEndValue(endSpace);
-            anim_->setDuration(300);
-            anim_->setEasingCurve(QEasingCurve::OutExpo);
-            anim_->setLoopCount(1);
             anim_->disconnect(this);
             connect(anim_, &QVariantAnimation::valueChanged, this, [this, endSpace, endHeight, startHeight](const QVariant& value)
             {
@@ -290,16 +291,18 @@ public:
 
     auto solidRectHeight() const { return Utils::scale_value(40); }
 
-    void addButton(ControlType _type, QStringView _iconName)
+    ButtonAccessible* addButton(ControlType _type, QStringView _iconName, QWidget* parent)
     {
-        auto button = std::make_unique<Button>();
+        auto button = std::make_unique<ButtonAccessible>(parent);
         const auto size = objectSize(_type);
         button->setDefaultPixmap(Utils::renderSvg(getImagePath(_iconName, GalleryFrame_p::Default), size));
         button->setHoveredPixmap(Utils::renderSvg(getImagePath(_iconName, GalleryFrame_p::Hover), size));
         button->setPressedPixmap(Utils::renderSvg(getImagePath(_iconName, GalleryFrame_p::Pressed), size));
         button->setDisabledPixmap(Utils::renderSvg(getImagePath(_iconName, GalleryFrame_p::Disabled), size));
 
+        auto pointer = button.get();
         objects_[_type] = std::move(button);
+        return pointer;
     }
 
     QPoint objectPosition(ControlType _type, int _width, int _height) const
@@ -375,13 +378,26 @@ GalleryFrame::GalleryFrame(QWidget *_parent)
 {
     topMargin = getTopMargin();
 
-    d->addButton(ZoomOutButton, u"zoom_out");
-    d->addButton(ZoomInButton, u"zoom_in");
-    d->addButton(PrevButton, u"previous");
-    d->addButton(NextButton, u"next");
-    d->addButton(CloseButton, u"close");
-    d->addButton(MenuButton, u"more");
-    d->addButton(SaveButton, u"download");
+    if (auto button = d->addButton(ZoomOutButton, u"zoom_out", this))
+        button->setAccessibleName(qsl("AS Preview zoomOut"));
+
+    if (auto button = d->addButton(ZoomInButton, u"zoom_in", this))
+        button->setAccessibleName(qsl("AS Preview zoomIn"));
+
+    if (auto button = d->addButton(PrevButton, u"previous", this))
+        button->setAccessibleName(qsl("AS Preview previous"));
+
+    if (auto button = d->addButton(NextButton, u"next", this))
+        button->setAccessibleName(qsl("AS Preview next"));
+
+    if (auto button = d->addButton(CloseButton, u"close", this))
+        button->setAccessibleName(qsl("AS Preview close"));
+
+    if (auto button = d->addButton(MenuButton, u"more", this))
+        button->setAccessibleName(qsl("AS Preview more"));
+
+    if (auto button = d->addButton(SaveButton, u"download", this))
+        button->setAccessibleName(qsl("AS Preview download"));
 
     const auto counterFont(Fonts::appFontScaled(20, Fonts::FontWeight::Normal));
     auto counterLabelUnit = TextRendering::MakeTextUnit(QString());
@@ -811,7 +827,6 @@ void GalleryFrame::closeMenu()
         d->menu_->close();
 }
 
-
 class MenuItem : public BDrawable
 {
 public:
@@ -1074,6 +1089,51 @@ void CustomMenu::mouseReleaseEvent(QMouseEvent *_event)
 void CustomMenu::updateHeight()
 {
     setFixedHeight(d->items_.size() * d->itemHeight_ + d->arrowSize_.height());
+}
+
+AccessibleGalleryFrame::AccessibleGalleryFrame(GalleryFrame* widget)
+    : QAccessibleWidget(widget)
+{
+    static constexpr const std::array<ControlType, 7> controlTypes{
+        ControlType::ZoomOutButton,
+        ControlType::ZoomInButton,
+        ControlType::PrevButton,
+        ControlType::NextButton,
+        ControlType::CloseButton,
+        ControlType::MenuButton,
+        ControlType::SaveButton,
+    };
+
+    auto galleryFrame = qobject_cast<GalleryFrame*>(object());
+    for (auto control : controlTypes)
+    {
+        auto drawable = galleryFrame->d->objects_.at(control).get();
+        auto controlObject = dynamic_cast<QObject*>(drawable);
+        assert(controlObject);
+        if (controlObject)
+        {
+            auto accessibleControlObject = QAccessible::queryAccessibleInterface(controlObject);
+            assert(accessibleControlObject);
+            children_.emplace_back(accessibleControlObject);
+        }
+    }
+}
+
+int AccessibleGalleryFrame::childCount() const
+{
+    return children_.size();
+}
+
+QAccessibleInterface* AccessibleGalleryFrame::child(int index) const
+{
+    if (index > -1 && index < static_cast<int>(children_.size()))
+        return children_.at(index);
+    return nullptr;
+}
+
+int AccessibleGalleryFrame::indexOfChild(const QAccessibleInterface* child) const
+{
+    return Utils::indexOf(children_.cbegin(), children_.cend(), child);
 }
 
 }

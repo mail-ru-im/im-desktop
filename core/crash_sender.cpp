@@ -44,7 +44,9 @@ namespace core
                         const auto size = boost::filesystem::file_size(path, e);
                         if (size < 10 * 1024 * 1024) // 10 mb
                             post_request.push_post_form_filedata(L"upload_file_minidump", path.wstring());
-                        if (post_request.post() && post_request.get_response_code() == 200)
+
+                        auto res = post_request.post();
+                        if (res == curl_easy::completion_code::success && post_request.get_response_code() == 200)
                         {
                             boost::filesystem::remove(path, e);
                             continue;

@@ -79,8 +79,8 @@ namespace core
 
             virtual ~get_history();
 
-            std::shared_ptr<archive::history_block> get_messages() const { return messages_; }
-            std::shared_ptr<archive::dlg_state> get_dlg_state() const { return dlg_state_; }
+            const std::shared_ptr<archive::history_block>& get_messages() const { return messages_; }
+            const std::shared_ptr<archive::dlg_state>& get_dlg_state() const { return dlg_state_; }
             bool get_unpinned() const noexcept { return unpinned_; }
             const get_history_params& get_hist_params() const { return hist_params_; }
             bool has_older_msgid() const noexcept { return older_msgid_ != -1; }

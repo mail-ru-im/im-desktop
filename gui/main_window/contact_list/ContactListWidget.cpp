@@ -197,7 +197,7 @@ namespace Ui
         , emptyIgnoreListLabel_(nullptr)
         , dialogSearchViewHeader_(nullptr)
         , globalSearchViewHeader_(nullptr)
-        , scrollToItemAnim_(new QVariantAnimation(this))
+        , scrollToItemAnim_(nullptr)
         , scrollStatsTimer_(new QTimer(this))
         , clDelegate_(nullptr)
         , searchDelegate_(nullptr)
@@ -287,11 +287,6 @@ namespace Ui
                 Q_EMIT forceSearchClear(!getSearchInDialog() && _msgid == -1);
             });
         }
-
-        connect(scrollToItemAnim_, &QVariantAnimation::valueChanged, this, [this]() {
-            auto scrollbar = view_->verticalScrollBar();
-            scrollbar->setValue(scrollToItemAnim_->currentValue().toDouble());
-        });
     }
 
     ContactListWidget::~ContactListWidget()
@@ -1124,8 +1119,6 @@ namespace Ui
 
         if (i.isValid())
         {
-            constexpr auto duration = std::chrono::milliseconds(300);
-
             auto scrollbar = view_->verticalScrollBar();
             const auto curValue = scrollbar->value();
             auto endValue = curValue;
@@ -1139,10 +1132,10 @@ namespace Ui
             }
             setUpdatesEnabled(true);
 
+            ensureScrollToItemAnimationInitialized();
             scrollToItemAnim_->stop();
             scrollToItemAnim_->setStartValue(curValue);
             scrollToItemAnim_->setEndValue(endValue);
-            scrollToItemAnim_->setDuration(duration.count());
             scrollToItemAnim_->start();
         }
     }
@@ -1445,6 +1438,19 @@ namespace Ui
             || regim_ == Logic::MembersWidgetRegim::SHARE_CONTACT
             || regim_ == Logic::MembersWidgetRegim::SHARE_VIDEO_CONFERENCE
             || regim_ == Logic::MembersWidgetRegim::SELECT_CHAT_MEMBERS;
+    }
+
+    void Ui::ContactListWidget::ensureScrollToItemAnimationInitialized()
+    {
+        if (scrollToItemAnim_)
+            return;
+
+        scrollToItemAnim_ = new QVariantAnimation(this);
+        scrollToItemAnim_->setDuration(std::chrono::milliseconds(300).count());
+        connect(scrollToItemAnim_, &QVariantAnimation::valueChanged, this, [this](const QVariant& value)
+        {
+            view_->verticalScrollBar()->setValue(value.toDouble());
+        });
     }
 
     void ContactListWidget::selectCurrentSearchCategory()

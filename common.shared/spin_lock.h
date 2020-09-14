@@ -3,8 +3,9 @@
 
 #pragma once
 
+#include <atomic>
 
-namespace core
+namespace common
 {
     namespace tools
     {

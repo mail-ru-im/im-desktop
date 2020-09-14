@@ -12,7 +12,7 @@ namespace device
 
 struct DeviceListMonitorContext: public IMMNotificationClient
 {
-    DeviceMonitoringCallback* deviceChangedCallback_;
+    DeviceMonitoringWindows* deviceChangedCallback_;
 private:
     // IMMNotificationClient implementation.
     STDMETHOD_(ULONG, AddRef)() override;
@@ -68,20 +68,20 @@ STDMETHODIMP DeviceListMonitorContext::OnDeviceStateChanged(LPCWSTR device_id, D
 
 STDMETHODIMP DeviceListMonitorContext::OnDefaultDeviceChanged(EDataFlow flow, ERole role, LPCWSTR new_default_device_id)
 {
-    deviceChangedCallback_->DeviceMonitoringListChanged();
+    deviceChangedCallback_->DeviceMonitoringAudioListChanged();
     return S_OK;
 }
 
 class DeviceListMonitorWnd
 {
-    DeviceMonitoringCallback& _deviceChangedCallback;
+    DeviceMonitoringWindows& _deviceChangedCallback;
     uint32_t                _devicesNumber;
     constexpr wchar_t* className() noexcept { return L"deviceListMonitorWnd"; };
 
     HWND hwnd;
 
 public:
-    DeviceListMonitorWnd(DeviceMonitoringCallback& deviceChangedCallback)
+    DeviceListMonitorWnd(DeviceMonitoringWindows& deviceChangedCallback)
     : _deviceChangedCallback(deviceChangedCallback)
     , _devicesNumber(0)
     , hwnd(nullptr)
@@ -95,7 +95,10 @@ public:
         {
             DeviceListMonitorWnd *pThis = (DeviceListMonitorWnd *)GetWindowLongPtr(hwnd, GWLP_USERDATA);
             if (pThis)
-                pThis->_deviceChangedCallback.DeviceMonitoringListChanged();
+            {
+                pThis->_deviceChangedCallback.DeviceMonitoringVideoListChanged();
+                pThis->_deviceChangedCallback.DeviceMonitoringAudioListChanged();
+            }
         }
         else if (msg == WM_CREATE)
         {

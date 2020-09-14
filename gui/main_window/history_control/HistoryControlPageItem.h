@@ -202,6 +202,9 @@ namespace Ui
     private:
         void drawLastStatusIconImpl(QPainter& _p, int _rightPadding, int _bottomPadding);
         int maxHeadsCount() const;
+        void ensureAddAnimationInitialized();
+        void ensureRemoveAnimationInitialized();
+        void ensureHeightAnimationInitialized();
 
         bool Selected_;
         bool HasTopMargin_;

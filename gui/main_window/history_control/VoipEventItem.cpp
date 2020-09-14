@@ -295,7 +295,7 @@ namespace Ui
 
     QString VoipEventItem::formatCopyText() const
     {
-        const auto header = qsl("%1 (%2):\n").arg(friendlyName_, QDateTime::fromTime_t(getTime()).toString(u"dd.MM.yyyy hh:mm"));
+        const auto header = qsl("%1 (%2):\n").arg(friendlyName_, QDateTime::fromSecsSinceEpoch(getTime()).toString(u"dd.MM.yyyy hh:mm"));
         return header % formatRecentsText();
     }
 

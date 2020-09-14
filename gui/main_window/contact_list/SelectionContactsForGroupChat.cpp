@@ -77,17 +77,17 @@ namespace TestingLocal
 
 namespace Ui
 {
-    const double heightPartOfMainWindowForFullView = 0.6;
-    const int DIALOG_WIDTH = 360;
-    const int NAME_WIDTH = 256;
-    const int search_padding_ver = 8;
-    const int search_padding_hor = 4;
-    const int avatars_area_top_padding = 12;
-    const int avatars_area_bottom_padding = 4;
-    const int avatars_area_hor_padding = 16;
-    const int avatars_area_spacing = 6;
-    const int avatar_size = 40;
-    const int avatars_scroll_step = 10;
+    constexpr const double heightPartOfMainWindowForFullView = 0.6;
+    constexpr const int DIALOG_WIDTH = 360;
+    constexpr const int NAME_WIDTH = 256;
+    constexpr const int search_padding_ver = 8;
+    constexpr const int search_padding_hor = 4;
+    constexpr const int avatars_area_top_padding = 12;
+    constexpr const int avatars_area_bottom_padding = 4;
+    constexpr const int avatars_area_hor_padding = 16;
+    constexpr const int avatars_area_spacing = 6;
+    constexpr const int avatar_size = 40;
+    constexpr const int avatars_scroll_step = 10;
 
     AvatarsArea::AvatarsArea(QWidget* _parent, int _regim, Logic::CustomAbstractListModel* _membersModel, Logic::AbstractSearchModel* _searchModel)
         : QWidget(_parent)
@@ -103,9 +103,23 @@ namespace Ui
         setMouseTracking(true);
 
         connect(Logic::GetAvatarStorage(), &Logic::AvatarStorage::avatarChanged, this, &AvatarsArea::onAvatarChanged);
-        connect(avatarAnimation_, &QVariantAnimation::valueChanged, this, [this]() {
-            avatarOffset_ = avatarAnimation_->currentValue().toInt();
+
+        avatarAnimation_->setEndValue(0);
+        avatarAnimation_->setDuration(300);
+        connect(avatarAnimation_, &QVariantAnimation::valueChanged, this, [this](const QVariant& value)
+        {
+            avatarOffset_ = value.toInt();
             update();
+        });
+
+        heightAnimation_->setDuration(200);
+        connect(heightAnimation_, &QVariantAnimation::valueChanged, this, [this](const QVariant& value)
+        {
+            const auto cur = value.toInt();
+            setFixedHeight(cur);
+            const auto endValue = heightAnimation_->endValue();
+            if (endValue != 0 && endValue == cur)
+                Q_EMIT showed();
         });
     }
 
@@ -135,19 +149,10 @@ namespace Ui
 
         if (avatars_.size() == 1)
         {
-            auto h = Utils::scale_value(avatars_area_top_padding + avatars_area_bottom_padding + avatar_size);
+            const auto h = Utils::scale_value(avatars_area_top_padding + avatars_area_bottom_padding + avatar_size);
             heightAnimation_->stop();
             heightAnimation_->setStartValue(0);
             heightAnimation_->setEndValue(h);
-            heightAnimation_->setDuration(200);
-            heightAnimation_->setEasingCurve(QEasingCurve::Linear);
-            heightAnimation_->disconnect(this);
-            connect(heightAnimation_, &QVariantAnimation::valueChanged, this, [this, h]() {
-                const auto cur = heightAnimation_->currentValue().toInt();
-                setFixedHeight(cur);
-                if (h == cur)
-                    Q_EMIT showed();
-            });
             heightAnimation_->start();
         }
         else
@@ -155,11 +160,9 @@ namespace Ui
             if (avatarAnimation_->state() != QAbstractAnimation::State::Running)
             {
                 avatarAnimation_->stop();
-                avatarOffset_ = Utils::scale_value(avatar_size);
-                avatarAnimation_->setStartValue(Utils::scale_value(avatar_size));
-                avatarAnimation_->setEndValue(0);
-                avatarAnimation_->setDuration(300);
-                avatarAnimation_->setEasingCurve(QEasingCurve::Linear);
+                const auto scaledAvatarSize = Utils::scale_value(avatar_size);
+                avatarOffset_ = scaledAvatarSize;
+                avatarAnimation_->setStartValue(scaledAvatarSize);
                 avatarAnimation_->start();
             }
         }
@@ -180,12 +183,6 @@ namespace Ui
             heightAnimation_->setStartValue(height());
             heightAnimation_->setEndValue(0);
             heightAnimation_->setDuration(200);
-            heightAnimation_->setEasingCurve(QEasingCurve::Linear);
-            heightAnimation_->disconnect(this);
-            connect(heightAnimation_, &QVariantAnimation::valueChanged, this, [this]() {
-                const auto cur = heightAnimation_->currentValue().toInt();
-                setFixedHeight(cur);
-                });
             heightAnimation_->start();
         }
 

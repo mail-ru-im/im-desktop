@@ -7,10 +7,7 @@
 using namespace core;
 using namespace wim;
 
-fetch_event_recent_call::fetch_event_recent_call()
-{
-}
-
+fetch_event_recent_call::fetch_event_recent_call() = default;
 
 fetch_event_recent_call::~fetch_event_recent_call() = default;
 
@@ -26,7 +23,7 @@ void fetch_event_recent_call::on_im(std::shared_ptr<core::wim::im> _im, std::sha
     _im->on_event_recent_call(this, _on_complete);
 }
 
-const core::archive::call_info fetch_event_recent_call::get_call() const
+const core::archive::call_info& fetch_event_recent_call::get_call() const
 {
     return call_;
 }

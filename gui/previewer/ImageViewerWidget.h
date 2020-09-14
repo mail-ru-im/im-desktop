@@ -1,5 +1,7 @@
 #pragma once
 
+#include <QAccessibleWidget>
+
 namespace Ui
 {
     class DialogPlayer;
@@ -113,4 +115,5 @@ namespace Previewer
         QTimer viewerLoadTimer_;
         MediaData currentData_;
     };
+
 }

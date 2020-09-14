@@ -76,14 +76,7 @@ namespace Features
 
     QString getVcsRoomList();
 
-    struct ReactionWithTooltip
-    {
-        QString reaction_;
-        QString tooltip_;
-    };
-
-    std::vector<QString> getReactionsSet();
-    std::vector<ReactionWithTooltip> getReactionsWithTooltipsSet();
+    std::string getReactionsJson();
     bool reactionsEnabled();
 
     QString getStatusJson();
@@ -93,5 +86,7 @@ namespace Features
 
     bool forceCheckMacUpdates();
     bool callRoomInfoEnabled();
-    bool hasConnectByIpOption();
+
+    bool IvrLoginEnabled();
+    int IvrResendCountToShow();
 }

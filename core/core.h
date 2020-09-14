@@ -206,7 +206,7 @@ namespace core
 
         void on_thread_finish();
 
-        std::shared_ptr<core::stats::statistics> get_statistics();
+        const std::shared_ptr<core::stats::statistics>& get_statistics() const;
 
         proxy_settings get_proxy_settings() const;
         bool try_to_apply_alternative_settings();
@@ -264,7 +264,7 @@ namespace core
 
         void reset_connection();
 
-        std::shared_ptr<zstd_helper> get_zstd_helper() const;
+        const std::shared_ptr<zstd_helper>& get_zstd_helper() const;
     };
 
     extern std::unique_ptr<core::core_dispatcher>		g_core;

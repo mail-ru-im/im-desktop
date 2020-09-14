@@ -186,6 +186,9 @@
 #include <QCache>
 #include <QVariantAnimation>
 #include <QScopeGuard>
+#include <QAccessible>
+#include <QAccessibleObject>
+#include <QAccessibleWidget>
 #if defined(IM_AUTO_TESTING)
     #include <QTest>
 #endif
@@ -325,6 +328,9 @@
 #include <QtCore/qcache.h>
 #include <QtCore/qscopeguard.h>
 #include <QtDBus/qdbusinterface.h>
+#include <QtGui/qaccessible.h>
+#include <QtGui/qaccessibleobject.h>
+#include <QtWidgets/qaccessiblewidget.h>
 #else
 #include "macconfig.h"
 #ifndef HOCKEY_APPID
@@ -464,6 +470,9 @@
 #import <QtCore/qscopedvaluerollback.h>
 #import <QtCore/qcache.h>
 #import <QtCore/qscopeguard.h>
+#import <QtGui/qaccessible.h>
+#import <QtGui/qaccessibleobject.h>
+#import <QtWidgets/qaccessiblewidget.h>
 #endif // _WIN32
 
 #include "../common.shared/typedefs.h"

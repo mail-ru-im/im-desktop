@@ -76,7 +76,6 @@ int32_t report_contact::init_request(const std::shared_ptr<core::http_request_si
     if (!params_.full_log_)
     {
         log_replace_functor f;
-        f.add_marker("a");
         f.add_json_marker("aimsid", aimsid_range_evaluator());
         _request->set_replace_log_function(f);
     }
@@ -108,7 +107,6 @@ int32_t report_stickerpack::init_request(const std::shared_ptr<core::http_reques
     if (!params_.full_log_)
     {
         log_replace_functor f;
-        f.add_marker("a");
         f.add_json_marker("aimsid", aimsid_range_evaluator());
         _request->set_replace_log_function(f);
     }
@@ -145,7 +143,6 @@ int32_t report_sticker::init_request(const std::shared_ptr<core::http_request_si
     if (!params_.full_log_)
     {
         log_replace_functor f;
-        f.add_marker("a");
         f.add_json_marker("aimsid", aimsid_range_evaluator());
         _request->set_replace_log_function(f);
     }
@@ -185,7 +182,6 @@ int32_t report_message::init_request(const std::shared_ptr<core::http_request_si
     if (!params_.full_log_)
     {
         log_replace_functor f;
-        f.add_marker("a");
         f.add_json_marker("aimsid", aimsid_range_evaluator());
         f.add_json_marker("msgText");
         _request->set_replace_log_function(f);

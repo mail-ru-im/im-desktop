@@ -59,7 +59,7 @@ public:
 
     ActionButtonWidget(const ActionButtonResource::ResourceSet &resourceIds, QWidget *parent = nullptr);
 
-    ~ActionButtonWidget();
+    ~ActionButtonWidget() = default;
 
     QPoint getCenterBias() const;
 
@@ -112,6 +112,8 @@ protected:
 
 private:
     Q_PROPERTY(int ProgressBarBaseAngle READ getProgressBarBaseAngle WRITE setProgressBarBaseAngle)
+
+    void ensureAnimationInitialized();
 
     void createAnimationStartTimer();
 

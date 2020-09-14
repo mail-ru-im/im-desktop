@@ -45,7 +45,6 @@ int32_t get_smartreplies::init_request(const std::shared_ptr<core::http_request_
     if (!params_.full_log_)
     {
         log_replace_functor f;
-        f.add_marker("a");
         f.add_json_marker("aimsid", aimsid_range_evaluator());
         _request->set_replace_log_function(f);
     }

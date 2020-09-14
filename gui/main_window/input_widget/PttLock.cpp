@@ -30,6 +30,30 @@ namespace Ui
         showTimer_.setSingleShot(true);
         showTimer_.setInterval(delay());
         QObject::connect(&showTimer_, &QTimer::timeout, this, &PttLock::showAnimatedImpl);
+
+        anim_->setStartValue(0.0);
+        anim_->setEndValue(1.0);
+        anim_->setDuration(getAnimDuration().count());
+        anim_->setEasingCurve(QEasingCurve::OutBack);
+        connect(anim_, &QVariantAnimation::valueChanged, this, [this](const QVariant& value)
+        {
+            auto p = bottom_;
+            p.ry() -= value.toDouble() * getDistance();
+            move(p);
+            update();
+        });
+        connect(anim_, &QVariantAnimation::finished, this, [this]()
+        {
+            if (anim_->direction() == QAbstractAnimation::Forward)
+            {
+                showToolTip();
+                anim_->setEasingCurve(QEasingCurve::InBack);
+            }
+            else
+            {
+                anim_->setEasingCurve(QEasingCurve::OutBack);
+            }
+        });
     }
 
     PttLock::~PttLock() = default;
@@ -51,21 +75,7 @@ namespace Ui
         hideToolTip();
         showTimer_.stop();
         anim_->stop();
-        anim_->disconnect(this);
-
-        connect(anim_, &QVariantAnimation::valueChanged, this, [this]()
-        {
-            auto p = bottom_;
-            p.ry() -= getDistance();
-            p.ry() += (1 - anim_->currentValue().toInt()) * getDistance();
-            move(p);
-            update();
-        });
-
-        anim_->setStartValue(1.0);
-        anim_->setEndValue(0.0);
-        anim_->setDuration(getAnimDuration().count());
-        anim_->setEasingCurve(QEasingCurve::OutBack);
+        anim_->setDirection(QAbstractAnimation::Backward);
         anim_->start();
     }
 
@@ -88,25 +98,7 @@ namespace Ui
     {
         show();
         anim_->stop();
-        anim_->disconnect(this);
-
-        connect(anim_, &QVariantAnimation::valueChanged, this, [this]()
-        {
-            auto p = bottom_;
-            p.ry() -= (anim_->currentValue().toInt()) * getDistance();
-            move(p);
-            update();
-        });
-        connect(anim_, &QVariantAnimation::stateChanged, this, [this]()
-        {
-            if (anim_->state() == QAbstractAnimation::Stopped)
-                showToolTip();
-        });
-
-        anim_->setStartValue(0.0);
-        anim_->setEndValue(1.0);
-        anim_->setDuration(getAnimDuration().count());
-        anim_->setEasingCurve(QEasingCurve::OutBack);
+        anim_->setDirection(QAbstractAnimation::Forward);
         anim_->start();
     }
 
@@ -114,7 +106,7 @@ namespace Ui
     {
         const auto r = rect();
         Tooltip::forceShow(true);
-        Tooltip::show(QT_TRANSLATE_NOOP("input_widget", "Lock"), QRect(mapToGlobal(r.topLeft()), r.size()), { -1, -1 }, Tooltip::ArrowDirection::Down);
+        Tooltip::show(QT_TRANSLATE_NOOP("input_widget", "Lock"), QRect(mapToGlobal(r.topLeft()), r.size()), {0, 0}, Tooltip::ArrowDirection::Down);
     }
 
     void PttLock::hideToolTip()

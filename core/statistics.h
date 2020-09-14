@@ -103,8 +103,8 @@ namespace core
             std::vector<std::string> get_post_data() const;
 
             static std::string get_mytracker_post_data(const stats_event& event);
-            static bool send_flurry(const proxy_settings& _user_proxy, const std::string& post_data, const std::wstring& _file_name);
-            static long send_mytracker(const proxy_settings& _user_proxy, std::string_view post_data, stats_event_names event_name, const std::wstring& _file_name);
+            static bool send_flurry(const proxy_settings& _user_proxy, std::string_view post_data, std::wstring_view _file_name);
+            static long send_mytracker(const proxy_settings& _user_proxy, std::string_view post_data, stats_event_names event_name, std::wstring_view _file_name);
 
             void serialize_flurry(tools::binary_stream& _bs) const;
             void serialize_mytracker(tools::binary_stream& _bs) const;
@@ -114,7 +114,7 @@ namespace core
             void save_flurry();
             void save_mytracker();
             void send_flurry_async();
-            void send_mytracker_async(std::shared_ptr<stats_event> event);
+            void send_mytracker_async(const std::shared_ptr<stats_event>& event);
             void resend_failed_mytracker_async();
             void set_disk_stats(const disk_stats &_stats);
             void query_disk_size_async();

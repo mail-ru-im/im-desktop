@@ -1108,7 +1108,7 @@ namespace Ui
             }
         }
 
-        const auto timeStr = _state.Time_ > 0 ? ::Ui::FormatTime(QDateTime::fromTime_t(_state.Time_)) : QString();
+        const auto timeStr = _state.Time_ > 0 ? ::Ui::FormatTime(QDateTime::fromSecsSinceEpoch(_state.Time_)) : QString();
         time_ = TextRendering::MakeTextUnit(timeStr, Data::MentionMap(), Ui::TextRendering::LinksVisible::DONT_SHOW_LINKS);
         const auto timeFontSize = platform::is_apple() ? 12 : 11;
         time_->init(Fonts::appFontScaledFixed(timeFontSize, Fonts::FontWeight::Normal), Styling::getParameters().getColor(Styling::StyleVariable::BASE_TERTIARY));

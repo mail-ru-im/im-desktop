@@ -25,6 +25,10 @@ namespace Ui
 
         setFixedSize(maxDiameter_ * 1.1, maxDiameter_ * 1.1);
 
+        anim_->setStartValue(0.0);
+        anim_->setEndValue(1.0);
+        anim_->setDuration(getAnimDuration().count());
+        anim_->setEasingCurve(QEasingCurve::InOutSine);
         connect(anim_, &QVariantAnimation::valueChanged, this, [this]()
         {
             raise();
@@ -53,10 +57,7 @@ namespace Ui
         if (dest_)
         {
             anim_->stop();
-            anim_->setStartValue(0.0);
-            anim_->setEndValue(1.0);
-            anim_->setDuration(getAnimDuration().count());
-            anim_->setEasingCurve(QEasingCurve::InOutSine);
+            anim_->setDirection(QAbstractAnimation::Forward);
             anim_->start();
 
             move(dest_->mapToGlobal(dest_->rect().center()) - rect().center());
@@ -70,14 +71,9 @@ namespace Ui
         if (dest_ && isVisible())
         {
             move(dest_->mapToGlobal(dest_->rect().center()) - rect().center());
-            //show();
-            //raise();
 
             anim_->stop();
-            anim_->setStartValue(1.0);
-            anim_->setEndValue(0.0);
-            anim_->setDuration(getAnimDuration().count());
-            anim_->setEasingCurve(QEasingCurve::InOutSine);
+            anim_->setDirection(QAbstractAnimation::Backward);
             anim_->start();
         }
         else
@@ -97,7 +93,7 @@ namespace Ui
         QPainter p(this);
         p.setRenderHint(QPainter::Antialiasing, true);
         const auto r = rect();
-        const auto curAnim = anim_->currentValue().toInt();
+        const auto curAnim = anim_->currentValue().toDouble();
         p.fillRect(r, Qt::transparent);
         p.setOpacity(curAnim);
         p.translate(r.center());

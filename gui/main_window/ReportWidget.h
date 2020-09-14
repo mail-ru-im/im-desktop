@@ -71,7 +71,7 @@ namespace Ui
 
     bool ReportSticker(const QString& _aimid, const QString& _chatId, const QString& _stickerId);
 
-    bool ReportContact(const QString& _aimid, const QString& _title = QString());
+    bool ReportContact(const QString& _aimid, const QString& _title = QString(), bool _ignoreAndClose = true);
 
     bool ReportMessage(const QString& _aimId, const QString& _chatId, const int64_t _msgId, const QString& _msgText);
 

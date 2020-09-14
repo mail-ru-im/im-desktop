@@ -348,14 +348,7 @@ namespace Ui
 
     void VideoPlayerControlPanel::showVolumeControl(const bool _isShow)
     {
-        if (!_isShow)
-        {
-            volumeSlider_->hide();
-        }
-        else
-        {
-            volumeSlider_->show();
-        }
+        volumeSlider_->setVisible(_isShow);
     }
 
     void VideoPlayerControlPanel::paintEvent(QPaintEvent* _e)
@@ -418,9 +411,9 @@ namespace Ui
 
     QString getDurationString(const qint64& _duration, const qint64& _init_duration)
     {
-        const qint64 one_hour = (1000 * 60 * 60);
-        const qint64 one_minute = (1000 * 60);
-        const qint64 one_sec = (1000);
+        constexpr qint64 one_hour = (1000 * 60 * 60);
+        constexpr qint64 one_minute = (1000 * 60);
+        constexpr qint64 one_sec = (1000);
 
         qint64 hours = _duration / one_hour;
         qint64 minutes = (_duration - hours * one_hour) / one_minute;
@@ -438,8 +431,8 @@ namespace Ui
 
     QString getZeroTime(const qint64& _init_duration)
     {
-        const qint64 one_hour = (1000 * 60 * 60);
-        const qint64 one_minute = (1000 * 60);
+        constexpr qint64 one_hour = (1000 * 60 * 60);
+        constexpr qint64 one_minute = (1000 * 60);
 
         qint64 duration_hours = _init_duration / one_hour;
         qint64 duration_minutes = (_init_duration - duration_hours * one_hour) / one_minute;

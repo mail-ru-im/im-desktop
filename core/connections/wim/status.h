@@ -21,7 +21,7 @@ namespace core
         clock_t::time_point get_start_time() const noexcept { return start_time_; }
 
         void set_end_time(const clock_t::time_point _end_time) { end_time_ = _end_time; }
-        clock_t::time_point get_end_time() const noexcept { return end_time_; }
+        std::optional<clock_t::time_point> get_end_time() const noexcept { return end_time_; }
 
         void set_sending(const bool _sending) { my_status_sending_ = _sending; }
         bool is_sending() const noexcept { return my_status_sending_; }
@@ -31,7 +31,7 @@ namespace core
     private:
         std::string status_;
         clock_t::time_point start_time_;
-        clock_t::time_point end_time_;
+        std::optional<clock_t::time_point> end_time_;
 
         bool my_status_sending_ = false;
     };

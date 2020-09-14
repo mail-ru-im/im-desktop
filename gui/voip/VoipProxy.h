@@ -233,7 +233,6 @@ namespace voip_proxy
         void setSwitchAPlaybackMute();
         void setSwitchACaptureMute();
         void setSwitchVCaptureMute();
-        void setVolumeAPlayback(int _volume);
         void setRequestSettings();
         void setActiveDevice(const device_desc& _description);
         void setMuteSounds(bool _mute);
@@ -288,7 +287,7 @@ namespace voip_proxy
         void passWindowHover(quintptr _hwnd, bool hover); // Pass hover flag to voip.
         void updateLargeState(quintptr _hwnd, bool large); // Update large state for window.
 
-        void notifyDevicesChanged();
+        void notifyDevicesChanged(bool audio);
         void trackDevices(bool track_video = true);
 
         CheckActiveCallResult checkActiveCall(const std::string& _contact);

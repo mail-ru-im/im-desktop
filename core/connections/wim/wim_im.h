@@ -284,6 +284,7 @@ namespace core
             };
 
             bool is_packet_execute_;
+            bool is_sending_locked_;
             std::list<task_and_params> packets_queue_;
 
             std::chrono::steady_clock::time_point cancel_packets_time_;
@@ -304,6 +305,9 @@ namespace core
 
             std::shared_ptr<async_task_handlers> post_packet(std::shared_ptr<wim_packet> _packet, std::function<void(int32_t)>&& _error_handler);
             void clear();
+
+            void lock();
+            void unlock();
 
             wim_send_thread();
             virtual ~wim_send_thread();
@@ -401,6 +405,7 @@ namespace core
             int32_t dlg_state_timer_id_;
             int32_t stat_timer_id_;
             int32_t ui_activity_timer_id_;
+            int32_t resolve_hosts_timer_id_;
 
             int32_t subscr_timer_id_;
             int32_t subscr_aggregate_timer_id_;
@@ -939,7 +944,6 @@ namespace core
             // ------------------------------------------------------------------------------
 
             // group chat
-            void remove_members(int64_t _seq, const std::string& _aimid, const std::string& _m_chat_members_to_remove) override;
             void add_members(int64_t _seq, const std::string& _aimid, const std::string& _m_chat_members_to_add) override;
             void add_chat(int64_t _seq, const std::string& _m_chat_name, std::vector<std::string> _m_chat_members) override;
 
@@ -994,8 +998,11 @@ namespace core
             void update_subscriptions();
 
             void schedule_external_config_timer();
+            void schedule_resolve_hosts_timer();
             void stop_external_config_timer();
+            void stop_resolve_hosts_timer();
             void load_external_config();
+            void erase_local_pin_if_needed();
 
         public:
 
@@ -1012,12 +1019,12 @@ namespace core
             void on_login_result(int64_t _seq, int32_t err, bool _from_exported_data, bool _need_fill_profile);
             void on_login_result_attach_uin(int64_t _seq, int32_t err, const auth_parameters& auth_params, const wim_packet_params& _from_params, bool _need_fill_profile);
 
-            void handle_net_error(int32_t err) override;
+            void handle_net_error(const std::string& _url, int32_t err) override;
 
-            void on_event_buddies_list(fetch_event_buddy_list* _event, std::shared_ptr<auto_callback> _on_complete);
-            void on_event_presence(fetch_event_presence* _event, std::shared_ptr<auto_callback> _on_complete);
+            void on_event_buddies_list(fetch_event_buddy_list* _event, const std::shared_ptr<auto_callback>& _on_complete);
+            void on_event_presence(fetch_event_presence* _event, const std::shared_ptr<auto_callback>& _on_complete);
 
-            void on_event_dlg_state(fetch_event_dlg_state* _event, auto_callback_sptr _on_complete);
+            void on_event_dlg_state(fetch_event_dlg_state* _event, const auto_callback_sptr& _on_complete);
             void on_event_dlg_state_local_state_loaded(
                 const auto_callback_sptr& _on_complete,
                 const std::string& _aimid,
@@ -1053,27 +1060,27 @@ namespace core
                 const bool _last_msg_id_changed
                 );
 
-            void on_event_hidden_chat(fetch_event_hidden_chat* _event, std::shared_ptr<auto_callback> _on_complete);
-            void on_event_diff(fetch_event_diff* _event, std::shared_ptr<auto_callback> _on_complete);
-            void on_event_my_info(fetch_event_my_info* _event, std::shared_ptr<auto_callback> _on_complete);
-            void on_event_user_added_to_buddy_list(fetch_event_user_added_to_buddy_list* _event, std::shared_ptr<auto_callback> _on_complete);
-            void on_event_typing(fetch_event_typing* _event, std::shared_ptr<auto_callback> _on_complete);
-            void on_event_permit(fetch_event_permit* _event, std::shared_ptr<auto_callback> _on_complete);
-            void on_event_imstate(fetch_event_imstate* _event, std::shared_ptr<auto_callback> _on_complete);
-            void on_event_notification(fetch_event_notification* _event, std::shared_ptr<auto_callback> _on_complete);
-            void on_event_appsdata(fetch_event_appsdata* _event, std::shared_ptr<auto_callback> _on_complete);
-            void on_event_mention_me(fetch_event_mention_me* _event, std::shared_ptr<auto_callback> _on_complete);
-            void on_event_chat_heads(fetch_event_chat_heads* _event, std::shared_ptr<auto_callback> _on_complete);
-            void on_event_gallery_notify(fetch_event_gallery_notify* _event, std::shared_ptr<auto_callback> _on_complete);
-            void on_event_mchat(fetch_event_mchat* _event, std::shared_ptr<auto_callback> _on_complete);
-            void on_event_smartreply_suggests(fetch_event_smartreply_suggest* _event, std::shared_ptr<auto_callback> _on_complete);
-            void on_event_poll_update(fetch_event_poll_update* _event, std::shared_ptr<auto_callback> _on_complete);
-            void on_event_async_response(fetch_event_async_response* _event, std::shared_ptr<auto_callback> _on_complete);
-            void on_event_recent_call_log(fetch_event_recent_call_log* _event, std::shared_ptr<auto_callback> _on_complete);
-            void on_event_recent_call(fetch_event_recent_call* _event, std::shared_ptr<auto_callback> _on_complete);
-            void on_event_reactions(fetch_event_reactions* _event, std::shared_ptr<auto_callback> _on_complete);
-            void on_event_status(fetch_event_status* _event, std::shared_ptr<auto_callback> _on_complete);
-            void on_event_call_room_info(fetch_event_call_room_info* _event, std::shared_ptr<auto_callback> _on_complete);
+            void on_event_hidden_chat(fetch_event_hidden_chat* _event, const std::shared_ptr<auto_callback>& _on_complete);
+            void on_event_diff(fetch_event_diff* _event, const std::shared_ptr<auto_callback>& _on_complete);
+            void on_event_my_info(fetch_event_my_info* _event, const std::shared_ptr<auto_callback>& _on_complete);
+            void on_event_user_added_to_buddy_list(fetch_event_user_added_to_buddy_list* _event, const std::shared_ptr<auto_callback>& _on_complete);
+            void on_event_typing(fetch_event_typing* _event, const std::shared_ptr<auto_callback>& _on_complete);
+            void on_event_permit(fetch_event_permit* _event, const std::shared_ptr<auto_callback>& _on_complete);
+            void on_event_imstate(fetch_event_imstate* _event, const std::shared_ptr<auto_callback>& _on_complete);
+            void on_event_notification(fetch_event_notification* _event, const std::shared_ptr<auto_callback>& _on_complete);
+            void on_event_appsdata(fetch_event_appsdata* _event, const std::shared_ptr<auto_callback>& _on_complete);
+            void on_event_mention_me(fetch_event_mention_me* _event, const std::shared_ptr<auto_callback>& _on_complete);
+            void on_event_chat_heads(fetch_event_chat_heads* _event, const std::shared_ptr<auto_callback>& _on_complete);
+            void on_event_gallery_notify(fetch_event_gallery_notify* _event, const std::shared_ptr<auto_callback>& _on_complete);
+            void on_event_mchat(fetch_event_mchat* _event, const std::shared_ptr<auto_callback>& _on_complete);
+            void on_event_smartreply_suggests(fetch_event_smartreply_suggest* _event, const std::shared_ptr<auto_callback>& _on_complete);
+            void on_event_poll_update(fetch_event_poll_update* _event, const std::shared_ptr<auto_callback>& _on_complete);
+            void on_event_async_response(fetch_event_async_response* _event, const std::shared_ptr<auto_callback>& _on_complete);
+            void on_event_recent_call_log(fetch_event_recent_call_log* _event, const std::shared_ptr<auto_callback>& _on_complete);
+            void on_event_recent_call(fetch_event_recent_call* _event, const std::shared_ptr<auto_callback>& _on_complete);
+            void on_event_reactions(fetch_event_reactions* _event, const std::shared_ptr<auto_callback>& _on_complete);
+            void on_event_status(fetch_event_status* _event, const std::shared_ptr<auto_callback>& _on_complete);
+            void on_event_call_room_info(fetch_event_call_room_info* _event, const std::shared_ptr<auto_callback>& _on_complete);
 
             void insert_friendly(const std::string& _uin, const std::string& _friendly_name, const std::string& _nick, bool _official, friendly_source _type, friendly_add_mode _mode = friendly_add_mode::insert_or_update);
             void insert_friendly(const std::string& _uin, const std::string& _friendly_name, const std::string& _nick, std::optional<bool> _official, friendly_source _type, friendly_add_mode _mode = friendly_add_mode::insert_or_update);
@@ -1213,6 +1220,8 @@ namespace core
 
             void subscribe_call_room_info(const std::string& _room_id) override;
             void unsubscribe_call_room_info(const std::string& _room_id) override;
+
+            void get_emoji(int64_t _seq, std::string_view _code, int _size) override;
         };
     }
 }

@@ -11,6 +11,7 @@
 #include "../../../tools/system.h"
 #include "../../../tools/json_helper.h"
 #include "../../../utils.h"
+#include "../../../configuration/host_config.h"
 #include "../../urls_cache.h"
 #include "async_loader.h"
 #include "../common.shared/string_utils.h"
@@ -206,6 +207,10 @@ void core::wim::async_loader::download(priority_t _priority, const std::string& 
         {
             log_error("async_loader download", url, load_error_type::network_error, full_log);
             fire_callback(loader_errors::network_error, default_data_t(), _handler.completion_callback_);
+            if (_completion_code == curl_easy::completion_code::resolve_failed)
+                config::hosts::switch_to_ip_mode(url, (int)_completion_code);
+            else
+                config::hosts::switch_to_dns_mode(url, (int)_completion_code);
         }
     });
 }
@@ -825,7 +830,8 @@ core::wim::async_loader_log_params core::wim::async_loader::make_filesharing_log
 {
     async_loader_log_params params;
     params.log_functor_.add_marker("aimsid", aimsid_range_evaluator());
-    params.log_functor_.add_url_marker(_fs_id, distance_range_evaluator(-std::ptrdiff_t(_fs_id.size())));
+    if (!_fs_id.empty())
+        params.log_functor_.add_url_marker(_fs_id, distance_range_evaluator(-std::ptrdiff_t(_fs_id.size())));
 
     return params;
 }
@@ -965,6 +971,11 @@ void core::wim::async_loader::download_file_sharing_impl(std::string _url, wim_p
 
                 ptr_this->download_file_sharing_impl(_url, wim_params, _file_chunks, _id);
             });
+
+            if (_completion_code == curl_easy::completion_code::resolve_failed)
+                config::hosts::switch_to_ip_mode(_url, (int)_completion_code);
+            else if (_completion_code == curl_easy::completion_code::failed)
+                config::hosts::switch_to_dns_mode(_url, (int)_completion_code);
         }
     });
 }

@@ -648,7 +648,8 @@ public:
         Utils::PainterSaver saver(_p);
         _p.setPen(QPen(_color, checkBoxLineWidth()));
         auto arcRect = QRectF(_center - QPointF(checkBoxSize().width() / 2., checkBoxSize().height() / 2.), checkBoxSize());
-        _p.drawArc(arcRect, -voteAnimation_->currentValue().toDouble(), 260 * 16);
+        const auto angle = voteAnimation_ ? -voteAnimation_->currentValue().toInt() : 0;
+        _p.drawArc(arcRect, angle, 260 * 16);
     }
 
     QString answerAtPos(const QPoint& _pos)
@@ -711,8 +712,8 @@ public:
     TextRendering::TextUnitPtr quoteQuestionUnit_;
     TextRendering::TextUnitPtr debugIdTextUnit_;
     std::vector<PollItemData> items_;
-    QVariantAnimation* resultsAnimation_;
-    QVariantAnimation* voteAnimation_;
+    QVariantAnimation* resultsAnimation_ = nullptr;
+    QVariantAnimation* voteAnimation_ = nullptr;
     QString myLocalAnswerId_;
     QTimer pollUpdateTimer_;
     Data::PollData poll_;
@@ -738,35 +739,6 @@ PollBlock::PollBlock(ComplexMessageItem* _parent, const Data::PollData& _poll, c
     d->question_ = _text;
     d->pollUpdateTimer_.setSingleShot(true);
     d->pollUpdateTimer_.setInterval(Omicron::_o(omicron::keys::poll_subscribe_timeout_ms, feature::default_poll_subscribe_timeout_ms()));
-
-    d->resultsAnimation_ = new QVariantAnimation(this);
-    d->resultsAnimation_->setStartValue(0.0);
-    d->resultsAnimation_->setEndValue(1.0);
-    d->resultsAnimation_->setDuration(350);
-    d->resultsAnimation_->setEasingCurve(QEasingCurve::OutCubic);
-    QObject::connect(d->resultsAnimation_, &QVariantAnimation::valueChanged, this, [this](const auto& value) {
-        const auto val = value.toDouble();
-        for (auto& item : d->items_)
-        {
-            const auto votes = item.votes_ * val;
-            const auto percent = votes / d->poll_.votes_ * 100;
-
-            item.percent_ = percent;
-            if (item.percentUnit_)
-                item.percentUnit_->setText(qsl("%1%").arg((int)percent));
-            if (item.votesCountUnit_)
-                item.votesCountUnit_->setText(QString::number((int)votes));
-            notifyBlockContentsChanged();
-        }
-    });
-
-    d->voteAnimation_ = new QVariantAnimation(this);
-    d->voteAnimation_->setStartValue(0.0);
-    d->voteAnimation_->setEndValue(360 * 16);
-    d->voteAnimation_->setDuration(1000);
-    d->voteAnimation_->setEasingCurve(QEasingCurve::Linear);
-    d->voteAnimation_->setLoopCount(-1);
-    QObject::connect(d->resultsAnimation_, &QVariantAnimation::valueChanged, this, qOverload<>(&PollBlock::update));
 
     setMouseTracking(true);
 }
@@ -848,6 +820,7 @@ bool PollBlock::clicked(const QPoint& _p)
         d->updateContent();
         notifyBlockContentsChanged();
 
+        ensureVoteAnimationInitialized();
         d->voteAnimation_->stop();
         d->voteAnimation_->start();
     }
@@ -1029,6 +1002,47 @@ void PollBlock::mouseReleaseEvent(QMouseEvent* _event)
     update();
 }
 
+void PollBlock::ensureResultsAnimationInitialized()
+{
+    if (d->resultsAnimation_)
+        return;
+
+    d->resultsAnimation_ = new QVariantAnimation(this);
+    d->resultsAnimation_->setStartValue(0.0);
+    d->resultsAnimation_->setEndValue(1.0);
+    d->resultsAnimation_->setDuration(350);
+    d->resultsAnimation_->setEasingCurve(QEasingCurve::OutCubic);
+    QObject::connect(d->resultsAnimation_, &QVariantAnimation::valueChanged, this, [this](const auto& value)
+        {
+            const auto val = value.toDouble();
+            for (auto& item : d->items_)
+            {
+                const auto votes = item.votes_ * val;
+                const auto percent = votes / d->poll_.votes_ * 100;
+
+                item.percent_ = percent;
+                if (item.percentUnit_)
+                    item.percentUnit_->setText(qsl("%1%").arg((int)percent));
+                if (item.votesCountUnit_)
+                    item.votesCountUnit_->setText(QString::number((int)votes));
+                notifyBlockContentsChanged();
+            }
+        });
+}
+
+void PollBlock::ensureVoteAnimationInitialized()
+{
+    if (d->voteAnimation_)
+        return;
+
+    d->voteAnimation_ = new QVariantAnimation(this);
+    d->voteAnimation_->setStartValue(0);
+    d->voteAnimation_->setEndValue(360 * 16);
+    d->voteAnimation_->setDuration(1000);
+    d->voteAnimation_->setLoopCount(-1);
+    QObject::connect(d->voteAnimation_, &QVariantAnimation::valueChanged, this, qOverload<>(&PollBlock::update));
+}
+
 void PollBlock::onPollLoaded(const Data::PollData& _poll)
 {
     if (_poll.id_ != d->poll_.id_)
@@ -1036,7 +1050,8 @@ void PollBlock::onPollLoaded(const Data::PollData& _poll)
 
     d->poll_ = _poll;
 
-    if (d->resultsAnimation_->state() != QAbstractAnimation::Running)
+
+    if (!d->resultsAnimation_ || d->resultsAnimation_->state() != QAbstractAnimation::Running)
     {
         d->updateContent();
         notifyBlockContentsChanged();
@@ -1059,7 +1074,8 @@ void PollBlock::onVoteResult(int64_t _seq, const Data::PollData& _poll, bool _su
         return;
 
     d->myLocalAnswerId_.clear();
-    d->voteAnimation_->stop();
+    if (d->voteAnimation_)
+        d->voteAnimation_->stop();
 
     if (!_success)
     {
@@ -1082,6 +1098,7 @@ void PollBlock::onVoteResult(int64_t _seq, const Data::PollData& _poll, bool _su
 
     d->updateContent();
 
+    ensureResultsAnimationInitialized();
     d->resultsAnimation_->stop();
     d->resultsAnimation_->start();
 }

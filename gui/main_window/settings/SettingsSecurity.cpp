@@ -55,8 +55,6 @@ namespace
 
 static void initPrivacy(QVBoxLayout* _layout, QWidget* _parent)
 {
-    static auto privacyManager = new Logic::PrivacySettingsManager();
-
     const auto addPrivacySetting = [scrollArea = _parent, mainLayout = _layout](const auto& _settingName, const auto& _caption)
     {
         auto headerWidget = new QWidget(scrollArea);
@@ -81,7 +79,7 @@ static void initPrivacy(QVBoxLayout* _layout, QWidget* _parent)
         for (const auto& [name, type] : varList)
         {
             auto radioTextRow = new RadioTextRow(name);
-            if (Testing::isEnabled)
+            if constexpr (Testing::isEnabled())
             {
                 auto typeQString = QString::fromStdString(to_string(type));
                 if (!typeQString.isEmpty())
@@ -107,7 +105,7 @@ static void initPrivacy(QVBoxLayout* _layout, QWidget* _parent)
             const auto prevIdx = list->getCurrentIndex();
             list->setCurrentIndex(idx);
 
-            privacyManager->setValue(_settingName, varList[idx].second, list, [setIndex, prevIdx](const bool _success)
+            Logic::getPrivacySettingsManager()->setValue(_settingName, varList[idx].second, list, [setIndex, prevIdx](const bool _success)
             {
                 if (!_success)
                     setIndex(prevIdx);
@@ -143,7 +141,7 @@ static void initPrivacy(QVBoxLayout* _layout, QWidget* _parent)
         {
             list->clearSelection();
 
-            privacyManager->getValue(_settingName, list, [&varList, setIndex](const core::privacy_access_right _value)
+            Logic::getPrivacySettingsManager()->getValue(_settingName, list, [&varList, setIndex](const core::privacy_access_right _value)
             {
                 auto idx = -1;
                 if (_value != core::privacy_access_right::not_set)

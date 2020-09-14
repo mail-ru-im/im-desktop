@@ -1,7 +1,7 @@
 #include "stdafx.h"
 
 #include "tools/system.h"
-#include "tools/spin_lock.h"
+#include "../common.shared/spin_lock.h"
 #include "tools/strings.h"
 #include "tools/binary_stream.h"
 #include "tools/features.h"
@@ -19,6 +19,7 @@
 
 #include "connections/urls_cache.h"
 #include "configuration/app_config.h"
+#include "configuration/host_config.h"
 #include "../libomicron/include/omicron/omicron.h"
 #include "../common.shared/config/config.h"
 #include "../common.shared/string_utils.h"
@@ -119,16 +120,16 @@ struct stats_aggregator
     }
 
 private:
-    mutable core::tools::spin_lock spin_lock_;
+    mutable common::tools::spin_lock spin_lock_;
     std::chrono::steady_clock::time_point last_release_ = std::chrono::steady_clock::now();
     std::chrono::seconds release_duration_;
     stat_delta delta_;
 };
 
 core::curl_context::curl_context(std::shared_ptr<tools::stream> _output, http_request_simple::stop_function _stop_func, http_request_simple::progress_function _progress_func, bool _keep_alive)
-    : stop_func_(_stop_func),
-    progress_func_(_progress_func),
-    output_(_output),
+    : stop_func_(std::move(_stop_func)),
+    progress_func_(std::move(_progress_func)),
+    output_(std::move(_output)),
     header_(std::make_shared<core::tools::binary_stream>()),
     log_data_(std::make_shared<core::tools::binary_stream>()),
     bytes_transferred_pct_(0),
@@ -142,6 +143,7 @@ core::curl_context::curl_context(std::shared_ptr<tools::stream> _output, http_re
     curl_post_(false),
     curl_http_post_(false),
     header_chunk_(nullptr),
+    resolve_host_(nullptr),
     post(nullptr),
     last(nullptr),
     response_code_(0),
@@ -165,6 +167,8 @@ core::curl_context::~curl_context()
 {
     if (header_chunk_)
         curl_slist_free_all(header_chunk_);
+    if (resolve_host_)
+        curl_slist_free_all(resolve_host_);
 }
 
 bool core::curl_context::init(std::chrono::milliseconds _connect_timeout, std::chrono::milliseconds _timeout, core::proxy_settings _proxy_settings, const std::string &_user_agent)
@@ -270,25 +274,11 @@ bool core::curl_context::init_handler(CURL* _curl)
     }
 
     curl_easy_setopt(_curl, CURLOPT_URL, original_url_.c_str());
-    if (core::configuration::get_app_config().is_connect_by_ip_enabled())
+    auto resolved = config::hosts::format_resolve_host_str(original_url_, 443);
+    if (!resolved.empty())
     {
-        auto to_resolve = config::get().url(config::urls::to_replace_hosts);
-        if (!to_resolve.empty())
-        {
-            auto pos = to_resolve.find(";");
-            struct curl_slist* host = NULL;
-            while (pos != to_resolve.npos)
-            {
-                host = curl_slist_append(host, std::string(to_resolve.substr(0, pos)).c_str());
-                to_resolve = to_resolve.substr(pos + 1, to_resolve.length() - pos - 1);
-                pos = to_resolve.find(";");
-            }
-
-            if (!to_resolve.empty())
-                host = curl_slist_append(host, to_resolve.data());
-
-            curl_easy_setopt(_curl, CURLOPT_RESOLVE, host);
-        }
+        resolve_host_ = curl_slist_append(resolve_host_, resolved.c_str());
+        curl_easy_setopt(_curl, CURLOPT_RESOLVE, resolve_host_);
     }
 
     curl_easy_setopt(_curl, CURLOPT_FOLLOWLOCATION, 1L);
@@ -474,7 +464,7 @@ void core::curl_context::set_modified_time(time_t _last_modified_time)
     modified_time_ = _last_modified_time;
 }
 
-std::shared_ptr<core::tools::binary_stream> core::curl_context::get_header() const
+const std::shared_ptr<core::tools::binary_stream>& core::curl_context::get_header() const
 {
     return header_;
 }
@@ -643,14 +633,14 @@ void core::curl_context::write_log(CURLcode res)
         write_log_message(su::concat(std::to_string(res), " (", curl_easy_strerror(res), ')'), start_time_);
 }
 
-bool core::curl_context::execute_request()
+core::curl_easy::completion_code core::curl_context::execute_request()
 {
     auto handler = curl_handler::instance().perform(shared_from_this());
     assert(handler.valid());
 
     handler.wait();
 
-    return (handler.get() == CURLE_OK);
+    return handler.get();
 }
 
 void core::curl_context::execute_request_async(http_request_simple::completion_function _completion_function)

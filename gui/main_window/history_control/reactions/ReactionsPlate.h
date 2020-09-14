@@ -37,6 +37,7 @@ namespace Ui
 
     private Q_SLOTS:
         void onMultiselectChanged();
+        void onReactionsPage(int64_t _seq, const Data::ReactionsPage& _page, bool _success);
 
     private:
         std::unique_ptr<ReactionsPlate_p> d;

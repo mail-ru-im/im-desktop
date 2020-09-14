@@ -12,7 +12,7 @@
 namespace
 {
     constexpr std::chrono::milliseconds animDuration = std::chrono::seconds(1);
-    constexpr auto frameCount = 6;
+    constexpr const auto frameCount = 6;
 
     struct AnimationFrames
     {
@@ -41,21 +41,12 @@ namespace Ui
     TypingWidget::TypingWidget(QWidget* _parent, const QString& _aimId)
         : QWidget(_parent)
         , aimId_(_aimId)
-        , anim_(new QVariantAnimation(this))
+        , anim_(nullptr)
         , frame_(0)
     {
         setFixedHeight(Utils::scale_value(32));
 
         connect(GetDispatcher(), &core_dispatcher::typingStatus, this, &TypingWidget::onTypingStatus);
-        connect(anim_, &QVariantAnimation::valueChanged, this, [this]()
-        {
-            const auto val = anim_->currentValue().toInt();
-            if (val % frameCount != frame_ % frameCount)
-            {
-                frame_++;
-                update();
-            }
-        });
     }
 
     TypingWidget::~TypingWidget()
@@ -163,22 +154,39 @@ namespace Ui
         update();
     }
 
-    void TypingWidget::startAnimation()
+    void TypingWidget::ensureAnimationInitialized()
     {
-        frame_ = 0;
-
-        anim_->stop();
+        if (anim_)
+            return;
+            
+        anim_ = new QVariantAnimation(this);
         anim_->setStartValue(0);
         anim_->setEndValue(frameCount);
         anim_->setDuration(animDuration.count());
-        anim_->setEasingCurve(QEasingCurve::Linear);
         anim_->setLoopCount(-1);
+        connect(anim_, &QVariantAnimation::valueChanged, this, [this](const QVariant& value)
+        {
+            if (value.toInt() % frameCount != frame_ % frameCount)
+            {
+                frame_++;
+                update();
+            }
+        });
+    }
+
+
+    void TypingWidget::startAnimation()
+    {
+        frame_ = 0;
+        ensureAnimationInitialized();
+        anim_->stop();
         anim_->start();
     }
 
     void TypingWidget::stopAnimation()
     {
-        anim_->stop();
+        if (anim_)
+            anim_->stop();
     }
 
     QColor TypingWidget::getTextColor() const

@@ -65,8 +65,10 @@ int32_t speech_to_text::init_request(const std::shared_ptr<core::http_request_si
 
 int32_t speech_to_text::execute_request(const std::shared_ptr<core::http_request_simple>& request)
 {
-    if (!request->get())
-        return wpie_network_error;
+    url_ = request->get_url();
+
+    if (auto error_code = get_error(request->get()))
+        return *error_code;
 
     http_code_ = (uint32_t)request->get_response_code();
 

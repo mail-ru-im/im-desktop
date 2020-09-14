@@ -37,8 +37,8 @@ namespace
 // archive_index class
 //////////////////////////////////////////////////////////////////////////
 
-constexpr int32_t max_index_size            = 25000;
-constexpr int32_t index_size_need_optimize    = 30000;
+constexpr size_t max_index_size            = 25000;
+constexpr size_t index_size_need_optimize    = 30000;
 
 enum archive_index_types : uint32_t
 {
@@ -240,10 +240,10 @@ void archive_index::serialize_block(const R& _headers, core::tools::binary_strea
 
 bool archive_index::unserialize_block(core::tools::binary_stream& _data, const std::chrono::seconds _current_time)
 {
-    uint32_t tlv_type = 0;
-    uint32_t tlv_length = 0;
+    int64_t tlv_type = 0;
+    int64_t tlv_length = 0;
 
-    while (uint32_t available = _data.available())
+    while (int64_t available = _data.available())
     {
         if (available < sizeof(uint32_t)*2)
             return false;
@@ -297,7 +297,7 @@ bool archive_index::save_all()
 
     std::vector<message_header> headers;
 
-    headers.reserve(history_block_size * 1.5);
+    headers.reserve(size_t(history_block_size * 1.5));
 
     const auto end = headers_index_.cend();
     const auto iter_last = std::prev(end);

@@ -110,8 +110,16 @@ int32_t robusto_packet::on_response_error_code()
 
 int32_t robusto_packet::execute_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
-    if (!_request->post())
+    url_ = _request->get_url();
+
+    auto res = _request->post();
+    if (res != curl_easy::completion_code::success)
+    {
+        if (res == curl_easy::completion_code::resolve_failed)
+            return wpie_couldnt_resolve_host;
+
         return wpie_network_error;
+    }
 
     http_code_ = (uint32_t)_request->get_response_code();
 
@@ -141,9 +149,11 @@ void robusto_packet::execute_request_async(const std::shared_ptr<http_request_si
         if (_completion_code != curl_easy::completion_code::success)
         {
             if (_handler)
-                _handler(wpie_network_error);
+                _handler(_completion_code == curl_easy::completion_code::resolve_failed ? wpie_couldnt_resolve_host : wpie_network_error);
             return;
         }
+
+        ptr_this->set_url(_request->get_url());
 
         const auto http_code = (uint32_t)_request->get_response_code();
 
@@ -175,12 +185,7 @@ void robusto_packet::setup_common_and_sign(rapidjson::Value& _node, rapidjson_al
 
     std::string json_string = rapidjson_get_string(buffer);
 
-    std::map<std::string, std::string> params;
-    params["k"] = params_.dev_id_;
-    params["client"] = core::utils::get_client_string();
-    params["lang"] = params_.locale_;
-
-    _request->set_url(su::concat(urls::get_url(urls::url_type::rapi_host), _method, '?', format_get_params(params)));
+    _request->set_url(su::concat(urls::get_url(urls::url_type::rapi_host), _method));
     _request->set_normalized_url(_method);
 
     _request->set_keep_alive();

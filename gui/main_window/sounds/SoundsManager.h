@@ -87,7 +87,6 @@ Q_SIGNALS:
         void reinit();
 
         void DeviceMonitoringListChanged() override;
-        void DeviceMonitoringBluetoothHeadsetChanged(bool _connected) override;
 
     private Q_SLOTS:
         void timedOut();
@@ -118,6 +117,7 @@ Q_SIGNALS:
         void deInitSounds();
 
         bool canPlaySound(Sound _type);
+        std::string selectedDeviceName();
 
     private:
         bool CallInProgress_;

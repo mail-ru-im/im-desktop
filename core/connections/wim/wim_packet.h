@@ -5,6 +5,7 @@
 
 #include "../../async_task.h"
 #include "../../proxy_settings.h"
+#include "../../curl_handler.h"
 
 namespace core
 {
@@ -110,6 +111,8 @@ namespace core
             wpie_error_invalid_session_hash = 42,
 
             wpie_error_user_blocked = 43,
+
+            wpie_couldnt_resolve_host = 44,
 
             wpie_client_http_error = 400,
             wpie_robusto_timeout = 500,
@@ -243,7 +246,7 @@ namespace core
             using handler_t = std::function<void (int32_t _result)>;
 
         protected:
-
+            std::optional<wim_protocol_internal_error> get_error(curl_easy::completion_code code);
             void load_response_str(const char* buf, size_t size);
             const std::string& response_str() const;
             const std::string& header_str() const;
@@ -251,6 +254,7 @@ namespace core
             uint32_t status_code_;
             uint32_t status_detail_code_;
             std::string status_text_;
+            std::string url_;
             uint32_t http_code_;
             uint32_t repeat_count_;
             bool can_change_hosts_scheme_;
@@ -315,6 +319,8 @@ namespace core
             uint32_t get_status_code() const { return status_code_; }
             uint32_t get_status_detail_code() const { return status_detail_code_; }
             const std::string& get_status_text() const { return status_text_; }
+            const std::string& get_url() const { return url_; }
+            void set_url(const std::string& _url) { url_ = _url; }
             uint32_t get_http_code() const { return http_code_; }
             void set_http_code(uint32_t _code) { http_code_ = _code; }
             uint32_t get_repeat_count() const;

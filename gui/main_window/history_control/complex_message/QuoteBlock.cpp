@@ -344,7 +344,7 @@ bool QuoteBlock::quoteOnly() const
 
 QString QuoteBlock::getQuoteHeader() const
 {
-    return u"> " % Quote_.senderFriendly_ % u" (" % QDateTime::fromTime_t(Quote_.time_).toString(u"dd.MM.yyyy hh:mm") % u"): ";
+    return u"> " % Quote_.senderFriendly_ % u" (" % QDateTime::fromSecsSinceEpoch(Quote_.time_).toString(u"dd.MM.yyyy hh:mm") % u"): ";
 }
 
 QColor QuoteBlock::getSenderColor() const

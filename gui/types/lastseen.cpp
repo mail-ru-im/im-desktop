@@ -85,7 +85,7 @@ namespace Data
     QDateTime LastSeen::toDateTime() const
     {
         assert(isValid());
-        return QDateTime::fromTime_t(*time_);
+        return QDateTime::fromSecsSinceEpoch(*time_);
     }
 
     const LastSeen& LastSeen::online()

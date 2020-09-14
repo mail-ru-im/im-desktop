@@ -19,14 +19,30 @@ namespace
         return Utils::scale_value(7);
     }
 
+    auto getCommonTopSpacingUnscaled() noexcept
+    {
+        if constexpr (platform::is_apple())
+            return 16;
+        else
+            return 9;
+    }
+
+    auto getSpinnerSpacing() noexcept
+    {
+        if constexpr (platform::is_apple())
+            return Utils::scale_value(getCommonTopSpacingUnscaled() - 5);
+        else
+            return Utils::scale_value(getCommonTopSpacingUnscaled() + 1);
+    }
+
     auto getHintSpacing() noexcept
     {
-        return Utils::scale_value(9);
+        return Utils::scale_value(getCommonTopSpacingUnscaled());
     }
 
     auto getCounterSpacing() noexcept
     {
-        return Utils::scale_value(10);
+        return Utils::scale_value(getCommonTopSpacingUnscaled() + 1);
     }
 
     auto getProgressAnimationSize() noexcept
@@ -155,7 +171,7 @@ namespace Ui
         updateCounter();
 
         globalLayout->addWidget(nick_);
-        globalLayout->addSpacing(getHintSpacing());
+        globalLayout->addSpacing(getSpinnerSpacing());
         globalLayout->addLayout(hintLayout);
 
         checkTimer_->setSingleShot(true);

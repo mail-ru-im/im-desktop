@@ -63,7 +63,7 @@ namespace Ui
         , msg_(_msg)
         , seq_(_seq)
     {
-        auto dt = QDateTime::fromTime_t(_time);
+        auto dt = QDateTime::fromSecsSinceEpoch(_time);
         auto date = QLocale().standaloneMonthName(dt.date().month());
 
         date_ = Ui::TextRendering::MakeTextUnit(date.toUpper());
@@ -448,6 +448,23 @@ namespace Ui
         connect(GetSoundsManager(), &SoundsManager::pttPaused, this, &PttList::onPttPaused);
         connect(GetSoundsManager(), &SoundsManager::pttFinished, this, &PttList::onPttFinished);
 
+        connect(animation_, &QVariantAnimation::valueChanged, this, [this](const QVariant& value)
+        {
+            const auto cur = value.toInt();
+            for (auto& i : Items_)
+            {
+                if (!i->isDateItem() && i->getMsg() == playingIndex_.first && i->getSeq() == playingIndex_.second)
+                {
+                    i->setProgress(cur);
+                    if (cur == 100)
+                        QTimer::singleShot(200, this, [this]() { finishPtt(playingId_); update(); });
+
+                    update();
+                    break;
+                }
+            }
+        });
+
         setMouseTracking(true);
     }
 
@@ -465,7 +482,7 @@ namespace Ui
         auto h = height();
         for (const auto& e : _entries)
         {
-            auto time = QDateTime::fromTime_t(e.time_);
+            auto time = QDateTime::fromSecsSinceEpoch(e.time_);
             auto item = std::make_unique<PttItem>(e.url_, formatTimeStr(time), e.msg_id_, e.seq_, width(), e.sender_, e.outgoing_, e.time_);
             h += item->getHeight();
             Items_.push_back(std::move(item));
@@ -496,14 +513,14 @@ namespace Ui
             if (!isFilesharing || e.type_ != u"ptt")
                 continue;
 
-            auto time = QDateTime::fromTime_t(e.time_);
+            auto time = QDateTime::fromSecsSinceEpoch(e.time_);
 
             auto iter = Items_.cbegin();
             for (; iter != Items_.cend(); ++iter)
             {
                 if (iter->get()->isDateItem())
                 {
-                    auto dt = QDateTime::fromTime_t(iter->get()->time());
+                    auto dt = QDateTime::fromSecsSinceEpoch(iter->get()->time());
                     if (dt.date().month() == time.date().month() && dt.date().year() == time.date().year())
                         continue;
                 }
@@ -889,30 +906,13 @@ namespace Ui
             if (animation_->state() == QAbstractAnimation::Paused)
             {
                 from = lastProgress_;
-                duration = duration - duration * lastProgress_ / 100;
+                duration -= duration * lastProgress_ / 100;
             }
-
             animation_->stop();
-            animation_->disconnect(this);
             animation_->setStartValue(from);
             animation_->setEndValue(100);
-            animation_->setEasingCurve(QEasingCurve::Linear);
             animation_->setDuration(duration);
-            QObject::connect(animation_, &QVariantAnimation::valueChanged, this, [this]() {
-                for (auto& i : Items_)
-                {
-                    if (!i->isDateItem() && i->getMsg() == playingIndex_.first && i->getSeq() == playingIndex_.second)
-                    {
-                        const auto cur = animation_->currentValue().toDouble();
-                        i->setProgress(cur);
-                        if (cur == 100)
-                            QTimer::singleShot(200, this, [this]() { finishPtt(playingId_); update(); });
-
-                        update();
-                        break;
-                    }
-                }
-            });
+            animation_->start();
         }
     }
 
@@ -940,13 +940,13 @@ namespace Ui
 
         auto iter = Items_.begin();
         auto prevIsDate = iter->get()->isDateItem();
-        auto prevDt = QDateTime::fromTime_t(iter->get()->time()).date();
+        auto prevDt = QDateTime::fromSecsSinceEpoch(iter->get()->time()).date();
         ++iter;
 
         while (iter != Items_.end())
         {
             auto isDate = iter->get()->isDateItem();
-            auto dt = QDateTime::fromTime_t(iter->get()->time()).date();
+            auto dt = QDateTime::fromSecsSinceEpoch(iter->get()->time()).date();
             if ((dt.month() == prevDt.month() && dt.year() == prevDt.year()) || prevIsDate != isDate)
             {
                 prevIsDate = isDate;
@@ -993,7 +993,7 @@ namespace Ui
                 if (!i->isDateItem() && i->getMsg() == playingIndex_.first && i->getSeq() == playingIndex_.second)
                 {
                     i->setPause(true);
-                    lastProgress_ = animation_->state() == QAbstractAnimation::Stopped ? 0 : animation_->currentValue().toDouble();
+                    lastProgress_ = animation_->state() == QAbstractAnimation::Stopped ? 0 : animation_->currentValue().toInt();
                     animation_->pause();
                     update();
                     break;

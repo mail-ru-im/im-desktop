@@ -37,9 +37,9 @@ const voip_masks::MaskList& voip_masks::MaskManager::getAvailableMasks() const
     return masks_;
 }
 
-void voip_masks::MaskManager::loadMask(const QString &_id)
+void voip_masks::MaskManager::loadMask(const QString& _id)
 {
-    Mask* mask = masksIndex_[_id];
+    auto mask = masksIndex_[_id];
 
     if (!mask)
         return;
@@ -54,10 +54,15 @@ void voip_masks::MaskManager::onImCreated()
     loadMaskList();
 }
 
-void voip_masks::MaskManager::onMaskListLoaded(const QVector<QString>& maskList)
+void voip_masks::MaskManager::onMaskListLoaded(qint64 _seq, const QVector<QString>& _maskList)
 {
+    if (seqLoadMaskList_ != _seq)
+        return;
+
+    qCDebug(maskManager) << "masks list loaded";
+
     MaskList tmp;
-    for (const auto& id :maskList)
+    for (const auto& id : _maskList)
     {
         auto mask = new Mask(id, this);
         connect(&dispatcher_, &Ui::core_dispatcher::maskLoadingProgress, mask, &Mask::onLoadingProgress, Qt::QueuedConnection);
@@ -66,14 +71,21 @@ void voip_masks::MaskManager::onMaskListLoaded(const QVector<QString>& maskList)
         masksIndex_[id] = mask;
     }
     masks_.swap(tmp);
-    currentDownloadPreviewList = masks_;
+    currentDownloadPreviewList_ = masks_;
 
     qDeleteAll(tmp.begin(), tmp.end());
 
     previewSeqList_.clear();
     maskSeqList_.clear();
+    seqLoadMaskList_ = -1;
 
-    loadPreviews();
+    updateTimer_->start(updateTimeout);
+
+    if (needPreviews_)
+    {
+        needPreviews_ = false;
+        loadPreviews();
+    }
 }
 
 void voip_masks::MaskManager::onPreviewLoaded(qint64 _seq, const QString& _localPath)
@@ -97,8 +109,6 @@ void voip_masks::MaskManager::onModelLoaded()
 {
     if (!existentListLoaded_)
         loadExistentMasks();
-
-    updateTimer_->start(updateTimeout);
 }
 
 void voip_masks::MaskManager::onLoaded(qint64 _seq, const QString& _localPath)
@@ -120,22 +130,18 @@ void voip_masks::MaskManager::onUpdateTimeout()
 
 void voip_masks::MaskManager::onRetryUpdate()
 {
-    qDeleteAll(masks_.begin(), masks_.end());
-    masks_.clear();
-    masksIndex_.clear();
-    currentDownloadPreviewList.clear();
+    if (seqLoadMaskList_ >= 0)
+        return;
 
-    previewSeqList_.clear();
-    maskSeqList_.clear();
-
+    clearContent();
     updateTimer_->start(retryUpdateTimeout);
 }
 
-void voip_masks::MaskManager::onExistentMasksLoaded(const std::vector<Data::Mask> &_masks)
+void voip_masks::MaskManager::onExistentMasksLoaded(const std::vector<Data::Mask>& _masks)
 {
     for (const auto& m : _masks)
     {
-        auto & mask = masksIndex_[m.name_];
+        auto& mask = masksIndex_[m.name_];
         if (mask)
             mask->setJsonPath(m.json_path_);
     }
@@ -146,12 +152,28 @@ void voip_masks::MaskManager::loadMaskList()
 {
     qCDebug(maskManager) << "load mask list";
     Ui::gui_coll_helper collection(dispatcher_.create_collection(), true);
-    dispatcher_.post_message_to_core("masks/get_id_list", collection.get());
+    seqLoadMaskList_ = dispatcher_.post_message_to_core("masks/get_id_list", collection.get());
 }
 
 void voip_masks::MaskManager::loadPreviews()
 {
+    if (masks_.empty())
+    {
+        needPreviews_ = true;
+        loadMaskList();
+        return;
+    }
+
+    qCDebug(maskManager) << "load masks previews";
+    updateTimer_->stop();
     loadNextPreview();
+}
+
+void voip_masks::MaskManager::resetMasks()
+{
+    qCDebug(maskManager) << "reset masks";
+    seqLoadMaskList_ = -1;
+    onRetryUpdate();
 }
 
 void voip_masks::MaskManager::loadModel()
@@ -168,13 +190,31 @@ void voip_masks::MaskManager::loadExistentMasks()
 
 void voip_masks::MaskManager::loadNextPreview()
 {
-    qCDebug(maskManager) << "try to load preview. list size " << currentDownloadPreviewList.size();
-    if (currentDownloadPreviewList.empty())
+    qCDebug(maskManager) << "try to load preview. list size " << currentDownloadPreviewList_.size();
+    if (currentDownloadPreviewList_.empty())
         return;
 
-    const auto seq = postMessageToCore("masks/preview/get", currentDownloadPreviewList.back()->id());
-    previewSeqList_[seq] = currentDownloadPreviewList.back();
-    currentDownloadPreviewList.pop_back();
+    const auto seq = postMessageToCore("masks/preview/get", currentDownloadPreviewList_.back()->id());
+    previewSeqList_[seq] = currentDownloadPreviewList_.back();
+    currentDownloadPreviewList_.pop_back();
+}
+
+void voip_masks::MaskManager::clearContent()
+{
+    qCDebug(maskManager) << "clear content";
+
+    qDeleteAll(masks_.begin(), masks_.end());
+    masks_.clear();
+    masksIndex_.clear();
+    currentDownloadPreviewList_.clear();
+
+    previewSeqList_.clear();
+    maskSeqList_.clear();
+
+    existentListLoaded_ = false;
+
+    seqLoadMaskList_ = -1;
+    needPreviews_ = false;
 }
 
 qint64 voip_masks::MaskManager::postMessageToCore(std::string_view _message, const QString& _maskId) const

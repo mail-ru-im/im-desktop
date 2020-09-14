@@ -51,7 +51,6 @@ int32_t block_chat_member::init_request(const std::shared_ptr<core::http_request
         log_replace_functor f;
         f.add_json_marker("aimsid", aimsid_range_evaluator());
         f.add_json_marker("authToken");
-        f.add_marker("a");
         _request->set_replace_log_function(f);
     }
 

@@ -101,7 +101,6 @@ int32_t get_history::init_request(const std::shared_ptr<core::http_request_simpl
         log_replace_functor f;
         f.add_json_marker("aimsid", aimsid_range_evaluator());
         f.add_message_markers();
-        f.add_marker("a");
         _request->set_replace_log_function(f);
     }
 

@@ -590,6 +590,14 @@ namespace Ui
         return headerLabelHost_ ? headerLabelHost_->sizeHint().height() : 0;
     }
 
+    void GeneralDialog::setTransparentBackground(bool _enable)
+    {
+        if (_enable)
+            Utils::updateBgColor(mainHost_, Qt::transparent);
+        else
+            Utils::setDefaultBackground(mainHost_);
+    }
+
     TwoOptionsWidget::TwoOptionsWidget(QWidget* _parent, const QString& _firstOptionIcon, const QString& _firstOption, const QString& _secondOptionIcon, const QString& _secondOption)
         : QWidget(_parent)
         , firstHovered_(false)

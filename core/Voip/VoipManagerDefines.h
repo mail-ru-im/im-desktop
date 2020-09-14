@@ -12,6 +12,12 @@ enum DeviceType
     VideoCapturing,
 };
 
+enum DeviceClass
+{
+    Audio = 0,
+    Video
+};
+
 enum VideoCaptureType
 {
     VC_DeviceCamera,
@@ -488,7 +494,6 @@ namespace voip_manager
         virtual void call_decline (const Contact& contact, bool busy, bool conference) = 0;
         virtual unsigned call_get_count () = 0;
         virtual bool call_have_call (const Contact& contact) = 0;
-        virtual void call_request_calls ()  = 0;
 
         virtual void mute_incoming_call_sounds(bool mute) = 0;
 
@@ -507,10 +512,7 @@ namespace voip_manager
         virtual void set_device_mute (DeviceType deviceType, bool mute) = 0;
         virtual bool get_device_mute (DeviceType deviceType) = 0;
 
-        virtual void set_device_volume (DeviceType deviceType, float volume) = 0;
-        virtual float get_device_volume (DeviceType deviceType) = 0;
-
-        virtual void notify_devices_changed() = 0;
+        virtual void notify_devices_changed(DeviceClass deviceClass) = 0;
         virtual void update() = 0;
 
         // WindowManager
@@ -538,11 +540,6 @@ namespace voip_manager
 
         virtual bool local_video_enabled () = 0;
         virtual bool local_audio_enabled () = 0;
-
-        virtual bool remote_video_enabled(const std::string& call_id, const std::string& contact) = 0;
-
-        virtual bool remote_audio_enabled() = 0;
-        virtual bool remote_audio_enabled(const std::string& call_id, const std::string& contact) = 0;
 
         // MaskManager
         virtual void load_mask(const std::string& path) = 0;

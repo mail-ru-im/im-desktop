@@ -62,8 +62,10 @@ int32_t core::wim::add_members::on_response_error_code()
 
 int32_t core::wim::add_members::execute_request(const std::shared_ptr<core::http_request_simple>& request)
 {
-    if (!request->get())
-        return wpie_network_error;
+    url_ = request->get_url();
+
+    if (auto error_code = get_error(request->get()))
+        return *error_code;
 
     http_code_ = (uint32_t)request->get_response_code();
 

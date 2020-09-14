@@ -165,17 +165,6 @@ namespace Ui
                                                              {},
                                                              Utils::scale_value(36), qsl("AS AdditionalSettingsPage displayMsgIdsSetting"));
 
-        if (Features::hasConnectByIpOption())
-        {
-            connectByIpCheckbox_ = GeneralCreator::addSwitcher(this, mainLayout_,
-                QT_TRANSLATE_NOOP("popup_window", "Use internal DNS cache"),
-                appConfig.connectByIp(),
-                {},
-                Utils::scale_value(36), qsl("AS AdditionalSettingsPage useInternalDNS"));
-
-            connect(connectByIpCheckbox_, &Ui::SidebarCheckboxButton::checked, this, &SettingsForTesters::onToggleConnectByIp);
-        }
-
         connect(fullLogModeCheckbox_, &Ui::SidebarCheckboxButton::checked, this, &SettingsForTesters::onToggleFullLogMode);
         connect(devShowMsgIdsCheckbox_, &Ui::SidebarCheckboxButton::checked, this, &SettingsForTesters::onToggleShowMsgIdsMenu);
 
@@ -244,9 +233,6 @@ namespace Ui
 
         if (devCustomIdCheckbox_ && devCustomIdCheckbox_->isChecked() != appConfig.hasCustomDeviceId())
             devCustomIdCheckbox_->setChecked(appConfig.hasCustomDeviceId());
-
-        if (connectByIpCheckbox_ && connectByIpCheckbox_->isChecked() != appConfig.connectByIp())
-            connectByIpCheckbox_->setChecked(appConfig.connectByIp());
     }
 
     void SettingsForTesters::onOpenLogsPath(const QString &logsPath)
@@ -314,33 +300,6 @@ namespace Ui
             initViewElementsFrom(GetAppConfig());
         }, this);
         Utils::removeOmicronFile();
-    }
-
-    void SettingsForTesters::onToggleConnectByIp(bool checked)
-    {
-        AppConfig appConfig = GetAppConfig();
-        appConfig.SetConnectByIp(checked);
-
-        ModifyAppConfig(std::move(appConfig), [this](core::icollection* _coll) {
-            initViewElementsFrom(GetAppConfig());
-        }, this);
-
-        const QString text = QT_TRANSLATE_NOOP("popup_window", "To change this option you must restart the application. Continue?");
-
-        const auto confirmed = Utils::GetConfirmationWithTwoButtons(
-            QT_TRANSLATE_NOOP("popup_window", "Cancel"),
-            QT_TRANSLATE_NOOP("popup_window", "Yes"),
-            text,
-            QT_TRANSLATE_NOOP("popup_window", "Restart"),
-            nullptr
-        );
-
-        if (confirmed)
-        {
-            Utils::restartApplication();
-
-            return;
-        }
     }
 
     SettingsForTesters::~SettingsForTesters()

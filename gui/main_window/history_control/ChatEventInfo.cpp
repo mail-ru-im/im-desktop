@@ -9,6 +9,7 @@
 #include "../../cache/emoji/Emoji.h"
 
 #include "../contact_list/ContactListModel.h"
+#include "../settings/PrivacySettingsManager.h"
 
 #include "ChatEventInfo.h"
 #include "../containers/FriendlyContainer.h"
@@ -46,6 +47,11 @@ namespace
 
         return std::any_of(memberTypes.begin(), memberTypes.end(), [_type](const auto& type) { return type == _type; });
     }
+
+    constexpr int bulletCode() noexcept
+    {
+        return 0x2023;
+    }
 }
 
 namespace HistoryControl
@@ -77,8 +83,14 @@ namespace HistoryControl
         const auto isBuddyFound = (type == chat_event_type::buddy_found);
         const auto isBirthday = (type == chat_event_type::birthday);
         const auto isMessageDeleted = (type == chat_event_type::message_deleted);
-        if (isBuddyReg || isBuddyFound || isBirthday || isMessageDeleted)
+        const auto isStranger = (type == chat_event_type::warn_about_stranger || type == chat_event_type::no_longer_stranger);
+        if (isBuddyReg || isBuddyFound || isBirthday || isMessageDeleted || isStranger)
+        {
+            if (isStranger)
+                eventInfo->setSender(_aimid);
+
             return eventInfo;
+        }
 
         eventInfo->setSender(_info.get<QString>("sender"));
 
@@ -246,6 +258,12 @@ namespace HistoryControl
 
             case chat_event_type::chat_public_modified:
                 return formatPublicModified();
+
+            case chat_event_type::warn_about_stranger:
+                return formatWarnAboutStranger();
+
+            case chat_event_type::no_longer_stranger:
+                return formatNoLongerStranger();
 
             default:
                 break;
@@ -842,6 +860,86 @@ namespace HistoryControl
     QString ChatEventInfo::formatMessageDeletedText() const
     {
         return QT_TRANSLATE_NOOP("chat_event", "Message was deleted");
+    }
+
+    QString ChatEventInfo::formatWarnAboutStranger() const
+    {
+        const auto friendly = Logic::GetFriendlyContainer()->getFriendly(aimId_);
+        const auto handEmoji = Emoji::EmojiCode::toQString(Emoji::EmojiCode(0xd83d, 0xdc4b));
+        const auto callSettings = Logic::getPrivacySettingsManager()->get_cached_value(qsl("calls"));
+        const auto groupSettings = Logic::getPrivacySettingsManager()->get_cached_value(qsl("groups"));
+        const auto canCall = (callSettings == privacy_access_right::my_contacts);
+        const auto canAddToGroup = (groupSettings == privacy_access_right::my_contacts);
+
+        QString result = QT_TRANSLATE_NOOP("chat_event", "%1 Send the user a message or press \"OK\" button to allow %2 to");
+        if (canCall || canAddToGroup)
+            result += qsl(":");
+
+        if (canCall)
+        {
+            result += QChar::LineFeed;
+            result += QT_TRANSLATE_NOOP("chat_event", " %3 call you");
+        }
+        if (canAddToGroup)
+        {
+            result += QChar::LineFeed;
+            result += QT_TRANSLATE_NOOP("chat_event", " %3 add you to groups");
+        }
+
+        if (canCall || canAddToGroup)
+        {
+            result += QChar::LineFeed;
+            result += qsl(" %3");
+        }
+
+        result += QT_TRANSLATE_NOOP("chat_event", " see if you read his messages");
+
+        if (canCall || canAddToGroup)
+            result = result.arg(handEmoji, friendly, QChar(bulletCode()));
+        else
+            result = result.arg(handEmoji, friendly);
+
+        return result;
+    }
+
+    QString ChatEventInfo::formatNoLongerStranger() const
+    {
+        const auto friendly = Logic::GetFriendlyContainer()->getFriendly(aimId_);
+        const auto checkEmoji = Emoji::EmojiCode::toQString(Emoji::EmojiCode(0x2705));
+        const auto callSettings = Logic::getPrivacySettingsManager()->get_cached_value(qsl("calls"));
+        const auto groupSettings = Logic::getPrivacySettingsManager()->get_cached_value(qsl("groups"));
+        const auto canCall = (callSettings == privacy_access_right::my_contacts);
+        const auto canAddToGroup = (groupSettings == privacy_access_right::my_contacts);
+
+        QString result = QT_TRANSLATE_NOOP("chat_event", "%1 From now on %2 is able to");
+        if (canCall || canAddToGroup)
+            result += qsl(":");
+
+        if (canCall)
+        {
+            result += QChar::LineFeed;
+            result += QT_TRANSLATE_NOOP("chat_event", " %3 call you");
+        }
+        if (canAddToGroup)
+        {
+            result += QChar::LineFeed;
+            result += QT_TRANSLATE_NOOP("chat_event", " %3 add you to groups");
+        }
+
+        if (canCall || canAddToGroup)
+        {
+            result += QChar::LineFeed;
+            result += qsl(" %3");
+        }
+
+        result += QT_TRANSLATE_NOOP("chat_event", " see if you read his messages");
+
+        if (canCall || canAddToGroup)
+            result = result.arg(checkEmoji, friendly, QChar(bulletCode()));
+        else
+            result = result.arg(checkEmoji, friendly);
+
+        return result;
     }
 
     bool ChatEventInfo::isMyAimid(const QString& _aimId) const

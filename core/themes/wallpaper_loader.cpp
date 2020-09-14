@@ -265,7 +265,7 @@ namespace core
         {
             auto handler = std::make_shared<result_handler<bool>>();
 
-            thread_->run_async_function([_data]()->int32_t
+            thread_->run_async_function([_data = std::move(_data)]()->int32_t
             {
                 return (_data->save_2_file(core::utils::get_themes_meta_path()) ? 0 : -1);
             }
@@ -280,7 +280,7 @@ namespace core
 
         void wallpaper_loader::save_wallpaper(const std::string_view _wallpaper_id, std::shared_ptr<core::tools::binary_stream> _data)
         {
-            thread_->run_async_function([_data, id = std::string(_wallpaper_id)]()->int32_t
+            thread_->run_async_function([_data = std::move(_data), id = std::string(_wallpaper_id)]()->int32_t
             {
                 return (_data->save_2_file(get_wp_path(id)) ? 0 : -1);
             });

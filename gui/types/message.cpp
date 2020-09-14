@@ -915,7 +915,7 @@ namespace Data
         message->SetTime(timestamp);
         if (msgColl->is_value_exist("text"))
             message->SetText(QString::fromUtf8(msgColl.get_value_as_string("text")));
-        message->SetDate(QDateTime::fromTime_t(message->GetTime()).date());
+        message->SetDate(QDateTime::fromSecsSinceEpoch(message->GetTime()).date());
         if (msgColl->is_value_exist("description"))
             message->SetDescription(QString::fromUtf8(msgColl.get_value_as_string("description")));
         if (msgColl->is_value_exist("url"))

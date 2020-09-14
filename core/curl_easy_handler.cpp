@@ -35,7 +35,7 @@ namespace
 
 namespace core
 {
-    curl_easy::future_t curl_easy_handler::perform(std::shared_ptr<curl_context> _context)
+    curl_easy::future_t curl_easy_handler::perform(const std::shared_ptr<curl_context>& _context)
     {
         auto promise = curl_easy::promise_t();
         auto future = promise.get_future();
@@ -45,9 +45,9 @@ namespace core
         return future;
     }
 
-    void curl_easy_handler::perform_async(std::shared_ptr<curl_context> _context, curl_easy::completion_function _completion_func)
+    void curl_easy_handler::perform_async(const std::shared_ptr<curl_context>& _context, curl_easy::completion_function _completion_func)
     {
-        add_task(std::make_shared<curl_task>(_context, _completion_func), _context->get_priority(), _context->get_id());
+        add_task(std::make_shared<curl_task>(_context, std::move(_completion_func)), _context->get_priority(), _context->get_id());
     }
 
     void curl_easy_handler::raise_task(int64_t _id)

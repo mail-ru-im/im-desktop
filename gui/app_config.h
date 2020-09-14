@@ -73,10 +73,8 @@ public:
     void SetCacheHistoryControlPagesFor(int secs) noexcept;
     void SetWatchGuiMemoryEnabled(bool _watch) noexcept;
     void SetCustomDeviceId(bool _custom) noexcept;
-    void SetConnectByIp(bool _enabled) noexcept;
 
     bool hasCustomDeviceId() const;
-    bool connectByIp() const;
 
 private:
     bool IsContextMenuFeaturesUnlocked_;
@@ -98,7 +96,6 @@ private:
     bool GDPR_UserHasAgreed_;
     int32_t GDPR_AgreementReportedToServer_;
     bool GDPR_UserHasLoggedInEver_;
-    bool ConnectByIp_;
 
     int CacheHistoryContolPagesFor_;
 

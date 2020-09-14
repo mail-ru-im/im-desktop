@@ -15,12 +15,15 @@ namespace Logic
 
     public:
         PrivacySettingsManager(QObject* _parent = nullptr);
+        void requestPrivacySettings();
 
         using setValueCallback = std::function<void(bool)>;
         void setValue(const QString& _settingsGroup, const core::privacy_access_right _value, const QObject* _object, setValueCallback _callback);
 
         using getValueCallback = std::function<void(const core::privacy_access_right)>;
         void getValue(const QString& _settingsGroup, const QObject* _object, getValueCallback _callback);
+
+        core::privacy_access_right get_cached_value(const QString& _settingsGroup);
 
     private:
         void onSetValueResult(const int64_t _seq, const bool _success);
@@ -43,5 +46,9 @@ namespace Logic
 
         using getCallbackInfo = CallbackInfo<getValueCallback>;
         std::unordered_map<QString, getCallbackInfo, Utils::QStringHasher> getCallbacks_;
+        std::map<QString, core::privacy_access_right> cached_values_;
     };
+
+    PrivacySettingsManager* getPrivacySettingsManager();
+    void ResetPrivacySettingsManager();
 }

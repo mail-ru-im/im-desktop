@@ -55,7 +55,7 @@ namespace core
                 std::vector<std::string_view> friendly_words_;
                 std::vector<std::string_view> ab_words_;
 
-                bool is_empty() const { return aimid_.empty(); }
+                bool is_empty() const noexcept { return aimid_.empty(); }
                 void clear()
                 {
                     aimid_.clear();

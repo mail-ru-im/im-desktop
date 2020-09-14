@@ -936,6 +936,22 @@ Vous pouvez laisser vos commentaires ou signaler une erreur ici:</translation>
         <translation>%1 administrateur %2 affecté à ce groupe</translation>
     </message>
     <message>
+        <source>Block contact</source>
+        <translation>Bloquer le contact</translation>
+    </message>
+    <message>
+        <source>OK</source>
+        <translation>D&apos;accord</translation>
+    </message>
+    <message>
+        <source>%1 Send the user a message or press &quot;OK&quot; button to allow %2 to</source>
+        <translation>%1 Cliquez sur OK ou répondez et %2 peut</translation>
+    </message>
+    <message>
+        <source>%1 From now on %2 is able to</source>
+        <translation>%1 Maintenant, %2 peut</translation>
+    </message>
+    <message>
         <source>%1 You have canceled your join request</source>
         <translation>%1 Vous avez annulé votre demande d&apos;adhésion</translation>
     </message>
@@ -4680,6 +4696,14 @@ Vous pouvez laisser vos commentaires ou signaler une erreur ici:</translation>
         <source>Remove reaction: an error occurred</source>
         <translation>Supprimer la réponse: une erreur s&apos;est produite</translation>
     </message>
+    <message>
+        <source>And %1 more...</source>
+        <translation>Et %1...</translation>
+    </message>
+    <message>
+        <source>Loading...</source>
+        <translation>Chargement...</translation>
+    </message>
 </context>
 <context>
     <name>release_notes</name>
@@ -5920,6 +5944,24 @@ Modifiez le numéro et réessayez.</translation>
     <message>
         <source>For %1 already</source>
         <translation>Pour %1 déjà</translation>
+    </message>
+</context>
+<context>
+    <name>status_plate</name>
+    <message>
+        <source>Bot</source>
+        <translation>Le bot</translation>
+    </message>
+</context>
+<context>
+    <name>status_popup</name>
+    <message>
+        <source>Select my status</source>
+        <translation>Choisissez mon statut</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>Annulation</translation>
     </message>
 </context>
 <context>

@@ -54,7 +54,6 @@ int32_t core::wim::sync_ab::init_request(const std::shared_ptr<core::http_reques
     if (!robusto_packet::params_.full_log_)
     {
         log_replace_functor f;
-        f.add_marker("a");
         f.add_json_marker("aimsid", aimsid_range_evaluator());
         f.add_json_marker("keyword");
         _request->set_replace_log_function(f);
@@ -65,8 +64,10 @@ int32_t core::wim::sync_ab::init_request(const std::shared_ptr<core::http_reques
 
 int32_t core::wim::sync_ab::execute_request(const std::shared_ptr<core::http_request_simple>& request)
 {
-    if (!request->post())
-        return wpie_network_error;
+    url_ = request->get_url();
+
+    if (auto error_code = get_error(request->post()))
+        return *error_code;
 
     http_code_ = (uint32_t)request->get_response_code();
 

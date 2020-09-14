@@ -127,11 +127,14 @@ GalleryWidget::GalleryWidget(QWidget* _parent)
         trackMenu(QCursor::pos());
     });
 
-    QVBoxLayout* layout = Utils::emptyVLayout();
+    auto rootLayout = Utils::emptyVLayout();
     Testing::setAccessibleName(imageViewer_, qsl("AS GalleryWidget imageViewer"));
-    layout->addWidget(imageViewer_);
+    Testing::setAccessibleName(prevButton_, qsl("AS GalleryWidget prevButton"));
+    Testing::setAccessibleName(nextButton_, qsl("AS GalleryWidget nextButton"));
 
-    setLayout(layout);
+    rootLayout->addWidget(imageViewer_);
+
+    setLayout(rootLayout);
 
     setAttribute(Qt::WA_TranslucentBackground);
 
@@ -486,7 +489,7 @@ void GalleryWidget::updateControls()
             if (const auto sender = currentItem->sender(); !sender.isEmpty())
                 controlsWidget_->setAuthorText(Logic::GetFriendlyContainer()->getFriendly(sender));
 
-            const auto t = QDateTime::fromTime_t(currentItem->time());
+            const auto t = QDateTime::fromSecsSinceEpoch(currentItem->time());
             auto dateStr = t.date().toString(u"dd.MM.yyyy");
             auto timeStr = t.toString(u"hh:mm");
 
@@ -785,7 +788,7 @@ void GalleryWidget::onCopy()
 void GalleryWidget::onOpenContact()
 {
     const auto item = contentLoader_->currentItem();
-    if (!item || !QDateTime::fromTime_t(item->time()).date().isValid())
+    if (!item || !QDateTime::fromSecsSinceEpoch(item->time()).date().isValid())
         return;
 
     Utils::openDialogOrProfile(item->sender());
@@ -1100,4 +1103,27 @@ void NavigationButton::paintEvent(QPaintEvent *_event)
     const QRect rcButton((thisRect.width() - iconSize.width()) / 2, (thisRect.height() - iconSize.height()) / 2, iconSize.width(), iconSize.height());
 
     p.drawPixmap(rcButton, activePixmap_);
+}
+
+AccessibleGalleryWidget::AccessibleGalleryWidget(QWidget* widget)
+    : QAccessibleWidget(widget)
+{
+    galleryWidget_ = qobject_cast<GalleryWidget*>(widget);
+
+    children_.emplace_back(galleryWidget_->nextButton_);
+    children_.emplace_back(galleryWidget_->prevButton_);
+    children_.emplace_back(galleryWidget_->controlsWidget_);
+    children_.emplace_back(galleryWidget_->imageViewer_);
+}
+
+QAccessibleInterface* AccessibleGalleryWidget::child(int index) const
+{
+    if (index < 0 || index + 1 > static_cast<int>(children_.size()))
+        return nullptr;
+    return QAccessible::queryAccessibleInterface(children_.at(index));
+}
+
+int AccessibleGalleryWidget::indexOfChild(const QAccessibleInterface* child) const
+{
+    return Utils::indexOf(children_.cbegin(), children_.cend(), child->object());
 }

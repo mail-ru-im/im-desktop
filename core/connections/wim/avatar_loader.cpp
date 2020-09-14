@@ -7,6 +7,7 @@
 #include "avatar_loader.h"
 #include "../../async_task.h"
 #include "../../tools/system.h"
+#include "../../configuration/host_config.h"
 
 #include "packets/request_avatar.h"
 
@@ -122,7 +123,7 @@ void avatar_loader::execute_task(std::shared_ptr<avatar_task> _task, std::functi
         _task->get_context()->avatar_type_,
         write_time);
 
-    server_thread_->run_async_task(packet)->on_result_ = [wr_this = weak_from_this(), _task, packet, _on_complete](int32_t _error)
+    server_thread_->run_async_task(packet)->on_result_ = [wr_this = weak_from_this(), _task, packet, _on_complete](int32_t _error) mutable
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -130,9 +131,7 @@ void avatar_loader::execute_task(std::shared_ptr<avatar_task> _task, std::functi
 
         if (_error == 0)
         {
-            auto avatar_data = packet->get_data();
-
-            ptr_this->local_thread_->run_async_function([avatar_data, _task]()->int32_t
+            ptr_this->local_thread_->run_async_function([avatar_data = packet->get_data(), _task]()->int32_t
             {
                 auto size = avatar_data->available();
                 assert(size);
@@ -145,7 +144,7 @@ void avatar_loader::execute_task(std::shared_ptr<avatar_task> _task, std::functi
                 avatar_data->save_2_file(_task->get_context()->avatar_file_path_);
                 return 0;
 
-            })->on_result_ = [avatar_data, wr_this, _on_complete, _task](int32_t _error)
+            })->on_result_ = [wr_this, _on_complete = std::move(_on_complete), _task](int32_t _error)
             {
                 auto ptr_this = wr_this.lock();
                 if (!ptr_this)
@@ -179,6 +178,11 @@ void avatar_loader::execute_task(std::shared_ptr<avatar_task> _task, std::functi
             }
 
             _on_complete(_error);
+
+            if (_error == wpie_couldnt_resolve_host)
+                config::hosts::switch_to_ip_mode(packet->get_url(), _error);
+            else if (_error == wpie_network_error)
+                config::hosts::switch_to_dns_mode(packet->get_url(), _error);
         }
     };
 

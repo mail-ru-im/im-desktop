@@ -33,7 +33,8 @@
     "data_visibility": "agent.mail.ru/help/visibility",
     "password_recovery": "e.mail.ru/cgi-bin/passremind",
     "vcs_room": "https://call.icq.com/;https://call.agent.mail.ru/;",
-    "to_replace_hosts_ip" : "u.icq.net:443:178.237.20.123;ub.icq.net:443:178.237.20.4"
+    "dns_cache" : "u.icq.net:178.237.20.123;ub.icq.net:178.237.20.4",
+    "external_emoji": "hb.bizmrg.com/icq-prod-emoji"
   },
   "values": {
     "product_path": "Mail.Ru/Agent",
@@ -138,11 +139,13 @@
     "show_reactions": false,
     "open_icqcom_link": true,
     "statistics": true,
+    "statistics_mytracker": true,
     "force_update_check_allowed": false,
     "call_room_info_enabled": false,
     "external_config_use_preset_url": false,
     "store_version": false,
-    "has_connect_by_ip_option": true
+    "dns_workaround_enabled": false,
+    "external_emoji": true
   },
   "translations": {
     "installer_title_win": "Mail.ru Agent",

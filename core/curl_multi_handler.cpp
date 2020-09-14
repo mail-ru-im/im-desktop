@@ -245,7 +245,7 @@ namespace
         const auto cur = ++(it->second.timeout_cnt_);
         if (cur >= max_timeouts)
         {
-            write_log(std::string("socket ") + std::to_string(int(s)) + std::string(" timed out >= ") + std::to_string(max_timeouts) + std::string(" times, killing socket and tasks"));
+            write_log(su::concat("socket ", std::to_string(int(s)), " timed out >= ", std::to_string(max_timeouts), " times, killing socket and tasks"));
 
             for (auto iter = tasks.begin(); iter != tasks.end();)
             {
@@ -288,7 +288,7 @@ namespace
 
             if (data.bad_write_cnt_ >= max_bad_writes)
             {
-                write_log(std::string("forcing CURL_CSELECT_ERR on socket ") + std::to_string(int(s)));
+                write_log(su::concat("forcing CURL_CSELECT_ERR on socket ", std::to_string(int(s))));
                 curl_multi_socket_action(global.multi, s, CURL_CSELECT_ERR, &global.still_running);
                 data.bad_write_cnt_ = 0;
             }
@@ -361,17 +361,57 @@ namespace
 
         return 0;
     }
+
+    int resolve_host(std::string_view _host, std::string& _result)
+    {
+        _result.clear();
+
+        struct addrinfo hints, * results, * item;
+        int status;
+        char ipstr[INET_ADDRSTRLEN];
+
+        memset(&hints, 0, sizeof hints);
+        hints.ai_family = AF_INET;
+        hints.ai_socktype = SOCK_STREAM;
+
+        if ((status = getaddrinfo(_host.data(), NULL, &hints, &results)) != 0)
+        {
+            return status;
+        }
+
+        if (results != NULL)
+        {
+            item = results;
+            void* addr;
+            char* ipver;
+
+            struct sockaddr_in* ipv4 = (struct sockaddr_in*)item->ai_addr;
+            addr = &(ipv4->sin_addr);
+            ipver = "IPv4";
+
+            inet_ntop(item->ai_family, addr, ipstr, sizeof ipstr);
+            _result = ipstr;
+        }
+
+        freeaddrinfo(results);
+
+        return status;
+    }
 }
 
 namespace core
 {
-    curl_easy::future_t curl_multi_handler::perform(std::shared_ptr<curl_context> _context)
+    curl_multi_handler::curl_multi_handler()
+    {
+    }
+
+    curl_easy::future_t curl_multi_handler::perform(const std::shared_ptr<curl_context>& _context)
     {
         auto promise = curl_easy::promise_t();
         auto future = promise.get_future();
         if (is_stopped())
         {
-            promise.set_value(CURLE_ABORTED_BY_CALLBACK);
+            promise.set_value(core::curl_easy::completion_code::cancelled);
             return future;
         }
 
@@ -380,11 +420,11 @@ namespace core
         return future;
     }
 
-    void curl_multi_handler::perform_async(std::shared_ptr<curl_context> _context, curl_easy::completion_function _completion_func)
+    void curl_multi_handler::perform_async(const std::shared_ptr<curl_context>& _context, curl_easy::completion_function _completion_func)
     {
         if (is_stopped())
         {
-            _completion_func(core::curl_task::get_completion_code(CURLE_ABORTED_BY_CALLBACK));
+            _completion_func(core::curl_easy::completion_code::cancelled);
             return;
         }
 
@@ -522,6 +562,8 @@ namespace core
             curl_multi_cleanup(global.multi);
             deinit_signals();
         });
+
+        resolve_hosts_thread_ = std::make_unique<async_executer>("resolve hosts");
     }
 
     void curl_multi_handler::cleanup()
@@ -531,6 +573,7 @@ namespace core
 
         notify();
         service_thread_.join();
+        resolve_hosts_thread_.reset();
     }
 
     void curl_multi_handler::reset()
@@ -551,6 +594,26 @@ namespace core
     bool curl_multi_handler::is_stopped() const
     {
         return stop.load();
+    }
+
+    void curl_multi_handler::resolve_host(std::string_view _host, std::function<void(std::string _result,int _error)> _callback)
+    {
+        if (!resolve_hosts_thread_)
+        {
+            _callback(std::string(), CURLE_COULDNT_RESOLVE_HOST);
+            return;
+        }
+
+        auto result = std::make_shared<std::string>();
+        auto error = std::make_shared<int>();
+        resolve_hosts_thread_->run_async_function([result, error, _host = std::string(_host)]()
+        {
+            *error = ::resolve_host(_host, *result);
+            return 0;
+        })->on_result_ = [_callback = std::move(_callback), result, error](int32_t)
+        {
+            _callback(std::move(*result), *error);
+        };
     }
 
     void curl_multi_handler::add_task()
@@ -592,14 +655,14 @@ namespace core
         {
             if (_task->get_priority() < (*iter)->get_priority())
             {
-                tasks_queue.insert(iter, _task);
+                tasks_queue.insert(iter, std::move(_task));
                 inserted = true;
                 break;
             }
             ++iter;
         }
         if (!inserted)
-            tasks_queue.push_back(_task);
+            tasks_queue.push_back(std::move(_task));
 
         emit_signal();
         condition.notify_one();

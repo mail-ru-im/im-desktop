@@ -24,11 +24,17 @@ namespace config
             mail_read
         };
 
-        [[nodiscard]] std::string_view get_host_url(const host_url_type _type);
+        [[nodiscard]] std::string get_host_url(host_url_type _type);
+
+        std::string format_resolve_host_str(std::string_view _host, unsigned port);
 
         bool is_valid();
         bool load_config();
         void clear_external_config();
+
+        void resolve_hosts(bool _load = false);
+        void switch_to_dns_mode(std::string_view _url, int _error);
+        void switch_to_ip_mode(std::string_view _url, int _error);
 
         using load_callback_t = std::function<void(core::ext_url_config_error _error, std::string _host)>;
         void load_external_config_from_url(std::string_view _url, load_callback_t _callback);

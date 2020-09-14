@@ -113,7 +113,7 @@ namespace Ui
         {
             const auto r = rect();
             Tooltip::forceShow(true);
-            Tooltip::show(t, QRect(mapToGlobal(r.topLeft()), r.size()), { -1, -1 }, Tooltip::ArrowDirection::Down);
+            Tooltip::show(t, QRect(mapToGlobal(r.topLeft()), r.size()), {0, 0}, Tooltip::ArrowDirection::Down);
         }
     }
 

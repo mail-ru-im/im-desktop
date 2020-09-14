@@ -633,7 +633,7 @@ void voip_proxy::VoipController::handlePacket(core::coll_helper& _collParams)
 
             callTimeElapsed_ = 0;
             haveEstablishedConnection_ = false;
-            chatId_ = "";
+            chatId_ = {};
             callType_ = voip_proxy::kCallType_NONE;
             disconnectedPeers_.clear();
             activePeerList_ = {};
@@ -830,14 +830,6 @@ void voip_proxy::VoipController::setSwitchAPlaybackMute()
 {
     Ui::gui_coll_helper collection(dispatcher_.create_collection(), true);
     collection.set_value_as_string("type", "audio_playback_mute_switch");
-    dispatcher_.post_message_to_core("voip_call", collection.get());
-}
-
-void voip_proxy::VoipController::setVolumeAPlayback(int volume)
-{
-    Ui::gui_coll_helper collection(dispatcher_.create_collection(), true);
-    collection.set_value_as_string("type", "voip_call_volume_change");
-    collection.set_value_as_int("volume", std::min(100, std::max(0, volume)));
     dispatcher_.post_message_to_core("voip_call", collection.get());
 }
 
@@ -1140,7 +1132,7 @@ void voip_proxy::VoipController::setStartVCS(const char *_urlConference)
     if (Cancelled == check || SameCall == check)
         return;
 
-    checkPermissions(true, true);
+    checkPermissions(true, false);
 
     Ui::gui_coll_helper collection(dispatcher_.create_collection(), true);
     collection.set_value_as_string("type", "voip_call_start");
@@ -1189,7 +1181,7 @@ void voip_proxy::VoipController::setWindowAdd(quintptr _hwnd, const char *call_i
     {
         QColor penColor = QColor(255, 255, 255, (255 * 90) / 100);
         QFont font = Fonts::appFont(Utils::scale_bitmap_with_value(12), Fonts::FontWeight::SemiBold);
-        //QFont font = Fonts::appFontScaled(12, Fonts::FontWeight::Medium);//? Have problem in the mac 
+        //QFont font = Fonts::appFontScaled(12, Fonts::FontWeight::Medium);//? Have problem in the mac
        // font.setStyleStrategy(QFont::PreferAntialias);
         addTextToCollection(collection, "camera_status", "VOICE", penColor, font);
         addTextToCollection(collection, "connecting_status", "Connecting...", penColor, font);
@@ -1206,7 +1198,7 @@ void voip_proxy::VoipController::setWindowAdd(quintptr _hwnd, const char *call_i
     if (INCLUDE_CAMERA_OFF_STATUS && !_primaryWnd && !_incomeingWnd)
     {
         auto color = QColor(255, 255, 255, 255 * 70 / 100);
-        //QFont font = Fonts::appFontScaled(12, Fonts::FontWeight::Medium); //? Have problem in the mac 
+        //QFont font = Fonts::appFontScaled(12, Fonts::FontWeight::Medium); //? Have problem in the mac
         QFont font = Fonts::appFont(Utils::scale_bitmap_with_value(12), Fonts::FontWeight::SemiBold);
        // font.setStyleStrategy(QFont::PreferAntialias);
 
@@ -1498,10 +1490,10 @@ void voip_proxy::VoipController::switchShareScreen(voip_proxy::device_desc const
             _setSwitchVCaptureMute();
     } else
     {
-        voip_proxy::device_desc lastSelectedCamera = activeDevices_[kvoipDevTypeVideoCapture];
-        setActiveDevice(lastSelectedCamera);
         if (localVideoEnabled_ && !localCameraEnabled_)
             _setSwitchVCaptureMute();
+        voip_proxy::device_desc lastSelectedCamera = activeDevices_[kvoipDevTypeVideoCapture];
+        setActiveDevice(lastSelectedCamera);
     }
 }
 
@@ -1562,10 +1554,11 @@ voip_proxy::CheckActiveCallResult voip_proxy::VoipController::checkActiveCall(co
     return NoActiveCall;
 }
 
-void voip_proxy::VoipController::notifyDevicesChanged()
+void voip_proxy::VoipController::notifyDevicesChanged(bool audio)
 {
     Ui::gui_coll_helper collection(dispatcher_.create_collection(), true);
     collection.set_value_as_string("type", "voip_devices_changed");
+    collection.set_value_as_bool("audio", audio);
     dispatcher_.post_message_to_core("voip_call", collection.get());
     trackDevices();
 }

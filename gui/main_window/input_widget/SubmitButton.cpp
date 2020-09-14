@@ -102,8 +102,7 @@ namespace Ui
         longTapTimer_.setSingleShot(true);
         longTapTimer_.setInterval(longTapTimeout());
 
-        connect(&longTapTimer_, &QTimer::timeout, this, [this]()
-        {
+        connect(&longTapTimer_, &QTimer::timeout, this, [this]() {
             if (isHovered())
                 Q_EMIT longTapped(QPrivateSignal());
         });
@@ -119,15 +118,16 @@ namespace Ui
             }
         });
 
+        anim_->setStartValue(0.0);
+        anim_->setEndValue(1.0);
+        anim_->setDuration(getAnimDuration().count());
+        anim_->setEasingCurve(QEasingCurve::InOutSine);
         connect(anim_, &QVariantAnimation::valueChanged, this, qOverload<>(&ClickableWidget::update));
-        connect(anim_, &QVariantAnimation::stateChanged, this, [this]()
-        {
-            if (anim_->state() == QAbstractAnimation::Stopped)
+        connect(anim_, &QVariantAnimation::finished, this, [this]()
             {
                 currentIcon_.normal_ = nextIcon_;
                 update();
-            }
-        });
+            });
     }
 
     SubmitButton::~SubmitButton() = default;
@@ -154,11 +154,6 @@ namespace Ui
             currentIcon_.hover_ = icons.hover_;
             currentIcon_.pressed_ = icons.pressed_;
 
-            anim_->stop();
-            anim_->setStartValue(0.0);
-            anim_->setEndValue(1.0);
-            anim_->setDuration(getAnimDuration().count());
-            anim_->setEasingCurve(QEasingCurve::InOutSine);
             anim_->start();
         }
 
@@ -219,15 +214,16 @@ namespace Ui
             p.drawPixmap(QRect(x, y, iconWidth, iconWidth), _icon);
         };
 
-        if (anim_->state() != QAbstractAnimation::State::Running)
+        if (anim_->state() == QAbstractAnimation::State::Running)
         {
-            drawIcon(currentIcon_.normal_, 1. - anim_->currentValue().toDouble(), 1. - anim_->currentValue().toDouble());
-            drawIcon(nextIcon_, anim_->currentValue().toDouble(), anim_->currentValue().toDouble());
+            const auto animValue = anim_->currentValue().toDouble();
+            drawIcon(currentIcon_.normal_, 1. - animValue, 1. - animValue);
+            drawIcon(nextIcon_, animValue, animValue);
         }
         else
         {
             const auto& icon = isPressed() ? currentIcon_.pressed_ : (isHovered() ? currentIcon_.hover_ : currentIcon_.normal_);
-            const auto isAnimFocusRunning = animFocus_->state() != QAbstractAnimation::State::Running;
+            const auto isAnimFocusRunning = animFocus_->state() == QAbstractAnimation::State::Running;
             if (customFocusDraw && (hasFocus() || isAnimFocusRunning))
             {
                 if (isAnimFocusRunning)

@@ -9,19 +9,18 @@ namespace device {
 
 class DeviceMonitoringImpl
 : public DeviceMonitoring
-, public DeviceMonitoringCallback {
+{
     DeviceMonitoringCallback* _captureDeviceCallback;
     boost::shared_mutex  _callbackLock;
 
 protected:
     DeviceMonitoringImpl();
-    void DeviceMonitoringListChanged() override;
-    void DeviceMonitoringAudioPropChanged() override;
-    void DeviceMonitoringBluetoothHeadsetChanged(bool connected) override;
 
 public:
     virtual ~DeviceMonitoringImpl();
 
+    void DeviceMonitoringVideoListChanged();
+    void DeviceMonitoringAudioListChanged();
     void RegisterCaptureDeviceInfoObserver(DeviceMonitoringCallback& viECaptureDeviceInfoCallback) override;
     void DeregisterCaptureDeviceInfoObserver() override;
 };

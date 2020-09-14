@@ -17,7 +17,7 @@ namespace Ui
         const qint32 outChannels = 2;
     }
 
-    enum decode_thread_state
+    enum class decode_thread_state
     {
         dts_none = 0,
         dts_playing = 1,
@@ -117,7 +117,7 @@ namespace Ui
         PacketQueue();
         ~PacketQueue();
 
-        void free(std::function<void(ffmpeg::AVPacket& _packet)> _callback);
+        void freeData(std::function<void(ffmpeg::AVPacket& _packet)> _callback = {});
 
         void push(ffmpeg::AVPacket* _packet);
         bool get(ffmpeg::AVPacket& _packet);
@@ -248,22 +248,18 @@ namespace Ui
 
     struct VideoData
     {
-        decode_thread_state current_state_;
-        bool eof_;
-        bool stream_finished_;
+        decode_thread_state current_state_ = decode_thread_state::dts_none;
+        bool eof_ = false;
+        bool stream_finished_ = false;
         std::list<QImage> emptyFrames_;
-
-        VideoData() : current_state_(dts_none), eof_(false), stream_finished_(false)  {}
     };
 
     struct AudioData
     {
-        bool eof_;
-        bool stream_finished_;
-        double offset_;
-        int64_t last_sync_time_;
-
-        AudioData() : eof_(false), stream_finished_(false), offset_(0.0), last_sync_time_(0) {}
+        bool eof_ = false;
+        bool stream_finished_ = false;
+        double offset_ = 0.0;
+        int64_t last_sync_time_ = 0;
     };
 
 

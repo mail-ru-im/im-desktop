@@ -49,7 +49,7 @@ namespace Ui
         , msg_(_msg)
         , seq_(_seq)
     {
-        auto dt = QDateTime::fromTime_t(_time);
+        auto dt = QDateTime::fromSecsSinceEpoch(_time);
         auto date = QLocale().standaloneMonthName(dt.date().month());
 
         date_ = Ui::TextRendering::MakeTextUnit(date.toUpper());
@@ -396,12 +396,13 @@ namespace Ui
         connect(Ui::GetDispatcher(), &core_dispatcher::fileSharingFileDownloading, this, &FilesList::fileDownloading);
         connect(Ui::GetDispatcher(), &core_dispatcher::fileSharingFileDownloaded, this, &FilesList::fileDownloaded);
         connect(Ui::GetDispatcher(), &core_dispatcher::fileSharingError, this, &FilesList::fileError);
+
         anim_->setStartValue(0.0);
         anim_->setEndValue(360.0);
         anim_->setDuration(700);
-        anim_->setEasingCurve(QEasingCurve::Linear);
         anim_->setLoopCount(-1);
         connect(anim_, &QVariantAnimation::valueChanged, this, qOverload<>(&FilesList::update));
+
         setMouseTracking(true);
     }
 
@@ -427,7 +428,7 @@ namespace Ui
 
             auto reqId = GetDispatcher()->downloadFileSharingMetainfo(e.url_);
 
-            auto time = QDateTime::fromTime_t(e.time_);
+            auto time = QDateTime::fromSecsSinceEpoch(e.time_);
             auto item = std::make_unique<FileItem>(e.url_, formatTimeStr(time), e.msg_id_, e.seq_, e.outgoing_, e.sender_, e.time_, width());
             h += item->getHeight();
 
@@ -462,14 +463,14 @@ namespace Ui
             if (!isFilesharing || (e.type_ != u"file" && e.type_ != u"audio"))
                 continue;
 
-            auto time = QDateTime::fromTime_t(e.time_);
+            auto time = QDateTime::fromSecsSinceEpoch(e.time_);
 
             auto iter = Items_.cbegin();
             for (; iter != Items_.cend(); ++iter)
             {
                 if (iter->get()->isDateItem())
                 {
-                    auto dt = QDateTime::fromTime_t(iter->get()->time());
+                    auto dt = QDateTime::fromSecsSinceEpoch(iter->get()->time());
                     if (dt.date().month() == time.date().month() && dt.date().year() == time.date().year())
                         continue;
                 }
@@ -829,13 +830,13 @@ namespace Ui
 
         auto iter = Items_.begin();
         auto prevIsDate = iter->get()->isDateItem();
-        auto prevDt = QDateTime::fromTime_t(iter->get()->time()).date();
+        auto prevDt = QDateTime::fromSecsSinceEpoch(iter->get()->time()).date();
         ++iter;
 
         while (iter != Items_.end())
         {
             auto isDate = iter->get()->isDateItem();
-            auto dt = QDateTime::fromTime_t(iter->get()->time()).date();
+            auto dt = QDateTime::fromSecsSinceEpoch(iter->get()->time()).date();
             if ((dt.month() == prevDt.month() && dt.year() == prevDt.year()) || prevIsDate != isDate)
             {
                 prevIsDate = isDate;

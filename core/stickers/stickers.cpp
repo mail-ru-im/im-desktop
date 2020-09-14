@@ -977,7 +977,7 @@ namespace core
             auto handler = std::make_shared<result_handler<const bool>>();
             auto up_to_date = std::make_shared<bool>();
 
-            thread_->run_async_function([stickers_cache = cache_, _data]()->int32_t
+            thread_->run_async_function([stickers_cache = cache_, _data = std::move(_data)]()->int32_t
             {
                 return (stickers_cache->parse_store(*_data) ? 0 : -1);
 
@@ -1136,7 +1136,7 @@ namespace core
         {
             auto handler = std::make_shared<result_handler<bool>>();
 
-            thread_->run_async_function([stickers_cache = cache_, _data]()->int32_t
+            thread_->run_async_function([stickers_cache = cache_, _data = std::move(_data)]()->int32_t
             {
                 return (_data->save_2_file(stickers_cache->get_meta_file_name()) ? 0 : -1);
 

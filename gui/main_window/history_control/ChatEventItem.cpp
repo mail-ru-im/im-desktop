@@ -11,9 +11,16 @@
 #include "../../utils/utils.h"
 #include "../../styles/ThemeParameters.h"
 #include "../../main_window/contact_list/ContactListModel.h"
+#include "../../main_window/contact_list/RecentsModel.h"
+#include "../../main_window/contact_list/IgnoreMembersModel.h"
 #include "../../main_window/sidebar/SidebarUtils.h"
+#include "../../main_window/ReportWidget.h"
+#include "../../main_window/containers/FriendlyContainer.h"
 #include "../../cache/avatars/AvatarStorage.h"
 #include "../mediatype.h"
+
+#include "omicron/omicron_helper.h"
+#include "../../../common.shared/omicron_keys.h"
 
 #include "ChatEventInfo.h"
 #include "MessageStyle.h"
@@ -23,18 +30,9 @@ namespace Ui
 {
     namespace
     {
-        qint32 getBubbleHorMargin(int _width)
+        qint32 defaultFontSize()
         {
-            if (_width >= Ui::MessageStyle::fiveHeadsWidth())
-                return Utils::scale_value(136);
-
-            if (_width >= Ui::MessageStyle::fourHeadsWidth())
-                return Utils::scale_value(116);
-
-            if (_width >= Ui::MessageStyle::threeHeadsWidth())
-                return Utils::scale_value(96);
-
-            return Utils::scale_value(32);
+            return 12;
         }
 
         qint32 getTextHorPadding()
@@ -42,9 +40,12 @@ namespace Ui
             return Utils::scale_value(8);
         }
 
-        qint32 getTextTopPadding()
+        qint32 getTextTopPadding(int _fontSize)
         {
-            return Utils::scale_value(4);
+            if (_fontSize == defaultFontSize())
+                return Utils::scale_value(4);
+
+            return Utils::scale_value(platform::is_apple() ? 7 : 6);
         }
 
         qint32 getTextBottomPadding()
@@ -52,9 +53,9 @@ namespace Ui
             return Utils::scale_value(5);//ask Andrew to explain
         }
 
-        qint32 getButtonsHeight()
+        qint32 additionalButtonsPadding()
         {
-            return Utils::scale_value(40);
+            return Utils::scale_value(4);
         }
 
         qint32 getButtonsRadius()
@@ -67,7 +68,18 @@ namespace Ui
             return Utils::scale_value(8);
         }
 
-        constexpr auto fontSize() noexcept { return 12; }
+        QString blockButtonText()
+        {
+            if (Utils::GetTranslator()->getLang() != ql1s("ru"))
+                return QT_TRANSLATE_NOOP("chat_event", "Block contact");
+
+            return Omicron::_o(omicron::keys::block_stranger_button_text, QT_TRANSLATE_NOOP("chat_event", "Block contact"));
+        }
+
+        qint32 maxButtonWidth(int _buttonsCount)
+        {
+            return _buttonsCount == 1 ? Utils::scale_value(408) : Utils::scale_value(200);
+        }
     }
 
     ChatEventItem::ChatEventItem(const HistoryControl::ChatEventInfoSptr& _eventInfo, const qint64 _id, const qint64 _prevId)
@@ -91,6 +103,7 @@ namespace Ui
 
         const auto showLinks = EventInfo_->isCaptchaPresent() ? TextRendering::LinksVisible::SHOW_LINKS : TextRendering::LinksVisible::DONT_SHOW_LINKS;
         TextWidget_ = TextRendering::MakeTextUnit(EventInfo_->formatEventText(), {}, showLinks);
+        TextWidget_->setLineSpacing(lineSpacing());
         TextWidget_->applyLinks(EventInfo_->getMembersLinks());
         initTextWidget();
         init();
@@ -124,6 +137,8 @@ namespace Ui
             connect(Ui::GetDispatcher(), &Ui::core_dispatcher::chatInfo, this, &ChatEventItem::onChatInfo);
             connect(Ui::GetDispatcher(), &Ui::core_dispatcher::modChatAboutResult, this, &ChatEventItem::modChatAboutResult);
             connect(Logic::GetAvatarStorage(), &Logic::AvatarStorage::avatarChanged, this, &ChatEventItem::avatarChanged);
+            connect(Logic::getRecentsModel(), &Logic::RecentsModel::dlgStateChanged, this, &ChatEventItem::dlgStateChanged);
+            connect(Logic::getIgnoreModel(), &Logic::IgnoreMembersModel::changed, this, &ChatEventItem::ignoreListChanged);
         }
     }
 
@@ -131,8 +146,8 @@ namespace Ui
     {
         const auto color = getTextColor(getContact());
         const auto linkColor = getLinkColor(getContact());
-        TextWidget_->init(getTextFont(), color, linkColor, QColor(), QColor(), TextRendering::HorAligment::CENTER);
-        TextWidget_->applyFontToLinks(getTextFontBold());
+        TextWidget_->init(getTextFont(textFontSize()), color, linkColor, QColor(), QColor(), textAligment());
+        TextWidget_->applyFontToLinks(getTextFontBold(textFontSize()));
     }
 
     QString ChatEventItem::formatRecentsText() const
@@ -166,7 +181,7 @@ namespace Ui
     {
         assert(_widgetWidth > 0);
 
-        const auto maxBubbleWidth = _widgetWidth - 2 * getBubbleHorMargin(_widgetWidth);
+        const auto maxBubbleWidth = _widgetWidth - Utils::scale_value(36);
         const auto maxBubbleContentWidth = maxBubbleWidth - 2 * getTextHorPadding();
 
         return maxBubbleContentWidth;
@@ -194,39 +209,53 @@ namespace Ui
     {
         updateButtons();
 
-        // setup the text control and get it dimensions
+        auto buttonsDesiredWidth = 0;
         const auto maxTextWidth = evaluateTextWidth(_newSize.width());
-        const auto textHeight = TextWidget_->getHeight(maxTextWidth);
-        const auto textWidth = TextWidget_->getMaxLineWidth();
-
-        // evaluate bubble width
-        auto bubbleWidth = textWidth + 2 * getTextHorPadding();
         if (hasButtons())
         {
-            auto visibleCount = 0;
             auto btnWidth = 0;
-
-            const auto buttons = buttonsWidget_->findChildren<RoundButton*>();
-            for (auto btn : buttons)
+            auto needToResize = false;
+            do
             {
-                if (btn->isVisible())
+                auto visibleCount = 0;
+                btnWidth = 0;
+
+                if (leftButtonVisible_)
                 {
                     ++visibleCount;
-                    btnWidth = std::max(btnWidth, btn->textDesiredWidth());
+                    btnWidth = std::max(btnWidth, btnLeft_->textDesiredWidth());
                 }
-            }
-            const auto buttonsDesiredWidth = btnWidth * visibleCount + getButtonsSpacing() * (visibleCount + 1);
-            bubbleWidth = std::max(bubbleWidth, buttonsDesiredWidth);
-            buttonsWidget_->setFixedWidth(bubbleWidth);
+
+                if (rightButtonVisible_)
+                {
+                    ++visibleCount;
+                    btnWidth = std::max(btnWidth, btnRight_->textDesiredWidth());
+                }
+
+                qint32 maxBntWidth = (EventInfo_ && (EventInfo_->eventType() == core::chat_event_type::warn_about_stranger || EventInfo_->eventType() == core::chat_event_type::no_longer_stranger)) ? maxButtonWidth(visibleCount) : 0;
+                btnWidth = needToResize ? std::min(btnWidth, maxBntWidth) : std::max(btnWidth, maxBntWidth);
+                buttonsDesiredWidth = btnWidth * visibleCount + getButtonsSpacing() * (visibleCount + 1);
+                needToResize = buttonsDesiredWidth > maxTextWidth + 2 * getTextHorPadding() + 1 && !needToResize;
+            } while (needToResize);
+
+            if (leftButtonVisible_)
+                btnLeft_->setFixedWidth(btnWidth);
+            if (rightButtonVisible_)
+                btnRight_->setFixedWidth(btnWidth);
+
+            buttonsWidget_->setFixedWidth(buttonsDesiredWidth);
         }
 
+        const auto textHeight = TextWidget_->getHeight(std::max(maxTextWidth, buttonsDesiredWidth));
+        const auto bubbleWidth = std::max(TextWidget_->getMaxLineWidth() + 2 * getTextHorPadding(), buttonsDesiredWidth);
+
         // evaluate bubble height
-        auto bubbleHeight = textHeight + getTextTopPadding() + getTextBottomPadding();
+        auto bubbleHeight = textHeight + getTextTopPadding(textFontSize()) + getTextBottomPadding();
         const auto topPadding = Utils::scale_value(8);
         if (hasButtons())
         {
             textPlaceholder_->setFixedHeight(bubbleHeight);
-            bubbleHeight += buttonsWidget_->height() - topPadding - bottomOffset();
+            bubbleHeight += (buttonsWidget_->height() - topPadding - bottomOffset());
         }
 
         BubbleRect_ = QRect(0, 0, bubbleWidth, bubbleHeight);
@@ -239,14 +268,16 @@ namespace Ui
         if (!hasButtons())
             textPlaceholder_->setFixedHeight(height_);
 
-        TextWidget_->setOffsets((width() - TextWidget_->cachedSize().width()) / 2, BubbleRect_.top() + getTextTopPadding());
+        auto additionalOffset = TextWidget_->getLineCount() > 1 ? (lineSpacing() / 2) : 0;
+        TextWidget_->setOffsets(textAligment() == TextRendering::HorAligment::CENTER ? (width() - TextWidget_->cachedSize().width()) / 2 : BubbleRect_.x() + getTextHorPadding(),
+            BubbleRect_.top() + getTextTopPadding(textFontSize()) + additionalOffset);
     }
 
-    void ChatEventItem::initButtons(const QString& _leftCaption, const QString& _rightCaption)
+    void ChatEventItem::initButtons()
     {
         assert(!buttonsWidget_);
         buttonsWidget_ = new QWidget(this);
-        buttonsWidget_->setFixedHeight(getButtonsHeight());
+        buttonsWidget_->setFixedHeight(getButtonsHeight() + additionalButtonsPadding());
 
         const auto bgNormal = Styling::getParameters().getColor(Styling::StyleVariable::CHAT_PRIMARY);
         const auto bgHover = Styling::getParameters().getColor(Styling::StyleVariable::CHAT_PRIMARY_HOVER);
@@ -257,20 +288,21 @@ namespace Ui
         hLayout->setSpacing(getButtonsSpacing());
         hLayout->setContentsMargins(getButtonsSpacing(), 0, getButtonsSpacing(), 0);
         btnLeft_ = new RoundButton(buttonsWidget_, getButtonsRadius());
-        btnLeft_->setText(_leftCaption);
         btnLeft_->setTextColor(textColor);
         btnLeft_->setColors(bgNormal, bgHover, bgActive);
         btnLeft_->setFixedHeight(getButtonsHeight());
         hLayout->addWidget(btnLeft_);
 
         btnRight_ = new RoundButton(buttonsWidget_, getButtonsRadius());
-        btnRight_->setText(_rightCaption);
         btnRight_->setTextColor(textColor);
         btnRight_->setColors(bgNormal, bgHover, bgActive);
         btnRight_->setFixedHeight(getButtonsHeight());
         hLayout->addWidget(btnRight_);
 
         layout()->addWidget(buttonsWidget_);
+
+        connect(btnLeft_, &RoundButton::clicked, this, &ChatEventItem::leftButtonClicked);
+        connect(btnRight_, &RoundButton::clicked, this, &ChatEventItem::rightButtonClicked);
     }
 
     bool ChatEventItem::hasButtons() const
@@ -280,31 +312,92 @@ namespace Ui
 
     void ChatEventItem::updateButtons()
     {
-        if (!EventInfo_ || EventInfo_->eventType() != core::chat_event_type::mchat_invite)
+        if (!EventInfo_)
             return;
 
-        buttonsVisible_ = false;
-        if (const auto& aimId = getContact(); Logic::getContactListModel()->isYouAdmin(aimId))
+        leftButtonVisible_ = rightButtonVisible_ = buttonsVisible_ = false;
+        const auto aimId = EventInfo_->getAimId();
+        const auto isStranger = Logic::getRecentsModel()->isStranger(aimId);
+        const auto isIgnored = Logic::getIgnoreModel()->contains(aimId);
+
+        if (!buttonsWidget_)
+            initButtons();
+
+        switch (EventInfo_->eventType())
         {
-            const auto descriptionButtonVisible = Logic::getContactListModel()->getChatDescription(aimId).isEmpty();
-            const auto avatarButtonVisible = Logic::GetAvatarStorage()->isDefaultAvatar(aimId);
-            buttonsVisible_ = avatarButtonVisible || descriptionButtonVisible;
+        case core::chat_event_type::mchat_invite:
+            btnLeft_->setText(QT_TRANSLATE_NOOP("chat_event", "Add avatar"), buttonsfontSize());
+            btnRight_->setText(QT_TRANSLATE_NOOP("chat_event", "Add description"), buttonsfontSize());
 
-            if (buttonsVisible_ && !buttonsWidget_)
-            {
-                initButtons(QT_TRANSLATE_NOOP("chat_event", "Add avatar"), QT_TRANSLATE_NOOP("chat_event", "Add description"));
-                connect(btnLeft_, &RoundButton::clicked, this, &ChatEventItem::addAvatarClicked);
-                connect(btnRight_, &RoundButton::clicked, this, &ChatEventItem::addDescriptionClicked);
-            }
+            leftButtonVisible_ = Logic::GetAvatarStorage()->isDefaultAvatar(aimId);
+            rightButtonVisible_ = Logic::getContactListModel()->getChatDescription(aimId).isEmpty();
+            buttonsVisible_ = Logic::getContactListModel()->isYouAdmin(aimId) && (leftButtonVisible_ || rightButtonVisible_);
 
-            if (btnLeft_)
-                btnLeft_->setVisible(avatarButtonVisible);
-            if (btnRight_)
-                btnRight_->setVisible(descriptionButtonVisible);
+            btnLeft_->setVisible(leftButtonVisible_);
+            btnRight_->setVisible(rightButtonVisible_);
+
+            buttonsWidget_->setVisible(buttonsVisible_);
+            break;
+
+        case core::chat_event_type::warn_about_stranger:
+            btnLeft_->setText(blockButtonText(), buttonsfontSize());
+            btnRight_->setText(QT_TRANSLATE_NOOP("chat_event", "OK"), buttonsfontSize());
+
+            leftButtonVisible_ = rightButtonVisible_ = buttonsVisible_ = (isStranger && !isIgnored);
+
+            btnLeft_->setVisible(leftButtonVisible_);
+            btnRight_->setVisible(rightButtonVisible_);
+
+            buttonsWidget_->setVisible(buttonsVisible_);
+            break;
+
+        default:
+            buttonsWidget_->setVisible(false);
+            break;
+        }
+    }
+
+    int ChatEventItem::textFontSize() const
+    {
+        if (EventInfo_ && (EventInfo_->eventType() == core::chat_event_type::warn_about_stranger || EventInfo_->eventType() == core::chat_event_type::no_longer_stranger))
+            return platform::is_apple() ? 14 : 15;
+
+        return defaultFontSize();
+    }
+
+    int ChatEventItem::buttonsfontSize() const
+    {
+        if (EventInfo_ && (EventInfo_->eventType() == core::chat_event_type::warn_about_stranger || EventInfo_->eventType() == core::chat_event_type::no_longer_stranger))
+            return 14;
+
+        return defaultFontSize();
+    }
+
+    int ChatEventItem::getButtonsHeight() const
+    {
+        if (EventInfo_ && (EventInfo_->eventType() == core::chat_event_type::warn_about_stranger || EventInfo_->eventType() == core::chat_event_type::no_longer_stranger))
+            return Utils::scale_value(44);
+
+        return Utils::scale_value(40);
+    }
+
+    int ChatEventItem::lineSpacing() const
+    {
+        if (EventInfo_ && (EventInfo_->eventType() == core::chat_event_type::warn_about_stranger || EventInfo_->eventType() == core::chat_event_type::no_longer_stranger))
+            return platform::is_apple() ? Utils::scale_value(4) : 0;
+
+        return 0;
+    }
+
+    TextRendering::HorAligment ChatEventItem::textAligment() const
+    {
+        if (EventInfo_ && (EventInfo_->eventType() == core::chat_event_type::warn_about_stranger || EventInfo_->eventType() == core::chat_event_type::no_longer_stranger))
+        {
+            const auto text = EventInfo_->formatEventText();
+            return text.contains(QChar(0x2023)) ? TextRendering::HorAligment::LEFT : TextRendering::HorAligment::CENTER;
         }
 
-        if (buttonsWidget_)
-            buttonsWidget_->setVisible(buttonsVisible_);
+        return TextRendering::HorAligment::CENTER;
     }
 
     bool ChatEventItem::isOutgoing() const
@@ -337,14 +430,14 @@ namespace Ui
         return Styling::getParameters(_contact).getColor(Styling::StyleVariable::TEXT_PRIMARY);
     }
 
-    QFont ChatEventItem::getTextFont()
+    QFont ChatEventItem::getTextFont(int _size)
     {
-        return Fonts::adjustedAppFont(fontSize(), Fonts::defaultAppFontWeight(), Fonts::FontAdjust::NoAdjust);
+        return Fonts::adjustedAppFont(_size == - 1 ? defaultFontSize() : _size, Fonts::defaultAppFontWeight(), Fonts::FontAdjust::NoAdjust);
     }
 
-    QFont ChatEventItem::getTextFontBold()
+    QFont ChatEventItem::getTextFontBold(int _size)
     {
-        return Fonts::adjustedAppFont(fontSize(), Fonts::FontWeight::SemiBold, Fonts::FontAdjust::NoAdjust);
+        return Fonts::adjustedAppFont(_size == -1 ? defaultFontSize() : _size, Fonts::FontWeight::SemiBold, Fonts::FontAdjust::NoAdjust);
     }
 
     void ChatEventItem::onChatInfo()
@@ -379,63 +472,98 @@ namespace Ui
         updateSize();
     }
 
-    void ChatEventItem::addAvatarClicked()
+    void ChatEventItem::leftButtonClicked()
     {
-        auto avatar = std::make_unique<ContactAvatarWidget>(this, getContact(), QString(), 0, true);
-        avatar->selectFileForAvatar();
-        auto pixmap = avatar->croppedImage();
-        if (!pixmap.isNull())
-            avatar->applyAvatar(pixmap);
+        if (!EventInfo_)
+            return;
+
+        if (EventInfo_->eventType() == core::chat_event_type::mchat_invite)
+        {
+            auto avatar = new ContactAvatarWidget(this, EventInfo_->getAimId(), QString(), 0, true);
+            avatar->selectFileForAvatar();
+            auto pixmap = avatar->croppedImage();
+            if (!pixmap.isNull())
+                avatar->applyAvatar(pixmap);
+        }
+        else if (EventInfo_->eventType() == core::chat_event_type::warn_about_stranger)
+        {
+            const auto& aimid = EventInfo_->getAimId();
+            Logic::getContactListModel()->ignoreContact(aimid, true);
+            ReportContact(aimid, Logic::GetFriendlyContainer()->getFriendly(aimid), false);
+        }
     }
 
-    void ChatEventItem::addDescriptionClicked()
+    void ChatEventItem::dlgStateChanged(const Data::DlgState& _state)
     {
-        const auto model = Logic::getContactListModel();
-        const auto& aimId = getContact();
+        if (EventInfo_ && _state.AimId_ == EventInfo_->getAimId())
+            updateSize();
+    }
 
-        QString name = model->getChatName(aimId);
-        QString description = model->getChatDescription(aimId);
-        QString rules = model->getChatRules(aimId);
+    void ChatEventItem::ignoreListChanged()
+    {
+        updateSize();
+    }
 
-        auto avatar = editGroup(aimId, name, description, rules);
-        if (name != model->getChatName(aimId))
+    void ChatEventItem::rightButtonClicked()
+    {
+        if (!EventInfo_)
+            return;
+
+        if (EventInfo_->eventType() == core::chat_event_type::mchat_invite)
+        {
+            const auto model = Logic::getContactListModel();
+            const auto aimId = EventInfo_->getAimId();
+
+            QString name = model->getChatName(aimId);
+            QString description = model->getChatDescription(aimId);
+            QString rules = model->getChatRules(aimId);
+
+            auto avatar = editGroup(aimId, name, description, rules);
+            if (name != model->getChatName(aimId))
+            {
+                Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
+                collection.set_value_as_qstring("aimid", aimId);
+                collection.set_value_as_qstring("name", name);
+                Ui::GetDispatcher()->post_message_to_core("chats/mod/name", collection.get());
+            }
+
+            if (description != model->getChatDescription(aimId))
+            {
+                Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
+                collection.set_value_as_qstring("aimid", aimId);
+                collection.set_value_as_qstring("about", description);
+                modChatAboutSeq_ = Ui::GetDispatcher()->post_message_to_core("chats/mod/about", collection.get());
+            }
+
+            if (rules != model->getChatRules(aimId))
+            {
+                Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
+                collection.set_value_as_qstring("aimid", aimId);
+                collection.set_value_as_qstring("rules", rules);
+                Ui::GetDispatcher()->post_message_to_core("chats/mod/rules", collection.get());
+            }
+
+            if (!avatar.isNull())
+            {
+                const auto byteArray = avatarToByteArray(avatar);
+
+                Ui::gui_coll_helper helper(GetDispatcher()->create_collection(), true);
+
+                core::ifptr<core::istream> data_stream(helper->create_stream());
+                if (!byteArray.isEmpty())
+                    data_stream->write((const uint8_t*)byteArray.data(), (uint32_t)byteArray.size());
+
+                helper.set_value_as_stream("avatar", data_stream.get());
+                helper.set_value_as_qstring("aimid", aimId);
+
+                GetDispatcher()->post_message_to_core("set_avatar", helper.get());
+            }
+        }
+        else if (EventInfo_->eventType() == core::chat_event_type::warn_about_stranger)
         {
             Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
-            collection.set_value_as_qstring("aimid", aimId);
-            collection.set_value_as_qstring("name", name);
-            Ui::GetDispatcher()->post_message_to_core("chats/mod/name", collection.get());
-        }
-
-        if (description != model->getChatDescription(aimId))
-        {
-            Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
-            collection.set_value_as_qstring("aimid", aimId);
-            collection.set_value_as_qstring("about", description);
-            modChatAboutSeq_ = Ui::GetDispatcher()->post_message_to_core("chats/mod/about", collection.get());
-        }
-
-        if (rules != model->getChatRules(aimId))
-        {
-            Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
-            collection.set_value_as_qstring("aimid", aimId);
-            collection.set_value_as_qstring("rules", rules);
-            Ui::GetDispatcher()->post_message_to_core("chats/mod/rules", collection.get());
-        }
-
-        if (!avatar.isNull())
-        {
-            const auto byteArray = avatarToByteArray(avatar);
-
-            Ui::gui_coll_helper helper(GetDispatcher()->create_collection(), true);
-
-            core::ifptr<core::istream> data_stream(helper->create_stream());
-            if (!byteArray.isEmpty())
-                data_stream->write((const uint8_t*)byteArray.data(), (uint32_t)byteArray.size());
-
-            helper.set_value_as_stream("avatar", data_stream.get());
-            helper.set_value_as_qstring("aimid", aimId);
-
-            GetDispatcher()->post_message_to_core("set_avatar", helper.get());
+            collection.set_value_as_qstring("contact", EventInfo_->getAimId());
+            Ui::GetDispatcher()->post_message_to_core("dlg_state/close_stranger", collection.get());
         }
     }
 

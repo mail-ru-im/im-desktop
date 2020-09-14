@@ -79,7 +79,7 @@ else()
 endif()
 include(${PRODUCT_SPEC_DIR}/project_settings.cmake)
 
-if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+if("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
     set(ICQ_DEBUG ON)
     set(ICQ_BIN_DIR "${ICQ_ROOT}/bin/Debug")
     set(ICQ_LIB_DIR "${ICQ_ROOT}/bin/Debug")
@@ -88,7 +88,7 @@ if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
         add_definitions(-DDEBUG=1)
         message(STATUS "add_definitions(-DDEBUG=1)")
     endif()
-elseif(${CMAKE_BUILD_TYPE} STREQUAL "Release")
+elseif("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
     set(ICQ_RELEASE ON)
     set(ICQ_BIN_DIR "${ICQ_ROOT}/bin/Release")
     set(ICQ_LIB_DIR "${ICQ_ROOT}/bin/Release")
@@ -174,6 +174,7 @@ if(MSVC)
     add_definitions(/we4099) # type name first seen using 'struct' now seen using 'class'
     add_definitions(/we4146)
     add_definitions(/we4114)
+    add_definitions(/we4551)
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /STACK:3145728") # for emoji map
     #add_definitions(/we4266) #update boost and qt or disable this warning for these headers
 
@@ -260,6 +261,84 @@ else()
     message(FATAL_ERROR "Unknown platform")
 endif()
 
+
+# ---------------------------  linux toolchain ----------------------------
+# i.e. -DUSE_TOOLCHAIN=/storage/toolchains
+if(USE_TOOLCHAIN)
+    if(LINUX)
+        message(STATUS "")
+        message(STATUS "[linux toolchain] --- --- --- -> ")
+
+        set(CMAKE_SYSTEM_NAME Linux)
+        set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
+
+        if(LINUX32)
+            message(STATUS "[toolchain i686]")
+            set(TOOLCHAIN_NAME "i686-ubuntu16.04-linux-gnu")
+            set(TOOLCHAIN_ARCH "i386-linux-gnu")
+        elseif(LINUX64)
+            message(STATUS "[toolchain x86_64]")
+            set(TOOLCHAIN_NAME "x86_64-ubuntu16.04-linux-gnu")
+            set(TOOLCHAIN_ARCH "x86_64-linux-gnu")
+
+        endif()
+
+        set(TOOLCHAIN_PATH "${USE_TOOLCHAIN}/${TOOLCHAIN_NAME}")
+        if (NOT EXISTS "${TOOLCHAIN_PATH}")
+            message(FATAL_ERROR "Toolchain ${TOOLCHAIN_PATH} not found!)")
+        endif()
+
+        set(CMAKE_C_COMPILER "${TOOLCHAIN_PATH}/bin/${TOOLCHAIN_NAME}-gcc" CACHE FILEPATH "" FORCE)
+        set(CMAKE_CXX_COMPILER "${TOOLCHAIN_PATH}/bin/${TOOLCHAIN_NAME}-g++" CACHE FILEPATH "" FORCE)
+        set(CMAKE_LINKER "${TOOLCHAIN_PATH}/bin/${TOOLCHAIN_NAME}-ld" CACHE FILEPATH "" FORCE)
+        set(CMAKE_C_COMPILER_AR "${TOOLCHAIN_PATH}/bin/${TOOLCHAIN_NAME}-ar" CACHE FILEPATH "" FORCE)
+        set(CMAKE_CXX_COMPILER_AR "${TOOLCHAIN_PATH}/bin/${TOOLCHAIN_NAME}-ar" CACHE FILEPATH "" FORCE)
+        set(CMAKE_C_COMPILER_RANLIB "${TOOLCHAIN_PATH}/bin/${TOOLCHAIN_NAME}-ranlib" CACHE FILEPATH "" FORCE)
+        set(CMAKE_CXX_COMPILER_RANLIB "${TOOLCHAIN_PATH}/bin/${TOOLCHAIN_NAME}-ranlib" CACHE FILEPATH "" FORCE)
+        set(CMAKE_OBJCOPY "${TOOLCHAIN_PATH}/bin/${TOOLCHAIN_NAME}-objcopy" CACHE FILEPATH "" FORCE)
+        set(CMAKE_OBJDUMP "${TOOLCHAIN_PATH}/bin/${TOOLCHAIN_NAME}-objdump" CACHE FILEPATH "" FORCE)
+        set(CMAKE_NM "${TOOLCHAIN_PATH}/bin/${TOOLCHAIN_NAME}-nm" CACHE FILEPATH "" FORCE)
+        set(CMAKE_AR "${TOOLCHAIN_PATH}/bin/${TOOLCHAIN_NAME}-ar" CACHE FILEPATH "" FORCE)
+        set(CMAKE_ADDR2LINE "${TOOLCHAIN_PATH}/bin/${TOOLCHAIN_NAME}-addr2line" CACHE FILEPATH "" FORCE)
+        set(CMAKE_RANLIB "${TOOLCHAIN_PATH}/bin/${TOOLCHAIN_NAME}-ranlib" CACHE FILEPATH "" FORCE)
+        set(CMAKE_READELF "${TOOLCHAIN_PATH}/bin/${TOOLCHAIN_NAME}-readelf" CACHE FILEPATH "" FORCE)
+        set(CMAKE_STRIP "${TOOLCHAIN_PATH}/bin/${TOOLCHAIN_NAME}-strip" CACHE FILEPATH "" FORCE)
+
+        set(CMAKE_SYSROOT "${TOOLCHAIN_PATH}/${TOOLCHAIN_NAME}/sysroot")
+        set(CMAKE_FIND_ROOT_PATH "${TOOLCHAIN_PATH}/${TOOLCHAIN_NAME}/sysroot")
+
+        message(STATUS "TOOLCHAIN_NAME -> ${TOOLCHAIN_NAME}")
+        message(STATUS "TOOLCHAIN_ARCH -> ${TOOLCHAIN_ARCH}")
+
+        set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
+        set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
+        set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
+        set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
+
+        message(STATUS "")
+        message(STATUS "[toolchain] CMAKE_TRY_COMPILE_TARGET_TYPE = ${CMAKE_TRY_COMPILE_TARGET_TYPE}")
+        message(STATUS "[toolchain] CMAKE_C_COMPILER              = ${CMAKE_C_COMPILER}")
+        message(STATUS "[toolchain] CMAKE_CXX_COMPILER            = ${CMAKE_CXX_COMPILER}")
+        message(STATUS "[toolchain] CMAKE_LINKER                  = ${CMAKE_LINKER}")
+        message(STATUS "")
+        message(STATUS "[toolchain] CMAKE_SYSROOT                 = ${CMAKE_SYSROOT}")
+        message(STATUS "[toolchain] CMAKE_FIND_ROOT_PATH          = ${CMAKE_FIND_ROOT_PATH}")
+        message(STATUS "[toolchain] CMAKE_SYSTEM_INCLUDE_PATH     = ${CMAKE_SYSTEM_INCLUDE_PATH}")
+        message(STATUS "[toolchain] CMAKE_SYSTEM_FRAMEWORK_PATH   = ${CMAKE_SYSTEM_FRAMEWORK_PATH}")
+        message(STATUS "")
+
+        # include_directories(${CMAKE_FIND_ROOT_PATH}/usr/share/X11)
+        include_directories(${CMAKE_FIND_ROOT_PATH}/usr/include)
+
+        # link_directories("${CMAKE_FIND_ROOT_PATH}/usr/lib")
+        link_directories("${CMAKE_FIND_ROOT_PATH}/usr/lib/${TOOLCHAIN_ARCH}")
+
+        message(STATUS "[linux toolchain] <- --- --- ---")
+        message(STATUS "")
+    endif()
+endif()
+# -----------------------------------------------------------------------------
+
 #shared definitions for linux and mac
 if (NOT MSVC)
     add_definitions(-Werror=reorder)
@@ -298,10 +377,30 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG ${ICQ_BIN_DIR})
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${ICQ_BIN_DIR})
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${ICQ_BIN_DIR})
 
+
+# --------------------------  validator  --------------------------
+if(RUN_VALIDATOR)
+    message(STATUS "[STAGE] VALIDATORS")
+    find_package(PythonInterp 3 REQUIRED)
+    message(STATUS "PYTHON_EXECUTABLE = ${PYTHON_EXECUTABLE}")
+    execute_process(COMMAND
+                    "${PYTHON_EXECUTABLE}" buildsystem/products_json_validator.py --products "${ICQ_ROOT}/products"
+                    WORKING_DIRECTORY ${ICQ_ROOT}
+                    RESULT_VARIABLE RETURN_VALUE)
+    if (NOT RETURN_VALUE EQUAL 0)
+        message(STATUS "Fix JSON or update validator rules in buildsystem/products_json_validator.py")
+        message(FATAL_ERROR "Products JSON check failed, return value ${RETURN_VALUE}")
+    else()
+        message(STATUS "Products JSON ${ICQ_ROOT}/products are valid")
+    endif()
+endif()
+# -----------------------------------------------------------------------------
+
+
 # --------------------------  external  --------------------------
 set(DOWNLOAD_URL "https://hb.bizmrg.com/icq-www/external")
 
-set(EXT_LIBS_VERSION v10)
+set(EXT_LIBS_VERSION "v11")
 
 set(EXT_LIBS_FNAME "external_${EXT_LIBS_VERSION}.zip")
 set(EXT_LIBS_MD5 "external_${EXT_LIBS_VERSION}.md5")
@@ -326,7 +425,6 @@ set(EXTERNAL_FILE_WITH_MD5)
 set(EXTERNAL_FILE_ZIPFILE_MD5)
 
 set(FETCHCONTENT_QUIET OFF)
-
 
 if(EXISTS "${EXTERNAL_DOWNLOADS}/tmp")
     message(STATUS "file(REMOVE_RECURSE ${EXTERNAL_DOWNLOADS}/tmp)")
@@ -376,12 +474,6 @@ endif()
 
 message(STATUS "FetchContent_MakeAvailable(${EXT_LIBS_VERSION})")
 FetchContent_MakeAvailable(${EXT_LIBS_VERSION})
-
-FetchContent_GetProperties(${EXT_LIBS_VERSION})
-if (NOT ${EXT_LIBS_VERSION}_POPULATED)
-    message(STATUS "FetchContent_Populate(${EXT_LIBS_VERSION})")
-    FetchContent_Populate(${EXT_LIBS_VERSION})
-endif()
 
 
 if(EXISTS "${EXTERNAL_DOWNLOADS}/src/${EXT_LIBS_FNAME}")
@@ -567,7 +659,7 @@ set(ICQ_MINIZIP "${ICQ_EXTERNAL}/minizip")
 include_directories(${ICQ_MINIZIP}/include)
 
 # --------------------------   libvoip   -------------------------
-set(VOIP_LIBS_VERSION 3.3.0.1664)
+set(VOIP_LIBS_VERSION "3.4.0.1711")
 
 set(VOIP_LIBS_FNAME "voip3_${VOIP_LIBS_VERSION}_desktop.zip")
 set(VOIP_LIBS_MD5 "voip3_${VOIP_LIBS_VERSION}_desktop.md5")
@@ -688,7 +780,6 @@ if (STRIP_VOIP)
 endif()
 
 
-
 # --------------------------     qt     --------------------------
 set(ICQ_QT_ROOT "${ICQ_EXTERNAL}/qt/${ICQ_PLATFORM}")
 
@@ -724,8 +815,6 @@ include_directories("${ICQ_QT_INCLUDE_DIR}/QtWidgets")
 include_directories("${ICQ_QT_INCLUDE_DIR}/QtWidgets/${ICQ_QT_VERSION}/QtWidgets")
 include_directories("${ICQ_QT_INCLUDE_DIR}/QtWidgets/${ICQ_QT_VERSION}")
 include_directories("${ICQ_QT_INCLUDE_DIR}/QtOpenGL")
-include_directories("${ICQ_QT_INCLUDE_DIR}/QtANGLE")
-include_directories("${ICQ_QT_INCLUDE_DIR}/QtEglSupport")
 include_directories("${ICQ_QT_INCLUDE_DIR}/QtNetwork")
 include_directories("${ICQ_QT_INCLUDE_DIR}/QtSvg")
 include_directories("${ICQ_QT_INCLUDE_DIR}/QtMacExtras")
@@ -741,7 +830,7 @@ if(MSVC)
         optimized ${ICQ_QT_LIB_DIR}/Qt5Core.lib debug ${ICQ_QT_LIB_DIR}/Qt5Cored.lib
         optimized ${ICQ_QT_LIB_DIR}/Qt5EventDispatcherSupport.lib debug ${ICQ_QT_LIB_DIR}/Qt5EventDispatcherSupportd.lib
         optimized ${ICQ_QT_LIB_DIR}/Qt5FontDatabaseSupport.lib debug ${ICQ_QT_LIB_DIR}/Qt5FontDatabaseSupportd.lib
-        optimized ${ICQ_QT_LIB_DIR}/Qt5Network.lib debug ${ICQ_QT_LIB_DIR}/Qt5Networkd.lib        
+        optimized ${ICQ_QT_LIB_DIR}/Qt5Network.lib debug ${ICQ_QT_LIB_DIR}/Qt5Networkd.lib
         optimized ${ICQ_QT_LIB_DIR}/Qt5Multimedia.lib debug ${ICQ_QT_LIB_DIR}/Qt5Multimediad.lib
         optimized ${ICQ_QT_LIB_DIR}/Qt5MultimediaWidgets.lib debug ${ICQ_QT_LIB_DIR}/Qt5MultimediaWidgetsd.lib
         optimized ${ICQ_QT_LIB_DIR}/Qt5Multimedia.lib debug ${ICQ_QT_LIB_DIR}/Qt5Multimediad.lib
@@ -753,9 +842,6 @@ if(MSVC)
         optimized ${ICQ_QT_LIB_DIR}/Qt5Widgets.lib debug ${ICQ_QT_LIB_DIR}/Qt5Widgetsd.lib
         optimized ${ICQ_QT_LIB_DIR}/Qt5WinExtras.lib debug ${ICQ_QT_LIB_DIR}/Qt5WinExtrasd.lib
         optimized ${ICQ_QT_LIB_DIR}/Qt5WindowsUIAutomationSupport.lib debug ${ICQ_QT_LIB_DIR}/Qt5WindowsUIAutomationSupportd.lib
-        optimized ${ICQ_QT_LIB_DIR}/Qt5EglSupport.lib debug ${ICQ_QT_LIB_DIR}/Qt5EglSupportd.lib
-        optimized ${ICQ_QT_LIB_DIR}/libEGL.lib debug ${ICQ_QT_LIB_DIR}/libEGLd.lib
-        optimized ${ICQ_QT_LIB_DIR}/libGLESv2.lib debug ${ICQ_QT_LIB_DIR}/libGLESv2d.lib
         optimized ${ICQ_QT_LIB_DIR}/qtpcre2.lib debug ${ICQ_QT_LIB_DIR}/qtpcre2d.lib
         optimized ${ICQ_QT_LIB_DIR}/qtmain.lib debug ${ICQ_QT_LIB_DIR}/qtmaind.lib
         optimized ${ICQ_QT_LIB_DIR}/qtharfbuzz.lib debug ${ICQ_QT_LIB_DIR}/qtharfbuzzd.lib

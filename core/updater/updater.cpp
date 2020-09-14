@@ -160,7 +160,7 @@ namespace core
             request.set_url(get_update_version_url(_params));
             request.set_normalized_url("update");
 
-            if (!request.get())
+            if (request.get() != curl_easy::completion_code::success)
                 return error::network_error;
 
             int32_t http_code = (int32_t)request.get_response_code();
@@ -222,7 +222,7 @@ namespace core
             request.set_normalized_url("https___mra_mail_ru_update");
             request.set_timeout(std::chrono::minutes(15));
             request.set_need_log(false);
-            if (!request.get())
+            if (request.get() != curl_easy::completion_code::success)
                 return error::network_error;
 
             int32_t http_code = (uint32_t)request.get_response_code();

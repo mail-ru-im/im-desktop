@@ -102,7 +102,7 @@ ActionButtonWidget::ActionButtonWidget(const ActionButtonResource::ResourceSet &
     , IsPressed_(false)
     , IsAnimating_(false)
     , Layout_(nullptr)
-    , animation_(new QVariantAnimation(this))
+    , animation_(nullptr)
 {
     initResources();
 
@@ -121,21 +121,25 @@ ActionButtonWidget::ActionButtonWidget(const ActionButtonResource::ResourceSet &
 
     setCursor(Qt::PointingHandCursor);
     setMouseTracking(true);
-
-    connect(animation_, &QVariantAnimation::valueChanged, this, qOverload<>(&ActionButtonWidget::update));
 }
 
-ActionButtonWidget::~ActionButtonWidget()
+void ActionButtonWidget::ensureAnimationInitialized()
 {
-
+    if (animation_)
+        return;
+    
+    animation_ = new QVariantAnimation(this);
+    animation_->setStartValue(0.0);
+    animation_->setEndValue(360.0);
+    animation_->setDuration(animationDuration());
+    animation_->setLoopCount(-1);
+    connect(animation_, &QVariantAnimation::valueChanged, this, qOverload<>(&ActionButtonWidget::update));
 }
 
 void ActionButtonWidget::createAnimationStartTimer()
 {
     if (AnimationStartTimer_)
-    {
         return;
-    }
 
     AnimationStartTimer_ = new QTimer(this);
     AnimationStartTimer_->setSingleShot(true);
@@ -161,7 +165,7 @@ void ActionButtonWidget::drawProgress(QPainter &p)
 
     const auto QT_ANGLE_MULT = 16;
 
-    const auto baseAngle = (animation_->currentValue().toDouble() * QT_ANGLE_MULT);
+    const auto baseAngle = animation_ ? animation_->currentValue().toDouble() * QT_ANGLE_MULT : 0.0;
 
     const auto progress = std::max(Progress_, PROGRESS_BAR_MIN_PERCENTAGE);
 
@@ -267,16 +271,12 @@ void ActionButtonWidget::setProgress(const double progress)
 
     const auto isProgressChanged = (std::abs(Progress_ - progress) >= 0.01);
     if (!isProgressChanged)
-    {
         return;
-    }
 
     Progress_ = progress;
 
     if (IsAnimating_)
-    {
         update();
-    }
 }
 
 void ActionButtonWidget::setProgressPen(const QColor color, const double a, const double width)
@@ -298,9 +298,7 @@ void ActionButtonWidget::setProgressText(const QString &progressText)
     assert(!progressText.isEmpty());
 
     if (ProgressText_ == progressText)
-    {
         return;
-    }
 
     ProgressText_ = progressText;
 
@@ -316,9 +314,7 @@ void ActionButtonWidget::setDefaultProgressText(const QString &progressText)
     assert(!progressText.isEmpty());
 
     if (DefaultProgressText_ == progressText)
-    {
         return;
-    }
 
     DefaultProgressText_ = progressText;
 
@@ -373,14 +369,10 @@ void ActionButtonWidget::startAnimation(const int32_t _delay)
 void ActionButtonWidget::stopAnimation()
 {
     if (AnimationStartTimer_)
-    {
         AnimationStartTimer_->stop();
-    }
 
     if (!IsAnimating_)
-    {
         return;
-    }
 
     stopProgressBarAnimation();
 
@@ -406,12 +398,16 @@ bool ActionButtonWidget::isWaitingForDelay()
 
 void ActionButtonWidget::pauseAnimation()
 {
-    animation_->pause();
+    ensureAnimationInitialized();
+    if (animation_->state() == QAbstractAnimation::Running)
+        animation_->pause();
 }
 
 void ActionButtonWidget::resumeAnimation()
 {
-    animation_->resume();
+    ensureAnimationInitialized();
+    if (animation_->state() == QAbstractAnimation::Paused)
+        animation_->resume();
 }
 
 void ActionButtonWidget::enterEvent(QEvent *)
@@ -419,9 +415,7 @@ void ActionButtonWidget::enterEvent(QEvent *)
     IsHovered_ = true;
 
     if (selectCurrentIcon())
-    {
         resetLayoutGeometry();
-    }
 }
 
 void ActionButtonWidget::hideEvent(QHideEvent* e)
@@ -448,9 +442,7 @@ void ActionButtonWidget::leaveEvent(QEvent *)
     IsPressed_ = false;
 
     if (selectCurrentIcon())
-    {
         resetLayoutGeometry();
-    }
 }
 
 #ifdef __APPLE__
@@ -541,9 +533,7 @@ void ActionButtonWidget::paintEvent(QPaintEvent *)
 void ActionButtonWidget::initResources()
 {
     if (ResourcesInitialized_)
-    {
         return;
-    }
 
     ResourcesInitialized_ = true;
 
@@ -574,26 +564,18 @@ bool ActionButtonWidget::selectCurrentIcon()
     if (IsAnimating_)
     {
         if (IsHovered_)
-        {
             icon = StopButtonImageHover_;
-        }
 
         if (IsPressed_)
-        {
             icon = StopButtonImageActive_;
-        }
     }
     else
     {
         if (IsHovered_)
-        {
             icon = StartButtonImageHover_;
-        }
 
         if (IsPressed_)
-        {
             icon = StartButtonImageActive_;
-        }
     }
 
     const auto iconChanged = (icon != CurrentIcon_);
@@ -610,26 +592,21 @@ void ActionButtonWidget::startProgressBarAnimation()
 {
     stopProgressBarAnimation();
 
+    ensureAnimationInitialized();
     IsAnimating_ = true;
-    animation_->setStartValue(0.0);
-    animation_->setEndValue(360.0);
-    animation_->setEasingCurve(QEasingCurve::Linear);
-    animation_->setDuration(animationDuration());
-    animation_->setLoopCount(-1);
     animation_->start();
 }
 
 void ActionButtonWidget::stopProgressBarAnimation()
 {
-    animation_->stop();
+    if (animation_)
+        animation_->stop();
 }
 
 void ActionButtonWidget::onAnimationStartTimeout()
 {
     if (IsAnimating_)
-    {
         return;
-    }
 
     startProgressBarAnimation();
 

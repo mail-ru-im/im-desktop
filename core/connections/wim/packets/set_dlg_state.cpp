@@ -53,7 +53,6 @@ int32_t set_dlg_state::init_request(const std::shared_ptr<core::http_request_sim
     {
         log_replace_functor f;
         f.add_json_marker("aimsid", aimsid_range_evaluator());
-        f.add_marker("a");
         _request->set_replace_log_function(f);
     }
 

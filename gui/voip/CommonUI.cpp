@@ -3,16 +3,12 @@
 #include "utils/features.h"
 #include "../gui_settings.h"
 #include "../core_dispatcher.h"
-#include "../../core/Voip/VoipManagerDefines.h"
 #include "../main_window/MainWindow.h"
 #include "SelectionContactsForConference.h"
 #include "../main_window/contact_list/RecentsTab.h"
-#include "../main_window/contact_list/ChatMembersModel.h"
 #include "../main_window/contact_list/ContactListModel.h"
-#include "../main_window/contact_list/FavoritesUtils.h"
 #include "../main_window/MainPage.h"
 #include "../main_window/GroupChatOperations.h"
-#include "../my_info.h"
 
 Ui::ResizeEventFilter::ResizeEventFilter(std::vector<QPointer<BaseVideoPanel>>& panels,
     ShadowWindow* shadow,

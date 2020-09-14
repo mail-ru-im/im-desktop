@@ -46,7 +46,6 @@ int32_t event_subscribe::init_request(const std::shared_ptr<core::http_request_s
     if (!params_.full_log_)
     {
         log_replace_functor f;
-        f.add_marker("a");
         f.add_json_marker("aimsid", aimsid_range_evaluator());
 
         for (const auto& s : subscriptions_)

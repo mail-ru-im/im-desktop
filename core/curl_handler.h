@@ -12,12 +12,13 @@ namespace core
         {
             success = 0,
             cancelled,
-            failed
+            failed,
+            resolve_failed
         };
 
         using completion_function = std::function<void(completion_code _code)>;
-        typedef std::future<CURLcode> future_t;
-        typedef std::promise<CURLcode> promise_t;
+        typedef std::future<completion_code> future_t;
+        typedef std::promise<completion_code> promise_t;
     }
 
     struct curl_context;
@@ -62,8 +63,8 @@ namespace core
     public:
         virtual ~curl_base_handler() {}
 
-        virtual curl_easy::future_t perform(std::shared_ptr<curl_context> _context) = 0;
-        virtual void perform_async(std::shared_ptr<curl_context> _context, curl_easy::completion_function _completion_func) = 0;
+        virtual curl_easy::future_t perform(const std::shared_ptr<curl_context>& _context) = 0;
+        virtual void perform_async(const std::shared_ptr<curl_context>& _context, curl_easy::completion_function _completion_func) = 0;
         virtual void raise_task(int64_t _id) = 0;
 
         virtual void init() = 0;
@@ -82,17 +83,19 @@ namespace core
     public:
         static curl_handler& instance();
 
-        virtual curl_easy::future_t perform(std::shared_ptr<curl_context> _context) override;
-        virtual void perform_async(std::shared_ptr<curl_context> _context, curl_easy::completion_function _completion_func) override;
-        virtual void raise_task(int64_t _id) override;
+        curl_easy::future_t perform(const std::shared_ptr<curl_context>& _context) override;
+        void perform_async(const std::shared_ptr<curl_context>& _context, curl_easy::completion_function _completion_func) override;
+        void raise_task(int64_t _id) override;
 
-        virtual void init() override;
-        virtual void cleanup() override;
-        virtual void reset() override;
+        void init() override;
+        void cleanup() override;
+        void reset() override;
 
-        virtual void process_stopped_tasks() override;
+        void process_stopped_tasks() override;
 
-        virtual bool is_stopped() const override;
+        bool is_stopped() const override;
+
+        void resolve_host(std::string_view _host, std::function<void(std::string _result, int _error)> _callback);
 
     private:
         curl_handler();

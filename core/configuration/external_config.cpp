@@ -19,11 +19,11 @@ using namespace core;
 
 namespace
 {
-    constexpr std::string_view json_name = "myteam-config.json";
+    constexpr std::string_view json_name() noexcept { return "myteam-config.json"; };
 
     std::wstring config_filename()
     {
-        return su::wconcat(core::utils::get_product_data_path(), L'/', core::tools::from_utf8(json_name));
+        return su::wconcat(core::utils::get_product_data_path(), L'/', core::tools::from_utf8(json_name()));
     }
 
     std::vector<config::features> get_features()
@@ -38,20 +38,9 @@ namespace
             config::features::vcs_webinar_enabled
         };
     }
-
-    external_url_config::config_features make_defaults()
-    {
-        external_url_config::config_features res;
-        for (auto f : get_features())
-            res[f] = config::get().is_on(f);
-        return res;
-    }
 }
 
-external_url_config::external_url_config()
-    : default_values_(make_defaults())
-{
-}
+external_url_config::external_url_config() = default;
 
 std::string_view external_url_config::extract_host(std::string_view _host)
 {
@@ -64,18 +53,17 @@ std::string_view external_url_config::extract_host(std::string_view _host)
     if (auto idx = _host.find("://"); idx != std::string_view::npos)
         _host.remove_prefix(idx + 3);
 
-    tools::trim_left(_host, " \n\r\t");
-    tools::trim_right(_host, " \n\r\t");
+    _host = tools::trim_left_copy(_host, " \n\r\t");
+    _host = tools::trim_right_copy(_host, " \n\r\t");
 
     return _host;
 }
 
 std::string external_url_config::make_url(std::string_view _domain, std::string_view _query)
 {
-    std::string query;
     if (!_query.empty())
-        query = su::concat('?', _query);
-    return su::concat("https://", _domain, '/', json_name, query);
+        return su::concat("https://", _domain, '/', json_name(), '?', _query);
+    return su::concat("https://", _domain, '/', json_name());
 }
 
 std::string external_url_config::make_url_preset(std::string_view _login_domain)
@@ -180,29 +168,48 @@ bool external_url_config::load_from_file()
     if (!unserialize(doc))
         return false;
 
-    is_valid_ = true;
     return true;
 }
 
-std::string_view external_url_config::get_host(const host_url_type _type) const
+std::string external_url_config::get_host(host_url_type _type) const
 {
-    if (is_valid())
+    if (const auto c = get_config(); c)
     {
-        if (const auto iter_u = config_.cache_.find(_type); iter_u != config_.cache_.end())
+        const auto& cache = c->cache_;
+        if (const auto iter_u = cache.find(_type); iter_u != cache.end())
             return iter_u->second;
     }
 
     assert(false);
-    return std::string_view();
+    return {};
+}
+
+std::vector<std::string> config::hosts::external_url_config::get_vcs_urls() const
+{
+    if (const auto c = get_config(); c)
+        return c->vcs_rooms_;
+    return {};
 }
 
 void external_url_config::clear()
 {
-    is_valid_ = false;
-    config_.clear();
-    reset_to_defaults(default_values_);
+    std::scoped_lock lock(spin_lock_);
+    config_ = {};
+    reset_to_defaults();
 
     tools::system::delete_file(config_filename());
+}
+
+std::map<host_url_type, std::string> config::hosts::external_url_config::get_cache() const
+{
+    if (const auto c = get_config(); c)
+        return c->cache_;
+    return {};
+}
+
+bool config::hosts::external_url_config::is_valid() const
+{
+    return static_cast<bool>(get_config());
 }
 
 bool external_url_config::unserialize(const rapidjson::Value& _node)
@@ -211,30 +218,39 @@ bool external_url_config::unserialize(const rapidjson::Value& _node)
     if (!new_config.unserialize(_node))
         return false;
 
-    config_ = std::move(new_config);
-    reset_to_defaults(default_values_);
-    override_features(config_.override_values_);
+    auto c = std::make_shared<config_p>(std::move(new_config));
 
-    is_valid_ = true;
+    std::scoped_lock lock(spin_lock_);
+    config_ = std::move(c);
+    override_features(config_->override_values_);
+
     return true;
 }
 
 void external_url_config::override_features(const config_features& _values)
 {
-    for (const auto& [feature, enabled] : _values)
+    if (_values.empty())
     {
-        assert(default_values_.find(feature) != default_values_.end());
-        config::override_feature(feature, enabled);
+        reset_to_defaults();
+    }
+    else
+    {
+        external_configuration conf;
+        for (const auto& [feature, enabled] : _values)
+            conf.features.emplace_back(feature, enabled);
+        config::set_external(std::make_shared<external_configuration>(std::move(conf)));
     }
 }
 
-void external_url_config::reset_to_defaults(const config_features& _values)
+void external_url_config::reset_to_defaults()
 {
-    for (const auto& [feature, _] : _values)
-    {
-        assert(default_values_.find(feature) != default_values_.end());
-        config::reset_feature_to_default(feature);
-    }
+    config::reset_external();
+}
+
+std::shared_ptr<external_url_config::config_p> external_url_config::get_config() const
+{
+    std::scoped_lock lock(spin_lock_);
+    return config_;
 }
 
 bool external_url_config::config_p::unserialize(const rapidjson::Value& _node)
@@ -309,9 +325,3 @@ bool external_url_config::config_p::unserialize(const rapidjson::Value& _node)
     return true;
 }
 
-void external_url_config::config_p::clear()
-{
-    cache_.clear();
-    vcs_rooms_.clear();
-    override_values_.clear();
-}

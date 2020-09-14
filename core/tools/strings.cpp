@@ -38,7 +38,7 @@ namespace core
             return (_c >= 'a' && _c <= 'z') || (_c >= 'A' && _c <= 'Z');
         }
 
-        bool is_phone(const std::string_view _value)
+        bool is_phone(std::string_view _value)
         {
             if (_value.empty())
                 return false;
@@ -48,12 +48,12 @@ namespace core
             return std::all_of(iter, _value.end(), [](auto c) { return is_digit(c); });
         }
 
-        bool is_number(const std::string_view _value)
+        bool is_number(std::string_view _value)
         {
             return std::all_of(_value.begin(), _value.end(), [](auto c) { return is_digit(c); });
         }
 
-        bool is_uin(const std::string_view _value)
+        bool is_uin(std::string_view _value)
         {
             return is_number(_value);
         }
@@ -72,7 +72,7 @@ namespace core
         }
 
 
-        bool is_email(const std::string_view _value)
+        bool is_email(std::string_view _value)
         {
             bool alpha = false;
             int32_t name = 0, domain = 0, dots = 0;
@@ -132,33 +132,7 @@ namespace core
 #endif //__linux__
         }
 
-        std::vector<std::string> to_array(const std::string &text, const std::string &separator)
-        {
-            std::vector<std::string> r;
-            if (!separator.empty() && text.length() > separator.length())
-            {
-                size_t pos_begin = 0;
-                while (true)
-                {
-                    auto pos_end = text.find(separator, pos_begin);
-                    if (pos_end < text.length())
-                    {
-                        if (pos_begin < pos_end)
-                            r.push_back(std::string(text.begin() + pos_begin, text.begin() + pos_end));
-                    }
-                    else
-                    {
-                        if (pos_begin < text.length())
-                            r.push_back(std::string(text.begin() + pos_begin, text.end()));
-                        break;
-                    }
-                    pos_begin = (pos_end + separator.length());
-                }
-            }
-            return r;
-        }
-
-        std::string adler32(const std::string& _input)
+        std::string adler32(std::string_view _input)
         {
             int32_t d = 1;
             long long b = 0;
@@ -270,7 +244,7 @@ namespace core
             return { false, std::string() };
         }
 
-        int32_t get_char_index(const char* _str, int32_t& _length, std::shared_ptr<int32_t> _last_symb_id, std::string& _symbols
+        int32_t get_char_index(const char* _str, int32_t& _length, const std::shared_ptr<int32_t>& _last_symb_id, std::string& _symbols
             , std::vector<int32_t>& _indexes, std::vector<std::pair<std::string, int32_t>>& _table)
         {
             _length = tools::utf8_char_size(*_str);
@@ -312,7 +286,7 @@ namespace core
             return result;
         }
 
-        std::vector<int32_t> convert_string_to_vector(const std::string& _str, std::shared_ptr<int32_t> _last_symb_id
+        std::vector<int32_t> convert_string_to_vector(const std::string& _str, const std::shared_ptr<int32_t>& _last_symb_id
             , std::string& _symbols, std::vector<int32_t>& _indexes, std::vector<std::pair<std::string, int32_t>>& _table)
         {
             std::vector<int32_t> result;

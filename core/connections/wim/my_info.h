@@ -60,7 +60,7 @@ namespace core
             bool is_phone_number_exists() const;
 
             const std::shared_ptr<my_info>& get_info() const noexcept { return info_; }
-            void set_info(std::shared_ptr<my_info> _info);
+            void set_info(const std::shared_ptr<my_info>& _info);
 
             const status& get_status() const noexcept { return status_; }
             void set_status(status _status);

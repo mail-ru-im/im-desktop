@@ -372,12 +372,19 @@ void im_stats::clear(int32_t _send_result)
     {
         if (is_sending_)
         {
-            last_sent_time_ = start_send_time_;
-
-            it = std::remove_if(events_.begin(), events_.end(), [](const auto& event)
+            if (_send_result == 0)
             {
-                return event.is_sent();
-            });
+                last_sent_time_ = start_send_time_;
+
+                it = std::remove_if(events_.begin(), events_.end(), [](const auto& event)
+                {
+                    return event.is_sent();
+                });
+            }
+            else
+            {
+                mark_all_events_sent(false);
+            }
         }
     }
 
@@ -526,7 +533,8 @@ int32_t im_stats::send(const proxy_settings& _user_proxy,
     post_request.set_post_data(data.get_data(), data.available(), false);
     post_request.set_compression_auto();
 
-    if (post_request.post())
+    auto res = post_request.post();
+    if (res == curl_easy::completion_code::success)
     {
         auto http_code = post_request.get_response_code();
         if (http_code == 200)

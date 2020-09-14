@@ -364,8 +364,6 @@ namespace Ui
         Heads::HeadContainer* heads_;
 
         QVariantAnimation* smartreplyAnim_;
-        SmartreplyAnimType smartreplyAnimType_ = SmartreplyAnimType::invalid;
-        bool isSmartreplyAnimating_ = false;
         Utils::OpacityEffect* smartreplyOpacity_;
         Utils::OpacityEffect* smartreplyButtonOpacity_;
 

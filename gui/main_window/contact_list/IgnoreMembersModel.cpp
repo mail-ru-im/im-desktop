@@ -266,6 +266,8 @@ namespace Logic
         members_.swap(new_members);
 
         setSearchPattern(getSearchPattern());
+
+        Q_EMIT changed();
     }
 
     int IgnoreMembersModel::getMembersCount() const
@@ -275,7 +277,7 @@ namespace Logic
 
     void updateIgnoredModel(const QVector<QString>& _ignoredList)
     {
-        Logic::getContactListModel()->removeContactsFromModel(_ignoredList);
+        Logic::getContactListModel()->removeContactsFromModel(_ignoredList, false);
         getIgnoreModel()->updateMembers(_ignoredList);
     }
 

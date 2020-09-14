@@ -10,6 +10,9 @@ namespace Logic
     {
         Q_OBJECT
 
+    Q_SIGNALS:
+        void changed();
+
     private Q_SLOTS:
         void avatarLoaded(const QString& _aimId);
 

@@ -7,6 +7,7 @@
 #include "../../controls/ContextMenu.h"
 #include "../../controls/SwitcherCheckbox.h"
 #include "../../controls/CheckboxList.h"
+#include "controls/TransparentScrollBar.h"
 #include "../../fonts.h"
 #include "../../app_config.h"
 #include "../../utils/utils.h"
@@ -29,6 +30,8 @@
 #include "../../controls/ContactAvatarWidget.h"
 #include "../../controls/GeneralDialog.h"
 #include "../../controls/TooltipWidget.h"
+#include "controls/BigEmojiWidget.h"
+
 #include "../../utils/Text2DocConverter.h"
 #include "../../styles/ThemeParameters.h"
 #include "previewer/toast.h"
@@ -87,6 +90,87 @@ namespace
         result[qsl("sender")] = _sender;
         result[qsl("time")] = (qlonglong)_time;
         return result;
+    }
+
+    int nameOffsetTop()
+    {
+        if constexpr (platform::is_apple())
+            return Utils::scale_value(14);
+        else
+            return Utils::scale_value(12);
+    }
+
+    int statusTopOffset()
+    {
+        if constexpr (platform::is_apple())
+            return Utils::scale_value(2);
+        else
+            return Utils::scale_value(4);
+    }
+
+    int botStatusTopOffset()
+    {
+        return Utils::scale_value(8);
+    }
+
+    int statusImageSize()
+    {
+        return Utils::scale_value(16);
+    }
+
+    int statusSideMargin()
+    {
+        return Utils::scale_value(8);
+    }
+
+    int statusImageSideMargin()
+    {
+        return Utils::scale_value(2);
+    }
+
+    QColor statusBackgroundColor(bool _hovered, bool _pressed)
+    {
+        if (_pressed)
+            return Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT_ACTIVE);
+        else if (_hovered)
+            return Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT_HOVER);
+        else
+            return Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT);
+    }
+
+    int statusBottomMargin()
+    {
+        return Utils::scale_value(12);
+    }
+
+    int statusPopupWidth()
+    {
+        return Utils::scale_value(356);
+    }
+
+    int statusPopupTextSideMargin()
+    {
+        return Utils::scale_value(16);
+    }
+
+    int statusPopupElapsedTextTopMargin()
+    {
+        return Utils::scale_value(6);
+    }
+
+    int statusPopupTextMaxWidth()
+    {
+        return statusPopupWidth() - 2 * statusPopupTextSideMargin();
+    }
+
+    int statusPopupButtonsGap()
+    {
+        return Utils::scale_value(8);
+    }
+
+    QColor statusPopupShadowColor()
+    {
+        return QColor(0, 0, 0, 255 * 0.3);
     }
 }
 
@@ -318,17 +402,16 @@ namespace Ui
         , clickable_(false)
         , hovered_(false)
         , nameOnly_(false)
+        , statusPlate_(new StatusPlate(this))
     {
         name_ = TextRendering::MakeTextUnit(QString(), {}, TextRendering::LinksVisible::DONT_SHOW_LINKS);
         info_ = TextRendering::MakeTextUnit(QString(), {}, TextRendering::LinksVisible::DONT_SHOW_LINKS);
 
         connect(Logic::GetAvatarStorage(), &Logic::AvatarStorage::avatarChanged, this, &AvatarNameInfo::avatarChanged);
         connect(Logic::GetFriendlyContainer(), &Logic::FriendlyContainer::friendlyChanged, this, &AvatarNameInfo::friendlyChanged);
-        connect(Logic::GetStatusContainer(), &Logic::StatusContainer::statusChanged, this, [this](const QString& _aimid)
-        {
-            if (_aimid == aimId_)
-                update();
-        });
+        connect(Logic::GetStatusContainer(), &Logic::StatusContainer::statusChanged, this, &AvatarNameInfo::statusChanged);
+        connect(statusPlate_, &StatusPlate::update, this, qOverload<>(&AvatarNameInfo::update));
+
         setMouseTracking(true);
     }
 
@@ -361,8 +444,10 @@ namespace Ui
         friendlyName_ = _friendly.isEmpty() ? Logic::GetFriendlyContainer()->getFriendly(aimId_) : _friendly;
         name_->setText(friendlyName_);
         name_->elide(width() - margins_.left() - margins_.right() - avatarSize_ - textOffset_ - (clickable_ ? Utils::scale_value(ICON_SIZE + ICON_OFFSET) : 0));
+        statusPlate_->setContactId(aimId_);
         setBadgeRect();
         loadAvatar();
+        updateSize();
     }
 
     void AvatarNameInfo::setFrienlyAndSize(const QString& _friendly, int _size)
@@ -382,6 +467,7 @@ namespace Ui
     {
         info_->setText(_info, _color);
         name_->elide(width() - margins_.left() - margins_.right() - avatarSize_ - textOffset_ - (clickable_ ? Utils::scale_value(ICON_SIZE + ICON_OFFSET) : 0));
+        updateSize();
         update();
     }
 
@@ -417,22 +503,38 @@ namespace Ui
 
         if (!avatar_.isNull())
         {
-            const auto statusBadgeState = aimId_ == MyInfo()->aimId() ? Utils::StatusBadgeState::AlwaysOn : Utils::StatusBadgeState::CanBeOff;
-            Utils::drawAvatarWithBadge(p, QPoint(margins_.left(), height() / 2 - avatarSize_ / 2), avatar_, aimId_, false, statusBadgeState, false, false);
+            const auto topLeft = QPoint(margins_.left(), height() / 2 - avatarSize_ / 2);
+            Utils::drawAvatarWithBadge(p, topLeft, avatar_, aimId_, false, Utils::StatusBadgeState::BadgeOnly, false, false);
         }
 
+        const auto isBot = Logic::GetLastseenContainer()->isBot(aimId_);
+
         if (nameOnly_)
+        {
             name_->setOffsets(margins_.left() + avatarSize_ + textOffset_, height() / 2);
+        }
+        if (!statusPlate_->isEmpty() && !isBot )
+        {
+            name_->setOffsets(margins_.left() + avatarSize_ + textOffset_, nameOffsetTop());
+        }
         else
+        {
             name_->setOffsets(margins_.left() + avatarSize_ + textOffset_, height() / 2 - name_->cachedSize().height() - Utils::scale_value(NAME_OFFSET) / 2);
+        }
 
         name_->draw(p, nameOnly_ ? TextRendering::VerPosition::MIDDLE : TextRendering::VerPosition::TOP);
 
-        if (!nameOnly_)
+        if (!nameOnly_ && !isBot)
         {
-            info_->setOffsets(margins_.left() + avatarSize_ + textOffset_, height() / 2 + Utils::scale_value(NAME_OFFSET) / 2);
+            if (statusPlate_->isEmpty())
+                info_->setOffsets(margins_.left() + avatarSize_ + textOffset_, height() / 2 + Utils::scale_value(NAME_OFFSET) / 2);
+            else
+                info_->setOffsets(margins_.left() + avatarSize_ + textOffset_, nameOffsetTop() + name_->cachedSize().height());
+
             info_->draw(p);
         }
+
+        statusPlate_->draw(p);
 
         if (Q_UNLIKELY(Ui::GetAppConfig().IsShowMsgIdsEnabled()))
         {
@@ -450,12 +552,17 @@ namespace Ui
         name_->elide(width() - margins_.left() - margins_.right() - avatarSize_ - textOffset_ - (clickable_ ? Utils::scale_value(ICON_SIZE + ICON_OFFSET): 0));
         info_->elide(width() - margins_.left() - margins_.right() - avatarSize_ - textOffset_);
 
+        const auto pos = statusPos();
+        statusPlate_->updateGeometry(pos, _event->size().width() -  pos.x() - Utils::scale_value(16));
+
         QWidget::resizeEvent(_event);
     }
 
     void AvatarNameInfo::mousePressEvent(QMouseEvent* _event)
     {
         clicked_ = _event->pos();
+        statusPlate_->onMousePress(_event->pos());
+
         QWidget::mousePressEvent(_event);
     }
 
@@ -477,16 +584,21 @@ namespace Ui
                     Q_EMIT clicked();
             }
         }
+
+        statusPlate_->onMouseRelease(_event->pos());
+
         QWidget::mouseReleaseEvent(_event);
     }
 
     void AvatarNameInfo::mouseMoveEvent(QMouseEvent* _event)
     {
         QRect r(margins_.left(), height() / 2 - avatarSize_ / 2, avatarSize_, avatarSize_);
-        if (r.contains(_event->pos()) && !defaultAvatar_)
+        if (r.contains(_event->pos()) && !defaultAvatar_ || (statusPlate_->rect().contains(_event->pos()) && !Logic::GetLastseenContainer()->isBot(aimId_)))
             setCursor(Qt::PointingHandCursor);
         else
             setCursor(Qt::ArrowCursor);
+
+        statusPlate_->onMouseMove(_event->pos());
 
         QWidget::mouseMoveEvent(_event);
     }
@@ -502,6 +614,8 @@ namespace Ui
     void AvatarNameInfo::leaveEvent(QEvent* _event)
     {
         hovered_ = false;
+        statusPlate_->onMouseLeave();
+
         update();
 
         QWidget::leaveEvent(_event);
@@ -526,6 +640,15 @@ namespace Ui
         update();
     }
 
+    void AvatarNameInfo::statusChanged(const QString& _aimid)
+    {
+        if (_aimid != aimId_)
+            return;
+
+        updateSize();
+        update();
+    }
+
     void AvatarNameInfo::loadAvatar()
     {
         avatar_ = *(Logic::GetAvatarStorage()->GetRounded(aimId_, friendlyName_, Utils::scale_bitmap(avatarSize_), defaultAvatar_, false, false));
@@ -541,6 +664,241 @@ namespace Ui
         if (statusParams.isValid())
             badgeRect_ = QRect(statusParams.offset_, QSize(avatarSize_, avatarSize_)).translated(margins_.left(), height() / 2 - avatarSize_ / 2);
     }
+
+    void AvatarNameInfo::updateSize()
+    {
+        const auto statusTopLeft = statusPos();
+        const auto statusBottom = statusTopLeft.y() + statusPlate_->height() + statusBottomMargin();
+        const auto avatarHeight = Utils::scale_value(AVATAR_INFO_HEIGHT);
+
+        setFixedHeight(std::max(statusBottom, avatarHeight));
+
+        statusPlate_->updateGeometry(statusTopLeft, width() -  statusTopLeft.x() - Utils::scale_value(16));
+    }
+
+    QPoint AvatarNameInfo::statusPos() const
+    {
+        const auto isBot = Logic::GetLastseenContainer()->isBot(aimId_);
+        auto nameHeight = name_->cachedSize().height();
+        auto infoHeight = info_->cachedSize().height();
+        return { margins_.left() + avatarSize_ + textOffset_, nameOffsetTop() + nameHeight + (isBot ? botStatusTopOffset() : infoHeight + statusTopOffset()) };
+    }
+
+    StatusPlate::StatusPlate(QObject* _parent)
+        : QObject(_parent)
+    {
+        text_ = TextRendering::MakeTextUnit(QString(), {}, TextRendering::LinksVisible::DONT_SHOW_LINKS);
+        text_->init(Fonts::appFontScaled(13), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY), QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, 1);
+        connect(Logic::GetStatusContainer(), &Logic::StatusContainer::statusChanged, this, &StatusPlate::onStatusChanged);
+    }
+
+    StatusPlate::~StatusPlate() = default;
+
+    void StatusPlate::setContactId(const QString& _id)
+    {
+        contactId_ = _id;
+
+        if (!Logic::GetLastseenContainer()->isBot(contactId_))
+            status_ = Logic::GetStatusContainer()->getStatus(contactId_);
+        else
+            status_ = Statuses::Status(Emoji::EmojiCode::toQString(Emoji::EmojiCode(0x1F916)), QT_TRANSLATE_NOOP("status_plate", "Bot"));
+
+        text_->setText(status_.getDescription());
+        hoverEnabled_ = !Logic::GetLastseenContainer()->isBot(contactId_);
+        updateGeometry(rect_.topLeft(), cachedAvailableWidth_);
+    }
+
+    void StatusPlate::draw(QPainter& _p)
+    {
+        if (status_.isEmpty())
+            return;
+
+        QPainterPath path;
+        path.addRoundedRect(rect_, Utils::scale_value(10), Utils::scale_value(10));
+        _p.fillPath(path, statusBackgroundColor(hovered_, pressed_));
+        _p.drawImage(rect_.left() + statusSideMargin(), rect_.top() + (rect_.height() - statusImageSize()) / 2, status_.getImage(statusImageSize()));
+        text_->draw(_p, TextRendering::VerPosition::MIDDLE);
+    }
+
+    int StatusPlate::height() const
+    {
+        return status_.isEmpty() ? 0 : Utils::scale_value(20);
+    }
+
+    QRect StatusPlate::rect() const
+    {
+        return rect_;
+    }
+
+    bool StatusPlate::isEmpty() const
+    {
+        return status_.isEmpty();
+    }
+
+    void StatusPlate::onMouseMove(const QPoint& _pos)
+    {
+        if (!hoverEnabled_)
+            return;
+
+        auto mouseOver = rect_.contains(_pos);
+        if (mouseOver != std::exchange(hovered_, mouseOver))
+            Q_EMIT update(QPrivateSignal());
+    }
+
+    void StatusPlate::onMousePress(const QPoint& _pos)
+    {
+        if (!hoverEnabled_)
+            return;
+
+        pressed_ = rect_.contains(_pos);
+        Q_EMIT update(QPrivateSignal());
+    }
+
+    void StatusPlate::onMouseRelease(const QPoint& _pos)
+    {
+        if (pressed_ && hoverEnabled_ && rect_.contains(_pos))
+        {
+            auto w = new StatusPopup(status_, nullptr);
+            GeneralDialog d(w, Utils::InterConnector::instance().getMainWindow(), false, false);
+            d.setTransparentBackground(true);
+            d.setShadow(false);
+
+            if (d.showInCenter())
+            {
+                if (auto mainWindow = Utils::InterConnector::instance().getMainWindow())
+                    mainWindow->openStatusPicker();
+            }
+        }
+
+        pressed_ = false;
+        Q_EMIT update(QPrivateSignal());
+    }
+
+    void StatusPlate::onMouseLeave()
+    {
+        hovered_ = false;
+        Q_EMIT update(QPrivateSignal());
+    }
+
+    void StatusPlate::onStatusChanged(const QString& _contactId)
+    {
+        if (_contactId != contactId_ || Logic::GetLastseenContainer()->isBot(contactId_))
+            return;
+
+        status_ = Logic::GetStatusContainer()->getStatus(contactId_);
+        text_->setText(status_.getDescription());
+
+        updateGeometry(rect_.topLeft(), cachedAvailableWidth_);
+    }
+
+    int StatusPlate::availableForText(int _availableWidth) const
+    {
+        return _availableWidth - statusImageSize() - 2 * statusSideMargin() - statusImageSideMargin();
+    }
+
+    void StatusPlate::updateTextGeometry(int _availableWidth)
+    {
+        text_->getHeight(availableForText(_availableWidth));
+        text_->setOffsets(rect_.left() + statusImageSize() + statusImageSideMargin() + statusSideMargin(), rect_.center().y());
+    }
+
+    void StatusPlate::updateGeometry(const QPoint& _topLeft, int _availableWidth)
+    {
+        cachedAvailableWidth_ = _availableWidth;
+        if (!status_.isEmpty())
+        {
+            rect_ = QRect(_topLeft, QSize(statusImageSize() + std::min(availableForText(_availableWidth),
+                                                           text_->desiredWidth()) + 2 * statusSideMargin() + statusImageSideMargin(), Utils::scale_value(20)));
+        }
+        else
+        {
+            rect_ = QRect();
+        }
+        updateTextGeometry(_availableWidth);
+    }
+
+    StatusPopup::StatusPopup(const Statuses::Status& _status, QWidget* _parent)
+        : QWidget(_parent),
+          content_(new QWidget(this)),
+          status_(_status),
+          emoji_(new BigEmojiWidget(_status.toString(), Utils::scale_value(100), this)),
+          text_(new TextWidget(_parent, _status.getDescription())),
+          duration_(new TextWidget(_parent, _status.getTimeString()))
+
+    {
+        const auto margin = Utils::scale_value(16);
+        setContentsMargins(margin, 0, margin, margin); // add margins to have enough space for custom shadow
+
+        auto layout = Utils::emptyVLayout(this);
+
+        content_->setFixedWidth(statusPopupWidth());
+        auto contentLayout = Utils::emptyVLayout(content_);
+        contentLayout->addWidget(emoji_, 0, Qt::AlignHCenter);
+
+        scrollArea_ = CreateScrollAreaAndSetTrScrollBarV(this);
+        auto scrollAreaContent = new QWidget(scrollArea_);
+        auto scrollAreaContentLayout = Utils::emptyVLayout(scrollAreaContent);
+        scrollAreaContentLayout->addWidget(text_, 0, Qt::AlignHCenter);
+        scrollAreaContentLayout->addSpacing(statusPopupElapsedTextTopMargin());
+        scrollAreaContentLayout->addWidget(duration_, 0, Qt::AlignHCenter);
+
+        text_->init(Fonts::appFontScaled(23), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID), QColor(), QColor(), QColor(), TextRendering::HorAligment::CENTER);
+        text_->setMaxWidthAndResize(statusPopupTextMaxWidth());
+        duration_->init(Fonts::appFontScaled(13), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY), QColor(), QColor(), QColor(), TextRendering::HorAligment::CENTER);
+        duration_->setMaxWidthAndResize(statusPopupTextMaxWidth());
+
+        scrollArea_->setWidget(scrollAreaContent);
+        scrollArea_->setWidgetResizable(true);
+        scrollArea_->setFrameStyle(QFrame::NoFrame);
+        scrollArea_->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+        scrollArea_->verticalScrollBar()->setStyleSheet(qsl("height: 0")); // fix for minimum height of scroll area
+        scrollArea_->setStyleSheet(qsl("background: transparent;"));
+
+        contentLayout->addSpacing(Utils::scale_value(16));
+        contentLayout->addWidget(scrollArea_);
+        contentLayout->addSpacing(Utils::scale_value(24));
+
+        auto buttonsLayout = Utils::emptyHLayout();
+        auto accept = new DialogButton(this, QT_TRANSLATE_NOOP("status_popup", "Select my status"), DialogButtonRole::CONFIRM);
+        connect(accept, &DialogButton::clicked, this, []() { Q_EMIT Utils::InterConnector::instance().acceptGeneralDialog(); });
+
+        accept->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+        accept->adjustSize();
+        auto cancel = new DialogButton(this, QT_TRANSLATE_NOOP("status_popup", "Cancel"), DialogButtonRole::CANCEL);
+        connect(cancel, &DialogButton::clicked, this, []() { Q_EMIT Utils::InterConnector::instance().closeAnyPopupWindow(Utils::CloseWindowInfo()); });
+        cancel->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+        cancel->adjustSize();
+
+        buttonsLayout->addStretch();
+        buttonsLayout->addWidget(cancel);
+        buttonsLayout->addSpacing(statusPopupButtonsGap());
+        buttonsLayout->addWidget(accept);
+        buttonsLayout->addStretch();
+
+        contentLayout->addLayout(buttonsLayout);
+        contentLayout->addSpacing(Utils::scale_value(16));
+
+        auto shadow = new QGraphicsDropShadowEffect(this);
+        shadow->setBlurRadius(16);
+        shadow->setOffset(0, Utils::scale_value(1));
+        shadow->setColor(statusPopupShadowColor());
+        setGraphicsEffect(shadow);
+
+        layout->addWidget(content_);
+    }
+
+    void StatusPopup::paintEvent(QPaintEvent* _event)
+    {
+        QPainter p(this);
+        p.setRenderHint(QPainter::Antialiasing);
+
+        auto backgroundRect = content_->geometry();
+        backgroundRect.setTop(emoji_->height() / 2);
+
+        QPainterPath path;
+        path.addRoundedRect(backgroundRect, Utils::scale_value(6), Utils::scale_value(6));
+        p.fillPath(path, Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE));
+    }    
 
     AvatarNamePlaceholder::AvatarNamePlaceholder(QWidget* _parent)
         : QWidget(_parent)
@@ -579,7 +937,7 @@ namespace Ui
         , menu_(nullptr)
     {
         text_ = TextRendering::MakeTextUnit(QString(), Data::MentionMap());
-        collapsedText_ = TextRendering::MakeTextUnit(QString(), Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
+        collapsedText_ = TextRendering::MakeTextUnit(QString(), Data::MentionMap(), TextRendering::LinksVisible::SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
         readMore_ = TextRendering::MakeTextUnit(QT_TRANSLATE_NOOP("sidebar", "Read more"));
 
         iconNormalColor_ = Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY);
@@ -620,7 +978,10 @@ namespace Ui
             const auto isSelectionTopToBottom = (_from.y() <= _to.y());
             const auto from = isSelectionTopToBottom ? _from : _to;
             const auto to = isSelectionTopToBottom ? _to : _from;
-            text_->select(from, to);
+            if (collapsed_)
+                collapsedText_->select(from, to);
+            else
+                text_->select(from, to);
             Q_EMIT selectionChanged();
         }
         update();
@@ -821,8 +1182,16 @@ namespace Ui
             if (TripleClickTimer_ && TripleClickTimer_->isActive())
             {
                 TripleClickTimer_->stop();
-                text_->selectAll();
-                text_->fixSelection();
+                if (collapsed_)
+                {
+                    collapsedText_->selectAll();
+                    collapsedText_->fixSelection();
+                }
+                else
+                {
+                    text_->selectAll();
+                    text_->fixSelection();
+                }
             }
             else
             {
@@ -843,7 +1212,7 @@ namespace Ui
     {
         const auto pos = _event->pos();
 
-        if (Utils::clicked(selectFrom_, pos) || text_->isSelected())
+        if (Utils::clicked(selectFrom_, pos) || text_->isSelected() || (collapsed_ && collapsedText_->isSelected()))
         {
             if (_event->button() == Qt::LeftButton)
             {
@@ -903,12 +1272,21 @@ namespace Ui
                             Q_EMIT shareClicked();
                     }
 
-                    if (!buttonWasClicked && text_->contains(pos))
+                    if (!buttonWasClicked && (text_->contains(pos) || collapsedText_->contains(pos)))
                     {
-                        if (isTextField_ && !text_->isSelected() && text_->isOverLink(pos))
-                            text_->clicked(pos);
+                        const auto isTextOverLink = !text_->isSelected() && text_->isOverLink(pos);
+                        const auto isCollapsedOverLink = collapsed_ && !collapsedText_->isSelected() && collapsedText_->isOverLink(pos);
+                        if (isTextField_ && (isTextOverLink || isCollapsedOverLink))
+                        {
+                            if (collapsed_)
+                                collapsedText_->clicked(pos);
+                            else
+                                text_->clicked(pos);
+                        }
                         else
+                        {
                             Q_EMIT textClicked();
+                        }
                     }
                 }
             }
@@ -947,7 +1325,8 @@ namespace Ui
         {
             const auto isOnText = ((maxLinesCount_ != -1 && collapsed_ && readMore_->contains(pos))
                                    || (text_->contains(pos) && (buttonsVisible_ || cursorForText_))
-                                   || text_->isOverLink(pos));
+                                   || (!collapsed_ && text_->isOverLink(pos))
+                                   || (collapsed_ && collapsedText_->isOverLink(pos)));
 
             if (isTextField_ && !selectFrom_.isNull())
             {
@@ -985,8 +1364,10 @@ namespace Ui
                     TripleClickTimer_->start();
                 }
             };
-
-            text_->doubleClicked(pos, true, std::move(tripleClick));
+            if (collapsed_)
+                collapsedText_->doubleClicked(pos, true, std::move(tripleClick));
+            else
+                text_->doubleClicked(pos, true, std::move(tripleClick));
             tripleClick(true);
         }
 
@@ -1015,6 +1396,8 @@ namespace Ui
 
     QString TextLabel::getSelectedText() const
     {
+        if (collapsed_)
+            return collapsedText_->getSelectedText();
         return text_->getSelectedText();
     }
 
@@ -1028,6 +1411,8 @@ namespace Ui
     {
         text_->releaseSelection();
         text_->clearSelection();
+        collapsedText_->releaseSelection();
+        collapsedText_->clearSelection();
         selectFrom_ = QPoint();
         selectTo_ = QPoint();
         update();

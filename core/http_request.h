@@ -95,7 +95,7 @@ namespace core
         priority_t priority_;
 
         std::string get_post_param() const;
-        bool send_request(bool _post, double& _request_time);
+        curl_easy::completion_code send_request(bool _post, double& _request_time);
         void send_request_async(bool _post, completion_function _completion_function);
         proxy_settings proxy_settings_;
 
@@ -120,8 +120,8 @@ namespace core
 
         void set_output_stream(std::shared_ptr<tools::stream> _output);
 
-        std::shared_ptr<tools::stream> get_response() const;
-        std::shared_ptr<tools::binary_stream> get_header() const;
+        const std::shared_ptr<tools::stream>& get_response() const;
+        const std::shared_ptr<tools::binary_stream>& get_header() const;
         long get_response_code() const;
 
         void set_modified_time_condition(time_t _modified_time);
@@ -132,6 +132,7 @@ namespace core
         void set_normalized_url(std::string_view normalized_url);
         std::string get_post_url() const;
         std::string get_normalized_url() const;
+        const std::string& get_url() const;
 
         void push_post_parameter(std::wstring_view  name, std::wstring_view value);
         void push_post_parameter(std::string name, std::string value);
@@ -164,9 +165,9 @@ namespace core
         void post_async(completion_function _completion_function);
         void get_async(completion_function _completion_function);
 
-        bool post();
-        bool get();
-        bool get(double& _connect_time);
+        curl_easy::completion_code post();
+        curl_easy::completion_code get();
+        curl_easy::completion_code get(double& _connect_time);
         void set_post_form(bool _is_post_form);
 
         void set_custom_header_param(std::string _value);

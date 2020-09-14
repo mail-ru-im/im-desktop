@@ -1,5 +1,4 @@
 #pragma once
-
 #include "../../controls/TextUnit.h"
 
 namespace Ui
@@ -48,8 +47,46 @@ namespace Ui
         }
     };
 
+
     namespace Stickers
     {
+
+        class PackInfoObject : public QObject, public PackInfo
+        {
+            Q_OBJECT
+
+        public:
+            PackInfoObject(QObject* parent = nullptr) : QObject(parent) { }
+            PackInfoObject(
+                QObject* parent,
+                const int32_t _id,
+                const QString& _name,
+                const QString& _subtitle,
+                const QString& _storeId,
+                const QPixmap& _icon,
+                bool _purchased,
+                bool _iconRequested)
+                : QObject(parent), PackInfo(_id, _name, _subtitle, _storeId, _icon, _purchased, _iconRequested)
+            {
+            }
+        };
+
+        class AccessibleStickerPackButton : public QAccessibleObject
+        {
+        public:
+            AccessibleStickerPackButton(PackInfoObject* object) : QAccessibleObject(object) { }
+
+            bool isValid() const override { return true; }
+            QAccessibleInterface* parent() const override;
+            int childCount() const override { return 0; }
+            QAccessibleInterface* child(int index) const override { return nullptr; }
+            int indexOfChild(const QAccessibleInterface* child) const override { return -1; }
+            QRect rect() const override;
+            QString text(QAccessible::Text t) const override { return QAccessible::Text::Name == t ? qsl("AS Stickers PackButton") : QString(); }
+            QAccessible::Role role() const override { return QAccessible::Role::Button; }
+            QAccessible::State state() const override { return {}; }
+        };
+
         //////////////////////////////////////////////////////////////////////////
         class TopPacksView : public QWidget
         {
@@ -57,7 +94,7 @@ namespace Ui
 
             ScrollAreaWithTrScrollBar* parent_;
 
-            std::vector<PackInfo> packs_;
+            std::vector<PackInfoObject*> packs_;
             std::unordered_map<int, TextRendering::TextUnitPtr> nameUnits_;
             std::unordered_map<int, TextRendering::TextUnitPtr> descUnits_;
 
@@ -90,7 +127,7 @@ namespace Ui
 
             TopPacksView(ScrollAreaWithTrScrollBar* _parent);
 
-            void addPack(PackInfo _pack);
+            void addPack(PackInfoObject* _pack);
 
             void updateSize();
 
@@ -118,8 +155,6 @@ namespace Ui
             void onSetIcon(const int32_t _setId);
         };
 
-
-
         //////////////////////////////////////////////////////////////////////////
         class PacksView : public QWidget
         {
@@ -133,7 +168,7 @@ namespace Ui
 
             PacksView(Mode _mode, QWidget* _parent = 0);
 
-            void addPack(PackInfo _pack);
+            void addPack(PackInfoObject* _pack);
 
             void updateSize();
 
@@ -168,6 +203,7 @@ namespace Ui
             virtual void leaveEvent(QEvent *_e) override;
             virtual void wheelEvent(QWheelEvent *_e) override;
 
+            int getPackInfoIndex(PackInfoObject* _packInfo) const;
             QRect getStickerRect(const int _pos) const;
             QRect getDelButtonRect(const QRect& _stickerRect) const;
             QRect getAddButtonRect(const QRect& _stickerRect) const;
@@ -188,7 +224,7 @@ namespace Ui
 
             void updateCursor();
 
-            std::vector<PackInfo> packs_;
+            std::vector<PackInfoObject*> packs_;
 
             std::unordered_map<int, TextRendering::TextUnitPtr> nameUnits_;
             std::unordered_map<int, TextRendering::TextUnitPtr> descUnits_;
@@ -208,6 +244,26 @@ namespace Ui
             QPointer<QWidget> scrollBar_;
 
             void postStickersOrder() const;
+
+            friend class AccessiblePacksView;
+            friend class AccessibleStickerPackButton;
+        };
+
+        class AccessiblePacksView : public QAccessibleWidget
+        {
+        public:
+            AccessiblePacksView(PacksView* widget = nullptr) : QAccessibleWidget(widget), packsView_(widget) { }
+
+            int childCount() const override { return packsView_->packs_.size(); }
+
+            QAccessibleInterface* child(int index) const override;
+
+            int indexOfChild(const QAccessibleInterface* child) const override;
+
+            QString	text(QAccessible::Text t) const override;
+
+        protected:
+            PacksView* packsView_ = nullptr;
         };
 
         //////////////////////////////////////////////////////////////////////////

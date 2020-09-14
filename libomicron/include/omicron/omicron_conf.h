@@ -42,7 +42,7 @@ namespace omicronlib
     struct omicron_proxy_settings
     {
         bool use_proxy_; //!< Proxy settings required.
-        std::string	server_; //!< Name of proxy.
+        std::string server_; //!< Name of proxy.
         int32_t port_; //!< Port of proxy.
         int32_t type_; //!< Type of proxy.
         bool need_auth_; //!< Proxy authorization required.

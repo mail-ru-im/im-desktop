@@ -194,6 +194,7 @@ namespace Ui
         , codeLength_(6)
         , phoneChangedAuto_(false)
         , gdprAccepted_(false)
+        , loggedIn_(false)
         , smsCodeSendCount_(0)
     {
         Utils::ApplyStyle(this, Styling::getParameters().getLoginPageQss());
@@ -673,6 +674,7 @@ namespace Ui
         phoneInfoRequestsCount_ = 0;
         phoneInfoLastRequestId_ = 0;
         receivedPhoneInfo_ = Data::PhoneInfo();
+        loggedIn_ = true;
     }
 
     void LoginPage::initLoginSubPage(const LoginSubpage _index)
@@ -842,6 +844,7 @@ namespace Ui
             mainStakedWidget_->widget(idx)->updateGeometry();
             initLoginSubPage(lastPage_);
             mainStakedWidget_->setCurrentIndex(idx);
+            loggedIn_ = false;
         });
     }
 
@@ -1034,7 +1037,7 @@ namespace Ui
 
     void LoginPage::resendCode()
     {
-        if (smsCodeSendCount_ > 1)
+        if (Features::IvrLoginEnabled() && smsCodeSendCount_ >= Features::IvrResendCountToShow())
         {
             const auto btnCenter = resendButton_->mapToGlobal(resendButton_->rect().center());
             auto p = resendButton_->mapToGlobal(resendButton_->rect().bottomLeft());
@@ -1052,6 +1055,12 @@ namespace Ui
 
     void LoginPage::sendCode()
     {
+        if (loggedIn_)
+        {
+            assert(false);
+            return;
+        }
+
         ivrUrl_.clear();
 
         if (smsCodeSendCount_ != 0)

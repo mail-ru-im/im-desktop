@@ -15,6 +15,7 @@
 #include "MessageReactions.h"
 #include "ReactionsLoader.h"
 #include "ReactionsList.h"
+#include "DefaultReactions.h"
 
 namespace
 {
@@ -211,7 +212,7 @@ void MessageReactions::onReactionClicked(const QString& _reaction)
 
 void MessageReactions::onAddReactionClicked(const QString& _reaction)
 {
-    d->seq_ = GetDispatcher()->addReaction(d->item_->getId(), d->item_->getContact(), _reaction, Features::getReactionsSet());
+    d->seq_ = GetDispatcher()->addReaction(d->item_->getId(), d->item_->getContact(), _reaction);
 }
 
 void MessageReactions::onRemoveReactionClicked()

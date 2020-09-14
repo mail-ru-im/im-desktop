@@ -103,7 +103,7 @@ my_info_cache::my_info_cache()
 
 }
 
-void my_info_cache::set_info(std::shared_ptr<my_info> _info)
+void my_info_cache::set_info(const std::shared_ptr<my_info>& _info)
 {
     *info_ = *_info;
 

@@ -4,6 +4,7 @@
 #include "../../gui_settings.h"
 #include "../contact_list/ContactListModel.h"
 #include "../../utils/InterConnector.h"
+#include "../../core_dispatcher.h"
 
 #ifdef __APPLE__
 #include "../../utils/macos/mac_support.h"
@@ -599,17 +600,21 @@ namespace Ui
         Q_EMIT deviceListChangedInternal(QPrivateSignal());
     }
 
-    void SoundsManager::DeviceMonitoringBluetoothHeadsetChanged(bool _connected)
-    {
-    }
-
     void SoundsManager::initOpenAl()
     {
-        AlAudioDevice_ = openal::alcOpenDevice(nullptr);
+        std::string deviceName = selectedDeviceName();
+        if (!deviceName.empty())
+        {
+            AlAudioDevice_ = openal::alcOpenDevice(deviceName.c_str());
+        }
         if (!AlAudioDevice_)
         {
-            qCDebug(soundManager) << "could not create default playback device";
-            return;
+            AlAudioDevice_ = openal::alcOpenDevice(nullptr);
+            if (!AlAudioDevice_)
+            {
+                qCDebug(soundManager) << "could not create default playback device";
+                return;
+            }
         }
 
         AlAudioContext_ = openal::alcCreateContext(AlAudioDevice_, nullptr);
@@ -694,5 +699,29 @@ namespace Ui
     {
         if (g_sounds_manager)
             g_sounds_manager->reinit();
+    }
+
+    std::string SoundsManager::selectedDeviceName()
+    {
+        auto d = Ui::GetDispatcher()->getVoipController().activeDevice(voip_proxy::EvoipDevTypes::kvoipDevTypeAudioPlayback);
+        if (!d)
+            return {};
+
+        std::string_view deviceName((*d).uid);
+
+        //macos OpenAl Enumeration Extension  bug: return only one default device
+        const openal::ALCchar *device = openal::alcGetString(nullptr, ALC_DEVICE_SPECIFIER);
+        const openal::ALCchar *next = device + 1;
+        size_t len = 0;
+        while (device && *device != '\0' && next && *next != '\0') {
+            len = strlen(device);
+            auto alDeviceName = std::string_view(device, len);
+            if (alDeviceName == deviceName)
+                return std::string(alDeviceName);
+            device += (len + 1);
+            next += (len + 2);
+        }
+
+        return {};
     }
 }

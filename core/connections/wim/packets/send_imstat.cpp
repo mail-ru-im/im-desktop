@@ -38,6 +38,7 @@ int32_t send_imstat::init_request(const std::shared_ptr<core::http_request_simpl
 
 void send_imstat::execute_request_async(const std::shared_ptr<core::http_request_simple>& _request, handler_t _handler)
 {
+    url_ = _request->get_url();
     _request->post_async([_request, _handler, wr_this = weak_from_this()](curl_easy::completion_code _completion_code)
     {
         auto ptr_this = wr_this.lock();

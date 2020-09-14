@@ -131,6 +131,7 @@ namespace Ui
         void setKeyboardFocused(bool _isFocused);
         void initSearchModel(Logic::AbstractSearchModel* _searchModel);
         bool isSelectMembersRegim() const;
+        void ensureScrollToItemAnimationInitialized();
 
         void selectCurrentSearchCategory();
 

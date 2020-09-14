@@ -7,15 +7,15 @@ namespace core
 {
     namespace tools
     {
-        std::string from_utf16(std::wstring_view _source_16);
-        std::wstring from_utf8(std::string_view _source_8);
-        std::string wstring_to_string(const std::wstring& wstr);
+        [[nodiscard]] std::string from_utf16(std::wstring_view _source_16);
+        [[nodiscard]] std::wstring from_utf8(std::string_view _source_8);
+        [[nodiscard]] std::string wstring_to_string(const std::wstring& wstr);
 
-        bool is_digit(char _c);
-        bool is_latin(char _c);
+        [[nodiscard]] bool is_digit(char _c);
+        [[nodiscard]] bool is_latin(char _c);
 
         template<class t_, class u_>
-        t_ trim_right(const t_& _str, u_ _sym)
+        [[nodiscard]] t_ trim_right_copy(const t_& _str, u_ _sym)
         {
             const auto endpos = _str.find_last_not_of(_sym);
             if (t_::npos != endpos)
@@ -25,7 +25,7 @@ namespace core
         }
 
         template<class t_, class u_>
-        t_ trim_left(const t_& _str, u_ _sym)
+        [[nodiscard]] t_ trim_left_copy(const t_& _str, u_ _sym)
         {
             const auto startpos = _str.find_first_not_of(_sym);
             if (t_::npos != startpos)
@@ -34,17 +34,15 @@ namespace core
             return _str;
         }
 
-        bool is_number(const std::string_view _value);
-        bool is_uin(const std::string_view _value);
-        bool is_email(const std::string_view _value);
-        bool is_phone(const std::string_view _value);
+        [[nodiscard]] bool is_number(std::string_view _value);
+        [[nodiscard]] bool is_uin(std::string_view _value);
+        [[nodiscard]] bool is_email(std::string_view _value);
+        [[nodiscard]] bool is_phone(std::string_view _value);
 
-        std::vector<std::string> to_array(const std::string &text, const std::string &separator);
-
-        std::string adler32(const std::string& _input);
+        [[nodiscard]] std::string adler32(std::string_view _input);
 
         template <class T>
-        uint64_t to_uint64(const T& value, uint64_t _default_value = 0)
+        [[nodiscard]] uint64_t to_uint64(const T& value, uint64_t _default_value = 0)
         {
             try
             {
@@ -56,10 +54,10 @@ namespace core
             }
         }
 
-        std::vector<std::string_view> get_words(std::string_view _word);
-        std::pair<bool, std::string> contains(const std::vector<std::vector<std::string>>& _patterns, const std::string_view _word, unsigned fixed_patterns_count, int32_t& priority, bool starts_with = false);
+        [[nodiscard]] std::vector<std::string_view> get_words(std::string_view _word);
+        [[nodiscard]] std::pair<bool, std::string> contains(const std::vector<std::vector<std::string>>& _patterns, const std::string_view _word, unsigned fixed_patterns_count, int32_t& priority, bool starts_with = false);
 
-        inline int32_t utf8_char_size(char _s)
+        [[nodiscard]] inline int32_t utf8_char_size(char _s)
         {
             const unsigned char b = *reinterpret_cast<unsigned char*>(&_s);
 
@@ -73,7 +71,7 @@ namespace core
         }
 
         template<typename T>
-        std::vector<T> build_prefix(const std::vector<T>& _term)
+        [[nodiscard]] std::vector<T> build_prefix(const std::vector<T>& _term)
         {
             std::vector<T> prefix(_term.size());
             for (size_t i = 1; i < _term.size(); ++i)
@@ -88,7 +86,7 @@ namespace core
             return prefix;
         }
 
-        std::vector<int32_t> convert_string_to_vector(const std::string& _str, std::shared_ptr<int32_t> _last_symb_id
+        [[nodiscard]] std::vector<int32_t> convert_string_to_vector(const std::string& _str, const std::shared_ptr<int32_t>& _last_symb_id
             , std::string& _symbols, std::vector<int32_t>& _indexes, std::vector<std::pair<std::string, int32_t>>& _table);
     }
 }

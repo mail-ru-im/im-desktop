@@ -52,4 +52,16 @@ namespace features
     {
         return omicronlib::_o(omicron::keys::fetch_hotstart_enabled, true);
     }
+
+    bool is_statistics_mytracker_enabled()
+    {
+        static const auto default_value = config::get().is_on(config::features::statistics_mytracker);
+        return omicronlib::_o(omicron::keys::statistics_mytracker, default_value);
+    }
+
+    bool is_dns_workaround_enabled()
+    {
+        static const auto default_value = config::get().is_on(config::features::dns_workaround);
+        return omicronlib::_o(omicron::keys::dns_workaround_option, default_value);
+    }
 }

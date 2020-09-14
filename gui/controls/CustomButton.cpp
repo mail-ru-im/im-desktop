@@ -89,6 +89,11 @@ namespace Ui
         tooltipTimer_.setInterval(tooltipShowDelay());
 
         connect(&tooltipTimer_, &QTimer::timeout, this, &CustomButton::onTooltipTimer);
+
+        animFocus_->setStartValue(0.5);
+        animFocus_->setEndValue(1.0);
+        animFocus_->setDuration(focusInAnimDuration().count());
+        animFocus_->setEasingCurve(QEasingCurve::InOutSine);
         connect(animFocus_, &QVariantAnimation::valueChanged, this, qOverload<>(&CustomButton::update));
     }
 
@@ -114,7 +119,6 @@ namespace Ui
         }
 
         const auto isAnimRunning = animFocus_->state() == QAbstractAnimation::State::Running;
-
         if (focusColor_.isValid() && (isAnimRunning || hasFocus()))
         {
             p.setPen(Qt::NoPen);
@@ -403,7 +407,7 @@ namespace Ui
     {
         forceHover_ = _force;
         update();
-	}
+    }
 
     void CustomButton::setFocusColor(const QColor& _color)
     {
@@ -430,7 +434,7 @@ namespace Ui
             if (const auto t = getCustomToolTip(); !t.isEmpty())
             {
                 const auto r = rect();
-                Tooltip::show(t, QRect(mapToGlobal(r.topLeft()), r.size()), { -1, -1 }, Tooltip::ArrowDirection::Down);
+                Tooltip::show(t, QRect(mapToGlobal(r.topLeft()), r.size()), {0, 0}, Tooltip::ArrowDirection::Down);
             }
         }
     }
@@ -447,10 +451,7 @@ namespace Ui
             return;
 
         animFocus_->stop();
-        animFocus_->setStartValue(0.5);
-        animFocus_->setEndValue(1.0);
-        animFocus_->setDuration(focusInAnimDuration().count());
-        animFocus_->setEasingCurve(QEasingCurve::InOutSine);
+        animFocus_->setDirection(QAbstractAnimation::Forward);
         animFocus_->start();
     }
 
@@ -460,10 +461,7 @@ namespace Ui
             return;
 
         animFocus_->stop();
-        animFocus_->setStartValue(1.0);
-        animFocus_->setEndValue(0.5);
-        animFocus_->setDuration(focusInAnimDuration().count());
-        animFocus_->setEasingCurve(QEasingCurve::InOutSine);
+        animFocus_->setDirection(QAbstractAnimation::Backward);
         animFocus_->start();
     }
 

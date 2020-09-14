@@ -220,6 +220,7 @@ namespace Ui
         void onNickInserted(const int _atSignPos, const QString& _nick);
         void insertFiles();
         void onContactChanged(const QString& _contact);
+        void ignoreListChanged();
         void multiselectChanged();
         void onRecvPermitDeny();
 
@@ -478,7 +479,14 @@ namespace Ui
         SelectContactsWidget* selectContactsWidget_;
 
         QLabel* transitionLabel_;
-        QVariantAnimation* transitionAnim_;
+        struct TransitionAnimation : public QVariantAnimation
+        {
+            TransitionAnimation(QObject* parent = nullptr) : QVariantAnimation(parent) { }
+            int currentHeight_;
+            int targetHeight_;
+            QGraphicsOpacityEffect* targetEffect_;
+        } * transitionAnim_;
+
         bool setFocusToSubmit_ = false;
 
         bool suggestRequested_ = false;

@@ -252,11 +252,13 @@ uint64_t getCurrentProcessRealMemUsage() // resident size on macos, "Real Mem" i
 
     StatM_t stat = {};
     if (7 != fscanf(f,"%ld %ld %ld %ld %ld %ld %ld", &stat.size, &stat.resident, &stat.share, &stat.text, &stat.lib, &stat.data, &stat.dt))
-    {
         return 0;
-    }
 
-    return  stat.size * core::KILOBYTE;
+    // return VmRSS value - "Resident Memory" in System Monitor
+    if (const auto pageSize = sysconf(_SC_PAGESIZE); pageSize > 0)
+        return stat.resident * pageSize;
+
+    return 0;
 #endif
 }
 

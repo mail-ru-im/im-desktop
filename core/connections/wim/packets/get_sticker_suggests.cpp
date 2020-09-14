@@ -44,7 +44,6 @@ int32_t get_sticker_suggests::init_request(const std::shared_ptr<core::http_requ
     if (!params_.full_log_)
     {
         log_replace_functor f;
-        f.add_marker("a");
         f.add_json_marker("aimsid", aimsid_range_evaluator());
         f.add_json_marker("text");
         _request->set_replace_log_function(f);

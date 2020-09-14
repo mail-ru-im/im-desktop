@@ -13,14 +13,14 @@ namespace core
 
         curl_easy_handler();
 
-        virtual curl_easy::future_t perform(std::shared_ptr<curl_context> _context) override;
-        virtual void perform_async(std::shared_ptr<curl_context> _context, curl_easy::completion_function _completion_func) override;
-        virtual void raise_task(int64_t _id) override;
+        curl_easy::future_t perform(const std::shared_ptr<curl_context>& _context) override;
+        void perform_async(const std::shared_ptr<curl_context>& _context, curl_easy::completion_function _completion_func) override;
+        void raise_task(int64_t _id) override;
 
-        virtual void init() override;
-        virtual void cleanup() override;
+        void init() override;
+        void cleanup() override;
 
-        virtual bool is_stopped() const override;
+        bool is_stopped() const override;
 
     private:
         void add_task(std::shared_ptr<curl_task> _task, priority_t _priorioty, int64_t _id);

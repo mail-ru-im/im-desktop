@@ -176,10 +176,10 @@ const std::string& upload_task::get_file_url() const
 
 void upload_task::set_handler(std::shared_ptr<upload_progress_handler> _handler)
 {
-    handler_ = _handler;
+    handler_ = std::move(_handler);
 }
 
-std::shared_ptr<upload_progress_handler> upload_task::get_handler() const
+const std::shared_ptr<upload_progress_handler>& upload_task::get_handler() const
 {
     return handler_;
 }

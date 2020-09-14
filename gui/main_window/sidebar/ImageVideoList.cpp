@@ -58,7 +58,7 @@ void ImageVideoList::processItems(const QVector<Data::DialogGalleryEntry>& _entr
 
     for (const auto& e : _entries)
     {
-        auto messageDate = QDateTime::fromTime_t(e.time_).date();
+        auto messageDate = QDateTime::fromSecsSinceEpoch(e.time_).date();
 
         if (!block || block->date().month() != messageDate.month() || block->date().year() != messageDate.year())
         {
@@ -102,7 +102,7 @@ void ImageVideoList::processUpdates(const QVector<Data::DialogGalleryEntry>& _en
 
         ImageVideoBlock* block = nullptr;
         bool found = false;
-        auto messageDate = QDateTime::fromTime_t(e.time_).date();
+        auto messageDate = QDateTime::fromSecsSinceEpoch(e.time_).date();
         for (auto& b : blocks_)
         {
             if (b->date().month() != messageDate.month() || b->date().year() != messageDate.year())

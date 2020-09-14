@@ -1,4 +1,6 @@
 #pragma once
+
+#include "../previewer/Drawable.h"
 #include "../controls/TextUnit.h"
 
 namespace Ui
@@ -142,6 +144,21 @@ namespace Previewer
         void closeMenu();
 
         std::unique_ptr<GalleryFrame_p> d;
+
+        friend class AccessibleGalleryFrame;
+    };
+
+    class AccessibleGalleryFrame : public QAccessibleWidget
+    {
+    public:
+        AccessibleGalleryFrame(GalleryFrame* widget);
+        int childCount() const override;
+        QAccessibleInterface* child(int index) const override;
+        int indexOfChild(const QAccessibleInterface* child) const override;
+        QString text(QAccessible::Text t) const override { return QAccessible::Text::Name == t ? qsl("AS Preview AccessibleGalleryFrame") : QString(); }
+
+    protected:
+        std::vector<QAccessibleInterface*> children_;
     };
 
     class CustomMenu_p;

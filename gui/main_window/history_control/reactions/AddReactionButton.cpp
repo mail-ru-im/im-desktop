@@ -115,7 +115,36 @@ class ReactionButton_p
 {
 public:
 
-    ReactionButton_p(QWidget* _q) : animation_(new QVariantAnimation(_q)), q(_q) {}
+    ReactionButton_p(QWidget* _q)
+        : animation_(nullptr)
+        , q(_q)
+    {
+    }
+
+    void ensureAnimationInitialized()
+    {
+        if (animation_)
+            return;
+            
+        animation_ = new QVariantAnimation(q);
+        animation_->setStartValue(0.0);
+        animation_->setEndValue(1.0);
+        animation_->setEasingCurve(QEasingCurve::InOutSine);
+        animation_->setDuration(animationDuration.count());
+        QObject::connect(animation_, &QVariantAnimation::valueChanged, q, [this](const QVariant& value)
+        {
+            opacity_ = value.toDouble();
+            shadow_->setColor(shadowColorWithAlpha());
+            q->update();
+        });
+        QObject::connect(animation_, &QVariantAnimation::finished, q, [this]()
+        {
+            if (animation_->direction() == QAbstractAnimation::Backward)
+                q->setVisible(false);
+
+            startQueudAnimation();
+        });
+    }
 
     void startShowAnimation()
     {
@@ -127,60 +156,32 @@ public:
         q->move(calcPosition());
         q->setVisible(true);
 
-        animation_->disconnect(q);
+        ensureAnimationInitialized();
         animation_->stop();
-        animation_->setStartValue(0.0);
-        animation_->setEndValue(1.0);
-        animation_->setEasingCurve(QEasingCurve::InOutSine);
-        animation_->setDuration(animationDuration.count());
-
-        QObject::connect(animation_, &QVariantAnimation::valueChanged, q, [this]() {
-            opacity_ = animation_->currentValue().toDouble();
-            shadow_->setColor(shadowColorWithAlpha());
-            q->update();
-        });
-
-        QObject::connect(animation_, &QVariantAnimation::stateChanged, q, [this]() {
-            if (animation_->state() == QAbstractAnimation::Stopped)
-                startQueudAnimation();
-        });
+        animation_->setDirection(QAbstractAnimation::Forward);
         animation_->start();
     }
 
     void startHideAnimation()
     {
-        animation_->disconnect(q);
+        ensureAnimationInitialized();
         animation_->stop();
-        animation_->setStartValue(1.0);
-        animation_->setEndValue(0.0);
-        animation_->setEasingCurve(QEasingCurve::InOutSine);
-        animation_->setDuration(animationDuration.count());
-
-        QObject::connect(animation_, &QVariantAnimation::valueChanged, q, [this]() {
-            opacity_ = animation_->currentValue().toDouble();
-            shadow_->setColor(shadowColorWithAlpha());
-            q->update();
-        });
-
-        QObject::connect(animation_, &QVariantAnimation::stateChanged, q, [this]() {
-            if (animation_->state() == QAbstractAnimation::Stopped)
-                startQueudAnimation();
-            });
+        animation_->setDirection(QAbstractAnimation::Backward);
         animation_->start();
     }
 
     void startQueudAnimation()
     {
-        if (queuedAnimation_ == QueuedAnimation::None)
+        if (queuedAnimationType_ == QueuedAnimation::None)
             return;
 
-        if (queuedAnimation_ == QueuedAnimation::Show && !visible())
+        if (queuedAnimationType_ == QueuedAnimation::Show && !visible())
             startShowAnimation();
 
-        if (queuedAnimation_ == QueuedAnimation::Hide && visible())
+        if (queuedAnimationType_ == QueuedAnimation::Hide && visible())
             startHideAnimation();
 
-        queuedAnimation_ = QueuedAnimation::None;
+        queuedAnimationType_ = QueuedAnimation::None;
     }
 
     QPoint calcPosition()
@@ -268,7 +269,7 @@ public:
     bool forceVisible_ = false;
     double opacity_ = 0;
     QVariantAnimation* animation_;
-    QueuedAnimation queuedAnimation_ = QueuedAnimation::None;
+    QueuedAnimation queuedAnimationType_ = QueuedAnimation::None;
     HistoryControlPageItem* item_;
     QGraphicsDropShadowEffect* shadow_;
 
@@ -312,10 +313,11 @@ void AddReactionButton::onMouseLeave()
 {
     if (isVisible() && !d->forceVisible_)
     {
+        d->ensureAnimationInitialized();
         if (d->animation_->state() != QAbstractAnimation::Running)
             d->startHideAnimation();
         else
-            d->queuedAnimation_ = ReactionButton_p::QueuedAnimation::Hide;
+            d->queuedAnimationType_ = ReactionButton_p::QueuedAnimation::Hide;
     }
 
     d->mouseOver_ = false;
@@ -334,10 +336,11 @@ void AddReactionButton::onMouseMove(const QPoint& _pos, const QRegion& _hoverReg
     }
     else if (!mouseOverRegion && isVisible() && !d->forceVisible_)
     {
+        d->ensureAnimationInitialized();
         if (d->animation_->state() != QAbstractAnimation::Running)
             d->startHideAnimation();
         else
-            d->queuedAnimation_ = ReactionButton_p::QueuedAnimation::Hide;
+            d->queuedAnimationType_ = ReactionButton_p::QueuedAnimation::Hide;
     }
 
     if (mouseOverButton != d->mouseOver_)
@@ -466,10 +469,11 @@ void AddReactionButton::onHoverTimer()
     const auto pos = mapFromGlobal(mapToParent(QCursor::pos()));
     if (d->lastHoverRegion_.contains(pos))
     {
+        d->ensureAnimationInitialized();
         if (d->animation_->state() != QAbstractAnimation::Running)
             d->startShowAnimation();
         else
-            d->queuedAnimation_ = ReactionButton_p::QueuedAnimation::Show;
+            d->queuedAnimationType_ = ReactionButton_p::QueuedAnimation::Show;
     }
 }
 

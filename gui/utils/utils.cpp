@@ -841,11 +841,13 @@ namespace Utils
 
         if (isMailIcon)
         {
-            QPainter scaled(&scaledBigResult);
-            scaled.setRenderHint(QPainter::Antialiasing);
-            scaled.setRenderHint(QPainter::TextAntialiasing);
-            scaled.setRenderHint(QPainter::SmoothPixmapTransform);
-            scaled.drawPixmap(0, 0, renderSvg(qsl(":/mail_icon"), QSize(_sizePx, _sizePx)));
+            {
+                QPainter scaled(&scaledBigResult);
+                scaled.setRenderHint(QPainter::Antialiasing);
+                scaled.setRenderHint(QPainter::TextAntialiasing);
+                scaled.setRenderHint(QPainter::SmoothPixmapTransform);
+                scaled.drawPixmap(0, 0, renderSvg(qsl(":/mail_icon"), QSize(_sizePx, _sizePx)));
+            }
             return QPixmap::fromImage(std::move(scaledBigResult));
         }
 
@@ -877,9 +879,11 @@ namespace Utils
         {
             QImage result(QSize(_sizePx, _sizePx), QImage::Format_ARGB32);
             fillDefault(result);
-            QPainter p(&result);
-            const auto icon_size = Utils::scale_value(32) * Utils::scale_bitmap(1);
-            p.drawPixmap((_sizePx - icon_size) / 2, (_sizePx - icon_size) / 2, renderSvg(qsl(":/cam_icon"), QSize(icon_size, icon_size), Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY)));
+            {
+                QPainter p(&result);
+                const auto icon_size = Utils::scale_value(32) * Utils::scale_bitmap(1);
+                p.drawPixmap((_sizePx - icon_size) / 2, (_sizePx - icon_size) / 2, renderSvg(qsl(":/cam_icon"), QSize(icon_size, icon_size), Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY)));
+            }
             return QPixmap::fromImage(std::move(result));
         }
 
@@ -1141,7 +1145,7 @@ namespace Utils
 
     int scale_value(const int _px) noexcept
     {
-        return int(getScaleCoefficient() * _px);
+        return static_cast<int>(getScaleCoefficient() * _px);
     }
 
     QSize scale_value(const QSize& _px) noexcept
@@ -2343,6 +2347,15 @@ namespace Utils
 
     bool loadPixmapScaled(QByteArray& _data, const QSize& _maxSize, Out QPixmap& _pixmap, Out QSize& _originalSize)
     {
+        QImage image;
+        loadImageScaled(_data, _maxSize, image, _originalSize);
+        _pixmap = QPixmap::fromImage(std::move(image));
+
+        return true;
+    }
+
+    bool loadImageScaled(QByteArray& _data, const QSize& _maxSize, QImage& _image, QSize& _originalSize)
+    {
         QBuffer buffer(&_data, nullptr);
 
         QImageReader reader;
@@ -2365,7 +2378,7 @@ namespace Utils
             reader.setScaledSize(imageSize);
         }
 
-        _pixmap = QPixmap::fromImage(reader.read());
+        _image = reader.read();
 
         return true;
     }
@@ -3615,9 +3628,15 @@ namespace Utils
         const auto isMuted = noBadge ? false : !_officialOnly && Logic::getContactListModel()->isMuted(_aimid);
         const auto isOfficial = noBadge ? false : !isMuted && Logic::GetFriendlyContainer()->getOfficial(_aimid);
         const auto isOnline = noBadge ? false : !_officialOnly && Logic::GetLastseenContainer()->isOnline(_aimid);
-        auto statusBadge = _aimid.isEmpty() ? QPixmap() : getStatusBadge(_aimid, _avatar.width());
-        if (statusBadge.isNull() && _state != StatusBadgeState::CanBeOff && _state != StatusBadgeState::StatusOnly)
-            statusBadge = getEmptyStatusBadge(_state, _avatar.width());
+
+        QPixmap statusBadge;
+        if (_state != StatusBadgeState::BadgeOnly)
+        {
+            statusBadge = _aimid.isEmpty() ? QPixmap() : getStatusBadge(_aimid, _avatar.width());
+            if (statusBadge.isNull() && _state != StatusBadgeState::CanBeOff && _state != StatusBadgeState::StatusOnly)
+                statusBadge = getEmptyStatusBadge(_state, _avatar.width());
+        }
+
         drawAvatarWithBadge(_p, _topLeft, _avatar, isOfficial, statusBadge, isMuted, _isSelected, isOnline, _small_online);
     }
 

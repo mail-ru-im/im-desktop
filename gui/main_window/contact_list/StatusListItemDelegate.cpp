@@ -102,7 +102,7 @@ void StatusItem::updateParams(const Statuses::Status &_status)
     title_->setLastLineWidth(getItemWidth() - getIconSize());
     title_->evaluateDesiredSize();
 
-    time_ = TextRendering::MakeTextUnit(_status.getTimeString());
+    time_ = TextRendering::MakeTextUnit(_status.isSelected() ? _status.getTimeString() : _status.getDurationString());
     time_->init(Fonts::appFontScaled(15), Styling::getParameters().getColor(_status.isSelected() ? Styling::StyleVariable::PRIMARY : Styling::StyleVariable::BASE_PRIMARY),
                 QColor(), QColor(), QColor(),
                 Ui::TextRendering::HorAligment::LEFT, 1);

@@ -19,7 +19,7 @@ def parse_external_version():
 
     for item in data:
         if "set(EXT_LIBS_VERSION" in item:
-            ext_re = re.search(r'(?<=EXT_LIBS_VERSION\s)v.+(?=(\)))', item.strip(), re.I)
+            ext_re = re.search(r'(?<=EXT_LIBS_VERSION\s")v.+(?=("))', item.strip(), re.I)
             if ext_re:
                 return ext_re.group(0)
     return False

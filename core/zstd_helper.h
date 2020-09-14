@@ -1,6 +1,6 @@
 #pragma once
 
-#include "tools/spin_lock.h"
+#include "../common.shared/spin_lock.h"
 
 namespace core
 {
@@ -71,8 +71,8 @@ namespace core
 
         dicts_list_sptr request_dicts_;
         dicts_list_sptr response_dicts_;
-        mutable tools::spin_lock request_dicts_lock_;
-        mutable tools::spin_lock response_dicts_lock_;
+        mutable common::tools::spin_lock request_dicts_lock_;
+        mutable common::tools::spin_lock response_dicts_lock_;
 
         uint32_t timer_id_;
 

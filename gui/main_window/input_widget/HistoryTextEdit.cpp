@@ -69,6 +69,8 @@ namespace Ui
         , phAnimEnabled_(true)
         , stackRedo_(std::make_unique<HistoryUndoStack>())
         , emojiReplacer_(std::make_unique<Emoji::TextSymbolReplacer>())
+        , keyPressTimer_(new QTimer(this))
+        , marginScaleCorrection_(1.0)
     {
         setPlaceholderTextEx(QT_TRANSLATE_NOOP("input_widget", "Message"));
         setAcceptDrops(false);
@@ -90,7 +92,16 @@ namespace Ui
         viewport()->setCursor(Qt::IBeamCursor);
 
         connect(document(), &QTextDocument::contentsChanged, this, &HistoryTextEdit::onEditContentChanged);
+
+        keyPressTimer_->setSingleShot(true);
+
+        placeholderAnim_->setStartValue(0.0);
+        placeholderAnim_->setEndValue(1.0);
+        placeholderAnim_->setEasingCurve(QEasingCurve::InOutSine);
         connect(placeholderAnim_, &QVariantAnimation::valueChanged, this, qOverload<>(&ClickableWidget::update));
+
+        placeholderOpacityAnim_->setStartValue(0.0);
+        placeholderOpacityAnim_->setEndValue(1.0);
         connect(placeholderOpacityAnim_, &QVariantAnimation::valueChanged, this, qOverload<>(&ClickableWidget::update));
     }
 
@@ -124,8 +135,19 @@ namespace Ui
         return focusNextPrevChild(true);
     }
 
+    void HistoryTextEdit::setMarginScaleCorrection(qreal _koef)
+    {
+        marginScaleCorrection_ = _koef;
+    }
+
+    qreal HistoryTextEdit::getMarginScaleCorrection() const
+    {
+        return marginScaleCorrection_;
+    }
+
     void HistoryTextEdit::keyPressEvent(QKeyEvent* _e)
     {
+        keyPressTimer_->start(100);
         if (auto page = Utils::InterConnector::instance().getHistoryPage(Logic::getContactListModel()->selectedContact()))
         {
             const auto forwardKeyToWidget = [_e](const auto _widget, const auto& _keys)
@@ -311,7 +333,7 @@ namespace Ui
     {
         QPainter p(viewport());
 
-        if (hasFocus())
+        if (hasFocus() && !keyPressTimer_->isActive())
         {
             //draw cursor one more time to avoid some gui artifacts; maybe it'll go away in further Qt version
             auto block = document()->findBlock(textCursor().position());
@@ -344,7 +366,7 @@ namespace Ui
 
             p.setPen(color);
             const auto fmt = document()->rootFrame()->frameFormat();
-            p.drawText(viewport()->rect().translated(fmt.leftMargin(), fmt.topMargin()), Qt::AlignTop | Qt::TextWordWrap, customPlaceholderText_);
+            p.drawText(viewport()->rect().translated(fmt.leftMargin() * marginScaleCorrection_, fmt.topMargin() * marginScaleCorrection_), Qt::AlignTop | Qt::TextWordWrap, customPlaceholderText_);
         }
 
         TextEditEx::paintEvent(_event);
@@ -427,19 +449,13 @@ namespace Ui
             phAnimType_ = _type;
 
             placeholderAnim_->stop();
-            placeholderAnim_->setStartValue(0.0);
-            placeholderAnim_->setEndValue(1.0);
             placeholderAnim_->setDuration(_duration.count());
-            placeholderAnim_->setEasingCurve(QEasingCurve::InOutSine);
             placeholderAnim_->start();
 
             placeholderOpacityAnim_->stop();
             if (phAnimType_ == AnimType::Disappear)
             {
-                placeholderOpacityAnim_->setStartValue(0.0);
-                placeholderOpacityAnim_->setEndValue(1.0);
                 placeholderOpacityAnim_->setDuration(_duration.count() / 2);
-                placeholderOpacityAnim_->setEasingCurve(QEasingCurve::Linear);
                 placeholderOpacityAnim_->start();
             }
         };

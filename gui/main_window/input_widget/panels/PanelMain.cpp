@@ -119,7 +119,46 @@ namespace Ui
         textEdit_->setParent(this);
         textEdit_->move(QPoint());
 
-        const auto margin = (minHeight() - textEditMinHeight()) / 2;
+        updateTextMargin();
+
+        auto connectToScreenDpiChanged = [this]()
+        {
+            const auto screens = QGuiApplication::screens();
+            for (const auto screen : screens)
+                connect(screen, &QScreen::logicalDotsPerInchChanged, this, &TextEditViewport::updateTextMargin, Qt::UniqueConnection);
+        };
+
+        connectToScreenDpiChanged();
+
+        connect(qApp, &QGuiApplication::screenAdded, this, connectToScreenDpiChanged);
+        connect(qApp, &QGuiApplication::primaryScreenChanged, this, &TextEditViewport::updateTextMargin);
+
+        if (auto mainWindow = Utils::InterConnector::instance().getMainWindow())
+            if (auto window = mainWindow->window())
+                connect(window->windowHandle(), &QWindow::screenChanged, this, &TextEditViewport::updateTextMargin);
+    }
+
+    void TextEditViewport::updateTextMargin()
+    {
+        qreal margin = (minHeight() - textEditMinHeight()) / 2;
+
+        if (const auto screen = Utils::mainWindowScreen())
+        {
+            if (const auto primaryScreen = QGuiApplication::primaryScreen())
+            {
+                const auto primaryScreenDpi = primaryScreen->logicalDotsPerInchY();
+                const auto localScreenDpi = screen->logicalDotsPerInchY();
+                if (primaryScreenDpi != localScreenDpi)
+                {
+                    // the margin is scaled to the local screen inside the document layout (the dpi of the primary screen is used)
+                    // when these dpi-values differ - correct the margin, this will give the margin required by design
+                    margin *= primaryScreenDpi / localScreenDpi;
+                    // remember the value to reverse convert the margin from the document
+                    textEdit_->setMarginScaleCorrection(localScreenDpi / primaryScreenDpi);
+                }
+            }
+        }
+
         textEdit_->document()->setDocumentMargin(margin);
     }
 
@@ -167,9 +206,12 @@ namespace Ui
         , state_(SideState::Normal)
     {
         setFixedWidth(getStateWidth(state_));
-        connect(anim_, &QVariantAnimation::valueChanged, this, [this]()
+
+        anim_->setDuration(sideAnimDuration().count());
+        anim_->setEasingCurve(QEasingCurve::InOutSine);
+        connect(anim_, &QVariantAnimation::valueChanged, this, [this](const QVariant& value)
         {
-            setFixedWidth(anim_->currentValue().toInt());
+            setFixedWidth(value.toInt());
         });
     }
 
@@ -187,8 +229,6 @@ namespace Ui
             anim_->stop();
             anim_->setStartValue(width());
             anim_->setEndValue(getStateWidth(_state));
-            anim_->setDuration(sideAnimDuration().count());
-            anim_->setEasingCurve(QEasingCurve::InOutSine);
             anim_->start();
         }
     }
@@ -360,18 +400,17 @@ namespace Ui
         connect(textEdit_->document()->documentLayout(), &QAbstractTextDocumentLayout::documentSizeChanged, this, &InputPanelMain::onDocumentSizeChanged);
         connect(textEdit_->document(), &QTextDocument::contentsChanged, this, &InputPanelMain::onDocumentContentsChanged);
 
-        connect(animResize_, &QVariantAnimation::valueChanged, this, [this]()
+        animResize_->setDuration(heightAnimDuration().count());
+        animResize_->setEasingCurve(QEasingCurve::InOutSine);
+        connect(animResize_, &QVariantAnimation::valueChanged, this, [this](const QVariant& value)
         {
-            setEditHeight(animResize_->currentValue().toInt());
+            setEditHeight(value.toInt());
         });
-        connect(animResize_, &QVariantAnimation::stateChanged, this, [this]()
+        connect(animResize_, &QVariantAnimation::finished, this, [this]()
         {
-            if (animResize_->state() == QAbstractAnimation::Stopped)
-            {
-                const auto newPolicy = curEditHeight_ >= viewportMaxHeight() ? Qt::ScrollBarAsNeeded : Qt::ScrollBarAlwaysOff;
-                if (newPolicy != textEdit_->verticalScrollBarPolicy())
-                    textEdit_->setVerticalScrollBarPolicy(newPolicy);
-            }
+            const auto newPolicy = curEditHeight_ >= viewportMaxHeight() ? Qt::ScrollBarAsNeeded : Qt::ScrollBarAlwaysOff;
+            if (newPolicy != textEdit_->verticalScrollBarPolicy())
+                textEdit_->setVerticalScrollBarPolicy(newPolicy);
         });
 
         setButtonsTabOrder();
@@ -470,8 +509,6 @@ namespace Ui
         animResize_->stop();
         animResize_->setStartValue(curEditHeight_);
         animResize_->setEndValue(_height);
-        animResize_->setDuration(heightAnimDuration().count());
-        animResize_->setEasingCurve(QEasingCurve::InOutSine);
         animResize_->start();
 
         curEditHeight_ = _height;

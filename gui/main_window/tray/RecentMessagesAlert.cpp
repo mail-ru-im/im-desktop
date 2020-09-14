@@ -304,6 +304,7 @@ namespace Ui
             if (alert && alert->id() == state.AimId_)
             {
                 height_ -= getAlertItemHeight();
+                alert->setWindowOpacity(0.0);
                 layout_->removeWidget(alert);
                 alert->deleteLater();
                 showViewAll = viewAllWidget_->isVisible() && alertsCount_ == maxAlertCount_ && isMessageAlert();
@@ -320,6 +321,7 @@ namespace Ui
             if (w)
             {
                 height_ -= getAlertItemHeight();
+                w->setWindowOpacity(0.0);
                 layout_->removeWidget(w);
                 w->deleteLater();
                 --alertsCount_;
@@ -374,6 +376,7 @@ namespace Ui
             if (alert)
             {
                 height_ -= getAlertItemHeight();
+                alert->setWindowOpacity(0.0);
                 layout_->removeWidget(alert);
                 alert->deleteLater();
                 --alertsCount_;
@@ -406,6 +409,7 @@ namespace Ui
             if (alert && alert->id() == state.AimId_ && alert->mailId().isEmpty())
             {
                 height_ -= getAlertItemHeight();
+                alert->setWindowOpacity(0.0);
                 layout_->removeWidget(alert);
                 alert->deleteLater();
                 showViewAll = viewAllWidget_->isVisible() && alertsCount_ == maxAlertCount_ && isMessageAlert();
@@ -425,6 +429,7 @@ namespace Ui
             if (w)
             {
                 height_ -= getAlertItemHeight();
+                w->setWindowOpacity(0.0);
                 layout_->removeWidget(w);
                 w->deleteLater();
                 --alertsCount_;

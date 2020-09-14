@@ -215,10 +215,9 @@ namespace PttDetails
     {
         setFixedSize(getButtonSize());
 
-        anim_->setStartValue(0.);
-        anim_->setEndValue(360.);
+        anim_->setStartValue(0.0);
+        anim_->setEndValue(360.0);
         anim_->setDuration(animDuration.count());
-        anim_->setEasingCurve(QEasingCurve::Linear);
         anim_->setLoopCount(-1);
         connect(anim_, &QVariantAnimation::valueChanged, this, qOverload<>(&ProgressWidget::update));
         anim_->start();

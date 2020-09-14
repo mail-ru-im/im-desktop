@@ -7,8 +7,7 @@ namespace Ui
 
 namespace voip_masks
 {
-    class Mask
-        : public QObject
+    class Mask : public QObject
     {
         Q_OBJECT
     public:

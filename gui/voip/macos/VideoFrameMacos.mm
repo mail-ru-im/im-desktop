@@ -198,6 +198,8 @@ void WindowListApplierFunction(const void *inputDictionary, void *context)
         {
             if ([applicationName compare:@"dock" options:NSCaseInsensitiveSearch] == NSOrderedSame)
                 return;
+            if ([applicationName compare:@"screenshot" options:NSCaseInsensitiveSearch] == NSOrderedSame)
+                return;
 #ifdef _DEBUG
             NSString *nameAndPID = [NSString stringWithFormat:@"%@ (%@)", applicationName, entry[(id)kCGWindowOwnerPID]];
             outputEntry[kAppNameKey] = nameAndPID;
@@ -373,7 +375,8 @@ QRect platform_macos::getWindowRect(const QWidget& parent)
 }
 */
 
-void setAspectRatioForWindow(QWidget& wnd, float w, float h) {
+void setAspectRatioForWindow(QWidget& wnd, float w, float h)
+{
     NSView* view = (NSView*)wnd.winId();
     assert(view);
     if (view)
@@ -400,12 +403,22 @@ void platform_macos::unsetAspectRatioForWindow(QWidget& wnd)
     setAspectRatioForWindow(wnd, 0.0f, 0.0f);
 }
 
-bool platform_macos::windowIsOverlapped(QWidget* frame, const std::vector<QWidget*>& _exclude) {
-    assert(!!frame);
-    if (!frame)
+bool platform_macos::windowIsOnActiveSpace(QWidget* _widget)
+{
+    if (_widget)
+        if (auto wnd = [reinterpret_cast<NSView *>(_widget->winId()) window])
+            return [wnd isOnActiveSpace];
+
+    return false;
+}
+
+bool platform_macos::windowIsOverlapped(QWidget* _frame, const std::vector<QWidget*>& _exclude)
+{
+    assert(!!_frame);
+    if (!_frame)
         return false;
 
-    NSView* view = (NSView*)frame->winId();
+    NSView* view = (NSView*)_frame->winId();
     assert(!!view);
     if (!view)
         return false;
@@ -415,14 +428,14 @@ bool platform_macos::windowIsOverlapped(QWidget* frame, const std::vector<QWidge
     if (!window)
         return false;
 
-    QRect screenGeometry = QDesktopWidget().availableGeometry(frame);
+    QRect screenGeometry = QDesktopWidget().availableGeometry(_frame);
 
     const CGWindowID windowID = (CGWindowID)[window windowNumber];
     CGWindowListOption listOptions = kCGWindowListOptionOnScreenAboveWindow;
     listOptions = ChangeBits(listOptions, kCGWindowListExcludeDesktopElements, YES);
 
     CFArrayRef windowList = CGWindowListCopyWindowInfo(listOptions, windowID);
-    NSMutableArray * prunedWindowList = [NSMutableArray array];
+    NSMutableArray* prunedWindowList = [NSMutableArray array];
     WindowListApplierData* windowListData = [[WindowListApplierData alloc] initWindowListData:prunedWindowList];
 
     CFArrayApplyFunction(windowList, CFRangeMake(0, CFArrayGetCount(windowList)), &WindowListApplierFunction, (__bridge void *)(windowListData));

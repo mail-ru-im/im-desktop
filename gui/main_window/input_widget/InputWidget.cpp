@@ -123,7 +123,7 @@ namespace Ui
         , suggestTimer_(nullptr)
         , selectContactsWidget_(nullptr)
         , transitionLabel_(nullptr)
-        , transitionAnim_(new QVariantAnimation(this))
+        , transitionAnim_(new TransitionAnimation(this))
         , callLinkCreator_(nullptr)
     {
         hide();
@@ -144,6 +144,7 @@ namespace Ui
         connect(Logic::getContactListModel(), &Logic::ContactListModel::youRoleChanged, this, &InputWidget::chatRoleChanged);
         connect(Logic::getContactListModel(), &Logic::ContactListModel::contactChanged, this, &InputWidget::onContactChanged);
         connect(Logic::getContactListModel(), &Logic::ContactListModel::contact_removed, this, &InputWidget::hideAndRemoveDialog);
+        connect(Logic::getIgnoreModel(), &Logic::IgnoreMembersModel::changed, this, &InputWidget::ignoreListChanged);
         connect(GetDispatcher(), &core_dispatcher::recvPermitDeny, this, &InputWidget::onRecvPermitDeny);
         connect(GetDispatcher(), &core_dispatcher::activeDialogHide, this, &InputWidget::hideAndRemoveDialog);
         connect(GetDispatcher(), &core_dispatcher::stickersRequestedSuggestsResult, this, &InputWidget::onRequestedStickerSuggests);
@@ -168,6 +169,21 @@ namespace Ui
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::multiselectAnimationUpdate, this, &InputWidget::updateBackground);
 
         connect(this, &InputWidget::needClearQuotes, this, &InputWidget::onQuotesCancel);
+
+        transitionAnim_->setStartValue(1.0);
+        transitionAnim_->setEndValue(0.0);
+        transitionAnim_->setDuration(viewTransitDuration().count());
+        transitionAnim_->setEasingCurve(QEasingCurve::InOutSine);
+        connect(transitionAnim_, &TransitionAnimation::valueChanged, this, [this](const QVariant& value)
+        {
+            const auto val = value.toDouble();
+            transitionAnim_->targetEffect_->setOpacity(val);
+
+            const auto currentHeight = transitionAnim_->currentHeight_;
+            const auto targetHeight = transitionAnim_->targetHeight_;
+            if (currentHeight != targetHeight)
+                setInputHeight(targetHeight + val * (currentHeight - targetHeight));
+        });
 
         bgWidget_->lower();
         bgWidget_->forceUpdate();
@@ -1454,6 +1470,20 @@ namespace Ui
         }
     }
 
+    void InputWidget::ignoreListChanged()
+    {
+        if (currentView() == InputView::Readonly)
+        {
+            if (!Logic::getIgnoreModel()->contains(contact_))
+                setView(InputView::Default, UpdateMode::Force, SetHistoryPolicy::DontAddToHistory);
+        }
+        else
+        {
+            if (Logic::getIgnoreModel()->contains(contact_))
+                setView(InputView::Readonly, UpdateMode::Force, SetHistoryPolicy::DontAddToHistory);
+        }
+    }
+
     void InputWidget::multiselectChanged()
     {
         if (Utils::InterConnector::instance().isMultiselect(contact_))
@@ -2067,6 +2097,8 @@ namespace Ui
                 transitionLabel_->setAttribute(Qt::WA_TranslucentBackground);
                 transitionLabel_->setAttribute(Qt::WA_TransparentForMouseEvents);
                 transitionLabel_->setGraphicsEffect(new QGraphicsOpacityEffect(transitionLabel_));
+
+                connect(transitionAnim_, &TransitionAnimation::finished, transitionLabel_, &QLabel::hide);
             }
 
             transitionLabel_->setGeometry(rect());
@@ -2233,28 +2265,10 @@ namespace Ui
                     targetHeight = panel->height();
 
                 transitionAnim_->stop();
-                transitionAnim_->disconnect(this);
-
-                connect(transitionAnim_, &QVariantAnimation::valueChanged, this, [this, effect, targetHeight, diff = currentHeight - targetHeight]()
-                {
-                    const auto val = transitionAnim_->currentValue().toDouble();
-                    effect->setOpacity(val);
-
-                    if (diff != 0)
-                        setInputHeight(targetHeight + val * diff);
-                });
-                connect(transitionAnim_, &QVariantAnimation::stateChanged, this, [this]()
-                {
-                    if (transitionAnim_->state() == QAbstractAnimation::Stopped)
-                        transitionLabel_->hide();
-                });
-
-                transitionAnim_->setStartValue(1.0);
-                transitionAnim_->setEndValue(0.0);
-                transitionAnim_->setDuration(viewTransitDuration().count());
-                transitionAnim_->setEasingCurve(QEasingCurve::InOutSine);
+                transitionAnim_->currentHeight_ = currentHeight;
+                transitionAnim_->targetHeight_ = targetHeight;
+                transitionAnim_->targetEffect_ = effect;
                 transitionAnim_->start();
-
             }
         }
 
@@ -2519,7 +2533,9 @@ namespace Ui
 
     QString InputWidget::getInputText() const
     {
-        return textEdit_->getPlainText();
+        if (textEdit_)
+            return textEdit_->getPlainText();
+        return {};
     }
 
     const Data::MentionMap& InputWidget::getInputMentions() const

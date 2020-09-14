@@ -936,6 +936,22 @@ Você pode deixar seu feedback ou relatar um erro aqui:</translation>
         <translation>%1 administrador %2 atribuído deste grupo</translation>
     </message>
     <message>
+        <source>Block contact</source>
+        <translation>Contato bloqueado</translation>
+    </message>
+    <message>
+        <source>OK</source>
+        <translation>Está bem</translation>
+    </message>
+    <message>
+        <source>%1 Send the user a message or press &quot;OK&quot; button to allow %2 to</source>
+        <translation>%1 Clique em OK ou responda e %2 pode</translation>
+    </message>
+    <message>
+        <source>%1 From now on %2 is able to</source>
+        <translation>%1 agora %2 pode</translation>
+    </message>
+    <message>
         <source>%1 You have canceled your join request</source>
         <translation>%1 Você cancelou sua solicitação de inscrição</translation>
     </message>
@@ -4680,6 +4696,14 @@ Você pode deixar seu feedback ou relatar um erro aqui:</translation>
         <source>Remove reaction: an error occurred</source>
         <translation>Excluir resposta: ocorreu um erro</translation>
     </message>
+    <message>
+        <source>And %1 more...</source>
+        <translation>E mais %1...</translation>
+    </message>
+    <message>
+        <source>Loading...</source>
+        <translation>Carregando...</translation>
+    </message>
 </context>
 <context>
     <name>release_notes</name>
@@ -5920,6 +5944,24 @@ Edite-o e tente novamente.</translation>
     <message>
         <source>For %1 already</source>
         <translation>Já para %1</translation>
+    </message>
+</context>
+<context>
+    <name>status_plate</name>
+    <message>
+        <source>Bot</source>
+        <translation>O bot</translation>
+    </message>
+</context>
+<context>
+    <name>status_popup</name>
+    <message>
+        <source>Select my status</source>
+        <translation>Escolha meu status</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>Cancelamento</translation>
     </message>
 </context>
 <context>

@@ -133,14 +133,21 @@ int32_t wim_packet::init_request(const std::shared_ptr<core::http_request_simple
 
 int32_t wim_packet::execute_request(const std::shared_ptr<core::http_request_simple>& request)
 {
-    if (!request->get())
+    url_ = request->get_url();
+    auto res = request->get();
+    if (res != curl_easy::completion_code::success)
+    {
+        if (res == curl_easy::completion_code::resolve_failed)
+            return wpie_couldnt_resolve_host;
+
         return wpie_network_error;
+    }
 
     http_code_ = (uint32_t)request->get_response_code();
 
     if (request->get_header()->available())
     {
-        auto header = request->get_header();
+        const auto& header = request->get_header();
         auto size = header->available();
         auto buf = (const char *)header->read(size);
 
@@ -176,13 +183,13 @@ void wim_packet::execute_request_async(const std::shared_ptr<core::http_request_
         if (_completion_code != curl_easy::completion_code::success)
         {
             if (_handler)
-                _handler(wpie_network_error);
+                _handler(_completion_code == curl_easy::completion_code::resolve_failed ? wpie_couldnt_resolve_host : wpie_network_error);
             return;
         }
 
         ptr_this->http_code_ = (uint32_t)_request->get_response_code();
 
-        if (auto header = _request->get_header(); header->available())
+        if (const auto& header = _request->get_header(); header->available())
         {
             const auto size = header->available();
             auto buf = (const char*)header->read(size);
@@ -215,8 +222,24 @@ void wim_packet::execute_request_async(const std::shared_ptr<core::http_request_
             _handler(wpie_http_error);
         }
     };
+    url_ = _request->get_url();
+    if (is_post())
+        _request->post_async(std::move(handler));
+    else
+        _request->get_async(std::move(handler));
+}
 
-    is_post() ? _request->post_async(handler) :  _request->get_async(handler);
+std::optional<wim_protocol_internal_error> wim_packet::get_error(curl_easy::completion_code code)
+{
+    if (code != curl_easy::completion_code::success)
+    {
+        if (code == curl_easy::completion_code::resolve_failed)
+            return wpie_couldnt_resolve_host;
+
+        return wpie_network_error;
+
+    }
+    return std::nullopt;
 }
 
 void wim_packet::load_response_str(const char* buf, size_t size)
@@ -500,12 +523,16 @@ bool wim_packet::is_timeout_error(const int32_t _error) noexcept
 
 void log_replace_functor::add_marker(std::string_view _marker, ranges_evaluator _re)
 {
-    markers_.push_back(std::make_pair(su::concat(_marker, '='), std::move(_re)));
+    assert(!_marker.empty());
+    if (!_marker.empty())
+        markers_.push_back(std::make_pair(su::concat(_marker, '='), std::move(_re)));
 }
 
 void log_replace_functor::add_url_marker(std::string_view _marker, ranges_evaluator _re)
 {
-    markers_.push_back(std::make_pair(std::string(_marker), std::move(_re)));
+    assert(!_marker.empty());
+    if (!_marker.empty())
+        markers_.push_back(std::make_pair(std::string(_marker), std::move(_re)));
 }
 
 void log_replace_functor::add_json_marker(std::string_view _marker, ranges_evaluator _re)
@@ -776,7 +803,7 @@ std::pair<std::ptrdiff_t, std::ptrdiff_t> aimsid_single_range_evaluator::operato
 log_replace_functor::ranges poll_responses_ranges_evaluator::operator()(std::string_view s) const
 {
     // %22123%22%2C%22%D1%84%D1%83%22%2C%22bar%22%5D -> %22***%22%2C%22************%22%2C%22***%22%5D
-    
+
     static const auto quote = wim::wim_packet::escape_symbols("\"");
     static const auto backslash = wim::wim_packet::escape_symbols("\\");
     static const auto braket_close = wim::wim_packet::escape_symbols("]");

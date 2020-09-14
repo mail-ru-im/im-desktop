@@ -936,6 +936,22 @@ Hier können Sie Ihr Feedback hinterlassen oder einen Fehler melden:</translatio
         <translation>%1 hat %2 Administrator dieser Gruppe zugewiesen</translation>
     </message>
     <message>
+        <source>Block contact</source>
+        <translation>Kontakt blocken</translation>
+    </message>
+    <message>
+        <source>OK</source>
+        <translation>OK</translation>
+    </message>
+    <message>
+        <source>%1 Send the user a message or press &quot;OK&quot; button to allow %2 to</source>
+        <translation>%1 Klicken Sie auf OK oder antworten Sie und %2 kann</translation>
+    </message>
+    <message>
+        <source>%1 From now on %2 is able to</source>
+        <translation>%1 Jetzt kann %2</translation>
+    </message>
+    <message>
         <source>%1 You have canceled your join request</source>
         <translation>%1 Sie haben Ihre Beitrittsanfrage storniert</translation>
     </message>
@@ -4680,6 +4696,14 @@ Hier können Sie Ihr Feedback hinterlassen oder einen Fehler melden:</translatio
         <source>Remove reaction: an error occurred</source>
         <translation>Antwort zum Löschen: Ein Fehler ist aufgetreten</translation>
     </message>
+    <message>
+        <source>And %1 more...</source>
+        <translation>Und %1...</translation>
+    </message>
+    <message>
+        <source>Loading...</source>
+        <translation>Wird geladen...</translation>
+    </message>
 </context>
 <context>
     <name>release_notes</name>
@@ -5920,6 +5944,24 @@ Bitte bearbeite sie und versuche es erneut.</translation>
     <message>
         <source>For %1 already</source>
         <translation>Für %1 schon</translation>
+    </message>
+</context>
+<context>
+    <name>status_plate</name>
+    <message>
+        <source>Bot</source>
+        <translation>Der Bot</translation>
+    </message>
+</context>
+<context>
+    <name>status_popup</name>
+    <message>
+        <source>Select my status</source>
+        <translation>Wähle meinen Status</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>Stornierung</translation>
     </message>
 </context>
 <context>

@@ -30,7 +30,7 @@ namespace core
 
         public:
 
-            std::shared_ptr<core::tools::binary_stream> get_data() const;
+            const std::shared_ptr<core::tools::binary_stream>& get_data() const;
 
             request_avatar(
                 wim_packet_params params,

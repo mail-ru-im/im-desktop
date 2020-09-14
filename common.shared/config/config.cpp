@@ -17,13 +17,15 @@
 #include "../json_unserialize_helpers.h"
 #include "config_data.h"
 
+#include "../spin_lock.h"
+
 namespace config
 {
     static auto is_less_by_first = [](const auto& x1, const auto& x2)
     {
         static_assert(std::is_same_v<decltype(x1), decltype(x2)>);
-        auto key1 = std::get<int(configuration::type_index::key)>(x1);
-        auto key2 = std::get<int(configuration::type_index::key)>(x2);
+        auto key1 = x1.first;
+        auto key2 = x2.first;
         return static_cast<
                 std::underlying_type_t<decltype(key1)>>(key1) < static_cast<std::underlying_type_t<decltype(key2)>>(key2);
 
@@ -42,12 +44,6 @@ namespace config
     static auto get_int64(const rapidjson::Value& json_value, std::string_view name)
     {
         return common::json::get_value<int64_t>(json_value, name).value_or(0);
-    }
-
-    template <class T, class U>
-    std::tuple<T, U, bool> make_field(T key, U value)
-    {
-        return std::make_tuple(key, value, false);
     }
 
     static std::optional<urls_array> parse_urls(const rapidjson::Value& _node)
@@ -92,7 +88,8 @@ namespace config
                 std::pair(urls::attach_phone, get_string(it->value, "attach_phone_url")),
                 std::pair(urls::update_app_url, get_string(it->value, "update_app_url")),
                 std::pair(urls::vcs_room, get_string(it->value, "vcs_room")),
-                std::pair(urls::to_replace_hosts, get_string(it->value, "to_replace_hosts_ip")),
+                std::pair(urls::dns_cache, get_string(it->value, "dns_cache")),
+                std::pair(urls::external_emoji, get_string(it->value, "external_emoji")),
             };
 
             if (std::is_sorted(std::cbegin(res), std::cend(res), is_less_by_first))
@@ -129,62 +126,64 @@ namespace config
         {
             features_array res =
             {
-                make_field(features::feedback_selected, get_bool(it->value, "feedback_selected")),
-                make_field(features::new_avatar_rapi, get_bool(it->value, "new_avatar_rapi")),
-                make_field(features::ptt_recognition, get_bool(it->value, "ptt_recognition")),
-                make_field(features::snippet_in_chat, get_bool(it->value, "snippet_in_chat")),
-                make_field(features::add_contact, get_bool(it->value, "add_contact")),
-                make_field(features::remove_contact, get_bool(it->value, "remove_contact")),
-                make_field(features::force_avatar_update, get_bool(it->value, "force_avatar_update")),
-                make_field(features::call_quality_stat, get_bool(it->value, "call_quality_stat")),
-                make_field(features::show_data_visibility_link, get_bool(it->value, "show_data_visibility_link")),
-                make_field(features::show_security_call_link, get_bool(it->value, "show_security_call_link")),
-                make_field(features::contact_us_via_mail_default, get_bool(it->value, "contact_us_via_mail_default")),
-                make_field(features::searchable_recents_placeholder, get_bool(it->value, "searchable_recents_placeholder")),
-                make_field(features::auto_accepted_gdpr, get_bool(it->value, "auto_accepted_gdpr")),
-                make_field(features::phone_allowed, get_bool(it->value, "phone_allowed")),
-                make_field(features::show_attach_phone_number_popup, get_bool(it->value, "show_attach_phone_number_popup")),
-                make_field(features::attach_phone_number_popup_modal, get_bool(it->value, "attach_phone_number_popup_modal")),
-                make_field(features::login_by_phone_allowed, get_bool(it->value, "login_by_phone_allowed")),
-                make_field(features::login_by_mail_default, get_bool(it->value, "login_by_mail_default")),
-                make_field(features::login_by_uin_allowed, get_bool(it->value, "login_by_uin_allowed")),
-                make_field(features::forgot_password, get_bool(it->value, "forgot_password")),
-                make_field(features::explained_forgot_password, get_bool(it->value, "explained_forgot_password")),
-                make_field(features::unknown_contacts, get_bool(it->value, "unknown_contacts")),
-                make_field(features::stranger_contacts, get_bool(it->value, "stranger_contacts")),
-                make_field(features::otp_login, get_bool(it->value, "otp_login")),
-                make_field(features::show_notification_text, get_bool(it->value, "show_notification_text")),
-                make_field(features::changeable_name, get_bool(it->value, "changeable_name")),
-                make_field(features::avatar_change_allowed, get_bool(it->value, "avatar_change_allowed")),
-                make_field(features::beta_update, get_bool(it->value, "beta_update")),
-                make_field(features::ssl_verify_peer, get_bool(it->value, "ssl_verify_peer")),
-                make_field(features::profile_agent_as_domain_url, get_bool(it->value, "profile_agent_as_domain_url")),
-                make_field(features::need_gdpr_window, get_bool(it->value, "need_gdpr_window")),
-                make_field(features::need_introduce_window, get_bool(it->value, "need_introduce_window")),
-                make_field(features::has_nicknames, get_bool(it->value, "has_nicknames")),
-                make_field(features::zstd_request_enabled, get_bool(it->value, "zstd_request_enabled")),
-                make_field(features::zstd_response_enabled, get_bool(it->value, "zstd_response_enabled")),
-                make_field(features::external_phone_attachment, get_bool(it->value, "external_phone_attachment")),
-                make_field(features::external_url_config, get_bool(it->value, "external_url_config")),
-                make_field(features::omicron_enabled, get_bool(it->value, "omicron_enabled")),
-                make_field(features::sticker_suggests, get_bool(it->value, "sticker_suggests")),
-                make_field(features::sticker_suggests_server, get_bool(it->value, "sticker_suggests_server")),
-                make_field(features::smartreplies, get_bool(it->value, "smartreplies")),
-                make_field(features::spell_check, get_bool(it->value, "spell_check")),
-                make_field(features::favorites_message_onpremise, get_bool(it->value, "favorites_message_onpremise")),
-                make_field(features::info_change_allowed, get_bool(it->value, "info_change_allowed")),
-                make_field(features::vcs_call_by_link_enabled, get_bool(it->value, "vcs_call_by_link_enabled")),
-                make_field(features::vcs_webinar_enabled, get_bool(it->value, "vcs_webinar_enabled")),
-                make_field(features::statuses_enabled, get_bool(it->value, "statuses_enabled")),
-                make_field(features::global_contact_search_allowed, get_bool(it->value, "global_contact_search_allowed")),
-                make_field(features::show_reactions, get_bool(it->value, "show_reactions")),
-                make_field(features::open_icqcom_link, get_bool(it->value, "open_icqcom_link")),
-                make_field(features::statistics, get_bool(it->value, "statistics")),
-                make_field(features::force_update_check_allowed, get_bool(it->value, "force_update_check_allowed")),
-                make_field(features::call_room_info_enabled, get_bool(it->value, "call_room_info_enabled")),
-                make_field(features::external_config_use_preset_url, get_bool(it->value, "external_config_use_preset_url")),
-                make_field(features::store_version, get_bool(it->value, "store_version")),
-                make_field(features::has_connect_by_ip_option, get_bool(it->value, "has_connect_by_ip_option")),
+                std::pair(features::feedback_selected, get_bool(it->value, "feedback_selected")),
+                std::pair(features::new_avatar_rapi, get_bool(it->value, "new_avatar_rapi")),
+                std::pair(features::ptt_recognition, get_bool(it->value, "ptt_recognition")),
+                std::pair(features::snippet_in_chat, get_bool(it->value, "snippet_in_chat")),
+                std::pair(features::add_contact, get_bool(it->value, "add_contact")),
+                std::pair(features::remove_contact, get_bool(it->value, "remove_contact")),
+                std::pair(features::force_avatar_update, get_bool(it->value, "force_avatar_update")),
+                std::pair(features::call_quality_stat, get_bool(it->value, "call_quality_stat")),
+                std::pair(features::show_data_visibility_link, get_bool(it->value, "show_data_visibility_link")),
+                std::pair(features::show_security_call_link, get_bool(it->value, "show_security_call_link")),
+                std::pair(features::contact_us_via_mail_default, get_bool(it->value, "contact_us_via_mail_default")),
+                std::pair(features::searchable_recents_placeholder, get_bool(it->value, "searchable_recents_placeholder")),
+                std::pair(features::auto_accepted_gdpr, get_bool(it->value, "auto_accepted_gdpr")),
+                std::pair(features::phone_allowed, get_bool(it->value, "phone_allowed")),
+                std::pair(features::show_attach_phone_number_popup, get_bool(it->value, "show_attach_phone_number_popup")),
+                std::pair(features::attach_phone_number_popup_modal, get_bool(it->value, "attach_phone_number_popup_modal")),
+                std::pair(features::login_by_phone_allowed, get_bool(it->value, "login_by_phone_allowed")),
+                std::pair(features::login_by_mail_default, get_bool(it->value, "login_by_mail_default")),
+                std::pair(features::login_by_uin_allowed, get_bool(it->value, "login_by_uin_allowed")),
+                std::pair(features::forgot_password, get_bool(it->value, "forgot_password")),
+                std::pair(features::explained_forgot_password, get_bool(it->value, "explained_forgot_password")),
+                std::pair(features::unknown_contacts, get_bool(it->value, "unknown_contacts")),
+                std::pair(features::stranger_contacts, get_bool(it->value, "stranger_contacts")),
+                std::pair(features::otp_login, get_bool(it->value, "otp_login")),
+                std::pair(features::show_notification_text, get_bool(it->value, "show_notification_text")),
+                std::pair(features::changeable_name, get_bool(it->value, "changeable_name")),
+                std::pair(features::avatar_change_allowed, get_bool(it->value, "avatar_change_allowed")),
+                std::pair(features::beta_update, get_bool(it->value, "beta_update")),
+                std::pair(features::ssl_verify_peer, get_bool(it->value, "ssl_verify_peer")),
+                std::pair(features::profile_agent_as_domain_url, get_bool(it->value, "profile_agent_as_domain_url")),
+                std::pair(features::need_gdpr_window, get_bool(it->value, "need_gdpr_window")),
+                std::pair(features::need_introduce_window, get_bool(it->value, "need_introduce_window")),
+                std::pair(features::has_nicknames, get_bool(it->value, "has_nicknames")),
+                std::pair(features::zstd_request_enabled, get_bool(it->value, "zstd_request_enabled")),
+                std::pair(features::zstd_response_enabled, get_bool(it->value, "zstd_response_enabled")),
+                std::pair(features::external_phone_attachment, get_bool(it->value, "external_phone_attachment")),
+                std::pair(features::external_url_config, get_bool(it->value, "external_url_config")),
+                std::pair(features::omicron_enabled, get_bool(it->value, "omicron_enabled")),
+                std::pair(features::sticker_suggests, get_bool(it->value, "sticker_suggests")),
+                std::pair(features::sticker_suggests_server, get_bool(it->value, "sticker_suggests_server")),
+                std::pair(features::smartreplies, get_bool(it->value, "smartreplies")),
+                std::pair(features::spell_check, get_bool(it->value, "spell_check")),
+                std::pair(features::favorites_message_onpremise, get_bool(it->value, "favorites_message_onpremise")),
+                std::pair(features::info_change_allowed, get_bool(it->value, "info_change_allowed")),
+                std::pair(features::vcs_call_by_link_enabled, get_bool(it->value, "vcs_call_by_link_enabled")),
+                std::pair(features::vcs_webinar_enabled, get_bool(it->value, "vcs_webinar_enabled")),
+                std::pair(features::statuses_enabled, get_bool(it->value, "statuses_enabled")),
+                std::pair(features::global_contact_search_allowed, get_bool(it->value, "global_contact_search_allowed")),
+                std::pair(features::show_reactions, get_bool(it->value, "show_reactions")),
+                std::pair(features::open_icqcom_link, get_bool(it->value, "open_icqcom_link")),
+                std::pair(features::statistics, get_bool(it->value, "statistics")),
+                std::pair(features::statistics_mytracker, get_bool(it->value, "statistics_mytracker")),
+                std::pair(features::force_update_check_allowed, get_bool(it->value, "force_update_check_allowed")),
+                std::pair(features::call_room_info_enabled, get_bool(it->value, "call_room_info_enabled")),
+                std::pair(features::external_config_use_preset_url, get_bool(it->value, "external_config_use_preset_url")),
+                std::pair(features::store_version, get_bool(it->value, "store_version")),
+                std::pair(features::dns_workaround, get_bool(it->value, "dns_workaround_enabled")),
+                std::pair(features::external_emoji, get_bool(it->value, "external_emoji")),
             };
 
             if (std::is_sorted(std::cbegin(res), std::cend(res), is_less_by_first))
@@ -258,34 +257,56 @@ namespace config
         return {};
     }
 
-    configuration::configuration(std::string_view json, bool external)
-        : is_external_(external)
+    configuration::configuration(std::string_view json, bool _is_debug)
+        : is_debug_(_is_debug)
     {
         if (rapidjson::Document doc; !doc.Parse(json.data(), json.size()).HasParseError())
         {
             auto urls = parse_urls(doc);
             if (!urls)
                 return;
-            urls_ = std::move(*urls);
+            c_.urls = std::move(*urls);
 
             auto values = parse_values(doc);
             if (!values)
                 return;
-            values_ = std::move(*values);
+            c_.values = std::move(*values);
 
             auto features = parse_features(doc);
             if (!features)
                 return;
-            features_ = std::move(*features);
+            c_.features = std::move(*features);
 
             auto translations = parse_translations(doc);
             if (!translations)
                 return;
-            translations_ = std::move(*translations);
+            c_.translations = std::move(*translations);
 
             is_valid_ = true;
+
+            if (is_on(config::features::external_url_config))
+            {
+                spin_lock_ = std::make_unique<common::tools::spin_lock>();
+                e_ = std::make_shared<external_configuration>();
+            }
         }
     }
+
+    configuration::configuration() = default;
+
+    std::shared_ptr<external_configuration> configuration::get_external() const
+    {
+        std::scoped_lock lock(*spin_lock_);
+        return e_;
+    }
+
+    void configuration::set_external(std::shared_ptr<external_configuration> _e)
+    {
+        std::scoped_lock lock(*spin_lock_);
+        e_ = std::move(_e);
+    }
+
+    configuration::~configuration() = default;
 
     bool configuration::is_valid() const noexcept
     {
@@ -294,7 +315,7 @@ namespace config
 
     const value_type& configuration::value(values _v) const noexcept
     {
-        return values_[static_cast<size_t>(_v)].second;
+        return c_.values[static_cast<size_t>(_v)].second;
     }
 
     std::string_view configuration::string(values _v) const noexcept
@@ -306,47 +327,61 @@ namespace config
 
     std::string_view configuration::url(urls _v) const noexcept
     {
-        return urls_[static_cast<size_t>(_v)].second;
+        return c_.urls[static_cast<size_t>(_v)].second;
     }
 
     std::string_view configuration::translation(translations _v) const noexcept
     {
-        return translations_[static_cast<size_t>(_v)].second;
+        return c_.translations[static_cast<size_t>(_v)].second;
     }
 
     bool configuration::is_on(features _v) const noexcept
     {
-        return std::get<int(type_index::value)>(features_[static_cast<size_t>(_v)]);
+        auto default_value = c_.features[static_cast<size_t>(_v)].second;
+        if (!c_.features[static_cast<size_t>(config::features::external_url_config)].second || config::features::external_url_config == _v)
+            return default_value;
+
+        if (const auto external = get_external(); external)
+        {
+            const auto& features = external->features;
+            const auto it = std::find_if(features.begin(), features.end(), [_v](auto x) { return x.first == _v; });
+            if (it != features.end())
+                return it->second;
+        }
+
+        return default_value;
     }
 
-    bool configuration::is_external() const noexcept
+    bool configuration::is_debug() const noexcept
     {
-        return is_external_;
+        return is_debug_;
     }
 
     bool configuration::is_overridden(features _v) const noexcept
     {
-        return std::get<int(type_index::override)>(features_[static_cast<size_t>(_v)]);
-    }
+        if (!c_.features[static_cast<size_t>(config::features::external_url_config)].second || config::features::external_url_config == _v)
+            return false;
 
-    void configuration::override_feature(features _f, bool _value)
-    {
-        const auto key = static_cast<size_t>(_f);
-        std::get<int(type_index::value)>(features_[key]) = _value;
-        std::get<int(type_index::override)>(features_[key]) = true;
+        if (const auto external = get_external(); external)
+        {
+            const auto& features = external->features;
+            return std::any_of(features.begin(), features.end(), [_v](auto x) { return x.first == _v; });
+        }
+
+        return false;
     }
 
     static configuration make_config()
     {
-        static auto local_config = configuration(config_json(), false);
+        auto local_config = configuration(config_json(), false);
 
 #ifdef SUPPORT_EXTERNAL_CONFIG
         if (auto v = local_config.value(platform::is_apple() ? values::product_path_mac : values::product_path); auto path = std::get_if<std::string>(&v))
         {
-            auto extrenal_config_path = core::utils::get_product_data_path(core::tools::from_utf8(*path));
+            auto debug_config_path = core::utils::get_product_data_path(core::tools::from_utf8(*path));
 
             boost::system::error_code error_code;
-            const auto extrenal_config_file_name = boost::filesystem::canonical(extrenal_config_path, Out error_code) / L"config.json";
+            const auto extrenal_config_file_name = boost::filesystem::canonical(debug_config_path, Out error_code) / L"config.json";
 
             if (error_code == boost::system::errc::success)
             {
@@ -364,15 +399,9 @@ namespace config
     }
 }
 
-static const config::configuration& get_default_config()
-{
-    static const auto c = config::make_config();
-    return c;
-}
-
 static config::configuration& get_impl()
 {
-    static auto c = get_default_config();
+    static auto c = config::make_config();
     return c;
 }
 
@@ -381,42 +410,18 @@ const config::configuration& config::get()
     return get_impl();
 }
 
-void config::override_feature(config::features _f, bool _value)
-{
-    get_impl().override_feature(_f, _value);
-}
-
-void config::reset_feature_to_default(config::features _f)
-{
-    get_impl().reset_feature_to_default(_f);
-}
-
-bool config::is_overridden(values _v)
-{
-    const auto& default_config = get_default_config();
-    const auto value = config::get().value(_v);
-
-    return default_config.value(_v) != value && value != value_type();
-}
-
 bool config::is_overridden(features _v)
 {
     return config::get().is_overridden(_v);
 }
 
-bool config::is_overridden(urls _v)
+void config::reset_external()
 {
-    const auto& default_config = get_default_config();
-    const auto url = config::get().url(_v);
+    set_external({});
+}
 
-    return default_config.url(_v) != url && url != std::string_view();
-}
-namespace config
+void config::set_external(std::shared_ptr<external_configuration> _f)
 {
-    void configuration::reset_feature_to_default(features _f)
-    {
-        const auto key = static_cast<size_t>(_f);
-        std::get<int(type_index::value)>(features_[key]) = get_default_config().is_on(_f);
-        std::get<int(type_index::override)>(features_[key]) = false;
-    }
+    get_impl().set_external(std::move(_f));
 }
+

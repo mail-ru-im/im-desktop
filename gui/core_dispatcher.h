@@ -268,7 +268,7 @@ Q_SIGNALS:
         void phoneInfoResult(qint64, const Data::PhoneInfo&);
 
         // masks
-        void maskListLoaded(const QVector<QString>& maskList);
+        void maskListLoaded(qint64 _seq, const QVector<QString>& maskList);
         void maskPreviewLoaded(int64_t _seq, const QString& _localPath);
         void maskModelLoaded();
         void maskLoaded(int64_t _seq, const QString& _localPath);
@@ -373,6 +373,9 @@ Q_SIGNALS:
         void chatJoinResultBlocked(const QString& _stamp);
         void callRoomInfo(const QString& _roomId, int64_t _membersCount, bool _failed);
 
+        void getEmojiResult(int64_t _seq, const QImage& _emoji);
+        void getEmojiFailed(int64_t _seq, bool _isNetworkError);
+
     public Q_SLOTS:
         void received(const QString&, const qint64, core::icollection*);
 
@@ -449,10 +452,10 @@ Q_SIGNALS:
         };
 
         int64_t downloadLinkMetainfo(const QString& _uri,
-        	LoadPreview _loadPreview = LoadPreview::Yes,
-        	const int32_t _previewWidth = 0,
-        	const int32_t _previewHeight = 0,
-        	const QString& _logStr = QString());
+            LoadPreview _loadPreview = LoadPreview::Yes,
+            const int32_t _previewWidth = 0,
+            const int32_t _previewHeight = 0,
+            const QString& _logStr = QString());
 
         qint64 deleteMessages(const QString& _contactAimId, const std::vector<DeleteMessageInfo>& _messages);
         qint64 deleteMessagesFrom(const QString& _contactAimId, const int64_t _fromId);
@@ -543,9 +546,22 @@ Q_SIGNALS:
         qint64 resolveChatPendings(const QString& _chatAimId, const std::vector<QString>& _pendings, bool _approve);
 
         void getReactions(const QString& _chatId, std::vector<int64_t> _msgIds, bool _firstLoad = false);
-        int64_t addReaction(int64_t _msgId, const QString& _chatId, const QString& _reaction, const std::vector<QString>& _reactionsList);
+        int64_t addReaction(int64_t _msgId, const QString& _chatId, const QString& _reaction);
         int64_t removeReaction(int64_t _msgId, const QString& _chatId);
         int64_t getReactionsPage(int64_t _msgId, const QString& _chatId, const QString& _reaction, const QString& _newerThan, const QString& _olderThan, int64_t _limit);
+
+        enum class ServerEmojiSize
+        {
+            _20 = 20,
+            _32 = 32,
+            _40 = 40,
+            _48 = 48,
+            _64 = 64,
+            _96 = 96,
+            _160 = 160
+        };
+
+        int64_t getEmojiImage(const QString& _code, ServerEmojiSize _size);
 
         // messages
         void onNeedLogin(const int64_t _seq, core::coll_helper _params);
@@ -749,6 +765,7 @@ Q_SIGNALS:
 
         void onCallRoomInfo(const int64_t _seq, core::coll_helper _params);
         void onChatJoinResult(const int64_t _seq, core::coll_helper _params);
+        void onGetEmojiResult(const int64_t _seq, core::coll_helper _params);
 
     private:
 

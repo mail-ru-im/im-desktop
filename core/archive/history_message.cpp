@@ -36,6 +36,8 @@ namespace
         buddy_found,
         birthday,
         generic,
+        warn_about_stranger,
+        no_longer_stranger,
 
         max,
     };
@@ -1900,7 +1902,9 @@ bool chat_event_data::has_sender_aimid() const
         chat_event_type::buddy_found,
         chat_event_type::birthday,
         chat_event_type::generic,
-        chat_event_type::message_deleted
+        chat_event_type::message_deleted,
+        chat_event_type::warn_about_stranger,
+        chat_event_type::no_longer_stranger
     };
 
     return !std::any_of(types_without_sender.begin(), types_without_sender.end(), [this](const auto type) { return type == get_type(); });
@@ -3154,6 +3158,14 @@ int32_t history_message::unserialize(const rapidjson::Value& _node, const std::s
         chat_event_ = chat_event_data::make_modified_event(_node.FindMember("chat")->value);
         break;
 
+    case chat_event_type_class::warn_about_stranger:
+        chat_event_ = chat_event_data::make_simple_event(chat_event_type::warn_about_stranger);
+        break;
+
+    case chat_event_type_class::no_longer_stranger:
+        chat_event_ = chat_event_data::make_simple_event(chat_event_type::no_longer_stranger);
+        break;
+
     case chat_event_type_class::generic:
         chat_event_ = chat_event_data::make_generic_event(_node.FindMember("text")->value);
         break;
@@ -4105,6 +4117,18 @@ namespace
 
         if (const auto event = probe_for_modified_event(_node); event != chat_event_type_class::unknown)
             return event;
+
+        if (const auto it = _node.FindMember("event"); it != _node.MemberEnd() && it->value.IsObject())
+        {
+            if (auto type = common::json::get_value<std::string_view>(it->value, "type"); type)
+            {
+                if (*type == "warnAboutStranger")
+                    return chat_event_type_class::warn_about_stranger;
+
+                if (*type == "noLongerStranger")
+                    return chat_event_type_class::no_longer_stranger;
+            }
+        }
 
         if (is_generic_event(_node))
             return chat_event_type_class::generic;

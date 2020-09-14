@@ -68,6 +68,8 @@ namespace HistoryControl
         QString formatMchatLeaveText() const;
         QString formatMchatMembersList() const;
         QString formatMessageDeletedText() const;
+        QString formatWarnAboutStranger() const;
+        QString formatNoLongerStranger() const;
 
         bool isMyAimid(const QString& _aimId) const;
         bool hasMultipleMembers() const;

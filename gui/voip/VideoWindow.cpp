@@ -1,7 +1,6 @@
 #include "stdafx.h"
 #include "VideoWindow.h"
 #include "DetachedVideoWnd.h"
-#include "../../core/Voip/VoipManagerDefines.h"
 
 #include "../core_dispatcher.h"
 #include "../utils/gui_metrics.h"
@@ -14,7 +13,6 @@
 #include "MaskPanel.h"
 #include "secureCallWnd.h"
 
-#include "SelectionContactsForConference.h"
 #include "styles/ThemeParameters.h"
 #include "../controls/CustomButton.h"
 #include "../previewer/toast.h"
@@ -34,11 +32,6 @@ namespace
     constexpr float kDefaultRelativeSizeH = 0.7f;
     constexpr char videoWndWName[] = "video_window_w";
     constexpr char videoWndHName[] = "video_window_h";
-
-    auto getToastVerOffset() noexcept
-    {
-        return Utils::scale_value(10);
-    }
 
     bool windowIsOverlapped(platform_specific::GraphicsPanel* _window, const std::vector<QWidget*>& _exclude)
     {
@@ -87,7 +80,7 @@ namespace
 
         return (ptsCounter * 10) >= int(pts.size() * 4); // 40 % overlapping
 #elif defined (__APPLE__)
-        return platform_macos::windowIsOverlapped(_window, _exclude);
+        return !platform_macos::windowIsOnActiveSpace(_window) || platform_macos::windowIsOverlapped(_window, _exclude);
 #elif defined (__linux__)
         return false;
 #endif
@@ -602,7 +595,8 @@ void Ui::VideoWindow::checkOverlap()
                 miniWindowShown = true;
                 detachedWnd_->showFrame();
             }
-        } else
+        }
+        else
         {
             if (miniWindowShown)
             {
@@ -1299,7 +1293,7 @@ void Ui::VideoWindow::onAddUserClicked()
     panels_.push_back(&dialogParent);
     eventFilter_->addPanel(&dialogParent);
     updatePanels();
-    
+
     videoPanel_->setPreventFadeIn(true);
     videoPanel_->fadeOut(kAnimationDefDuration);
 
@@ -1323,6 +1317,10 @@ void  Ui::VideoWindow::onVoipMainVideoLayoutChanged(const voip_manager::MainVide
         currentLayout_ = mainLayout;
         outgoingNotAccepted_ = (mainLayout.type == voip_manager::MVL_OUTGOING);
         videoPanel_->changeConferenceMode(mainLayout.layout);
+#ifdef __APPLE__
+        if (!platform_macos::windowIsOnActiveSpace(this))
+            return;
+#endif
         checkPanelsVisibility();
     }
 }

@@ -78,6 +78,11 @@ namespace core
             installer_generate_guid = 6026,
             installer_move_file = 6027,
 
+            network_fallback_to_auto_dns_resolve = 7000,
+            network_dns_resolve_err_during_manual_resolving = 7001,
+            network_dns_resolve_err_during_auto_resolving = 7002,
+            network_dns_resolve_err_during_workaround = 7003,
+
             max
         };
 
@@ -156,6 +161,11 @@ namespace core
             case im_stat_event_names::installer_terminate_abnormal_wait_timeout: return std::string_view("im_installer_terminate_abnormal_wait_timeout");
             case im_stat_event_names::installer_generate_guid: return std::string_view("im_installer_generate_guid");
             case im_stat_event_names::installer_move_file: return std::string_view("im_installer_move_file");
+
+            case im_stat_event_names::network_fallback_to_auto_dns_resolve: return std::string_view("im_network_fallback_to_auto_dns_resolve");
+            case im_stat_event_names::network_dns_resolve_err_during_manual_resolving: return std::string_view("im_network_dns_resolve_err_during_manual_resolving");
+            case im_stat_event_names::network_dns_resolve_err_during_auto_resolving: return std::string_view("im_network_dns_resolve_err_during_auto_resolving");
+            case im_stat_event_names::network_dns_resolve_err_during_workaround: return std::string_view("im_network_dns_resolve_err_during_workaround");
 
             default:
                 return std::string_view();

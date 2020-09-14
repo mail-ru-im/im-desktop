@@ -117,8 +117,10 @@ int32_t send_file::parse_response(const std::shared_ptr<core::tools::binary_stre
 
 int32_t send_file::execute_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
-    if (!_request->post())
-        return wpie_network_error;
+    url_ = _request->get_url();
+
+    if (auto error_code = get_error(_request->post()))
+        return *error_code;
 
     http_code_ = (uint32_t)_request->get_response_code();
 

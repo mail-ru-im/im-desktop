@@ -71,8 +71,8 @@ namespace core
 
             virtual ~get_history_batch();
 
-            std::shared_ptr<archive::history_block> get_messages() const { return messages_; }
-            std::shared_ptr<archive::dlg_state> get_dlg_state() const { return dlg_state_; }
+            const std::shared_ptr<archive::history_block>& get_messages() const { return messages_; }
+            const std::shared_ptr<archive::dlg_state>& get_dlg_state() const { return dlg_state_; }
             bool get_unpinned() const noexcept { return unpinned_; }
             const get_history_batch_params& get_hist_params() const { return hist_params_; }
             const std::shared_ptr<core::archive::persons_map>& get_persons() const override { return persons_; }

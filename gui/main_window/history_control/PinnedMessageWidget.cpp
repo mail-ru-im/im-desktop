@@ -181,7 +181,7 @@ namespace Ui
     void CollapsableWidget::showTooltip()
     {
         const auto btnRect = getCollapseButtonRect(rect());
-        Tooltip::show(tooltipText_, QRect(mapToGlobal(btnRect.topLeft()), btnRect.size()), {-1, -1}, Tooltip::ArrowDirection::Down, Tooltip::ArrowPointPos::Center);
+        Tooltip::show(tooltipText_, QRect(mapToGlobal(btnRect.topLeft()), btnRect.size()), {0, 0}, Tooltip::ArrowDirection::Down, Tooltip::ArrowPointPos::Center);
     }
 
     void CollapsableWidget::hideTooltip()

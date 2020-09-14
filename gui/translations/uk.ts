@@ -935,6 +935,22 @@ You can leave your feedback or report an error here:</source>
         <translation>%1 призначив (-а) %2 адміністратором цієї групи</translation>
     </message>
     <message>
+        <source>Block contact</source>
+        <translation>заблокувати контакт</translation>
+    </message>
+    <message>
+        <source>OK</source>
+        <translation>OK</translation>
+    </message>
+    <message>
+        <source>%1 Send the user a message or press &quot;OK&quot; button to allow %2 to</source>
+        <translation>%1 Натисніть «OK» або дайте відповідь, і %2 зможе</translation>
+    </message>
+    <message>
+        <source>%1 From now on %2 is able to</source>
+        <translation>%1 Тепер %2 може</translation>
+    </message>
+    <message>
         <source>%1 You have canceled your join request</source>
         <translation>%1 Ви скасували запит на вступ</translation>
     </message>
@@ -4679,6 +4695,14 @@ You can leave your feedback or report an error here:</source>
         <source>Remove reaction: an error occurred</source>
         <translation>Видалення реакції: сталася помилка</translation>
     </message>
+    <message>
+        <source>And %1 more...</source>
+        <translation>І ще %1...</translation>
+    </message>
+    <message>
+        <source>Loading...</source>
+        <translation>Завантаження ...</translation>
+    </message>
 </context>
 <context>
     <name>release_notes</name>
@@ -5919,6 +5943,24 @@ Please edit phone number and try again.</source>
     <message>
         <source>For %1 already</source>
         <translation>Уже %1</translation>
+    </message>
+</context>
+<context>
+    <name>status_plate</name>
+    <message>
+        <source>Bot</source>
+        <translation>бот</translation>
+    </message>
+</context>
+<context>
+    <name>status_popup</name>
+    <message>
+        <source>Select my status</source>
+        <translation>Вибрати мій статус</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>Скасувати</translation>
     </message>
 </context>
 <context>

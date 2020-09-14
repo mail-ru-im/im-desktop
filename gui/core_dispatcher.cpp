@@ -33,6 +33,7 @@
 #include "main_window/LocalPIN.h"
 #include "omicron/omicron_helper.h"
 #include "main_window/contact_list/FavoritesUtils.h"
+#include "main_window/history_control/reactions/DefaultReactions.h"
 
 #if defined(IM_AUTO_TESTING)
     #include "webserver/webserver.h"
@@ -1033,6 +1034,7 @@ void core_dispatcher::initMessageMap()
 
     REGISTER_IM_MESSAGE("call_room_info", onCallRoomInfo);
     REGISTER_IM_MESSAGE("livechat/join/result", onChatJoinResult);
+    REGISTER_IM_MESSAGE("emoji/get/result", onGetEmojiResult);
 }
 
 void core_dispatcher::uninit()
@@ -1408,7 +1410,7 @@ void core_dispatcher::onMasksGetIdListResult(const int64_t _seq, core::coll_help
     const auto array = _params.get_value_as_array("mask_id_list");
     const auto maskList = toContainerOfString<QVector<QString>>(array);
 
-    Q_EMIT maskListLoaded(maskList);
+    Q_EMIT maskListLoaded(_seq, maskList);
 }
 
 void core_dispatcher::onMasksPreviewResult(const int64_t _seq, core::coll_helper _params)
@@ -3206,7 +3208,7 @@ void core_dispatcher::getReactions(const QString& _chatId, std::vector<int64_t> 
 
 }
 
-int64_t core_dispatcher::addReaction(int64_t _msgId, const QString& _chatId, const QString& _reaction, const std::vector<QString>& _reactionsList)
+int64_t core_dispatcher::addReaction(int64_t _msgId, const QString& _chatId, const QString& _reaction)
 {
     Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
 
@@ -3215,9 +3217,11 @@ int64_t core_dispatcher::addReaction(int64_t _msgId, const QString& _chatId, con
     collection.set_value_as_qstring("reaction", _reaction);
 
     core::ifptr<core::iarray> reactionsArray(collection->create_array());
-    reactionsArray->reserve(_reactionsList.size());
-    for (const auto& reaction : _reactionsList)
-        reactionsArray->push_back(collection.create_qstring_value(reaction).get());
+
+    auto& defaultReactions = DefaultReactions::instance()->reactionsWithTooltip();
+    reactionsArray->reserve(defaultReactions.size());
+    for (const auto& reaction : defaultReactions)
+        reactionsArray->push_back(collection.create_qstring_value(reaction.reaction_).get());
     collection.set_value_as_array("reactions", reactionsArray.get());
 
     return post_message_to_core("reaction/add", collection.get());
@@ -3245,6 +3249,16 @@ int64_t core_dispatcher::getReactionsPage(int64_t _msgId, const QString& _chatId
     collection.set_value_as_int64("limit", _limit);
 
     return post_message_to_core("reaction/list", collection.get());
+}
+
+int64_t core_dispatcher::getEmojiImage(const QString& _code, ServerEmojiSize _size)
+{
+    Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
+
+    collection.set_value_as_qstring("code", _code);
+    collection.set_value_as_int("size", static_cast<int>(_size));
+
+    return post_message_to_core("emoji/get", collection.get());
 }
 
 void core_dispatcher::onNickCheckSetResult(const int64_t _seq, core::coll_helper _params)
@@ -3530,6 +3544,31 @@ void core_dispatcher::onChatJoinResult(const int64_t _seq, core::coll_helper _pa
 {
     if (_params.get_value_as_bool("blocked"))
         Q_EMIT chatJoinResultBlocked(_params.get<QString>("stamp"));
+}
+
+void core_dispatcher::onGetEmojiResult(const int64_t _seq, core::coll_helper _params)
+{
+    if (_params.is_value_exist("data"))
+    {
+        const auto data = _params.get_value_as_stream("data");
+        auto task = new Utils::LoadImageFromDataTask(data);
+
+        QObject::connect(task, &Utils::LoadImageFromDataTask::loaded, this,
+                         [this, _seq] (const QImage& _image)
+        {
+            Q_EMIT getEmojiResult(_seq, _image);
+        });
+
+        QThreadPool::globalInstance()->start(task);
+    }
+    else
+    {
+        auto networkError = false;
+        if (_params.is_value_exist("network_error"))
+            networkError = _params.get_value_as_bool("network_error");
+
+        Q_EMIT getEmojiFailed(_seq, networkError);
+    }
 }
 
 namespace { std::unique_ptr<core_dispatcher> gDispatcher; }

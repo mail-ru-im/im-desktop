@@ -9,4 +9,6 @@ namespace features
     std::string get_zstd_dict_response();
 
     bool is_fetch_hotstart_enabled();
+    bool is_statistics_mytracker_enabled();
+    bool is_dns_workaround_enabled();
 }

@@ -395,7 +395,10 @@ namespace Ui
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::onMacUpdateInfo, this, [this](Utils::MacUpdateState _state)
         {
             if (_state == Utils::MacUpdateState::Ready)
+            {
+                Log::write_network_log("Update is downloaded and extracted by sparkle\n");
                 initUpdateButton();
+            }
         });
 
         clHostLayout_->setContentsMargins(0, 0, 0, 0);
@@ -746,6 +749,7 @@ namespace Ui
         if (!moreMenu_)
         {
             moreMenu_ = new ContextMenu(this, 24);
+            Testing::setAccessibleName(moreMenu_, qsl("AS MainPage moreMenu"));
             if (config::get().is_on(config::features::add_contact))
             {
                 moreMenu_->addActionWithIcon(qsl(":/header/add_user"), QT_TRANSLATE_NOOP("contact_list", "Add contact"), this, []

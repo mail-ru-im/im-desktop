@@ -17,12 +17,13 @@ namespace platform_macos
     void setAspectRatioForWindow(QWidget& wnd, float aspectRatio);
     void unsetAspectRatioForWindow(QWidget& wnd);
 
-    bool windowIsOverlapped(QWidget* frame, const std::vector<QWidget*>& _exclude);
+    bool windowIsOnActiveSpace(QWidget* _widget);
+    bool windowIsOverlapped(QWidget* _frame, const std::vector<QWidget*>& _exclude);
     void setWindowPosition(QWidget& widget, const QRect& widgetRect);
     void moveAboveParentWindow(QWidget& parent, QWidget& child);
 
     QRect getWidgetRect(const QWidget& widget);
-    int   getWidgetHeaderHeight(const QWidget& widget);
+    int getWidgetHeaderHeight(const QWidget& widget);
     //QRect getWindowRect(const QWidget& parent);
 
     // Double click interval in ms.

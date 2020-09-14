@@ -63,6 +63,18 @@ namespace Ui
 
         setGraphicsEffect(opacityEffect_);
         updateStyle();
+
+        opacityAnimation_->setStartValue(0.0);
+        opacityAnimation_->setEndValue(1.0);
+        connect(opacityAnimation_, &QVariantAnimation::valueChanged, this, [this](const QVariant& value)
+        {
+            opacityEffect_->setOpacity(value.toDouble());
+        });
+        connect(opacityAnimation_, &QVariantAnimation::finished, this, [this]()
+        {
+            if (QAbstractAnimation::Backward == opacityAnimation_->direction())
+                hide();
+        });
     }
 
     void MentionCompleter::setDialogAimId(const QString & _aimid)
@@ -266,16 +278,8 @@ namespace Ui
         opacityEffect_->setOpacity(0.0);
 
         opacityAnimation_->stop();
-        opacityAnimation_->setStartValue(0.0);
-        opacityAnimation_->setEndValue(1.0);
+        opacityAnimation_->setDirection(QAbstractAnimation::Forward);
         opacityAnimation_->setDuration(getDurationAppear().count());
-        opacityAnimation_->setEasingCurve(QEasingCurve::Linear);
-        opacityAnimation_->setLoopCount(1);
-        opacityAnimation_->disconnect(this);
-        connect(opacityAnimation_, &QVariantAnimation::valueChanged, this, [this](const QVariant& value)
-        {
-            opacityEffect_->setOpacity(value.toDouble());
-        });
         opacityAnimation_->start();
 
         show();
@@ -292,21 +296,8 @@ namespace Ui
     void MentionCompleter::hideAnimated()
     {
         opacityAnimation_->stop();
-        opacityAnimation_->setStartValue(1.0);
-        opacityAnimation_->setEndValue(0.0);
-        opacityAnimation_->setDuration(getDurationAppear().count());
-        opacityAnimation_->setEasingCurve(QEasingCurve::Linear);
-        opacityAnimation_->setLoopCount(1);
-        opacityAnimation_->disconnect(this);
-        connect(opacityAnimation_, &QVariantAnimation::valueChanged, this, [this](const QVariant& value)
-        {
-            opacityEffect_->setOpacity(value.toDouble());
-        });
-        connect(opacityAnimation_, &QVariantAnimation::stateChanged, [this](QAbstractAnimation::State newState, QAbstractAnimation::State oldState)
-        {
-            if (QAbstractAnimation::State::Stopped == newState)
-                hide();
-        });
+        opacityAnimation_->setDirection(QAbstractAnimation::Backward);
+        opacityAnimation_->setDuration(getDurationDisappear().count());
         opacityAnimation_->start();
     }
 }

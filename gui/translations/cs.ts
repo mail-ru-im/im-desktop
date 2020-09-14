@@ -936,6 +936,22 @@ Zde můžete zanechat svůj názor nebo nahlásit chybu:</translation>
         <translation>%1 přiřazen %2 administrátor této skupiny</translation>
     </message>
     <message>
+        <source>Block contact</source>
+        <translation>Zablokovat kontakt</translation>
+    </message>
+    <message>
+        <source>OK</source>
+        <translation>OK</translation>
+    </message>
+    <message>
+        <source>%1 Send the user a message or press &quot;OK&quot; button to allow %2 to</source>
+        <translation>%1 Klikněte na OK nebo odpovězte a %2 může</translation>
+    </message>
+    <message>
+        <source>%1 From now on %2 is able to</source>
+        <translation>%1 nyní %2 může</translation>
+    </message>
+    <message>
         <source>%1 You have canceled your join request</source>
         <translation>%1 Zrušili jste svou žádost o členství</translation>
     </message>
@@ -4680,6 +4696,14 @@ Zde můžete zanechat svůj názor nebo nahlásit chybu:</translation>
         <source>Remove reaction: an error occurred</source>
         <translation>Reakce na odstranění: došlo k chybě</translation>
     </message>
+    <message>
+        <source>And %1 more...</source>
+        <translation>A %1...</translation>
+    </message>
+    <message>
+        <source>Loading...</source>
+        <translation>Načítání...</translation>
+    </message>
 </context>
 <context>
     <name>release_notes</name>
@@ -5920,6 +5944,24 @@ Uprav telefonní číslo a opakuj akci.</translation>
     <message>
         <source>For %1 already</source>
         <translation>Již pro %1</translation>
+    </message>
+</context>
+<context>
+    <name>status_plate</name>
+    <message>
+        <source>Bot</source>
+        <translation>Bot</translation>
+    </message>
+</context>
+<context>
+    <name>status_popup</name>
+    <message>
+        <source>Select my status</source>
+        <translation>Zvolte můj stav</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>Zrušení</translation>
     </message>
 </context>
 <context>

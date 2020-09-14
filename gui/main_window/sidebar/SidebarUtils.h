@@ -3,6 +3,7 @@
 #include "../../types/message.h"
 #include "../../controls/TextUnit.h"
 #include "../contact_list/Common.h"
+#include "../containers/StatusContainer.h"
 #include "GalleryList.h"
 
 namespace Logic
@@ -18,6 +19,7 @@ namespace Ui
     class ImageVideoItem;
     class TextEditEx;
     class ContactAvatarWidget;
+    class TextWidget;
 
     enum class ButtonState
     {
@@ -115,6 +117,8 @@ namespace Ui
         QMargins margins_;
     };
 
+    class StatusPlate;
+
     class AvatarNameInfo : public QWidget
     {
         Q_OBJECT
@@ -152,10 +156,13 @@ namespace Ui
     private Q_SLOTS:
         void avatarChanged(const QString& aimId);
         void friendlyChanged(const QString& _aimId, const QString& _friendlyName);
+        void statusChanged(const QString& _aimid);
 
     private:
         void loadAvatar();
         void setBadgeRect();
+        void updateSize();
+        QPoint statusPos() const;
 
     private:
         QMargins margins_;
@@ -176,7 +183,67 @@ namespace Ui
         bool nameOnly_;
 
         QRect badgeRect_;
+        StatusPlate* statusPlate_;
     };
+
+    class StatusPlate : public QObject
+    {
+        Q_OBJECT
+
+    Q_SIGNALS:
+        void update(QPrivateSignal);
+
+    public:
+        StatusPlate(QObject* _parent);
+        ~StatusPlate();
+        void setContactId(const QString& _id);
+        void draw(QPainter& _p);
+        int height() const;
+        QRect rect() const;
+        bool isEmpty() const;
+
+        void onMouseMove(const QPoint& _pos);
+        void onMousePress(const QPoint& _pos);
+        void onMouseRelease(const QPoint& _pos);
+        void onMouseLeave();
+        void updateGeometry(const QPoint& _topLeft, int _availableWidth);
+
+    private Q_SLOTS:
+        void onStatusChanged(const QString& _contactId);
+
+    private:
+        int availableForText(int _availableWidth) const;
+        void updateTextGeometry(int _availableWidth);
+
+        Ui::TextRendering::TextUnitPtr text_;
+        int cachedAvailableWidth_ = 0;
+        Statuses::Status status_;
+        QString contactId_;
+        bool hoverEnabled_ = false;
+        bool hovered_ = false;
+        bool pressed_ = false;
+        QRect rect_;
+    };
+
+    class BigEmojiWidget;
+
+    class StatusPopup : public QWidget
+    {
+        Q_OBJECT
+    public:
+        StatusPopup(const Statuses::Status& _status, QWidget* _parent);
+
+    protected:
+        void paintEvent(QPaintEvent* _event) override;
+
+    private:
+        QWidget* content_ = nullptr;
+        Statuses::Status status_;
+        BigEmojiWidget* emoji_ = nullptr;
+        TextWidget* text_ = nullptr;
+        TextWidget* duration_ = nullptr;
+        QScrollArea* scrollArea_ = nullptr;
+    };    
 
     class AvatarNamePlaceholder : public QWidget
     {

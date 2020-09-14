@@ -16,26 +16,25 @@ namespace Ui
         Q_PROPERTY(int xCenter READ xCenter WRITE setXCenter)
 
     public:
-
-        MaskWidget(voip_masks::Mask* mask);
+        MaskWidget(voip_masks::Mask* _mask);
 
         const QString& maskPath() const;
 
-        void setPixmap(const QPixmap& image);
+        void setPixmap(const QPixmap& _image);
         const QPixmap& pixmap() const;
-        void setChecked(bool check);
+        void setChecked(bool _check);
         bool isEmptyMask() const;
         bool isLoaded() const;
         const QString& name() const;
 
-        void setXPos(int x);
-        void setYPos(int x);
+        void setXPos(int _x);
+        void setYPos(int _y);
 
-        void setYCenter(int y);
-        void setXCenter(int y);
+        void setYCenter(int _y);
+        void setXCenter(int _x);
 
-        int  yCenter() const;
-        int  xCenter() const;
+        int yCenter() const;
+        int xCenter() const;
 
         void updateSize();
 
@@ -45,7 +44,7 @@ namespace Ui
         void loaded();
 
     public Q_SLOTS:
-        void setMaskEngineReady(bool ready);
+        void setMaskEngineReady(bool _ready);
 
     protected Q_SLOTS:
         void updatePreview();
@@ -53,23 +52,22 @@ namespace Ui
         void updateLoadingProgress(unsigned);
 
     protected:
-
-        void changeEvent(QEvent * event) override;
-        void moveEvent(QMoveEvent *event) override;
+        void changeEvent(QEvent* _event) override;
+        void moveEvent(QMoveEvent* _event) override;
+        void paintEvent(QPaintEvent*) override;
 
         QPixmap image_;
         QString maskPath_;
         QString name_;
         QPointer<voip_masks::Mask> mask_;
-        float loadingProgress_;
-        bool maskEngineReady_;
-        bool applyWhenEnebled_;
+        float loadingProgress_ = 0.0f;
+        bool maskEngineReady_ = false;
+        bool applyWhenEnabled_ = false;
         QPixmap closeIcon_;
 
         QPropertyAnimation* resizeAnimationMin_;
         QPropertyAnimation* resizeAnimationMax_;
 
-        void paintEvent(QPaintEvent * event) override;
         bool loading_ = false;
     };
 
@@ -87,24 +85,19 @@ namespace Ui
         void makePreviewPrimary();
         void makeInterlocutorPrimary();
         void onShowMaskList();
-        //void onHideMaskList();
-        void getCallStatus(bool& isAccepted);
+        void getCallStatus(bool& _isAccepted);
         void onHideMaskPanel();
-        //void animationRunningFinished(bool out);
 
     public:
-        MaskPanel(QWidget* _parent, QWidget* _container, int topOffset, int bottomOffset);
+        MaskPanel(QWidget* _parent, QWidget* _container, int _topOffset, int _bottomOffset);
         ~MaskPanel();
 
-        //void updatePosition(const QWidget& parent) override;
+        void setMaskList(const voip_masks::MaskList& _maskList);
 
-        void setMaskList(const voip_masks::MaskList& maskList);
+        void fadeIn(unsigned int _duration) override;
+        void fadeOut(unsigned int _duration) override;
 
-        virtual void fadeIn(unsigned int duration) override;
-        virtual void fadeOut(unsigned int duration) override;
-
-        //void setPanelMode(QBoxLayout::Direction direction);
-        void setTopOffset(int topOffset);
+        void setTopOffset(int _topOffset);
         void chooseFirstMask();
         bool isOpened();
 
@@ -112,36 +105,29 @@ namespace Ui
         MaskWidget* getFirstMask();
 
     public Q_SLOTS:
-        //void hideMaskListWithOutAnimation();
-        //void hideMaskList();
-        void selectMask(MaskWidget* mask);
+        void selectMask(MaskWidget* _mask);
         void callDestroyed();
-        //void animationFinished(bool out);
-        void scrollToWidget(QString maskName);
-        //void animationRunned(bool out);
+        void scrollToWidget(const QString& _maskName);
 
     protected Q_SLOTS:
-
         void showMaskList();
-        MaskWidget* appendItem(voip_masks::Mask* mask);
+        MaskWidget* appendItem(voip_masks::Mask* _mask);
         void changedMask();
         void scrollListUp();
         void scrollListDown();
         void updateUpDownButtons();
         void setVideoStatus(bool);
-        void updateMaskList(const voip_manager::ContactEx&  contactEx);
-        void autoHidePreviewPrimary();
+        void onVoipCallCreated(const voip_manager::ContactEx& _contactEx);
+        void onVoipCallIncomingAccepted(const std::string& _callId);
         void onMaskLoaded();
-
-        //void onVoipMinimalBandwidthChanged(bool _bEnable);
 
     protected:
         void changeEvent(QEvent* _e) override;
         void enterEvent(QEvent* _e) override;
         void leaveEvent(QEvent* _e) override;
         void keyReleaseEvent(QKeyEvent* _e) override;
-        void resizeEvent(QResizeEvent * event) override;
-        void wheelEvent(QWheelEvent * event) override;
+        void resizeEvent(QResizeEvent*) override;
+        void wheelEvent(QWheelEvent* _event) override;
         void showEvent(QShowEvent*) override;
         void hideEvent(QHideEvent*) override;
 
@@ -151,27 +137,23 @@ namespace Ui
         // Send statistic to core.
         void sendOpenStatistic();
         // Send mask select statistic to core.
-        void sendSelectMaskStatistic(MaskWidget* mask);
+        void sendSelectMaskStatistic(MaskWidget* _mask);
 
         // Enumirate all masks. First mask is empty mask.
-        void enumerateMask(std::function<void(MaskWidget* mask)> func);
+        void enumerateMask(std::function<void(MaskWidget* mask)> _func);
 
         void updateMaskList();
 
-        void updatePosition(const QWidget& parent) override;
+        void updatePosition(const QWidget& _parent) override;
 
     private:
 
         QWidget* container_;
         QWidget* rootWidget_;
 
-        //UIEffects* panelEffect_;
-
         QScrollArea* maskList_;
         QWidget *scrollWidget_;
         QHBoxLayout* layoutMaskListWidget_;
-
-        //MaskWidget*  currentMaskButton_;
 
         QHBoxLayout* maskLayout_;
 
@@ -191,9 +173,6 @@ namespace Ui
         // Is local video on of off.
         bool hasLocalVideo_;
 
-        // This timer hide mask panel in 7 seconds.
-        QTimer* hidePreviewPrimaryTimer_;
-
         // Background widget to able process mouse events on transparent parts of panel.
         PanelBackground* backgroundWidget_;
 
@@ -203,10 +182,5 @@ namespace Ui
         bool isFadedVisible_;
 
         QPointer<MaskWidget> current_;
-
-        // Is hide/show animation running in this moment.
-        //bool animationRunning_;
-        // Force hide mask list on animation finish.
-        //bool hideMaskListOnAnimationFinish_;
     };
 }

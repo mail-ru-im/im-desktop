@@ -172,7 +172,6 @@ namespace core
         void on_voip_background_msg(std::shared_ptr<base_im> im, coll_helper& _params);
 
         // group chat
-        void on_remove_members(int64_t _seq, coll_helper& _params);
         void on_add_members(int64_t _seq, coll_helper& _params);
         void on_add_chat(int64_t _seq, coll_helper& _params);
 
@@ -292,6 +291,8 @@ namespace core
 
         void on_subscribe_call_room_info(const int64_t _seq, coll_helper& _params);
         void on_unsubscribe_call_room_info(const int64_t _seq, coll_helper& _params);
+
+        void on_get_emoji(const int64_t _seq, coll_helper& _params);
 
     public:
 

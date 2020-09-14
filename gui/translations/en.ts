@@ -417,7 +417,7 @@ You can leave your feedback or report an error here:</translation>
     </message>
     <message>
         <source>call</source>
-        <translation>bell</translation>
+        <translation>call</translation>
     </message>
     <message>
         <source>webinar</source>
@@ -425,11 +425,11 @@ You can leave your feedback or report an error here:</translation>
     </message>
     <message>
         <source>Send the %1 link to current chat or copy it</source>
-        <translation>Send link to %1 in live chat or copy it</translation>
+        <translation>Send the %1 link to current chat or copy it</translation>
     </message>
     <message>
         <source>Send the call link %1 to current chat or copy it</source>
-        <translation>Send link to call %1 or copy it</translation>
+        <translation>Send the call link %1 to current chat or copy it</translation>
     </message>
 </context>
 <context>
@@ -934,6 +934,22 @@ You can leave your feedback or report an error here:</translation>
     <message>
         <source>%1 assigned %2 administrator of this group</source>
         <translation>%1 assigned %2 administrator of this group</translation>
+    </message>
+    <message>
+        <source>Block contact</source>
+        <translation>Block contact</translation>
+    </message>
+    <message>
+        <source>OK</source>
+        <translation>OK</translation>
+    </message>
+    <message>
+        <source>%1 Send the user a message or press &quot;OK&quot; button to allow %2 to</source>
+        <translation>%1 Send the user a message or press &quot;OK&quot; button to allow %2 to</translation>
+    </message>
+    <message>
+        <source>%1 From now on %2 is able to</source>
+        <translation>%1 From now on %2 is able to</translation>
     </message>
     <message>
         <source>%1 You have canceled your join request</source>
@@ -4680,6 +4696,14 @@ You can leave your feedback or report an error here:</translation>
         <source>Remove reaction: an error occurred</source>
         <translation>Deletion response: an error occurred</translation>
     </message>
+    <message>
+        <source>And %1 more...</source>
+        <translation>And %1 more...</translation>
+    </message>
+    <message>
+        <source>Loading...</source>
+        <translation>Loading...</translation>
+    </message>
 </context>
 <context>
     <name>release_notes</name>
@@ -5920,6 +5944,24 @@ Please edit phone number and try again.</translation>
     <message>
         <source>For %1 already</source>
         <translation>For %1 already</translation>
+    </message>
+</context>
+<context>
+    <name>status_plate</name>
+    <message>
+        <source>Bot</source>
+        <translation>Bot</translation>
+    </message>
+</context>
+<context>
+    <name>status_popup</name>
+    <message>
+        <source>Select my status</source>
+        <translation>Select my status</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>Cancel</translation>
     </message>
 </context>
 <context>

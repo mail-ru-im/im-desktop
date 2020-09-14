@@ -12,7 +12,7 @@ namespace Data
         location_ = QString::fromUtf8(_coll.get_value_as_string("location")).trimmed();
         ip_ = QString::fromUtf8(_coll.get_value_as_string("ip")).trimmed();
         hash_ = QString::fromUtf8(_coll.get_value_as_string("hash")).trimmed();
-        startedTime_ = QDateTime::fromTime_t(_coll.get_value_as_int64("started"));
+        startedTime_ = QDateTime::fromSecsSinceEpoch(_coll.get_value_as_int64("started"));
         isCurrent_ = _coll.get_value_as_bool("current");
 
         assert(!hash_.isEmpty());

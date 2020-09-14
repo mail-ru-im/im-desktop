@@ -131,7 +131,7 @@ namespace Logic
         bool youAreNotAMember(const QString& _aimid) const;
         bool isYouBlocked(const QString& _aimId) const;
 
-        void removeContactsFromModel(const QVector<QString>& _vcontacts);
+        void removeContactsFromModel(const QVector<QString>& _vcontacts, bool _emit = true);
         void removeTemporaryContactsFromModel();
 
         std::vector<QString> getCheckedContacts() const;

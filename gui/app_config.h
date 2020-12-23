@@ -59,6 +59,7 @@ public:
 
     /* seconds */
     int CacheHistoryControlPagesFor() const noexcept;
+    uint32_t AppUpdateIntervalSecs() const noexcept;
 
     void SetFullLogEnabled(bool enabled) noexcept;
     void SetUpdateble(bool enabled) noexcept;
@@ -98,6 +99,8 @@ private:
     bool GDPR_UserHasLoggedInEver_;
 
     int CacheHistoryContolPagesFor_;
+
+    uint32_t AppUpdateIntervalSecs_;
 
     std::string deviceId_;
 

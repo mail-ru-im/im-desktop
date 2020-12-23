@@ -46,3 +46,43 @@ namespace core
         set<QStringView>(_name, _value);
     }
 }
+
+namespace Utils
+{
+    enum class TrimString
+    {
+        no,
+        yes
+    };
+    template<typename T>
+    T toContainerOfString(const core::iarray* array, TrimString _trim = TrimString::yes)
+    {
+        T container;
+        if (array)
+        {
+            const auto size = array->size();
+            container.reserve(size);
+            for (std::remove_const_t<decltype(size)> i = 0; i < size; ++i)
+            {
+                auto str = QString::fromUtf8(array->get_at(i)->get_as_string());
+                if (_trim == TrimString::yes)
+                    str = std::move(str).trimmed();
+
+                if (!str.isEmpty())
+                    container.push_back(std::move(str));
+            }
+        }
+        return container;
+    }
+
+    template<typename T>
+    core::ifptr<core::iarray> toArrayOfStrings(const T& _cont, Ui::gui_coll_helper& _coll)
+    {
+        core::ifptr<core::iarray> arr(_coll->create_array());
+        arr->reserve(_cont.size());
+        for (const auto& item : _cont)
+            arr->push_back(_coll.create_qstring_value(item).get());
+
+        return arr;
+    }
+}

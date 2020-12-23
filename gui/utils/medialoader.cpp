@@ -3,6 +3,7 @@
 #include "core_dispatcher.h"
 #include "../main_window/history_control/complex_message/FileSharingUtils.h"
 #include "utils/UrlParser.h"
+#include "utils/async/AsyncTask.h"
 #include "medialoader.h"
 
 using namespace Utils;
@@ -121,16 +122,16 @@ void FileSharingLoader::onFileError(qint64 _seq)
 
 void FileSharingLoader::connectSignals()
 {
-    fileDownloadedConneection_ = connect(Ui::GetDispatcher(), &Ui::core_dispatcher::fileSharingFileDownloaded,
+    fileDownloadedConnection_ = connect(Ui::GetDispatcher(), &Ui::core_dispatcher::fileSharingFileDownloaded,
                                          this, &FileSharingLoader::onFileDownloaded);
 
-    previewMetaDownloadedConneection_ = connect(Ui::GetDispatcher(), &Ui::core_dispatcher::fileSharingPreviewMetainfoDownloaded,
+    previewMetaDownloadedConnection_ = connect(Ui::GetDispatcher(), &Ui::core_dispatcher::fileSharingPreviewMetainfoDownloaded,
                                                 this, &FileSharingLoader::onPreviewMetainfo);
 
-    fileMetaDownloadedConneection_ = connect(Ui::GetDispatcher(), &Ui::core_dispatcher::fileSharingFileMetainfoDownloaded,
+    fileMetaDownloadedConnection_ = connect(Ui::GetDispatcher(), &Ui::core_dispatcher::fileSharingFileMetainfoDownloaded,
                                              this, &FileSharingLoader::onFileMetainfo);
 
-    imageDownloadedConneection_ = connect(Ui::GetDispatcher(), &Ui::core_dispatcher::imageDownloaded,
+    imageDownloadedConnection_ = connect(Ui::GetDispatcher(), &Ui::core_dispatcher::imageDownloaded,
                                           this, &FileSharingLoader::onPreviewDownloaded);
 
     fileErrorConnection_ = connect(Ui::GetDispatcher(), &Ui::core_dispatcher::fileSharingError,
@@ -139,10 +140,10 @@ void FileSharingLoader::connectSignals()
 
 void FileSharingLoader::disconnectSignals()
 {
-    disconnect(fileDownloadedConneection_);
-    disconnect(previewMetaDownloadedConneection_);
-    disconnect(fileMetaDownloadedConneection_);
-    disconnect(imageDownloadedConneection_);
+    disconnect(fileDownloadedConnection_);
+    disconnect(previewMetaDownloadedConnection_);
+    disconnect(fileMetaDownloadedConnection_);
+    disconnect(imageDownloadedConnection_);
     disconnect(fileErrorConnection_);
 }
 
@@ -183,14 +184,14 @@ void CommonMediaLoader::cancelPreview()
     disconnectSignals();
 }
 
-void CommonMediaLoader::onImageDownloaded(qint64 _seq, const QString& _url, const QPixmap& _image, const QString& _path)
+void CommonMediaLoader::onImageDownloaded(qint64 _seq, const QString& _url, const QPixmap& _image, const QString& _path, bool _is_preview)
 {
     if (seq_ != _seq)
         return;
 
     seq_ = 0;
 
-    if (!_image.isNull())
+    if (_is_preview)
         Q_EMIT previewLoaded(_image, originSize_);
     else
         Q_EMIT fileLoaded(_path);
@@ -207,14 +208,15 @@ void CommonMediaLoader::onImageMetaDownloaded(qint64 _seq, const Data::LinkMetad
     isGif_ = _meta.getContentTypeStr() == u"gif";
     originSize_ = _meta.getOriginSize();
     downloadLink_ = _meta.getDownloadUri();
+    fileFormat_ = _meta.getFileFormat();
 }
 
 void CommonMediaLoader::onImageError(qint64 _seq)
 {
     if (seq_ == _seq)
     {
-        Q_EMIT error();
         disconnectSignals();
+        Q_EMIT error();
     }
 }
 
@@ -249,9 +251,10 @@ void CommonMediaLoader::disconnectSignals()
     disconnect(progressConneection_);
 }
 
-void FileSaver::save(FileSaver::Callback _callback, const QString& _link, const QString& _path)
+void FileSaver::save(FileSaver::Callback _callback, const QString& _link, const QString& _path, bool _exportAsPng)
 {
     callback_ = std::move(_callback);
+    exportAsPng_ = _exportAsPng;
 
     Utils::UrlParser parser;
     parser.process(QStringRef(&_link));
@@ -269,15 +272,41 @@ void FileSaver::save(FileSaver::Callback _callback, const QString& _link, const 
 
 void FileSaver::onSaved(const QString& _path)
 {
-    Q_UNUSED(_path)
-    callback_(true, _path);
-
-    deleteLater();
+    if (!exportAsPng_)
+    {
+        callback_(true, _path);
+        deleteLater();
+    }
+    else
+    {
+        Async::runAsync([pThis = QPointer(this), _path]()
+        {
+            if (!pThis)
+                return;
+            QImage image;
+            QSize size;
+            Utils::loadImageScaled(_path, {}, image, size);
+            const bool res = image.save(_path, "png");
+            Async::runInMain([pThis, _path, res]()
+            {
+                if (!pThis)
+                    return;
+                if (res)
+                {
+                    pThis->callback_(true, _path);
+                    pThis->deleteLater();
+                }
+                else
+                {
+                    pThis->onError();
+                }
+            });
+        });
+    }
 }
 
 void FileSaver::onError()
 {
     callback_(false, QString());
-
     deleteLater();
 }

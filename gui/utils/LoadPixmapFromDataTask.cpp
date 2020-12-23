@@ -28,10 +28,14 @@ namespace Utils
         assert(size > 0);
 
         auto data = QByteArray::fromRawData((const char *)Stream_->read(size), (int)size);
-
+        if (Q_UNLIKELY(!QCoreApplication::instance()))
+            return;
         QPixmap preview;
         QSize originalSize;
         Utils::loadPixmapScaled(data, maxSize_, Out preview, Out originalSize);
+
+        if (Q_UNLIKELY(!QCoreApplication::instance()))
+            return;
 
         if (preview.isNull())
         {

@@ -65,8 +65,8 @@ namespace Logic
 
         QString getSenderName(const Data::MessageBuddySptr& _msg, const bool _fromDialogSearch) const;
 
-        mutable ContactsMap contactCache;
-        mutable MessagesMap messageCache;
+        mutable ContactsMap contactCache_;
+        mutable MessagesMap messageCache_;
 
         qint64 selectedMessage_;
 

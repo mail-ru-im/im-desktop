@@ -18,6 +18,8 @@ namespace core
         public:
             event_subscribe(wim_packet_params _params, subscriptions::subscr_ptr_v _subscriptions);
             ~event_subscribe() = default;
+
+            virtual std::string_view get_method() const override;
         };
     }
 }

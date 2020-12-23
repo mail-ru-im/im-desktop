@@ -32,10 +32,10 @@ const TextBrowserEx::Options &TextBrowserEx::getOptions() const
 QString TextBrowserEx::generateStyleSheet(const TextBrowserEx::Options &_options)
 {
     QString styleSheet;
-    styleSheet += qsl("a { color: %1; }").arg(_options.linkColor_.name());
+    styleSheet += ql1s("a { color: %1; }").arg(_options.linkColor_.name());
 
     if (_options.borderless_)
-        styleSheet.append(QChar::Space).append(qsl("QWidget { border: none; background-color: %1; color: %2; }").arg(_options.backgroundColor_.name(), _options.textColor_.name()));
+        styleSheet.append(QChar::Space).append(ql1s("QWidget { border: none; background-color: %1; color: %2; }").arg(_options.backgroundColor_.name(), _options.textColor_.name()));
 
     if (_options.noTextDecoration_)
         styleSheet.append(QChar::Space).append(ql1s("a:link { text-decoration: none }"));

@@ -15,6 +15,7 @@ namespace core
             std::string nick_;
             std::string friendly_;
             lastseen lastseen_;
+            std::optional<int64_t> can_remove_till_;
 
             bool friend_ = false;
             bool no_avatar_ = false;
@@ -25,6 +26,7 @@ namespace core
             std::string aimid_;
             std::string role_;
             lastseen lastseen_;
+            std::optional<int64_t> can_remove_till_;
         };
 
         class chat_info
@@ -41,6 +43,7 @@ namespace core
             std::string stamp_;
             std::string creator_;
             std::string default_role_;
+            std::string inviter_;
 
             uint32_t create_time_ = 0;
             uint32_t admins_count_ = 0;
@@ -48,6 +51,7 @@ namespace core
             uint32_t friend_count_ = 0;
             uint32_t blocked_count_ = 0;
             uint32_t pending_count_ = 0;
+            uint32_t your_invites_count_ = 0;
 
             bool you_blocked_ = false;
             bool you_pending_ = false;
@@ -96,6 +100,7 @@ namespace core
             void serialize(core::coll_helper _coll) const;
 
             const auto& get_persons() const { return persons_; }
+            const auto& get_members() const { return members_; }
         };
 
         class chat_contacts

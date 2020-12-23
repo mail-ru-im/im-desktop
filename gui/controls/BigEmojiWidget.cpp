@@ -23,6 +23,7 @@ public:
     int64_t seq_ = -1;
     Emoji::EmojiCode code_;
     bool waitingForNetwork_ = false;
+    double opacity_ = 1;
 
     void loadServerEmoji()
     {
@@ -50,11 +51,18 @@ BigEmojiWidget::BigEmojiWidget(const QString& _code, int _size, QWidget* _parent
     connect(GetDispatcher(), &core_dispatcher::connectionStateChanged, this, &BigEmojiWidget::onConnectionState);
 }
 
+void BigEmojiWidget::setOpacity(double _opacity)
+{
+    d->opacity_ = _opacity;
+    update();
+}
+
 BigEmojiWidget::~BigEmojiWidget() = default;
 
 void BigEmojiWidget::paintEvent(QPaintEvent* _event)
 {
     QPainter p(this);
+    p.setOpacity(d->opacity_);
     p.drawImage(rect(), d->emojiImage_);
 }
 

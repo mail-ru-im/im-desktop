@@ -770,7 +770,7 @@ std::shared_ptr<request_buddies_handler> face::get_messages(const std::string& _
     auto first_load = std::make_shared<bool>(false);
     auto errors = std::make_shared<error_vector>();
 
-    static constexpr char task_name[] = "face::get_messages";
+    constexpr char task_name[] = "face::get_messages";
 
     thread_->run_async_function([_contact, out_messages, _from, _count_early, _count_later, history_cache, first_load, errors]()->int32_t
     {
@@ -781,7 +781,7 @@ std::shared_ptr<request_buddies_handler> face::get_messages(const std::string& _
         if (!ptr_this)
             return;
 
-        static constexpr char task_name[] = "face::get_messages_on_result";
+        constexpr char task_name[] = "face::get_messages_on_result";
 
         ptr_this->thread_->run_async_function([history_cache, _contact]()->int32_t
         {
@@ -1142,14 +1142,22 @@ void face::get_pending_delete_messages(std::function<void(const bool _empty, con
     };
 }
 
-void face::insert_pending_delete_message(const std::string& _contact, delete_message _message)
+std::shared_ptr<insert_pending_delete_message_handler> face::insert_pending_delete_message(const std::string& _contact, delete_message _message)
 {
+    auto handler = std::make_shared<insert_pending_delete_message_handler>();
+    
     static constexpr char task_name[] = "face::insert_pending_delete_message";
 
-    thread_->run_async_function([history_cache = history_cache_, _contact, _message = std::move(_message)]
+    thread_->run_async_function([history_cache = history_cache_, _contact, _message]
     {
         return history_cache->insert_pending_delete_message(_contact, _message);
-    }, task_name);
+    }, task_name)->on_result_ = [handler, _message](int32_t)
+    {
+        if (handler->on_result)
+            handler->on_result(_message.get_message_id(), _message.get_internal_id());
+    };
+
+    return handler;
 }
 
 void face::remove_pending_delete_message(const std::string& _contact, const delete_message& _message)

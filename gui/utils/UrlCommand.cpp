@@ -289,6 +289,8 @@ void VCSCommand::execute()
     if (!confirm)
         return;
 
+#ifndef STRIP_VOIP
     Ui::GetDispatcher()->getVoipController().setStartVCS(url_.toStdString().c_str());
+#endif
     return;
 }

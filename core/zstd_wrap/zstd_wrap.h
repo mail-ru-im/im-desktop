@@ -17,8 +17,8 @@ typedef enum {
 // data_in_size - size of data_in in bytes
 // data_out - allocated buffer for output
 // data_out_size - size of data_out in bytes
-// dict_file_path - path to zstd dictionary
-// compressionLevel - compression level 0-100 (zstd use 3 by default)
+// dict_file_path - path to zstd dictionary (if nullptr or empty decode without dictionary)
+// compressionLevel - compression level 0-19 (zstd use 3 by default)
 // needPreprocessJSON - flag for preprocess byte array as json for sort keys and remove redundant spaces
 //
 // return values: ZSTDW_STATUS
@@ -51,7 +51,7 @@ ZSTDW_STATUS ZSTDW_Encode_buf(const char *data_in,
 // data_in_size - size of data_in in bytes
 // data_out - allocated buffer for output
 // data_out_size - size of data_out in bytes
-// dict_file_path - path to zstd dictionary
+// dict_file_path - path to zstd dictionary (if nullptr or empty decode without dictionary)
 //
 // return values: ZSTDW_STATUS
 // data_out_written - ZSTDW_OK: how many bytes has been written in output buffer,

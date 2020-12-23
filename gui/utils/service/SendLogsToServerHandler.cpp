@@ -78,9 +78,9 @@ void SendLogsToServerHandler::onHaveLogsPath(const QString &_logsPath)
         const QString icqVer = QString::fromUtf8(product.data(), product.size()) % ql1c(' ') % QString::fromUtf8(VERSION_INFO_STR);
         auto osv = QSysInfo::prettyProductName();
         if (!osv.length() || osv == u"unknown")
-            osv = qsl("%1 %2 (%3 %4)").arg(QSysInfo::productType(), QSysInfo::productVersion(), QSysInfo::kernelType(), QSysInfo::kernelVersion());
+            osv = ql1s("%1 %2 (%3 %4)").arg(QSysInfo::productType(), QSysInfo::productVersion(), QSysInfo::kernelType(), QSysInfo::kernelVersion());
 
-        const auto concat = qsl("%1 %2 %3:%4").arg(osv, icqVer, QString::fromUtf8(productNameShort.data(), productNameShort.size()), aimId);
+        const auto concat = ql1s("%1 %2 %3:%4").arg(osv, icqVer, QString::fromUtf8(productNameShort.data(), productNameShort.size()), aimId);
         // fb.question.3004
         col.set_value_as_qstring("version", concat);
         // fb.question.159

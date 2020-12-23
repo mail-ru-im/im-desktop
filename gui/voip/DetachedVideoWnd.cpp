@@ -1,11 +1,20 @@
 #include "stdafx.h"
 #include "DetachedVideoWnd.h"
+#include "PanelButtons.h"
 #include "../core_dispatcher.h"
 #include "../utils/InterConnector.h"
 
 #include "CommonUI.h"
 #include "../controls/ContextMenu.h"
+#include "../controls/ClickWidget.h"
+#include "../controls/TooltipWidget.h"
 #include "../main_window/MainWindow.h"
+#include "../styles/ThemeParameters.h"
+#include "../utils/graphicsEffects.h"
+
+#include "../styles/ThemeParameters.h"
+
+#include "VideoWindow.h"
 
 #ifdef _WIN32
     #include <windows.h>
@@ -19,12 +28,24 @@ namespace
 {
     enum { kAnimationDefDuration = 500 };
 
+    auto getWidth()
+    {
+        return Utils::scale_value(284);
+    }
+
+    auto getMaxHeight()
+    {
+        return Utils::scale_value(212);
+    }
+
+    auto getCollapsedHeight()
+    {
+        return Utils::scale_value(52);
+    }
+
     auto getDetachedVideoWindowSize() noexcept
     {
-        if constexpr (platform::is_linux())
-            return Utils::scale_value(QSize(240, 224));
-        else
-            return Utils::scale_value(QSize(240, 180));
+        return QSize(getWidth(), getMaxHeight());
     }
 
     auto getPanelBackgroundColorLinux() noexcept
@@ -32,28 +53,64 @@ namespace
         return QColor(38, 38, 38, 255);
     }
 
-    auto getPanelOffsetFromButton() noexcept
+    auto getButtonsOffset() noexcept
     {
-        return Utils::scale_value(22);
+        return Utils::scale_value(4);
     }
 
-    auto getButtonsVerOffset() noexcept
+    auto getFrameBorderColor()
     {
-        if constexpr (platform::is_linux())
-            return Utils::scale_value(4);
-        else
-            return Utils::scale_value(0);
+        return Styling::getParameters().getColor(Styling::StyleVariable::SECONDARY_RAINBOW_YELLOW);
     }
+
+    auto getTooltipText()
+    {
+        return QT_TRANSLATE_NOOP("voip_pages", "Move the window\nor open call\nwith click");
+    }
+
+    auto getTooltipSize()
+    {
+        return Utils::scale_value(QSize(166, 77));
+    }
+
+    auto getBorderRadius()
+    {
+        return Utils::scale_value(4);
+    }
+
+    constexpr std::chrono::milliseconds heightAnimDuration() noexcept { return std::chrono::milliseconds(150); }
+    constexpr std::chrono::milliseconds tooltipShowDelay() noexcept { return std::chrono::milliseconds(400); }
+}
+
+void  Ui::MiniWindowVideoPanel::onResizeButtonClicked()
+{
+    const auto textMinimize = QT_TRANSLATE_NOOP("voip_pages", "Minimize");
+    const auto textMaximize = QT_TRANSLATE_NOOP("voip_pages", "Maximize");
+    if (resizeButton_->getTooltipText() == textMinimize)
+        resizeButton_->setTooltipText(textMaximize);
+    else
+        resizeButton_->setTooltipText(textMinimize);
+
+    Q_EMIT onResizeClicked();
+}
+
+void  Ui::MiniWindowVideoPanel::onOpenCallButtonClicked()
+{
+    Q_EMIT onOpenCallClicked();
 }
 
 void Ui::MiniWindowVideoPanel::onHangUpButtonClicked()
 {
+    Q_EMIT onHangClicked();
     Ui::GetDispatcher()->getVoipController().setHangup();
 }
 
 void Ui::MiniWindowVideoPanel::onAudioOnOffClicked()
 {
-    Ui::GetDispatcher()->getVoipController().setSwitchACaptureMute();
+    if (Ui::GetDispatcher()->getVoipController().isAudPermissionGranted())
+        Ui::GetDispatcher()->getVoipController().setSwitchACaptureMute();
+    else
+        Q_EMIT onMicrophoneClick();
 }
 
 void Ui::MiniWindowVideoPanel::onVideoOnOffClicked()
@@ -65,9 +122,10 @@ void Ui::MiniWindowVideoPanel::onVoipMediaLocalAudio(bool _enabled)
 {
     if (micButton_)
     {
-        micButton_->setProperty("CallEnableMic", _enabled);
-        micButton_->setProperty("CallDisableMic", !_enabled);
-        micButton_->setStyle(QApplication::style());
+        const auto style = _enabled ? PanelButton::ButtonStyle::Normal : PanelButton::ButtonStyle::Transparent;
+        const auto icon = _enabled ? qsl(":/voip/microphone_icon") : qsl(":/voip/microphone_off_icon");
+        micButton_->updateStyle(style, icon);
+        micButton_->setTooltipText(getMicrophoneButtonText(style, PanelButton::ButtonSize::Small));
     }
 }
 
@@ -145,88 +203,76 @@ void Ui::MiniWindowVideoPanel::onVoipVideoDeviceSelected(const voip_proxy::devic
     isScreenSharingEnabled_ = (_desc.dev_type == voip_proxy::kvoipDevTypeVideoCapture && _desc.video_dev_type == voip_proxy::kvoipDeviceDesktop);
     isCameraEnabled_ = (_desc.dev_type == voip_proxy::kvoipDevTypeVideoCapture && _desc.video_dev_type == voip_proxy::kvoipDeviceCamera);
 
+    if (isScreenSharingEnabled_)
+        showScreenBorder(_desc.uid);
+    else
+        hideScreenBorder();
     updateVideoDeviceButtonsState();
 }
 
 
 Ui::MiniWindowVideoPanel::MiniWindowVideoPanel(QWidget* _parent)
-#ifdef __APPLE__
-    : BaseBottomVideoPanel(_parent, Qt::Window | Qt::FramelessWindowHint | Qt::WindowDoesNotAcceptFocus | Qt::NoDropShadowWindowHint)
-#elif defined(__linux__)
-    : BaseBottomVideoPanel(_parent, Qt::Widget)
-#else
     : BaseBottomVideoPanel(_parent)
-#endif
-    , mouseUnderPanel_(false)
     , parent_(_parent)
     , rootWidget_(nullptr)
     , micButton_(nullptr)
     , stopCallButton_(nullptr)
     , videoButton_(nullptr)
-    , isFadedVisible_(false)
     , localVideoEnabled_(false)
     , isScreenSharingEnabled_(false)
     , isCameraEnabled_(true)
+    , mouseUnderPanel_(false)
 {
-    if constexpr (!platform::is_linux())
-    {
-        setAttribute(Qt::WA_NoSystemBackground, true);
-        setAttribute(Qt::WA_TranslucentBackground, true);
-    }
-
-    setStyleSheet(Utils::LoadStyle(qsl(":/qss/video_panel_mini_window")));
-    setProperty("VideoPanelMain", true);
-
+    setFixedHeight(getCollapsedHeight());
     auto rootLayout = Utils::emptyVLayout();
 
-    if constexpr (platform::is_linux())
-        rootLayout->setAlignment(Qt::AlignVCenter);
-    else
-        rootLayout->setAlignment(Qt::AlignBottom);
-
-    rootLayout->setContentsMargins(0, getButtonsVerOffset(), 0, getButtonsVerOffset());
+    rootLayout->setAlignment(Qt::AlignVCenter);
     setLayout(rootLayout);
 
     rootWidget_ = new QWidget(this);
-    rootWidget_->setContentsMargins(0, 0, 0, 0);
-    rootWidget_->setProperty("VideoPanel", true);
     rootLayout->addWidget(rootWidget_);
 
-    auto layoutTarget = Utils::emptyHLayout();
+    auto layoutTarget = Utils::emptyHLayout(rootWidget_);
+    layoutTarget->setSpacing(getButtonsOffset());
     layoutTarget->setAlignment(Qt::AlignVCenter);
-    rootWidget_->setLayout(layoutTarget);
 
-    auto addButton = [this, parent = rootWidget_, layoutTarget](const char* _propertyName, auto _slot) -> QPushButton*
+    auto addButton = [this, parent = rootWidget_, layoutTarget](const QString& _icon, PanelButton::ButtonStyle _style, auto _slot) -> PanelButton*
     {
-        auto btn = new QPushButton(parent);
-        if (_propertyName != NULL)
-            btn->setProperty(_propertyName, true);
-        btn->setSizePolicy(QSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding));
-        btn->setCursor(QCursor(Qt::PointingHandCursor));
-        btn->setFlat(true);
+        auto btn = new PanelButton(parent, QString(), _icon, PanelButton::ButtonSize::Small, _style);
 
         layoutTarget->addWidget(btn);
 
         if constexpr (platform::is_apple())
-            connect(btn, &QPushButton::clicked, this, [this](){ if (!isActiveWindow()) activateWindow(); });
+            connect(btn, &PanelButton::clicked, this, [this](){ if (!isActiveWindow()) activateWindow(); });
 
-        connect(btn, &QPushButton::clicked, this, std::forward<decltype(_slot)>(_slot));
+        connect(btn, &PanelButton::clicked, this, std::forward<decltype(_slot)>(_slot));
+
+        return btn;
+    };
+
+    auto addTransparentButton = [this, parent = rootWidget_, layoutTarget](const QString& _icon, const QString& _text, Qt::Alignment _align, bool _isAnimated, auto _slot) -> TransparentPanelButton*
+    {
+        auto btn = new TransparentPanelButton(parent, _icon, _text, _align, _isAnimated);
+
+        layoutTarget->addWidget(btn);
+
+        if constexpr (platform::is_apple())
+            connect(btn, &PanelButton::clicked, this, [this]() { if (!isActiveWindow()) activateWindow(); });
+
+        connect(btn, &PanelButton::clicked, this, std::forward<decltype(_slot)>(_slot));
 
         return btn;
     };
 
     layoutTarget->addStretch(1);
-    stopCallButton_ = addButton("StopCallButton", &MiniWindowVideoPanel::onHangUpButtonClicked);
+    resizeButton_ = addTransparentButton(qsl(":/voip/resize"), QT_TRANSLATE_NOOP("voip_pages", "Minimize"), Qt::AlignRight, true, &MiniWindowVideoPanel::onResizeButtonClicked);
+    micButton_ = addButton(qsl(":/voip/microphone_icon"), PanelButton::ButtonStyle::Transparent, &MiniWindowVideoPanel::onAudioOnOffClicked);
+    videoButton_ = addButton(qsl(":/voip/videocall_icon"), PanelButton::ButtonStyle::Normal, &MiniWindowVideoPanel::onVideoOnOffClicked);
+    shareScreenButton_ = addButton(qsl(":/voip/sharescreen_icon"), PanelButton::ButtonStyle::Transparent, &MiniWindowVideoPanel::onShareScreen);
+    stopCallButton_ = addButton(qsl(":/voip/endcall_icon"), PanelButton::ButtonStyle::Red, &MiniWindowVideoPanel::onHangUpButtonClicked);
+    stopCallButton_->setTooltipText(QT_TRANSLATE_NOOP("voip_video_panel_mini", "End meeting"));
+    openCallButton_ = addTransparentButton(qsl(":/voip/maximize"), QT_TRANSLATE_NOOP("voip_pages", "Raise call window"), Qt::AlignLeft, false, &MiniWindowVideoPanel::onOpenCallButtonClicked);
     layoutTarget->addStretch(1);
-    micButton_ = addButton("CallEnableMic", &MiniWindowVideoPanel::onAudioOnOffClicked);
-    micButton_->setProperty("CallDisableMic", false);
-    layoutTarget->addStretch(1);
-    shareScreenButton_ = addButton("ShareScreenButtonDisable", &MiniWindowVideoPanel::onShareScreen);
-    layoutTarget->addStretch(1);
-    videoButton_ = addButton(NULL, &MiniWindowVideoPanel::onVideoOnOffClicked);
-    layoutTarget->addStretch(1);
-
-    resetHangupText();
 
     connect(&Ui::GetDispatcher()->getVoipController(), &voip_proxy::VoipController::onVoipMediaLocalAudio, this, &MiniWindowVideoPanel::onVoipMediaLocalAudio);
     connect(&Ui::GetDispatcher()->getVoipController(), &voip_proxy::VoipController::onVoipMediaLocalVideo, this, &MiniWindowVideoPanel::onVoipMediaLocalVideo);
@@ -236,29 +282,10 @@ Ui::MiniWindowVideoPanel::MiniWindowVideoPanel(QWidget* _parent)
 
 }
 
-void Ui::MiniWindowVideoPanel::fadeIn(unsigned int _kAnimationDefDuration)
-{
-    if (!isFadedVisible_)
-    {
-        isFadedVisible_ = true;
-        if constexpr (!platform::is_linux())
-            BaseVideoPanel::fadeIn(_kAnimationDefDuration);
-    }
-}
 
-void Ui::MiniWindowVideoPanel::fadeOut(unsigned int _kAnimationDefDuration)
+Ui::MiniWindowVideoPanel::~MiniWindowVideoPanel()
 {
-    if (isFadedVisible_)
-    {
-        isFadedVisible_ = false;
-        if constexpr (!platform::is_linux())
-            BaseVideoPanel::fadeOut(_kAnimationDefDuration);
-    }
-}
-
-bool Ui::MiniWindowVideoPanel::isFadedIn()
-{
-    return isFadedVisible_;
+    hideScreenBorder();
 }
 
 bool Ui::MiniWindowVideoPanel::isUnderMouse()
@@ -266,28 +293,36 @@ bool Ui::MiniWindowVideoPanel::isUnderMouse()
     return mouseUnderPanel_;
 }
 
-void Ui::MiniWindowVideoPanel::resetHangupText()
-{
-    if (stopCallButton_)
-    {
-        stopCallButton_->setText(QString());
-        stopCallButton_->repaint();
-    }
-}
-
 void Ui::MiniWindowVideoPanel::updateVideoDeviceButtonsState()
 {
-    bool enableCameraButton = localVideoEnabled_ && isCameraEnabled_;
-    bool enableScreenButton = localVideoEnabled_ && isScreenSharingEnabled_;
+    const auto videoEnabled = localVideoEnabled_ && isCameraEnabled_;
+    const auto videoStyle = videoEnabled ? PanelButton::ButtonStyle::Normal : PanelButton::ButtonStyle::Transparent;
+    const auto videoIcon = videoEnabled ? qsl(":/voip/videocall_icon") : qsl(":/voip/videocall_off_icon");
+    const auto shareStyle = isScreenSharingEnabled_ ? PanelButton::ButtonStyle::Normal : PanelButton::ButtonStyle::Transparent;
+    const auto shareIcon = isScreenSharingEnabled_ ? qsl(":/voip/sharescreen_icon") : qsl(":/voip/sharescreen_icon");
 
-    videoButton_->setProperty("CallEnableCam", enableCameraButton);
-    videoButton_->setProperty("CallDisableCam", !enableCameraButton);
+    videoButton_->updateStyle(videoStyle, videoIcon);
+    videoButton_->setTooltipText(getVideoButtonText(videoStyle, PanelButton::ButtonSize::Small));
 
-    shareScreenButton_->setProperty("ShareScreenButtonDisable", !enableScreenButton);
-    shareScreenButton_->setProperty("ShareScreenButtonEnable", enableScreenButton);
+    shareScreenButton_->updateStyle(shareStyle, shareIcon);
+    shareScreenButton_->setTooltipText(getScreensharingButtonText(shareStyle, PanelButton::ButtonSize::Small));
+}
 
-    videoButton_->setStyle(QApplication::style());
-    shareScreenButton_->setStyle(QApplication::style());
+void Ui::MiniWindowVideoPanel::showScreenBorder(std::string_view _uid)
+{
+    if (GetDispatcher()->getVoipController().isWebinar())
+        return;
+
+    hideScreenBorder();
+
+    shareScreenFrame_ = new VideoPanelParts::ShareScreenFrame(_uid, getFrameBorderColor());
+    connect(shareScreenFrame_, &VideoPanelParts::ShareScreenFrame::stopScreenSharing, this, &MiniWindowVideoPanel::onShareScreen);
+}
+
+void Ui::MiniWindowVideoPanel::hideScreenBorder()
+{
+    if (shareScreenFrame_)
+        shareScreenFrame_->deleteLater();
 }
 
 void Ui::MiniWindowVideoPanel::changeEvent(QEvent* _e)
@@ -333,28 +368,76 @@ void Ui::MiniWindowVideoPanel::resizeEvent(QResizeEvent* _e)
     }
 }
 
+void Ui::MiniWindowVideoPanel::mousePressEvent(QMouseEvent* _e)
+{
+    Q_EMIT mousePressed(QMouseEvent(*_e));
+}
+
+void Ui::MiniWindowVideoPanel::mouseMoveEvent(QMouseEvent* _e)
+{
+    Q_EMIT mouseMoved(QMouseEvent(*_e));
+}
+
+void Ui::MiniWindowVideoPanel::mouseDoubleClickEvent(QMouseEvent* _e)
+{
+    Q_EMIT mouseDoubleClicked();
+}
+
 void Ui::MiniWindowVideoPanel::updatePosition(const QWidget& _parent)
 {
-    const auto rc = parentWidget()->geometry();
+    const auto& rc = _parent.geometry();
 
     if (platform::is_linux())
+    {
         move(0, rc.height() - rect().height());
+    }
     else
-        move(rc.x(), rc.y() + rc.height() - rect().height() - getPanelOffsetFromButton());
+    {
+        // temporary hack (further redesign in next task)
+        const auto dY = platform::is_windows() ? rc.y() : std::max(rc.y(), Utils::scale_value(23));
+        move(rc.x(),  dY + rc.height() - rect().height());
+    }
 
     setFixedWidth(rc.width());
+    resizeButton_->setTooltipBoundingRect(rc);
+    openCallButton_->setTooltipBoundingRect(rc);
+}
+
+void Ui::MiniWindowVideoPanel::paintEvent(QPaintEvent *_e)
+{
+    QWidget::paintEvent(_e);
+
+    QPainter p(this);
+    p.setRenderHint(QPainter::Antialiasing);
+    p.fillRect(rect(), Qt::transparent);
+    p.setPen(Qt::NoPen);
+    p.setBrush(Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALBLACK_PERMANENT));
+    if constexpr (platform::is_apple())
+    {
+        const auto r = getBorderRadius();
+        p.drawRoundedRect(rect(), r, r);
+    }
+    else
+    {
+        p.drawRect(rect());
+    }
 }
 
 
 Ui::DetachedVideoWindow::DetachedVideoWindow(QWidget* _parent)
     : QWidget()
-    , showPanelTimer_(this)
+    , eventFilter_(nullptr)
     , parent_(_parent)
     , closedManualy_(false)
     , videoPanel_(new MiniWindowVideoPanel(this))
     , shadow_(new Ui::ShadowWindowParent(this))
+    , rootWidget_(nullptr)
+    , opacityAnimation_(new QVariantAnimation(this))
+    , resizeAnimation_(new QVariantAnimation(this))
+    , tooltipTimer_(nullptr)
 {
     setFixedSize(getDetachedVideoWindowSize());
+    setStyleSheet(qsl("background: transparent;"));
 
     auto rootLayout = Utils::emptyVLayout(this);
     rootLayout->setAlignment(Qt::AlignVCenter);
@@ -375,25 +458,20 @@ Ui::DetachedVideoWindow::DetachedVideoWindow(QWidget* _parent)
         setWindowFlags(Qt::WindowStaysOnTopHint | Qt::Window | Qt::WindowDoesNotAcceptFocus);
         //setAttribute(Qt::WA_ShowWithoutActivating);
         setAttribute(Qt::WA_X11DoNotAcceptFocus);
+        if constexpr (platform::is_linux())
+            setWindowFlags(windowFlags() & ~Qt::WindowCloseButtonHint);
     }
 
 #ifndef STRIP_VOIP
     std::vector<QPointer<Ui::BaseVideoPanel>> panels = { videoPanel_ };
     rootWidget_ = platform_specific::GraphicsPanel::create(this, panels, false, false);
-    rootWidget_->setContentsMargins(0, 0, 0, 0);
     rootWidget_->setAttribute(Qt::WA_UpdatesDisabled);
-    rootWidget_->setSizePolicy(QSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding));
+    rootWidget_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    rootWidget_->setFixedHeight(height() - getCollapsedHeight());
 
-    if constexpr (!platform::is_linux())
-    {
-        rootLayout->addWidget(rootWidget_);
-    }
-    else
-    {
-        rootLayout->addWidget(rootWidget_, 1);
-        rootLayout->addWidget(videoPanel_);
-    }
-
+    rootLayout->addWidget(rootWidget_);
+    rootLayout->addSpacerItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Expanding));
+    rootLayout->addWidget(videoPanel_);
 #endif
 
     std::vector<QPointer<BaseVideoPanel>> videoPanels = { videoPanel_ };
@@ -406,18 +484,24 @@ Ui::DetachedVideoWindow::DetachedVideoWindow(QWidget* _parent)
         setAttribute(Qt::WA_ShowWithoutActivating);
     }
 
-    connect(&showPanelTimer_, &QTimer::timeout, this, &DetachedVideoWindow::checkPanelsVis);
-    showPanelTimer_.setInterval(1500);
-
     connect(&Ui::GetDispatcher()->getVoipController(), &voip_proxy::VoipController::onVoipWindowRemoveComplete, this, &DetachedVideoWindow::onVoipWindowRemoveComplete);
     connect(&Ui::GetDispatcher()->getVoipController(), &voip_proxy::VoipController::onVoipWindowAddComplete, this, &DetachedVideoWindow::onVoipWindowAddComplete);
     connect(&Ui::GetDispatcher()->getVoipController(), &voip_proxy::VoipController::onVoipCallDestroyed, this, &DetachedVideoWindow::onVoipCallDestroyed);
+    if (const auto mw = Utils::InterConnector::instance().getMainWindow())
+    {
+        connect(mw, &Ui::MainWindow::mouseMoved, this, [this](const QPoint& _pos)
+        {
+            if (!isVisible())
+                return;
 
-    //setMinimumSize(Utils::scale_value(320), Utils::scale_value(80));
+            QRect r(geometry().topLeft(), rootWidget_->size());
+            if (r.contains(mapToGlobal(_pos)))
+                startTooltipTimer();
+        });
+    }
 
     if (videoPanel_)
     {
-        videoPanel_->fadeOut(0);
         connect(videoPanel_, &MiniWindowVideoPanel::onMouseLeave, this, &DetachedVideoWindow::onPanelMouseLeave);
         connect(videoPanel_, &MiniWindowVideoPanel::onMouseEnter, this, &DetachedVideoWindow::onPanelMouseEnter);
         connect(videoPanel_, &MiniWindowVideoPanel::needShowScreenPermissionsPopup, this, [this](media::permissions::DeviceType type)
@@ -425,6 +509,14 @@ Ui::DetachedVideoWindow::DetachedVideoWindow(QWidget* _parent)
             activateMainVideoWindow();
             Q_EMIT needShowScreenPermissionsPopup(type);
         });
+        connect(videoPanel_, &MiniWindowVideoPanel::onMicrophoneClick, this, &DetachedVideoWindow::onMicrophoneClick);
+        connect(videoPanel_, &MiniWindowVideoPanel::onOpenCallClicked, this, &DetachedVideoWindow::activateMainVideoWindow);
+        connect(videoPanel_, &MiniWindowVideoPanel::onResizeClicked, this, &DetachedVideoWindow::onPanelClickedResize);
+        connect(videoPanel_, &MiniWindowVideoPanel::onHangClicked, this, &DetachedVideoWindow::onPanelClickedClose);
+
+        connect(videoPanel_, &MiniWindowVideoPanel::mouseDoubleClicked, this, &DetachedVideoWindow::activateMainVideoWindow);
+        connect(videoPanel_, &MiniWindowVideoPanel::mousePressed, this, &DetachedVideoWindow::onMousePress);
+        connect(videoPanel_, &MiniWindowVideoPanel::mouseMoved, this, &DetachedVideoWindow::onMouseMove);
     }
 
     const auto screenRect = Utils::mainWindowScreen()->geometry();
@@ -436,6 +528,28 @@ Ui::DetachedVideoWindow::DetachedVideoWindow(QWidget* _parent)
 
     const QRect rc(detachedWndPos.x(), detachedWndPos.y(), detachedWndRect.width(), detachedWndRect.height());
     setGeometry(rc);
+
+    resizeAnimation_->setDuration(heightAnimDuration().count());
+    resizeAnimation_->setEasingCurve(QEasingCurve::InOutSine);
+    connect(resizeAnimation_, &QVariantAnimation::valueChanged, this, [this](const QVariant& value)
+    {
+        const auto val = value.toInt();
+        const auto rwHeight = val - getCollapsedHeight();
+        setFixedHeight(val);
+        rootWidget_->setFixedHeight(rwHeight);
+        update();
+    });
+
+    opacityAnimation_->setDuration(heightAnimDuration().count());
+    connect(opacityAnimation_, &QVariantAnimation::valueChanged, this, [this](const QVariant& value)
+    {
+        rootWidget_->setOpacity(value.toDouble());
+    });
+    connect(opacityAnimation_, &QVariantAnimation::finished, this, [this]()
+    {
+        if (QAbstractAnimation::Backward == opacityAnimation_->direction())
+            hide();
+    });
 
     // Round rect.
     //QPainterPath path(QPointF(0, 0));
@@ -455,71 +569,86 @@ void Ui::DetachedVideoWindow::onVoipCallDestroyed(const voip_manager::ContactEx&
 
 void Ui::DetachedVideoWindow::onPanelClickedClose()
 {
+    activateMainVideoWindow();
     closedManualy_ = true;
     hide();
 }
-void Ui::DetachedVideoWindow::onPanelClickedMinimize()
+
+void Ui::DetachedVideoWindow::onPanelClickedResize()
 {
-    //showMinimized();
-}
-void Ui::DetachedVideoWindow::onPanelClickedMaximize()
-{
-    //if (_parent) {
-    //_parent->showNormal();
-    //_parent->activateWindow();
-    //hide();
-    //}
+    if (height() > getCollapsedHeight())
+        resizeAnimated(ResizeDirection::Minimize);
+    else
+        resizeAnimated(ResizeDirection::Maximize);
 }
 
 void Ui::DetachedVideoWindow::onPanelMouseEnter()
 {
     if (videoPanel_)
     {
-        videoPanel_->setVisible(isVisible());
         updatePanels();
-        videoPanel_->fadeIn(kAnimationDefDuration);
         Ui::GetDispatcher()->getVoipController().passWindowHover(rootWidget_->frameId(), true);
     }
+    startTooltipTimer();
 }
 
 void Ui::DetachedVideoWindow::onPanelMouseLeave()
 {
     const QPoint p = mapFromGlobal(QCursor::pos());
     if (videoPanel_ && !rect().contains(p))
-    {
-        //updatePanels();
-        videoPanel_->fadeOut(kAnimationDefDuration);
         Ui::GetDispatcher()->getVoipController().passWindowHover(rootWidget_->frameId(), false);
-    }
+    Tooltip::hide();
+    if (tooltipTimer_)
+        tooltipTimer_->stop();
 }
 
 void Ui::DetachedVideoWindow::mousePressEvent(QMouseEvent* _e)
 {
-    posDragBegin_ = _e->pos();
+    pressPos_ = QCursor::pos();
+    onMousePress(*_e);
+}
+
+void Ui::DetachedVideoWindow::mouseReleaseEvent(QMouseEvent *_e)
+{
+    if (Utils::clicked(pressPos_, QCursor::pos()))
+        activateMainVideoWindow();
+    pressPos_ = QPoint();
 }
 
 void Ui::DetachedVideoWindow::mouseMoveEvent(QMouseEvent* _e)
 {
-    if (_e->buttons() & Qt::LeftButton)
+    Tooltip::hide();
+    startTooltipTimer();
+    onMouseMove(*_e);
+}
+
+void Ui::DetachedVideoWindow::onMousePress(const QMouseEvent& _e)
+{
+    posDragBegin_ = _e.pos();
+}
+
+void Ui::DetachedVideoWindow::onMouseMove(const QMouseEvent& _e)
+{
+    if (_e.buttons() & Qt::LeftButton)
     {
-        QPoint diff = _e->pos() - posDragBegin_;
-        QPoint newpos = this->pos() + diff;
-        this->move(newpos);
+        const auto diff = _e.pos() - posDragBegin_;
+        const auto newpos = pos() + diff;
+        move(newpos);
     }
 }
 
 void Ui::DetachedVideoWindow::enterEvent(QEvent* _e)
 {
     QWidget::enterEvent(_e);
+    Tooltip::forceShow(true);
     onPanelMouseEnter();
-    //showPanelTimer_.stop();
 }
 
 void Ui::DetachedVideoWindow::leaveEvent(QEvent* _e)
 {
     QWidget::leaveEvent(_e);
+    Tooltip::forceShow(false);
     onPanelMouseLeave();
-    //showPanelTimer_.start();
 }
 
 void Ui::DetachedVideoWindow::paintEvent(QPaintEvent* _e)
@@ -546,7 +675,10 @@ quintptr Ui::DetachedVideoWindow::getContentWinId()
 void Ui::DetachedVideoWindow::onVoipWindowRemoveComplete(quintptr _winId)
 {
     if (_winId == rootWidget_->frameId())
+    {
+        rootWidget_->freeNative();
         hide();
+    }
     Utils::InterConnector::instance().getMainWindow()->updateMainMenu();
 }
 
@@ -564,17 +696,49 @@ void Ui::DetachedVideoWindow::onVoipWindowAddComplete(quintptr _winId)
     Utils::InterConnector::instance().getMainWindow()->updateMainMenu();
 }
 
+void Ui::DetachedVideoWindow::resizeAnimated(ResizeDirection _dir)
+{
+    if (resizeAnimation_->state() == QVariantAnimation::Running)
+        return;
+
+    const auto newHeight = _dir == ResizeDirection::Maximize ? getMaxHeight() : getCollapsedHeight();
+    resizeAnimation_->stop();
+    resizeAnimation_->setStartValue(height());
+    resizeAnimation_->setEndValue(newHeight);
+    resizeAnimation_->start();
+
+    const auto opacity = _dir == ResizeDirection::Maximize ? 1. : 0.;
+    const auto curOpacity = _dir == ResizeDirection::Maximize ? 0. : 1.;
+    opacityAnimation_->stop();
+    opacityAnimation_->setStartValue(curOpacity);
+    opacityAnimation_->setEndValue(opacity);
+    opacityAnimation_->start();
+}
+
+void Ui::DetachedVideoWindow::onTooltipTimer()
+{
+    if (!isVisible() || resizeAnimation_->state() == QVariantAnimation::Running)
+        return;
+
+    const auto pos = QCursor::pos();
+    QRect r(geometry().topLeft(), rootWidget_->size());
+    if (r.contains(pos))
+        Tooltip::show(getTooltipText(), QRect(QCursor::pos(), Utils::scale_value(QSize())), getTooltipSize());
+}
+
 void Ui::DetachedVideoWindow::showFrame()
 {
+    rootWidget_->initNative(platform_specific::ViewResize::Adjust);
     assert(rootWidget_->frameId());
     if (rootWidget_->frameId())
         Ui::GetDispatcher()->getVoipController().setWindowAdd((quintptr)rootWidget_->frameId(), "", false, false, 0);
+    if (videoPanel_)
+        videoPanel_->show();
     //shadow_->showShadow();
 }
 
 void Ui::DetachedVideoWindow::hideFrame()
 {
-    assert(rootWidget_->frameId());
     if (rootWidget_->frameId())
         Ui::GetDispatcher()->getVoipController().setWindowRemove((quintptr)rootWidget_->frameId());
     //shadow_->hideShadow();
@@ -587,6 +751,7 @@ void Ui::DetachedVideoWindow::showEvent(QShowEvent* _e)
 {
     QWidget::showEvent(_e);
 
+    videoPanel_->setVisible(true);
     if constexpr (platform::is_linux())
         if (videoPanel_)
             videoPanel_->show();
@@ -604,7 +769,7 @@ void Ui::DetachedVideoWindow::hideEvent(QHideEvent* _e)
     QWidget::hideEvent(_e);
     if (videoPanel_)
     {
-        videoPanel_->fadeOut(kAnimationDefDuration);
+        videoPanel_->setVisible(false);
         videoPanel_->hide();
         Ui::GetDispatcher()->getVoipController().passWindowHover(rootWidget_->winId(), false);
     }
@@ -624,11 +789,6 @@ Ui::DetachedVideoWindow::~DetachedVideoWindow()
 void Ui::DetachedVideoWindow::changeEvent(QEvent* _e)
 {
     QWidget::changeEvent(_e);
-}
-
-void Ui::DetachedVideoWindow::checkPanelsVis()
-{
-    showPanelTimer_.stop();
 }
 
 void Ui::DetachedVideoWindow::updatePanels() const
@@ -658,19 +818,24 @@ void Ui::DetachedVideoWindow::activateMainVideoWindow()
 {
     if (parent_)
     {
-        if (parent_->isMinimized())
-        {
-            Q_EMIT windowWillDeminiaturize();
-            parent_->showNormal();
-            Q_EMIT windowDidDeminiaturize();
-        }
-        parent_->raise();
-        parent_->activateWindow();
-        //hide();
+        if (auto p = qobject_cast<Ui::VideoWindow*>(parent_))
+            p->raiseWindow();
     }
 }
 
 bool Ui::DetachedVideoWindow::isMinimized() const
 {
     return QWidget::isMinimized() && (videoPanel_ && !videoPanel_->isVisible());
+}
+
+void Ui::DetachedVideoWindow::startTooltipTimer()
+{
+    if (!tooltipTimer_)
+    {
+        tooltipTimer_ = new QTimer(this);
+        tooltipTimer_->setSingleShot(true);
+        tooltipTimer_->setInterval(tooltipShowDelay());
+        connect(tooltipTimer_, &QTimer::timeout, this, &DetachedVideoWindow::onTooltipTimer);
+    }
+    tooltipTimer_->start();
 }

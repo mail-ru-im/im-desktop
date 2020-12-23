@@ -16,6 +16,11 @@ get_chat_member_info::get_chat_member_info(wim_packet_params _params, std::strin
 
 get_chat_member_info::~get_chat_member_info() = default;
 
+std::string_view get_chat_member_info::get_method() const
+{
+    return "getChatMemberInfo";
+}
+
 int32_t get_chat_member_info::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     rapidjson::Document doc(rapidjson::Type::kObjectType);
@@ -36,7 +41,7 @@ int32_t get_chat_member_info::init_request(const std::shared_ptr<core::http_requ
 
     doc.AddMember("params", std::move(node_params), a);
 
-    setup_common_and_sign(doc, a, _request, "getChatMemberInfo");
+    setup_common_and_sign(doc, a, _request, get_method());
 
     if (!robusto_packet::params_.full_log_)
     {

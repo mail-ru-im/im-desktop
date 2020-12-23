@@ -44,7 +44,7 @@ namespace core
         priority_t get_priority() const;
         int64_t get_id() const;
 
-        static curl_easy::completion_code get_completion_code(CURLcode _err);
+        static curl_easy::completion_code get_completion_code(CURLcode _err, bool _resolve_failed);
 
         bool is_stopped() const;
         std::string normalized_url() const;
@@ -90,6 +90,8 @@ namespace core
         void init() override;
         void cleanup() override;
         void reset() override;
+
+        void reset_sockets();
 
         void process_stopped_tasks() override;
 

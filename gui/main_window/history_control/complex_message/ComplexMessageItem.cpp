@@ -260,9 +260,6 @@ ComplexMessageItem::ComplexMessageItem(QWidget* _parent, const Data::MessageBudd
 
 ComplexMessageItem::~ComplexMessageItem()
 {
-    if (!PressPoint_.isNull())
-        Q_EMIT pressedDestroyed();
-
     if (shareButtonAnimation_)
         shareButtonAnimation_->stop();
 
@@ -688,6 +685,11 @@ bool ComplexMessageItem::isSingleSticker() const
     return Blocks_.size() == 1 && Blocks_.front()->getContentType() == IItemBlock::ContentType::Sticker;
 }
 
+bool ComplexMessageItem::isSingleFilesharing() const
+{
+    return Blocks_.size() == 1 && Blocks_.front()->getContentType() == IItemBlock::ContentType::FileSharing;
+}
+
 void ComplexMessageItem::onHoveredBlockChanged(IItemBlock *newHoveredBlock)
 {
     if (hoveredBlock_ == newHoveredBlock || Utils::InterConnector::instance().isMultiselect())
@@ -773,13 +775,14 @@ void ComplexMessageItem::onActivityChanged(const bool isActive)
     HistoryControlPageItem::onActivityChanged(isActive);
 }
 
-void ComplexMessageItem::onVisibilityChanged(const bool isVisible)
+void ComplexMessageItem::onVisibleRectChanged(const QRect& _visibleRect)
 {
-    if (!isOutgoingPosition() && !isHeadless() && (hasAvatar() || isNeedAvatar()))
-        Logic::GetStatusContainer()->setAvatarVisible(SenderAimidForDisplay_, isVisible);
+    if (!isOutgoingPosition() && !isHeadless() && (hasAvatar() || needsAvatar()))
+        Logic::GetStatusContainer()->setAvatarVisible(SenderAimidForDisplay_, !_visibleRect.isEmpty());
 
+    const auto visContent = Layout_->getBlocksContentRect().intersected(_visibleRect);
     for (auto block : Blocks_)
-        block->onVisibilityChanged(isVisible);
+        block->onVisibleRectChanged(visContent.intersected(block->getBlockGeometry()));
 }
 
 void ComplexMessageItem::onDistanceToViewportChanged(const QRect& _widgetAbsGeometry, const QRect& _viewportVisibilityAbsRect)
@@ -818,7 +821,6 @@ void ComplexMessageItem::replaceBlockWithSourceText(IItemBlock *block, ReplaceRe
                                                 ? existingBlock->getPlaceholderText()
                                                 : existingBlock->getSourceText());
 
-    textBlock->onVisibilityChanged(true);
     textBlock->onActivityChanged(true);
 
     textBlock->show();
@@ -929,10 +931,10 @@ void ComplexMessageItem::setHasAvatar(const bool _hasAvatar)
 {
     HistoryControlPageItem::setHasAvatar(_hasAvatar);
 
-    if (!isOutgoingPosition() && (_hasAvatar || isNeedAvatar()))
+    if (!isOutgoingPosition() && (_hasAvatar || needsAvatar()))
         loadAvatar();
     else
-        Avatar_.reset();
+        Avatar_ = QPixmap();
 
     updateSize();
 }
@@ -1005,6 +1007,7 @@ void ComplexMessageItem::setTime(const int32_t time)
         TimeWidget_->setOutgoing(isOutgoingPosition());
         TimeWidget_->setEdited(isEdited());
         TimeWidget_->setHideEdit(hideEdit_);
+        Testing::setAccessibleName(TimeWidget_, u"AS HistoryPage messageTime " % QString::number(Id_));
     }
 
     TimeWidget_->setTime(time);
@@ -1043,10 +1046,13 @@ bool ComplexMessageItem::hasPictureContent() const
 
 bool ComplexMessageItem::canBeUpdatedWith(const ComplexMessageItem& _other) const
 {
-    if (buddy().IsPending() || _other.buddy().IsPending())
+    if (Blocks_.size() != _other.Blocks_.size())
         return false;
 
-    if (Blocks_.size() != _other.Blocks_.size())
+    const auto checkSticker = isSingleSticker() && _other.isSingleSticker();
+    const auto checkFS = isSingleFilesharing() && _other.isSingleFilesharing();
+    const auto checkPending = buddy().IsPending() || _other.buddy().IsPending();
+    if (!checkSticker && !checkFS && checkPending)
         return false;
 
     auto iter = Blocks_.begin();
@@ -1057,8 +1063,7 @@ bool ComplexMessageItem::canBeUpdatedWith(const ComplexMessageItem& _other) cons
         auto otherBlock = *iterOther;
 
         const auto bothText = block->getContentType() == IItemBlock::ContentType::Text && otherBlock->getContentType() == IItemBlock::ContentType::Text;
-
-        if (block->getSourceText() != otherBlock->getSourceText() && !bothText)
+        if (!bothText && block->getSourceText() != otherBlock->getSourceText())
             return false;
 
         ++iter;
@@ -1571,7 +1576,7 @@ void ComplexMessageItem::onAvatarChanged(const QString& aimId)
 {
     assert(!SenderAimidForDisplay_.isEmpty());
 
-    if (SenderAimidForDisplay_ != aimId || (!hasAvatar() && !isNeedAvatar()))
+    if (SenderAimidForDisplay_ != aimId || (!hasAvatar() && !needsAvatar()))
         return;
 
     loadAvatar();
@@ -1652,14 +1657,12 @@ void ComplexMessageItem::onMenuItemTriggered(QAction *action)
 
         assert(!getSenderAimid().isEmpty());
 
-        const QString text = QT_TRANSLATE_NOOP("popup_window", "Are you sure you want to delete message?");
-
         const auto guard = QPointer(this);
 
         auto confirm = Utils::GetConfirmationWithTwoButtons(
             QT_TRANSLATE_NOOP("popup_window", "Cancel"),
             QT_TRANSLATE_NOOP("popup_window", "Yes"),
-            text,
+            QT_TRANSLATE_NOOP("popup_window", "Are you sure you want to delete message?"),
             QT_TRANSLATE_NOOP("popup_window", "Delete message"),
             nullptr
         );
@@ -1752,7 +1755,7 @@ void ComplexMessageItem::onLinkMetainfoMetaDownloaded(int64_t _seq, bool _succes
                     auto snippetBlock = new SnippetBlock(this, snippet.link_, snippet.linkInText_, snippet.estimatedType_);
                     Blocks_.insert(it, snippetBlock);
                     snippetBlock->onActivityChanged(true);
-                    snippetBlock->onVisibilityChanged(true);
+                    snippetBlock->onVisibleRectChanged(rect());
 
                     snippetBlock->show();
                 }
@@ -1928,11 +1931,11 @@ bool ComplexMessageItem::containsShareableBlocks() const
 
 void ComplexMessageItem::drawAvatar(QPainter &p)
 {
-    if (!Avatar_ || (!hasAvatar() && !isNeedAvatar()))
+    if (Avatar_.isNull() || (!hasAvatar() && !needsAvatar()))
         return;
 
     if (const auto avatarRect = Layout_->getAvatarRect(); avatarRect.isValid())
-        Utils::drawAvatarWithBadge(p, avatarRect.topLeft(), *Avatar_, SenderAimidForDisplay_, true);
+        Utils::drawAvatarWithBadge(p, avatarRect.topLeft(), Avatar_, SenderAimidForDisplay_, true);
 }
 
 void ComplexMessageItem::drawBubble(QPainter &p, const QColor& quote_color)
@@ -2747,7 +2750,7 @@ bool ComplexMessageItem::isOverAvatar(const QPoint &pos) const
 {
     assert(Layout_);
 
-    if (hasAvatar() || isNeedAvatar())
+    if (hasAvatar() || needsAvatar())
         return Layout_->isOverAvatar(pos);
 
     return false;
@@ -3570,13 +3573,27 @@ void ComplexMessageItem::setSpellErrorsVisible(bool _visible)
         block->setSpellErrorsVisible(_visible);
 }
 
+void ComplexMessageItem::setProgress(const QString& _fsId, const int32_t _value)
+{
+    for (auto& block : Blocks_)
+    {
+        if (block->setProgress(_fsId, _value))
+            break;
+    }
+}
+
+QRect ComplexMessageItem::avatarRect() const
+{
+    return Layout_->getAvatarRect();
+}
+
 void ComplexMessageItem::setTimeWidgetVisible(const bool _visible)
 {
     if (TimeWidget_)
         TimeWidget_->setVisible(_visible);
 }
 
-bool ComplexMessageItem::isNeedAvatar() const
+bool ComplexMessageItem::needsAvatar() const
 {
     if (isSingleSticker())
         return true;

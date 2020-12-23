@@ -3,7 +3,6 @@
 #include "application.h"
 #include "../types/chat.h"
 #include "../types/contact.h"
-#include "../types/images.h"
 #include "../types/link_metadata.h"
 #include "../types/message.h"
 #include "../types/typing.h"
@@ -23,14 +22,20 @@
 #include "sys/sys.h"
 #include "controls/ClickWidget.h"
 
+
+#ifndef STRIP_CRASH_HANDLER
 #ifdef _WIN32
 #include "../../common.shared/win32/crash_handler.h"
 #endif
 #include "../common.shared/crash_report/crash_reporter.h"
+#endif // !STRIP_CRASH_HANDLER
+
 #include "../common.shared/config/config.h"
 
+#ifndef STRIP_AV_MEDIA
 #include "media/ptt/AudioUtils.h"
 #include "media/ptt/AudioRecorder2.h"
+#endif // !STRIP_AV_MEDIA
 
 #ifndef _WIN32
 #include <unistd.h>
@@ -79,6 +84,24 @@ namespace
 
     #endif
     };
+
+    void handleRlimits()
+    {
+#ifdef __APPLE__
+        rlimit r;
+        getrlimit(RLIMIT_NOFILE, &r);
+        qInfo() << qsl("initial limit for file descriptors: ") << r.rlim_cur;
+        qInfo() << qsl("max limit for file descriptors: ") << r.rlim_max;
+
+        r.rlim_cur = std::min((rlim_t)10240, r.rlim_max);
+        auto result = setrlimit(RLIMIT_NOFILE, &r);
+        qInfo() << ((result == 0) ? qsl("limit for file descriptors was succesfully updated") : qsl("failed to update limit for file descriptors"));
+
+        r.rlim_cur = 0;
+        getrlimit(RLIMIT_NOFILE, &r);
+        qInfo() << qsl("new limit for file descriptors: ") << r.rlim_cur;
+#endif //__APPLE__
+    }
 }
 
 launch::CommandLineParser::CommandLineParser(int _argc, char* _argv[])
@@ -194,8 +217,13 @@ static void debugMessageHandler(QtMsgType type, const QMessageLogContext &contex
 
 int launch::main(int _argc, char* _argv[])
 {
+    static_assert(Q_BYTE_ORDER == Q_LITTLE_ENDIAN);
+
     if constexpr (build::is_debug())
         defaultHandler = qInstallMessageHandler(debugMessageHandler);
+
+    handleRlimits();
+
     int result;
     bool restarting;
 
@@ -206,13 +234,16 @@ int launch::main(int _argc, char* _argv[])
         if (pthread_sigmask(SIG_BLOCK, &set, NULL) != 0)
             assert(false);
 #else
+#ifndef STRIP_CRASH_HANDLER
     crash_system::reporter::instance();
-#endif //__linux__
-
 #ifdef _WIN32
     crash_system::reporter::instance().set_process_exception_handlers();
     crash_system::reporter::instance().set_thread_exception_handlers();
-#endif
+#endif //_WIN32
+#endif // !STRIP_CRASH_HANDLER
+#endif //__linux__
+
+
 
     std::vector<char*> v_args;
 
@@ -281,7 +312,6 @@ int launch::main(int _argc, char* _argv[])
 
         if (app.init(cmd_parser))
         {
-            qRegisterMetaType<Data::ImageListPtr>("Data::ImageListPtr");
             qRegisterMetaType<std::shared_ptr<Data::ContactList>>("std::shared_ptr<Data::ContactList>");
             qRegisterMetaType<std::shared_ptr<Data::Buddy>>("std::shared_ptr<Data::Buddy>");
             qRegisterMetaType<std::shared_ptr<Data::UserInfo>>("std::shared_ptr<Data::UserInfo>");
@@ -310,11 +340,11 @@ int launch::main(int _argc, char* _argv[])
             qRegisterMetaType<Data::QuotesVec>("Data::QuotesVec");
             qRegisterMetaType<QVector<Data::DlgState>>("QVector<Data::DlgState>");
             qRegisterMetaType<std::shared_ptr<Ui::Stickers::Set>>("std::shared_ptr<Ui::Stickers::Set>");
+            qRegisterMetaType<Ui::Stickers::StickerData>("Ui::Stickers::StickerData");
+            qRegisterMetaType<Ui::Stickers::StickerLoadDataV>("Ui::Stickers::StickerLoadDataV");
             qRegisterMetaType<Data::MessageBuddySptr>("Data::MessageBuddySptr");
             qRegisterMetaType<Ui::AlertType>("Ui::AlertType");
             qRegisterMetaType<Emoji::EmojiCode>("Emoji::EmojiCode");
-            qRegisterMetaType<Ui::ShowQualityReasonsPopupConfig>("Ui::ShowQualityReasonsPopupConfig");
-            qRegisterMetaType<Ui::ShowQualityStarsPopupConfig>("Ui::ShowQualityStarsPopupConfig");
             qRegisterMetaType<Utils::CloseWindowInfo>("Utils::CloseWindowInfo");
             qRegisterMetaType<Utils::SidebarVisibilityParams>("Utils::SidebarVisibilityParams");
             qRegisterMetaType<QVector<Data::DialogGalleryEntry>>("QVector<Data::DialogGalleryEntry>");
@@ -326,25 +356,32 @@ int launch::main(int _argc, char* _argv[])
             qRegisterMetaType<Styling::WallpaperId>("Styling::WallpaperId");
             qRegisterMetaType<std::vector<Data::Mask>>("std::vector<Data::Mask>");
             qRegisterMetaType<Data::MentionMap>("Data::MentionMap");
-            qRegisterMetaType<ptt::State2>("ptt::State2");
-            qRegisterMetaType<ptt::Error2>("ptt::Error2");
             qRegisterMetaType<std::chrono::seconds>("std::chrono::seconds");
             qRegisterMetaType<std::chrono::milliseconds>("std::chrono::milliseconds");
             qRegisterMetaType<std::function<void()>>("std::function<void()>");
             qRegisterMetaType<Data::MentionMap>("Data::MentionMap");
             qRegisterMetaType<QVector<double>>("QVector<double>");
-            qRegisterMetaType<ptt::Buffer>("ptt::Buffer");
-            qRegisterMetaType<ptt::StatInfo>("ptt::StatInfo");
             qRegisterMetaType<Ui::ClickType>("Ui::ClickType");
-            qRegisterMetaType<voip_proxy::EvoipDevTypes>("voip_proxy::EvoipDevTypes");
-            qRegisterMetaType<voip_proxy::device_desc>("voip_proxy::device_desc");
-            qRegisterMetaType<voip_proxy::device_desc_vector>("voip_proxy::device_desc_vector");
             qRegisterMetaType<std::optional<QString>>("std::optional<QString>");
             qRegisterMetaType<std::vector<Data::SessionInfo>>("std::vector<Data::SessionInfo>");
             qRegisterMetaType<Data::CallInfo>("Data::CallInfo");
             qRegisterMetaType<Data::CallInfoPtr>("Data::CallInfoPtr");
             qRegisterMetaType<Data::CallInfoVec>("Data::CallInfoVec");
             qRegisterMetaType<Statuses::Status>("Statuses::Status");
+#ifndef STRIP_AV_MEDIA
+            qRegisterMetaType<ptt::State2>("ptt::State2");
+            qRegisterMetaType<ptt::Error2>("ptt::Error2");
+            qRegisterMetaType<ptt::Buffer>("ptt::Buffer");
+            qRegisterMetaType<ptt::StatInfo>("ptt::StatInfo");
+#endif // !STRIP_AV_MEDIA
+
+#ifndef STRIP_VOIP
+            qRegisterMetaType<Ui::ShowQualityReasonsPopupConfig>("Ui::ShowQualityReasonsPopupConfig");
+            qRegisterMetaType<Ui::ShowQualityStarsPopupConfig>("Ui::ShowQualityStarsPopupConfig");
+            qRegisterMetaType<voip_proxy::EvoipDevTypes>("voip_proxy::EvoipDevTypes");
+            qRegisterMetaType<voip_proxy::device_desc>("voip_proxy::device_desc");
+            qRegisterMetaType<voip_proxy::device_desc_vector>("voip_proxy::device_desc_vector");
+#endif
         }
         else
         {

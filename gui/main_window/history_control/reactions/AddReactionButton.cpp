@@ -125,7 +125,7 @@ public:
     {
         if (animation_)
             return;
-            
+
         animation_ = new QVariantAnimation(q);
         animation_->setStartValue(0.0);
         animation_->setEndValue(1.0);
@@ -284,6 +284,8 @@ AddReactionButton::AddReactionButton(HistoryControlPageItem* _item)
     : QWidget(_item),
       d(std::make_unique<ReactionButton_p>(this))
 {
+    Testing::setAccessibleName(this, qsl("AS Reaction button"));
+
     d->item_ = _item;
 
     setCursor(Qt::PointingHandCursor);
@@ -443,7 +445,7 @@ void AddReactionButton::onAddReactionPlateShown()
     update();
 }
 
-void AddReactionButton::onAddReactionPlateClosed()
+void AddReactionButton::onAddReactionPlateCloseStarted()
 {
     d->forcePressed_ = false;
     d->forceVisible_ = false;
@@ -451,6 +453,11 @@ void AddReactionButton::onAddReactionPlateClosed()
     onMouseMove(d->item_->mapFromGlobal(QCursor::pos()));
 
     repaint();
+}
+
+void AddReactionButton::onAddReactionPlateCloseFinished()
+{
+    onMouseMove(d->item_->mapFromGlobal(QCursor::pos()));
 }
 
 void AddReactionButton::onPlatePositionChanged()

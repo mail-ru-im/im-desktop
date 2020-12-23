@@ -133,7 +133,8 @@ namespace Data
         QString getNick() const override;
         const QString& getRole() const noexcept;
         const LastSeen& getLastseen() const noexcept;
-        bool isCreator() const;
+        bool isCreator() const noexcept;
+        const QDateTime& canRemoveTill() const noexcept;
 
         Data::ChatMemberInfo info_;
     };

@@ -254,8 +254,6 @@ namespace Ui
         if (confirmed)
         {
             Logic::getContactListModel()->removeContactFromCL(aimId_);
-            GetDispatcher()->getVoipController().setDecline("", aimId_.toUtf8().constData(), false);
-
             Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::chatscr_leave_action, { {"chat_type", getStatsChatTypeReadonly() } });
         }
     }

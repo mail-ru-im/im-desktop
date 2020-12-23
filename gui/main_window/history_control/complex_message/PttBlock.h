@@ -152,9 +152,11 @@ public:
 
     void releaseSelection() override;
 
-    void onVisibilityChanged(const bool isVisible) override;
+    void onVisibleRectChanged(const QRect& _visibleRect) override;
 
     IItemBlock::MenuFlags getMenuFlags(QPoint p) const override;
+
+    bool setProgress(const QString& _fsId, const int32_t _value) override;
 
     //void setEmojiSizeType(const TextRendering::EmojiSizeType& _emojiSizeType) {};
 
@@ -182,6 +184,16 @@ protected:
     void onPreviewMetainfoDownloaded(const QString &_miniPreviewUri, const QString &_fullPreviewUri) override;
 
     void onMenuOpenFolder() final override;
+
+    void mouseMoveEvent(QMouseEvent* _e) override;
+
+    void mousePressEvent(QMouseEvent* _e) override;
+
+    void mouseReleaseEvent(QMouseEvent* _e) override;
+
+    void leaveEvent(QEvent* _e) override;
+
+    void enterEvent(QEvent* _e) override;
 
 private:
     Q_PROPERTY(int32_t PlaybackProgress READ getPlaybackProgress WRITE setPlaybackProgress);
@@ -230,8 +242,16 @@ private:
     void stopTextRequestProgressAnimation();
 
     void startPlayback();
-
     void pausePlayback();
+
+    enum class AnimationState
+    {
+        Play,
+        Pause
+    };
+
+    void initPlaybackAnimation(AnimationState _state);
+    void updatePlaybackAnimation(float _progress);
 
     void updateButtonsStates();
     void updatePlayButtonState();
@@ -248,6 +268,14 @@ private:
     bool isOutgoing() const;
 
     bool canShowButtonText() const;
+    bool checkButtonsHovered() const;
+
+    QRect getBulletRect() const;
+    QRect getPlaybackRect() const;
+    void updatePlaybackProgress(const QPoint& _curPos);
+    double getPlaybackPercentProgress(const QPoint& _curPos) const;
+
+    void showBulletTooltip(QPoint _curPos) const;
 
     QPainterPath bubbleClipPath_;
 
@@ -294,6 +322,11 @@ private:
     QTimer* downloadAnimDelay_;
     QTimer* tripleClickTimer_ = nullptr;
 
+    QPoint bulletPos_;
+    bool bulletHovered_ = false;
+    bool bulletPressed_ = false;
+    bool continuePlaying_ = false;
+
 private Q_SLOTS:
 
     void showDownloadAnimation();
@@ -308,6 +341,8 @@ private Q_SLOTS:
     void onPttText(qint64 _seq, int _error, QString _text, int _comeback);
 
     void pttPlayed(qint64);
+
+    void updateBulletHoveredState();
 
 };
 

@@ -49,7 +49,7 @@ int32_t set_stickers_order_packet::init_request(const std::shared_ptr<core::http
     const auto ss_url = su::concat(urls::get_url(urls::url_type::stickers_store_host), "/store/order_set");
 
     _request->set_url(su::concat(ss_url, '?', format_get_params(params)));
-    _request->set_normalized_url("stickersStoreOrderSet");
+    _request->set_normalized_url(get_method());
     _request->set_keep_alive();
 
     if (!params_.full_log_)
@@ -91,4 +91,9 @@ int32_t set_stickers_order_packet::parse_response(const std::shared_ptr<core::to
 priority_t set_stickers_order_packet::get_priority() const
 {
     return packets_priority_high();
+}
+
+std::string_view set_stickers_order_packet::get_method() const
+{
+    return "stickersStoreOrderSet";
 }

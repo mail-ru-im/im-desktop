@@ -28,7 +28,10 @@ namespace Logic
 {
     bool is_members_regim(int _regim)
     {
-        return _regim == Logic::MembersWidgetRegim::MEMBERS_LIST || _regim == Logic::MembersWidgetRegim::IGNORE_LIST;
+        return
+        _regim == Logic::MembersWidgetRegim::MEMBERS_LIST ||
+        _regim == Logic::MembersWidgetRegim::IGNORE_LIST ||
+        _regim == Logic::MembersWidgetRegim::DISALLOWED_INVITERS;
     }
 
     bool is_admin_members_regim(int _regim)
@@ -59,9 +62,17 @@ namespace Logic
 
     bool isRegimWithGlobalContactSearch(int _regim)
     {
-        return _regim == Logic::MembersWidgetRegim::SHARE || _regim == Logic::MembersWidgetRegim::SHARE_VIDEO_CONFERENCE
-            || _regim == Logic::MembersWidgetRegim::SELECT_MEMBERS || _regim == Logic::MembersWidgetRegim::VIDEO_CONFERENCE
-            || _regim == Logic::MembersWidgetRegim::SELECT_CHAT_MEMBERS || _regim == Logic::MembersWidgetRegim::SHARE_CONTACT;
+        constexpr Logic::MembersWidgetRegim regimes[] =
+        {
+            Logic::MembersWidgetRegim::SHARE,
+            Logic::MembersWidgetRegim::SHARE_VIDEO_CONFERENCE,
+            Logic::MembersWidgetRegim::SELECT_MEMBERS,
+            Logic::MembersWidgetRegim::VIDEO_CONFERENCE,
+            Logic::MembersWidgetRegim::SELECT_CHAT_MEMBERS,
+            Logic::MembersWidgetRegim::SHARE_CONTACT,
+            Logic::MembersWidgetRegim::DISALLOWED_INVITERS_ADD,
+        };
+        return std::any_of(std::begin(regimes), std::end(regimes), [_regim](auto r){ return r == _regim; });
     }
 
     bool isAddMembersRegim(int _regim)
@@ -99,11 +110,23 @@ namespace Logic
             Data::DlgState dlg = _index.data().value<Data::DlgState>();
             aimid = dlg.AimId_;
         }
+        else if (auto callInfo = _index.data().value<Data::CallInfoPtr>())
+        {
+            aimid = callInfo->getAimId();
+        }
 
         if (aimid.startsWith(ql1c('~')))
             return QString();
 
         return aimid;
+    }
+
+    QString senderAimIdFromIndex(const QModelIndex& _index)
+    {
+        if (const auto searchRes = _index.data().value<Data::AbstractSearchResultSptr>())
+            return searchRes->getSenderAimId();
+
+        return aimIdFromIndex(_index);
     }
 
     QMap<QString, QVariant> makeData(const QString& _command, const QString& _aimid)
@@ -157,13 +180,11 @@ namespace Logic
             if (Logic::getContactListModel()->ignoreContactWithConfirm(aimId))
                 Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::ignore_contact, { { "From", "ContactList_Menu" } });
         }
-
         else if (command == u"recents/ignore")
         {
             if (Logic::getContactListModel()->ignoreContactWithConfirm(aimId))
                 Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::ignore_contact, { { "From", "Recents_Menu" } });
         }
-
         else if (command == u"recents/close")
         {
             Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::recents_close);
@@ -199,8 +220,10 @@ namespace Logic
         }
         else if (command == u"contacts/call")
         {
+#ifndef STRIP_VOIP
             Ui::GetDispatcher()->getVoipController().setStartCall({ aimId }, true, false);
             Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::call_audio, { { "From", "ContactList_Menu" } });
+#endif
         }
         else if (command == u"contacts/Profile")
         {
@@ -217,14 +240,25 @@ namespace Logic
         }
         else if (command == u"contacts/remove")
         {
-            const QString text = QT_TRANSLATE_NOOP("popup_window", Logic::getContactListModel()->isChat(aimId)
-                ? "Are you sure you want to leave chat?" : "Are you sure you want to delete contact?");
+            const auto isChat = Utils::isChat(aimId);
+
+            QString text;
+            if (isChat)
+            {
+                text = Logic::getContactListModel()->isChannel(aimId)
+                   ? QT_TRANSLATE_NOOP("popup_window", "Are you sure you want to erase history and leave channel?")
+                   : QT_TRANSLATE_NOOP("popup_window", "Are you sure you want to erase history and leave chat?");
+            }
+            else
+            {
+                text = QT_TRANSLATE_NOOP("popup_window", "Remove %1 from your contacts?").arg(Logic::GetFriendlyContainer()->getFriendly(aimId));
+            }
 
             auto confirm = Utils::GetConfirmationWithTwoButtons(
                 QT_TRANSLATE_NOOP("popup_window", "Cancel"),
-                QT_TRANSLATE_NOOP("popup_window", "Yes"),
+                isChat ? QT_TRANSLATE_NOOP("popup_window", "Leave") : QT_TRANSLATE_NOOP("popup_window", "Yes"),
                 text,
-                Logic::GetFriendlyContainer()->getFriendly(aimId),
+                isChat ? QT_TRANSLATE_NOOP("sidebar", "Leave and delete") : QT_TRANSLATE_NOOP("popup_window", "Remove contact"),
                 nullptr
             );
 
@@ -266,10 +300,13 @@ namespace Logic
         }
         else if (command == u"recents/clear_history")
         {
+            const auto msg = Logic::getContactListModel()->isChannel(aimId)
+                             ? QT_TRANSLATE_NOOP("popup_window", "Are you sure you want to clear history?")
+                             : QT_TRANSLATE_NOOP("popup_window", "Are you sure you want to clear the chat history?");
             const auto confirmed = Utils::GetConfirmationWithTwoButtons(
                 QT_TRANSLATE_NOOP("popup_window", "Cancel"),
                 QT_TRANSLATE_NOOP("popup_window", "Yes"),
-                QT_TRANSLATE_NOOP("popup_window", "Are you sure you want to clear the chat history?"),
+                msg,
                 Logic::GetFriendlyContainer()->getFriendly(aimId),
                 nullptr);
 
@@ -308,35 +345,101 @@ namespace Logic
     }
 }
 
+namespace
+{
+    int emptyLabelHorMargin() { return Utils::scale_value(16); }
+
+    constexpr auto btnHeight = 24;
+    constexpr auto btnMaxWidth = 256;
+    constexpr auto leftMargin = 8;
+    constexpr auto rightMargin = 8;
+    constexpr auto btnSize = QSize(12, 12);
+    constexpr auto headerViewHeight = 10 + 24 + 10;
+}
+
 namespace Ui
 {
-    EmptyIgnoreListLabel::EmptyIgnoreListLabel(QWidget* _parent)
-        : QWidget(_parent)
+    EmptyListLabel::EmptyListLabel(QWidget* _parent, Logic::MembersWidgetRegim _regim)
+        : LinkAccessibleWidget(_parent)
     {
+        QString text;
+        if (_regim == Logic::MembersWidgetRegim::DISALLOWED_INVITERS)
+        {
+            text =
+                QT_TRANSLATE_NOOP("settings", "Specify who should be prohibited from adding you to groups")
+                % QChar::LineFeed
+                % QChar::LineFeed
+                % QT_TRANSLATE_NOOP("settings", "Add to list");
+        }
+        else if (_regim == Logic::MembersWidgetRegim::IGNORE_LIST)
+        {
+            text = QT_TRANSLATE_NOOP("sidebar", "You have no ignored contacts");
+        }
+        else
+        {
+            text = QT_TRANSLATE_NOOP("sidebar", "List empty");
+        }
+
+        label_ = TextRendering::MakeTextUnit(text, {});
+        label_->init(
+            Fonts::appFontScaled(16),
+            Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID),
+            Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY),
+            QColor(),
+            QColor(),
+            TextRendering::HorAligment::CENTER);
+
+        if (_regim == Logic::MembersWidgetRegim::DISALLOWED_INVITERS)
+            label_->applyLinks({ { QT_TRANSLATE_NOOP("settings", "Add to list"), QString() } });
+
+
+        label_->evaluateDesiredSize();
+        setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
+        setMouseTracking(true);
     }
 
-    EmptyIgnoreListLabel::~EmptyIgnoreListLabel() = default;
+    EmptyListLabel::~EmptyListLabel() = default;
 
-    void EmptyIgnoreListLabel::paintEvent(QPaintEvent*)
+    void EmptyListLabel::resizeEvent(QResizeEvent* _e)
     {
-        QPainter painter(this);
-        painter.setRenderHint(QPainter::Antialiasing);
+        if (width() != _e->oldSize().width())
+        {
+            const auto newW = width() - emptyLabelHorMargin() * 2;
+            const auto h = label_->getHeight(newW);
+            setFixedHeight(std::max(Utils::scale_value(40), h));
 
-        if (!serviceContact_)
-            serviceContact_ = std::make_unique<Ui::ServiceContact>(QT_TRANSLATE_NOOP("sidebar", "You have no ignored contacts"), Data::ContactType::EMPTY_IGNORE_LIST);
-
-        serviceContact_->paint(painter);
+            label_->setOffsets((width() - newW) / 2, 0);
+        }
     }
 
-    namespace
+    void EmptyListLabel::paintEvent(QPaintEvent*)
     {
-        constexpr auto btnHeight = 24;
-        constexpr auto btnMaxWidth = 256;
-        constexpr auto leftMargin = 8;
-        constexpr auto rightMargin = 8;
-        const QSize btnSize = QSize(12, 12);
+        QPainter p(this);
+        label_->draw(p);
+    }
 
-        constexpr auto headerViewHeight = 10 + 24 + 10;
+    void EmptyListLabel::mouseMoveEvent(QMouseEvent* _event)
+    {
+        setLinkHighlighted(label_->isOverLink(_event->pos()));
+        update();
+    }
+
+    void EmptyListLabel::mouseReleaseEvent(QMouseEvent* _event)
+    {
+        if (_event->button() == Qt::LeftButton && label_->isOverLink(_event->pos()))
+            Q_EMIT Utils::InterConnector::instance().showAddToDisallowedInvitersDialog();
+    }
+
+    void EmptyListLabel::leaveEvent(QEvent*)
+    {
+        setLinkHighlighted(false);
+        update();
+    }
+
+    void EmptyListLabel::setLinkHighlighted(bool _hl)
+    {
+        setCursor(_hl ? Qt::PointingHandCursor : Qt::ArrowCursor);
+        label_->setLinkColor(Styling::getParameters().getColor(_hl ? Styling::StyleVariable::TEXT_PRIMARY_HOVER : Styling::StyleVariable::TEXT_PRIMARY));
     }
 
     SearchCategoryButton::SearchCategoryButton(QWidget* _parent, const QString& _text)
@@ -346,7 +449,7 @@ namespace Ui
         setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
         setCursor(Qt::PointingHandCursor);
 
-        label_ = TextRendering::MakeTextUnit(_text, Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
+        label_ = TextRendering::MakeTextUnit(_text, {}, TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
 
         label_->init(Fonts::appFontScaled(12, Fonts::FontWeight::SemiBold), getTextColor());
         label_->setOffsets(Utils::scale_value(leftMargin), Utils::scale_value(btnHeight / 2));
@@ -500,7 +603,7 @@ namespace Ui
 
     void GlobalSearchViewHeader::selectCategory(const SearchCategory _cat, const SelectType _selectType)
     {
-        for (const auto[cat, btn] : buttons_)
+        for (auto [cat, btn] : buttons_)
         {
             const auto isNeededCat = cat == _cat;
 
@@ -524,7 +627,7 @@ namespace Ui
 
     void GlobalSearchViewHeader::reset()
     {
-        for (const auto [_, btn] : buttons_)
+        for (auto [_, btn] : buttons_)
             btn->setVisible(true);
 
         selectFirstVisible();

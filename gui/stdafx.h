@@ -44,6 +44,7 @@
 #include <complex>
 #include <inttypes.h>
 #include <cassert>
+#include <variant>
 
 #include <boost/range/adaptor/map.hpp>
 #include <boost/range/adaptor/reversed.hpp>
@@ -101,6 +102,8 @@
 #include <QTime>
 #include <QStringList>
 #include <QTimer>
+#include <QElapsedTimer>
+#include <QTimeLine>
 #include <QItemDelegate>
 #include <QAbstractListModel>
 #include <QHash>
@@ -233,6 +236,8 @@
 #include <QtCore/qdatetime.h>
 #include <QtCore/qstringlist.h>
 #include <QtCore/qtimer.h>
+#include <QtCore/qelapsedtimer.h>
+#include <QtCore/qtimeline.h>
 #include <QtCore/qdatastream.h>
 #include <QtWidgets/qitemdelegate.h>
 #include <QtCore/qabstractitemmodel.h>
@@ -333,9 +338,6 @@
 #include <QtWidgets/qaccessiblewidget.h>
 #else
 #include "macconfig.h"
-#ifndef HOCKEY_APPID
-#define HOCKEY_APPID @"13f40ef63c02469c93f566cc2c116952"
-#endif
 #import <QtCore/qresource.h>
 #import <QtCore/qtranslator.h>
 #import <QtGui/qscreen.h>
@@ -367,6 +369,8 @@
 #import <QtCore/qdatetime.h>
 #import <QtCore/qstringlist.h>
 #import <QtCore/qtimer.h>
+#import <QtCore/qelapsedtimer.h>
+#import <QtCore/qtimeline.h>
 #import <QtCore/qdatastream.h>
 #import <QtWidgets/qitemdelegate.h>
 #import <QtCore/qabstractitemmodel.h>
@@ -495,6 +499,7 @@
 do { if(!(condition)){ std::cerr << "ASSERT FAILED: " << #condition << " " << __FILE__ << ":" << __LINE__ << std::endl; } } while (0)
 #endif
 
+#ifndef STRIP_AV_MEDIA
 namespace openal
 {
 #ifdef USE_SYSTEM_OPENAL
@@ -505,3 +510,4 @@ namespace openal
 #include <AL/alc.h>
 #endif
 }
+#endif // !STRIP_AV_MEDIA

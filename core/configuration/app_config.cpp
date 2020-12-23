@@ -15,9 +15,12 @@
 #include "../../common.shared/config/config.h"
 #include "../../common.shared/string_utils.h"
 
+#ifndef STRIP_CRASH_HANDLER
 #ifdef _WIN32
 #include "../../common.shared/crash_report/crash_reporter.h"
 #endif //_WIN32
+#endif // !STRIP_CRASH_HANDLE
+
 
 CORE_CONFIGURATION_NS_BEGIN
 
@@ -118,6 +121,12 @@ pt::ptree app_config::as_ptree() const
         case app_config::AppConfigOption::sys_crash_handler_enabled:
             result.add(option_name(key), is_sys_crash_handler_enabled());
             break;
+        case app_config::AppConfigOption::watch_gui_memory:
+            result.add(option_name(key), is_watch_gui_memory_enabled());
+            break;
+        case app_config::AppConfigOption::app_update_interval_secs:
+            result.add(option_name(key), app_update_interval_secs());
+            break;
 
         default:
             assert(!"unhandled option for as_ptree");
@@ -212,6 +221,13 @@ bool app_config::is_sys_crash_handler_enabled() const
         : boost::any_cast<bool>(it->second);
 }
 
+bool app_config::is_watch_gui_memory_enabled() const
+{
+    auto it = app_config_options_.find(app_config::AppConfigOption::watch_gui_memory);
+    return it == app_config_options_.end() ? false
+        : boost::any_cast<bool>(it->second);
+}
+
 bool app_config::gdpr_user_has_agreed() const
 {
     auto it = app_config_options_.find(app_config::AppConfigOption::gdpr_user_has_agreed);
@@ -260,6 +276,13 @@ int app_config::cache_history_pages_secs() const
     auto it = app_config_options_.find(app_config::AppConfigOption::cache_history_pages_secs);
     return it == app_config_options_.end() ? 0
                                            : boost::any_cast<int>(it->second);
+}
+
+uint32_t app_config::app_update_interval_secs() const
+{
+    auto it = app_config_options_.find(app_config::AppConfigOption::app_update_interval_secs);
+    return it == app_config_options_.end() ? 0
+                                           : boost::any_cast<uint32_t>(it->second);
 }
 
 std::string app_config::device_id() const
@@ -419,6 +442,8 @@ void app_config::serialize(Out core::coll_helper &_collection) const
     _collection.set<bool>(option_name(app_config::AppConfigOption::hide_keyword_pattern), is_hide_keyword_pattern());
     _collection.set<bool>(option_name(app_config::AppConfigOption::show_hidden_themes), is_show_hidden_themes());
     _collection.set<bool>(option_name(app_config::AppConfigOption::sys_crash_handler_enabled), is_sys_crash_handler_enabled());
+    _collection.set<bool>(option_name(app_config::AppConfigOption::watch_gui_memory), is_watch_gui_memory_enabled());
+    _collection.set<uint32_t>(option_name(app_config::AppConfigOption::app_update_interval_secs), app_update_interval_secs());
 
     // urls
     _collection.set<std::string_view>("urls.url_update_mac_alpha", get_update_mac_alpha_url());
@@ -465,10 +490,11 @@ void load_app_config(const boost::filesystem::wpath &_path)
     {
 
     }
-
+#ifndef STRIP_CRASH_HANDLER
 #ifdef _WIN32
     crash_system::reporter::instance().set_sys_handler_enabled(config_->is_sys_crash_handler_enabled());
 #endif //_WIN32
+#endif // !STRIP_CRASH_HANDLER
 }
 
 void dump_app_config_to_disk(const boost::filesystem::wpath &_path)
@@ -601,6 +627,14 @@ namespace
             {
                 app_config::AppConfigOption::sys_crash_handler_enabled,
                 property_tree_.get<bool>(option_name(app_config::AppConfigOption::sys_crash_handler_enabled), false)
+            },
+            {
+                app_config::AppConfigOption::watch_gui_memory,
+                property_tree_.get<bool>(option_name(app_config::AppConfigOption::watch_gui_memory), false)
+            },
+            {
+                app_config::AppConfigOption::app_update_interval_secs,
+                property_tree_.get<uint32_t>(option_name(app_config::AppConfigOption::app_update_interval_secs), 86400)
             }
         };
     }
@@ -651,6 +685,10 @@ namespace
             return "show_hidden_themes";
         case app_config::AppConfigOption::sys_crash_handler_enabled:
             return "sys_crash_handler_enabled";
+        case app_config::AppConfigOption::watch_gui_memory:
+            return "dev.watch_gui_memory";
+        case app_config::AppConfigOption::app_update_interval_secs:
+            return "dev.app_update_interval_secs";
 
         default:
             assert(!"unhandled option for option_name");

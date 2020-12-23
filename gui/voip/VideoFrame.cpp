@@ -31,3 +31,14 @@ WId platform_specific::GraphicsPanel::frameId() const
 {
     return QWidget::winId();
 }
+
+void platform_specific::showInCurrentWorkspace(QWidget* _w, QWidget* _initiator, ShowCallback _callback)
+{
+#ifdef __APPLE__
+    platform_macos::showInWorkspace(_w, std::move(_callback));
+#elif _WIN32
+    platform_win32::showOnCurrentDesktop(_w, _initiator, std::move(_callback));
+#elif __linux__
+    platform_linux::showOnCurrentDesktop(std::move(_callback));
+#endif
+}

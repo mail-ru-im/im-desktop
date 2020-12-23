@@ -24,6 +24,8 @@ namespace core
         public:
             set_status(wim_packet_params _params, std::string_view _status, std::chrono::seconds _duration);
             virtual ~set_status() = default;
+
+            virtual std::string_view get_method() const override;
         };
     }
 }

@@ -60,6 +60,8 @@ namespace ptt
     constexpr int nomalizedMagnitudeDb() noexcept { return 70; }
 
     double getVolumeDefaultDevice();
+
+    QString formatDuration(std::chrono::milliseconds _time);
 }
 
 Q_DECLARE_METATYPE(ptt::Buffer);

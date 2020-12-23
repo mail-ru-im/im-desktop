@@ -8,6 +8,14 @@ namespace Ui
 
 namespace platform_specific
 {
+    using ShowCallback = std::function<void(void)>;
+    void showInCurrentWorkspace(QWidget* _w, QWidget* _initiator, ShowCallback _callback);
+
+    enum class ViewResize
+    {
+        NoResize,
+        Adjust
+    };
     class GraphicsPanel : public QWidget
     {
     public:
@@ -25,8 +33,9 @@ namespace platform_specific
         virtual void fullscreenAnimationFinish() {}
         virtual void windowWillDeminiaturize() {}
         virtual void windowDidDeminiaturize() {}
-        virtual void createdTalk(bool is_vcs) {}
-        virtual void startedTalk() {}
-        virtual void exitTalk() {}
+        virtual void enableMouseEvents(bool enable) {}
+        virtual void initNative(ViewResize _mode = ViewResize::NoResize) {}
+        virtual void freeNative() {}
+        virtual void setOpacity(double _opacity){}
     };
 }

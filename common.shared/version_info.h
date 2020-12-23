@@ -23,6 +23,11 @@ namespace core
                 return su::concat(get_major_version(), '.', get_minor_version(), ".0(", get_build_version(), ')');
             }
 
+            [[nodiscard]] std::string get_version_with_patch() const
+            {
+                return su::concat(get_major_version(), '.', get_minor_version(), ".0.", get_build_version());
+            }
+
             bool operator < (const version_info& _version_info) const
             {
                 if (major_ != _version_info.major_)

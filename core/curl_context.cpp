@@ -24,7 +24,9 @@
 #include "../common.shared/config/config.h"
 #include "../common.shared/string_utils.h"
 
+#ifndef STRIP_ZSTD
 #include "zstd_helper.h"
+#endif // !STRIP_ZSTD
 
 
 const size_t MAX_LOG_DATA_SIZE = 10 * 1024 * 1024;
@@ -159,7 +161,8 @@ core::curl_context::curl_context(std::shared_ptr<tools::stream> _output, http_re
     is_send_im_stats_(true),
     multi_(false),
     compression_method_(data_compression_method::none),
-    use_curl_decompression_(false)
+    use_curl_decompression_(false),
+    resolve_failed_(false)
 {
 }
 
@@ -180,12 +183,14 @@ bool core::curl_context::init(std::chrono::milliseconds _connect_timeout, std::c
     proxy_settings_ = _proxy_settings;
     user_agent_ = _user_agent;
 
+#ifndef STRIP_ZSTD
     auto zstd_helper = g_core->get_zstd_helper();
     if (features::is_zstd_request_enabled())
         zstd_request_dict_ = zstd_helper->get_last_request_dict();
 
     if (features::is_zstd_response_enabled())
         zstd_response_dict_ = zstd_helper->get_last_response_dict();
+#endif // !STRIP_ZSTD
 
     return true;
 }
@@ -369,7 +374,7 @@ bool core::curl_context::is_need_log() const
         if (normalized_url_.empty())
             g_core->write_string_to_network_log(pattern);
         else
-            g_core->write_string_to_network_log(su::concat(pattern, ": url ", normalized_url_));
+            g_core->write_string_to_network_log(su::concat(pattern, ": url ", normalized_url_, "\r\n"));
         return false;
     }
 
@@ -394,6 +399,11 @@ bool core::curl_context::is_stopped() const
     return false;
 }
 
+bool core::curl_context::is_resolve_failed() const
+{
+    return resolve_failed_;
+}
+
 bool core::curl_context::is_write_data_log() const
 {
     return write_data_log_;
@@ -416,7 +426,11 @@ void core::curl_context::write_log_data(const char* _data, int64_t _size)
         return;
     }
 
-    log_data_->write(_data, _size);
+    std::string_view buf(_data, _size);
+    if (buf.find("Could not resolve host") != buf.npos)
+        resolve_failed_ = true;
+
+    log_data_->write(buf);
 }
 
 void core::curl_context::write_log_string(std::string_view _log_string)
@@ -514,9 +528,14 @@ void core::curl_context::decompress_output_if_needed()
             }
             else if (is_zstd_encoding)
             {
+#ifndef STRIP_ZSTD
                 const auto response_dict = http_header::get_attribute(get_header(), get_response_dict_header_attribut());
                 result = tools::decompress_zstd(*output_, response_dict.empty() ? zstd_response_dict_ : response_dict, data);
+#else
+                assert(false);
+#endif // !STRIP_ZSTD
             }
+
 
             if (result)
             {
@@ -789,8 +808,10 @@ void core::curl_context::set_post_data(const char* _data, int64_t _size, bool _c
         bool result = false;
         if (is_gzip())
             result = tools::compress_gzip(_data, _size, compressed_data);
+#ifndef STRIP_ZSTD
         else if (is_zstd() && !zstd_request_dict_.empty())
             result = tools::compress_zstd(_data, _size, zstd_request_dict_, compressed_data);
+#endif // !STRIP_ZSTD
 
         if (result)
         {
@@ -882,7 +903,7 @@ static size_t write_memory_callback(void* _contents, size_t _size, size_t _nmemb
 
     ctx->output_->write(contents, static_cast<int64_t>(realsize));
 
-    if (ctx->is_use_curl_decompression() && ctx->is_need_log())
+    if (ctx->is_use_curl_decompression() && ctx->is_write_data_log())
         ctx->write_log_data(contents, static_cast<int64_t>(realsize));
 
     return realsize;
@@ -969,8 +990,10 @@ static int32_t trace_function(CURL* /*_handle*/, curl_infotype _type, unsigned c
         bool result = false;
         if (ctx->is_gzip())
             result = core::tools::decompress_gzip(compressed, data);
+#ifndef STRIP_ZSTD
         else if (ctx->is_zstd())
             result = core::tools::decompress_zstd(compressed, ctx->zstd_request_dict(), data);
+#endif // !STRIP_ZSTD
 
         if (result)
         {

@@ -255,11 +255,6 @@ void contactlist::set_changed_status(changed_status _status) noexcept
         return;
     }
 
-    g_core->write_string_to_network_log(su::concat("contact-list-debug",
-        " set_changed_status ",
-        (_status == changed_status::none ? "'none'" : (_status == changed_status::presence ? "'presence'" : "'full'")),
-        "\r\n"));
-
     changed_status_ = _status;
 }
 
@@ -759,7 +754,7 @@ void core::wim::contactlist::search(const std::string_view search_pattern, bool 
             if (++iter_word == word.end())
             {
                 std::set<std::string> hl;
-                for (const auto sp : search_pattern)
+                for (auto sp : search_pattern)
                     hl.insert(std::string(sp));
                 add_to_results(_buddy, std::move(hl), 0);
                 return true;

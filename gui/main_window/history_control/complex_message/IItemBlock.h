@@ -2,6 +2,7 @@
 
 #include "../../../namespaces.h"
 #include "../../../types/message.h"
+#include "../../../types/StickerId.h"
 
 namespace Ui
 {
@@ -80,7 +81,7 @@ public:
 
     virtual void onActivityChanged(const bool isActive) = 0;
 
-    virtual void onVisibilityChanged(const bool isVisible) = 0;
+    virtual void onVisibleRectChanged(const QRect& _visibleRect) = 0;
 
     virtual void onSelectionStateChanged(const bool isSelected) {};
 
@@ -230,6 +231,8 @@ public:
     virtual int effectiveBlockWidth() const { return 0; }
 
     virtual void setSpellErrorsVisible(bool _visible) {}
+
+    virtual bool setProgress(const QString& _fsId, const int32_t _val) { return false; }
 
 protected:
     virtual IItemBlockLayout* getBlockLayout() const = 0;

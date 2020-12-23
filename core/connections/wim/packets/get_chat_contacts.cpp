@@ -17,6 +17,11 @@ get_chat_contacts::get_chat_contacts(wim_packet_params _params, std::string_view
 
 get_chat_contacts::~get_chat_contacts() = default;
 
+std::string_view get_chat_contacts::get_method() const
+{
+    return "getChatContacts";
+}
+
 int32_t get_chat_contacts::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     rapidjson::Document doc(rapidjson::Type::kObjectType);
@@ -31,7 +36,7 @@ int32_t get_chat_contacts::init_request(const std::shared_ptr<core::http_request
 
     doc.AddMember("params", std::move(node_params), a);
 
-    setup_common_and_sign(doc, a, _request, "getChatContacts");
+    setup_common_and_sign(doc, a, _request, get_method());
 
     if (!robusto_packet::params_.full_log_)
     {

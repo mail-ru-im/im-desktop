@@ -378,7 +378,7 @@ public:
     {
         if (GetAppConfig().IsShowMsgIdsEnabled())
         {
-            debugIdTextUnit_ = TextRendering::MakeTextUnit(qsl("Poll Id: %1").arg(poll_.id_));
+            debugIdTextUnit_ = TextRendering::MakeTextUnit(ql1s("Poll Id: %1").arg(poll_.id_));
             debugIdTextUnit_->init(Fonts::adjustedAppFont(14, Fonts::FontWeight::Normal), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
         }
         else
@@ -542,10 +542,11 @@ public:
 
             fillPercentRect(_p, rect, _data.rect_, votesPercentRectColor());
 
-            _p.save();
-            _p.setPen(QPen(resultItemBorderColor(isOutgoing_), itemRectBorderWidth()));
-            _p.drawRoundedRect(_data.rect_, itemRectBorderRadius(), itemRectBorderRadius());
-            _p.restore();
+            {
+                Utils::PainterSaver p(_p);
+                _p.setPen(QPen(resultItemBorderColor(isOutgoing_), itemRectBorderWidth()));
+                _p.drawRoundedRect(_data.rect_, itemRectBorderRadius(), itemRectBorderRadius());
+            }
 
             if (_data.percentUnit_)
                 _data.percentUnit_->draw(_p);
@@ -735,6 +736,8 @@ PollBlock::PollBlock(ComplexMessageItem* _parent, const Data::PollData& _poll, c
     : GenericBlock(_parent, QString(), MenuFlags::MenuFlagCopyable, false),
       d(std::make_unique<PollBlock_p>())
 {
+    Testing::setAccessibleName(this, u"AS HistoryPage messagePoll " % QString::number(_parent->getId()));
+
     d->poll_ = _poll;
     d->question_ = _text;
     d->pollUpdateTimer_.setSingleShot(true);

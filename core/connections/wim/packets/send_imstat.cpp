@@ -24,6 +24,11 @@ send_imstat::~send_imstat()
 {
 }
 
+std::string_view send_imstat::get_method() const
+{
+    return "send_imstat";
+}
+
 int32_t send_imstat::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     _request->set_url(im_stat_url);

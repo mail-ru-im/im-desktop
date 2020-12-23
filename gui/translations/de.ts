@@ -562,14 +562,6 @@ Hier können Sie Ihr Feedback hinterlassen oder einen Fehler melden:</translatio
         <translation>%1 einen neuen Gruppennamen an - &quot;%2&quot;</translation>
     </message>
     <message>
-        <source>%1 You have joined channel</source>
-        <translation>%1 Sie sind dem Kanal beigetreten</translation>
-    </message>
-    <message>
-        <source>%1 %2 has joined channel</source>
-        <translation>%1 %2 dem Kanal beigetreten</translation>
-    </message>
-    <message>
         <source>%1 You have joined group</source>
         <translation>%1 Sie sind der Gruppe beigetreten</translation>
     </message>
@@ -967,29 +959,45 @@ Hier können Sie Ihr Feedback hinterlassen oder einen Fehler melden:</translatio
         <source>%1 %2 has canceled join request</source>
         <translation>%1 %2 Antrag auf Mitgliedschaft storniert</translation>
     </message>
+    <message>
+        <source>%1 You have subscribed the channel</source>
+        <translation>%1 Sie haben den Kanal abonniert</translation>
+    </message>
+    <message>
+        <source>%1 %2 has subscribed the channel</source>
+        <translation>%1 %2 hat den Kanal abonniert</translation>
+    </message>
+    <message>
+        <source>%1 replied to status
+%2 %3
+%4
+%5 %6</source>
+        <translation>%1 auf den Status geantwortet
+%2 %3
+%4
+%5 %6</translation>
+    </message>
+    <message>
+        <source>Replied to status: %1 %2</source>
+        <translation>Beantwortet auf Status: %1 %2</translation>
+    </message>
+    <message>
+        <source>You replied to status
+%2 %3
+%4
+%5 %6</source>
+        <translation>Sie haben auf den Status geantwortet
+%2 %3
+%4
+%5 %6</translation>
+    </message>
+    <message>
+        <source>You replied to status: %1 %2</source>
+        <translation>Sie haben den Status beantwortet: %1 %2</translation>
+    </message>
 </context>
 <context>
     <name>chat_page</name>
-    <message>
-        <source>member</source>
-        <comment>1</comment>
-        <translation>Teilnehmer</translation>
-    </message>
-    <message>
-        <source>members</source>
-        <comment>2</comment>
-        <translation>Teilnehmer</translation>
-    </message>
-    <message>
-        <source>members</source>
-        <comment>5</comment>
-        <translation>Teilnehmer</translation>
-    </message>
-    <message>
-        <source>members</source>
-        <comment>21</comment>
-        <translation>Teilnehmer</translation>
-    </message>
     <message>
         <source>Today</source>
         <translation>Heute</translation>
@@ -1049,6 +1057,10 @@ Hier können Sie Ihr Feedback hinterlassen oder einen Fehler melden:</translatio
         <source>Messages added to </source>
         <comment>21</comment>
         <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Message sent</source>
+        <translation>Nachricht gesendet</translation>
     </message>
 </context>
 <context>
@@ -2786,26 +2798,6 @@ Hier können Sie Ihr Feedback hinterlassen oder einen Fehler melden:</translatio
         <translation>Chatname</translation>
     </message>
     <message>
-        <source>member</source>
-        <comment>1</comment>
-        <translation>Teilnehmer</translation>
-    </message>
-    <message>
-        <source>members</source>
-        <comment>2</comment>
-        <translation>Teilnehmer</translation>
-    </message>
-    <message>
-        <source>members</source>
-        <comment>5</comment>
-        <translation>Teilnehmer</translation>
-    </message>
-    <message>
-        <source>members</source>
-        <comment>21</comment>
-        <translation>Teilnehmer</translation>
-    </message>
-    <message>
         <source>Channel name</source>
         <translation>Kanalname</translation>
     </message>
@@ -2860,6 +2852,14 @@ Hier können Sie Ihr Feedback hinterlassen oder einen Fehler melden:</translatio
     <message>
         <source>Chat does not exist or it is hidden by privacy settings</source>
         <translation>Der Chat existiert nicht oder wird wegen Privatsphäre einstellungen ausgeblendet</translation>
+    </message>
+    <message>
+        <source>New subscribers are waiting for admin approval</source>
+        <translation>Neue Abonnenten warten auf die Administratorberechtigung</translation>
+    </message>
+    <message>
+        <source>You are not a subscriber of this channel</source>
+        <translation>Sie sind kein Abonnent dieses Kanals</translation>
     </message>
 </context>
 <context>
@@ -3453,6 +3453,10 @@ Hier können Sie Ihr Feedback hinterlassen oder einen Fehler melden:</translatio
         <source>Privacy</source>
         <translation>Datenschutz</translation>
     </message>
+    <message>
+        <source>Report a problem</source>
+        <translation>Ein Problem melden</translation>
+    </message>
 </context>
 <context>
     <name>mentions</name>
@@ -3910,6 +3914,21 @@ Hier können Sie Ihr Feedback hinterlassen oder einen Fehler melden:</translatio
     </message>
 </context>
 <context>
+    <name>popup_widget</name>
+    <message>
+        <source>Disallow</source>
+        <translation>Verbieten</translation>
+    </message>
+    <message>
+        <source>Manage who can add me</source>
+        <translation>Konfigurieren Sie, wer hinzufügen kann</translation>
+    </message>
+    <message>
+        <source>Disallow %1 to add you to add me to groups?</source>
+        <translation>Verhindern Sie, dass %1 Sie zu Gruppen hinzufügt?</translation>
+    </message>
+</context>
+<context>
     <name>popup_window</name>
     <message>
         <source>Clear all data from this device</source>
@@ -4196,23 +4215,11 @@ Hier können Sie Ihr Feedback hinterlassen oder einen Fehler melden:</translatio
         <translation>Diese Umfrage beenden?</translation>
     </message>
     <message>
-        <source>Are you sure you want to leave channel?</source>
-        <translation>Möchtest du den Kanal wirklich verlassen?</translation>
-    </message>
-    <message>
-        <source>If you change group type to a private link to the group will be changed, and the old one will stop working</source>
-        <translation>Wenn Sie den Gruppentyp in privat ändern, ändert sich der Gruppenlink und der alte funktioniert nicht mehr</translation>
-    </message>
-    <message>
         <source>Make private</source>
         <translation>Machen Sie privat</translation>
     </message>
     <message>
         <source>Are you sure you want to clear the chat history?</source>
-        <translation>Möchten Sie den Chat-Verlauf wirklich löschen?</translation>
-    </message>
-    <message>
-        <source>Are you sure you want to clear the channel history?</source>
         <translation>Möchten Sie den Chat-Verlauf wirklich löschen?</translation>
     </message>
     <message>
@@ -4340,10 +4347,6 @@ Hier können Sie Ihr Feedback hinterlassen oder einen Fehler melden:</translatio
         <translation>Entschuldigung, etwas ist schief gelaufen. Versuchen Sie es später erneut</translation>
     </message>
     <message>
-        <source>My status</source>
-        <translation>Mein Status</translation>
-    </message>
-    <message>
         <source>You cannot call these users because of privacy settings:</source>
         <translation>Sie können diese Kontakte aufgrund ihrer Datenschutzeinstellungen nicht anrufen. Kontakte:</translation>
     </message>
@@ -4396,6 +4399,98 @@ Hier können Sie Ihr Feedback hinterlassen oder einen Fehler melden:</translatio
         <translation>Link senden</translation>
     </message>
     <message>
+        <source>Are you sure you want to erase history and leave channel?</source>
+        <translation>Möchten Sie Ihren Verlauf wirklich löschen und den Kanal verlassen?</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to erase history and leave chat?</source>
+        <translation>Möchten Sie die Geschichte wirklich löschen und die Gruppe verlassen?</translation>
+    </message>
+    <message>
+        <source>Leave</source>
+        <translation>Verlassen</translation>
+    </message>
+    <message>
+        <source>Cannot add %1</source>
+        <translation>%1 hinzugefügt werden</translation>
+    </message>
+    <message>
+        <source>Please wait until admins approve %1&apos;s request</source>
+        <translation>Warten Sie, bis der Administrator die Anforderung zum Hinzufügen von %1</translation>
+    </message>
+    <message>
+        <source>Request for %1 was sent</source>
+        <translation>Es wurde eine Anfrage zum Hinzufügen von %1 gesendet</translation>
+    </message>
+    <message>
+        <source>You cannot add %1 to channel. Send them subscription link %2</source>
+        <translation>Sie können dem Kanal nicht %1 hinzufügen. Senden Sie dem Benutzer einen Link, um %2zu abonnieren</translation>
+    </message>
+    <message>
+        <source>You cannot add %1 to chat. Send them join link %2</source>
+        <translation>Sie können der Gruppe nicht %1 hinzufügen. Senden Sie dem Benutzer einen Link zum Intro %2</translation>
+    </message>
+    <message>
+        <source>Subscribe the channel %1</source>
+        <translation>Abonnieren Sie Kanal %1</translation>
+    </message>
+    <message>
+        <source>Join the group %1</source>
+        <translation>Treten Sie der Gruppe %1</translation>
+    </message>
+    <message>
+        <source>Add %1?</source>
+        <translation>%1hinzufügen?</translation>
+    </message>
+    <message>
+        <source>Previously this contact was removed from channel. Probably, %1 violated the rules. Add anyway?</source>
+        <translation>Der Administrator hat diesen Kontakt zuvor aus dem Kanal entfernt. %1 gegen die Regeln verstoßen. Trotzdem hinzufügen?</translation>
+    </message>
+    <message>
+        <source>Previously this contact was removed from chat. Probably, %1 violated the rules. Add anyway?</source>
+        <translation>Der Administrator hat diesen Kontakt zuvor aus der Gruppe entfernt. %1 gegen die Regeln verstoßen. Trotzdem hinzufügen?</translation>
+    </message>
+    <message>
+        <source>You cannot add this contact to channel, please ask admin to do that</source>
+        <translation>Sie können diesen Kontakt nicht zum Kanal hinzufügen, fragen Sie den Administrator</translation>
+    </message>
+    <message>
+        <source>You cannot add this contact to chat, please ask admin to do that</source>
+        <translation>Sie können diesen Kontakt nicht zur Gruppe hinzufügen, fragen Sie den Administrator</translation>
+    </message>
+    <message>
+        <source>Bot can be added only by admin and if bot joining the groups was allowed by its creator</source>
+        <translation>Nur der Administrator kann einen Bot hinzufügen, wenn der Bot-Ersteller das Hinzufügen zugelassen hat</translation>
+    </message>
+    <message>
+        <source>Wait until admins approve join requests</source>
+        <translation>Warten Sie, bis die Administratoren die Anforderung zum Hinzufügen bestätigt haben</translation>
+    </message>
+    <message>
+        <source>Send them invite link</source>
+        <translation>Senden Sie ihnen den Intro-Link</translation>
+    </message>
+    <message>
+        <source>Ask admins to invite</source>
+        <translation>Bitten Sie um einen Administrator</translation>
+    </message>
+    <message>
+        <source>Bot joining the groups was forbidden by its creator</source>
+        <translation>Der Bot-Ersteller hat das Hinzufügen zu Gruppen verboten</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to delete user from list?</source>
+        <translation>Möchten Sie den Benutzer wirklich aus der Liste entfernen?</translation>
+    </message>
+    <message>
+        <source>Add to list</source>
+        <translation>Zur Liste hinzufügen</translation>
+    </message>
+    <message>
+        <source>Select</source>
+        <translation>Wählen</translation>
+    </message>
+    <message>
         <source>You can not join the call. It already has</source>
         <translation>Sie können keine Verbindung zum Anruf herstellen. Darin schon</translation>
     </message>
@@ -4412,16 +4507,84 @@ Hier können Sie Ihr Feedback hinterlassen oder einen Fehler melden:</translatio
         <translation>Einen neuen Anruf starten? Der aktuelle Anruf wird beendet</translation>
     </message>
     <message>
-        <source>Use internal DNS cache</source>
-        <translation>Verwenden Sie den internen DNS-Cache</translation>
-    </message>
-    <message>
-        <source>To change this option you must restart the application. Continue?</source>
-        <translation>Um die Einstellung zu ändern, müssen Sie die Anwendung neu starten. Vorgehen?</translation>
-    </message>
-    <message>
         <source>Global people search</source>
         <translation>Globale Personensuche</translation>
+    </message>
+    <message>
+        <source>Log Memory Report</source>
+        <translation>Protokollspeicherbericht</translation>
+    </message>
+    <message>
+        <source>Track internal cache</source>
+        <translation>Verfolgen Sie den internen Cache</translation>
+    </message>
+    <message>
+        <source>Allow microphone access, so that interlocutor could hear you</source>
+        <translation>Zugriff auf das Mikrofon zulassen, damit die andere Person Sie hören kann?</translation>
+    </message>
+    <message>
+        <source>Don&apos;t allow</source>
+        <translation>Nicht zulassen</translation>
+    </message>
+    <message>
+        <source>Settings</source>
+        <translation>die Einstellungen</translation>
+    </message>
+    <message>
+        <source>Don&apos;t show again</source>
+        <translation>Nicht mehr anzeigen</translation>
+    </message>
+    <message>
+        <source>Contact is banned in %1</source>
+        <translation>Benutzer bei %1blockiert</translation>
+    </message>
+    <message>
+        <source>Contact is already added</source>
+        <translation>Der Benutzer wurde bereits früher hinzugefügt</translation>
+    </message>
+    <message>
+        <source>Contacts are banned in %1</source>
+        <translation>Benutzer bei %1blockiert</translation>
+    </message>
+    <message>
+        <source>Contacts were already added</source>
+        <translation>Der Benutzer wurde bereits früher hinzugefügt</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to delete user?</source>
+        <translation>Möchten Sie den Benutzer wirklich löschen?</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to clear history?</source>
+        <translation>Möchten Sie Ihren Chat-Verlauf wirklich löschen?</translation>
+    </message>
+    <message>
+        <source>If you change the channel type to private, the channel link will change and the old one will stop working</source>
+        <translation>Wenn Sie den Kanaltyp in privat ändern, ändert sich die Kanalverbindung und die alte funktioniert nicht mehr</translation>
+    </message>
+    <message>
+        <source>If you change the group type to private, the group link will change and the old one will stop working</source>
+        <translation>Wenn Sie den Gruppentyp in privat ändern, ändert sich der Gruppenlink und der alte funktioniert nicht mehr</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to ban user to write in this channel?</source>
+        <translation>Möchten Sie den Benutzer wirklich daran hindern, auf diesen Kanal zu schreiben?</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to allow user to write in this channel?</source>
+        <translation>Möchten Sie dem Benutzer wirklich erlauben, auf diesen Kanal zu schreiben?</translation>
+    </message>
+    <message>
+        <source>Make private channel</source>
+        <translation>Privatisieren</translation>
+    </message>
+    <message>
+        <source>%1 hasn&apos;t been online for a long time and won&apos;t read the message likely. Send free sms to suggest to come back to ICQ?</source>
+        <translation>%1 war lange nicht online und wird die Nachricht höchstwahrscheinlich nicht lesen. Senden Sie eine kostenlose SMS und bieten Sie an, zu ICQ zurückzukehren?</translation>
+    </message>
+    <message>
+        <source>Send Statistic</source>
+        <translation>Statistiken senden</translation>
     </message>
 </context>
 <context>
@@ -4500,26 +4663,6 @@ Hier können Sie Ihr Feedback hinterlassen oder einen Fehler melden:</translatio
     <message>
         <source>Contact</source>
         <translation>Kontakt</translation>
-    </message>
-    <message>
-        <source>member</source>
-        <comment>1</comment>
-        <translation>Teilnehmer</translation>
-    </message>
-    <message>
-        <source>members</source>
-        <comment>2</comment>
-        <translation>Teilnehmer</translation>
-    </message>
-    <message>
-        <source>members</source>
-        <comment>5</comment>
-        <translation>Teilnehmer</translation>
-    </message>
-    <message>
-        <source>members</source>
-        <comment>21</comment>
-        <translation>Teilnehmer</translation>
     </message>
     <message>
         <source>VIEW</source>
@@ -4968,10 +5111,6 @@ Hier können Sie Ihr Feedback hinterlassen oder einen Fehler melden:</translatio
         <translation>Sprache</translation>
     </message>
     <message>
-        <source>Contact Us</source>
-        <translation>Kontaktiere uns</translation>
-    </message>
-    <message>
         <source>About app</source>
         <translation>Über die App</translation>
     </message>
@@ -5251,6 +5390,26 @@ Hier können Sie Ihr Feedback hinterlassen oder einen Fehler melden:</translatio
         <source>Show unreads counter in window title</source>
         <translation>Zeigen Sie die Anzahl der ungelesenen Titel im Fenstertitel an</translation>
     </message>
+    <message>
+        <source>Exceptions list</source>
+        <translation>Liste der Ausschlüsse</translation>
+    </message>
+    <message>
+        <source>Forbid to add me to groups</source>
+        <translation>Verweigern Sie das Hinzufügen zu Gruppen</translation>
+    </message>
+    <message>
+        <source>Add to list</source>
+        <translation>Zur Liste hinzufügen</translation>
+    </message>
+    <message>
+        <source>Specify who should be prohibited from adding you to groups</source>
+        <translation>Geben Sie an, wem das Hinzufügen zu Gruppen untersagt werden soll</translation>
+    </message>
+    <message>
+        <source>Disable SMS notifications</source>
+        <translation>Deaktivieren Sie SMS-Benachrichtigungen</translation>
+    </message>
 </context>
 <context>
     <name>settings_connection</name>
@@ -5461,8 +5620,8 @@ Hier können Sie Ihr Feedback hinterlassen oder einen Fehler melden:</translatio
         <translation>Benachrichtigungen</translation>
     </message>
     <message>
-        <source>Wallpaper</source>
-        <translation>Chat-Hintergrundbild</translation>
+        <source>Wallpapers</source>
+        <translation>Hintergrund</translation>
     </message>
     <message>
         <source>Nickname</source>
@@ -5591,26 +5750,6 @@ Bitte bearbeite sie und versuche es erneut.</translation>
         <translation>Zum Kanal hinzufügen</translation>
     </message>
     <message>
-        <source>member</source>
-        <comment>1</comment>
-        <translation>Teilnehmer</translation>
-    </message>
-    <message>
-        <source>members</source>
-        <comment>2</comment>
-        <translation>Teilnehmer</translation>
-    </message>
-    <message>
-        <source>members</source>
-        <comment>5</comment>
-        <translation>Teilnehmer</translation>
-    </message>
-    <message>
-        <source>members</source>
-        <comment>21</comment>
-        <translation>Teilnehmer</translation>
-    </message>
-    <message>
         <source>Add name</source>
         <translation>Den Namen hinzufügen</translation>
     </message>
@@ -5669,26 +5808,6 @@ Bitte bearbeite sie und versuche es erneut.</translation>
     <message>
         <source>Message</source>
         <translation>Nachricht</translation>
-    </message>
-    <message>
-        <source>MEMBER</source>
-        <comment>1</comment>
-        <translation>TEILNEHMER</translation>
-    </message>
-    <message>
-        <source>MEMBERS</source>
-        <comment>2</comment>
-        <translation>TEILNEHMER</translation>
-    </message>
-    <message>
-        <source>MEMBERS</source>
-        <comment>5</comment>
-        <translation>TEILNEHMER</translation>
-    </message>
-    <message>
-        <source>MEMBERS</source>
-        <comment>21</comment>
-        <translation>TEILNEHMER</translation>
     </message>
     <message>
         <source>Common groups</source>
@@ -5826,6 +5945,22 @@ Bitte bearbeite sie und versuche es erneut.</translation>
         <source>Call</source>
         <translation>Anrufen</translation>
     </message>
+    <message>
+        <source>Your invites</source>
+        <translation>Ihre Einladungen</translation>
+    </message>
+    <message>
+        <source>List empty</source>
+        <translation>Die Liste ist leer</translation>
+    </message>
+    <message>
+        <source>Subscribers</source>
+        <translation>Anhänger</translation>
+    </message>
+    <message>
+        <source>All subscribers</source>
+        <translation>Alle Abonnenten</translation>
+    </message>
 </context>
 <context>
     <name>siderbar</name>
@@ -5918,14 +6053,6 @@ Bitte bearbeite sie und versuche es erneut.</translation>
         <translation>Benutzerstatus</translation>
     </message>
     <message>
-        <source>Status timing</source>
-        <translation>Statusbegriff</translation>
-    </message>
-    <message>
-        <source>No status</source>
-        <translation>Ohne Status</translation>
-    </message>
-    <message>
         <source>Show always</source>
         <translation>Immer anzeigen</translation>
     </message>
@@ -5962,6 +6089,22 @@ Bitte bearbeite sie und versuche es erneut.</translation>
     <message>
         <source>Cancel</source>
         <translation>Stornierung</translation>
+    </message>
+    <message>
+        <source>My status</source>
+        <translation>Mein Status</translation>
+    </message>
+    <message>
+        <source>No status</source>
+        <translation>Ohne Status</translation>
+    </message>
+    <message>
+        <source>Status timing</source>
+        <translation>Statusbegriff</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation>Schließen</translation>
     </message>
 </context>
 <context>
@@ -6246,18 +6389,6 @@ Bitte bearbeite sie und versuche es erneut.</translation>
         <translation>Einstellungen</translation>
     </message>
     <message>
-        <source>Call is secured</source>
-        <translation>Der Anruf ist sicher</translation>
-    </message>
-    <message>
-        <source>For security check, you can verify your images with your partner</source>
-        <translation>Überprüfe für den Sicherheitscheck, ob die obigen Symbole mit denen deines Freundes übereinstimmen</translation>
-    </message>
-    <message>
-        <source>How it works</source>
-        <translation>So funktioniert es</translation>
-    </message>
-    <message>
         <source>Add to call</source>
         <translation>Zum Anruf hinzufügen</translation>
     </message>
@@ -6268,10 +6399,6 @@ Bitte bearbeite sie und versuche es erneut.</translation>
     <message>
         <source>Screen</source>
         <translation>Bildschirm</translation>
-    </message>
-    <message>
-        <source>OK</source>
-        <translation>OK</translation>
     </message>
     <message>
         <source>DECLINE</source>
@@ -6298,14 +6425,6 @@ Bitte bearbeite sie und versuche es erneut.</translation>
         <translation>VCS anrufen</translation>
     </message>
     <message>
-        <source>To use microphone you need to allow access to the microphone in the system settings</source>
-        <translation>Um das Mikrofon zu verwenden, erlauben Sie den Zugriff auf das Mikrofon in den Systemeinstellungen</translation>
-    </message>
-    <message>
-        <source>Microphone permissions</source>
-        <translation>Mikrofonzugang</translation>
-    </message>
-    <message>
         <source>To use camera you need to allow access to the camera in the system settings</source>
         <translation>Um die Kamera zu verwenden, erlauben Sie den Zugriff auf die Kamera in den Systemeinstellungen</translation>
     </message>
@@ -6325,20 +6444,36 @@ Bitte bearbeite sie und versuche es erneut.</translation>
         <source>CALL MEMBERS</source>
         <translation>RUFEN SIE MITGLIEDER AN</translation>
     </message>
+    <message>
+        <source>Minimize</source>
+        <translation>Minimieren</translation>
+    </message>
+    <message>
+        <source>Maximize</source>
+        <translation>Maximieren</translation>
+    </message>
+    <message>
+        <source>Raise call window</source>
+        <translation>Anruffenster öffnen</translation>
+    </message>
+    <message>
+        <source>Move the window
+or open call
+with click</source>
+        <translation>Bewegen Sie das Fenster
+oder öffnen Sie den Anruf
+per Klick</translation>
+    </message>
 </context>
 <context>
     <name>voip_video_panel</name>
-    <message>
-        <source>Video</source>
-        <translation>Video</translation>
-    </message>
     <message>
         <source>Screen</source>
         <translation>Bildschirm</translation>
     </message>
     <message>
         <source>More</source>
-        <translation>Mehr</translation>
+        <translation>Noch</translation>
     </message>
     <message>
         <source>Go to chat</source>
@@ -6355,10 +6490,6 @@ Bitte bearbeite sie und versuche es erneut.</translation>
     <message>
         <source>Settings</source>
         <translation>Einstellungen</translation>
-    </message>
-    <message>
-        <source>End</source>
-        <translation>Beenden</translation>
     </message>
     <message>
         <source>Show all</source>
@@ -6385,10 +6516,6 @@ Bitte bearbeite sie und versuche es erneut.</translation>
         <translation>Bei Anrufen mit mehr als %1 Teilnehmern sind keine Masken verfügbar</translation>
     </message>
     <message>
-        <source>Mic</source>
-        <translation>Mikrofon</translation>
-    </message>
-    <message>
         <source>Only the creator of the webinar can show the video</source>
         <translation>Nur der Ersteller des Webinars kann das Video zeigen</translation>
     </message>
@@ -6406,19 +6533,121 @@ Bitte bearbeite sie und versuche es erneut.</translation>
     </message>
     <message>
         <source>Invite</source>
-        <translation>Laden Sie ein</translation>
+        <translation>Hinzufügen</translation>
     </message>
     <message>
         <source>Link copied</source>
         <translation>Link kopiert</translation>
     </message>
     <message>
-        <source>Sound</source>
-        <translation>Ton</translation>
-    </message>
-    <message>
         <source>Wait for connection</source>
         <translation>Erwarten Sie eine Verbindung</translation>
+    </message>
+    <message>
+        <source>Mute</source>
+        <translation>Ausschalten
+Mikrofon</translation>
+    </message>
+    <message>
+        <source>Unmute</source>
+        <translation>Aktivieren
+Mikrofon</translation>
+    </message>
+    <message>
+        <source>Stop
+Video</source>
+        <translation>Ausschalten
+Video</translation>
+    </message>
+    <message>
+        <source>Start
+Video</source>
+        <translation>Aktivieren
+Video</translation>
+    </message>
+    <message>
+        <source>Disable
+Sound</source>
+        <translation>Ausschalten
+Klang</translation>
+    </message>
+    <message>
+        <source>Enable
+Sound</source>
+        <translation>Aktivieren
+Klang</translation>
+    </message>
+    <message>
+        <source>Stop
+Share</source>
+        <translation>Halt
+zeigen</translation>
+    </message>
+    <message>
+        <source>Share
+Screen</source>
+        <translation>Teile das
+Bildschirm</translation>
+    </message>
+    <message>
+        <source>Microphone not found. Check that it is connected and working.</source>
+        <translation>Mikrofon nicht erkannt. Überprüfen Sie, ob es angeschlossen ist und funktioniert</translation>
+    </message>
+    <message>
+        <source>Allow access to microphone. Click &quot;Settings&quot; and allow application access to microphone</source>
+        <translation>Ermöglichen Sie den Zugriff auf das Mikrofon. Klicken Sie auf &quot;Einstellungen&quot; und erlauben Sie der Anwendung, auf das Mikrofon zuzugreifen</translation>
+    </message>
+    <message>
+        <source>No devices found</source>
+        <translation>Keine Geräte gefunden</translation>
+    </message>
+    <message>
+        <source>End
+Meeting</source>
+        <translation>Fertigstellen</translation>
+    </message>
+    <message>
+        <source>SHOW ALL</source>
+        <translation>ZEIGE ALLES</translation>
+    </message>
+</context>
+<context>
+    <name>voip_video_panel_mini</name>
+    <message>
+        <source>End meeting</source>
+        <translation>Fertigstellen</translation>
+    </message>
+    <message>
+        <source>Mute</source>
+        <translation>Mikrofon stumm schalten</translation>
+    </message>
+    <message>
+        <source>Unmute</source>
+        <translation>Mikrofon einschalten</translation>
+    </message>
+    <message>
+        <source>Stop video</source>
+        <translation>Video ausschalten</translation>
+    </message>
+    <message>
+        <source>Start video</source>
+        <translation>Video abspielen</translation>
+    </message>
+    <message>
+        <source>Disable sound</source>
+        <translation>Schalten Sie den Ton aus</translation>
+    </message>
+    <message>
+        <source>Enable sound</source>
+        <translation>Ton einschalten</translation>
+    </message>
+    <message>
+        <source>Stop share</source>
+        <translation>Hör auf zu zeigen</translation>
+    </message>
+    <message>
+        <source>Start share</source>
+        <translation>Bildschirm teilen</translation>
     </message>
 </context>
 <context>

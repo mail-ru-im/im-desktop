@@ -31,6 +31,7 @@
 #include "../../controls/GeneralDialog.h"
 #include "../../controls/TooltipWidget.h"
 #include "controls/BigEmojiWidget.h"
+#include "statuses/StatusTooltip.h"
 
 #include "../../utils/Text2DocConverter.h"
 #include "../../styles/ThemeParameters.h"
@@ -189,14 +190,19 @@ namespace Ui
         setCursor(Qt::PointingHandCursor);
     }
 
-    void SidebarButton::setMargins(int _left, int _top, int _right, int _bottom)
+    void SidebarButton::setMargins(const QMargins& _margins)
     {
-        margins_ = QMargins(_left, _top, _right, _bottom);
+        if (margins_ == _margins)
+            return;
+        margins_ = _margins;
         update();
     }
 
     void SidebarButton::setTextOffset(int _textOffset)
     {
+        if (textOffset_ == _textOffset)
+            return;
+
         textOffset_ = _textOffset;
         update();
     }
@@ -217,6 +223,9 @@ namespace Ui
 
     void SidebarButton::setText(const QString& _text)
     {
+        if (text_->getText() == _text)
+            return;
+
         text_->setText(_text);
         update();
     }
@@ -228,9 +237,13 @@ namespace Ui
 
     void SidebarButton::setCounter(int _count, bool _autoHide)
     {
-        counter_->setText(QVariant(_count).toString());
+        const QString text = QString::number(_count);
+        if (counter_->getText() == text)
+            return;
+
+        counter_->setText(text);
         if (_autoHide)
-            setVisible(_count != 0);
+            setVisible(_count > 0);
         update();
     }
 
@@ -243,6 +256,9 @@ namespace Ui
 
     void SidebarButton::setEnabled(bool _isEnabled)
     {
+        if (isEnabled_ == _isEnabled)
+            return;
+
         isEnabled_ = _isEnabled;
         setCursor(isEnabled_ ? Qt::PointingHandCursor : Qt::ArrowCursor);
         if (!_isEnabled)
@@ -301,7 +317,7 @@ namespace Ui
         {
             if (Utils::clicked(clickedPoint_, _event->pos()))
             {
-                Q_EMIT clicked();
+                Q_EMIT clicked(QPrivateSignal());
             }
             isActive_ = false;
             update();
@@ -347,14 +363,11 @@ namespace Ui
         checkbox_->setFocusPolicy(Qt::NoFocus);
     }
 
-    void SidebarCheckboxButton::setMargins(int _left, int _top, int _right, int _bottom)
-    {
-        margins_ = QMargins(_left, _top, _right, _bottom);
-        SidebarButton::setMargins(_left, _top, _right + checkbox_->width(), _bottom);
-    }
-
     void SidebarCheckboxButton::setChecked(bool _checked)
     {
+        if (checkbox_->isChecked() == _checked)
+            return;
+
         checkbox_->setChecked(_checked);
         update();
     }
@@ -389,7 +402,7 @@ namespace Ui
         if (isEnabled_ && Utils::clicked(clickedPoint_, _event->pos()))
         {
             setChecked(!isChecked());
-            Q_EMIT checked(checkbox_->isChecked());
+            Q_EMIT checked(checkbox_->isChecked(), QPrivateSignal());
         }
         SidebarButton::mouseReleaseEvent(_event);
     }
@@ -397,6 +410,7 @@ namespace Ui
     AvatarNameInfo::AvatarNameInfo(QWidget* _parent)
         : QWidget(_parent)
         , textOffset_(0)
+        , animStep_(0)
         , avatarSize_(0)
         , defaultAvatar_(false)
         , clickable_(false)
@@ -413,16 +427,24 @@ namespace Ui
         connect(statusPlate_, &StatusPlate::update, this, qOverload<>(&AvatarNameInfo::update));
 
         setMouseTracking(true);
+
+        setMinimumHeight(Utils::scale_value(AVATAR_INFO_HEIGHT));
+        setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
     }
 
-    void AvatarNameInfo::setMargins(int _left, int _top, int _right, int _bottom)
+    void AvatarNameInfo::setMargins(const QMargins& _margins)
     {
-        margins_ = QMargins(_left, _top, _right, _bottom);
+        if (margins_ == _margins)
+            return;
+        margins_ = _margins;
         update();
     }
 
     void AvatarNameInfo::setTextOffset(int _textOffset)
     {
+        if (textOffset_ == _textOffset)
+            return;
+
         textOffset_ = _textOffset;
         update();
     }
@@ -439,25 +461,34 @@ namespace Ui
 
     void AvatarNameInfo::setAimIdAndSize(const QString& _aimid, int _size, const QString& _friendly)
     {
+        const QString friendlyName = _friendly.isEmpty() ? Logic::GetFriendlyContainer()->getFriendly(_aimid) : _friendly;
+        if (avatarSize_ == _size && aimId_ == _aimid && friendlyName_ == friendlyName)
+            return;
+
         aimId_ = _aimid;
         avatarSize_ = _size;
-        friendlyName_ = _friendly.isEmpty() ? Logic::GetFriendlyContainer()->getFriendly(aimId_) : _friendly;
+        friendlyName_ = friendlyName;
         name_->setText(friendlyName_);
         name_->elide(width() - margins_.left() - margins_.right() - avatarSize_ - textOffset_ - (clickable_ ? Utils::scale_value(ICON_SIZE + ICON_OFFSET) : 0));
         statusPlate_->setContactId(aimId_);
         setBadgeRect();
         loadAvatar();
         updateSize();
+
+        Testing::setAccessibleName(this, qsl("AS Sidebar AvatarNameInfo ") + aimId_);
     }
 
     void AvatarNameInfo::setFrienlyAndSize(const QString& _friendly, int _size)
     {
+        if (avatarSize_ == _size && friendlyName_ == _friendly)
+            return;
+
         avatarSize_ = _size;
         friendlyName_ = _friendly;
         name_->setText(friendlyName_);
         name_->elide(width() - margins_.left() - margins_.right() - avatarSize_ - textOffset_ - (clickable_ ? Utils::scale_value(ICON_SIZE + ICON_OFFSET) : 0));
 
-        avatar_ = *(Logic::GetAvatarStorage()->GetRounded(aimId_, friendlyName_, Utils::scale_bitmap(avatarSize_), defaultAvatar_, false, false));
+        avatar_ = Logic::GetAvatarStorage()->GetRounded(aimId_, friendlyName_, Utils::scale_bitmap(avatarSize_), defaultAvatar_, false, false);
         Utils::check_pixel_ratio(avatar_);
         setBadgeRect();
         update();
@@ -465,6 +496,9 @@ namespace Ui
 
     void AvatarNameInfo::setInfo(const QString& _info, const QColor& _color)
     {
+        if (info_->getColor() == _color && info_->getText() == _info)
+            return;
+
         info_->setText(_info, _color);
         name_->elide(width() - margins_.left() - margins_.right() - avatarSize_ - textOffset_ - (clickable_ ? Utils::scale_value(ICON_SIZE + ICON_OFFSET) : 0));
         updateSize();
@@ -488,9 +522,30 @@ namespace Ui
         update();
     }
 
-    void AvatarNameInfo::paintEvent(QPaintEvent* _event)
+    void AvatarNameInfo::stateChanged()
     {
-        QPainter p(this);
+        static constexpr std::chrono::milliseconds animationDuration = std::chrono::milliseconds(52);
+        if (!isEnabled())
+            timer_.start(int(animationDuration.count()), this);
+        else
+            timer_.stop();
+    }
+
+    QSize AvatarNameInfo::sizeHint() const
+    {
+        const auto statusTopLeft = statusPos();
+        const auto statusBottom = statusTopLeft.y() + statusPlate_->height() + statusBottomMargin();
+        const auto avatarHeight = Utils::scale_value(AVATAR_INFO_HEIGHT);
+        return QSize(width(), std::max(statusBottom, avatarHeight));
+    }
+
+    QSize AvatarNameInfo::minimumSizeHint() const
+    {
+        return QSize(Utils::scale_value(AVATAR_INFO_HEIGHT), Utils::scale_value(AVATAR_INFO_HEIGHT));
+    }
+
+    void AvatarNameInfo::paintEnabled(QPainter& p)
+    {
         p.setRenderHints(QPainter::SmoothPixmapTransform | QPainter::Antialiasing | QPainter::TextAntialiasing);
         if (clickable_)
         {
@@ -502,10 +557,7 @@ namespace Ui
         }
 
         if (!avatar_.isNull())
-        {
-            const auto topLeft = QPoint(margins_.left(), height() / 2 - avatarSize_ / 2);
-            Utils::drawAvatarWithBadge(p, topLeft, avatar_, aimId_, false, Utils::StatusBadgeState::BadgeOnly, false, false);
-        }
+            Utils::drawAvatarWithBadge(p, avatarTopLeft(), avatar_, aimId_, false, Utils::StatusBadgeState::BadgeOnly, false, false);
 
         const auto isBot = Logic::GetLastseenContainer()->isBot(aimId_);
 
@@ -513,7 +565,7 @@ namespace Ui
         {
             name_->setOffsets(margins_.left() + avatarSize_ + textOffset_, height() / 2);
         }
-        if (!statusPlate_->isEmpty() && !isBot )
+        if (!statusPlate_->isEmpty() && !isBot)
         {
             name_->setOffsets(margins_.left() + avatarSize_ + textOffset_, nameOffsetTop());
         }
@@ -547,6 +599,61 @@ namespace Ui
         }
     }
 
+    void AvatarNameInfo::paintDisabled(QPainter& painter)
+    {
+        QPainter p(this);
+        p.setRenderHints(QPainter::Antialiasing);
+        p.setPen(Qt::NoPen);
+
+        QLinearGradient gradient(0, 0, width(), 0);
+        gradient.setSpread(QGradient::RepeatSpread);
+        gradient.setColorAt(0.0, Styling::getParameters().getColor(Styling::StyleVariable::BASE_LIGHT));
+        gradient.setColorAt(animStep_ / 10.0, Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT_INVERSE));
+        gradient.setColorAt(1.0, Styling::getParameters().getColor(Styling::StyleVariable::BASE_LIGHT));
+        p.setBrush(gradient);
+
+        const auto avatarPos = Utils::scale_value(16);
+        const auto avatarSize = Utils::scale_value(52);
+        p.drawEllipse(avatarPos, avatarPos, avatarSize, avatarSize);
+
+        const auto lineX = avatarPos + avatarSize + Utils::scale_value(13);
+        const auto radius = Utils::scale_value(2);
+
+        p.drawRoundedRect(lineX, Utils::scale_value(25), Utils::scale_value(150), Utils::scale_value(12), radius, radius);
+        p.drawRoundedRect(lineX, Utils::scale_value(47), Utils::scale_value(112), Utils::scale_value(8), radius, radius);
+    }
+
+    void AvatarNameInfo::timerEvent(QTimerEvent* _event)
+    {
+        if (_event->timerId() == timer_.timerId())
+        {
+            ++animStep_;
+            animStep_ %= 10;
+            update();
+        }
+        else
+        {
+            QWidget::timerEvent(_event);
+        }
+    }
+
+    void AvatarNameInfo::changeEvent(QEvent* _event)
+    {
+        if (_event->type() == QEvent::EnabledChange)
+            stateChanged();
+
+        QWidget::changeEvent(_event);
+    }
+
+    void AvatarNameInfo::paintEvent(QPaintEvent* _event)
+    {
+        QPainter p(this);
+        if (!isEnabled() && timer_.isActive())
+            paintDisabled(p);
+        else
+            paintEnabled(p);
+    }
+
     void AvatarNameInfo::resizeEvent(QResizeEvent* _event)
     {
         name_->elide(width() - margins_.left() - margins_.right() - avatarSize_ - textOffset_ - (clickable_ ? Utils::scale_value(ICON_SIZE + ICON_OFFSET): 0));
@@ -554,7 +661,7 @@ namespace Ui
 
         const auto pos = statusPos();
         statusPlate_->updateGeometry(pos, _event->size().width() -  pos.x() - Utils::scale_value(16));
-
+        updateGeometry();
         QWidget::resizeEvent(_event);
     }
 
@@ -572,16 +679,16 @@ namespace Ui
         {
             if (aimId_ == MyInfo()->aimId() && badgeRect_.isValid() && badgeRect_.contains(_event->pos()))
             {
-                Q_EMIT badgeClicked();
+                Q_EMIT badgeClicked(QPrivateSignal());
             }
             else
             {
                 QRect r(margins_.left(), height() / 2 - avatarSize_ / 2, avatarSize_, avatarSize_);
                 if (r.contains(_event->pos()) && !defaultAvatar_)
-                    Q_EMIT avatarClicked();
+                    Q_EMIT avatarClicked(QPrivateSignal());
 
                 if (clickable_)
-                    Q_EMIT clicked();
+                    Q_EMIT clicked(QPrivateSignal());
             }
         }
 
@@ -651,7 +758,7 @@ namespace Ui
 
     void AvatarNameInfo::loadAvatar()
     {
-        avatar_ = *(Logic::GetAvatarStorage()->GetRounded(aimId_, friendlyName_, Utils::scale_bitmap(avatarSize_), defaultAvatar_, false, false));
+        avatar_ = Logic::GetAvatarStorage()->GetRounded(aimId_, friendlyName_, Utils::scale_bitmap(avatarSize_), defaultAvatar_, false, false);
         Utils::check_pixel_ratio(avatar_);
         update();
     }
@@ -671,7 +778,7 @@ namespace Ui
         const auto statusBottom = statusTopLeft.y() + statusPlate_->height() + statusBottomMargin();
         const auto avatarHeight = Utils::scale_value(AVATAR_INFO_HEIGHT);
 
-        setFixedHeight(std::max(statusBottom, avatarHeight));
+        setMinimumHeight(std::max(statusBottom, avatarHeight));
 
         statusPlate_->updateGeometry(statusTopLeft, width() -  statusTopLeft.x() - Utils::scale_value(16));
     }
@@ -682,6 +789,11 @@ namespace Ui
         auto nameHeight = name_->cachedSize().height();
         auto infoHeight = info_->cachedSize().height();
         return { margins_.left() + avatarSize_ + textOffset_, nameOffsetTop() + nameHeight + (isBot ? botStatusTopOffset() : infoHeight + statusTopOffset()) };
+    }
+
+    QPoint AvatarNameInfo::avatarTopLeft() const
+    {
+        return QPoint(margins_.left(), height() / 2 - avatarSize_ / 2);
     }
 
     StatusPlate::StatusPlate(QObject* _parent)
@@ -696,6 +808,9 @@ namespace Ui
 
     void StatusPlate::setContactId(const QString& _id)
     {
+        if (contactId_ == _id)
+            return;
+
         contactId_ = _id;
 
         if (!Logic::GetLastseenContainer()->isBot(contactId_))
@@ -898,32 +1013,7 @@ namespace Ui
         QPainterPath path;
         path.addRoundedRect(backgroundRect, Utils::scale_value(6), Utils::scale_value(6));
         p.fillPath(path, Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE));
-    }    
-
-    AvatarNamePlaceholder::AvatarNamePlaceholder(QWidget* _parent)
-        : QWidget(_parent)
-    {
-        setFixedHeight(Utils::scale_value(84));
     }
-
-    void AvatarNamePlaceholder::paintEvent(QPaintEvent*)
-    {
-        QPainter p(this);
-        p.setRenderHints(QPainter::Antialiasing);
-        p.setPen(Qt::NoPen);
-        p.setBrush(Styling::getParameters().getColor(Styling::StyleVariable::BASE_LIGHT));
-
-        const auto avatarPos = Utils::scale_value(16);
-        const auto avatarSize = Utils::scale_value(52);
-        p.drawEllipse(avatarPos, avatarPos, avatarSize, avatarSize);
-
-        const auto lineX = avatarPos + avatarSize + Utils::scale_value(13);
-        const auto radius = Utils::scale_value(2);
-
-        p.drawRoundedRect(lineX, Utils::scale_value(25), Utils::scale_value(150), Utils::scale_value(12), radius, radius);
-        p.drawRoundedRect(lineX, Utils::scale_value(47), Utils::scale_value(112), Utils::scale_value(8), radius, radius);
-    }
-
 
     TextLabel::TextLabel(QWidget* _parent, int _maxLinesCount)
         : QWidget(_parent)
@@ -954,9 +1044,11 @@ namespace Ui
         }
     }
 
-    void TextLabel::setMargins(int _left, int _top, int _right, int _bottom)
+    void TextLabel::setMargins(const QMargins& _margins)
     {
-        margins_ = QMargins(_left, _top, _right, _bottom);
+        if (margins_ == _margins)
+            return;
+        margins_ = _margins;
         setFixedHeight(std::max(0, text_->cachedSize().height()) + margins_.top() + margins_.bottom());
         update();
     }
@@ -982,7 +1074,7 @@ namespace Ui
                 collapsedText_->select(from, to);
             else
                 text_->select(from, to);
-            Q_EMIT selectionChanged();
+            Q_EMIT selectionChanged(QPrivateSignal());
         }
         update();
     }
@@ -1011,6 +1103,9 @@ namespace Ui
 
     void TextLabel::setText(const QString& _text, const QColor& _color)
     {
+        if (text_->getText() == _text && text_->getColor() == _color)
+            return;
+
         text_->setText(_text, _color);
         collapsedText_->setText(_text, _color);
 
@@ -1032,6 +1127,9 @@ namespace Ui
 
     void TextLabel::setColor(const QColor& _color)
     {
+        if (text_->getColor() == _color)
+            return;
+
         text_->setColor(_color);
         update();
     }
@@ -1265,11 +1363,11 @@ namespace Ui
                     {
                         auto copyRect = QRect(width() - Utils::scale_value(ICON_SIZE) * (onlyCopyButton_ ? 2 : 4), margins_.top(), Utils::scale_value(ICON_SIZE), Utils::scale_value(ICON_SIZE));
                         if (copyRect.contains(pos) && !std::exchange(buttonWasClicked, true))
-                            Q_EMIT copyClicked(text_->getSourceText());
+                            Q_EMIT copyClicked(text_->getSourceText(), QPrivateSignal());
 
                         auto shareRect = QRect(width() - Utils::scale_value(ICON_SIZE) * 2, margins_.top(), Utils::scale_value(ICON_SIZE), Utils::scale_value(ICON_SIZE));
                         if (!onlyCopyButton_ && shareRect.contains(pos) && !std::exchange(buttonWasClicked, true))
-                            Q_EMIT shareClicked();
+                            Q_EMIT shareClicked(QPrivateSignal());
                     }
 
                     if (!buttonWasClicked && (text_->contains(pos) || collapsedText_->contains(pos)))
@@ -1285,7 +1383,7 @@ namespace Ui
                         }
                         else
                         {
-                            Q_EMIT textClicked();
+                            Q_EMIT textClicked(QPrivateSignal());
                         }
                     }
                 }
@@ -1438,7 +1536,8 @@ namespace Ui
 
     void InfoBlock::setHeaderText(const QString& _text, const QColor& _color)
     {
-        header_->setText(_text, _color);
+        if (header_->getText() != _text)
+            header_->setText(_text, _color);
     }
 
     void InfoBlock::setText(const QString& _text, const QColor& _color)
@@ -1532,7 +1631,7 @@ namespace Ui
             {
                 Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::profilescr_chatgallery_action, { { "category", "ChatInfo" }, { "chat_type", Utils::chatTypeByAimId(aimId_) } });
                 Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::fullmediascr_view, { { "chat_type", Utils::chatTypeByAimId(aimId_) }, { "from", "profile_carousel" }, { "media_type", item_->isVideo() ? "video" : (item_->isGif() ? "gif" : "photo") } });
-                Utils::InterConnector::instance().getMainWindow()->openGallery(aimId_, item_->getLink(), item_->getMsg());
+                Utils::InterConnector::instance().getMainWindow()->openGallery(Utils::GalleryData(aimId_, item_->getLink(), item_->getMsg()));
             }
             else if (_event->button() == Qt::RightButton)
             {
@@ -1636,9 +1735,9 @@ namespace Ui
         connect(Ui::GetDispatcher(), &Ui::core_dispatcher::dialogGalleryHolesDownloading, this, &GalleryPreviewWidget::dialogGalleryHolesDownloading);
     }
 
-    void GalleryPreviewWidget::setMargins(int _left, int _top, int _right, int _bottom)
+    void GalleryPreviewWidget::setMargins(const QMargins& _margins)
     {
-        layout_->setContentsMargins(_left, _top, _right, _bottom);
+        layout_->setContentsMargins(_margins);
     }
 
     void GalleryPreviewWidget::setSpacing(int _spacing)
@@ -1648,6 +1747,9 @@ namespace Ui
 
     void GalleryPreviewWidget::setAimId(const QString& _aimid)
     {
+        if (aimId_ == _aimid)
+            return;
+
         aimId_ = _aimid;
         clear();
         requestGallery();
@@ -1778,21 +1880,37 @@ namespace Ui
         setMouseTracking(true);
     }
 
-    void MembersPlate::setMargins(int _left, int _top, int _right, int _bottom)
+    void MembersPlate::setMargins(const QMargins& _margins)
     {
-        margins_ = QMargins(_left, _top, _right, _bottom);
+        if (margins_ == _margins)
+            return;
+        margins_ = _margins;
         update();
     }
 
-    void MembersPlate::setMembersCount(int _count)
+    void MembersPlate::setMembersCount(int _count, bool _isChannel)
     {
-        members_->setText(QString::number(_count) % ql1c(' ') %
-            Utils::GetTranslator()->getNumberString(_count,
-                QT_TRANSLATE_NOOP3("sidebar", "MEMBER", "1"),
-                QT_TRANSLATE_NOOP3("sidebar", "MEMBERS", "2"),
-                QT_TRANSLATE_NOOP3("sidebar", "MEMBERS", "5"),
-                QT_TRANSLATE_NOOP3("sidebar", "MEMBERS", "21")
-            ));
+        QString text;
+        if (_isChannel)
+        {
+            text = Utils::GetTranslator()->getNumberString(_count,
+                   QT_TRANSLATE_NOOP3("sidebar", "%1 SUBSCRIBER", "1"),
+                   QT_TRANSLATE_NOOP3("sidebar", "%1 SUBSCRIBERS", "2"),
+                   QT_TRANSLATE_NOOP3("sidebar", "%1 SUBSCRIBERS", "5"),
+                   QT_TRANSLATE_NOOP3("sidebar", "%1 SUBSCRIBERS", "21")
+                   ).arg(QString::number(_count));
+        }
+        else
+        {
+            text = Utils::GetTranslator()->getNumberString(_count,
+                   QT_TRANSLATE_NOOP3("sidebar", "%1 MEMBER", "1"),
+                   QT_TRANSLATE_NOOP3("sidebar", "%1 MEMBERS", "2"),
+                   QT_TRANSLATE_NOOP3("sidebar", "%1 MEMBERS", "5"),
+                   QT_TRANSLATE_NOOP3("sidebar", "%1 MEMBERS", "21")
+                   ).arg(QString::number(_count));
+        }
+
+        members_->setText(text);
 
         setFixedHeight(members_->cachedSize().height() + margins_.top() + margins_.bottom());
         update();
@@ -1836,7 +1954,7 @@ namespace Ui
     {
         auto pos = _event->pos();
         if (Utils::clicked(clicked_, pos) && search_->contains(pos))
-            Q_EMIT searchClicked();
+            Q_EMIT searchClicked(QPrivateSignal());
 
         QWidget::mousePressEvent(_event);
     }
@@ -1907,14 +2025,34 @@ namespace Ui
     void MembersWidget::mouseMoveEvent(QMouseEvent* _event)
     {
         hovered_ = -1;
+        QRect hoveredRect;
         for (int i = 0; i < memberCount_; ++i)
         {
-            if (QRect(0, i * params_.itemHeight(), width(), params_.itemHeight()).contains(_event->pos()))
+            const auto itemRect = QRect(0, i * params_.itemHeight(), width(), params_.itemHeight());
+            if (itemRect.contains(_event->pos()))
             {
                 hovered_ = i;
+                hoveredRect = itemRect;
                 break;
             }
         }
+
+        if (Statuses::isStatusEnabled() && hovered_ != -1)
+        {
+            auto& params = GetContactListParams();
+            const auto avatarRect = QRect(hoveredRect.topLeft() + QPoint(params.getAvatarX(), params.getAvatarY()), QSize(params.getAvatarSize(), params.getAvatarSize()));
+            const auto aimId = model_->index(hovered_).data().value<Data::AbstractSearchResultSptr>()->getAimId();
+            const auto muted = Logic::getContactListModel()->isMuted(aimId);
+
+            if (!muted && avatarRect.contains(_event->pos()))
+            {
+                StatusTooltip::instance()->objectHovered([this, avatarRect]()
+                {
+                    return QRect(mapToGlobal(avatarRect.topLeft()), avatarRect.size());
+                }, aimId, this);
+            }
+        }
+
         update();
         QWidget::mouseMoveEvent(_event);
     }
@@ -1929,25 +2067,38 @@ namespace Ui
     {
         if (Utils::clicked(clicked_, _event->pos()))
         {
-            auto i = model_->index(hovered_);
-            if (i.isValid())
+            for (int i = 0; i < memberCount_; ++i)
             {
-                if (const auto aimId = Logic::aimIdFromIndex(i); !aimId.isEmpty())
+                const auto itemRect = QRect(0, i * params_.itemHeight(), width(), params_.itemHeight());
+                if (itemRect.contains(_event->pos()))
                 {
-                    auto butttonX = width() - Utils::scale_value(32);
-                    if (_event->pos().x() >= butttonX && _event->pos().x() <= width())
+                    auto index = model_->index(i);
+                    if (index.isValid())
                     {
-                        if (delegate_->regim() == Logic::MembersWidgetRegim::ADMIN_MEMBERS)
-                            Q_EMIT moreClicked(aimId);
-                        else if (delegate_->regim() == Logic::MembersWidgetRegim::MEMBERS_LIST)
-                            Q_EMIT removeClicked(aimId);
-                        else
-                            Q_EMIT selected(aimId);
+                        if (const auto aimId = Logic::aimIdFromIndex(index); !aimId.isEmpty())
+                        {
+                            const auto rSide = width() - Utils::scale_value(8);
+                            auto butttonX = rSide - Utils::scale_value(32);
+                            if (_event->pos().x() >= butttonX && _event->pos().x() <= rSide)
+                            {
+                                const auto searchRes = index.data().value<Data::AbstractSearchResultSptr>();
+                                const auto& memberRes = std::static_pointer_cast<Data::SearchResultChatMember>(searchRes);
+                                const auto canRemove = memberRes->canRemoveTill().isValid() && QDateTime::currentDateTime() < memberRes->canRemoveTill();
+
+                                if (delegate_->regim() == Logic::MembersWidgetRegim::ADMIN_MEMBERS)
+                                    Q_EMIT moreClicked(aimId, QPrivateSignal());
+                                else if (delegate_->regim() == Logic::MembersWidgetRegim::MEMBERS_LIST || canRemove)
+                                    Q_EMIT removeClicked(aimId, QPrivateSignal());
+                                else
+                                    Q_EMIT selected(aimId, QPrivateSignal());
+                            }
+                            else
+                            {
+                                Q_EMIT selected(aimId, QPrivateSignal());
+                            }
+                        }
                     }
-                    else
-                    {
-                        Q_EMIT selected(aimId);
-                    }
+                    break;
                 }
             }
         }
@@ -1964,26 +2115,31 @@ namespace Ui
         : QWidget(_parent)
         , isHovered_(false)
         , isActive_(false)
-        , height_(0)
+        , height_(Utils::scale_value(COLORED_BUTTON_HEIGHT))
         , textOffset_(0)
     {
+        setMargins(Utils::scale_value(HOR_OFFSET), 0, Utils::scale_value(HOR_OFFSET), Utils::scale_value(COLORED_BUTTON_BOTTOM_OFFSET));
         text_ = TextRendering::MakeTextUnit(QString());
         setCursor(Qt::PointingHandCursor);
+        setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
     }
 
-    void ColoredButton::setMargins(int _left, int _top, int _right, int _bottom)
+    void ColoredButton::setMargins(const QMargins& _margins)
     {
-        margins_ = QMargins(_left, _top, _right, _bottom);
-        setFixedHeight(height_ + margins_.bottom() + margins_.top());
+        if (margins_ == _margins)
+            return;
+        margins_ = _margins;
+        setMinimumHeight(height_ + margins_.bottom() + margins_.top());
+        updateGeometry();
     }
 
     void ColoredButton::setTextOffset(int _offset)
     {
-        if (textOffset_ != _offset)
-        {
-            textOffset_ = _offset;
-            update();
-        }
+        if (textOffset_ == _offset)
+            return;
+
+        textOffset_ = _offset;
+        update();
     }
 
     void ColoredButton::updateTextOffset()
@@ -1998,8 +2154,11 @@ namespace Ui
 
     void ColoredButton::setHeight(int _height)
     {
+        if (height_ == _height)
+            return;
         height_ = _height;
-        setFixedHeight(height_ + margins_.bottom() + margins_.top());
+        setMinimumHeight(height_ + margins_.bottom() + margins_.top());
+        updateGeometry();
     }
 
     void ColoredButton::initColors(const QColor& _base, const QColor& _hover, const QColor& _active)
@@ -2023,12 +2182,16 @@ namespace Ui
 
     void ColoredButton::setText(const QString& _text)
     {
+        if (text_->getText() == _text)
+            return;
+
         text_->setText(_text);
     }
 
     void ColoredButton::makeRounded()
     {
         setFixedWidth(height_ + margins_.left() + margins_.right());
+        updateGeometry();
     }
 
     QMargins ColoredButton::getMargins() const
@@ -2036,9 +2199,24 @@ namespace Ui
         return margins_;
     }
 
+    QSize ColoredButton::sizeHint() const
+    {
+        return QSize(width(), height_ + margins_.bottom() + margins_.top());
+    }
+
+    QSize ColoredButton::minimumSizeHint() const
+    {
+        return QSize(height_ + margins_.left() + margins_.right(), height_ + margins_.bottom() + margins_.top());
+    }
+
     void ColoredButton::paintEvent(QPaintEvent* _event)
     {
         QPainter p(this);
+        if (!isEnabled())
+        {
+            p.fillRect(rect(), Qt::transparent);
+            return;
+        }
         p.setRenderHint(QPainter::Antialiasing);
         p.setPen(Qt::NoPen);
 
@@ -2079,7 +2257,7 @@ namespace Ui
     void ColoredButton::mouseReleaseEvent(QMouseEvent* _event)
     {
         if (Utils::clicked(clicked_, _event->pos()))
-            Q_EMIT clicked();
+            Q_EMIT clicked(QPrivateSignal());
 
         isActive_ = false;
         update();
@@ -2252,6 +2430,9 @@ namespace Ui
 
     void EditWidget::nameOnly(bool _nameOnly)
     {
+        if (nameOnly_ == _nameOnly)
+            return;
+
         nameOnly_ = _nameOnly;
 
         avatar_->setVisible(!_nameOnly);
@@ -2341,6 +2522,16 @@ namespace Ui
         return _dt.toString(u"d MMM, ") % _dt.time().toString(u"hh:mm");
     }
 
+    void setWidgetFading(QWidget* _target)
+    {
+        if (!_target)
+            return;
+
+        auto fader = new WidgetFader(_target);
+        fader->setDuration(SidebarPage::kShowDuration);
+        fader->setEventDirection(QEvent::Show, QPropertyAnimation::Forward);
+    }
+
     AvatarNameInfo* addAvatarInfo(QWidget* _parent, QLayout* _layout)
     {
         auto w = new AvatarNameInfo(_parent);
@@ -2348,49 +2539,58 @@ namespace Ui
         w->setTextOffset(Utils::scale_value(AVATAR_NAME_OFFSET));
         w->initName(Fonts::appFontScaled(16, platform::is_apple() ? Fonts::FontWeight::Medium : Fonts::FontWeight::Normal), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
         w->initInfo(Fonts::appFontScaled(14), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
-        w->setFixedHeight(Utils::scale_value(AVATAR_INFO_HEIGHT));
-        _layout->addWidget(w);
+        w->setMinimumHeight(Utils::scale_value(AVATAR_INFO_HEIGHT));
+
+        if (_layout)
+            _layout->addWidget(w);
 
         return w;
     }
 
-    TextLabel* addLabel(const QString& _text, QWidget* _parent, QLayout* _layout, int _addLeftOffset, TextRendering::HorAligment _align)
+    TextLabel* addLabel(const QString& _text, QWidget* _parent, QLayout* _layout, int _addLeftOffset, TextRendering::HorAligment _align, Fading _faded)
     {
         TextLabel* label = new TextLabel(_parent);
+        if (_faded == Fading::On)
+            setWidgetFading(label);
+
         label->setMargins(Utils::scale_value(HOR_OFFSET) + _addLeftOffset, 0, Utils::scale_value(HOR_OFFSET), 0);
         label->setTextAlign(_align);
         label->init(Fonts::appFontScaled(15), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
         label->setText(_text);
-        _layout->addWidget(label);
+        if (_layout)
+            _layout->addWidget(label);
 
         return label;
     }
 
-    TextLabel* addText(const QString& _text, QWidget* _parent, QLayout* _layout, int _addLeftOffset, int _maxLineNumbers)
+    TextLabel* addText(const QString& _text, QWidget* _parent, QLayout* _layout, int _addLeftOffset, int _maxLineNumbers, Fading _faded)
     {
         TextLabel* label = new TextLabel(_parent, _maxLineNumbers == 0 ? MAX_INFO_LINES_COUNT : _maxLineNumbers);
+        if (_faded == Fading::On)
+            setWidgetFading(label);
+
         label->setMargins(Utils::scale_value(HOR_OFFSET) + _addLeftOffset, 0, Utils::scale_value(HOR_OFFSET), 0);
         label->init(Fonts::appFontScaled(16), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY));
         label->setText(_text);
-        _layout->addWidget(label);
+        if (_layout)
+            _layout->addWidget(label);
 
         return label;
     }
 
-    std::unique_ptr<InfoBlock> addInfoBlock(const QString& _header, const QString& _text, QWidget* _parent, QLayout* _layout, int _addLeftOffset)
+    std::unique_ptr<InfoBlock> addInfoBlock(const QString& _header, const QString& _text, QWidget* _parent, QLayout* _layout, int _addLeftOffset, Fading _faded)
     {
         auto infoBlock = std::make_unique<InfoBlock>();
-        infoBlock->header_ = addLabel(_header, _parent, _layout, _addLeftOffset);
+        infoBlock->header_ = addLabel(_header, _parent, _layout, _addLeftOffset, TextRendering::HorAligment::LEFT, _faded);
         {
             auto m = infoBlock->header_->getMargins();
             infoBlock->header_->setMargins(m.left(), m.top(), m.right(), Utils::scale_value(INFO_HEADER_BOTTOM_MARGIN));
         }
-        infoBlock->text_ = addText(_text, _parent, _layout, _addLeftOffset);
+        infoBlock->text_ = addText(_text, _parent, _layout, _addLeftOffset, 0, _faded);
         {
             auto m = infoBlock->text_->getMargins();
             infoBlock->text_->setMargins(m.left(), m.top(), m.right(), Utils::scale_value(INFO_TEXT_BOTTOM_MARGIN));
         }
-
         return infoBlock;
     }
 
@@ -2400,16 +2600,17 @@ namespace Ui
         w->setStyleSheet(qsl("background: transparent"));
         auto l = Utils::emptyVLayout(w);
         auto spacer = new QWidget(w);
-        spacer->setStyleSheet(qsl("background: %1").arg(Styling::getParameters().getColor(Styling::StyleVariable::BASE_LIGHT).name()));
+        spacer->setStyleSheet(ql1s("background: %1").arg(Styling::getParameters().getColor(Styling::StyleVariable::BASE_LIGHT).name()));
         spacer->setFixedHeight(_height == -1 ? Utils::scale_value(SPACER_HEIGHT) : _height);
         l->addWidget(spacer);
         w->setFixedHeight(Utils::scale_value(SPACER_HEIGHT) + Utils::scale_value(SPACER_MARGIN) * 2);
-        _layout->addWidget(w);
+        if (_layout)
+            _layout->addWidget(w);
 
         return w;
     }
 
-    SidebarButton* addButton(const QString& _icon, const QString& _text, QWidget* _parent, QLayout* _layout)
+    SidebarButton* addButton(const QString& _icon, const QString& _text, QWidget* _parent, QLayout* _layout, const QString& _accName)
     {
         auto w = new SidebarButton(_parent);
         w->setFixedHeight(Utils::scale_value(BUTTON_HEIGHT));
@@ -2420,14 +2621,22 @@ namespace Ui
         w->setText(_text);
         w->initCounter(Fonts::appFontScaled(16), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
         w->setColors(Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT_INVERSE));
-        _layout->addWidget(w);
+
+        if (Testing::isEnabled() && !_accName.isEmpty())
+            Testing::setAccessibleName(w, _accName);
+
+        if (_layout)
+            _layout->addWidget(w);
 
         return w;
     }
 
-    SidebarCheckboxButton* addCheckbox(const QString& _icon, const QString& _text, QWidget* _parent, QLayout* _layout)
+    SidebarCheckboxButton* addCheckbox(const QString& _icon, const QString& _text, QWidget* _parent, QLayout* _layout, Fading _faded)
     {
         auto w = new SidebarCheckboxButton(_parent);
+        if (_faded == Fading::On)
+            setWidgetFading(w);
+
         w->setFixedHeight(Utils::scale_value(BUTTON_HEIGHT));
         w->setMargins(Utils::scale_value(BUTTON_HOR_OFFSET), 0, Utils::scale_value(HOR_OFFSET), 0);
         if (!_icon.isEmpty())
@@ -2440,7 +2649,9 @@ namespace Ui
         w->setText(_text);
         w->initCounter(Fonts::appFontScaled(16), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
         w->setColors(Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT_INVERSE));
-        _layout->addWidget(w);
+
+        if (_layout)
+            _layout->addWidget(w);
 
         return w;
     }
@@ -2451,7 +2662,8 @@ namespace Ui
         w->setFixedHeight(Utils::scale_value(GALLERY_WIDGET_HEIGHT));
         w->setMargins(Utils::scale_value(GALLERY_WIDGET_MARGIN_LEFT), Utils::scale_value(GALLERY_WIDGET_MARGIN_TOP), Utils::scale_value(GALLERY_WIDGET_MARGIN_RIGHT), Utils::scale_value(GALLERY_WIDGET_MARGIN_BOTTOM));
         w->setSpacing(Utils::scale_value(GALLERY_WIDGET_SPACING));
-        _layout->addWidget(w);
+        if (_layout)
+            _layout->addWidget(w);
 
         return w;
     }
@@ -2462,7 +2674,8 @@ namespace Ui
         w->setMargins(Utils::scale_value(MEMBERS_LEFT_MARGIN), Utils::scale_value(MEMBERS_TOP_MARGIN), Utils::scale_value(MEMBERS_RIGHT_MARGIN), Utils::scale_value(MEMBERS_BOTTOM_MARGIN));
         w->initMembersLabel(Fonts::appFontScaledFixed(12, Fonts::FontWeight::SemiBold), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
         w->initSearchLabel(Fonts::appFontScaledFixed(12, Fonts::FontWeight::SemiBold), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY));
-        _layout->addWidget(w);
+        if (_layout)
+            _layout->addWidget(w);
 
         return w;
     }
@@ -2470,14 +2683,18 @@ namespace Ui
     MembersWidget* addMembersWidget(Logic::ChatMembersModel* _model,  Logic::ContactListItemDelegate* _delegate, int _membersCount, QWidget* _parent, QLayout* _layout)
     {
         auto w = new MembersWidget(_parent, _model, _delegate, _membersCount);
-        _layout->addWidget(w);
+        if (_layout)
+            _layout->addWidget(w);
 
         return w;
     }
 
-    ColoredButton* addColoredButton(const QString& _icon, const QString& _text, QWidget* _parent, QLayout* _layout, const QSize& _iconSize)
+    ColoredButton* addColoredButton(const QString& _icon, const QString& _text, QWidget* _parent, QLayout* _layout, const QSize& _iconSize, Fading _faded)
     {
         auto w = new ColoredButton(_parent);
+        if (_faded == Fading::On)
+            setWidgetFading(w);
+
         w->setHeight(Utils::scale_value(COLORED_BUTTON_HEIGHT));
         w->setMargins(Utils::scale_value(HOR_OFFSET), 0, Utils::scale_value(HOR_OFFSET), Utils::scale_value(COLORED_BUTTON_BOTTOM_OFFSET));
         if (!_icon.isEmpty())
@@ -2493,7 +2710,9 @@ namespace Ui
         const auto diff = _iconSize.isValid() ? (_iconSize.width() - BUTTON_ICON_SIZE) / 2 : 0;
         if (diff != 0)
             w->setTextOffset(Utils::scale_value(COLORED_BUTTON_TEXT_OFFSET - diff));
-        _layout->addWidget(w);
+
+        if (_layout)
+            _layout->addWidget(w);
 
         return w;
     }
@@ -2505,7 +2724,7 @@ namespace Ui
 
         auto hL = Utils::emptyHLayout(this);
         auto galleryWidget = new QFrame(this);
-        auto style = qsl("background: %3; border: %1px solid %4; border-radius: %2px;");
+        auto style = ql1s("background: %3; border: %1px solid %4; border-radius: %2px;");
         galleryWidget->setStyleSheet(style.arg(QString::number(Utils::scale_value(1)), QString::number(Utils::scale_value(4)),
             Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE),
             Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_BRIGHT)));
@@ -2514,19 +2733,19 @@ namespace Ui
         verLayout->setContentsMargins(0, Utils::scale_value(4), 0, Utils::scale_value(4));
         {
             galleryPhoto_ = addButton(qsl(":/background_icon"), QT_TRANSLATE_NOOP("sidebar", "Photo and video"), galleryWidget, verLayout);
-            connect(galleryPhoto_, &SidebarButton::clicked, this, &GalleryPopup::galleryPhotoCLicked);
+            connect(galleryPhoto_, &SidebarButton::clicked, this, [this]() { Q_EMIT galleryPhotoClicked(QPrivateSignal()); });
 
             galleryVideo_ = addButton(qsl(":/video_icon"), QT_TRANSLATE_NOOP("sidebar", "Video"), galleryWidget, verLayout);
-            connect(galleryVideo_, &SidebarButton::clicked, this, &GalleryPopup::galleryVideoCLicked);
+            connect(galleryVideo_, &SidebarButton::clicked, this, [this]() { Q_EMIT galleryVideoClicked(QPrivateSignal()); });
 
             galleryFiles_ = addButton(qsl(":/gallery/file_icon"), QT_TRANSLATE_NOOP("sidebar", "Files"), galleryWidget, verLayout);
-            connect(galleryFiles_, &SidebarButton::clicked, this, &GalleryPopup::galleryFilesCLicked);
+            connect(galleryFiles_, &SidebarButton::clicked, this, [this]() { Q_EMIT galleryFilesClicked(QPrivateSignal()); });
 
             galleryLinks_ = addButton(qsl(":/copy_link_icon"), QT_TRANSLATE_NOOP("sidebar", "Links"), galleryWidget, verLayout);
-            connect(galleryLinks_, &SidebarButton::clicked, this, &GalleryPopup::galleryLinksCLicked);
+            connect(galleryLinks_, &SidebarButton::clicked, this, [this]() { Q_EMIT galleryLinksClicked(QPrivateSignal()); });
 
             galleryPtt_ = addButton(qsl(":/gallery/micro_icon"), QT_TRANSLATE_NOOP("sidebar", "Voice messages"), galleryWidget, verLayout);
-            connect(galleryPtt_, &SidebarButton::clicked, this, &GalleryPopup::galleryPttCLicked);
+            connect(galleryPtt_, &SidebarButton::clicked, this, [this]() { Q_EMIT galleryPttClicked(QPrivateSignal()); });
         }
         hL->addWidget(galleryWidget);
     }
@@ -2577,4 +2796,696 @@ namespace Ui
         setFixedHeight(label_->getHeight(maxWidth) + Utils::scale_value(BLOCK_AND_DELETE_TOP_OFFSET + BLOCK_AND_DELETE_BOTTOM_OFFSET + BLOCK_AND_DELETE_ADD_OFFSET) + checkbox_->height());
         QWidget::resizeEvent(_event);
     }
+
+    class SlideControllerPrivate
+    {
+    public:
+        QPixmap frames_[2];
+        QPixmap backbuffer_;
+
+        QCursor cursor_;
+        QPointer<QStackedWidget> widget_;
+        QTimeLine* timeLine_;
+        QColor fillColor_;
+        SlideController::SlideEffects effectFlags_;
+        SlideController::SlideDirection slideDir_;
+        SlideController::Fading fading_;
+        SlideController::CachingPolicy caching_;
+        double opacity_;
+        int previousIndex_;
+        bool inverse_;
+        bool inversed_;
+        bool enabled_;
+
+        SlideControllerPrivate(SlideController* _q);
+
+        SlideController::SlideDirection currentDirection() const;
+        void renderFrame(int _frame, double _value, QPainter& _painter) const;
+
+        void zoomFrame(QTransform& _transform, const QRectF& _rect, qreal _value, int _frame) const;
+        void swapFrame(QTransform& _transform, const QRectF& _rect, qreal _value, int _frame) const;
+        void rollFrame(QTransform& _transform, const QRectF& _rect, qreal _value, int _frame) const;
+        void rotateFrame(QTransform& _transform, const QRectF& _rect, qreal _value, int _frame) const;
+        void shearFrame(QTransform& _transform, const QRectF& _rect, qreal _value, int _frame) const;
+    };
+
+
+    SlideControllerPrivate::SlideControllerPrivate(SlideController* _q)
+        : widget_(nullptr)
+        , timeLine_(new QTimeLine(900, _q))
+        , fillColor_(Qt::transparent)
+        , effectFlags_(SlideController::SlideEffect::NoEffect)
+        , slideDir_(SlideController::SlideDirection::NoSliding)
+        , fading_(SlideController::Fading::NoFade)
+        , caching_(SlideController::CachingPolicy::CacheNone)
+        , opacity_(0.0)
+        , previousIndex_(0)
+        , inverse_(false)
+        , inversed_(false)
+        , enabled_(true)
+    {
+        timeLine_->setUpdateInterval(24);
+    }
+
+    void SlideControllerPrivate::zoomFrame(QTransform& _transform, const QRectF&, qreal _value, int) const
+    {
+        _transform.scale(1.0 - _value, 1.0 - _value);
+    }
+
+    void SlideControllerPrivate::swapFrame(QTransform& _transform, const QRectF& _rect, qreal _value, int _frame) const
+    {
+        int sign = (inversed_ ? 1 : -1);
+        _value = _frame == 0 ? (1.0 - _value) : _value;
+        switch (currentDirection()) {
+        case SlideController::SlideDirection::SlideUp:
+            _transform.translate(0, sign * _rect.height() * _value);
+            break;
+        case SlideController::SlideDirection::SlideDown:
+            _transform.translate(0, -sign * _rect.height() * _value);
+            break;
+        case SlideController::SlideDirection::SlideLeft:
+            _transform.translate(sign * _rect.width() * _value, 0);
+            break;
+        case SlideController::SlideDirection::SlideRight:
+            _transform.translate(-sign * _rect.width() * _value, 0);
+            break;
+        case SlideController::SlideDirection::NoSliding:
+            break;
+        }
+    }
+
+    void SlideControllerPrivate::rollFrame(QTransform& _transform, const QRectF& _rect, qreal _value, int _frame) const
+    {
+        int dx = _rect.width() * !!(_frame == 0);
+        int dy = _rect.height() * !!(_frame == 0);
+        double y = 0.0;
+        double x = 0.0;
+        switch (currentDirection())
+        {
+        case SlideController::SlideDirection::SlideUp:
+            y = (dy - _rect.height() * _value);
+            break;
+        case SlideController::SlideDirection::SlideDown:
+            y = (_rect.height() * _value - dy);
+            break;
+        case SlideController::SlideDirection::SlideLeft:
+            x = (dx - _rect.width() * _value);
+            break;
+        case SlideController::SlideDirection::SlideRight:
+            x = (_rect.width() * _value - dx);
+            break;
+        case SlideController::SlideDirection::NoSliding:
+            break;
+        }
+        _transform.translate(x, y);
+    }
+
+    void SlideControllerPrivate::rotateFrame(QTransform& _transform, const QRectF&, qreal _value, int _frame) const
+    {
+        if (_frame == 1 && inversed_)
+        {
+            _transform.rotate(_value * 90, Qt::YAxis);
+            _transform.scale(1.0 - _value, 1.0);
+        }
+        if (_frame == 0 && !inversed_)
+        {
+            _transform.rotate(_value * 90, Qt::YAxis);
+            _transform.scale(1.0 - _value, 1.0);
+        }
+    }
+
+    void SlideControllerPrivate::shearFrame(QTransform& _transform, const QRectF& _rect, qreal _value, int _frame) const
+    {
+        if (_frame == 0 && inversed_)
+        {
+            _transform.translate(_rect.width() * (_value), 0);
+            _transform.scale(1.0 - _value, 1.0);
+        }
+        if (_frame == 1 && !inversed_)
+        {
+            _transform.translate(_rect.width() * (_value), 0);
+            _transform.scale(1.0 - _value, 1.0);
+        }
+    }
+
+    SlideController::SlideDirection SlideControllerPrivate::currentDirection() const
+    {
+        using SlideDir = SlideController::SlideDirection;
+        if (!inversed_)
+            return slideDir_;
+        // evaluate inversed direction
+        if (slideDir_ == SlideDir::SlideUp || slideDir_ == SlideDir::SlideDown)
+            return (slideDir_ == SlideDir::SlideUp ? SlideDir::SlideDown : SlideDir::SlideUp);
+
+        if (slideDir_ == SlideDir::SlideLeft || slideDir_ == SlideDir::SlideRight)
+            return (slideDir_ == SlideDir::SlideLeft ? SlideDir::SlideRight : SlideDir::SlideLeft);
+
+        return slideDir_;
+    }
+
+    void SlideControllerPrivate::renderFrame(int _frame, double _value, QPainter& _painter) const
+    {
+        QRect r = backbuffer_.rect();
+        QTransform transform = _painter.transform();
+
+        switch (fading_)
+        {
+        case SlideController::Fading::FadeIn:
+            if (_frame == 1)
+                _painter.setOpacity(1.0 - _value);
+            break;
+        case SlideController::Fading::FadeOut:
+            if (_frame == 0)
+                _painter.setOpacity(1.0 - _value);
+            break;
+        case SlideController::Fading::FadeInOut:
+            _painter.setOpacity(_frame == 0 ? _value : (1.0 - _value));
+            break;
+        default: // fading is disabled or unknown
+            break;
+        }
+
+        for (int i = SlideController::ZoomEffect; i < SlideController::RollEffect + 1; i <<= 1)
+        {
+            if (!effectFlags_.testFlag(static_cast<SlideController::SlideEffect>(i)))
+                continue;
+
+            switch (i)
+            {
+            case SlideController::ZoomEffect:
+                zoomFrame(transform, r, _value, _frame);
+                break;
+            case SlideController::RotateEffect:
+                rotateFrame(transform, r, _value, _frame);
+                break;
+            case SlideController::ShearEffect:
+                shearFrame(transform, r, _value, _frame);
+                break;
+            case SlideController::SwapEffect:
+                swapFrame(transform, r, _value, _frame);
+                break;
+            case SlideController::RollEffect:
+                rollFrame(transform, r, _value, _frame);
+                break;
+            }
+        }
+
+        _painter.setTransform(transform, true);
+        _painter.drawPixmap(0, 0, frames_[_frame]);
+        _painter.resetTransform();
+    }
+
+
+    SlideController::SlideController(QObject* _parent) :
+        QObject(_parent), d(new SlideControllerPrivate(this))
+    {
+        connect(d->timeLine_, &QTimeLine::valueChanged,
+            this, &SlideController::render);
+
+        connect(d->timeLine_, &QTimeLine::finished,
+            this, &SlideController::onAnimationFinished);
+    }
+
+    SlideController::~SlideController() = default;
+
+    void SlideController::setCachingPolicy(SlideController::CachingPolicy _policy)
+    {
+        d->caching_ = _policy;
+    }
+
+    SlideController::CachingPolicy SlideController::cachingPolicy() const
+    {
+        return d->caching_;
+    }
+
+    void SlideController::setWidget(QStackedWidget* _widget)
+    {
+        if (d->widget_)
+        {
+            disconnect(d->widget_);
+            d->widget_->removeEventFilter(this);
+        }
+
+        d->widget_ = _widget;
+        if (_widget)
+        {
+            if (d->enabled_)
+            {
+                connect(d->widget_, &QStackedWidget::currentChanged, this, &SlideController::onCurrentChange);
+                d->widget_->installEventFilter(this);
+            }
+        }
+    }
+
+    QWidget* SlideController::widget() const
+    {
+        return d->widget_;
+    }
+
+    QPixmap SlideController::activePixmap() const
+    {
+        return d->frames_[0];
+    }
+
+    void SlideController::setEasingCurve(const QEasingCurve& easing)
+    {
+        d->timeLine_->setEasingCurve(easing);
+    }
+
+    QEasingCurve SlideController::easingCurve() const
+    {
+        return d->timeLine_->easingCurve();
+    }
+
+    void SlideController::setEffects(SlideController::SlideEffects _flags)
+    {
+        d->effectFlags_ = _flags;
+    }
+
+    SlideController::SlideEffects SlideController::effects() const
+    {
+        return d->effectFlags_;
+    }
+
+    void SlideController::setSlideDirection(SlideController::SlideDirection _dir)
+    {
+        d->slideDir_ = _dir;
+    }
+
+    SlideController::SlideDirection SlideController::slideDirection() const
+    {
+        return d->slideDir_;
+    }
+
+    void SlideController::setFillColor(const QColor& _color)
+    {
+        d->fillColor_ = _color;
+    }
+
+    QColor SlideController::fillColor() const
+    {
+        return d->fillColor_;
+    }
+
+    void SlideController::setDuration(int _ms)
+    {
+        d->timeLine_->setDuration(_ms);
+    }
+
+    int SlideController::duration() const
+    {
+        return d->timeLine_->duration();
+    }
+
+    void SlideController::setFading(Fading _fading)
+    {
+        d->fading_ = _fading;
+    }
+
+    SlideController::Fading SlideController::fading() const
+    {
+        return d->fading_;
+    }
+
+    bool SlideController::isFaded() const
+    {
+        return d->fading_ != Fading::NoFade;
+    }
+
+    void SlideController::setInverse(bool _on)
+    {
+        d->inverse_ = _on;
+    }
+
+    bool SlideController::isInverse() const
+    {
+        return d->inverse_;
+    }
+
+    void SlideController::setEnabled(bool _on)
+    {
+        if (d->enabled_ == _on)
+            return;
+
+        if (d->widget_)
+        {
+            if (_on)
+            {
+                connect(d->widget_, &QStackedWidget::currentChanged, this, &SlideController::onCurrentChange);
+                d->widget_->installEventFilter(this);
+            }
+            else
+            {
+                disconnect(d->widget_);
+                d->widget_->removeEventFilter(this);
+            }
+        }
+        d->enabled_ = _on;
+    }
+
+    void SlideController::updateCache()
+    {
+        QWidget* current = currentWidget();
+        QWidget* previous = widget(d->previousIndex_);
+
+        QRect r;
+        switch (d->caching_)
+        {
+        case SlideController::CachingPolicy::CacheAll:
+            if (!current)
+                return;
+            r = current->rect();
+            d->frames_[0] = current->grab(r);
+            if (previous)
+                d->frames_[1] = previous->grab(r);
+            if (d->widget_ != nullptr && d->backbuffer_.size() != d->widget_->size())
+                d->backbuffer_ = QPixmap(d->widget_->size());
+            break;
+
+        case SlideController::CachingPolicy::CacheCurrent:
+            if (!current)
+                return;
+            r = current->rect();
+            d->frames_[0] = current->grab(r);
+            break;
+
+        default:
+                break;
+        }
+    }
+
+    bool SlideController::isEnabled() const
+    {
+        return d->enabled_;
+    }
+
+    QWidget* SlideController::currentWidget() const
+    {
+        return (d->widget_ != nullptr ? d->widget_->currentWidget() : nullptr);
+    }
+
+    QWidget* SlideController::widget(int id) const
+    {
+        return (d->widget_ != nullptr ? d->widget_->widget(id) : nullptr);
+    }
+
+    int SlideController::currentIndex() const
+    {
+        return (d->widget_ != nullptr ? d->widget_->currentIndex() : -1);
+    }
+
+    int SlideController::count() const
+    {
+        return (d->widget_ != nullptr ? d->widget_->count() : 0);
+    }
+
+    bool SlideController::eventFilter(QObject* _object, QEvent* _event)
+    {
+        static bool lock = false;
+
+        if (_object == d->widget_)
+        {
+            if (_event->type() == QEvent::Paint)
+            {
+                if (d->timeLine_->state() == QTimeLine::NotRunning)
+                    return QObject::eventFilter(_object, _event);
+
+                QPainter painter(d->widget_);
+                QWidget* w = currentWidget();
+                QPoint p = w->mapTo(d->widget_, w->pos());
+                p.rx() -= (w->layout() == nullptr ? 0 : w->layout()->spacing());
+                painter.drawPixmap(p, d->backbuffer_);
+                return true; // do NOT forward the event
+            }
+
+            if (_event->type() == QEvent::Resize)
+            {
+                QResizeEvent* resizeEvent = static_cast<QResizeEvent*>(_event);
+                if (count() < 2)
+                    return QObject::eventFilter(_object, _event);
+
+                QWidget* current = currentWidget();
+                QWidget* previous = widget(d->previousIndex_);
+                QRect r = current->rect();
+                if (!lock)
+                {
+                    lock = true;
+                    d->frames_[0] = current->grab(r);
+                    d->frames_[1] = previous->grab(r);
+                    lock = false;
+                }
+                if (resizeEvent->size() != d->backbuffer_.size())
+                    d->backbuffer_ = QPixmap(resizeEvent->size());
+            }
+
+            if (_event->type() == QEvent::Show)
+            {
+                d->timeLine_->setCurrentTime(d->timeLine_->duration());
+                d->timeLine_->stop();
+            }
+        }
+        return QObject::eventFilter(_object, _event);
+    }
+
+
+    void SlideController::onCurrentChange(int _index)
+    {
+        if (!d->widget_->isVisible())
+        {
+            d->previousIndex_ = currentIndex(); // swap indices
+            return; // don't show animation if target widget is not visible
+        }
+
+        if (_index == -1)
+            return; // don't show animation if current index is invalid
+
+        if (count() < 2)
+            return; // don't show animation if there is less than 2 widgets
+
+        if (d->effectFlags_ == NoEffect && !isFaded())
+            return; // don't show animation if there is no fading and no other effects
+
+        if (!isEnabled())
+            return;
+
+        QWidget* w = currentWidget();
+
+        d->cursor_ = d->widget_->cursor(); // save current cursor
+        if (const auto child = w->childAt(w->mapFromGlobal(QCursor::pos())))
+            d->widget_->setCursor(child->cursor()); // set the underlying widget cursor
+
+        w->hide();
+
+        QRect r = w->rect();
+
+        // grab target and current widgets into pixmaps
+        d->frames_[0] = widget(_index)->grab(r);
+        d->frames_[1] = widget(d->previousIndex_)->grab(r);
+
+        if (d->inverse_) // evaluate if we need to play animation in inversed direction
+            d->inversed_ = ((_index - d->previousIndex_) > 0);
+
+        if (d->timeLine_->state() == QTimeLine::Running)
+            d->timeLine_->stop();
+
+        // create the back buffer pixmap
+        d->backbuffer_ = QPixmap(d->widget_->size());
+        render(0);
+        d->timeLine_->start();
+        d->previousIndex_ = currentIndex(); // swap indices
+    }
+
+    void SlideController::onAnimationFinished()
+    {
+        d->widget_->setCursor(d->cursor_); // restore cursor
+
+        QWidget* w = currentWidget();
+        d->opacity_ = 0.0;
+        w->updateGeometry();
+        w->show();
+
+        Q_EMIT currentIndexChanged(currentIndex(), QPrivateSignal{});
+        // erase pixmaps and free the memory according to caching policy
+        switch (d->caching_)
+        {
+        case SlideController::CachingPolicy::CacheNone: // release all pixmaps
+            d->frames_[0] = QPixmap();
+            d->frames_[1] = QPixmap();
+            d->backbuffer_ = QPixmap();
+            break;
+        case SlideController::CachingPolicy::CacheCurrent: // release all but current pixmap
+            d->frames_[1] = QPixmap();
+            d->backbuffer_ = QPixmap();
+            break;
+        default: // do not release anything
+            break;
+        }
+    }
+
+    void SlideController::render(double _value)
+    {
+        if (d->backbuffer_.isNull())
+            return;
+
+        d->backbuffer_.fill(d->fillColor_);
+
+        QPainter painter(&d->backbuffer_);
+        painter.setRenderHints(QPainter::SmoothPixmapTransform | QPainter::Antialiasing);
+
+        if (d->inversed_)
+        {
+            d->renderFrame(1, _value, painter);
+            d->renderFrame(0, _value, painter);
+        }
+        else
+        {
+            d->renderFrame(0, _value, painter);
+            d->renderFrame(1, _value, painter);
+        }
+
+        d->widget_->repaint();
+    }
+
+
+    class WidgetFaderPrivate
+    {
+    public:
+        static_assert(QEvent::MaxUser <= 65535, "QEvent::MaxUser is too big");
+
+        struct EventDirection
+        {
+            uint32_t type_ : 16; // QEvent::Type
+            uint32_t dir_ : 1;   // QPropertyAnimation::Direction
+        };
+
+        QVarLengthArray<EventDirection, 4> mapping_;
+        QPropertyAnimation* animation_;
+        bool enabled_;
+
+        WidgetFaderPrivate(WidgetFader* q)
+            : animation_(new QPropertyAnimation(q))
+            , enabled_(true)
+        {
+        }
+
+        void initializeAnimation(QObject* _target, double _lower, double _upper)
+        {
+            animation_->setStartValue(_lower);
+            animation_->setEndValue(_upper);
+            animation_->setDuration(100);
+            animation_->setTargetObject(_target);
+            animation_->setPropertyName(QByteArrayLiteral("opacity"));
+        }
+
+        inline QPropertyAnimation::Direction direction(EventDirection value) const
+        {
+            return static_cast<QPropertyAnimation::Direction>(value.dir_);
+        }
+
+        inline auto find(uint32_t _type) const
+        {
+            return std::find_if(mapping_.cbegin(), mapping_.cend(), [_type](auto _value) { return (_value.type_ == _type); });
+        }
+
+        inline auto find(uint32_t _type)
+        {
+            return std::find_if(mapping_.begin(), mapping_.end(), [_type](auto _value) { return (_value.type_ == _type); });
+        }
+
+        void insert(QEvent::Type _type, QPropertyAnimation::Direction _dir)
+        {
+            EventDirection value;
+            value.type_ = static_cast<uint32_t>(_type);
+            value.dir_ = static_cast<uint32_t>(_dir);
+            auto it = find(_type);
+            if (it == mapping_.end())
+                mapping_.push_back(value);
+            else
+                *it = value;
+        }
+    };
+
+    WidgetFader::WidgetFader(QWidget* _widget, double _lower, double _upper)
+        : QGraphicsOpacityEffect(_widget)
+        , d(new WidgetFaderPrivate(this))
+    {
+        assert(_widget != nullptr);
+
+        d->initializeAnimation(this, _lower, _upper);
+
+        setOpacity(_upper);
+        _widget->setGraphicsEffect(this);
+        _widget->installEventFilter(this);
+    }
+
+    WidgetFader::~WidgetFader() = default;
+
+    void WidgetFader::setEventDirection(QEvent::Type _type, QPropertyAnimation::Direction _dir)
+    {
+        d->insert(_type, _dir);
+    }
+
+    QPropertyAnimation::Direction WidgetFader::eventDirection(QEvent::Type _type) const
+    {
+        auto it = d->find(static_cast<uint32_t>(_type));
+        return (it == d->mapping_.end() ? QPropertyAnimation::Forward : d->direction(*it));
+    }
+
+    void WidgetFader::setDuration(int msecs)
+    {
+        d->animation_->setDuration(msecs);
+    }
+
+    int WidgetFader::duration() const
+    {
+        return d->animation_->duration();
+    }
+
+    void WidgetFader::setEnabled(bool _on)
+    {
+        d->enabled_ = _on;
+    }
+
+    bool WidgetFader::isEnabled() const
+    {
+        return d->enabled_;
+    }
+
+    void WidgetFader::setEffectEnabled(QWidget* _root, bool _on)
+    {
+        if (!_root)
+            return;
+
+        const QList<QWidget*> children = _root->findChildren<QWidget*>(QString());
+        for (auto child : children)
+        {
+            if (WidgetFader* fader = qobject_cast<WidgetFader*>(child->graphicsEffect()))
+                fader->setEnabled(_on);
+        }
+    }
+
+    bool WidgetFader::eventFilter(QObject* _object, QEvent* _event)
+    {
+        if (!isEnabled())
+            return QObject::eventFilter(_object, _event);
+
+        if (_object != parent())
+            return QObject::eventFilter(_object, _event);
+
+        auto it = d->find(static_cast<uint32_t>(_event->type()));
+        if (it == d->mapping_.end())
+            return QObject::eventFilter(_object, _event);
+
+        if (_event->type() == QEvent::Show && static_cast<QWidget*>(_object)->isVisible())
+            return QObject::eventFilter(_object, _event);
+
+        if (d->animation_->state() == QPropertyAnimation::Running)
+            return true;
+
+        d->animation_->setDirection(d->direction(*it));
+        d->animation_->start();
+        return true;
+    }
 }
+
+

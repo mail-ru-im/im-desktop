@@ -82,8 +82,13 @@ namespace Ui
         connect(scrollLeft_, &ScrollButton::clicked, this, &SmartReplyWidget::scrollToLeft);
         connect(scrollRight_, &ScrollButton::clicked, this, &SmartReplyWidget::scrollToRight);
 
-        connect(scrollArea_->horizontalScrollBar(), &QScrollBar::valueChanged, this, &SmartReplyWidget::updateEdges);
-        connect(scrollArea_->horizontalScrollBar(), &QScrollBar::rangeChanged, this, &SmartReplyWidget::updateEdges);
+        auto updateEdgesAndPlayback = [this]()
+        {
+            updateEdges();
+            updateItemsVisibility();
+        };
+        connect(scrollArea_->horizontalScrollBar(), &QScrollBar::valueChanged, this, updateEdgesAndPlayback);
+        connect(scrollArea_->horizontalScrollBar(), &QScrollBar::rangeChanged, this, updateEdgesAndPlayback);
 
         afterClickTimer_.setSingleShot(true);
         afterClickTimer_.setInterval(Features::smartreplyHideTime());
@@ -254,7 +259,7 @@ namespace Ui
         }
         else
         {
-            stickerPreview_->showSticker(-1, _stickerId);
+            stickerPreview_->showSticker(_stickerId);
         }
     }
 
@@ -380,6 +385,7 @@ namespace Ui
         scrollArea_->setGeometry(rect());
 
         updateEdgeGradients();
+        updateItemsVisibility();
     }
 
     void SmartReplyWidget::updateEdges()
@@ -501,6 +507,13 @@ namespace Ui
         const auto viewRect = scrollArea_->viewport()->rect();
         const auto itemRect = _item->rect().translated(_item->pos()).translated(shift, 0);
         return viewRect.intersects(itemRect);
+    }
+
+    void SmartReplyWidget::updateItemsVisibility()
+    {
+        const auto items = getItems();
+        for (auto item : items)
+            item->onVisibilityChanged(isItemVisible(item));
     }
 
     void SmartReplyWidget::scrollStep(const Direction _direction)

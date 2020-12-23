@@ -28,6 +28,8 @@ namespace core
             get_common_chats(wim_packet_params _params, const std::string& _sn);
 
             virtual ~get_common_chats();
+
+            virtual std::string_view get_method() const override;
         };
 
     }

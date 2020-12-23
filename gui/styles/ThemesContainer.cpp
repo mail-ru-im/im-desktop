@@ -387,7 +387,7 @@ namespace Styling
             QString result;
 
             for (const auto& [aimId, wp] : contactWallpapers_)
-                result.append(qsl("%1:%2,").arg(aimId, wp->getId().id_));
+                result.append(ql1s("%1:%2,").arg(aimId, wp->getId().id_));
 
             if (!result.isEmpty())
                 result.chop(1);

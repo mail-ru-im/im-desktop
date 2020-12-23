@@ -22,7 +22,7 @@ void GeneralSettingsWidget::Creator::initShortcuts(ShortcutsSettings* _parent)
 {
     auto scrollArea = CreateScrollAreaAndSetTrScrollBarV(_parent);
     scrollArea->setWidgetResizable(true);
-    scrollArea->setStyleSheet(qsl("QWidget{border: none; background-color: %1;}").arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE)));
+    scrollArea->setStyleSheet(ql1s("QWidget{border: none; background-color: %1;}").arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE)));
 
     Utils::grabTouchWidget(scrollArea->viewport(), true);
 
@@ -143,8 +143,8 @@ void GeneralSettingsWidget::Creator::initShortcuts(ShortcutsSettings* _parent)
             auto row = new RadioTextRow(name);
             switch (code)
             {
-            case ShortcutsSearchAction::GlobalSearch : Testing::setAccessibleName(row, qsl("AS ShortcutsPage ") % qsl("globalSearch")); break;
-            case ShortcutsSearchAction::SearchInChat : Testing::setAccessibleName(row, qsl("AS ShortcutsPage ") % qsl("searchInChat")); break;
+            case ShortcutsSearchAction::GlobalSearch : Testing::setAccessibleName(row, qsl("AS ShortcutsPage globalSearch")); break;
+            case ShortcutsSearchAction::SearchInChat : Testing::setAccessibleName(row, qsl("AS ShortcutsPage searchInChat")); break;
             default: Testing::setAccessibleName(row, qsl("AS ShortcutsPage unknown"));
             }
             if (currentAct == code)

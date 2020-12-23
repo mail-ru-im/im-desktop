@@ -20,14 +20,10 @@ namespace UserActivity
         LASTINPUTINFO lii;
         lii.cbSize = sizeof(LASTINPUTINFO);
 
-        if (::GetLastInputInfo(&lii))
-        {
-            return std::chrono::milliseconds(GetTickCount() - lii.dwTime);
-        }
+        if (::GetLastInputInfo(&lii) && !Testing::isAutoTestsMode())
+            return std::chrono::milliseconds(GetTickCount64() - lii.dwTime);
         else
-        {
-            return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - _lastActivityTime);
-        }
+            return getLastAppActivityMs();
     }
 
     std::chrono::milliseconds getLastAppActivityMs()

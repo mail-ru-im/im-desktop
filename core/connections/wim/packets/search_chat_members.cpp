@@ -19,6 +19,11 @@ search_chat_members::search_chat_members(wim_packet_params _params, std::string_
 
 search_chat_members::~search_chat_members() = default;
 
+std::string_view search_chat_members::get_method() const
+{
+    return "searchChatMembers";
+}
+
 int32_t search_chat_members::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     rapidjson::Document doc(rapidjson::Type::kObjectType);
@@ -44,7 +49,7 @@ int32_t search_chat_members::init_request(const std::shared_ptr<core::http_reque
 
     doc.AddMember("params", std::move(node_params), a);
 
-    setup_common_and_sign(doc, a, _request, "searchChatMembers");
+    setup_common_and_sign(doc, a, _request, get_method());
 
     if (!robusto_packet::params_.full_log_)
     {
@@ -56,53 +61,11 @@ int32_t search_chat_members::init_request(const std::shared_ptr<core::http_reque
     return 0;
 }
 
-int32_t core::wim::search_chat_members::parse_response(const std::shared_ptr<core::tools::binary_stream>& _response)
-{
-    if (!_response->available())
-        return wpie_http_empty_response;
-
-    auto size = _response->available();
-    load_response_str((const char*)_response->read(size), size);
-    try
-    {
-        rapidjson::Document doc;
-        if (doc.Parse(response_str().c_str()).HasParseError())
-            return wpie_error_parse_response;
-
-        auto iter_status = doc.FindMember("status");
-        if (iter_status == doc.MemberEnd())
-            return wpie_error_parse_response;
-
-        auto iter_code = iter_status->value.FindMember("code");
-        if (iter_code == iter_status->value.MemberEnd())
-            return wpie_error_parse_response;
-
-        status_code_ = iter_code->value.GetUint();
-
-        if (status_code_ == 20000 || status_code_ == 20002)
-        {
-            if (status_code_ == 20002)
-                reset_pages_ = true;
-
-            auto iter_result = doc.FindMember("results");
-            if (iter_result != doc.MemberEnd())
-                return parse_results(iter_result->value);
-        }
-        else
-        {
-            return on_response_error_code();
-        }
-    }
-    catch (...)
-    {
-        return 0;
-    }
-
-    return 0;
-}
-
 int32_t search_chat_members::parse_results(const rapidjson::Value& _node_results)
 {
+    if (get_status_code() == robusto_protocol_error::reset_search_page)
+        reset_pages_ = true;
+
     if (result_.unserialize(_node_results) != 0)
         return wpie_http_parse_response;
 
@@ -117,4 +80,9 @@ int32_t search_chat_members::on_response_error_code()
         return wpie_error_robusto_you_are_blocked;
 
     return robusto_packet::on_response_error_code();
+}
+
+bool search_chat_members::is_status_code_ok() const
+{
+    return get_status_code() == robusto_protocol_error::reset_search_page || robusto_packet::is_status_code_ok();
 }

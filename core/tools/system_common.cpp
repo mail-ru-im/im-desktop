@@ -20,6 +20,7 @@
 
 #include "../common.shared/common.h"
 #include "../common.shared/common_defs.h"
+#include "../common.shared/string_utils.h"
 
 namespace core { namespace tools { namespace system {
 
@@ -164,7 +165,7 @@ namespace core { namespace tools { namespace system {
         return false;
     }
 
-    std::wstring create_temp_file_path()
+    std::wstring create_temp_file_path(std::wstring_view _filename)
     {
         std::wstring result;
         boost::system::error_code e;
@@ -175,10 +176,25 @@ namespace core { namespace tools { namespace system {
             auto separator = boost::filesystem::wpath::preferred_separator;
             if (*(result.rbegin()) != separator)
                 result += separator;
-            auto temp_file = boost::filesystem::unique_path(L"%%%%-%%%%-%%%%-%%%%", e);
-            if (!e)
+
+            if (!_filename.empty())
             {
-                result += temp_file.wstring();
+                result += _filename;
+                if (tools::system::is_exist(result))
+                {
+                    boost::filesystem::wpath path(result);
+                    const auto stem = path.stem().wstring();
+                    const auto extension = path.extension().wstring();
+                    int n = 0;
+                    while (tools::system::is_exist(result))
+                        result = su::wconcat(path.parent_path().wstring(), L"/", stem, L" (", std::to_wstring(++n), L")", extension);
+                }
+            }
+            else
+            {
+                auto temp_file = boost::filesystem::unique_path(L"%%%%-%%%%-%%%%-%%%%", e);
+                if (!e)
+                    result += temp_file.wstring();
             }
         }
         return result;

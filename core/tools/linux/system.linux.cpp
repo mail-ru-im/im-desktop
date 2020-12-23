@@ -9,17 +9,15 @@ bool core::tools::system::is_dir_writable(const std::wstring &_dir_path_str)
 
 bool core::tools::system::delete_file(const std::wstring& _file_name)
 {
-    boost::system::error_code error;
-    boost::filesystem::remove(_file_name, error);
+    std::error_code error;
+    std::filesystem::remove(_file_name, error);
     return !error;
 }
 
 bool core::tools::system::move_file(const std::wstring& _old_file, const std::wstring& _new_file)
 {
-    boost::filesystem::path from(_old_file);
-    boost::filesystem::path target(_new_file);
-    boost::system::error_code error;
-    boost::filesystem::rename(from, target, error);
+    std::error_code error;
+    std::filesystem::rename(_old_file, _new_file, error);
 
     if (!error)
     {
@@ -27,25 +25,18 @@ bool core::tools::system::move_file(const std::wstring& _old_file, const std::ws
     }
     else
     {
+        // fallback. use copy and delete
+        if (copy_file(_old_file, _new_file))
+            return delete_file(_old_file);
         return false;
     }
 }
 
 bool core::tools::system::copy_file(const std::wstring& _old_file, const std::wstring& _new_file)
 {
-    boost::filesystem::path from(_old_file);
-    boost::filesystem::path target(_new_file);
-    boost::system::error_code error;
-    boost::filesystem::copy(from, target, error);
-
-    if (!error)
-    {
-        return true;
-    }
-    else
-    {
-        return false;
-    }
+    std::error_code error;
+    std::filesystem::copy(_old_file, _new_file, error);
+    return !error;
 }
 
 bool core::tools::system::compare_dirs(const std::wstring& _dir1, const std::wstring& _dir2)
@@ -53,19 +44,19 @@ bool core::tools::system::compare_dirs(const std::wstring& _dir1, const std::wst
     if (_dir1.empty() || _dir2.empty())
         return false;
 
-    boost::system::error_code error;
-    return boost::filesystem::equivalent(boost::filesystem::path(_dir1), boost::filesystem::path(_dir2), error);
+    std::error_code error;
+    return std::filesystem::equivalent(_dir1, _dir2, error);
 }
 
 std::wstring core::tools::system::get_file_directory(const std::wstring& file)
 {
-    boost::filesystem::wpath p(file);
+    std::filesystem::path p(file);
     return p.parent_path().wstring();
 }
 
 std::wstring core::tools::system::get_file_name(const std::wstring& file)
 {
-    boost::filesystem::wpath p(file);
+    std::filesystem::path p(file);
     return p.filename().wstring();
 }
 

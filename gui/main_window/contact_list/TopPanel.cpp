@@ -67,7 +67,7 @@ namespace Ui
         , parent_(_parent)
     {
         // BGCOLOR
-        setStyleSheet(qsl("background: %1; border-style: none;").arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE)));
+        setStyleSheet(ql1s("background: %1; border-style: none;").arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE)));
         setAttribute(Qt::WA_TransparentForMouseEvents);
     }
 
@@ -116,7 +116,7 @@ namespace Ui
     {
         auto layout = Utils::emptyVLayout(this);
 
-        setStyleSheet(qsl("background: %1; border-style: none;").arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_BRIGHT_INVERSE)));
+        setStyleSheet(ql1s("background: %1; border-style: none;").arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_BRIGHT_INVERSE)));
 
         titleBar_->setTitle(_text);
         Testing::setAccessibleName(titleBar_, qsl("AS ResentSearch titleBar"));
@@ -169,7 +169,7 @@ namespace Ui
         delAllBtn_->setFont(Fonts::appFontScaled(15, Fonts::FontWeight::SemiBold));
         Testing::setAccessibleName(delAllBtn_, qsl("AS Unknown closeAllButton"));
         Utils::ApplyStyle(delAllBtn_,
-            qsl(
+            ql1s(
                 "QPushButton { color: %1; }"
                 "QPushButton:hover { color: %2;}"
                 "QPushButton:press { color: %3;}"
@@ -221,6 +221,7 @@ namespace Ui
         titleBar_->setTitle(QT_TRANSLATE_NOOP("head", "Chats"));
         statusWidget_ = new ContactAvatarWidget(this, QString(), QString(), Utils::scale_value(24), true);
         statusWidget_->SetMode(ContactAvatarWidget::Mode::ChangeStatus);
+        statusWidget_->setStatusTooltipEnabled(true);
         statusWidget_->setFixedSize(Utils::scale_value(32), Utils::scale_value(32));
         titleBar_->addCentralWidget(statusWidget_);
 
@@ -319,7 +320,7 @@ namespace Ui
 
         auto addHeader = [this](auto _header, const QString& _accessibleName)
         {
-            _header->setStyleSheet(qsl("background: %1; border-style: none;").arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE)));
+            _header->setStyleSheet(ql1s("background: %1; border-style: none;").arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE)));
             Testing::setAccessibleName(_header, _accessibleName);
             stackWidget_->addWidget(_header);
 
@@ -343,7 +344,7 @@ namespace Ui
         Testing::setAccessibleName(searchWidget_, qsl("AS Search widget"));
         layout->addWidget(searchWidget_);
 
-        Utils::ApplyStyle(this, qsl("background-color: %1;")
+        Utils::ApplyStyle(this, ql1s("background-color: %1;")
                 .arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE)));
 
         connect(searchWidget_, &Ui::SearchWidget::activeChanged, this, &TopPanelWidget::searchActiveChanged);

@@ -186,17 +186,20 @@ namespace Ui
                 fillY -= lineHeight_ / 2.0;
             else if (pos_ == Ui::TextRendering::VerPosition::BASELINE)
                 fillY -= textAscent(_word.getFont());
+
+            QVarLengthArray<int> visualOrder;
             for (const auto& part : textParts_)
             {
-                const auto [visualOrder, nItems] = prepareEngine(part.ref_.toString(), _word.getFont());
+                prepareEngine(part.ref_.toString(), _word.getFont(), visualOrder);
 
                 const auto underLineStyle = (part.hasSpellError_ && !useCustomDots()) ? QTextCharFormat::UnderlineStyle::SpellCheckUnderline : QTextCharFormat::UnderlineStyle::NoUnderline;
                 bool fillHanded = false;
                 const auto startX = point_.x();
                 auto startY = point_.y();
-                for (int i = 0; i < nItems; ++i)
+
+                for (auto item : visualOrder)
                 {
-                    const auto[gf, font] = prepareGlyph(*d->engine_, visualOrder[i], underLineStyle);
+                    const auto[gf, font] = prepareGlyph(*d->engine_, item, underLineStyle);
 
                     const auto x = point_.x();
                     const auto y = point_.y() + getVerticalShift(lineHeight_, pos_, gf) - lineSpacing_ / 2;
@@ -220,6 +223,13 @@ namespace Ui
                                 fillHanded = true;
                             }
                         }
+                    }
+
+                    if (_word.hasShadow())
+                    {
+                        const auto shadow = _word.getShadow();
+                        painter_->setPen(shadow.color);
+                        painter_->drawTextItem(QPointF(x + shadow.offsetX, y + shadow.offsetY), gf);
                     }
 
                     painter_->setPen(part.textColor_);
@@ -318,11 +328,12 @@ namespace Ui
                 if (!_needsSpace && _word.isSpaceAfter())
                     someSpaces += QChar::Space;
 
-                const auto [visualOrder, nItems] = prepareEngine(someSpaces, _word.getFont());
+                QVarLengthArray<int> visualOrder;
+                prepareEngine(someSpaces, _word.getFont(), visualOrder);
 
-                for (int i = 0; i < nItems; ++i)
+                for (auto item : visualOrder)
                 {
-                    const auto [gf, f] = prepareGlyph(*d->engine_, visualOrder[i]);
+                    const auto [gf, f] = prepareGlyph(*d->engine_, item);
                     const auto underlineY = point_.y() + getVerticalShift(lineHeight_, pos_, gf) - lineSpacing_ / 2;
                     painter_->setPen((selected || highlighted) ? _word.getColor() : linkColor_);
                     painter_->drawTextItem(QPointF(point_.x() - 1., underlineY), gf);
@@ -423,7 +434,7 @@ namespace Ui
             }
         }
 
-        std::pair<QVarLengthArray<int>, int> TextWordRenderer::prepareEngine(const QString& _text, const QFont& _font)
+        void TextWordRenderer::prepareEngine(const QString& _text, const QFont& _font, Out QVarLengthArray<int>& _visualOrder)
         {
             auto& engine = d->engine_;
             if (!engine || engine->font() != _font)
@@ -445,12 +456,11 @@ namespace Ui
             engine->shapeLine(line);
 
             const int nItems = engine->layoutData->items.size();
-            QVarLengthArray<int> visualOrder(nItems);
+            _visualOrder.resize(nItems);
             QVarLengthArray<uchar> levels(nItems);
             for (int i = 0; i < nItems; ++i)
                 levels[i] = engine->layoutData->items[i].analysis.bidiLevel;
-            QTextEngine::bidiReorder(nItems, levels.data(), visualOrder.data());
-            return { std::move(visualOrder), nItems };
+            QTextEngine::bidiReorder(nItems, levels.data(), _visualOrder.data());
         }
     }
 }

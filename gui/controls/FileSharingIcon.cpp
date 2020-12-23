@@ -253,11 +253,11 @@ namespace Ui
     {
         if (_isVisible && anim_->state() == QAbstractAnimation::Paused)
             anim_->resume();
-        else if (anim_->state() == QAbstractAnimation::Running)
+        else if (!_isVisible && anim_->state() == QAbstractAnimation::Running)
             anim_->pause();
     }
 
-    void FileSharingIcon::paintEvent(QPaintEvent* event)
+    void FileSharingIcon::paintEvent(QPaintEvent*)
     {
         QPainter p(this);
         p.setRenderHint(QPainter::Antialiasing);
@@ -279,7 +279,7 @@ namespace Ui
             const auto progressAngle = (int)std::ceil(progress * 360 * QT_ANGLE_MULT);
 
             p.setBrush(iconColor_);
-            p.setPen(Qt::transparent);
+            p.setPen(Qt::NoPen);
             p.drawEllipse(rect());
 
             if (isFileDownloading())

@@ -83,6 +83,7 @@ StartCallButton::StartCallButton(QWidget* _parent, CallButtonType _type)
     , type_(_type)
     , menu_(nullptr)
     , callLinkCreator_(nullptr)
+    , doPreventNextMenu_(false)
 {
     anim_->setDuration(animDuration().count());
     anim_->setEasingCurve(QEasingCurve::InOutSine);
@@ -93,6 +94,15 @@ StartCallButton::StartCallButton(QWidget* _parent, CallButtonType _type)
     });
 
     connect(this, &ClickableWidget::clicked, this, &StartCallButton::showContextMenu);
+    if constexpr (platform::is_windows())
+    {
+        connect(this, &ClickableWidget::pressed, this, [this]()
+        {
+            if (menu_)
+                doPreventNextMenu_ = true;
+        });
+    }
+
     setFixedSize(getCallButtonSize(isButton()));
     setTooltipText(QT_TRANSLATE_NOOP("tooltips", "Call"));
 }
@@ -108,23 +118,39 @@ void StartCallButton::rotate(const RotateDirection _dir)
     anim_->start();
 }
 
-void Ui::StartCallButton::showContextMenu()
+void StartCallButton::showContextMenu()
 {
+    if constexpr (platform::is_windows())
+    {
+        if (doPreventNextMenu_)
+        {
+            doPreventNextMenu_ = false;
+            return;
+        }
+    }
+
     if (!menu_)
     {
         menu_ = new ContextMenu(parentWidget());
         Testing::setAccessibleName(menu_, qsl("AS StartCallButton menu"));
-        QObject::connect(menu_, &ContextMenu::aboutToHide, this, [this]()
+        QObject::connect(menu_, &ContextMenu::hidden, this, [this]()
         {
             setHovered(false);
             setPressed(false);
             rotate(Ui::StartCallButton::RotateDirection::Right);
-            if(!platform::is_windows())
-                menu_->deleteLater();
-        });
+            menu_->deleteLater();
+        }, Qt::QueuedConnection);
 
-        menu_->addActionWithIcon(qsl(":/phone_icon"), QT_TRANSLATE_NOOP("tooltips", "Audio call"), this, &StartCallButton::startAudioCall);
-        menu_->addActionWithIcon(qsl(":/video_icon"), QT_TRANSLATE_NOOP("tooltips", "Video call"), this, &StartCallButton::startVideoCall);
+        // This call must be put on event queue, otherwise after call list popup closed
+        // CustomMenu which is already deleted gets mouseReleaseEvent and app crashes
+        menu_->addActionWithIcon(qsl(":/phone_icon"), QT_TRANSLATE_NOOP("tooltips", "Audio call"), this, [this]()
+        {
+            QMetaObject::invokeMethod(this, &StartCallButton::startAudioCall, Qt::QueuedConnection);
+        });
+        menu_->addActionWithIcon(qsl(":/video_icon"), QT_TRANSLATE_NOOP("tooltips", "Video call"), this, [this]()
+        {
+            QMetaObject::invokeMethod(this, &StartCallButton::startVideoCall, Qt::QueuedConnection);
+        });
         menu_->addActionWithIcon(qsl(":/copy_link_icon"), QT_TRANSLATE_NOOP("tooltips", "Link to call"), this, &StartCallButton::createCallLink);
         menu_->invertRight(true);
 
@@ -132,12 +158,6 @@ void Ui::StartCallButton::showContextMenu()
         auto pos = mapToGlobal(mapFromParent(geometry().bottomRight()));
         pos.ry() += Utils::scale_value(8);
         menu_->popup(pos);
-    }
-    else if constexpr (platform::is_windows())
-    {
-        menu_->hide();
-        menu_->deleteLater();
-        menu_ = nullptr;
     }
 }
 

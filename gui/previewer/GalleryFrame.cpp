@@ -435,6 +435,8 @@ GalleryFrame::GalleryFrame(QWidget *_parent)
     d->caption_ = std::make_unique<CaptionArea>(this);
     connect(d->caption_.get(), &CaptionArea::needHeight, this, &GalleryFrame::needHeight);
 
+    connect(new QShortcut(QKeySequence::Copy, this), &QShortcut::activated, this, &GalleryFrame::copy);
+
     setMouseTracking(true);
 }
 

@@ -21,6 +21,11 @@ get_smartreplies::get_smartreplies(wim_packet_params _params, std::string _aimid
     assert(!types_.empty());
 }
 
+std::string_view get_smartreplies::get_method() const
+{
+    return "getSmartReply";
+}
+
 int32_t get_smartreplies::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     assert(_request);
@@ -40,7 +45,7 @@ int32_t get_smartreplies::init_request(const std::shared_ptr<core::http_request_
 
     doc.AddMember("params", std::move(node_params), a);
 
-    setup_common_and_sign(doc, a, _request, "getSmartReply");
+    setup_common_and_sign(doc, a, _request, get_method());
 
     if (!params_.full_log_)
     {

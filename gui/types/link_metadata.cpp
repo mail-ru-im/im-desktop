@@ -43,7 +43,8 @@ LinkMetadata::LinkMetadata(const QString &_title,
     const QString &_downloadUri,
     const int64_t _fileSize,
     const QSize &_originSize,
-    const QString& _fileName)
+    const QString& _fileName,
+    const QString& _fileFormat)
     : title_(_title)
     , description_(_description)
     , downloadUri_(_downloadUri)
@@ -52,6 +53,7 @@ LinkMetadata::LinkMetadata(const QString &_title,
     , previewUri_(_previewUri)
     , faviconUri_(_faviconUri)
     , fileName_(_fileName)
+    , fileFormat_(_fileFormat)
     , previewSize_(_previewSize)
     , fileSize_(_fileSize)
     , originSize_(_originSize)
@@ -105,6 +107,11 @@ const QString& LinkMetadata::getFaviconUri() const
 const QString& LinkMetadata::getFileName() const
 {
     return fileName_;
+}
+
+const QString& LinkMetadata::getFileFormat() const
+{
+    return fileFormat_;
 }
 
 LinkContentType LinkMetadata::getContentType() const

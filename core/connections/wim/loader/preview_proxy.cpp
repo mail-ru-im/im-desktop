@@ -31,6 +31,7 @@ namespace
     std::string parse_title(const rapidjson::Value &_doc_node);
 
     std::string parse_filename(const rapidjson::Value &_doc_node);
+    std::string parse_fileformat(const rapidjson::Value& _doc_node);
 }
 
 link_meta::link_meta(const std::string &_title,
@@ -43,7 +44,8 @@ link_meta::link_meta(const std::string &_title,
     const preview_size &_preview_size,
     const int64_t _file_size,
     const origin_size& _origin_size,
-    const std::string& _filename)
+    const std::string& _filename,
+    const std::string& _fileformat)
     : preview_uri_(_preview_uri)
     , download_uri_(_download_uri)
     , title_(_title)
@@ -55,6 +57,8 @@ link_meta::link_meta(const std::string &_title,
     , file_size_(_file_size)
     , origin_size_(_origin_size)
     , filename_(_filename)
+    , fileformat_(_fileformat)
+    , status_code_(0)
 {
     assert(!site_name_.empty());
     assert(!content_type_.empty());
@@ -63,6 +67,12 @@ link_meta::link_meta(const std::string &_title,
     assert(std::get<0>(origin_size_) >= 0);
     assert(std::get<1>(origin_size_) >= 0);
     assert(file_size_ >= -1);
+}
+
+link_meta::link_meta(int64_t _status_code)
+    : file_size_(0)
+    , status_code_(_status_code)
+{
 }
 
 link_meta::~link_meta()
@@ -153,6 +163,11 @@ const std::string& link_meta::get_filename() const
     return filename_;
 }
 
+const std::string& link_meta::get_fileformat() const
+{
+    return fileformat_;
+}
+
 bool link_meta::has_favicon_uri() const
 {
     return !favicon_uri_.empty();
@@ -161,6 +176,11 @@ bool link_meta::has_favicon_uri() const
 bool link_meta::has_preview_uri() const
 {
     return !preview_uri_.empty();
+}
+
+int64_t link_meta::get_status_code() const
+{
+    return status_code_;
 }
 
 str_2_str_map format_get_preview_params(
@@ -223,12 +243,20 @@ link_meta_uptr parse_json(InOut char *_json, const std::string &_uri)
         return nullptr;
     }
 
-    auto iter_doc = doc.FindMember("doc");
-    if ((iter_doc == doc.MemberEnd()) ||
-        !iter_doc->value.IsObject())
-    {
+    auto iter_status = doc.FindMember("status");
+    if (iter_status == doc.MemberEnd() || !iter_status->value.IsString())
         return nullptr;
+
+    if (!boost::iequals(iter_status->value.GetString(), "ok"))
+    {
+        auto iter_status_code = doc.FindMember("status_code");
+        if (iter_status_code != doc.MemberEnd() && iter_status_code->value.IsString())
+            return std::make_unique<link_meta>(std::atoi(iter_status_code->value.GetString()));
     }
+
+    auto iter_doc = doc.FindMember("doc");
+    if (iter_doc == doc.MemberEnd() || !iter_doc->value.IsObject())
+        return nullptr;
 
     const auto &root_node = iter_doc->value;
 
@@ -249,13 +277,12 @@ link_meta_uptr parse_json(InOut char *_json, const std::string &_uri)
 
     const auto content_type = parse_content_type(root_node);
 
-    const auto is_invalid_json = content_type.empty();
-    if (is_invalid_json)
-    {
+    if (content_type.empty())
         return nullptr;
-    }
 
     const auto filename = parse_filename(root_node);
+
+    const auto fileformat = parse_fileformat(root_node);
 
     return std::make_unique<link_meta>(
         title,
@@ -268,7 +295,8 @@ link_meta_uptr parse_json(InOut char *_json, const std::string &_uri)
         size,
         file_size,
         o_size,
-        filename);
+        filename,
+        fileformat);
 }
 
 namespace uri
@@ -514,6 +542,22 @@ namespace
     {
         std::string res;
         tools::unserialize_value(_doc_node, "file_name", res);
+        return res;
+    }
+
+    std::string parse_fileformat(const rapidjson::Value& _doc_node)
+    {
+        std::string res;
+        auto iter_images = _doc_node.FindMember("images");
+
+        if ((iter_images == _doc_node.MemberEnd()) ||
+            !iter_images->value.IsArray() ||
+            iter_images->value.Empty())
+        {
+            return res;
+        }
+
+        tools::unserialize_value(iter_images->value[0], "format", res);
         return res;
     }
 }

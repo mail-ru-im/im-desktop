@@ -1,5 +1,7 @@
 #pragma once
 #include "../../controls/TextUnit.h"
+#include "controls/ClickWidget.h"
+#include "cache/stickers/StickerData.h"
 
 namespace Ui
 {
@@ -7,7 +9,7 @@ namespace Ui
     class TextEmojiWidget;
     class LineEditEx;
     class CustomButton;
-    class ClickableWidget;
+    class LottiePlayer;
 
     enum class FrameCountMode;
 
@@ -16,44 +18,42 @@ namespace Ui
         class TextUnit;
     }
 
-    struct PackInfo
-    {
-        int32_t id_;
-
-        QString name_;
-        QString subtitle_;
-        QString storeId_;
-        QPixmap icon_;
-        bool purchased_;
-        bool iconRequested_;
-
-        PackInfo() : id_(-1), purchased_(false), iconRequested_(false) {}
-        PackInfo(
-            const int32_t _id,
-            const QString& _name,
-            const QString& _subtitle,
-            const QString& _storeId,
-            const QPixmap& _icon,
-            bool _purchased,
-            bool _iconRequested)
-            : id_(_id)
-            , name_(_name)
-            , subtitle_(_subtitle)
-            , storeId_(_storeId)
-            , icon_(_icon)
-            , purchased_(_purchased)
-            , iconRequested_(_iconRequested)
-        {
-        }
-    };
-
-
     namespace Stickers
     {
+        struct PackInfo
+        {
+            int32_t id_ = -1;
 
+            QString name_;
+            QString subtitle_;
+            QString storeId_;
+            StickerData iconData_;
+            bool purchased_ = false;
+            bool iconRequested_ = false;
+
+            PackInfo() = default;
+            PackInfo(
+                const int32_t _id,
+                const QString& _name,
+                const QString& _subtitle,
+                const QString& _storeId,
+                bool _purchased)
+                : id_(_id)
+                , name_(_name)
+                , subtitle_(_subtitle)
+                , storeId_(_storeId)
+                , purchased_(_purchased)
+            {
+            }
+        };
+
+        //////////////////////////////////////////////////////////////////////////
         class PackInfoObject : public QObject, public PackInfo
         {
             Q_OBJECT
+
+        Q_SIGNALS:
+            void iconChanged(QPrivateSignal) const;
 
         public:
             PackInfoObject(QObject* parent = nullptr) : QObject(parent) { }
@@ -63,116 +63,188 @@ namespace Ui
                 const QString& _name,
                 const QString& _subtitle,
                 const QString& _storeId,
-                const QPixmap& _icon,
-                bool _purchased,
-                bool _iconRequested)
-                : QObject(parent), PackInfo(_id, _name, _subtitle, _storeId, _icon, _purchased, _iconRequested)
+                bool _purchased)
+                : QObject(parent), PackInfo(_id, _name, _subtitle, _storeId, _purchased)
             {
+            }
+
+            void setIconData(StickerData _data)
+            {
+                iconData_ = std::move(_data);
+                Q_EMIT iconChanged(QPrivateSignal());
             }
         };
 
-        class AccessibleStickerPackButton : public QAccessibleObject
-        {
-        public:
-            AccessibleStickerPackButton(PackInfoObject* object) : QAccessibleObject(object) { }
-
-            bool isValid() const override { return true; }
-            QAccessibleInterface* parent() const override;
-            int childCount() const override { return 0; }
-            QAccessibleInterface* child(int index) const override { return nullptr; }
-            int indexOfChild(const QAccessibleInterface* child) const override { return -1; }
-            QRect rect() const override;
-            QString text(QAccessible::Text t) const override { return QAccessible::Text::Name == t ? qsl("AS Stickers PackButton") : QString(); }
-            QAccessible::Role role() const override { return QAccessible::Role::Button; }
-            QAccessible::State state() const override { return {}; }
-        };
-
         //////////////////////////////////////////////////////////////////////////
-        class TopPacksView : public QWidget
+        class PackItemBase : public ClickableWidget
         {
             Q_OBJECT
 
-            ScrollAreaWithTrScrollBar* parent_;
+        public:
+            PackItemBase(QWidget* _parent, std::unique_ptr<PackInfoObject> _info);
+            int getId() const noexcept { return info_->id_; }
+            PackInfoObject* getInfo() const noexcept { return info_.get(); }
 
-            std::vector<PackInfoObject*> packs_;
-            std::unordered_map<int, TextRendering::TextUnitPtr> nameUnits_;
-            std::unordered_map<int, TextRendering::TextUnitPtr> descUnits_;
+            void onVisibilityChanged(bool _visible);
 
+        protected:
+            void onIconChanged();
+            void setLottie(const QString& _path);
+            virtual QRect getIconRect() const = 0;
 
-            int hoveredPack_;
+        protected:
+            std::unique_ptr<PackInfoObject> info_;
+            TextRendering::TextUnitPtr name_;
+            TextRendering::TextUnitPtr desc_;
+
+            QPixmap icon_;
+            LottiePlayer* lottie_ = nullptr;
+        };
+
+        //////////////////////////////////////////////////////////////////////////
+        class PacksViewBase
+        {
+        public:
+            enum class InitFrom
+            {
+                local,
+                server,
+            };
+
+            virtual void addPack(std::unique_ptr<PackInfoObject> _pack) = 0;
+            virtual void onPacksAdded() = 0;
+            virtual void clear() = 0;
+
+            virtual ~PacksViewBase() = default;
+        };
+
+        //////////////////////////////////////////////////////////////////////////
+        class TopPackItem : public PackItemBase
+        {
+            Q_OBJECT
+
+        public:
+            TopPackItem(QWidget* _parent, std::unique_ptr<PackInfoObject> _info);
+
+        protected:
+            void paintEvent(QPaintEvent*) override;
+
+        private:
+            QRect getIconRect() const override;
+        };
+
+        //////////////////////////////////////////////////////////////////////////
+        class TopPacksView : public QWidget, public PacksViewBase
+        {
+            Q_OBJECT
+
+        private:
+            ScrollAreaWithTrScrollBar* scrollArea_;
+            QHBoxLayout* layout_;
 
             QPropertyAnimation* animScroll_;
 
-        private:
-
-            enum direction
+            enum class direction
             {
                 left = 0,
                 right = 1
             };
-
-            static QRect getStickerRect(const int _pos);
             void scrollStep(direction _direction);
+            void updateItemsVisibility();
 
         protected:
-
-            virtual void paintEvent(QPaintEvent* _e) override;
-            virtual void wheelEvent(QWheelEvent* _e) override;
-            virtual void mousePressEvent(QMouseEvent* _e) override;
-            virtual void leaveEvent(QEvent* _e) override;
-            virtual void mouseMoveEvent(QMouseEvent* _e) override;
-
+            void wheelEvent(QWheelEvent* _e) override;
 
         public:
+            TopPacksView(QWidget* _parent);
 
-            TopPacksView(ScrollAreaWithTrScrollBar* _parent);
-
-            void addPack(PackInfoObject* _pack);
-
+            void addPack(std::unique_ptr<PackInfoObject> _pack) override;
             void updateSize();
-
+            void onPacksAdded() override;
             void onSetIcon(const int32_t _setId);
-
-            void clear();
+            void clear() override;
+            void connectNativeScrollbar(QScrollBar* _sb);
         };
 
-
-
         //////////////////////////////////////////////////////////////////////////
-        class PacksWidget : public QWidget
+        class TopPacksWidget : public QWidget
         {
             Q_OBJECT
 
             TopPacksView* packs_;
 
-            ScrollAreaWithTrScrollBar* scrollArea_;
-
         public:
-
-            PacksWidget(QWidget* _parent);
-
-            void init(const bool _fromServer);
+            TopPacksWidget(QWidget* _parent);
+            void init();
             void onSetIcon(const int32_t _setId);
+            void connectNativeScrollbar(QScrollBar* _sb);
         };
 
         //////////////////////////////////////////////////////////////////////////
-        class PacksView : public QWidget
+        enum class PackViewMode
+        {
+            myPacks,
+            search,
+        };
+
+        //////////////////////////////////////////////////////////////////////////
+        class PackItem : public PackItemBase
+        {
+            Q_OBJECT
+
+        Q_SIGNALS:
+            void dragStarted(QPrivateSignal) const;
+            void dragEnded(QPrivateSignal) const;
+
+        public:
+            PackItem(QWidget* _parent, std::unique_ptr<PackInfoObject> _info);
+
+            void setDragging(bool _isDragging);
+            bool isDragging() const noexcept { return dragging_; }
+
+            void setHoverable(bool _isHoverable);
+            bool isHoverable() const noexcept { return hoverable_; }
+
+            void setMode(PackViewMode _mode);
+
+        protected:
+            void paintEvent(QPaintEvent*) override;
+            void resizeEvent(QResizeEvent* _e) override;
+            void mouseMoveEvent(QMouseEvent* _e) override;
+
+        private:
+            QRect getIconRect() const override;
+            QRect getDelButtonRect() const;
+            QRect getAddButtonRect() const;
+            QRect getDragButtonRect() const;
+            void onClicked();
+            void onPressed();
+            void onReleased();
+
+            bool canDrag() const noexcept;
+            void setDragCursor(bool _dragging);
+
+        private:
+            bool dragging_ = false;
+            bool hoverable_ = true;
+            PackViewMode mode_ = PackViewMode::myPacks;
+        };
+
+        //////////////////////////////////////////////////////////////////////////
+        class PacksView : public QWidget, public PacksViewBase
         {
             Q_OBJECT
 
         public:
-
-            enum class Mode {my_packs, search};
-
             enum CursorAction { MoveUp, MoveDown, MovePageUp, MovePageDown};
 
-            PacksView(Mode _mode, QWidget* _parent = 0);
+            PacksView(PackViewMode _mode, QWidget* _parent = nullptr);
 
-            void addPack(PackInfoObject* _pack);
+            void addPack(std::unique_ptr<PackInfoObject> _pack) override;
 
             void updateSize();
 
-            void clear();
+            void clear() override;
 
             void onSetIcon(const int32_t _setId);
 
@@ -185,34 +257,29 @@ namespace Ui
             bool isDragInProgress() const;
 
             void setScrollBar(QWidget* _scrollBar);
+            void connectNativeScrollbar(QScrollBar* _sb);
 
             void selectFirst();
 
-        Q_SIGNALS:
+            void onPacksAdded() override;
 
+        Q_SIGNALS:
             void startScrollUp();
             void startScrollDown();
             void stopScroll();
 
         protected:
+            void mouseReleaseEvent(QMouseEvent* _e) override;
+            void mouseMoveEvent(QMouseEvent* _e) override;
+            void wheelEvent(QWheelEvent* _e) override;
+            void resizeEvent(QResizeEvent* _e) override;
+            void leaveEvent(QEvent* _e) override;
 
-            virtual void paintEvent(QPaintEvent* _e) override;
-            virtual void mousePressEvent(QMouseEvent* _e) override;
-            virtual void mouseReleaseEvent(QMouseEvent* _e) override;
-            virtual void mouseMoveEvent(QMouseEvent* _e) override;
-            virtual void leaveEvent(QEvent *_e) override;
-            virtual void wheelEvent(QWheelEvent *_e) override;
-
-            int getPackInfoIndex(PackInfoObject* _packInfo) const;
             QRect getStickerRect(const int _pos) const;
-            QRect getDelButtonRect(const QRect& _stickerRect) const;
-            QRect getAddButtonRect(const QRect& _stickerRect) const;
-            QRect getDragButtonRect(const QRect& _stickerRect) const;
 
         private:
-
-            void startDrag(const int _packNum, const QPoint& _mousePos);
-            void drawStickerPack(QPainter& _p, const QRect& _stickerRect, PackInfo& _pack, bool _hovered = false, bool _selected = false);
+            void startDrag();
+            void stopDrag();
 
             int getDragPackNum();
 
@@ -221,49 +288,22 @@ namespace Ui
             void clearSelection();
 
             void updateHover();
+            void updateItemsVisibility();
+            void arrangePacks();
 
-            void updateCursor();
-
-            std::vector<PackInfoObject*> packs_;
-
-            std::unordered_map<int, TextRendering::TextUnitPtr> nameUnits_;
-            std::unordered_map<int, TextRendering::TextUnitPtr> descUnits_;
-
-            Mode mode_;
+            std::vector<PackItem*> items_;
+            PackViewMode mode_ = PackViewMode::myPacks;
 
             QPoint startDragPos_;
 
-            int dragPack_;
-
-            int dragOffset_;
-
-            int selectedIdx_;
-
-            int hoveredIdx_;
+            int dragPack_ = -1;
+            int dragOffset_ = 0;
+            int selectedIdx_ = -1;
+            bool orderChanged_ = false;
 
             QPointer<QWidget> scrollBar_;
 
             void postStickersOrder() const;
-
-            friend class AccessiblePacksView;
-            friend class AccessibleStickerPackButton;
-        };
-
-        class AccessiblePacksView : public QAccessibleWidget
-        {
-        public:
-            AccessiblePacksView(PacksView* widget = nullptr) : QAccessibleWidget(widget), packsView_(widget) { }
-
-            int childCount() const override { return packsView_->packs_.size(); }
-
-            QAccessibleInterface* child(int index) const override;
-
-            int indexOfChild(const QAccessibleInterface* child) const override;
-
-            QString	text(QAccessible::Text t) const override;
-
-        protected:
-            PacksView* packsView_ = nullptr;
         };
 
         //////////////////////////////////////////////////////////////////////////
@@ -319,9 +359,10 @@ namespace Ui
 
             MyPacksWidget(QWidget* _parent);
 
-            void init(const bool _fromServer);
+            void init(PacksViewBase::InitFrom _init);
 
             void setScrollBarToView(QWidget* _scrollBar);
+            void connectNativeScrollbar(QScrollBar* _scrollBar);
 
         protected:
 
@@ -342,11 +383,12 @@ namespace Ui
 
             SearchPacksWidget(QWidget* _parent);
             void onSetIcon(const int32_t _setId);
-            void init(const bool _fromServer);
+            void init(PacksViewBase::InitFrom _init);
 
             int moveCursor(PacksView::CursorAction cursorAction);
             int selectedPackId();
             void setScrollBarToView(QWidget* _scrollBar);
+            void connectNativeScrollbar(QScrollBar* _scrollBar);
             void touchSearchRequested(); // for statistics
         };
 
@@ -360,7 +402,7 @@ namespace Ui
 
             ScrollAreaWithTrScrollBar* rootScrollArea_;
 
-            PacksWidget* packsView_;
+            TopPacksWidget* packsView_;
             MyPacksWidget* myPacks_;
             SearchPacksWidget* searchPacks_;
             StickersPageHeader* headerWidget_;
@@ -375,6 +417,8 @@ namespace Ui
             void onSearchRequested(const QString &term);
             void onSearchCancelled();
             void onScrollStep(const int _step);
+
+            void initSearchView(PacksViewBase::InitFrom _init);
 
         Q_SIGNALS:
             void back();
@@ -429,7 +473,7 @@ namespace Ui
         public:
             explicit StickersPageHeader(QWidget *_parent = nullptr);
 
-            QString currentTerm() const;
+            const QString& currentTerm() const noexcept { return lastTerm_; }
             void cancelSearch();
 
             void setBadgeText(const QString& _text);

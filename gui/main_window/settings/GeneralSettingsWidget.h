@@ -1,7 +1,9 @@
 #pragma once
 
 #include "../../controls/GeneralCreator.h"
+#ifndef STRIP_VOIP
 #include "../../voip/VoipProxy.h"
+#endif
 
 namespace Utils
 {
@@ -140,16 +142,19 @@ namespace Ui
         ~GeneralSettingsWidget();
 
         void setType(int _type);
+#ifndef STRIP_VOIP
         void setActiveDevice(const voip_proxy::device_desc& _description);
+#endif
         bool isSessionsShown() const;
 
     private:
-        void initVoiceAndVideo();
-
         void initSessionsPage();
 
+#ifndef STRIP_VOIP
+        void initVoiceAndVideo();
         bool getDefaultDeviceFlag(const voip_proxy::EvoipDevTypes& type);
         void applyDefaultDeviceLogic(const voip_proxy::device_desc& _description);
         void onVoipDeviceListUpdated(voip_proxy::EvoipDevTypes deviceType, const voip_proxy::device_desc_vector& _devices);
+#endif
     };
 }

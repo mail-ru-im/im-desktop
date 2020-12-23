@@ -16,6 +16,11 @@ remove_reaction::remove_reaction(wim_packet_params _params, int64_t _msg_id, con
 
 }
 
+std::string_view remove_reaction::get_method() const
+{
+    return "reaction/remove";
+}
+
 int32_t remove_reaction::init_request(const std::shared_ptr<http_request_simple>& _request)
 {
     rapidjson::Document doc(rapidjson::Type::kObjectType);
@@ -28,7 +33,7 @@ int32_t remove_reaction::init_request(const std::shared_ptr<http_request_simple>
 
     doc.AddMember("params", std::move(node_params), a);
 
-    setup_common_and_sign(doc, a, _request, "reaction/remove");
+    setup_common_and_sign(doc, a, _request, get_method());
 
     if (!robusto_packet::params_.full_log_)
     {

@@ -124,7 +124,7 @@ int32_t get_history_batch::init_request(const std::shared_ptr<core::http_request
 
     doc.AddMember("params", std::move(node_params), a);
 
-    setup_common_and_sign(doc, a, _request, "getHistoryBatch");
+    setup_common_and_sign(doc, a, _request, get_method());
 
     if (!params_.full_log_)
     {
@@ -237,4 +237,9 @@ int32_t get_history_batch::parse_results(const rapidjson::Value& _node_results)
 priority_t get_history_batch::get_priority() const
 {
     return priority_protocol();
+}
+
+std::string_view get_history_batch::get_method() const
+{
+    return "getHistoryBatch";
 }

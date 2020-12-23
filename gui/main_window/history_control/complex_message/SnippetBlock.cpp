@@ -8,8 +8,12 @@
 #include "styles/ThemeParameters.h"
 #include "utils/PainterPath.h"
 #include "ComplexMessageItem.h"
+#include "ComplexMessageUtils.h"
 #include "../MessageStatusWidget.h"
+#include "MediaControls.h"
+#ifndef STRIP_AV_MEDIA
 #include "../../mplayer/VideoPlayer.h"
+#endif // !STRIP_AV_MEDIA
 #include "utils/InterConnector.h"
 #include "utils/stat_utils.h"
 #include "main_window/MainWindow.h"
@@ -31,15 +35,13 @@ namespace
     }
 
     // takes link and if it is in form XXX/YYY.ZZZ returns YYY.ZZZ, otherwise returns string "File"
-    QString fileNameFromLink(const QString& _link)
+    QString fileNameFromLink(QStringView _link)
     {
-        const auto lastSlashIndex = _link.lastIndexOf(ql1c('/'));
-
-        if (lastSlashIndex > 0)
+        if (const auto lastSlashIndex = _link.lastIndexOf(u'/'); lastSlashIndex > 0)
         {
-            const auto lastPart = _link.mid(lastSlashIndex + 1);
-            if (lastPart.contains(ql1c('.')) && !lastPart.startsWith(ql1c('.')) && !lastPart.endsWith(ql1c('.')))
-                return lastPart;
+            auto lastPart = _link.mid(lastSlashIndex + 1);
+            if (lastPart.contains(u'.') && !lastPart.startsWith(u'.') && !lastPart.endsWith(u'.'))
+                return lastPart.toString();
         }
 
         return QT_TRANSLATE_NOOP("snippet_block", "File");
@@ -133,6 +135,8 @@ SnippetBlock::SnippetBlock(ComplexMessageItem* _parent, const QString& _link, co
     , estimatedType_(_estimatedType)
     , seq_(-1)
 {
+    Testing::setAccessibleName(this, u"AS HistoryPage messageSnippet " % QString::number(_parent->getId()));
+
     setMouseTracking(true);
 }
 
@@ -255,12 +259,12 @@ IItemBlock::ContentType SnippetBlock::getContentType() const
     return ContentType::Link;
 }
 
-void SnippetBlock::onVisibilityChanged(const bool _visible)
+void SnippetBlock::onVisibleRectChanged(const QRect& _visibleRect)
 {
-    visible_ = _visible;
+    visible_ = _visibleRect.height() >= (mediaVisiblePlayPercent * contentRect_.height());
 
     if (content_)
-        content_->onVisibilityChanged(_visible);
+        content_->onVisibilityChanged(visible_);
 }
 
 bool SnippetBlock::hasLeadLines() const
@@ -619,10 +623,9 @@ void SnippetContent::loadFavicon()
         faviconSeq_ = Ui::GetDispatcher()->downloadImage(meta_.getFaviconUri(), QString(), false, 0, 0, false);
 }
 
-void SnippetContent::onImageLoaded(qint64 _seq, const QString& _rawUri, const QPixmap& _image, const QString& _localPath)
+void SnippetContent::onImageLoaded(qint64 _seq, const QString& _rawUri, const QPixmap& _image)
 {
     Q_UNUSED(_rawUri)
-    Q_UNUSED(_localPath)
 
     if (_seq == previewSeq_)
     {
@@ -982,8 +985,15 @@ void MediaContent::draw(QPainter& _p, const QRect& _rect)
         _p.drawPixmap(_rect, background_, bRect);
     }
 
-    if (!preview_.isNull() && !player_)
+    if (!preview_.isNull()
+#ifndef STRIP_AV_MEDIA
+        && !player_
+#endif // !STRIP_AV_MEDIA
+    )
+    {
         MediaUtils::drawMediaInRect(_p, _rect, preview_, originSizeScaled(), background_.isNull() ? MediaUtils::BackgroundMode::Auto : MediaUtils::BackgroundMode::NoBackground);
+    }
+
 }
 
 void MediaContent::onBlockSizeChanged()
@@ -992,11 +1002,13 @@ void MediaContent::onBlockSizeChanged()
 
     clipPath_ = calcMediaClipPath(snippetBlock_, contentRect());
 
+#ifndef STRIP_AV_MEDIA
     if (player_)
     {
         player_->updateSize(contentRect());
         player_->setClippingPath(clipPath_);
     }
+#endif // !STRIP_AV_MEDIA
 
     if (controls_)
         controls_->setRect(contentRect());
@@ -1022,8 +1034,10 @@ bool MediaContent::clicked()
     }
     else if (fileLoaded_ || !isPlayable())
     {
+#ifndef STRIP_AV_MEDIA
         postOpenGalleryStat(snippetBlock_->getChatAimid());
-        Utils::InterConnector::instance().openGallery(snippetBlock_->getChatAimid(), link_, snippetBlock_->getGalleryId());
+        Utils::InterConnector::instance().openGallery(Utils::GalleryData(snippetBlock_->getChatAimid(), meta_.getDownloadUri(), snippetBlock_->getGalleryId(), player_));
+#endif // !STRIP_AV_MEDIA
     }
 
     return true;
@@ -1070,8 +1084,10 @@ int MediaContent::maxWidth() const
 
 void MediaContent::onVisibilityChanged(const bool _visible)
 {
+#ifndef STRIP_AV_MEDIA
     if (player_)
         player_->updateVisibility(_visible);
+#endif // !STRIP_AV_MEDIA
 }
 
 void MediaContent::setPreview(const QPixmap& _preview)
@@ -1090,16 +1106,20 @@ void MediaContent::setPreview(const QPixmap& _preview)
 
     Q_EMIT loaded();
 
+#ifndef STRIP_AV_MEDIA
     if (player_)
         player_->setPreview(_preview);
+#endif // !STRIP_AV_MEDIA
 }
 
 void MediaContent::setFavicon(const QPixmap& _favicon)
 {
     SnippetContent::setFavicon(_favicon);
 
+#ifndef STRIP_AV_MEDIA
     if (player_)
         player_->setFavIcon(_favicon);
+#endif // !STRIP_AV_MEDIA
 }
 
 void MediaContent::onMenuCopyFile()
@@ -1116,34 +1136,40 @@ void MediaContent::onMenuCopyFile()
         {
             GenericBlock::showErrorToast();
         }
-    }, link_, QString()/*download path*/);
+    }, meta_.getDownloadUri(), QString()/*download path*/, false/*export as png*/);
 }
 
 void MediaContent::onMenuSaveFileAs()
 {
-    QUrl urlParser(link_);
+    QUrl urlParser(meta_.getDownloadUri());
 
-    const auto guard = QPointer(this);
+    QString fileName = urlParser.fileName();
+    const QString suffix = QFileInfo(fileName).suffix();
+    if (suffix.isEmpty())
+    {
+        fileName += u'.';
+        if (isGif())
+            fileName += qsl("gif");
+        else
+            fileName += meta_.getFileFormat();
+    }
 
-    Utils::saveAs(urlParser.fileName(), [this, guard](const QString& _file, const QString& _dirResult)
+    Utils::saveAs(fileName, [this, guard = QPointer(this)](const QString& _file, const QString& _dirResult, bool _exportAsPng)
     {
         if (!guard)
             return;
 
-        const auto addTrailingSlash = !_dirResult.endsWith(u'\\') && !_dirResult.endsWith(u'/');
-        const auto slash = addTrailingSlash ? QStringView(u"/") : QStringView();
-        const QString dir = _dirResult % slash % _file;
-
+        const auto destinationFile = QFileInfo(_dirResult, _file).absoluteFilePath();
         auto saver = new Utils::FileSaver(this);
-        saver->save([dir](bool _success, const QString& _savedPath)
+        saver->save([destinationFile](bool _success, const QString& _savedPath)
         {
             Q_UNUSED(_savedPath)
 
             if (_success)
-                GenericBlock::showFileSavedToast(dir);
+                GenericBlock::showFileSavedToast(destinationFile);
             else
                 GenericBlock::showErrorToast();
-        }, link_, dir);
+        }, meta_.getDownloadUri(), destinationFile, _exportAsPng);
     });
 }
 
@@ -1162,8 +1188,10 @@ void MediaContent::showControls()
     if (controls_)
         controls_->show();
 
+#ifndef STRIP_AV_MEDIA
     if (player_)
         player_->show();
+#endif // !STRIP_AV_MEDIA
 
     if (button_ && !fileLoaded_)
         button_->show();
@@ -1174,8 +1202,10 @@ void MediaContent::hideControls()
     if (controls_)
         controls_->hide();
 
+#ifndef STRIP_AV_MEDIA
     if (player_)
         player_->hide();
+#endif // !STRIP_AV_MEDIA
 
     if (button_)
         button_->hide();
@@ -1217,8 +1247,10 @@ void MediaContent::onLoaded(const QString& _path)
 {
     if (isPlayable())
     {
+#ifndef STRIP_AV_MEDIA
         if (player_)
             player_->setMedia(_path);
+#endif // !STRIP_AV_MEDIA
 
         if (button_)
             button_->hide();
@@ -1232,7 +1264,8 @@ void MediaContent::onError()
     if (button_)
         button_->stopAnimation();
 
-    loader_.reset();
+    if (auto loader = loader_.release())
+        loader->deleteLater();
 }
 
 void MediaContent::onFilePath(int64_t _seq, const QString& _path)
@@ -1286,8 +1319,11 @@ int MediaContent::minControlsWidth() const
         return 0;
 
     int controlsWidth = 0;
+#ifndef STRIP_AV_MEDIA
     if (player_)
         controlsWidth += player_->bottomLeftControlsWidth();
+#endif // !STRIP_AV_MEDIA
+
     if (controls_)
         controlsWidth += controls_->bottomLeftControlsWidth();
 
@@ -1315,6 +1351,7 @@ void MediaContent::updateButtonGeometry()
     button_->setGeometry(buttonRect.translated(-button_->getCenterBias()));
 }
 
+#ifndef STRIP_AV_MEDIA
 DialogPlayer* MediaContent::createPlayer()
 {
     std::underlying_type_t<Ui::DialogPlayer::Flags> flags = 0;
@@ -1327,12 +1364,12 @@ DialogPlayer* MediaContent::createPlayer()
     if (snippetBlock_->isInsideQuote())
         flags |= Ui::DialogPlayer::Flags::compact_mode;
 
-    auto player  = new Ui::DialogPlayer(snippetBlock_, flags, preview_);
+    auto player = new Ui::DialogPlayer(snippetBlock_, flags, preview_);
 
     connect(player, &DialogPlayer::openGallery, this, [this]()
     {
         postOpenGalleryStat(snippetBlock_->getChatAimid());
-        Utils::InterConnector::instance().openGallery(snippetBlock_->getChatAimid(), link_, snippetBlock_->getGalleryId(), player_);
+        Utils::InterConnector::instance().openGallery(Utils::GalleryData(snippetBlock_->getChatAimid(), meta_.getDownloadUri(), snippetBlock_->getGalleryId()));
     });
 
     connect(player, &DialogPlayer::mouseClicked, this, &MediaContent::clicked);
@@ -1364,6 +1401,7 @@ DialogPlayer* MediaContent::createPlayer()
 
     return player;
 }
+#endif // !STRIP_AV_MEDIA
 
 void MediaContent::createControls()
 {
@@ -1387,7 +1425,9 @@ void MediaContent::createControls()
 
 void MediaContent::initPlayableMedia()
 {
+#ifndef STRIP_AV_MEDIA
     player_ = createPlayer();
+#endif // !STRIP_AV_MEDIA
 
     button_ = new ActionButtonWidget(ActionButtonResource::ResourceSet::DownloadVideo_, snippetBlock_);
     button_->setAttribute(Qt::WA_TransparentForMouseEvents);

@@ -157,7 +157,7 @@ namespace core
             void reserve(int64_t _size)
             {
                 if (buffer_.size() < _size)
-                    buffer_.resize(_size);
+                    resize(_size);
             }
 
             void resize(int64_t _size)
@@ -176,7 +176,7 @@ namespace core
                 output_cursor_ = 0;
             }
 
-            void reset_out() noexcept
+            void reset_out() const noexcept
             {
                 output_cursor_ = 0;
             }
@@ -356,11 +356,12 @@ namespace core
         {
             return _bs.is_compressed();
         }
-
+#ifndef STRIP_ZSTD
         bool compress_zstd(const char* _data, size_t _size, std::string_view _dict, binary_stream& _compressed_bs);
         bool compress_zstd(const stream& _bs, std::string_view _dict, binary_stream& _compressed_bs);
         bool decompress_zstd(const char* _data, size_t _size, std::string_view _dict, binary_stream& _uncompressed_bs);
         bool decompress_zstd(const stream& _bs, std::string_view _dict, binary_stream& _uncompressed_bs);
+#endif // !STRIP_ZSTD
     }
 
 }

@@ -1,11 +1,15 @@
 #include "stdafx.h"
 #include "StickerPreview.h"
 
+#include "app_config.h"
 #include "core_dispatcher.h"
+#include "fonts.h"
 #include "utils/InterConnector.h"
 #include "utils/medialoader.h"
 #include "styles/ThemeParameters.h"
+#ifndef STRIP_AV_MEDIA
 #include "main_window/mplayer/VideoPlayer.h"
+#endif // !STRIP_AV_MEDIA
 
 #include "cache/stickers/stickers.h"
 #include "cache/emoji/EmojiDb.h"
@@ -49,6 +53,8 @@ namespace
     {
         return Utils::scale_value(4);
     }
+
+    constexpr auto stickerSize = core::sticker_size::xxlarge;
 }
 
 namespace Ui::Smiles
@@ -57,30 +63,23 @@ namespace Ui::Smiles
         : QWidget(_parent)
         , context_(_context)
     {
-        connect(GetDispatcher(), &core_dispatcher::onSticker, this, [this](const qint32, const qint32, const qint32, const QString& _fsId)
-        {
-            if (_fsId == stickerId_)
-            {
-                sticker_ = QPixmap();
-                update();
-            }
-        });
+        connect(&Stickers::getCache(), &Stickers::Cache::stickerUpdated, this, &StickerPreview::onStickerLoaded);
 
         setCursor(Qt::PointingHandCursor);
 
-        init(_setId, _stickerId);
+        init(_stickerId);
     }
 
     StickerPreview::~StickerPreview() = default;
 
-    void StickerPreview::showSticker(const int32_t _setId, const QString& _stickerId)
+    void StickerPreview::showSticker(const QString& _stickerId)
     {
         // showSticker can be called after synthetic mouse move event sent from QWidget::hide,
         // so we need this, to prevent player_ object resetting (in StickerPreview::init) during execution of QWidget::hide
         if (hiding_)
             return;
 
-        init(_setId, _stickerId);
+        init(_stickerId);
     }
 
     void StickerPreview::hide()
@@ -93,7 +92,7 @@ namespace Ui::Smiles
 
     void StickerPreview::updateEmoji()
     {
-        auto sticker = Stickers::getSticker(setId_, stickerId_);
+        auto sticker = Stickers::getSticker(stickerId_);
         if (!sticker)
             return;
 
@@ -130,19 +129,29 @@ namespace Ui::Smiles
 
     void StickerPreview::paintEvent(QPaintEvent* _e)
     {
-        const auto clientRect = rect();
+        QPainter p(this);
+        p.setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
+        p.fillRect(rect(), Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT_INVERSE, 0.9));
 
         if (sticker_.isNull())
             loadSticker();
 
-        QPainter p(this);
-        p.setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
-        p.fillRect(clientRect, Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT_INVERSE, 0.9));
-
+#ifndef STRIP_AV_MEDIA
         if (!player_)
+#endif // !STRIP_AV_MEDIA
             drawSticker(p);
 
         drawEmoji(p);
+
+        if (Q_UNLIKELY(Ui::GetAppConfig().IsShowMsgIdsEnabled()))
+        {
+            p.setPen(Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY));
+            p.setFont(Fonts::appFontScaled(10, Fonts::FontWeight::SemiBold));
+
+            const auto x = getAdjustedImageRect().center().x();
+            const auto y = getAdjustedImageRect().bottom() + Utils::scale_value(10);
+            Utils::drawText(p, QPointF(x, y), Qt::AlignHCenter | Qt::AlignBottom, stickerId_);
+        }
     }
 
     void StickerPreview::mouseReleaseEvent(QMouseEvent* _e)
@@ -150,9 +159,25 @@ namespace Ui::Smiles
         Q_EMIT needClose();
     }
 
-    void StickerPreview::onGifLoaded(const QString &_path)
+    void StickerPreview::resizeEvent(QResizeEvent* _e)
     {
-        player_ = std::make_unique<DialogPlayer>(this, DialogPlayer::Flags::is_gif);
+        updatePlayerSize();
+    }
+
+    void StickerPreview::onAnimatedStickerLoaded(const QString& _path)
+    {
+#ifndef STRIP_AV_MEDIA
+        if (_path.isEmpty())
+            return;
+
+        const auto sticker = Stickers::getSticker(stickerId_);
+        if (!sticker)
+            return;
+
+        const auto flag = sticker->isGif()
+            ? DialogPlayer::Flags::is_gif
+            : (DialogPlayer::Flags::lottie | DialogPlayer::Flags::lottie_instant_preview);
+        player_ = std::make_unique<DialogPlayer>(this, flag);
 
         if (!sticker_.isNull())
             player_->setPreview(sticker_);
@@ -163,36 +188,69 @@ namespace Ui::Smiles
         player_->setReplay(true);
         player_->start(true);
         player_->show();
+#endif // !STRIP_AV_MEDIA
     }
 
     void StickerPreview::onActivationChanged(bool _active)
     {
+#ifndef STRIP_AV_MEDIA
         if (player_)
             player_->updateVisibility(_active);
+#endif // !STRIP_AV_MEDIA
+
     }
 
-    void StickerPreview::init(const int32_t _setId, const QString &_stickerId)
+    void StickerPreview::onStickerLoaded(int _error, const QString& _id)
+    {
+        if (_error == 0 && stickerId_ == _id)
+        {
+            const auto& data = Stickers::getStickerData(stickerId_, stickerSize);
+            if (data.isLottie())
+            {
+                if (const auto& path = data.getLottiePath(); !path.isEmpty())
+                    onAnimatedStickerLoaded(path);
+            }
+            else if (data.isPixmap())
+            {
+                sticker_ = QPixmap();
+                update();
+            }
+        }
+    }
+
+    void StickerPreview::init(const QString &_stickerId)
     {
         if (stickerId_ == _stickerId)
             return;
-
+#ifndef STRIP_AV_MEDIA
         player_.reset();
+#endif // !STRIP_AV_MEDIA
         stickerId_ = _stickerId;
-        setId_ = _setId;
 
         sticker_ = QPixmap();
+
+        loader_.reset();
 
         updateEmoji();
 
         update();
 
-        const auto sticker = Stickers::getSticker(setId_, stickerId_);
-        if (sticker && sticker->isGif())
+        const auto sticker = Stickers::getSticker(stickerId_);
+        if (sticker && sticker->isAnimated())
         {
-            loader_ = std::make_unique<Utils::FileSharingLoader>(Stickers::getSendBaseUrl() % sticker->getFsId());
-            connect(loader_.get(), &Utils::FileSharingLoader::fileLoaded, this, &StickerPreview::onGifLoaded);
-            connect(&Utils::InterConnector::instance(), &Utils::InterConnector::activationChanged, this, &StickerPreview::onActivationChanged);
-            loader_->load();
+            if (sticker->isLottie())
+            {
+                const auto& data = sticker->getData(stickerSize);
+                if (const auto& path = data.getLottiePath(); !path.isEmpty())
+                    onAnimatedStickerLoaded(path);
+            }
+            else
+            {
+                loader_ = std::make_unique<Utils::FileSharingLoader>(Stickers::getSendBaseUrl() % stickerId_);
+                connect(loader_.get(), &Utils::FileSharingLoader::fileLoaded, this, &StickerPreview::onAnimatedStickerLoaded);
+                loader_->load();
+            }
+            connect(&Utils::InterConnector::instance(), &Utils::InterConnector::activationChanged, this, &StickerPreview::onActivationChanged, Qt::UniqueConnection);
         }
     }
 
@@ -210,16 +268,13 @@ namespace Ui::Smiles
         const auto emojiSize = getStickerPreviewEmojiHeight();
         const auto emojiMargin = getStickerPreviewEmojiRightMargin();
 
-        const auto clientRect = rect();
-        const auto imageRect = getImageRect();
-
         // count max number of emojis to draw
-        int emojiCount = (clientRect.width() - 2 * getCommonImageMargin()) / (emojiSize + emojiMargin);
+        int emojiCount = (width() - 2 * getCommonImageMargin()) / (emojiSize + emojiMargin);
         emojiCount = std::min<int>(emojiCount, emojis_.size());
 
-        int emojiXOffset = (clientRect.width() - ((Utils::unscale_bitmap(emojiSize) + emojiMargin) * emojiCount - emojiMargin)) / 2;
+        int emojiXOffset = (width() - ((Utils::unscale_bitmap(emojiSize) + emojiMargin) * emojiCount - emojiMargin)) / 2;
 
-        const int emojiYOffset = imageRect.bottom() + getCommonImageMargin();
+        const int emojiYOffset = height() - getTopImageMargin(context_) - getBottomImageMargin() / 2;
 
         for (auto i = 0; i < emojiCount; ++i)
         {
@@ -239,9 +294,8 @@ namespace Ui::Smiles
             clientRect.height() - getBottomImageMargin() - getTopImageMargin(context_));
 
         QRect imageRect(imageRectStart);
-
-        imageRect.setWidth(std::min(imageRect.width(), getStickerPreviewMaxSize()));
-        imageRect.setHeight(std::min(imageRect.height(), getStickerPreviewMaxSize() + getBottomImageMargin()));
+        const auto side = std::min(std::min(imageRect.width(), imageRect.height()), getStickerPreviewMaxSize());
+        imageRect.setSize(QSize(side, side));
         imageRect.moveCenter(imageRectStart.center());
 
         return imageRect;
@@ -259,15 +313,14 @@ namespace Ui::Smiles
 
             return QRect(x, y, stickerSize.width(), stickerSize.height());
         }
-        else
-        {
-            return imageRect;
-        }
+
+        return imageRect;
     }
 
     void StickerPreview::loadSticker()
     {
-        sticker_ = QPixmap::fromImage(Stickers::getStickerImage(setId_, stickerId_, core::sticker_size::xxlarge, true));
+        if (const auto& data = Stickers::getStickerData(stickerId_, stickerSize); data.isPixmap())
+            sticker_ = data.getPixmap();
 
         if (!sticker_.isNull())
             scaleSticker();
@@ -282,7 +335,15 @@ namespace Ui::Smiles
 
         Utils::check_pixel_ratio(sticker_);
 
-        if (player_)                                        // update player size if it is created
+        // update player size if it is created
+        updatePlayerSize();
+    }
+
+    void StickerPreview::updatePlayerSize()
+    {
+#ifndef STRIP_AV_MEDIA
+        if (player_)
             player_->updateSize(getAdjustedImageRect());
+#endif // !STRIP_AV_MEDIA
     }
 }

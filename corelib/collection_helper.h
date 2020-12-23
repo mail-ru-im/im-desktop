@@ -417,6 +417,18 @@ namespace core
     }
 
     template<>
+    inline uint32_t coll_helper::get<uint32_t>(std::string_view _name) const
+    {
+        return get_value_as_uint(_name);
+    }
+
+    template<>
+    inline uint32_t coll_helper::get<uint32_t>(std::string_view _name, const uint32_t _def) const
+    {
+        return get_value_as_uint(_name, _def);
+    }
+
+    template<>
     inline int64_t coll_helper::get<int64_t>(std::string_view _name) const
     {
         return get_value_as_int64(_name);

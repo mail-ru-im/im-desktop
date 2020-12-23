@@ -16,6 +16,7 @@
 #include "../utils/InterConnector.h"
 #include "../utils/features.h"
 #include "../styles/ThemeParameters.h"
+#include "statuses/StatusTooltip.h"
 
 #include "CommonUI.h"
 
@@ -26,6 +27,11 @@ namespace
     QSize getArrowSize()
     {
         return QSize(16, 16);
+    }
+
+    int horizontalModeAvatarLeftMargin()
+    {
+        return Utils::scale_value(12);
     }
 }
 
@@ -107,6 +113,7 @@ namespace Ui
         connect(memberArrowUp_,   &CustomButton::clicked, this, &CurrentConferenceMembers::onMembersLabelClicked);
 
         connect(conferenceMembersModel_, &Logic::ChatMembersModel::dataChanged, this, [this](){ memberLabel_->setText(getLabelCaption()); });
+        connect(conferenceContacts_, &ListViewWithTrScrollBar::mousePosChanged, this, &CurrentConferenceMembers::onMouseMoved);
     }
 
     void CurrentConferenceMembers::updateConferenceListSize()
@@ -125,6 +132,24 @@ namespace Ui
     void CurrentConferenceMembers::resizeEvent(QResizeEvent*)
     {
         Q_EMIT sizeChanged(QPrivateSignal());
+    }
+
+    void CurrentConferenceMembers::onMouseMoved(const QPoint& _pos, const QModelIndex& _index)
+    {
+        const auto avatarRect = getAvatarRect(_index);
+        const auto aimId = Logic::aimIdFromIndex(_index);
+        if (Statuses::isStatusEnabled() && avatarRect.contains(_pos))
+        {
+            StatusTooltip::instance()->objectHovered([this, aimId]()
+            {
+                auto index = conferenceContacts_->indexAt(conferenceContacts_->mapFromGlobal(QCursor::pos()));
+                if (Logic::aimIdFromIndex(index) != aimId)
+                    return QRect();
+
+                const auto avatarRect = getAvatarRect(index);
+                return QRect(conferenceContacts_->mapToGlobal(avatarRect.topLeft()), avatarRect.size());
+            }, aimId, conferenceContacts_->viewport());
+        }
     }
 
     void CurrentConferenceMembers::onMembersLabelClicked()
@@ -169,24 +194,38 @@ namespace Ui
         return res;
     }
 
+    QRect CurrentConferenceMembers::getAvatarRect(const QModelIndex& _index)
+    {
+        const auto itemRect = conferenceContacts_->visualRect(_index);
+        const auto& params = GetContactListParams();
+        const auto avatarX = conferenceContacts_->flow() == QListView::LeftToRight ? horizontalModeAvatarLeftMargin() : params.getAvatarX();
+        return QRect(itemRect.topLeft() + QPoint(avatarX, params.getAvatarY()), QSize(params.getAvatarSize(), params.getAvatarSize()));
+    }
 
     SelectionContactsForConference* SelectionContactsForConference::currentVisibleInstance_ = nullptr;
 
-    SelectionContactsForConference::SelectionContactsForConference(Logic::ChatMembersModel* _conferenceMembersModel, const QString& _labelText, QWidget* _parent,
-                                                                   ConferenceSearchModel* _usersSearchModel, bool _chatRoomCall, bool _handleKeyPressEvents)
-        : SelectContactsWidget(_conferenceMembersModel,
-                               Logic::MembersWidgetRegim::VIDEO_CONFERENCE,
-                               _labelText, QString(),
-                               _parent, _handleKeyPressEvents, _usersSearchModel)
+    SelectionContactsForConference::SelectionContactsForConference(
+        Logic::ChatMembersModel* _conferenceMembersModel,
+        const QString& _labelText,
+        QWidget* _parent,
+        bool _chatRoomCall,
+        SelectContactsWidgetOptions _options)
+        : SelectContactsWidget(
+            _conferenceMembersModel,
+            Logic::MembersWidgetRegim::VIDEO_CONFERENCE,
+            _labelText,
+            QString(),
+            _parent,
+            _options)
         , conferenceMembersModel_(_conferenceMembersModel)
         , videoConferenceMaxUsers_(-1)
         , chatRoomCall_(_chatRoomCall)
     {
-        if (_usersSearchModel)
+        if (auto model = qobject_cast<ConferenceSearchModel*>(_options.searchModel_))
         {
-            _usersSearchModel->setView(contactList_);
-            _usersSearchModel->setDialog(this);
-            _usersSearchModel->setSearchPattern(QString());
+            model->setView(contactList_);
+            model->setDialog(this);
+            model->setSearchPattern(QString());
         }
 
         auto buttonPair = mainDialog_->addButtonsPair(QT_TRANSLATE_NOOP("popup_window", "Cancel"), QT_TRANSLATE_NOOP("popup_window", "Add"), true);
@@ -247,7 +286,7 @@ namespace Ui
 
     void SelectionContactsForConference::onVoipCallDestroyed(const voip_manager::ContactEx& _contactEx)
     {
-        if (!_contactEx.incoming)
+        if (_contactEx.current_call)
             reject();
     }
 
@@ -346,7 +385,7 @@ namespace Ui
             topLeft.rx() -= Utils::scale_value(4);
             _painter->translate(topLeft);
 
-            Utils::drawAvatarWithBadge(*_painter, pos, *avatar, isOfficial, Utils::getStatusBadge(aimId, avatar->width()), isMuted, false, isOnline, true);
+            Utils::drawAvatarWithBadge(*_painter, pos, avatar, isOfficial, Utils::getStatusBadge(aimId, avatar.width()), isMuted, false, isOnline, true);
         }
     }
 

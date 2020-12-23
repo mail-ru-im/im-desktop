@@ -80,9 +80,10 @@ namespace Ui
     bool callChatNameEditor(QWidget* _parent, GroupChatOperations::ChatData &chatData, Out std::shared_ptr<GroupChatSettings> &groupChatSettings, bool _channel);
 
     void postCreateChatInfoToCore(const QString &_aimId, const GroupChatOperations::ChatData &chatData, const QString& avatarId = QString());
-    void postAddChatMembersFromCLModelToCore(const QString& _aimId);
+    qint64 postAddChatMembersFromCLModelToCore(const QString& _aimId);
+    qint64 postAddChatMembersToCore(const QString& _chatAimId, std::vector<QString> _contacts, bool _unblockConfirmed);
 
-    void deleteMemberDialog(Logic::CustomAbstractListModel* _model, const QString& _chatAimId, const QString& _memberAimId, int _regim, QWidget* _parent);
+    bool deleteMemberDialog(Logic::CustomAbstractListModel* _model, const QString& _chatAimId, const QString& _memberAimId, int _regim, QWidget* _parent);
 
     int forwardMessage(const Data::QuotesVec& quotes, bool fromMenu, const QString& _labelText = QString(), const QString& _buttonText = QString(), bool _enableAuthorSetting = true);
 

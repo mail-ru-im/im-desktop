@@ -30,6 +30,8 @@ namespace core
             void set_chat_params(chat_params _chat_params);
 
             size_t members_count() const { return chat_members_.size(); }
+
+            virtual std::string_view get_method() const override;
         };
 
     }

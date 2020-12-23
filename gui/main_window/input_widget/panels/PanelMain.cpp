@@ -195,7 +195,7 @@ namespace Ui
 
     void TextEditViewport::adjustTextEditPos()
     {
-        textEdit_->move(-textEdit_->document()->documentMargin(), topOffset());
+        textEdit_->move(-textEdit_->document()->documentMargin() * textEdit_->getMarginScaleCorrection(), topOffset());
     }
 
 
@@ -250,6 +250,9 @@ namespace Ui
         , curEditHeight_(viewportMinHeight())
         , forceSendButton_(false)
     {
+        //for sticker suggests
+        GetDispatcher()->getStickersMeta();
+
         setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
 
         auto rootLayout = Utils::emptyVLayout(this);
@@ -280,7 +283,7 @@ namespace Ui
             leftLayout->setContentsMargins(getHorSpacer(), 0, 0, 0);
 
             buttonAttach_ = new AttachFileButton(leftSide_);
-            connect(buttonAttach_, &AttachFileButton::clicked, this, &InputPanelMain::onAttachClicked);
+            connect(buttonAttach_, &AttachFileButton::clickedWithButton, this, &InputPanelMain::onAttachClicked);
 
             Testing::setAccessibleName(buttonAttach_, qsl("AS ChatInput plusButton"));
             leftLayout->addWidget(buttonAttach_);

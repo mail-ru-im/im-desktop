@@ -91,6 +91,8 @@ namespace core
             void serialize(rapidjson::Value& _node, rapidjson_allocator& _a) const;
 
             static file_sharing_meta_uptr parse_json(InOut char* _json, std::string_view _uri);
+
+            int64_t get_status_code() const { return 0; }
         };
     }
 }

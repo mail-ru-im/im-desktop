@@ -1,8 +1,6 @@
 #include "stdafx.h"
 
-
 #include <algorithm>
-
 
 #include "avatar_loader.h"
 #include "../../async_task.h"
@@ -15,6 +13,29 @@
 
 #include <boost/range/adaptor/reversed.hpp>
 
+namespace
+{
+    bool load_avatar_from_file(std::shared_ptr<core::wim::avatar_context> _context)
+    {
+        if (!core::tools::system::is_exist(_context->avatar_file_path_))
+            return false;
+
+        boost::filesystem::wpath path(_context->avatar_file_path_);
+        if (!_context->force_)
+        {
+            boost::system::error_code e;
+            _context->write_time_ = last_write_time(path, e);
+        }
+
+        if (!_context->avatar_data_.load_from_file(_context->avatar_file_path_))
+            return false;
+
+        _context->avatar_exist_ = true;
+
+        return true;
+    }
+}
+
 using namespace core;
 using namespace wim;
 
@@ -25,9 +46,9 @@ avatar_task::avatar_task(
     int64_t _task_id,
     const std::shared_ptr<avatar_context>& _context,
     const std::shared_ptr<avatar_load_handlers>& _handlers)
-    : context_(_context),
-    handlers_(_handlers),
-    task_id_(_task_id)
+    : context_(_context)
+    , handlers_(_handlers)
+    , task_id_(_task_id)
 {
 }
 
@@ -47,8 +68,6 @@ int64_t avatar_task::get_id() const
 }
 
 
-
-
 //////////////////////////////////////////////////////////////////////////
 avatar_loader::avatar_loader()
     : task_id_(0)
@@ -58,7 +77,6 @@ avatar_loader::avatar_loader()
     , server_thread_(std::make_shared<async_executer>("avl_server"))
 {
 }
-
 
 avatar_loader::~avatar_loader() = default;
 
@@ -84,27 +102,6 @@ std::wstring avatar_loader::get_avatar_path(const std::wstring& _avatars_data_pa
     return su::wconcat(_avatars_data_path, path, L'/', core::tools::from_utf8(_avatar_type), L".jpg");
 }
 
-bool load_avatar_from_file(std::shared_ptr<avatar_context> _context)
-{
-    if (!core::tools::system::is_exist(_context->avatar_file_path_))
-        return false;
-
-    boost::filesystem::wpath path(_context->avatar_file_path_);
-    if (!_context->force_)
-    {
-        boost::system::error_code e;
-        _context->write_time_ = last_write_time(path, e);
-    }
-
-    if (!_context->avatar_data_.load_from_file(_context->avatar_file_path_))
-        return false;
-
-    _context->avatar_exist_ = true;
-
-    return true;
-}
-
-
 void avatar_loader::execute_task(std::shared_ptr<avatar_task> _task, std::function<void(int32_t)> _on_complete)
 {
     time_t write_time = _task->get_context()->avatar_exist_ ? _task->get_context()->write_time_ : 0;
@@ -123,7 +120,7 @@ void avatar_loader::execute_task(std::shared_ptr<avatar_task> _task, std::functi
         _task->get_context()->avatar_type_,
         write_time);
 
-    server_thread_->run_async_task(packet)->on_result_ = [wr_this = weak_from_this(), _task, packet, _on_complete](int32_t _error) mutable
+    server_thread_->run_async_task(packet)->on_result_ = [wr_this = weak_from_this(), _task, packet, _on_complete = std::move(_on_complete)](int32_t _error) mutable
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -167,15 +164,8 @@ void avatar_loader::execute_task(std::shared_ptr<avatar_task> _task, std::functi
         }
         else
         {
-            if (_task->get_context()->avatar_exist_)
-            {
-                long http_error = packet->get_http_code();
-                if (http_error == 304) {}
-            }
-            else
-            {
+            if (!_task->get_context()->avatar_exist_)
                 _task->get_handlers()->failed_(_task->get_context(), _error);
-            }
 
             _on_complete(_error);
 
@@ -185,9 +175,7 @@ void avatar_loader::execute_task(std::shared_ptr<avatar_task> _task, std::functi
                 config::hosts::switch_to_dns_mode(packet->get_url(), _error);
         }
     };
-
 }
-
 
 void avatar_loader::run_tasks_loop()
 {
@@ -208,11 +196,10 @@ void avatar_loader::run_tasks_loop()
         if (!ptr_this)
             return;
 
-        if (_error == wim_protocol_internal_error::wpie_network_error)
+        if (_error == wim_protocol_internal_error::wpie_network_error || _error == wim_protocol_internal_error::wpie_couldnt_resolve_host)
         {
             ptr_this->network_error_ = true;
             ptr_this->working_ = false;
-
             return;
         }
 
@@ -220,7 +207,6 @@ void avatar_loader::run_tasks_loop()
         ptr_this->run_tasks_loop();
     });
 }
-
 
 void avatar_loader::remove_task(std::shared_ptr<avatar_task> _task)
 {
@@ -238,9 +224,7 @@ void avatar_loader::add_task(std::shared_ptr<avatar_task> _task)
 std::shared_ptr<avatar_task> avatar_loader::get_next_task()
 {
     if (requests_queue_.empty())
-    {
         return std::shared_ptr<avatar_task>();
-    }
 
     return requests_queue_.front();
 }
@@ -252,9 +236,7 @@ void avatar_loader::load_avatar_from_server(
     add_task(std::make_shared<avatar_task>(++task_id_, _context, _handlers));
 
     if (!working_ && !network_error_)
-    {
         run_tasks_loop();
-    }
 
     return;
 }
@@ -262,18 +244,14 @@ void avatar_loader::load_avatar_from_server(
 std::shared_ptr<avatar_load_handlers> avatar_loader::get_contact_avatar_async(const wim_packet_params& _params, std::shared_ptr<avatar_context> _context)
 {
     if (!wim_params_)
-    {
         wim_params_ = std::make_shared<wim_packet_params>(_params);
-    }
     else
-    {
         *wim_params_ = _params;
-    }
-
-    auto handlers = std::make_shared<avatar_load_handlers>();
 
     _context->avatar_type_ = get_avatar_type_by_size(_context->avatar_size_);
     _context->avatar_file_path_ = get_avatar_path(_context->avatars_data_path_, _context->contact_, _context->avatar_type_);
+
+    auto handlers = std::make_shared<avatar_load_handlers>();
 
     local_thread_->run_async_function([_context, handlers]()->int32_t
     {
@@ -286,9 +264,7 @@ std::shared_ptr<avatar_load_handlers> avatar_loader::get_contact_avatar_async(co
             return;
 
         if (_error == 0)
-        {
             handlers->completed_(_context);
-        }
 
         ptr_this->load_avatar_from_server(_context, handlers);
     };
@@ -314,25 +290,19 @@ std::shared_ptr<core::async_task_handlers> avatar_loader::remove_contact_avatars
 
 void avatar_loader::resume(const wim_packet_params& _params)
 {
-    if (!wim_params_)
-    {
-        wim_params_ = std::make_shared<wim_packet_params>(_params);
-    }
-    else
-    {
-        *wim_params_ = _params;
-    }
-
     if (!network_error_)
         return;
 
     network_error_ = false;
 
+    if (!wim_params_)
+        wim_params_ = std::make_shared<wim_packet_params>(_params);
+    else
+        *wim_params_ = _params;
+
     assert(!working_);
     if (!working_)
-    {
         run_tasks_loop();
-    }
 }
 
 void avatar_loader::show_contact_avatar(const std::string& _contact, const int32_t _avatar_size)

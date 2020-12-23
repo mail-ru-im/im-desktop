@@ -9,7 +9,9 @@
 #include "controls/TooltipWidget.h"
 #include "fonts.h"
 
+#ifndef STRIP_AV_MEDIA
 #include "media/ptt/AudioUtils.h"
+#endif // !STRIP_AV_MEDIA
 
 #include "../InputWidgetUtils.h"
 #include "../CircleHover.h"
@@ -18,26 +20,6 @@
 
 namespace
 {
-    QString makeTextDuration(std::chrono::milliseconds _duration)
-    {
-        const auto h = std::chrono::duration_cast<std::chrono::hours>(_duration);
-        const auto m = std::chrono::duration_cast<std::chrono::minutes>(_duration) - h;
-        const auto s = std::chrono::duration_cast<std::chrono::seconds>(_duration) - h - m;
-        const auto ms = _duration - h - m - s;
-
-        QString res;
-        QTextStream stream(&res);
-        stream.setPadChar(ql1c('0'));
-        stream
-            << qSetFieldWidth(2) << m.count()
-            << qSetFieldWidth(0) << ql1c(':')
-            << qSetFieldWidth(2) << s.count()
-            << qSetFieldWidth(0) << ql1c(',')
-            << qSetFieldWidth(2) << (ms / 10).count();
-
-        return res;
-    }
-
     constexpr std::chrono::milliseconds tooltipShowDelay() noexcept { return std::chrono::milliseconds(400); }
 }
 
@@ -90,7 +72,7 @@ namespace Ui
         histograms_ = new HistogramContainer(this);
         rootLayout->addWidget(histograms_);
 
-        durationText_ = TextRendering::MakeTextUnit(makeTextDuration(std::chrono::seconds::zero()));
+        durationText_ = TextRendering::MakeTextUnit(Utils::getFormattedTime(std::chrono::seconds::zero()));
         durationText_->init(Fonts::appFontScaled(16, Fonts::FontWeight::Normal), Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE));
         durationText_->evaluateDesiredSize();
         rootLayout->setContentsMargins(buttonHorMargin, 0, durationText_->desiredWidth() + Utils::scale_value(16) + getHorSpacer(), 0);
@@ -114,7 +96,12 @@ namespace Ui
 
     void HistogramPtt::start()
     {
+#ifndef STRIP_AV_MEDIA
         const auto volume = ptt::getVolumeDefaultDevice();
+#else
+        constexpr auto volume = 1.0;
+#endif // !STRIP_AV_MEDIA
+
         histograms_->recorderHistogram()->setVolume(volume);
         histograms_->playerHistogram()->setVolume(volume);
         histograms_->playerHistogram()->hide();
@@ -151,7 +138,7 @@ namespace Ui
         if (duration_ != _duration)
         {
             duration_ = _duration;
-            durationText_->setText(makeTextDuration(_duration));
+            durationText_->setText(Utils::getFormattedTime(_duration));
             durationText_->evaluateDesiredSize();
             update();
         }
@@ -332,7 +319,7 @@ namespace Ui
             {
                 if (const auto sample = histograms_->playerHistogram()->sampleUnderCursor(); sample)
                 {
-                    if (const auto durationStr = makeTextDuration(durationCalc_((*sample).idx, (*sample).coeff)); Tooltip::text() != durationStr)
+                    if (const auto durationStr = Utils::getFormattedTime(durationCalc_((*sample).idx, (*sample).coeff)); Tooltip::text() != durationStr)
                     {
                         const auto pos = mapFromGlobal(QCursor::pos());
                         auto r = rect();

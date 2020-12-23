@@ -1,9 +1,11 @@
 #include "stdafx.h"
 
 #include "../common.shared/config/config.h"
+#ifndef STRIP_CRASH_HANDLER
 #ifdef _WIN32
 #include "../common.shared/crash_report/crash_reporter.h"
 #endif //_WIN32
+#endif // !STRIP_CRASH_HANDLER
 
 #include "../corelib/collection_helper.h"
 #include "../gui/core_dispatcher.h"
@@ -30,21 +32,24 @@ AppConfig::AppConfig(const core::coll_helper &collection)
     , IsServerSearchEnabled_(collection.get<bool>("dev.server_search", true))
     , IsShowHiddenThemes_(collection.get<bool>("show_hidden_themes", false))
     , IsSysCrashHandleEnabled_(collection.get<bool>("sys_crash_handler_enabled", false))
-    , WatchGuiMemoryEnabled_(false)
+    , WatchGuiMemoryEnabled_(collection.get<bool>("dev.watch_gui_memory", false))
     , ShowMsgOptionHasChanged_(false)
     , GDPR_UserHasAgreed_(collection.get<bool>("gdpr.user_has_agreed") || config::get().is_on(config::features::auto_accepted_gdpr))
     , GDPR_AgreementReportedToServer_(collection.get<int32_t>("gdpr.agreement_reported_to_server") || config::get().is_on(config::features::auto_accepted_gdpr))
     , GDPR_UserHasLoggedInEver_(collection.get<bool>("gdpr.user_has_logged_in_ever") || config::get().is_on(config::features::auto_accepted_gdpr))
     , CacheHistoryContolPagesFor_(collection.get<int>("dev.cache_history_pages_secs"))
+    , AppUpdateIntervalSecs_(collection.get<uint32_t>("dev.app_update_interval_secs"))
     , deviceId_(collection.get<std::string>("dev_id"))
     , urlMacUpdateAlpha_(collection.get<std::string>("urls.url_update_mac_alpha"))
     , urlMacUpdateBeta_(collection.get<std::string>("urls.url_update_mac_beta"))
     , urlMacUpdateRelease_(collection.get<std::string>("urls.url_update_mac_release"))
     , urlAttachPhone_(collection.get<std::string>("urls.url_attach_phone"))
 {
+#ifndef STRIP_CRASH_HANDLER
 #ifdef _WIN32
     crash_system::reporter::instance().set_sys_handler_enabled(IsSysCrashHandleEnabled_);
 #endif //_WIN32
+#endif // !STRIP_CRASH_HANDLER
 }
 
 bool AppConfig::IsContextMenuFeaturesUnlocked() const noexcept
@@ -171,6 +176,11 @@ int AppConfig::CacheHistoryControlPagesFor() const noexcept
     return CacheHistoryContolPagesFor_;
 }
 
+uint32_t AppConfig::AppUpdateIntervalSecs() const noexcept
+{
+    return AppUpdateIntervalSecs_;
+}
+
 void AppConfig::SetFullLogEnabled(bool enabled) noexcept
 {
     IsFullLogEnabled_ = enabled;
@@ -258,9 +268,7 @@ void SetAppConfig(AppConfigUptr&& appConfig)
     if (AppConfig_)
     {
         if (AppConfig_->IsShowMsgIdsEnabled() != appConfig->IsShowMsgIdsEnabled())
-        {
             appConfig->SetShowMsgOptionHasChanged(true);
-        }
     }
 
     AppConfig_ = std::move(appConfig);
@@ -277,6 +285,7 @@ void ModifyAppConfig(AppConfig _appConfig, message_processed_callback _callback,
     collection.set_value_as_bool("gdpr.user_has_logged_in_ever", _appConfig.GDPR_UserHasLoggedInEver());
     collection.set_value_as_int("dev.cache_history_pages_secs", _appConfig.CacheHistoryControlPagesFor());
     collection.set_value_as_bool("dev.server_search", _appConfig.IsServerSearchEnabled());
+    collection.set_value_as_bool("dev.watch_gui_memory", _appConfig.WatchGuiMemoryEnabled());
     collection.set_value_as_string("dev_id", _appConfig.getDevId());
 
     if (!postToCore)

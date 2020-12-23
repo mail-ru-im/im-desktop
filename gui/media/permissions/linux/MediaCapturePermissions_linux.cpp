@@ -19,4 +19,12 @@ namespace media::permissions
     void openPermissionSettings(DeviceType)
     {
     }
+
+    void PermissonsChangeNotifier::start()
+    {
+    }
+
+    void PermissonsChangeNotifier::stop()
+    {
+    }
 }

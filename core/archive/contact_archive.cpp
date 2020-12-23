@@ -14,7 +14,9 @@
 
 #include "../common.shared/string_utils.h"
 
+#ifndef STRIP_RE2
 #include "re2/re2.h"
+#endif
 
 using namespace core;
 using namespace archive;
@@ -498,6 +500,7 @@ std::optional<std::string> contact_archive::get_locale() const
     error_vector errors;
     get_messages_buddies_from_headers(headers, messages, errors);
 
+#ifndef STRIP_RE2
     const static RE2 reg(russian_letters());
     auto contains_ru = [](const auto& m)
     {
@@ -506,6 +509,7 @@ std::optional<std::string> contact_archive::get_locale() const
 
     if (std::any_of(messages.cbegin(), messages.cend(), contains_ru))
         return "ru_RU";
+#endif // !STRIP_RE2
 
     return {};
 }

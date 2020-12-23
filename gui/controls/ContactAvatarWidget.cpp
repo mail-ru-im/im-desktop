@@ -18,14 +18,18 @@
 #include "../main_window/contact_list/ContactListModel.h"
 #include "../utils/InterConnector.h"
 #include "../utils/utils.h"
+#include "../utils/exif.h"
 #include "../styles/ThemeParameters.h"
 #include "main_window/contact_list/FavoritesUtils.h"
 #include "TooltipWidget.h"
+#include "statuses/StatusTooltip.h"
 
 namespace
 {
     const auto MIN_AVATAR_SIZE = 200;
     const auto AVATAR_CROP_SIZE = 1024;
+
+    constexpr auto addStatusTooltipDelay() noexcept { return std::chrono::milliseconds(250); }
 
     QByteArray processImage(const QPixmap &_avatar)
     {
@@ -99,7 +103,6 @@ namespace Ui
         , smallBadge_(false)
         , displayNameChanged_(false)
         , offset_(0)
-        , tooltipTimer_(nullptr)
     {
         setFixedSize(Utils::avatarWithBadgeSize(_size));
 
@@ -124,12 +127,12 @@ namespace Ui
 
         connect(this, &ContactAvatarWidget::summonSelectFileForAvatar, this, &ContactAvatarWidget::selectFileForAvatar, Qt::QueuedConnection);
 
-        tooltipTimer_ = new QTimer(this);
-        tooltipTimer_->setSingleShot(true);
-        tooltipTimer_->setInterval(Statuses::tooltipShowDelay().count());
-        connect(tooltipTimer_, &QTimer::timeout, this, &ContactAvatarWidget::showTooltip);
-
         setMouseTracking(true);
+
+        addStatusTooltipTimer_ = new QTimer(this);
+        addStatusTooltipTimer_->setInterval(addStatusTooltipDelay());
+        addStatusTooltipTimer_->setSingleShot(true);
+        connect(addStatusTooltipTimer_, &QTimer::timeout, this, &ContactAvatarWidget::onAddStatusTooltipTimer);
     }
 
     ContactAvatarWidget::~ContactAvatarWidget()
@@ -152,12 +155,11 @@ namespace Ui
             return QWidget::paintEvent(_e);
         }
 
-        const auto &scAvatar = Logic::getAvatarStorageProxy(avatarProxyFlags_).GetRounded(aimid_, displayName_, isVisibleOutline_ ? Utils::scale_bitmap(size_ - Utils::scale_value(4)) : Utils::scale_bitmap(size_), defaultAvatar_, displayNameChanged_, false);
+        auto avatar = Logic::getAvatarStorageProxy(avatarProxyFlags_).GetRounded(aimid_, displayName_, isVisibleOutline_ ? Utils::scale_bitmap(size_ - Utils::scale_value(4)) : Utils::scale_bitmap(size_), defaultAvatar_, displayNameChanged_, false);
 
-        if (scAvatar->isNull())
+        if (avatar.isNull())
             return;
 
-        QPixmap avatar = *scAvatar;
         const auto camSize = mode_ == Mode::Introduce ? getCamIconSizeBig() : getCamIconSize();
         const auto camPath = mode_ == Mode::Introduce ? qsl(":/cam_icon_into") : qsl(":/cam_icon");
         auto getIcon = [&camPath, &camSize](const Styling::StyleVariable _color)
@@ -281,8 +283,9 @@ namespace Ui
         return QWidget::paintEvent(_e);
     }
 
-    void ContactAvatarWidget::mousePressEvent(QMouseEvent *)
+    void ContactAvatarWidget::mousePressEvent(QMouseEvent* _event)
     {
+        _event->ignore();
         pressed_ = true;
         update();
     }
@@ -304,22 +307,29 @@ namespace Ui
 
     void ContactAvatarWidget::mouseReleaseEvent(QMouseEvent* _event)
     {
+        addStatusTooltipTimer_->stop();
+        Tooltip::hide();
         pressed_ = false;
 
-        if (_event->button() == Qt::LeftButton)
-        {
-            if (Statuses::isStatusEnabled() && (!defaultAvatar_ || mode_ == Mode::StatusPicker || mode_ == Mode::ChangeStatus)
-            && badgeRect_.isValid() && badgeRect_.contains(_event->pos()))
-                Q_EMIT badgeClicked();
-            else
-                Q_EMIT leftClicked();
+        _event->ignore();
 
-            _event->accept();
-        }
-        else if (_event->button() == Qt::RightButton)
+        if (!ignoreClicks_)
         {
-            Q_EMIT rightClicked();
-            _event->accept();
+            if (_event->button() == Qt::LeftButton)
+            {
+                if (Statuses::isStatusEnabled() && (!defaultAvatar_ || mode_ == Mode::StatusPicker || mode_ == Mode::ChangeStatus)
+                        && badgeRect_.isValid() && badgeRect_.contains(_event->pos()))
+                    Q_EMIT badgeClicked();
+                else
+                    Q_EMIT leftClicked();
+
+                _event->accept();
+            }
+            else if (_event->button() == Qt::RightButton)
+            {
+                Q_EMIT rightClicked();
+                _event->accept();
+            }
         }
 
         update();
@@ -330,6 +340,29 @@ namespace Ui
         QWidget::mouseMoveEvent(_event);
         badgeHovered_ = badgeRectUnderCursor();
         hovered_ = !badgeHovered_;
+        const auto muted = Logic::getContactListModel()->isMuted(aimid_);
+
+        if (Statuses::isStatusEnabled())
+        {
+            if (mode_ == Mode::ChangeStatus && Logic::GetStatusContainer()->getStatus(aimid_).isEmpty())
+            {
+                addStatusTooltipTimer_->start();
+            }
+            else if (statusTooltipEnabled_ && !muted)
+            {
+                addStatusTooltipTimer_->stop();
+                Tooltip::hide();
+
+                const auto rect = tooltipRect();
+                StatusTooltip::instance()->objectHovered([this, rect]()
+                {
+                    if (!hovered_ && !badgeHovered_ || pressed_)
+                        return QRect();
+                    return QRect(mapToGlobal(rect.topLeft()), rect.size());
+                }, aimid_, this, nullptr, cursor().shape());
+            }
+        }
+
         update();
     }
 
@@ -341,8 +374,6 @@ namespace Ui
         if (hovered_)
             Q_EMIT mouseEntered();
 
-        if (tooltipTimer_)
-            tooltipTimer_->start();
         update();
     }
 
@@ -351,8 +382,6 @@ namespace Ui
         hovered_ = false;
         badgeHovered_ = false;
         Q_EMIT mouseLeft();
-        if (tooltipTimer_)
-            tooltipTimer_->stop();
         update();
     }
 
@@ -363,10 +392,9 @@ namespace Ui
 
     void ContactAvatarWidget::dragEnterEvent(QDragEnterEvent* _e)
     {
-        auto urls = _e->mimeData()->urls();
-        if (urls.size() == 1)
+        if (const auto urls = _e->mimeData()->urls(); urls.size() == 1)
         {
-            const auto url = urls.constFirst().toString();
+            const auto url = urls.first().toString();
             if (url.endsWith(u".jpg") || url.endsWith(u".jpeg") || url.endsWith(u".png") || url.endsWith(u".bmp"))
             {
                 _e->acceptProposedAction();
@@ -378,8 +406,8 @@ namespace Ui
 
     void ContactAvatarWidget::dropEvent(QDropEvent* _e)
     {
-        if (!_e->mimeData()->urls().empty())
-            selectFile(_e->mimeData()->urls().constFirst().toLocalFile(), true);
+        if (const auto urls = _e->mimeData()->urls(); !urls.isEmpty())
+            selectFile(urls.first().toLocalFile(), true);
     }
 
     void ContactAvatarWidget::showEvent(QShowEvent*)
@@ -532,6 +560,16 @@ namespace Ui
         return infoForSetAvatar_.croppedImage;
     }
 
+    void ContactAvatarWidget::setIgnoreClicks(bool _ignore)
+    {
+        ignoreClicks_ = _ignore;
+    }
+
+    void ContactAvatarWidget::setStatusTooltipEnabled(bool _enabled)
+    {
+        statusTooltipEnabled_ = _enabled;
+    }
+
     void ContactAvatarWidget::postSetAvatarToCore(const QPixmap& _avatar)
     {
         const auto byteArray = processImage(_avatar);
@@ -585,7 +623,7 @@ namespace Ui
                         return;
 
                     QPixmap preview;
-                    Utils::loadPixmap(file.readAll(), Out preview);
+                    Utils::loadPixmap(file.readAll(), Out preview, Utils::Exif::getExifOrientation(filePath));
 
                     if (preview.isNull())
                         return;
@@ -816,6 +854,16 @@ namespace Ui
         }
     }
 
+    void ContactAvatarWidget::onAddStatusTooltipTimer()
+    {
+        const auto rect = tooltipRect();
+        if (rect.contains(mapFromGlobal(QCursor::pos())))
+        {
+            StatusTooltip::instance()->hide();
+            Tooltip::show(QT_TRANSLATE_NOOP("status", "Add status"), QRect(mapToGlobal(rect.topLeft()), rect.size()), {0, 0}, Tooltip::ArrowDirection::Down);
+        }
+    }
+
     void ContactAvatarWidget::avatarEnter()
     {
         SetVisibleShadow(true);
@@ -833,20 +881,14 @@ namespace Ui
         return badgeRect_.isValid() && badgeRect_.contains(mapFromGlobal(QCursor::pos()));
     }
 
-    void ContactAvatarWidget::showTooltip()
-    {
-        if (mode_ != Mode::Common && mode_ != Mode::ChangeStatus)
-            return;
-
-        auto r = rect();
-        const auto dX = (width() - size_) / 2;
-        const auto dY = (height() - size_) / 2;
-        Tooltip::drawStatusTooltip(aimid_, QRect(mapToGlobal(r.topLeft()), r.size()).translated(-dX, dY));
-    }
-
     void ContactAvatarWidget::openStatusPicker() const
     {
         if (MyInfo()->aimId() == aimid_)
             Q_EMIT Utils::InterConnector::instance().openStatusPicker();
+    }
+
+    QRect ContactAvatarWidget::tooltipRect() const
+    {
+        return rect().adjusted(-(width() - size_) / 2, -(height() - size_) / 2, 0, 0);
     }
 }

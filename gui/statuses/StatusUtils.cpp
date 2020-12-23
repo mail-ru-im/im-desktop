@@ -3,32 +3,33 @@
 #include "../utils/features.h"
 #include "../common.shared/config/config.h"
 #include "../gui_settings.h"
-#include "../main_window/contact_list/StatusListModel.h"
 #include "../utils/InterConnector.h"
 
 namespace Statuses
 {
     QString getTimeString(std::chrono::seconds _time, TimeMode _mode)
     {
-        if (_time.count() == 0 && _mode != TimeMode::AlwaysOn)
+        if (_time.count() == 0 && _mode != TimeMode::AlwaysOn && _mode != TimeMode::Passed)
             return QString();
 
         if ((_time.count() == 0 || _time >= std::chrono::hours(24 * 7)) && _mode == TimeMode::AlwaysOn)
             return (_time.count() == 0) ? QT_TRANSLATE_NOOP("status", "Show always") : QT_TRANSLATE_NOOP("status", "Week");
 
         QString timeString;
-
-        if (_time.count() > 0 && _time < std::chrono::minutes(1))
-            timeString += getSecondsString(_time);
-        else if (_time < std::chrono::hours(1))
-            timeString += getMinutesString(std::chrono::round<std::chrono::minutes>(_time));
-        else if (_time < std::chrono::hours(24))
-            timeString += getHoursString(std::chrono::round<std::chrono::hours>(_time));
-        else if (_time < std::chrono::hours(24 * 7))
-            timeString += getDaysString(std::chrono::round<std::chrono::hours>(_time));
-        else if (_time < 10 * std::chrono::hours(24 * 7))
-            timeString += getWeeksString(std::chrono::round<std::chrono::hours>(_time));
-        else
+        if (_time.count() >= 0)
+        {
+            if (_time < std::chrono::minutes(1))
+                timeString += getSecondsString(_time);
+            else if (_time < std::chrono::hours(1))
+                timeString += getMinutesString(std::chrono::round<std::chrono::minutes>(_time));
+            else if (_time < std::chrono::hours(24))
+                timeString += getHoursString(std::chrono::round<std::chrono::hours>(_time));
+            else if (_time < std::chrono::hours(24 * 7))
+                timeString += getDaysString(std::chrono::round<std::chrono::hours>(_time));
+            else if (_time < 10 * std::chrono::hours(24 * 7))
+                timeString += getWeeksString(std::chrono::round<std::chrono::hours>(_time));
+        }
+        if (timeString.isEmpty())
             timeString += QT_TRANSLATE_NOOP("status", "undefined time");
 
         if (_mode == TimeMode::Left)

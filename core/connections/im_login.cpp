@@ -1,6 +1,10 @@
 #include "stdafx.h"
 #include "im_login.h"
 
+#include "core.h"
+#include "../common.shared/string_utils.h"
+#include "tools/system.h"
+
 namespace core
 {
     im_login_id::im_login_id(const std::string& _login, int32_t _id)
@@ -42,11 +46,22 @@ namespace core
     {
         tools::binary_stream bs_file;
         if (!bs_file.load_from_file(file_name_))
+        {
+            g_core->write_string_to_network_log(su::concat(
+                "failed to load ",
+                tools::from_utf16(tools::system::get_file_name(file_name_)), "\r\n"));
             return false;
+        }
 
         tools::tlvpack pack;
-        if (!pack.unserialize(bs_file))
+        const auto was_unserialized = pack.unserialize(bs_file);
+        if (!was_unserialized)
+        {
+            g_core->write_string_to_network_log(su::concat(
+                "failed to unserialize ",
+                tools::from_utf16(tools::system::get_file_name(file_name_)), "\r\n"));
             return false;
+        }
 
         auto on_fail = [this]()
         {
@@ -85,16 +100,25 @@ namespace core
 
         int32_t counter = 0;
 
+        std::string tmp_str;
         for (const auto& login : logins_)
         {
+            const auto id = login.get_id();
+            const auto& lgn = login.get_login();
+            tmp_str += std::to_string(static_cast<int>(id));
+            tmp_str += '-';
+            tmp_str += lgn;
+            tmp_str += "; ";
+
             tools::tlvpack tlv_login;
-            tlv_login.push_child(tools::tlv(login_params::lp_id, login.get_id()));
-            tlv_login.push_child(tools::tlv(login_params::lp_login, login.get_login()));
+            tlv_login.push_child(tools::tlv(login_params::lp_id, id));
+            tlv_login.push_child(tools::tlv(login_params::lp_login, lgn));
 
             tools::binary_stream bs_login;
             tlv_login.serialize(bs_login);
             pack.push_child(tools::tlv(++counter, bs_login));
         }
+        g_core->write_string_to_network_log(su::concat("saved ims: ", tmp_str, "\r\n"));
 
         tools::binary_stream bs;
         pack.serialize(bs);

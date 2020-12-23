@@ -43,7 +43,7 @@ int32_t add_buddy::init_request(const std::shared_ptr<core::http_request_simple>
     ss_url << "&preAuthorized=1";
 
     _request->set_url(ss_url.str());
-    _request->set_normalized_url("addBuddy");
+    _request->set_normalized_url(get_method());
     _request->set_keep_alive();
 
     if (!params_.full_log_)
@@ -54,6 +54,11 @@ int32_t add_buddy::init_request(const std::shared_ptr<core::http_request_simple>
     }
 
     return 0;
+}
+
+std::string_view add_buddy::get_method() const
+{
+    return "addBuddy";
 }
 
 int32_t add_buddy::parse_response_data(const rapidjson::Value& /*_data*/)

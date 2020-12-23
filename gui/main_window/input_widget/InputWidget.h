@@ -90,6 +90,7 @@ namespace Ui
         } edit_;
 
         bool canBeEmpty_ = false;
+        bool sendAsFile_ = false;
 
         InputView view_ = InputView::Default;
         std::vector<InputView> viewHistory_;
@@ -112,6 +113,7 @@ namespace Ui
             viewHistory_.clear();
             mentionSignIndex_ = -1;
             canBeEmpty_ = false;
+            sendAsFile_ = false;
         }
 
         bool isDisabled() const noexcept
@@ -123,19 +125,6 @@ namespace Ui
         {
             return !quotes_.isEmpty();
         }
-    };
-
-    struct InputText
-    {
-        InputText() = default;
-
-        InputText(const QString& _text, const int _pos)
-            : text_(_text)
-            , cursorPos_(_pos)
-        {}
-
-        QString text_;
-        int cursorPos_ = 0;
     };
 
     class InputWidget : public QWidget
@@ -345,6 +334,10 @@ namespace Ui
         void requestStickerSuggests();
 
         void pasteFromClipboard();
+        void updateInputData();
+        void pasteClipboardUrl(const QUrl& _url, bool _hadImage, const QMimeData* _mimeData);
+        void pasteClipboardImage(const QImage& _image);
+        void pasteClipboardBase64Image(const QString& _text);
 
         InputWidgetState& currentState();
         const InputWidgetState& currentState() const;
@@ -457,7 +450,9 @@ namespace Ui
         InputPanelMain* panelMain_;
         InputPanelDisabled* panelDisabled_;
         InputPanelReadonly* panelReadonly_;
+#ifndef STRIP_AV_MEDIA
         InputPanelPtt* panelPtt_;
+#endif // !STRIP_AV_MEDIA
         InputPanelMultiselect* panelMultiselect_;
 
         PttLock* pttLock_;
@@ -468,7 +463,6 @@ namespace Ui
         QPixmap bg_;
 
         std::map<QString, InputWidgetState> states_;
-        std::map<QString, InputText> inputTexts_;
 
         QPoint suggestPos_;
         QTimer* suggestTimer_;

@@ -5,6 +5,9 @@
 #include "../../../../main_window/MainWindow.h"
 #include "../../../../utils/InterConnector.h"
 #include "../../../../utils/utils.h"
+#include "../../../../utils/features.h"
+#include "../../../../core_dispatcher.h"
+#include "../../../../types/message.h"
 #include "../../RecentMessagesAlert.h"
 #include "main_window/LocalPIN.h"
 
@@ -114,6 +117,7 @@ namespace Ui
         displayTimer_->setSingleShot(true);
         displayTimer_->setInterval(displayTimeout.count());
         connect(displayTimer_, &QTimer::timeout, this, &NotificationCenterManager::displayTimer);
+        connect(GetDispatcher(), &core_dispatcher::messagesPatched, this, &NotificationCenterManager::deleteMessage);
     }
 
     NotificationCenterManager::~NotificationCenterManager()
@@ -130,6 +134,8 @@ namespace Ui
             [toDisplay_ release];
             toDisplay_ = nil;
         }
+
+        lastDeletedNotifications_.clear();
     }
 
     void NotificationCenterManager::HideNotifications(const QString& aimId)
@@ -156,9 +162,6 @@ namespace Ui
 
     void updateNotificationAvatar(NSUserNotification * notification, bool & isDefault)
     {
-        if (QSysInfo().macVersion() <= QSysInfo::MV_10_8)
-            return;
-
         QString aimId = QString::fromCFString((__bridge CFStringRef)notification.userInfo[@"aimId"]);
         QString displayName = QString::fromCFString((__bridge CFStringRef)notification.userInfo[@"displayName"]);
 
@@ -179,7 +182,7 @@ namespace Ui
         {
             QPainter p(&avatar);
             p.setRenderHints(QPainter::SmoothPixmapTransform | QPainter::Antialiasing | QPainter::TextAntialiasing);
-            auto a = *Logic::GetAvatarStorage()->GetRounded(aimId, displayName, Utils::scale_bitmap(avaHeight), isDefault, false, false);
+            auto a = Logic::GetAvatarStorage()->GetRounded(aimId, displayName, Utils::scale_bitmap(avaHeight), isDefault, false, false);
             if (a.isNull())
                 return;
             Utils::check_pixel_ratio(a);
@@ -212,6 +215,17 @@ namespace Ui
         const QString& displayName,
         const QString& messageId)
     {
+        if (Features::removeDeletedFromNotifications())
+        {
+            // Extra dlgState for last mention arrives after deletion signal
+            // We don't show notification and clear IDs from previous deletion
+            if (lastDeletedNotifications_.find(messageId.toLongLong()) != lastDeletedNotifications_.end())
+            {
+                lastDeletedNotifications_.clear();
+                return;
+            }
+        }
+
         NSString * aimId_ = (NSString *)CFBridgingRelease(aimId.toCFString());
         NSString * displayName_ = (NSString *)CFBridgingRelease(displayName.toCFString());
         NSString * mailId_ = (NSString *)CFBridgingRelease(mailId.toCFString());
@@ -249,19 +263,23 @@ namespace Ui
         [[NSUserNotificationCenter defaultUserNotificationCenter] deliverNotification:notification];
     }
 
-    void NotificationCenterManager::HideQueuedNotifications(const QString& _aimId)
+    void NotificationCenterManager::HideQueuedNotifications(const QString& _aimId, qint64 _msgId)
     {
         NSMutableIndexSet* indices = [[NSMutableIndexSet alloc] init];
         for (int i = 0; i < [toDisplay_ count]; ++i)
         {
             NSUserNotification* notif  = [toDisplay_ objectAtIndex: i];
             NSString * aimId_ = notif.userInfo[@"aimId"];
+            NSString * msgId_ = notif.userInfo[@"messageId"];
             QString str = QString::fromCFString((__bridge CFStringRef) aimId_);
+            qint64 strId = [msgId_ longLongValue];
 
-            if (str == _aimId)
-            {
+            auto msgIdChecked = _msgId == -1;
+            if (!msgIdChecked)
+                msgIdChecked = strId == _msgId;
+
+            if (msgIdChecked && str == _aimId)
                 [indices addIndex: i];
-            }
         }
 
         [toDisplay_ removeObjectsAtIndexes: indices];
@@ -413,5 +431,42 @@ namespace Ui
     void NotificationCenterManager::animateDockIcon()
     {
         [NSApp requestUserAttention:NSInformationalRequest];
+    }
+
+    void NotificationCenterManager::HideNotifications(const QString &_aimId, qint64 _messageId)
+    {
+        if (_aimId.isEmpty())
+            return;
+
+        NSUserNotificationCenter* center = [NSUserNotificationCenter defaultUserNotificationCenter];
+        NSArray * notifications = [center deliveredNotifications];
+
+        for (NSUserNotification* notif in notifications)
+        {
+            NSString * aimId_ = notif.userInfo[@"aimId"];
+            NSString * msgId = notif.userInfo[@"messageId"];
+            QString str = QString::fromCFString((__bridge CFStringRef)aimId_);
+            qint64 strId = [msgId longLongValue];
+
+            if (_messageId == strId && str == _aimId)
+            {
+                [center removeDeliveredNotification:notif];
+                NSString* alertType = notif.userInfo[@"alertType"];
+                QString type = QString::fromCFString((__bridge CFStringRef)alertType);
+                if (type == ql1s("mention"))
+                    lastDeletedNotifications_.insert(_messageId);
+            }
+        }
+
+        HideQueuedNotifications(_aimId, _messageId);
+    }
+
+    void NotificationCenterManager::deleteMessage(const Data::PatchedMessage& _messages)
+    {
+        if (!Features::removeDeletedFromNotifications())
+            return;
+
+        for (const auto& id : std::as_const(_messages.msgIds_))
+            HideNotifications(_messages.aimId_, id);
     }
 }

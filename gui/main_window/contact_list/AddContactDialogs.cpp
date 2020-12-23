@@ -80,8 +80,9 @@ void showAddContactsDialog(const QString& _name, const QString& _phone, AddConta
 
 void showAddContactsDialog(const AddContactDialogs::Initiator &_initiator)
 {
-    auto w = new Ui::TwoOptionsWidget(nullptr, qsl(":/add_by_phone"), QT_TRANSLATE_NOOP("add_widget", "Phone number"), qsl(":/add_by_nick"),
-        config::get().is_on(config::features::has_nicknames) ? QT_TRANSLATE_NOOP("add_widget", "Nickname") : QT_TRANSLATE_NOOP("add_widget", "Email"));
+    auto w = new Ui::MultipleOptionsWidget(nullptr,
+        {{qsl(":/add_by_phone"), QT_TRANSLATE_NOOP("add_widget", "Phone number")},
+         {qsl(":/add_by_nick"), config::get().is_on(config::features::has_nicknames) ? QT_TRANSLATE_NOOP("add_widget", "Nickname") : QT_TRANSLATE_NOOP("add_widget", "Email")}});
     Ui::GeneralDialog generalDialog(w, Utils::InterConnector::instance().getMainWindow());
     generalDialog.addLabel(config::get().is_on(config::features::has_nicknames)
                            ? QT_TRANSLATE_NOOP("add_widget", "Add contact by phone or nickname?")
@@ -90,9 +91,9 @@ void showAddContactsDialog(const AddContactDialogs::Initiator &_initiator)
     generalDialog.addCancelButton(QT_TRANSLATE_NOOP("report_widget", "Cancel"), true);
     if (generalDialog.showInCenter())
     {
-        if (w->isFirstSelected())
+        if (w->selectedIndex() == 0)
             showAddContactsDialog(QString(), QString(), AddContactCallback(), _initiator);
-        else if (w->isSecondSelected())
+        else
             Q_EMIT Utils::InterConnector::instance().addByNick();
     }
 }

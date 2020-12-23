@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "utils.h"
+#include "core.h"
 
 #include "tools/system.h"
 #include "tools/coretime.h"
@@ -607,7 +608,7 @@ namespace core
             return zip;
         }
 
-        boost::filesystem::wpath create_logs_archive(const boost::filesystem::wpath& _path)
+        boost::filesystem::wpath create_logs_dir_archive(const boost::filesystem::wpath& _path)
         {
             boost::filesystem::wpath arch_path;
 
@@ -629,6 +630,98 @@ namespace core
                 else
                 {
                     arch_path = std::move(source_zip);
+                }
+            }
+
+            return arch_path;
+        }
+
+        boost::filesystem::wpath create_feedback_logs_archive(const boost::filesystem::wpath& _path, int64_t _raw_size_limit, replace_old_archive _replace)
+        {
+            boost::filesystem::wpath arch_path;
+            std::stack<std::vector<char>> log_chunks;
+            std::vector<char> full_log;
+
+            auto size_left = _raw_size_limit;
+            auto log_file_names = g_core->network_log_file_names_history_copy();
+            while (!log_file_names.empty())
+            {
+                auto log_file_name = std::move(log_file_names.top());
+                auto log_path = boost::filesystem::wpath(log_file_name);
+                if (core::tools::system::is_exist(log_file_name))
+                {
+                    boost::system::error_code e;
+
+                    // prepare output
+                    if (arch_path.empty())
+                    {
+                        arch_path = _path.empty() ? log_path.parent_path() : _path;
+                        if (boost::filesystem::is_directory(arch_path, e))
+                            arch_path /= "feedbacklog.zip";
+
+                        if (_replace == replace_old_archive::no)
+                            arch_path = generate_unique_path(arch_path);
+                        else if (core::tools::system::is_exist(arch_path))
+                            core::tools::system::delete_file(arch_path.wstring());
+                    }
+
+                    // capture log file data
+                    auto log_tmp = log_path.parent_path().append(L"feedbacklog.processing.tmp");
+                    boost::filesystem::copy_file(log_path, log_tmp, boost::filesystem::copy_option::overwrite_if_exists, e);
+                    const int64_t size_tmp = boost::filesystem::file_size(log_tmp, e);
+                    std::ifstream ifs(log_tmp.string(), std::ios::binary);
+                    const auto amount_to_read = (size_tmp - size_left) < 0 ? size_tmp : size_left;
+                    if (amount_to_read > 0)
+                    {
+                        std::vector<char> data;
+                        data.resize(amount_to_read);
+                        ifs.seekg(-(static_cast<std::fstream::off_type>(amount_to_read)), std::ios::end);
+                        ifs.read(&data[0], amount_to_read);
+                        log_chunks.push(data);
+                    }
+                    ifs.close();
+                    core::tools::system::delete_file(log_tmp.wstring());
+
+                    // recalc max possible size of data to send
+                    size_left -= amount_to_read;
+                    if (!size_left)
+                        break;
+                }
+                log_file_names.pop();
+            }
+            full_log.resize(_raw_size_limit - size_left);
+
+            // accumulate data
+            {
+                long previous_size = 0;
+                while (!log_chunks.empty())
+                {
+                    auto chunk = std::move(log_chunks.top());
+                    std::copy(chunk.begin(), chunk.end(), full_log.begin() + previous_size);
+                    previous_size = chunk.size();
+                    log_chunks.pop();
+                }
+            }
+
+            // zip output and remove txt
+            if (!full_log.empty())
+            {
+                if (auto zip_file = zipOpen(arch_path.string().c_str(), APPEND_STATUS_CREATE))
+                {
+                    auto succeeded = true;
+                    zip_fileinfo zip_info = {};
+                    if (zipOpenNewFileInZip(zip_file, "feedbacklog.txt", &zip_info, 0, 0, 0, 0, 0, Z_DEFLATED, Z_DEFAULT_COMPRESSION) == ZIP_OK)
+                    {
+                        succeeded &= (zipWriteInFileInZip(zip_file, &full_log[0], full_log.size()) == ZIP_OK);
+                        succeeded &= (zipCloseFileInZip(zip_file) == ZIP_OK);
+                        succeeded &= (zipClose(zip_file, 0) == ZIP_OK);
+                    }
+
+                    if (!succeeded)
+                    {
+                        core::tools::system::delete_file(arch_path.wstring());
+                        arch_path.clear();
+                    }
                 }
             }
 

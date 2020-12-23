@@ -26,7 +26,7 @@ namespace core::wim
 
         doc.AddMember("params", std::move(node_params), a);
 
-        setup_common_and_sign(doc, a, _request, "startBot");
+        setup_common_and_sign(doc, a, _request, get_method());
 
         if (!robusto_packet::params_.full_log_)
         {
@@ -36,5 +36,10 @@ namespace core::wim
         }
 
         return 0;
+    }
+
+    std::string_view start_bot::get_method() const
+    {
+        return "startBot";
     }
 }

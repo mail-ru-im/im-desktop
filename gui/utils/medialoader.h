@@ -21,22 +21,32 @@ public:
         BeforeMedia
     };
 
-    MediaLoader(const QString& _link, LoadMeta _loadMeta = LoadMeta::BeforeMedia) : link_(_link), loadMeta_(_loadMeta) {}
-
+    explicit MediaLoader(const QString& _link, LoadMeta _loadMeta = LoadMeta::BeforeMedia)
+        : link_(_link)
+        , seq_(0)
+        , duration_(0)
+        , loadMeta_(_loadMeta)
+        , gotAudio_(false)
+        , isVideo_(false)
+        , isGif_(false)
+    {}
+    virtual ~MediaLoader() {}
     virtual void load(const QString& _downloadPath = QString()) = 0;
     virtual void loadPreview() = 0;
 
     virtual void cancel() = 0;
     virtual void cancelPreview() = 0;
 
-    virtual bool isLoading() { return seq_ != 0; }
+    virtual bool isLoading() const { return seq_ != 0; }
 
-    virtual bool isVideo() { return isVideo_; }
-    virtual bool isGif() { return isGif_; }
-    virtual QSize originalSize() { return originSize_; }
-    virtual int64_t duration() { return duration_; }
-    virtual bool gotAudio() { return gotAudio_; }
-    virtual QString fileName() { return fileName_; }
+    virtual bool isVideo() const { return isVideo_; }
+    virtual bool isGif() const { return isGif_; }
+    virtual const QSize& originalSize() const { return originSize_; }
+    virtual int64_t duration() const{ return duration_; }
+    virtual bool gotAudio() const { return gotAudio_; }
+    virtual const QString& fileName() const { return fileName_; }
+    virtual const QString& downloadUri() const { return downloadPath_; }
+    virtual const QString& fileFormat() const { return fileFormat_; }
 
 Q_SIGNALS:
     void previewLoaded(const QPixmap& _preview, const QSize& _originSize);
@@ -45,16 +55,17 @@ Q_SIGNALS:
     void error();
 
 protected:
-    int64_t seq_ = 0;
     QString link_;
-    bool isVideo_;
-    bool isGif_;
     QSize originSize_;
-    int32_t duration_ = 0;
-    bool gotAudio_;
-    LoadMeta loadMeta_;
     QString downloadPath_;
     QString fileName_;
+    QString fileFormat_;
+    int64_t seq_;
+    int32_t duration_;
+    LoadMeta loadMeta_;
+    bool gotAudio_;
+    bool isVideo_;
+    bool isGif_;
 };
 
 //////////////////////////////////////////////////////////////////////////
@@ -64,11 +75,11 @@ class FileSharingLoader : public MediaLoader
     Q_OBJECT
 public:
     FileSharingLoader(const QString& _link, LoadMeta _loadMeta = LoadMeta::BeforeMedia);
-    void load(const QString& _downloadPath = QString());
-    void loadPreview();
+    void load(const QString& _downloadPath = QString()) override;
+    void loadPreview() override;
 
-    void cancel();
-    void cancelPreview();
+    void cancel() override;
+    void cancelPreview() override;
 
 private Q_SLOTS:
     void onPreviewMetainfo(qint64 _seq, const QString &_miniPreviewUri, const QString &_fullPreviewUri);
@@ -83,10 +94,10 @@ private:
 
 private:
     QString previewLink_;
-    QMetaObject::Connection fileDownloadedConneection_;
-    QMetaObject::Connection fileMetaDownloadedConneection_;
-    QMetaObject::Connection previewMetaDownloadedConneection_;
-    QMetaObject::Connection imageDownloadedConneection_;
+    QMetaObject::Connection fileDownloadedConnection_;
+    QMetaObject::Connection fileMetaDownloadedConnection_;
+    QMetaObject::Connection previewMetaDownloadedConnection_;
+    QMetaObject::Connection imageDownloadedConnection_;
     QMetaObject::Connection fileErrorConnection_;
 };
 
@@ -97,14 +108,16 @@ class CommonMediaLoader : public MediaLoader
     Q_OBJECT
 public:
     CommonMediaLoader(const QString& _link, LoadMeta _loadMeta = LoadMeta::BeforeMedia);
-    void load(const QString& _downloadPath = QString());
-    void loadPreview();
+    void load(const QString& _downloadPath = QString()) override;
+    void loadPreview() override;
 
-    void cancel();
-    void cancelPreview();
+    void cancel() override;
+    void cancelPreview() override;
+
+    const QString& downloadUri() const override { return downloadLink_; }
 
 private Q_SLOTS:
-    void onImageDownloaded(qint64 _seq, const QString& _url, const QPixmap& _image, const QString& _path);
+    void onImageDownloaded(qint64 _seq, const QString& _url, const QPixmap& _image, const QString& _path, bool _is_preview);
     void onImageMetaDownloaded(qint64 _seq, const Data::LinkMetadata &_meta);
     void onImageError(qint64 _seq);
     void onProgress(qint64 _seq, int64_t _bytesTotal, int64_t _bytesTransferred, int32_t _pctTransferred);
@@ -130,7 +143,7 @@ public:
 
     FileSaver(QObject* _parent = nullptr) : QObject(_parent) {}
 
-    void save(Callback _callback, const QString& _link, const QString& _path);
+    void save(Callback _callback, const QString& _link, const QString& _path, bool _exportAsPng = false);
 
 private Q_SLOTS:
     void onSaved(const QString& _path);
@@ -139,6 +152,7 @@ private Q_SLOTS:
 private:
     std::unique_ptr<MediaLoader> loader_;
     Callback callback_;
+    bool exportAsPng_ = false;
 };
 
 

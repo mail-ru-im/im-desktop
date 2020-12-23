@@ -20,7 +20,8 @@ namespace Ui
         Q_OBJECT
 
     Q_SIGNALS:
-        void clicked(const ClickType _type, QPrivateSignal) const;
+        void clicked(QPrivateSignal) const;
+        void clickedWithButton(ClickType _type, QPrivateSignal) const;
         void pressed(QPrivateSignal) const;
         void released(QPrivateSignal) const;
         void moved(QPrivateSignal) const;
@@ -43,8 +44,8 @@ namespace Ui
         void setHoverColor(const QColor& _color);
         void setBackgroundColor(const QColor& _color);
 
-        void setTooltipText(const QString& _text);
-        const QString& getTooltipText() const;
+        virtual void setTooltipText(const QString& _text);
+        virtual const QString& getTooltipText() const;
 
         void overrideNextInFocusChain(QWidget* _next);
         QWidget* nextInFocusChain() const;

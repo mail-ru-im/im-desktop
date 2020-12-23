@@ -18,12 +18,13 @@ namespace Logic
         const Statuses::Status& getStatus(const QString& _aimid) const;
 
         void setAvatarVisible(const QString& _aimid, bool _visible);
+        void setStatus(const QString& _aimid, const Statuses::Status& _status);
 
     private:
-        void setStatus(const QString& _aimid, const Statuses::Status& _status);
         void onUpdateTimer();
 
         void updateSubscription(const QString& _aimid) const;
+        void discardMyStatusIfTimeIsOver();
 
     private:
         std::map<QString, Statuses::Status> statuses_;

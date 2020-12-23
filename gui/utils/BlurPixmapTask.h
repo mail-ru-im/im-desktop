@@ -15,7 +15,7 @@ namespace Utils
         void run();
 
     private:
-        QPixmap blurPixmap() const;
+        QImage blurImage() const;
 
     private:
         QPixmap source_;

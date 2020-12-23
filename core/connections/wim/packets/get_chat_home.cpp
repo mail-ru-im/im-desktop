@@ -19,6 +19,11 @@ get_chat_home::get_chat_home(wim_packet_params _params, const std::string& _new_
 
 get_chat_home::~get_chat_home() = default;
 
+std::string_view get_chat_home::get_method() const
+{
+    return "getChatHome";
+}
+
 int32_t get_chat_home::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     rapidjson::Document doc(rapidjson::Type::kObjectType);
@@ -29,7 +34,7 @@ int32_t get_chat_home::init_request(const std::shared_ptr<core::http_request_sim
         node_params.AddMember("tag", new_tag_, a);
     doc.AddMember("params", std::move(node_params), a);
 
-    setup_common_and_sign(doc, a, _request, "getChatHome");
+    setup_common_and_sign(doc, a, _request, get_method());
 
     if (!params_.full_log_)
     {

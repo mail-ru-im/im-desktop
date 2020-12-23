@@ -24,7 +24,9 @@
 #include "CommonChatsModel.h"
 #include "SearchHighlight.h"
 #include "FavoritesUtils.h"
+#ifndef STRIP_VOIP
 #include "voip/SelectionContactsForConference.h"
+#endif
 
 #include "styles/ThemeParameters.h"
 
@@ -38,6 +40,11 @@ namespace
     constexpr auto getCLItemOpacity() noexcept
     {
         return 0.2;
+    }
+
+    QPixmap makeIcon(const QString& _path, QSize _size, Styling::StyleVariable _var)
+    {
+        return Utils::renderSvgScaled(_path, _size, Styling::getParameters().getColor(_var));
     }
 }
 
@@ -77,7 +84,7 @@ namespace Ui
         {
             QTransform trans;
             trans.rotate(90);
-            auto result = Utils::renderSvgScaled(qsl(":/controls/more_icon"), QSize(20, 20), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY)).transformed(trans);
+            auto result = makeIcon(qsl(":/controls/more_icon"), QSize(20, 20), Styling::StyleVariable::BASE_SECONDARY).transformed(trans);
             Utils::check_pixel_ratio(result);
             return result;
         };
@@ -107,8 +114,8 @@ namespace Ui
     int Item::drawAddContact(QPainter &_painter, const int _rightMargin, const bool _isSelected, ContactListParams& _recentParams)
     {
         Utils::PainterSaver p(_painter);
-        static const QPixmap add(Utils::renderSvgScaled(qsl(":/controls/add_icon"), QSize(20, 20), Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY)));
-        static const QPixmap addSelected(Utils::renderSvgScaled(qsl(":/controls/add_icon"), QSize(20, 20), Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE)));
+        static const QPixmap add(makeIcon(qsl(":/controls/add_icon"), QSize(20, 20), Styling::StyleVariable::PRIMARY));
+        static const QPixmap addSelected(makeIcon(qsl(":/controls/add_icon"), QSize(20, 20), Styling::StyleVariable::BASE_GLOBALWHITE));
 
         const auto& img = _isSelected ? addSelected : add;
 
@@ -137,9 +144,8 @@ namespace Ui
 
     int Item::drawRemove(QPainter &_painter, bool _isSelected, ContactListParams& _contactList, const ViewParams& _viewParams)
     {
-        Utils::PainterSaver p(_painter);
-        static const QPixmap rem(Utils::renderSvgScaled(qsl(":/controls/close_icon"), QSize(12, 12), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY)));
-        static const QPixmap remSelected(Utils::renderSvgScaled(qsl(":/controls/close_icon"), QSize(12, 12), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY_ACTIVE)));
+        static const QPixmap rem(makeIcon(qsl(":/controls/close_icon"), QSize(12, 12), Styling::StyleVariable::BASE_SECONDARY));
+        static const QPixmap remSelected(makeIcon(qsl(":/controls/close_icon"), QSize(12, 12), Styling::StyleVariable::BASE_SECONDARY_ACTIVE));
 
         const auto& remove_img = _isSelected ? remSelected : rem;
 
@@ -147,18 +153,17 @@ namespace Ui
         static const auto buttonWidth = Utils::scale_value(32);
 
         auto& removeFrame = _contactList.removeContactFrame();
-        removeFrame.setX(width - buttonWidth);
+        removeFrame.setX(width - buttonWidth - Utils::scale_value(8));
         removeFrame.setY(0);
         removeFrame.setWidth(buttonWidth);
         removeFrame.setHeight(_contactList.itemHeight());
 
         const double ratio = Utils::scale_bitmap_ratio();
-        const int x = removeFrame.x() + ((buttonWidth - remove_img.width() / ratio) / 2);
-        const int y = (_contactList.itemHeight() - remove_img.height() / ratio) / 2.;
+        const auto x = removeFrame.x() + ((buttonWidth - remove_img.width() / ratio) / 2);
+        const auto y = (_contactList.itemHeight() - remove_img.height() / ratio) / 2.;
 
-        _painter.setRenderHint(QPainter::Antialiasing);
-        _painter.setRenderHint(QPainter::SmoothPixmapTransform);
-
+        Utils::PainterSaver p(_painter);
+        _painter.setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
         _painter.drawPixmap(x, y, remove_img);
 
         return removeFrame.x();
@@ -239,7 +244,7 @@ namespace Ui
             color = Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY);
             font = contactList.getContactListHeadersFont();
         }
-        else if (_type == Data::EMPTY_IGNORE_LIST)
+        else if (_type == Data::EMPTY_LIST)
         {
             color = Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID);
             font = contactList.emptyIgnoreListFont();
@@ -262,9 +267,9 @@ namespace Ui
         auto height = contactList.serviceItemHeight();
         switch (type_)
         {
-        case Data::EMPTY_IGNORE_LIST:
+        case Data::EMPTY_LIST:
             height = contactList.itemHeight();
-            x = contactList.getContactNameX();
+            x = (_curWidth - name_->cachedSize().width()) / 2;
             break;
         case Data::SERVICE_HEADER:
             height = contactList.serviceItemHeight();
@@ -386,11 +391,8 @@ namespace Ui
 
         if (_viewParams.regim_ == Logic::MembersWidgetRegim::COMMON_CHATS)
         {
-            auto memebersStr = Utils::GetTranslator()->getNumberString(_item.membersCount_, QT_TRANSLATE_NOOP3("contactlist", "%1 member", "1"),
-                                                                                            QT_TRANSLATE_NOOP3("contactlist", "%1 members", "2"),
-                                                                                            QT_TRANSLATE_NOOP3("contactlist", "%1 members", "5"),
-                                                                                            QT_TRANSLATE_NOOP3("contactlist", "%1 members", "21")).arg(_item.membersCount_);
-            contactStatus_->setText(memebersStr, Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
+            auto membersStr = Utils::getMembersString(_item.membersCount_, Logic::getContactListModel()->isChannel(_item.AimId_));
+            contactStatus_->setText(membersStr, Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
         }
 
         item_ = _item;
@@ -502,23 +504,24 @@ namespace Ui
         const auto center = isFavorites || (regim == Logic::MembersWidgetRegim::COMMON_CHATS ? false : !item_.HasStatus());
         const auto drawStatus = !isFavorites && (item_.HasStatus() || regim == Logic::MembersWidgetRegim::COMMON_CHATS);
 
-        if (regim == Logic::MembersWidgetRegim::PENDING_MEMBERS)
+        if (regim == Logic::MembersWidgetRegim::PENDING_MEMBERS || regim == Logic::MembersWidgetRegim::YOUR_INVITES_LIST)
         {
             rightMargin = drawRemove(_painter, false, contactList, params_);
-            rightMargin = drawAddContact(_painter, rightMargin, false, contactList) - contactList.itemHorPadding();
+            if (regim == Logic::MembersWidgetRegim::PENDING_MEMBERS)
+                rightMargin = drawAddContact(_painter, rightMargin, false, contactList) - contactList.itemHorPadding();
             renderContactName(rightMargin, contactNameY, center, role_right_offset, drawStatus);
             return;
         }
         else if (item_.IsHovered_)
         {
-            if (Logic::is_members_regim(regim))
-            {
-                rightMargin = drawRemove(_painter, false, contactList, params_);
-                role_right_offset = Utils::scale_value(14);
-            }
-            else if (Logic::is_admin_members_regim(regim))
+            if (Logic::is_admin_members_regim(regim))
             {
                 rightMargin = drawMore(_painter, contactList, params_);
+                role_right_offset = Utils::scale_value(14);
+            }
+            else if (Logic::is_members_regim(regim) || (item_.canRemoveTill_.isValid() && QDateTime::currentDateTime() < item_.canRemoveTill_))
+            {
+                rightMargin = drawRemove(_painter, false, contactList, params_);
                 role_right_offset = Utils::scale_value(14);
             }
         }
@@ -628,6 +631,7 @@ namespace Logic
         Data::Contact* contact_in_cl = nullptr;
         QString role;
         bool isCreator = false;
+        QDateTime canRemoveTill;
 
         if (_index.data(Qt::DisplayRole).value<QWidget*>()) // If we use custom widget.
         {
@@ -650,6 +654,7 @@ namespace Logic
                     contact_in_cl = contact_item->Get();
 
                 memberModelLastseen = memberRes->getLastseen();
+                canRemoveTill = memberRes->canRemoveTill();
             }
             else if (qobject_cast<const Logic::SearchModel*>(_index.model()))
             {
@@ -661,10 +666,12 @@ namespace Logic
                 const auto& inf = std::static_pointer_cast<Data::SearchResultCommonChat>(searchRes);
                 membersCount = inf->info_.membersCount_;
             }
+#ifndef STRIP_VOIP
             else if (auto model = qobject_cast<const Ui::ConferenceSearchModel*>(_index.model()))
             {
                 isChecked = model->isCheckedItem(aimId);
             }
+#endif
         }
         else if (qobject_cast<const Logic::CommonChatsModel*>(_index.model()))
         {
@@ -723,7 +730,7 @@ namespace Logic
             isChatMember |= Logic::is_select_members_regim(viewParams_.regim_) && aimId == Ui::MyInfo()->aimId();
         }
         const auto isHeader = contactType == Data::SERVICE_HEADER;
-        const bool isSelected = viewParams_.regim_ == Logic::MembersWidgetRegim::CONTACT_LIST_POPUP && Logic::getContactListModel()->selectedContact() == aimId && !isHeader && !StateBlocked_;
+        const bool isSelected = (viewParams_.regim_ == Logic::MembersWidgetRegim::CONTACT_LIST_POPUP || viewParams_.regim_ == Logic::MembersWidgetRegim::CONTACT_LIST) && Logic::getContactListModel()->selectedContact() == aimId && !isHeader && !StateBlocked_;
         const bool isHovered = (_option.state & QStyle::State_Selected) && !isHeader && !StateBlocked_;
         const bool isMouseOver = (_option.state & QStyle::State_MouseOver);
         const bool isPressed = isHovered && isMouseOver && (QApplication::mouseButtons() & Qt::MouseButton::LeftButton);
@@ -783,12 +790,13 @@ namespace Logic
                 Ui::GetContactListParams().isCL());
 
             Ui::VisualDataBase visData(
-                aimId, *avatar, lastSeen.getStatusString(), isHovered, isSelected, displayName, nick, highlights,
+                aimId, avatar, lastSeen.getStatusString(), isHovered, isSelected, displayName, nick, highlights,
                 lastSeen, isChecked, isChatMember, isOfficial, false /* draw last read */, QPixmap() /* last seen avatar*/,
                 role, Logic::getRecentsModel()->getUnreadCount(aimId), Logic::getContactListModel()->isMuted(aimId), false, Logic::getRecentsModel()->getAttention(aimId),
                 isCreator, isOnline);
 
             visData.membersCount_ = membersCount;
+            visData.canRemoveTill_ = canRemoveTill;
 
             Ui::ViewParams viewParams(viewParams_.regim_, _option.rect.width(), viewParams_.leftMargin_, viewParams_.rightMargin_, viewParams_.pictOnly_);
             viewParams.fixedWidth_ = viewParams_.fixedWidth_;
@@ -900,6 +908,11 @@ namespace Logic
     void ContactListItemDelegate::setPictOnlyView(bool _pictOnlyView)
     {
         viewParams_.pictOnly_ = _pictOnlyView;
+    }
+
+    bool ContactListItemDelegate::isPictOnlyView() const
+    {
+        return viewParams_.pictOnly_;
     }
 
     void ContactListItemDelegate::clearCache()

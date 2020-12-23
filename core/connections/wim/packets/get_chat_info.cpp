@@ -9,16 +9,12 @@ using namespace wim;
 constexpr int32_t max_members_count = 150;
 
 get_chat_info::get_chat_info(wim_packet_params _params, get_chat_info_params _chat_params)
-    :   robusto_packet(std::move(_params)),
-        params_(std::move(_chat_params))
+    : robusto_packet(std::move(_params))
+    , params_(std::move(_chat_params))
 {
 }
 
-
-get_chat_info::~get_chat_info()
-{
-
-}
+get_chat_info::~get_chat_info() = default;
 
 int32_t get_chat_info::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
@@ -36,7 +32,7 @@ int32_t get_chat_info::init_request(const std::shared_ptr<core::http_request_sim
 
     doc.AddMember("params", std::move(node_params), a);
 
-    setup_common_and_sign(doc, a, _request, "getChatInfo");
+    setup_common_and_sign(doc, a, _request, get_method());
 
     if (!robusto_packet::params_.full_log_)
     {
@@ -66,4 +62,9 @@ int32_t get_chat_info::on_response_error_code()
         return wpie_error_robusto_you_are_blocked;
 
     return robusto_packet::on_response_error_code();
+}
+
+std::string_view get_chat_info::get_method() const
+{
+    return "getChatInfo";
 }

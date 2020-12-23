@@ -27,6 +27,7 @@ namespace core
             virtual ~suggest_group_nick();
 
             const std::string& get_nick() const noexcept { return nick_; }
+            virtual std::string_view get_method() const override;
         };
 
     }

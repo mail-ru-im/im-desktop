@@ -9,6 +9,7 @@
 #include "../../utils/utils.h"
 #include "../../my_info.h"
 #include "../../controls/TooltipWidget.h"
+#include "statuses/StatusTooltip.h"
 
 #include "../../main_window/contact_list/ContactListModel.h"
 #include "main_window/MainPage.h"
@@ -25,6 +26,7 @@
 #include "../../core_dispatcher.h"
 
 #include "MentionCompleter.h"
+#include "../MainWindow.h"
 
 namespace
 {
@@ -172,6 +174,7 @@ namespace Ui
         connect(Layout_, &MessagesScrollAreaLayout::itemRead, this, &MessagesScrollArea::itemRead);
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::clearSelecting, this, [this]() { IsSelecting_ = false; });
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::selectionStateChanged, this, &MessagesScrollArea::updateSelected);
+        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::pttProgressChanged, this, &MessagesScrollArea::updatePttProgress);
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::updateSelectedCount, this, &MessagesScrollArea::updateSelectedCount);
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::multiselectChanged, this, &MessagesScrollArea::multiselectChanged);
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::multiSelectCurrentElementChanged, this, &MessagesScrollArea::multiSelectCurrentElementChanged);
@@ -290,7 +293,6 @@ namespace Ui
         if (aimid_ == Logic::getContactListModel()->selectedContact())
         {
             const auto isMultiselect = Utils::InterConnector::instance().isMultiselect(aimid_);
-
             Logic::MessageKey key(_id, _internalId);
             if (!_selected)
             {
@@ -346,6 +348,35 @@ namespace Ui
     {
         if (!Utils::InterConnector::instance().isMultiselect(aimid_))
             clearSelection();
+    }
+
+    void MessagesScrollArea::updatePttProgress(qint64 _id, const QString& _fsId, int _progress)
+    {
+        if (aimid_ == Logic::getContactListModel()->selectedContact())
+        {
+
+            auto iter = std::find_if(pttProgress_.begin(), pttProgress_.end(), [&_id, &_fsId](const auto& p)
+            {
+                return p.id_ == _id && p.fsId_ == _fsId;
+            });
+
+            if (_progress != 0)
+            {
+                if (iter == pttProgress_.end())
+                {
+                    PttProgress p(_id, _fsId, _progress);
+                    pttProgress_.push_back(std::move(p));
+                }
+                else
+                {
+                    iter->progress_ = _progress;
+                }
+            }
+            else if (iter != pttProgress_.end())
+            {
+                pttProgress_.erase(iter);
+            }
+        }
     }
 
     bool MessagesScrollArea::isHidingScrollbar() const
@@ -422,6 +453,11 @@ namespace Ui
         return Layout_->hasItems();
     }
 
+    void MessagesScrollArea::clearPttProgress()
+    {
+        pttProgress_.clear();
+    }
+
     void MessagesScrollArea::onSelectionChanged(int _selectedCount)
     {
         if (_selectedCount > 0)
@@ -441,7 +477,7 @@ namespace Ui
     void MessagesScrollArea::insertWidgets(InsertHistMessagesParams&& _params)
     {
         std::map<Logic::MessageKey, QWidget*> widgets;
-        if (!selected_.empty())
+        if (!selected_.empty() || !pttProgress_.empty())
         {
             for (const auto& iter : _params.widgets)
                 widgets[iter.first] = (iter.second.get());
@@ -477,6 +513,16 @@ namespace Ui
                         item->selectByPos(begin, end, SelectionBeginAbsPos_, SelectionEndAbsPos_);
                     }
                     toEmit.push_back(iter.first);
+                }
+            }
+
+
+            for (const auto& p : pttProgress_)
+            {
+                if (p.id_ == iter.first.getId())
+                {
+                    if (auto pttItem = qobject_cast<Ui::ComplexMessage::ComplexMessageItem*>(iter.second))
+                        pttItem->setProgress(p.fsId_, p.progress_);
                 }
             }
         }
@@ -844,8 +890,12 @@ namespace Ui
 
         if (!isLeftButton || !isGenuine)
         {
-            if (isScrolling())
-                return;
+            if (IsSelecting_)
+            {
+                stopScrollAnimation();
+                IsSelecting_ = false;
+            }
+            return;
         }
 
         if (Utils::clicked(LastMouseGlobalPos_, e->globalPos()))
@@ -879,7 +929,7 @@ namespace Ui
             return;
         }
 
-        const auto bottomScrollStartPosition = (height());
+        const auto bottomScrollStartPosition = height();
         assert(bottomScrollStartPosition > 0);
 
         const auto scrollDown = (mouseY >= bottomScrollStartPosition);
@@ -887,7 +937,7 @@ namespace Ui
         {
             assert(!scrollUp);
 
-            ScrollDistance_ = (mouseY - bottomScrollStartPosition);
+            ScrollDistance_ = mouseY - bottomScrollStartPosition;
             startScrollAnimation(ScrollingMode::Selection);
 
             return;
@@ -950,7 +1000,7 @@ namespace Ui
         IsSelecting_ = true;
     }
 
-    void MessagesScrollArea::mouseReleaseEvent(QMouseEvent *e)
+    void MessagesScrollArea::mouseReleaseEvent(QMouseEvent* e)
     {
         const auto selectedCount = getSelectedCount();
 
@@ -964,10 +1014,33 @@ namespace Ui
         if (e->source() == Qt::MouseEventNotSynthesized)
             stopScrollAnimation();
 
-        if (selectedCount == 0)
-            MainPage::instance()->setFocusOnInput();
+        auto hasNoSelectionActually = false;
+        if (selectedCount <= 2)
+        {
+            // After press on link selected_ gets one dummy item, we do not care about
+            hasNoSelectionActually = true;
+            for (const auto& v: selected_)
+            {
+                if (!v.second.text_.isEmpty())
+                {
+                    hasNoSelectionActually = false;
+                    break;
+                }
+            }
+        }
+
+        if (hasNoSelectionActually)
+        {
+            auto w = Utils::InterConnector::instance().getMainWindow()->getPreviousFocusedWidget();
+            if (w && w != this && w->isVisible())
+                w->setFocus();
+            else
+                MainPage::instance()->setFocusOnInput();
+        }
         else
+        {
             setFocus();
+        }
     }
 
     void MessagesScrollArea::enterEvent(QEvent *_event)
@@ -1159,6 +1232,7 @@ namespace Ui
         }
 
         updateScrollbar();
+        StatusTooltip::instance()->updatePosition();
 
         const auto isPlainMode = (Mode_ == ScrollingMode::Plain);
         if (isPlainMode)
@@ -1410,15 +1484,6 @@ namespace Ui
         }
 
         selected_.clear();
-    }
-
-    void MessagesScrollArea::pressedDestroyed()
-    {
-        if (IsSelecting_)
-        {
-            stopScrollAnimation();
-            IsSelecting_ = false;
-        }
     }
 
     void MessagesScrollArea::continueSelection(const QPoint& _pos)

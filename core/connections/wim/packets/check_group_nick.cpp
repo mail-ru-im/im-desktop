@@ -13,17 +13,22 @@ check_group_nick::check_group_nick(wim_packet_params _params, const std::string&
 {
 }
 
+std::string_view check_group_nick::get_method() const
+{
+    return "checkGroupStamp";
+}
+
 int32_t check_group_nick::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     rapidjson::Document doc(rapidjson::Type::kObjectType);
-    auto& a = doc.GetAllocator();
+    auto& a = doc.GetAllocator();\
 
     rapidjson::Value node_params(rapidjson::Type::kObjectType);
     node_params.AddMember("stamp", nickname_, a);
 
     doc.AddMember("params", std::move(node_params), a);
 
-    setup_common_and_sign(doc, a, _request, "checkGroupStamp");
+    setup_common_and_sign(doc, a, _request, get_method());
 
     if (!params_.full_log_)
     {

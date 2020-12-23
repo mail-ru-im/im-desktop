@@ -1,7 +1,6 @@
 #include "stdafx.h"
 #include "toolbar.h"
 
-
 #include "../../controls/CustomButton.h"
 #include "../../controls/PictureWidget.h"
 #include "../../main_window/MainWindow.h"
@@ -9,6 +8,9 @@
 #include "../../utils/InterConnector.h"
 #include "../../core_dispatcher.h"
 #include "styles/ThemeParameters.h"
+#include "app_config.h"
+
+#include "controls/LottiePlayer.h"
 
 namespace
 {
@@ -85,10 +87,8 @@ namespace Ui
     //////////////////////////////////////////////////////////////////////////
     // TabButton class
     //////////////////////////////////////////////////////////////////////////
-    TabButton::TabButton(QWidget* _parent, const QPixmap& _pixmap)
+    TabButton::TabButton(QWidget* _parent, QPixmap _pixmap)
         : QPushButton(_parent)
-        , attachedView_(nullptr)
-        , fixed_(false)
         , pixmap_(std::move(_pixmap))
     {
         setFlat(true);
@@ -123,6 +123,23 @@ namespace Ui
         update();
     }
 
+    void TabButton::setLottie(const QString& _path)
+    {
+        if (_path.isEmpty())
+            return;
+
+        if (lottie_ && lottie_->getPath() == _path)
+            return;
+
+        delete lottie_;
+        lottie_ = new LottiePlayer(this, _path, iconRect());
+    }
+
+    QSize TabButton::iconSize()
+    {
+        return Utils::scale_value(QSize(32, 32));
+    }
+
     void TabButton::paintEvent(QPaintEvent* _e)
     {
         QPushButton::paintEvent(_e);
@@ -130,26 +147,52 @@ namespace Ui
         QPainter p(this);
         p.setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
 
-        if (!pixmap_.isNull())
+        if (!lottie_ && pixmap_.isNull())
         {
-            const double ratio = Utils::scale_bitmap_ratio();
-            const auto diffX = rect().width() - pixmap_.width() / ratio;
-            const auto diffY = rect().height() - pixmap_.height() / ratio;
-
-            // center by default
-            const int x = diffX / 2;
-            const int y = diffY / 2;
-
-            p.drawPixmap(x, y, pixmap_);
-        }
-        else
-        {
-            const auto radius = Utils::fscale_value(8.);
-            const QMargins margins(Utils::scale_value(4), Utils::scale_value(4), Utils::scale_value(4), Utils::scale_value(4));
+            static const auto radius = Utils::fscale_value(8.);
+            static const QMargins margins(Utils::scale_value(4), Utils::scale_value(4), Utils::scale_value(4), Utils::scale_value(4));
+            const auto color = (underMouse() || isChecked()) ? Styling::StyleVariable::BASE_GLOBALWHITE : Styling::StyleVariable::BASE_BRIGHT_INVERSE;
             p.setPen(Qt::NoPen);
-            p.setBrush(Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT_INVERSE));
+            p.setBrush(Styling::getParameters().getColor(color));
             p.drawRoundedRect(rect().marginsRemoved(margins), radius, radius);
         }
+        else if (!pixmap_.isNull())
+        {
+            const double ratio = Utils::scale_bitmap_ratio();
+            const auto x = (rect().width() - pixmap_.width() / ratio) / 2;
+            const auto y = (rect().height() - pixmap_.height() / ratio) / 2;
+            p.drawPixmap(x, y, pixmap_);
+        }
+
+        if (Q_UNLIKELY(Ui::GetAppConfig().IsShowMsgIdsEnabled()))
+        {
+            p.setPen(Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY));
+            p.setFont(Fonts::appFontScaled(10, Fonts::FontWeight::SemiBold));
+
+            const auto x = width();
+            const auto y = height();
+            Utils::drawText(p, QPointF(x, y), Qt::AlignRight | Qt::AlignBottom, QString::number(getSetId()));
+        }
+    }
+
+    void TabButton::onVisibilityChanged(bool _visible)
+    {
+        if (lottie_)
+            lottie_->onVisibilityChanged(_visible);
+    }
+
+    QRect TabButton::iconRect() const
+    {
+        QRect playerRect({}, iconSize());
+        playerRect.moveCenter(rect().center());
+        return playerRect;
+    }
+
+    void TabButton::resizeEvent(QResizeEvent* event)
+    {
+        if (lottie_)
+            lottie_->setRect(iconRect());
+        QPushButton::resizeEvent(event);
     }
 
     //////////////////////////////////////////////////////////////////////////
@@ -178,6 +221,9 @@ namespace Ui
         Utils::grabTouchWidget(scrollAreaWidget);
         connect(QScroller::scroller(viewArea_->viewport()), &QScroller::stateChanged, this, &Toolbar::touchScrollStateChanged, Qt::QueuedConnection);
 
+        connect(viewArea_->horizontalScrollBar(), &QScrollBar::valueChanged, this, &Toolbar::updateItemsVisibility);
+        connect(viewArea_->horizontalScrollBar(), &QScrollBar::rangeChanged, this, &Toolbar::updateItemsVisibility);
+
         rootLayout->addWidget(viewArea_);
 
         horLayout_ = Utils::emptyHLayout();
@@ -194,10 +240,7 @@ namespace Ui
         }
     }
 
-    Toolbar::~Toolbar()
-    {
-
-    }
+    Toolbar::~Toolbar() = default;
 
     void Toolbar::addButtonStore()
     {
@@ -268,6 +311,13 @@ namespace Ui
         Q_EMIT Utils::InterConnector::instance().showStickersStore();
     }
 
+    void Toolbar::updateItemsVisibility()
+    {
+        const auto visibleRect = viewArea_->widget()->visibleRegion().boundingRect();
+        for (auto btn : buttons_)
+            btn->onVisibilityChanged(visibleRect.intersects(btn->geometry()));
+    }
+
     void Toolbar::resizeEvent(QResizeEvent * _e)
     {
         QWidget::resizeEvent(_e);
@@ -279,6 +329,8 @@ namespace Ui
             buttonStore_->setFixedHeight(thisRect.height() - Utils::scale_value(1));
             buttonStore_->move(thisRect.width() - buttonStore_->width(), 0);
         }
+
+        updateItemsVisibility();
     }
 
     void Toolbar::wheelEvent(QWheelEvent* _e)
@@ -371,11 +423,18 @@ namespace Ui
         }
     }
 
-    TabButton* Toolbar::addButton(const QPixmap& _icon)
+    TabButton* Toolbar::addButton(QPixmap _icon)
     {
-        TabButton* button = new TabButton(this, _icon);
+        TabButton* button = new TabButton(this, std::move(_icon));
         addButton(button);
 
+        return button;
+    }
+
+    TabButton* Toolbar::addButton(int32_t _setId)
+    {
+        auto button = addButton(QPixmap());
+        button->setSetId(_setId);
         return button;
     }
 

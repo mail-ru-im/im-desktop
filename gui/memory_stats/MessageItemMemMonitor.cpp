@@ -152,5 +152,5 @@ Ui::ComplexMessage::QuoteBlock *MessageItemMemMonitor::tryGetQuoteBlock(Ui::Comp
 
 bool MessageItemMemMonitor::watchComplexMsgItem(Ui::ComplexMessage::ComplexMessageItem* _msgItem)
 {
-    return messageItemsWatcher()->addObject(static_cast<QObject *>(_msgItem));
+    return messageItemsWatcher()->addObject(qobject_cast<QObject *>(_msgItem));
 }

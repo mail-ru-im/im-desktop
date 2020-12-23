@@ -135,11 +135,13 @@ namespace Ui
 
     void ActiveCallPlate::onJoinClicked()
     {
+#ifndef STRIP_VOIP
         auto joined = Ui::GetDispatcher()->getVoipController().setStartChatRoomCall(d->chatId_);
 
         auto mainPage = MainPage::instance();
         if (mainPage && joined)
             mainPage->raiseVideoWindow(voip_call_type::audio_call);
+#endif
     }
 
 }

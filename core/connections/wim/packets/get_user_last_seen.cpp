@@ -33,7 +33,7 @@ int32_t get_user_last_seen::init_request(const std::shared_ptr<core::http_reques
 
     doc.AddMember("params", std::move(node_params), a);
 
-    setup_common_and_sign(doc, a, _request, "getUserLastseen");
+    setup_common_and_sign(doc, a, _request, get_method());
 
     if (!params_.full_log_)
     {
@@ -68,4 +68,9 @@ int32_t get_user_last_seen::parse_results(const rapidjson::Value& _node_results)
 const std::map<std::string, lastseen>& get_user_last_seen::get_result() const
 {
     return result_;
+}
+
+std::string_view get_user_last_seen::get_method() const
+{
+    return "getUserLastseen";
 }

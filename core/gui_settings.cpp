@@ -6,6 +6,7 @@
 #include "tools/system.h"
 #include "tools/json_helper.h"
 #include "../../../corelib/collection_helper.h"
+#include "../common.shared/string_utils.h"
 
 using namespace core;
 
@@ -49,7 +50,16 @@ bool gui_settings::load()
 {
     core::tools::binary_stream bstream;
     if (bstream.load_from_file(file_name_))
-        return unserialize(bstream);
+    {
+        const auto was_unserialized = unserialize(bstream);
+        if (!was_unserialized)
+        {
+            g_core->write_string_to_network_log(su::concat(
+                "failed to unserialize ",
+                tools::from_utf16(tools::system::get_file_name(file_name_)), "\r\n"));
+        }
+        return was_unserialized;
+    }
 
     return load_exported();
 }
@@ -73,6 +83,29 @@ bool gui_settings::load_exported()
     }
 
     return false;
+}
+
+void core::gui_settings::clear_all_status_duration()
+{
+    auto is_status_duration_key = [] (std::string_view s)
+    {
+        constexpr std::string_view status_duration_str = status_duration;
+        const auto ending = s.substr(std::min(s.size(), s.size() - status_duration_str.size()));
+        return ending == status_duration;
+    };
+
+    for (auto it = values_.cbegin(); it != values_.cend(); )
+    {
+        if (is_status_duration_key(it->first))
+        {
+            it = values_.erase(it);
+            changed_ = true;
+        }
+        else
+        {
+            ++it;
+        }
+    }
 }
 
 void gui_settings::set_value(std::string_view _name, tools::binary_stream&& _data)
@@ -232,7 +265,7 @@ void gui_settings::serialize(core::coll_helper _collection) const
 {
     ifptr<iarray> values_array(_collection->create_array(), true);
 
-    for (const auto [name, value_data] : values_)
+    for (const auto& [name, value_data] : values_)
     {
         if (const auto len = value_data.available())
         {
@@ -240,6 +273,7 @@ void gui_settings::serialize(core::coll_helper _collection) const
 
             ifptr<istream> value_data_stream(_collection->create_stream(), true);
             value_data_stream->write((const uint8_t*)value_data.read(len), len);
+            value_data.reset_out();
 
             coll_value.set_value_as_string("name", name);
             coll_value.set_value_as_stream("value", value_data_stream.get());
@@ -284,6 +318,8 @@ void gui_settings::clear_personal_values()
     clear_value(settings_recents_fs_stickers);
     clear_value(settings_old_recents_stickers);
     clear_value(statuses_user_statuses);
+    clear_value(show_microphone_request);
+    clear_all_status_duration();
 
     save_if_needed();
 }

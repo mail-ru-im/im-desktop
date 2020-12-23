@@ -39,6 +39,7 @@ namespace core
 
             std::shared_ptr<core::tools::binary_stream> get_response() const;
             const std::string& get_header_etag() const;
+            virtual std::string_view get_method() const override;
         };
     }
 }

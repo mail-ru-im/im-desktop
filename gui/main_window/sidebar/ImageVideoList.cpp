@@ -232,7 +232,7 @@ MediaContentWidget::ItemData ImageVideoList::itemAt(const QPoint &_pos)
 void ImageVideoList::onClicked(MediaContentWidget::ItemData _data)
 {
     Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::fullmediascr_view, { { "chat_type", Utils::chatTypeByAimId(aimId_) }, { "from", "gallery" }, { "media_type", _data.is_video_ ? "video" : (_data.is_gif_ ? "gif" : "photo") } });
-    Utils::InterConnector::instance().getMainWindow()->openGallery(aimId_, _data.link_, _data.msg_);
+    Utils::InterConnector::instance().getMainWindow()->openGallery(Utils::GalleryData(aimId_, _data.link_, _data.msg_));
 }
 
 void ImageVideoList::onVisitorTimeout()
@@ -590,7 +590,9 @@ int ImageVideoBlock::calcItemSize(int _width)
 
     auto n = calcRowSizeHelper(_width, preferredSize);
 
-    return (_width - 2 * hMargin() - spacing() * (n - 1)) / n;
+    // avoid divizion by zero
+    return (n != 0 ? ((_width - 2 * hMargin() - spacing() * (n - 1)) / n) : 0);
+
 }
 
 int ImageVideoBlock::calcRowSize(int _width)

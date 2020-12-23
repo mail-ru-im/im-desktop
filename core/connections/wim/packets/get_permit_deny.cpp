@@ -30,7 +30,7 @@ int32_t get_permit_deny::init_request(const std::shared_ptr<core::http_request_s
         "&friendly=1";
 
     _request->set_url(ss_url.str());
-    _request->set_normalized_url("getPreferencePermitDeny");
+    _request->set_normalized_url(get_method());
     _request->set_keep_alive();
 
     if (!params_.full_log_)
@@ -53,4 +53,9 @@ int32_t get_permit_deny::parse_response_data(const rapidjson::Value& _node_resul
 const permit_info& get_permit_deny::get_ignore_list() const
 {
     return *permit_info_;
+}
+
+std::string_view get_permit_deny::get_method() const
+{
+    return "getPreferencePermitDeny";
 }

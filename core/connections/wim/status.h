@@ -17,6 +17,9 @@ namespace core
         void set_status(std::string_view _status) { status_ = _status; }
         const std::string& get_status() const noexcept { return status_; }
 
+        void set_description(std::string_view _description) { description_ = _description; }
+        const std::string& get_description() const noexcept { return description_; }
+
         void set_start_time(const clock_t::time_point _start_time) { start_time_ = _start_time; }
         clock_t::time_point get_start_time() const noexcept { return start_time_; }
 
@@ -30,6 +33,7 @@ namespace core
 
     private:
         std::string status_;
+        std::string description_;
         clock_t::time_point start_time_;
         std::optional<clock_t::time_point> end_time_;
 

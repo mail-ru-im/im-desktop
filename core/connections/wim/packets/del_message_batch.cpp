@@ -2,6 +2,8 @@
 
 #include "../../../log/log.h"
 #include "../../../http_request.h"
+#include "../../../tools/json_helper.h"
+#include "../../../tools/features.h"
 
 #include "del_message_batch.h"
 
@@ -11,12 +13,15 @@ del_message_batch::del_message_batch(
     wim_packet_params _params,
     std::vector<int64_t>&& _message_ids,
     const std::string &_contact_aimid,
-    const bool _for_all
+    const bool _for_all,
+    const bool _silent
 )
     : robusto_packet(std::move(_params))
     , message_ids_(std::move(_message_ids))
     , contact_aimid_(_contact_aimid)
     , for_all_(_for_all)
+    , silent_(_silent)
+    , silent_responce_(false)
 {
     assert(!contact_aimid_.empty());
 }
@@ -42,9 +47,12 @@ int32_t del_message_batch::init_request(const std::shared_ptr<core::http_request
 
     node_params.AddMember("shared", for_all_, a);
 
+    if (for_all_ && features::is_silent_delete_enabled())//they said not to send
+        node_params.AddMember("silent", silent_, a);
+
     doc.AddMember("params", std::move(node_params), a);
 
-    setup_common_and_sign(doc, a, _request, "delMsgBatch");
+    setup_common_and_sign(doc, a, _request, get_method());
 
     if (!params_.full_log_)
     {
@@ -56,14 +64,20 @@ int32_t del_message_batch::init_request(const std::shared_ptr<core::http_request
     return 0;
 }
 
-int32_t del_message_batch::parse_response_data(const rapidjson::Value& _data)
+int32_t del_message_batch::parse_results(const rapidjson::Value& _data)
 {
+    tools::unserialize_value(_data, "silent", silent_responce_);
     return 0;
 }
 
 int32_t del_message_batch::on_response_error_code()
 {
     return robusto_packet::on_response_error_code();
+}
+
+std::string_view del_message_batch::get_method() const
+{
+    return "delMsgBatch";
 }
 
 CORE_WIM_NS_END

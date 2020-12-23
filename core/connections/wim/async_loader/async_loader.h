@@ -108,6 +108,26 @@ namespace core
             cancelled
         };
 
+        template<typename T>
+        struct download_params
+        {
+            priority_t priority_ = default_priority();
+            std::string url_;
+            std::string base_url_;
+            std::string normalized_url_;
+            std::wstring file_name_;
+            wim_packet_params wim_params_;
+            time_t last_modified_time_ = 0;
+            int64_t id_ = -1;
+            async_loader_log_params log_params_;
+            bool is_binary_data_ = false;
+            T handler_;
+
+            download_params(wim_packet_params _wim_params) : wim_params_(std::move(_wim_params)) {}
+        };
+        using download_params_with_info_handler = download_params<file_info_handler_t>;
+        using download_params_with_default_handler = download_params<default_handler_t>;
+
         void log_error(std::string_view _context, std::string_view _url, load_error_type _type, bool _full_log);
 
         class async_loader
@@ -119,10 +139,8 @@ namespace core
 
             void set_download_dir(std::wstring _download_dir);
 
-            void download(priority_t _priority, const std::string& _url, const std::string& _base_url, const wim_packet_params& _wim_params, default_handler_t _handler, int64_t _id, time_t _last_modified_time = 0, std::string_view _normalized_url = {}, async_loader_log_params _log_params = {}, bool _is_binary_data = false);
-
-            void download_file(priority_t _priority, const std::string& _url, const std::string& _base_url, std::wstring_view _file_name, const wim_packet_params& _wim_params, file_info_handler_t _handler = file_info_handler_t(), time_t _last_modified_time = 0, int64_t _id = -1, const bool _with_data = true, std::string_view _normalized_url = {}, async_loader_log_params _log_params = {}, bool _is_binary_data = false); //TODO refactor me: make param pack
-            void download_file(priority_t _priority, const std::string& _url, const std::string& _base_url, const std::string& _file_name, const wim_packet_params& _wim_params, file_info_handler_t _handler = file_info_handler_t(), time_t _last_modified_time = 0, int64_t _id = -1, const bool _with_data = true, std::string_view _normalized_url = {}, async_loader_log_params _log_params = {}, bool _is_binary_data = false);
+            void download(download_params_with_default_handler _params);
+            void download_file(download_params_with_info_handler _params);
 
             void cancel(std::string _url, std::optional<int64_t> _seq);
 
@@ -131,8 +149,8 @@ namespace core
 
             void download_image_preview(priority_t _priority, const std::string& _url, const wim_packet_params& _wim_params, link_meta_handler_t _metainfo_handler = link_meta_handler_t(), file_info_handler_t _preview_handler = file_info_handler_t(), int64_t _id = -1);
 
-            void download_image(priority_t _priority, const std::string& _url, const wim_packet_params& _wim_params, const bool _use_proxy, const bool _is_external_resource, file_info_handler_t _preview_handler = file_info_handler_t(), int64_t _id = -1, const bool _with_data = true);
-            void download_image(priority_t _priority, const std::string& _url, const std::string& _file_name, const wim_packet_params& _wim_params, const bool _use_proxy, const bool _is_external_resource, file_info_handler_t _preview_handler = file_info_handler_t(), int64_t _id = -1, const bool _with_data = true);
+            void download_image(priority_t _priority, const std::string& _url, const wim_packet_params& _wim_params, const bool _use_proxy, const bool _is_external_resource, file_info_handler_t _preview_handler = file_info_handler_t(), int64_t _id = -1);
+            void download_image(priority_t _priority, const std::string& _url, const std::string& _file_name, const wim_packet_params& _wim_params, const bool _use_proxy, const bool _is_external_resource, file_info_handler_t _preview_handler = file_info_handler_t(), int64_t _id = -1);
 
             void download_file_sharing(priority_t _priority, const std::string& _contact, const std::string& _url, std::string _file_name, const wim_packet_params& _wim_params, int64_t _id, file_info_handler_t _handler = file_info_handler_t());
             void cancel_file_sharing(std::string _url, std::optional<int64_t> _seq);
@@ -174,7 +192,7 @@ namespace core
                     "signed   = <%2%>\n"
                     "handler  = <%3%>\n", _url % _signed_url % _handler.to_string());
 
-                const auto meta_path = get_path_in_cache(content_cache_dir_, _url, path_type::link_meta);
+                auto meta_path = get_path_in_cache(content_cache_dir_, _url, path_type::link_meta);
                 auto load_from_local = [_handler, _parser, _url, meta_path]()
                 {
                     tools::binary_stream json_file;
@@ -194,6 +212,19 @@ namespace core
                             auto meta_info = _parser(json.data(), _url);
                             if (meta_info)
                             {
+                                const auto status_code = meta_info->get_status_code();
+                                if (status_code != 0)
+                                {
+                                    if (status_code == 1000)
+                                    {
+                                        g_core->write_string_to_network_log("download_metainfo's been delayed by the server. It's going to be repeated in 1 minute\r\n");
+                                        tools::system::delete_file(meta_path);
+                                    }
+
+                                    fire_callback(status_code == 1000 ? loader_errors::come_back_later : loader_errors::http_client_error, transferred_data<T>(), _handler.completion_callback_);
+                                    return true;
+                                }
+
                                 transferred_data<T> result(std::shared_ptr<T>(meta_info.release()));
                                 fire_callback(loader_errors::success, result, _handler.completion_callback_);
                                 return true;
@@ -236,28 +267,21 @@ namespace core
                     if (load_from_local())
                         return;
 
-                    std::vector<char> json;
-                    json.assign(_data.content_->get_data(), _data.content_->get_data() + _data.content_->available());
-                    json.push_back('\0');
-
-                    auto meta_info = _parser(json.data(), _url);
-                    if (!meta_info)
-                    {
-                        log_error("download_metainfo", _url, load_error_type::parse_failure, full_log);
-                        fire_callback(loader_errors::invalid_json, transferred_data<T>(), _handler.completion_callback_);
-                        return;
-                    }
-
-                    _data.content_->reset_out();
-                    _data.content_->save_2_file(meta_path);
-
-                    transferred_data<T> result(_data.response_code_, _data.header_, _data.content_, std::shared_ptr<T>(meta_info.release()));
-
-                    fire_callback(loader_errors::success, std::move(result), _handler.completion_callback_);
+                    log_error("download_metainfo", _url, load_error_type::parse_failure, full_log);
+                    fire_callback(loader_errors::invalid_json, transferred_data<T>(), _handler.completion_callback_);
 
                 }, _handler.progress_callback_);
 
-                download(highest_priority(), _signed_url, _url, _wim_params, local_handler, _id, 0, _normalized_url, _log_params);
+                download_params_with_default_handler params(_wim_params);
+                params.priority_ = highest_priority();
+                params.url_ = _signed_url;
+                params.base_url_ = _url;
+                params.file_name_ = std::move(meta_path);
+                params.handler_ = std::move(local_handler);
+                params.id_ = _id;
+                params.normalized_url_ = _normalized_url;
+                params.log_params_ = _log_params;
+                download(std::move(params));
             }
 
             void cleanup_cache();

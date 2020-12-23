@@ -38,6 +38,8 @@ namespace core
             virtual ~get_permit_deny();
 
             const permit_info& get_ignore_list() const;
+
+            virtual std::string_view get_method() const override;
         };
 
     }

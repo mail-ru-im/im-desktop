@@ -23,7 +23,7 @@ void Ui::AvatarContainerWidget::setOverlap(float _per01)
     overlapPer01_ = std::max(0.0f, std::min(1.0f, _per01));
 }
 
-void Ui::AvatarContainerWidget::addAvatarTo(const std::string& _userId, std::map<std::string, Logic::QPixmapSCptr>& _avatars)
+void Ui::AvatarContainerWidget::addAvatarTo(const std::string& _userId, std::map<std::string, QPixmap>& _avatars)
 {
     if (avatarSize_ <= 0)
     {
@@ -94,7 +94,7 @@ std::vector<QRect> Ui::AvatarContainerWidget::calculateAvatarPositions(const QRe
         remains.setTop(std::max((remains.bottom() + remains.top() - _avatarsSize.height()) / 2, remains.top()));
         remains.setBottom(std::min(remains.bottom(), remains.top() + _avatarsSize.height()));
 
-        for (std::map<std::string, Logic::QPixmapSCptr>::iterator it = avatars_.begin(); it != avatars_.end(); it++)
+        for (auto it = avatars_.begin(); it != avatars_.end(); ++it)
         {
             if (remains.width() < avatarSize_ || remains.height() < avatarSize_)
                 break;
@@ -111,7 +111,7 @@ std::vector<QRect> Ui::AvatarContainerWidget::calculateAvatarPositions(const QRe
 
 void Ui::AvatarContainerWidget::dropExcess(const std::vector<std::string>& _users)
 {
-    std::map<std::string, Logic::QPixmapSCptr> tmpAvatars;
+    std::map<std::string, QPixmap> tmpAvatars;
     for (unsigned ix = 0; ix < _users.size(); ix++)
     {
         const std::string& userId = _users[ix];
@@ -150,10 +150,10 @@ void Ui::AvatarContainerWidget::paintEvent(QPaintEvent*)
         auto avatar = avatars_.begin();
         std::advance(avatar, ix);
 
-        Logic::QPixmapSCptr pixmap = avatar->second;
+        const auto& pixmap = avatar->second;
         painter.setRenderHint(QPainter::Antialiasing);
 
-        auto resizedImage = pixmap->scaled(Utils::scale_bitmap(rc.size()), Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+        auto resizedImage = pixmap.scaled(Utils::scale_bitmap(rc.size()), Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
 
         painter.drawPixmap(rc, resizedImage, resizedImage.rect());
     }

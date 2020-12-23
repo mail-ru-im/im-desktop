@@ -22,7 +22,7 @@ namespace Ui
         : QStackedWidget(_parent)
     {
         setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-        setStyleSheet(qsl("QWidget{border: none; background-color: %1;}").arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE)));
+        setStyleSheet(ql1s("QWidget{border: none; background-color: %1;}").arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE)));
     }
 
     GeneralSettingsWidget::~GeneralSettingsWidget() = default;
@@ -51,9 +51,10 @@ namespace Ui
         }
         else if (type == Utils::CommonSettingsType::CommonSettingsType_VoiceVideo)
         {
+#ifndef STRIP_VOIP
             initVoiceAndVideo();
-
             setCurrentWidget(voiceAndVideo_.rootWidget);
+#endif
         }
         else if (type == Utils::CommonSettingsType::CommonSettingsType_Notifications)
         {
@@ -192,6 +193,24 @@ namespace Ui
         }
     }
 
+    bool GeneralSettingsWidget::isSessionsShown() const
+    {
+        return sessions_ && currentWidget() == sessions_;
+    }
+
+    void GeneralSettingsWidget::initSessionsPage()
+    {
+        if (!sessions_)
+        {
+            sessions_ = new SessionsPage(this);
+            sessions_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+            addWidget(sessions_);
+
+            Testing::setAccessibleName(sessions_, qsl("AS SessionsList"));
+        }
+    }
+
+#ifndef STRIP_VOIP
     void GeneralSettingsWidget::onVoipDeviceListUpdated(voip_proxy::EvoipDevTypes deviceType, const voip_proxy::device_desc_vector& _devices)
     {
         std::vector<voip_proxy::device_desc> devices;
@@ -326,11 +345,6 @@ namespace Ui
             get_gui_settings()->set_value<QString>(settingsName, uid);
     }
 
-    bool GeneralSettingsWidget::isSessionsShown() const
-    {
-        return sessions_ && currentWidget() == sessions_;
-    }
-
     void GeneralSettingsWidget::initVoiceAndVideo()
     {
         if (voiceAndVideo_.rootWidget)
@@ -340,6 +354,7 @@ namespace Ui
         voiceAndVideo_.rootWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
         Creator::initVoiceVideo(voiceAndVideo_.rootWidget, voiceAndVideo_);
 
+        Ui::GetDispatcher()->getVoipController().setRequestSettings();
         Ui::GetDispatcher()->getVoipController().loadSettings([this](voip_proxy::device_desc& desc){
             user_selected_device_[desc.dev_type] = desc.uid;
         });
@@ -353,18 +368,6 @@ namespace Ui
         addWidget(voiceAndVideo_.rootWidget);
 
         QObject::connect(&Ui::GetDispatcher()->getVoipController(), &voip_proxy::VoipController::onVoipDeviceListUpdated, this, &GeneralSettingsWidget::onVoipDeviceListUpdated);
-    }
-
-    void GeneralSettingsWidget::initSessionsPage()
-    {
-        if (!sessions_)
-        {
-            sessions_ = new SessionsPage(this);
-            sessions_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-            addWidget(sessions_);
-
-            Testing::setAccessibleName(sessions_, qsl("AS SessionsList"));
-        }
     }
 
     bool GeneralSettingsWidget::getDefaultDeviceFlag(const voip_proxy::EvoipDevTypes& type)
@@ -402,6 +405,7 @@ namespace Ui
         get_gui_settings()->set_value<bool>(defaultFlagSettingName, _description.uid == DEFAULT_DEVICE_UID);
 #endif
     }
+#endif
 
     GeneralSettings::GeneralSettings(QWidget* _parent)
         : QWidget(_parent)

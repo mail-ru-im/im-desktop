@@ -22,6 +22,6 @@ enum class ExifOrientation
 
 void applyExifOrientation(const ExifOrientation orientation, InOut QPixmap &pixmap);
 
-ExifOrientation getExifOrientation(const char *buf, const size_t bufSize);
+ExifOrientation getExifOrientation(const QString& _filename);
 
 UTILS_EXIF_NS_END

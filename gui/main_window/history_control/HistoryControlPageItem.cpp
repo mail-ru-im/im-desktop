@@ -14,6 +14,13 @@
 #include "../ContactDialog.h"
 #include "MessageStyle.h"
 #include "LastStatusAnimation.h"
+#include "statuses/StatusTooltip.h"
+#include "statuses/StatusUtils.h"
+#include "main_window/containers/StatusContainer.h"
+#include "main_window/history_control/HistoryControlPage.h"
+#include "main_window/history_control/MessagesScrollArea.h"
+
+#include "ServiceMessageItem.h"
 
 namespace
 {
@@ -202,8 +209,9 @@ namespace Ui
         }
     }
 
-    void HistoryControlPageItem::onVisibilityChanged(const bool /*isVisible*/)
+    void HistoryControlPageItem::onVisibleRectChanged(const QRect& /*_visibleRect*/)
     {
+
     }
 
     void HistoryControlPageItem::onDistanceToViewportChanged(const QRect& /*_widgetAbsGeometry*/, const QRect& /*_viewportVisibilityAbsRect*/)
@@ -362,7 +370,7 @@ namespace Ui
     {
         if (heightAnimation_)
             return;
-        
+
         heightAnimation_ = new QVariantAnimation(this);
         heightAnimation_->setStartValue(0);
         heightAnimation_->setEndValue(ANIM_MAX_VALUE);
@@ -440,6 +448,23 @@ namespace Ui
         if (reactions_)
             reactions_->onMouseMove(e->pos());
 
+        if (Statuses::isStatusEnabled())
+        {
+            const auto tooltipRect = avatarRect();
+
+            if (!Utils::InterConnector::instance().isMultiselect() && (hasAvatar() || needsAvatar()) && tooltipRect.contains(e->pos()))
+            {
+                StatusTooltip::instance()->objectHovered([this]()
+                {
+                    if (Utils::InterConnector::instance().isMultiselect())
+                        return QRect();
+
+                    const auto rect = avatarRect();
+                    return QRect(mapToGlobal(rect.topLeft()), rect.size());
+                }, msg_.GetChatSender(), this, Utils::InterConnector::instance().getHistoryPage(aimId_)->scrollArea());
+            }
+        }
+
         return QWidget::mouseMoveEvent(e);
     }
 
@@ -460,7 +485,7 @@ namespace Ui
         {
             if (Utils::InterConnector::instance().isMultiselect() && isMultiselectEnabled())
             {
-                if (getId() != -1 && e->button() == Qt::LeftButton)
+                if (e->button() == Qt::LeftButton)
                 {
                     setSelected(!isSelected());
                     if (isSelected())
@@ -870,7 +895,7 @@ namespace Ui
         if (addPhAnimated && i < (heads_.size() - 1))
             i++;
 
-        static const auto morePlaceholder = Utils::loadPixmap(qsl(":/history/i_more_seens_100"));
+        static const auto morePlaceholder = Utils::renderSvg(qsl(":/history/i_more_seens"), QSize(avatarSize, avatarSize));
 
         for (; i >= 0; --i)
         {
@@ -881,7 +906,7 @@ namespace Ui
             if (i == maxCount && !addPhAnimated && heads_.size() > maxCount + 1)
                 avatar = morePlaceholder;
             else
-                avatar = *Logic::GetAvatarStorage()->GetRounded(heads_[i].aimid_, heads_[i].friendly_, size, isDefault, false, false);
+                avatar = Logic::GetAvatarStorage()->GetRounded(heads_[i].aimid_, heads_[i].friendly_, size, isDefault, false, false);
 
             auto margin = xMargin;
             const auto isAddAnimationRunning = addAnimation_ && addAnimation_->state() == QAbstractAnimation::State::Running;
@@ -1163,7 +1188,6 @@ namespace Ui
         }
     }
 
-
     void HistoryControlPageItem::hideMessageStatus()
     {
         if (lastStatus_ == LastStatus::DeliveredToPeer || lastStatus_ == LastStatus::DeliveredToServer)
@@ -1171,5 +1195,29 @@ namespace Ui
             if (lastStatusAnimation_)
                 lastStatusAnimation_->hideStatus();
         }
+    }
+
+    QString AccessibleHistoryControlPageItem::text(QAccessible::Text _type) const
+    {
+        if (item_ && _type == QAccessible::Text::Name)
+        {
+            if (const auto id = item_->getId(); id == -1)
+            {
+                if (auto serviceItem = qobject_cast<ServiceMessageItem*>(item_))
+                {
+                    if (serviceItem->isNew())
+                        return qsl("AS HistoryPage messageNew");
+                    else if (serviceItem->isDate())
+                        return u"AS HistoryPage messageDate " % serviceItem->formatRecentsText() % (serviceItem->isFloating() ? qsl(" (floating)") : QString());
+                    else if (serviceItem->isOverlay())
+                        return u"AS HistoryPage messageOverlay " % serviceItem->formatRecentsText();
+                }
+            }
+            else
+            {
+                return u"AS HistoryPage message " % QString::number(id);
+            }
+        }
+        return {};
     }
 }

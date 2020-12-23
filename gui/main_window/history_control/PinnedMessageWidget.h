@@ -97,6 +97,9 @@ namespace Ui
 
         void updateTextOffsets();
 
+        QString getStickerId() const;
+        void makeStickerPreview();
+
     private:
         std::unique_ptr<Ui::ComplexMessage::ComplexMessageItem> complexMessage_;
 

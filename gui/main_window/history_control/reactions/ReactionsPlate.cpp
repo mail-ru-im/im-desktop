@@ -17,6 +17,7 @@
 
 #include "ReactionsPlate.h"
 #include "ReactionsList.h"
+#include "ReactionItem.h"
 
 namespace
 {
@@ -189,6 +190,8 @@ namespace Ui
 class ReactionsPlate_p
 {
 public:
+    using ReactionItems = std::vector<ReactionItem*>;
+
     ReactionsPlate_p(ReactionsPlate* _q)
         : opacityAnimation_(new QVariantAnimation(_q))
         , geometryAnimation_(new QVariantAnimation(_q))
@@ -200,40 +203,30 @@ public:
         geometryAnimation_->setDuration(updateAnimationDuration.count());
     }
 
-    struct ReactionItem
-    {
-        QRect rect_;
-        QRect emojiRect_;
-        QImage emoji_;
-        bool mouseOver_ = false;
-        QString reaction_;
-        int64_t count_ = 0;
-        double opacity_ = 1;
-        TextRendering::TextUnitPtr countUnit_;
-    };
-
     struct PageRequest
     {
         QString reaction_;
         int64_t seq_ = 0;
     };
 
-    ReactionItem createReactionItem(const Data::Reactions::Reaction& _reaction, const QString& _myReaction)
+    ReactionItem* createReactionItem(const Data::Reactions::Reaction& _reaction, const QString& _myReaction, int64_t _msgId)
     {
-        ReactionItem item;
-        item.reaction_ = _reaction.reaction_;
-        item.countUnit_ = TextRendering::MakeTextUnit(countText(_reaction.count_));
-        item.countUnit_->init(countFont(_reaction.reaction_ == _myReaction), countTextColor(item_->reactionsPlateType(), outgoingPosition_));
-        item.emoji_ = Emoji::GetEmoji(Emoji::EmojiCode::fromQString(_reaction.reaction_), Utils::scale_bitmap(plateEmojiSize()));
-        item.count_ = _reaction.count_;
+        auto item = new ReactionItem(q);
+        item->reaction_ = _reaction.reaction_;
+        item->countUnit_ = TextRendering::MakeTextUnit(countText(_reaction.count_));
+        item->countUnit_->init(countFont(_reaction.reaction_ == _myReaction), countTextColor(item_->reactionsPlateType(), outgoingPosition_));
+        item->emoji_ = Emoji::GetEmoji(Emoji::EmojiCode::fromQString(_reaction.reaction_), Utils::scale_bitmap(plateEmojiSize()));
+        item->count_ = _reaction.count_;
+        item->msgId_ = _msgId;
 
         return item;
     }
 
-    void updateReactionItem(ReactionItem& _item, const Data::Reactions::Reaction& _reaction, const QString& _myReaction)
+    void updateReactionItem(ReactionItem* _item, const Data::Reactions::Reaction& _reaction, const QString& _myReaction)
     {
-        _item.countUnit_->setText(countText(_reaction.count_));
-        _item.countUnit_->init(countFont(_reaction.reaction_ == _myReaction), countTextColor(item_->reactionsPlateType(), outgoingPosition_));
+        _item->count_ = _reaction.count_;
+        _item->countUnit_->setText(countText(_reaction.count_));
+        _item->countUnit_->init(countFont(_reaction.reaction_ == _myReaction), countTextColor(item_->reactionsPlateType(), outgoingPosition_));
     }
 
     void updateItems(const Data::Reactions& _reactions)
@@ -243,43 +236,43 @@ public:
             if (reaction.count_ == 0)
                 continue;
 
-            auto it = std::find_if(items_.begin(), items_.end(), [reaction](const ReactionItem& _item) { return _item.reaction_ == reaction.reaction_; });
+            auto it = std::find_if(items_.begin(), items_.end(), [reaction](const auto& _item) { return _item->reaction_ == reaction.reaction_; });
             if (it != items_.end())
                 updateReactionItem(*it, reaction, _reactions.myReaction_);
             else
-                items_.push_back(createReactionItem(reaction, _reactions.myReaction_));
+                items_.push_back(createReactionItem(reaction, _reactions.myReaction_, _reactions.msgId_));
         }
     }
 
-    int updateItemGeometry(ReactionItem& _item, int _xOffset)
+    int updateItemGeometry(ReactionItem* _item, int _xOffset)
     {
         auto startXOffset = _xOffset;
-        _item.emojiRect_ = QRect(_xOffset, plateTopMargin(), plateEmojiSize(), plateEmojiSize());
-        const auto countWidth = _item.countUnit_->desiredWidth();
-        _xOffset += _item.emojiRect_.width() + emojiRightMargin();
-        _item.countUnit_->getHeight(countWidth);
-        _item.countUnit_->setOffsets(_xOffset, plateHeight() / 2);
-        _item.rect_ = QRect(_item.emojiRect_.topLeft(), QSize(plateEmojiSize() + emojiRightMargin() + countWidth, plateHeight()));
+        _item->emojiRect_ = QRect(_xOffset, plateTopMargin(), plateEmojiSize(), plateEmojiSize());
+        const auto countWidth = _item->countUnit_->desiredWidth();
+        _xOffset += _item->emojiRect_.width() + emojiRightMargin();
+        _item->countUnit_->getHeight(countWidth);
+        _item->countUnit_->setOffsets(_xOffset, plateHeight() / 2);
+        _item->rect_ = QRect(_item->emojiRect_.topLeft(), QSize(plateEmojiSize() + emojiRightMargin() + countWidth, plateHeight()));
         _xOffset += textRightMargin() + countWidth;
 
         return _xOffset - startXOffset;
     }
 
-    std::vector<int> calcItemsOffsets(std::vector<ReactionItem>& _items, int& _xOffset)
+    std::vector<int> calcItemsOffsets(ReactionItems& _items, int& _xOffset)
     {
         std::vector<int> offsets_;
         for (const auto& item : _items)
         {
             offsets_.push_back(_xOffset);
-            _xOffset += item.emojiRect_.width() + emojiRightMargin();
-            const auto countWidth = item.countUnit_->desiredWidth();
+            _xOffset += item->emojiRect_.width() + emojiRightMargin();
+            const auto countWidth = item->countUnit_->desiredWidth();
             _xOffset += textRightMargin() + countWidth;
         }
 
         return offsets_;
     }
 
-    int updateItemsGeometry(std::vector<ReactionItem>& _items, int _xOffset = 0)
+    int updateItemsGeometry(ReactionItems& _items, int _xOffset = 0)
     {
         auto startXOffset = _xOffset;
         for (auto& item: _items)
@@ -335,9 +328,9 @@ public:
 
         for (auto& item : items_)
         {
-            _p.setOpacity(item.opacity_ * opacity_);
-            _p.drawImage(item.emojiRect_, item.emoji_);
-            item.countUnit_->draw(_p, TextRendering::VerPosition::MIDDLE);
+            _p.setOpacity(item->opacity_ * opacity_);
+            _p.drawImage(item->emojiRect_, item->emoji_);
+            item->countUnit_->draw(_p, TextRendering::VerPosition::MIDDLE);
         }
     }
 
@@ -388,8 +381,8 @@ public:
             const auto opacity = value.toDouble();
             for (auto& item : items_)
             {
-                if (deletedReactions_.count(item.reaction_))
-                    item.opacity_ = opacity;
+                if (deletedReactions_.count(item->reaction_))
+                    item->opacity_ = opacity;
             }
             q->update();
         });
@@ -408,13 +401,13 @@ public:
 
         for (auto& item : items_)
         {
-            if (deletedReactions_.count(item.reaction_) == 0)
-                currentOffsets.push_back(item.emojiRect_.left());
+            if (deletedReactions_.count(item->reaction_) == 0)
+                currentOffsets.push_back(item->emojiRect_.left());
         }
 
         for (auto& reaction : deletedReactions_)
         {
-            auto it = std::find_if(items_.begin(), items_.end(), [reaction](const ReactionItem& _item) { return _item.reaction_ == reaction; });
+            auto it = std::find_if(items_.begin(), items_.end(), [reaction](const auto& _item) { return _item->reaction_ == reaction; });
             if (it != items_.end())
                 items_.erase(it);
         }
@@ -426,7 +419,7 @@ public:
 
         addedItems_.clear();
         for (auto& reaction : addedReactions_)
-            addedItems_.emplace_back(createReactionItem(reaction, reactions_.myReaction_));
+            addedItems_.emplace_back(createReactionItem(reaction, reactions_.myReaction_, reactions_.msgId_));
 
         const auto addedSize = updateItemsGeometry(addedItems_, sizeAfterDeletion);
         const auto newWidth = sizeAfterDeletion + addedSize;
@@ -457,7 +450,7 @@ public:
     void startAddedItemsAnimation()
     {
         for (auto& item : addedItems_)
-            item.opacity_ = 0;
+            item->opacity_ = 0;
 
         auto addedIndex = items_.size();
         std::move(addedItems_.begin(), addedItems_.end(), std::back_inserter(items_));
@@ -474,7 +467,7 @@ public:
         {
             const auto opacity = value.toDouble();
             for (auto i = addedIndex; i < items_.size(); ++i)
-                items_[i].opacity_ = opacity;
+                items_[i]->opacity_ = opacity;
             q->update();
         });
         QObject::connect(opacityAnimation_, &QVariantAnimation::finished, q, [this]()
@@ -527,7 +520,7 @@ public:
             if (reaction.count_ == 0)
                 continue;
 
-            auto it = std::find_if(items_.begin(), items_.end(), [&reaction](const ReactionItem& _item) { return _item.reaction_ == reaction.reaction_; });
+            auto it = std::find_if(items_.begin(), items_.end(), [&reaction](const auto& _item) { return _item->reaction_ == reaction.reaction_; });
             if (it == items_.end())
                 addedReactions_.push_back(reaction);
 
@@ -536,8 +529,8 @@ public:
 
         for (const auto& item : items_)
         {
-            if (reactionsSet.count(item.reaction_) == 0)
-                deletedReactions_.insert(item.reaction_);
+            if (reactionsSet.count(item->reaction_) == 0)
+                deletedReactions_.insert(item->reaction_);
         }
     }
 
@@ -548,10 +541,10 @@ public:
         {
             tooltipText += _item.reaction_ % QChar::LineFeed;
 
-            auto it = pageCache_.find(_item.reaction_);
-            if (it != pageCache_.end())
+            auto pageIt = pageCache_.find(_item.reaction_);
+            if (pageIt != pageCache_.end())
             {
-                const auto& page = it->second;
+                const auto& page = pageIt->second;
                 const auto itemsToShowCount = _item.count_ > maxTooltipReactionsCount ? maxTooltipReactionsCount - 1 : maxTooltipReactionsCount; // -1 for "And %1 more" line
 
                 for (auto i = 0u; i < page.reactions_.size() && i < itemsToShowCount; i++)
@@ -562,16 +555,19 @@ public:
             }
             else
             {
+                tooltipText += QT_TRANSLATE_NOOP("reactions", "Loading...");
+            }
+
+            if (pageIt == pageCache_.end() || outdatedPages_.count(_item.reaction_) != 0)
+            {
                 auto it = std::find_if(pageSeqs_.begin(), pageSeqs_.end(), [&_item](const PageRequest& _pageRequest) { return _pageRequest.reaction_ == _item.reaction_; });
                 if (it == pageSeqs_.end())
                 {
                     PageRequest request;
                     request.reaction_ = _item.reaction_;
-                    request.seq_ = GetDispatcher()->getReactionsPage(item_->getId(), item_->getContact(), _item.reaction_, QString(), qsl("0"), maxTooltipReactionsCount);
+                    request.seq_ = GetDispatcher()->getReactionsPage(item_->getId(), item_->getContact(), _item.reaction_, {}, u"0", maxTooltipReactionsCount);
                     pageSeqs_.push_back(std::move(request));
                 }
-
-                tooltipText += QT_TRANSLATE_NOOP("reactions", "Loading...");
             }
         }
         else
@@ -602,10 +598,11 @@ public:
     QPoint pressPos_;
     Data::Reactions reactions_;
     HistoryControlPageItem* item_;
-    std::vector<ReactionItem> items_;
-    std::vector<ReactionItem> addedItems_;
+    ReactionItems items_;
+    ReactionItems addedItems_;
     QGraphicsDropShadowEffect* shadow_;
     std::unordered_map<QString, Data::ReactionsPage, Utils::QStringHasher> pageCache_;
+    std::unordered_set<QString, Utils::QStringHasher> outdatedPages_;
     std::unordered_set<QString, Utils::QStringHasher> deletedReactions_;
     std::vector<Data::Reactions::Reaction> addedReactions_;
     std::optional<Data::Reactions> queuedData_;
@@ -626,6 +623,8 @@ ReactionsPlate:: ReactionsPlate(HistoryControlPageItem* _item)
     : QWidget(_item),
       d(std::make_unique<ReactionsPlate_p>(this))
 {
+    Testing::setAccessibleName(this, u"AS HistoryPage messageReactions " % QString::number(_item->getId()));
+
     d->item_ = _item;
     setVisible(false);
     setMouseTracking(true);
@@ -670,7 +669,8 @@ void ReactionsPlate::setReactions(const Data::Reactions& _reactions)
         hide();
     }
 
-    d->pageCache_.clear();
+    for (const auto& [reaction, page] : d->pageCache_)
+        d->outdatedPages_.insert(reaction);
 
     update();
 }
@@ -705,9 +705,9 @@ void ReactionsPlate::mouseMoveEvent(QMouseEvent* _event)
 {
     for (auto& item : d->items_)
     {
-        if (item.rect_.contains(_event->pos()))
+        if (item->rect_.contains(_event->pos()))
         {
-            d->showTooltip(item);
+            d->showTooltip(*item);
             break;
         }
     }
@@ -731,9 +731,9 @@ void ReactionsPlate::mouseReleaseEvent(QMouseEvent* _event)
 
         for (auto& item : d->items_)
         {
-            if (item.rect_.contains(_event->pos()) && item.rect_.contains(d->pressPos_))
+            if (item->rect_.contains(_event->pos()) && item->rect_.contains(d->pressPos_))
             {
-                Q_EMIT reactionClicked(item.reaction_);
+                Q_EMIT reactionClicked(item->reaction_);
                 break;
             }
         }
@@ -768,15 +768,16 @@ void ReactionsPlate::onReactionsPage(int64_t _seq, const Data::ReactionsPage& _p
     if (_success)
     {
         d->pageCache_[reaction] = _page;
+        d->outdatedPages_.erase(reaction);
 
         if (isVisible())
         {
             const auto mousePos = mapFromGlobal(QCursor::pos());
             for (auto& item : d->items_)
             {
-                if (item.reaction_ == reaction && item.rect_.contains(mousePos))
+                if (item->reaction_ == reaction && item->rect_.contains(mousePos))
                 {
-                    d->showTooltip(item);
+                    d->showTooltip(*item);
                     break;
                 }
             }
@@ -784,6 +785,33 @@ void ReactionsPlate::onReactionsPage(int64_t _seq, const Data::ReactionsPage& _p
     }
 
     d->pageSeqs_.erase(it);
+}
+
+int AccessibleReactionsPlate::childCount() const
+{
+    return plate_ ? plate_->d->items_.size() : 0;
+}
+
+QAccessibleInterface* AccessibleReactionsPlate::child(int _index) const
+{
+    if (!plate_ || _index < 0 || _index >= childCount())
+        return nullptr;
+
+    return QAccessible::queryAccessibleInterface(plate_->d->items_[_index]);
+}
+
+int AccessibleReactionsPlate::indexOfChild(const QAccessibleInterface* _child) const
+{
+    if (!plate_ || !_child)
+        return -1;
+
+    const auto reaction = qobject_cast<ReactionItem*>(_child->object());
+    return Utils::indexOf(plate_->d->items_.cbegin(), plate_->d->items_.cend(), reaction);
+}
+
+QString AccessibleReactionsPlate::text(QAccessible::Text _type) const
+{
+    return plate_ && _type == QAccessible::Text::Name ? plate_->accessibleName() : QString();
 }
 
 }

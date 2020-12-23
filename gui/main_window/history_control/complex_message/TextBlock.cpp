@@ -27,6 +27,8 @@ TextBlock::TextBlock(ComplexMessageItem* _parent, const QString &text, const Ui:
 {
     assert(!text.isEmpty());
 
+    Testing::setAccessibleName(this, u"AS HistoryPage messageText " % QString::number(_parent->getId()));
+
     setLayout(Layout_);
 
     connect(this, &TextBlock::selectionChanged, _parent, &ComplexMessageItem::selectionChanged);

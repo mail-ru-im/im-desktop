@@ -102,7 +102,10 @@
 -(void)windowWillEnterFullScreen:(NSNotification *)notification
 {
     if (_notification)
+    {
         _notification->fullscreenAnimationStart();
+        _notification->changeFullscreenState(true);
+    }
 }
 
 -(void)windowDidEnterFullScreen:(NSNotification *)notification
@@ -114,7 +117,10 @@
 -(void)windowWillExitFullScreen:(NSNotification *)notification
 {
     if (_notification)
+    {
         _notification->fullscreenAnimationStart();
+        _notification->changeFullscreenState(false);
+    }
 }
 
 -(void)windowDidExitFullScreen:(NSNotification *)notification
@@ -291,13 +297,6 @@ void platform_macos::setWindowPosition(QWidget& widget, const QRect& widgetRect)
     NSWindow* window = [view window];
     assert(window);
 
-    /*
-    const int widgetH = widget.height();
-    if (top)
-        rect.origin.y = rect.origin.y + rect.size.height - widgetH;
-    rect.size.height = widgetH;
-    */
-
     NSRect rect;
     rect.size.width  = widgetRect.width();
     rect.size.height = widgetRect.height();
@@ -345,35 +344,6 @@ int platform_macos::getWidgetHeaderHeight(const QWidget& widget)
     res = int(window.frame.size.height - contentHeight);
     return res;
 }
-
-/*
-QRect platform_macos::getWindowRect(const QWidget& parent)
-{
-    NSRect rect;
-    NSView* view = (NSView*)parent.winId();
-    assert(view);
-    if (!view)
-        return parent.geometry();
-
-    NSWindow* window = [view window];
-    assert(window);
-    if (!window)
-        return parent.geometry();
-
-    rect = [window frame];
-
-    // TODO: implement for multi screens.
-    NSScreen *screen = [window screen];
-    if (screen)
-    {
-        NSRect screenRect = [screen frame];
-        return QRect(rect.origin.x, screenRect.size.height - (rect.origin.y + rect.size.height), rect.size.width, rect.size.height);
-    } else
-    {
-        return QRect(rect.origin.x, rect.origin.y, rect.size.width, rect.size.height);
-    }
-}
-*/
 
 void setAspectRatioForWindow(QWidget& wnd, float w, float h)
 {
@@ -544,6 +514,14 @@ int platform_macos::doubleClickInterval()
     return [NSEvent doubleClickInterval] * 1000;
 }
 
+void platform_macos::showInWorkspace(QWidget* _w, platform_specific::ShowCallback _showCallback)
+{
+    auto wnd = [reinterpret_cast<NSView *>(_w->winId()) window];
+    [wnd setCollectionBehavior:NSWindowCollectionBehaviorMoveToActiveSpace];
+    if (_showCallback)
+        _showCallback();
+}
+
 NSWindow* getNSWindow(QWidget& parentWindow)
 {
     NSWindow* res = nil;
@@ -591,20 +569,21 @@ namespace platform_macos {
 
 class GraphicsPanelMacosImpl : public platform_specific::GraphicsPanel {
     std::vector<QPointer<Ui::BaseVideoPanel>> _panels;
-    NSView* _renderView;
+    NSView* _renderView = nullptr;
+    NSView* _parentView = nullptr;
 
-    virtual void moveEvent(QMoveEvent*) override;
-    virtual void resizeEvent(QResizeEvent*) override;
-    virtual void showEvent(QShowEvent*) override;
-    virtual void hideEvent(QHideEvent*) override;
-    virtual void mousePressEvent(QMouseEvent * event) override;
-    virtual void mouseReleaseEvent(QMouseEvent * event) override;
-    virtual void mouseMoveEvent(QMouseEvent* _e) override;
-    virtual bool eventFilter(QObject *obj, QEvent *event) override;
+    void moveEvent(QMoveEvent*) override;
+    void resizeEvent(QResizeEvent*) override;
+    void showEvent(QShowEvent*) override;
+    void hideEvent(QHideEvent*) override;
+    void mousePressEvent(QMouseEvent * event) override;
+    void mouseReleaseEvent(QMouseEvent * event) override;
+    void mouseMoveEvent(QMouseEvent* _e) override;
+    bool eventFilter(QObject *obj, QEvent *event) override;
 
-    virtual void createdTalk(bool is_vcs) override;
-    virtual void startedTalk() override;
-    virtual void exitTalk() override;
+    void enableMouseEvents(bool enabled) override;
+    void initNative(platform_specific::ViewResize _mode) override;
+    void freeNative() override;
 
     void _setPanelsAttached(bool attach);
     void _mouseMoveEvent(QMouseEvent* _e);
@@ -613,7 +592,7 @@ public:
     GraphicsPanelMacosImpl(QWidget* parent, std::vector<QPointer<Ui::BaseVideoPanel>>& panels, bool primaryVideo, bool titleBar);
     virtual ~GraphicsPanelMacosImpl();
 
-    virtual WId frameId() const override;
+    WId frameId() const override;
 
     void addPanels(std::vector<QPointer<Ui::BaseVideoPanel> >& panels) override;
     void fullscreenModeChanged(bool fullscreen) override;
@@ -623,38 +602,27 @@ public:
     void fullscreenAnimationFinish() override;
     void windowWillDeminiaturize() override;
     void windowDidDeminiaturize()  override;
+    void setOpacity(double _opacity) override;
 
     QPoint mouseMovePoint;
     bool primaryVideo_;
-    bool disableMouseEvents_;
+    bool enableMouseEvents_ = false;
 };
 
 GraphicsPanelMacosImpl::GraphicsPanelMacosImpl(QWidget* parent, std::vector<QPointer<Ui::BaseVideoPanel>>& panels, bool primaryVideo, bool titleBar)
     : platform_specific::GraphicsPanel(parent)
     , _panels(panels)
     , primaryVideo_ (primaryVideo)
-    , disableMouseEvents_(true)
 {
-
-    //primaryVideo_ = false;
-
     setAttribute(Qt::WA_ShowWithoutActivating);
     setAttribute(Qt::WA_X11DoNotAcceptFocus);
     setAttribute(Qt::WA_UpdatesDisabled);
 
-    //NSView* window = (NSView*)parent->winId();
-    //[[window window] setStyleMask:NSTitledWindowMask];
-
-    /*Class viewClass = NSClassFromString(@"VOIPRenderViewOGL");
-    assert(viewClass);
-
-    if (viewClass)*/
     {
+        _parentView = (NSView*)(parent ? parent->winId() : winId());
+        assert(_parentView);
 
-        NSView* parentView = (NSView*)(parent ? parent->winId() : winId());
-        assert(parentView);
-
-        NSWindow* window = [parentView window];
+        NSWindow* window = [_parentView window];
         assert(window);
 
         if (!titleBar)
@@ -663,19 +631,13 @@ GraphicsPanelMacosImpl::GraphicsPanelMacosImpl(QWidget* parent, std::vector<QPoi
             [[window standardWindowButton:NSWindowMiniaturizeButton] setHidden:YES];
             [[window standardWindowButton:NSWindowZoomButton] setHidden:YES];
 
-            if (QSysInfo().macVersion() >= QSysInfo::MV_10_10)
-            {
-                [window setValue:@(YES) forKey:@"titlebarAppearsTransparent"];
-                [window setValue:@(1) forKey:@"titleVisibility"];
-                //        window.titlebarAppearsTransparent = YES;
-                //        window.titleVisibility = NSWindowTitleHidden;
-                window.styleMask |= (1 << 15);//NSFullSizeContentViewWindowMask;
-            }
+            [window setValue:@(YES) forKey:@"titlebarAppearsTransparent"];
+            [window setValue:@(1) forKey:@"titleVisibility"];
+            window.styleMask |= (1 << 15);//NSFullSizeContentViewWindowMask;
         }
 
-        //window.movable = NO;
         window.movableByWindowBackground  = NO;
-        const auto color = Styling::getParameters().getColor(Styling::StyleVariable::APP_PRIMARY);
+        const auto color = Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALBLACK_PERMANENT);
 
         window.backgroundColor = [NSColor
                 colorWithCalibratedRed: color.redF()
@@ -683,21 +645,14 @@ GraphicsPanelMacosImpl::GraphicsPanelMacosImpl(QWidget* parent, std::vector<QPoi
                 blue: color.blueF()
                 alpha: color.alphaF()];
 
-        /*if([VOIPMTLRenderView isSupported]) {
-            _renderView = [[VOIPMTLRenderView alloc] initWithFrame:parentView.frame];
-        } else*/ {
-            _renderView = [[VOIPRenderViewOGL alloc] initWithFrame:parentView.frame];
-        }
-        assert(_renderView);
-
         window.contentView.autoresizesSubviews = YES;
-        parentView.autoresizesSubviews = YES;
-        [parentView addSubview:_renderView];
+        _parentView.autoresizesSubviews = YES;
     }
 }
 
 GraphicsPanelMacosImpl::~GraphicsPanelMacosImpl() {
-    [_renderView release];
+    if (_renderView)
+        [_renderView release];
 }
 
 WId GraphicsPanelMacosImpl::frameId() const {
@@ -707,19 +662,13 @@ WId GraphicsPanelMacosImpl::frameId() const {
 void GraphicsPanelMacosImpl::fullscreenModeChanged(bool fullscreen) {
     NSView* parentView = (NSView*)winId();
     assert(parentView);
-    if (!parentView) { return; }
+    if (!parentView)
+        return;
 
     NSWindow* window = [parentView window];
     assert(window);
-    if (!window) { return; }
-
-    /*
-    if (fullscreen) {
-        [[window standardWindowButton:NSWindowCloseButton] setHidden:NO];
-    } else {
-        [[window standardWindowButton:NSWindowCloseButton] setHidden:YES];
-    }
-    */
+    if (!window)
+        return;
 }
 
 void GraphicsPanelMacosImpl::moveEvent(QMoveEvent* e)
@@ -737,8 +686,6 @@ void GraphicsPanelMacosImpl::resizeEvent(QResizeEvent* e)
     frame.origin.y    = windowRc.top();
     frame.size.width  = windowRc.width();
     frame.size.height = windowRc.height();
-
-   // _renderView.frame = frame;
 }
 
 void GraphicsPanelMacosImpl::_setPanelsAttached(bool attach)
@@ -755,7 +702,6 @@ void GraphicsPanelMacosImpl::_setPanelsAttached(bool attach)
 void GraphicsPanelMacosImpl::showEvent(QShowEvent* e)
 {
     platform_specific::GraphicsPanel::showEvent(e);
-    [_renderView setHidden:NO];
     _setPanelsAttached(true);
 
     if (primaryVideo_)
@@ -768,7 +714,6 @@ void GraphicsPanelMacosImpl::showEvent(QShowEvent* e)
 void GraphicsPanelMacosImpl::hideEvent(QHideEvent* e)
 {
     platform_specific::GraphicsPanel::hideEvent(e);
-    [_renderView setHidden:YES];
     _setPanelsAttached(false);
 
     if (primaryVideo_)
@@ -777,7 +722,9 @@ void GraphicsPanelMacosImpl::hideEvent(QHideEvent* e)
 
 void GraphicsPanelMacosImpl::mousePressEvent(QMouseEvent * event)
 {
-    if (!disableMouseEvents_ && primaryVideo_ && event->button() == Qt::LeftButton)
+    if (!_renderView)
+        return;
+    if (enableMouseEvents_ && primaryVideo_ && event->button() == Qt::LeftButton)
     {
         NSEventType evtType = (event->button() == Qt::LeftButton ? NSLeftMouseDown : NSRightMouseDown);
         NSPoint where;
@@ -803,7 +750,9 @@ void GraphicsPanelMacosImpl::mousePressEvent(QMouseEvent * event)
 
 void GraphicsPanelMacosImpl::mouseReleaseEvent(QMouseEvent * event)
 {
-    if (!disableMouseEvents_ && primaryVideo_ && event->button() == Qt::LeftButton)
+    if (!_renderView)
+        return;
+    if (enableMouseEvents_ && primaryVideo_ && event->button() == Qt::LeftButton)
     {
         NSEventType evtType = (event->button() == Qt::LeftButton ? NSLeftMouseUp : NSRightMouseUp);
         NSPoint where;
@@ -833,8 +782,10 @@ void GraphicsPanelMacosImpl::mouseMoveEvent(QMouseEvent* _e)
 
 void GraphicsPanelMacosImpl::_mouseMoveEvent(QMouseEvent* _e)
 {
+    if (!_renderView)
+        return;
     QPoint localPos = mapFromGlobal(QCursor::pos());
-    if (!disableMouseEvents_ && primaryVideo_ && mouseMovePoint != localPos)
+    if (enableMouseEvents_ && primaryVideo_ && mouseMovePoint != localPos)
     {
         mouseMovePoint = localPos;
         NSEventType evtType = NSMouseMoved;
@@ -875,6 +826,8 @@ void GraphicsPanelMacosImpl::fullscreenAnimationStart()
     //_setPanelsAttached(false);
     moveAboveParentWindow(*(QWidget*)parent(), *this);
 
+    if (!_renderView)
+        return;
     if ([_renderView respondsToSelector:@selector(startFullScreenAnimation)]) {
         [_renderView startFullScreenAnimation];
     }
@@ -885,6 +838,8 @@ void GraphicsPanelMacosImpl::fullscreenAnimationFinish()
     // Commented, because on 10.13 with this line we have problem with top most video panels.
     //_setPanelsAttached(true);
 
+    if (!_renderView)
+        return;
     if ([_renderView respondsToSelector:@selector(finishFullScreenAnimation)]) {
         [_renderView finishFullScreenAnimation];
     }
@@ -893,6 +848,8 @@ void GraphicsPanelMacosImpl::fullscreenAnimationFinish()
 void GraphicsPanelMacosImpl::windowWillDeminiaturize()
 {
     // Stop render while deminiaturize animation is running. Fix artifacts.
+    if (!_renderView)
+        return;
     if ([_renderView respondsToSelector:@selector(finishFullScreenAnimation)]) {
         [_renderView startFullScreenAnimation];
     }
@@ -901,6 +858,8 @@ void GraphicsPanelMacosImpl::windowWillDeminiaturize()
 void GraphicsPanelMacosImpl::windowDidDeminiaturize()
 {
     // Start render on deminiatureze finished.
+    if (!_renderView)
+        return;
     if ([_renderView respondsToSelector:@selector(finishFullScreenAnimation)]) {
         [_renderView finishFullScreenAnimation];
     }
@@ -925,19 +884,46 @@ bool GraphicsPanelMacosImpl::eventFilter(QObject *obj, QEvent *event)
     return false;
 }
 
-void GraphicsPanelMacosImpl::createdTalk(bool is_vcs)
+void GraphicsPanelMacosImpl::enableMouseEvents(bool enable)
 {
-    disableMouseEvents_ = false;
+    enableMouseEvents_ = enable;
 }
 
-void GraphicsPanelMacosImpl::startedTalk()
+void GraphicsPanelMacosImpl::initNative(platform_specific::ViewResize _mode)
 {
-    disableMouseEvents_ = false;
+    if (_renderView)
+        return;
+    NSRect frame = [_parentView frame];
+    // We resize only videostream in mini-window with proper aspectRatio
+    // and add 1px for correct interraction while _renderView is 'invisible'
+    if (_mode == platform_specific::ViewResize::Adjust)
+        frame.size.height = height() + Utils::scale_value(1);
+    _renderView = [[VOIPRenderViewOGL alloc] initWithFrame:frame];
+    [_parentView addSubview:_renderView];
 }
 
-void GraphicsPanelMacosImpl::exitTalk()
+void GraphicsPanelMacosImpl::freeNative()
 {
-    disableMouseEvents_ = true;
+    assert(_renderView);
+    if (!_renderView)
+        return;
+    [_renderView removeFromSuperview];
+    [_renderView release];
+    _renderView = nullptr;
+}
+
+void GraphicsPanelMacosImpl::setOpacity(double _opacity)
+{
+    NSView* view = (NSView*)winId();
+    assert(view);
+    if (!view)
+        return;
+
+    NSWindow* window = [view window];
+    assert(window);
+    if (!window)
+        return;
+    [window setAlphaValue:_opacity];
 }
 
 }
@@ -948,7 +934,7 @@ platform_specific::GraphicsPanel* platform_macos::GraphicsPanelMacos::create(QWi
     if (CGDisplayIsAsleep(CGMainDisplayID()))
     {
         CFStringRef reasonForActivity = CFSTR("ICQ Call is active");
-        IOReturn success = IOPMAssertionDeclareUserActivity(reasonForActivity, kIOPMUserActiveLocal, &assertionID);
+        IOPMAssertionDeclareUserActivity(reasonForActivity, kIOPMUserActiveLocal, &assertionID);
         // Give 1s to monitor to turn on.
         QThread::msleep(1000);
     }

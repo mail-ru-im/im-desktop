@@ -147,6 +147,7 @@ void Ui::IncomingCallWindow::onVoipWindowRemoveComplete(quintptr _winId)
 #ifndef STRIP_VOIP
     if (_winId == rootWidget_->frameId())
     {
+        rootWidget_->freeNative();
         hide();
     }
 #endif
@@ -165,6 +166,7 @@ void Ui::IncomingCallWindow::onVoipWindowAddComplete(quintptr _winId)
 void Ui::IncomingCallWindow::showFrame()
 {
 #ifndef STRIP_VOIP
+    rootWidget_->initNative();
     assert(rootWidget_->frameId());
     if (rootWidget_->frameId())
     {
@@ -177,7 +179,6 @@ void Ui::IncomingCallWindow::showFrame()
 void Ui::IncomingCallWindow::hideFrame()
 {
 #ifndef STRIP_VOIP
-    assert(rootWidget_->frameId());
     if (rootWidget_->frameId())
     {
         instances_.removeAll(this);

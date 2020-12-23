@@ -12,7 +12,7 @@ import xml.etree.ElementTree
 
 
 def parse_external_version():
-    walk_dir = Path("..", "CMakeLists.txt")
+    walk_dir = Path("..", "requirements", "common.cmake")
     data = None
     with open(walk_dir, "r") as cmake_data:
         data = cmake_data.readlines()
@@ -26,9 +26,11 @@ def parse_external_version():
 
 
 external_version = parse_external_version()
-
+if not external_version:
+    print("ERROR: Can't extract external_version parse_external_version()")
+    sys.exit(1)
 qt_base_path = f"../external_{external_version}/mac/Qt"
-
+print(f"-> qt_base_path = {qt_base_path}")
 
 if len(sys.argv) == 2:
     qt_base_path = sys.argv[1]

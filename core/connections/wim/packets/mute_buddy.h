@@ -31,6 +31,8 @@ namespace core
                 bool mute);
 
             virtual ~mute_buddy();
+
+            virtual std::string_view get_method() const override;
         };
 
     }

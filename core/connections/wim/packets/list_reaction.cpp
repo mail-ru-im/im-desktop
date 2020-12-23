@@ -79,6 +79,11 @@ list_reaction::list_reaction(wim_packet_params _params,
 
 }
 
+std::string_view list_reaction::get_method() const
+{
+    return "reaction/list";
+}
+
 int32_t list_reaction::init_request(const std::shared_ptr<http_request_simple>& _request)
 {
     rapidjson::Document doc(rapidjson::Type::kObjectType);
@@ -97,7 +102,7 @@ int32_t list_reaction::init_request(const std::shared_ptr<http_request_simple>& 
 
     doc.AddMember("params", std::move(node_params), a);
 
-    setup_common_and_sign(doc, a, _request, "reaction/list");
+    setup_common_and_sign(doc, a, _request, get_method());
 
     if (!robusto_packet::params_.full_log_)
     {

@@ -2,7 +2,9 @@
 
 #include "../utils.h"
 
+#ifndef STRIP_VOIP
 #include "../Voip/VoipManager.h"
+#endif
 #include "stats/memory/memory_stats_collector.h"
 #include "stats/memory/memory_stats_request.h"
 #include "stats/memory/memory_stats_response.h"
@@ -183,11 +185,13 @@ std::wstring base_im::get_file_name_by_url(const std::string& _url) const
     return su::wconcat(get_content_cache_path(), L'/', core::tools::from_utf8(core::tools::md5(_url.data(), _url.size())));
 }
 
+#ifndef STRIP_VOIP
 void base_im::create_masks(std::weak_ptr<wim::im> _im)
 {
     const auto version = voip_manager_ ? voip_manager_->version() : 0;
     masks_ = std::make_shared<masks>(_im, get_masks_path(), version);
 }
+#endif
 
 std::wstring base_im::get_masks_path() const
 {
@@ -245,6 +249,11 @@ std::wstring core::base_im::get_call_log_file_name() const
     return su::wconcat(get_im_data_path(), L"/calls/call_log.cache");
 }
 
+std::wstring core::base_im::get_inviters_blacklist_file_name() const
+{
+    return su::wconcat(get_im_data_path(), L"/privacy/blocked_inviters.cache");
+}
+
 // voip
 /*void core::base_im::on_voip_call_set_proxy(const voip_manager::VoipProxySettings& proxySettings)
 {
@@ -253,37 +262,30 @@ std::wstring core::base_im::get_call_log_file_name() const
 #endif
 }*/
 
+#ifndef STRIP_VOIP
 void core::base_im::on_voip_call_start(const std::vector<std::string> &contacts, const voip_manager::CallStartParams &params)
 {
-#ifndef STRIP_VOIP
     auto account = _get_protocol_uid();
     assert(!account.empty());
     if (!voip_manager_ || account.empty() || contacts.empty())
         return;
     voip_manager_->call_create(contacts, account, params);
     voip_manager_->set_device_mute(AudioPlayback, false);
-#endif
 }
 
 void core::base_im::on_voip_window_set_offsets(void* hwnd, unsigned l, unsigned t, unsigned r, unsigned b)
 {
-#ifndef STRIP_VOIP
     voip_manager_->window_set_offsets(hwnd, l, t, r, b);
-#endif
 }
 
 bool core::base_im::on_voip_avatar_actual_for_voip(const std::string& contact, unsigned avatar_size)
 {
-#ifndef STRIP_VOIP
     auto account = _get_protocol_uid();
     assert(!account.empty());
     return
         !account.empty() &&
         !contact.empty() &&
         voip_manager_->call_have_call(voip_manager::Contact(account, contact));
-#else
-    return false;
-#endif
 }
 
 void core::base_im::on_voip_user_update_avatar_no_video(const std::string& contact, const unsigned char* data, unsigned size, unsigned h, unsigned w, voip_manager::AvatarThemeType theme)
@@ -327,43 +329,36 @@ void core::base_im::on_voip_user_update_avatar_background(const std::string& con
 
 void core::base_im::on_voip_call_end(const std::string &call_id, const std::string &contact, bool busy, bool conference)
 {
-#ifndef STRIP_VOIP
     voip_manager_->call_decline(voip_manager::Contact(call_id, contact), busy, conference);
-#endif
 }
 
-void core::base_im::on_voip_device_changed(std::string_view dev_type, const std::string& uid)
+void core::base_im::on_voip_device_changed(std::string_view dev_type, const std::string& uid, bool force_reset)
 {
-#ifndef STRIP_VOIP
     if ("audio_playback" == dev_type)
     {
-        voip_manager_->set_device(AudioPlayback, uid);
+        voip_manager_->set_device(AudioPlayback, uid, force_reset);
     }
     else if ("audio_capture" == dev_type)
     {
-        voip_manager_->set_device(AudioRecording, uid);
+        voip_manager_->set_device(AudioRecording, uid, force_reset);
     }
     else if ("video_capture" == dev_type)
     {
-        voip_manager_->set_device(VideoCapturing, uid);
+        voip_manager_->set_device(VideoCapturing, uid, force_reset);
     }
     else
     {
         assert(false);
     }
-#endif
 }
 
 void core::base_im::on_voip_devices_changed(DeviceClass deviceClass)
 {
-#ifndef STRIP_VOIP
     voip_manager_->notify_devices_changed(deviceClass);
-#endif
 }
 
 void core::base_im::on_voip_window_update_background(void* hwnd, const unsigned char* data, unsigned size, unsigned w, unsigned h)
 {
-#ifndef STRIP_VOIP
     voip_manager::WindowBitmap bmp;
     bmp.hwnd = hwnd;
     bmp.bitmap.data = (void*)data;
@@ -372,42 +367,32 @@ void core::base_im::on_voip_window_update_background(void* hwnd, const unsigned 
     bmp.bitmap.h = h;
 
     voip_manager_->window_set_bitmap(bmp);
-#endif
 }
 
 void core::base_im::on_voip_call_accept(const std::string &call_id, bool video)
 {
-#ifndef STRIP_VOIP
     voip_manager_->call_accept(call_id, _get_protocol_uid(), video);
     voip_manager_->set_device_mute(AudioPlayback, false);
-#endif
 }
 
 void core::base_im::on_voip_add_window(voip_manager::WindowParams& windowParams)
 {
-#ifndef STRIP_VOIP
     voip_manager_->window_add(windowParams);
-#endif
 }
 
 void core::base_im::on_voip_remove_window(void* hwnd)
 {
-#ifndef STRIP_VOIP
     voip_manager_->window_remove(hwnd);
-#endif
 }
 
 void core::base_im::on_voip_call_stop()
 {
-#ifndef STRIP_VOIP
     voip_manager_->call_stop();
     voip_manager_->set_device_mute(AudioPlayback, false);
-#endif
 }
 
 void core::base_im::on_voip_switch_media(bool video)
 {
-#ifndef STRIP_VOIP
     if (video)
     {
         const bool enabled = voip_manager_->local_video_enabled();
@@ -418,47 +403,38 @@ void core::base_im::on_voip_switch_media(bool video)
         const bool enabled = voip_manager_->local_audio_enabled();
         voip_manager_->media_audio_en(!enabled);
     }
-#endif
 }
 
 void core::base_im::on_voip_mute_incoming_call_sounds(bool mute)
 {
-#if defined(_WIN32) && !defined(STRIP_VOIP)
+#if defined(_WIN32)
     voip_manager_->mute_incoming_call_sounds(mute);
 #endif
 }
 
 void core::base_im::on_voip_mute_switch()
 {
-#ifndef STRIP_VOIP
     const bool mute = voip_manager_->get_device_mute(AudioPlayback);
     voip_manager_->set_device_mute(AudioPlayback, !mute);
-#endif
 }
 
 void core::base_im::on_voip_set_mute(bool mute)
 {
-#ifndef STRIP_VOIP
     voip_manager_->set_device_mute(AudioPlayback, mute);
-#endif
 }
 
 void core::base_im::on_voip_reset()
 {
-#ifndef STRIP_VOIP
     voip_manager_->reset();
-#endif
 }
 
 void core::base_im::on_voip_proto_ack(const voip_manager::VoipProtoMsg& msg, bool success)
 {
-#ifndef STRIP_VOIP
     voip_manager_->ProcessVoipAck(msg, success);
-#endif
 }
 
-void core::base_im::on_voip_proto_msg(bool allocate, const char* data, unsigned len, std::shared_ptr<auto_callback> _on_complete) {
-#ifndef STRIP_VOIP
+void core::base_im::on_voip_proto_msg(bool allocate, const char* data, unsigned len, std::shared_ptr<auto_callback> _on_complete)
+{
     auto account = _get_protocol_uid();
     assert(!account.empty());
     if (!account.empty())
@@ -467,44 +443,31 @@ void core::base_im::on_voip_proto_msg(bool allocate, const char* data, unsigned 
         voip_manager_->ProcessVoipMsg(account, msg_type, data, len);
         _on_complete->callback(0);
     }
-#endif
 }
 
 void core::base_im::on_voip_update()
 {
-#ifndef STRIP_VOIP
     voip_manager_->update();
-#endif
 }
 
 void core::base_im::on_voip_minimal_bandwidth_switch()
 {
-#ifndef STRIP_VOIP
     voip_manager_->minimal_bandwidth_switch();
-#endif
 }
 
 void core::base_im::on_voip_load_mask(const std::string& path)
 {
-#ifndef STRIP_VOIP
     voip_manager_->load_mask(path);
-#endif
 }
 
-void core::base_im::voip_set_model_path(const std::string& _local_path)
+void core::base_im::voip_set_model_path(const std::string& _local_path, bool _force_reload)
 {
-#ifndef STRIP_VOIP
-    voip_manager_->set_model_path(_local_path);
-#endif
+    voip_manager_->set_model_path(_local_path, _force_reload);
 }
 
 bool core::base_im::has_created_call()
 {
-#ifndef STRIP_VOIP
     return voip_manager_->has_created_call();
-#else
-    return false;
-#endif
 }
 
 void base_im::send_voip_calls_quality_report(int _score, const std::string &_survey_id,
@@ -515,35 +478,26 @@ void base_im::send_voip_calls_quality_report(int _score, const std::string &_sur
 
 void core::base_im::on_voip_window_set_primary(void* hwnd, const std::string& contact)
 {
-#ifndef STRIP_VOIP
     voip_manager_->window_set_primary(hwnd, contact);
-#endif
 }
 
 void core::base_im::on_voip_window_set_hover(void* hwnd, bool hover)
 {
-#ifndef STRIP_VOIP
     voip_manager_->window_set_hover(hwnd, hover);
-#endif
 }
 
 void core::base_im::on_voip_window_set_large(void* hwnd, bool large)
 {
-#ifndef STRIP_VOIP
     voip_manager_->window_set_large(hwnd, large);
-#endif
 }
 
 void core::base_im::on_voip_init_mask_engine()
 {
-#ifndef STRIP_VOIP
     voip_manager_->init_mask_engine();
-#endif
 }
 
 void core::base_im::on_voip_window_set_conference_layout(void* hwnd, int layout)
 {
-#ifndef STRIP_VOIP
     voip_manager_->window_set_conference_layout(hwnd, (voip_manager::VideoLayout)layout);
-#endif
 }
+#endif

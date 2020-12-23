@@ -25,7 +25,7 @@ Previewer::DownloadWidget::DownloadWidget(QWidget* _parent)
     : QFrame(_parent)
     , isLayoutSetted_(false)
 {
-    const auto style = qsl(
+    const auto style = ql1s(
         "QLabel[ErrorMessage=\"true\"]{"
         "color: %1;"
         "font-size: 13dip;}"

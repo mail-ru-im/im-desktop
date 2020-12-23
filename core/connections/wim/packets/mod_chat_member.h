@@ -28,6 +28,7 @@ namespace core
 
             mod_chat_member(wim_packet_params _params, const std::string& _aimId, const std::string& _contact, const std::string& _role);
             virtual ~mod_chat_member();
+            virtual std::string_view get_method() const override;
         };
 
     }

@@ -188,7 +188,7 @@ namespace Ui
         const auto fontWeight = Fonts::FontWeight::Normal;
         const auto fontQss = Fonts::appFontFullQss(_fontSize, Fonts::defaultAppFontFamily(), fontWeight);
         const auto fontColor = _isSelected ? Styling::getParameters().getColorHex(Styling::StyleVariable::TEXT_SOLID_PERMANENT) : getRecentsMessageFontColor(_isUnread);
-        return qsl("%1; color: %2; background-color: transparent").arg(fontQss, fontColor);
+        return ql1s("%1; color: %2; background-color: transparent").arg(fontQss, fontColor);
     };
 
     QColor ContactListParams::timeFontColor(bool _isSelected) const
@@ -265,34 +265,30 @@ namespace Ui
             + Utils::scale_value(8);
     }
 
-    bool IsSelectMembers(int regim)
+    bool IsSelectMembers(int _regim)
     {
-        return regim == Logic::MembersWidgetRegim::SELECT_MEMBERS || regim == Logic::MembersWidgetRegim::VIDEO_CONFERENCE
-            || regim == Logic::MembersWidgetRegim::SELECT_CHAT_MEMBERS;
+        constexpr Logic::MembersWidgetRegim regimes[] =
+        {
+            Logic::MembersWidgetRegim::SELECT_MEMBERS,
+            Logic::MembersWidgetRegim::VIDEO_CONFERENCE,
+            Logic::MembersWidgetRegim::SELECT_CHAT_MEMBERS,
+            Logic::MembersWidgetRegim::DISALLOWED_INVITERS_ADD,
+        };
+        return std::any_of(std::begin(regimes), std::end(regimes), [_regim](auto r){ return r == _regim; });
     }
 
     QString getStateString(const QString& _state)
     {
         if (_state == u"online")
-        {
-            return QT_TRANSLATE_NOOP("state", "Online");
-        }
+            return getStateString(core::profile_state::online);
         else if (_state == u"offline")
-        {
-            return QT_TRANSLATE_NOOP("state", "Offline");
-        }
+            return getStateString(core::profile_state::offline);
         else if (_state == u"away")
-        {
-            return QT_TRANSLATE_NOOP("state", "Away");
-        }
+            return getStateString(core::profile_state::away);
         else if (_state == u"dnd")
-        {
-            return QT_TRANSLATE_NOOP("state", "Do not disturb");
-        }
+            return getStateString(core::profile_state::dnd);
         else if (_state == u"invisible")
-        {
-            return QT_TRANSLATE_NOOP("state", "Invisible");
-        }
+            return getStateString(core::profile_state::invisible);
 
         return _state;
     }

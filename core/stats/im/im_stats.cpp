@@ -18,7 +18,7 @@
 #include "../../../common.shared/string_utils.h"
 #include "../../../common.shared/config/config.h"
 #include "../../../corelib/enumerations.h"
-#include "curl/include/curl.h"
+#include "curl.h"
 
 #include "../../../libomicron/include/omicron/omicron.h"
 
@@ -174,7 +174,15 @@ bool im_stats::load()
     if (!bstream.load_from_file(file_name_))
         return false;
 
-    return unserialize(bstream);
+    const auto was_unserialized = unserialize(bstream);
+    if (!was_unserialized)
+    {
+        g_core->write_string_to_network_log(su::concat(
+            "failed to unserialize ",
+            tools::from_utf16(tools::system::get_file_name(file_name_)), "\r\n"));
+        return false;
+    }
+    return was_unserialized;
 }
 
 void im_stats::serialize(tools::binary_stream& _bs) const

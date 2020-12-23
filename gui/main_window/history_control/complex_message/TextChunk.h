@@ -27,6 +27,7 @@ namespace Ui
                 FileSharingGifSticker,
                 FileSharingVideo,
                 FileSharingVideoSticker,
+                FileSharingLottieSticker,
                 FileSharingPtt,
                 FileSharingGeneral,
                 FileSharingUpload,

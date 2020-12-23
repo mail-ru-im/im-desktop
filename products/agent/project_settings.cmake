@@ -1,5 +1,6 @@
 if(APPLE)
     set(APP_PROJECT_NAME "Mail.Ru_Agent")
+    set(APP_OUTPUT_NAME "Mail.ru Agent")
 elseif(UNIX)
     set(APP_PROJECT_NAME "agent")
 elseif(WIN32)

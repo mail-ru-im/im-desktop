@@ -33,28 +33,31 @@ namespace Ui
     class UserProfile : public SidebarPage
     {
         Q_OBJECT
-    Q_SIGNALS:
-        void headerBackButtonClicked();
-
-        void saveClicked();
-        void copyClicked();
-        void sharingClicked();
 
     public:
-        explicit UserProfile(QWidget* parent);
+        explicit UserProfile(QWidget* _parent);
         virtual ~UserProfile();
 
         UserProfile(QWidget* _parent, const QString& _phone, const QString& _aimid, const QString& _friendy);
 
-        void initFor(const QString& aimId, SidebarParams _params = {}) override;
+        void initFor(const QString& _aimId, SidebarParams _params = {}) override;
         void setFrameCountMode(FrameCountMode _mode) override;
         void close() override;
         QString getSelectedText() const override;
+        void scrollToTop() override;
 
     protected:
         void resizeEvent(QResizeEvent* _event) override;
 
+    Q_SIGNALS:
+        void saveClicked(QPrivateSignal);
+        void copyClicked(QPrivateSignal);
+        void sharingClicked(QPrivateSignal);
+
     private Q_SLOTS:
+        void refresh();
+        void enableFading();
+        void disableFading();
         void editButtonClicked();
         void closeClicked();
         void avatarClicked();
@@ -63,11 +66,11 @@ namespace Ui
         void copy(const QString&);
         void sharePhoneClicked();
         void notificationsChecked(bool _checked);
-        void galleryPhotoCLicked();
-        void galleryVideoCLicked();
-        void galleryFilesCLicked();
-        void galleryLinksCLicked();
-        void galleryPttCLicked();
+        void galleryPhotoClicked();
+        void galleryVideoClicked();
+        void galleryFilesClicked();
+        void galleryLinksClicked();
+        void galleryPttClicked();
         void createGroupClicked();
         void commonChatsClicked();
         void pinClicked();
@@ -134,6 +137,7 @@ namespace Ui
         void hideControls();
 
     private:
+        QElapsedTimer elapsedTimer_;
         QStackedWidget* stackedWidget_;
         HeaderTitleBar* titleBar_;
         HeaderTitleBarButton* editButton_;
@@ -142,7 +146,6 @@ namespace Ui
         QWidget* firstSpacer_;
         QWidget* secondSpacer_;
         AvatarNameInfo* info_;
-        AvatarNamePlaceholder* infoPlaceholder_;
         QWidget* infoContainer_;
         QWidget* infoSpacer_;
         QWidget* controlsWidget_;

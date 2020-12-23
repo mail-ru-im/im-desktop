@@ -17,12 +17,17 @@ end_session::end_session(wim_packet_params _params)
 
 end_session::~end_session() = default;
 
+std::string_view end_session::get_method() const
+{
+    return "endSession";
+}
+
 int32_t end_session::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     std::string url = su::concat(urls::get_url(urls::url_type::wim_host), "aim/endSession?f=json&aimsid=", escape_symbols(get_params().aimsid_), "&invalidateToken=1");
 
     _request->set_url(std::move(url));
-    _request->set_normalized_url("endSession");
+    _request->set_normalized_url(get_method());
     _request->set_keep_alive();
 
     if (!params_.full_log_)

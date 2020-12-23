@@ -23,6 +23,11 @@ resolve_pending::~resolve_pending()
 {
 }
 
+std::string_view resolve_pending::get_method() const
+{
+    return "chatResolvePending";
+}
+
 int32_t resolve_pending::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     rapidjson::Document doc(rapidjson::Type::kObjectType);
@@ -44,7 +49,7 @@ int32_t resolve_pending::init_request(const std::shared_ptr<core::http_request_s
     node_params.AddMember("members", std::move(node_members), a);
     doc.AddMember("params", std::move(node_params), a);
 
-    setup_common_and_sign(doc, a, _request, "chatResolvePending");
+    setup_common_and_sign(doc, a, _request, get_method());
 
     if (!params_.full_log_)
     {

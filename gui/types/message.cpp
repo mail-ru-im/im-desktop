@@ -134,6 +134,7 @@ namespace Data
         , Filled_(false)
         , LastId_(-1)
         , Deleted_(false)
+        , RestoredPatch_(false)
         , DeliveredToClient_(false)
         , HasAvatar_(false)
         , HasSenderName_(false)
@@ -358,6 +359,11 @@ namespace Data
         return Deleted_;
     }
 
+    bool MessageBuddy::IsRestoredPatch() const
+    {
+        return RestoredPatch_;
+    }
+
     bool MessageBuddy::IsDeliveredToClient() const
     {
         return DeliveredToClient_;
@@ -537,6 +543,7 @@ namespace Data
         DeliveredToClient_ = buddy.DeliveredToClient_;
         Date_ = buddy.Date_;
         Deleted_ = buddy.Deleted_;
+        RestoredPatch_ = buddy.RestoredPatch_;
         Edited_ = buddy.Edited_;
         Unsupported_ = buddy.Unsupported_;
         HideEdit_ = buddy.HideEdit_;
@@ -587,6 +594,11 @@ namespace Data
     void MessageBuddy::SetDeleted(const bool isDeleted)
     {
         Deleted_ = isDeleted;
+    }
+
+    void MessageBuddy::SetRestoredPatch(const bool isRestoredPatch)
+    {
+        RestoredPatch_ = isRestoredPatch;
     }
 
     void MessageBuddy::SetFileSharing(const HistoryControl::FileSharingInfoSptr& fileSharing)
@@ -760,21 +772,18 @@ namespace Data
 
     void DlgState::updateTypings(const Logic::TypingFires& _typer, const bool _isTyping)
     {
-        for (auto iter = typings_.begin(); iter != typings_.end(); ++iter)
-        {
-            if (iter->chatterAimId_ == _typer.chatterAimId_)
-            {
-                if (!_isTyping)
-                {
-                    typings_.erase(iter);
-                }
-
-                return;
-            }
-        }
-
+        auto isChatterAimId = [&_typer](const auto& _x) { return _x.chatterAimId_ == _typer.chatterAimId_; };
         if (_isTyping)
-            typings_.push_back(_typer);
+        {
+            if (std::none_of(typings_.begin(), typings_.end(), isChatterAimId))
+                typings_.push_back(_typer);
+        }
+        else
+        {
+            const auto it = std::find_if(typings_.begin(), typings_.end(), isChatterAimId);
+            if (it != typings_.end())
+                typings_.erase(it);
+        }
     }
 
     QString DlgState::getTypers() const
@@ -899,6 +908,7 @@ namespace Data
         message->AimId_ = aimId;
         message->SetOutgoing(msgColl.get<bool>("outgoing"));
         message->SetDeleted(msgColl.get<bool>("deleted"));
+        message->SetRestoredPatch(msgColl.get<bool>("restored_patch"));
         common::tools::patch_version patch_version;
         patch_version.set_version(std::string_view(msgColl.get_value_as_string("update_patch_version", "")));
         patch_version.set_offline_version(msgColl.get_value_as_int("offline_version"));
@@ -1358,6 +1368,16 @@ namespace Data
         if (coll->is_value_exist("preview_height"))
             previewSize_.setHeight(coll.get_value_as_int("preview_height"));
     }
+
+    void PatchedMessage::unserialize(core::coll_helper& helper)
+    {
+        aimId_ = helper.get<QString>("contact");
+        const auto msgArray = helper.get_value_as_array("msg_ids");
+        const int32_t size = msgArray->size();
+        msgIds_.reserve(size);
+        for (int32_t i = 0; i < size; ++i)
+            msgIds_.push_back(msgArray->get_at(i)->get_as_int64());
+    }
 }
 
 namespace Data
@@ -1402,13 +1422,13 @@ namespace Data
         : count_(1)
     {
         AimId_ = _aimid;
-        Messages_.push_back(_message);
-
-        if (_message)
-            VoipSid_ = _message->GetVoipEvent()->getSid();
+        Messages_.emplace_back(std::move(_message));
 
         if (auto voip = GetVoipEvent())
+        {
+            VoipSid_ = voip->getSid();
             Members_ = voip->getConferenceMembers();
+        }
 
         if (std::find(Members_.begin(), Members_.end(), _aimid) == Members_.end())
             Members_.push_back(_aimid);
@@ -1466,7 +1486,7 @@ namespace Data
         for (const auto& id : Members_)
         {
             result += Logic::GetFriendlyContainer()->getFriendly(id);
-            result += qsl(", ");
+            result += ql1s(", ");
         }
 
         result = result.mid(0, result.size() - 2);
@@ -1494,10 +1514,10 @@ namespace Data
 
     HistoryControl::VoipEventInfoSptr CallInfo::GetVoipEvent() const
     {
-        if (Messages_.empty())
+        if (Messages_.empty() || !Messages_.front())
             return nullptr;
 
-        return Messages_.begin()->get()->GetVoipEvent();
+        return Messages_.front()->GetVoipEvent();
     }
 
     const std::vector<QString>& CallInfo::getHightlights() const

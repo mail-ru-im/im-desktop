@@ -30,13 +30,13 @@ namespace core
 
         class send_file : public wim_packet
         {
-            std::string					host_;
-            std::string					url_;
+            std::string host_;
+            std::string url_;
 
-            const send_file_params&		chunk_;
+            const send_file_params& chunk_;
 
-            std::string					file_url_;
-
+            std::string file_url_;
+            std::string file_id_;
 
             int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
             int32_t parse_response(const std::shared_ptr<core::tools::binary_stream>& _response) override;
@@ -53,7 +53,9 @@ namespace core
             virtual ~send_file();
 
             const std::string& get_file_url() const;
+            const std::string& get_file_id() const;
             virtual bool is_post() const override { return true; }
+            virtual std::string_view get_method() const override;
         };
     }
 }

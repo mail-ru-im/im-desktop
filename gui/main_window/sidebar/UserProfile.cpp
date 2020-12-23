@@ -142,24 +142,30 @@ namespace Ui
         Logic::GetLastseenContainer()->unsubscribe(currentAimId_);
     }
 
-    void UserProfile::initFor(const QString& aimId, SidebarParams _params)
+    void UserProfile::initFor(const QString& _aimId, SidebarParams _params)
     {
-        const auto newContact = currentAimId_ != aimId;
+        WidgetUpdateBlocker blocker(this);
+
+        const auto newContact = currentAimId_ != _aimId;
         if (newContact)
             Logic::GetLastseenContainer()->unsubscribe(currentAimId_);
 
-        currentAimId_ = aimId;
+        currentAimId_ = _aimId;
         replaceFavorites_ = _params.showFavorites_;
+        frameCountMode_ = _params.frameCountMode_;
         loadInfo();
 
         if (newContact)
         {
             info_->setAimIdAndSize(currentAimId_, Utils::scale_value(AVATAR_SIZE));
 
+            Testing::setAccessibleName(this, qsl("AS Sidebar UserProfile ") + _aimId);
+            Testing::setAccessibleName(info_, qsl("AS Sidebar UserProfile AvatarNameInfo ") + _aimId);
+
             updateMuteState();
             updatePinButton();
 
-            galleryPreview_->setAimId(aimId);
+            galleryPreview_->setAimId(_aimId);
 
             const auto& st = Logic::getContactListModel()->getGalleryState(currentAimId_);
             dialogGalleryState(currentAimId_, st);
@@ -178,6 +184,7 @@ namespace Ui
             phone_->hide();
             share_->hide();
             generalGroups_->hide();
+            controlsWidget_->setEnabled(false);
         }
 
         updateCloseButton();
@@ -187,6 +194,11 @@ namespace Ui
         Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::profilescr_view, { { "chat_type", Utils::chatTypeByAimId(currentAimId_) } });
 
         isActive_ = true;
+
+        emitContentsChanged();
+        disableFading();
+
+        elapsedTimer_.start();
     }
 
     void UserProfile::setFrameCountMode(FrameCountMode _mode)
@@ -217,7 +229,7 @@ namespace Ui
         if (!shortView_)
         {
             cl_->setWidthForDelegate(_event->size().width());
-            galleryPopup_->setFixedWidth(_event->size().width() - Utils::scale_value(POPUP_HOR_OFFSET * 2));
+            galleryPopup_->setFixedWidth(std::max(0, _event->size().width() - Utils::scale_value(POPUP_HOR_OFFSET * 2)));
         }
 
         SidebarPage::resizeEvent(_event);
@@ -225,13 +237,13 @@ namespace Ui
 
     void UserProfile::init()
     {
-        auto layout = Utils::emptyVLayout(this);
+        auto layout = Utils::emptyVLayout(nullptr);
 
         auto areaContainer = new QWidget(this);
         auto areaContainerLayout = Utils::emptyVLayout(areaContainer);
 
         titleBar_ = new HeaderTitleBar;
-        titleBar_->setStyleSheet(qsl("background-color: %1; border-bottom: %2 solid %3;").arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE),
+        titleBar_->setStyleSheet(ql1s("background-color: %1; border-bottom: %2 solid %3;").arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE),
                                                                                               QString::number(Utils::scale_value(1)) % u"px",
                                                                                               Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_BRIGHT)));
         titleBar_->setTitle(isFavorites() ? QT_TRANSLATE_NOOP("sidebar", "Favorites") : QT_TRANSLATE_NOOP("sidebar", "Information"));
@@ -245,6 +257,7 @@ namespace Ui
         }
         {
             closeButton_ = new HeaderTitleBarButton(this);
+            Testing::setAccessibleName(closeButton_, qsl("AS Sidebar UserProfile closeButton"));
             titleBar_->addButtonToLeft(closeButton_);
             connect(closeButton_, &HeaderTitleBarButton::clicked, this, &UserProfile::closeClicked);
         }
@@ -253,22 +266,26 @@ namespace Ui
 
         areaContainerLayout->addWidget(titleBar_);
         stackedWidget_ = new QStackedWidget(areaContainer);
+
+        Testing::setAccessibleName(stackedWidget_, qsl("AS Sidebar UserProfile stackedWidget"));
         areaContainerLayout->addWidget(stackedWidget_);
 
         area_ = CreateScrollAreaAndSetTrScrollBarV(stackedWidget_);
         area_->setWidget(initContent(area_));
         area_->setWidgetResizable(true);
         area_->setFrameStyle(QFrame::NoFrame);
-        area_->horizontalScrollBar()->setEnabled(false);
+        area_->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
         Utils::transparentBackgroundStylesheet(area_);
 
         stackedWidget_->insertWidget(main, area_);
         stackedWidget_->insertWidget(gallery, initGallery(stackedWidget_));
         stackedWidget_->insertWidget(common_chats, initCommonChats(stackedWidget_));
+        connect(stackedWidget_, &QStackedWidget::currentChanged, this, [this]() { emitContentsChanged(); });
 
         stackedWidget_->setCurrentIndex(main);
 
         layout->addWidget(areaContainer);
+        setLayout(layout);
 
         updateCloseButton();
         setMouseTracking(true);
@@ -307,7 +324,7 @@ namespace Ui
         auto layout = Utils::emptyVLayout(widget);
         layout->setAlignment(Qt::AlignTop);
 
-        infoContainer_= new QWidget(_parent);
+        infoContainer_ = new QWidget(_parent);
         layout->addWidget(infoContainer_);
 
         auto infoContainerLayout = Utils::emptyVLayout(infoContainer_);
@@ -317,8 +334,6 @@ namespace Ui
             connect(info_, &AvatarNameInfo::avatarClicked, this, &UserProfile::avatarClicked);
             connect(info_, &AvatarNameInfo::badgeClicked, &Utils::InterConnector::instance(), &Utils::InterConnector::openStatusPicker);
 
-            infoPlaceholder_ = new AvatarNamePlaceholder(this);
-            infoContainerLayout->addWidget(infoPlaceholder_);
             setInfoPlaceholderVisible(false);
 
             infoSpacer_ = new QWidget(widget);
@@ -332,20 +347,21 @@ namespace Ui
                 auto controlsWidgetLayoutH = Utils::emptyHLayout(nullptr);
 
                 const auto iconSize = getButtonIconSize();
-                messageOrCall_ = addColoredButton({}, {}, controlsWidget_, controlsWidgetLayoutH, iconSize);
-                connect(messageOrCall_, &ColoredButton::clicked, this, [this]() {
+                messageOrCall_ = addColoredButton({}, {}, controlsWidget_, controlsWidgetLayoutH, iconSize, Fading::Off);
+                connect(messageOrCall_, &ColoredButton::clicked, this, [this]()
+                {
                     if (messageOrCallMode_ == MessageOrCallMode::Message)
                         messageClicked();
                     else
                         audioCallClicked();
                 });
 
-                audioCall_ = addColoredButton(qsl(":/sidebar_call"), QString(), controlsWidget_, controlsWidgetLayoutH, iconSize);
+                audioCall_ = addColoredButton(qsl(":/sidebar_call"), QString(), controlsWidget_, controlsWidgetLayoutH, iconSize, Fading::Off);
                 audioCall_->setMargins(0, 0, audioCall_->getMargins().right(), audioCall_->getMargins().bottom());
                 audioCall_->makeRounded();
                 connect(audioCall_, &ColoredButton::clicked, this, &UserProfile::audioCallClicked);
 
-                videoCall_ = addColoredButton(qsl(":/sidebar_videocall"), QString(), controlsWidget_, controlsWidgetLayoutH, iconSize);
+                videoCall_ = addColoredButton(qsl(":/sidebar_videocall"), QString(), controlsWidget_, controlsWidgetLayoutH, iconSize, Fading::Off);
                 videoCall_->setMargins(0, 0, videoCall_->getMargins().right(), audioCall_->getMargins().bottom());
                 videoCall_->makeRounded();
                 connect(videoCall_, &ColoredButton::clicked, this, &UserProfile::videoCallClicked);
@@ -366,11 +382,11 @@ namespace Ui
 
             if (!shortView_)
             {
-                about_ = addInfoBlock(QT_TRANSLATE_NOOP("sidebar", "About me"), QString(), widget, infoContainerLayout);
+                about_ = addInfoBlock(QT_TRANSLATE_NOOP("sidebar", "About me"), QString(), widget, infoContainerLayout, 0, Fading::On);
                 about_->text_->makeTextField();
                 connect(about_->text_, &TextLabel::menuAction, this, &UserProfile::menuAction);
 
-                nick_ = addInfoBlock(QT_TRANSLATE_NOOP("sidebar", "Nickname"), QString(), widget, infoContainerLayout);
+                nick_ = addInfoBlock(QT_TRANSLATE_NOOP("sidebar", "Nickname"), QString(), widget, infoContainerLayout, 0, Fading::On);
                 nick_->text_->showButtons();
                 nick_->text_->addMenuAction(qsl(":/context_menu/mention"), QT_TRANSLATE_NOOP("context_menu", "Copy nickname"), makeData(qsl("copy_nick")));
                 nick_->text_->addMenuAction(qsl(":/context_menu/copy"), QT_TRANSLATE_NOOP("context_menu", "Copy the link to this profile"), makeData(qsl("copy_link")));
@@ -381,7 +397,7 @@ namespace Ui
                 connect(nick_->text_, &TextLabel::shareClicked, this, &UserProfile::nickShare);
                 connect(nick_->text_, &TextLabel::menuAction, this, &UserProfile::menuAction);
 
-                email_ = addInfoBlock(QT_TRANSLATE_NOOP("sidebar", "Email"), QString(), widget, infoContainerLayout);
+                email_ = addInfoBlock(QT_TRANSLATE_NOOP("sidebar", "Email"), QString(), widget, infoContainerLayout, 0, Fading::On);
                 email_->text_->showButtons();
                 email_->text_->addMenuAction(qsl(":/context_menu/link"), QT_TRANSLATE_NOOP("context_menu", "Copy email"), makeData(qsl("copy_email")));
                 email_->text_->addMenuAction(qsl(":/context_menu/copy"), QT_TRANSLATE_NOOP("context_menu", "Copy the link to this profile"), makeData(qsl("copy_link")));
@@ -396,7 +412,7 @@ namespace Ui
             if (shortView_)
                 addSpacer(widget, layout);
 
-            phone_ = addInfoBlock(QT_TRANSLATE_NOOP("sidebar", "Phone number"), QString(), widget, infoContainerLayout);
+            phone_ = addInfoBlock(QT_TRANSLATE_NOOP("sidebar", "Phone number"), QString(), widget, infoContainerLayout, 0, Fading::On);
             phone_->text_->showButtons();
             phone_->text_->makeCopyable();
             connect(phone_->text_, &TextLabel::copyClicked, this, &UserProfile::phoneCopy);
@@ -407,10 +423,10 @@ namespace Ui
             if (shortView_)
             {
                 addSpacer(widget, infoContainerLayout, Utils::scale_value(SMALL_SPACER_HEIGHT));
-                auto label = addLabel(QString(), widget, infoContainerLayout);
+                auto label = addLabel(QString(), widget, infoContainerLayout, 0, TextRendering::HorAligment::LEFT, Fading::On);
                 label->setText(QT_TRANSLATE_NOOP("sidebar", "Save"), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY));
                 label->setCursorForText();
-                connect(label, &TextLabel::textClicked, this, &UserProfile::saveClicked);
+                connect(label, &TextLabel::textClicked, this, [this]() { Q_EMIT saveClicked(QPrivateSignal()); });
             }
 
             if (shortView_)
@@ -431,24 +447,26 @@ namespace Ui
 
         {
             galleryWidget_ = new QWidget(widget);
+            auto galleryFader = new WidgetFader(galleryWidget_);
+            galleryFader->setEventDirection(QEvent::Show, QPropertyAnimation::Forward);
             auto galleryLayout = Utils::emptyVLayout(galleryWidget_);
 
             galleryPhoto_ = addButton(qsl(":/background_icon"), QT_TRANSLATE_NOOP("sidebar", "Photo and video"), galleryWidget_, galleryLayout);
-            connect(galleryPhoto_, &SidebarButton::clicked, this, &UserProfile::galleryPhotoCLicked);
+            connect(galleryPhoto_, &SidebarButton::clicked, this, &UserProfile::galleryPhotoClicked);
 
             galleryPreview_ = addGalleryPrevieWidget(galleryWidget_, galleryLayout);
 
             galleryVideo_ = addButton(qsl(":/video_icon"), QT_TRANSLATE_NOOP("sidebar", "Video"), galleryWidget_, galleryLayout);
-            connect(galleryVideo_, &SidebarButton::clicked, this, &UserProfile::galleryVideoCLicked);
+            connect(galleryVideo_, &SidebarButton::clicked, this, &UserProfile::galleryVideoClicked);
 
             galleryFiles_ = addButton(qsl(":/gallery/file_icon"), QT_TRANSLATE_NOOP("sidebar", "Files"), galleryWidget_, galleryLayout);
-            connect(galleryFiles_, &SidebarButton::clicked, this, &UserProfile::galleryFilesCLicked);
+            connect(galleryFiles_, &SidebarButton::clicked, this, &UserProfile::galleryFilesClicked);
 
             galleryLinks_ = addButton(qsl(":/copy_link_icon"), QT_TRANSLATE_NOOP("sidebar", "Links"), galleryWidget_, galleryLayout);
-            connect(galleryLinks_, &SidebarButton::clicked, this, &UserProfile::galleryLinksCLicked);
+            connect(galleryLinks_, &SidebarButton::clicked, this, &UserProfile::galleryLinksClicked);
 
             galleryPtt_ = addButton(qsl(":/gallery/micro_icon"), QT_TRANSLATE_NOOP("sidebar", "Voice messages"), galleryWidget_, galleryLayout);
-            connect(galleryPtt_, &SidebarButton::clicked, this, &UserProfile::galleryPttCLicked);
+            connect(galleryPtt_, &SidebarButton::clicked, this, &UserProfile::galleryPttClicked);
 
             layout->addWidget(galleryWidget_);
         }
@@ -465,7 +483,7 @@ namespace Ui
             pin_ = addButton(qsl(":/pin_chat_icon"), QT_TRANSLATE_NOOP("sidebar", "Pin"), widget, layout);
             connect(pin_, &SidebarButton::clicked, this, &UserProfile::pinClicked);
 
-            theme_ = addButton(qsl(":/colors_icon"), QT_TRANSLATE_NOOP("sidebar", "Wallpaper"), widget, layout);
+            theme_ = addButton(qsl(":/colors_icon"), QT_TRANSLATE_NOOP("sidebar", "Wallpapers"), widget, layout);
             connect(theme_, &SidebarButton::clicked, this, &UserProfile::themeClicked);
         }
 
@@ -486,17 +504,19 @@ namespace Ui
         }
 
         layout->addSpacerItem(new QSpacerItem(0, Utils::scale_value(BOTTOM_SPACER), QSizePolicy::Preferred, QSizePolicy::Fixed));
+
+        layout->setSizeConstraint(QLayout::SetMinimumSize);
         return widget;
     }
 
     QWidget* UserProfile::initGallery(QWidget* _parent)
     {
         galleryPopup_ = new GalleryPopup();
-        connect(galleryPopup_, &GalleryPopup::galleryPhotoCLicked, this, &UserProfile::galleryPhotoCLicked);
-        connect(galleryPopup_, &GalleryPopup::galleryVideoCLicked, this, &UserProfile::galleryVideoCLicked);
-        connect(galleryPopup_, &GalleryPopup::galleryFilesCLicked, this, &UserProfile::galleryFilesCLicked);
-        connect(galleryPopup_, &GalleryPopup::galleryLinksCLicked, this, &UserProfile::galleryLinksCLicked);
-        connect(galleryPopup_, &GalleryPopup::galleryPttCLicked, this, &UserProfile::galleryPttCLicked);
+        connect(galleryPopup_, &GalleryPopup::galleryPhotoClicked, this, &UserProfile::galleryPhotoClicked);
+        connect(galleryPopup_, &GalleryPopup::galleryVideoClicked, this, &UserProfile::galleryVideoClicked);
+        connect(galleryPopup_, &GalleryPopup::galleryFilesClicked, this, &UserProfile::galleryFilesClicked);
+        connect(galleryPopup_, &GalleryPopup::galleryLinksClicked, this, &UserProfile::galleryLinksClicked);
+        connect(galleryPopup_, &GalleryPopup::galleryPttClicked, this, &UserProfile::galleryPttClicked);
 
         auto widget = new QWidget(_parent);
         auto layout = Utils::emptyVLayout(widget);
@@ -547,7 +567,7 @@ namespace Ui
 
     void UserProfile::updatePinButton()
     {
-        auto isPinned = Logic::getRecentsModel()->isFavorite(currentAimId_);
+        const auto isPinned = Logic::getRecentsModel()->isFavorite(currentAimId_);
         pin_->setIcon(Utils::renderSvgScaled(isPinned ? qsl(":/unpin_chat_icon") : qsl(":/pin_chat_icon"), QSize(ICON_SIZE, ICON_SIZE), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY)));
         pin_->setText(isPinned ? QT_TRANSLATE_NOOP("sidebar", "Unpin") : QT_TRANSLATE_NOOP("sidebar", "Pin"));
         pin_->setVisible(!Logic::getRecentsModel()->isUnimportant(currentAimId_));
@@ -577,17 +597,12 @@ namespace Ui
         stackedWidget_->setCurrentIndex(_tab);
         updateCloseButton();
 
-        if (_tab == main)
-        {
-            const auto haveContact = Logic::getContactListModel()->getContactItem(currentAimId_) != nullptr;
-            const auto itsMe = (currentAimId_ == Ui::MyInfo()->aimId());
-            editButton_->setVisible(!itsMe && haveContact && (!Logic::getRecentsModel()->isSuspicious(currentAimId_) && !Logic::getRecentsModel()->isStranger(currentAimId_)));
-        }
-        else
-        {
-            editButton_->setVisible(false);
-        }
-        editButton_->setVisibility(editButton_->isVisible());
+        const auto haveContact = Logic::getContactListModel()->getContactItem(currentAimId_) != nullptr;
+        const auto itsMe = (currentAimId_ == Ui::MyInfo()->aimId());
+        const auto canEdit = !itsMe && haveContact && (!Logic::getRecentsModel()->isSuspicious(currentAimId_) && !Logic::getRecentsModel()->isStranger(currentAimId_));
+
+        editButton_->setVisible(_tab == main && canEdit);
+        editButton_->setVisibility(_tab == main && canEdit);
     }
 
     void UserProfile::changeGalleryPage(int _page)
@@ -630,6 +645,8 @@ namespace Ui
 
         gallery_->initFor(currentAimId_);
         currentGalleryPage_ = _page;
+
+        emitContentsChanged();
     }
 
     void UserProfile::closeGallery()
@@ -645,6 +662,8 @@ namespace Ui
 
     void UserProfile::updateControls()
     {
+        setUpdatesEnabled(false);
+
         if (!currentAimId_.isEmpty())
         {
             const auto& st = Logic::getContactListModel()->getGalleryState(currentAimId_);
@@ -659,30 +678,41 @@ namespace Ui
         const auto itsMe = (currentAimId_ == Ui::MyInfo()->aimId());
         const auto inCL = Logic::getContactListModel()->hasContact(currentAimId_);
         const auto isBot = Logic::GetLastseenContainer()->isBot(currentAimId_);
+        const auto canEdit = !itsMe && inCL && (!Logic::getRecentsModel()->isSuspicious(currentAimId_) && !Logic::getRecentsModel()->isStranger(currentAimId_));
 
         const auto isAuioCallVisible = !isBot && (!selected || frameCountMode_ == FrameCountMode::_1);
         switchMessageOrCallMode((isBot || isAuioCallVisible) ? MessageOrCallMode::Message : MessageOrCallMode::Call);
 
-        createGroup_->setVisible(!itsMe);
-        controlsWidget_->setVisible(!itsMe);
-        audioCall_->setVisible(isAuioCallVisible);
-        videoCall_->setVisible(!isBot);
+        infoContainer_->setVisible(!isFavorites());
+
+        if (itsMe)
+        {
+            audioCall_->setVisible(false);
+            videoCall_->setVisible(false);
+            messageOrCall_->setVisible(false);
+            openFavorites_->setVisible(true);
+        }
+        else
+        {
+            messageOrCall_->setVisible(true);
+            audioCall_->setVisible(isAuioCallVisible);
+            videoCall_->setVisible(!isBot);
+            openFavorites_->setVisible(itsMe && !isFavorites());
+        }
         unblock_->setVisible(isIgnored);
         block_->setVisible(!isIgnored && !itsMe);
         report_->setVisible(!itsMe && Features::clRemoveContactsAllowed());
         remove_->setVisible(inCL && Features::clRemoveContactsAllowed() && !itsMe);
         notifications_->setVisible(!isIgnored && !itsMe);
-        firstSpacer_->setVisible(!isIgnored && (share_->isVisible() || notifications_->isVisible()));
-        if (stackedWidget_->currentIndex() == main)
-            editButton_->setVisible(!itsMe && inCL && (!Logic::getRecentsModel()->isSuspicious(currentAimId_) && !Logic::getRecentsModel()->isStranger(currentAimId_)));
-        else
-            editButton_->hide();
-        editButton_->setVisibility(editButton_->isVisible());
+        createGroup_->setVisible(!itsMe);
+        editButton_->setVisible(stackedWidget_->currentIndex() == main && canEdit);
+        editButton_->setVisibility(stackedWidget_->currentIndex() == main && canEdit);
 
         pin_->setVisible(!isUnimportant);
-        infoSpacer_->setVisible(controlsWidget_->isVisible() || about_->isVisible() || nick_->isVisible() || email_->isVisible() || phone_->isVisible());
-        openFavorites_->setVisible(itsMe && !isFavorites());
-        infoContainer_->setVisible(!isFavorites());
+
+        setUpdatesEnabled(true);
+
+        emitContentsChanged();
     }
 
     void UserProfile::updateStatus(const Data::LastSeen& _lastseen)
@@ -751,8 +781,8 @@ namespace Ui
 
     void UserProfile::editButtonClicked()
     {
-        auto name = Logic::GetFriendlyContainer()->getFriendly(currentAimId_);
-        auto newName = editName(name);
+        const auto name = Logic::GetFriendlyContainer()->getFriendly(currentAimId_);
+        const auto newName = editName(name);
         if (name != newName)
             Logic::getContactListModel()->renameContact(currentAimId_, newName);
     }
@@ -780,7 +810,7 @@ namespace Ui
 
     void UserProfile::share()
     {
-        QString link = getShareLink();
+        const auto link = getShareLink();
         if (link.isEmpty())
             return;
 
@@ -801,8 +831,8 @@ namespace Ui
 
     void UserProfile::sharePhoneClicked()
     {
-        const auto phone = shortView_ ? currentPhone_ : userInfo_.phoneNormalized_;
-        const auto name = shortView_ ? info_->getFriendly() : userInfo_.friendly_;
+        const auto& phone = shortView_ ? currentPhone_ : userInfo_.phoneNormalized_;
+        const auto& name = shortView_ ? info_->getFriendly() : userInfo_.friendly_;
         sharePhone(name, phone, currentAimId_);
         Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::profilescr_mobilenumber_action, { { "do", "share" } });
     }
@@ -814,35 +844,35 @@ namespace Ui
         GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::profilescr_notifications_event, { { "chat_type", Utils::chatTypeByAimId(currentAimId_) }, { "do" , _checked ? "enable" : "mute" } });
     }
 
-    void UserProfile::galleryPhotoCLicked()
+    void UserProfile::galleryPhotoClicked()
     {
         galleryPopup_->hide();
         changeTab(gallery);
         changeGalleryPage(photo_and_video);
     }
 
-    void UserProfile::galleryVideoCLicked()
+    void UserProfile::galleryVideoClicked()
     {
         galleryPopup_->hide();
         changeTab(gallery);
         changeGalleryPage(video);
     }
 
-    void UserProfile::galleryFilesCLicked()
+    void UserProfile::galleryFilesClicked()
     {
         galleryPopup_->hide();
         changeTab(gallery);
         changeGalleryPage(files);
     }
 
-    void UserProfile::galleryLinksCLicked()
+    void UserProfile::galleryLinksClicked()
     {
         galleryPopup_->hide();
         changeTab(gallery);
         changeGalleryPage(links);
     }
 
-    void UserProfile::galleryPttCLicked()
+    void UserProfile::galleryPttClicked()
     {
         galleryPopup_->hide();
         changeTab(gallery);
@@ -917,7 +947,7 @@ namespace Ui
     {
         const QString text = QT_TRANSLATE_NOOP("popup_window", "Remove %1 from your contacts?").arg(Logic::GetFriendlyContainer()->getFriendly(currentAimId_));
 
-        auto confirm = Utils::GetConfirmationWithTwoButtons(
+        const auto confirm = Utils::GetConfirmationWithTwoButtons(
                 QT_TRANSLATE_NOOP("popup_window", "Cancel"),
                 QT_TRANSLATE_NOOP("popup_window", "Yes"),
                 text,
@@ -1008,12 +1038,20 @@ namespace Ui
         }
 
         userInfo_ = _info;
-        updateLastSeen();
+        enableFading();
+        const auto timeLag = (std::chrono::milliseconds(elapsedTimer_.elapsed()) - kLoadDelay);
+        if (timeLag.count() > 0 && timeLag < kShowDelay)
+            QTimer::singleShot(kShowDelay, this, &UserProfile::refresh);
+        else
+            refresh();
+    }
 
+    void UserProfile::refresh()
+    {
         setInfoPlaceholderVisible(false);
-
-        about_->setVisible(!_info.about_.isEmpty());
-        about_->setText(_info.about_);
+        controlsWidget_->setEnabled(true);
+        about_->setVisible(!userInfo_.about_.isEmpty());
+        about_->setText(userInfo_.about_);
 
         if (Utils::isValidEmailAddress(currentAimId_))
         {
@@ -1024,23 +1062,41 @@ namespace Ui
         else
         {
             email_->hide();
-            nick_->setVisible(!_info.nick_.isEmpty() && Features::isNicksEnabled());
-            nick_->setText(Utils::makeNick(_info.nick_), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY));
+            nick_->setVisible(!userInfo_.nick_.isEmpty() && Features::isNicksEnabled());
+            nick_->setText(Utils::makeNick(userInfo_.nick_), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY));
         }
 
-        phone_->setVisible(!_info.phoneNormalized_.isEmpty());
-        phone_->setText(_info.phoneNormalized_, Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY));
-        share_->setVisible(!_info.phoneNormalized_.isEmpty());
+
+        phone_->setVisible(!userInfo_.phoneNormalized_.isEmpty());
+        phone_->setText(userInfo_.phoneNormalized_, Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY));
+        share_->setVisible(!userInfo_.phoneNormalized_.isEmpty());
         const auto isIgnored = Logic::getIgnoreModel()->contains(currentAimId_);
-        firstSpacer_->setVisible(!isIgnored && (share_->isVisible() || notifications_->isVisible()));
 
         generalGroups_->setVisible(true);
-        generalGroups_->setCounter(_info.commonChats_);
-        infoSpacer_->setVisible(controlsWidget_->isVisible() || about_->isVisible() || nick_->isVisible() || email_->isVisible() || phone_->isVisible());
+        generalGroups_->setCounter(userInfo_.commonChats_);
         theme_->setVisible(true);
         clearHistory_->setVisible(true);
         notifications_->setEnabled(true);
+
+        updateLastSeen();
         updateControls();
+
+        QTimer::singleShot(kShowDuration, this, &UserProfile::disableFading);
+    }
+
+    void UserProfile::enableFading()
+    {
+        WidgetFader::setEffectEnabled(this, true);
+    }
+
+    void UserProfile::disableFading()
+    {
+        WidgetFader::setEffectEnabled(this, false);
+    }
+
+    void UserProfile::scrollToTop()
+    {
+        area_->ensureVisible(0, 0);
     }
 
     void UserProfile::menuAction(QAction* action)
@@ -1281,9 +1337,8 @@ namespace Ui
         clearHistory_->setVisible(false);
         block_->setVisible(false);
         report_->setVisible(false);
-        infoSpacer_->setVisible(false);
         editButton_->setVisible(false);
-        editButton_->setVisibility(editButton_->isVisible());
+        editButton_->setVisibility(false);
         generalGroups_->setVisible(false);
         createGroup_->setVisible(false);
         remove_->setVisible(false);
@@ -1291,8 +1346,7 @@ namespace Ui
 
     void UserProfile::setInfoPlaceholderVisible(bool _isVisible)
     {
-        info_->setVisible(!_isVisible);
-        infoPlaceholder_->setVisible(_isVisible);
+        info_->setEnabled(!_isVisible);
         isInfoPlaceholderVisible_ = _isVisible;
         updateGalleryVisibility();
     }

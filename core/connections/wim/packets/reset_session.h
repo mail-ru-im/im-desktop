@@ -16,6 +16,8 @@ namespace core::wim
 
         const std::string& get_hash() const { return hash_; }
 
+        virtual std::string_view get_method() const override;
+
     private:
         int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
         int32_t on_response_error_code() override;

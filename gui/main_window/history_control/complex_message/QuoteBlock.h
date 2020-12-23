@@ -25,7 +25,7 @@ class QuoteBlock final : public GenericBlock
     Q_OBJECT
 
 public:
-    QuoteBlock(ComplexMessageItem *parent, const Data::Quote & quote);
+    QuoteBlock(ComplexMessageItem* _parent, const Data::Quote& _quote);
 
     ~QuoteBlock() override;
 
@@ -46,7 +46,7 @@ public:
 
     void selectAll() override;
 
-    void onVisibilityChanged(const bool isVisible) override;
+    void onVisibleRectChanged(const QRect& _visibleRect) override;
 
     void onSelectionStateChanged(const bool isSelected) override;
 

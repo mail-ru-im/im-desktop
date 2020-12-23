@@ -7,20 +7,6 @@
 
 namespace Ui
 {
-    template<typename T>
-    static T toContainerOfString(const core::iarray* array)
-    {
-        T container;
-        if (array)
-        {
-            const auto size = array->size();
-            container.reserve(size);
-            for (int i = 0; i < size; ++i)
-                container.push_back(QString::fromUtf8(array->get_at(i)->get_as_string()));
-        }
-        return container;
-    }
-
     void UrlConfig::updateUrls(const core::coll_helper& _coll)
     {
         filesParse_ = _coll.get<QString>("filesParse");
@@ -32,8 +18,10 @@ namespace Ui
         mailWin_ = _coll.get<QString>("mailWin");
         mailRead_ = _coll.get<QString>("mailRead");
 
-        const auto array = _coll.get_value_as_array("vcs_urls");
-        vcsUrls_ = toContainerOfString<QVector<QString>>(array);
+        if (Features::isUpdateFromBackendEnabled())
+            appUpdate_ = _coll.get<QString>("appUpdate");
+
+        vcsUrls_ = Utils::toContainerOfString<QVector<QString>>(_coll.get_value_as_array("vcs_urls"));
         if (vcsUrls_.empty())
         {
             const auto splittedUrls = Features::getVcsRoomList().split(ql1c(';'), QString::SkipEmptyParts);

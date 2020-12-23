@@ -68,7 +68,7 @@ public:
     MediaType getMediaType() const override;
     ContentType getContentType() const override;
 
-    void onVisibilityChanged(const bool _visible) override;
+    void onVisibleRectChanged(const QRect& _visibleRect) override;
     bool hasLeadLines() const override;
     void highlight(const highlightsV& _hl) override;
     void removeHighlight() override;
@@ -198,7 +198,7 @@ Q_SIGNALS:
     void loaded();
 
 protected Q_SLOTS:
-    void onImageLoaded(qint64 _seq, const QString& _rawUri, const QPixmap& _image, const QString& _localPath);
+    void onImageLoaded(qint64 _seq, const QString& _rawUri, const QPixmap& _image);
 
 protected:
     QRect contentRect() const;
@@ -327,7 +327,9 @@ private:
     int minControlsWidth() const;
     QSize originSizeScaled() const;
     void updateButtonGeometry();
+#ifndef STRIP_AV_MEDIA
     DialogPlayer* createPlayer();
+#endif // !STRIP_AV_MEDIA
     void createControls();
     void initPlayableMedia();
     void loadMedia();
@@ -343,7 +345,9 @@ private:
     std::unique_ptr<Utils::MediaLoader> loader_;
     QPointer<ActionButtonWidget> button_;
     QPointer<MediaControls> controls_;
+#ifndef STRIP_AV_MEDIA
     QPointer<DialogPlayer> player_;
+#endif // !STRIP_AV_MEDIA
     QPainterPath clipPath_;
     bool fileLoaded_;
     int64_t seq_ = 0;

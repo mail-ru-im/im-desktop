@@ -9,6 +9,7 @@ namespace core::wim
     {
     public:
         set_privacy_settings(wim_packet_params _params, privacy_settings _settings);
+        virtual std::string_view get_method() const override;
 
     private:
         int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;

@@ -30,6 +30,7 @@
 #include "../events/fetch_event_reactions.h"
 #include "../events/fetch_event_status.h"
 #include "../events/fetch_event_call_room_info.h"
+#include "../events/fetch_event_suggest_to_notify_user.h"
 
 #include "../events/webrtc.h"
 
@@ -108,7 +109,7 @@ int32_t fetch::init_request(const std::shared_ptr<core::http_request_simple>& _r
     }
 
     _request->set_url(ss_url.str());
-    _request->set_normalized_url("fetchEvents");
+    _request->set_normalized_url(get_method());
     _request->set_timeout(timeout_ + std::chrono::seconds(5));
     _request->set_keep_alive();
 
@@ -159,6 +160,11 @@ int32_t fetch::execute_request(const std::shared_ptr<core::http_request_simple>&
 priority_t fetch::get_priority() const
 {
     return priority_fetch();
+}
+
+std::string_view fetch::get_method() const
+{
+    return "fetchEvents";
 }
 
 void fetch::on_session_ended(const rapidjson::Value &_data)
@@ -268,6 +274,8 @@ int32_t fetch::parse_response_data(const rapidjson::Value& _data)
                         push_event(std::make_shared<fetch_event_status>())->parse(iter_event_data->value);
                     else if (event_type == "callRoomInfo")
                         push_event(std::make_shared<fetch_event_call_room_info>())->parse(iter_event_data->value);
+                    else if (event_type == "suggestToNotifyUser")
+                        push_event(std::make_shared<fetch_event_suggest_to_notify_user>())->parse(iter_event_data->value);
                 }
             }
         }

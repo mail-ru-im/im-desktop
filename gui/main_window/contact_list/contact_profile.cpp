@@ -68,7 +68,7 @@ namespace Logic
     {
         {
             aimid_ = QString::fromUtf8(_coll.get_value_as_string("aimid"));
-            const int pos = aimid_.indexOf(ql1s("@uin.icq"));
+            const int pos = aimid_.indexOf(u"@uin.icq");
             if (pos != -1)
                 aimid_ = std::move(aimid_).left(pos);
         }

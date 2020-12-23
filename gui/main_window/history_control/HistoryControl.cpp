@@ -20,6 +20,9 @@
 #include "../../styles/ThemeParameters.h"
 #include "../../styles/ThemesContainer.h"
 #include "../../utils/gui_metrics.h"
+#include "../../utils/features.h"
+#include "../../previewer/toast.h"
+
 
 namespace
 {
@@ -34,6 +37,17 @@ namespace
     QColor getTextColor()
     {
         return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID);
+    }
+
+    hist::scroll_mode_type evaluateScrollMode(qint64 _messageIdToScroll, qint64 _lastReadMessage, bool _needCreateNewPage, bool _ignoreScroll)
+    {
+        if (_needCreateNewPage)
+            _ignoreScroll = false;
+        if (_ignoreScroll || (_messageIdToScroll == -1 && _lastReadMessage == -1))
+            return hist::scroll_mode_type::none;
+        if (_messageIdToScroll != -1)
+            return hist::scroll_mode_type::search;
+        return hist::scroll_mode_type::unread;
     }
 }
 
@@ -190,6 +204,8 @@ namespace Ui
         connect(Logic::getUnknownsModel(), &Logic::UnknownsModel::dlgStatesHandled, this, &HistoryControl::updateUnreads);
         connect(Logic::getUnknownsModel(), &Logic::UnknownsModel::updatedMessages, this, &HistoryControl::updateUnreads);
         connect(Logic::getContactListModel(), &Logic::ContactListModel::contactChanged, this, &HistoryControl::updateUnreads);
+
+        connect(Ui::GetDispatcher(), &Ui::core_dispatcher::suggestNotifyUser, this, &HistoryControl::suggestNotifyUser);
     }
 
     HistoryControl::~HistoryControl() = default;
@@ -275,7 +291,7 @@ namespace Ui
         }
     }
 
-    void HistoryControl::contactSelected(const QString& _aimId, qint64 _messageId, const highlightsV& _highlights)
+    void HistoryControl::contactSelected(const QString& _aimId, qint64 _messageId, const highlightsV& _highlights, bool _ignoreScroll)
     {
         assert(!_aimId.isEmpty());
 
@@ -283,19 +299,17 @@ namespace Ui
 
         const Data::DlgState dlgState = Logic::getRecentsModel()->getDlgState(_aimId);
         const qint64 lastReadMsg = dlgState.UnreadCount_ > 0 && dlgState.YoursLastRead_ < dlgState.LastMsgId_ ? dlgState.YoursLastRead_ : -1;
-        auto scrollMode = hist::scroll_mode_type::none;
-        if (_messageId == -1)
-        {
-            _messageId = lastReadMsg;
-            if (_messageId != -1)
-                scrollMode = hist::scroll_mode_type::unread;
-        }
-        else
-        {
-            scrollMode = hist::scroll_mode_type::search;
-        }
 
         auto oldPage = getCurrentPage();
+
+        auto page = getHistoryPage(_aimId);
+        const auto createNewPage = (page == nullptr);
+
+        const auto scrollMode = evaluateScrollMode(_messageId, lastReadMsg, createNewPage, _ignoreScroll);
+
+        if (_messageId == -1)
+            _messageId = lastReadMsg;
+
         if (oldPage)
         {
             const bool canScrollToBottom = scrollMode == hist::scroll_mode_type::unread;
@@ -322,8 +336,6 @@ namespace Ui
                 oldPage->pageLeave();
         }
 
-        auto page = getHistoryPage(_aimId);
-        const auto createNewPage = (page == nullptr);
         if (createNewPage)
         {
             auto newPage = new HistoryControlPage(this, _aimId);
@@ -445,17 +457,16 @@ namespace Ui
         {
             const auto prev = dialogHistory_.back();
             dialogHistory_.pop_back();
-            Logic::getContactListModel()->setCurrent(prev, -1, true);
+            Logic::getContactListModel()->setCurrent(prev, -1, true, {}, true);
         }
         else
         {
             Q_EMIT Utils::InterConnector::instance().closeLastDialog(_calledFromKeyboard);
+            suspendBackgroundPages();
         }
 
         if (dialogHistory_.empty())
-        {
             Q_EMIT Utils::InterConnector::instance().noPagesInDialogHistory();
-        }
     }
 
     void HistoryControl::dlgStates(const QVector<Data::DlgState>& _states)
@@ -587,6 +598,54 @@ namespace Ui
     {
         if (!current_.isEmpty())
             times_[current_] = QTime::currentTime();
+    }
+
+    void HistoryControl::suggestNotifyUser(const QString& _contact, const QString& _smsContext)
+    {
+        if (_contact != currentAimId() || !Features::isInviteBySmsEnabled())
+            return;
+
+        const auto friendlyName = Logic::GetFriendlyContainer()->getFriendly(_contact);
+        const auto isConfirmed = Utils::GetConfirmationWithTwoButtons(
+            QT_TRANSLATE_NOOP("popup_window", "No"),
+            QT_TRANSLATE_NOOP("popup_window", "Yes"),
+            QT_TRANSLATE_NOOP("popup_window", "%1 hasn't been online for a long time and won't read the message likely. Send free sms to suggest to come back to ICQ?")
+                .arg(friendlyName),
+            QString(),
+            nullptr
+        );
+
+        const auto sendNotifySms = [&_smsContext]()
+        {
+            Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
+            collection.set_value_as_qstring("smsNotifyContext", _smsContext);
+            Ui::GetDispatcher()->post_message_to_core("send_notify_sms", collection.get());
+        };
+
+        const auto sendStatistics = [](bool _confirm)
+        {
+            Ui::GetDispatcher()->post_stats_to_core(
+                core::stats::stats_event_names::chatscr_invite_by_sms,
+                {
+                    { "type", _confirm ? "yes" : "no" },
+                });
+        };
+
+        sendStatistics(isConfirmed);
+        if (isConfirmed)
+        {
+            sendNotifySms();
+            Utils::showTextToastOverContactDialog(QT_TRANSLATE_NOOP("chat_page", "Message sent"));
+        }
+    }
+
+    void HistoryControl::suspendBackgroundPages()
+    {
+        for (const auto& p : std::as_const(pages_))
+        {
+            if (current_.isEmpty() || p->aimId() != current_)
+                p->suspendVisisbleItems();
+        }
     }
 
     void HistoryControl::inputTyped()

@@ -30,7 +30,7 @@ namespace Ui
         auto mainWidget = new QWidget(this);
         mainWidget->setFixedWidth(Utils::scale_value(314));
         mainWidget->setSizePolicy(QSizePolicy::Policy::Expanding, QSizePolicy::Policy::Minimum);
-        mainWidget->setStyleSheet(qsl("background-color: %1; border: 0;")
+        mainWidget->setStyleSheet(ql1s("background-color: %1; border: 0;")
         .arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE)));
         Testing::setAccessibleName(mainWidget, qsl("AS IntroducePage mainWidget"));
         horizontalLayout->addItem(new QSpacerItem(0, 0, QSizePolicy::Expanding, QSizePolicy::Expanding));

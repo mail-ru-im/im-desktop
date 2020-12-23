@@ -7,12 +7,32 @@
 
 #include "../tools/system.h"
 #include "../tools/json_helper.h"
+#include "../tools/file_sharing.h"
+#include "../tools/features.h"
 
 #include "../async_task.h"
+#include "../../common.shared/string_utils.h"
 #include "../../common.shared/loader_errors.h"
 #include "../../common.shared/config/config.h"
 
 #include "connections/urls_cache.h"
+
+namespace
+{
+    bool is_lottie_id(std::string_view _id)
+    {
+        const auto content_type = core::tools::get_content_type_from_file_sharing_id(_id);
+        return content_type && content_type->is_lottie();
+    }
+
+    bool is_lottie_url(std::string_view _uri)
+    {
+        return is_lottie_id(core::tools::get_file_id(_uri));
+    }
+
+    constexpr std::wstring_view image_ext() { return L".png"; }
+    constexpr std::wstring_view lottie_ext() { return L".lottie"; }
+}
 
 namespace core
 {
@@ -29,6 +49,59 @@ namespace core
 
             assert(!"unknown type");
             return set_icon_size::_64;
+        }
+
+        sets_list parse_sets(const rapidjson::Value& _node, const emoji_map& _emojis)
+        {
+            sets_list res;
+
+            if (!_node.IsArray())
+                return res;
+
+            for (const auto& set : _node.GetArray())
+            {
+                auto new_set = std::make_shared<stickers::set>();
+
+                if (!new_set->unserialize(set, _emojis))
+                {
+                    assert(!"error reading stickers set");
+                    continue;
+                }
+
+                res.push_back(std::move(new_set));
+            }
+
+            return res;
+        }
+
+        void serialize_sets(coll_helper& _coll, const sets_list& _sets, const std::string& _size = std::string())
+        {
+            if (_sets.empty())
+                return;
+
+            ifptr<iarray> sets_array(_coll->create_array(), true);
+            sets_array->reserve(_sets.size());
+            for (const auto& _set : _sets)
+            {
+                if (!_set->is_show())
+                    continue;
+
+                coll_helper coll_set(_coll->create_collection(), true);
+                ifptr<ivalue> val_set(_coll->create_value(), true);
+                val_set->set_as_collection(coll_set.get());
+                sets_array->push_back(val_set.get());
+
+                cache::serialize_meta_set_sync(*_set, coll_set, _size);
+            }
+
+            _coll.set_value_as_array("sets", sets_array.get());
+        }
+
+        void remove_from_tasks(download_tasks& _tasks, const download_task& _task)
+        {
+            const auto it = std::find_if(_tasks.begin(), _tasks.end(), [&_task](const auto& t) { return t.get_source_url() == _task.get_source_url(); });
+            if (it != _tasks.end())
+                _tasks.erase(it);
         }
 
         constexpr std::wstring_view stickers_meta_file_name() noexcept { return L"meta.js"; }
@@ -84,34 +157,6 @@ namespace core
         {
             return emojis_;
         }
-
-        //////////////////////////////////////////////////////////////////////////
-        // class set_icon
-        //////////////////////////////////////////////////////////////////////////
-        set_icon::set_icon()
-            : size_(set_icon_size::invalid)
-        {
-
-        }
-
-        set_icon::set_icon(set_icon_size _size, std::string _url)
-            :    size_(_size),
-            url_(std::move(_url))
-        {
-
-        }
-
-        set_icon_size set_icon::get_size() const
-        {
-            return size_;
-        }
-
-        const std::string& set_icon::get_url() const
-        {
-            return url_;
-        }
-
-
 
         //////////////////////////////////////////////////////////////////////////
         // class set
@@ -197,14 +242,14 @@ namespace core
             subtitle_ = std::move(_subtitle);
         }
 
-        const std::string& set::get_large_icon_url() const
+        const set_icon& set::get_big_icon() const
         {
-            return large_icon_url_;
+            return big_icon_;
         }
 
-        void set::set_large_icon_url(std::string&& _url)
+        void set::set_big_icon(set_icon&& _icon)
         {
-            large_icon_url_ = std::move(_url);
+            big_icon_ = std::move(_icon);
         }
 
         void set::put_icon(set_icon&& _icon)
@@ -218,7 +263,10 @@ namespace core
             if (const auto iter = icons_.find(_size); iter != icons_.end())
                 return iter->second;
 
-            assert(!"invalid icon size");
+            if (icons_.size() == 1)
+                if (const auto iter = icons_.cbegin(); iter->first == stickers::set_icon_size::scalable)
+                    return iter->second;
+
             static const auto empty = set_icon();
             return empty;
         }
@@ -265,30 +313,52 @@ namespace core
                 set_subtitle(std::move(subtitle));
 
             if (std::string url; tools::unserialize_value(_node, "icons", url))
-                set_large_icon_url(std::move(url));
-
-            if (const auto iter_icons = _node.FindMember("contentlist_sticker_picker_icon"); iter_icons != _node.MemberEnd() && iter_icons->value.IsObject())
             {
-                if (std::string xsmall; tools::unserialize_value(iter_icons->value, "xsmall", xsmall))
-                    put_icon(set_icon(set_icon_size::_20, std::move(xsmall)));
-
-                if (std::string small; tools::unserialize_value(iter_icons->value, "small", small))
-                    put_icon(set_icon(set_icon_size::_32, std::move(small)));
-
-                if (std::string medium; tools::unserialize_value(iter_icons->value, "medium", medium))
-                    put_icon(set_icon(set_icon_size::_48, std::move(medium)));
-
-                if (std::string large; tools::unserialize_value(iter_icons->value, "large", large))
-                    put_icon(set_icon(set_icon_size::_64, std::move(large)));
+                const auto size = is_lottie_url(url) ? set_icon_size::scalable : set_icon_size::big;
+                set_big_icon(set_icon(size, url));
             }
 
-            if (std::string sp; tools::unserialize_value(_node, "stiker-picker", sp))
+            auto unserialize_stickerpicker_icon = [this, &_node](std::string_view _name)
             {
-                put_icon(set_icon(set_icon_size::_20, sp));
-                put_icon(set_icon(set_icon_size::_32, sp));
-                put_icon(set_icon(set_icon_size::_48, sp));
-                put_icon(set_icon(set_icon_size::_64, sp));
+                if (std::string sp; tools::unserialize_value(_node, _name, sp) && !sp.empty())
+                {
+                    if (is_lottie_url(sp))
+                    {
+                        put_icon(set_icon(set_icon_size::scalable, sp));
+                    }
+                    else
+                    {
+                        put_icon(set_icon(set_icon_size::_20, sp));
+                        put_icon(set_icon(set_icon_size::_32, sp));
+                        put_icon(set_icon(set_icon_size::_48, sp));
+                        put_icon(set_icon(set_icon_size::_64, sp));
+                    }
+                }
+            };
+
+            if (const auto iter_icons = _node.FindMember("contentlist_sticker_picker_icon"); iter_icons != _node.MemberEnd())
+            {
+                if (iter_icons->value.IsString())
+                {
+                    unserialize_stickerpicker_icon("contentlist_sticker_picker_icon");
+                }
+                else if (iter_icons->value.IsObject())
+                {
+                    if (std::string xsmall; tools::unserialize_value(iter_icons->value, "xsmall", xsmall))
+                        put_icon(set_icon(set_icon_size::_20, std::move(xsmall)));
+
+                    if (std::string small; tools::unserialize_value(iter_icons->value, "small", small))
+                        put_icon(set_icon(set_icon_size::_32, std::move(small)));
+
+                    if (std::string medium; tools::unserialize_value(iter_icons->value, "medium", medium))
+                        put_icon(set_icon(set_icon_size::_48, std::move(medium)));
+
+                    if (std::string large; tools::unserialize_value(iter_icons->value, "large", large))
+                        put_icon(set_icon(set_icon_size::_64, std::move(large)));
+                }
             }
+
+            unserialize_stickerpicker_icon("stiker-picker");
 
             const auto unserialize_stickers = [this, &_node, &_emojis](const auto _node_name)
             {
@@ -321,6 +391,14 @@ namespace core
         bool set::unserialize(const rapidjson::Value& _node)
         {
             return unserialize(_node, {});
+        }
+
+        bool set::is_lottie_pack() const
+        {
+            return
+                big_icon_.get_size() == set_icon_size::scalable ||
+                icons_.find(set_icon_size::scalable) != icons_.end() ||
+                std::any_of(stickers_.begin(), stickers_.end(), [](const auto& s) { return is_lottie_id(s->fs_id()); });
         }
 
 
@@ -464,21 +542,7 @@ namespace core
                     if (st.is_emoji())
                         emoji[st.fs_id_].push_back(suggest.emoji_);
 
-            sets_.clear();
-
-            for (const auto& set : iter_packs->value.GetArray())
-            {
-                auto new_set = std::make_shared<stickers::set>();
-
-                if (!new_set->unserialize(set, emoji))
-                {
-                    assert(!"error reading stickers set");
-                    continue;
-                }
-
-                sets_.push_back(std::move(new_set));
-            }
-
+            sets_ = parse_sets(iter_packs->value, emoji);
             return true;
         }
 
@@ -489,15 +553,11 @@ namespace core
             if (parse_result.HasParseError())
                 return false;
 
-            const auto iter_status = doc.FindMember("status");
-            if (iter_status == doc.MemberEnd())
+            int status_code = 0;
+            if (!tools::unserialize_value(doc, "status", status_code))
                 return false;
 
-            if (!iter_status->value.IsInt())
-                return false;
-
-            const auto status_code_ = iter_status->value.GetInt();
-            if (status_code_ != 200)
+            if (status_code != 200)
             {
                 assert(false);
                 return false;
@@ -511,21 +571,7 @@ namespace core
             if (iter_sets == iter_data->value.MemberEnd() || !iter_sets->value.IsArray())
                 return false;
 
-            store_.clear();
-
-            for (const auto& set : iter_sets->value.GetArray())
-            {
-                auto new_set = std::make_shared<stickers::set>();
-
-                if (!new_set->unserialize(set, {}))
-                {
-                    assert(!"error reading stickers set");
-                    continue;
-                }
-
-                store_.push_back(std::move(new_set));
-            }
-
+            store_ = parse_sets(iter_sets->value, {});
             return true;
         }
 
@@ -536,33 +582,50 @@ namespace core
             return ss_out.str();
         }
 
-        std::wstring cache::get_set_icon_path(const set& _set, const set_icon& _icon)
+        std::wstring cache::get_set_icon_path(int32_t _set_id, const set_icon& _icon)
         {
             std::wstringstream ss_out;
-            ss_out << g_stickers_path << L'/' << _set.get_id() << L"/icons/_icon_" << (int)_icon.get_size() << L".png";
+            ss_out << g_stickers_path << L'/' << _set_id << L"/icons/_icon";
+
+            if (_icon.get_size() == set_icon_size::scalable)
+                ss_out << lottie_ext();
+            else
+                ss_out << "_" << (int)_icon.get_size() << image_ext();
 
             return ss_out.str();
         }
 
-        std::wstring cache::get_set_big_icon_path(const int32_t _set_id)
+        std::pair<std::wstring, set_icon_size> cache::get_set_big_icon_path(int32_t _set_id)
         {
-            std::wstringstream ss_out;
-            ss_out << g_stickers_path << L'/' << _set_id << L"/icons/_icon_xset.png";
+            if (const auto& set = get_set(_set_id))
+            {
+                if (set->get_big_icon().get_size() == set_icon_size::scalable)
+                    return { get_set_icon_path(_set_id, set->get_big_icon()), set_icon_size::scalable };
+            }
 
-            return ss_out.str();
+            std::wstringstream ss_out;
+            ss_out << g_stickers_path << L'/' << _set_id << L"/icons/_icon_xset" << image_ext();
+            return { ss_out.str(), set_icon_size::big };
         }
 
         std::wstring cache::get_sticker_path(int32_t _set_id, int32_t _sticker_id, std::string_view _fs_id, sticker_size _size)
         {
             std::wstringstream ss_out;
-
             ss_out << g_stickers_path << L'/';
-            if (_fs_id.empty())
-                ss_out << _set_id << L'/' << _sticker_id;
-            else
-                ss_out << tools::from_utf8(_fs_id);
 
-            ss_out << L'/' << _size << L".png";
+            if (is_lottie_id(_fs_id))
+            {
+                ss_out << tools::from_utf8(_fs_id) << L'/' << "sticker" << lottie_ext();
+            }
+            else
+            {
+                if (_fs_id.empty())
+                    ss_out << _set_id << L'/' << _sticker_id;
+                else
+                    ss_out << tools::from_utf8(_fs_id);
+
+                ss_out << L'/' << _size << image_ext();
+            }
 
             return ss_out.str();
         }
@@ -583,72 +646,111 @@ namespace core
 
         std::string cache::make_sticker_url(const int32_t _set_id, const int32_t _sticker_id, std::string_view _fs_id, const std::string& _size) const
         {
+            if (!_fs_id.empty())
+            {
+                if (is_lottie_id(_fs_id))
+                    return su::concat(urls::get_url(urls::url_type::sticker), '/', _fs_id);
+
+                return su::concat(urls::get_url(urls::url_type::files_preview), "/max/sticker_", _size, '/', _fs_id);
+            }
+
             std::stringstream ss_url;
-
-            if (_fs_id.empty())
-                ss_url << "https://" << config::get().url(config::urls::cicq_com) << "/store/stickers/" << _set_id << '/' << _sticker_id << '/' << _size << ".png";
-            else
-                ss_url << urls::get_url(urls::url_type::files_preview) << "/max/sticker_" << _size << '/' << _fs_id;
-
+            ss_url << "https://" << config::get().url(config::urls::cicq_com) << "/store/stickers/" << _set_id << '/' << _sticker_id << '/' << _size << ".png";
             return ss_url.str();
         }
+
+        const std::shared_ptr<stickers::set>& cache::get_set(int32_t _set_id) const
+        {
+            const auto it = std::find_if(store_.cbegin(), store_.cend(), [id = _set_id](const auto& set) { return set->get_id() == id; });
+            if (it != store_.cend())
+                return *it;
+
+            static const std::shared_ptr<stickers::set> empty;
+            return empty;
+        }
+
+        void cache::on_download_tasks_added(int _tasks_count)
+        {
+            if (_tasks_count > 0)
+            {
+                if (stat_dl_tasks_count_ == 0)
+                    stat_dl_start_time_ = std::chrono::steady_clock::now();
+                stat_dl_tasks_count_ += _tasks_count;
+            }
+            else
+            {
+                if (stat_dl_tasks_count_ > 0)
+                {
+                    auto time_diff = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - stat_dl_start_time_).count();
+
+                    if (size_t(stat_dl_tasks_count_) >= features::get_max_parallel_sticker_downloads() || time_diff > 1000)
+                    {
+                        core::stats::event_props_type props;
+                        props.emplace_back("count", std::to_string(stat_dl_tasks_count_));
+
+                        props.emplace_back("time", std::to_string(time_diff));
+
+                        if (time_diff < 1000)
+                            time_diff = 1000;
+
+                        const auto per_sec = (double)stat_dl_tasks_count_ / (time_diff / 1000.);
+                        const auto speed_str = per_sec <= 1. ? std::string("0.") + core::stats::round_value(per_sec * 10, 1, 10) : core::stats::round_value(per_sec, 5, 100);
+                        props.emplace_back("speed", speed_str);
+                        g_core->insert_im_stats_event(stats::im_stat_event_names::stickers_download_per_second, std::move(props));
+                    }
+                }
+
+                stat_dl_tasks_count_ = 0;
+            }
+        }
+
 
         std::string cache::make_big_icon_url(const int32_t _set_id)
         {
-            std::stringstream ss_url;
-
-            const auto set_iter = std::find_if(store_.cbegin(), store_.cend(), [id = _set_id](const auto& set) { return set->get_id() == id; });
-            if (set_iter != store_.cend())
-                ss_url << (*set_iter)->get_large_icon_url();
-
-            return ss_url.str();
+            if (const auto& set = get_set(_set_id))
+                return set->get_big_icon().get_url();
+            return {};
         }
 
-        std::vector<std::string> cache::make_download_tasks(const std::string& _size)
+        int cache::make_set_icons_tasks(const std::string& _size)
         {
-            std::vector<std::string> res;
             for (const auto& set : sets_)
             {
                 if (!set->is_show() || !set->is_purchased())
                     continue;
 
                 const auto& icon = set->get_icon(icon_size_str_to_size(_size));
-                std::wstring icon_file = get_set_icon_path(*set, icon);
+                auto icon_file = get_set_icon_path(set->get_id(), icon);
                 if (!core::tools::system::is_exist(icon_file))
-                    meta_tasks_.push_back(download_task(icon.get_url(), "stikersMeta", std::move(icon_file), set->get_id()));
-
-                for (const auto& sticker : set->get_stickers())
-                    res.push_back(template_url_send_ + sticker->fs_id());
+                {
+                    auto dl_task = download_task(icon.get_url(), "stikersMeta", std::move(icon_file), set->get_id());
+                    dl_task.set_need_decompress(icon.get_size() == stickers::set_icon_size::scalable);
+                    dl_task.set_type(download_task::type::icon);
+                    pending_tasks_.emplace_back(std::move(dl_task));
+                }
             }
 
-            return res;
+            return pending_tasks_.size();
         }
 
         void cache::serialize_meta_set_sync(const stickers::set& _set, coll_helper _coll_set, const std::string& _size)
         {
-            _coll_set.set_value_as_int("id", _set.get_id());
+            _coll_set.set_value_as_int("set_id", _set.get_id());
             _coll_set.set_value_as_string("name", _set.get_name());
             _coll_set.set_value_as_string("store_id", _set.get_store_id());
             _coll_set.set_value_as_bool("purchased", _set.is_purchased());
             _coll_set.set_value_as_bool("usersticker", _set.is_user());
             _coll_set.set_value_as_string("description", _set.get_description());
             _coll_set.set_value_as_string("subtitle", _set.get_subtitle());
+            _coll_set.set_value_as_bool("lottie", _set.is_lottie_pack());
 
             if (!_size.empty())
             {
-                std::wstring file_name = get_set_icon_path(_set, _set.get_icon(icon_size_str_to_size(_size)));
-
-                core::tools::binary_stream bs_icon;
-
-                if (bs_icon.load_from_file(file_name))
+                if (const auto& icon = _set.get_icon(icon_size_str_to_size(_size)); icon.is_valid())
                 {
-                    ifptr<istream> icon(_coll_set->create_stream(), true);
-
-                    uint32_t file_size = bs_icon.available();
-
-                    icon->write((uint8_t*)bs_icon.read(file_size), file_size);
-
-                    _coll_set.set_value_as_stream("icon", icon.get());
+                    std::wstring file_name = get_set_icon_path(_set.get_id(), icon);
+                    if (tools::system::is_exist(file_name))
+                        _coll_set.set_value_as_string("icon_path", tools::from_utf16(file_name));
                 }
             }
 
@@ -691,53 +793,12 @@ namespace core
             _coll.set_value_as_string("template_url_original", template_url_original_);
             _coll.set_value_as_string("template_url_send", template_url_send_);
 
-            if (sets_.empty())
-                return;
-
-            ifptr<iarray> sets_array(_coll->create_array(), true);
-            sets_array->reserve(sets_.size());
-            for (const auto& _set : sets_)
-            {
-                if (!_set->is_show())
-                    continue;
-
-                // serailize sets
-                coll_helper coll_set(_coll->create_collection(), true);
-
-                ifptr<ivalue> val_set(_coll->create_value(), true);
-
-                val_set->set_as_collection(coll_set.get());
-
-                sets_array->push_back(val_set.get());
-
-                serialize_meta_set_sync(*_set, coll_set, _size);
-            }
-
-            _coll.set_value_as_array("sets", sets_array.get());
+            serialize_sets(_coll, sets_, _size);
         }
 
         void cache::serialize_store_sync(coll_helper _coll)
         {
-            if (store_.empty())
-                return;
-
-            ifptr<iarray> sets_array(_coll->create_array(), true);
-
-            for (const auto& _set : store_)
-            {
-                // serailize sets
-                coll_helper coll_set(_coll->create_collection(), true);
-
-                ifptr<ivalue> val_set(_coll->create_value(), true);
-
-                val_set->set_as_collection(coll_set.get());
-
-                sets_array->push_back(val_set.get());
-
-                serialize_meta_set_sync(*_set, coll_set, std::string());
-            }
-
-            _coll.set_value_as_array("sets", sets_array.get());
+            serialize_sets(_coll, store_);
         }
 
         const std::string& cache::get_md5() const
@@ -745,178 +806,131 @@ namespace core
             return md5_;
         }
 
-
-        bool cache::get_next_meta_task(download_task& _task)
+        download_tasks cache::take_download_tasks()
         {
-            if (meta_tasks_.empty())
-                return false;
-
-            _task = meta_tasks_.front();
-
-            return true;
-        }
-
-        bool cache::get_next_sticker_task(download_task& _task)
-        {
-            if (stickers_tasks_.empty())
-                return false;
-
-            _task = stickers_tasks_.front();
-
-            return true;
-        }
-
-        void cache::get_sticker(int64_t _seq, int32_t _set_id, int32_t _sticker_id, std::string _fs_id, const sticker_size _size, tools::binary_stream& _data)
-        {
-            if (_fs_id.empty())
-                gui_requests_[_set_id][_sticker_id].push_back(_seq);
-            else
-                gui_fs_requests_[_fs_id].push_back(_seq);
-
-            for (auto iter = stickers_tasks_.begin(); iter != stickers_tasks_.end(); ++iter)
+            download_tasks res;
+            if (!have_tasks_to_download())
             {
-                if (((_set_id > 0 && iter->get_set_id() == _set_id && iter->get_sticker_id() == _sticker_id) || (!_fs_id.empty() && iter->get_fs_id() == _fs_id)) && iter->get_size() == _size)
-                {
-                    download_task task = std::move(*iter);
-                    stickers_tasks_.erase(iter);
-                    stickers_tasks_.push_front(std::move(task));
-
-                    return;
-                }
+                on_download_tasks_added(res.size());
+                return res;
+            }
+            else if (active_tasks_.size() >= features::get_max_parallel_sticker_downloads())
+            {
+                return res;
             }
 
-            auto file_name = get_sticker_path(_set_id, _sticker_id, _fs_id, _size);
+            const auto dl_count = active_tasks_.size();
+            if (const auto max_dl = features::get_max_parallel_sticker_downloads(); dl_count < max_dl)
+            {
+                active_tasks_.splice(
+                    active_tasks_.end(),
+                    pending_tasks_,
+                    pending_tasks_.begin(),
+                    std::next(pending_tasks_.begin(), std::min(max_dl - dl_count, pending_tasks_.size())));
+            }
 
-            if (!_data.load_from_file(file_name))
+            res = download_tasks(std::next(active_tasks_.begin(), dl_count), active_tasks_.end());
+            on_download_tasks_added(res.size());
+            return res;
+        }
+
+        bool cache::have_tasks_to_download() const noexcept
+        {
+            return !pending_tasks_.empty();
+        }
+
+        int32_t cache::on_task_loaded(const download_task& _task)
+        {
+            remove_from_tasks(active_tasks_, _task);
+            remove_from_tasks(pending_tasks_, _task);
+            return pending_tasks_.size();
+        }
+
+        int cache::cancel_download_tasks(std::vector<std::string> _fs_ids, sticker_size _size)
+        {
+            const auto prevSize = pending_tasks_.size();
+            pending_tasks_.remove_if([&_fs_ids, _size](const auto& _task)
+            {
+                return std::any_of(
+                    _fs_ids.begin(),
+                    _fs_ids.end(),
+                    [&_task, _size](const auto& fs_id) { return _task.get_size() == _size && _task.get_fs_id() == fs_id; });
+            });
+            return pending_tasks_.size() - prevSize;
+        }
+
+        void cache::get_sticker(int64_t _seq, int32_t _set_id, int32_t _sticker_id, std::string _fs_id, const sticker_size _size, std::wstring& _path)
+        {
+            auto get_iter = [_set_id, _sticker_id, _size, &_fs_id](auto& _list)
+            {
+                return std::find_if(_list.begin(), _list.end(), [_set_id, _sticker_id, _size, &_fs_id](const auto& _task)
+                {
+                    const auto same_size = _task.get_size() == _size;
+                    const auto same_set_and_id = _set_id > 0 && _task.get_set_id() == _set_id && _task.get_sticker_id() == _sticker_id;
+                    const auto same_fs_id = !_fs_id.empty() && _task.get_fs_id() == _fs_id;
+
+                    return same_size && same_set_and_id && same_fs_id;
+                });
+            };
+
+            if (get_iter(active_tasks_) != active_tasks_.end())
+                return;
+
+            if (auto iter = get_iter(pending_tasks_); iter != pending_tasks_.end())
+            {
+                download_task task = std::move(*iter);
+                pending_tasks_.erase(iter);
+                pending_tasks_.emplace_front(std::move(task));
+                return;
+            }
+
+            _path = get_sticker_path(_set_id, _sticker_id, _fs_id, _size);
+            if (!tools::system::is_exist(_path))
             {
                 auto sticker_url = make_sticker_url(_set_id, _sticker_id, _fs_id, _size);
 
-                stickers_tasks_.emplace_front(std::move(sticker_url), "stikersGetSticker", std::move(file_name), _set_id, _sticker_id, std::move(_fs_id), _size);
-
-                return;
+                auto dl_task = download_task(std::move(sticker_url), "stikersGetSticker", _path, _set_id, _sticker_id, std::move(_fs_id), _size);
+                dl_task.set_need_decompress(is_lottie_id(dl_task.get_fs_id()));
+                pending_tasks_.emplace_back(std::move(dl_task));
             }
         }
 
-        void cache::get_set_icon_big(const int64_t _seq, const int32_t _set_id, tools::binary_stream& _data)
+        void cache::get_set_icon_big(const int64_t _seq, const int32_t _set_id, std::wstring& _path)
         {
-            gui_requests_[_set_id][-1].push_back(_seq);
-
-            for (auto iter = stickers_tasks_.begin(); iter != stickers_tasks_.end(); ++iter)
+            auto get_iter = [_set_id](auto& _list)
             {
-                if (iter->get_set_id() == _set_id && iter->get_sticker_id() == -1 && iter->get_fs_id().empty())
+                return std::find_if(_list.begin(), _list.end(), [_set_id](const auto& _task)
                 {
-                    download_task task = *iter;
-                    stickers_tasks_.erase(iter);
-                    stickers_tasks_.push_front(std::move(task));
+                    return _task.get_set_id() == _set_id && _task.get_sticker_id() == -1 && _task.get_fs_id().empty();
+                });
+            };
 
-                    return;
-                }
+            if (get_iter(active_tasks_) != active_tasks_.end())
+                return;
+
+            if (auto iter = get_iter(pending_tasks_); iter != pending_tasks_.end())
+            {
+                download_task task = std::move(*iter);
+                pending_tasks_.erase(iter);
+                pending_tasks_.emplace_front(std::move(task));
+                return;
             }
 
-            if (auto file_name = get_set_big_icon_path(_set_id); !_data.load_from_file(file_name))
+            auto [path, size] = get_set_big_icon_path(_set_id);
+            _path = std::move(path);
+            if (!tools::system::is_exist(_path))
             {
                 auto sticker_url = make_big_icon_url(_set_id);
-
-                stickers_tasks_.emplace_front(std::move(sticker_url), "stikersBigIcon", std::move(file_name), _set_id, -1);
-
-                return;
+                auto dl_task = download_task(std::move(sticker_url), "stikersBigIcon", _path, _set_id, -1);
+                dl_task.set_need_decompress(size == set_icon_size::scalable);
+                pending_tasks_.emplace_back(std::move(dl_task));
             }
         }
 
         void cache::clean_set_icon_big(const int32_t _set_id)
         {
-            if (const auto file_name = get_set_big_icon_path(_set_id); core::tools::system::is_exist(file_name))
-            {
-                core::tools::system::delete_file(file_name);
-            }
-        }
-
-        requests_list cache::get_sticker_gui_requests(int32_t _set_id, int32_t _sticker_id, const std::string& _fs_id) const
-        {
-            if (_fs_id.empty())
-            {
-                if (const auto iter_set = gui_requests_.find(_set_id); iter_set != gui_requests_.end())
-                {
-                    if (const auto iter_sticker = iter_set->second.find(_sticker_id); iter_sticker != iter_set->second.end())
-                        return iter_sticker->second;
-                }
-            }
-            else
-            {
-                if (const auto iter_sticker = gui_fs_requests_.find(_fs_id); iter_sticker != gui_fs_requests_.end())
-                    return iter_sticker->second;
-            }
-
-
-            return requests_list();
-        }
-
-        void cache::clear_sticker_gui_requests(int32_t _set_id, int32_t _sticker_id, const std::string& _fs_id)
-        {
-            if (_fs_id.empty())
-            {
-                if (const auto iter_set = gui_requests_.find(_set_id); iter_set != gui_requests_.end())
-                {
-                    if (const auto iter_sticker = iter_set->second.find(_sticker_id); iter_sticker != iter_set->second.end())
-                        iter_sticker->second.clear();
-                }
-            }
-            else
-            {
-                if (const auto it = gui_fs_requests_.find(_fs_id); it != gui_fs_requests_.end())
-                    it->second.clear();
-            }
-        }
-
-        bool cache::has_gui_request(int32_t _set_id, int32_t _sticker_id, const std::string& _fs_id) const
-        {
-            if (_fs_id.empty())
-            {
-                if (const auto iter_set = gui_requests_.find(_set_id); iter_set != gui_requests_.end())
-                {
-                    if (const auto iter_sticker = iter_set->second.find(_sticker_id); iter_sticker != iter_set->second.end())
-                        return !iter_sticker->second.empty();
-                }
-            }
-            else
-            {
-                if (const auto it = gui_fs_requests_.find(_fs_id); it != gui_fs_requests_.end())
-                    return !it->second.empty();
-            }
-
-
-            return false;
-        }
-
-        bool cache::sticker_loaded(const download_task& _task, /*out*/ requests_list& _requests)
-        {
-            for (auto iter = stickers_tasks_.begin(); iter != stickers_tasks_.end(); ++iter)
-            {
-                if (_task.get_source_url() == iter->get_source_url())
-                {
-                    _requests = get_sticker_gui_requests(_task.get_set_id(), _task.get_sticker_id(), _task.get_fs_id());
-
-                    clear_sticker_gui_requests(_task.get_set_id(), _task.get_sticker_id(), _task.get_fs_id());
-
-                    stickers_tasks_.erase(iter);
-
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        bool cache::meta_loaded(const download_task& _task)
-        {
-            for (auto iter = meta_tasks_.begin(); iter != meta_tasks_.end(); ++iter)
-            {
-                if (_task.get_source_url() == iter->get_source_url())
-                {
-                    meta_tasks_.erase(iter);
-                    return true;
-                }
-            }
-            return false;
+            if (const auto path = get_set_big_icon_path(_set_id); core::tools::system::is_exist(path.first))
+                core::tools::system::delete_file(path.first);
         }
 
         void cache::serialize_suggests(coll_helper _coll)
@@ -944,13 +958,6 @@ namespace core
         face::face(const std::wstring& _stickers_path)
             : cache_(std::make_shared<cache>(_stickers_path))
             , thread_(std::make_shared<async_executer>("stickers"))
-            , meta_requested_(false)
-            , up_to_date_(false)
-            , download_meta_in_progress_(false)
-            , download_meta_error_(false)
-            , download_stickers_in_progess_(false)
-            , download_stickers_error_(false)
-            , flag_meta_need_reload_(false)
         {
         }
 
@@ -990,44 +997,61 @@ namespace core
             return handler;
         }
 
-        std::shared_ptr<result_handler<tools::binary_stream&>> face::get_sticker(int64_t _seq, int32_t _set_id, int32_t _sticker_id, std::string _fs_id, const core::sticker_size _size)
+        std::shared_ptr<result_handler<std::wstring_view>> face::get_sticker(int64_t _seq, int32_t _set_id, int32_t _sticker_id, std::string _fs_id, const core::sticker_size _size)
         {
             assert(_size > core::sticker_size::min);
             assert(_size < core::sticker_size::max);
 
-            auto handler = std::make_shared<result_handler<tools::binary_stream&>>();
-            auto sticker_data = std::make_shared<tools::binary_stream>();
+            auto handler = std::make_shared<result_handler<std::wstring_view>>();
+            auto sticker_path = std::make_shared<std::wstring>();
 
-            thread_->run_async_function([stickers_cache = cache_, sticker_data, _set_id, _sticker_id, _size, _seq, _fs_id = std::move(_fs_id)]
+            thread_->run_async_function([stickers_cache = cache_, sticker_path, _set_id, _sticker_id, _size, _seq, _fs_id = std::move(_fs_id)]
             {
-                stickers_cache->get_sticker(_seq, _set_id, _sticker_id, std::move(_fs_id), _size, *sticker_data);
+                stickers_cache->get_sticker(_seq, _set_id, _sticker_id, std::move(_fs_id), _size, *sticker_path);
 
                 return 0;
 
-            })->on_result_ = [handler, sticker_data](int32_t _error)
+            })->on_result_ = [handler, sticker_path](int32_t _error)
             {
                 if (handler->on_result_)
-                    handler->on_result_(*sticker_data);
+                    handler->on_result_(*sticker_path);
             };
 
             return handler;
         }
 
-        std::shared_ptr<result_handler<tools::binary_stream&>> face::get_set_icon_big(const int64_t _seq, const int32_t _set_id)
+        std::shared_ptr<result_handler<int>> face::cancel_download_tasks(std::vector<std::string> _fs_ids, core::sticker_size _size)
         {
-            auto handler = std::make_shared<result_handler<tools::binary_stream&>>();
-            auto icon_data = std::make_shared<tools::binary_stream>();
+            auto handler = std::make_shared<result_handler<int>>();
 
-            thread_->run_async_function([stickers_cache = cache_, icon_data, _set_id, _seq]
+            thread_->run_async_function([stickers_cache = cache_, fs_ids = std::move(_fs_ids), _size]()->int32_t
             {
-                stickers_cache->get_set_icon_big(_seq, _set_id, *icon_data);
+                return stickers_cache->cancel_download_tasks(std::move(fs_ids), _size);
+
+            })->on_result_ = [handler](int32_t _count_deleted)
+            {
+                if (handler->on_result_)
+                    handler->on_result_(_count_deleted);
+            };
+
+            return handler;
+        }
+
+        std::shared_ptr<result_handler<std::wstring_view>> face::get_set_icon_big(const int64_t _seq, const int32_t _set_id)
+        {
+            auto handler = std::make_shared<result_handler<std::wstring_view>>();
+            auto icon_path = std::make_shared<std::wstring>();
+
+            thread_->run_async_function([stickers_cache = cache_, icon_path, _set_id, _seq]
+            {
+                stickers_cache->get_set_icon_big(_seq, _set_id, *icon_path);
 
                 return 0;
 
-            })->on_result_ = [handler, icon_data](int32_t _error)
+            })->on_result_ = [handler, icon_path](int32_t _error)
             {
                 if (handler->on_result_)
-                    handler->on_result_(*icon_data);
+                    handler->on_result_(*icon_path);
             };
 
             return handler;
@@ -1081,23 +1105,17 @@ namespace core
             return handler;
         }
 
-        std::shared_ptr<result_handler<const std::vector<std::string>&>> face::make_download_tasks(const std::string& _size)
+        std::shared_ptr<result_handler<int>> face::make_set_icons_tasks(const std::string& _size)
         {
-            auto handler = std::make_shared<result_handler<const std::vector<std::string>&>>();
-
-            auto res = std::make_shared<std::vector<std::string>>();
-
-            thread_->run_async_function([stickers_cache = cache_, _size, res]()->int32_t
+            auto handler = std::make_shared<result_handler<int>>();
+            thread_->run_async_function([stickers_cache = cache_, _size]()->int32_t
             {
-                *res = stickers_cache->make_download_tasks(_size);
-                return 0;
-
-            })->on_result_ = [handler, res](int32_t _error)
+                return stickers_cache->make_set_icons_tasks(_size);
+            })->on_result_ = [handler](int32_t _count)
             {
                 if (handler->on_result_)
-                    handler->on_result_(*res);
+                    handler->on_result_(_count);
             };
-
             return handler;
         }
 
@@ -1149,78 +1167,37 @@ namespace core
             return handler;
         }
 
-        std::shared_ptr<result_handler<bool, const download_task&>> face::get_next_meta_task()
+        std::shared_ptr<result_handler<const download_tasks&>> face::take_download_tasks()
         {
-            auto handler = std::make_shared<result_handler<bool, const download_task&>>();
-            auto task = std::make_shared<download_task>(std::string(), std::string(), std::wstring());
+            auto handler = std::make_shared<result_handler<const download_tasks&>>();
+            auto tasks = std::make_shared<download_tasks>();
 
-            thread_->run_async_function([stickers_cache = cache_, task]()->int32_t
+            thread_->run_async_function([stickers_cache = cache_, tasks]()->int32_t
             {
-                if (!stickers_cache->get_next_meta_task(*task))
-                    return -1;
-
+                *tasks = stickers_cache->take_download_tasks();
                 return 0;
 
-            })->on_result_ = [handler, task](int32_t _error)
+            })->on_result_ = [handler, tasks](int32_t _error)
             {
                 if (handler->on_result_)
-                    handler->on_result_(_error == 0, *task);
+                    handler->on_result_(*tasks);
             };
 
             return handler;
         }
 
-        std::shared_ptr<result_handler<bool, const download_task&>> face::get_next_sticker_task()
+        std::shared_ptr<result_handler<int>> core::stickers::face::on_task_loaded(const download_task& _task)
         {
-            auto handler = std::make_shared<result_handler<bool, const download_task&>>();
-            auto task = std::make_shared<download_task>(std::string(), std::string(), std::wstring());
-
-            thread_->run_async_function([stickers_cache = cache_, task]()->int32_t
-            {
-                if (!stickers_cache->get_next_sticker_task(*task))
-                    return -1;
-
-                return 0;
-
-            })->on_result_ = [handler, task](int32_t _error)
-            {
-                if (handler->on_result_)
-                    handler->on_result_(_error == 0, *task);
-            };
-
-            return handler;
-        }
-
-        std::shared_ptr<result_handler<bool, const std::list<int64_t>&>> face::on_sticker_loaded(const download_task& _task)
-        {
-            auto handler = std::make_shared<result_handler<bool, const std::list<int64_t>&>>();
-            auto requests = std::make_shared<std::list<int64_t>>();
-
-            thread_->run_async_function([stickers_cache = cache_, _task, requests]()->int32_t
-            {
-                return (stickers_cache->sticker_loaded(_task, *requests) ? 0 : -1);
-
-            })->on_result_ = [handler, requests](int32_t _error)
-            {
-                if (handler->on_result_)
-                    handler->on_result_((_error == 0), *requests);
-            };
-
-            return handler;
-        }
-
-        std::shared_ptr<result_handler<bool>> face::on_metadata_loaded(const download_task& _task)
-        {
-            auto handler = std::make_shared<result_handler<bool>>();
+            auto handler = std::make_shared<result_handler<int>>();
 
             thread_->run_async_function([stickers_cache = cache_, _task]()->int32_t
             {
-                return (stickers_cache->meta_loaded(_task) ? 0 : -1);
+                return stickers_cache->on_task_loaded(_task);
 
-            })->on_result_ = [handler](int32_t _error)
+            })->on_result_ = [handler](int32_t _count)
             {
                 if (handler->on_result_)
-                    handler->on_result_(_error == 0);
+                    handler->on_result_(_count);
             };
 
             return handler;
@@ -1306,16 +1283,6 @@ namespace core
             return download_stickers_error_;
         }
 
-        bool face::is_download_stickers_in_progress() const
-        {
-            return download_stickers_in_progess_;
-        }
-
-        void face::set_download_stickers_in_progress(const bool _in_progress)
-        {
-            download_stickers_in_progess_ = _in_progress;
-        }
-
         std::shared_ptr<result_handler<const bool>> face::serialize_suggests(coll_helper _coll)
         {
             auto handler = std::make_shared<result_handler<const bool>>();
@@ -1364,7 +1331,7 @@ namespace core
             }
         }
 
-        static void post_sticker_impl(int64_t _seq, int32_t _set_id, int32_t _sticker_id, std::string_view _fs_id, core::sticker_size _size, int _error, const tools::binary_stream& _data)
+        static void post_sticker_impl(int64_t _seq, int32_t _set_id, int32_t _sticker_id, std::string_view _fs_id, core::sticker_size _size, int _error, std::wstring_view _path)
         {
             assert(_size > sticker_size::min);
             assert(_size < sticker_size::max);
@@ -1377,39 +1344,30 @@ namespace core
             coll.set_value_as_string("fs_id", _fs_id);
             coll.set_value_as_int("error", _error);
 
-            if (_size == sticker_size::small)
-                serialize_image(coll, _data, "data/small");
-            else if (_size == sticker_size::medium)
-                serialize_image(coll, _data, "data/medium");
-            else if (_size == sticker_size::large)
-                serialize_image(coll, _data, "data/large");
-            else if (_size == sticker_size::xlarge)
-                serialize_image(coll, _data, "data/xlarge");
-            else if (_size == sticker_size::xxlarge)
-                serialize_image(coll, _data, "data/xxlarge");
+            assert(!to_string(_size).empty());
+            coll.set_value_as_string(to_string(_size), core::tools::from_utf16(_path));
 
             g_core->post_message_to_gui("stickers/sticker/get/result", _seq, coll.get());
         }
 
         void post_sticker_fail_2_gui(int64_t _seq, int32_t _set_id, int32_t _sticker_id, std::string_view _fs_id, loader_errors _error)
         {
-            static const tools::binary_stream bs;
-            post_sticker_impl(_seq, _set_id, _sticker_id, _fs_id, core::sticker_size::small, (int)_error, bs);
+            post_sticker_impl(_seq, _set_id, _sticker_id, _fs_id, core::sticker_size::small, (int)_error, {});
         }
 
-        void post_sticker_2_gui(int64_t _seq, int32_t _set_id, int32_t _sticker_id, std::string_view _fs_id, core::sticker_size _size, const tools::binary_stream& _data)
+        void post_sticker_2_gui(int64_t _seq, int32_t _set_id, int32_t _sticker_id, std::string_view _fs_id, core::sticker_size _size, std::wstring_view _path)
         {
-            post_sticker_impl(_seq, _set_id, _sticker_id, _fs_id, _size, 0, _data);
+            post_sticker_impl(_seq, _set_id, _sticker_id, _fs_id, _size, 0, _path);
         }
 
-        void post_set_icon_2_gui(int32_t _set_id, std::string_view _message, const tools::binary_stream& _data)
+        void post_set_icon_2_gui(int32_t _set_id, std::string_view _message, std::wstring_view _path, int32_t _error)
         {
             assert(_set_id >= 0);
 
             coll_helper coll(g_core->create_collection(), true);
+            coll.set_value_as_int("error", _error);
             coll.set_value_as_int("set_id", _set_id);
-
-            serialize_image(coll, _data, "icon");
+            coll.set_value_as_string("icon_path", core::tools::from_utf16(_path));
 
             g_core->post_message_to_gui(_message, 0, coll.get());
         }

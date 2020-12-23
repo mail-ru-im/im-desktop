@@ -66,7 +66,7 @@ void GeneralSettingsWidget::Creator::initLanguage(QWidget* _parent)
     auto scrollAreaWidget = new QWidget(scrollArea);
     Utils::grabTouchWidget(scrollAreaWidget);
     Testing::setAccessibleName(scrollAreaWidget, qsl("AS LanguagePage scrollAreaWidget"));
-    scrollArea->setStyleSheet(qsl("QWidget{border: none; background-color: %1;}").arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE)));
+    scrollArea->setStyleSheet(ql1s("QWidget{border: none; background-color: %1;}").arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE)));
     //scrollAreaWidget->setStyleSheet(scrollAreaWidget->styleSheet() % u("background-color: green;");
 
     auto scrollAreaLayout = Utils::emptyVLayout(scrollAreaWidget);
@@ -106,7 +106,7 @@ void GeneralSettingsWidget::Creator::initLanguage(QWidget* _parent)
         for (const auto& l : ls)
         {
             auto row = new RadioTextRow(l);
-            Testing::setAccessibleName(row, qsl("AS LanguagePage ") % l);
+            Testing::setAccessibleName(row, u"AS LanguagePage " % l);
             list->addItem(row);
         }
 

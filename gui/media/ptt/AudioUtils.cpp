@@ -86,4 +86,25 @@ namespace ptt
     {
         return sizeof(wav_header_t);
     }
+
+    QString formatDuration(std::chrono::milliseconds _time)
+    {
+        auto m = std::chrono::duration_cast<std::chrono::minutes>(_time);
+        auto s = std::chrono::round<std::chrono::seconds>(_time) - m;
+        if (s.count() == 60)
+        {
+            ++m;
+            s = std::chrono::seconds::zero();
+        }
+
+        QString res;
+        QTextStream stream(&res);
+        stream.setPadChar(ql1c('0'));
+        stream
+            << qSetFieldWidth(2) << m.count()
+            << qSetFieldWidth(0) << ql1c(':')
+            << qSetFieldWidth(2) << s.count();
+
+        return res;
+    }
 }

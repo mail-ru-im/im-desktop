@@ -24,6 +24,11 @@ const mention_suggest_vec& get_mentions_suggests::get_suggests() const
     return suggests_;
 }
 
+std::string_view get_mentions_suggests::get_method() const
+{
+    return "getRecentWriters";
+}
+
 int32_t get_mentions_suggests::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     rapidjson::Document doc(rapidjson::Type::kObjectType);
@@ -37,7 +42,7 @@ int32_t get_mentions_suggests::init_request(const std::shared_ptr<core::http_req
 
     doc.AddMember("params", std::move(node_params), a);
 
-    setup_common_and_sign(doc, a, _request, "getRecentWriters");
+    setup_common_and_sign(doc, a, _request, get_method());
 
     if (!params_.full_log_)
     {

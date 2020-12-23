@@ -267,6 +267,16 @@ namespace Ui
         return (type_ == ServiceMessageItem::type::typePlateNew);
     }
 
+    bool ServiceMessageItem::isDate() const
+    {
+        return (type_ == ServiceMessageItem::type::typeDate);
+    }
+
+    bool ServiceMessageItem::isOverlay() const
+    {
+        return (type_ == ServiceMessageItem::type::typeOverlay);
+    }
+
     bool ServiceMessageItem::isFloating() const
     {
         return isFloating_;

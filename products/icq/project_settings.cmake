@@ -1,5 +1,6 @@
 if(APPLE)
     set(APP_PROJECT_NAME "ICQ")
+    set(APP_OUTPUT_NAME "${APP_PROJECT_NAME}")
 elseif(UNIX)
     set(APP_PROJECT_NAME "icq")
 elseif(WIN32)

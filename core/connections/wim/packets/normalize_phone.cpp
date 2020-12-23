@@ -25,6 +25,11 @@ normalize_phone::~normalize_phone()
 {
 }
 
+std::string_view normalize_phone::get_method() const
+{
+    return "normalizePhoneNumber";
+}
+
 int32_t normalize_phone::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     std::stringstream ss_url;
@@ -35,7 +40,7 @@ int32_t normalize_phone::init_request(const std::shared_ptr<core::http_request_s
         "&r=" << core::tools::system::generate_guid();
 
     _request->set_url(ss_url.str());
-    _request->set_normalized_url("normalizePhoneNumber");
+    _request->set_normalized_url(get_method());
     _request->set_keep_alive();
     return 0;
 }

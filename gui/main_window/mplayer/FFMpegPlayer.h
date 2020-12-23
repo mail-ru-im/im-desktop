@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ffmpeg.h"
+#include "LottieHandle.h"
 #include "../../memory_stats/FFmpegPlayerMemMonitor.h"
 
 Q_DECLARE_LOGGING_CATEGORY(ffmpegPlayer)
@@ -30,7 +31,7 @@ namespace Ui
     //////////////////////////////////////////////////////////////////////////
     // ThreadMessage
     //////////////////////////////////////////////////////////////////////////
-    enum thread_message_type
+    enum class thread_message_type
     {
         tmt_unknown = 0,
         tmt_update_scaled_size = 1,
@@ -56,19 +57,17 @@ namespace Ui
 
     struct ThreadMessage
     {
-        thread_message_type message_;
+        thread_message_type message_ = thread_message_type::tmt_unknown;
 
-        int32_t x_;
-        int32_t y_;
-        uint32_t videoId_;
+        int32_t x_ = 0;
+        int32_t y_ = 0;
+        uint32_t videoId_ = std::numeric_limits<uint32_t>::max();
         QString str_;
 
         QImage emptyFrame_;
 
-        ThreadMessage(uint32_t _videoId = std::numeric_limits<uint32_t>::max(), const thread_message_type _message = thread_message_type::tmt_unknown)
+        ThreadMessage(uint32_t _videoId = std::numeric_limits<uint32_t>::max(), thread_message_type _message = thread_message_type::tmt_unknown)
             : message_(_message)
-            , x_(0)
-            , y_(0)
             , videoId_(_videoId)
         {
         }
@@ -78,6 +77,7 @@ namespace Ui
             emptyFrame_ = std::move(_image);
         }
     };
+    using ThreadMessageList = std::list<ThreadMessage>;
 
 
     //////////////////////////////////////////////////////////////////////////
@@ -89,12 +89,12 @@ namespace Ui
 
         QSemaphore condition_;
 
-        std::list<ThreadMessage> messages_;
-        std::array<bool, thread_message_type::last + 1> compressed_messages_ = {};
+        ThreadMessageList messages_;
 
     public:
 
         bool getMessage(ThreadMessage& _message, std::function<bool()> _isQuit, int32_t _wait_timeout);
+        bool getAllMessages(ThreadMessageList& _messages, std::function<bool()> _isQuit, int32_t _wait_timeout);
         void pushMessage(const ThreadMessage& _message, bool _forward, bool _clear_others);
         void clear();
     };
@@ -132,118 +132,94 @@ namespace Ui
     //////////////////////////////////////////////////////////////////////////
     struct DecodeAudioData
     {
-        ffmpeg::AVFrame* frame_;
+        ffmpeg::AVFrame* frame_ = nullptr;
 
-        uint8_t** outSamplesData_;
+        uint8_t** outSamplesData_ = nullptr;
 
-        ffmpeg::SwrContext* swrContext_;
+        ffmpeg::SwrContext* swrContext_ = nullptr;
 
         openal::ALuint uiBuffers_[audio::num_buffers];
-        openal::ALuint uiSource_;
-        openal::ALuint uiBuffer_;
-        openal::ALint buffersProcessed_;
-        openal::ALint iState_;
-        openal::ALint iQueuedBuffers_;
+        openal::ALuint uiSource_ = 0;
+        openal::ALuint uiBuffer_ = 0;
+        openal::ALint buffersProcessed_ = 0;
+        openal::ALint iState_ = 0;
+        openal::ALint iQueuedBuffers_ = 0;
 
-        int iloop_;
+        int iloop_ = 0;
 
-        uint64_t layout_;
-        int32_t channels_;
-        int32_t fmt_;
-        int32_t sampleSize_;
-        int32_t freq_;
-        int32_t maxResampleSamples_;
-        int32_t srcRate_;
-        int32_t dstRate_;
-        //ffmpeg::AVPacket packet_;
+        uint64_t layout_ = 0;
+        int32_t channels_ = 0;
+        int32_t fmt_ = AL_FORMAT_STEREO16;
+        int32_t sampleSize_ = 2 * sizeof(uint16_t);
+        int32_t freq_ = 0;
+        int32_t maxResampleSamples_ = 1024;
+        int32_t srcRate_ = audio::outFrequency;
+        int32_t dstRate_ = audio::outFrequency;
 
-        bool queueInited_;
+        bool queueInited_ = false;
 
-        ffmpeg::AVCodecContext* audioCodecContext_;
-        decode_thread_state state_;
-
-        DecodeAudioData()
-            :   frame_(0),
-                outSamplesData_(0),
-                swrContext_(0),
-                uiSource_(0),
-                uiBuffer_(0),
-                buffersProcessed_(0),
-                iState_(0),
-                iQueuedBuffers_(0),
-                iloop_(0),
-                layout_(0),
-                channels_(0),
-                fmt_(AL_FORMAT_STEREO16),
-                sampleSize_(2 * sizeof(uint16_t)),
-                freq_(0),
-                maxResampleSamples_(1024),
-                srcRate_(audio::outFrequency),
-                dstRate_(audio::outFrequency),
-                queueInited_(false),
-                audioCodecContext_(0),
-                state_(decode_thread_state::dts_playing)
-        {
-
-        }
+        ffmpeg::AVCodecContext* audioCodecContext_ = nullptr;
+        decode_thread_state state_ = decode_thread_state::dts_playing;
     };
 
     struct MediaData
     {
-        bool syncWithAudio_;
+        bool syncWithAudio_ = false;
 
-        ffmpeg::AVStream* videoStream_;
-        ffmpeg::AVStream* audioStream_;
-        ffmpeg::AVFormatContext* formatContext_;
-        ffmpeg::AVCodecContext* codecContext_;
+        ffmpeg::AVStream* videoStream_ = nullptr;
+        ffmpeg::AVStream* audioStream_ = nullptr;
+        ffmpeg::AVFormatContext* formatContext_ = nullptr;
+        ffmpeg::AVCodecContext* codecContext_ = nullptr;
 
         QSharedPointer<PacketQueue> videoQueue_;
         QSharedPointer<PacketQueue> audioQueue_;
 
-        bool needUpdateSwsContext_;
-        ffmpeg::SwsContext* swsContext_;
+        bool needUpdateSwsContext_ = false;
+        ffmpeg::SwsContext* swsContext_ = nullptr;
         std::vector<uint8_t> scaledBuffer_;
-        ffmpeg::AVFrame* frameRGB_;
+        ffmpeg::AVFrame* frameRGB_ = nullptr;
         DecodeAudioData audioData_;
 
-        std::map<int32_t, QImage> frames_;
-
-        int32_t width_;
-        int32_t height_;
-        int32_t rotation_;
-        int64_t duration_;
-        int64_t seek_position_;
+        QSize size_;
+        int32_t rotation_ = 0;
+        int64_t duration_ = 0;
+        int64_t seek_position_ = -1;
 
         QSize scaledSize_;
 
-        double frameTimer_;
-        double frameLastPts_;
-        double frameLastDelay_;
+        double frameTimer_ = 0.0;
+        double frameLastPts_ = 0.0;
+        double frameLastDelay_ = 0.0;
 
         bool frameLastPtsReset_ = false;
 
-        bool startTimeVideoSet_;
-        bool startTimeAudioSet_;
-        int64_t startTimeVideo_;
-        int64_t startTimeAudio_;
+        bool startTimeVideoSet_ = false;
+        bool startTimeAudioSet_ = false;
+        int64_t startTimeVideo_ = 0;
+        int64_t startTimeAudio_ = 0;
 
-        double videoClock_;
+        double videoClock_ = 0.0;
 
-        double audioClock_;
-        int64_t audioClockTime_;
+        double audioClock_ = 0.0;
+        int64_t audioClockTime_ = 0;
 
-        bool mute_;
-        int32_t volume_;
+        bool mute_ = true;
+        int32_t volume_ = 100;
 
-        bool audioQuitRecv_;
-        bool videoQuitRecv_;
-        bool demuxQuitRecv_;
-        bool streamClosed_;
-        bool isImage_;
+        bool audioQuitRecv_ = false;
+        bool videoQuitRecv_ = false;
+        bool demuxQuitRecv_ = false;
+        bool streamClosed_ = false;
 
         std::queue<double> audio_queue_ptss_;
 
+        bool isLottie_ = false;
+        LottieHandle lottieRenderer_;
+
         MediaData();
+
+        bool hasVideo() const { return !!videoStream_ || lottieRenderer_; }
+        bool hasAudio() const { return !!audioStream_; }
     };
 
     struct VideoData
@@ -252,6 +228,7 @@ namespace Ui
         bool eof_ = false;
         bool stream_finished_ = false;
         std::list<QImage> emptyFrames_;
+        std::weak_ptr<MediaData> media_;
     };
 
     struct AudioData
@@ -260,8 +237,28 @@ namespace Ui
         bool stream_finished_ = false;
         double offset_ = 0.0;
         int64_t last_sync_time_ = 0;
+        std::weak_ptr<MediaData> media_;
     };
 
+    struct DemuxData
+    {
+        bool inited = false;
+        decode_thread_state state = decode_thread_state::dts_playing;
+        bool eof = false;
+        int64_t seekPosition = -1;
+        std::weak_ptr<MediaData> media_;
+    };
+
+    struct LottieRenderData
+    {
+        int videoId_ = -1;
+        int frameNo_ = -1;
+        QImage frame_;
+        std::future<rlottie::Surface> fut_;
+        std::weak_ptr<MediaData> media_;
+
+        bool isValid() const noexcept { return videoId_ >= 0; }
+    };
 
     //////////////////////////////////////////////////////////////////////////
     // VideoContext
@@ -269,6 +266,8 @@ namespace Ui
     class VideoContext : public QObject
     {
         Q_OBJECT
+
+        friend class Ui::FFmpegPlayerMemMonitor;
 
     Q_SIGNALS:
 
@@ -369,8 +368,6 @@ namespace Ui
 
         QSize getSourceSize(MediaData& _media) const;
         QSize getTargetSize(MediaData& _media) const;
-        bool enableAudio(MediaData& _media) const;
-        bool enableVideo(MediaData& _media) const;
 
         //don't call these functions in main thread
         static QImage getFirstFrame(const QString& _file);
@@ -412,6 +409,7 @@ namespace Ui
 
         void postVideoThreadMessage(const ThreadMessage& _message, bool _forward, bool _clear_others = false);
         bool getVideoThreadMessage(ThreadMessage& _message, int32_t _waitTimeout);
+        bool getAllVideoThreadMessages(ThreadMessageList& _messages, int32_t _waitTimeout);
 
         void postDemuxThreadMessage(const ThreadMessage& _message, bool _forward, bool _clear_others = false);
         bool getDemuxThreadMessage(ThreadMessage& _message, int32_t _waitTimeout);
@@ -431,7 +429,7 @@ namespace Ui
         void setMute(bool _mute, MediaData& _media);
 
         void resetFrameTimer(MediaData& _media);
-        void resetLsatFramePts(MediaData& _media);
+        void resetLastFramePts(MediaData& _media);
         bool seekMs(uint32_t _videoId, int _tsms, MediaData& _media);
         bool seekFrame(uint32_t _videoId, int64_t _ts_video, int64_t _ts_audio, MediaData& _media);
 
@@ -482,6 +480,12 @@ namespace Ui
     protected:
 
         virtual void run() override;
+
+        LottieRenderData renderLottieFrame(VideoData& _data, MediaData& _media, int32_t _videoId);
+        void renderVideoFrame(VideoData& _data, MediaData& _media, ffmpeg::AVFrame* _frame, ffmpeg::AVPacket& _av_packet, int32_t _videoId);
+        QImage getLastFrame(VideoData& _data) const;
+
+        bool processDataMessage(VideoData& _data, ThreadMessage& _msg) const;
 
     public:
 
@@ -619,16 +623,12 @@ namespace Ui
 
         std::list<DecodedFrame> decodedFrames_;
 
-        double computeDelay();
-
         decode_thread_state state_;
 
         qint64 lastVideoPosition_;
         qint64 lastPostedPosition_;
 
         std::chrono::system_clock::time_point prev_frame_time_;
-
-        void makeObject();
 
         std::chrono::system_clock::time_point lastEmitMouseMove_;
 
@@ -642,12 +642,7 @@ namespace Ui
         bool dataReady_;
         bool pausedByUser_;
 
-        int imageDuration_;
-        int imageProgress_;
-
         int seek_request_id_;
-
-        QPropertyAnimation* imageProgressAnimation_;
 
     private:
 
@@ -694,7 +689,7 @@ namespace Ui
         FFMpegPlayer(QWidget* _parent, std::shared_ptr<FrameRenderer> _renderer, bool _continius = false);
         virtual ~FFMpegPlayer();
 
-        bool openMedia(const QString& _mediaPath, bool isImage = false, uint32_t id = 0);
+        bool openMedia(const QString& _mediaPath, bool _isLottie = false, bool _isLottieInstantPreview = false, uint32_t id = 0);
 
         void play(bool _init);
         void pause();
@@ -720,7 +715,9 @@ namespace Ui
         QMovie::MovieState state() const;
 
         void setPreview(QPixmap _preview);
+        void setPreview(QImage _preview);
         QPixmap getActiveImage() const;
+        QImage getFirstFrame() const;
 
         bool getStarted() const;
         void setStarted(bool _started);
@@ -731,13 +728,6 @@ namespace Ui
         bool queueIsEmpty() const;
         int queueSize() const;
 
-        void setImageDuration(int duration);
-
-        Q_PROPERTY(int imageProgress READ getImageProgress WRITE setImageProgress)
-
-        void setImageProgress(int _val);
-        int getImageProgress() const;
-
         uint32_t getLastMedia() const;
         uint32_t getMedia() const;
 
@@ -747,8 +737,6 @@ namespace Ui
 
         void setRestoreVolume(const int32_t _volume);
         int32_t getRestoreVolume() const;
-
-        void requestFirstFrame(const QString& _file, std::function<void(QPixmap)> _ready);
 
         void setRenderer(std::shared_ptr<FrameRenderer> _renderer);
 
@@ -780,5 +768,4 @@ namespace Ui
 
         std::vector<FFMpegPlayer*> playersList_;
     };
-
 }

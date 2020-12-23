@@ -197,7 +197,7 @@ namespace Logic
             indexes_.insert(_contact->AimId_, newNdx);
 
             visible_indexes_.emplace_back(newNdx);
-            Q_EMITChanged(newNdx, newNdx);
+            emitChanged(newNdx, newNdx);
             Q_EMIT contactRename(_contact->AimId_);
         }
 
@@ -544,13 +544,13 @@ namespace Logic
         for (auto iter : updatedItems_)
         {
             if (iter >= minVisibleIndex_ && iter <= maxVisibleIndex_)
-                Q_EMITChanged(iter, iter);
+                emitChanged(iter, iter);
         }
 
         updatedItems_.clear();
     }
 
-    void ContactListModel::setCurrent(const QString& _aimId, qint64 id, bool _sel, std::function<void(Ui::HistoryControlPage*)> _gotPageCallback)
+    void ContactListModel::setCurrent(const QString& _aimId, qint64 id, bool _sel, std::function<void(Ui::HistoryControlPage*)> _gotPageCallback, bool _ignoreScroll)
     {
         if (_gotPageCallback)
         {
@@ -565,7 +565,7 @@ namespace Logic
         Q_EMIT selectedContactChanged(currentAimId_, prev);
 
         if (!currentAimId_.isEmpty() && _sel)
-            Q_EMIT select(currentAimId_, id);
+            Q_EMIT select(currentAimId_, id, Logic::UpdateChatSelection::No, _ignoreScroll);
 
         Ui::GetDispatcher()->contactSwitched(currentAimId_);
     }
@@ -593,7 +593,7 @@ namespace Logic
 
         updateSortedIndexesList(sorted_index_cl_, getLessFuncCL(QDateTime::currentDateTime()));
         rebuildIndex();
-        Q_EMITChanged(minVisibleIndex_, maxVisibleIndex_);
+        emitChanged(minVisibleIndex_, maxVisibleIndex_);
     }
 
     ContactListSorting::contact_sort_pred ContactListModel::getLessFuncCL(const QDateTime& current) const
@@ -718,6 +718,7 @@ namespace Logic
 
         QVector<QString> removed;
         addItem(addContact, removed);
+        setContactVisible(_aimId, false);
     }
 
     void ContactListModel::setContactVisible(const QString& _aimId, bool _visible)
@@ -727,7 +728,7 @@ namespace Logic
         {
             item->set_visible(_visible);
             rebuildVisibleIndex();
-            Q_EMITChanged(0, indexes_.size());
+            emitChanged(0, indexes_.size());
         }
     }
 
@@ -920,8 +921,10 @@ namespace Logic
 
     void ContactListModel::ignoreContact(const QString& _aimId, bool _ignore)
     {
+#ifndef STRIP_VOIP
         if (_ignore && Ui::GetDispatcher()->getVoipController().hasEstablishCall())
             Ui::GetDispatcher()->getVoipController().setDecline("", _aimId.toStdString().c_str(), true);
+#endif
 
         Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
         collection.set_value_as_qstring("contact", _aimId);
@@ -972,10 +975,6 @@ namespace Logic
 
             cont->set_chat_role(_role);
             Q_EMIT youRoleChanged(_aimId);
-
-            Log::write_network_log(su::concat("contact-list-debug",
-                " setYourRole after, _aimId=", _aimId.toStdString(), ", role=", _role.toStdString(),
-                "\r\n"));
         }
     }
 

@@ -7,15 +7,19 @@
 #include "../main_window/containers/FriendlyContainer.h"
 #include "../main_window/MainPage.h"
 #include "../main_window/MainWindow.h"
+#include "../main_window/sounds/SoundsManager.h"
 #include "../gui_settings.h"
 #include "MaskManager.h"
 #include "VideoPanel.h"
 #include "MaskPanel.h"
-#include "secureCallWnd.h"
+#include "MicroAlert.h"
+#include "GridControlPanel.h"
 
 #include "styles/ThemeParameters.h"
 #include "../controls/CustomButton.h"
 #include "../previewer/toast.h"
+#include "../media/ptt/AudioRecorder2.h"
+#include "../utils/macos/mac_support.h"
 
 #ifdef __APPLE__
     #include "macos/VideoFrameMacos.h"
@@ -25,13 +29,19 @@ namespace
 {
     enum { kPreviewBorderOffset_leftRight = 20 };
     enum { kPreviewBorderOffset_topBottom = 20 };
-    enum { kMinimumW = 460, kMinimumH = 400 };
+    enum { kPreviewGridButtonOffset = 36 };
+    enum { kMinimumW = 620, kMinimumH = 400 };
     enum { kAnimationDefDuration = 500 };
 
     constexpr float kDefaultRelativeSizeW = 0.6f;
     constexpr float kDefaultRelativeSizeH = 0.7f;
     constexpr char videoWndWName[] = "video_window_w";
     constexpr char videoWndHName[] = "video_window_h";
+
+    std::chrono::milliseconds getPanelHideTimeout()
+    {
+        return std::chrono::milliseconds(1500);
+    };
 
     bool windowIsOverlapped(platform_specific::GraphicsPanel* _window, const std::vector<QWidget*>& _exclude)
     {
@@ -140,7 +150,7 @@ Ui::VideoWindowHeader::VideoWindowHeader(QWidget* parent)
     rightLayout->addWidget(maximizeButton);
     auto closeButton = new CustomButton(this, qsl(":/titlebar/close_button"), QSize(44, 28));
     closeButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-    Styling::Buttons::setButtonDefaultColors(closeButton);
+    closeButton->setDefaultColor(Styling::Buttons::defaultColor());
     Testing::setAccessibleName(closeButton, qsl("AS VoipWindow closeButton"));
     rightLayout->addWidget(closeButton);
 
@@ -152,22 +162,19 @@ Ui::VideoWindowHeader::VideoWindowHeader(QWidget* parent)
     auto btnBgMaximizeHover = [=](bool _hovered) { maximizeButton->setBackgroundColor(Styling::getParameters().getColor(_hovered ? Styling::StyleVariable::BASE_BRIGHT_INVERSE_HOVER : Styling::StyleVariable::BASE_BRIGHT_INVERSE)); };
     auto btnBgMaximizePress = [=](bool _pressed) { maximizeButton->setBackgroundColor(Styling::getParameters().getColor(_pressed ? Styling::StyleVariable::BASE_BRIGHT : Styling::StyleVariable::BASE_BRIGHT_INVERSE)); };
 
-    auto btnBgClose = [=](bool _state) { closeButton->setBackgroundColor(Styling::getParameters().getColor(_state ? Styling::StyleVariable::SECONDARY_ATTENTION : Styling::StyleVariable::BASE_BRIGHT_INVERSE)); };
+    closeButton->setBackgroundColor(Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT));
 
     connect(hideButton, &QPushButton::clicked, this, &Ui::VideoWindowHeader::onMinimized);
     connect(maximizeButton, &QPushButton::clicked, this, &Ui::VideoWindowHeader::onFullscreen);
-    connect(closeButton, &QPushButton::clicked, this, &Ui::VideoWindowHeader::onClose);
 
     connect(hideButton, &CustomButton::changedHover, this, btnBgHideHover);
     connect(hideButton, &CustomButton::changedPress, this, btnBgHidePress);
     connect(maximizeButton, &CustomButton::changedHover, this, btnBgMaximizeHover);
     connect(maximizeButton, &CustomButton::changedPress, this, btnBgMaximizePress);
-    connect(closeButton, &CustomButton::changedHover, this, btnBgClose);
-    connect(closeButton, &CustomButton::changedPress, this, btnBgClose);
 
     hideButton->setCursor(Qt::PointingHandCursor);
     maximizeButton->setCursor(Qt::PointingHandCursor);
-    closeButton->setCursor(Qt::PointingHandCursor);
+    closeButton->setCursor(Qt::ArrowCursor);
 
     show();
 }
@@ -210,8 +217,10 @@ struct Ui::VideoWindow::ButtonStatisticData
 
 Ui::VideoWindow::VideoWindow()
     : QWidget()
-    , videoPanel_(new(std::nothrow) VideoPanel(this, this))
+    , gridButtonPanel_(new(std::nothrow) Ui::GridControlPanel(this))
+    , microAlert_(new(std::nothrow) MicroAlert(this))
     , maskPanel_(nullptr)
+    , videoPanel_(new(std::nothrow) VideoPanel(this, this))
     , transparentPanelOutgoingWidget_(nullptr)
     , detachedWnd_(new DetachedVideoWindow(this))
     , checkOverlappedTimer_(this)
@@ -229,6 +238,7 @@ Ui::VideoWindow::VideoWindow()
     , isFullscreenAnimation_(false)
     , changeSpaceAnimation_(false)
 #endif
+    , microIssue_(MicroIssue::None)
 {
     callDescription.time = 0;
     buttonStatistic_ = std::make_unique<ButtonStatisticData>();
@@ -239,6 +249,7 @@ Ui::VideoWindow::VideoWindow()
     header_ = new VideoWindowHeader(this);
     headerHeight_ = header_->height();
 #endif
+
     // TODO: use panels' height
     maskPanel_ = std::unique_ptr<MaskPanel>(new(std::nothrow) MaskPanel(this, this, Utils::scale_value(30), Utils::scale_value(56)));
 
@@ -253,6 +264,8 @@ Ui::VideoWindow::VideoWindow()
         setWindowFlags(Qt::Window /*| Qt::WindowDoesNotAcceptFocus*//*| Qt::WindowMinimizeButtonHint | Qt::WindowCloseButtonHint | Qt::WindowMaximizeButtonHint*/);
         //setAttribute(Qt::WA_ShowWithoutActivating);
         setAttribute(Qt::WA_X11DoNotAcceptFocus);
+        if constexpr (platform::is_linux())
+            setWindowFlags(windowFlags() & ~Qt::WindowCloseButtonHint);
     }
 
     QVBoxLayout* rootLayout = Utils::emptyVLayout();
@@ -264,6 +277,21 @@ Ui::VideoWindow::VideoWindow()
     rootLayout->addWidget(header_);
 #endif
 
+#ifdef __APPLE__
+    Utils::disableCloseButton(this);
+#endif
+
+    microAlert_->setVisible(false);
+    gridButtonPanel_->setVisible(false);
+
+    if constexpr (platform::is_windows())
+    {
+        gridButtonPanel_->setVerticalShift(headerHeight_);
+        microAlert_->setVerticalShift(headerHeight_);
+    }
+
+    panels_.push_back(gridButtonPanel_.get());
+    panels_.push_back(microAlert_.get());
     panels_.push_back(videoPanel_.get());
     panels_.push_back(maskPanel_.get());
 
@@ -280,6 +308,7 @@ Ui::VideoWindow::VideoWindow()
     if constexpr (platform::is_linux())
     {
         rootLayout->setContentsMargins(0, 0, 0, 0);
+        rootLayout->addWidget(gridButtonPanel_.get());
         rootLayout->addWidget(rootWidget_, 1);
         rootLayout->addWidget(videoPanel_.get());
         rootLayout->addWidget(maskPanel_.get());
@@ -309,7 +338,6 @@ Ui::VideoWindow::VideoWindow()
         connect(videoPanel_.get(), &VideoPanel::onShowMaskPanel, this, &VideoWindow::onShowMaskPanel);
         connect(videoPanel_.get(), &VideoPanel::closeActiveMask, this, &VideoWindow::onCloseActiveMask);
 
-        connect(videoPanel_.get(), &VideoPanel::onCameraClickOn, this, &VideoWindow::onSetPreviewPrimary);
         connect(videoPanel_.get(), &VideoPanel::onShareScreenClickOn, this, &VideoWindow::onScreenSharing);
 
         connect(videoPanel_.get(), &VideoPanel::needShowScreenPermissionsPopup, this, &VideoWindow::showScreenPermissionsPopup);
@@ -318,7 +346,6 @@ Ui::VideoWindow::VideoWindow()
         connect(videoPanel_.get(), &VideoPanel::onGoToChatButton, this, [this]() {buttonStatistic_->buttonChat = true; });
         connect(videoPanel_.get(), &VideoPanel::onCameraClickOn, this, [this]() {buttonStatistic_->buttonCamera = true; });
 
-        connect(videoPanel_.get(), &VideoPanel::updateConferenceMode, this, &VideoWindow::updateConferenceMode);
         connect(videoPanel_.get(), &VideoPanel::addUserToConference, this, &VideoWindow::onAddUserClicked);
         connect(videoPanel_.get(), &VideoPanel::inviteVCSUrl, this, &VideoWindow::onInviteVCSUrl);
 
@@ -335,6 +362,9 @@ Ui::VideoWindow::VideoWindow()
         connect(maskPanel_.get(), &MaskPanel::getCallStatus, this, &VideoWindow::getCallStatus);
         connect(maskPanel_.get(), &MaskPanel::onHideMaskPanel, this, &VideoWindow::onHideMaskPanel);
     }
+
+    if (gridButtonPanel_)
+        connect(gridButtonPanel_.get(), &GridControlPanel::updateConferenceMode, this, &VideoWindow::updateConferenceMode);
 
     //connect(&Ui::GetDispatcher()->getVoipController(), &voip_proxy::VoipController::onVoipUpdateCipherState, this, &VideoWindow::onVoipUpdateCipherState);
     connect(&Ui::GetDispatcher()->getVoipController(), &voip_proxy::VoipController::onVoipCallTimeChanged, this, &VideoWindow::onVoipCallTimeChanged);
@@ -353,7 +383,6 @@ Ui::VideoWindow::VideoWindow()
 #ifdef _WIN32
     connect(header_, &VideoWindowHeader::onMinimized, this, &Ui::VideoWindow::onPanelClickedMinimize);
     connect(header_, &VideoWindowHeader::onFullscreen, this, &Ui::VideoWindow::onPanelClickedMaximize);
-    connect(header_, &VideoWindowHeader::onClose, this, &Ui::VideoWindow::onPanelClickedClose);
 #endif
 
     connect(&checkOverlappedTimer_, &QTimer::timeout, this, &VideoWindow::checkOverlap);
@@ -365,6 +394,21 @@ Ui::VideoWindow::VideoWindow()
     connect(&fullscreenNotification_, &platform_macos::FullScreenNotificaton::fullscreenAnimationStart, this, &VideoWindow::fullscreenAnimationStart);
     connect(&fullscreenNotification_, &platform_macos::FullScreenNotificaton::fullscreenAnimationFinish, this, &VideoWindow::fullscreenAnimationFinish);
     connect(&fullscreenNotification_, &platform_macos::FullScreenNotificaton::activeSpaceDidChange, this, &VideoWindow::activeSpaceDidChange);
+    connect(&fullscreenNotification_, &platform_macos::FullScreenNotificaton::changeFullscreenState, this, [this](bool _isFull)
+    {
+        if (microAlert_)
+        {
+            microAlert_->setVerticalShift(_isFull ? 2 * headerHeight_ : 0);
+            if (microAlert_->isVisible())
+                microAlert_->updatePosition(*this);
+        }
+
+        if (gridButtonPanel_ && gridButtonPanel_->isVisible())
+        {
+            gridButtonPanel_->setVerticalShift(_isFull ? 2 * headerHeight_ : 0);
+            gridButtonPanel_->updatePosition(*this);
+        }
+    });
     connect(detachedWnd_.get(), &DetachedVideoWindow::windowWillDeminiaturize, this, &VideoWindow::windowWillDeminiaturize);
     connect(detachedWnd_.get(), &DetachedVideoWindow::windowDidDeminiaturize, this, &VideoWindow::windowDidDeminiaturize);
     if (videoPanel_)
@@ -375,10 +419,15 @@ Ui::VideoWindow::VideoWindow()
 #endif
 
     connect(detachedWnd_.get(), &DetachedVideoWindow::needShowScreenPermissionsPopup, this, &VideoWindow::showScreenPermissionsPopup);
+    connect(detachedWnd_.get(), &DetachedVideoWindow::onMicrophoneClick, this, &VideoWindow::showMicroPermissionPopup);
 
-    showPanelTimer_.setInterval(1500);
-    if (detachedWnd_)
-        detachedWnd_->hideFrame();
+    connect(GetSoundsManager(), &SoundsManager::deviceListChanged, this, [this]()
+    {
+        if (isActiveWindow() || Ui::GetDispatcher()->getVoipController().hasEstablishCall())
+            checkMicroPermission();
+    });
+
+    showPanelTimer_.setInterval(getPanelHideTimeout());
 
     setMinimumSize(Utils::scale_value(kMinimumW), Utils::scale_value(kMinimumH));
     //saveMinSize(minimumSize());
@@ -388,6 +437,7 @@ Ui::VideoWindow::VideoWindow()
 
 Ui::VideoWindow::~VideoWindow()
 {
+    Q_EMIT aboutToHide();
     checkOverlappedTimer_.stop();
 #ifndef STRIP_VOIP
     rootWidget_->clearPanels();
@@ -416,8 +466,7 @@ void Ui::VideoWindow::onVoipMediaRemoteVideo(const voip_manager::VideoEnable& vi
         if (hasRemoteVideoInCall())
         {
             tryRunPanelsHideTimer();
-        }
-        else
+        } else
         {
             showPanelTimer_.stop();
             fadeInPanels(kAnimationDefDuration);
@@ -557,9 +606,6 @@ bool Ui::VideoWindow::isOverlapped() const
     for (auto panel : panels_)
         excludeWnd.push_back(panel);
 
-    //if (secureCallWnd_ && secureCallWnd_->isVisible())
-    //    excludeWnd.push_back(secureCallWnd_);
-
     return windowIsOverlapped(rootWidget_, excludeWnd);
 }
 
@@ -635,33 +681,57 @@ void Ui::VideoWindow::onPanelClickedMaximize()
     _switchFullscreen();
 }
 
-void Ui::VideoWindow::onPanelClickedClose()
-{
-    Ui::GetDispatcher()->getVoipController().setHangup();
-}
-
 void Ui::VideoWindow::hideFrame()
 {
-    rootWidget_->exitTalk();
-    Ui::GetDispatcher()->getVoipController().setWindowRemove((quintptr)rootWidget_->frameId());
+    assert(rootWidget_->frameId());
+    if (rootWidget_->frameId())
+    {
+        rootWidget_->enableMouseEvents(false);
+        Ui::GetDispatcher()->getVoipController().setWindowRemove((quintptr)rootWidget_->frameId());
+    }
+    Q_EMIT aboutToHide();
 }
 
 void Ui::VideoWindow::showFrame()
 {
-    Ui::GetDispatcher()->getVoipController().setWindowAdd((quintptr)rootWidget_->frameId(), "", true, false, 0);
+    rootWidget_->initNative();
+    assert(rootWidget_->frameId());
+    if (rootWidget_->frameId())
+        Ui::GetDispatcher()->getVoipController().setWindowAdd((quintptr)rootWidget_->frameId(), "", true, false, 0);
 
-    offsetWindow(Utils::scale_value(kPreviewBorderOffset_topBottom), Utils::scale_value(kPreviewBorderOffset_topBottom));
+    auto topOffset = Utils::scale_value(kPreviewBorderOffset_topBottom);
+    if constexpr (!platform::is_linux())
+        topOffset += Utils::scale_value(kPreviewGridButtonOffset);
+    offsetWindow(Utils::scale_value(kPreviewBorderOffset_topBottom), topOffset);
 
     if constexpr (platform::is_apple())
         activateWindow();
+
+    if (microIssue_ == Ui::MicroIssue::Incoming)
+    {
+        if (platform::is_windows())
+            raiseWindow();
+
+        QTimer::singleShot(0, this, [pThis = QPointer(this)]()
+        {
+            if (!pThis)
+                return;
+
+            pThis->showPermissionPanel();
+        });
+    }
 }
 
 void Ui::VideoWindow::onVoipWindowRemoveComplete(quintptr _winId)
 {
     if (_winId == rootWidget_->frameId())
     {
+#ifndef __APPLE__
+        // breaks mousePressEvent/mouseReleaseEvent events in VideoFrameMacos.mm on 2nd call
+        rootWidget_->freeNative();
+#endif
+        callMethodProxy(qsl("showNormal"));
         callMethodProxy(qsl("hide"));
-        //hide();
     }
 }
 
@@ -699,12 +769,19 @@ void Ui::VideoWindow::onVoipWindowAddComplete(quintptr _winId)
     if (_winId == rootWidget_->frameId())
     {
         updatePanels();
-        show();
+        if (isMinimized())
+            callMethodProxy(qsl("showNormal"));
+        else
+            callMethodProxy(qsl("show"));
+        if (videoPanel_)
+            videoPanel_->updatePanelButtons();
+        rootWidget_->enableMouseEvents(true);
     }
 }
 
 void Ui::VideoWindow::hideEvent(QHideEvent* _ev)
 {
+    Q_EMIT aboutToHide();
     QWidget::hideEvent(_ev);
     checkPanelsVisibility(true);
     if (detachedWnd_)
@@ -763,14 +840,14 @@ void Ui::VideoWindow::showEvent(QShowEvent* _ev)
     shadow_.showShadow();
 
     updateUserName();
+    checkMicroPermission();
+
     Utils::InterConnector::instance().getMainWindow()->updateMainMenu();
 }
 
 void Ui::VideoWindow::onVoipMouseTapped(quintptr _hwnd, const std::string& _tapType, const std::string& contact)
 {
-    const bool dblTap = _tapType == "double";
-    const bool over   = _tapType == "over";
-    const bool single = _tapType == "single";
+    const bool dblTap = _tapType == "double", over = _tapType == "over", single = _tapType == "single";
 
     if (detachedWnd_ && detachedWnd_->getVideoFrameId() == _hwnd)
     {
@@ -779,20 +856,17 @@ void Ui::VideoWindow::onVoipMouseTapped(quintptr _hwnd, const std::string& _tapT
             if (dblTap)
                 raise();
         }
-    }
-    else if ((quintptr)rootWidget_->frameId() == _hwnd)
+    } else if ((quintptr)rootWidget_->frameId() == _hwnd)
     {
         if (dblTap)
         {
              _switchFullscreen();
-        }
-        else if (over)
+        } else if (over)
         {
             showPanelTimer_.stop();
             fadeInPanels(kAnimationDefDuration);
             tryRunPanelsHideTimer();
-        }
-        else if (single)
+        } else if (single)
         {
             if (maskPanel_->isVisible())
                 onHideMaskPanel();
@@ -813,8 +887,8 @@ void Ui::VideoWindow::onVoipCallCreated(const voip_manager::ContactEx& _contactE
     {
         outgoingNotAccepted_ = true;
         startTalking = false;
-        rootWidget_->createdTalk(Ui::GetDispatcher()->getVoipController().isCallVCS());
     }
+    videoPanel_->updatePanelButtons();
     //if (_contactEx.connection_count == 1)
     //    createdNewCall();
 }
@@ -823,6 +897,7 @@ void Ui::VideoWindow::checkPanelsVisibility(bool _forceHide /*= false*/)
 {
     if (isHidden() || isMinimized() || _forceHide)
     {
+        Q_EMIT aboutToHide();
         hidePanels();
         return;
     }
@@ -836,6 +911,10 @@ void Ui::VideoWindow::checkPanelsVisibility(bool _forceHide /*= false*/)
         videoPanel_->setVisible(maskPanelState != SMP_SHOW);
     if (maskPanel_)
         maskPanel_->setVisible(maskPanelState != SMP_HIDE);
+    if (gridButtonPanel_)
+        gridButtonPanel_->setVisible(!Ui::GetDispatcher()->getVoipController().isCallVCS());
+    if (microAlert_)
+        microAlert_->setVisible(microIssue_ != Ui::MicroIssue::None);
 
     if (rootWidget_)
         updatePanels();
@@ -889,6 +968,9 @@ void Ui::VideoWindow::changeEvent(QEvent* _e)
     QWidget::changeEvent(_e);
     if (_e->type() == QEvent::WindowStateChange)
     {
+        // window state change may not change resolution, so render can skip frames - trigger render redraw
+        if (rootWidget_ && rootWidget_->frameId())
+            Ui::GetDispatcher()->getVoipController().setWindowBackground((quintptr)rootWidget_->frameId());
         if constexpr (platform::is_apple())
         {
             // On Mac we can go to normal size using OSX.
@@ -896,7 +978,7 @@ void Ui::VideoWindow::changeEvent(QEvent* _e)
             if (_e->spontaneous())
             {
                 checkPanelsVisibility();
-                if (!!rootWidget_)
+                if (rootWidget_)
                     rootWidget_->fullscreenModeChanged(isInFullscreen());
             }
         }
@@ -907,6 +989,7 @@ void Ui::VideoWindow::closeEvent(QCloseEvent* _e)
 {
     _e->ignore();
     Ui::GetDispatcher()->getVoipController().setHangup();
+    updateHangUpState();
 }
 
 void Ui::VideoWindow::resizeEvent(QResizeEvent* _e)
@@ -935,14 +1018,14 @@ void Ui::VideoWindow::resizeEvent(QResizeEvent* _e)
 
 void Ui::VideoWindow::onVoipCallDestroyed(const voip_manager::ContactEx& _contactEx)
 {
-    auto res = std::find(_contactEx.windows.begin(), _contactEx.windows.end(), (void*)getContentWinId());
-    if (res == _contactEx.windows.end())
+    if (!_contactEx.current_call)
         return;
 
     //unuseAspect();
     hasRemoteVideo_.clear();
     outgoingNotAccepted_ = false;
     startTalking = false;
+    Q_EMIT aboutToHide();
 
 #ifdef __APPLE__
     // On mac if video window is fullscreen and on active, we make it active.
@@ -953,8 +1036,7 @@ void Ui::VideoWindow::onVoipCallDestroyed(const voip_manager::ContactEx& _contac
         callMethodProxy(qsl("activateWindow"));
         callMethodProxy(qsl("raise"));
         changeSpaceAnimation_ = true;
-    }
-    else if (isMinimized())
+    } else if (isMinimized())
     {
         // Qt has but with miniature mode:
         // If window if miniature it ignore hide call.
@@ -966,16 +1048,13 @@ void Ui::VideoWindow::onVoipCallDestroyed(const voip_manager::ContactEx& _contac
 
     callMethodProxy(qsl("onEscPressed"));
 
-    //onEscPressed();
-
-    if (_contactEx.current_call)
-    {
-        if (maskPanel_)
-            maskPanel_->callDestroyed();
-
-        if (videoPanel_)
-            videoPanel_->callDestroyed();
-    }
+    if (maskPanel_)
+        maskPanel_->callDestroyed();
+    if (videoPanel_)
+        videoPanel_->callDestroyed();
+    if (gridButtonPanel_)
+        gridButtonPanel_->setVisible(false);
+    updateHangUpState();
 
     currentContacts_.clear();
     sendStatistic();
@@ -1014,6 +1093,7 @@ void Ui::VideoWindow::fullscreenAnimationStart()
 {
 #ifdef __APPLE__
     isFullscreenAnimation_ = true;
+    Utils::disableCloseButton(this);
     rootWidget_->fullscreenAnimationStart();
 #endif
 }
@@ -1024,6 +1104,7 @@ void Ui::VideoWindow::fullscreenAnimationFinish()
     if (isFullscreenAnimation_)
     {
         isFullscreenAnimation_ = false;
+        Utils::disableCloseButton(this);
         rootWidget_->fullscreenAnimationFinish();
         executeCommandList();
     }
@@ -1063,12 +1144,8 @@ void Ui::VideoWindow::executeCommandList()
         {
             callMethodProxy(iterator.next());
             iterator.remove();
-        }
-        else
-        {
-            // Animation is in progress.
+        } else // Animation is in progress.
             break;
-        }
     }
 #endif
 }
@@ -1079,8 +1156,7 @@ void Ui::VideoWindow::callMethodProxy(const QString& _method)
     if (isFullscreenAnimation_ || changeSpaceAnimation_)
     {
         commandList_.push_back(_method);
-    }
-    else
+    } else
 #endif
     {
         QMetaObject::invokeMethod(this, _method.toLatin1().data(), /*bQueued ? Qt::QueuedConnection :*/ Qt::DirectConnection);
@@ -1218,15 +1294,6 @@ void Ui::VideoWindow::tryRunPanelsHideTimer()
     }
 }
 
-/*void Ui::VideoWindow::hideSecurityDialog()
-{
-    if (secureCallWnd_ && secureCallWnd_->isVisible())
-    {
-        secureCallWnd_->hide();
-        onSecureCallWndClosed();
-    }
-}*/
-
 void Ui::VideoWindow::onMaskListAnimationFinished(bool out)
 {
     if (!out)
@@ -1281,7 +1348,6 @@ void Ui::VideoWindow::onVoipCallConnected(const voip_manager::ContactEx& _contac
     {
         startTalking = true;
         updateUserName();
-        rootWidget_->startedTalk();
     }
 }
 
@@ -1316,7 +1382,7 @@ void  Ui::VideoWindow::onVoipMainVideoLayoutChanged(const voip_manager::MainVide
     {
         currentLayout_ = mainLayout;
         outgoingNotAccepted_ = (mainLayout.type == voip_manager::MVL_OUTGOING);
-        videoPanel_->changeConferenceMode(mainLayout.layout);
+        gridButtonPanel_->changeConferenceMode(mainLayout.layout);
 #ifdef __APPLE__
         if (!platform_macos::windowIsOnActiveSpace(this))
             return;
@@ -1358,11 +1424,8 @@ void Ui::VideoWindow::onShowMaskPanel()
             checkPanelsVisibility();
 
             QTimer::singleShot(kAnimationDefDuration, this, &Ui::VideoWindow::setShowMaskPanelState);
-        }
-        else
-        {
+        } else
             setShowMaskPanelState();
-        }
 
         onSetPreviewPrimary();
     }
@@ -1383,11 +1446,8 @@ void Ui::VideoWindow::onHideMaskPanel()
             checkPanelsVisibility();
 
             QTimer::singleShot(kAnimationDefDuration, this, &Ui::VideoWindow::setHideMaskPanelState);
-        }
-        else
-        {
+        } else
             setHideMaskPanelState();
-        }
 
         onSetContactPrimary();
     }
@@ -1421,11 +1481,10 @@ void Ui::VideoWindow::keyPressEvent(QKeyEvent* _e)
         const auto key = _e->key();
         if (_e->modifiers() == Qt::ControlModifier)
         {
-            if (key == Qt::Key_Q || key == Qt::Key_W)
+            if (key == Qt::Key_Q)
             {
                 close();
-                if (key == Qt::Key_Q)
-                    Q_EMIT finished();
+                Q_EMIT finished();
             }
         }
     }
@@ -1503,8 +1562,8 @@ void Ui::VideoWindow::showScreenPermissionsPopup(media::permissions::DeviceType 
         } else if (media::permissions::DeviceType::Microphone == type)
         {
             res = Utils::GetConfirmationWithTwoButtons(QT_TRANSLATE_NOOP("input_widget", "Cancel"), QT_TRANSLATE_NOOP("input_widget", "Open settings"),
-                QT_TRANSLATE_NOOP("voip_pages", "To use microphone you need to allow access to the microphone in the system settings"),
-                QT_TRANSLATE_NOOP("voip_pages", "Microphone permissions"), &dialogParent);
+                QT_TRANSLATE_NOOP("voip_video_panel", "Allow access to microphone. Click \"Settings\" and allow application access to microphone"),
+                QT_TRANSLATE_NOOP("popup_window", "Allow microphone access, so that interlocutor could hear you"), &dialogParent);
         } else if (media::permissions::DeviceType::Camera == type)
         {
             res = Utils::GetConfirmationWithTwoButtons(QT_TRANSLATE_NOOP("input_widget", "Cancel"), QT_TRANSLATE_NOOP("input_widget", "Open settings"),
@@ -1541,6 +1600,13 @@ void Ui::VideoWindow::onInviteVCSUrl(const QString& _url)
     updatePanels();
 }
 
+void Ui::VideoWindow::showMicroPermissionPopup()
+{
+    raiseWindow();
+    if (videoPanel_)
+        videoPanel_->showPermissionPopup();
+}
+
 void Ui::VideoWindow::sendStatistic()
 {
     if (buttonStatistic_ && buttonStatistic_->currentTime >= ButtonStatisticData::kMinTimeForStatistic)
@@ -1572,4 +1638,132 @@ void Ui::VideoWindow::showToast(const QString& _text, int _maxLineCount)
 {
     if (auto videoPanel = videoPanel_.get())
         videoPanel->showToast(_text, _maxLineCount);
+}
+
+void Ui::VideoWindow::setMicrophoneAlert(Ui::MicroIssue _issue)
+{
+    microIssue_ = _issue;
+
+    if constexpr (platform::is_windows())
+    {
+        if (!permissonsChangeNotifier_)
+        {
+            permissonsChangeNotifier_ = new media::permissions::PermissonsChangeNotifier(this);
+            connect(permissonsChangeNotifier_, &media::permissions::PermissonsChangeNotifier::deviceChanged, this, [this](media::permissions::DeviceType _devType)
+            {
+                if (_devType == media::permissions::DeviceType::Microphone)
+                    checkMicroPermission();
+            });
+            permissonsChangeNotifier_->start();
+        }
+    }
+
+    if (microIssue_ == Ui::MicroIssue::None)
+        Ui::GetDispatcher()->getVoipController().updateMicrophoneButtonState(microIssue_);
+
+    if (microAlert_)
+        microAlert_->setState(Ui::MicroAlert::MicroAlertState::Full);
+}
+
+void Ui::VideoWindow::updateHangUpState()
+{
+    Q_EMIT aboutToHide();
+    microIssue_ = MicroIssue::None;
+    if (permissonsChangeNotifier_)
+    {
+        permissonsChangeNotifier_->stop();
+        permissonsChangeNotifier_->deleteLater();
+    }
+}
+
+void Ui::VideoWindow::checkMicroPermission()
+{
+    const auto p = media::permissions::checkPermission(media::permissions::DeviceType::Microphone);
+    if (p != media::permissions::Permission::Denied)
+    {
+        const auto keepState = (p == media::permissions::Permission::NotDetermined && microIssue_ == MicroIssue::Incoming);
+        microIssue_ = !ptt::AudioRecorder2::hasDevice()
+                        ? Ui::MicroIssue::NotFound
+                        : ( keepState ? microIssue_ : Ui::MicroIssue::None);
+    }
+    else
+    {
+        microIssue_ = Ui::MicroIssue::NoPermission;
+    }
+
+    updateMicroAlertState();
+}
+
+void Ui::VideoWindow::updateMicroAlertState()
+{
+    Ui::GetDispatcher()->getVoipController().updateMicrophoneButtonState(microIssue_);
+
+    if (microAlert_)
+    {
+        microAlert_->setIssue(microIssue_);
+        microAlert_->setVisible(microIssue_ != Ui::MicroIssue::None && isVisible() && !isMinimized());
+    }
+}
+
+void Ui::VideoWindow::showPermissionPanel()
+{
+    FullVideoWindowPanel dialogParent(this);
+
+    auto removePanel = [this, &dialogParent]()
+    {
+        videoPanel_->setPreventFadeIn(false);
+
+        // Remove panel from videowindow
+        eventFilter_->removePanel(&dialogParent);
+        const auto it = std::find(panels_.begin(), panels_.end(), &dialogParent);
+        if (it != panels_.end())
+            panels_.erase(it);
+        updatePanels();
+    };
+
+    connect(this, &VideoWindow::aboutToHide, &dialogParent, &FullVideoWindowPanel::aboutToHide);
+    connect(this, &VideoWindow::aboutToHide, this, [removePanel]() { removePanel(); });
+
+    // Correct attach to video window.
+    panels_.push_back(&dialogParent);
+    eventFilter_->addPanel(&dialogParent);
+    updatePanels();
+
+    videoPanel_->setPreventFadeIn(true);
+    videoPanel_->fadeOut(kAnimationDefDuration);
+
+    dialogParent.updatePosition(*this);
+    dialogParent.show();
+
+    Utils::checkMicroPermission(&dialogParent, Utils::MicroPermissionCallback());
+    removePanel();
+}
+
+void Ui::VideoWindow::raiseWindow()
+{
+    auto showCallback = [this]()
+    {
+        if (detachedWnd_)
+        {
+            const auto scrP = windowHandle()->screen();
+            const auto scrC = detachedWnd_->windowHandle()->screen();
+            if (scrP != scrC)
+            {
+                QRect newGeo(geometry());
+                newGeo.moveCenter(scrC->geometry().center());
+                setGeometry(newGeo);
+            }
+        }
+
+        if (isMinimized())
+        {
+            windowWillDeminiaturize();
+            showNormal();
+            windowDidDeminiaturize();
+        }
+        raise();
+        activateWindow();
+    };
+
+    platform_specific::showInCurrentWorkspace(this, detachedWnd_.get(), std::move(showCallback));
 }

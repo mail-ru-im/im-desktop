@@ -148,6 +148,14 @@ namespace Ui
             bool spellError = false;
         };
 
+        class TextWordShadow
+        {
+        public:
+            int offsetX = 0;
+            int offsetY = 0;
+            QColor color;
+        };
+
         class TextWord
         {
         public:
@@ -305,6 +313,10 @@ namespace Ui
 
             std::optional<WordBoundary> getSyntaxWordAt(int _x) const;
 
+            void setShadow(const int _offsetX, const int _offsetY, const QColor& _color);
+            bool hasShadow() const { return shadow_.color.isValid(); }
+            TextWordShadow getShadow() const { return shadow_; }
+
         private:
             void checkSetClickable();
             [[nodiscard]] static std::vector<WordBoundary> parseForSyntaxWords(const QStringRef& text);
@@ -335,6 +347,7 @@ namespace Ui
             std::vector<TextWord> subwords_;
             std::vector<WordBoundary> syntaxWords_;
             EmojiSizeType emojiSizeType_;
+            TextWordShadow shadow_;
         };
 
         struct TextWordWithBoundary
@@ -453,8 +466,12 @@ namespace Ui
 
             virtual void disableCommands() = 0;
 
+            virtual std::vector<QRect> getLinkRects() const { return {}; }
+
             [[nodiscard]] virtual std::optional<TextWordWithBoundary> getWordAt(QPoint, WithBoundary _mode = WithBoundary::No) const;
             [[nodiscard]] virtual bool replaceWordAt(const QString&, const QString&, QPoint);
+
+            virtual void setShadow(const int _offsetX, const int _offsetY, const QColor& _color) = 0;
 
         protected:
             BlockType type_;
@@ -569,8 +586,12 @@ namespace Ui
 
             void disableCommands() override;
 
+            std::vector<QRect> getLinkRects() const override;
+
             [[nodiscard]] std::optional<TextWordWithBoundary> getWordAt(QPoint, WithBoundary) const override;
             [[nodiscard]] bool replaceWordAt(const QString&, const QString&, QPoint) override;
+
+            void setShadow(const int _offsetX, const int _offsetY, const QColor& _color) override;
 
         private:
             struct TextWordWithBoundaryInternal
@@ -720,6 +741,8 @@ namespace Ui
 
             void disableCommands() override {}
 
+            void setShadow(const int _offsetX, const int _offsetY, const QColor& _color) override {}
+
         private:
             QFont font_;
             int cachedHeight_;
@@ -808,5 +831,7 @@ namespace Ui
         void setBlocksHighlightedTextColor(const std::vector<BaseDrawingBlockPtr>& _blocks, const QColor& _color);
 
         void disableCommandsInBlocks(const std::vector<BaseDrawingBlockPtr>& _blocks);
+
+        void setShadowForBlocks(std::vector<BaseDrawingBlockPtr>& _blocks, const int _offsetX, const int _offsetY, const QColor& _color);
     }
 }

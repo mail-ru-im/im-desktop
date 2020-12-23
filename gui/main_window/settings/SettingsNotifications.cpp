@@ -18,7 +18,7 @@ void GeneralSettingsWidget::Creator::initNotifications(NotificationSettings* _pa
 {
     auto scrollArea = CreateScrollAreaAndSetTrScrollBarV(_parent);
     scrollArea->setWidgetResizable(true);
-    scrollArea->setStyleSheet(qsl("QWidget{border: none; background-color: %1;}").arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE)));
+    scrollArea->setStyleSheet(ql1s("QWidget{border: none; background-color: %1;}").arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE)));
     Utils::grabTouchWidget(scrollArea->viewport(), true);
 
     auto mainWidget = new QWidget(scrollArea);
@@ -42,7 +42,9 @@ void GeneralSettingsWidget::Creator::initNotifications(NotificationSettings* _pa
                 get_gui_settings()->get_value<bool>(settings_sounds_enabled, true),
                 [](bool enabled)
                 {
+#ifndef STRIP_VOIP
                     GetDispatcher()->getVoipController().setMuteSounds(!enabled);
+#endif
                     if (get_gui_settings()->get_value<bool>(settings_sounds_enabled, true) != enabled)
                         get_gui_settings()->set_value<bool>(settings_sounds_enabled, enabled);
                 }, -1, qsl("AS NotificationsPage playSoundSetting"));

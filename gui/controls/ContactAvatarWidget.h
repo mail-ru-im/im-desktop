@@ -72,6 +72,7 @@ namespace Ui
         void avatarEnter();
         void avatarLeave();
         void setAvatar(qint64 _seq, int _error);
+        void onAddStatusTooltipTimer();
 
     public Q_SLOTS:
 
@@ -108,15 +109,17 @@ namespace Ui
         void applyAvatar(const QPixmap &alter = QPixmap());
         const QPixmap &croppedImage() const;
 
+        void setIgnoreClicks(bool _ignore);
+        void setStatusTooltipEnabled(bool _enabled);
+
     private:
         void postSetAvatarToCore(const QPixmap& _avatar);
         void ResetInfoForSetAvatar();
         void updateSpinnerPos();
         void selectFile(const QString& _url = QString(), bool _drop = false);
         bool badgeRectUnderCursor() const;
-
-        void showTooltip();
         void openStatusPicker() const;
+        QRect tooltipRect() const;
 
     private:
         QWidget *imageCropHolder_;
@@ -139,6 +142,8 @@ namespace Ui
         int offset_;
         int avatarProxyFlags_ = 0;
         QRect badgeRect_;
-        QTimer* tooltipTimer_;
+        bool ignoreClicks_ = false;
+        bool statusTooltipEnabled_ = false;
+        QTimer* addStatusTooltipTimer_ = nullptr;
     };
 }

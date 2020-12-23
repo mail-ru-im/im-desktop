@@ -31,7 +31,8 @@ public:
         const QString& _downloadUri,
         const int64_t _fileSize,
         const QSize& _originSize,
-        const QString& _fileName);
+        const QString& _fileName,
+        const QString& _fileFormat);
 
     ~LinkMetadata();
 
@@ -43,6 +44,7 @@ public:
     const QString& getPreviewUri() const;
     const QString& getFaviconUri() const;
     const QString& getFileName() const;
+    const QString& getFileFormat() const;
     LinkContentType getContentType() const;
     const QSize& getPreviewSize() const;
     const QSize& getOriginSize() const;
@@ -57,6 +59,7 @@ private:
     QString previewUri_;
     QString faviconUri_;
     QString fileName_;
+    QString fileFormat_;
     QSize previewSize_;
     int64_t fileSize_;
     QSize originSize_;

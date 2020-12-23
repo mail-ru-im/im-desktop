@@ -70,7 +70,7 @@ namespace Logic
         flags_ &= (~_flag);
     }
 
-    void CustomAbstractListModel::Q_EMITChanged(const int _first, const int _last)
+    void CustomAbstractListModel::emitChanged(const int _first, const int _last)
     {
         Q_EMIT dataChanged(index(_first), index(_last));
     }

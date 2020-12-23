@@ -79,7 +79,7 @@ namespace Features
     std::string getReactionsJson();
     bool reactionsEnabled();
 
-    QString getStatusJson();
+    std::string getStatusJson();
     bool isStatusEnabled();
 
     bool isGlobalContactSearchAllowed();
@@ -87,6 +87,27 @@ namespace Features
     bool forceCheckMacUpdates();
     bool callRoomInfoEnabled();
 
+    bool isYourInvitesButtonVisible();
+    bool isGroupInvitesBlacklistEnabled();
+
     bool IvrLoginEnabled();
     int IvrResendCountToShow();
+
+    bool isContactUsViaBackend();
+    bool isUpdateFromBackendEnabled();
+
+    bool isWebpScreenshotEnabled();
+    qint64 maxFileSizeForWebpConvert();
+
+    bool isInviteBySmsEnabled();
+    bool shouldShowSmsNotifySetting();
+
+    bool isAnimatedStickersInPickerAllowed();
+    bool isAnimatedStickersInChatAllowed();
+
+    bool isContactListSmoothScrollingEnabled();
+
+    bool isBackgroundPttPlayEnabled();
+
+    bool removeDeletedFromNotifications();
 }

@@ -161,8 +161,6 @@ namespace Ui
 
         void clearPartialSelection();
 
-        void pressedDestroyed();
-
         void continueSelection(const QPoint& _pos);
 
         void scroll(ScrollDirection direction, int delta);
@@ -208,14 +206,14 @@ namespace Ui
 
         bool hasItems() const noexcept;
 
+        void clearPttProgress();
+
     public Q_SLOTS:
         void notifySelectionChanges();
 
     protected:
         void mouseMoveEvent(QMouseEvent *e) override;
-
         void mousePressEvent(QMouseEvent *e) override;
-
         void mouseReleaseEvent(QMouseEvent *e) override;
 
         void enterEvent(QEvent *_event) override;
@@ -254,6 +252,7 @@ namespace Ui
         void updateSelected(qint64, const QString&, bool);
         void updateSelectedCount();
         void multiselectChanged();
+        void updatePttProgress(qint64, const QString&, int);
 
     private:
         bool isHidingScrollbar() const;
@@ -333,6 +332,16 @@ namespace Ui
         QString aimid_;
 
         std::map<Logic::MessageKey, SelectedMessageInfo> selected_;
+
+        struct PttProgress
+        {
+            qint64 id_;
+            QString fsId_;
+            int progress_;
+            PttProgress(qint64 _id, const QString& _fsId, int _progress) : id_(_id), fsId_(_fsId), progress_(_progress) {};
+        };
+
+        std::vector<PttProgress> pttProgress_;
     };
 
 }

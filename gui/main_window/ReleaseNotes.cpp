@@ -74,7 +74,7 @@ ReleaseNotesWidget::ReleaseNotesWidget(QWidget *_parent)
     scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     scrollArea->setFocusPolicy(Qt::NoFocus);
     scrollArea->setWidgetResizable(true);
-    scrollArea->setStyleSheet(qsl("background-color: %1; border: none").arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE)));
+    scrollArea->setStyleSheet(ql1s("background-color: %1; border: none").arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE)));
 
     auto text = new TextWidget(this, releaseNotesText(), Data::MentionMap(), Ui::TextRendering::LinksVisible::DONT_SHOW_LINKS);
     text->setMaxWidth(releaseNotesWidth() - leftMargin() - rightMargin());
@@ -82,13 +82,12 @@ ReleaseNotesWidget::ReleaseNotesWidget(QWidget *_parent)
 
     auto scrollAreaContent = new QWidget(scrollArea);
     auto scrollAreaContentLayout = Utils::emptyVLayout(scrollAreaContent);
-    auto textLayout = Utils::emptyHLayout(scrollAreaContent);
+    auto textLayout = Utils::emptyHLayout();
     Testing::setAccessibleName(text, qsl("AS ReleaseNots text"));
     textLayout->addWidget(text);
     scrollAreaContentLayout->addLayout(textLayout);
     scrollAreaContentLayout->addStretch();
-    scrollAreaContent->setLayout(scrollAreaContentLayout);
-    scrollAreaContent->setStyleSheet(qsl("background-color: %1").arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE)));
+    scrollAreaContent->setStyleSheet(ql1s("background-color: %1").arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE)));
 
     scrollArea->setWidget(scrollAreaContent);
 

@@ -33,9 +33,11 @@ namespace hist
 
         void onMessageItemRead(const qint64 _messageId, const bool _visible);
         void onReadAllMentionsLess(const qint64 _messageId, const bool _visible);
+        void onReadAllMentions();
         void onMessageItemReadVisible(const qint64 _messageId);
 
         void setDlgState(const Data::DlgState& _dlgState);
+        void deleted(const Data::MessageBuddies& _messages);
 
     Q_SIGNALS:
         void mentionRead(qint64 _messageId, QPrivateSignal) const;

@@ -25,6 +25,11 @@ set_permit_deny::~set_permit_deny()
 {
 }
 
+std::string_view set_permit_deny::get_method() const
+{
+    return "setPreferencePermitDeny";
+}
+
 const char* operation_2_str(const set_permit_deny::operation _op)
 {
     assert(_op > set_permit_deny::operation::min);
@@ -59,7 +64,7 @@ int32_t set_permit_deny::init_request(const std::shared_ptr<core::http_request_s
         ss_url << "&pdBlockRemove=" << aimid_;
 
     _request->set_url(ss_url.str());
-    _request->set_normalized_url("setPreferencePermitDeny");
+    _request->set_normalized_url(get_method());
     _request->set_keep_alive();
 
     if (!params_.full_log_)

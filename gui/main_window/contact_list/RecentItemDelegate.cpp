@@ -17,6 +17,7 @@
 #include "../../types/contact.h"
 #include "../../utils/utils.h"
 #include "../../utils/features.h"
+#include "../../controls/textrendering/TextRenderingUtils.h"
 
 #include "../history_control/HistoryControlPageItem.h"
 
@@ -637,7 +638,7 @@ namespace Ui
 
              static QPixmap pixPinned = getPin(false, getPinHeaderSize());
              static QPixmap pixUnimportant = Utils::renderSvg(qsl(":/unimportant_icon"), getPinHeaderSize(), Styling::getParameters().getColor(Styling::StyleVariable::BASE_TERTIARY));
-             static QPixmap pixRecents = Utils::loadPixmap(qsl(":/resources/icon_recents_100.png"));
+             static QPixmap pixRecents = Utils::renderSvg(qsl(":/resources/icon_recents.svg"), getPinHeaderSize());
 
              QPixmap p = pixRecents;
              if (type_ == ServiceItemType::pinned)
@@ -980,7 +981,7 @@ namespace Ui
                 messageShortName_->setLineSpacing(getMessageLineSpacing());
                 messageNameWidth_ = messageShortName_->desiredWidth();
 
-                auto secondPath1 = TextRendering::MakeTextUnit((multichat_ ? qsl(" ") : QString()) + typingText, Data::MentionMap(), Ui::TextRendering::LinksVisible::DONT_SHOW_LINKS, Ui::TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
+                auto secondPath1 = TextRendering::MakeTextUnit((multichat_ ? TextRendering::spaceAsString() : QString()) + typingText, Data::MentionMap(), Ui::TextRendering::LinksVisible::DONT_SHOW_LINKS, Ui::TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
                 secondPath1->init(
                     Fonts::appFontScaled(fontSize, Fonts::FontWeight::Normal),
                     Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID),
@@ -1178,6 +1179,7 @@ namespace Ui
         const bool _isKeyboardFocused)
     {
         Utils::PainterSaver ps(_p);
+        _p.setClipRect(_rect);
 
         _p.setRenderHints(QPainter::SmoothPixmapTransform | QPainter::Antialiasing);
 
@@ -1197,14 +1199,14 @@ namespace Ui
                     getAimid(), displayName_, Utils::scale_bitmap(contactListParams.getAvatarSize()), isDefaultAvatar, false, compactMode_);
 
         const auto ratio = Utils::scale_bitmap_ratio();
-        const auto avatarX = _rect.left() + (_viewParams.pictOnly_ ? (_rect.width() - avatar->width() / ratio) / 2 : contactListParams.getAvatarX());
-        const auto avatarY = _rect.top() + (_rect.height() - avatar->height() / ratio) / 2;
+        const auto avatarX = _rect.left() + (_viewParams.pictOnly_ ? (_rect.width() - avatar.width() / ratio) / 2 : contactListParams.getAvatarX());
+        const auto avatarY = _rect.top() + (_rect.height() - avatar.height() / ratio) / 2;
 
         const auto isFavorites = Favorites::isFavorites(getAimid());
 
-        const auto statusBadge = isFavorites ? QPixmap() : Utils::getStatusBadge(getAimid(), avatar->width());
+        const auto statusBadge = isFavorites ? QPixmap() : Utils::getStatusBadge(getAimid(), avatar.width());
 
-        Utils::drawAvatarWithBadge(_p, QPoint(avatarX, avatarY), *avatar, official_, statusBadge, muted_, _isSelected, online_, compactMode_);
+        Utils::drawAvatarWithBadge(_p, QPoint(avatarX, avatarY), avatar, official_, statusBadge, muted_, _isSelected, online_, compactMode_);
 
         const auto isUnknown = (_viewParams.regim_ == ::Logic::MembersWidgetRegim::UNKNOWN);
 
@@ -1308,11 +1310,11 @@ namespace Ui
                     _p.setOpacity(0.7);
 
                 unreadsX -= avatarRightMargin;
-                unreadsX -= Utils::unscale_bitmap(lastReadAvatar->width());
+                unreadsX -= Utils::unscale_bitmap(lastReadAvatar.width());
 
-                const int y_offset = (getUnreadBubbleHeight() - Utils::unscale_bitmap(lastReadAvatar->height())) / 2;
+                const int y_offset = (getUnreadBubbleHeight() - Utils::unscale_bitmap(lastReadAvatar.height())) / 2;
 
-                _p.drawPixmap(_rect.left() + unreadsX, _rect.top() + unreadsY + y_offset, *lastReadAvatar);
+                _p.drawPixmap(_rect.left() + unreadsX, _rect.top() + unreadsY + y_offset, lastReadAvatar);
 
                 _p.setOpacity(opacityOld);
             }
@@ -1351,9 +1353,9 @@ namespace Ui
 
                     unreadsX -= whiteAreaD;
 
-                    int y_offset = (getUnreadBubbleHeight() - Utils::unscale_bitmap(headAvatar->height())) / 2;
+                    int y_offset = (getUnreadBubbleHeight() - Utils::unscale_bitmap(headAvatar.height())) / 2;
 
-                    const int border = (whiteAreaD - Utils::unscale_bitmap(headAvatar->height())) / 2;
+                    const int border = (whiteAreaD - Utils::unscale_bitmap(headAvatar.height())) / 2;
                     const int overlap = Utils::scale_value(4);
 
                     y_offset -= border;
@@ -1363,7 +1365,7 @@ namespace Ui
                     if (!_isSelected)
                         _p.setOpacity(0.7);
 
-                    _p.drawPixmap(_rect.left() + unreadsX + border, _rect.top() + unreadsY + y_offset + border, *headAvatar);
+                    _p.drawPixmap(_rect.left() + unreadsX + border, _rect.top() + unreadsY + y_offset + border, headAvatar);
 
                     _p.setOpacity(opacityOld);
 
@@ -1583,11 +1585,11 @@ namespace Ui
 
         const auto ratio = Utils::scale_bitmap_ratio();
         const auto avatarX = _rect.left() + getAlertAvatarX();
-        const auto avatarY = _rect.top() + (_rect.height() - avatar->height() / ratio) / 2;
+        const auto avatarY = _rect.top() + (_rect.height() - avatar.height() / ratio) / 2;
 
         const auto isOnline = Logic::GetLastseenContainer()->isOnline(getAimid());
-        const auto statusBadge = Utils::getStatusBadge(getAimid(), avatar->width());
-        Utils::drawAvatarWithBadge(_p, QPoint(avatarX, avatarY), *avatar, !multichat_ && official_, statusBadge, !mention_ && !multichat_ && muted_, _isSelected, isOnline, false);
+        const auto statusBadge = Utils::getStatusBadge(getAimid(), avatar.width());
+        Utils::drawAvatarWithBadge(_p, QPoint(avatarX, avatarY), avatar, !multichat_ && official_, statusBadge, !mention_ && !multichat_ && muted_, _isSelected, isOnline, false);
 
         //////////////////////////////////////////////////////////////////////////
         // render contact name
@@ -1796,9 +1798,9 @@ namespace Ui
 
         const auto ratio = Utils::scale_bitmap_ratio();
         const auto avatarX = _rect.left() + getAlertAvatarX();
-        const auto avatarY = _rect.top() + (_rect.height() - avatar->height() / ratio) / 2;
+        const auto avatarY = _rect.top() + (_rect.height() - avatar.height() / ratio) / 2;
 
-        Utils::drawAvatarWithoutBadge(_p, QPoint(avatarX, avatarY), *avatar);
+        Utils::drawAvatarWithoutBadge(_p, QPoint(avatarX, avatarY), avatar);
 
         static QPixmap mailIcon = getMailIcon(Utils::scale_bitmap(getMailAvatarIconSize()), _isSelected);
 
@@ -1973,24 +1975,6 @@ namespace Ui
     void RecentItemDelegate::blockState(bool value)
     {
         stateBlocked_ = value;
-    }
-
-    void RecentItemDelegate::addTyping(const Logic::TypingFires& _typing)
-    {
-        auto iter = std::find(typings_.begin(), typings_.end(), _typing);
-        if (iter == typings_.end())
-        {
-            typings_.push_back(_typing);
-        }
-    }
-
-    void RecentItemDelegate::removeTyping(const Logic::TypingFires& _typing)
-    {
-        auto iter = std::find(typings_.begin(), typings_.end(), _typing);
-        if (iter != typings_.end())
-        {
-            typings_.erase(iter);
-        }
     }
 
     void RecentItemDelegate::setDragIndex(const QModelIndex& index)

@@ -23,6 +23,7 @@ namespace core
 
         public:
             group_pending_cancel(wim_packet_params _params, std::string _sn);
+            virtual std::string_view get_method() const override;
         };
 
     }

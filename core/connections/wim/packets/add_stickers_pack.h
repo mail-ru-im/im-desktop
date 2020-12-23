@@ -41,6 +41,8 @@ namespace core
             virtual ~add_stickers_pack_packet();
 
             virtual int32_t execute_request(const std::shared_ptr<core::http_request_simple>& _request) override;
+
+            virtual std::string_view get_method() const override;
         };
     }
 }

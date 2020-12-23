@@ -125,7 +125,9 @@ namespace Ui
 
         recorder_ = new ptt::AudioRecorder2(nullptr, _contact, ptt::maxDuration(), ptt::minDuration());
 
+#ifndef STRIP_VOIP
         connect(&Ui::GetDispatcher()->getVoipController(), &voip_proxy::VoipController::onVoipDeviceListUpdated, recorder_, &ptt::AudioRecorder2::deviceListChanged);
+#endif
         recorder_->moveToThread(_pttThread);
 
         player_ = new ptt::AudioPlayer(this);

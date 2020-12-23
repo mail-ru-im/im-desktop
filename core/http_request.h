@@ -5,7 +5,7 @@
 
 #include "proxy_settings.h"
 
-#include "curl/include/curl.h"
+#include "curl.h"
 
 #include "curl_easy_handler.h"
 

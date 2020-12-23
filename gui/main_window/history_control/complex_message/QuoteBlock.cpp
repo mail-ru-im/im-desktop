@@ -39,28 +39,30 @@ namespace
     }
 }
 
-QuoteBlock::QuoteBlock(ComplexMessageItem *parent, const Data::Quote& quote)
-    : GenericBlock(parent, quote.senderFriendly_, MenuFlagCopyable, false)
-    , Quote_(std::move(quote))
+QuoteBlock::QuoteBlock(ComplexMessageItem* _parent, const Data::Quote& _quote)
+    : GenericBlock(_parent, _quote.senderFriendly_, MenuFlagCopyable, false)
+    , Quote_(std::move(_quote))
     , Layout_(new QuoteBlockLayout())
     , desiredSenderWidth_(0)
-    , Parent_(parent)
+    , Parent_(_parent)
     , ReplyBlock_(nullptr)
     , MessagesCount_(0)
     , MessageIndex_(0)
 {
+    Testing::setAccessibleName(this, u"AS HistoryPage messageQuote " % QString::number(_parent->getId()));
+
     setLayout(Layout_);
     setMouseTracking(true);
 
     if (!getParentComplexMessage()->isHeadless())
         initSenderName();
 
-    connect(this, &QuoteBlock::observeToSize, parent, &ComplexMessageItem::onObserveToSize);
+    connect(this, &QuoteBlock::observeToSize, _parent, &ComplexMessageItem::onObserveToSize);
 
     if (Quote_.isInteractive())
     {
         setCursor(Qt::PointingHandCursor);
-        connect(parent, &ComplexMessageItem::hoveredBlockChanged, this, qOverload<>(&QuoteBlock::update));
+        connect(_parent, &ComplexMessageItem::hoveredBlockChanged, this, qOverload<>(&QuoteBlock::update));
     }
 }
 
@@ -256,12 +258,12 @@ void QuoteBlock::setReplyBlock(GenericBlock* block)
         ReplyBlock_ = block;
 }
 
-void QuoteBlock::onVisibilityChanged(const bool isVisible)
+void QuoteBlock::onVisibleRectChanged(const QRect& _visibleRect)
 {
-    GenericBlock::onVisibilityChanged(isVisible);
+    GenericBlock::onVisibleRectChanged(_visibleRect);
 
     for (auto block : Blocks_)
-        block->onVisibilityChanged(isVisible);
+        block->onVisibleRectChanged(_visibleRect.intersected(block->getBlockGeometry()));
 }
 
 void QuoteBlock::onSelectionStateChanged(const bool isSelected)
@@ -543,7 +545,6 @@ bool QuoteBlock::replaceBlockWithSourceText(IItemBlock *block)
 
     auto textBlock = new TextBlock(Parent_, existingBlock->getSourceText());
 
-    textBlock->onVisibilityChanged(true);
     textBlock->onActivityChanged(true);
     textBlock->show();
 

@@ -133,10 +133,10 @@ namespace Logic
             false
         );
 
-        if (!avatar->isNull())
+        if (!avatar.isNull())
         {
             const QPoint pos(itemHorPadding(), (itemHeight() - avatarSize()) / 2);
-            _painter.drawPixmap(pos, *avatar);
+            _painter.drawPixmap(pos, avatar);
         }
 
         if (_item.friendlyName_.isEmpty())

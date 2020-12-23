@@ -30,7 +30,7 @@ int32_t get_themes_index::init_request(const std::shared_ptr<core::http_request_
 {
     _request->set_etag(etag_);
     _request->set_url(get_themes_url());
-    _request->set_normalized_url("wallpaperList");
+    _request->set_normalized_url(get_method());
     return 0;
 }
 
@@ -55,5 +55,10 @@ std::shared_ptr<core::tools::binary_stream> get_themes_index::get_response() con
 const std::string& get_themes_index::get_header_etag() const
 {
     return header_etag_;
+}
+
+std::string_view get_themes_index::get_method() const
+{
+    return "wallpaperList";
 }
 

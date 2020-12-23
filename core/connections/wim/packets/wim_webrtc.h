@@ -39,6 +39,7 @@ namespace core {
         public:
             wim_allocate(wim_packet_params params, const std::string& internal_params);
             virtual ~wim_allocate();
+            virtual std::string_view get_method() const override;
 
             std::shared_ptr<core::tools::binary_stream> getRawData() const override;
         };
@@ -54,6 +55,7 @@ namespace core {
         public:
             wim_webrtc(wim_packet_params params, const voip_manager::VoipProtoMsg& internal_params);
             virtual ~wim_webrtc();
+            virtual std::string_view get_method() const override;
 
             std::shared_ptr<core::tools::binary_stream> getRawData() const override;
             virtual bool is_post() const override { return true; }

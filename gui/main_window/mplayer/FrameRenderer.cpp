@@ -7,32 +7,28 @@
 namespace Ui
 {
 
-FrameRenderer::~FrameRenderer()
-{
-
-}
+FrameRenderer::~FrameRenderer() = default;
 
 void FrameRenderer::renderFrame(QPainter& _painter, const QRect& _clientRect)
 {
-    if (activeImage_.isNull())
-    {
-        _painter.fillRect(_clientRect, Qt::black);
-        return;
-    }
+    if (fillColor_.isValid())
+        _painter.fillRect(_clientRect, fillColor_);
 
-    QSize imageSize = activeImage_.size();
+    if (activeImage_.isNull())
+        return;
+
+    const auto imageSize = activeImage_.size();
 
     QSize scaledSize;
     QRect sourceRect;
 
     if (fillClient_)
     {
-        scaledSize = QSize(_clientRect.width(), _clientRect.height());
-        QSize size = _clientRect.size();
-        size.scale(imageSize, Qt::KeepAspectRatio);
-        sourceRect = QRect(0, 0, size.width(), size.height());
+        scaledSize = _clientRect.size();
+        const auto size = _clientRect.size().scaled(imageSize, Qt::KeepAspectRatio);
+        sourceRect = QRect({}, size);
         if (imageSize.width() > size.width())
-            sourceRect.moveLeft(imageSize.width() / 2 - size.width() / 2);
+            sourceRect.moveLeft((imageSize.width() - size.width()) / 2);
     }
     else
     {
@@ -52,14 +48,10 @@ void FrameRenderer::renderFrame(QPainter& _painter, const QRect& _clientRect)
         scaledSize.setHeight(h);
     }
 
-    int cx = (_clientRect.width() - scaledSize.width()) / 2;
-    int cy = (_clientRect.height() - scaledSize.height()) / 2;
+    const int cx = (_clientRect.width() - scaledSize.width()) / 2;
+    const int cy = (_clientRect.height() - scaledSize.height()) / 2;
 
-    QRect drawRect(cx, cy, scaledSize.width(), scaledSize.height());
-
-    if (fillColor_.isValid())
-        _painter.fillRect(_clientRect, fillColor_);
-
+    QRect drawRect({ cx, cy }, scaledSize);
     drawActiveImage(_painter, drawRect, sourceRect);
 }
 
@@ -74,11 +66,6 @@ void FrameRenderer::drawActiveImage(QPainter& _p, const QRect& _target, const QR
 void FrameRenderer::updateFrame(const QImage& _image)
 {
     activeImage_ = _image;
-}
-
-QImage FrameRenderer::getActiveImage() const
-{
-    return activeImage_;
 }
 
 bool FrameRenderer::isActiveImageNull() const
@@ -138,22 +125,16 @@ void GDIRenderer::redraw()
 
 void GDIRenderer::paintEvent(QPaintEvent* _e)
 {
-    QPainter p;
-    p.begin(this);
+    QPainter p(this);
 
     QRect clientRect = geometry();
 
-    p.setRenderHint(QPainter::SmoothPixmapTransform);
-    p.setRenderHint(QPainter::Antialiasing);
+    p.setRenderHints(QPainter::SmoothPixmapTransform | QPainter::Antialiasing);
 
     if (!fullScreen_ && !clippingPath_.isEmpty())
         p.setClipPath(clippingPath_);
 
     renderFrame(p, clientRect);
-
-    p.end();
-
-    QWidget::paintEvent(_e);
 }
 
 void GDIRenderer::resizeEvent(QResizeEvent *_event)
@@ -195,8 +176,7 @@ void OpenGLRenderer::redraw()
 
 void OpenGLRenderer::paint()
 {
-    QPainter p;
-    p.begin(this);
+    QPainter p(this);
 
     QRect clientRect = geometry();
 
@@ -211,8 +191,6 @@ void OpenGLRenderer::paint()
     p.setRenderHint(QPainter::SmoothPixmapTransform, true);
 
     renderFrame(p, clientRect);
-
-    p.end();
 }
 
 void OpenGLRenderer::paintEvent(QPaintEvent* _e)

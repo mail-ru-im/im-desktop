@@ -19,6 +19,8 @@
 #include "../../../utils/stat_utils.h"
 #include "../../../utils/LoadFirstFrameTask.h"
 #include "../../../utils/BlurPixmapTask.h"
+#include "../../../utils/RenderLottieFirstFrameTask.h"
+#include "../../../utils/features.h"
 #include "../../contact_list/ContactListModel.h"
 #include "../../../cache/stickers/stickers.h"
 
@@ -36,8 +38,6 @@
 #include "FileSharingUtils.h"
 #include "../MessageStatusWidget.h"
 
-#include "../../sounds/SoundsManager.h"
-
 #include "styles/ThemeParameters.h"
 #include "../MessageStyle.h"
 
@@ -46,6 +46,11 @@
 
 #include "MediaUtils.h"
 
+#ifndef STRIP_AV_MEDIA
+#include "../../sounds/SoundsManager.h"
+#include "../../mplayer/VideoPlayer.h"
+#endif // !STRIP_AV_MEDIA
+
 #ifdef __APPLE__
 #include "../../../utils/macos/mac_support.h"
 #endif
@@ -53,6 +58,7 @@
 namespace
 {
     constexpr std::chrono::milliseconds previewButtonAnimDelay = std::chrono::seconds(1);
+    constexpr auto stickerSize = core::sticker_size::xlarge;
 
     QSize getGhostSize()
     {
@@ -109,9 +115,6 @@ FileSharingBlock::FileSharingBlock(ComplexMessageItem* _parent, const QString &l
 {
     parseLink();
 
-    if (isSticker())
-        Preview_ = QPixmap::fromImage(Stickers::getStickerImage(Id_, core::sticker_size::large, true));
-
     if (!_parent->isHeadless())
         init();
 
@@ -149,16 +152,16 @@ FileSharingBlock::FileSharingBlock(ComplexMessageItem* _parent, const HistoryCon
 
     parseLink();
 
-    if (isSticker())
-        Preview_ = QPixmap::fromImage(Stickers::getStickerImage(Id_, core::sticker_size::large, true));
-
     connect(&Utils::InterConnector::instance(), &Utils::InterConnector::multiselectChanged, this, &FileSharingBlock::multiselectChanged);
 }
 
 FileSharingBlock::~FileSharingBlock()
 {
     Utils::InterConnector::instance().detachFromMultiselect(plainButton_);
+#ifndef STRIP_AV_MEDIA
     Utils::InterConnector::instance().detachFromMultiselect(videoplayer_.get());
+#endif // !STRIP_AV_MEDIA
+
     Utils::InterConnector::instance().detachFromMultiselect(previewButton_);
 }
 
@@ -203,26 +206,35 @@ bool FileSharingBlock::isSharingEnabled() const
     return !isSticker() && !isFileUploading();
 }
 
-void FileSharingBlock::onVisibilityChanged(const bool isVisible)
+void FileSharingBlock::onVisibleRectChanged(const QRect& _visibleRect)
 {
-    IsVisible_ = isVisible;
+    FileSharingBlockBase::onVisibleRectChanged(_visibleRect);
 
-    FileSharingBlockBase::onVisibilityChanged(isVisible);
+    if (isSticker())
+    {
+        IsVisible_ = _visibleRect.height() > 0;
+    }
+    else
+    {
+        const auto h = getFileSharingLayout()->getContentRect().height();
+        IsVisible_ = _visibleRect.height() >= (h * mediaVisiblePlayPercent);
+    }
+
     if (previewButton_)
-        previewButton_->onVisibilityChanged(isVisible);
+        previewButton_->onVisibilityChanged(IsVisible_);
     else if (plainButton_)
-        plainButton_->onVisibilityChanged(isVisible);
+        plainButton_->onVisibilityChanged(IsVisible_);
 
     if (PreviewRequestId_ != -1)
         GetDispatcher()->raiseDownloadPriority(getChatAimid(), PreviewRequestId_);
 
-    if ((isGifImage() || isVideo()) && !getParentComplexMessage()->isSelected())
-        onGifImageVisibilityChanged(isVisible);
+    if (isPlayable() && !getParentComplexMessage()->isSelected())
+        onGifImageVisibilityChanged(IsVisible_);
 }
 
 void FileSharingBlock::onSelectionStateChanged(bool isSelected)
 {
-    if (isGifImage() || isVideo())
+    if (isPlayable())
         onGifImageVisibilityChanged(!isSelected);
 }
 
@@ -243,11 +255,14 @@ bool FileSharingBlock::isAutoplay()
         return get_gui_settings()->get_value<bool>(settings_autoplay_gif, true);
     else if (isVideo())
         return get_gui_settings()->get_value<bool>(settings_autoplay_video, true);
+    else if (isLottie())
+        return true;
 
     return false;
 }
 
-DialogPlayer* FileSharingBlock::createPlayer()
+#ifndef STRIP_AV_MEDIA
+std::unique_ptr<Ui::DialogPlayer> FileSharingBlock::createPlayer()
 {
     std::underlying_type_t<Ui::DialogPlayer::Flags> flags = 0;
 
@@ -259,23 +274,30 @@ DialogPlayer* FileSharingBlock::createPlayer()
     if (isGifImage())
         flags |= Ui::DialogPlayer::Flags::is_gif;
 
+    if (isLottie())
+        flags |= Ui::DialogPlayer::Flags::lottie;
+
     if (isInsideQuote())
         flags |= Ui::DialogPlayer::Flags::compact_mode;
 
-    auto player  = new Ui::DialogPlayer(this, flags, Preview_);
+    auto player = std::make_unique<Ui::DialogPlayer>(this, flags, Preview_);
 
-    connect(player, &DialogPlayer::openGallery, this, [this]()
+    connect(player.get(), &DialogPlayer::openGallery, this, [this]()
     {
         Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::fullmediascr_view, { { "chat_type", Utils::chatTypeByAimId(getChatAimid()) },{ "from", "chat" },{ "media_type", isGifImage() ? "gif" : "video" } });
-        Utils::InterConnector::instance().getMainWindow()->openGallery(getChatAimid(), getLink(), getGalleryId(), videoplayer_.get());
+        Utils::InterConnector::instance().getMainWindow()->openGallery(Utils::GalleryData(getChatAimid(), getLink(), getGalleryId(), videoplayer_.get()));
     });
 
-    connect(player, &DialogPlayer::mouseClicked, this, [this]()
+    connect(player.get(), &DialogPlayer::mouseClicked, this, [this]()
     {
         onStartClicked(mapToGlobal(rect().center()));
     });
 
-    Ui::GetSoundsManager();
+    const bool hasSound = !isGifImage() && !isSticker();
+
+    if (hasSound)
+        Ui::GetSoundsManager();
+
     bool mute = true;
     int32_t volume = Ui::get_gui_settings()->get_value<int32_t>(setting_mplayer_volume, 100);
 
@@ -289,7 +311,7 @@ DialogPlayer* FileSharingBlock::createPlayer()
     player->updateSize(getFileSharingLayout()->getContentRect());
     player->updateVisibility(IsVisible_);
 
-    if (!isGifImage())
+    if (hasSound)
         player->setGotAudio(gotAudio_);
 
     player->show();
@@ -300,9 +322,10 @@ DialogPlayer* FileSharingBlock::createPlayer()
     if (previewButton_ && previewButton_->isVisible())
         previewButton_->raise();
 
-    Utils::InterConnector::instance().disableInMultiselect(player);
+    Utils::InterConnector::instance().disableInMultiselect(player.get());
     return player;
 }
+#endif // !STRIP_AV_MEDIA
 
 bool FileSharingBlock::loadPreviewFromLocalFile()
 {
@@ -391,8 +414,8 @@ int FileSharingBlock::getVerMargin() const
 
 bool FileSharingBlock::isButtonVisible() const
 {
-    const auto isGifVideo = isGifImage() || isVideo();
-    return (isGifVideo && (!isFileDownloaded() || isFileUploading())) || !isGifVideo;
+    const auto playable = isPlayable();
+    return (playable && (!isFileDownloaded() || isFileUploading())) || !playable;
 }
 
 void FileSharingBlock::buttonStartAnimation()
@@ -428,12 +451,16 @@ void FileSharingBlock::setPreview(QPixmap _preview, QPixmap _background)
     if (!_background.isNull())
         Background_ = _background;
 
-    Preview_ = isSticker() ? scaledSticker(_preview) : MediaUtils::scaleMediaBlockPreview(_preview);
-    if (isSticker())
+    //temp fix for exif issue on server
+    if ((_preview.width() > _preview.height()) != (OriginalPreviewSize_.width() > OriginalPreviewSize_.height()))
     {
-        Stickers::unlockStickerCache(Id_);
+        OriginalPreviewSize_.transpose();
+        if (auto parent = getParentComplexMessage())
+            parent->updateSize();
     }
-    else
+
+    Preview_ = isSticker() ? scaledSticker(_preview) : MediaUtils::scaleMediaBlockPreview(_preview);
+    if (!isSticker())
     {
         if (Background_.isNull() && (isBubbleRequired() || MediaUtils::isNarrowMedia(originSizeScaled()) || MediaUtils::isWideMedia(originSizeScaled())))
         {
@@ -445,13 +472,15 @@ void FileSharingBlock::setPreview(QPixmap _preview, QPixmap _background)
         }
     }
 
-    if (isVideo() || isGifImage())
+#ifndef STRIP_AV_MEDIA
+    if (isPlayable())
     {
         if (!videoplayer_)
-            videoplayer_.reset(createPlayer());
+            videoplayer_ = createPlayer();
 
         videoplayer_->setPreview(Preview_);
     }
+#endif // !STRIP_AV_MEDIA
 
     update();
     getParentComplexMessage()->update();
@@ -497,6 +526,56 @@ bool FileSharingBlock::isProgressVisible() const
     return !isInsideQuote() && height >= MessageStyle::Preview::showDownloadProgressThreshold();
 }
 
+void FileSharingBlock::onSticker(qint32 _error, const QString& _fsId)
+{
+    if (_error != 0 || _fsId.isEmpty() || _fsId != Id_)
+        return;
+
+    assert(isSticker());
+
+    const auto& data = Stickers::getStickerData(Id_, stickerSize);
+    if (data.isPixmap())
+    {
+        setPreview(data.getPixmap());
+        update();
+    }
+#ifndef STRIP_AV_MEDIA
+    else if (data.isLottie())
+    {
+        const auto& path = data.getLottiePath();
+        if (path.isEmpty())
+            return;
+
+        if (Features::isAnimatedStickersInChatAllowed())
+        {
+            setLocalPath(path);
+            if (!videoplayer_)
+                videoplayer_ = createPlayer();
+            videoplayer_->setMedia(path);
+
+            if (Preview_.isNull())
+            {
+                auto task = new Utils::RenderLottieFirstFrameTask(path, getFileSharingLayout()->getContentRect().size());
+                connect(task, &Utils::RenderLottieFirstFrameTask::result, this, [this](const QImage& _result)
+                {
+                    if (!_result.isNull())
+                    {
+                        if (videoplayer_)
+                            videoplayer_->setPreview(_result);
+                        Preview_ = QPixmap::fromImage(scaledSticker(_result));
+                    }
+                });
+                QThreadPool::globalInstance()->start(task);
+            }
+        }
+        else
+        {
+            getParentComplexMessage()->replaceBlockWithSourceText(this, ReplaceReason::NoMeta);
+        }
+    }
+#endif // !STRIP_AV_MEDIA
+}
+
 QSize FileSharingBlock::getImageMaxSize()
 {
     if (isSticker())
@@ -528,7 +607,7 @@ void FileSharingBlock::resetClipping()
 
 void FileSharingBlock::onDistanceToViewportChanged(const QRect& _widgetAbsGeometry, const QRect& _viewportVisibilityAbsRect)
 {
-    if (!isGifImage() && !isVideo())
+    if (!isPlayable())
         return;
 
     auto isInPreload = isInPreloadRange(_widgetAbsGeometry, _viewportVisibilityAbsRect);
@@ -580,7 +659,34 @@ void FileSharingBlock::initializeFileSharingBlock()
 {
     setCursor(Qt::PointingHandCursor);
 
-    sendGenericMetainfoRequests();
+    if (isSticker())
+    {
+        if (isGifImage())
+            sendGenericMetainfoRequests();
+        else
+            connect(&Stickers::getCache(), &Stickers::Cache::stickerUpdated, this, &FileSharingBlock::onSticker);
+
+        if (const auto& data = Stickers::getStickerData(Id_, stickerSize); data.isValid())
+        {
+            if (data.isPixmap())
+            {
+                Preview_ = scaledSticker(data.getPixmap());
+            }
+            else if (data.isLottie() && !data.getLottiePath().isEmpty())
+            {
+                onSticker(0, Id_);
+                connect(&Utils::InterConnector::instance(), &Utils::InterConnector::omicronUpdated, this, [this]()
+                {
+                    if (!Features::isAnimatedStickersInChatAllowed())
+                        getParentComplexMessage()->replaceBlockWithSourceText(this, ReplaceReason::NoMeta);
+                });
+            }
+        }
+    }
+    else
+    {
+        sendGenericMetainfoRequests();
+    }
 }
 
 void FileSharingBlock::init()
@@ -592,9 +698,9 @@ void FileSharingBlock::init()
     else
         initPlainFile();
 
-    if (!getType().is_undefined())
+    if (const auto type = getType(); !type.is_undefined())
     {
-        if (getType().is_video()) /// no green quote animation
+        if (type.is_video()) /// no green quote animation
             QuoteAnimation_.deactivate();
         else
             QuoteAnimation_.setSemiTransparent();
@@ -760,8 +866,11 @@ void FileSharingBlock::drawPreview(QPainter &p, const QRect &previewRect, const 
                 p.drawPixmap(r, Background_, bRect);
         }
 
+
         const auto backgroundMode = (isSticker() || !Background_.isNull()) ? MediaUtils::BackgroundMode::NoBackground : MediaUtils::BackgroundMode::Auto;
+#ifndef STRIP_AV_MEDIA
         if (!videoplayer_)
+#endif // !STRIP_AV_MEDIA
         {
             MediaUtils::drawMediaInRect(p, previewRect, Preview_, originSizeScaled(), backgroundMode);
 
@@ -771,6 +880,7 @@ void FileSharingBlock::drawPreview(QPainter &p, const QRect &previewRect, const 
                 p.drawRoundedRect(previewRect, Utils::scale_value(8), Utils::scale_value(8));
             }
         }
+#ifndef STRIP_AV_MEDIA
         else
         {
             if (!videoplayer_->isFullScreen())
@@ -788,6 +898,7 @@ void FileSharingBlock::drawPreview(QPainter &p, const QRect &previewRect, const 
                 }
             }
         }
+#endif // !STRIP_AV_MEDIA
     }
     else if (!isSticker())
     {
@@ -837,7 +948,7 @@ void FileSharingBlock::initPreview()
     {
         auto resourceSet = &ActionButtonResource::ResourceSet::DownloadMediaFile_;
 
-        if (isGifImage() || isVideo())
+        if (isPlayable())
             resourceSet = &ActionButtonResource::ResourceSet::DownloadVideo_;
 
         initPreviewButton(*resourceSet);
@@ -861,9 +972,12 @@ void FileSharingBlock::initPreviewButton(const ActionButtonResource::ResourceSet
 
 bool FileSharingBlock::isGifOrVideoPlaying() const
 {
-    assert(isGifImage() || isVideo());
-
+    assert(isPlayable());
+#ifndef STRIP_AV_MEDIA
     return (videoplayer_ && (videoplayer_->state() == QMovie::Running));
+#else
+    return false;
+#endif // !STRIP_AV_MEDIA
 }
 
 bool FileSharingBlock::drag()
@@ -902,13 +1016,15 @@ void FileSharingBlock::onDownloaded()
 
 void FileSharingBlock::onDownloadedAction()
 {
-    if (isGifImage() || isVideo())
+#ifndef STRIP_AV_MEDIA
+    if (isPlayable())
     {
         if (!videoplayer_)
-            videoplayer_.reset(createPlayer());
+            videoplayer_ = createPlayer();
 
         videoplayer_->setMedia(getFileLocalPath());
     }
+#endif // !STRIP_AV_MEDIA
 }
 
 bool FileSharingBlock::onLeftMouseClick(const QPoint &_pos)
@@ -929,11 +1045,11 @@ bool FileSharingBlock::onLeftMouseClick(const QPoint &_pos)
     if (isImage())
     {
         Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::fullmediascr_view, { { "chat_type", Utils::chatTypeByAimId(getChatAimid()) }, { "from", "chat" }, { "media_type", "photo" } });
-        Utils::InterConnector::instance().openGallery(getChatAimid(), getLink(), getGalleryId());
+        Utils::InterConnector::instance().openGallery(Utils::GalleryData(getChatAimid(), getLink(), getGalleryId(), nullptr, Preview_, OriginalPreviewSize_));
         return true;
     }
 
-    if (isVideo() || isGifImage())
+    if (isPlayable())
     {
         if (isFileDownloading())
             stopDataTransfer();
@@ -1015,8 +1131,11 @@ int FileSharingBlock::minControlsWidth() const
 {
     if (isInsideQuote())
         return 0;
-
+#ifndef STRIP_AV_MEDIA
     auto controlsWidth = videoplayer_ ? videoplayer_->bottomLeftControlsWidth() : 0;
+#else
+    auto controlsWidth = 0;
+#endif // !STRIP_AV_MEDIA
     const auto timeWidget = getParentComplexMessage()->getTimeWidget();
     if (timeWidget && isStandalone())
         controlsWidth += timeWidget->width() + timeWidget->getHorMargin();
@@ -1030,6 +1149,7 @@ void FileSharingBlock::updateWith(IItemBlock* _other)
     if (otherFsBlock)
     {
         setPreview(otherFsBlock->getPreview(), otherFsBlock->getBackground());
+        OriginalPreviewSize_ = otherFsBlock->OriginalPreviewSize_;
     }
 }
 
@@ -1079,7 +1199,7 @@ void FileSharingBlock::onPlainFileIconClicked()
     assert(plainButton_);
     const auto pos = plainButton_->pos() + plainButton_->rect().center();
 
-    if (plainButton_->isAnimating())
+    if (isFileUploading() || isFileDownloading())
         onStopClicked(pos);
     else
         onStartClicked(mapToGlobal(pos));
@@ -1102,20 +1222,24 @@ void FileSharingBlock::localPreviewLoaded(QPixmap pixmap, const QSize _originalS
 void FileSharingBlock::localDurationLoaded(qint64 _duration)
 {
     duration_ = _duration;
+#ifndef STRIP_AV_MEDIA
     if (videoplayer_)
         videoplayer_->setDuration(_duration);
+#endif // !STRIP_AV_MEDIA
 }
 
 void FileSharingBlock::localGotAudioLoaded(bool _gotAudio)
 {
     gotAudio_ = _gotAudio;
+#ifndef STRIP_AV_MEDIA
     if (videoplayer_)
         videoplayer_->setGotAudio(_gotAudio);
+#endif // !STRIP_AV_MEDIA
 }
 
 void FileSharingBlock::multiselectChanged()
 {
-    if (isGifImage() || isVideo())
+    if (isPlayable())
         onGifImageVisibilityChanged(IsVisible_);
 }
 
@@ -1128,7 +1252,7 @@ void FileSharingBlock::prepareBackground(const QPixmap& _result, qint64 _srcCach
     {
         auto color = Styling::getParameters().getColor(Styling::StyleVariable::CHAT_SECONDARY_MEDIA, 0.15);
         QPainter p(&Background_);
-        p.fillRect(Background_.rect(), color); 
+        p.fillRect(Background_.rect(), color);
     }
 
     const auto& r = rect();
@@ -1143,9 +1267,10 @@ void FileSharingBlock::prepareBackground(const QPixmap& _result, qint64 _srcCach
 void FileSharingBlock::resizeEvent(QResizeEvent * _event)
 {
     FileSharingBlockBase::resizeEvent(_event);
-
+#ifndef STRIP_AV_MEDIA
     if (videoplayer_)
         videoplayer_->updateSize(getFileSharingLayout()->getContentRect());
+#endif // !STRIP_AV_MEDIA
 
     if (plainButton_)
     {
@@ -1276,11 +1401,12 @@ void FileSharingBlock::onDataTransfer(const int64_t _bytesTransferred, const int
 
 void FileSharingBlock::onMetainfoDownloaded()
 {
-    if (isGifImage() || isVideo())
+    if (isPlayable())
     {
         if (previewButton_ && isProgressVisible())
             previewButton_->setDefaultProgressText(HistoryControl::formatFileSize(getFileSize()));
 
+#ifndef STRIP_AV_MEDIA
         if (isVideo() && videoplayer_)
         {
             videoplayer_->setDuration(duration_);
@@ -1290,11 +1416,13 @@ void FileSharingBlock::onMetainfoDownloaded()
         if (const auto localPath = getFileLocalPath(); !localPath.isEmpty() && QFile::exists(localPath))
         {
             if (!videoplayer_)
-                videoplayer_.reset(createPlayer());
+                videoplayer_ = createPlayer();
 
             videoplayer_->setMedia(localPath);
         }
-        else if (isSticker() || isAutoplay())
+        else
+#endif // !STRIP_AV_MEDIA
+        if (isSticker() || isAutoplay())
         {
             startDownloading(false);
         }
@@ -1361,7 +1489,7 @@ const QPixmap &FileSharingBlock::getBackground() const
     return Background_;
 }
 
-void FileSharingBlock::onImageDownloaded(int64_t seq, QString uri, QPixmap image, QString /*localPath*/)
+void FileSharingBlock::onImageDownloaded(int64_t seq, QString uri, QPixmap image)
 {
     if (PreviewRequestId_ != seq)
         return;
@@ -1389,10 +1517,12 @@ void FileSharingBlock::onImageMetaDownloaded(int64_t seq, Data::LinkMetadata met
 
 void FileSharingBlock::onGifImageVisibilityChanged(const bool isVisible)
 {
-    assert(isGifImage() || isVideo());
+    assert(isPlayable());
 
+#ifndef STRIP_AV_MEDIA
     if (videoplayer_ && (!isVisible || Logic::getContactListModel()->selectedContact() == getChatAimid()))
         videoplayer_->updateVisibility(isVisible);
+#endif // !STRIP_AV_MEDIA
 }
 
 void FileSharingBlock::onLocalCopyInfoReady(const bool isCopyExists)
@@ -1477,7 +1607,7 @@ void FileSharingBlock::requestPinPreview()
 
     auto connFile = std::make_shared<QMetaObject::Connection>();
     *connFile = connect(GetDispatcher(), &core_dispatcher::imageDownloaded, this,
-        [connFile, this](qint64 _seq, QString, QPixmap _preview, QString)
+        [connFile, this](qint64 _seq, QString, QPixmap _preview)
     {
         if (PreviewRequestId_ == _seq)
         {

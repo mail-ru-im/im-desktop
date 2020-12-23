@@ -32,6 +32,7 @@ int32_t chat_info::unserialize(const rapidjson::Value& _node)
 
         tools::unserialize_value(iter_yours->value, "blocked", you_blocked_);
         tools::unserialize_value(iter_yours->value, "pending", you_pending_);
+        tools::unserialize_value(iter_yours->value, "inviter", inviter_);
     }
 
     tools::unserialize_value(_node, "public", public_);
@@ -39,6 +40,7 @@ int32_t chat_info::unserialize(const rapidjson::Value& _node)
     tools::unserialize_value(_node, "controlled", controlled_);
     tools::unserialize_value(_node, "blockedCount", blocked_count_);
     tools::unserialize_value(_node, "pendingCount", pending_count_);
+    tools::unserialize_value(_node, "invitationsCount", your_invites_count_);
     tools::unserialize_value(_node, "membersVersion", members_version_);
     tools::unserialize_value(_node, "infoVersion", info_version_);
     tools::unserialize_value(_node, "creator", creator_);
@@ -60,6 +62,7 @@ int32_t chat_info::unserialize(const rapidjson::Value& _node)
             tools::unserialize_value(member, "friend", member_info.friend_);
             tools::unserialize_value(member, "noAvatar", member_info.no_avatar_);
 
+            member_info.can_remove_till_ = common::json::get_value<int64_t>(member, "canRemoveTill");
             member_info.lastseen_.unserialize(member);
 
             if (const auto iter_anketa = member.FindMember("anketa"); iter_anketa != member.MemberEnd())
@@ -101,6 +104,7 @@ void chat_info::serialize(core::coll_helper _coll) const
     _coll.set_value_as_int("friend_count", friend_count_);
     _coll.set_value_as_int("blocked_count", blocked_count_);
     _coll.set_value_as_int("pending_count", pending_count_);
+    _coll.set_value_as_int("your_invites_count", your_invites_count_);
     _coll.set_value_as_bool("you_blocked", you_blocked_);
     _coll.set_value_as_bool("you_pending", you_pending_);
     _coll.set_value_as_bool("you_member", you_member_);
@@ -110,6 +114,7 @@ void chat_info::serialize(core::coll_helper _coll) const
     _coll.set_value_as_bool("joinModeration", joinModeration_);
     _coll.set_value_as_string("creator", creator_);
     _coll.set_value_as_string("default_role", default_role_);
+    _coll.set_value_as_string("inviter", inviter_);
 
     ifptr<iarray> members_array(_coll->create_array());
     if (!members_.empty())
@@ -124,6 +129,8 @@ void chat_info::serialize(core::coll_helper _coll) const
             _coll_message.set_value_as_string("friendly", member.friendly_);
             _coll_message.set_value_as_bool("friend", member.friend_);
             _coll_message.set_value_as_bool("no_avatar", member.no_avatar_);
+            if (member.can_remove_till_)
+                _coll_message.set_value_as_int64("canRemoveTill", *member.can_remove_till_);
             member.lastseen_.serialize(_coll_message);
 
             ifptr<ivalue> val(_coll->create_value());
@@ -169,6 +176,7 @@ int32_t chat_members::unserialize(const rapidjson::Value& _node)
             chat_member_short_info member_info;
             tools::unserialize_value(member, "sn", member_info.aimid_);
             tools::unserialize_value(member, "role", member_info.role_);
+            member_info.can_remove_till_ = common::json::get_value<int64_t>(member, "canRemoveTill");
             member_info.lastseen_.unserialize(member);
 
             members_.push_back(std::move(member_info));
@@ -194,6 +202,8 @@ void chat_members::serialize(core::coll_helper _coll) const
             coll_helper _coll_message(_coll->create_collection(), true);
             _coll_message.set_value_as_string("aimid", member.aimid_);
             _coll_message.set_value_as_string("role", member.role_);
+            if (member.can_remove_till_)
+                _coll_message.set_value_as_int64("canRemoveTill", *member.can_remove_till_);
             member.lastseen_.serialize(_coll_message);
 
             ifptr<ivalue> val(_coll->create_value());

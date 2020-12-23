@@ -28,6 +28,7 @@ namespace Ui
         QString id() const;
         QString mailId() const;
         qint64 mentionId() const;
+        qint64 messageId() const;
 
     protected:
         void paintEvent(QPaintEvent*) override;

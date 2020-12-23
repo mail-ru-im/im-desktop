@@ -261,7 +261,8 @@ void PollWidget::onSend()
 
     poll.type_ = Data::PollData::AnonymousPoll;
 
-    for (const auto& answerText : d->list_->answers())
+    const auto answers = d->list_->answers();
+    for (const auto& answerText : answers)
     {
         if (!isValidText(answerText))
             continue;
@@ -271,13 +272,13 @@ void PollWidget::onSend()
         poll.answers_.push_back(std::move(answer));
     }
 
-    core_dispatcher::MessageData data;
-    data.mentions_ = std::move(d->inputData_.mentions_);
-    data.quotes_ = std::move(d->inputData_.quotes_);
-    data.text_ = Utils::replaceFilesPlaceholders(d->question_->getPlainText(), Data::FilesPlaceholderMap());
-    data.poll_ = poll;
+    core_dispatcher::MessageData messageData;
+    messageData.mentions_ = std::move(d->inputData_.mentions_);
+    messageData.quotes_ = std::move(d->inputData_.quotes_);
+    messageData.text_ = Utils::replaceFilesPlaceholders(d->question_->getPlainText(), Data::FilesPlaceholderMap());
+    messageData.poll_ = std::move(poll);
 
-    GetDispatcher()->sendMessageToContact(d->contact_, std::move(data));
+    GetDispatcher()->sendMessageToContact(d->contact_, std::move(messageData));
 
     Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::polls_create, { { "from", "plus" }, {"chat_type", Ui::getStatsChatType()} });
 
@@ -362,7 +363,8 @@ int PollItemsList::itemsWithTextCount() const
 {
     auto count = 0;
 
-    for (const auto& itemData : d->list_->orderedData())
+    const auto orderedData = d->list_->orderedData();
+    for (const auto& itemData : orderedData)
         count += (isValidText(itemData.toString()) ? 1 : 0);
 
     return count;
@@ -372,10 +374,11 @@ QStringList PollItemsList::answers() const
 {
     QStringList result;
 
-    const auto data = d->list_->orderedData();
+    const auto orderedData = d->list_->orderedData();
+    result.reserve(orderedData.size());
 
-    for (const auto& d : data)
-        result.push_back(d.toString());
+    for (const auto& p : orderedData)
+        result.push_back(p.toString());
 
     return result;
 }

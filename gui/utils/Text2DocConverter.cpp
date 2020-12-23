@@ -101,7 +101,7 @@ namespace
 
     void ReplaceUrlSpec(const QString &url, QString &out, bool isWordWrapEnabled = false);
 
-    const QString SPACE_ENTITY = qsl("<span style='white-space: pre'>&#32;</span>");
+    const auto SPACE_ENTITY = ql1s("<span style='white-space: pre'>&#32;</span>");
 }
 
 namespace Logic
@@ -949,7 +949,7 @@ namespace
 
         static const auto AMP_ENTITY = ql1s("&amp;");
 
-        for (const QChar ch : url)
+        for (QChar ch : url)
         {
             switch (ch.unicode())
             {

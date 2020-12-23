@@ -658,14 +658,6 @@ bool archive_state::merge_state(const dlg_state& _new_state, Out dlg_state_chang
 
     const auto patch_version_changed = (!_new_state.get_dlg_state_patch_version().empty() && state_->get_history_patch_version() < common::tools::patch_version(_new_state.get_dlg_state_patch_version()));
 
-    if (!update_history_patch && !_new_state.has_last_msgid() && !_new_state.get_last_message().has_msgid() && _new_state.get_last_message().get_internal_id().empty())
-    {
-        auto del_up_to = _new_state.get_del_up_to();
-        if (del_up_to == -1 || del_up_to == state_->get_del_up_to())
-        {
-            return false;
-        }
-    }
 
     if (!update_history_patch && !patch_version_changed && _new_state.has_last_msgid() && state_->has_last_msgid() && _new_state.get_last_msgid() < state_->get_last_msgid())
         return false;

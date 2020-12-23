@@ -32,7 +32,7 @@ namespace Ui
 
             ~StickerPreview();
 
-            void showSticker(const int32_t _setId, const QString& _stickerId);
+            void showSticker(const QString& _stickerId);
 
             void hide();
 
@@ -42,9 +42,10 @@ namespace Ui
         protected:
             void paintEvent(QPaintEvent* _e) override;
             void mouseReleaseEvent(QMouseEvent* _e) override;
+            void resizeEvent(QResizeEvent* _e) override;
 
         private:
-            void init(const int32_t _setId, const QString& _stickerId);
+            void init(const QString& _stickerId);
             void drawSticker(QPainter& _p);
             void drawEmoji(QPainter& _p);
             void updateEmoji();
@@ -52,18 +53,21 @@ namespace Ui
             QRect getAdjustedImageRect() const;
             void loadSticker();
             void scaleSticker();
-            void onGifLoaded(const QString& _path);
+            void updatePlayerSize();
+            void onAnimatedStickerLoaded(const QString& _path);
             void onActivationChanged(bool _active);
+            void onStickerLoaded(int _error, const QString& _id);
 
         private:
-            int32_t setId_;
             QString stickerId_;
 
             QPixmap sticker_;
             std::vector<QImage> emojis_;
 
             Context context_;
+#ifndef STRIP_AV_MEDIA
             std::unique_ptr<DialogPlayer> player_;
+#endif
             std::unique_ptr<Utils::MediaLoader> loader_;
 
             bool hiding_ = false;

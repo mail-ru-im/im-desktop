@@ -18,8 +18,10 @@
 #include "../../types/message.h"
 #include "../../utils/InterConnector.h"
 #include "../../utils/utils.h"
+#include "../../utils/features.h"
 #include "../../utils/stat_utils.h"
 #include "../../utils/ResizePixmapTask.h"
+#include "../../utils/RenderLottieFirstFrameTask.h"
 #include "../../styles/ThemeParameters.h"
 #include "../../cache/stickers/stickers.h"
 
@@ -43,6 +45,8 @@ namespace
     constexpr auto tooltipDelay = std::chrono::milliseconds(400);
 
     const auto pinPath = qsl(":/pin/pin_icon");
+
+    constexpr auto stickerSize = core::sticker_size::small;
 
     constexpr auto fullSenderVar = Styling::StyleVariable::PRIMARY;
 
@@ -204,7 +208,7 @@ namespace Ui
         setCursor(Qt::PointingHandCursor);
         setFixedHeight(Utils::scale_value(fullHeight));
 
-        sender_ = TextRendering::MakeTextUnit(QString(), Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
+        sender_ = TextRendering::MakeTextUnit(QString(), {}, TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
         sender_->init(Fonts::appFontScaled(14, Fonts::FontWeight::SemiBold),
                       Styling::getParameters().getColor(fullSenderVar),
                       QColor(),
@@ -213,7 +217,7 @@ namespace Ui
                       TextRendering::HorAligment::LEFT,
                       1);
 
-        text_ = TextRendering::MakeTextUnit(QString(), Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
+        text_ = TextRendering::MakeTextUnit(QString(), {}, TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
     }
 
     bool FullPinnedMessage::setMessage(Data::MessageBuddySptr _msg)
@@ -251,7 +255,16 @@ namespace Ui
             break;
         }
 
-        if (previewType_ != PinPlaceholderType::None && previewType_ != PinPlaceholderType::Filesharing)
+        if (previewType_ == PinPlaceholderType::Sticker && !getStickerId().isEmpty())
+        {
+            makeStickerPreview();
+            connections_.push_back(connect(&Stickers::getCache(), &Stickers::Cache::stickerUpdated, this, [this](int _error, const QString& _fsId)
+            {
+                if (_error == 0 && !_fsId.isEmpty() && _fsId == getStickerId())
+                    makeStickerPreview();
+            }));
+        }
+        else if (previewType_ != PinPlaceholderType::None && previewType_ != PinPlaceholderType::Filesharing)
         {
             connections_ =
             {
@@ -287,8 +300,7 @@ namespace Ui
         CollapsableWidget::paintEvent(_event);
 
         QPainter p(this);
-        p.setRenderHint(QPainter::Antialiasing);
-        p.setRenderHint(QPainter::TextAntialiasing);
+        p.setRenderHints(QPainter::Antialiasing | QPainter::TextAntialiasing | QPainter::SmoothPixmapTransform);
 
         if (isSnippetSimple())
             drawSimpleSnippet(p);
@@ -460,8 +472,11 @@ namespace Ui
             });
     }
 
-    void FullPinnedMessage::makePreview(const QPixmap & _image)
+    void FullPinnedMessage::makePreview(const QPixmap& _image)
     {
+        if (_image.isNull())
+            return;
+
         const auto aspectMode = previewType_ == PinPlaceholderType::Sticker
             ? Qt::KeepAspectRatio
             : Qt::KeepAspectRatioByExpanding;
@@ -494,29 +509,26 @@ namespace Ui
 
     void FullPinnedMessage::setPreview(const QPixmap& _image)
     {
-
         if (_image.isNull())
             return;
 
-        snippet_ = QPixmap(getMediaSnippetSize());
-        snippetHover_ = QPixmap(getMediaSnippetSize());
-
-        snippet_.fill(Qt::transparent);
-        snippetHover_.fill(Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT_HOVER));
-
-        QRect imgRect(_image.rect());
-        imgRect.moveCenter(snippet_.rect().center());
+        auto makeSnippet = [&_image, mediaSize = getMediaSnippetSize()](QColor color)
         {
-            QPainter p(&snippet_);
-            p.drawPixmap(imgRect.topLeft(), _image);
-        }
-        {
-            QPainter p(&snippetHover_);
-            p.drawPixmap(imgRect.topLeft(), _image);
-        }
+            QPixmap res(mediaSize);
+            res.fill(color);
 
-        Utils::check_pixel_ratio(snippet_);
-        Utils::check_pixel_ratio(snippetHover_);
+            QRect imgRect(_image.rect());
+            imgRect.moveCenter(res.rect().center());
+
+            QPainter p(&res);
+            p.drawPixmap(imgRect, _image);
+
+            Utils::check_pixel_ratio(res);
+            return res;
+        };
+
+        snippet_ = makeSnippet(Qt::transparent);
+        snippetHover_ = makeSnippet(Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT_HOVER));
 
         updateTextOffsets();
         update();
@@ -568,6 +580,49 @@ namespace Ui
         text_->elide(maxWidth);
     }
 
+    QString FullPinnedMessage::getStickerId() const
+    {
+        if (isSnippetSimple() || !complexMessage_)
+            return {};
+
+        const auto id = complexMessage_->getFirstStickerId();
+        if (!id.fsId_ || id.fsId_->isEmpty())
+            return {};
+
+        return *id.fsId_;
+    }
+
+    void FullPinnedMessage::makeStickerPreview()
+    {
+        auto id = getStickerId();
+        if (id.isEmpty())
+            return;
+
+        const auto& data = Stickers::getStickerData(id, stickerSize);
+        if (data.isPixmap())
+        {
+            const auto& pm = data.getPixmap();
+            if (pm.isNull())
+                return;
+
+            makePreview(pm);
+        }
+        else if (data.isLottie())
+        {
+            const auto& path = data.getLottiePath();
+            if (path.isEmpty())
+                return;
+
+            auto task = new Utils::RenderLottieFirstFrameTask(path, Utils::scale_value(snippetSize));
+            connect(task, &Utils::RenderLottieFirstFrameTask::result, this, [this](const QImage& _result)
+            {
+                if (!_result.isNull())
+                    setPreview(QPixmap::fromImage(_result));
+            });
+            QThreadPool::globalInstance()->start(task);
+        }
+    }
+
     void FullPinnedMessage::clear()
     {
         snippet_ = QPixmap();
@@ -599,7 +654,7 @@ namespace Ui
         if (previewType_ == PinPlaceholderType::Link)
         {
             const auto link = complexMessage_->getFirstLink();
-            Utils::openUrl(Utils::normalizeLink(QStringRef(&link)));
+            Utils::openUrl(Utils::normalizeLink(link));
         }
         else if (isImage() || isPlayable())
         {
@@ -608,7 +663,7 @@ namespace Ui
             {
                 const auto link = Utils::replaceFilesPlaceholders(complexMessage_->getFirstLink(), complexMessage_->getFilesPlaceholders());
                 Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::fullmediascr_view, { { "chat_type", Utils::chatTypeByAimId(Logic::getContactListModel()->selectedContact()) },{ "from", "chat" },{ "media_type", isImage() ? "photo" : "video" } });
-                mw->openGallery(Logic::getContactListModel()->selectedContact(), Utils::normalizeLink(QStringRef(&link)).toString(), complexMessage_->getId());
+                mw->openGallery(Utils::GalleryData(Logic::getContactListModel()->selectedContact(), Utils::normalizeLink(link).toString(), complexMessage_->getId()));
             }
         }
     }
@@ -692,7 +747,12 @@ namespace Ui
 
         connect(close_, &CustomButton::clicked, this, &StrangerPinnedWidget::closeClicked);
 
-        block_ = TextRendering::MakeTextUnit(QT_TRANSLATE_NOOP("pin", "Block"));
+
+        const auto text = (Features:: isGroupInvitesBlacklistEnabled() && Utils::isChat(Logic::getContactListModel()->selectedContact()))
+            ? QT_TRANSLATE_NOOP("sidebar", "Leave and delete")
+            : QT_TRANSLATE_NOOP("pin", "Block");
+
+        block_ = TextRendering::MakeTextUnit(text);
         block_->init(Fonts::appFontScaled(16, Fonts::FontWeight::Normal), Styling::getParameters().getColor(strangerTextDefaultColor));
         block_->evaluateDesiredSize();
     }

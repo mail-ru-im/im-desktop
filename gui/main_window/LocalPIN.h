@@ -1,5 +1,7 @@
 #pragma once
 
+#include "accessibility/LinkAccessibleWidget.h"
+
 namespace Ui
 {
 
@@ -104,7 +106,7 @@ private:
 
 class FooterWidget_p;
 
-class FooterWidget : public QWidget
+class FooterWidget : public LinkAccessibleWidget
 {
     Q_OBJECT
 public:
@@ -112,6 +114,7 @@ public:
     ~FooterWidget();
 
     QSize sizeHint() const override;
+    const TextRendering::TextUnitPtr& getTextUnit() const override;
 
 Q_SIGNALS:
     void logOutClicked();

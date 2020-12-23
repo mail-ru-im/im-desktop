@@ -5,6 +5,7 @@ using namespace Ui;
 RecentsView::RecentsView(QWidget* _parent)
     : ListViewWithTrScrollBar(_parent)
 {
+    init();
 }
 
 
@@ -40,11 +41,3 @@ void RecentsView::init()
     setSelectByMouseHover(true);
 }
 
-RecentsView* RecentsView::create(QWidget* _parent)
-{
-    auto result = new RecentsView(_parent);
-
-    result->init();
-
-    return result;
-}

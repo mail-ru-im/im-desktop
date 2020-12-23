@@ -19,6 +19,11 @@ get_sticker_suggests::get_sticker_suggests(wim_packet_params _params, std::strin
 {
 }
 
+std::string_view get_sticker_suggests::get_method() const
+{
+    return "getSuggests";
+}
+
 int32_t get_sticker_suggests::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     assert(_request);
@@ -39,7 +44,7 @@ int32_t get_sticker_suggests::init_request(const std::shared_ptr<core::http_requ
 
     doc.AddMember("params", std::move(node_params), a);
 
-    setup_common_and_sign(doc, a, _request, "getSuggests");
+    setup_common_and_sign(doc, a, _request, get_method());
 
     if (!params_.full_log_)
     {

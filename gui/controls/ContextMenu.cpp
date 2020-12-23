@@ -225,11 +225,6 @@ namespace Ui
         return showAsync_;
     }
 
-    void ContextMenu::hideEvent(QHideEvent* _e)
-    {
-        QMenu::hideEvent(_e);
-    }
-
     void ContextMenu::showEvent(QShowEvent*)
     {
         if (InvertRight_ || Indent_ != 0)
@@ -249,6 +244,12 @@ namespace Ui
             setGeometry(g);
             resize(g.size());
         }
+    }
+
+    void ContextMenu::hideEvent(QHideEvent* _event)
+    {
+        QMenu::hideEvent(_event);
+        Q_EMIT hidden(QPrivateSignal());
     }
 
     void ContextMenu::focusOutEvent(QFocusEvent *_e)

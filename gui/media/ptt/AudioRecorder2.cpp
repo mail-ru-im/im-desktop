@@ -51,9 +51,11 @@ namespace
 
     QString getDeviceNameFromSettings()
     {
+#ifndef STRIP_VOIP
         auto d = Ui::GetDispatcher()->getVoipController().activeDevice(voip_proxy::EvoipDevTypes::kvoipDevTypeAudioCapture);
         if (d)
             return QString::fromStdString((*d).name);
+#endif
         return {};
     }
 

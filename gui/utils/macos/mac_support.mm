@@ -23,6 +23,7 @@
 #include "../features.h"
 
 #include "../gui/app_config.h"
+#include "../gui/url_config.h"
 #include "../libomicron/include/omicron/omicron.h"
 #include "../common.shared/version_info.h"
 #include "../common.shared/omicron_keys.h"
@@ -38,13 +39,15 @@
 #include <objc/message.h>
 #include <objc/runtime.h>
 
+#include "../../app_config.h"
+
 #import <SystemConfiguration/SystemConfiguration.h>
 
 namespace
 {
-    constexpr std::chrono::seconds checkUpdateInterval()
+    std::chrono::seconds checkUpdateInterval()
     {
-        return std::chrono::hours(24);
+        return std::chrono::seconds(Ui::GetAppConfig().AppUpdateIntervalSecs());
     }
 }
 
@@ -523,23 +526,29 @@ namespace
     {
         std::string feed_url;
         feed_url += "https://";
-        if constexpr (environment::is_alpha())
-            feed_url += Ui::GetAppConfig().getMacUpdateAlpha();
-        else if (Ui::GetDispatcher()->isInstallBetaUpdatesEnabled())
-            feed_url += Ui::GetAppConfig().getMacUpdateBeta();
+        if (!Features::isUpdateFromBackendEnabled())
+        {
+            if constexpr (environment::is_alpha())
+                feed_url += Ui::GetAppConfig().getMacUpdateAlpha();
+            else if (Ui::GetDispatcher()->isInstallBetaUpdatesEnabled())
+                feed_url += Ui::GetAppConfig().getMacUpdateBeta();
+            else
+                feed_url += Ui::GetAppConfig().getMacUpdateRelease();
+
+            feed_url += '/';
+
+            std::string current_build_version = core::tools::version_info().get_version();
+            if constexpr (environment::is_alpha())
+                feed_url += omicronlib::_o(omicron::keys::update_alpha_version, current_build_version);
+            else if (Ui::GetDispatcher()->isInstallBetaUpdatesEnabled())
+                feed_url += omicronlib::_o(omicron::keys::update_beta_version, current_build_version);
+            else
+                feed_url += omicronlib::_o(omicron::keys::update_release_version, current_build_version);
+        }
         else
-            feed_url += Ui::GetAppConfig().getMacUpdateRelease();
-
-        feed_url += '/';
-
-        std::string current_build_version = core::tools::version_info().get_version();
-        if constexpr (environment::is_alpha())
-            feed_url += omicronlib::_o(omicron::keys::update_alpha_version, current_build_version);
-        else if (Ui::GetDispatcher()->isInstallBetaUpdatesEnabled())
-            feed_url += omicronlib::_o(omicron::keys::update_beta_version, current_build_version);
-        else
-            feed_url += omicronlib::_o(omicron::keys::update_release_version, current_build_version);
-
+        {
+            feed_url += Ui::getUrlConfig().getUrlAppUpdate().toStdString();
+        }
         feed_url += "/version.xml";
         return feed_url;
     };
@@ -563,7 +572,7 @@ void MacSupport::enableMacUpdater()
     if (!updateFeedUrl_)
     {
         updateFeedUrl_ = std::make_unique<QTimer>();
-        updateFeedUrl_->setInterval(std::chrono::milliseconds(checkUpdateInterval()).count());
+        updateFeedUrl_->setInterval(checkUpdateInterval());
         QObject::connect(updateFeedUrl_.get(), &QTimer::timeout, updateFeedUrl_.get(), [this]()
         {
             checkForUpdates();
@@ -924,6 +933,11 @@ void MacSupport::createMenuBar(bool simple)
     for (auto action: extendedActions_)
         action->setEnabled(!simple);
 
+    if (mainWindow_)
+    {
+        QObject::connect(&Utils::InterConnector::instance(), &Utils::InterConnector::omicronUpdated, mainWindow_, [this]() { updateMainMenu(); });
+        QObject::connect(Ui::GetDispatcher(), &Ui::core_dispatcher::externalUrlConfigUpdated, mainWindow_, [this]() { updateMainMenu(); });
+    }
     updateMainMenu();
 
 //    Edit
@@ -973,6 +987,9 @@ void MacSupport::updateMainMenu()
         const bool isPttActive = Utils::InterConnector::instance().isRecordingPtt();
         editMenu_->setEnabled(!isPttActive);
     }
+
+    if (Utils::supportUpdates())
+        menuItems_[global_update]->setVisible(!Features::isUpdateFromBackendEnabled() || (Features::isUpdateFromBackendEnabled() && !Ui::getUrlConfig().getUrlAppUpdate().isEmpty()));
 
     QAction *nextChat = menuItems_[window_nextChat];
     QAction *prevChat = menuItems_[window_prevChat];
@@ -1406,7 +1423,7 @@ void MacSupport::registerAppDelegate()
 }
 
 // pass _ext by value to avoid UB in completionHandler
-void MacSupport::saveFileName(const QString &caption, const QString &qdir, const QString &filter, std::function<void (const QString& _filename, const QString& _directory)> _callback, QString _ext, std::function<void ()> _cancel_callback)
+void MacSupport::saveFileName(const QString &caption, const QString &qdir, const QString &filter, std::function<void (const QString& _filename, const QString& _directory, bool _exportAsPng)> _callback, QString _ext, std::function<void ()> _cancel_callback)
 {
     auto dir = qdir.toNSString().stringByDeletingLastPathComponent;
     auto filename = qdir.toNSString().lastPathComponent;
@@ -1428,9 +1445,11 @@ void MacSupport::saveFileName(const QString &caption, const QString &qdir, const
                 const QFileInfo info(path);
                 const QString directory = info.dir().absolutePath();
                 const QString inputExt = !_ext.isEmpty() && info.suffix().isEmpty() ? _ext : QString();
+                const auto isWebp = _ext.compare(u".webp", Qt::CaseInsensitive) == 0;
+                const bool exportAsPng = isWebp && info.suffix().compare(u"png", Qt::CaseInsensitive) == 0;
                 const QString filename = info.fileName() % inputExt;
                 if (_callback)
-                    _callback(filename, directory);
+                    _callback(filename, directory, exportAsPng);
             }
             else if (_cancel_callback)
             {
@@ -1506,6 +1525,14 @@ void MacSupport::showInAllWorkspaces(QWidget *w)
                                | NSWindowCollectionBehaviorStationary];
     [wnd setHidesOnDeactivate:NO];
     [wnd makeKeyAndOrderFront:nil];
+
+    // Keep mini-window position
+    NSRect frame = [wnd frame];
+    const auto geo = w->geometry();
+    frame.origin.x = geo.left();
+    frame.origin.y = geo.top();
+    [wnd setFrame:frame display:NO];
+    w->setGeometry(geo);
 
     w->show();
 }
@@ -1594,4 +1621,11 @@ void MacMenuBlocker::unblock()
         action->setEnabled(enabled);
     }
     isBlocked_ = false;
+}
+
+void Utils::disableCloseButton(QWidget *_w)
+{
+    NSWindow *wnd = [reinterpret_cast<NSView *>(_w->winId()) window];
+    NSButton *closeButton = [wnd standardWindowButton:NSWindowCloseButton];
+    [closeButton setEnabled:NO];
 }

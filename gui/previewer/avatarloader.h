@@ -29,7 +29,7 @@ public:
 
     void showMedia(ImageViewerWidget* _viewer) override;
 
-    void save(const QString& _path) override;
+    void save(const QString& _path, bool _exportAsPng) override;
 
     void copyToClipboard() override;
 

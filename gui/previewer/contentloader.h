@@ -60,7 +60,7 @@ public:
     virtual void showMedia(ImageViewerWidget* _viewer) {}
     virtual void showPreview(ImageViewerWidget* _viewer) {}
 
-    virtual void save(const QString& _path) {}
+    virtual void save(const QString& _path, bool _exportAsPng) {}
 
     virtual void copyToClipboard() {}
 

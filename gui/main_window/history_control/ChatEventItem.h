@@ -122,6 +122,8 @@ namespace Ui
         int lineSpacing() const;
 
         TextRendering::HorAligment textAligment() const;
+
+        bool membersLinksEnabled() const;
     };
 
 }

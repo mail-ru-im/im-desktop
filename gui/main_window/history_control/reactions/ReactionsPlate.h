@@ -6,6 +6,7 @@ namespace Ui
 {
     class HistoryControlPageItem;
     class ReactionsPlate_p;
+    class AccessibleStatusesList;
 
     //////////////////////////////////////////////////////////////////////////
     // ReactionsPlate
@@ -13,6 +14,9 @@ namespace Ui
 
     class ReactionsPlate : public QWidget
     {
+        friend class ReactionsPlate_p;
+        friend class AccessibleReactionsPlate;
+
         Q_OBJECT
     public:
         ReactionsPlate(HistoryControlPageItem* _item);
@@ -41,6 +45,20 @@ namespace Ui
 
     private:
         std::unique_ptr<ReactionsPlate_p> d;
+    };
+
+    class AccessibleReactionsPlate : public QAccessibleWidget
+    {
+    public:
+        AccessibleReactionsPlate(ReactionsPlate* _plate) : QAccessibleWidget(_plate), plate_(_plate) {}
+
+        int childCount() const override;
+        QAccessibleInterface* child(int _index) const override;
+        int indexOfChild(const QAccessibleInterface* _child) const override;
+        QString	text(QAccessible::Text _type) const override;
+
+    private:
+        ReactionsPlate* plate_ = nullptr;
     };
 
 }

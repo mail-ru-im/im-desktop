@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../corelib/enumerations.h"
+#include "controls/FlowLayout.h"
 
 namespace Emoji
 {
@@ -11,10 +12,13 @@ namespace Emoji
 
 namespace Ui
 {
+    class LottiePlayer;
+
     namespace Stickers
     {
         class Set;
         class Sticker;
+        using stickerSptr = std::shared_ptr<Sticker>;
         typedef std::vector<std::shared_ptr<Stickers::Set>> setsArray;
         typedef std::shared_ptr<Set> setSptr;
     }
@@ -269,7 +273,7 @@ namespace Ui
             void init();
             void storeStickers();
 
-            void onStickerMigration(const std::vector<Ui::Stickers::Sticker>& _stickers);
+            void onStickerMigration(const std::vector<Ui::Stickers::stickerSptr>& _stickers);
 
             void saveEmojiToSettings();
 
@@ -277,6 +281,7 @@ namespace Ui
 
             bool sendSelectedEmoji();
             void sendEmoji(const QModelIndex& _index, const EmojiSendSource _src);
+            void addStickers(const std::vector<QString>& _stickers);
 
         public:
             RecentsWidget(QWidget* _parent);
@@ -309,9 +314,33 @@ namespace Ui
             void clearIfNotSelected(const QString& _stickerId);
 
             bool isKeyboardActive() override;
+
+            void onVisibilityChanged();
         };
 
+        //////////////////////////////////////////////////////////////////////////
+        // StickerWidget
+        //////////////////////////////////////////////////////////////////////////
+        class StickerWidget : public QWidget
+        {
+            Q_OBJECT
 
+        public:
+            StickerWidget(QWidget* _parent, const QString& _stickerId, int _itemSize, int _stickerSize);
+            void clearCache();
+            const QString& getId() const noexcept { return stickerId_; }
+            void onVisibilityChanged(bool _visible);
+
+        protected:
+            void paintEvent(QPaintEvent* _e) override;
+
+        private:
+            QString stickerId_;
+            QPixmap cached_;
+            int stickerSize_;
+
+            LottiePlayer* lottie_ = nullptr;
+        };
 
         //////////////////////////////////////////////////////////////////////////
         // StickersTable
@@ -330,6 +359,8 @@ namespace Ui
             void longtapTimeout();
 
         protected:
+
+            FlowLayout* layout_;
 
             QTimer* longtapTimer_;
 
@@ -358,9 +389,8 @@ namespace Ui
 
             virtual std::pair<int32_t, QString> getStickerFromPos(const QPoint& _pos) const;
 
-            virtual void drawSticker(QPainter& _painter, const int32_t _setId, const QString& _stickerId, const QRect& _rect);
-
             virtual void redrawSticker(const int32_t _setId, const QString& _stickerId);
+            void populateStickerWidgets();
 
             int getNeedHeight() const;
 
@@ -377,6 +407,8 @@ namespace Ui
             virtual void onStickerUpdated(int32_t _setId, const QString& _stickerId);
             void onStickerAdded();
 
+            void onVisibilityChanged();
+
             virtual int32_t getStickerPosInSet(const QString& _stickerId) const;
             virtual const stickersArray& getStickerIds() const;
 
@@ -387,7 +419,7 @@ namespace Ui
                 const qint32 _itemSize,
                 const bool _trasparentForMouse = true);
 
-            virtual ~StickersTable();
+            ~StickersTable();
 
             std::pair<int32_t, QString> getSelected() const;
             virtual void setSelected(const std::pair<int32_t, QString>& _sticker);
@@ -411,6 +443,11 @@ namespace Ui
             void selectLastRowAtColumn(const int _column) override;
 
             bool isKeyboardActive() override;
+
+            void cancelStickerRequests();
+            void clearCache();
+            void clearWidgets();
+            void clear();
         };
 
 
@@ -508,7 +545,6 @@ namespace Ui
             void scrolled();
 
         private Q_SLOTS:
-            void im_created();
             void onSetIconChanged(int _setId);
             void touchScrollStateChanged(QScroller::State);
             void stickersMetaEvent();
@@ -548,9 +584,9 @@ namespace Ui
 
             bool isVisible_;
             bool blockToolbarSwitch_;
-            bool stickerMetaRequested_;
             int currentHeight_;
             bool setFocusToButton_;
+            bool lottieAllowed_;
 
         private:
             void InitSelector();
@@ -584,6 +620,11 @@ namespace Ui
             void onEmojiHovered();
 
             bool iskeyboardActive() const;
+
+            void clearCache();
+            void updateStickersVisibility();
+
+            void onOmicronUpdate();
 
         protected:
             void paintEvent(QPaintEvent* _e) override;

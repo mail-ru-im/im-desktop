@@ -40,6 +40,7 @@ namespace Ui
         void onToggleSaveRTPDumps(bool checked);
         void onToggleServerSearch(bool checked);
         void onToggleDevId(bool checked);
+        void onToggleWatchGuiMemory(bool checked);
 
     private:
         QVBoxLayout* mainLayout_ = nullptr;
@@ -49,12 +50,16 @@ namespace Ui
         Ui::CustomButton* clearCacheBtn_ = nullptr;
         Ui::CustomButton* clearAvatarsBtn_ = nullptr;
         Ui::CustomButton* logCurrentMessagesModel_ = nullptr;
+        Ui::CustomButton* logMemorySnapshot_ = nullptr;
         Ui::SidebarCheckboxButton* fullLogModeCheckbox_ = nullptr;
         Ui::SidebarCheckboxButton* updatebleCheckbox_ = nullptr;
         Ui::SidebarCheckboxButton* devShowMsgIdsCheckbox_ = nullptr;
         Ui::SidebarCheckboxButton* devSaveCallRTPdumpsCheckbox_ = nullptr;
         Ui::SidebarCheckboxButton* devServerSearchCheckbox_ = nullptr;
         Ui::SidebarCheckboxButton* devCustomIdCheckbox_ = nullptr;
+        Ui::SidebarCheckboxButton* watchGuiMemoryCheckbox_ = nullptr;
+
+        Ui::CustomButton* sendDevStatistic_ = nullptr;
 
         Ui::SidebarCheckboxButton* stickDockWidgets_;
         GeneralCreator::DropperInfo cacheDialogsDropper_;

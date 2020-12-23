@@ -22,5 +22,7 @@ namespace core::wim
 
         send_stat(wim_packet_params _params, const std::vector<std::string>& _audio_devices, const std::vector<std::string>& _video_devices);
         virtual ~send_stat();
+
+        virtual std::string_view get_method() const override;
     };
 }

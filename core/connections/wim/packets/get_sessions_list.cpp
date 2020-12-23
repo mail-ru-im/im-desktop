@@ -12,11 +12,16 @@ get_sessions_list::get_sessions_list(wim_packet_params _params)
 {
 }
 
+std::string_view get_sessions_list::get_method() const
+{
+    return "session/list"; 
+}
+
 int32_t get_sessions_list::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     rapidjson::Document doc(rapidjson::Type::kObjectType);
     auto& a = doc.GetAllocator();
-    setup_common_and_sign(doc, a, _request, "session/list");
+    setup_common_and_sign(doc, a, _request, get_method());
 
     if (!params_.full_log_)
     {

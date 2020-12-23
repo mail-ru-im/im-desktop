@@ -18,7 +18,7 @@ class StickerBlock final : public GenericBlock
     Q_OBJECT
 
 public:
-    StickerBlock(ComplexMessageItem *parent, const HistoryControl::StickerInfoSptr& _info);
+    StickerBlock(ComplexMessageItem *_parent, const HistoryControl::StickerInfoSptr& _info);
 
     virtual ~StickerBlock() override;
 
@@ -61,7 +61,7 @@ protected:
 
 
 private Q_SLOTS:
-    void onSticker(const qint32 _error, qint32 _setId, qint32 _stickerId);
+    void onSticker(const qint32 _error, const QString&, qint32 _setId, qint32 _stickerId);
 
     void onStickers();
 

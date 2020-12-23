@@ -11,6 +11,11 @@ namespace core::wim
     {
     }
 
+    std::string_view set_privacy_settings::get_method() const
+    {
+        return "updatePrivacySettings";
+    }
+
     int32_t set_privacy_settings::init_request(const std::shared_ptr<core::http_request_simple>& _request)
     {
         rapidjson::Document doc(rapidjson::Type::kObjectType);
@@ -23,7 +28,7 @@ namespace core::wim
 
         doc.AddMember("params", std::move(node_params), a);
 
-        setup_common_and_sign(doc, a, _request, "updatePrivacySettings");
+        setup_common_and_sign(doc, a, _request, get_method());
 
         if (!params_.full_log_)
         {

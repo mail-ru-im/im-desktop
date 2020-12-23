@@ -8,37 +8,18 @@ CORE_NS_END
 
 UI_COMPLEX_MESSAGE_NS_BEGIN
 
-core::file_sharing_content_type extractContentTypeFromFileSharingId(const QStringRef& _id);
-inline core::file_sharing_content_type extractContentTypeFromFileSharingId(const QString& _id)
-{
-    return extractContentTypeFromFileSharingId(QStringRef(&_id));
-}
+core::file_sharing_content_type extractContentTypeFromFileSharingId(QStringView _id);
+bool isLottieFileSharingId(QStringView _id);
 
-int32_t extractDurationFromFileSharingId(const QStringRef &id);
-inline int32_t extractDurationFromFileSharingId(const QString &id)
-{
-    return extractDurationFromFileSharingId(QStringRef(&id));
-}
+int32_t extractDurationFromFileSharingId(QStringView id);
 
-QSize extractSizeFromFileSharingId(const QStringRef &id);
-inline QSize extractSizeFromFileSharingId(const QString &id)
-{
-    return extractSizeFromFileSharingId(QStringRef(&id));
-}
+QSize extractSizeFromFileSharingId(QStringView id);
 
-QString extractIdFromFileSharingUri(const QStringRef &uri);
-inline QString extractIdFromFileSharingUri(const QString &uri)
-{
-    return extractIdFromFileSharingUri(QStringRef(&uri));
-}
+QString extractIdFromFileSharingUri(QStringView uri);
 
-inline core::file_sharing_content_type getFileSharingContentType(const QStringRef& _uri)
+inline core::file_sharing_content_type getFileSharingContentType(QStringView _uri)
 {
     return extractContentTypeFromFileSharingId(extractIdFromFileSharingUri(_uri));
-}
-inline core::file_sharing_content_type getFileSharingContentType(const QString& _uri)
-{
-    return getFileSharingContentType(QStringRef(&_uri));
 }
 
 UI_COMPLEX_MESSAGE_NS_END

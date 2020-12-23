@@ -18,6 +18,7 @@
 
 #include "../../styles/ThemeParameters.h"
 #include "main_window/sidebar/SidebarUtils.h"
+#include "../../memory_stats/gui_memory_monitor.h"
 
 namespace
 {
@@ -63,10 +64,11 @@ namespace Ui
         , devShowMsgIdsCheckbox_(nullptr)
         , devSaveCallRTPdumpsCheckbox_(nullptr)
         , devCustomIdCheckbox_(nullptr)
+        , sendDevStatistic_(nullptr)
     {
         auto scrollArea = CreateScrollAreaAndSetTrScrollBarV(_parent);
         scrollArea->setWidgetResizable(true);
-        scrollArea->setStyleSheet(qsl("QWidget{ background: %1;}").arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE)));
+        scrollArea->setStyleSheet(ql1s("QWidget{ background: %1;}").arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE)));
         Utils::grabTouchWidget(scrollArea->viewport(), true);
 
         auto layout = Utils::emptyHLayout(this);
@@ -105,14 +107,24 @@ namespace Ui
         mainLayout_->setContentsMargins(getMargin(), getMargin(), getMargin(), getMargin());
         mainLayout_->setSpacing(getMargin());
 
-        openLogsBtn_ = setupButton(qsl(":/background_icon"), QT_TRANSLATE_NOOP("popup_window", "Open logs path"));
+        const auto defaultIconName = qsl(":/background_icon");
+
+        openLogsBtn_ = setupButton(defaultIconName, QT_TRANSLATE_NOOP("popup_window", "Open logs path"));
         Testing::setAccessibleName(openLogsBtn_, qsl("AS AdditionalSettingsPage openLogsButton"));
-        clearCacheBtn_ = setupButton(qsl(":/background_icon"), QT_TRANSLATE_NOOP("popup_window", "Clear cache"));
+        clearCacheBtn_ = setupButton(defaultIconName, QT_TRANSLATE_NOOP("popup_window", "Clear cache"));
         Testing::setAccessibleName(clearCacheBtn_, qsl("AS AdditionalSettingsPage clearCacheButton"));
-        clearAvatarsBtn_ = setupButton(qsl(":/background_icon"), QT_TRANSLATE_NOOP("popup_window", "Clear avatars"));
+        clearAvatarsBtn_ = setupButton(defaultIconName, QT_TRANSLATE_NOOP("popup_window", "Clear avatars"));
         Testing::setAccessibleName(clearAvatarsBtn_, qsl("AS AdditionalSettingsPage clearAvatarsButton"));
-        logCurrentMessagesModel_ = setupButton(qsl(":/background_icon"), QT_TRANSLATE_NOOP("popup_window", "Log messagesModel"));
+        logCurrentMessagesModel_ = setupButton(defaultIconName, QT_TRANSLATE_NOOP("popup_window", "Log messagesModel"));
         Testing::setAccessibleName(clearAvatarsBtn_, qsl("AS AdditionalSettingsPage logMessageModelButton"));
+        logMemorySnapshot_ = setupButton(defaultIconName, QT_TRANSLATE_NOOP("popup_window", "Log Memory Report"));
+        Testing::setAccessibleName(logMemorySnapshot_, qsl("AS AdditionalSettingsPage logMemoryReport"));
+
+        if constexpr (environment::is_develop())
+        {
+            sendDevStatistic_ = setupButton(defaultIconName, QT_TRANSLATE_NOOP("popup_window", "Send Statistic"));
+            Testing::setAccessibleName(sendDevStatistic_, qsl("AS AdditionalSettingsPage sendDevStatistic"));
+        }
 
         connect(this, &SettingsForTesters::openLogsPath, this, &SettingsForTesters::onOpenLogsPath);
         connect(openLogsBtn_, &QPushButton::clicked, this, [this]() {
@@ -127,6 +139,10 @@ namespace Ui
         connect(logCurrentMessagesModel_, &QPushButton::clicked, this, []() {
             if (const auto contact = Logic::getContactListModel()->selectedContact(); !contact.isEmpty())
                 Q_EMIT Utils::InterConnector::instance().logHistory(contact);
+        });
+
+        connect(logMemorySnapshot_, &QPushButton::clicked, this, []() {
+            GuiMemoryMonitor::instance().writeLogMemoryReport({});
         });
 
         connect(clearCacheBtn_, &QPushButton::clicked, this, [this]() {
@@ -165,16 +181,27 @@ namespace Ui
                                                              {},
                                                              Utils::scale_value(36), qsl("AS AdditionalSettingsPage displayMsgIdsSetting"));
 
+        watchGuiMemoryCheckbox_ = GeneralCreator::addSwitcher(this, mainLayout_,
+                                                              QT_TRANSLATE_NOOP("popup_window", "Track internal cache"),
+                                                              appConfig.WatchGuiMemoryEnabled(),
+                                                              {},
+                                                              Utils::scale_value(36), qsl("AS AdditionalSettingsPage trackInternalCache"));
+
         connect(fullLogModeCheckbox_, &Ui::SidebarCheckboxButton::checked, this, &SettingsForTesters::onToggleFullLogMode);
         connect(devShowMsgIdsCheckbox_, &Ui::SidebarCheckboxButton::checked, this, &SettingsForTesters::onToggleShowMsgIdsMenu);
+        connect(watchGuiMemoryCheckbox_, &Ui::SidebarCheckboxButton::checked, this, &SettingsForTesters::onToggleWatchGuiMemory);
 
-        if (environment::is_develop())
+        if constexpr (environment::is_develop())
         {
-            updatebleCheckbox_ = GeneralCreator::addSwitcher(this, mainLayout_,
-                                                             QT_TRANSLATE_NOOP("popup_window", "Updatable"),
-                                                             appConfig.IsUpdateble(),
-                                                             {},
-                                                             Utils::scale_value(36), qsl("AS AdditionalSettingsPage updatableSetting"));
+
+            if constexpr (build::is_pkg_msi())
+            {
+                updatebleCheckbox_ = GeneralCreator::addSwitcher(this, mainLayout_,
+                                                                 QT_TRANSLATE_NOOP("popup_window", "Updatable"),
+                                                                 appConfig.IsUpdateble(),
+                                                                 {},
+                                                                 Utils::scale_value(36), qsl("AS AdditionalSettingsPage updatableSetting"));
+            }
 
             devSaveCallRTPdumpsCheckbox_ = GeneralCreator::addSwitcher(this, mainLayout_,
                                                                        QT_TRANSLATE_NOOP("popup_window", "Save call RTP dumps"),
@@ -196,64 +223,74 @@ namespace Ui
             connect(devSaveCallRTPdumpsCheckbox_, &Ui::SidebarCheckboxButton::checked, this, &SettingsForTesters::onToggleSaveRTPDumps);
             connect(devServerSearchCheckbox_, &Ui::SidebarCheckboxButton::checked, this, &SettingsForTesters::onToggleServerSearch);
             connect(devCustomIdCheckbox_, &Ui::SidebarCheckboxButton::checked, this, &SettingsForTesters::onToggleDevId);
-
-            auto updateUrlLayout = Utils::emptyHLayout();
-            updateUrlLayout->setContentsMargins(getMargin(), 0, getMargin(), 0);
-            auto updateUrlEdit = new LineEditEx(this);
-            updateUrlEdit->setPlaceholderText(QT_TRANSLATE_NOOP("popup_window", "Update url, empty for default"));
-            auto checkUpdateButton = new DialogButton(this, QT_TRANSLATE_NOOP("popup_window", "Check"));
-            Testing::setAccessibleName(checkUpdateButton, qsl("AS AdditionalSettingsPage checkUpdateButton"));
-            Testing::setAccessibleName(updateUrlEdit, qsl("AS AdditionalSettingsPage updateUrlInput"));
-
-            connect(checkUpdateButton, &DialogButton::clicked, this, [updateUrlEdit]()
+            connect(sendDevStatistic_, &QPushButton::clicked, this, []() 
             {
-                gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
-                collection.set_value_as_qstring("url", updateUrlEdit->text());
-                GetDispatcher()->post_message_to_core("update/check", collection.get());
+                GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::dev_statistic_event, { { "app_version", Utils::getVersionPrintable().toStdString()} });
             });
 
-            updateUrlLayout->addWidget(updateUrlEdit);
-            updateUrlLayout->addSpacing(Utils::scale_value(15));
-            updateUrlLayout->addWidget(checkUpdateButton);
+            if constexpr (build::is_pkg_msi())
+            {
+                auto updateUrlLayout = Utils::emptyHLayout();
+                updateUrlLayout->setContentsMargins(getMargin(), 0, getMargin(), 0);
+                auto updateUrlEdit = new LineEditEx(this);
+                updateUrlEdit->setPlaceholderText(QT_TRANSLATE_NOOP("popup_window", "Update url, empty for default"));
+                auto checkUpdateButton = new DialogButton(this, QT_TRANSLATE_NOOP("popup_window", "Check"));
+                Testing::setAccessibleName(checkUpdateButton, qsl("AS AdditionalSettingsPage checkUpdateButton"));
+                Testing::setAccessibleName(updateUrlEdit, qsl("AS AdditionalSettingsPage updateUrlInput"));
 
-            mainLayout_->addLayout(updateUrlLayout);
+                connect(checkUpdateButton, &DialogButton::clicked, updateUrlEdit, [updateUrlEdit]()
+                {
+                    gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
+                    collection.set_value_as_qstring("url", updateUrlEdit->text());
+                    GetDispatcher()->post_message_to_core("update/check", collection.get());
+                });
+
+                updateUrlLayout->addWidget(updateUrlEdit);
+                updateUrlLayout->addSpacing(Utils::scale_value(15));
+                updateUrlLayout->addWidget(checkUpdateButton);
+
+                mainLayout_->addLayout(updateUrlLayout);
+            }
         }
     }
 
-    void SettingsForTesters::initViewElementsFrom(const AppConfig& appConfig)
+    void SettingsForTesters::initViewElementsFrom(const AppConfig& _appConfig)
     {
-        if (fullLogModeCheckbox_ && fullLogModeCheckbox_->isChecked() != appConfig.IsFullLogEnabled())
-            fullLogModeCheckbox_->setChecked(appConfig.IsFullLogEnabled());
+        if (fullLogModeCheckbox_ && fullLogModeCheckbox_->isChecked() != _appConfig.IsFullLogEnabled())
+            fullLogModeCheckbox_->setChecked(_appConfig.IsFullLogEnabled());
 
-        if (devShowMsgIdsCheckbox_ && devShowMsgIdsCheckbox_->isChecked() != appConfig.IsShowMsgIdsEnabled())
-            devShowMsgIdsCheckbox_->setChecked(appConfig.IsShowMsgIdsEnabled());
+        if (devShowMsgIdsCheckbox_ && devShowMsgIdsCheckbox_->isChecked() != _appConfig.IsShowMsgIdsEnabled())
+            devShowMsgIdsCheckbox_->setChecked(_appConfig.IsShowMsgIdsEnabled());
 
-        if (devSaveCallRTPdumpsCheckbox_ && devSaveCallRTPdumpsCheckbox_->isChecked() != appConfig.IsSaveCallRTPEnabled())
-            devSaveCallRTPdumpsCheckbox_->setChecked(appConfig.IsSaveCallRTPEnabled());
+        if (devSaveCallRTPdumpsCheckbox_ && devSaveCallRTPdumpsCheckbox_->isChecked() != _appConfig.IsSaveCallRTPEnabled())
+            devSaveCallRTPdumpsCheckbox_->setChecked(_appConfig.IsSaveCallRTPEnabled());
 
-        if (devCustomIdCheckbox_ && devCustomIdCheckbox_->isChecked() != appConfig.hasCustomDeviceId())
-            devCustomIdCheckbox_->setChecked(appConfig.hasCustomDeviceId());
+        if (devCustomIdCheckbox_ && devCustomIdCheckbox_->isChecked() != _appConfig.hasCustomDeviceId())
+            devCustomIdCheckbox_->setChecked(_appConfig.hasCustomDeviceId());
+
+        if (watchGuiMemoryCheckbox_ && watchGuiMemoryCheckbox_->isChecked() != _appConfig.WatchGuiMemoryEnabled())
+            watchGuiMemoryCheckbox_->setChecked(_appConfig.WatchGuiMemoryEnabled());
     }
 
-    void SettingsForTesters::onOpenLogsPath(const QString &logsPath)
+    void SettingsForTesters::onOpenLogsPath(const QString &_logsPath)
     {
-        QDesktopServices::openUrl(QUrl::fromLocalFile(logsPath));
+        QDesktopServices::openUrl(QUrl::fromLocalFile(_logsPath));
     }
 
-    void SettingsForTesters::onToggleFullLogMode(bool checked)
+    void SettingsForTesters::onToggleFullLogMode(bool _checked)
     {
         AppConfig appConfig = GetAppConfig();
-        appConfig.SetFullLogEnabled(checked);
+        appConfig.SetFullLogEnabled(_checked);
 
         ModifyAppConfig(std::move(appConfig), [this](core::icollection* _coll) {
             initViewElementsFrom(GetAppConfig());
         }, this);
     }
 
-    void SettingsForTesters::onToggleUpdateble(bool checked)
+    void SettingsForTesters::onToggleUpdateble(bool _checked)
     {
         AppConfig appConfig = GetAppConfig();
-        appConfig.SetUpdateble(checked);
+        appConfig.SetUpdateble(_checked);
 
         ModifyAppConfig(std::move(appConfig), [this](core::icollection* _coll) {
             initViewElementsFrom(GetAppConfig());
@@ -261,40 +298,40 @@ namespace Ui
     }
 
 
-    void SettingsForTesters::onToggleShowMsgIdsMenu(bool checked)
+    void SettingsForTesters::onToggleShowMsgIdsMenu(bool _checked)
     {
         AppConfig appConfig = GetAppConfig();
-        appConfig.SetShowMsgIdsEnabled(checked);
+        appConfig.SetShowMsgIdsEnabled(_checked);
 
         ModifyAppConfig(std::move(appConfig), [this](core::icollection* _coll) {
             initViewElementsFrom(GetAppConfig());
         }, this);
     }
 
-    void SettingsForTesters::onToggleSaveRTPDumps(bool checked)
+    void SettingsForTesters::onToggleSaveRTPDumps(bool _checked)
     {
         AppConfig appConfig = GetAppConfig();
-        appConfig.SetSaveCallRTPEnabled(checked);
+        appConfig.SetSaveCallRTPEnabled(_checked);
 
         ModifyAppConfig(std::move(appConfig), [this](core::icollection* _coll) {
             initViewElementsFrom(GetAppConfig());
         }, this);
     }
 
-    void SettingsForTesters::onToggleServerSearch(bool checked)
+    void SettingsForTesters::onToggleServerSearch(bool _checked)
     {
         AppConfig appConfig = GetAppConfig();
-        appConfig.SetServerSearchEnabled(checked);
+        appConfig.SetServerSearchEnabled(_checked);
 
         ModifyAppConfig(std::move(appConfig), [this](core::icollection* _coll) {
             initViewElementsFrom(GetAppConfig());
         }, this);
     }
 
-    void SettingsForTesters::onToggleDevId(bool checked)
+    void SettingsForTesters::onToggleDevId(bool _checked)
     {
         AppConfig appConfig = GetAppConfig();
-        appConfig.SetCustomDeviceId(checked);
+        appConfig.SetCustomDeviceId(_checked);
 
         ModifyAppConfig(std::move(appConfig), [this](core::icollection* _coll) {
             initViewElementsFrom(GetAppConfig());
@@ -302,7 +339,15 @@ namespace Ui
         Utils::removeOmicronFile();
     }
 
-    SettingsForTesters::~SettingsForTesters()
+    void SettingsForTesters::onToggleWatchGuiMemory(bool _checked)
     {
+        AppConfig appConfig = GetAppConfig();
+        appConfig.SetWatchGuiMemoryEnabled(_checked);
+
+        ModifyAppConfig(std::move(appConfig), [this](core::icollection* _coll) {
+            initViewElementsFrom(GetAppConfig());
+        }, this);
     }
+
+    SettingsForTesters::~SettingsForTesters() = default;
 }

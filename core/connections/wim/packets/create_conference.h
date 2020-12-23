@@ -47,6 +47,8 @@ namespace core
 
             const std::string& get_conference_url() const { return conference_url_; }
             int64_t get_expires_on_() const { return expires_on_; }
+
+            virtual std::string_view get_method() const override;
         };
     }
 }

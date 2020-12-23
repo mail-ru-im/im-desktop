@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "collection.h"
+#define __STDC_FORMAT_MACROS 1
 #include <inttypes.h>
 
 using namespace core;

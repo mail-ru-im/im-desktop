@@ -6,6 +6,7 @@
 #include "../../core_dispatcher.h"
 #include "../../controls/TextUnit.h"
 #include "../../controls/ContextMenu.h"
+#include "../../controls/TooltipWidget.h"
 #include "../../fonts.h"
 #include "../../utils/utils.h"
 #include "../../utils/UrlParser.h"
@@ -15,11 +16,14 @@
 #include "../contact_list/ContactListModel.h"
 #include "../history_control/complex_message/FileSharingUtils.h"
 #include "../containers/FriendlyContainer.h"
-#include "../sounds/SoundsManager.h"
 #include "../../utils/translator.h"
 #include "utils/stat_utils.h"
 #include "../../styles/ThemeParameters.h"
 #include "../input_widget/InputWidgetUtils.h"
+#ifndef STRIP_AV_MEDIA
+#include "../../media/ptt/AudioUtils.h"
+#include "../sounds/SoundsManager.h"
+#endif
 
 namespace
 {
@@ -40,20 +44,41 @@ namespace
     const int TEXT_OFFSET = 16;
     const int TEXT_HOR_OFFSET = 28;
 
-    QString formatDuration(const int32_t _seconds)
+    QString formatDuration(const int _duration, const int _progress)
     {
-        assert(_seconds >= 0);
-
-        const auto minutes = (_seconds / 60);
-
-        const auto seconds = (_seconds % 60);
-
-        return qsl("%1:%2")
-            .arg(minutes, 2, 10, ql1c('0'))
-            .arg(seconds, 2, 10, ql1c('0'));
+#ifndef STRIP_AV_MEDIA
+        const auto time = (int)(_duration *(100. - _progress) / 100);
+        return ptt::formatDuration(std::chrono::seconds(time));
+#else
+        return qsl("00:00");
+#endif
     }
 
     const std::string MediaTypeName("PTT");
+
+    int getBulletClickableRadius()
+    {
+        return Utils::scale_value(32);
+    }
+
+    int getBulletSize(bool _hovered)
+    {
+        return _hovered ? Utils::scale_value(10) : Utils::scale_value(8);
+    }
+
+    auto getButtonColor()
+    {
+        return Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE);
+    }
+
+    auto getPlayButtonIcon(bool _isPlaying = false)
+    {
+        static const auto iconPlay = Utils::renderSvgScaled(qsl(":/videoplayer/video_play"), QSize(SUB_BUTTON_SIZE, SUB_BUTTON_SIZE), getButtonColor());
+        static const auto iconPause = Utils::renderSvgScaled(qsl(":/videoplayer/video_pause"), QSize(SUB_BUTTON_SIZE, SUB_BUTTON_SIZE), getButtonColor());
+        return _isPlaying ? iconPause : iconPlay;
+    }
+
+    constexpr std::chrono::milliseconds tooltipShowDelay() noexcept { return std::chrono::milliseconds(400); }
 }
 
 namespace Ui
@@ -108,6 +133,7 @@ namespace Ui
         , pause_(false)
         , textVisible_(false)
         , playState_(ButtonState::NORMAL)
+        , datePressed_(false)
         , outgoing_(_outgoing)
         , reqId_(-1)
         , sender_(_sender)
@@ -124,7 +150,7 @@ namespace Ui
         height_ += Utils::scale_value(DATE_OFFSET);
         height_ += Utils::scale_value(VER_OFFSET);
 
-        playIcon_ = Utils::renderSvgScaled(qsl(":/videoplayer/video_play"), QSize(SUB_BUTTON_SIZE, SUB_BUTTON_SIZE), Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE));
+        playIcon_ = getPlayButtonIcon();
         textIcon_ = Utils::renderSvgScaled(qsl(":/ptt/text_icon"), QSize(BUTTON_SIZE, BUTTON_SIZE), Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY));
 
         name_ = TextRendering::MakeTextUnit(Logic::GetFriendlyContainer()->getFriendly(_sender), Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS);
@@ -132,9 +158,9 @@ namespace Ui
         name_->evaluateDesiredSize();
 
         const QString id = Ui::ComplexMessage::extractIdFromFileSharingUri(_link);
-        const auto durationSec = Ui::ComplexMessage::extractDurationFromFileSharingId(id);
+        durationSec_ = Ui::ComplexMessage::extractDurationFromFileSharingId(id);
 
-        time_ = TextRendering::MakeTextUnit(formatDuration(durationSec));
+        time_ = TextRendering::MakeTextUnit(formatDuration(durationSec_, progress_));
         time_->init(Fonts::appFontScaled(13), Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY));
         time_->evaluateDesiredSize();
 
@@ -143,7 +169,7 @@ namespace Ui
 
     void PttItem::draw(QPainter& _p, const QRect& _rect)
     {
-        _p.setRenderHint(QPainter::Antialiasing);
+        _p.setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
         _p.setPen(Qt::NoPen);
 
         switch (playState_)
@@ -219,6 +245,16 @@ namespace Ui
             _p.drawLine(cur, Utils::scale_value(PROGRESS_OFFSET) + offset + _rect.y(), width_ - Utils::scale_value(RIGHT_OFFSET + (showPttRecognized ? BUTTON_SIZE + PREVIEW_RIGHT_OFFSET : 0)), Utils::scale_value(PROGRESS_OFFSET) + offset + _rect.y());
         }
 
+        {
+            Utils::PainterSaver ps(_p);
+            const auto color = Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY);
+            _p.setPen(color);
+            _p.setBrush(color);
+            const auto bulletR = getBulletSize(progressHovered_ || progressPressed_);
+            QRect bullet(cur - bulletR / 2, Utils::scale_value(PROGRESS_OFFSET) + offset + _rect.y() - bulletR / 2, bulletR, bulletR);
+            _p.drawEllipse(bullet);
+        }
+
         if (time_)
         {
             time_->setOffsets(Utils::scale_value(HOR_OFFSET + BUTTON_SIZE + PREVIEW_RIGHT_OFFSET), Utils::scale_value(VER_OFFSET + PROGRESS_OFFSET) + offset + _rect.y());
@@ -257,6 +293,16 @@ namespace Ui
     qint64 PttItem::reqId() const
     {
         return reqId_;
+    }
+
+    void PttItem::setPending(bool _flag)
+    {
+        isPending_ = _flag;
+    }
+
+    bool PttItem::isPending() const
+    {
+        return isPending_;
     }
 
     qint64 PttItem::getMsg() const
@@ -302,16 +348,18 @@ namespace Ui
     void PttItem::setProgress(int _progress)
     {
         progress_ = _progress;
+        if (time_)
+        {
+            time_->setText(formatDuration(durationSec_, progress_));
+            time_->evaluateDesiredSize();
+        }
     }
 
     void PttItem::setPlaying(bool _playing)
     {
         pause_ = false;
         playing_ = _playing;
-        if (!_playing)
-            progress_ = 0;
-
-        playIcon_ = Utils::renderSvgScaled(_playing ? qsl(":/videoplayer/video_pause") : qsl(":/videoplayer/video_play"), QSize(SUB_BUTTON_SIZE, SUB_BUTTON_SIZE), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT));
+        playIcon_ = getPlayButtonIcon(_playing);
     }
 
     void PttItem::setLocalPath(const QString& _localPath)
@@ -321,8 +369,9 @@ namespace Ui
 
     void PttItem::setPause(bool _pause)
     {
+        playing_ = false;
         pause_ = _pause;
-        playIcon_ = Utils::renderSvgScaled(_pause ? qsl(":/videoplayer/video_play") : qsl(":/videoplayer/video_pause"), QSize(SUB_BUTTON_SIZE, SUB_BUTTON_SIZE), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID_PERMANENT));
+        playIcon_ = getPlayButtonIcon(!_pause);
     }
 
     void PttItem::toggleTextVisible()
@@ -366,14 +415,100 @@ namespace Ui
         return r.contains(_pos);
     }
 
+    bool PttItem::isOverProgressBar(const QPoint& _pos) const
+    {
+        return getPlaybackRect().contains(_pos);
+    }
+
+    bool PttItem::isOverBullet(const QPoint& _pos) const
+    {
+        return progressHovered_;
+    }
+
+    void PttItem::updateBulletHoverState(const QPoint& _pos)
+    {
+        progressHovered_ = getBulletRect().contains(_pos);
+    }
+
+    void PttItem::changeProgressPressed(bool _pressed)
+    {
+        progressPressed_ = _pressed;
+    }
+
+    bool PttItem::isProgressPressed() const
+    {
+        return progressPressed_;
+    }
+
+    int PttItem::getProgress(const QPoint& _pos)
+    {
+        if (!_pos.isNull())
+            progress_ = std::round(evaluateProgress(_pos) * 100);
+        return progress_;
+    }
+
+    double PttItem::evaluateProgress(const QPoint& _pos) const
+    {
+        const auto rect = getPlaybackRect();
+        return std::clamp(double(_pos.x() - rect.left()) / rect.width(), 0.0, 1.0);
+    }
+
+    QString PttItem::getTimeString(const QPoint& _pos) const
+    {
+        const auto progress = evaluateProgress(_pos);
+        return Utils::getFormattedTime(std::chrono::milliseconds(int(std::ceil(durationSec_ * progress * 1000))));
+    }
+
+    QPoint PttItem::getTooltipPos(const QPoint& _cursorPos) const
+    {
+        const auto playbackRect = getPlaybackRect();
+        return { std::clamp(_cursorPos.x(), playbackRect.x(), playbackRect.right()), playbackRect.y() };
+    }
+
+    QRect PttItem::getPlaybackRect() const
+    {
+        const auto mult = config::get().is_on(config::features::ptt_recognition) ? 2 : 1;
+        const auto progressWidth = width_ - Utils::scale_value(HOR_OFFSET + RIGHT_OFFSET) - Utils::scale_value(PREVIEW_RIGHT_OFFSET) * mult - Utils::scale_value(BUTTON_SIZE) * mult;
+
+        auto offset = 0;
+        if (name_)
+        {
+            offset += name_->cachedSize().height();
+            offset += Utils::scale_value(NAME_OFFSET);
+        }
+
+        const auto bulletR = getBulletClickableRadius();
+        QRect r(Utils::scale_value(HOR_OFFSET + BUTTON_SIZE + PREVIEW_RIGHT_OFFSET), Utils::scale_value(PROGRESS_OFFSET) + offset - bulletR / 2, progressWidth, bulletR);
+        return r;
+    }
+
+    QRect PttItem::getBulletRect() const
+    {
+        const auto r = getPlaybackRect();
+        const auto cur = r.width() * progress_ / 100.0 + Utils::scale_value(HOR_OFFSET + BUTTON_SIZE + PREVIEW_RIGHT_OFFSET);
+        QRect bullet(0, 0, getBulletClickableRadius(), getBulletClickableRadius());
+        bullet.moveCenter(QPoint(cur, r.center().y()));
+        return bullet;
+    }
+
     void PttItem::setPlayState(const ButtonState& _state)
     {
         playState_ = _state;
     }
 
+    ButtonState PttItem::playState() const
+    {
+        return playState_;
+    }
+
     void PttItem::setTextState(const ButtonState& _state)
     {
         textState_ = _state;
+    }
+
+    ButtonState PttItem::textState() const
+    {
+        return textState_;
     }
 
     bool PttItem::isOverDate(const QPoint& _pos) const
@@ -389,6 +524,13 @@ namespace Ui
             date_->setColor(Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY_ACTIVE));
         else
             date_->setColor(Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY));
+
+        datePressed_ = _active;
+    }
+
+    bool PttItem::isDatePressed() const
+    {
+        return datePressed_;
     }
 
     bool PttItem::isOutgoing() const
@@ -444,20 +586,20 @@ namespace Ui
     {
         connect(Ui::GetDispatcher(), &core_dispatcher::fileSharingFileDownloaded, this, &PttList::onFileDownloaded);
         connect(Ui::GetDispatcher(), &core_dispatcher::speechToText, this, &PttList::onPttText);
-
+#ifndef STRIP_AV_MEDIA
         connect(GetSoundsManager(), &SoundsManager::pttPaused, this, &PttList::onPttPaused);
         connect(GetSoundsManager(), &SoundsManager::pttFinished, this, &PttList::onPttFinished);
-
+#endif // !STRIP_AV_MEDIA
         connect(animation_, &QVariantAnimation::valueChanged, this, [this](const QVariant& value)
         {
             const auto cur = value.toInt();
             for (auto& i : Items_)
             {
-                if (!i->isDateItem() && i->getMsg() == playingIndex_.first && i->getSeq() == playingIndex_.second)
+                if (!i->isDateItem() && isItemPlaying(i))
                 {
                     i->setProgress(cur);
                     if (cur == 100)
-                        QTimer::singleShot(200, this, [this]() { finishPtt(playingId_); update(); });
+                        QTimer::singleShot(200, this, [this]() { finishPtt(playingId_, PttFinish::KeepProgress); update(); });
 
                     update();
                     break;
@@ -546,7 +688,9 @@ namespace Ui
     {
         if (playingId_ != -1)
         {
+#ifndef STRIP_AV_MEDIA
             GetSoundsManager()->pausePtt(playingId_);
+#endif // !STRIP_AV_MEDIA
             playingId_ = -1;
         }
     }
@@ -584,6 +728,7 @@ namespace Ui
 
     void PttList::mousePressEvent(QMouseEvent *_event)
     {
+        const auto leftButton = _event->button() == Qt::LeftButton;
         auto h = 0;
         for (auto& i : Items_)
         {
@@ -592,13 +737,21 @@ namespace Ui
             {
                 auto p = _event->pos();
                 p.setY(p.y() - h);
-                if (i->playClicked(p) || i->pauseClicked(p))
+                if ((i->playClicked(p) || i->pauseClicked(p)) && leftButton)
                 {
                     i->setPlayState(ButtonState::PRESSED);
                 }
-                else if (i->textClicked(p))
+                else if (i->textClicked(p) && leftButton)
                 {
                     i->setTextState(ButtonState::PRESSED);
+                }
+                else if (i->isOverProgressBar(p) && leftButton)
+                {
+                    i->changeProgressPressed(true);
+                    continuePlaying_ = i->isPlaying();
+                    updateItemProgress(i, p);
+                    i->updateBulletHoverState(p);
+                    updateTooltipState(i, p, h);
                 }
                 else
                 {
@@ -606,20 +759,11 @@ namespace Ui
                     i->setTextState(ButtonState::NORMAL);
                 }
             }
+            
+            i->setDateState(false, i->isOverDate(_event->pos()) && leftButton);
 
-            if (i->isOverDate(_event->pos()))
-            {
-                i->setDateState(false, true);
-            }
-            else
-            {
-                i->setDateState(false, false);
-            }
-
-            if (i->isOverMoreButton(_event->pos(), h))
-            {
+            if (i->isOverMoreButton(_event->pos(), h) && leftButton)
                 i->setMoreButtonState(ButtonState::PRESSED);
-            }
 
             h += i->getHeight();
         }
@@ -633,110 +777,160 @@ namespace Ui
     void PttList::mouseReleaseEvent(QMouseEvent *_event)
     {
         Utils::GalleryMediaActionCont cont(MediaTypeName, aimId_);
+        for (auto& i : Items_)
+        {
+            if (continuePlaying_ && i->isProgressPressed())
+            {
+                if (lastProgress_ != 100)
+                    play(i);
+                else
+                    continuePlaying_ = false;
+            }
+            i->changeProgressPressed(false);
+        }
 
         if (_event->button() == Qt::RightButton)
         {
             cont.happened();
             return MediaContentWidget::mouseReleaseEvent(_event);
         }
-
-        if (Utils::clicked(pos_, _event->pos()))
+        
+        auto h = 0;
+        for (auto& i : Items_)
         {
-            auto h = 0;
-            for (auto& i : Items_)
+            auto r = QRect(0, h, width(), i->getHeight());
+            auto p = _event->pos();
+            p.ry() -= h;
+            if (!r.contains(_event->pos()))
             {
-                auto r = QRect(0, h, width(), i->getHeight());
-                if (r.contains(_event->pos()))
-                {
-                    cont.happened();
+                i->setPlayState(ButtonState::NORMAL);
+                i->setTextState(ButtonState::NORMAL);
+                i->setDateState(false, false);
+                i->setMoreButtonState(ButtonState::HIDDEN);
+                i->updateBulletHoverState(p);
+                h += i->getHeight();
+                continue;
+            }
 
-                    auto p = _event->pos();
-                    p.setY(p.y() - h);
-                    if (i->playClicked(p))
+            if (i->playClicked(p))
+            {
+                if (i->playState() == ButtonState::PRESSED)
+                {
+                    i->setPlaying(true);
+                    auto localPath = i->getLocalPath();
+                    if (localPath.isEmpty())
                     {
-                        i->setPlaying(true);
-                        auto localPath = i->getLocalPath();
-                        if (localPath.isEmpty())
-                        {
-                            auto reqId = Ui::GetDispatcher()->downloadSharedFile(aimId_, i->getLink(), true, QString(), true);
-                            i->setReqId(reqId);
-                            RequestIds_.push_back(reqId);
-                        }
-                        else
-                        {
-                            play(i);
-                        }
-                        i->setPlayState(ButtonState::HOVERED);
-                    }
-                    else if (i->pauseClicked(p))
-                    {
-                        i->setPause(true);
-                        GetSoundsManager()->pausePtt(playingId_);
-                        lastProgress_ = animation_->state() == QAbstractAnimation::Stopped ? 0 : animation_->currentValue().toDouble();
-                        animation_->pause();
-                        update();
-                        i->setPlayState(ButtonState::HOVERED);
-                    }
-                    else if (i->textClicked(p))
-                    {
-                        if (i->hasText())
-                        {
-                            i->toggleTextVisible();
-                            invalidateHeight();
-                        }
-                        else
-                        {
-                            auto reqId = Ui::GetDispatcher()->pttToText(i->getLink(), Utils::GetTranslator()->getLang());
-                            i->setReqId(reqId);
-                            RequestIds_.push_back(reqId);
-                        }
-                        i->setTextState(ButtonState::HOVERED);
+                        auto reqId = Ui::GetDispatcher()->downloadSharedFile(aimId_, i->getLink(), true, QString(), true);
+                        i->setReqId(reqId);
+                        RequestIds_.push_back(reqId);
                     }
                     else
                     {
-                        i->setPlayState(ButtonState::NORMAL);
-                        i->setTextState(ButtonState::NORMAL);
+                        play(i);
                     }
+                    cont.happened();
                 }
-                if (i->isOverDate(_event->pos()))
+                i->setPlayState(ButtonState::HOVERED);
+            }
+            else if (i->pauseClicked(p))
+            {
+                if (i->playState() == ButtonState::PRESSED)
+                {
+                    i->setPause(true);
+#ifndef STRIP_AV_MEDIA
+                    GetSoundsManager()->pausePtt(playingId_);
+#endif // !STRIP_AV_MEDIA
+                    lastProgress_ = animation_->state() == QAbstractAnimation::Stopped ? 0 : animation_->currentValue().toDouble();
+                    animation_->pause();
+                    cont.happened();
+                }
+                i->setPlayState(ButtonState::HOVERED);
+            }
+            else if (i->textClicked(p))
+            {
+                if (i->textState() == ButtonState::PRESSED)
+                {
+                    if (i->hasText())
+                    {
+                        i->toggleTextVisible();
+                        invalidateHeight();
+                    }
+                    else
+                    {
+                        auto reqId = Ui::GetDispatcher()->pttToText(i->getLink(), Utils::GetTranslator()->getLang());
+                        i->setReqId(reqId);
+                        RequestIds_.push_back(reqId);
+                    }
+                    cont.happened();
+                }
+                i->setTextState(ButtonState::HOVERED);
+            }
+            else
+            {
+                i->setPlayState(ButtonState::NORMAL);
+                i->setTextState(ButtonState::NORMAL);
+            }
+
+            if (i->isOverDate(_event->pos()))
+            {
+                if (i->isDatePressed())
                 {
                     Q_EMIT Logic::getContactListModel()->select(aimId_, i->getMsg(), Logic::UpdateChatSelection::No);
-                    i->setDateState(true, false);
+                    cont.happened();
                 }
-                else
-                {
-                    i->setDateState(false, false);
-                }
+                i->setDateState(true, false);
+            }
+            else
+            {
+                i->setDateState(false, false);
+            }
 
+            if (i->isOverMoreButton(_event->pos(), h))
+            {
                 if (i->moreButtonState() == ButtonState::PRESSED)
                 {
                     cont.happened();
-
-                    if (i->isOverMoreButton(_event->pos(), h))
-                        i->setMoreButtonState(ButtonState::HOVERED);
-                    else
-                        i->setMoreButtonState(ButtonState::NORMAL);
-
-                    if (Utils::clicked(pos_, _event->pos()))
-                        showContextMenu(ItemData(i->getLink(), i->getMsg(), i->sender(), i->time()), _event->pos(), true);
+                    showContextMenu(ItemData(i->getLink(), i->getMsg(), i->sender(), i->time()), _event->pos(), true);
                 }
-
-                h += i->getHeight();
+                i->setMoreButtonState(ButtonState::HOVERED);
             }
+            else
+            {
+                i->setMoreButtonState(ButtonState::NORMAL);
+            }
+
+            i->updateBulletHoverState(p);
+            const auto overProgress = i->isOverProgressBar(p);
+            if (overProgress)
+                updateTooltipState(i, p, h);
+
+            h += i->getHeight();
         }
+        
+
+        update();
     }
 
     void PttList::mouseMoveEvent(QMouseEvent* _event)
     {
         auto h = 0;
         auto point = false;
+        const bool leftButtonPressed = _event->buttons() & Qt::LeftButton;
+        const bool rightButtonPressed = _event->buttons() & Qt::RightButton;
+        bool tooltipForced = false;
+
         for (auto& i : Items_)
         {
             auto r = QRect(0, h, width(), i->getHeight());
-            if (r.contains(_event->pos()))
+            const auto progressPressed = i->isProgressPressed();
+            const auto oneOfButtonsPressed = i->playState() == ButtonState::PRESSED || i->textState() == ButtonState::PRESSED || i->isDatePressed() || i->moreButtonState() == ButtonState::PRESSED;
+            const auto containsCursor = r.contains(_event->pos());
+            const auto hovered = containsCursor && !leftButtonPressed && !rightButtonPressed;
+
+            auto p = _event->pos();
+            p.ry() -= h;
+            if (hovered && !oneOfButtonsPressed)
             {
-                auto p = _event->pos();
-                p.setY(p.y() - h);
                 if (i->playClicked(p) || i->pauseClicked(p))
                 {
                     i->setPlayState(ButtonState::HOVERED);
@@ -752,34 +946,57 @@ namespace Ui
                     i->setPlayState(ButtonState::NORMAL);
                     i->setTextState(ButtonState::NORMAL);
                 }
-            }
 
-            if (i->isOverDate(_event->pos()))
-            {
-                point = true;
-                i->setDateState(true, false);
-            }
-            else
-            {
-                i->setDateState(false, false);
-            }
-
-            if (i->isOverMoreButton(_event->pos(), h))
-            {
-                i->setMoreButtonState(ButtonState::HOVERED);
-                point = true;
-            }
-            else
-            {
-                if (r.contains(_event->pos()))
-                    i->setMoreButtonState(ButtonState::NORMAL);
+                if (i->isOverDate(_event->pos()))
+                {
+                    point = true;
+                    i->setDateState(true, false);
+                }
                 else
-                    i->setMoreButtonState(ButtonState::HIDDEN);
+                {
+                    i->setDateState(false, false);
+                }
+
+                if (i->isOverMoreButton(_event->pos(), h))
+                {
+                    i->setMoreButtonState(ButtonState::HOVERED);
+                    point = true;
+                }
+                else
+                {
+                    i->setMoreButtonState(ButtonState::NORMAL);
+                }
             }
+            if (!hovered && !oneOfButtonsPressed && !progressPressed)
+                i->setMoreButtonState(ButtonState::HIDDEN);
+
+            const auto overProgress = i->isOverProgressBar(p);
+            const auto progressHovered = overProgress && !leftButtonPressed;
+            const auto dragProgress = progressPressed && leftButtonPressed;
+
+            if (!leftButtonPressed && !rightButtonPressed)
+                i->updateBulletHoverState(p);
+            
+            if ((progressHovered || dragProgress) && !oneOfButtonsPressed && !rightButtonPressed)
+            {
+                point = true;
+                continuePlaying_ &= progressPressed;
+
+                tooltipForced = true;
+                if (dragProgress)
+                    updateItemProgress(i, p);
+                updateTooltipState(i, p, h);
+            }
+
+            point |= oneOfButtonsPressed;
 
             h += i->getHeight();
         }
 
+        Tooltip::forceShow(tooltipForced);
+        if (!tooltipForced)
+            Tooltip::hide();
+        point &= !rightButtonPressed;
         setCursor(point ? Qt::PointingHandCursor : Qt::ArrowCursor);
         update();
     }
@@ -787,8 +1004,12 @@ namespace Ui
     void PttList::leaveEvent(QEvent* _event)
     {
         for (auto& i : Items_)
+        {
             i->setMoreButtonState(ButtonState::HIDDEN);
+            i->changeProgressPressed(false);
+        }
 
+        Tooltip::forceShow(false);
         update();
         MediaContentWidget::leaveEvent(_event);
     }
@@ -811,7 +1032,11 @@ namespace Ui
             if (i->reqId() == _seq)
             {
                 i->setLocalPath(_result.filename_);
-                play(i);
+                lastProgress_ = i->getProgress();
+                if (i->isPending())
+                    updateAnimation(i);
+                else
+                    play(i);
                 break;
             }
         }
@@ -868,17 +1093,18 @@ namespace Ui
         invalidateHeight();
     }
 
-    void PttList::finishPtt(int id)
+    void PttList::finishPtt(int id, const PttFinish _state)
     {
         if (id != -1 && id == playingId_)
         {
             for (auto& i : Items_)
             {
-                if (!i->isDateItem() && i->getMsg() == playingIndex_.first && i->getSeq() == playingIndex_.second)
+                if (!i->isDateItem() && isItemPlaying(i))
                 {
                     animation_->stop();
                     i->setPlaying(false);
-                    lastProgress_ = 0;
+                    if (_state == PttFinish::DropProgress)
+                        i->setProgress(0);
                     playingId_ = -1;
                     playingIndex_ = std::make_pair(-1, -1);
                     break;
@@ -887,33 +1113,36 @@ namespace Ui
         }
     }
 
-    void PttList::play(std::unique_ptr<BasePttItem>& _item)
+    void PttList::play(const std::unique_ptr<BasePttItem>& _item)
     {
+#ifndef STRIP_AV_MEDIA
         if (!_item->isPlaying() || _item->getLocalPath().isEmpty())
             return;
 
-        if (_item->getMsg() != playingIndex_.first || _item->getSeq() != playingIndex_.second)
-            finishPtt(playingId_);
+        if (!isItemPlaying(_item))
+            finishPtt(playingId_, PttFinish::KeepProgress);
 
-        int duration = 0;
-        playingId_ = GetSoundsManager()->playPtt(_item->getLocalPath(), playingId_, duration);
-        Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::chatscr_playptt_action, { { "from_gallery", "yes" },  { "chat_type", Ui::getStatsChatType() } });
-        playingIndex_ = std::make_pair(_item->getMsg(), _item->getSeq());
+        int duration = initAnimation(_item, AnimationState::Play);
+        lastProgress_ = lastProgress_ == 100 ? 0 : lastProgress_;
+        animation_->stop();
+        
 
-        if (animation_->state() != QAbstractAnimation::Running)
+        auto updateProgress = [this, &_item, duration]()
         {
-            auto from = 0;
-            if (animation_->state() == QAbstractAnimation::Paused)
-            {
-                from = lastProgress_;
-                duration -= duration * lastProgress_ / 100;
-            }
-            animation_->stop();
-            animation_->setStartValue(from);
-            animation_->setEndValue(100);
-            animation_->setDuration(duration);
+            GetSoundsManager()->setProgressOffset(playingId_, (lastProgress_ * 1.) / 100);
+            animation_->setStartValue(lastProgress_);
+            animation_->setDuration(duration * (100. - lastProgress_) / 100);
+            _item->setProgress(lastProgress_);
             animation_->start();
-        }
+        };
+
+#ifdef USE_SYSTEM_OPENAL
+        QTimer::singleShot(20, this, updateProgress);
+#else
+        updateProgress();
+#endif
+
+#endif // !STRIP_AV_MEDIA
     }
 
     void PttList::invalidateHeight()
@@ -990,15 +1219,95 @@ namespace Ui
         {
             for (auto& i : Items_)
             {
-                if (!i->isDateItem() && i->getMsg() == playingIndex_.first && i->getSeq() == playingIndex_.second)
+                if (!i->isDateItem() && isItemPlaying(i))
                 {
-                    i->setPause(true);
-                    lastProgress_ = animation_->state() == QAbstractAnimation::Stopped ? 0 : animation_->currentValue().toInt();
-                    animation_->pause();
+                    if (!continuePlaying_)
+                        i->setPause(true);
+                    lastProgress_ = animation_->state() == QAbstractAnimation::Stopped ? lastProgress_ : animation_->currentValue().toInt();
+                    if (animation_->state() != QAbstractAnimation::Stopped)
+                        animation_->pause();
                     update();
                     break;
                 }
             }
         }
+    }
+
+    void Ui::PttList::updateTooltipState(const std::unique_ptr<BasePttItem>& _item, const QPoint& _p, int _dH)
+    {
+        if (_item->isOverProgressBar(_p) || _item->isProgressPressed())
+        {
+            tooltipPos_ = _item->getTooltipPos(_p);
+            tooltipPos_.ry() += _dH;
+            tooltipText_ = _item->getTimeString(_p);
+            showTooltip();
+        }
+        else
+        {
+            Tooltip::hide();
+        }
+
+    }
+
+    bool Ui::PttList::isItemPlaying(const std::unique_ptr<BasePttItem>& _item) const
+    {
+        return _item->getMsg() == playingIndex_.first && _item->getSeq() == playingIndex_.second;
+    }
+
+    int Ui::PttList::initAnimation(const std::unique_ptr<BasePttItem>& _item, AnimationState _state)
+    {
+        int duration = 0;
+#ifndef STRIP_AV_MEDIA
+        const auto storedProgress = _item->getProgress();
+        playingId_ = GetSoundsManager()->playPtt(_item->getLocalPath(), playingId_, duration);
+        if (_state == AnimationState::Pause)
+            GetSoundsManager()->pausePtt(playingId_);
+
+        playingIndex_ = { _item->getMsg(), _item->getSeq() };
+        animation_->setEndValue(100);
+
+        if (_state == AnimationState::Play)
+            Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::chatscr_playptt_action, { { "from_gallery", "yes" },  { "chat_type", Ui::getStatsChatType() } });
+        else
+            animation_->stop();
+        lastProgress_ = storedProgress;
+#endif // !STRIP_AV_MEDIA
+        return duration;
+    }
+
+    void Ui::PttList::updateAnimation(std::unique_ptr<BasePttItem>& _item)
+    {
+        auto duration = initAnimation(_item, AnimationState::Pause);
+        lastProgress_ = _item->getProgress();
+        animation_->setStartValue(lastProgress_);
+        animation_->setDuration(duration * (100. - lastProgress_) / 100);
+        _item->setProgress(lastProgress_);
+        _item->setPending(false);
+        update();
+    }
+
+    void Ui::PttList::updateItemProgress(std::unique_ptr<BasePttItem>& _item, const QPoint& _pos)
+    {
+        _item->getProgress(_pos);
+        auto localPath = _item->getLocalPath();
+        if (localPath.isEmpty())
+        {
+            auto reqId = Ui::GetDispatcher()->downloadSharedFile(aimId_, _item->getLink(), true, QString(), true);
+            _item->setReqId(reqId);
+            _item->setPending(true);
+            RequestIds_.push_back(reqId);
+        }
+        else
+        {
+            updateAnimation(_item);
+        }
+    }
+
+    void Ui::PttList::showTooltip() const
+    {
+        auto pos = mapToGlobal(tooltipPos_);
+        const auto r = getBulletClickableRadius();
+        pos.rx() -= r / 2;
+        Tooltip::show(tooltipText_, QRect(pos, QSize(r, r)));
     }
 }

@@ -96,7 +96,7 @@ namespace omicron
         constexpr auto vcs_webinar_enabled = "vcs_webinar_enabled";
         constexpr auto vcs_room = "vcs_room";
 
-        constexpr auto reactions_initial_set = "reactions_initial_set";
+        constexpr auto reactions_initial_set = "reactions_initial_set_json";
         constexpr auto show_reactions = "show_reactions";
 
         constexpr auto subscr_renew_interval_status = "subscr_renew_interval_status";
@@ -112,13 +112,38 @@ namespace omicron
 
         constexpr auto force_update_check_allowed = "force_update_check_allowed";
 
+        constexpr auto webp_preview_accepted = "webp_preview_accepted";
+        constexpr auto webp_original_accepted = "webp_original_accepted";
+        constexpr auto webp_screenshot_enabled = "webp_screenshot_enabled";
+        constexpr auto webp_max_file_size_to_convert = "webp_max_file_size_to_convert";
+
         constexpr auto call_room_info_enabled = "call_room_info_enabled";
         constexpr auto statistics_mytracker = "statistics_mytracker";
         constexpr auto dns_workaround_option = "dns_workaround_enabled";
         constexpr auto dns_resolve_timeout_sec = "dns_resolve_timeout_sec";
+        constexpr auto fallback_to_ip_mode_enabled = "fallback_to_ip_mode_enabled";
         constexpr auto external_emoji_url = "external_emoji_url";
 
         constexpr auto ivr_login_enabled = "ivr_login_enabled";
         constexpr auto ivr_resend_count_to_show = "ivr_resend_count_to_show";
+        constexpr auto show_your_invites_to_group_enabled = "show_your_invites_to_group_enabled";
+        constexpr auto group_invite_blacklist_enabled = "group_invite_blacklist_enabled";
+        constexpr auto notify_network_change = "notify_network_change";
+
+        constexpr auto invite_by_sms = "invite_by_sms";
+        constexpr auto show_sms_notify_setting = "show_sms_notify_setting";
+
+        constexpr auto animated_stickers_in_picker_disabled = "animated_stickers_in_picker_disabled";
+        constexpr auto animated_stickers_in_chat_disabled = "animated_stickers_in_chat_disabled";
+
+        constexpr auto contact_list_smooth_scrolling_enabled = "contact_list_smooth_scrolling_enabled";
+
+        constexpr auto max_parallel_sticker_downloads = "max_parallel_sticker_downloads";
+
+        constexpr auto silent_message_delete = "silent_message_delete";
+        
+        constexpr auto background_ptt_play_enabled = "background_ptt_play_enabled";
+
+        constexpr auto remove_deleted_from_notifications = "remove_deleted_from_notifications";
     }
 }

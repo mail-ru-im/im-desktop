@@ -29,7 +29,7 @@ public:
     virtual ~FrameRenderer();
 
     virtual void updateFrame(const QImage& _image);
-    QImage getActiveImage() const;
+    const QImage& getActiveImage() const noexcept { return activeImage_; }
 
     bool isActiveImageNull() const;
 

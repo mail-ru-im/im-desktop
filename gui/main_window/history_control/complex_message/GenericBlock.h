@@ -100,7 +100,7 @@ public:
 
     void onActivityChanged(const bool isActive) override;
 
-    void onVisibilityChanged(const bool isVisible) override;
+    void onVisibleRectChanged(const QRect& _visibleRect) override;
 
     void onDistanceToViewportChanged(const QRect& _widgetAbsGeometry, const QRect& _viewportVisibilityAbsRect) override;
 

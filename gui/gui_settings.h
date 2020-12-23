@@ -89,10 +89,7 @@ Q_SIGNALS:
     public:
 
         template <class t_>
-        void set_value(const QString& _name, const t_& _value)
-        {
-            assert(false);
-        }
+        void set_value(const QString& _name, const t_& _value) = delete;
 
         template <class t_>
         void set_value(const char* _name, const t_& _value)
@@ -132,6 +129,13 @@ Q_SIGNALS:
             return values_.find(_name) != values_.end();
         }
 
+        template <class t_>
+        bool contains_value(const t_& _name, const QString& _prefix) const
+        {
+            QString name = _prefix % QLatin1String(_name);
+            return values_.find(name) != values_.end();
+        }
+
     private:
 
         int shadowWidth_;
@@ -157,8 +161,11 @@ Q_SIGNALS:
     template<> void qt_gui_settings::set_value<std::string>(const QString& _name, const std::string& _value);
     template<> std::string qt_gui_settings::get_value<std::string>(const char* _name, const std::string& _defaultValue) const;
     template<> void qt_gui_settings::set_value<int>(const QString& _name, const int& _value);
+    template<> void qt_gui_settings::set_value<int64_t>(const QString& _name, const int64_t& _value);
     template <> int qt_gui_settings::get_value<int>(QStringView _name, const int& _defaultValue) const;
     template <> int qt_gui_settings::get_value<int>(const char* _name, const int& _defaultValue) const;
+    template <> int64_t qt_gui_settings::get_value<int64_t>(QStringView _name, const int64_t& _defaultValue) const;
+    template <> int64_t qt_gui_settings::get_value<int64_t>(const char* _name, const int64_t& _defaultValue) const;
     template<> void qt_gui_settings::set_value<double>(const QString& _name, const double& _value);
     template <> double qt_gui_settings::get_value<double>(QStringView _name, const double& _defaultValue) const;
     template <> double qt_gui_settings::get_value<double>(const char* _name, const double& _defaultValue) const;

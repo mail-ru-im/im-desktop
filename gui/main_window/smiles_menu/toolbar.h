@@ -2,6 +2,8 @@
 
 namespace Ui
 {
+    class LottiePlayer;
+
     namespace Smiles
     {
         class AttachedView
@@ -42,7 +44,7 @@ namespace Ui
             Q_OBJECT
 
         public:
-            TabButton(QWidget* _parent, const QPixmap& _pixmap);
+            TabButton(QWidget* _parent, QPixmap _pixmap);
 
             void AttachView(const AttachedView& _view);
             const AttachedView& GetAttachedView() const;
@@ -54,15 +56,25 @@ namespace Ui
             int getSetId() const noexcept { return setId_; }
 
             void setPixmap(QPixmap _pixmap);
+            void setLottie(const QString& _path);
+
+            void onVisibilityChanged(bool _visible);
+
+            static QSize iconSize();
 
         protected:
             void paintEvent(QPaintEvent* _e) override;
+            void resizeEvent(QResizeEvent* event) override;
 
         private:
-            AttachedView attachedView_;
-            bool fixed_;
-            QPixmap pixmap_;
+            QRect iconRect() const;
+
+        private:
+            AttachedView attachedView_ = nullptr;
+            bool fixed_ = false;
             int32_t setId_ = -1;
+            QPixmap pixmap_;
+            LottiePlayer* lottie_ = nullptr;
         };
 
         //////////////////////////////////////////////////////////////////////////
@@ -113,9 +125,11 @@ namespace Ui
             void addButton(TabButton* _button);
             void scrollStep(direction _direction);
 
-        private Q_SLOTS:
+        private:
             void touchScrollStateChanged(QScroller::State);
             void buttonStoreClick();
+
+            void updateItemsVisibility();
 
         protected:
             void paintEvent(QPaintEvent* _e) override;
@@ -128,7 +142,8 @@ namespace Ui
 
             void Clear(const bool _delFixed = false);
 
-            TabButton* addButton(const QPixmap& _icon);
+            TabButton* addButton(QPixmap _icon);
+            TabButton* addButton(int32_t _setId);
             TabButton* selectedButton() const;
             TabButton* getButton(int32_t _setId) const;
 

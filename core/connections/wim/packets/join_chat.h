@@ -26,6 +26,8 @@ namespace core
             join_chat(wim_packet_params _params, const std::string& _stamp);
 
             virtual ~join_chat();
+
+            virtual std::string_view get_method() const override;
         };
 
     }

@@ -13,61 +13,64 @@ namespace
 {
     using ReverseIndexMap = std::vector<int32_t>;
 
-    int32_t decodeDuration(const QStringRef &str);
+    int32_t decodeDuration(QStringView str);
 
-    int32_t decodeSize(const QChar qch0, const QChar qch1);
+    int32_t decodeSize(QChar qch0, QChar qch1);
 
     const ReverseIndexMap& getReverseIndexMap();
 }
 
-core::file_sharing_content_type extractContentTypeFromFileSharingId(const QStringRef& _id)
+core::file_sharing_content_type extractContentTypeFromFileSharingId(QStringView _id)
 {
-    core::file_sharing_content_type type;
-
     if (_id.isEmpty())
-        return type;
+        return {};
 
     const auto id0 = _id.at(0).toLatin1();
+    core::file_sharing_content_type type;
 
-    if (const auto is_gif = (id0 >= '4') && (id0 <= '5'); is_gif)
+    const auto isOneOf = [id0](std::string_view _values)
+    {
+        return _values.find(id0) != std::string_view::npos;
+    };
+
+    if (isOneOf("45")) // gif
     {
         type.type_ = core::file_sharing_base_content_type::gif;
         if (id0 == '5')
             type.subtype_ = core::file_sharing_sub_content_type::sticker;
-
-        return type;
     }
-
-    if (const auto is_ppt = (id0 == 'I') || (id0 == 'J'); is_ppt)
+    else if (isOneOf("IJ")) // ptt
     {
         type.type_ = core::file_sharing_base_content_type::ptt;
-
-        return type;
     }
-
-    if (const auto is_image = (id0 >= '0') && (id0 <= '7'); is_image)
+    else if (isOneOf("L")) // lottie sticker
+    {
+        type.type_ = core::file_sharing_base_content_type::lottie;
+        type.subtype_ = core::file_sharing_sub_content_type::sticker;
+    }
+    else if (isOneOf("01234567")) // image
     {
         type.type_ = core::file_sharing_base_content_type::image;
         if (id0 == '2')
             type.subtype_ = core::file_sharing_sub_content_type::sticker;
-
-        return type;
     }
-
-    if (const auto is_video = ((id0 >= '8') && (id0 <= '9')) || ((id0 >= 'A') && (id0 <= 'F')); is_video)
+    else if (isOneOf("89ABCDEF")) // video
     {
         type.type_ = core::file_sharing_base_content_type::video;
         if (id0 == 'D')
             type.subtype_ = core::file_sharing_sub_content_type::sticker;
-
-        return type;
     }
     return type;
 }
 
-int32_t extractDurationFromFileSharingId(const QStringRef &id)
+bool isLottieFileSharingId(QStringView _id)
 {
-    const auto isValidId = (id.length() >= 5);
+    return extractContentTypeFromFileSharingId(_id).is_lottie();
+}
+
+int32_t extractDurationFromFileSharingId(QStringView id)
+{
+    const auto isValidId = (id.size() >= 5);
     if (!isValidId)
     {
         assert(!"invalid file sharing id");
@@ -79,9 +82,9 @@ int32_t extractDurationFromFileSharingId(const QStringRef &id)
     return decodeDuration(id.mid(1, 4));
 }
 
-QSize extractSizeFromFileSharingId(const QStringRef &id)
+QSize extractSizeFromFileSharingId(QStringView id)
 {
-    const auto isValidId = (id.length() > 5);
+    const auto isValidId = (id.size() > 5);
     if (!isValidId)
     {
         assert(!"invalid id");
@@ -97,7 +100,7 @@ QSize extractSizeFromFileSharingId(const QStringRef &id)
     return QSize(width, height);
 }
 
-QString extractIdFromFileSharingUri(const QStringRef &uri)
+QString extractIdFromFileSharingUri(QStringView uri)
 {
     assert(!uri.isEmpty());
     if (uri.isEmpty())
@@ -118,12 +121,12 @@ namespace
 
     constexpr auto INDEX_DIVISOR = 62;
 
-    int32_t decodeDuration(const QStringRef &str)
+    int32_t decodeDuration(QStringView str)
     {
-        const static auto arr = qsl("0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ");
+        static constexpr auto arr = QStringView(u"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ");
         int32_t result = 0;
         auto i = 0;
-        for (const auto qch : str)
+        for (auto qch : str)
         {
             auto value = arr.indexOf(qch);
             const auto exp = arr.size() * (str.size() - i - 1);
@@ -137,7 +140,7 @@ namespace
         return result;
     }
 
-    int32_t decodeSize(const QChar qch0, const QChar qch1)
+    int32_t decodeSize(QChar qch0, QChar qch1)
     {
         const auto ch0 = (size_t)qch0.toLatin1();
         const auto ch1 = (size_t)qch1.toLatin1();

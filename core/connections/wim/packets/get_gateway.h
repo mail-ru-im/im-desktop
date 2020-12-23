@@ -40,6 +40,7 @@ namespace core
 
             const std::string& get_host() const noexcept { return host_; }
             const std::string& get_url() const noexcept { return url_; }
+            virtual std::string_view get_method() const override;
         };
     }
 }

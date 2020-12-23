@@ -13,6 +13,11 @@ group_pending_cancel::group_pending_cancel(wim_packet_params _params, std::strin
     assert(!sn_.empty());
 }
 
+std::string_view group_pending_cancel::get_method() const
+{
+    return "group/pending/cancel";
+}
+
 int32_t group_pending_cancel::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     rapidjson::Document doc(rapidjson::Type::kObjectType);
@@ -22,7 +27,7 @@ int32_t group_pending_cancel::init_request(const std::shared_ptr<core::http_requ
     node_params.AddMember("sn", sn_, a);
     doc.AddMember("params", std::move(node_params), a);
 
-    setup_common_and_sign(doc, a, _request, "group/pending/cancel");
+    setup_common_and_sign(doc, a, _request, get_method());
 
     if (!params_.full_log_)
     {

@@ -31,7 +31,9 @@ enum class loader_errors
     cancelled               = 122,
     no_link_preview         = 123,
     metainfo_not_found      = 124,
-    http_client_error = 125,
+    http_client_error       = 125,
+    come_back_later         = 126,
+    decompress              = 127,
 
     internal_logic_error    = 201
 };

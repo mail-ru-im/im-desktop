@@ -32,13 +32,32 @@ platform_linux::GraphicsPanelLinux::GraphicsPanelLinux(QWidget* _parent,
     std::vector<QPointer<Ui::BaseVideoPanel>>&/* panels*/, bool /*primaryVideo*/)
     : platform_specific::GraphicsPanel(_parent)
 {
-    //glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 2);
-    //glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+    parent_ = _parent;
+}
+
+platform_linux::GraphicsPanelLinux::~GraphicsPanelLinux()
+{
+    parent_ = nullptr;
+    if (videoWindow_)
+        freeNative();
+}
+
+void platform_linux::GraphicsPanelLinux::initNative(platform_specific::ViewResize _mode)
+{
+    assert(!videoWindow_);
+    if (videoWindow_)
+        return;
     glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
-    glfwWindowHint(GLFW_MOUSE_PASSTHRU, Ui::GetDispatcher()->getVoipController().isCallVCS() ? GLFW_TRUE : GLFW_FALSE);
+    glfwWindowHint(GLFW_TRANSPARENT_FRAMEBUFFER, GLFW_TRUE);
+
+    const auto passMouseEvents = _mode == platform_specific::ViewResize::Adjust || Ui::GetDispatcher()->getVoipController().isCallVCS();
+    glfwWindowHint(GLFW_MOUSE_PASSTHRU, passMouseEvents ? GLFW_TRUE : GLFW_FALSE);
     std::lock_guard<std::mutex> lock(g_wnd_mutex);
     glfwSetRoot((void*)QWidget::winId());
-    videoWindow_ = glfwCreateWindow(600, 400, "Video", NULL, NULL);
+    QRect r = QHighDpi::toNativePixels(rect(), window()->windowHandle());
+    videoWindow_ = glfwCreateWindow(r.width(), r.height(), "Video", NULL, NULL);
+    if (!videoWindow_)
+        return;
     glfwMakeContextCurrent(videoWindow_);
     glfwSetKeyCallback(videoWindow_, keyCallback);
     glfwSetInputMode(videoWindow_, GLFW_STICKY_MOUSE_BUTTONS, 1);
@@ -49,14 +68,24 @@ platform_linux::GraphicsPanelLinux::GraphicsPanelLinux(QWidget* _parent,
         assert(0);
     }
     glfwMakeContextCurrent(0);
-
-    parent_ = _parent;
 }
 
-platform_linux::GraphicsPanelLinux::~GraphicsPanelLinux()
+void platform_linux::GraphicsPanelLinux::freeNative()
 {
-    parent_ = nullptr;
+    assert(videoWindow_);
+    if (!videoWindow_)
+        return;
     glfwDestroyWindow(videoWindow_);
+    videoWindow_ = nullptr;
+}
+
+void platform_linux::GraphicsPanelLinux::setOpacity(double _opacity)
+{
+    if (!videoWindow_ || !isOpacityAvailable())
+        return;
+    glfwMakeContextCurrent(videoWindow_);
+    glfwSetWindowOpacity(videoWindow_, (float)_opacity);
+    glfwMakeContextCurrent(0);
 }
 
 WId platform_linux::GraphicsPanelLinux::frameId() const
@@ -64,18 +93,19 @@ WId platform_linux::GraphicsPanelLinux::frameId() const
     return (WId)videoWindow_;
 }
 
-void platform_linux::GraphicsPanelLinux::createdTalk(bool is_vcs)
-{
-    glfwSetWindowAttrib(videoWindow_, GLFW_MOUSE_PASSTHRU, is_vcs ? GLFW_TRUE : GLFW_FALSE);
-}
-
 void platform_linux::GraphicsPanelLinux::resizeEvent(QResizeEvent* _e)
 {
+    if (!videoWindow_)
+        return;
     QWidget::resizeEvent(_e);
-    QRect qt_r = rect();
-    QRect r = QHighDpi::toNativePixels(qt_r, window()->windowHandle());
-    glfwSetWindowPos(videoWindow_, r.x(), r.y());
-    glfwSetWindowSize(videoWindow_, r.width(), r.height());
+    if (!videoWindow_)
+        return;
+    QRect r = QHighDpi::toNativePixels(rect(), window()->windowHandle());
+    if (r.height() != 0)
+    {
+        glfwSetWindowPos(videoWindow_, r.x(), r.y());
+        glfwSetWindowSize(videoWindow_, r.width(), r.height());
+    }
 }
 
 void platform_linux::GraphicsPanelLinux::keyCallback(GLFWwindow* _window, int _key, int _scancode, int _actions, int _mods)
@@ -90,4 +120,28 @@ void platform_linux::GraphicsPanelLinux::keyCallback(GLFWwindow* _window, int _k
                 qApp->postEvent(parent_, new QKeyEvent(QEvent::KeyPress, Qt::Key_Q, Qt::ControlModifier));
         }
     }
+}
+
+bool platform_linux::GraphicsPanelLinux::isOpacityAvailable() const
+{
+    bool res = false;
+    if (videoWindow_)
+    {
+        glfwMakeContextCurrent(videoWindow_);
+        static const QVersionNumber minReq(3, 3);
+        const auto version = QString::fromUtf8((char*)glGetString(GL_VERSION));
+        if (!version.isEmpty())
+        {
+            const auto curVersion = QVersionNumber::fromString(version);
+            res = curVersion >= minReq;
+        }
+        glfwMakeContextCurrent(0);
+    }
+    return res;
+}
+
+void platform_linux::showOnCurrentDesktop(platform_specific::ShowCallback _callback)
+{
+    if (_callback)
+        _callback();
 }

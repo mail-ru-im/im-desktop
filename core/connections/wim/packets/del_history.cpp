@@ -33,7 +33,7 @@ int32_t del_history::init_request(const std::shared_ptr<core::http_request_simpl
 
     doc.AddMember("params", std::move(node_params), a);
 
-    setup_common_and_sign(doc, a, _request, "delHistory");
+    setup_common_and_sign(doc, a, _request, get_method());
 
     __INFO(
         "delete_history",
@@ -68,6 +68,10 @@ int32_t del_history::on_response_error_code()
     return robusto_packet::on_response_error_code();
 }
 
+std::string_view del_history::get_method() const
+{
+    return "delHistory";
+}
 
 
 CORE_WIM_NS_END

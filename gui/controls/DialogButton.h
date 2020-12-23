@@ -9,6 +9,7 @@ namespace Ui
         CONFIRM_DELETE,
         DISABLED,
         RESTART,
+        CUSTOM,
 
         DEFAULT = CONFIRM
     };
@@ -23,6 +24,9 @@ namespace Ui
         bool isEnabled() const;
         void updateWidth();
         void setEnabled(bool _isEnabled);
+        void setBackgroundColor(QColor _normal, QColor _hover, QColor _pressed);
+        void setBorderColor(QColor _normal, QColor _hover, QColor _pressed);
+        void setTextColor(QColor _normal, QColor _hover, QColor _pressed);
     protected:
         void paintEvent(QPaintEvent *_e) override;
         void leaveEvent(QEvent *_e) override;

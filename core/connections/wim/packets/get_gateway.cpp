@@ -32,6 +32,11 @@ get_gateway::get_gateway(
 
 get_gateway::~get_gateway() = default;
 
+std::string_view get_gateway::get_method() const
+{
+    return "filesCreateUploadSession";
+}
+
 int32_t get_gateway::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     std::map<std::string, std::string> params;
@@ -51,7 +56,7 @@ int32_t get_gateway::init_request(const std::shared_ptr<core::http_request_simpl
         params["language"] = *locale_;
 
     _request->set_url(su::concat(urls::get_url(urls::url_type::files_host), "/init?", format_get_params(params)));
-    _request->set_normalized_url("filesCreateUploadSession");
+    _request->set_normalized_url(get_method());
     _request->set_keep_alive();
 
     if (!params_.full_log_)

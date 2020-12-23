@@ -163,6 +163,20 @@ namespace Ui
         return state;
     }
 
+    size_t PlayingData::totalLengthInSamples() const
+    {
+        openal::ALint sizeInBytes;
+        openal::ALint channels;
+        openal::ALint bits;
+
+        openal::alGetBufferi(Buffer_, AL_SIZE, &sizeInBytes);
+        openal::alGetBufferi(Buffer_, AL_CHANNELS, &channels);
+        openal::alGetBufferi(Buffer_, AL_BITS, &bits);
+        if (channels > 0 && bits > 0)
+            return sizeInBytes * 8 / (channels * bits);
+        return 0;
+    }
+
     size_t PlayingData::currentSampleOffset() const
     {
         openal::ALint sampleOffset;
@@ -278,7 +292,9 @@ namespace Ui
 
     void SoundsManager::onDeviceListChanged()
     {
-        reinit();
+        if (AlInited_)
+            shutdownOpenAl();
+
         Q_EMIT deviceListChanged(QPrivateSignal());
     }
 
@@ -313,10 +329,8 @@ namespace Ui
             {
                 if (!PrevPlay_.isEmpty())
                 {
-                    PrevPlay_.stop();
-                    Q_EMIT pttFinished(PrevPlay_.Id_, false, QPrivateSignal());
-                    PrevPlay_.clear();
-                    PrevPlay_.free();
+                    PrevPlay_.pause();
+                    Q_EMIT pttPaused(PrevPlay_.Id_, PrevPlay_.currentSampleOffset(), QPrivateSignal());
                 }
 
                 CurPlay_.pause();
@@ -337,10 +351,8 @@ namespace Ui
 
                 if (!PrevPlay_.isEmpty())
                 {
-                    PrevPlay_.stop();
-                    Q_EMIT pttFinished(PrevPlay_.Id_, false, QPrivateSignal());
-                    PrevPlay_.clear();
-                    PrevPlay_.free();
+                    PrevPlay_.pause();
+                    Q_EMIT pttPaused(PrevPlay_.Id_, PrevPlay_.currentSampleOffset(), QPrivateSignal());
                 }
 
                 using std::swap;
@@ -498,15 +510,16 @@ namespace Ui
 #endif
     }
 
-    int SoundsManager::playPtt(const QString& file, int id, int& duration)
+    int SoundsManager::playPtt(const QString& file, int id, int& duration, double _progress)
     {
-        if (auto res = checkPlayPtt(id, duration, std::nullopt); res)
+        const auto sampleOffset = _progress * CurPlay_.totalLengthInSamples();
+        if (auto res = checkPlayPtt(id, duration, sampleOffset); res)
             return *res;
 
         if (auto res = getBuffer(file); res)
         {
             const auto& data = (*res).data;
-            return playPttImpl(data.constData(), data.size(), (*res).frequency, (*res).format, duration, 0);
+            return playPttImpl(data.constData(), data.size(), (*res).frequency, (*res).format, duration, sampleOffset);
         }
         return -1;
     }
@@ -555,6 +568,12 @@ namespace Ui
         return false;
     }
 
+    void SoundsManager::setProgressOffset(int id, double percent)
+    {
+        if (CurPlay_.Id_ == id)
+            CurPlay_.setCurrentSampleOffset(size_t(CurPlay_.totalLengthInSamples() * percent));
+    }
+
     void SoundsManager::delayDeviceTimer()
     {
         Q_EMIT needUpdateDeviceTimer(QPrivateSignal());
@@ -579,13 +598,11 @@ namespace Ui
 
     void SoundsManager::checkAudioDevice()
     {
-#ifdef USE_SYSTEM_OPENAL
         if (!AlInited_)
         {
             initOpenAl();
             initSounds();
         }
-#endif
     }
 
     void SoundsManager::reinit()
@@ -703,15 +720,15 @@ namespace Ui
 
     std::string SoundsManager::selectedDeviceName()
     {
+#ifndef STRIP_VOIP
         auto d = Ui::GetDispatcher()->getVoipController().activeDevice(voip_proxy::EvoipDevTypes::kvoipDevTypeAudioPlayback);
         if (!d)
             return {};
-
         std::string_view deviceName((*d).uid);
 
         //macos OpenAl Enumeration Extension  bug: return only one default device
-        const openal::ALCchar *device = openal::alcGetString(nullptr, ALC_DEVICE_SPECIFIER);
-        const openal::ALCchar *next = device + 1;
+        const openal::ALCchar* device = openal::alcGetString(nullptr, ALC_DEVICE_SPECIFIER);
+        const openal::ALCchar* next = device + 1;
         size_t len = 0;
         while (device && *device != '\0' && next && *next != '\0') {
             len = strlen(device);
@@ -721,7 +738,7 @@ namespace Ui
             device += (len + 1);
             next += (len + 2);
         }
-
+#endif
         return {};
     }
 }

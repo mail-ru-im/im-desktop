@@ -55,6 +55,7 @@ namespace Ui
         ~RecentMessagesAlert();
 
         void addAlert(const Data::DlgState& state);
+        void removeAlert(const QString& _aimId, qint64 _messageId);
         void markShowed();
         bool updateMailStatusAlert(const Data::DlgState& state);
 

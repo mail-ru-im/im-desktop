@@ -47,7 +47,7 @@ int32_t set_dlg_state::init_request(const std::shared_ptr<core::http_request_sim
 
     doc.AddMember("params", std::move(node_params), a);
 
-    setup_common_and_sign(doc, a, _request, "setDlgState");
+    setup_common_and_sign(doc, a, _request, get_method());
 
     if (!robusto_packet::params_.full_log_)
     {
@@ -62,4 +62,24 @@ int32_t set_dlg_state::init_request(const std::shared_ptr<core::http_request_sim
 priority_t set_dlg_state::get_priority() const
 {
     return priority_protocol();
+}
+
+std::string_view set_dlg_state::get_method() const
+{
+    return "setDlgState";
+}
+
+bool set_dlg_state::support_self_resending() const
+{
+    return true;
+}
+
+const set_dlg_state_params& set_dlg_state::get_params() const
+{
+    return params_;
+}
+
+void set_dlg_state::set_params(const set_dlg_state_params& _params)
+{
+    params_ = _params;
 }

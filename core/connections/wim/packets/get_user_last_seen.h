@@ -27,6 +27,8 @@ namespace core
             virtual ~get_user_last_seen();
 
             const std::map<std::string, lastseen>& get_result() const;
+
+            virtual std::string_view get_method() const override;
         };
     }
 }

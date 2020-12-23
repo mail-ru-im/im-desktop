@@ -20,12 +20,16 @@ DeviceMonitoringImpl::~DeviceMonitoringImpl()
 
 void DeviceMonitoringImpl::DeviceMonitoringVideoListChanged()
 {
+#ifndef STRIP_VOIP
     Ui::GetDispatcher()->getVoipController().notifyDevicesChanged(false);
+#endif
 }
 
 void DeviceMonitoringImpl::DeviceMonitoringAudioListChanged()
 {
+#ifndef STRIP_VOIP
     Ui::GetDispatcher()->getVoipController().notifyDevicesChanged(true);
+#endif
     boost::shared_lock cs(_callbackLock);
     if (_captureDeviceCallback)
         _captureDeviceCallback->DeviceMonitoringListChanged();

@@ -182,8 +182,17 @@ namespace config
                 std::pair(features::call_room_info_enabled, get_bool(it->value, "call_room_info_enabled")),
                 std::pair(features::external_config_use_preset_url, get_bool(it->value, "external_config_use_preset_url")),
                 std::pair(features::store_version, get_bool(it->value, "store_version")),
+                std::pair(features::otp_login_open_mail_link, get_bool(it->value, "otp_login_open_mail_link")),
                 std::pair(features::dns_workaround, get_bool(it->value, "dns_workaround_enabled")),
                 std::pair(features::external_emoji, get_bool(it->value, "external_emoji")),
+                std::pair(features::show_your_invites_to_group_enabled, get_bool(it->value, "show_your_invites_to_group_enabled")),
+                std::pair(features::group_invite_blacklist_enabled, get_bool(it->value, "group_invite_blacklist_enabled")),
+                std::pair(features::contact_us_via_backend, get_bool(it->value, "contact_us_via_backend")),
+                std::pair(features::update_from_backend, get_bool(it->value, "update_from_backend")),
+                std::pair(features::invite_by_sms, get_bool(it->value, "invite_by_sms")),
+                std::pair(features::show_sms_notify_setting, get_bool(it->value, "show_sms_notify_setting")),
+                std::pair(features::silent_message_delete, get_bool(it->value, "silent_message_delete")),
+                std::pair(features::remove_deleted_from_notifications, get_bool(it->value, "remove_deleted_from_notifications")),
             };
 
             if (std::is_sorted(std::cbegin(res), std::cend(res), is_less_by_first))
@@ -260,6 +269,7 @@ namespace config
     configuration::configuration(std::string_view json, bool _is_debug)
         : is_debug_(_is_debug)
     {
+        spin_lock_ = std::make_unique<common::tools::spin_lock>();
         if (rapidjson::Document doc; !doc.Parse(json.data(), json.size()).HasParseError())
         {
             auto urls = parse_urls(doc);
@@ -285,10 +295,7 @@ namespace config
             is_valid_ = true;
 
             if (is_on(config::features::external_url_config))
-            {
-                spin_lock_ = std::make_unique<common::tools::spin_lock>();
                 e_ = std::make_shared<external_configuration>();
-            }
         }
     }
 
@@ -424,4 +431,3 @@ void config::set_external(std::shared_ptr<external_configuration> _f)
 {
     get_impl().set_external(std::move(_f));
 }
-

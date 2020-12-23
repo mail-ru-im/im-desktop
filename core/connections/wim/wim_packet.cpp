@@ -34,6 +34,11 @@ bool wim_packet::support_async_execution() const
     return get_priority() > priority_protocol();
 }
 
+bool wim_packet::support_self_resending() const
+{
+    return false;
+}
+
 int32_t wim_packet::execute()
 {
     auto request = std::make_shared<core::http_request_simple>(params_.proxy_, utils::get_user_agent(params_.aimid_), get_priority(), params_.stop_handler_);
@@ -109,6 +114,11 @@ void wim_packet::execute_async(handler_t _handler)
 
         _handler(err);
     });
+}
+
+void wim_packet::update_params(wim_packet_params _params)
+{
+    params_ = std::move(_params);
 }
 
 bool wim_packet::is_stopped() const
@@ -481,9 +491,14 @@ uint32_t core::wim::wim_packet::get_repeat_count() const
     return repeat_count_;
 }
 
-void core::wim::wim_packet::set_repeat_count(const uint32_t _count)
+void core::wim::wim_packet::set_repeat_count(uint32_t _count)
 {
     repeat_count_ = _count;
+}
+
+void core::wim::wim_packet::increment_repeat_count()
+{
+    ++repeat_count_;
 }
 
 std::string wim_packet::extract_etag() const
@@ -578,7 +593,7 @@ void log_replace_functor::add_message_markers()
 
 void log_replace_functor::operator()(tools::binary_stream& _bs) const
 {
-    auto sz = _bs.available();
+    const auto sz = _bs.available();
     auto data = _bs.get_data();
     if (!sz || !data)
         return;
@@ -586,7 +601,7 @@ void log_replace_functor::operator()(tools::binary_stream& _bs) const
     std::string json_value_end;
     std::string json_value_end_excluded;
 
-    decltype(sz) i = 0;
+    std::remove_const_t<decltype(sz)> i = 0;
     while (i < sz - 1) // -1 because there is no need to check last character
     {
         bool found = false;

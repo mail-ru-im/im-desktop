@@ -16,6 +16,11 @@ get_common_chats::get_common_chats(wim_packet_params _params, const std::string&
 
 get_common_chats::~get_common_chats() = default;
 
+std::string_view get_common_chats::get_method() const
+{
+    return "getCommonChats";
+}
+
 int32_t get_common_chats::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     rapidjson::Document doc(rapidjson::Type::kObjectType);

@@ -15,8 +15,6 @@ UI_NS_END
 
 UI_COMPLEX_MESSAGE_NS_BEGIN
 
-typedef std::shared_ptr<const QPixmap> QPixmapSCptr;
-
 class ProfileBlockLayout;
 
 class ProfileBlockBase : public GenericBlock
@@ -99,7 +97,7 @@ protected:
     int64_t seq_ = 0;
     int64_t chatInfoSeq_ = 0;
 
-    QPixmapSCptr avatar_;
+    QPixmap avatar_;
     QString name_;
     QString underNameText_;
 };

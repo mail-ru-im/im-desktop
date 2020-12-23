@@ -582,14 +582,6 @@ You can leave your feedback or report an error here:</source>
         <translation>%1 указал(-а) новое название группы - &quot;%2&quot;</translation>
     </message>
     <message>
-        <source>%1 You have joined channel</source>
-        <translation>%1 Вы вступили в канал</translation>
-    </message>
-    <message>
-        <source>%1 %2 has joined channel</source>
-        <translation>%1 %2 вступил(-а) в канал</translation>
-    </message>
-    <message>
         <source>%1 You have joined group</source>
         <translation>%1 Вы вступили в группу</translation>
     </message>
@@ -999,29 +991,45 @@ You can leave your feedback or report an error here:</source>
         <source>%1 %2 has canceled join request</source>
         <translation>%1 %2 отменил(-а) запрос на вступление</translation>
     </message>
+    <message>
+        <source>%1 You have subscribed the channel</source>
+        <translation>%1 Вы подписались на канал</translation>
+    </message>
+    <message>
+        <source>%1 %2 has subscribed the channel</source>
+        <translation>%1 %2 подписался(-лась) на канал</translation>
+    </message>
+    <message>
+        <source>%1 replied to status
+%2 %3
+%4
+%5 %6</source>
+        <translation>%1 ответил(-а) на статус
+%2 %3
+%4
+%5 %6</translation>
+    </message>
+    <message>
+        <source>Replied to status: %1 %2</source>
+        <translation>Ответил(-а) на статус: %1 %2</translation>
+    </message>
+    <message>
+        <source>You replied to status
+%2 %3
+%4
+%5 %6</source>
+        <translation>Вы ответили на статус
+%2 %3
+%4
+%5 %6</translation>
+    </message>
+    <message>
+        <source>You replied to status: %1 %2</source>
+        <translation>Вы ответили на статус: %1 %2</translation>
+    </message>
 </context>
 <context>
     <name>chat_page</name>
-    <message>
-        <source>member</source>
-        <comment>1</comment>
-        <translation>участник</translation>
-    </message>
-    <message>
-        <source>members</source>
-        <comment>2</comment>
-        <translation>участника</translation>
-    </message>
-    <message>
-        <source>members</source>
-        <comment>5</comment>
-        <translation>участников</translation>
-    </message>
-    <message>
-        <source>members</source>
-        <comment>21</comment>
-        <translation>участник</translation>
-    </message>
     <message>
         <source>Today</source>
         <translation>Сегодня</translation>
@@ -1081,6 +1089,10 @@ You can leave your feedback or report an error here:</source>
         <source>Messages added to </source>
         <comment>21</comment>
         <translation>Сообщения добавлены в </translation>
+    </message>
+    <message>
+        <source>Message sent</source>
+        <translation>Сообщение отправлено</translation>
     </message>
 </context>
 <context>
@@ -1253,6 +1265,26 @@ You can leave your feedback or report an error here:</source>
         <source>%1 messages selected</source>
         <comment>21</comment>
         <translation>Выбрано %1 сообщение</translation>
+    </message>
+    <message>
+        <source>%1 subscriber</source>
+        <comment>1</comment>
+        <translation>%1 подписчик</translation>
+    </message>
+    <message>
+        <source>%1 subscribers</source>
+        <comment>2</comment>
+        <translation>%1 подписчика</translation>
+    </message>
+    <message>
+        <source>%1 subscribers</source>
+        <comment>5</comment>
+        <translation>%1 подписчиков</translation>
+    </message>
+    <message>
+        <source>%1 subscribers</source>
+        <comment>21</comment>
+        <translation>%1 подписчик</translation>
     </message>
 </context>
 <context>
@@ -2823,26 +2855,6 @@ You can leave your feedback or report an error here:</source>
         <translation>Имя чата</translation>
     </message>
     <message>
-        <source>member</source>
-        <comment>1</comment>
-        <translation>участник</translation>
-    </message>
-    <message>
-        <source>members</source>
-        <comment>2</comment>
-        <translation>участника</translation>
-    </message>
-    <message>
-        <source>members</source>
-        <comment>5</comment>
-        <translation>участников</translation>
-    </message>
-    <message>
-        <source>members</source>
-        <comment>21</comment>
-        <translation>участник</translation>
-    </message>
-    <message>
         <source>Channel name</source>
         <translation>Имя канала</translation>
     </message>
@@ -2897,6 +2909,14 @@ You can leave your feedback or report an error here:</source>
     <message>
         <source>Chat does not exist or it is hidden by privacy settings</source>
         <translation>Чат не существует или скрыт настройками приватности</translation>
+    </message>
+    <message>
+        <source>New subscribers are waiting for admin approval</source>
+        <translation>Новые подписчики ожидают разрешение админа на вступление</translation>
+    </message>
+    <message>
+        <source>You are not a subscriber of this channel</source>
+        <translation>Вы не подписчик этого канала</translation>
     </message>
 </context>
 <context>
@@ -3490,6 +3510,10 @@ You can leave your feedback or report an error here:</source>
         <source>Privacy</source>
         <translation>Приватность</translation>
     </message>
+    <message>
+        <source>Report a problem</source>
+        <translation>Сообщить о проблеме</translation>
+    </message>
 </context>
 <context>
     <name>mentions</name>
@@ -3947,6 +3971,21 @@ You can leave your feedback or report an error here:</source>
     </message>
 </context>
 <context>
+    <name>popup_widget</name>
+    <message>
+        <source>Disallow</source>
+        <translation>Запретить</translation>
+    </message>
+    <message>
+        <source>Manage who can add me</source>
+        <translation>Настроить, кто может добавлять</translation>
+    </message>
+    <message>
+        <source>Disallow %1 to add you to add me to groups?</source>
+        <translation>Запретить %1 добавлять вас в группы?</translation>
+    </message>
+</context>
+<context>
     <name>popup_window</name>
     <message>
         <source>Clear all data from this device</source>
@@ -4233,23 +4272,11 @@ You can leave your feedback or report an error here:</source>
         <translation>Остановить опрос?</translation>
     </message>
     <message>
-        <source>Are you sure you want to leave channel?</source>
-        <translation>Вы уверены, что хотите покинуть канал?</translation>
-    </message>
-    <message>
-        <source>If you change group type to a private link to the group will be changed, and the old one will stop working</source>
-        <translation>Если вы смените тип группы на частный, то ссылка группы поменяется и старая перестанет работать</translation>
-    </message>
-    <message>
         <source>Make private</source>
         <translation>Сделать частной</translation>
     </message>
     <message>
         <source>Are you sure you want to clear the chat history?</source>
-        <translation>Вы уверены, что хотите удалить историю переписки?</translation>
-    </message>
-    <message>
-        <source>Are you sure you want to clear the channel history?</source>
         <translation>Вы уверены, что хотите удалить историю переписки?</translation>
     </message>
     <message>
@@ -4377,10 +4404,6 @@ You can leave your feedback or report an error here:</source>
         <translation>Извините, что-то пошло не так. Попробуйте позже</translation>
     </message>
     <message>
-        <source>My status</source>
-        <translation>Мой статус</translation>
-    </message>
-    <message>
         <source>You cannot call these users because of privacy settings:</source>
         <translation>Вы не можете звонить этим контактам из-за их настроек приватности.
 Контакты:</translation>
@@ -4455,6 +4478,118 @@ You can leave your feedback or report an error here:</source>
         <translation>Отправить ссылку</translation>
     </message>
     <message>
+        <source>Are you sure you want to erase history and leave channel?</source>
+        <translation>Вы уверены, что хотите удалить историю и покинуть канал?</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to erase history and leave chat?</source>
+        <translation>Вы уверены, что хотите удалить историю и выйти из группы?</translation>
+    </message>
+    <message>
+        <source>Leave</source>
+        <translation>Выйти</translation>
+    </message>
+    <message>
+        <source>Cannot add %1</source>
+        <translation>Не удалось добавить %1</translation>
+    </message>
+    <message>
+        <source>Please wait until admins approve %1&apos;s request</source>
+        <translation>Дождитесь, когда администратор подтвердит запрос на добавление %1</translation>
+    </message>
+    <message>
+        <source>Request for %1 was sent</source>
+        <translation>Отправлен запрос на добавление %1</translation>
+    </message>
+    <message>
+        <source>You cannot add %1 to channel. Send them subscription link %2</source>
+        <translation>Вы не можете добавить %1 в канал. Отправьте пользователю ссылку для подписки %2</translation>
+    </message>
+    <message>
+        <source>You cannot add %1 to chat. Send them join link %2</source>
+        <translation>Вы не можете добавить %1 в группу. Отправьте пользователю ссылку на вступление %2</translation>
+    </message>
+    <message>
+        <source>Subscribe the channel %1</source>
+        <translation>Подписывайся на канал %1</translation>
+    </message>
+    <message>
+        <source>Join the group %1</source>
+        <translation>Вступай в группу %1</translation>
+    </message>
+    <message>
+        <source>Add %1?</source>
+        <translation>Добавить %1?</translation>
+    </message>
+    <message>
+        <source>Previously this contact was removed from channel. Probably, %1 violated the rules. Add anyway?</source>
+        <translation>Ранее администратор удалил этот контакт из канала. Возможно, %1 нарушал(-а) правила. Всё равно добавить?</translation>
+    </message>
+    <message>
+        <source>Previously this contact was removed from chat. Probably, %1 violated the rules. Add anyway?</source>
+        <translation>Ранее администратор удалил этот контакт из группы. Возможно, %1 нарушал(-а) правила. Всё равно добавить?</translation>
+    </message>
+    <message>
+        <source>You cannot add this contact to channel, please ask admin to do that</source>
+        <translation>Вы не можете добавить этот контакт в канал, попросите администратора</translation>
+    </message>
+    <message>
+        <source>You cannot add this contact to chat, please ask admin to do that</source>
+        <translation>Вы не можете добавить этот контакт в группу, попросите администратора</translation>
+    </message>
+    <message>
+        <source>Bot can be added only by admin and if bot joining the groups was allowed by its creator</source>
+        <translation>Добавить бота может только администратор, если создатель бота разрешил добавлять его</translation>
+    </message>
+    <message>
+        <source>Wait until admins approve join requests</source>
+        <translation>Дождитесь, когда администраторы подтвердят запрос на добавление</translation>
+    </message>
+    <message>
+        <source>Send them invite link</source>
+        <translation>Отправьте им ссылку на вступление</translation>
+    </message>
+    <message>
+        <source>Ask admins to invite</source>
+        <translation>Попросите добавить администратора</translation>
+    </message>
+    <message>
+        <source>Bot joining the groups was forbidden by its creator</source>
+        <translation>Создатель бота запретил добавлять в группы</translation>
+    </message>
+    <message>
+        <source>Cannot add %1 contact</source>
+        <comment>1</comment>
+        <translation>Вы не можете добавить %1 участника</translation>
+    </message>
+    <message>
+        <source>Cannot add %1 contacts</source>
+        <comment>2</comment>
+        <translation>Вы не можете добавить %1 участников</translation>
+    </message>
+    <message>
+        <source>Cannot add %1 contacts</source>
+        <comment>5</comment>
+        <translation>Вы не можете добавить %1 участников</translation>
+    </message>
+    <message>
+        <source>Cannot add %1 contacts</source>
+        <comment>21</comment>
+        <translation>Вы не можете добавить %1 участника</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to delete user from list?</source>
+        <translation>Вы уверены, что хотите удалить пользователя из списка?</translation>
+    </message>
+    <message>
+        <source>Add to list</source>
+        <translation>Добавить в список</translation>
+    </message>
+    <message>
+        <source>Select</source>
+        <translation>Выбрать</translation>
+    </message>
+    <message>
         <source>You can not join the call. It already has</source>
         <translation>Вы не можете подключиться к звонку. В нем уже</translation>
     </message>
@@ -4493,6 +4628,82 @@ You can leave your feedback or report an error here:</source>
     <message>
         <source>Global people search</source>
         <translation>Глобальный поиск людей</translation>
+    </message>
+    <message>
+        <source>Log Memory Report</source>
+        <translation>Логировать отчет о памяти</translation>
+    </message>
+    <message>
+        <source>Track internal cache</source>
+        <translation>Отслеживать внутренний кэш</translation>
+    </message>
+    <message>
+        <source>Allow microphone access, so that interlocutor could hear you</source>
+        <translation>Разрешить доступ к микрофону, чтобы собеседник слышал вас?</translation>
+    </message>
+    <message>
+        <source>Don&apos;t allow</source>
+        <translation>Не разрешать</translation>
+    </message>
+    <message>
+        <source>Settings</source>
+        <translation>Настройки</translation>
+    </message>
+    <message>
+        <source>Don&apos;t show again</source>
+        <translation>Больше не показывать</translation>
+    </message>
+    <message>
+        <source>Contact is banned in %1</source>
+        <translation>Пользователь заблокирован в %1</translation>
+    </message>
+    <message>
+        <source>Contact is already added</source>
+        <translation>Пользователь уже был добавлен ранее</translation>
+    </message>
+    <message>
+        <source>Contacts are banned in %1</source>
+        <translation>Пользователи заблокированы в %1</translation>
+    </message>
+    <message>
+        <source>Contacts were already added</source>
+        <translation>Пользователь уже был добавлен ранее</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to delete user?</source>
+        <translation>Вы уверены, что хотите удалить пользователя?</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to clear history?</source>
+        <translation>Вы уверены, что хотите удалить историю переписки?</translation>
+    </message>
+    <message>
+        <source>If you change the channel type to private, the channel link will change and the old one will stop working</source>
+        <translation>Если вы смените тип канала на частный, то ссылка канала поменяется и старая перестанет работать</translation>
+    </message>
+    <message>
+        <source>If you change the group type to private, the group link will change and the old one will stop working</source>
+        <translation>Если вы смените тип группы на частный, то ссылка группы поменяется и старая перестанет работать</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to ban user to write in this channel?</source>
+        <translation>Вы действительно хотите запретить пользователю писать в этот канал?</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to allow user to write in this channel?</source>
+        <translation>Вы действительно хотите разрешить пользователю писать в этот канал?</translation>
+    </message>
+    <message>
+        <source>Make private channel</source>
+        <translation>Сделать частным</translation>
+    </message>
+    <message>
+        <source>%1 hasn&apos;t been online for a long time and won&apos;t read the message likely. Send free sms to suggest to come back to ICQ?</source>
+        <translation>%1 давно не был(-а) в сети и, скорее всего, не прочитает сообщение. Отправить бесплатное SMS и предложить вернуться в ICQ?</translation>
+    </message>
+    <message>
+        <source>Send Statistic</source>
+        <translation>Отправить статистику</translation>
     </message>
 </context>
 <context>
@@ -4571,26 +4782,6 @@ You can leave your feedback or report an error here:</source>
     <message>
         <source>Contact</source>
         <translation>Контакт</translation>
-    </message>
-    <message>
-        <source>member</source>
-        <comment>1</comment>
-        <translation>участник</translation>
-    </message>
-    <message>
-        <source>members</source>
-        <comment>2</comment>
-        <translation>участника</translation>
-    </message>
-    <message>
-        <source>members</source>
-        <comment>5</comment>
-        <translation>участников</translation>
-    </message>
-    <message>
-        <source>members</source>
-        <comment>21</comment>
-        <translation>участник</translation>
     </message>
     <message>
         <source>VIEW</source>
@@ -4787,10 +4978,10 @@ You can leave your feedback or report an error here:</source>
         <translation>OK</translation>
     </message>
     <message>
-        <source> ﻿﻿— Displayed statuses in user's profile: now you can quickly view it and set the same :)
- ﻿— Fixes and improvements </source>
-        <translation> ﻿﻿— Изменили отображение статуса в профиле пользователя: теперь вы можете быстро посмотреть статус и установить такой же :)
- ﻿﻿— Другие исправления и улучшения</translation>
+        <source> ﻿ ﻿— Voice messages no longer stop playing when the application is minimized
+  ﻿— Bugfix and improvements </source>
+        <translation> ﻿ ﻿— Голосовые сообщения больше не перестают проигрывать при сворачивании приложения
+  ﻿— Другие исправления и улучшения </translation>
     </message>
 </context>
 <context>
@@ -5043,10 +5234,6 @@ You can leave your feedback or report an error here:</source>
     <message>
         <source>Language</source>
         <translation>Язык</translation>
-    </message>
-    <message>
-        <source>Contact Us</source>
-        <translation>Напишите нам</translation>
     </message>
     <message>
         <source>About app</source>
@@ -5328,6 +5515,26 @@ You can leave your feedback or report an error here:</source>
         <source>Show unreads counter in window title</source>
         <translation>Показывать количество непрочитанных в заголовке окна</translation>
     </message>
+    <message>
+        <source>Exceptions list</source>
+        <translation>Список исключений</translation>
+    </message>
+    <message>
+        <source>Forbid to add me to groups</source>
+        <translation>Запретить добавлять в группы</translation>
+    </message>
+    <message>
+        <source>Add to list</source>
+        <translation>Добавить в список</translation>
+    </message>
+    <message>
+        <source>Specify who should be prohibited from adding you to groups</source>
+        <translation>Укажите тех, кому запретить добавлять вас в группы</translation>
+    </message>
+    <message>
+        <source>Disable SMS notifications</source>
+        <translation>Отключить SMS-оповещения</translation>
+    </message>
 </context>
 <context>
     <name>settings_connection</name>
@@ -5538,8 +5745,8 @@ You can leave your feedback or report an error here:</source>
         <translation>Уведомления</translation>
     </message>
     <message>
-        <source>Wallpaper</source>
-        <translation>Фон чата</translation>
+        <source>Wallpapers</source>
+        <translation>Фон</translation>
     </message>
     <message>
         <source>Nickname</source>
@@ -5668,26 +5875,6 @@ Please edit phone number and try again.</source>
         <translation>Добавить в канал</translation>
     </message>
     <message>
-        <source>member</source>
-        <comment>1</comment>
-        <translation>участник</translation>
-    </message>
-    <message>
-        <source>members</source>
-        <comment>2</comment>
-        <translation>участника</translation>
-    </message>
-    <message>
-        <source>members</source>
-        <comment>5</comment>
-        <translation>участников</translation>
-    </message>
-    <message>
-        <source>members</source>
-        <comment>21</comment>
-        <translation>участник</translation>
-    </message>
-    <message>
         <source>Add name</source>
         <translation>Добавить имя</translation>
     </message>
@@ -5746,26 +5933,6 @@ Please edit phone number and try again.</source>
     <message>
         <source>Message</source>
         <translation>Сообщение</translation>
-    </message>
-    <message>
-        <source>MEMBER</source>
-        <comment>1</comment>
-        <translation>УЧАСТНИК</translation>
-    </message>
-    <message>
-        <source>MEMBERS</source>
-        <comment>2</comment>
-        <translation>УЧАСТНИКА</translation>
-    </message>
-    <message>
-        <source>MEMBERS</source>
-        <comment>5</comment>
-        <translation>УЧАСТНИКОВ</translation>
-    </message>
-    <message>
-        <source>MEMBERS</source>
-        <comment>21</comment>
-        <translation>УЧАСТНИК</translation>
     </message>
     <message>
         <source>Common groups</source>
@@ -5903,6 +6070,62 @@ Please edit phone number and try again.</source>
         <source>Call</source>
         <translation>Позвонить</translation>
     </message>
+    <message>
+        <source>Your invites</source>
+        <translation>Ваши приглашения</translation>
+    </message>
+    <message>
+        <source>List empty</source>
+        <translation>Список пуст</translation>
+    </message>
+    <message>
+        <source>Subscribers</source>
+        <translation>Подписчики</translation>
+    </message>
+    <message>
+        <source>%1 SUBSCRIBER</source>
+        <comment>1</comment>
+        <translation>%1 ПОДПИСЧИК</translation>
+    </message>
+    <message>
+        <source>%1 SUBSCRIBERS</source>
+        <comment>2</comment>
+        <translation>%1 ПОДПИСЧИКА</translation>
+    </message>
+    <message>
+        <source>%1 SUBSCRIBERS</source>
+        <comment>5</comment>
+        <translation>%1 ПОДПИСЧИКОВ</translation>
+    </message>
+    <message>
+        <source>%1 SUBSCRIBERS</source>
+        <comment>21</comment>
+        <translation>%1 ПОДПИСЧИК</translation>
+    </message>
+    <message>
+        <source>%1 MEMBER</source>
+        <comment>1</comment>
+        <translation>%1 УЧАСТНИК</translation>
+    </message>
+    <message>
+        <source>%1 MEMBERS</source>
+        <comment>2</comment>
+        <translation>%1 УЧАСТНИКА</translation>
+    </message>
+    <message>
+        <source>%1 MEMBERS</source>
+        <comment>5</comment>
+        <translation>%1 УЧАСТНИКОВ</translation>
+    </message>
+    <message>
+        <source>%1 MEMBERS</source>
+        <comment>21</comment>
+        <translation>%1 УЧАСТНИК</translation>
+    </message>
+    <message>
+        <source>All subscribers</source>
+        <translation>Все подписчики</translation>
+    </message>
 </context>
 <context>
     <name>siderbar</name>
@@ -5995,13 +6218,9 @@ Please edit phone number and try again.</source>
         <translation>Статус пользователя</translation>
     </message>
     <message>
-        <source>Status timing</source>
-        <translation>Срок статуса</translation>
-    </message>
-    <message>
         <source>second</source>
         <comment>1</comment>
-        <translation>секунда</translation>
+        <translation>секунду</translation>
     </message>
     <message>
         <source>seconds</source>
@@ -6016,12 +6235,12 @@ Please edit phone number and try again.</source>
     <message>
         <source>seconds</source>
         <comment>21</comment>
-        <translation>секунда</translation>
+        <translation>секунду</translation>
     </message>
     <message>
         <source>minute</source>
         <comment>1</comment>
-        <translation>минута</translation>
+        <translation>минуту</translation>
     </message>
     <message>
         <source>minutes</source>
@@ -6036,7 +6255,7 @@ Please edit phone number and try again.</source>
     <message>
         <source>minutes</source>
         <comment>21</comment>
-        <translation>минута</translation>
+        <translation>минуту</translation>
     </message>
     <message>
         <source>hour</source>
@@ -6081,7 +6300,7 @@ Please edit phone number and try again.</source>
     <message>
         <source>week</source>
         <comment>1</comment>
-        <translation>неделя</translation>
+        <translation>неделю</translation>
     </message>
     <message>
         <source>weeks</source>
@@ -6096,11 +6315,7 @@ Please edit phone number and try again.</source>
     <message>
         <source>weeks</source>
         <comment>21</comment>
-        <translation>неделя</translation>
-    </message>
-    <message>
-        <source>No status</source>
-        <translation>Без статуса</translation>
+        <translation>неделю</translation>
     </message>
     <message>
         <source>Show always</source>
@@ -6139,6 +6354,22 @@ Please edit phone number and try again.</source>
     <message>
         <source>Cancel</source>
         <translation>Отмена</translation>
+    </message>
+    <message>
+        <source>My status</source>
+        <translation>Мой статус</translation>
+    </message>
+    <message>
+        <source>No status</source>
+        <translation>Без статуса</translation>
+    </message>
+    <message>
+        <source>Status timing</source>
+        <translation>Срок статуса</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation>Закрыть</translation>
     </message>
 </context>
 <context>
@@ -6419,22 +6650,6 @@ Please edit phone number and try again.</source>
         <translation>Входящий звонок</translation>
     </message>
     <message>
-        <source>Settings</source>
-        <translation>Настройки</translation>
-    </message>
-    <message>
-        <source>Call is secured</source>
-        <translation>Звонок защищен</translation>
-    </message>
-    <message>
-        <source>For security check, you can verify your images with your partner</source>
-        <translation>Для проверки защиты можно сверить изображения с изображениями собеседника</translation>
-    </message>
-    <message>
-        <source>How it works</source>
-        <translation>Узнать как это работает</translation>
-    </message>
-    <message>
         <source>Add to call</source>
         <translation>Добавить в звонок</translation>
     </message>
@@ -6445,10 +6660,6 @@ Please edit phone number and try again.</source>
     <message>
         <source>Screen</source>
         <translation>Экран</translation>
-    </message>
-    <message>
-        <source>OK</source>
-        <translation>OK</translation>
     </message>
     <message>
         <source>DECLINE</source>
@@ -6475,14 +6686,6 @@ Please edit phone number and try again.</source>
         <translation>ВКС звонок</translation>
     </message>
     <message>
-        <source>To use microphone you need to allow access to the microphone in the system settings</source>
-        <translation>Для использования микрофона разрешите доступ к микрофону в настройках системы</translation>
-    </message>
-    <message>
-        <source>Microphone permissions</source>
-        <translation>Доступ к микрофону</translation>
-    </message>
-    <message>
         <source>To use camera you need to allow access to the camera in the system settings</source>
         <translation>Для использования камеры разрешите доступ к камере в настройках системы</translation>
     </message>
@@ -6502,20 +6705,36 @@ Please edit phone number and try again.</source>
         <source>CALL MEMBERS</source>
         <translation>УЧАСТНИКИ ЗВОНКА</translation>
     </message>
+    <message>
+        <source>Minimize</source>
+        <translation>Уменьшить</translation>
+    </message>
+    <message>
+        <source>Maximize</source>
+        <translation>Увеличить</translation>
+    </message>
+    <message>
+        <source>Raise call window</source>
+        <translation>Развернуть окно звонка</translation>
+    </message>
+    <message>
+        <source>Move the window
+or open call
+with click</source>
+        <translation>Перемещайте окно
+или откройте звонок
+кликом</translation>
+    </message>
 </context>
 <context>
     <name>voip_video_panel</name>
-    <message>
-        <source>Video</source>
-        <translation>Видео</translation>
-    </message>
     <message>
         <source>Screen</source>
         <translation>Экран</translation>
     </message>
     <message>
         <source>More</source>
-        <translation>Другое</translation>
+        <translation>Ещё</translation>
     </message>
     <message>
         <source>Go to chat</source>
@@ -6534,18 +6753,6 @@ Please edit phone number and try again.</source>
         <translation>Настройки</translation>
     </message>
     <message>
-        <source>End</source>
-        <translation>Завершить</translation>
-    </message>
-    <message>
-        <source>Show all</source>
-        <translation>Показать всех</translation>
-    </message>
-    <message>
-        <source>Show one</source>
-        <translation>Увеличить на все окно</translation>
-    </message>
-    <message>
         <source>Stop screen sharing</source>
         <translation>Остановить показ экрана</translation>
     </message>
@@ -6560,10 +6767,6 @@ Please edit phone number and try again.</source>
     <message>
         <source>Masks aren&apos;t available in calls with more than %1 members</source>
         <translation>В звонках с более %1 участниками маски недоступны</translation>
-    </message>
-    <message>
-        <source>Mic</source>
-        <translation>Микрофон</translation>
     </message>
     <message>
         <source>Only the creator of the webinar can show the video</source>
@@ -6583,19 +6786,121 @@ Please edit phone number and try again.</source>
     </message>
     <message>
         <source>Invite</source>
-        <translation>Пригласить</translation>
+        <translation>Добавить</translation>
     </message>
     <message>
         <source>Link copied</source>
         <translation>Ссылка скопирована</translation>
     </message>
     <message>
-        <source>Sound</source>
-        <translation>Звук</translation>
-    </message>
-    <message>
         <source>Wait for connection</source>
         <translation>Ожидайте подключения</translation>
+    </message>
+    <message>
+        <source>Mute</source>
+        <translation>Выключить
+микрофон</translation>
+    </message>
+    <message>
+        <source>Unmute</source>
+        <translation>Включить
+микрофон</translation>
+    </message>
+    <message>
+        <source>Stop
+Video</source>
+        <translation>Выключить
+видео</translation>
+    </message>
+    <message>
+        <source>Start
+Video</source>
+        <translation>Включить
+видео</translation>
+    </message>
+    <message>
+        <source>Disable
+Sound</source>
+        <translation>Выключить
+звук</translation>
+    </message>
+    <message>
+        <source>Enable
+Sound</source>
+        <translation>Включить
+звук</translation>
+    </message>
+    <message>
+        <source>Stop
+Share</source>
+        <translation>Остановить
+показ</translation>
+    </message>
+    <message>
+        <source>Share
+Screen</source>
+        <translation>Поделиться
+экраном</translation>
+    </message>
+    <message>
+        <source>Microphone not found. Check that it is connected and working.</source>
+        <translation>Микрофон не обнаружен. Проверьте, что он подключен и работает</translation>
+    </message>
+    <message>
+        <source>Allow access to microphone. Click &quot;Settings&quot; and allow application access to microphone</source>
+        <translation>Разрешите доступ к микрофону. Нажмите &quot;Настройки&quot; и разрешите приложению доступ к микрофону</translation>
+    </message>
+    <message>
+        <source>No devices found</source>
+        <translation>Устройства не найдены</translation>
+    </message>
+    <message>
+        <source>End
+Meeting</source>
+        <translation>Завершить</translation>
+    </message>
+    <message>
+        <source>SHOW ALL</source>
+        <translation>ПОКАЗАТЬ ВСЕХ</translation>
+    </message>
+</context>
+<context>
+    <name>voip_video_panel_mini</name>
+    <message>
+        <source>End meeting</source>
+        <translation>Завершить</translation>
+    </message>
+    <message>
+        <source>Mute</source>
+        <translation>Выключить микрофон</translation>
+    </message>
+    <message>
+        <source>Unmute</source>
+        <translation>Включить микрофон</translation>
+    </message>
+    <message>
+        <source>Stop video</source>
+        <translation>Выключить видео</translation>
+    </message>
+    <message>
+        <source>Start video</source>
+        <translation>Включить видео</translation>
+    </message>
+    <message>
+        <source>Disable sound</source>
+        <translation>Выключить звук</translation>
+    </message>
+    <message>
+        <source>Enable sound</source>
+        <translation>Включить звук</translation>
+    </message>
+    <message>
+        <source>Stop share</source>
+        <translation>Остановить показ</translation>
+    </message>
+    <message>
+        <source>Start share</source>
+        <translation>Поделиться экраном</translation>
     </message>
 </context>
 <context>

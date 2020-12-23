@@ -1,7 +1,9 @@
 #include "stdafx.h"
 #include "PhoneFormatter.h"
+#ifndef STRIP_VOIP
 #include "phonenumbers/phonenumberutil.h"
 #include "phonenumbers/asyoutypeformatter.h"
+#endif
 #include "main_window/contact_list/CountryListModel.h"
 #include "utils/utils.h"
 
@@ -45,6 +47,7 @@ namespace PhoneFormatter
 
     bool parse(const QString& _phone, QString& _code, QString& _number)
     {
+#ifndef STRIP_VOIP
         if (!_phone.isEmpty())
         {
             const auto phoneUtil = i18n::phonenumbers::PhoneNumberUtil::GetInstance();
@@ -62,12 +65,14 @@ namespace PhoneFormatter
                 return true;
             }
         }
+#endif
 
         return false;
     }
 
     QString getFormattedPhone(const QString& _code, const QString& _phone)
     {
+#ifndef STRIP_VOIP
         const auto phoneUtil = i18n::phonenumbers::PhoneNumberUtil::GetInstance();
 
         if (_code.isEmpty() || _phone.isEmpty())
@@ -90,6 +95,9 @@ namespace PhoneFormatter
             return QString();
 
         return QString::fromStdString(result).remove(_code).trimmed();
+#else
+        return _phone;
+#endif
     }
 
 } // PhoneFormatter
@@ -98,6 +106,7 @@ namespace
 {
     bool tryFormatWithLibPhonenumber(const QString& _phone, QString& _result)
     {
+#ifndef STRIP_VOIP
         const auto phoneUtil = i18n::phonenumbers::PhoneNumberUtil::GetInstance();
 
         i18n::phonenumbers::PhoneNumber phoneNumber;
@@ -112,6 +121,9 @@ namespace
         _result = QString::fromStdString(formatted);
 
         return true;
+#else
+        return false;
+#endif
     }
 
     namespace FallbackFormatter
@@ -235,10 +247,11 @@ namespace
 
         QString convert6Digit(const QStringRef& _phone)
         {
-            QString formatted(qsl(" "));
+            QString formatted;
+            formatted += u' ';
             for (auto i = 0; i < 3; i++)
                 formatted += _phone.at(i);
-            formatted += ql1c('-');
+            formatted += u'-';
             for (auto i = 0; i < 3; i++)
                 formatted += _phone.at(3+i);
 
@@ -247,13 +260,14 @@ namespace
 
         QString convert7Digit(const QStringRef& _phone)
         {
-            QString formatted(qsl(" "));
+            QString formatted;
+            formatted += u' ';
             for (auto i = 0; i < 3; i++)
                 formatted += _phone.at(i);
-            formatted += ql1c('-');
+            formatted += u'-';
             for (auto i = 0; i < 2; i++)
                 formatted += _phone.at(3+i);
-            formatted += ql1c('-');
+            formatted += u'-';
             for (auto i = 0; i < 2; i++)
                 formatted += _phone.at(5+i);
 

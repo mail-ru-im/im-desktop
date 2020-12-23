@@ -19,6 +19,8 @@ namespace Ui
 {
     struct UIEffects;
     class Toast;
+    class InputBgWidget;
+    class PanelButton;
 
     namespace TextRendering
     {
@@ -27,38 +29,6 @@ namespace Ui
 
     namespace VideoPanelParts
     {
-        class PanelButton : public ClickableWidget
-        {
-            Q_OBJECT
-
-        public:
-            enum class ButtonStyle
-            {
-                Normal,
-                Transparent,
-                Red
-            };
-
-            PanelButton(QWidget* _parent, const QString& _text, const QString& _iconName, ButtonStyle _style = ButtonStyle::Normal);
-
-            void updateStyle(ButtonStyle _style, const QString& _iconName = {});
-
-        protected:
-            void paintEvent(QPaintEvent* _event) override;
-
-        private:
-            QString iconName_;
-            QPixmap icon_;
-            QColor circleNormal_;
-            QColor circleHovered_;
-            QColor circlePressed_;
-            QColor textNormal_;
-            QColor textHovered_;
-            QColor textPressed_;
-
-            std::unique_ptr<TextRendering::TextUnit> textUnit_;
-        };
-
         class ScreenBorderLine : public QWidget
         {
             Q_OBJECT
@@ -118,8 +88,6 @@ namespace Ui
         void onMouseEnter();
         void onMouseLeave();
         void onkeyEscPressed();
-        // Update conferention layout.
-        void updateConferenceMode(voip_manager::VideoLayout _layout);
         void onShowMaskPanel();
         void onCameraClickOn();
         void onShareScreenClickOn();
@@ -152,7 +120,6 @@ namespace Ui
         void onVoipVolumeChanged(const std::string& _deviceType, int _vol);
 
         void onMoreButtonClicked();
-        void onChangeConferenceMode();
         void onClickSettings();
 
         void onClickOpenMasks();
@@ -160,6 +127,9 @@ namespace Ui
 
         void onClickCopyVCSLink();
         void onClickInviteVCS();
+
+        void onDeviceSettingsClick(const PanelButton* _button, voip_proxy::EvoipDevTypes _type);
+        void addButtonClicked();
 
     public:
         VideoPanel(QWidget* _parent, QWidget* _container);
@@ -179,11 +149,13 @@ namespace Ui
         bool isPreventFadeOut() const;
         void setPreventFadeIn(bool _doPrevent);
 
-        void changeConferenceMode(voip_manager::VideoLayout _layout);
-
         void callDestroyed();
 
         void showToast(const QString& _text, int _maxLineCount = 1);
+
+        bool showPermissionPopup();
+
+        void updatePanelButtons();
 
     private:
         void updateVideoDeviceButtonsState();
@@ -191,26 +163,28 @@ namespace Ui
         enum class MenuAction
         {
             GoToChat,
-            ConferenceAllTheSame,
-            ConferenceOneIsBig,
             OpenMasks,
             AddUser,
             CallSettings,
             ShareScreen,
             CopyVCSLink,
-            InviteVCS
+            InviteVCS,
+            SelectDevice,
+            SelectDeviceOn
         };
 
         template<typename Slot>
         void addMenuAction(MenuAction _action, const QString& _addText, Slot&& _slot);
         template<typename Slot>
         void addMenuAction(MenuAction _action, Slot&& _slot);
+        template<typename Slot>
+        void addMenuAction(const QPixmap& _icon, const QString& _text, Slot&& _slot);
 
         static QString menuActionIconPath(MenuAction _action);
         static QString menuActionText(MenuAction _action);
         void resetMenu();
         void showMenuAt(const QPoint& _pos);
-        void showMenuAtButton(const VideoPanelParts::PanelButton* _button);
+        void showMenuAtButton(const PanelButton* _button);
         void closeMenu();
 
         void switchShareScreen(unsigned int _index);
@@ -220,6 +194,8 @@ namespace Ui
         void showScreenBorder(std::string_view _uid);
         void hideScreenBorder();
 
+        void onActiveDeviceChange(const voip_proxy::device_desc& _device);
+
         enum class ToastType
         {
             CamNotAllowed,
@@ -227,13 +203,24 @@ namespace Ui
             MasksNotAllowed,
             MicNotAllowed,
             LinkCopied,
-            EmptyLink
+            EmptyLink,
+            DeviceUnavailable
         };
 
-        
+
         void showToast(ToastType _type);
         void updateToastPosition();
         void hideToast();
+
+        struct DeviceInfo
+        {
+            std::string name;
+            std::string uid;
+        };
+
+        std::vector<DeviceInfo> aCapDeviceList;
+        std::vector<DeviceInfo> aPlaDeviceList;
+        std::vector<DeviceInfo> vCapDeviceList;
 
     protected:
         void changeEvent(QEvent* _e) override;
@@ -249,14 +236,16 @@ namespace Ui
         QWidget* container_;
         QWidget* parent_;
         QWidget* rootWidget_;
+        QHBoxLayout* rootLayout_;
 
         std::vector<voip_manager::Contact> activeContact_;
-        VideoPanelParts::PanelButton* stopCallButton_;
-        VideoPanelParts::PanelButton* videoButton_;
-        VideoPanelParts::PanelButton* shareScreenButton_;
-        VideoPanelParts::PanelButton* microphoneButton_;
-        VideoPanelParts::PanelButton* speakerButton_;
-        VideoPanelParts::PanelButton* moreButton_;
+        PanelButton* stopCallButton_;
+        PanelButton* videoButton_;
+        PanelButton* shareScreenButton_;
+        PanelButton* microphoneButton_;
+        PanelButton* speakerButton_;
+        PanelButton* moreButton_;
+        PanelButton* addButton_;
 
         QPointer<Previewer::CustomMenu> menu_;
         QPointer<VideoPanelParts::ShareScreenFrame> shareScreenFrame_;
@@ -267,8 +256,6 @@ namespace Ui
         bool localVideoEnabled_;
         bool isScreenSharingEnabled_;
         bool isCameraEnabled_;
-        bool isConferenceAll_;
-        bool isActiveCall_;
         bool isParentMinimizedFromHere_;
         bool isBigConference_;
         bool isMasksAllowed_;

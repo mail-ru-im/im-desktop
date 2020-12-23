@@ -17,6 +17,11 @@ set_timezone::~set_timezone()
 {
 }
 
+std::string_view set_timezone::get_method() const
+{
+    return "timezoneSet";
+}
+
 int32_t set_timezone::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     time_t server_time = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()) - params_.time_offset_local_;
@@ -32,7 +37,7 @@ int32_t set_timezone::init_request(const std::shared_ptr<core::http_request_simp
         "&TimeZoneOffset=" << time_offset;
 
     _request->set_url(ss_url.str());
-    _request->set_normalized_url("timezoneSet");
+    _request->set_normalized_url(get_method());
     _request->set_keep_alive();
 
     if (!params_.full_log_)

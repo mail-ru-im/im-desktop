@@ -1,10 +1,8 @@
 #pragma once
 
-#include <unordered_set>
-#include <qnamespace.h>
-#include <QSize>
 #include "../utils/utils.h"
 #include "DialogButton.h"
+#include "SimpleListWidget.h"
 
 namespace Ui
 {
@@ -136,33 +134,37 @@ namespace Ui
         static bool inExec_;
     };
 
-    class TwoOptionsWidget : public QWidget
+
+    class OptionWidget : public SimpleListItem
     {
         Q_OBJECT
 
     public:
-        TwoOptionsWidget(QWidget* _parent, const QString& _firstOptionIcon, const QString& _firstOption, const QString& _secondOptionIcon, const QString& _secondOption);
-
-        bool isFirstSelected() const;
-        bool isSecondSelected() const;
+        OptionWidget(QWidget* _parent, const QString& _icon, const QString& _caption);
+        ~OptionWidget();
 
     protected:
         void paintEvent(QPaintEvent* _event) override;
         void resizeEvent(QResizeEvent* _event) override;
-        void mouseMoveEvent(QMouseEvent* _event) override;
-        void mousePressEvent(QMouseEvent* _event) override;
-        void mouseReleaseEvent(QMouseEvent* _event) override;
-        void leaveEvent(QEvent* _event) override;
 
     private:
-        TextRendering::TextUnitPtr firstOption_;
-        TextRendering::TextUnitPtr secondOption_;
-        QPixmap firstOptionIcon_;
-        QPixmap secondOptionIcon_;
-        bool firstHovered_;
-        bool firstSelected_;
-        bool secondHovered_;
-        bool secondSelected_;
-        QPoint pos_;
+        QPixmap icon_;
+        TextRendering::TextUnitPtr caption_;
+    };
+
+    class MultipleOptionsWidget : public QWidget
+    {
+        Q_OBJECT
+
+    public:
+        using optionType = std::pair<QString, QString>;
+        using optionsVector = std::vector<optionType>;
+
+        MultipleOptionsWidget(QWidget* _parent, const optionsVector& _options);
+        int selectedIndex() const noexcept { return selectedIndex_; }
+
+    private:
+        SimpleListWidget* listWidget_;
+        int selectedIndex_ = -1;
     };
 }

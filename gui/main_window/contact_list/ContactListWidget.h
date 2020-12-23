@@ -27,7 +27,7 @@ namespace Ui
 
     Q_SIGNALS:
         void searchEnd();
-        void itemSelected(const QString& _aimid, qint64 _msgid, const highlightsV& _highlights);
+        void itemSelected(const QString& _aimid, qint64 _msgid, const highlightsV& _highlights, bool _ignoreScroll = false);
         void itemClicked(const QString& _aimid);
         void groupClicked(int);
         void changeSelected(const QString&);
@@ -58,7 +58,7 @@ namespace Ui
         void setDragIndexForDelegate(const QModelIndex& _index);
         void setPictureOnlyForDelegate(bool _value);
 
-        void setEmptyIgnoreLabelVisible(bool _isVisible);
+        void setEmptyLabelVisible(bool _isVisible);
         void setSearchInDialog(const QString& _contact, bool _switchModel = true);
         bool getSearchInDialog() const;
         const QString& getSearchInDialogContact() const;
@@ -82,7 +82,7 @@ namespace Ui
 
         void rewindToTop();
 
-        void updateSelectedItem();
+        QRect getAvatarRect(const QModelIndex& _index) const;
 
     public Q_SLOTS:
         void searchResult();
@@ -90,7 +90,7 @@ namespace Ui
         void searchDownPressed();
         void selectionChanged(const QModelIndex &);
         void select(const QString& _aimId);
-        void select(const QString& _aimId, const qint64 _messageId, const highlightsV& _highlights, Logic::UpdateChatSelection _mode);
+        void select(const QString& _aimId, const qint64 _messageId, const highlightsV& _highlights, Logic::UpdateChatSelection _mode, bool _ignoreScroll = false);
         void showContactsPopupMenu(const QString& aimId, bool _is_chat);
         void showCallsPopupMenu(Data::CallInfoPtr _call);
 
@@ -140,12 +140,13 @@ namespace Ui
         using SearchHeaders = std::vector<std::pair<SearchCategory, QModelIndex>>;
         SearchHeaders getCurrentCategories() const;
 
+
     private:
         QVBoxLayout* layout_;
         QVBoxLayout* viewLayout_;
         FocusableListView* view_;
 
-        EmptyIgnoreListLabel* emptyIgnoreListLabel_;
+        EmptyListLabel* EmptyListLabel_;
         DialogSearchViewHeader* dialogSearchViewHeader_;
         GlobalSearchViewHeader* globalSearchViewHeader_;
         QVariantAnimation* scrollToItemAnim_;

@@ -129,6 +129,8 @@ namespace Logic
 
         void setPictOnlyView(bool _pictOnlyView);
 
+        bool isPictOnlyView() const;
+
         void clearCache();
 
         void setMembersView();

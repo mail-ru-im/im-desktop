@@ -35,11 +35,13 @@ StickersWidget::StickersWidget(QWidget* _parent)
     : StickersTable(_parent, -1, Stickers::getStickerWidth(), Stickers::getStickerWidth() + getStickersSpacing(), false)
     , stickerPreview_(nullptr)
 {
-    connect(GetDispatcher(), &core_dispatcher::onSticker, this, [this](const qint32 _error, const qint32 _setId, qint32, const QString& _stickerId)
+    connect(&Stickers::getCache(), &Stickers::Cache::stickerUpdated, this, [this](qint32 _error, const QString& _stickerId)
     {
-        redrawSticker(_setId, _stickerId);
+        if (_error == 0)
+            redrawSticker(-1, _stickerId);
     });
 
+    setFixedHeight(getSuggestHeight());
     setMouseTracking(true);
 
     connect(this, &StickersWidget::stickerPreview, this, &StickersWidget::onStickerPreview);
@@ -51,9 +53,7 @@ void StickersWidget::closeStickerPreview()
         return;
 
     stickerPreview_->hide();
-
     delete stickerPreview_;
-
     stickerPreview_ = nullptr;
 }
 
@@ -76,7 +76,7 @@ void StickersWidget::onStickerPreview(const QString& _stickerId)
 void StickersWidget::onStickerHovered(const int32_t _setId, const QString& _stickerId)
 {
     if (stickerPreview_)
-        stickerPreview_->showSticker(_setId, _stickerId);
+        stickerPreview_->showSticker(_stickerId);
 }
 
 void StickersWidget::init(const QString& _text)
@@ -86,20 +86,19 @@ void StickersWidget::init(const QString& _text)
 
     stickersArray_.reserve(suggest.size());
 
+    const auto oldSize = stickersArray_.size();
     for (const auto& _sticker : suggest)
     {
-        const auto sticker = getSticker(_sticker.fsId_);
-        if (!sticker)
-            Ui::GetDispatcher()->getSticker(_sticker.fsId_, core::sticker_size::small);
-
+        getStickerData(_sticker.fsId_, core::sticker_size::small);
         if (std::find(stickersArray_.begin(), stickersArray_.end(), _sticker.fsId_) == stickersArray_.end())
             stickersArray_.push_back(_sticker.fsId_);
     }
 
-    const int w = (Stickers::getStickerWidth() + getStickersSpacing()) * suggest.size();
-
-    setFixedWidth(w);
-    setFixedHeight(getSuggestHeight());
+    if (stickersArray_.size() != oldSize)
+    {
+        setFixedWidth(itemSize_ * suggest.size());
+        populateStickerWidgets();
+    }
 }
 
 bool StickersWidget::resize(const QSize& _size, bool _force)
@@ -195,6 +194,7 @@ void StickersSuggest::showAnimated(const QString& _text, const QPoint& _p, const
     stickers_->setSelected(std::make_pair(-1, QString()));
     if (needScrollToTop_)
         tooltip_->scrollToTop();
+    tooltip_->raise();
     tooltip_->showAnimated(_p, _maxSize, _rect);
 
     keyboardActive_ = false;

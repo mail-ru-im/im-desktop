@@ -238,7 +238,7 @@ namespace Ui
         Utils::grabTouchWidget(innerArea);
         connect(QScroller::scroller(scrollArea_->viewport()), &QScroller::stateChanged, this, &WallpaperSelectWidget::touchScrollStateChanged);
 
-        thumbLayout_->setAlignment(Qt::AlignTop | Qt::AlignLeft);
+        thumbLayout_->setAlignment(Qt::AlignTop | Qt::AlignHCenter);
 
         scrollArea_->setStyleSheet(qsl("background: transparent; border: none;"));
         scrollArea_->setWidget(innerArea);

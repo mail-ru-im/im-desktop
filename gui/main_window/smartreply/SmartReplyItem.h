@@ -5,6 +5,8 @@
 
 namespace Ui
 {
+    class LottiePlayer;
+
     class SmartReplyItem : public ClickableWidget
     {
         Q_OBJECT
@@ -36,6 +38,8 @@ namespace Ui
         int64_t getMsgId() const noexcept;
         const Data::SmartreplySuggest& getSuggest() const noexcept { return suggest_; }
 
+        virtual void onVisibilityChanged(bool _visible) {}
+
     protected:
         Data::SmartreplySuggest suggest_;
 
@@ -55,6 +59,7 @@ namespace Ui
 
     public:
         SmartReplySticker(QWidget* _parent, const Data::SmartreplySuggest& _suggest);
+        void onVisibilityChanged(bool _visible) override;
 
     protected:
         void paintEvent(QPaintEvent* _e) override;
@@ -64,14 +69,17 @@ namespace Ui
         bool prepareImage();
         const QString& getId() const;
 
+        void onStickerLoaded(int _error, const QString& _id);
+
     protected:
         void mousePressEvent(QMouseEvent* _e) override;
         void mouseReleaseEvent(QMouseEvent* _e) override;
         void mouseMoveEvent(QMouseEvent* _e) override;
 
     private:
-        QImage image_;
+        QPixmap image_;
         QTimer longtapTimer_;
+        LottiePlayer* lottie_ = nullptr;
     };
 
     class SmartReplyText : public SmartReplyItem

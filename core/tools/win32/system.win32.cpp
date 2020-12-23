@@ -6,8 +6,6 @@
 #include "../../profiling/profiler.h"
 #include "../common.shared/common_defs.h"
 
-namespace fs = boost::filesystem;
-
 CORE_TOOLS_SYSTEM_NS_BEGIN
 
 namespace
@@ -24,10 +22,10 @@ unsigned long get_current_thread_id()
 
 bool is_dir_writable(const std::wstring &_dir_path_str)
 {
-    const fs::wpath dir_path(_dir_path_str);
+    const std::filesystem::path dir_path(_dir_path_str);
 
-    boost::system::error_code error;
-    const auto is_dir = fs::is_directory(dir_path, error);
+    std::error_code error;
+    const auto is_dir = std::filesystem::is_directory(dir_path, error);
     assert(is_dir);
 
     if (!is_dir)
@@ -45,15 +43,15 @@ bool is_dir_writable(const std::wstring &_dir_path_str)
         }
     }
 
-    fs::remove(test_path, error);
+    std::filesystem::remove(test_path, error);
 
     return true;
 }
 
 bool core::tools::system::delete_file(const std::wstring& _file_name)
 {
-    boost::system::error_code error;
-    boost::filesystem::remove(_file_name, error);
+    std::error_code error;
+    std::filesystem::remove(_file_name, error);
     return !error;
 }
 
@@ -72,20 +70,18 @@ bool compare_dirs(const std::wstring& _dir1, const std::wstring& _dir2)
     if (_dir1.empty() || _dir2.empty())
         return false;
 
-    boost::system::error_code error;
-    return fs::equivalent(fs::path(_dir1), fs::path(_dir2), error);
+    std::error_code error;
+    return std::filesystem::equivalent(_dir1, _dir2, error);
 }
 
 std::wstring get_file_directory(const std::wstring& file)
 {
-    fs::wpath p(file);
-    return p.parent_path().wstring();
+    return std::filesystem::path(file).parent_path().wstring();
 }
 
 std::wstring get_file_name(const std::wstring& file)
 {
-    fs::wpath p(file);
-    return p.filename().wstring();
+    return std::filesystem::path(file).filename().wstring();
 }
 
 std::wstring get_temp_directory()
@@ -137,8 +133,8 @@ namespace
         if (const auto error = SHGetFolderPath(nullptr, CSIDL_PERSONAL | CSIDL_FLAG_CREATE, nullptr, 0, Out path); FAILED(error))
             return std::wstring();
 
-        boost::system::error_code e;
-        assert(fs::is_directory(path, e));
+        std::error_code e;
+        assert(std::filesystem::is_directory(path, e));
         return path;
     }
 
@@ -150,8 +146,8 @@ namespace
             return std::wstring();
 
         std::wstring result(path);
-        boost::system::error_code e;
-        assert(fs::is_directory(result, e));
+        std::error_code e;
+        assert(std::filesystem::is_directory(result, e));
 
         ::CoTaskMemFree(path);
 

@@ -10,7 +10,9 @@
 #include "wim/wim_im.h"
 #include "wim/wim_packet.h"
 #include "wim/auth_parameters.h"
+#ifndef STRIP_VOIP
 #include "../Voip/VoipManager.h"
+#endif
 
 #include "../core.h"
 #include "../tools/system.h"
@@ -107,7 +109,6 @@ im_container::im_container(const std::shared_ptr<voip_manager::VoipManager>& voi
     REGISTER_IM_MESSAGE("dlg_state/set_last_read_mention", on_set_last_read_mention);
     REGISTER_IM_MESSAGE("dlg_state/set_last_read_partial", on_set_last_read_partial);
     REGISTER_IM_MESSAGE("dlg_state/close_stranger", on_close_stranger);
-    REGISTER_IM_MESSAGE("voip_call", on_voip_call_message);
     REGISTER_IM_MESSAGE("files/upload", on_upload_file_sharing);
     REGISTER_IM_MESSAGE("files/upload/abort", on_abort_file_sharing_uploading);
     REGISTER_IM_MESSAGE("files/preview_size", on_get_file_sharing_preview_size);
@@ -122,6 +123,7 @@ im_container::im_container(const std::shared_ptr<voip_manager::VoipManager>& voi
 
     REGISTER_IM_MESSAGE("stickers/meta/get", on_get_stickers_meta);
     REGISTER_IM_MESSAGE("stickers/sticker/get", on_get_sticker);
+    REGISTER_IM_MESSAGE("stickers/sticker/get/cancel", on_get_sticker_cancel);
     REGISTER_IM_MESSAGE("stickers/fs_by_ids/get", on_get_fs_stickers_by_ids);
     REGISTER_IM_MESSAGE("stickers/pack/info", on_get_stickers_pack_info);
     REGISTER_IM_MESSAGE("stickers/pack/add", on_add_stickers_pack);
@@ -154,7 +156,7 @@ im_container::im_container(const std::shared_ptr<voip_manager::VoipManager>& voi
     REGISTER_IM_MESSAGE("contact/switched", on_contact_switched);
     REGISTER_IM_MESSAGE("dlg_states/hide", on_hide_dlg_state);
     REGISTER_IM_MESSAGE("add_members", on_add_members);
-    REGISTER_IM_MESSAGE("add_chat", on_add_chat);
+    REGISTER_IM_MESSAGE("remove_members", on_remove_members);
     REGISTER_IM_MESSAGE("stats", on_stats);
     REGISTER_IM_MESSAGE("im_stats", on_im_stats);
     REGISTER_IM_MESSAGE("addressbook/sync", on_syncronize_addressbook);
@@ -174,6 +176,7 @@ im_container::im_container(const std::shared_ptr<voip_manager::VoipManager>& voi
     REGISTER_IM_MESSAGE("set_user_proxy_settings", on_set_user_proxy);
     REGISTER_IM_MESSAGE("livechat/join", on_join_livechat);
     REGISTER_IM_MESSAGE("livechat/join/cancel", on_cancel_join_livechat);
+    REGISTER_IM_MESSAGE("livechat/invite/cancel", on_cancel_chat_invitation);
     REGISTER_IM_MESSAGE("set_locale", on_set_locale);
     REGISTER_IM_MESSAGE("set_avatar", on_set_avatar);
 
@@ -183,21 +186,11 @@ im_container::im_container(const std::shared_ptr<voip_manager::VoipManager>& voi
     REGISTER_IM_MESSAGE("chats/mod/name", on_mod_chat_name);
     REGISTER_IM_MESSAGE("chats/mod/about", on_mod_chat_about);
     REGISTER_IM_MESSAGE("chats/mod/rules", on_mod_chat_rules);
-    REGISTER_IM_MESSAGE("chats/mod/public", on_mod_chat_public);
-    REGISTER_IM_MESSAGE("chats/mod/join", on_mod_chat_join);
-    REGISTER_IM_MESSAGE("chats/mod/link", on_mod_chat_link);
-    REGISTER_IM_MESSAGE("chats/mod/ro", on_mod_chat_ro);
-    REGISTER_IM_MESSAGE("chats/mod/stamp", on_mod_chat_stamp);
 
     REGISTER_IM_MESSAGE("chats/block", on_block_chat_member);
     REGISTER_IM_MESSAGE("chats/role/set", on_set_chat_member_role);
     REGISTER_IM_MESSAGE("chats/message/pin", on_chat_pin_message);
     REGISTER_IM_MESSAGE("phoneinfo", on_phoneinfo);
-    REGISTER_IM_MESSAGE("masks/get_id_list", on_get_mask_id_list);
-    REGISTER_IM_MESSAGE("masks/preview/get", on_get_mask_preview);
-    REGISTER_IM_MESSAGE("masks/model/get", on_get_mask_model);
-    REGISTER_IM_MESSAGE("masks/get", on_get_mask);
-    REGISTER_IM_MESSAGE("masks/get/existent", on_get_existent_masks);
     REGISTER_IM_MESSAGE("mrim/get_key", on_mrim_get_key);
 
     REGISTER_IM_MESSAGE("mentions/suggests/get", on_get_mentions_suggests);
@@ -216,8 +209,16 @@ im_container::im_container(const std::shared_ptr<voip_manager::VoipManager>& voi
 
     REGISTER_IM_MESSAGE("agreement/gdpr", on_user_accept_gdpr);
 
+#ifndef STRIP_VOIP
+    REGISTER_IM_MESSAGE("voip_call", on_voip_call_message);
     REGISTER_IM_MESSAGE("get_voip_calls_quality_popup_conf", on_get_voip_calls_quality_popup_conf);
     REGISTER_IM_MESSAGE("send_voip_calls_quality_report", on_send_voip_calls_quality_report);
+    REGISTER_IM_MESSAGE("masks/get_id_list", on_get_mask_id_list);
+    REGISTER_IM_MESSAGE("masks/preview/get", on_get_mask_preview);
+    REGISTER_IM_MESSAGE("masks/model/get", on_get_mask_model);
+    REGISTER_IM_MESSAGE("masks/get", on_get_mask);
+    REGISTER_IM_MESSAGE("masks/get/existent", on_get_existent_masks);
+#endif
 
     REGISTER_IM_MESSAGE("get_dialog_gallery", on_get_dialog_gallery);
     REGISTER_IM_MESSAGE("get_dialog_gallery_by_msg", on_get_dialog_gallery_by_msg);
@@ -262,6 +263,12 @@ im_container::im_container(const std::shared_ptr<voip_manager::VoipManager>& voi
 
     REGISTER_IM_MESSAGE("group/subscribe", on_group_subscribe);
     REGISTER_IM_MESSAGE("group/cancel_subscription", on_group_cancel_subscription);
+
+    REGISTER_IM_MESSAGE("group/invitebl/add", on_group_inviteblacklist_add);
+    REGISTER_IM_MESSAGE("group/invitebl/remove", on_group_inviteblacklist_remove);
+    REGISTER_IM_MESSAGE("group/invitebl/search", on_group_inviteblacklist_search);
+    REGISTER_IM_MESSAGE("group/invitebl/cl", group_blacklisted_cl_inviters);
+
     REGISTER_IM_MESSAGE("suggest_group_nick", on_suggest_group_nick);
 
     REGISTER_IM_MESSAGE("get_bot_callback_answer", on_get_bot_callback_answer);
@@ -286,6 +293,8 @@ im_container::im_container(const std::shared_ptr<voip_manager::VoipManager>& voi
     REGISTER_IM_MESSAGE("unsubscribe/call_room_info", on_unsubscribe_call_room_info);
 
     REGISTER_IM_MESSAGE("emoji/get", on_get_emoji);
+
+    REGISTER_IM_MESSAGE("send_notify_sms", on_send_notify_sms);
 }
 
 
@@ -369,6 +378,8 @@ void core::im_container::on_message_from_gui(std::string_view _message, int64_t 
     }
 }
 
+#ifndef STRIP_VOIP
+
 void core::im_container::fromInternalProxySettings2Voip(const core::proxy_settings& proxySettings, voip_manager::VoipProxySettings& voipProxySettings) {
     using namespace voip_manager;
 
@@ -427,18 +438,16 @@ void core::im_container::on_voip_call_message(int64_t _seq, coll_helper& _params
         if (call_type == "vcs")
         {
             params.is_vcs = true;
-            im->on_voip_call_start(contacts, params);
         } else if (call_type == "pinned_room")
         {
             params.is_pinned_room = true;
             params.video  = _params.get_value_as_bool("video");
-            im->on_voip_call_start(contacts, params);
         } else
         {
             params.video  = _params.get_value_as_bool("video");
             params.attach = _params.get_value_as_bool("attach");
-            im->on_voip_call_start(contacts, params);
         }
+        im->on_voip_call_start(contacts, params);
     }
     else if (type == "voip_add_window") {
         voip_manager::WindowParams windowParams = {};
@@ -554,7 +563,8 @@ void core::im_container::on_voip_call_message(int64_t _seq, coll_helper& _params
     else if (type == "device_change") {
         const std::string_view dev_type = _params.get_value_as_string("dev_type");
         const std::string uid = _params.get_value_as_string("uid");
-        im->on_voip_device_changed(dev_type, uid);
+        bool force_reset = _params.get_value_as_bool("force_reset");
+        im->on_voip_device_changed(dev_type, uid, force_reset);
     }
     else if (type == "voip_devices_changed") {
         bool audio = _params.get_value_as_bool("audio");
@@ -700,6 +710,32 @@ void core::im_container::on_voip_avatar_msg(std::shared_ptr<base_im> im, coll_he
     //__load_avatar("loc_camera_disabled_", &base_im::on_voip_user_update_avatar_no_camera);
     __load_avatar("background_", &base_im::on_voip_user_update_avatar_background);
 }
+
+void im_container::on_get_voip_calls_quality_popup_conf(const int64_t _seq, coll_helper& _params)
+{
+    auto im = get_im(_params);
+
+    if (im)
+        im->get_voip_calls_quality_popup_conf(_seq, _params.get_value_as_string("locale"), _params.get_value_as_string("lang"));
+}
+
+void im_container::on_send_voip_calls_quality_report(const int64_t _seq, coll_helper& _params)
+{
+    UNUSED_ARG(_seq);
+
+    auto im = get_im(_params);
+    if (im)
+    {
+        const int score = VOIP_RATING_STARS_SCORE_COEFFICIENT * _params.get_value_as_int("starsCount", -1);
+        const auto reasons = to_string_vector(_params, "reasons");
+        im->send_voip_calls_quality_report(score,
+            _params.get_value_as_string("survey_id"),
+            reasons,
+            _params.get_value_as_string("aimid"));
+    }
+}
+
+#endif
 
 void im_container::on_get_archive_messages_buddies(int64_t _seq, coll_helper& _params)
 {
@@ -985,20 +1021,19 @@ void core::im_container::on_set_state(int64_t _seq, coll_helper& _params)
 
 void core::im_container::on_add_members(int64_t _seq, coll_helper& _params)
 {
-    auto im = get_im(_params);
-    if (!im)
-        return;
-
-    im->add_members(
-        _seq,
-        _params.get_value_as_string("aimid"),
-        _params.get_value_as_string("m_chat_members_to_add"));
+    if (auto im = get_im(_params))
+        im->add_members(
+            _params.get_value_as_string("aimid"),
+            to_string_vector(_params, "members"),
+            _params.get_value_as_bool("unblock"));
 }
 
-void core::im_container::on_add_chat(int64_t _seq, coll_helper& _params)
+void core::im_container::on_remove_members(int64_t _seq, coll_helper& _params)
 {
     if (auto im = get_im(_params))
-        im->add_chat(_seq, _params.get_value_as_string("m_chat_name"), to_string_vector(_params, "m_chat_members"));
+        im->remove_members(
+            _params.get_value_as_string("aimid"),
+            to_string_vector(_params, "members"));
 }
 
 void core::im_container::on_mrim_get_key(int64_t _seq, coll_helper& _params)
@@ -1035,35 +1070,42 @@ void core::im_container::on_login_by_password(int64_t _seq, coll_helper& _params
 
     if (config::get().is_on(config::features::external_url_config) && info.get_token_type() == token_type::otp_via_email)
     {
-        const auto& login = info.get_login();
+        const auto& login_str = info.get_login();
+        const auto login = std::string_view(login_str);
+
         if (const auto at_idx = login.find('@'); at_idx != std::string::npos)
         {
-            std::string login_domain;
+            std::string_view host, login_domain;
 
-            if (const auto hash_idx = login.find('#'); hash_idx != std::string::npos && hash_idx > at_idx
-                && !config::get().is_on(config::features::external_config_use_preset_url))
+            if (const auto hash_idx = login.find('#'); hash_idx != std::string::npos && hash_idx > at_idx)
             {
-                login_domain = login.substr(hash_idx + 1);
-                info.set_login(login.substr(0, hash_idx));
+                const auto domain_pos = at_idx + 1;
+                login_domain = login.substr(domain_pos, hash_idx - domain_pos);
+
+                if (!config::get().is_on(config::features::external_config_use_preset_url))
+                    host = login.substr(hash_idx + 1);
+                else
+                    host = login_domain;
+
+                info.set_login(login_str.substr(0, hash_idx));
             }
             else
             {
                 login_domain = login.substr(at_idx + 1);
+                host = login_domain;
             }
 
-            if (!login_domain.empty())
+            if (!host.empty())
             {
                 std::vector<std::string> urls;
-
-                if (auto url_preset = config::hosts::external_url_config::make_url_preset(login_domain); !url_preset.empty())
+                if (auto url = config::hosts::external_url_config::make_url_preset(login_domain); !url.empty())
                 {
-                    urls.emplace_back(url_preset);
+                    urls.emplace_back(std::move(url));
                 }
                 else
                 {
-                    urls.emplace_back(config::hosts::external_url_config::make_url(su::concat("u.", login_domain)));
-                    urls.emplace_back(config::hosts::external_url_config::make_url(login_domain));
-                    std::reverse(urls.begin(), urls.end());
+                    urls.emplace_back(config::hosts::external_url_config::make_url_auto_preset(login_domain, host));
+                    urls.emplace_back(config::hosts::external_url_config::make_url_auto_preset(login_domain, su::concat("u.", host)));
                 }
 
                 config::hosts::load_external_url_config(std::move(urls), [do_login, info = std::move(info)](ext_url_config_error _err, std::string_view _url) mutable
@@ -1071,7 +1113,7 @@ void core::im_container::on_login_by_password(int64_t _seq, coll_helper& _params
                     if (_err == ext_url_config_error::ok)
                     {
                         assert(!_url.empty());
-                        g_core->set_external_config_host(_url);
+                        g_core->set_external_config_url(_url);
                         do_login(std::move(info));
                     }
                     else
@@ -1230,7 +1272,11 @@ void core::im_container::logout(const bool _is_auth_error)
             config::hosts::clear_external_config();
     };
 
+#ifndef STRIP_VOIP
     voip_manager_->call_stop_smart(logout);
+#else
+    logout();
+#endif //!STRIP_VOIP
 }
 
 void core::im_container::on_stats(int64_t _seq, coll_helper& _params)
@@ -1595,16 +1641,21 @@ void im_container::on_upload_file_sharing(int64_t _seq, coll_helper& _params)
     if (_params.is_value_exist("duration"))
         duration = _params.get_value_as_int64("duration");
 
+    auto strip_exif = _params.get_value_as_bool("strip_exif", false);
+    auto orientation_tag = _params.get_value_as_int("orientation_tag", 1);//1 is normal orientation
+
     im->upload_file_sharing(
         _seq,
         _params.get_value_as_string("contact"),
         file_name,
-        data,
+        std::move(data),
         extension,
         quotes,
         description,
         mentions,
-        duration);
+        duration,
+        strip_exif,
+        orientation_tag);
 }
 
 void im_container::on_abort_file_sharing_uploading(int64_t _seq, coll_helper& _params)
@@ -1672,8 +1723,7 @@ void im_container::on_download_image(int64_t _seq, coll_helper& _params)
         _params.get_value_as_int("preview_width", 0),
         _params.get_value_as_int("preview_height", 0),
         _params.get_value_as_bool("ext_resource", true),
-        _params.get_value_as_bool("raise", false),
-        _params.get_value_as_bool("with_data", true));
+        _params.get_value_as_bool("raise", false));
 }
 
 void im_container::on_get_external_file_path(int64_t _seq, coll_helper& _params)
@@ -1834,6 +1884,15 @@ void im_container::on_get_sticker(int64_t _seq, coll_helper& _params)
         _params.get_value_as_int("sticker_id", -1),
         _params.get_value_as_string("fs_id", ""),
         _params.get<core::sticker_size>("size"));
+}
+
+void im_container::on_get_sticker_cancel(int64_t _seq, coll_helper& _params)
+{
+    auto im = get_im(_params);
+    if (!im)
+        return;
+    if (auto ids = to_string_vector(_params, "ids"); !ids.empty())
+        im->get_sticker_cancel(std::move(ids), _params.get<core::sticker_size>("size"));
 }
 
 void im_container::on_get_fs_stickers_by_ids(int64_t _seq, coll_helper& _params)
@@ -2265,6 +2324,12 @@ void im_container::on_cancel_join_livechat(int64_t _seq, coll_helper& _params)
     im->cancel_pending_join(_params.get_value_as_string("sn"));
 }
 
+void im_container::on_cancel_chat_invitation(int64_t _seq, coll_helper& _params)
+{
+    if (auto im = get_im(_params))
+        im->cancel_pending_invitation(_params.get_value_as_string("contact"), _params.get_value_as_string("chat"));
+}
+
 void core::im_container::on_set_locale(int64_t _seq, coll_helper& _params)
 {
     auto im = get_im(_params);
@@ -2368,51 +2433,6 @@ void core::im_container::on_mod_chat_rules(int64_t _seq, coll_helper& _params)
     im->mod_chat_rules(_seq, _params.get_value_as_string("aimid"), _params.get_value_as_string("rules"));
 }
 
-void core::im_container::on_mod_chat_public(int64_t _seq, coll_helper& _params)
-{
-    auto im = get_im(_params);
-    if (!im)
-        return;
-
-    im->mod_chat_public(_seq, _params.get_value_as_string("aimid"), _params.get_value_as_bool("public"));
-}
-
-void core::im_container::on_mod_chat_join(int64_t _seq, coll_helper& _params)
-{
-    auto im = get_im(_params);
-    if (!im)
-        return;
-
-    im->mod_chat_join(_seq, _params.get_value_as_string("aimid"), _params.get_value_as_bool("approved"));
-}
-
-void core::im_container::on_mod_chat_link(int64_t _seq, coll_helper& _params)
-{
-    auto im = get_im(_params);
-    if (!im)
-        return;
-
-    im->mod_chat_link(_seq, _params.get_value_as_string("aimid"), _params.get_value_as_bool("link"));
-}
-
-void core::im_container::on_mod_chat_ro(int64_t _seq, coll_helper& _params)
-{
-    auto im = get_im(_params);
-    if (!im)
-        return;
-
-    im->mod_chat_ro(_seq, _params.get_value_as_string("aimid"), _params.get_value_as_bool("ro"));
-}
-
-void core::im_container::on_mod_chat_stamp(int64_t _seq, coll_helper& _params)
-{
-    auto im = get_im(_params);
-    if (!im)
-        return;
-
-    im->mod_chat_stamp(_seq, _params.get_value_as_string("aimid"), _params.get_value_as_string("stamp"));
-}
-
 void core::im_container::on_chat_pin_message(int64_t _seq, coll_helper& _params)
 {
     auto im = get_im(_params);
@@ -2440,15 +2460,15 @@ void core::im_container::on_set_chat_member_role(int64_t _seq, coll_helper& _par
     im->set_chat_member_role(_seq, _params.get_value_as_string("aimid"), _params.get_value_as_string("contact"), _params.get_value_as_string("role"));
 }
 
+#ifndef STRIP_VOIP
 void im_container::on_get_mask_id_list(int64_t _seq, coll_helper& _params)
 {
-#ifndef STRIP_VOIP
+
     auto im = get_im(_params);
     if (!im)
         return;
 
     im->get_mask_id_list(_seq);
-#endif //STRIP_VOIP
 }
 
 void im_container::on_get_mask_preview(int64_t _seq, coll_helper& _params)
@@ -2486,6 +2506,7 @@ void im_container::on_get_existent_masks(int64_t _seq, coll_helper &_params)
 
     im->get_existent_masks(_seq);
 }
+#endif
 
 bool im_container::has_valid_login() const
 {
@@ -2546,6 +2567,7 @@ void im_container::on_change_app_config(const int64_t _seq, coll_helper& _params
     core::configuration::set_config_option(core::configuration::app_config::AppConfigOption::cache_history_pages_secs, _params.get_value_as_int("dev.cache_history_pages_secs"));
     core::configuration::set_config_option(core::configuration::app_config::AppConfigOption::is_server_search_enabled, _params.get_value_as_bool("dev.server_search"));
     core::configuration::set_config_option(core::configuration::app_config::AppConfigOption::dev_id, std::string(_params.get_value_as_string("dev_id")));
+    core::configuration::set_config_option(core::configuration::app_config::AppConfigOption::watch_gui_memory, _params.get_value_as_bool("dev.watch_gui_memory"));
 
     const auto app_ini_path = utils::get_app_ini_path();
 
@@ -2713,30 +2735,6 @@ void im_container::set_user_has_been_logged_in_ever(bool _hasEverLoggedIn)
     core::coll_helper cl_coll(g_core->create_collection(), true);
     configuration::get_app_config().serialize(Out cl_coll);
     g_core->post_message_to_gui("app_config", 0, cl_coll.get());
-}
-
-void im_container::on_get_voip_calls_quality_popup_conf(const int64_t _seq, coll_helper &_params)
-{
-    auto im = get_im(_params);
-
-    if (im)
-        im->get_voip_calls_quality_popup_conf(_seq, _params.get_value_as_string("locale"), _params.get_value_as_string("lang"));
-}
-
-void im_container::on_send_voip_calls_quality_report(const int64_t _seq, coll_helper &_params)
-{
-    UNUSED_ARG(_seq);
-
-    auto im = get_im(_params);
-    if (im)
-    {
-        const int score = VOIP_RATING_STARS_SCORE_COEFFICIENT * _params.get_value_as_int("starsCount", -1);
-        const auto reasons = to_string_vector(_params, "reasons");
-        im->send_voip_calls_quality_report(score,
-                                           _params.get_value_as_string("survey_id"),
-                                           reasons,
-                                           _params.get_value_as_string("aimid"));
-    }
 }
 
 void im_container::on_get_dialog_gallery(const int64_t _seq, coll_helper &_params)
@@ -3014,6 +3012,36 @@ void im_container::on_group_cancel_subscription(const int64_t _seq, coll_helper&
         im->cancel_group_subscription(_seq, _params.get_value_as_string("stamp"));
 }
 
+void im_container::on_group_inviteblacklist_add(const int64_t _seq, coll_helper& _params)
+{
+    if (auto im = get_im(_params))
+        im->add_to_inviters_blacklist(to_string_vector(_params, "contacts"));
+}
+
+void im_container::on_group_inviteblacklist_remove(const int64_t _seq, coll_helper& _params)
+{
+    if (auto im = get_im(_params))
+        im->remove_from_inviters_blacklist(to_string_vector(_params, "contacts"), _params.get_value_as_bool("all"));
+}
+
+void im_container::on_group_inviteblacklist_search(const int64_t _seq, coll_helper& _params)
+{
+    if (auto im = get_im(_params))
+    {
+        im->search_inviters_blacklist(
+            _seq,
+            _params.get_value_as_string("keyword"),
+            _params.get_value_as_string("cursor"),
+            _params.get_value_as_uint("page_size"));
+    }
+}
+
+void im_container::group_blacklisted_cl_inviters(const int64_t _seq, coll_helper& _params)
+{
+    if (auto im = get_im(_params))
+        im->get_blacklisted_cl_inviters(_params.get_value_as_string("cursor"), _params.get_value_as_uint("page_size"));
+}
+
 void im_container::on_suggest_group_nick(const int64_t _seq, coll_helper& _params)
 {
     auto im = get_im(_params);
@@ -3098,6 +3126,12 @@ void im_container::on_get_emoji(const int64_t _seq, coll_helper& _params)
 {
     if (auto im = get_im(_params))
         im->get_emoji(_seq, _params.get_value_as_string("code"), _params.get_value_as_int("size"));
+}
+
+void im_container::on_send_notify_sms(const int64_t _seq, coll_helper& _params)
+{
+    if (auto im = get_im(_params))
+        im->send_notify_sms(_params.get_value_as_string("smsNotifyContext"));
 }
 
 void im_container::on_get_reactions(const int64_t _seq, coll_helper& _params)

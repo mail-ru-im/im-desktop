@@ -240,7 +240,7 @@ namespace Ui
         const auto addItem = [this](const auto& _icon, const auto& _capt, const auto _iconBg, const auto _id, const auto& _testingName)
         {
             auto item = new AttachFileMenuItem(listWidget_, _icon, _capt, Styling::getParameters().getColor(_iconBg));
-            Testing::setAccessibleName(item, qsl("AS AttachPopup %1").arg(_testingName));
+            Testing::setAccessibleName(item, ql1s("AS AttachPopup %1").arg(_testingName));
             const auto idx = listWidget_->addItem(item);
             connect(item, &AttachFileMenuItem::hoverChanged, this, [this, idx](const bool _hovered)
             {

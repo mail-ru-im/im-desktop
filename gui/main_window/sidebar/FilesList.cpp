@@ -40,6 +40,11 @@ namespace
     const int DATE_LEFT_OFFSET = 4;
 
     const std::string MediaTypeName("File");
+
+    constexpr std::chrono::milliseconds getDataTransferTimeout() noexcept
+    {
+        return std::chrono::milliseconds(300);
+    }
 }
 
 namespace Ui
@@ -140,7 +145,7 @@ namespace Ui
             static auto download_icon = Utils::renderSvgScaled(qsl(":/filesharing/download_icon"), QSize(BUTTON_SIZE, BUTTON_SIZE), QColor(u"#ffffff"));
             static auto cancel_icon = Utils::renderSvgScaled(qsl(":/filesharing/cancel_icon"), QSize(BUTTON_SIZE, BUTTON_SIZE), QColor(u"#ffffff"));
 
-            _p.save();
+            Utils::PainterSaver p(_p);
             _p.setBrush(FileSharingIcon::getFillColor(filename_));
             _p.setPen(Qt::transparent);
             _p.drawEllipse(r);
@@ -155,7 +160,6 @@ namespace Ui
             {
                 _p.drawPixmap(Utils::scale_value(HOR_OFFSET + PREVIEW_SIZE / 2) - download_icon.width() / 2 / Utils::scale_bitmap_ratio(), Utils::scale_value(ICON_VER_OFFSET + PREVIEW_SIZE / 2) - download_icon.height() / 2 / Utils::scale_bitmap_ratio() + _rect.y(), download_icon);
             }
-            _p.restore();
         }
         else
         {
@@ -217,6 +221,7 @@ namespace Ui
     {
         reqId_ = _id;
     }
+
     qint64 FileItem::reqId() const
     {
         return reqId_;
@@ -411,6 +416,17 @@ namespace Ui
         MediaContentWidget::initFor(_aimId);
         Items_.clear();
         RequestIds_.clear();
+
+        for (auto& [_, timer] : dataTransferTimeoutList_)
+        {
+            if (timer)
+            {
+                timer->stop();
+                timer->deleteLater();
+            }
+        }
+        dataTransferTimeoutList_.clear();
+
         setFixedHeight(0);
     }
 
@@ -575,6 +591,7 @@ namespace Ui
                     {
                         if (i->isDownloading())
                         {
+                            stopDataTransferTimeoutTimer(i->reqId());
                             Ui::GetDispatcher()->abortSharedFileDownloading(i->getLink(), i->reqId());
                             i->setDownloading(false);
                             Downloading_.erase(std::remove(Downloading_.begin(), Downloading_.end(), i->reqId()), Downloading_.end());
@@ -588,6 +605,7 @@ namespace Ui
                             auto reqId = Ui::GetDispatcher()->downloadSharedFile(aimId_, i->getLink(), false, QString(), true);
                             Downloading_.push_back(reqId);
                             i->setReqId(reqId);
+                            startDataTransferTimeoutTimer(reqId);
                         }
                     }
                     else if (i->isOverLink(_event->pos(), p))
@@ -600,6 +618,7 @@ namespace Ui
                             Downloading_.push_back(reqId);
                             i->setLocalPath(QString());
                             i->setReqId(reqId);
+                            startDataTransferTimeoutTimer(reqId);
                             h += i->getHeight();
                             continue;
                         }
@@ -729,7 +748,7 @@ namespace Ui
         update();
     }
 
-    void FilesList::fileDownloading(qint64 _seq, QString _rawUri, qint64 _bytesTransferred, qint64 _bytesTotal)
+    void FilesList::fileDownloading(qint64 _seq, QString /*_rawUri*/, qint64 _bytesTransferred, qint64 _bytesTotal)
     {
         if (std::find(Downloading_.begin(), Downloading_.end(), _seq) == Downloading_.end() || Items_.empty())
             return;
@@ -741,6 +760,7 @@ namespace Ui
         {
             if (i->reqId() == _seq)
             {
+                stopDataTransferTimeoutTimer(_seq);
                 i->setDownloading(true);
                 i->setProgress(_bytesTransferred, _bytesTotal);
                 break;
@@ -804,12 +824,15 @@ namespace Ui
         {
             if (i->reqId() == _seq)
             {
+                stopDataTransferTimeoutTimer(_seq);
                 Downloading_.erase(std::remove(Downloading_.begin(), Downloading_.end(), i->reqId()), Downloading_.end());
                 if (Downloading_.empty())
                     anim_->stop();
 
                 auto reqId = Ui::GetDispatcher()->downloadSharedFile(aimId_, i->getLink(), false, QString(), true);
                 Downloading_.push_back(reqId);
+                i->setReqId(reqId);
+                startDataTransferTimeoutTimer(reqId);
                 return;
             }
         }
@@ -866,5 +889,40 @@ namespace Ui
         }
 
         setFixedHeight(h);
+    }
+
+    void FilesList::startDataTransferTimeoutTimer(qint64 _seq)
+    {
+        const auto begin = dataTransferTimeoutList_.cbegin();
+        const auto end = dataTransferTimeoutList_.cend();
+        if (std::any_of(begin, end, [_seq](const auto& _x){ return _x.first == _seq; }))
+            return;
+
+        auto timer = new QTimer(this);
+        timer->setSingleShot(true);
+        timer->setInterval(getDataTransferTimeout());
+        connect(timer, &QTimer::timeout, this, [this, _seq]()
+        {
+            // emulate 1% of transferred data for the spinner
+            fileDownloading(_seq, {}, 1, 100);
+        });
+
+        dataTransferTimeoutList_.emplace_back(_seq, timer);
+        timer->start();
+    }
+
+    void FilesList::stopDataTransferTimeoutTimer(qint64 _seq)
+    {
+        if (dataTransferTimeoutList_.empty())
+            return;
+
+        auto begin = dataTransferTimeoutList_.begin();
+        auto end = dataTransferTimeoutList_.end();
+        if (auto it = std::find_if(begin, end, [_seq](const auto& _x) { return _x.first == _seq; }); it != end)
+        {
+            it->second->stop();
+            it->second->deleteLater();
+            dataTransferTimeoutList_.erase(it);
+        }
     }
 }

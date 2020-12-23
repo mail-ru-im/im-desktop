@@ -35,3 +35,11 @@ std::string core::tools::encode_url(std::string_view _url)
 
     return result.str();
 }
+
+
+std::string_view core::tools::extract_protocol_prefix(std::string_view _url)
+{
+    if (const auto idx = _url.find("://"); idx != std::string::npos) 
+        return _url.substr(0, idx);
+    return {};
+}

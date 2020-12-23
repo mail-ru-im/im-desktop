@@ -30,12 +30,14 @@ namespace Ui
     protected:
         void paintEvent(QPaintEvent*) override;
 
+    private Q_SLOTS:
+        void startAudioCall() const;
+        void startVideoCall() const;
+
     private:
         bool isButton() const noexcept { return type_ == CallButtonType::Button; }
 
         void showContextMenu();
-        void startAudioCall() const;
-        void startVideoCall() const;
         void createCallLink();
 
         enum class RotateDirection
@@ -52,5 +54,6 @@ namespace Ui
         QPointer<ContextMenu> menu_;
         QString aimId_;
         Utils::CallLinkCreator* callLinkCreator_;
+        bool doPreventNextMenu_;
     };
 }

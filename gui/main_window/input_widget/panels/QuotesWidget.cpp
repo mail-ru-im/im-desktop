@@ -150,7 +150,7 @@ namespace Ui
     void QuoteRow::updateAvatar()
     {
         bool isDef = false;
-        const auto avatarPtr = Logic::GetAvatarStorage()->GetRounded(
+        avatar_ = Logic::GetAvatarStorage()->GetRounded(
             aimId_,
             getName(),
             Utils::scale_bitmap(avatarSize()),
@@ -158,9 +158,6 @@ namespace Ui
             false,
             false
         );
-
-        if (avatarPtr)
-            avatar_ = *avatarPtr;
     }
 
     QString QuoteRow::getName() const

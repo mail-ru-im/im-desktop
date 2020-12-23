@@ -24,6 +24,7 @@ namespace Logic
     private Q_SLOTS:
         void onAvatarLoaded(const QString& _aimId);
         void onChatMembersPage(const qint64 _seq, const std::shared_ptr<Data::ChatMembersPage>& _page, const int _pageSize, const bool _resetPages);
+        void onChatMembersPageCached(const std::shared_ptr<Data::ChatMembersPage>& _page, const QString& _role);
         void onSearchChatMembersPage(const qint64 _seq, const std::shared_ptr<Data::ChatMembersPage>& _page, const int _pageSize, const bool _resetPages);
 
         void doSearch();
@@ -56,6 +57,7 @@ namespace Logic
         void loadBlocked();
         void loadPending();
         void loadAdmins();
+        void loadYourInvites();
         void requestNextPage();
 
         bool isFullMembersListLoaded() const;
@@ -85,7 +87,8 @@ namespace Logic
             All,
             Admins,
             Pending,
-            Blocked
+            Blocked,
+            YourInvites,
         };
 
         enum class CheckMode
@@ -94,9 +97,11 @@ namespace Logic
             Force
         };
 
+        void loadImpl(MembersMode _mode);
+
         QStringView getRoleName(MembersMode _mode) const;
 
-        void addResults(const std::shared_ptr<Data::ChatMembersPage>& _page);
+        void addResults(const std::shared_ptr<Data::ChatMembersPage>& _page, bool _fromCache = false);
         void addSearcherResults();
         void add(const QString& _aimId);
         void clearResults();

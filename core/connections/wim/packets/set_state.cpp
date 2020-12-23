@@ -43,7 +43,7 @@ int32_t set_state::init_request(const std::shared_ptr<core::http_request_simple>
         "&invisible=" << escape_symbols(invisible);
 
     _request->set_url(ss_url.str());
-    _request->set_normalized_url("presenceSetState");
+    _request->set_normalized_url(get_method());
     _request->set_keep_alive();
 
     if (!params_.full_log_)
@@ -64,4 +64,9 @@ int32_t set_state::parse_response_data(const rapidjson::Value& _data)
 priority_t set_state::get_priority() const
 {
     return top_priority();
+}
+
+std::string_view set_state::get_method() const
+{
+    return "presenceSetState";
 }

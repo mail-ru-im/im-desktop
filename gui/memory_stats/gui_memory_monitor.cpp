@@ -10,7 +10,9 @@
 #include "../main_window/history_control/HistoryControl.h"
 #include "../main_window/history_control/HistoryControlPage.h"
 #include "memory_stats/MessageItemMemMonitor.h"
+#ifndef STRIP_AV_MEDIA
 #include "memory_stats/FFmpegPlayerMemMonitor.h"
+#endif // !STRIP_AV_MEDIA
 #include "../core_dispatcher.h"
 #include "../utils/gui_coll_helper.h"
 #include "../utils/log/log.h"
@@ -160,7 +162,7 @@ Memory_Stats::MemoryStatsReport GuiMemoryMonitor::getThemesReport()
     qint64 wpThumbs = 0;
 
     const auto& wallpapers = Styling::getThemesContainer().getAllAvailableWallpapers();
-    for (auto w : wallpapers)
+    for (const auto& w : wallpapers)
     {
         const auto& bg = w->getWallpaperImage();
         wpImages += Utils::getMemoryFootprint(bg);
@@ -215,16 +217,27 @@ Memory_Stats::MemoryStatsReport GuiMemoryMonitor::getStickersReport()
 
     auto calcStickers = [&total](const Ui::Stickers::setsMap& _stickerSets)
     {
-        for (const auto& it: _stickerSets)
+        for (const auto& [_, stickerSet]: _stickerSets)
         {
-            Ui::Stickers::setSptr set = it.second;
-            auto stickersMap = set->getStickersTree();
-            for (const auto& sticker: stickersMap)
+            for (const auto& [_, s]: stickerSet->getStickersTree())
             {
-                const auto &stickerImgs = sticker.second->getImages();
-                for (const auto &stickerImgIt: stickerImgs)
+                for (auto size : { core::sticker_size::small, core::sticker_size::medium, core::sticker_size::large, core::sticker_size::xlarge, core::sticker_size::xxlarge })
                 {
-                    total += Utils::getMemoryFootprint(std::get<0>(stickerImgIt.second));
+                    if (s->hasData(size))
+                    {
+                        if (const auto& data = s->getData(size); data.isValid())
+                        {
+                            if (data.isLottie())
+                            {
+                                total += data.getLottiePath().capacity();
+                                break;
+                            }
+                            else if (data.isPixmap())
+                            {
+                                total += Utils::getMemoryFootprint(data.getPixmap());
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -280,7 +293,7 @@ Memory_Stats::MemoryStatsReport GuiMemoryMonitor::getVideoPlayersReport()
     Memory_Stats::MemoryStatsReport result(ReporteeName,
                                            total,
                                            Memory_Stats::StatType::VideoPlayerInitialization);
-
+#ifndef STRIP_AV_MEDIA
     for (auto &videoStat: Ui::FFmpegPlayerMemMonitor::instance().getCurrentStats())
     {
         QString format(qsl("Player:\nmedia_id = %1\ndecodedFrames(%2):\n\t\t\t"));
@@ -290,10 +303,14 @@ Memory_Stats::MemoryStatsReport GuiMemoryMonitor::getVideoPlayersReport()
                               videoStat.decodedFramesPixmapSize_);
     }
 
+    const auto lottieCacheSize = Ui::FFmpegPlayerMemMonitor::instance().getLottieStats();
+    result.addSubcategory(qsl("Lottie cache: %1\n\t\t\t").arg(lottieCacheSize).toStdString(), lottieCacheSize);
+#endif
+
     return result;
 }
 
-std::string_view getPropertyName(const Memory_Stats::StatType _type)
+static constexpr std::string_view getPropertyName(Memory_Stats::StatType _type) noexcept
 {
     switch (_type)
     {
@@ -310,7 +327,7 @@ std::string_view getPropertyName(const Memory_Stats::StatType _type)
     case Memory_Stats::StatType::CachedStickers:
         return "_stickers";
     default:
-        return std::string_view();
+        return {};
     }
 
 }
@@ -363,7 +380,7 @@ void GuiMemoryMonitor::onStatTimer()
 
 void GuiMemoryMonitor::writeLogMemoryReport(std::function<void()> _onComplete)
 {
-    Ui::GetDispatcher()->post_message_to_core("get_ram_usage", nullptr, this, [this, _onComplete](core::icollection* _coll)
+    Ui::GetDispatcher()->post_message_to_core("get_ram_usage", nullptr, this, [this, _onComplete = std::move(_onComplete)](core::icollection* _coll)
     {
         Ui::gui_coll_helper coll(_coll, false);
         const int64_t ramUsageFull = coll.get_value_as_int64("ram_used");
@@ -389,13 +406,14 @@ void GuiMemoryMonitor::writeLogMemoryReport(std::function<void()> _onComplete)
             logData << getPropertyName(_report.getStatType()) << " " << (_report.getOccupiedMemory() >> 10) << " Kb\r\n";
         }
 
-        logData << std::string_view("_archive_index") << " " << (ramUsageArchiveIndex >> 10) << " Kb\r\n";
-        logData << std::string_view("_archive_gallery") << " " << (ramUsageArchiveGallery >> 10) << " Kb\r\n";
-        logData << std::string_view("_voip_initialization") << " " << (ramVoipInit >> 10) << " Kb\r\n";
+        logData << "_archive_index " << (ramUsageArchiveIndex >> 10) << " Kb\r\n";
+        logData << "_archive_gallery " << (ramUsageArchiveGallery >> 10) << " Kb\r\n";
+        logData << "_voip_initialization " << (ramVoipInit >> 10) << " Kb\r\n";
 
         Log::write_network_log(logData.str());
 
-        _onComplete();
+        if (_onComplete)
+            _onComplete();
     });
 
 }
@@ -441,7 +459,7 @@ qint64 calculateFootprintFor(const Logic::AvatarStorage::CacheMap& cacheMap)
 
     for (auto it = cacheMap.begin(); it != cacheMap.end(); it++)
     {
-        result += Utils::getMemoryFootprint(it->second.get());
+        result += Utils::getMemoryFootprint(it->second);
     }
 
     return result;

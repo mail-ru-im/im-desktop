@@ -57,6 +57,8 @@ namespace core
             virtual priority_t get_priority() const override { return priority_protocol(); }
             virtual bool is_post() const override { return true; }
 
+            virtual std::string_view get_method() const override;
+
         public:
 
             client_login(

@@ -122,13 +122,22 @@ namespace hist
         }
     }
 
+    void MessageReader::onReadAllMentions()
+    {
+        for (const auto& m : std::exchange(mentions_, {}))
+            Q_EMIT mentionRead(m->Id_, QPrivateSignal());
+    }
+
     void MessageReader::onMessageItemReadVisible(const qint64 _messageId)
     {
         if (_messageId != -1)
         {
-            onReadAllMentionsLess(_messageId, true);
-
             const auto dlgState = hist::getDlgState(aimId_);
+            if (dlgState.LastMsgId_ == _messageId)
+                onReadAllMentions();
+            else
+                onReadAllMentionsLess(_messageId, true);
+
             const auto lastReadMention = std::max(lastReads_.mention, dlgState.LastReadMention_);
             const auto yoursLastRead = dlgState.YoursLastRead_;
             const auto needResetUnreadCount = (dlgState.UnreadCount_ != 0 && yoursLastRead == _messageId);
@@ -153,6 +162,28 @@ namespace hist
     {
         lastReads_.mention = _dlgState.LastReadMention_;
         lastReads_.text = _dlgState.YoursLastRead_;
+        if (_dlgState.unreadMentionsCount_ == 0)
+            onReadAllMentions();
+    }
+
+    void MessageReader::deleted(const Data::MessageBuddies& _messages)
+    {
+        if (mentions_.empty())
+            return;
+
+        for (const auto& message : _messages)
+        {
+            for (auto iter = mentions_.begin(); iter != mentions_.end(); ++iter)
+            {
+                auto id = (*iter)->Id_;
+                if (id == message->Id_)
+                {
+                    mentions_.erase(iter);
+                    Q_EMIT mentionRead(id, QPrivateSignal());
+                    break;
+                }
+            }
+        }
     }
 
     void MessageReader::mentionMe(const QString& _contact, const Data::MessageBuddySptr& _mention)

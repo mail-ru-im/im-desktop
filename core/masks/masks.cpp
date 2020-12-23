@@ -168,173 +168,182 @@ void core::masks::get_mask_id_list(int64_t _seq)
 
     state_ = state::loading;
 
-    if (im->has_created_call())
-    {
-        post_message_to_gui(_seq, "masks/update/retry");
-        return;
-    }
-
     __INFO("masks", "getting the masks list %1%", _seq);
 
-    const auto json_url = su::concat(urls::get_url(urls::url_type::misc_www_host), "/masks/list/v", std::to_string(version_));
+    auto json_url = su::concat(urls::get_url(urls::url_type::misc_www_host), "/masks/list/v", std::to_string(version_));
     const auto json_path = get_json_path();
 
     __INFO("masks", "downloading: %1%", json_url);
 
     time_t modify_time = 0;
 
-    boost::system::error_code e;
-    if (boost::filesystem::exists(json_path, e))
-        modify_time = boost::filesystem::last_write_time(json_path, e);
-
-    im->get_async_loader().download_file(low_priority(), json_url, json_url, json_path.wstring(), im->make_wim_params(), wim::file_info_handler_t(
-        [wr_this = weak_from_this(), im, _seq, json_path](loader_errors _error, const wim::file_info_data_t& _data)
+    if (tools::system::is_exist(json_path))
+    {
+        if (!tools::system::is_empty(json_path.wstring()))
         {
-            auto ptr_this = wr_this.lock();
-            if (!ptr_this)
-                return;
+            boost::system::error_code e;
+            modify_time = boost::filesystem::last_write_time(json_path, e);
+        }
+        else
+        {
+            tools::system::delete_file(json_path.wstring());
+        }
+    }
 
-            std::shared_ptr<tools::binary_stream> content;
+    auto file_info_handler = wim::file_info_handler_t(
+        [wr_this = weak_from_this(), im, _seq, json_path](loader_errors _error, const wim::file_info_data_t& _data)
+    {
+        auto ptr_this = wr_this.lock();
+        if (!ptr_this)
+            return;
 
-            if (_error != loader_errors::success)
+        std::shared_ptr<tools::binary_stream> content;
+
+        if (_error != loader_errors::success)
+        {
+            if (_error == loader_errors::http_error && _data.response_code_ == 304 && (content = std::make_shared<tools::binary_stream>())
+                && core::tools::system::is_exist(json_path) && !core::tools::system::is_empty(json_path.wstring())
+                && content->load_from_file(json_path.wstring()))
             {
-                if (
-                    _error == loader_errors::http_error &&
-                    _data.response_code_ == 304 &&
-                    (content = std::make_shared<tools::binary_stream>()) &&
-                    core::tools::system::is_exist(json_path) && content->load_from_file(json_path.wstring()))
-                {
-                    content->write('\0');
-                }
-                else
-                {
-                    __INFO("masks", "downloading error: %1%", static_cast<int>(_error));
-                    ptr_this->state_ = state::not_loaded;
-                    if (_error == loader_errors::http_error)
-                    {
-                        ptr_this->last_http_error_code_ = _data.response_code_;
-                        ptr_this->last_request_time_ = std::chrono::steady_clock::now();
-                    }
-                    return;
-                }
-            }
-
-            __INFO("masks", "the downloaded file: %1%", json_path);
-
-            if (im->has_created_call())
-            {
-                ptr_this->post_message_to_gui(_seq, "masks/update/retry");
-                return;
-            }
-
-            if (!content)
-            {
-                content = _data.get_content();
                 content->write('\0');
-            }
-
-            rapidjson::Document json;
-            if (json.Parse(content->get_data()).HasParseError())
-            {
-                __WARN("masks", "can't parse the downloaded file %1%", json_path);
-                return;
-            }
-
-            ptr_this->mask_by_name_.clear();
-            ptr_this->mask_list_.clear();
-
-            ptr_this->base_url_ = json["base_url"].GetString();
-
-            const auto& masks = json["masks"];
-            for (auto i = 0u, size = masks.Size(); i != size; ++i)
-            {
-                const auto& elem = masks[i];
-
-                const auto name = elem["name"].GetString();
-                const auto etag = elem["etag"].GetString();
-
-                ptr_this->mask_by_name_[name] = ptr_this->mask_list_.size();
-                ptr_this->mask_list_.emplace_back(
-                    name, elem["archive"].GetString(), elem["image"].GetString(), etag);
-
-                const auto mask_dir = ptr_this->get_mask_dir(name);
-                if (!tools::system::is_exist(mask_dir))
-                {
-                    __INFO("masks", "creating of the mask directory: %1%", mask_dir);
-
-                    if (tools::system::create_directory(mask_dir))
-                    {
-                        ptr_this->save_etag(ptr_this->get_mask_version_path(name), etag);
-                    }
-
-                    __WARN("masks", "can't create the mask directory: %1%", mask_dir);
-                }
-                else
-                {
-                    __INFO("masks", "checking the mask version: %1%", mask_dir);
-
-                    std::string prev_etag;
-                    if (tools::system::read_file(ptr_this->get_mask_version_path(name), prev_etag))
-                    {
-                        if (prev_etag != etag)
-                        {
-                            __INFO("masks", "deleting the old mask: %1%", mask_dir);
-                            tools::system::clean_directory(mask_dir);
-                            ptr_this->save_etag(ptr_this->get_mask_version_path(name), etag);
-                        }
-                    }
-                }
-            }
-
-            coll_helper coll(g_core->create_collection(), true);
-            core::ifptr<core::iarray> arr(coll->create_array());
-
-            for (const auto& mask : ptr_this->mask_list_)
-            {
-                core::ifptr<core::ivalue> val(coll->create_value());
-                const auto& name = mask.name_;
-                val->set_as_string(name.c_str(), name.length());
-                arr->push_back(val.get());
-            }
-
-            __INFO("masks", "sending the masks list %1%", _seq);
-
-            coll.set_value_as_array("mask_id_list", arr.get());
-            g_core->post_message_to_gui("masks/get_id_list/result", _seq, coll.get());
-
-            const auto& model = json["model"];
-            const auto etag = model["etag"].GetString();
-            const auto model_dir = ptr_this->get_model_dir();
-
-            __INFO("masks", "preparing to download the mask model %1%", model_dir);
-
-            if (!tools::system::is_exist(model_dir))
-            {
-                if (tools::system::create_directory(model_dir))
-                {
-                    ptr_this->save_etag(ptr_this->get_model_version_path(), etag);
-                }
             }
             else
             {
-                const auto model_versio_path = ptr_this->get_model_version_path();
+                __INFO("masks", "downloading error: %1%", static_cast<int>(_error));
+                ptr_this->state_ = state::not_loaded;
+                if (_error == loader_errors::http_error)
+                {
+                    ptr_this->last_http_error_code_ = _data.response_code_;
+                    ptr_this->last_request_time_ = std::chrono::steady_clock::now();
+                }
+                return;
+            }
+        }
 
-                __INFO("masks", "check the model version: %1%", model_versio_path);
+        __INFO("masks", "the downloaded file: %1%", json_path);
+
+        if (!content && !core::tools::system::is_empty(json_path.wstring()))
+        {
+            content = std::make_shared<tools::binary_stream>();
+            content->load_from_file(json_path.wstring());
+            content->write('\0');
+        }
+
+        if (!content)
+            return;
+
+        rapidjson::Document json;
+        if (json.Parse(content->get_data()).HasParseError())
+        {
+            __WARN("masks", "can't parse the downloaded file %1%", json_path);
+            return;
+        }
+
+        ptr_this->mask_by_name_.clear();
+        ptr_this->mask_list_.clear();
+
+        ptr_this->base_url_ = json["base_url"].GetString();
+
+        const auto& masks = json["masks"];
+        for (auto i = 0u, size = masks.Size(); i != size; ++i)
+        {
+            const auto& elem = masks[i];
+
+            const auto name = elem["name"].GetString();
+            const auto etag = elem["etag"].GetString();
+
+            ptr_this->mask_by_name_[name] = ptr_this->mask_list_.size();
+            ptr_this->mask_list_.emplace_back(
+                name, elem["archive"].GetString(), elem["image"].GetString(), etag);
+
+            const auto mask_dir = ptr_this->get_mask_dir(name);
+            if (!tools::system::is_exist(mask_dir))
+            {
+                __INFO("masks", "creating of the mask directory: %1%", mask_dir);
+
+                if (tools::system::create_directory(mask_dir))
+                {
+                    ptr_this->save_etag(ptr_this->get_mask_version_path(name), etag);
+                }
+
+                __WARN("masks", "can't create the mask directory: %1%", mask_dir);
+            }
+            else
+            {
+                __INFO("masks", "checking the mask version: %1%", mask_dir);
 
                 std::string prev_etag;
-                if (tools::system::read_file(model_versio_path, prev_etag))
+                if (tools::system::read_file(ptr_this->get_mask_version_path(name), prev_etag))
                 {
                     if (prev_etag != etag)
                     {
-                        __INFO("masks", "deleting the old model: %1%", model_dir);
-                        tools::system::clean_directory(model_dir);
-                        ptr_this->save_etag(ptr_this->get_model_version_path(), etag);
+                        __INFO("masks", "deleting the old mask: %1%", mask_dir);
+                        tools::system::clean_directory(mask_dir);
+                        ptr_this->save_etag(ptr_this->get_mask_version_path(name), etag);
                     }
                 }
             }
+        }
 
-            ptr_this->model_url_ = ptr_this->base_url_ + model["archive"].GetString();
-        }), modify_time, -1, true, "masksList");
+        coll_helper coll(g_core->create_collection(), true);
+        core::ifptr<core::iarray> arr(coll->create_array());
+
+        for (const auto& mask : ptr_this->mask_list_)
+        {
+            core::ifptr<core::ivalue> val(coll->create_value());
+            const auto& name = mask.name_;
+            val->set_as_string(name.c_str(), name.length());
+            arr->push_back(val.get());
+        }
+
+        __INFO("masks", "sending the masks list %1%", _seq);
+
+        coll.set_value_as_array("mask_id_list", arr.get());
+        g_core->post_message_to_gui("masks/get_id_list/result", _seq, coll.get());
+
+        const auto& model = json["model"];
+        const auto etag = model["etag"].GetString();
+        const auto model_dir = ptr_this->get_model_dir();
+
+        __INFO("masks", "preparing to download the mask model %1%", model_dir);
+
+        if (!tools::system::is_exist(model_dir))
+        {
+            if (tools::system::create_directory(model_dir))
+            {
+                ptr_this->save_etag(ptr_this->get_model_version_path(), etag);
+            }
+        }
+        else
+        {
+            const auto model_versio_path = ptr_this->get_model_version_path();
+
+            __INFO("masks", "check the model version: %1%", model_versio_path);
+
+            std::string prev_etag;
+            if (tools::system::read_file(model_versio_path, prev_etag))
+            {
+                if (prev_etag != etag)
+                {
+                    __INFO("masks", "deleting the old model: %1%", model_dir);
+                    tools::system::clean_directory(model_dir);
+                    ptr_this->save_etag(ptr_this->get_model_version_path(), etag);
+                }
+            }
+        }
+
+        ptr_this->model_url_ = ptr_this->base_url_ + model["archive"].GetString();
+    });
+
+    wim::download_params_with_info_handler params(im->make_wim_params());
+    params.priority_ = low_priority();
+    params.url_ = std::move(json_url);
+    params.base_url_ = params.url_;
+    params.file_name_ = json_path.wstring();
+    params.handler_ = std::move(file_info_handler);
+    params.last_modified_time_ = modify_time;
+    params.normalized_url_ = "masksList";
+    im->get_async_loader().download_file(std::move(params));
 }
 
 void core::masks::get_mask_preview(int64_t _seq, const std::string& mask_id)
@@ -361,23 +370,31 @@ void core::masks::get_mask_preview(int64_t _seq, const std::string& mask_id)
     }
     else
     {
-        const std::string preview_url = base_url_ + mask.preview_;
+        auto preview_url = su::concat(base_url_, mask.preview_);
 
         __INFO("masks", "downloading the preview: %1%", preview_url);
 
-        im->get_async_loader().download_file(low_priority(), preview_url, preview_url, preview_path.wstring(), im->make_wim_params(), wim::file_info_handler_t(
-            [this, _seq, preview_path](loader_errors _error, const wim::file_info_data_t& _data)
+        auto file_info_handler = wim::file_info_handler_t([this, _seq, preview_path](loader_errors _error, const wim::file_info_data_t& _data)
+        {
+            if (_error != loader_errors::success)
             {
-                if (_error != loader_errors::success)
-                {
-                    __WARN("masks", "preview downloading error: %1%", static_cast<int>(_error));
-                    return;
-                }
+                __WARN("masks", "preview downloading error: %1%", static_cast<int>(_error));
+                return;
+            }
 
-                __INFO("masks", "preview downloading complete %1%", preview_path);
+            __INFO("masks", "preview downloading complete %1%", preview_path);
 
-                post_message_to_gui(_seq, "masks/preview/result", preview_path);
-            }), 0, -1, true, "masksPreview");
+            post_message_to_gui(_seq, "masks/preview/result", preview_path);
+        });
+
+        wim::download_params_with_info_handler params(im->make_wim_params());
+        params.priority_ = low_priority();
+        params.url_ = std::move(preview_url);
+        params.base_url_ = params.url_;
+        params.file_name_ = preview_path.wstring();
+        params.handler_ = std::move(file_info_handler);
+        params.normalized_url_ = "masksPreview";
+        im->get_async_loader().download_file(std::move(params));
     }
 }
 
@@ -391,33 +408,41 @@ void core::masks::get_mask_model(int64_t _seq)
     {
         __INFO("masks", "downloading the model: %1%", model_url_);
 
-        im->get_async_loader().download_file(low_priority(), model_url_, model_url_, get_model_archive_path().wstring(), im->make_wim_params(), wim::file_info_handler_t(
-            [this, _seq](loader_errors _error, const wim::file_info_data_t& _data)
+        auto file_info_handler = wim::file_info_handler_t([this, _seq](loader_errors _error, const wim::file_info_data_t& _data)
+        {
+            if (_error != loader_errors::success)
             {
-                if (_error != loader_errors::success)
-                {
-                    __WARN("masks", "model downloading error: %1%", static_cast<int>(_error));
-                    return;
-                }
+                __WARN("masks", "model downloading error: %1%", static_cast<int>(_error));
+                return;
+            }
 
-                const auto model_archive_path = get_model_archive_path();
-                const auto model_dir = get_model_dir();
-                if (!tools::system::unzip(model_archive_path, model_dir))
-                {
-                    __WARN("masks", "unzip error: %1% -> %2%", model_archive_path % model_dir);
-                    return;
-                }
+            const auto model_archive_path = get_model_archive_path();
+            const auto model_dir = get_model_dir();
+            if (!tools::system::unzip(model_archive_path, model_dir))
+            {
+                __WARN("masks", "unzip error: %1% -> %2%", model_archive_path % model_dir);
+                return;
+            }
 
-                tools::system::delete_file(get_model_archive_path().wstring());
+            tools::system::delete_file(get_model_archive_path().wstring());
 
-                std::ofstream sentry_file(get_model_sentry_path().string());
+            std::ofstream sentry_file(get_model_sentry_path().string());
 
-                on_model_loading(_seq);
-            }), 0, -1, true, "masksModel");
+            on_model_loading(_seq, true);
+        });
+
+        wim::download_params_with_info_handler params(im->make_wim_params());
+        params.priority_ = low_priority();
+        params.url_ = model_url_;
+        params.base_url_ = params.url_;
+        params.file_name_ = get_model_archive_path().wstring();
+        params.handler_ = std::move(file_info_handler);
+        params.normalized_url_ = "masksModel";
+        im->get_async_loader().download_file(std::move(params));
     }
     else
     {
-        on_model_loading(_seq);
+        on_model_loading(_seq, false);
     }
 }
 
@@ -445,45 +470,53 @@ void core::masks::get_mask(int64_t _seq, const std::string& mask_id)
     else
     {
         const auto& mask = mask_list_[mask_pos->second];
-        const std::string archive_url = base_url_ + mask.archive_;
         const auto archive_path = get_mask_archive_path(mask_id, mask);
 
         __INFO("masks", "downloading the mask %1%", mask_id);
 
-        im->get_async_loader().download_file(low_priority(), archive_url, archive_url, archive_path.wstring(), im->make_wim_params(), wim::file_info_handler_t(
-            [wr_this = weak_from_this(), _seq, mask_id, archive_path, json_path](loader_errors _error, const wim::file_info_data_t& _data)
+        auto file_info_handler = wim::file_info_handler_t(
+        [wr_this = weak_from_this(), _seq, mask_id, archive_path, json_path](loader_errors _error, const wim::file_info_data_t& _data)
+        {
+            if (_error != loader_errors::success)
             {
-                if (_error != loader_errors::success)
-                {
-                    __WARN("masks", "mask downloading error: %1%", static_cast<int>(_error));
-                    return;
-                }
+                __WARN("masks", "mask downloading error: %1%", static_cast<int>(_error));
+                return;
+            }
 
-                auto ptr_this = wr_this.lock();
-                if (!ptr_this)
-                    return;
+            auto ptr_this = wr_this.lock();
+            if (!ptr_this)
+                return;
 
-                const auto content_dir = ptr_this->get_mask_content_dir(mask_id);
+            const auto content_dir = ptr_this->get_mask_content_dir(mask_id);
 
-                if (!tools::system::unzip(archive_path, content_dir))
-                {
-                    __WARN("masks", "unzip error: %1% -> %2%", archive_path % content_dir);
-                    return;
-                }
-
-                tools::system::delete_file(archive_path.wstring());
-
-                __INFO("masks", "sending the mask %1%", mask_id);
-
-                ptr_this->post_message_to_gui(_seq, "masks/get/result", json_path);
-
-            },
-            [_seq](int64_t /*_bytes_total*/, int64_t /*_bytes_transferred*/, int32_t _percent)
+            if (!tools::system::unzip(archive_path, content_dir))
             {
-                coll_helper coll(g_core->create_collection(), true);
-                coll.set_value_as_uint("percent", _percent);
-                g_core->post_message_to_gui("masks/progress", _seq, coll.get());
-            }), 0, -1, true, "masksGet");
+                __WARN("masks", "unzip error: %1% -> %2%", archive_path % content_dir);
+                return;
+            }
+
+            tools::system::delete_file(archive_path.wstring());
+
+            __INFO("masks", "sending the mask %1%", mask_id);
+
+            ptr_this->post_message_to_gui(_seq, "masks/get/result", json_path);
+
+        },
+        [_seq](int64_t /*_bytes_total*/, int64_t /*_bytes_transferred*/, int32_t _percent)
+        {
+            coll_helper coll(g_core->create_collection(), true);
+            coll.set_value_as_uint("percent", _percent);
+            g_core->post_message_to_gui("masks/progress", _seq, coll.get());
+        });
+
+        wim::download_params_with_info_handler params(im->make_wim_params());
+        params.priority_ = low_priority();
+        params.url_ = su::concat(base_url_, mask.archive_);
+        params.base_url_ = params.url_;
+        params.file_name_ = archive_path.wstring();
+        params.handler_ = std::move(file_info_handler);
+        params.normalized_url_ = "masksGet";
+        im->get_async_loader().download_file(std::move(params));
     }
 }
 
@@ -526,14 +559,14 @@ void core::masks::get_existent_masks(int64_t _seq)
     });
 }
 
-void core::masks::on_model_loading(int64_t _seq)
+void core::masks::on_model_loading(int64_t _seq, bool _force_reload)
 {
     auto im = im_.lock();
     if (!im)
         return;
 
     const auto path = tools::from_utf16(get_model_dir().wstring());
-    im->voip_set_model_path(path);
+    im->voip_set_model_path(path, _force_reload);
 
     coll_helper coll(g_core->create_collection(), true);
     g_core->post_message_to_gui("masks/model/result", _seq, coll.get());

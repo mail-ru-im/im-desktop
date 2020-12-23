@@ -28,6 +28,8 @@ namespace core
 
             explicit set_timezone(wim_packet_params _params);
             virtual ~set_timezone();
+
+            virtual std::string_view get_method() const override;
         };
 
     }

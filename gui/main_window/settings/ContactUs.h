@@ -87,7 +87,6 @@ namespace Ui
 
         bool hasProblemDropper_;
         bool isPlain_;
-        QTimer* timeoutTimer_;
         enum class State
         {
             Feedback,

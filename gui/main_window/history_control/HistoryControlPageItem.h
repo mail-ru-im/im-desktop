@@ -36,7 +36,6 @@ namespace Ui
     Q_SIGNALS:
         void mention(const QString&, const QString&) const;
         void selectionChanged() const;
-        void pressedDestroyed();
 
     public:
         explicit HistoryControlPageItem(QWidget *parent);
@@ -54,13 +53,15 @@ namespace Ui
         bool hasSenderName() const;
         bool hasTopMargin() const;
 
+        virtual bool needsAvatar() const { return false; }
+
         virtual void clearSelection(bool _keepSingleSelection);
         virtual void selectByPos(const QPoint& from, const QPoint& to, const QPoint& areaFrom, const QPoint& areaTo);
         virtual void setSelected(const bool _isSelected);
         virtual bool isSelected() const;
 
         virtual void onActivityChanged(const bool isActive);
-        virtual void onVisibilityChanged(const bool isVisible);
+        virtual void onVisibleRectChanged(const QRect& _visibleRect);
         virtual void onDistanceToViewportChanged(const QRect& _widgetAbsGeometry, const QRect& _viewportVisibilityAbsRect);
 
         virtual void setHasAvatar(const bool value);
@@ -158,11 +159,12 @@ namespace Ui
 
         void onSizeChanged();
 
-        virtual ReactionsPlateType reactionsPlateType() const;        
+        virtual ReactionsPlateType reactionsPlateType() const;
         bool hasReactions() const;
         QRect reactionsPlateRect() const;
 
         virtual void setSpellErrorsVisible(bool _visible) {}
+        virtual QRect avatarRect() const { return QRect(); }
 
     protected:
 
@@ -252,4 +254,16 @@ namespace Ui
         bool nextIsOutgoing_;
         bool initialized_;
     };
+
+    class AccessibleHistoryControlPageItem : public QAccessibleWidget
+    {
+    public:
+        AccessibleHistoryControlPageItem(HistoryControlPageItem* _item) : QAccessibleWidget(_item), item_(_item) {}
+
+        QString	text(QAccessible::Text _type) const override;
+
+    private:
+        HistoryControlPageItem* item_ = nullptr;
+    };
+
 }

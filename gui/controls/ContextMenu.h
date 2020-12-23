@@ -78,9 +78,12 @@ namespace Ui
        void setShowAsync(const bool _byTimeout);
        bool isShowAsync() const;
 
+   Q_SIGNALS:
+       void hidden(QPrivateSignal);
+
    protected:
        void showEvent(QShowEvent* _e) override;
-       void hideEvent(QHideEvent* _e) override;
+       void hideEvent(QHideEvent* _event) override;
        void focusOutEvent(QFocusEvent *_e) override;
        void wheelEvent(QWheelEvent* _event) override;
        void mouseReleaseEvent(QMouseEvent* _event) override;

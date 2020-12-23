@@ -32,6 +32,8 @@ namespace core
                 const std::string& _aimid);
 
             virtual ~remove_buddy();
+
+            virtual std::string_view get_method() const override;
         };
 
     }

@@ -34,6 +34,7 @@ namespace core
 
             const std::vector<std::string>& get_stickers() const { return stickers_; }
             const std::string& get_contact() const { return aimid_; }
+            virtual std::string_view get_method() const override;
         };
     }
 }

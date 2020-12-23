@@ -256,17 +256,14 @@ void GenericBlock::onActivityChanged(const bool isActive)
 
     onRestoreResources();
 
-    if (Initialized_)
+    if (!Initialized_)
     {
-        return;
+        Initialized_ = true;
+        initialize();
     }
-
-    Initialized_ = true;
-
-    initialize();
 }
 
-void GenericBlock::onVisibilityChanged(const bool /*isVisible*/)
+void GenericBlock::onVisibleRectChanged(const QRect&)
 {
 }
 
@@ -542,7 +539,7 @@ void GenericBlock::paintEvent(QPaintEvent *e)
 void GenericBlock::mouseMoveEvent(QMouseEvent *e)
 {
     const auto isLeftButtonPressed = ((e->buttons() & Qt::LeftButton) != 0);
-    const auto beginDrag = (isLeftButtonPressed && isDraggable());
+    const auto beginDrag = (isLeftButtonPressed && isDraggable() && !Utils::InterConnector::instance().isMultiselect() && !Parent_->isSelected());
     if (beginDrag)
     {
         auto pos = e->pos();

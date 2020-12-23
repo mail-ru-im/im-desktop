@@ -22,6 +22,11 @@ set_buddy_attribute::~set_buddy_attribute()
 {
 }
 
+std::string_view set_buddy_attribute::get_method() const
+{
+    return "setBuddyAttribute";
+}
+
 int32_t set_buddy_attribute::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     std::stringstream ss_url;
@@ -34,7 +39,7 @@ int32_t set_buddy_attribute::init_request(const std::shared_ptr<core::http_reque
         "&r=" << core::tools::system::generate_guid();
 
     _request->set_url(ss_url.str());
-    _request->set_normalized_url("setBuddyAttribute");
+    _request->set_normalized_url(get_method());
     _request->set_keep_alive();
 
     if (!params_.full_log_)

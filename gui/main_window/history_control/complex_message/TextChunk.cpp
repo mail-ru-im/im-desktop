@@ -33,30 +33,15 @@ static inline bool isPreviewsEnabled()
     return Ui::get_gui_settings()->get_value<bool>(settings_show_video_and_images, true);
 }
 
-const std::vector<QString>& getNoSnippetUrls()
+static bool isSnippetUrl(QStringView _url)
 {
-    static const std::vector<QString> urls =
-    {
-        qsl("https://jira.mail.ru"),
-        qsl("jira.mail.ru"),
-        qsl("https://confluence.mail.ru"),
-        qsl("confluence.mail.ru"),
-        qsl("https://sys.mail.ru"),
-        qsl("sys.mail.ru")
-    };
-
-    return urls;
-}
-
-static bool isSnippetUrl(const QString& _url)
-{
-    const auto& urls = getNoSnippetUrls();
+    static constexpr QStringView urls[] = { u"https://jira.mail.ru", u"jira.mail.ru", u"https://confluence.mail.ru", u"confluence.mail.ru", u"https://sys.mail.ru", u"sys.mail.ru" };
     return std::none_of(std::begin(urls), std::end(urls), [&_url](const auto& x) { return _url.startsWith(x); });
 }
 
-static bool isForceSnippetUrl(const QString& _url)
+static bool isForceSnippetUrl(QStringView _url)
 {
-    static const QString urls[] = { qsl("cloud.mail.ru"), qsl("https://cloud.mail.ru") };
+    static constexpr QStringView urls[] = { u"cloud.mail.ru", u"https://cloud.mail.ru" };
     return std::any_of(std::begin(urls), std::end(urls), [&_url](const auto& x) { return _url.startsWith(x); });
 }
 
@@ -132,6 +117,8 @@ Ui::ComplexMessage::TextChunk Ui::ComplexMessage::ChunkIterator::current(bool _a
         case core::file_sharing_base_content_type::ptt:
             Type = TextChunk::Type::FileSharingPtt;
             break;
+        case core::file_sharing_base_content_type::lottie:
+            Type = TextChunk::Type::FileSharingLottieSticker;
         default:
             break;
         }

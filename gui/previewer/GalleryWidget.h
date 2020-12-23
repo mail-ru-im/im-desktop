@@ -16,6 +16,11 @@ namespace Ui
     class Button;
 }
 
+namespace Utils
+{
+    struct GalleryData;
+}
+
 namespace Previewer
 {
     class ImageViewerWidget;
@@ -35,7 +40,7 @@ namespace Previewer
         explicit GalleryWidget(QWidget* _parent);
         ~GalleryWidget();
 
-        void openGallery(const QString& _aimId, const QString& _link, int64_t _msgId, Ui::DialogPlayer* _attachedPlayer = nullptr);
+        void openGallery(const Utils::GalleryData& _data);
         void openAvatar(const QString& _aimId);
 
         bool isClosing() const;
@@ -54,6 +59,7 @@ namespace Previewer
         void showMinimized();
         void showFullScreen();
         void escape();
+        void onCopy();
 
     protected:
         void mousePressEvent(QMouseEvent* _event) override;
@@ -90,7 +96,6 @@ namespace Previewer
         void onSave();
         void onForward();
         void onGoToMessage();
-        void onCopy();
         void onOpenContact();
         void onSaveToFavorites();
 
@@ -135,7 +140,7 @@ namespace Previewer
 
         QPoint getToastPos();
 
-        ContentLoader* createGalleryLoader(const QString& _aimId, const QString& _link, int64_t _msgId, Ui::DialogPlayer* _attachedPlayer = nullptr);
+        ContentLoader* createGalleryLoader(const Utils::GalleryData& _data);
 
         ContentLoader* createAvatarLoader(const QString& _aimId);
 

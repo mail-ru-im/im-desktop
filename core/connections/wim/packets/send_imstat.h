@@ -31,6 +31,8 @@ namespace core
 
             send_imstat(const wim_packet_params& _params, std::string _data);
             virtual ~send_imstat();
+
+            virtual std::string_view get_method() const override;
         };
     }
 }

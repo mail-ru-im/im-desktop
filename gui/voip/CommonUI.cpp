@@ -9,6 +9,9 @@
 #include "../main_window/contact_list/ContactListModel.h"
 #include "../main_window/MainPage.h"
 #include "../main_window/GroupChatOperations.h"
+#include "media/permissions/MediaCapturePermissions.h"
+#include "styles/ThemeParameters.h"
+#include "../controls/GeneralDialog.h"
 
 Ui::ResizeEventFilter::ResizeEventFilter(std::vector<QPointer<BaseVideoPanel>>& panels,
     ShadowWindow* shadow,
@@ -106,281 +109,6 @@ void Ui::ShadowWindowParent::setActive(bool _value)
     if (shadow_)
         shadow_->setActive(_value);
 }
-
-#if 0
-Ui::AspectRatioResizebleWnd::AspectRatioResizebleWnd()
-    : QWidget(NULL)
-    //, firstTimeUseAspectRatio_(true)
-    , aspectRatio_(0.0f)
-    , useAspect_(true)
-{
-    selfResizeEffect_ = std::make_unique<UIEffects>(*this);
-    QObject::connect(&Ui::GetDispatcher()->getVoipController(), SIGNAL(onVoipFrameSizeChanged(const voip_manager::FrameSize&)), this, SLOT(onVoipFrameSizeChanged(const voip_manager::FrameSize&)), Qt::DirectConnection);
-    //QObject::connect(&Ui::GetDispatcher()->getVoipController(), SIGNAL(onVoipCallCreated(const voip_manager::ContactEx&)), this, SLOT(onVoipCallCreated(const voip_manager::ContactEx&)), Qt::DirectConnection);
-}
-
-Ui::AspectRatioResizebleWnd::~AspectRatioResizebleWnd()
-{
-}
-
-bool Ui::AspectRatioResizebleWnd::isInFullscreen() const
-{
-#ifdef __linux__
-    return isFullScreen() || isMaximized();
-#else
-    return isFullScreen();
-#endif
-}
-
-void Ui::AspectRatioResizebleWnd::switchFullscreen()
-{
-    if (!isInFullscreen())
-    {
-        showFullScreen();
-    } else
-    {
-        showNormal();
-#ifndef __linux__
-        // Looks like under linux rect() return fullscreen window size and we cannot
-        // resize window correct to normal size.
-        if (aspectRatio_ > 0.001f && selfResizeEffect_)
-        {
-            const QRect rc = rect();
-            const QPoint p = mapToGlobal(rc.topLeft());
-            QRect endRc(p.x(), p.y(), rc.width(), rc.width() / aspectRatio_);
-            selfResizeEffect_->geometryTo(endRc, 500);
-        }
-#endif
-    }
-}
-
-void Ui::AspectRatioResizebleWnd::onVoipFrameSizeChanged(const voip_manager::FrameSize& _fs)
-{
-    if ((quintptr)_fs.hwnd == getContentWinId() && fabs(_fs.aspect_ratio - aspectRatio_) > 0.001f)
-    {
-        const float wasAr = aspectRatio_;
-        aspectRatio_ = _fs.aspect_ratio;
-        fitMinimalSizeToAspect();
-        applyFrameAspectRatio(wasAr);
-#ifdef __APPLE__
-        platform_macos::setAspectRatioForWindow(*this, aspectRatio_);
-#endif
-    }
-}
-
-void Ui::AspectRatioResizebleWnd::applyFrameAspectRatio(float _wasAr)
-{
-    if (useAspect_ && aspectRatio_ > 0.001f && selfResizeEffect_ && !isInFullscreen())
-    {
-        QRect rc = rect();
-#ifndef __APPLE__
-        const QPoint p = mapToGlobal(rc.topLeft());
-#else
-        // On Mac we have wrong coords with mapToGlobal. Maybe because we attach own view to widnow.
-        const QPoint p(x(), y());
-#endif
-        QRect endRc;
-        if (_wasAr > 0.001f && fabs((1.0f / aspectRatio_) - _wasAr) < 0.0001f)
-            endRc = QRect(p.x(), p.y(), rc.height(), rc.width());
-        else
-            endRc = QRect(p.x(), p.y(), rc.width(), rc.width() / aspectRatio_);
-
-        const QSize minSize = minimumSize();
-        if (endRc.width() < minSize.width())
-        {
-            const int w = minSize.width();
-            const int h = w / aspectRatio_;
-            endRc.setRight(endRc.left() + w);
-            endRc.setBottom(endRc.top() + h);
-        }
-        if (endRc.height() < minSize.height())
-        {
-            const int h = minSize.height();
-            const int w = h * aspectRatio_;
-            endRc.setRight(endRc.left() + w);
-            endRc.setBottom(endRc.top() + h);
-        }
-
-        QDesktopWidget dw;
-        const auto screenRect = dw.availableGeometry(this);
-
-        if (endRc.right() > screenRect.right())
-        {
-            const int w = endRc.width();
-            endRc.setRight(screenRect.right());
-            endRc.setLeft(endRc.right() - w);
-        }
-        if (endRc.bottom() > screenRect.bottom())
-        {
-            const int h = endRc.height();
-            endRc.setBottom(screenRect.bottom());
-            endRc.setTop(endRc.bottom() - h);
-        }
-        if (screenRect.width() < endRc.width())
-        {
-            endRc.setLeft(screenRect.left());
-            endRc.setRight(screenRect.right());
-            const int h = endRc.width() / aspectRatio_;
-            endRc.setTop(endRc.bottom() - h);
-        }
-        if (screenRect.height() < endRc.height())
-        {
-            endRc.setTop(screenRect.top());
-            endRc.setBottom(screenRect.bottom());
-            const int w = endRc.height() * aspectRatio_;
-            endRc.setLeft(endRc.right() - w);
-        }
-
-        //if (firstTimeUseAspectRatio_)
-        {
-            {
-                const int bestW = 0.6f * screenRect.width();
-                if (endRc.width() > bestW)
-                {
-                    const int bestH = bestW / aspectRatio_;
-                    endRc.setLeft(screenRect.x() + (screenRect.width() - bestW) / 2);
-                    endRc.setRight(endRc.left() + bestW);
-
-                    endRc.setTop(screenRect.y() + (screenRect.height() - bestH) / 2);
-                    endRc.setBottom(endRc.top() + bestH);
-                }
-            }
-            {   /* NEED TO EXECUTE 2 TIMES, BECAUSE CALC FOR BEST W NOT MEANS USING BEST H*/
-                const int bestH = 0.8f * screenRect.height();
-                if (endRc.height() > bestH)
-                {
-                    const int bestW = bestH * aspectRatio_;
-                    endRc.setLeft(screenRect.x() + (screenRect.width() - bestW) / 2);
-                    endRc.setRight(endRc.left() + bestW);
-
-                    endRc.setTop(screenRect.y() + (screenRect.height() - bestH) / 2);
-                    endRc.setBottom(endRc.top() + bestH);
-                }
-            }
-            //firstTimeUseAspectRatio_ = false;
-        }
-        selfResizeEffect_->geometryTo(endRc, 500);
-    }
-}
-
-void Ui::AspectRatioResizebleWnd::keyReleaseEvent(QKeyEvent* _e)
-{
-    QWidget::keyReleaseEvent(_e);
-    if (_e->key() == Qt::Key_Escape)
-        escPressed();
-}
-
-void Ui::AspectRatioResizebleWnd::useAspect()
-{
-    useAspect_ = true;
-    fitMinimalSizeToAspect();
-    applyFrameAspectRatio(0.0f);
-#ifdef __APPLE__
-    platform_macos::setAspectRatioForWindow(*this, aspectRatio_);
-#endif
-}
-
-void Ui::AspectRatioResizebleWnd::unuseAspect()
-{
-    useAspect_ = false;
-    setMinimumSize(originMinSize_);
-#ifdef __APPLE__
-    platform_macos::unsetAspectRatioForWindow(*this);
-#endif
-}
-
-#ifdef _WIN32
-bool Ui::AspectRatioResizebleWnd::onWMSizing(RECT& _rc, unsigned _wParam)
-{
-    if (!useAspect_ || aspectRatio_ < 0.001f)
-        return false;
-
-    const int cw = _rc.right  - _rc.left;
-    const int ch = _rc.bottom - _rc.top;
-    switch(_wParam)
-    {
-    case WMSZ_TOP:
-    case WMSZ_BOTTOM:
-        {
-            int w = ch * aspectRatio_;
-            if (w >= minimumWidth())
-            {
-                _rc.right = _rc.left + w;
-            } else
-            {
-                _rc.right = _rc.left + minimumWidth();
-                if (_wParam == WMSZ_BOTTOM)
-                    _rc.bottom = _rc.top + minimumWidth() / aspectRatio_;
-                else
-                    _rc.top = _rc.bottom - minimumWidth() / aspectRatio_;
-            }
-        }
-        break;
-    case WMSZ_LEFT:
-    case WMSZ_RIGHT:
-        {
-            int h = cw / aspectRatio_;
-            _rc.bottom = _rc.top + h;
-        }
-        break;
-    case WMSZ_TOPLEFT:
-    case WMSZ_TOPRIGHT:
-        {
-            int h = cw / aspectRatio_;
-            _rc.top = _rc.bottom - h;
-        }
-        break;
-    case WMSZ_BOTTOMLEFT:
-    case WMSZ_BOTTOMRIGHT:
-        {
-            int h = cw / aspectRatio_;
-            _rc.bottom = _rc.top + h;
-        }
-        break;
-    default:
-        return false;
-    }
-    return true;
-}
-#endif
-
-bool Ui::AspectRatioResizebleWnd::nativeEvent(const QByteArray&, void* _message, long* _result)
-{
-#ifdef _WIN32
-    MSG* msg = reinterpret_cast<MSG*>(_message);
-    if (isVisible() && msg->hwnd == (HWND)winId())
-    {
-        if (msg->message == WM_SIZING)
-        {
-            RECT *rc = (RECT*)msg->lParam;
-            if (!rc || aspectRatio_ < 0.001f)
-                return false;
-            *_result = TRUE;
-            return onWMSizing(*rc, msg->wParam);
-        }
-    }
-#endif
-    return false;
-}
-
-void Ui::AspectRatioResizebleWnd::saveMinSize(const QSize& size)
-{
-    originMinSize_ = size;
-}
-
-void Ui::AspectRatioResizebleWnd::fitMinimalSizeToAspect()
-{
-    if (useAspect_)
-    {
-        int height = originMinSize_.width() / aspectRatio_;
-        int width = originMinSize_.height() * aspectRatio_;
-        if (height < originMinSize_.height())
-            setMinimumSize(width, originMinSize_.height());
-        else
-            setMinimumSize(originMinSize_.width(), height);
-    }
-}
-#endif
 
 Ui::UIEffects::UIEffects(QWidget& _obj, bool opacity, bool geometry)
     : fadedIn_(true)
@@ -530,9 +258,14 @@ void Ui::BaseTopVideoPanel::updatePosition(const QWidget& parent)
     else
     {
         auto rc = parentWidget()->geometry();
-        move(rc.x(), rc.y());
+        move(rc.x(), rc.y() + verShift_);
         setFixedWidth(rc.width());
     }
+}
+
+void Ui::BaseTopVideoPanel::setVerticalShift(int _shift)
+{
+    verShift_ = _shift;
 }
 
 Ui::BaseBottomVideoPanel::BaseBottomVideoPanel(QWidget* parent, Qt::WindowFlags f) : BaseVideoPanel(parent, f) {}
@@ -690,8 +423,14 @@ void showAddUserToVideoConverenceDialog(QObject* _parent, QWidget* _parentWindow
 
     Ui::ConferenceSearchModel conferenceSearchModel(chatRoomCall ? static_cast<Logic::AbstractSearchModel*>(&chatModel) : static_cast<Logic::AbstractSearchModel*>(&searchModel));
 
-    Ui::SelectionContactsForConference contactsWidget(&conferenceMembers, QT_TRANSLATE_NOOP("voip_pages", "Add to call"),
-                                                      _parentWindow, &conferenceSearchModel , chatRoomCall);
+    Ui::SelectContactsWidgetOptions options;
+    options.searchModel_ = &conferenceSearchModel;
+    Ui::SelectionContactsForConference contactsWidget(
+        &conferenceMembers,
+        QT_TRANSLATE_NOOP("voip_pages", "Add to call"),
+        _parentWindow,
+        chatRoomCall,
+        options);
 
     const auto maxMembers = Ui::GetDispatcher()->getVoipController().maxVideoConferenceMembers() - 1
         - Ui::GetDispatcher()->getVoipController().currentCallContacts().size();
@@ -715,7 +454,7 @@ void showAddUserToVideoConverenceDialog(QObject* _parent, QWidget* _parentWindow
     if (action == QDialog::Accepted)
     {
         for (const auto& contact : selectedContacts)
-            Ui::GetDispatcher()->getVoipController().setStartCall({ contact }, true, true);
+            Ui::GetDispatcher()->getVoipController().setStartCall({ contact }, true, true, false);
     }
 
     _disconnectSignal();

@@ -87,7 +87,7 @@ TermsPrivacyWidget::TermsPrivacyWidget(const QString& _titleHtml,
 
     QWidget *iconWidget = new QWidget(mainWidget);
     iconWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    Utils::ApplyStyle(iconWidget, qsl("background-color: %1;").arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_BRIGHT_INVERSE)));
+    Utils::ApplyStyle(iconWidget, ql1s("background-color: %1;").arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_BRIGHT_INVERSE)));
 
     auto iconLayout = Utils::emptyVLayout(iconWidget);
 

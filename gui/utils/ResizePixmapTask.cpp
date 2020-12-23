@@ -1,5 +1,6 @@
 #include "stdafx.h"
 
+#include "utils.h"
 #include "ResizePixmapTask.h"
 
 namespace Utils
@@ -15,12 +16,17 @@ namespace Utils
 
     void ResizePixmapTask::run()
     {
+        if (Q_UNLIKELY(!QCoreApplication::instance()))
+            return;
         preview_ = preview_.scaled(
             size_,
             aspectMode_,
             Qt::SmoothTransformation
             );
 
-        Q_EMIT resizedSignal(preview_);
+        Utils::check_pixel_ratio(preview_);
+
+        if (Q_LIKELY(QCoreApplication::instance()))
+            Q_EMIT resizedSignal(preview_);
     }
 }

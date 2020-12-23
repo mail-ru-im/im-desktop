@@ -13,6 +13,8 @@ Most libraries in the following directories made by other people and organizatio
 * [zlib License]
 * [Sparkle MiT]
 * [Qt LGPLv3]
+* [rlottie MIT License]
+* [VirtualDesktopAccessor MIT]
  
 
 [libcurl MIT/X]: <https://curl.haxx.se/docs/copyright.html>
@@ -24,3 +26,5 @@ Most libraries in the following directories made by other people and organizatio
 [zlib License]: <http://www.zlib.net/zlib_license.html>
 [Sparkle MiT]: <https://sparkle-project.org/>
 [Qt LGPLv3]: <http://www.qt.io/licensing/>
+[rlottie MIT License]: <https://github.com/Samsung/rlottie/blob/master/COPYING>
+[VirtualDesktopAccessor MIT] <https://github.com/Ciantic/VirtualDesktopAccessor/blob/master/LICENSE.txt>

@@ -41,7 +41,8 @@ protected:
 
 public Q_SLOTS:
     void onAddReactionPlateShown();
-    void onAddReactionPlateClosed();
+    void onAddReactionPlateCloseStarted();
+    void onAddReactionPlateCloseFinished();
     void onPlatePositionChanged();
 
 private Q_SLOTS:

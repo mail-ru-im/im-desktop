@@ -45,7 +45,8 @@ namespace Ui
     Q_SIGNALS:
         void itemHovered(bool _hovered);
         void plateShown();
-        void plateClosed();
+        void plateCloseStarted();
+        void plateCloseFinished();
         void addReactionClicked(const QString& _reaction);
         void removeReactionClicked();
 

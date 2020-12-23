@@ -337,10 +337,13 @@ TransitProfileSharingWidget::TransitProfileSharingWidget(QWidget* _parent, const
     mainLayout_ = Utils::emptyVLayout(this);
 
     resizingHost_ = new QWidget(this);
+    resizingHost_->setAttribute(Qt::WA_TransparentForMouseEvents);
     resizingLayout_ = Utils::emptyHLayout(resizingHost_);
     mainLayout_->addWidget(resizingHost_);
     resizingSpacer_ = new QSpacerItem(0, avatarSize(), QSizePolicy::Fixed, QSizePolicy::Expanding);
     resizingLayout_->addSpacerItem(resizingSpacer_);
+    avatar_->setStatusTooltipEnabled(true);
+    avatar_->setIgnoreClicks(true);
 
     initShort();
 }

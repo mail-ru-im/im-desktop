@@ -42,7 +42,7 @@ namespace core
         void post_message_to_gui(int64_t _seq, std::string_view _message) const;
         void post_message_to_gui(int64_t _seq, std::string_view _message, const boost::filesystem::path& _local_path) const;
 
-        void on_model_loading(int64_t _seq);
+        void on_model_loading(int64_t _seq, bool _force_reload);
 
         bool is_version_valid() const;
 

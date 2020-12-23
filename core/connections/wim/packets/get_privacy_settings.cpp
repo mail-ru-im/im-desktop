@@ -15,11 +15,16 @@ namespace core::wim
         return settings_;
     }
 
+    std::string_view get_privacy_settings::get_method() const
+    {
+        return "getPrivacySettings";
+    }
+
     int32_t get_privacy_settings::init_request(const std::shared_ptr<core::http_request_simple>& _request)
     {
         rapidjson::Document doc(rapidjson::Type::kObjectType);
         auto& a = doc.GetAllocator();
-        setup_common_and_sign(doc, a, _request, "getPrivacySettings");
+        setup_common_and_sign(doc, a, _request, get_method());
 
         if (!params_.full_log_)
         {

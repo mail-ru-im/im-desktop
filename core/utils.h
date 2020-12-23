@@ -12,6 +12,7 @@ namespace core
         std::wstring get_local_product_data_path();
         std::string get_product_name();
         std::string_view get_app_name();
+        std::string get_ua_os_version();
         std::string get_user_agent(const string_opt &_uin = string_opt());
         std::string get_platform_string();
         std::string_view get_protocol_platform_string();
@@ -24,7 +25,6 @@ namespace core
 
         boost::filesystem::wpath get_logs_path();
         boost::filesystem::wpath get_obsolete_logs_path();
-        boost::filesystem::wpath create_logs_archive(const boost::filesystem::wpath& _path);
         boost::filesystem::wpath get_app_ini_path();
 
         bool is_writable(const boost::filesystem::path &p);
@@ -49,7 +49,15 @@ namespace core
 
         boost::filesystem::wpath generate_unique_path(const boost::filesystem::wpath& _path);
         boost::filesystem::wpath zip_up_directory(const boost::filesystem::wpath& _path);
-        boost::filesystem::wpath create_logs_archive(const boost::filesystem::wpath& _path);
+        boost::filesystem::wpath create_logs_dir_archive(const boost::filesystem::wpath& _path);
+
+        constexpr int64_t default_feedback_logs_size_limit() noexcept { return 8 * 1024 * 1024; }
+        enum class replace_old_archive
+        {
+            yes,
+            no
+        };
+        boost::filesystem::wpath create_feedback_logs_archive(const boost::filesystem::wpath& _path, int64_t _raw_size_limit = default_feedback_logs_size_limit(), replace_old_archive _replace = replace_old_archive::yes);
 
         namespace aes
         {

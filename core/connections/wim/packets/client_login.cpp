@@ -54,6 +54,11 @@ void client_login::set_product_guid_8x(const std::string& _guid)
     product_guid_8x_ = _guid;
 }
 
+std::string_view client_login::get_method() const
+{
+    return "authClientLogin";
+}
+
 int32_t client_login::parse_response_data(const rapidjson::Value& _data)
 {
     if (token_type_ == token_type::otp_via_email)
@@ -119,7 +124,7 @@ int32_t client_login::init_request(const std::shared_ptr<core::http_request_simp
 
     _request->set_compression_auto();
     _request->set_url(su::concat(urls::get_url(urls::url_type::wim_host), "auth/clientLogin"));
-    _request->set_normalized_url("authClientLogin");
+    _request->set_normalized_url(get_method());
     _request->push_post_parameter("f", "json");
     _request->push_post_parameter("devId", params_.dev_id_);
     _request->push_post_parameter("s", escape_symbols(login_));

@@ -233,6 +233,7 @@ namespace Ui
                 item->setBadgeText(_text);
             else
                 qWarning("TabBar: can not cast to TabItem");
+            update();
         }
         else
         {

@@ -44,7 +44,6 @@ make -j$(nproc)
 ## Linux Build Directions
 In order to build ICQ execute the following command line:
 ```sh
-# change -DLINUX_ARCH=64 to -DLINUX_ARCH=32 for 32bit binaries
 mkdir build && cd build
 cmake .. -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release -DLINUX_ARCH=64 && make -j$(nproc)
 ```

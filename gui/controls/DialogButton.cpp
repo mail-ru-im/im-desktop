@@ -310,4 +310,25 @@ namespace Ui
         palette.setColor(QPalette::ButtonText, hovered_ ? textColorHover_ : (pressed_ ? textColorPress_ : textColor_));
         setPalette(palette);
     }
+
+    void DialogButton::setBackgroundColor(QColor _normal, QColor _hover, QColor _pressed)
+    {
+        bgColor_ = _normal;
+        bgColorHover_ = _hover;
+        bgColorPress_ = _pressed;
+    }
+
+    void DialogButton::setBorderColor(QColor _normal, QColor _hover, QColor _pressed)
+    {
+        borderColor_ = _normal;
+        borderColorHover_ = _hover;
+        borderColorPress_ = _pressed;
+    }
+
+    void DialogButton::setTextColor(QColor _normal, QColor _hover, QColor _pressed)
+    {
+        textColor_ = _normal;
+        textColorHover_ = _hover;
+        textColorPress_ = _pressed;
+    }
 }

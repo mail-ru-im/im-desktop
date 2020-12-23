@@ -67,6 +67,7 @@ namespace
 
     const int delete_messages_hor_offset = 16;
     const int delete_messages_top_offset = 16;
+    const int messages_bottom_offset = 24;
     const int delete_messages_bottom_offset = 36;
     const int delete_messages_offset_short = 20;
 
@@ -74,7 +75,9 @@ namespace
     const int online_size = 16;
     const int small_online_size = 12;
 
-    const QColor colorTable3[][3] = // use constexpr since qt5.14
+    static constexpr std::string_view base64_encoded_image_signature = "data:image/";
+
+    constexpr QColor colorTable3[][3] =
     {
 #ifdef __APPLE__
         { { 0xFB, 0xE8, 0x9F }, { 0xF1, 0xA1, 0x6A }, { 0xE9, 0x99, 0x36 } },
@@ -457,12 +460,16 @@ namespace Utils
 
     QString getVersionLabel()
     {
-        return getAppTitle() % u" (" % QString::fromStdString(core::tools::version_info().get_version()) % u')';
+#if defined(GIT_COMMIT_HASH) &&  defined(GIT_BRANCH_NAME) && defined(BUILD_TIME)
+        return getAppTitle() % u' ' % QString::fromStdString(core::tools::version_info().get_version_with_patch()) % u" (" % ql1s(GIT_COMMIT_HASH) % u", " % ql1s(GIT_BRANCH_NAME) % u") " % ql1s(BUILD_TIME);
+#else
+        return getAppTitle() % u" (" % QString::fromStdString(core::tools::version_info().get_version_with_patch()) % u')';
+#endif
     }
 
     QString getVersionPrintable()
     {
-        return getAppTitle() % u' ' % QString::fromStdString(core::tools::version_info().get_version());
+        return getAppTitle() % u' ' % QString::fromStdString(core::tools::version_info().get_version_with_patch());
     }
 
     void drawText(QPainter& _painter, const QPointF& _point, int _flags,
@@ -649,7 +656,7 @@ namespace Utils
             return v.name_.compare(_name, Qt::CaseInsensitive) == 0;
         });
         if (i != countries.end())
-            return i->iso_code_;
+            return i->iso_code_.toString();
         return QString();
     }
 
@@ -1707,9 +1714,15 @@ namespace Utils
         return std::any_of(first, last, [&_ext](auto e) { return _ext.compare(e, Qt::CaseInsensitive) == 0; });
     }
 
+    template<typename T>
+    static bool containsCaseInsensitive(T first, T last, const QByteArray& _ext)
+    {
+        return std::any_of(first, last, [&_ext](auto e) { return _ext.compare(e, Qt::CaseInsensitive) == 0; });
+    }
+
     const std::vector<QStringView>& getImageExtensions()
     {
-        const static std::vector<QStringView> ext = { u"jpg", u"jpeg", u"png", u"bmp", u"tif", u"tiff" };
+        const static std::vector<QStringView> ext = { u"jpg", u"jpeg", u"png", u"bmp", u"tif", u"tiff", u"webp" };
         return ext;
     }
 
@@ -1739,10 +1752,40 @@ namespace Utils
 
     void copyFileToClipboard(const QString& _path)
     {
-        QMimeData* mimeData = new QMimeData();
-        mimeData->setUrls({ QUrl::fromLocalFile(_path) });
-        if (is_image_extension(QFileInfo(_path).suffix()))
-            mimeData->setImageData(QImage(_path));
+        static QMimeDatabase mimeDatabase;
+
+        static const std::unordered_set<QString, QStringHasher> supportedImageMimeTypes = []()
+        {
+            // These MIME types currently must be supressed
+            std::array<const char*, 3> supressedMimes = { "image/gif", "image/svg+xml", "image/svg+xml-compressed" };
+            std::unordered_set<QString, QStringHasher> result;
+            const QByteArrayList imageMimeTypes = QImageReader::supportedMimeTypes();
+            // remove supressed MIME formats
+            std::for_each(imageMimeTypes.constBegin(), imageMimeTypes.constEnd(), [&result, &supressedMimes](const QByteArray& t)
+            {
+                 if (!containsCaseInsensitive(supressedMimes.cbegin(), supressedMimes.cend(), t))
+                     result.insert(QString::fromLatin1(t));
+            });
+            return result;
+        }();
+
+        // A QMimeDatabase lookup is normally a better approach than QImageReader
+        // for identifying potentially non-image files or data.
+        QMimeType mimeType = mimeDatabase.mimeTypeForFile(_path, QMimeDatabase::MatchContent);
+        const auto mimeName = mimeType.name();
+
+        QMimeData* mimeData = new QMimeData;
+        if (supportedImageMimeTypes.find(mimeName) != supportedImageMimeTypes.cend())
+        {
+            mimeData->setImageData(QImage(_path, mimeType.preferredSuffix().toLatin1().constData()));
+        }
+        else
+        {
+            mimeData->setUrls({ QUrl::fromLocalFile(_path) });
+            if (mimeName == u"image/gif")
+                mimeData->setData(mimeName, QFileInfo(_path).absoluteFilePath().toUtf8());
+        }
+
         QApplication::clipboard()->setMimeData(mimeData);
     }
 
@@ -1752,7 +1795,7 @@ namespace Utils
         Utils::showTextToastOverContactDialog(QT_TRANSLATE_NOOP("toast", "Link copied"));
     }
 
-    void saveAs(const QString& _inputFilename, std::function<void (const QString& _filename, const QString& _directory)> _callback, std::function<void ()> _cancel_callback, bool asSheet)
+    void saveAs(const QString& _inputFilename, std::function<void (const QString& _filename, const QString& _directory, bool _exportAsPng)> _callback, std::function<void ()> _cancel_callback, bool asSheet)
     {
         static const QRegularExpression re(
             qsl("\\/:*?\"<>\\|\""),
@@ -1768,29 +1811,34 @@ namespace Utils
         QString name = (_inputFilename.size() >= 128 || _inputFilename.contains(re)) ? QT_TRANSLATE_NOOP("chat_page", "File") : _inputFilename;
         QString fullName = QDir::toNativeSeparators(QDir(lastDirectory).filePath(name));
 
+        const auto isWebp = ext.compare(u".webp", Qt::CaseInsensitive) == 0;
+
+        const QString filter = u'*' % ext % (isWebp ? u";; *.png" : QStringView{});
+
 #ifdef __APPLE__
         if (asSheet)
         {
-            auto callback = [save_to_settings, _callback](const QString& _filename, const QString& _directory){
+            auto callback = [save_to_settings, _callback](const QString& _filename, const QString& _directory, bool _exportAsPng){
                 save_to_settings(_directory);
 
                 if (_callback)
-                    _callback(_filename, _directory);
+                    _callback(_filename, _directory, _exportAsPng);
             };
 
             MacSupport::saveFileName(QT_TRANSLATE_NOOP("context_menu", "Save as..."), fullName, u'*' % ext, callback, ext.toString(), _cancel_callback);
             return;
         }
 #endif //__APPLE__
-        const QString destination = QFileDialog::getSaveFileName(nullptr, QT_TRANSLATE_NOOP("context_menu", "Save as..."), fullName, u'*' % ext);
+        const QString destination = QFileDialog::getSaveFileName(nullptr, QT_TRANSLATE_NOOP("context_menu", "Save as..."), fullName, filter);
         if (!destination.isEmpty())
         {
             const QFileInfo info(destination);
             lastDirectory = info.dir().absolutePath();
             const QString directory = info.dir().absolutePath();
             const auto inputExt = !ext.isEmpty() && info.suffix().isEmpty() ? ext : QStringView{};
+            const bool exportAsPng = isWebp && info.suffix().compare(u"png", Qt::CaseInsensitive) == 0;
             if (_callback)
-                _callback(info.fileName() % inputExt, directory);
+                _callback(info.fileName() % inputExt, directory, exportAsPng);
 
             save_to_settings(directory);
         }
@@ -1919,7 +1967,7 @@ namespace Utils
             props.emplace_back("Settings_Wallpaper_Global", std::to_string(-1));
 
         const auto& themeCounts = Styling::getThemesContainer().getContactWallpaperCounters();
-        for (const auto [wallId, count] : themeCounts)
+        for (const auto& [wallId, count] : themeCounts)
             props.emplace_back("Settings_Wallpaper_Local " + wallId.toStdString(), std::to_string(count));
 
         //Notifications settings
@@ -2024,7 +2072,7 @@ namespace Utils
 
         auto horizontalLineWidget = new QWidget(_parent);
         horizontalLineWidget->setFixedHeight(Utils::scale_value(1));
-        horizontalLineWidget->setStyleSheet(qsl("background-color: %1;").arg(Styling::getParameters().getColorHex(Styling::StyleVariable::PRIMARY)));
+        horizontalLineWidget->setStyleSheet(ql1s("background-color: %1;").arg(Styling::getParameters().getColorHex(Styling::StyleVariable::PRIMARY)));
         Testing::setAccessibleName(horizontalLineWidget, qsl("AS General horizontalLineWidget"));
         layout->addWidget(horizontalLineWidget);
 
@@ -2283,6 +2331,57 @@ namespace Utils
         return QApplication::primaryScreen();
     }
 
+
+    ImageBase64Format detectBase64ImageFormat(const QByteArray& _data)
+    {
+        using LookupMap = std::vector<std::pair<QByteArray, QByteArray>>;
+
+        static const LookupMap supportedImageFormats = []()
+        {
+            LookupMap lookup;
+            const QByteArrayList formats = QImageReader::supportedImageFormats();
+            lookup.reserve(formats.size());
+            for (const auto& format : formats)
+            {
+                QByteArray key;
+                key += base64_encoded_image_signature.data();
+                key += format;
+                key += ";base64";
+                lookup.emplace_back(std::move(key), format);
+            }
+            return lookup;
+        }();
+
+        ImageBase64Format result = { QByteArray(), 0 };
+        if (!_data.startsWith(base64_encoded_image_signature.data()))
+            return result;
+
+        for (const auto& imageFormat : supportedImageFormats)
+        {
+            if (_data.startsWith(imageFormat.first))
+            {
+                result.imageFormat = imageFormat.second;
+                result.headerLength = imageFormat.first.size();
+                break;
+            }
+        }
+        return result;
+    }
+
+    bool isBase64EncodedImage(const QString& _data)
+    {
+        return _data.startsWith(QLatin1String(base64_encoded_image_signature.data(), base64_encoded_image_signature.size()));
+    }
+
+    bool isBase64(const QByteArray& _data)
+    {
+        static const QRegularExpression re(qsl("([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)?"));
+        return re.match(QString::fromLatin1(_data)).hasMatch();
+    }
+
+    bool loadBase64ImageImpl(QByteArray& _data, const QByteArray& _format, const QSize& _maxSize, Out QImage& _image, Out QSize& _originalSize);
+    bool loadImageScaledImpl(QByteArray& _data, const QSize& _maxSize, Out QImage& _image, Out QSize& _originalSize);
+
     QPixmap loadPixmap(const QString& _resource)
     {
         QPixmap p(parse_image_name(_resource));
@@ -2306,10 +2405,90 @@ namespace Utils
         if (!file.open(QIODevice::ReadOnly))
             return false;
 
-        return loadPixmap(file.readAll(), _pixmap);
+        return loadPixmap(file.readAll(), _pixmap, Utils::Exif::getExifOrientation(_path));
+    }
+
+    bool loadPixmap(const QByteArray& _data, Out QPixmap& _pixmap, Exif::ExifOrientation _orientation)
+    {
+        assert(!_data.isEmpty());
+
+        static QMimeDatabase db;
+        if (db.mimeTypeForData(_data).preferredSuffix() == u"svg")
+        {
+            QSvgRenderer renderer;
+            if (!renderer.load(_data))
+                return false;
+
+            _pixmap = QPixmap(renderer.defaultSize());
+            _pixmap.fill(Qt::white);
+
+            QPainter p(&_pixmap);
+            renderer.render(&p);
+            return !_pixmap.isNull();
+        }
+
+
+        constexpr std::array<const char*, 4> availableFormats = { nullptr, "png", "jpg", "webp" };
+
+        for (auto fmt : availableFormats)
+        {
+            _pixmap.loadFromData(_data, fmt);
+
+            if (!_pixmap.isNull())
+            {
+                Exif::applyExifOrientation(_orientation, InOut _pixmap);
+                return true;
+            }
+        }
+
+        return false;
     }
 
     bool loadPixmapScaled(const QString& _path, const QSize& _maxSize,  Out QPixmap& _pixmap, Out QSize& _originalSize, const PanoramicCheck _checkPanoramic)
+    {
+        QImage image;
+        if (!loadImageScaled(_path, _maxSize, image, _originalSize, _checkPanoramic))
+            return false;
+
+        if (Q_UNLIKELY(!QCoreApplication::instance()))
+            return false;
+
+        _pixmap = QPixmap::fromImage(std::move(image));
+
+        return true;
+    }
+
+    bool loadBase64ImageImpl(QByteArray& _data, const QByteArray& _format, const QSize& _maxSize, Out QImage& _image, Out QSize& _originalSize)
+    {
+        if (!_image.loadFromData(_data, _format.constData()))
+            return false;
+
+        _originalSize = _image.size();
+        if (_maxSize.isValid() && (_maxSize.width() < _originalSize.width() || _maxSize.height() < _originalSize.height()))
+            _image = _image.scaled(_maxSize, Qt::KeepAspectRatio);
+
+        return true;
+    }
+
+    bool loadBase64Image(const QByteArray& _data, const QSize& _maxSize, Out QImage& _image, Out QSize& _originalSize)
+    {
+        const auto format = detectBase64ImageFormat(_data);
+
+        if (format.headerLength == 0)
+        {
+            return loadImageScaledImpl(const_cast<QByteArray&>(_data), _maxSize, _image, _originalSize);
+        }
+        else
+        {
+            QByteArray rawData = std::move(QUrl::fromPercentEncoding(_data)).toLatin1();
+            rawData.remove(0, format.headerLength);
+            rawData = QByteArray::fromBase64(rawData);
+
+            return loadBase64ImageImpl(rawData, format.imageFormat, _maxSize, _image, _originalSize);
+        }
+    }
+
+    bool loadImageScaled(const QString& _path, const QSize& _maxSize, Out QImage& _image, Out QSize& _originalSize, const PanoramicCheck _checkPanoramic)
     {
         QImageReader reader(_path);
         reader.setAutoTransform(true);
@@ -2340,7 +2519,7 @@ namespace Utils
             reader.setScaledSize(imageSize);
         }
 
-        _pixmap = QPixmap::fromImage(reader.read());
+        _image = reader.read();
 
         return true;
     }
@@ -2349,19 +2528,30 @@ namespace Utils
     {
         QImage image;
         loadImageScaled(_data, _maxSize, image, _originalSize);
+
+        if (Q_UNLIKELY(!QCoreApplication::instance()))
+            return false;
         _pixmap = QPixmap::fromImage(std::move(image));
 
         return true;
     }
 
-    bool loadImageScaled(QByteArray& _data, const QSize& _maxSize, QImage& _image, QSize& _originalSize)
+    bool loadImageScaled(QByteArray& _data, const QSize& _maxSize, Out QImage& _image, Out QSize& _originalSize)
+    {
+        const auto format = detectBase64ImageFormat(_data);
+        if (format.headerLength < 1)
+            return loadImageScaledImpl(_data, _maxSize, _image, _originalSize);
+
+        _data = QByteArray::fromBase64(_data);
+        return loadBase64ImageImpl(_data.remove(0, format.headerLength), format.imageFormat, _maxSize, _image, _originalSize);
+    }
+
+    bool loadImageScaledImpl(QByteArray& _data, const QSize& _maxSize, Out QImage& _image, Out QSize& _originalSize)
     {
         QBuffer buffer(&_data, nullptr);
 
         QImageReader reader;
-
         reader.setDecideFormatFromContent(true);
-
         reader.setDevice(&buffer);
 
         if (!reader.canRead())
@@ -2383,41 +2573,10 @@ namespace Utils
         return true;
     }
 
-    bool loadPixmap(const QByteArray& _data, Out QPixmap& _pixmap)
+    bool canCovertToWebp(const QString& _path)
     {
-        assert(!_data.isEmpty());
-
-        static QMimeDatabase db;
-        if (db.mimeTypeForData(_data).preferredSuffix() == u"svg")
-        {
-            QSvgRenderer renderer;
-            if (!renderer.load(_data))
-                return false;
-
-            _pixmap = QPixmap(renderer.defaultSize());
-            _pixmap.fill(Qt::white);
-
-            QPainter p(&_pixmap);
-            renderer.render(&p);
-            return !_pixmap.isNull();
-        }
-
-
-        constexpr std::array<const char*, 3> availableFormats = { nullptr, "png", "jpg" };
-
-        for (auto fmt : availableFormats)
-        {
-            _pixmap.loadFromData(_data, fmt);
-
-            if (!_pixmap.isNull())
-            {
-                const auto orientation = Exif::getExifOrientation(_data.data(), _data.size());
-                Exif::applyExifOrientation(orientation, InOut _pixmap);
-                return true;
-            }
-        }
-
-        return false;
+        const auto format = QImageReader::imageFormat(_path).toLower();
+        return format == "png" || format == "bmp";
     }
 
     bool dragUrl(QObject*, const QPixmap& _preview, const QString& _url)
@@ -2497,12 +2656,12 @@ namespace Utils
         }
 
         const auto text = mimedata->text();
-        QUrl url(text);
 
+        QUrl url(text);
         return !text.isEmpty() && (!url.isValid() || url.host().isEmpty());
     }
 
-    QStringRef normalizeLink(const QStringRef& _link)
+    QStringView normalizeLink(QStringView _link)
     {
         return _link.trimmed();
     }
@@ -2570,8 +2729,9 @@ namespace Utils
     void openAttachUrl(const QString& _email, const QString& _mrimKey, bool _canCancel)
     {
         core::tools::version_info infoCurrent;
-        const QString signed_url = getBaseMailUrl() % redirect() % u"&page=" % Features::attachPhoneUrl() % qsl("?nocancel=%1").arg(_canCancel ? 0 : 1)
-            % u"&client_code=" % getProductName() % qsl("&back_url=%1").arg(urlSchemes().front() % u"://attach_phone_result");
+        const QStringView canCancel = _canCancel ? u"0" : u"1";
+        const QString signed_url = getBaseMailUrl() % redirect() % u"&page=" % Features::attachPhoneUrl() % u"?nocancel=" % canCancel
+            % u"&client_code=" % getProductName() % u"&back_url=" % urlSchemes().front() % u"://attach_phone_result";
         const QString final_url = signed_url.arg(_email, _mrimKey, QString::number(infoCurrent.get_build()), Utils::GetTranslator()->getLang());
 
         QDesktopServices::openUrl(final_url);
@@ -2826,7 +2986,7 @@ namespace Utils
         const int _x,
         const int _y)
     {
-        _p.save();
+        PainterSaver p(_p);
 
         QFontMetrics m(_font);
 
@@ -2889,8 +3049,6 @@ namespace Utils
             _p.drawText(textX, textY, text);
         }
 
-        _p.restore();
-
         return badgeSize.width();
     }
 
@@ -2950,7 +3108,7 @@ namespace Utils
 
         const auto balloonRadius = (balloonSize / 2);
 
-        p->save();
+        PainterSaver saver(*p);
         p->setPen(Qt::NoPen);
         p->setRenderHint(QPainter::Antialiasing);
 
@@ -2981,7 +3139,6 @@ namespace Utils
             const float textY = ceilf((float)y + ((float)balloonSize + (float)unreadsHeight) / 2.);
             p->drawText(textX, textY, text);
         }
-        p->restore();
 
         return balloonWidth;
     }
@@ -3101,11 +3258,11 @@ namespace Utils
         return result;
     }
 
-    void openUrl(const QStringRef& _url)
+    void openUrl(QStringView _url)
     {
         if (Utils::isMentionLink(_url))
         {
-            const auto aimId = _url.mid(_url.indexOf(u'[') + 1, _url.length() - 3);
+            const auto aimId = _url.mid(_url.indexOf(u'[') + 1, _url.size() - 3);
             if (!aimId.isEmpty())
             {
                 std::string resStr;
@@ -3328,9 +3485,9 @@ namespace Utils
         return _url.startsWith(u"@[") && _url.endsWith(u']');
     }
 
-    bool isContainsMentionLink(const QStringRef& _text)
+    bool isContainsMentionLink(QStringView _text)
     {
-        if (const auto idxStart = _text.indexOf(ql1s("@[")); idxStart >= 0)
+        if (const auto idxStart = _text.indexOf(u"@["); idxStart >= 0)
         {
             const auto idxEnd = _text.indexOf(u']', idxStart + 2);
             return idxEnd != -1;
@@ -3849,8 +4006,10 @@ namespace Utils
     CheckableInfoWidget::CheckableInfoWidget(QWidget* _parent)
         : QWidget(_parent)
         , checkbox_(new Ui::CheckBox(this))
+        , hovered_(false)
     {
         Testing::setAccessibleName(checkbox_, qsl("AS General checkBox"));
+        setMouseTracking(true);
     }
 
     bool CheckableInfoWidget::isChecked() const
@@ -3868,29 +4027,52 @@ namespace Utils
         checkbox_->setChecked(_value);
     }
 
-    void CheckableInfoWidget::setInfoText(const QString& _text)
+    void CheckableInfoWidget::setInfoText(const QString& _text, QColor _color)
     {
         label_ = Ui::TextRendering::MakeTextUnit(_text);
-        label_->init(Fonts::appFontScaled(15), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
+        label_->init(Fonts::appFontScaled(15), _color.isValid() ? _color : Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY));
     }
 
     void CheckableInfoWidget::paintEvent(QPaintEvent* _event)
     {
         QPainter p(this);
+        p.fillRect(checkboxRect_, Styling::getParameters().getColor(hovered_ ? Styling::StyleVariable::BASE_BRIGHT_INVERSE : Styling::StyleVariable::BASE_GLOBALWHITE));
         label_->setOffsets(Utils::scale_value(delete_messages_hor_offset), Utils::scale_value(delete_messages_top_offset));
         label_->draw(p);
 
         QWidget::paintEvent(_event);
     }
 
+    void CheckableInfoWidget::enterEvent(QEvent* _event)
+    {
+        hovered_ = checkboxRect_.contains(QCursor::pos());
+        update();
+        QWidget::enterEvent(_event);
+    }
+
+    void CheckableInfoWidget::leaveEvent(QEvent* _event)
+    {
+        hovered_ = false;
+        update();
+        QWidget::leaveEvent(_event);
+    }
+
+    void CheckableInfoWidget::mouseMoveEvent(QMouseEvent* _event)
+    {
+        hovered_ = checkboxRect_.contains(_event->pos());
+        update();
+        QWidget::mouseMoveEvent(_event);
+    }
+
     void CheckableInfoWidget::resizeEvent(QResizeEvent* _event)
     {
         const auto maxWidth = _event->size().width() - Utils::scale_value(delete_messages_hor_offset * 2);
         checkbox_->setFixedWidth(maxWidth);
-        const auto labalHeight = label_->getHeight(maxWidth);
-        setFixedHeight(labalHeight + Utils::scale_value(delete_messages_top_offset + delete_messages_bottom_offset) + checkbox_->height());
+        const auto labelHeight = label_->getHeight(maxWidth);
+        setFixedHeight(labelHeight + Utils::scale_value(delete_messages_top_offset + messages_bottom_offset) + checkbox_->height());
 
-        checkbox_->move(Utils::scale_value(delete_messages_hor_offset), Utils::scale_value(delete_messages_top_offset * 2) + labalHeight);
+        checkbox_->move(Utils::scale_value(delete_messages_hor_offset), Utils::scale_value(delete_messages_top_offset * 2) + labelHeight);
+        checkboxRect_ = QRect(0, Utils::scale_value(delete_messages_top_offset * 2) + labelHeight, width(), checkbox_->height());
 
         QWidget::resizeEvent(_event);
     }
@@ -4267,6 +4449,60 @@ namespace Utils
     QString getDefaultCallAvatarId()
     {
         return qsl("~default_call_avatar_id~");
+    }
+
+    QString getReadOnlyString(ROAction _action, bool _isChannel)
+    {
+        if (_isChannel)
+        {
+            if (_action == ROAction::Ban)
+                return QT_TRANSLATE_NOOP("popup_window", "Are you sure you want to ban user to write in this channel?");
+            else
+                return QT_TRANSLATE_NOOP("popup_window", "Are you sure you want to allow user to write in this channel?");
+        }
+        else
+        {
+            if (_action == ROAction::Ban)
+                return QT_TRANSLATE_NOOP("popup_window", "Are you sure you want to ban user to write in this chat?");
+            else
+                return QT_TRANSLATE_NOOP("popup_window", "Are you sure you want to allow user to write in this chat?");
+        }
+    }
+
+    QString getMembersString(int _number, bool _isChannel)
+    {
+        if (_isChannel)
+        {
+            return Utils::GetTranslator()->getNumberString(_number, QT_TRANSLATE_NOOP3("contactlist", "%1 subscriber", "1"),
+                                                                    QT_TRANSLATE_NOOP3("contactlist", "%1 subscribers", "2"),
+                                                                    QT_TRANSLATE_NOOP3("contactlist", "%1 subscribers", "5"),
+                                                                    QT_TRANSLATE_NOOP3("contactlist", "%1 subscribers", "21")).arg(_number);
+        }
+
+        return Utils::GetTranslator()->getNumberString(_number, QT_TRANSLATE_NOOP3("contactlist", "%1 member", "1"),
+                                                                QT_TRANSLATE_NOOP3("contactlist", "%1 members", "2"),
+                                                                QT_TRANSLATE_NOOP3("contactlist", "%1 members", "5"),
+                                                                QT_TRANSLATE_NOOP3("contactlist", "%1 members", "21")).arg(_number);
+    }
+
+    QString getFormattedTime(std::chrono::milliseconds _duration)
+    {
+        const auto h = std::chrono::duration_cast<std::chrono::hours>(_duration);
+        const auto m = std::chrono::duration_cast<std::chrono::minutes>(_duration) - h;
+        const auto s = std::chrono::duration_cast<std::chrono::seconds>(_duration) - h - m;
+        const auto ms = _duration - h - m - s;
+
+        QString res;
+        QTextStream stream(&res);
+        stream.setPadChar(ql1c('0'));
+        stream
+            << qSetFieldWidth(2) << m.count()
+            << qSetFieldWidth(0) << ql1c(':')
+            << qSetFieldWidth(2) << s.count()
+            << qSetFieldWidth(0) << ql1c(',')
+            << qSetFieldWidth(2) << (ms / 10).count();
+
+        return res;
     }
 
     CallLinkCreator::CallLinkCreator(CallLinkFrom _from)

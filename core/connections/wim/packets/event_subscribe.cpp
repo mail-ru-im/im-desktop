@@ -17,6 +17,11 @@ event_subscribe::event_subscribe(wim_packet_params _params, subscriptions::subsc
     assert(!subscriptions_.empty());
 }
 
+std::string_view event_subscribe::get_method() const
+{
+    return "eventSubscribe";
+}
+
 int32_t event_subscribe::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     rapidjson::Document doc(rapidjson::Type::kObjectType);
@@ -41,7 +46,7 @@ int32_t event_subscribe::init_request(const std::shared_ptr<core::http_request_s
 
     doc.AddMember("params", std::move(node_params), a);
 
-    setup_common_and_sign(doc, a, _request, "eventSubscribe");
+    setup_common_and_sign(doc, a, _request, get_method());
 
     if (!params_.full_log_)
     {
@@ -50,7 +55,7 @@ int32_t event_subscribe::init_request(const std::shared_ptr<core::http_request_s
 
         for (const auto& s : subscriptions_)
             for (const auto& marker : s->get_log_markers())
-                f.add_json_marker(marker);
+                f.add_json_array_marker(marker);
 
         _request->set_replace_log_function(f);
     }

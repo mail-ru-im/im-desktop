@@ -553,7 +553,7 @@ namespace Ui
                     {
                         auto url = parser.getUrl();
                         if (url.is_email())
-                            return Utils::openUrl(u"mailto:" % QString::fromStdString(url.url_));
+                            return Utils::openUrl(QString(u"mailto:" % QString::fromStdString(url.url_)));
 
                         Utils::openUrl(QString::fromStdString(url.url_));
                         return;

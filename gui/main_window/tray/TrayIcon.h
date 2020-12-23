@@ -55,6 +55,7 @@ namespace Ui
         void onEmailIconClick(QSystemTrayIcon::ActivationReason);
         void mailBoxOpened();
         void mentionMe(const QString& _contact, Data::MessageBuddySptr _mention);
+        void deleteMessage(const Data::PatchedMessage&);
 
     private:
         void init();
@@ -73,8 +74,6 @@ namespace Ui
         void openMailBox(const QString& _mailId);
 #ifdef _WIN32
         bool toastSupported();
-#else
-        bool ncSupported();
 #endif //_WIN32
         void showMessage(const Data::DlgState& state, const AlertType _alertType);
         TrayPosition getTrayPosition() const;

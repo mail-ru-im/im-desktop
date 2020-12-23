@@ -26,8 +26,13 @@ namespace Ui
 
 namespace Utils
 {
-    inline void ensureMainThread() { assert(QThread::currentThread() == qApp->thread()); }
-    inline void ensureNonMainThread() { assert(QThread::currentThread() != qApp->thread()); }
+    namespace Exif
+    {
+        enum class ExifOrientation;
+    }
+
+    inline void ensureMainThread() { assert(qApp && QThread::currentThread() == qApp->thread()); }
+    inline void ensureNonMainThread() { assert(qApp && QThread::currentThread() != qApp->thread()); }
 
     QString getAppTitle();
     QString getVersionLabel();
@@ -235,7 +240,19 @@ namespace Utils
     void copyFileToClipboard(const QString& _path);
     void copyLink(const QString& _link);
 
-    void saveAs(const QString& _inputFilename, std::function<void (const QString& _filename, const QString& _directory)> _callback, std::function<void ()> _cancel_callback = std::function<void ()>(), bool asSheet = true /* for OSX only */);
+    void saveAs(const QString& _inputFilename, std::function<void (const QString& _filename, const QString& _directory, bool _exportAsPng)> _callback, std::function<void ()> _cancel_callback = std::function<void ()>(), bool asSheet = true /* for OSX only */);
+
+    template<typename T>
+    inline QByteArray imageToData(const T& _pixmap, const char* _format = nullptr, int _quality = -1)
+    {
+        QByteArray array;
+        QBuffer b(&array);
+        b.open(QIODevice::WriteOnly);
+        _pixmap.save(&b, _format, _quality);
+        return array;
+    }
+
+    bool canCovertToWebp(const QString& _path);
 
     using SendKeysIndex = std::vector<std::pair<QString, Ui::KeyToSendMessage>>;
 
@@ -350,7 +367,7 @@ namespace Utils
 
     bool loadPixmap(const QString& _path, Out QPixmap& _pixmap);
 
-    bool loadPixmap(const QByteArray& _data, Out QPixmap& _pixmap);
+    bool loadPixmap(const QByteArray& _data, Out QPixmap& _pixmap, Exif::ExifOrientation _orientation);
 
     enum class PanoramicCheck
     {
@@ -359,9 +376,25 @@ namespace Utils
     };
     bool loadPixmapScaled(const QString& _path, const QSize& _maxSize, Out QPixmap& _pixmap, Out QSize& _originalSize, const PanoramicCheck _checkPanoramic = PanoramicCheck::yes);
 
+    bool loadImageScaled(const QString& _path, const QSize& _maxSize, Out QImage& _image, Out QSize& _originalSize, const PanoramicCheck _checkPanoramic = PanoramicCheck::yes);
+
     bool loadPixmapScaled(QByteArray& _data, const QSize& _maxSize, Out QPixmap& _pixmap, Out QSize& _originalSize);
 
     bool loadImageScaled(QByteArray& _data, const QSize& _maxSize, Out QImage& _image, Out QSize& _originalSize);
+
+    bool loadBase64Image(const QByteArray& _data, const QSize& _maxSize, Out QImage& image, Out QSize& _originalSize);
+
+    struct ImageBase64Format
+    {
+        QByteArray imageFormat;
+        int headerLength;
+    };
+
+    ImageBase64Format detectBase64ImageFormat(const QByteArray& _data);
+
+    bool isBase64EncodedImage(const QString& _data);
+
+    bool isBase64(const QByteArray& _data);
 
     bool dragUrl(QObject* _parent, const QPixmap& _preview, const QString& _url);
 
@@ -387,7 +420,7 @@ namespace Utils
 
     bool haveText(const QMimeData *);
 
-    QStringRef normalizeLink(const QStringRef& _link);
+    QStringView normalizeLink(QStringView _link);
 
     std::string_view get_crossprocess_mutex_name();
 
@@ -447,11 +480,7 @@ namespace Utils
 
     QImage iconWithCounter(int size, int count, QColor bg, QColor fg, QImage back = QImage());
 
-    void openUrl(const QStringRef& _url);
-    inline void openUrl(const QString& _url)
-    {
-        openUrl(QStringRef(&_url));
-    }
+    void openUrl(QStringView _url);
 
     enum class OpenAt
     {
@@ -485,11 +514,7 @@ namespace Utils
 
     bool isMentionLink(QStringView _url);
 
-    bool isContainsMentionLink(const QStringRef& _url);
-    inline bool isContainsMentionLink(const QString& _url)
-    {
-        return isContainsMentionLink(QStringRef(&_url));
-    }
+    bool isContainsMentionLink(QStringView _url);
 
     bool isServiceLink(const QString& _url);
     void clearContentCache();
@@ -664,15 +689,20 @@ namespace Utils
 
         void setCheckBoxText(const QString& _text);
         void setCheckBoxChecked(bool _value);
-        void setInfoText(const QString& _text);
+        void setInfoText(const QString& _text, QColor _color = QColor());
 
     protected:
         void paintEvent(QPaintEvent* _event) override;
         void resizeEvent(QResizeEvent* _event) override;
+        void mouseMoveEvent(QMouseEvent* _event) override;
+        void enterEvent(QEvent* _event) override;
+        void leaveEvent(QEvent* _event) override;
 
     private:
         Ui::CheckBox* checkbox_;
         std::unique_ptr<Ui::TextRendering::TextUnit> label_;
+        QRect checkboxRect_;
+        bool hovered_;
     };
 
     void logMessage(const QString& _message);
@@ -751,6 +781,16 @@ namespace Utils
             result = std::distance(start, it);
         return result;
     }
+
+    enum class ROAction
+    {
+        Ban,
+        Allow
+    };
+    QString getReadOnlyString(ROAction _action, bool _isChannel);
+    QString getMembersString(int _number, bool _isChannel);
+
+    QString getFormattedTime(std::chrono::milliseconds _duration);
 }
 
 Q_DECLARE_METATYPE(Utils::CloseWindowInfo)

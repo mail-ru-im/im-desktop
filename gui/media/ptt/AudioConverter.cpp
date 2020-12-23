@@ -727,7 +727,7 @@ namespace ptt
         if (res.success)
         {
             const auto realDuration = calculateDuration(wavData_.size() - getWavHeaderSize(), sampleRate_, channelsCount_, bitesPerSample_);
-            const auto duration = std::max(std::chrono::duration_cast<std::chrono::seconds>(realDuration), std::chrono::seconds(1));
+            const auto duration = std::max(std::chrono::ceil<std::chrono::seconds>(realDuration), std::chrono::seconds(1));
             Q_EMIT ready(res.fileName, duration, QPrivateSignal());
         }
         else

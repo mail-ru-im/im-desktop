@@ -22,9 +22,9 @@ namespace core
 
     void curl_task::execute(CURL* _curl)
     {
-        auto result = [this](CURLcode _err)
+        auto result = [this](CURLcode _err, bool _resolve_failed)
         {
-            auto res = get_completion_code(_err);
+            auto res = get_completion_code(_err, _resolve_failed);
             if (async_)
                 completion_func_(res);
             else
@@ -33,19 +33,19 @@ namespace core
 
         auto ctx = context_.lock();
         if (!ctx)
-            return result(CURLE_FAILED_INIT);
+            return result(CURLE_FAILED_INIT, false);
 
         if (ctx->stop_func_ && ctx->stop_func_())
-            return result(CURLE_ABORTED_BY_CALLBACK);
+            return result(CURLE_ABORTED_BY_CALLBACK, false);
 
         if (!ctx->init_handler(_curl))
         {
-            result(CURLE_FAILED_INIT);
+            result(CURLE_FAILED_INIT, false);
             curl_easy_reset(_curl);
             return;
         }
 
-        result(ctx->execute_handler(_curl));
+        result(ctx->execute_handler(_curl), ctx->is_resolve_failed());
         curl_easy_reset(_curl);
     }
 
@@ -53,7 +53,7 @@ namespace core
     {
         auto result = [this](CURLcode _err)
         {
-            auto res = get_completion_code(_err);
+            auto res = get_completion_code(_err, false);
             if (async_)
                 completion_func_(res);
             else
@@ -88,7 +88,7 @@ namespace core
     {
         auto result = [this](CURLcode _err)
         {
-            auto res = get_completion_code(_err);
+            auto res = get_completion_code(_err, false);
             if (async_)
                 completion_func_(res);
             else
@@ -120,9 +120,9 @@ namespace core
 
     void curl_task::finish_multi(CURLM* _multi, CURL* _curl, CURLcode _res)
     {
-        auto result = [this](CURLcode _err)
+        auto result = [this](CURLcode _err, bool _resolve_failed)
         {
-            auto res = get_completion_code(_err);
+            auto res = get_completion_code(_err, _resolve_failed);
             if (async_)
                 completion_func_(res);
             else
@@ -131,7 +131,7 @@ namespace core
 
         auto ctx = context_.lock();
         if (!ctx)
-            return result(CURLE_FAILED_INIT);
+            return result(CURLE_FAILED_INIT, false);
 
         if (ctx->stop_func_ && ctx->stop_func_())
             _res = CURLE_ABORTED_BY_CALLBACK;
@@ -141,7 +141,7 @@ namespace core
 
         curl_multi_remove_handle(_multi, _curl);
         curl_easy_cleanup(_curl);
-        result(_res);
+        result(_res, ctx->is_resolve_failed());
     }
 
     priority_t curl_task::get_priority() const
@@ -160,14 +160,14 @@ namespace core
 
     void curl_task::cancel()
     {
-        auto res = get_completion_code(CURLE_ABORTED_BY_CALLBACK);
+        auto res = get_completion_code(CURLE_ABORTED_BY_CALLBACK, false);
         if (async_)
             completion_func_(res);
         else
             promise_.set_value(res);
     }
 
-    curl_easy::completion_code curl_task::get_completion_code(CURLcode _err)
+    curl_easy::completion_code curl_task::get_completion_code(CURLcode _err, bool _resolve_failed)
     {
         switch (_err)
         {
@@ -177,6 +177,8 @@ namespace core
             return curl_easy::completion_code::cancelled;
         case CURLE_COULDNT_RESOLVE_HOST:
             return curl_easy::completion_code::resolve_failed;
+        case CURLE_OPERATION_TIMEDOUT:
+            return _resolve_failed ? curl_easy::completion_code::resolve_failed : curl_easy::completion_code::failed;
         default:
             return curl_easy::completion_code::failed;
         }
@@ -259,6 +261,11 @@ namespace core
     void curl_handler::reset()
     {
         multi_handler_->reset();
+    }
+
+    void curl_handler::reset_sockets()
+    {
+        multi_handler_->reset_sockets();
     }
 
     void curl_handler::process_stopped_tasks()

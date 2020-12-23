@@ -404,8 +404,8 @@ namespace Ui
 
     void SearchWidget::onEscapePress()
     {
-        setNeedClear(true);
-        searchCompleted();
+        searchCompletedImpl(SetFocusToInput::Yes);
+
         Q_EMIT escapePressed();
     }
 

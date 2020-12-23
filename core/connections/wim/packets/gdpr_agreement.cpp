@@ -59,7 +59,7 @@ int32_t gdpr_agreement::init_request(const std::shared_ptr<core::http_request_si
         _request->push_post_parameter("reset", "1");
 
     _request->set_url(ss_url.str());
-    _request->set_normalized_url("agreementSave");
+    _request->set_normalized_url(get_method());
 
     if (!params_.full_log_)
     {
@@ -109,4 +109,9 @@ int32_t gdpr_agreement::on_empty_data()
 priority_t gdpr_agreement::get_priority() const
 {
     return packets_priority_high();
+}
+
+std::string_view gdpr_agreement::get_method() const
+{
+    return "agreementSave";
 }

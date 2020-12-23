@@ -105,6 +105,7 @@ namespace Ui
         TextWidget_ = TextRendering::MakeTextUnit(EventInfo_->formatEventText(), {}, showLinks);
         TextWidget_->setLineSpacing(lineSpacing());
         TextWidget_->applyLinks(EventInfo_->getMembersLinks());
+
         initTextWidget();
         init();
     }
@@ -153,7 +154,7 @@ namespace Ui
     QString ChatEventItem::formatRecentsText() const
     {
         if (EventInfo_)
-            return EventInfo_->formatEventText();
+            return EventInfo_->formatRecentsEventText();
 
         if (TextWidget_)
             return TextWidget_->getText();
@@ -400,6 +401,23 @@ namespace Ui
         return TextRendering::HorAligment::CENTER;
     }
 
+    bool ChatEventItem::membersLinksEnabled() const
+    {
+        if (EventInfo_)
+        {
+            switch (EventInfo_->eventType())
+            {
+                case core::chat_event_type::status_reply:
+                case core::chat_event_type::custom_status_reply:
+                    return false;
+                default:
+                    break;
+            }
+        }
+
+        return true;
+    }
+
     bool ChatEventItem::isOutgoing() const
     {
         return false;
@@ -613,7 +631,7 @@ namespace Ui
 
     void ChatEventItem::mouseMoveEvent(QMouseEvent* _event)
     {
-        if (TextWidget_->isOverLink(_event->pos()))
+        if (membersLinksEnabled() && TextWidget_->isOverLink(_event->pos()))
             setCursor(Qt::PointingHandCursor);
         else
             setCursor(Qt::ArrowCursor);
@@ -623,7 +641,7 @@ namespace Ui
 
     void ChatEventItem::mouseReleaseEvent(QMouseEvent* _event)
     {
-        if (Utils::clicked(pressPos_, _event->pos()))
+        if (membersLinksEnabled() && Utils::clicked(pressPos_, _event->pos()))
             TextWidget_->clicked(_event->pos());
 
         HistoryControlPageItem::mouseReleaseEvent(_event);

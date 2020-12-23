@@ -2,6 +2,7 @@
 
 #include "RecentItemDelegate.h"
 #include "../../controls/ClickWidget.h"
+#include "accessibility/LinkAccessibleWidget.h"
 
 namespace Logic
 {
@@ -9,25 +10,27 @@ namespace Logic
 
     enum MembersWidgetRegim
     {
-        CONTACT_LIST = 0,
-        SELECT_MEMBERS = 1,
-        MEMBERS_LIST = 2,
-        IGNORE_LIST = 3,
-        ADMIN_MEMBERS = 4,
-        SHARE = 5,
-        PENDING_MEMBERS = 6,
-        UNKNOWN = 7,
-        FROM_ALERT = 8,
-        HISTORY_SEARCH = 9,
-        VIDEO_CONFERENCE = 10,
-        CONTACT_LIST_POPUP = 11,
-        COMMON_CHATS = 12,
-        SHARE_CONTACT = 13,
-        COUNTRY_LIST = 14,
-        SELECT_CHAT_MEMBERS = 15,
-        CALLS_LIST = 16,
-        SHARE_VIDEO_CONFERENCE = 17,
-        STATUS_LIST = 18,
+        CONTACT_LIST,
+        SELECT_MEMBERS,
+        MEMBERS_LIST,
+        IGNORE_LIST,
+        ADMIN_MEMBERS,
+        SHARE,
+        PENDING_MEMBERS,
+        UNKNOWN,
+        FROM_ALERT,
+        HISTORY_SEARCH,
+        VIDEO_CONFERENCE,
+        CONTACT_LIST_POPUP,
+        COMMON_CHATS,
+        SHARE_CONTACT,
+        COUNTRY_LIST,
+        SELECT_CHAT_MEMBERS,
+        CALLS_LIST,
+        SHARE_VIDEO_CONFERENCE,
+        YOUR_INVITES_LIST,
+        DISALLOWED_INVITERS,
+        DISALLOWED_INVITERS_ADD,
     };
 
     bool is_members_regim(int _regim);
@@ -40,6 +43,7 @@ namespace Logic
     bool isAddMembersRegim(int _regim);
 
     QString aimIdFromIndex(const QModelIndex& _current);
+    QString senderAimIdFromIndex(const QModelIndex& _index);
 
     QMap<QString, QVariant> makeData(const QString& _command, const QString& _aimid = QString());
     QMap<QString, QVariant> makeData(const QString& _command, Data::CallInfoPtr _call);
@@ -50,19 +54,31 @@ namespace Ui
 {
     class ServiceContact;
 
-    class EmptyIgnoreListLabel : public QWidget
+    class EmptyListLabel : public LinkAccessibleWidget
     {
         Q_OBJECT
 
+    Q_SIGNALS:
+        void linkClicked(QPrivateSignal) const;
+
     public:
-        explicit EmptyIgnoreListLabel(QWidget* _parent);
-        ~EmptyIgnoreListLabel();
+        explicit EmptyListLabel(QWidget* _parent, Logic::MembersWidgetRegim _regim);
+        ~EmptyListLabel();
+
+        const TextRendering::TextUnitPtr& getTextUnit() const override { return label_; }
 
     protected:
         void paintEvent(QPaintEvent*) override;
+        void resizeEvent(QResizeEvent*) override;
+        void mouseMoveEvent(QMouseEvent*) override;
+        void mouseReleaseEvent(QMouseEvent*) override;
+        void leaveEvent(QEvent*) override;
 
     private:
-        std::unique_ptr<Ui::ServiceContact> serviceContact_;
+        void setLinkHighlighted(bool _hl);
+
+    private:
+        TextRendering::TextUnitPtr label_;
     };
 
 

@@ -53,7 +53,8 @@ public:
         plate->setChatId(item_->getContact());
 
         QObject::connect(plate, &AddReactionPlate::plateShown, button_, &AddReactionButton::onAddReactionPlateShown);
-        QObject::connect(plate, &AddReactionPlate::plateClosed, button_, &AddReactionButton::onAddReactionPlateClosed);
+        QObject::connect(plate, &AddReactionPlate::plateCloseStarted, button_, &AddReactionButton::onAddReactionPlateCloseStarted);
+        QObject::connect(plate, &AddReactionPlate::plateCloseFinished, button_, &AddReactionButton::onAddReactionPlateCloseFinished);
         QObject::connect(plate, &AddReactionPlate::addReactionClicked, q, &MessageReactions::onAddReactionClicked);
         QObject::connect(plate, &AddReactionPlate::removeReactionClicked, q, &MessageReactions::onRemoveReactionClicked);
 
@@ -197,7 +198,7 @@ bool MessageReactions::enabled()
 void MessageReactions::onReactionButtonClicked()
 {
     auto plate = d->createAddReactionPlate(); // will delete itself
-    const auto buttonRect = d->button_->geometry();
+    const auto& buttonRect = d->button_->geometry();
     const auto buttonBottomCenterGlobal = d->item_->mapToGlobal(buttonRect.center() - QPoint(0, buttonRect.height() / 2));
     plate->showOverButton(buttonBottomCenterGlobal);
 }

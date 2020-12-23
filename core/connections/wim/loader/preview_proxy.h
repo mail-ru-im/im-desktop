@@ -26,7 +26,10 @@ public:
         const preview_size &_preview_size,
         const int64_t _file_size,
         const origin_size& _origin_size,
-        const std::string& _filename);
+        const std::string& _filename,
+        const std::string& _fileformat);
+
+    link_meta(int64_t _status_code);
 
     ~link_meta();
 
@@ -54,9 +57,13 @@ public:
 
     const std::string& get_filename() const;
 
+    const std::string& get_fileformat() const;
+
     bool has_favicon_uri() const;
 
     bool has_preview_uri() const;
+
+    int64_t get_status_code() const;
 
 private:
     std::string preview_uri_;
@@ -80,6 +87,10 @@ private:
     origin_size origin_size_;
 
     std::string filename_;
+
+    std::string fileformat_;
+
+    int64_t status_code_;
 };
 
 enum class favicon_size

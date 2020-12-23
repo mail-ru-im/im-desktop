@@ -24,3 +24,4 @@
 #include "fetch_event_reactions.h"
 #include "fetch_event_status.h"
 #include "fetch_event_call_room_info.h"
+#include "fetch_event_suggest_to_notify_user.h"

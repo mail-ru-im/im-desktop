@@ -23,6 +23,11 @@ namespace Ui
         QSize sizeHint() const override;
         QLayoutItem *takeAt(int _index) override;
 
+        void clearItems();
+
+        void setInnerAlignment(Qt::Alignment _horAlign) { innerAlignment_ = _horAlign; }
+        Qt::Alignment innerAlignment() const { return innerAlignment_; }
+
     private:
 
         enum class Target
@@ -37,6 +42,7 @@ namespace Ui
         QList<QLayoutItem *> itemList_;
         int hSpace_;
         int vSpace_;
+        Qt::Alignment innerAlignment_ = Qt::AlignLeft;
     };
 
 }

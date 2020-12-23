@@ -293,7 +293,6 @@ namespace Ui
             MediaType _mediaType,
             bool instantEdit);
 
-        void pressedDestroyed();
         void onItemLayoutChanged();
 
         void strangerClose();
@@ -439,6 +438,10 @@ namespace Ui
         bool needStartButton() const noexcept { return botParams_.has_value(); }
 
         int chatRoomCallParticipantsCount() const;
+
+        void clearPttProgress();
+
+        MessagesScrollArea* scrollArea() const;
 
     protected:
         void focusOutEvent(QFocusEvent* _event) override;
@@ -651,6 +654,7 @@ namespace Ui
         bool isAdminRole_;
         bool isChatCreator_;
         bool isMember_ = false;
+        QString chatInviter_;
         qint64 requestWithLoaderSequence_;
         QString requestWithLoaderAimId_;
         ContactAvatarWidget* avatar_;

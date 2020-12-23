@@ -56,19 +56,22 @@ FFmpegPlayerMemMonitor::FFMpegStats FFmpegPlayerMemMonitor::getCurrentStats()
 {
     auto stats = FFMpegStats();
 
-    auto players = currentPlayers();
+    const auto players = currentPlayers();
     stats.reserve(players.count());
 
     for (auto player: players)
     {
         FFMpegPlayerInfo info;
+        info.mediaId_ = player->mediaId_;
         info.decodedFramesCount_ = player->decodedFrames_.size();
         info.decodedFramesPixmapSize_ = 0;
         for (const auto &decodedFrame: player->decodedFrames_)
-        {
             info.decodedFramesPixmapSize_ += Utils::getMemoryFootprint(decodedFrame.image_);
+        if (player->firstFrame_)
+        {
+            ++info.decodedFramesCount_;
+            info.decodedFramesPixmapSize_ += Utils::getMemoryFootprint(player->firstFrame_->image_);
         }
-        info.mediaId_ = player->mediaId_;
 
         stats.push_back(info);
     }
@@ -76,4 +79,32 @@ FFmpegPlayerMemMonitor::FFMpegStats FFmpegPlayerMemMonitor::getCurrentStats()
     return stats;
 }
 
+int64_t FFmpegPlayerMemMonitor::getLottieStats() const
+{
+    int64_t total = 0;
+    {
+        auto& cache = LottieHandleCache::instance();
+        std::scoped_lock lock(cache.mutex_);
+        for (const auto& [k, s] : cache.nativePtrs_)
+            total += k.capacity();
+    }
+
+#ifdef LOTTIE_FRAME_CACHE
+    {
+        auto& ctx = getMediaContainer()->ctx_;
+        std::scoped_lock lock(ctx.mediaDataMutex_);
+        for (const auto& [id, media_ptr] : ctx.mediaData_)
+        {
+            if (!media_ptr || !media_ptr->lottieRenderer_)
+                continue;
+
+            for (const auto& f : media_ptr->lottieRenderer_.frames_)
+                if (!f.isNull())
+                    total += Utils::getMemoryFootprint(f);
+        }
+    }
+#endif // LOTTIE_FRAME_CACHE
+
+    return total;
+}
 }

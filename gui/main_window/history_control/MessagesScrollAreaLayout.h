@@ -228,7 +228,7 @@ namespace Ui
 
             bool IsActive_;
 
-            bool isVisibleEnoughForPlay_;
+            QRect visibleRect_;
 
             bool isVisibleEnoughForRead_;
         };
@@ -306,8 +306,7 @@ namespace Ui
         ItemsInfoIter insertItem(QWidget *widget, const Logic::MessageKey &key);
 
         void onItemActivityChanged(QWidget *widget, const bool isActive);
-
-        void onItemVisibilityChanged(QWidget *widget, const bool isVisible);
+        void onItemVisibleRectChanged(QWidget* widget, const QRect& _visibleRect);
 
         void onItemRead(QWidget *widget, const bool _isVisible);
 
@@ -328,9 +327,8 @@ namespace Ui
         void updateItemsPropsDirect();
         void updateItemsPropsReverse();
 
-        bool isVisibleEnoughForPlay(const QWidget *_widget, const QRect& _widgetAbsGeometry, const QRect& _viewportVisibilityAbsRect) const;
+        QRect getItemVisibleRect(const QRect& _widgetAbsGeometry, const QRect& _viewportVisibilityAbsRect) const;
         bool isVisibleEnoughForRead(const QWidget *_widget, const QRect& _widgetAbsGeometry, const QRect& _viewportVisibilityAbsRect) const;
-
         void suspendVisibleItem(const ItemInfoUptr& _item);
 
         enum class SmartreplyAnimType

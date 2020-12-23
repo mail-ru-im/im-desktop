@@ -1,6 +1,6 @@
 #!/bin/sh
 
-external_version=`cat ../../CMakeLists.txt |grep "set(EXT_LIBS_VERSION" |awk '{print $2}' |tr -d '")'`
+external_version=`cat ../../requirements/common.cmake |grep "set(EXT_LIBS_VERSION" |awk '{print $2}' |tr -d '")'`
 echo "info -> external_version = ${external_version}"
 echo "info -> ../../external_${external_version}/qt/macos/bin/lupdate"
 echo

@@ -84,10 +84,8 @@ int32_t send_message::init_request(const std::shared_ptr<core::http_request_simp
     const auto is_sticker = (type_ == message_type::sticker);
     const auto is_sms = (type_ == message_type::sms);
 
-    const auto method = is_sticker && quotes_.empty() ? std::string_view("sendSticker") : std::string_view("sendIM");
-
-    _request->set_url(su::concat(urls::get_url(urls::url_type::wim_host), "im/", method));
-    _request->set_normalized_url(method);
+    _request->set_url(su::concat(urls::get_url(urls::url_type::wim_host), "im/", get_method()));
+    _request->set_normalized_url(get_method());
     _request->set_keep_alive();
     _request->set_compression_auto();
     _request->push_post_parameter("f", "json");
@@ -396,4 +394,9 @@ int32_t send_message::execute_request(const std::shared_ptr<core::http_request_s
 priority_t send_message::get_priority() const
 {
     return priority_send_message();
+}
+
+std::string_view send_message::get_method() const
+{
+    return type_ == message_type::sticker && quotes_.empty() ? std::string_view("sendSticker") : std::string_view("sendIM");
 }

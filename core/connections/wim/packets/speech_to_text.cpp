@@ -47,7 +47,7 @@ int32_t speech_to_text::init_request(const std::shared_ptr<core::http_request_si
     ss_url += format_get_params(params);
 
     _request->set_url(ss_url);
-    _request->set_normalized_url("pushToTalkRecognition");
+    _request->set_normalized_url(get_method());
     _request->set_keep_alive();
 
     if (!params_.full_log_)
@@ -145,4 +145,9 @@ const std::string& speech_to_text::get_text() const
 int32_t speech_to_text::get_comeback() const
 {
     return Comeback_;
+}
+
+std::string_view speech_to_text::get_method() const
+{
+    return "pushToTalkRecognition";
 }

@@ -37,6 +37,8 @@ namespace core
             const mention_suggest_vec& get_suggests() const;
 
             const std::shared_ptr<core::archive::persons_map>& get_persons() const override { return persons_; }
+
+            virtual std::string_view get_method() const override;
         };
     }
 }

@@ -1,4 +1,7 @@
-cmake_minimum_required(VERSION 3.14)
+cmake_minimum_required(VERSION 3.17)
+
+message(STATUS "")
+message(STATUS "CMake version = ${CMAKE_VERSION}")
 
 include(CheckFunctionExists)
 
@@ -6,7 +9,8 @@ project(icq)
 
 if(NOT PRODUCT)
     set(PRODUCT "icq")
-    message("Default product is ${PRODUCT}")
+    message(STATUS "")
+    message(STATUS "Default product is ${PRODUCT}")
 endif()
 
 message(STATUS "PRODUCT is ${PRODUCT}")
@@ -23,16 +27,22 @@ if(NOT WIN32)
 endif()
 
 if(NOT APP_ENVIRONMENT)
-    message(STATUS "... cmake: APP_ENVIRONMENT is empty")
+    message(STATUS "APP_ENVIRONMENT is empty")
 else()
-    message(STATUS "... cmake: APP_ENVIRONMENT is ${APP_ENVIRONMENT}")
+    message(STATUS "APP_ENVIRONMENT is ${APP_ENVIRONMENT}")
     add_definitions(-DAPP_ENVIRONMENT="${APP_ENVIRONMENT}")
 endif()
 
 if(BUILD_FOR_STORE)
-    message(STATUS "... cmake: This build for Store -> BUILD_FOR_STORE")
+    message(STATUS "[cmake] This build for Store -> BUILD_FOR_STORE")
     add_definitions(-DBUILD_FOR_STORE=1)
     message(STATUS "add_definitions(-DBUILD_FOR_STORE=1)")
+endif()
+
+if(BUILD_PKG_MSI)
+    message(STATUS "[cmake] This build makes MSI package -> BUILD_PKG_MSI")
+    message(STATUS "add_definitions(-DBUILD_PKG_MSI=1)")
+    add_definitions(-DBUILD_PKG_MSI=1)
 endif()
 
 if(NOT ICQ_QT_DYNAMIC)
@@ -45,6 +55,9 @@ else()
     message(STATUS "add_definitions(-DICQ_QT_DYNAMIC)")
 endif()
 
+if (STRIP_VOIP)
+    add_definitions(-DSTRIP_VOIP)
+endif()
 
 message(STATUS "DIR CMAKE_SOURCE_DIR = ${CMAKE_SOURCE_DIR}")
 find_package(Git)
@@ -65,10 +78,26 @@ if (GIT_FOUND)
             OUTPUT_STRIP_TRAILING_WHITESPACE
         )
     endif()
+    execute_process(
+        COMMAND ${GIT_EXECUTABLE} rev-parse --short HEAD
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        OUTPUT_VARIABLE GIT_COMMIT_HASH
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
     message(STATUS "Current GIT BRANCH NAME = ${GIT_BRANCH_NAME}")
+    message(STATUS "Current GIT COMMIT HASH = ${GIT_COMMIT_HASH}")
+
     add_definitions("-DGIT_BRANCH_NAME=\"${GIT_BRANCH_NAME}\"")
     message(STATUS "add_definitions(-DGIT_BRANCH_NAME=${GIT_BRANCH_NAME})")
+
+    add_definitions("-DGIT_COMMIT_HASH=\"${GIT_COMMIT_HASH}\"")
+    message(STATUS "add_definitions(-DGIT_COMMIT_HASH=${GIT_COMMIT_HASH})")
 endif (GIT_FOUND)
+
+string(TIMESTAMP BUILD_TIME "%d/%m/%y %H:%M")
+add_definitions("-DBUILD_TIME=\"${BUILD_TIME}\"")
+message(STATUS "add_definitions(-DBUILD_TIME=${BUILD_TIME})")
+message(STATUS "Current BILD TIME = ${BUILD_TIME}")
 
 get_filename_component(ICQ_ROOT "${CMAKE_SOURCE_DIR}" ABSOLUTE)
 set(PRODUCT_SPEC_DIR "${ICQ_ROOT}/products/${PRODUCT}")
@@ -127,11 +156,14 @@ if(ENABLE_UBSAN)
   list(APPEND _build_flags "-fsanitize=undefined")
 endif()
 
-if(VOIP_AS_MODULE)
-  # When building voip library from source (to do this, just add voip3 symlink to voip3 repo), include
-  # voip sources before mangling flags, CMake options, etc. to avoid interference with voip build scripts
-  add_subdirectory(voip3)
-  set(VOIP_LIBRARIES libvoip::sdk_cpp_merged)
+
+if (NOT STRIP_VOIP)
+    if(VOIP_AS_MODULE)
+      # When building voip library from source (to do this, just add voip3 symlink to voip3 repo), include
+      # voip sources before mangling flags, CMake options, etc. to avoid interference with voip build scripts
+      add_subdirectory(voip3)
+      set(VOIP_LIBRARIES libvoip::sdk_cpp_merged)
+    endif()
 endif()
 
 
@@ -163,6 +195,7 @@ if(MSVC)
     add_definitions(/we4389) # '==': signed/unsigned mismatch
     add_definitions(/we4189) # local variable is initialized but not referenced
     add_definitions(/we4172) # returning address of local variable or temporary
+    add_definitions(/we4150) # deletion of pointer to incomplete type 'type'; no destructor called
     add_definitions(/we4245)
     add_definitions(/we4263)
     add_definitions(/we4264)
@@ -195,17 +228,20 @@ elseif(APPLE)
     set(CMAKE_XCODE_ATTRIBUTE_DEBUG_INFORMATION_FORMAT "dwarf-with-dsym")
     set(CMAKE_XCODE_ATTRIBUTE_GCC_GENERATE_DEBUGGING_SYMBOLS "YES")
     set(CMAKE_XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY "")
-    set(CMAKE_OSX_DEPLOYMENT_TARGET 10.12)
+    set(CMAKE_OSX_DEPLOYMENT_TARGET 10.13)
 
-    set(MACOS_COMMON_FLAGS "-ffunction-sections -fdata-sections -fno-stack-protector -fvisibility-inlines-hidden -fvisibility=hidden -fasm-blocks -stdlib=libc++")
+    set(MACOS_COMMON_FLAGS "-fvisibility-inlines-hidden -fvisibility=hidden -fasm-blocks -stdlib=libc++")
     set(MACOS_COMMON_FLAGS "${MACOS_COMMON_FLAGS} -mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET} -Werror=most -Werror=switch")
-    list(APPEND _build_flags "-ffunction-sections")
-    list(APPEND _build_flags "-fdata-sections")
-    list(APPEND _build_flags "-fno-stack-protector")
     list(APPEND _build_flags "-fvisibility-inlines-hidden")
     list(APPEND _build_flags "-fvisibility=hidden")
     list(APPEND _build_flags "-fasm-blocks")
     list(APPEND _build_flags "-stdlib=libc++")
+    if("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
+        set(MACOS_COMMON_FLAGS "${MACOS_COMMON_FLAGS} -ffunction-sections -fdata-sections -fno-stack-protector")
+        list(APPEND _build_flags "-ffunction-sections")
+        list(APPEND _build_flags "-fdata-sections")
+        list(APPEND _build_flags "-fno-stack-protector")
+    endif()
 
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${MACOS_COMMON_FLAGS}")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${MACOS_COMMON_FLAGS} -Werror=inconsistent-missing-override -Werror=effc++")
@@ -213,23 +249,13 @@ elseif(APPLE)
     add_definitions(-Werror=return-stack-address)
 elseif(UNIX)
     set(LINUX ON)
-    if(LINUX_ARCH EQUAL 32)
-        set(LINUX32 ON)
-        set(ICQ_ARCH x86)
-        set(ARCH_FLAGS "-m32")
-        set(ICQ_PLATFORM linux)
-        set(ICQ_BIN_DIR "${ICQ_ROOT}/bin/${CMAKE_CONFIGURATION_TYPES}32")
-        set(ICQ_LIB_DIR "${ICQ_ROOT}/bin/${CMAKE_CONFIGURATION_TYPES}32")
-        message(STATUS "Linux x32")
-    else()
-        set(LINUX64 ON)
-        set(ICQ_ARCH x64)
-        set(ARCH_FLAGS "-m64")
-        set(ICQ_PLATFORM linux)
-        set(ICQ_BIN_DIR "${ICQ_ROOT}/bin/${CMAKE_CONFIGURATION_TYPES}64")
-        set(ICQ_LIB_DIR "${ICQ_ROOT}/bin/${CMAKE_CONFIGURATION_TYPES}64")
-        message(STATUS "Linux x64")
-    endif()
+    message(STATUS "Linux x64")
+    set(LINUX64 ON)
+    set(ICQ_ARCH x64)
+    set(ARCH_FLAGS "-m64")
+    set(ICQ_PLATFORM linux)
+    set(ICQ_BIN_DIR "${ICQ_ROOT}/bin/${CMAKE_CONFIGURATION_TYPES}64")
+    set(ICQ_LIB_DIR "${ICQ_ROOT}/bin/${CMAKE_CONFIGURATION_TYPES}64")
     add_definitions(-fPIC)
     add_definitions(-Werror=return-local-addr)
 
@@ -257,12 +283,16 @@ elseif(UNIX)
     if(NOT DISABLE_STATIC_CXX)
       set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libgcc -static-libstdc++")
     endif()
+    message(STATUS "[flags] CMAKE_C_FLAGS          = ${CMAKE_C_FLAGS}")
+    message(STATUS "[flags] CMAKE_CXX_FLAGS        = ${CMAKE_CXX_FLAGS}")
+    message(STATUS "[flags] CMAKE_CXX_FLAGS_DEBUG  = ${CMAKE_CXX_FLAGS_DEBUG}")
+    message(STATUS "[flags] CMAKE_EXE_LINKER_FLAGS = ${CMAKE_EXE_LINKER_FLAGS}")
 else()
     message(FATAL_ERROR "Unknown platform")
 endif()
 
 
-# ---------------------------  linux toolchain ----------------------------
+# ---------------------------  linux toolchain --------------------------------
 # i.e. -DUSE_TOOLCHAIN=/storage/toolchains
 if(USE_TOOLCHAIN)
     if(LINUX)
@@ -272,16 +302,9 @@ if(USE_TOOLCHAIN)
         set(CMAKE_SYSTEM_NAME Linux)
         set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
 
-        if(LINUX32)
-            message(STATUS "[toolchain i686]")
-            set(TOOLCHAIN_NAME "i686-ubuntu16.04-linux-gnu")
-            set(TOOLCHAIN_ARCH "i386-linux-gnu")
-        elseif(LINUX64)
-            message(STATUS "[toolchain x86_64]")
-            set(TOOLCHAIN_NAME "x86_64-ubuntu16.04-linux-gnu")
-            set(TOOLCHAIN_ARCH "x86_64-linux-gnu")
-
-        endif()
+        message(STATUS "[toolchain x86_64]")
+        set(TOOLCHAIN_NAME "x86_64-centos7-linux-gnu")
+        set(TOOLCHAIN_ARCH "x86_64-pc-linux-gnu")
 
         set(TOOLCHAIN_PATH "${USE_TOOLCHAIN}/${TOOLCHAIN_NAME}")
         if (NOT EXISTS "${TOOLCHAIN_PATH}")
@@ -305,6 +328,7 @@ if(USE_TOOLCHAIN)
         set(CMAKE_STRIP "${TOOLCHAIN_PATH}/bin/${TOOLCHAIN_NAME}-strip" CACHE FILEPATH "" FORCE)
 
         set(CMAKE_SYSROOT "${TOOLCHAIN_PATH}/${TOOLCHAIN_NAME}/sysroot")
+        set(CMAKE_TC_ROOT_PATH "${TOOLCHAIN_PATH}/${TOOLCHAIN_NAME}")
         set(CMAKE_FIND_ROOT_PATH "${TOOLCHAIN_PATH}/${TOOLCHAIN_NAME}/sysroot")
 
         message(STATUS "TOOLCHAIN_NAME -> ${TOOLCHAIN_NAME}")
@@ -327,17 +351,23 @@ if(USE_TOOLCHAIN)
         message(STATUS "[toolchain] CMAKE_SYSTEM_FRAMEWORK_PATH   = ${CMAKE_SYSTEM_FRAMEWORK_PATH}")
         message(STATUS "")
 
-        # include_directories(${CMAKE_FIND_ROOT_PATH}/usr/share/X11)
+        file(GLOB gcc_include_version RELATIVE "${CMAKE_TC_ROOT_PATH}/include/c++" "${CMAKE_TC_ROOT_PATH}/include/c++/*")
+        include_directories(${CMAKE_TC_ROOT_PATH}/include/c++/${gcc_include_version})
+        include_directories(${CMAKE_TC_ROOT_PATH}/include/c++/${gcc_include_version}/bits)
+        include_directories(${CMAKE_TC_ROOT_PATH}/include)
+        include_directories(${CMAKE_FIND_ROOT_PATH}/usr/include/X11)
+        include_directories(${CMAKE_FIND_ROOT_PATH}/usr/include/GL)
         include_directories(${CMAKE_FIND_ROOT_PATH}/usr/include)
 
-        # link_directories("${CMAKE_FIND_ROOT_PATH}/usr/lib")
-        link_directories("${CMAKE_FIND_ROOT_PATH}/usr/lib/${TOOLCHAIN_ARCH}")
+        link_directories("${CMAKE_FIND_ROOT_PATH}/lib")
+        link_directories("${CMAKE_FIND_ROOT_PATH}/usr/lib")
 
         message(STATUS "[linux toolchain] <- --- --- ---")
         message(STATUS "")
     endif()
 endif()
 # -----------------------------------------------------------------------------
+
 
 #shared definitions for linux and mac
 if (NOT MSVC)
@@ -366,7 +396,8 @@ if (ABORT_ON_ASSERT)
     add_definitions(-DABORT_OB_ASSERTS)
 endif()
 
-# ---------------------------  paths  ----------------------------
+
+# ---------------------------  paths  -----------------------------------------
 set(CMAKE_EXECUTABLE_OUTPUT_DIRECTORY_DEBUG ${ICQ_BIN_DIR})
 set(CMAKE_EXECUTABLE_OUTPUT_DIRECTORY_RELEASE ${ICQ_BIN_DIR})
 set(CMAKE_EXECUTABLE_OUTPUT_PATH ${ICQ_BIN_DIR})
@@ -378,7 +409,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${ICQ_BIN_DIR})
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${ICQ_BIN_DIR})
 
 
-# --------------------------  validator  --------------------------
+# --------------------------  validator  --------------------------------------
 if(RUN_VALIDATOR)
     message(STATUS "[STAGE] VALIDATORS")
     find_package(PythonInterp 3 REQUIRED)
@@ -397,115 +428,67 @@ endif()
 # -----------------------------------------------------------------------------
 
 
-# --------------------------  external  --------------------------
-set(DOWNLOAD_URL "https://hb.bizmrg.com/icq-www/external")
+message(STATUS "[requirements] Reading common variables from requirements/CMakeLists.txt")
 
-set(EXT_LIBS_VERSION "v11")
+include(requirements/common.cmake)
+message(STATUS "[requirements] DOWNLOADS_URL              = ${DOWNLOADS_URL}")
+message(STATUS "[requirements] DOWNLOADS_PATH             = ${DOWNLOADS_PATH}")
 
-set(EXT_LIBS_FNAME "external_${EXT_LIBS_VERSION}.zip")
-set(EXT_LIBS_MD5 "external_${EXT_LIBS_VERSION}.md5")
+# --------------------------  external  ---------------------------------------
+if(LINUX)
+    message(STATUS "")
+    message(STATUS "[EXTERNAL DEPENDENCIES]")
 
-set(EXTERNAL_URL "${DOWNLOAD_URL}/${EXT_LIBS_VERSION}/${EXT_LIBS_FNAME}")
+    include(requirements/linux.cmake)
+    message(STATUS "[requirements] ICQ_EXTERNAL               = ${ICQ_EXTERNAL}")
+    include_directories(${ICQ_EXTERNAL})
 
-set(ICQ_EXTERNAL "${ICQ_ROOT}/external_${EXT_LIBS_VERSION}")
-include_directories(${ICQ_EXTERNAL})
-
-set(EXTERNAL_DOWNLOADS "${ICQ_ROOT}/downloads")
-
-message(WARNING "")
-message(WARNING "ICQ_EXTERNAL = ${ICQ_EXTERNAL}")
-message(WARNING "")
-
-message(STATUS "")
-message(STATUS "[+] -> FetchContent [external]")
-
-include(FetchContent)
-
-set(EXTERNAL_FILE_WITH_MD5)
-set(EXTERNAL_FILE_ZIPFILE_MD5)
-
-set(FETCHCONTENT_QUIET OFF)
-
-if(EXISTS "${EXTERNAL_DOWNLOADS}/tmp")
-    message(STATUS "file(REMOVE_RECURSE ${EXTERNAL_DOWNLOADS}/tmp)")
-    file(REMOVE_RECURSE "${EXTERNAL_DOWNLOADS}/tmp")
-endif()
-if(EXISTS "${EXTERNAL_DOWNLOADS}/src/${EXT_LIBS_VERSION}-populate-stamp")
-    message(STATUS "file(REMOVE_RECURSE ${EXTERNAL_DOWNLOADS}/src/${EXT_LIBS_VERSION}-populate-stamp)")
-    file(REMOVE_RECURSE "${EXTERNAL_DOWNLOADS}/src/${EXT_LIBS_VERSION}-populate-stamp")
-endif()
-
-if(NOT EXISTS "${EXTERNAL_DOWNLOADS}/src/${EXT_LIBS_MD5}")
-    message(STATUS "No hash, continue")
-    FetchContent_Declare(
-        ${EXT_LIBS_VERSION}
-        PREFIX "${EXTERNAL_DOWNLOADS}"
-        URL ${EXTERNAL_URL}
-        SOURCE_DIR "${ICQ_EXTERNAL}"
-    )
 else()
-    message(STATUS "Reading MD5 HASH from md5 file")
-    file(READ "${EXTERNAL_DOWNLOADS}/src/${EXT_LIBS_MD5}" EXTERNAL_FILE_WITH_MD5)
-    string(STRIP "${EXTERNAL_FILE_WITH_MD5}" EXTERNAL_FILE_WITH_MD5)
-    message(STATUS "EXTERNAL_FILE_WITH_MD5 = ${EXTERNAL_FILE_WITH_MD5}")
+    message(STATUS "")
+    message(STATUS "[EXTERNAL]")
 
-    message(STATUS "[md5] Checksum MD5 HASH")
-    file(MD5 "${EXTERNAL_DOWNLOADS}/src/${EXT_LIBS_FNAME}" EXTERNAL_FILE_ZIPFILE_MD5)
-    message(STATUS "EXTERNAL_FILE_ZIPFILE_MD5 = ${EXTERNAL_FILE_ZIPFILE_MD5}")
-    IF(NOT ${EXTERNAL_FILE_WITH_MD5} MATCHES "${EXTERNAL_FILE_ZIPFILE_MD5}")
-        message(STATUS "[md5] not equals!!!")
-        message(STATUS "File will be re-downloaded")
-        FetchContent_Declare(
-            ${EXT_LIBS_VERSION}
-            PREFIX "${EXTERNAL_DOWNLOADS}"
-            URL ${EXTERNAL_URL}
-            SOURCE_DIR "${ICQ_EXTERNAL}"
-        )
-    else()
-        FetchContent_Declare(
-            ${EXT_LIBS_VERSION}
-            PREFIX "${EXTERNAL_DOWNLOADS}"
-            URL ${EXTERNAL_URL}
-            URL_HASH MD5=${EXTERNAL_FILE_WITH_MD5}
-            SOURCE_DIR "${ICQ_EXTERNAL}"
-        )
-    endif()
+    set(EXT_LIBS_NAME "external_${EXT_LIBS_VERSION}")
+    set(ICQ_EXTERNAL "${ICQ_ROOT}/${EXT_LIBS_NAME}")
+
+    include_directories(${ICQ_EXTERNAL})
+
+    set(EXT_LIBS_FILE_DESTINATION "${DOWNLOADS_PATH}/${EXT_LIBS_NAME}.zip")
+    set(EXT_LIBS_FILE_MD5 "${EXT_LIBS_FILE_DESTINATION}.md5")
+    set(EXT_LIBS_URL "${DOWNLOADS_URL}/${EXT_LIBS_VERSION}/${EXT_LIBS_NAME}.zip")
+
+    message(STATUS "[requirements] EXT_LIBS_VERSION           = ${EXT_LIBS_VERSION}")
+    message(STATUS "[requirements] EXT_LIBS_NAME              = ${EXT_LIBS_NAME}")
+    message(STATUS "[requirements] ICQ_EXTERNAL               = ${ICQ_EXTERNAL}")
+
+    message(STATUS "[requirements] EXT_LIBS_FILE_DESTINATION  = ${EXT_LIBS_FILE_DESTINATION}")
+    message(STATUS "[requirements] EXT_LIBS_FILE_MD5          = ${EXT_LIBS_FILE_MD5}")
+    message(STATUS "[requirements] EXT_LIBS_URL               = ${EXT_LIBS_URL}")
+    message(STATUS "")
+
+    common_prepare_libs("all" "${EXT_LIBS_FILE_MD5}" "${EXT_LIBS_URL}" "${EXT_LIBS_FILE_DESTINATION}" "${ICQ_EXTERNAL}")
+
 endif()
-
-message(STATUS "FetchContent_MakeAvailable(${EXT_LIBS_VERSION})")
-FetchContent_MakeAvailable(${EXT_LIBS_VERSION})
+# -----------------------------------------------------------------------------
 
 
-if(EXISTS "${EXTERNAL_DOWNLOADS}/src/${EXT_LIBS_FNAME}")
-    message(STATUS "[md5] Checksum MD5 HASH")
-    file(MD5 "${EXTERNAL_DOWNLOADS}/src/${EXT_LIBS_FNAME}" EXTERNAL_FILE_WITH_MD5)
-    string(STRIP "${EXTERNAL_FILE_WITH_MD5}" EXTERNAL_FILE_WITH_MD5)
-    message(STATUS "[md5] EXTERNAL_FILE_WITH_MD5 = ${EXTERNAL_FILE_WITH_MD5}")
-    message(STATUS "[write][force] Saving MD5 to file -> ${EXTERNAL_DOWNLOADS}/src/${EXT_LIBS_MD5}")
-    FILE(WRITE "${EXTERNAL_DOWNLOADS}/src/${EXT_LIBS_MD5}" "${EXTERNAL_FILE_WITH_MD5}")
-else()
-    message(STATUS "[404] File external_${EXT_LIBS_VERSION}.zip not found!")
-endif()
-
-if(NOT EXISTS "${EXTERNAL_DOWNLOADS}/src/${EXT_LIBS_MD5}")
-    message(STATUS "[404] File ${EXT_LIBS_MD5} was not created")
-endif()
-
-message(STATUS "[+] <- FetchContent [external]")
-message(STATUS "")
-
-
-set(ICQ_EXTERNAL_PLATFORM "${ICQ_EXTERNAL}/${ICQ_PLATFORM}")
-# ------------------------  set_lib_var  -------------------------
-
+# ------------------------  set_lib_var  --------------------------------------
 macro(set_lib_var varName libName)
-    SET(${varName} "${ICQ_EXTERNAL}/${libName}/lib/${ICQ_PLATFORM}/${ICQ_ARCH}")
+    if(LINUX)
+        SET(${varName} "${ICQ_EXTERNAL}/${libName}/lib")
+    else()
+        SET(${varName} "${ICQ_EXTERNAL}/${libName}/lib/${ICQ_PLATFORM}/${ICQ_ARCH}")
+    endif()
 endmacro()
 
-# -------------------  platform specific path --------------------
-set(ICQ_PLATFORM_SPECIFIC "${ICQ_EXTERNAL}/platform_specific/${ICQ_PLATFORM}/${ICQ_ARCH}")
 
-# --------------------------    boost   --------------------------
+# -------------------  platform specific path ---------------------------------
+if(LINUX)
+    set(ICQ_PLATFORM_SPECIFIC "${ICQ_EXTERNAL}/additionals")
+else()
+    set(ICQ_PLATFORM_SPECIFIC "${ICQ_EXTERNAL}/platform_specific/${ICQ_PLATFORM}/${ICQ_ARCH}")
+endif()
+
+# --------------------------    boost   ---------------------------------------
 if(LINUX)
     add_definitions(-DBOOST_UUID_RANDOM_PROVIDER_FORCE_POSIX) # fix missed SYS_getrandom in older kernels
 endif()
@@ -514,8 +497,13 @@ if(WIN32)
     set(BOOST_INCLUDEDIR "${ICQ_EXTERNAL}/boost_1.72.0/include")
     set_lib_var(BOOST_LIBRARYDIR "boost_1.72.0")
 else()
-    set(BOOST_INCLUDEDIR "${ICQ_EXTERNAL}/boost/include")
-    set_lib_var(BOOST_LIBRARYDIR boost)
+    if(LINUX)
+        set(BOOST_INCLUDEDIR "${ICQ_EXTERNAL}/boost_${deps_lib_version_boost}/include")
+        set_lib_var(BOOST_LIBRARYDIR boost_${deps_lib_version_boost})
+    else()
+        set(BOOST_INCLUDEDIR "${ICQ_EXTERNAL}/boost/include")
+        set_lib_var(BOOST_LIBRARYDIR boost)
+    endif()
 endif()
 
 set(Boost_USE_STATIC_LIBS ON)
@@ -540,20 +528,37 @@ elseif(LINUX)
     set(Boost_LIBRARIES ${Boost_LIBRARIES} "${BOOST_LIBRARYDIR}/libboost_thread.a")
     set(Boost_LIBRARIES ${Boost_LIBRARIES} "${BOOST_LIBRARYDIR}/libboost_regex.a")
 endif()
+message(STATUS "[include] include_directories(${BOOST_INCLUDEDIR})")
 include_directories(${BOOST_INCLUDEDIR})
 
 
-# -------------------------- rapid-json --------------------------
+# -------------------------- rapidjson ----------------------------------------
 add_definitions(-DRAPIDJSON_HAS_STDSTRING=1 -DUSE_RAPIDJSON)
-set(ICQ_RAPID_JSON "${ICQ_EXTERNAL}/rapidjson")
-include_directories(${ICQ_RAPID_JSON}/include)
+if(LINUX)
+    set(ICQ_RAPID_JSON "${ICQ_EXTERNAL}/rapidjson_${deps_lib_version_rapidjson}_${deps_lib_version_rapidjson_src}")
+    message(STATUS "[include] include_directories(${ICQ_RAPID_JSON}/include)")
+    include_directories(${ICQ_RAPID_JSON}/include)
+else()
+    set(ICQ_RAPID_JSON "${ICQ_EXTERNAL}/rapidjson")
+    include_directories(${ICQ_RAPID_JSON}/include)
+endif()
 
-# --------------------------    nghttp2    --------------------------
+# --------------------------    nghttp2    ------------------------------------
 add_definitions(-DNGHTTP2_STATICLIB)
-set(ICQ_NGHTTP2 "${ICQ_EXTERNAL}/nghttp2")
-set(NGHTTP2_INCLUDE_DIR "${ICQ_NGHTTP2}/include")
-include_directories(${NGHTTP2_INCLUDE_DIR})
-set_lib_var(NGHTTP2_LIBRARY_DIR nghttp2)
+if(LINUX)
+    set(ICQ_NGHTTP2 "${ICQ_EXTERNAL}/nghttp2_${deps_lib_version_nghttp2}")
+    set(NGHTTP2_INCLUDE_DIR "${ICQ_NGHTTP2}/include")
+    message(STATUS "[include] include_directories(${NGHTTP2_INCLUDE_DIR})")
+    include_directories(${NGHTTP2_INCLUDE_DIR})
+    set_lib_var(NGHTTP2_LIBRARY_DIR nghttp2_${deps_lib_version_nghttp2})
+else()
+    set(ICQ_NGHTTP2 "${ICQ_EXTERNAL}/nghttp2")
+    set(NGHTTP2_INCLUDE_DIR "${ICQ_NGHTTP2}/include")
+    include_directories(${NGHTTP2_INCLUDE_DIR})
+    set_lib_var(NGHTTP2_LIBRARY_DIR nghttp2)
+endif()
+
+
 if(MSVC)
     set(NGHTTP2_LIBRARIES "${NGHTTP2_LIBRARY_DIR}/nghttp2.lib")
     message(${NGHTTP2_LIBRARIES})
@@ -561,12 +566,22 @@ else()
     set(NGHTTP2_LIBRARIES "${NGHTTP2_LIBRARY_DIR}/libnghttp2.a")
 endif()
 
-# --------------------------    curl    --------------------------
+
+# --------------------------    curl    ---------------------------------------
 add_definitions(-DCURL_STATICLIB)
-set(ICQ_CURL "${ICQ_EXTERNAL}/curl")
-set(CURL_INCLUDE_DIR "${ICQ_CURL}/include")
-include_directories(${CURL_INCLUDE_DIR})
-set_lib_var(CURL_LIBRARY_DIR curl)
+if(LINUX)
+    set(ICQ_CURL "${ICQ_EXTERNAL}/curl_${deps_lib_version_curl}")
+    set(CURL_INCLUDE_DIR "${ICQ_CURL}/include/curl")
+    message(STATUS "[include] include_directories(${CURL_INCLUDE_DIR})")
+    include_directories(${CURL_INCLUDE_DIR})
+    set_lib_var(CURL_LIBRARY_DIR curl_${deps_lib_version_curl})
+else()
+    set(ICQ_CURL "${ICQ_EXTERNAL}/curl")
+    set(CURL_INCLUDE_DIR "${ICQ_CURL}/include")
+    include_directories(${CURL_INCLUDE_DIR})
+    set_lib_var(CURL_LIBRARY_DIR curl)
+endif()
+
 if(MSVC)
     set(CURL_LIBRARIES
         optimized "${CURL_LIBRARY_DIR}/libcurl.lib"
@@ -575,11 +590,21 @@ else()
     set(CURL_LIBRARIES "${CURL_LIBRARY_DIR}/libcurl.a")
 endif()
 
-# --------------------------   openssl   -------------------------
-set(ICQ_OPENSSL "${ICQ_EXTERNAL}/openssl")
-set(OPENSSL_LIBRARY_DIR "${ICQ_OPENSSL}/lib/${ICQ_PLATFORM}")
-set_lib_var(OPENSSL_LIBRARY_DIR openssl)
-include_directories(${ICQ_OPENSSL}/include)
+
+# --------------------------   openssl   --------------------------------------
+if(LINUX)
+    set(ICQ_OPENSSL "${ICQ_EXTERNAL}/openssl_${deps_lib_version_openssl}")
+    set(OPENSSL_LIBRARY_DIR "${ICQ_OPENSSL}/lib/${ICQ_PLATFORM}")
+    message(STATUS "[include] include_directories(${ICQ_OPENSSL}/include)")
+    include_directories(${ICQ_OPENSSL}/include)
+    set_lib_var(OPENSSL_LIBRARY_DIR openssl_${deps_lib_version_openssl})
+else()
+    set(ICQ_OPENSSL "${ICQ_EXTERNAL}/openssl")
+    set(OPENSSL_LIBRARY_DIR "${ICQ_OPENSSL}/lib/${ICQ_PLATFORM}")
+    include_directories(${ICQ_OPENSSL}/include)
+    set_lib_var(OPENSSL_LIBRARY_DIR openssl)
+endif()
+
 if(MSVC)
     set(OPENSSL_LIBRARIES
         optimized "${OPENSSL_LIBRARY_DIR}/libeay32.lib" optimized "${OPENSSL_LIBRARY_DIR}/ssleay32.lib"
@@ -587,207 +612,232 @@ if(MSVC)
 elseif(LINUX)
     set(OPENSSL_LIBRARIES "${OPENSSL_LIBRARY_DIR}/libssl.a" "${OPENSSL_LIBRARY_DIR}/libcrypto.a")
 elseif(APPLE)
-    set(OPENSSL_LIBRARIES "${OPENSSL_LIBRARY_DIR}/libssl.a")
+    set(OPENSSL_LIBRARIES "${OPENSSL_LIBRARY_DIR}/libssl.a" "${OPENSSL_LIBRARY_DIR}/libcrypto.a")
 endif()
 
-# --------------------------    zlib    --------------------------
-set(ICQ_ZLIB "${ICQ_EXTERNAL}/zlib")
-include_directories(${ICQ_ZLIB}/include)
-set_lib_var(ZLIB_LIBRARY_DIR zlib)
+
+# --------------------------    zlib    ---------------------------------------
+if(LINUX)
+    set(ICQ_ZLIB "${ICQ_EXTERNAL}/zlib_${deps_lib_version_zlib}")
+    message(STATUS "[include] include_directories(${ICQ_ZLIB}/include)")
+    include_directories(${ICQ_ZLIB}/include)
+    set_lib_var(ZLIB_LIBRARY_DIR zlib_${deps_lib_version_zlib})
+else()
+    set(ICQ_ZLIB "${ICQ_EXTERNAL}/zlib")
+    include_directories(${ICQ_ZLIB}/include)
+    set_lib_var(ZLIB_LIBRARY_DIR zlib)
+endif()
+
 if(MSVC)
     set(ZLIB_LIBRARIES
         optimized "${ZLIB_LIBRARY_DIR}/zlib.lib"
         debug "${ZLIB_LIBRARY_DIR}/zlibd.lib")
 endif()
 
-# ------------------------    libcrypto    -----------------------
-if(APPLE)
-    set(LIBCRYPTO_LIBRARIES "${OPENSSL_LIBRARY_DIR}/libcrypto.a")
-endif()
-
 # --------------------------   OpenAl   --------------------------
-if(APPLE)
-    set(DEFAULT_USE_SYSTEM_OPENAL ON)
-else()
-    set(DEFAULT_USE_SYSTEM_OPENAL OFF)
-endif()
-
-option(USE_SYSTEM_OPENAL "Use system openal." ${DEFAULT_USE_SYSTEM_OPENAL})
-
-if (USE_SYSTEM_OPENAL)
-    message(STATUS "openal: system")
-    add_definitions(-DUSE_SYSTEM_OPENAL)
-else()
-    message(STATUS "openal: external")
-    set(ICQ_OPENAL "${ICQ_EXTERNAL}/openal")
-    set_lib_var(OPENAL_LIBRARY_DIR openal)
-    include_directories(${ICQ_OPENAL}/include)
-    add_definitions(-DAL_LIBTYPE_STATIC)
-    if(MSVC)
-        set(OPEN_AL_LIBRARIES
-            optimized "${OPENAL_LIBRARY_DIR}/OpenAL32.lib"
-            debug "${OPENAL_LIBRARY_DIR}/OpenAL32d.lib")
+if (NOT STRIP_AV_MEDIA)
+    if(APPLE)
+        set(DEFAULT_USE_SYSTEM_OPENAL ON)
     else()
-        set(OPEN_AL_LIBRARIES "${OPENAL_LIBRARY_DIR}/libopenal.a")
+        set(DEFAULT_USE_SYSTEM_OPENAL OFF)
     endif()
-endif()
 
-# --------------------------   ffmpeg   --------------------------
-set(ICQ_FFMPEG "${ICQ_EXTERNAL}/ffmpeg")
-if(MSVC)
-    include_directories(${ICQ_FFMPEG}/include_old)                                      # use old ffmped for windows until xp is being supported
-    SET(FFMPEG_LIBRARY_DIR "${ICQ_EXTERNAL}/ffmpeg/lib_old/${ICQ_PLATFORM}/${ICQ_ARCH}")
-    set(FFMPEG_LIBRARIES ${FFMPEG_LIBRARIES} "${FFMPEG_LIBRARY_DIR}/libavcodec.lib")
-    set(FFMPEG_LIBRARIES ${FFMPEG_LIBRARIES} "${FFMPEG_LIBRARY_DIR}/libavfilter.lib")
-    set(FFMPEG_LIBRARIES ${FFMPEG_LIBRARIES} "${FFMPEG_LIBRARY_DIR}/libavformat.lib")
-    set(FFMPEG_LIBRARIES ${FFMPEG_LIBRARIES} "${FFMPEG_LIBRARY_DIR}/libavutil.lib")
-    set(FFMPEG_LIBRARIES ${FFMPEG_LIBRARIES} "${FFMPEG_LIBRARY_DIR}/libswresample.lib")
-    set(FFMPEG_LIBRARIES ${FFMPEG_LIBRARIES} "${FFMPEG_LIBRARY_DIR}/libswscale.lib")
-else()
-    include_directories(${ICQ_FFMPEG}/include)
-    set_lib_var(FFMPEG_LIBRARY_DIR ffmpeg)
-    set(FFMPEG_LIBRARIES ${FFMPEG_LIBRARIES} "${FFMPEG_LIBRARY_DIR}/libavfilter.a")
-    set(FFMPEG_LIBRARIES ${FFMPEG_LIBRARIES} "${FFMPEG_LIBRARY_DIR}/libavformat.a") # libavformat.a depends on libavcodec.a
-    set(FFMPEG_LIBRARIES ${FFMPEG_LIBRARIES} "${FFMPEG_LIBRARY_DIR}/libavcodec.a")
-    set(FFMPEG_LIBRARIES ${FFMPEG_LIBRARIES} "${FFMPEG_LIBRARY_DIR}/libavutil.a")
-    set(FFMPEG_LIBRARIES ${FFMPEG_LIBRARIES} "${FFMPEG_LIBRARY_DIR}/libswresample.a")
-    set(FFMPEG_LIBRARIES ${FFMPEG_LIBRARIES} "${FFMPEG_LIBRARY_DIR}/libswscale.a")
-endif()
+    option(USE_SYSTEM_OPENAL "Use system openal." ${DEFAULT_USE_SYSTEM_OPENAL})
 
-# --------------------------   minizip   -------------------------
-set(ICQ_MINIZIP "${ICQ_EXTERNAL}/minizip")
-include_directories(${ICQ_MINIZIP}/include)
-
-# --------------------------   libvoip   -------------------------
-set(VOIP_LIBS_VERSION "3.4.0.1711")
-
-set(VOIP_LIBS_FNAME "voip3_${VOIP_LIBS_VERSION}_desktop.zip")
-set(VOIP_LIBS_MD5 "voip3_${VOIP_LIBS_VERSION}_desktop.md5")
-
-set(VOIPLIB_URL "${DOWNLOAD_URL}/Voiplib/${VOIP_LIBS_VERSION}/${VOIP_LIBS_FNAME}")
-
-set(VOIPLIB_DOWNLOADS "${ICQ_ROOT}/downloads")
-
-set(VOIPLIB_ROOT "${ICQ_ROOT}/core/Voip/libvoip_${VOIP_LIBS_VERSION}")
-include_directories(${VOIPLIB_ROOT})
-
-message(STATUS "")
-message(STATUS "[+] -> FetchContent [VOIP]")
-
-# include(FetchContent)
-
-set(VOIPLIB_FILE_WITH_MD5)
-set(VOIPLIB_FILE_ZIPFILE_MD5)
-
-set(FETCHCONTENT_QUIET OFF)
-
-if(EXISTS "${VOIPLIB_DOWNLOADS}/src/${VOIP_LIBS_VERSION}-populate-stamp")
-    message(STATUS "file(REMOVE_RECURSE ${VOIPLIB_DOWNLOADS}/src/${VOIP_LIBS_VERSION}-populate-stamp)")
-    file(REMOVE_RECURSE "${VOIPLIB_DOWNLOADS}/src/${VOIP_LIBS_VERSION}-populate-stamp")
-endif()
-
-if(NOT EXISTS "${VOIPLIB_DOWNLOADS}/src/${VOIP_LIBS_MD5}")
-    message(STATUS "No hash, continue")
-    FetchContent_Declare(
-        ${VOIP_LIBS_VERSION}
-        PREFIX "${VOIPLIB_DOWNLOADS}"
-        URL ${VOIPLIB_URL}
-        SOURCE_DIR "${VOIPLIB_ROOT}"
-    )
-else()
-    message(STATUS "Reading MD5 HASH from md5 file")
-    file(READ "${VOIPLIB_DOWNLOADS}/src/${VOIP_LIBS_MD5}" VOIPLIB_FILE_WITH_MD5)
-    string(STRIP "${VOIPLIB_FILE_WITH_MD5}" VOIPLIB_FILE_WITH_MD5)
-    message(STATUS "VOIPLIB_FILE_WITH_MD5 = ${VOIPLIB_FILE_WITH_MD5}")
-
-    message(STATUS "[md5] Checksum MD5 HASH")
-    file(MD5 "${VOIPLIB_DOWNLOADS}/src/${VOIP_LIBS_FNAME}" VOIPLIB_FILE_ZIPFILE_MD5)
-    message(STATUS "VOIPLIB_FILE_ZIPFILE_MD5 = ${VOIPLIB_FILE_ZIPFILE_MD5}")
-    IF(NOT ${VOIPLIB_FILE_WITH_MD5} MATCHES "${VOIPLIB_FILE_ZIPFILE_MD5}")
-        message(STATUS "[md5] not equals!!!")
-        message(STATUS "File will be re-downloaded")
-        FetchContent_Declare(
-            ${VOIP_LIBS_VERSION}
-            PREFIX "${VOIPLIB_DOWNLOADS}"
-            URL ${VOIPLIB_URL}
-            SOURCE_DIR "${VOIPLIB_ROOT}"
-        )
+    if (USE_SYSTEM_OPENAL)
+        message(STATUS "openal: system")
+        add_definitions(-DUSE_SYSTEM_OPENAL)
     else()
-        FetchContent_Declare(
-            ${VOIP_LIBS_VERSION}
-            PREFIX "${VOIPLIB_DOWNLOADS}"
-            URL ${VOIPLIB_URL}
-            URL_HASH MD5=${VOIPLIB_FILE_WITH_MD5}
-            SOURCE_DIR "${VOIPLIB_ROOT}"
-        )
-    endif()
-endif()
-
-message(STATUS "FetchContent_MakeAvailable(${VOIP_LIBS_VERSION})")
-FetchContent_MakeAvailable(${VOIP_LIBS_VERSION})
-
-FetchContent_GetProperties(${VOIP_LIBS_VERSION})
-if (NOT ${VOIP_LIBS_VERSION}_POPULATED)
-    message(STATUS "FetchContent_Populate(${VOIP_LIBS_VERSION})")
-    FetchContent_Populate(${VOIP_LIBS_VERSION})
-endif()
-
-
-if(EXISTS "${VOIPLIB_DOWNLOADS}/src/${VOIP_LIBS_FNAME}")
-    message(STATUS "[md5] Checksum MD5 HASH")
-    file(MD5 "${VOIPLIB_DOWNLOADS}/src/${VOIP_LIBS_FNAME}" VOIPLIB_FILE_WITH_MD5)
-    string(STRIP "${VOIPLIB_FILE_WITH_MD5}" VOIPLIB_FILE_WITH_MD5)
-    message(STATUS "[md5] VOIPLIB_FILE_WITH_MD5 = ${VOIPLIB_FILE_WITH_MD5}")
-    message(STATUS "[write][force] Saving MD5 to file -> ${VOIPLIB_DOWNLOADS}/src/${VOIP_LIBS_MD5}")
-    FILE(WRITE "${VOIPLIB_DOWNLOADS}/src/${VOIP_LIBS_MD5}" "${VOIPLIB_FILE_WITH_MD5}")
-else()
-    message(STATUS "[404] File ${VOIP_LIBS_FNAME} not found!")
-endif()
-
-if(NOT EXISTS "${VOIPLIB_DOWNLOADS}/src/${VOIP_LIBS_MD5}")
-    message(STATUS "[404] File ${VOIP_LIBS_MD5} was not created")
-endif()
-
-message(STATUS "[+] <- FetchContent [VOIP]")
-message(STATUS "")
-
-
-if(MSVC)
-    set(VOIP_LIBRARIES "${VOIP_LIBRARIES}" msdmo.lib dmoguids.lib wmcodecdspuuid.lib amstrmid.lib winmm.lib secur32.lib ws2_32.lib comsuppw.lib)
-    set(VOIP_LIBRARIES "${VOIP_LIBRARIES}" optimized comsuppw.lib debug comsuppwd.lib)
-    set(VOIP_DX_COMPILER_LIBRARY "${ICQ_PLATFORM_SPECIFIC}/d3dcompiler_43.dll")
-endif()
-
-if(NOT VOIP_AS_MODULE)
-    include_directories("${VOIPLIB_ROOT}/include")
-    if(MSVC)
-        set(VOIP_LIBRARIES "${VOIP_LIBRARIES}" optimized "${VOIPLIB_ROOT}/lib/windows.Release.x86/libvoip_sdk_merged_x86.lib" debug "${VOIPLIB_ROOT}/lib/windows.Debug.x86/libvoip_sdk_merged_x86d.lib")
-
-    elseif(APPLE)
-        set(VOIP_LIBRARIES "${VOIPLIB_ROOT}/lib/macos.Release.x64/libvoip_sdk_merged_x64.a")
-
-    elseif(LINUX)
-        if(LINUX32)
-            set(VOIP_LIBRARIES "${VOIPLIB_ROOT}/lib/linux.Release.x86/libvoip_sdk_merged_x86.a")
+        message(STATUS "openal: external")
+        if(LINUX)
+            set(ICQ_OPENAL "${ICQ_EXTERNAL}/openal_${deps_lib_version_openal}")
+            message(STATUS "[include] include_directories(${ICQ_OPENAL}/include)")
+            include_directories(${ICQ_OPENAL}/include)
+            set_lib_var(OPENAL_LIBRARY_DIR openal_${deps_lib_version_openal})
         else()
-            set(VOIP_LIBRARIES "${VOIPLIB_ROOT}/lib/linux.Release.x64/libvoip_sdk_merged_x64.a")
+            set(ICQ_OPENAL "${ICQ_EXTERNAL}/openal")
+            include_directories(${ICQ_OPENAL}/include)
+            set_lib_var(OPENAL_LIBRARY_DIR openal)
+        endif()
+
+        add_definitions(-DAL_LIBTYPE_STATIC)
+        if(MSVC)
+            set(OPEN_AL_LIBRARIES
+                optimized "${OPENAL_LIBRARY_DIR}/OpenAL32.lib"
+                debug "${OPENAL_LIBRARY_DIR}/OpenAL32d.lib")
+        else()
+            set(OPEN_AL_LIBRARIES "${OPENAL_LIBRARY_DIR}/libopenal.a")
         endif()
     endif()
 endif()
 
-if (STRIP_VOIP)
-    add_definitions(-DSTRIP_VOIP)
+# --------------------------   ffmpeg   --------------------------
+if (STRIP_AV_MEDIA)
+    add_definitions(-DSTRIP_AV_MEDIA)
+else()
+    if(LINUX)
+        set(ICQ_FFMPEG "${ICQ_EXTERNAL}/ffmpeg_${deps_lib_version_ffmpeg}")
+    else()
+        set(ICQ_FFMPEG "${ICQ_EXTERNAL}/ffmpeg")
+    endif()
+
+    if(MSVC)
+        include_directories(${ICQ_FFMPEG}/include_old)                                      # use old ffmped for windows until xp is being supported
+        SET(FFMPEG_LIBRARY_DIR "${ICQ_EXTERNAL}/ffmpeg/lib_old/${ICQ_PLATFORM}/${ICQ_ARCH}")
+        set(FFMPEG_LIBRARIES ${FFMPEG_LIBRARIES} "${FFMPEG_LIBRARY_DIR}/libavcodec.lib")
+        set(FFMPEG_LIBRARIES ${FFMPEG_LIBRARIES} "${FFMPEG_LIBRARY_DIR}/libavfilter.lib")
+        set(FFMPEG_LIBRARIES ${FFMPEG_LIBRARIES} "${FFMPEG_LIBRARY_DIR}/libavformat.lib")
+        set(FFMPEG_LIBRARIES ${FFMPEG_LIBRARIES} "${FFMPEG_LIBRARY_DIR}/libavutil.lib")
+        set(FFMPEG_LIBRARIES ${FFMPEG_LIBRARIES} "${FFMPEG_LIBRARY_DIR}/libswresample.lib")
+        set(FFMPEG_LIBRARIES ${FFMPEG_LIBRARIES} "${FFMPEG_LIBRARY_DIR}/libswscale.lib")
+    else()
+        if(LINUX)
+            message(STATUS "[include] include_directories(${ICQ_FFMPEG}/include)")
+            include_directories(${ICQ_FFMPEG}/include)
+            set_lib_var(FFMPEG_LIBRARY_DIR ffmpeg_${deps_lib_version_ffmpeg})
+        else()
+            include_directories(${ICQ_FFMPEG}/include)
+            set_lib_var(FFMPEG_LIBRARY_DIR ffmpeg)
+        endif()
+        set(FFMPEG_LIBRARIES ${FFMPEG_LIBRARIES} "${FFMPEG_LIBRARY_DIR}/libavfilter.a")
+        set(FFMPEG_LIBRARIES ${FFMPEG_LIBRARIES} "${FFMPEG_LIBRARY_DIR}/libavformat.a") # libavformat.a depends on libavcodec.a
+        set(FFMPEG_LIBRARIES ${FFMPEG_LIBRARIES} "${FFMPEG_LIBRARY_DIR}/libavcodec.a")
+        set(FFMPEG_LIBRARIES ${FFMPEG_LIBRARIES} "${FFMPEG_LIBRARY_DIR}/libavutil.a")
+        set(FFMPEG_LIBRARIES ${FFMPEG_LIBRARIES} "${FFMPEG_LIBRARY_DIR}/libswresample.a")
+        set(FFMPEG_LIBRARIES ${FFMPEG_LIBRARIES} "${FFMPEG_LIBRARY_DIR}/libswscale.a")
+    endif()
 endif()
 
 
-# --------------------------     qt     --------------------------
-set(ICQ_QT_ROOT "${ICQ_EXTERNAL}/qt/${ICQ_PLATFORM}")
+# --------------------------   rlottie   --------------------------------------
+if (NOT STRIP_AV_MEDIA)
+    if(LINUX)
+        set(ICQ_RLOTTIE "${ICQ_EXTERNAL}/rlottie_${deps_lib_version_rlottie}")
+        message(STATUS "[include] include_directories(${ICQ_RLOTTIE}/include)")
+        include_directories(${ICQ_RLOTTIE}/include)
+        set_lib_var(RLOTTIE_LIBRARY_DIR rlottie_${deps_lib_version_rlottie})
+    else()
+        set(ICQ_RLOTTIE "${ICQ_EXTERNAL}/rlottie")
+        include_directories(${ICQ_RLOTTIE}/include)
+        set_lib_var(RLOTTIE_LIBRARY_DIR rlottie)
+    endif()
+
+    if(MSVC)
+        set(RLOTTIE_LIBRARIES
+            optimized "${RLOTTIE_LIBRARY_DIR}/rlottie.lib"
+            debug "${RLOTTIE_LIBRARY_DIR}/rlottied.lib")
+    else()
+        set(RLOTTIE_LIBRARIES "${RLOTTIE_LIBRARY_DIR}/librlottie.a")
+    endif()
+endif()
+
+# --------------------------   minizip   --------------------------------------
+if(LINUX)
+    set(ICQ_MINIZIP "${ICQ_EXTERNAL}/minizip_${deps_lib_version_minizip}")
+    message(STATUS "[include] include_directories(${ICQ_MINIZIP}/include)")
+    include_directories(${ICQ_MINIZIP}/include)
+else()
+    set(ICQ_MINIZIP "${ICQ_EXTERNAL}/minizip")
+    include_directories(${ICQ_MINIZIP}/include)
+endif()
+
+
+# --------------------------   d3dcompiler  -----------------------------------
+set(D3D_COMPILER_LIBRARY "${ICQ_PLATFORM_SPECIFIC}/d3dcompiler_43.dll")
+
+
+# --------------------------  libvoip  ----------------------------------------
+if (NOT STRIP_VOIP)
+
+    set(VOIP_LIBS_NAME "voip3_${VOIP_LIBS_VERSION}_desktop")
+    set(VOIP_LIBS_FILE_DESTINATION "${DOWNLOADS_PATH}/${VOIP_LIBS_NAME}.zip")
+    set(VOIP_LIBS_FILE_MD5 "${VOIP_LIBS_FILE_DESTINATION}.md5")
+
+    set(VOIP_LIBS_URL "${DOWNLOADS_URL}/Voiplib/${VOIP_LIBS_VERSION}/${VOIP_LIBS_NAME}.zip")
+
+    set(VOIPLIB_ROOT "${ICQ_ROOT}/core/Voip/libvoip_${VOIP_LIBS_VERSION}")
+    include_directories(${VOIPLIB_ROOT})
+
+    message(STATUS "")
+    message(STATUS "[VOIP]")
+    message(STATUS "DOWNLOADS_URL              = ${DOWNLOADS_URL}")
+    message(STATUS "DOWNLOADS_PATH             = ${DOWNLOADS_PATH}")
+    message(STATUS "")
+
+    message(STATUS "VOIP_LIBS_VERSION          = ${VOIP_LIBS_VERSION}")
+    message(STATUS "VOIP_LIBS_NAME             = ${VOIP_LIBS_NAME}")
+    message(STATUS "VOIP_LIBS_FILE_DESTINATION = ${VOIP_LIBS_FILE_DESTINATION}")
+    message(STATUS "VOIP_LIBS_FILE_MD5         = ${VOIP_LIBS_FILE_MD5}")
+    message(STATUS "VOIP_LIBS_URL              = ${VOIP_LIBS_URL}")
+    message(STATUS "VOIPLIB_ROOT               = ${VOIPLIB_ROOT}")
+    message(STATUS "")
+
+
+    if(NOT EXISTS "${VOIP_LIBS_FILE_MD5}")
+        message(STATUS "[md5] No md5 hash, continue")
+        download_file("${VOIP_LIBS_URL}" "${VOIP_LIBS_FILE_DESTINATION}" "${VOIP_LIBS_FILE_MD5}")
+        file_verify_md5("${VOIP_LIBS_FILE_DESTINATION}" "${VOIP_LIBS_FILE_MD5}")
+        file_extract("${VOIP_LIBS_FILE_DESTINATION}" "${VOIPLIB_ROOT}" 1 "${VOIP_LIBS_FILE_MD5}")
+    else()
+        message(STATUS "[md5] Reading MD5 HASH from md5 file")
+        file(READ "${VOIP_LIBS_FILE_MD5}" VOIP_LIBS_FILE_WITH_MD5)
+        string(STRIP "${VOIP_LIBS_FILE_WITH_MD5}" VOIP_LIBS_FILE_WITH_MD5)
+        message(STATUS "[md5] VOIP_LIBS_FILE_WITH_MD5 = ${VOIP_LIBS_FILE_WITH_MD5}")
+
+        message(STATUS "[md5] Checksum MD5 HASH")
+        file(MD5 "${VOIP_LIBS_FILE_DESTINATION}" VOIP_LIBS_FILE_ZIPFILE_MD5)
+        message(STATUS "[md5] ${VOIP_LIBS_FILE_DESTINATION} = ${VOIP_LIBS_FILE_ZIPFILE_MD5}")
+
+        IF(NOT "${VOIP_LIBS_FILE_WITH_MD5}" MATCHES "${VOIP_LIBS_FILE_ZIPFILE_MD5}")
+            message(STATUS "[md5] MD5 mismatch")
+            message(STATUS "[md5] The file will be re-downloaded")
+            download_file("${VOIP_LIBS_URL}" "${VOIP_LIBS_FILE_DESTINATION}" "${VOIP_LIBS_FILE_MD5}")
+            file_verify_md5("${VOIP_LIBS_FILE_DESTINATION}" "${VOIP_LIBS_FILE_MD5}")
+            file_extract("${VOIP_LIBS_FILE_DESTINATION}" "${VOIPLIB_ROOT}" 1 "${VOIP_LIBS_FILE_MD5}")
+        else()
+            # Don't download if exists & don't extract if exists
+            message(STATUS "[md5] file: OK, verified")
+            message(STATUS "")
+            file_extract("${VOIP_LIBS_FILE_DESTINATION}" "${VOIPLIB_ROOT}" 0 "${VOIP_LIBS_FILE_MD5}")
+        endif()
+    endif()
+
+    if(MSVC)
+        set(VOIP_LIBRARIES "${VOIP_LIBRARIES}" msdmo.lib dmoguids.lib wmcodecdspuuid.lib amstrmid.lib winmm.lib secur32.lib ws2_32.lib comsuppw.lib)
+        set(VOIP_LIBRARIES "${VOIP_LIBRARIES}" optimized comsuppw.lib debug comsuppwd.lib)
+    endif()
+
+    if(NOT VOIP_AS_MODULE)
+        include_directories("${VOIPLIB_ROOT}/include")
+        if(MSVC)
+            set(VOIP_LIBRARIES "${VOIP_LIBRARIES}" optimized "${VOIPLIB_ROOT}/lib/windows.Release.x86/libvoip_sdk_merged_x86.lib" debug "${VOIPLIB_ROOT}/lib/windows.Debug.x86/libvoip_sdk_merged_x86d.lib")
+
+        elseif(APPLE)
+            set(VOIP_LIBRARIES "${VOIPLIB_ROOT}/lib/macos.Release.x64/libvoip_sdk_merged_x64.a")
+
+        elseif(LINUX)
+            set(VOIP_LIBRARIES "${VOIPLIB_ROOT}/lib/linux.Release.x64/libvoip_sdk_merged_x64.a")
+        endif()
+    endif()
+
+endif()
+# -----------------------------------------------------------------------------
+
+
+# --------------------------     qt     ---------------------------------------
+if(LINUX)
+    set(ICQ_QT_ROOT "${ICQ_EXTERNAL}/qt_${deps_lib_version_qt}")
+else()
+    set(ICQ_QT_ROOT "${ICQ_EXTERNAL}/qt/${ICQ_PLATFORM}")
+endif()
+
 
 if(LINUX)
+    # FIXME: Hardcoded
     set(ICQ_QT_INCLUDE_DIR "${ICQ_QT_ROOT}/include")
-    set(ICQ_QT_LIB_DIR "${ICQ_QT_ROOT}/lib/${ICQ_ARCH}")
-    set(ICQ_QT_BIN_DIR "${ICQ_QT_ROOT}/bin")
-    set(ICQ_QT_PLUGINS_DIR "${ICQ_QT_ROOT}/plugins/${ICQ_ARCH}")
+    set(ICQ_QT_LIB_DIR "${ICQ_QT_ROOT}/lib")
+    set(ICQ_QT_BIN_DIR "${ICQ_EXTERNAL}/qt_utils")
+    set(ICQ_QT_PLUGINS_DIR "${ICQ_QT_ROOT}/plugins")
     EXEC_PROGRAM("chmod +x ${ICQ_QT_BIN_DIR}/lrelease")
     EXEC_PROGRAM("chmod +x ${ICQ_QT_BIN_DIR}/rcc")
     EXEC_PROGRAM("chmod +x ${ICQ_QT_BIN_DIR}/uic")
@@ -800,9 +850,11 @@ else()
 endif()
 
 if(APPLE)
-    set(ICQ_QT_VERSION "5.12.8")
+    set(ICQ_QT_VERSION "5.15.3")
+elseif(MSVC)
+    set(ICQ_QT_VERSION "5.15.1")
 else()
-    set(ICQ_QT_VERSION "5.14.2")
+    set(ICQ_QT_VERSION "${deps_lib_version_qt}")
 endif()
 include_directories("${ICQ_QT_INCLUDE_DIR}")
 include_directories("${ICQ_QT_INCLUDE_DIR}/QtCore")
@@ -939,137 +991,186 @@ elseif(LINUX)
         )
 endif()
 
-# ------------------------ phonenumber  -----------------------
-set(ICQ_PHONENUMBER "${ICQ_EXTERNAL}/phonenumber")
-set_lib_var(PHONENUMBER_LIBRARY_DIR phonenumber)
-add_definitions ("-DI18N_PHONENUMBERS_USE_BOOST")
-if(MSVC)
-    include_directories(${ICQ_PHONENUMBER}/include_win)
+
+# ------------------------ libphonenumber  ------------------------------------
+if (NOT STRIP_VOIP)
+    if(LINUX)
+        set(ICQ_PHONENUMBER "${ICQ_EXTERNAL}/libphonenumber_${deps_lib_version_libphonenumber}")
+        set_lib_var(PHONENUMBER_LIBRARY_DIR libphonenumber_${deps_lib_version_libphonenumber})
+    else()
+        set(ICQ_PHONENUMBER "${ICQ_EXTERNAL}/phonenumber")
+        set_lib_var(PHONENUMBER_LIBRARY_DIR phonenumber)
+    endif()
+
+    add_definitions ("-DI18N_PHONENUMBERS_USE_BOOST")
+    if(MSVC)
+        include_directories(${ICQ_PHONENUMBER}/include_win)
+    else()
+        include_directories(${ICQ_PHONENUMBER}/include)
+    endif()
+
+    if(LINUX OR APPLE)
+        set(PHONENUMBER_LIBRARIES ${PHONENUMBER_LIBRARY_DIR}/libphonenumber.a)
+    elseif(MSVC)
+        set(PHONENUMBER_LIBRARIES optimized ${PHONENUMBER_LIBRARY_DIR}/phonenumber.lib debug ${PHONENUMBER_LIBRARY_DIR}/phonenumberd.lib)
+    endif()
+
+    if(LINUX)
+        set(ICQ_ICU "${ICQ_EXTERNAL}/icu_${deps_lib_version_icu}")
+        set_lib_var(ICU_LIBRARY_DIR icu_${deps_lib_version_icu})
+        set(ICU_LIBRARIES
+            ${ICU_LIBRARY_DIR}/libicuuc.a
+            ${ICU_LIBRARY_DIR}/libicui18n.a)
+    endif()
+endif()
+
+
+# ------------------------- protobuf  -----------------------------------------
+if(LINUX)
+    set(ICQ_PROTOBUF "${ICQ_EXTERNAL}/protobuf_${deps_lib_version_protobuf}")
+    set_lib_var(PROTOBUF_LIBRARY_DIR protobuf_${deps_lib_version_protobuf})
 else()
-    include_directories(${ICQ_PHONENUMBER}/include)
+    set(ICQ_PROTOBUF "${ICQ_EXTERNAL}/protobuf")
+    set_lib_var(PROTOBUF_LIBRARY_DIR protobuf)
 endif()
-
-if(LINUX OR APPLE)
-    set(PHONENUMBER_LIBRARIES ${PHONENUMBER_LIBRARY_DIR}/libphonenumber.a)
-elseif(MSVC)
-    set(PHONENUMBER_LIBRARIES optimized ${PHONENUMBER_LIBRARY_DIR}/phonenumber.lib debug ${PHONENUMBER_LIBRARY_DIR}/phonenumberd.lib)
-endif()
-
-# ------------------------- protobuf  -------------------------
-set(ICQ_PROTOBUF "${ICQ_EXTERNAL}/protobuf")
-set_lib_var(PROTOBUF_LIBRARY_DIR protobuf)
 
 include_directories(${ICQ_PROTOBUF}/include)
 
-# --------------------------- breakpad  --------------------------
 
-if (LINUX)
-    message(STATUS "> BREAKPAD")
-    set(ICQ_BREAKPAD "${ICQ_EXTERNAL}/breakpad/src")
-    set_lib_var(BREAKPAD_LIBRARY_DIR breakpad)
-
-    FILE(GLOB breadpad_common_files
-        ${ICQ_BREAKPAD}/common/*.cc
-        ${ICQ_BREAKPAD}/common/*.h
-    )
-
-    FILE(GLOB breadpad_client_files
-        ${ICQ_BREAKPAD}/client/*.cc
-        ${ICQ_BREAKPAD}/client/*.h
-    )
-
-    include_directories(${ICQ_BREAKPAD})
-    include_directories(${ICQ_BREAKPAD}/client)
-    include_directories(${ICQ_BREAKPAD}/common)
-    set(BREAKPAD_LIBRARIES ${BREAKPAD_LIBRARY_DIR}/libbreakpad_client.a)
-
-    FILE(GLOB_RECURSE breadpad_common_platform_files
-        ${ICQ_BREAKPAD}/common/linux/*.cc
-        ${ICQ_BREAKPAD}/common/linux/*.h
-    )
-
-    FILE(GLOB_RECURSE breadpad_client_platform_files
-        ${ICQ_BREAKPAD}/client/linux/*.cc
-        ${ICQ_BREAKPAD}/client/linux/*.h
-    )
-
-    SOURCE_GROUP(breakpad FILES ${breadpad_common_files} ${breadpad_client_files}
-    ${breadpad_common_platform_files} ${breadpad_client_platform_files})
-endif()
-
-
-if (APPLE)
-    if (BUILD_FOR_STORE)
+# --------------------------- breakpad  ---------------------------------------
+if (STRIP_CRASH_HANDLER)
+    add_definitions(-DSTRIP_CRASH_HANDLER)
+else()
+    if (LINUX)
         message(STATUS "> BREAKPAD")
-        set(ICQ_BREAKPAD "${ICQ_EXTERNAL}/breakpad/src")
-        set_lib_var(BREAKPAD_LIBRARY_DIR breakpad)
+        set(ICQ_BREAKPAD "${ICQ_EXTERNAL}/breakpad_master_${deps_lib_version_breakpad_src}/src")
+        set_lib_var(BREAKPAD_LIBRARY_DIR breakpad_${deps_lib_version_breakpad})
+
+        FILE(GLOB breadpad_common_files
+            ${ICQ_BREAKPAD}/common/*.cc
+            ${ICQ_BREAKPAD}/common/*.h
+        )
+
+        FILE(GLOB breadpad_client_files
+            ${ICQ_BREAKPAD}/client/*.cc
+            ${ICQ_BREAKPAD}/client/*.h
+        )
 
         include_directories(${ICQ_BREAKPAD})
         include_directories(${ICQ_BREAKPAD}/client)
         include_directories(${ICQ_BREAKPAD}/common)
-        set(BREAKPAD_LIBRARIES ${BREAKPAD_LIBRARY_DIR}/libbreakpad.a)
+        set(BREAKPAD_LIBRARIES ${BREAKPAD_LIBRARY_DIR}/libbreakpad_client.a)
 
-        set(BREAKPAD_SOURCE
-        ${ICQ_BREAKPAD}/common/string_conversion.cc
-        ${ICQ_BREAKPAD}/common/convert_UTF.cc
-        ${ICQ_BREAKPAD}/common/md5.cc
-        ${ICQ_BREAKPAD}/client/minidump_file_writer.cc
-        ${ICQ_BREAKPAD}/client/mac/crash_generation/crash_generation_client.cc
-        ${ICQ_BREAKPAD}/client/mac/handler/exception_handler.cc
-        ${ICQ_BREAKPAD}/client/mac/handler/minidump_generator.cc
-        ${ICQ_BREAKPAD}/client/mac/handler/breakpad_nlist_64.cc
-        ${ICQ_BREAKPAD}/client/mac/handler/dynamic_images.cc
-        ${ICQ_BREAKPAD}/client/mac/handler/protected_memory_allocator.cc
-        ${ICQ_BREAKPAD}/common/mac/bootstrap_compat.cc
-        ${ICQ_BREAKPAD}/common/mac/file_id.cc
-        ${ICQ_BREAKPAD}/common/mac/macho_id.cc
-        ${ICQ_BREAKPAD}/common/mac/macho_reader.cc
-        ${ICQ_BREAKPAD}/common/mac/macho_utilities.cc
-        ${ICQ_BREAKPAD}/common/mac/macho_walker.cc
-        ${ICQ_BREAKPAD}/common/mac/string_utilities.cc
-        ${ICQ_BREAKPAD}/common/mac/MachIPC.mm)
-    else()
-# --------------------------- crashpad  --------------------------
-        message(STATUS "> CRASHPAD")
-        set(ICQ_CRASHPAD "${ICQ_EXTERNAL}/crashpad")
-        set_lib_var(CRASHPAD_LIBRARY_DIR crashpad)
+        FILE(GLOB_RECURSE breadpad_common_platform_files
+            ${ICQ_BREAKPAD}/common/linux/*.cc
+            ${ICQ_BREAKPAD}/common/linux/*.h
+        )
 
-        include_directories(${ICQ_CRASHPAD}/include)
-        include_directories(${ICQ_CRASHPAD}/include/mini_chromium)
+        FILE(GLOB_RECURSE breadpad_client_platform_files
+            ${ICQ_BREAKPAD}/client/linux/*.cc
+            ${ICQ_BREAKPAD}/client/linux/*.h
+        )
 
-        set(CRASHPAD_LIBRARIES
-            ${CRASHPAD_LIBRARY_DIR}/libclient.a
-            ${CRASHPAD_LIBRARY_DIR}/libutil.a
-            ${CRASHPAD_LIBRARY_DIR}/libbase.a
-            ${CRASHPAD_LIBRARY_DIR}/libsnapshot.a)
+        SOURCE_GROUP(breakpad FILES ${breadpad_common_files} ${breadpad_client_files}
+        ${breadpad_common_platform_files} ${breadpad_client_platform_files})
+    endif()
+
+
+    if (APPLE)
+        if (BUILD_FOR_STORE)
+            message(STATUS "> BREAKPAD")
+            set(ICQ_BREAKPAD "${ICQ_EXTERNAL}/breakpad/src")
+            set_lib_var(BREAKPAD_LIBRARY_DIR breakpad)
+
+            include_directories(${ICQ_BREAKPAD})
+            include_directories(${ICQ_BREAKPAD}/client)
+            include_directories(${ICQ_BREAKPAD}/common)
+            set(BREAKPAD_LIBRARIES ${BREAKPAD_LIBRARY_DIR}/libbreakpad.a)
+
+            set(BREAKPAD_SOURCE
+            ${ICQ_BREAKPAD}/common/string_conversion.cc
+            ${ICQ_BREAKPAD}/common/convert_UTF.cc
+            ${ICQ_BREAKPAD}/common/md5.cc
+            ${ICQ_BREAKPAD}/client/minidump_file_writer.cc
+            ${ICQ_BREAKPAD}/client/mac/crash_generation/crash_generation_client.cc
+            ${ICQ_BREAKPAD}/client/mac/handler/exception_handler.cc
+            ${ICQ_BREAKPAD}/client/mac/handler/minidump_generator.cc
+            ${ICQ_BREAKPAD}/client/mac/handler/breakpad_nlist_64.cc
+            ${ICQ_BREAKPAD}/client/mac/handler/dynamic_images.cc
+            ${ICQ_BREAKPAD}/client/mac/handler/protected_memory_allocator.cc
+            ${ICQ_BREAKPAD}/common/mac/bootstrap_compat.cc
+            ${ICQ_BREAKPAD}/common/mac/file_id.cc
+            ${ICQ_BREAKPAD}/common/mac/macho_id.cc
+            ${ICQ_BREAKPAD}/common/mac/macho_reader.cc
+            ${ICQ_BREAKPAD}/common/mac/macho_utilities.cc
+            ${ICQ_BREAKPAD}/common/mac/macho_walker.cc
+            ${ICQ_BREAKPAD}/common/mac/string_utilities.cc
+            ${ICQ_BREAKPAD}/common/mac/MachIPC.mm)
+        else()
+    # --------------------------- crashpad  --------------------------
+            message(STATUS "> CRASHPAD")
+            set(ICQ_CRASHPAD "${ICQ_EXTERNAL}/crashpad")
+            set_lib_var(CRASHPAD_LIBRARY_DIR crashpad)
+
+            include_directories(${ICQ_CRASHPAD}/include)
+            include_directories(${ICQ_CRASHPAD}/include/mini_chromium)
+
+            set(CRASHPAD_LIBRARIES
+                ${CRASHPAD_LIBRARY_DIR}/libclient.a
+                ${CRASHPAD_LIBRARY_DIR}/libutil.a
+                ${CRASHPAD_LIBRARY_DIR}/libbase.a
+                ${CRASHPAD_LIBRARY_DIR}/libsnapshot.a)
+        endif()
     endif()
 endif()
 
-# --------------------------- re2  ----------------------------
-set(ICQ_RE2 "${ICQ_EXTERNAL}/re2")
-set_lib_var(RE2_LIBRARY_DIR re2)
 
-include_directories(${ICQ_RE2}/include)
-if(LINUX OR APPLE)
-    set(RE2_LIBRARIES ${RE2_LIBRARY_DIR}/libre2.a)
-elseif (MSVC)
-    set(RE2_LIBRARIES optimized ${RE2_LIBRARY_DIR}/libre2.lib debug ${RE2_LIBRARY_DIR}/libre2d.lib)
+# --------------------------- re2  --------------------------------------------
+if (STRIP_RE2)
+    add_definitions(-DSTRIP_RE2)
+else()
+    if(LINUX)
+        set(ICQ_RE2 "${ICQ_EXTERNAL}/re2_${deps_lib_version_re2}")
+        set_lib_var(RE2_LIBRARY_DIR re2_${deps_lib_version_re2})
+    else()
+        set(ICQ_RE2 "${ICQ_EXTERNAL}/re2")
+        set_lib_var(RE2_LIBRARY_DIR re2)
+    endif()
+
+    include_directories(${ICQ_RE2}/include)
+    if(LINUX OR APPLE)
+        set(RE2_LIBRARIES ${RE2_LIBRARY_DIR}/libre2.a)
+    elseif (MSVC)
+        set(RE2_LIBRARIES optimized ${RE2_LIBRARY_DIR}/libre2.lib debug ${RE2_LIBRARY_DIR}/libre2d.lib)
+    endif()
 endif()
 
 # --------------------------    zstd    --------------------------
-set(ICQ_ZSTD "${ICQ_EXTERNAL}/zstd")
-set(ZSTD_INCLUDE_DIR "${ICQ_ZSTD}/include")
-include_directories(${ZSTD_INCLUDE_DIR})
-set_lib_var(ZSTD_LIBRARY_DIR zstd)
-if(MSVC)
-    set(ZSTD_LIBRARIES
-        optimized "${ZSTD_LIBRARY_DIR}/libzstd_static.lib"
-        debug "${ZSTD_LIBRARY_DIR}/libzstd_staticd.lib")
+if (STRIP_ZSTD)
+    add_definitions(-DSTRIP_ZSTD)
 else()
-    set(ZSTD_LIBRARIES "${ZSTD_LIBRARY_DIR}/libzstd.a")
+    if(LINUX)
+        set(ICQ_ZSTD "${ICQ_EXTERNAL}/zstd_${deps_lib_version_zstd}")
+        set_lib_var(ZSTD_LIBRARY_DIR zstd_${deps_lib_version_zstd})
+    else()
+        set(ICQ_ZSTD "${ICQ_EXTERNAL}/zstd")
+        set_lib_var(ZSTD_LIBRARY_DIR zstd)
+    endif()
+
+    set(ZSTD_INCLUDE_DIR "${ICQ_ZSTD}/include")
+    include_directories(${ZSTD_INCLUDE_DIR})
+
+    if(MSVC)
+        set(ZSTD_LIBRARIES
+            optimized "${ZSTD_LIBRARY_DIR}/libzstd_static.lib"
+            debug "${ZSTD_LIBRARY_DIR}/libzstd_staticd.lib")
+    else()
+        set(ZSTD_LIBRARIES "${ZSTD_LIBRARY_DIR}/libzstd.a")
+    endif()
 endif()
 
-# ------------------------ source groups  ------------------------
+
+# ------------------------ source groups  -------------------------------------
 macro(set_source_group group_name root_dir ${ARGN})
     get_filename_component(_path ${root_dir} ABSOLUTE)
     foreach(_source IN ITEMS ${ARGN})
@@ -1082,7 +1183,7 @@ macro(set_source_group group_name root_dir ${ARGN})
 endmacro()
 
 
-# -------------------------- precompiled -------------------------
+# -------------------------- precompiled --------------------------------------
 macro(use_precompiled_header_msvc pch_h pch_cpp ${ARGN})
     set(_pch_bin "${PROJECT_BINARY_DIR}/${CMAKE_BUILD_TYPE}.${PROJECT_NAME}.pch")
     foreach(_source IN ITEMS ${ARGN})
@@ -1166,7 +1267,8 @@ function(use_precompiled_header_linux output pch_h ${ARGN})
 endfunction()
 
 
-# --------------------------    scan    --------------------------
+
+# --------------------------    scan    ---------------------------------------
 function(find_sources output source_dir extension)
     file(GLOB_RECURSE _path_list "${source_dir}/*.${extension}")
     foreach(_path IN ITEMS ${_path_list})
@@ -1195,7 +1297,7 @@ function(find_sources output source_dir extension)
 endfunction()
 
 
-# --------------------------    mocs    --------------------------
+# --------------------------    mocs    ---------------------------------------
 function(generate_mocs output ${ARGN})
     set(ICQ_MOC_DIR "${CMAKE_CURRENT_BINARY_DIR}/mocs")
     get_filename_component(ICQ_MOC_EXE "${ICQ_QT_BIN_DIR}/moc" ABSOLUTE)
@@ -1235,7 +1337,7 @@ function(generate_mocs output ${ARGN})
 endfunction()
 
 
-# -------------------------  translations  -----------------------
+# -------------------------  translations  ------------------------------------
 function(generate_translations language_files qm_files translations_dir ${ARGN})
     set(_language_files)
     set(_qm_files)
@@ -1256,7 +1358,7 @@ function(generate_translations language_files qm_files translations_dir ${ARGN})
 endfunction()
 
 
-# --------------------------  subdirs   --------------------------
+# --------------------------  subdirs   ---------------------------------------
 add_subdirectory(core)
 add_subdirectory(corelib)
 add_subdirectory(gui)

@@ -562,14 +562,6 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
         <translation>%1 yeni bir grup adı gösterdi - &quot;%2&quot;</translation>
     </message>
     <message>
-        <source>%1 You have joined channel</source>
-        <translation>%1 Kanala katıldınız</translation>
-    </message>
-    <message>
-        <source>%1 %2 has joined channel</source>
-        <translation>%1 %2 kanala katıldı</translation>
-    </message>
-    <message>
         <source>%1 You have joined group</source>
         <translation>%1 Gruba katıldınız</translation>
     </message>
@@ -967,29 +959,45 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
         <source>%1 %2 has canceled join request</source>
         <translation>%1 %2 iptal edilen üyelik isteği</translation>
     </message>
+    <message>
+        <source>%1 You have subscribed the channel</source>
+        <translation>%1 Kanala abone oldunuz</translation>
+    </message>
+    <message>
+        <source>%1 %2 has subscribed the channel</source>
+        <translation>%1 %2 kanala abone oldu</translation>
+    </message>
+    <message>
+        <source>%1 replied to status
+%2 %3
+%4
+%5 %6</source>
+        <translation>%1 yanıt verdi
+%2 %3
+%4
+%5 %6</translation>
+    </message>
+    <message>
+        <source>Replied to status: %1 %2</source>
+        <translation>Durum yanıtlandı: %1 %2</translation>
+    </message>
+    <message>
+        <source>You replied to status
+%2 %3
+%4
+%5 %6</source>
+        <translation>Durumu yanıtladın
+%2 %3
+%4
+%5 %6</translation>
+    </message>
+    <message>
+        <source>You replied to status: %1 %2</source>
+        <translation>Durum yanıtladınız: %1 %2</translation>
+    </message>
 </context>
 <context>
     <name>chat_page</name>
-    <message>
-        <source>member</source>
-        <comment>1</comment>
-        <translation>katılımcı</translation>
-    </message>
-    <message>
-        <source>members</source>
-        <comment>2</comment>
-        <translation>katılımcı</translation>
-    </message>
-    <message>
-        <source>members</source>
-        <comment>5</comment>
-        <translation>katılımcı</translation>
-    </message>
-    <message>
-        <source>members</source>
-        <comment>21</comment>
-        <translation>katılımcı</translation>
-    </message>
     <message>
         <source>Today</source>
         <translation>Bugün</translation>
@@ -1049,6 +1057,10 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
         <source>Messages added to </source>
         <comment>21</comment>
         <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Message sent</source>
+        <translation>Mesajı gönderildi</translation>
     </message>
 </context>
 <context>
@@ -2786,26 +2798,6 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
         <translation>Sohbet adı</translation>
     </message>
     <message>
-        <source>member</source>
-        <comment>1</comment>
-        <translation>katılımcı</translation>
-    </message>
-    <message>
-        <source>members</source>
-        <comment>2</comment>
-        <translation>katılımcı</translation>
-    </message>
-    <message>
-        <source>members</source>
-        <comment>5</comment>
-        <translation>katılımcı</translation>
-    </message>
-    <message>
-        <source>members</source>
-        <comment>21</comment>
-        <translation>katılımcı</translation>
-    </message>
-    <message>
         <source>Channel name</source>
         <translation>Kanal adı</translation>
     </message>
@@ -2860,6 +2852,14 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
     <message>
         <source>Chat does not exist or it is hidden by privacy settings</source>
         <translation>Sohbet mevcut değil veya gizlilik ayarlarından dolayı gizli</translation>
+    </message>
+    <message>
+        <source>New subscribers are waiting for admin approval</source>
+        <translation>Yeni aboneler katılmak için yönetici izni bekliyor</translation>
+    </message>
+    <message>
+        <source>You are not a subscriber of this channel</source>
+        <translation>Bu kanala abone değilsiniz</translation>
     </message>
 </context>
 <context>
@@ -3453,6 +3453,10 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
         <source>Privacy</source>
         <translation>Gizlilik</translation>
     </message>
+    <message>
+        <source>Report a problem</source>
+        <translation>Problemi şikayet et</translation>
+    </message>
 </context>
 <context>
     <name>mentions</name>
@@ -3910,6 +3914,21 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
     </message>
 </context>
 <context>
+    <name>popup_widget</name>
+    <message>
+        <source>Disallow</source>
+        <translation>Yasakla</translation>
+    </message>
+    <message>
+        <source>Manage who can add me</source>
+        <translation>Ekleyebilecek kişileri yapılandırın</translation>
+    </message>
+    <message>
+        <source>Disallow %1 to add you to add me to groups?</source>
+        <translation>%1 sizi gruplara eklemesi engellensin mi?</translation>
+    </message>
+</context>
+<context>
     <name>popup_window</name>
     <message>
         <source>Clear all data from this device</source>
@@ -4196,23 +4215,11 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
         <translation>Bu anketi durdurdun mu?</translation>
     </message>
     <message>
-        <source>Are you sure you want to leave channel?</source>
-        <translation>Kanaldan ayrılmak istediğinizden emin misiniz?</translation>
-    </message>
-    <message>
-        <source>If you change group type to a private link to the group will be changed, and the old one will stop working</source>
-        <translation>Grup türünü özel olarak değiştirirseniz, grup bağlantısı değişir ve eskisi çalışmayı durdurur</translation>
-    </message>
-    <message>
         <source>Make private</source>
         <translation>Özel yap</translation>
     </message>
     <message>
         <source>Are you sure you want to clear the chat history?</source>
-        <translation>Sohbet geçmişini silmek istediğinizden emin misiniz?</translation>
-    </message>
-    <message>
-        <source>Are you sure you want to clear the channel history?</source>
         <translation>Sohbet geçmişini silmek istediğinizden emin misiniz?</translation>
     </message>
     <message>
@@ -4340,10 +4347,6 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
         <translation>Üzgünüm, bir şeyler ters gitti. Daha sonra tekrar dene</translation>
     </message>
     <message>
-        <source>My status</source>
-        <translation>Durumum</translation>
-    </message>
-    <message>
         <source>You cannot call these users because of privacy settings:</source>
         <translation>Gizlilik ayarları nedeniyle bu kişileri arayamazsınız. İletişim:</translation>
     </message>
@@ -4396,6 +4399,98 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
         <translation>Link gönder</translation>
     </message>
     <message>
+        <source>Are you sure you want to erase history and leave channel?</source>
+        <translation>Geçmişinizi silmek ve kanaldan ayrılmak istediğinizden emin misiniz?</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to erase history and leave chat?</source>
+        <translation>Hikayeyi silip gruptan ayrılmak istediğinizden emin misiniz?</translation>
+    </message>
+    <message>
+        <source>Leave</source>
+        <translation>Ayrılmak</translation>
+    </message>
+    <message>
+        <source>Cannot add %1</source>
+        <translation>%1 eklenemedi</translation>
+    </message>
+    <message>
+        <source>Please wait until admins approve %1&apos;s request</source>
+        <translation>Yöneticinin %1ekleme isteğini onaylamasını bekleyin</translation>
+    </message>
+    <message>
+        <source>Request for %1 was sent</source>
+        <translation>%1 eklemek için bir istek gönderildi</translation>
+    </message>
+    <message>
+        <source>You cannot add %1 to channel. Send them subscription link %2</source>
+        <translation>Kanala %1 ekleyemezsiniz. Kullanıcıya %2abone olması için bir bağlantı gönderin</translation>
+    </message>
+    <message>
+        <source>You cannot add %1 to chat. Send them join link %2</source>
+        <translation>Gruba %1 ekleyemezsiniz. Kullanıcıya %2giriş bağlantısını gönderin</translation>
+    </message>
+    <message>
+        <source>Subscribe the channel %1</source>
+        <translation>%1 kanalına abone ol</translation>
+    </message>
+    <message>
+        <source>Join the group %1</source>
+        <translation>%1 grubuna katıl</translation>
+    </message>
+    <message>
+        <source>Add %1?</source>
+        <translation>%1mi?</translation>
+    </message>
+    <message>
+        <source>Previously this contact was removed from channel. Probably, %1 violated the rules. Add anyway?</source>
+        <translation>Yönetici daha önce bu kişiyi kanaldan kaldırmıştır. %1 kuralları ihlal etmiş  . Yine de eklensin mi?</translation>
+    </message>
+    <message>
+        <source>Previously this contact was removed from chat. Probably, %1 violated the rules. Add anyway?</source>
+        <translation>Yönetici bu kişiyi daha önce gruptan çıkardı. %1 kuralları ihlal etmiş  . Yine de eklensin mi?</translation>
+    </message>
+    <message>
+        <source>You cannot add this contact to channel, please ask admin to do that</source>
+        <translation>Bu kişiyi kanala ekleyemezsiniz, yöneticiye sorun</translation>
+    </message>
+    <message>
+        <source>You cannot add this contact to chat, please ask admin to do that</source>
+        <translation>Bu kişiyi gruba ekleyemezsiniz, yöneticiye sorun</translation>
+    </message>
+    <message>
+        <source>Bot can be added only by admin and if bot joining the groups was allowed by its creator</source>
+        <translation>Bot oluşturucu eklemeye izin verdiyse, yalnızca yönetici bot ekleyebilir</translation>
+    </message>
+    <message>
+        <source>Wait until admins approve join requests</source>
+        <translation>Yöneticilerin ekleme isteğini onaylamasını bekleyin</translation>
+    </message>
+    <message>
+        <source>Send them invite link</source>
+        <translation>Onlara giriş bağlantısını gönderin</translation>
+    </message>
+    <message>
+        <source>Ask admins to invite</source>
+        <translation>Bir yönetici eklemeyi isteyin</translation>
+    </message>
+    <message>
+        <source>Bot joining the groups was forbidden by its creator</source>
+        <translation>Botu oluşturan kişi gruplara ekleme yapmayı yasakladı</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to delete user from list?</source>
+        <translation>Kullanıcıyı listeden çıkarmak istediğinizden emin misiniz?</translation>
+    </message>
+    <message>
+        <source>Add to list</source>
+        <translation>Listeye ekle</translation>
+    </message>
+    <message>
+        <source>Select</source>
+        <translation>Seç</translation>
+    </message>
+    <message>
         <source>You can not join the call. It already has</source>
         <translation>Çağrıya bağlanamazsınız. İçinde zaten</translation>
     </message>
@@ -4412,16 +4507,84 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
         <translation>Yeni bir çağrı başlatmak istiyor musunuz? Geçerli çağrı sona erecek</translation>
     </message>
     <message>
-        <source>Use internal DNS cache</source>
-        <translation>Dahili DNS önbelleğini kullan</translation>
-    </message>
-    <message>
-        <source>To change this option you must restart the application. Continue?</source>
-        <translation>Ayarı değiştirmek için uygulamayı yeniden başlatmanız gerekir. İlerlemek?</translation>
-    </message>
-    <message>
         <source>Global people search</source>
         <translation>Global Kişi Arama</translation>
+    </message>
+    <message>
+        <source>Log Memory Report</source>
+        <translation>Günlük bellek raporu</translation>
+    </message>
+    <message>
+        <source>Track internal cache</source>
+        <translation>Dahili önbelleği takip edin</translation>
+    </message>
+    <message>
+        <source>Allow microphone access, so that interlocutor could hear you</source>
+        <translation>Diğer kişinin sizi duyabilmesi için mikrofona erişime izin verilsin mi?</translation>
+    </message>
+    <message>
+        <source>Don&apos;t allow</source>
+        <translation>İzin verme</translation>
+    </message>
+    <message>
+        <source>Settings</source>
+        <translation>Ayarlar</translation>
+    </message>
+    <message>
+        <source>Don&apos;t show again</source>
+        <translation>Tekrar gösterme</translation>
+    </message>
+    <message>
+        <source>Contact is banned in %1</source>
+        <translation>Kullanıcı %1engellendi</translation>
+    </message>
+    <message>
+        <source>Contact is already added</source>
+        <translation>Kullanıcı zaten daha önce eklendi</translation>
+    </message>
+    <message>
+        <source>Contacts are banned in %1</source>
+        <translation>Kullanıcılar %1engellendi</translation>
+    </message>
+    <message>
+        <source>Contacts were already added</source>
+        <translation>Kullanıcı zaten daha önce eklendi</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to delete user?</source>
+        <translation>Kullanıcıyı silmek istediğinizden emin misiniz?</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to clear history?</source>
+        <translation>Sohbet geçmişinizi silmek istediğinizden emin misiniz?</translation>
+    </message>
+    <message>
+        <source>If you change the channel type to private, the channel link will change and the old one will stop working</source>
+        <translation>Kanal türünü özel olarak değiştirirseniz, kanal bağlantısı değişecek ve eskisi çalışmayı durduracaktır.</translation>
+    </message>
+    <message>
+        <source>If you change the group type to private, the group link will change and the old one will stop working</source>
+        <translation>Grup türünü özel olarak değiştirirseniz, grup bağlantısı değişir ve eskisi çalışmayı durdurur</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to ban user to write in this channel?</source>
+        <translation>Kullanıcının bu kanala yazmasını engellemek istediğinizden emin misiniz?</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to allow user to write in this channel?</source>
+        <translation>Kullanıcının bu kanala yazmasına izin vermek istediğinizden emin misiniz?</translation>
+    </message>
+    <message>
+        <source>Make private channel</source>
+        <translation>Özel yap</translation>
+    </message>
+    <message>
+        <source>%1 hasn&apos;t been online for a long time and won&apos;t read the message likely. Send free sms to suggest to come back to ICQ?</source>
+        <translation>%1 uzun süredir çevrimiçi değil ve büyük olasılıkla iletiyi okumayacak. Ücretsiz bir SMS gönder ve ICQ&apos;ya geri dönme teklifi?</translation>
+    </message>
+    <message>
+        <source>Send Statistic</source>
+        <translation>İstatistikleri gönder</translation>
     </message>
 </context>
 <context>
@@ -4500,26 +4663,6 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
     <message>
         <source>Contact</source>
         <translation>Kişi</translation>
-    </message>
-    <message>
-        <source>member</source>
-        <comment>1</comment>
-        <translation>katılımcı</translation>
-    </message>
-    <message>
-        <source>members</source>
-        <comment>2</comment>
-        <translation>katılımcı</translation>
-    </message>
-    <message>
-        <source>members</source>
-        <comment>5</comment>
-        <translation>katılımcı</translation>
-    </message>
-    <message>
-        <source>members</source>
-        <comment>21</comment>
-        <translation>katılımcı</translation>
     </message>
     <message>
         <source>VIEW</source>
@@ -4968,10 +5111,6 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
         <translation>Dil</translation>
     </message>
     <message>
-        <source>Contact Us</source>
-        <translation>Bize Ulaşın</translation>
-    </message>
-    <message>
         <source>About app</source>
         <translation>Uygulama hakkında</translation>
     </message>
@@ -5251,6 +5390,26 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
         <source>Show unreads counter in window title</source>
         <translation>Pencere başlığında okunmamışların sayısını göster</translation>
     </message>
+    <message>
+        <source>Exceptions list</source>
+        <translation>Hariç tutulanların listesi</translation>
+    </message>
+    <message>
+        <source>Forbid to add me to groups</source>
+        <translation>Gruplara eklemeyi reddet</translation>
+    </message>
+    <message>
+        <source>Add to list</source>
+        <translation>Listeye ekle</translation>
+    </message>
+    <message>
+        <source>Specify who should be prohibited from adding you to groups</source>
+        <translation>Sizi gruplara eklemesine izin verilmemesi gerekenleri belirtin</translation>
+    </message>
+    <message>
+        <source>Disable SMS notifications</source>
+        <translation>SMS Uyarılarını Devre Dışı Bırak</translation>
+    </message>
 </context>
 <context>
     <name>settings_connection</name>
@@ -5461,8 +5620,8 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
         <translation>Uyarılar</translation>
     </message>
     <message>
-        <source>Wallpaper</source>
-        <translation>Duvar kağıdını seç</translation>
+        <source>Wallpapers</source>
+        <translation>Arka fon</translation>
     </message>
     <message>
         <source>Nickname</source>
@@ -5591,26 +5750,6 @@ Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
         <translation>Kanala ekle</translation>
     </message>
     <message>
-        <source>member</source>
-        <comment>1</comment>
-        <translation>katılımcı</translation>
-    </message>
-    <message>
-        <source>members</source>
-        <comment>2</comment>
-        <translation>katılımcı</translation>
-    </message>
-    <message>
-        <source>members</source>
-        <comment>5</comment>
-        <translation>katılımcı</translation>
-    </message>
-    <message>
-        <source>members</source>
-        <comment>21</comment>
-        <translation>katılımcı</translation>
-    </message>
-    <message>
         <source>Add name</source>
         <translation>İsim ekle</translation>
     </message>
@@ -5669,26 +5808,6 @@ Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
     <message>
         <source>Message</source>
         <translation>İleti</translation>
-    </message>
-    <message>
-        <source>MEMBER</source>
-        <comment>1</comment>
-        <translation>KATILIMCI</translation>
-    </message>
-    <message>
-        <source>MEMBERS</source>
-        <comment>2</comment>
-        <translation>KATILIMCI</translation>
-    </message>
-    <message>
-        <source>MEMBERS</source>
-        <comment>5</comment>
-        <translation>KATILIMCI</translation>
-    </message>
-    <message>
-        <source>MEMBERS</source>
-        <comment>21</comment>
-        <translation>KATILIMCI</translation>
     </message>
     <message>
         <source>Common groups</source>
@@ -5826,6 +5945,22 @@ Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
         <source>Call</source>
         <translation>Arama yap</translation>
     </message>
+    <message>
+        <source>Your invites</source>
+        <translation>Davetiyeleriniz</translation>
+    </message>
+    <message>
+        <source>List empty</source>
+        <translation>Liste boş</translation>
+    </message>
+    <message>
+        <source>Subscribers</source>
+        <translation>Takipçiler</translation>
+    </message>
+    <message>
+        <source>All subscribers</source>
+        <translation>Tüm aboneler</translation>
+    </message>
 </context>
 <context>
     <name>siderbar</name>
@@ -5918,14 +6053,6 @@ Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
         <translation>Kullanıcı durumu</translation>
     </message>
     <message>
-        <source>Status timing</source>
-        <translation>Durum terimi</translation>
-    </message>
-    <message>
-        <source>No status</source>
-        <translation>Durumsuz</translation>
-    </message>
-    <message>
         <source>Show always</source>
         <translation>Her zaman göster</translation>
     </message>
@@ -5962,6 +6089,22 @@ Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
     <message>
         <source>Cancel</source>
         <translation>İptal</translation>
+    </message>
+    <message>
+        <source>My status</source>
+        <translation>Durumum</translation>
+    </message>
+    <message>
+        <source>No status</source>
+        <translation>Statü olmadan</translation>
+    </message>
+    <message>
+        <source>Status timing</source>
+        <translation>Durum terimi</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation>Kapat</translation>
     </message>
 </context>
 <context>
@@ -6246,18 +6389,6 @@ Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
         <translation>Ayarlar</translation>
     </message>
     <message>
-        <source>Call is secured</source>
-        <translation>Çağrı güvenli</translation>
-    </message>
-    <message>
-        <source>For security check, you can verify your images with your partner</source>
-        <translation>Güvenlik kontrolü için resimlerinizi partnerinizle doğrulayabilirsiniz</translation>
-    </message>
-    <message>
-        <source>How it works</source>
-        <translation>Bu nasıl çalışır</translation>
-    </message>
-    <message>
         <source>Add to call</source>
         <translation>Aramaya ekle</translation>
     </message>
@@ -6268,10 +6399,6 @@ Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
     <message>
         <source>Screen</source>
         <translation>Ekran</translation>
-    </message>
-    <message>
-        <source>OK</source>
-        <translation>OK</translation>
     </message>
     <message>
         <source>DECLINE</source>
@@ -6298,14 +6425,6 @@ Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
         <translation>VCS çağrısı</translation>
     </message>
     <message>
-        <source>To use microphone you need to allow access to the microphone in the system settings</source>
-        <translation>Mikrofonu kullanmak için sistem ayarlarında mikrofona erişime izin verin</translation>
-    </message>
-    <message>
-        <source>Microphone permissions</source>
-        <translation>Mikrofon erişimi</translation>
-    </message>
-    <message>
         <source>To use camera you need to allow access to the camera in the system settings</source>
         <translation>Kamerayı kullanmak için sistem ayarlarından kameraya erişim izni verin</translation>
     </message>
@@ -6325,20 +6444,36 @@ Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
         <source>CALL MEMBERS</source>
         <translation>ÇAĞRI KATILIMCILARI</translation>
     </message>
+    <message>
+        <source>Minimize</source>
+        <translation>Azalt</translation>
+    </message>
+    <message>
+        <source>Maximize</source>
+        <translation>Büyüt</translation>
+    </message>
+    <message>
+        <source>Raise call window</source>
+        <translation>Çağrı penceresini yükselt</translation>
+    </message>
+    <message>
+        <source>Move the window
+or open call
+with click</source>
+        <translation>Pencereyi hareket ettir
+veya aramayı aç
+tıklama ile</translation>
+    </message>
 </context>
 <context>
     <name>voip_video_panel</name>
-    <message>
-        <source>Video</source>
-        <translation>video</translation>
-    </message>
     <message>
         <source>Screen</source>
         <translation>ekran</translation>
     </message>
     <message>
         <source>More</source>
-        <translation>Daha</translation>
+        <translation>Hala</translation>
     </message>
     <message>
         <source>Go to chat</source>
@@ -6355,10 +6490,6 @@ Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
     <message>
         <source>Settings</source>
         <translation>ayarlar</translation>
-    </message>
-    <message>
-        <source>End</source>
-        <translation>Son</translation>
     </message>
     <message>
         <source>Show all</source>
@@ -6385,10 +6516,6 @@ Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
         <translation>%1 fazla katılımcıyla yapılan aramalarda maskeler mevcut değil</translation>
     </message>
     <message>
-        <source>Mic</source>
-        <translation>mikrofon</translation>
-    </message>
-    <message>
         <source>Only the creator of the webinar can show the video</source>
         <translation>Videoyu yalnızca web seminerinin yaratıcısı gösterebilir</translation>
     </message>
@@ -6406,19 +6533,121 @@ Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
     </message>
     <message>
         <source>Invite</source>
-        <translation>Davet etmek</translation>
+        <translation>a ekle</translation>
     </message>
     <message>
         <source>Link copied</source>
         <translation>Bağlantı kopyalandı</translation>
     </message>
     <message>
-        <source>Sound</source>
-        <translation>ses</translation>
-    </message>
-    <message>
         <source>Wait for connection</source>
         <translation>Bağlantı bekliyoruz</translation>
+    </message>
+    <message>
+        <source>Mute</source>
+        <translation>Kapatmak
+mikrofon</translation>
+    </message>
+    <message>
+        <source>Unmute</source>
+        <translation>etkinleştirme
+mikrofon</translation>
+    </message>
+    <message>
+        <source>Stop
+Video</source>
+        <translation>Kapatmak
+video</translation>
+    </message>
+    <message>
+        <source>Start
+Video</source>
+        <translation>etkinleştirme
+video</translation>
+    </message>
+    <message>
+        <source>Disable
+Sound</source>
+        <translation>Kapatmak
+ses</translation>
+    </message>
+    <message>
+        <source>Enable
+Sound</source>
+        <translation>etkinleştirme
+ses</translation>
+    </message>
+    <message>
+        <source>Stop
+Share</source>
+        <translation>Dur
+gösteren</translation>
+    </message>
+    <message>
+        <source>Share
+Screen</source>
+        <translation>Bunu Paylaş
+ekran</translation>
+    </message>
+    <message>
+        <source>Microphone not found. Check that it is connected and working.</source>
+        <translation>Mikrofon algılanmadı. Bağlı ve çalıştığını kontrol edin</translation>
+    </message>
+    <message>
+        <source>Allow access to microphone. Click &quot;Settings&quot; and allow application access to microphone</source>
+        <translation>Mikrofona erişime izin verin. &quot;Ayarlar&quot; ı tıklayın ve uygulamanın mikrofona erişmesine izin verin</translation>
+    </message>
+    <message>
+        <source>No devices found</source>
+        <translation>Hiçbir cihaz bulunamadı</translation>
+    </message>
+    <message>
+        <source>End
+Meeting</source>
+        <translation>Tamamlamak</translation>
+    </message>
+    <message>
+        <source>SHOW ALL</source>
+        <translation>HEPSİNİ GÖSTER ↓</translation>
+    </message>
+</context>
+<context>
+    <name>voip_video_panel_mini</name>
+    <message>
+        <source>End meeting</source>
+        <translation>Tamamlamak</translation>
+    </message>
+    <message>
+        <source>Mute</source>
+        <translation>Mikrofonun sesini kapat</translation>
+    </message>
+    <message>
+        <source>Unmute</source>
+        <translation>Mikrofonu aç</translation>
+    </message>
+    <message>
+        <source>Stop video</source>
+        <translation>Videoyu kapat</translation>
+    </message>
+    <message>
+        <source>Start video</source>
+        <translation>Video oynatmak</translation>
+    </message>
+    <message>
+        <source>Disable sound</source>
+        <translation>Sesi kapatın</translation>
+    </message>
+    <message>
+        <source>Enable sound</source>
+        <translation>Sesi aç</translation>
+    </message>
+    <message>
+        <source>Stop share</source>
+        <translation>Göstermeyi bırak</translation>
+    </message>
+    <message>
+        <source>Start share</source>
+        <translation>Ekran paylaşımı</translation>
     </message>
 </context>
 <context>

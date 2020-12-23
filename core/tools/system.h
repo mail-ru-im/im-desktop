@@ -21,7 +21,7 @@ std::wstring get_file_directory(const std::wstring& file);
 
 std::wstring get_file_name(const std::wstring& file);
 
-std::wstring create_temp_file_path();
+std::wstring create_temp_file_path(std::wstring_view _filename = {});
 
 std::wstring get_temp_directory();
 

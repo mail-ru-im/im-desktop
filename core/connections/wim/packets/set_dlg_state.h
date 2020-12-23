@@ -51,6 +51,26 @@ namespace core
             {
                 return excludes_;
             }
+
+            void update_last_read(int64_t _last_read)
+            {
+                last_read_ = std::max(last_read_, _last_read);
+            }
+
+            bool is_the_same_read_type(const set_dlg_state_params& _other) const noexcept
+            {
+                return aimid_ == _other.aimid_ && excludes_ == _other.excludes_;
+            }
+
+            bool is_the_same_read_state(const set_dlg_state_params& _other) const noexcept
+            {
+                return is_the_same_read_type(_other) && last_read_ == _other.last_read_;
+            }
+
+            bool is_empty() const noexcept
+            {
+                return aimid_.empty();
+            }
         };
 
 
@@ -69,6 +89,14 @@ namespace core
             virtual ~set_dlg_state();
 
             virtual priority_t get_priority() const override;
+
+            virtual std::string_view get_method() const override;
+
+            virtual bool support_self_resending() const override;
+
+            const set_dlg_state_params& get_params() const;
+
+            void set_params(const set_dlg_state_params& _params);
         };
 
     }

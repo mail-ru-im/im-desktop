@@ -47,7 +47,7 @@ void AvatarItem::showMedia(ImageViewerWidget *_viewer)
     _viewer->showPixmap(pixmap_, pixmap_.size(), false);
 }
 
-void AvatarItem::save(const QString &_path)
+void AvatarItem::save(const QString &_path, bool /*_exportAsPng*/)
 {
     if (pixmap_.save(_path))
         Q_EMIT saved(_path);

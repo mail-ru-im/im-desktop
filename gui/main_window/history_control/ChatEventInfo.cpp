@@ -9,10 +9,12 @@
 #include "../../cache/emoji/Emoji.h"
 
 #include "../contact_list/ContactListModel.h"
-#include "../settings/PrivacySettingsManager.h"
 
 #include "ChatEventInfo.h"
 #include "../containers/FriendlyContainer.h"
+#include "../containers/PrivacySettingsContainer.h"
+#include "statuses/LocalStatuses.h"
+#include "statuses/Status.h"
 
 using namespace core;
 
@@ -160,6 +162,14 @@ namespace HistoryControl
             return eventInfo;
         }
 
+        if (type == chat_event_type::status_reply || type == chat_event_type::custom_status_reply)
+        {
+            eventInfo->setSenderStatus(_info.get<QString>("stats_reply/sender_status"), _info.get<QString>("stats_reply/sender_status_description"));
+            eventInfo->setOwnerStatus(_info.get<QString>("stats_reply/owner_status"), _info.get<QString>("stats_reply/owner_status_description"));
+
+            return eventInfo;
+        }
+
         assert(!"unexpected event type");
         return eventInfo;
     }
@@ -264,6 +274,10 @@ namespace HistoryControl
 
             case chat_event_type::no_longer_stranger:
                 return formatNoLongerStranger();
+
+            case chat_event_type::status_reply:
+            case chat_event_type::custom_status_reply:
+                return formatStatusReply();
 
             default:
                 break;
@@ -370,9 +384,9 @@ namespace HistoryControl
             if (isChannel())
             {
                 if (isOutgoing())
-                    return QT_TRANSLATE_NOOP("chat_event", "%1 You have joined channel").arg(doorEmoji);
+                    return QT_TRANSLATE_NOOP("chat_event", "%1 You have subscribed the channel").arg(doorEmoji);
 
-                return QT_TRANSLATE_NOOP("chat_event", "%1 %2 has joined channel").arg(doorEmoji, senderFriendly());
+                return QT_TRANSLATE_NOOP("chat_event", "%1 %2 has subscribed the channel").arg(doorEmoji, senderFriendly());
             }
 
             if (isOutgoing())
@@ -852,6 +866,14 @@ namespace HistoryControl
         return formattedEventText_;
     }
 
+    QString ChatEventInfo::formatRecentsEventText() const
+    {
+        if (type_ == chat_event_type::status_reply || type_ == chat_event_type::custom_status_reply)
+            return formatStatusReplyRecents();
+
+        return formatEventTextInternal();
+    }
+
     core::chat_event_type ChatEventInfo::eventType() const
     {
         return type_;
@@ -866,14 +888,15 @@ namespace HistoryControl
     {
         const auto friendly = Logic::GetFriendlyContainer()->getFriendly(aimId_);
         const auto handEmoji = Emoji::EmojiCode::toQString(Emoji::EmojiCode(0xd83d, 0xdc4b));
-        const auto callSettings = Logic::getPrivacySettingsManager()->get_cached_value(qsl("calls"));
-        const auto groupSettings = Logic::getPrivacySettingsManager()->get_cached_value(qsl("groups"));
+        const auto callSettings = Logic::GetPrivacySettingsContainer()->getCachedValue(u"calls");
+        const auto groupSettings = Logic::GetPrivacySettingsContainer()->getCachedValue(u"groups");
         const auto canCall = (callSettings == privacy_access_right::my_contacts);
         const auto canAddToGroup = (groupSettings == privacy_access_right::my_contacts);
 
-        QString result = QT_TRANSLATE_NOOP("chat_event", "%1 Send the user a message or press \"OK\" button to allow %2 to");
+        QString result;
+        result += QT_TRANSLATE_NOOP("chat_event", "%1 Send the user a message or press \"OK\" button to allow %2 to");
         if (canCall || canAddToGroup)
-            result += qsl(":");
+            result += u':';
 
         if (canCall)
         {
@@ -889,7 +912,7 @@ namespace HistoryControl
         if (canCall || canAddToGroup)
         {
             result += QChar::LineFeed;
-            result += qsl(" %3");
+            result += ql1s(" %3");
         }
 
         result += QT_TRANSLATE_NOOP("chat_event", " see if you read his messages");
@@ -906,14 +929,14 @@ namespace HistoryControl
     {
         const auto friendly = Logic::GetFriendlyContainer()->getFriendly(aimId_);
         const auto checkEmoji = Emoji::EmojiCode::toQString(Emoji::EmojiCode(0x2705));
-        const auto callSettings = Logic::getPrivacySettingsManager()->get_cached_value(qsl("calls"));
-        const auto groupSettings = Logic::getPrivacySettingsManager()->get_cached_value(qsl("groups"));
+        const auto callSettings = Logic::GetPrivacySettingsContainer()->getCachedValue(u"calls");
+        const auto groupSettings = Logic::GetPrivacySettingsContainer()->getCachedValue(u"groups");
         const auto canCall = (callSettings == privacy_access_right::my_contacts);
         const auto canAddToGroup = (groupSettings == privacy_access_right::my_contacts);
 
         QString result = QT_TRANSLATE_NOOP("chat_event", "%1 From now on %2 is able to");
         if (canCall || canAddToGroup)
-            result += qsl(":");
+            result += u':';
 
         if (canCall)
         {
@@ -929,7 +952,7 @@ namespace HistoryControl
         if (canCall || canAddToGroup)
         {
             result += QChar::LineFeed;
-            result += qsl(" %3");
+            result += ql1s(" %3");
         }
 
         result += QT_TRANSLATE_NOOP("chat_event", " see if you read his messages");
@@ -940,6 +963,52 @@ namespace HistoryControl
             result = result.arg(checkEmoji, friendly);
 
         return result;
+    }
+
+    QString ChatEventInfo::formatStatusReply() const
+    {
+        QString ownerStatusDescription = statusReply_.ownerStatusDescription_;
+        if (ownerStatusDescription.isEmpty())
+            ownerStatusDescription = Statuses::LocalStatuses::instance()->getStatus(statusReply_.ownerStatus_).description_;
+
+        auto senderStatusDescription = statusReply_.senderStatusDescription_;
+        if (senderStatusDescription.isEmpty())
+            senderStatusDescription = Statuses::LocalStatuses::instance()->getStatus(statusReply_.senderStatus_).description_;
+
+        const auto pointingDownEmojiStr = Emoji::EmojiCode::toQString(Emoji::EmojiCode(0x1f447));
+
+        if (isOutgoing())
+        {
+            return QT_TRANSLATE_NOOP("chat_event", "You replied to status\n"
+                                                                     "%2 %3\n"
+                                                                     "%4\n"
+                                                                     "%5 %6").arg(statusReply_.ownerStatus_, ownerStatusDescription,
+                                                                                  pointingDownEmojiStr,
+                                                                                  statusReply_.senderStatus_, senderStatusDescription);
+        }
+
+        return QT_TRANSLATE_NOOP("chat_event", "%1 replied to status\n"
+                                                                 "%2 %3\n"
+                                                                 "%4\n"
+                                                                 "%5 %6").arg(senderFriendly(),
+                                                                              statusReply_.ownerStatus_, ownerStatusDescription,
+                                                                              pointingDownEmojiStr,
+                                                                              statusReply_.senderStatus_, senderStatusDescription);
+    }
+
+    QString ChatEventInfo::formatStatusReplyRecents() const
+    {
+        auto senderStatusDescription = statusReply_.senderStatusDescription_;
+        if (senderStatusDescription.isEmpty())
+            senderStatusDescription = Statuses::LocalStatuses::instance()->getStatus(statusReply_.senderStatus_).description_;
+
+        if (senderStatusDescription.isEmpty())
+            senderStatusDescription = Statuses::Status::emptyDescription();
+
+        if (isOutgoing())
+            return QT_TRANSLATE_NOOP("chat_event", "You replied to status: %1 %2").arg(statusReply_.senderStatus_, senderStatusDescription);
+
+        return QT_TRANSLATE_NOOP("chat_event", "Replied to status: %1 %2").arg(statusReply_.senderStatus_, senderStatusDescription);
     }
 
     bool ChatEventInfo::isMyAimid(const QString& _aimId) const
@@ -1076,5 +1145,17 @@ namespace HistoryControl
     QString ChatEventInfo::senderOrAdmin() const
     {
         return sender_ == aimId_ ? QT_TRANSLATE_NOOP("chat_event", "Administrator") : senderFriendly();
+    }
+
+    void ChatEventInfo::setSenderStatus(const QString& _status, const QString& _description)
+    {
+        statusReply_.senderStatus_ = _status;
+        statusReply_.senderStatusDescription_ = _description;
+    }
+
+    void ChatEventInfo::setOwnerStatus(const QString& _status, const QString& _description)
+    {
+        statusReply_.ownerStatus_ = _status;
+        statusReply_.ownerStatusDescription_ = _description;
     }
 }

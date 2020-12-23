@@ -31,7 +31,7 @@ int32_t request_avatar::init_request(const std::shared_ptr<core::http_request_si
     if (write_time_ != 0)
         _request->set_modified_time_condition(write_time_ - params_.time_offset_);
 
-    _request->set_need_log(params_.full_log_);
+    _request->set_write_data_log(params_.full_log_);
     _request->set_need_log_original_url(false);
     _request->set_url(url);
     _request->set_keep_alive();
@@ -63,6 +63,11 @@ int32_t core::wim::request_avatar::parse_response(const std::shared_ptr<core::to
 priority_t request_avatar::get_priority() const
 {
     return packets_priority_high() + increase_priority();
+}
+
+std::string_view request_avatar::get_method() const
+{
+    return "avatarGet";
 }
 
 const std::shared_ptr<core::tools::binary_stream>& core::wim::request_avatar::get_data() const

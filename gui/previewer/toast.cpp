@@ -5,7 +5,9 @@
 #include "main_window/MainWindow.h"
 #include "main_window/MainPage.h"
 #include "main_window/ContactDialog.h"
+#ifndef STRIP_VOIP
 #include "voip/VideoWindow.h"
+#endif
 #include "main_window/history_control/HistoryControlPage.h"
 #include "main_window/input_widget/InputWidget.h"
 #include "Drawable.h"
@@ -194,8 +196,8 @@ void ToastBase::showAt(const QPoint& _center, bool _onTop)
     if (isMoveAnimationEnabled_)
     {
         moveAnimation_->stop();
-        moveAnimation_->setStartValue(_center.y() + (_onTop ? 0 : padding()));
-        moveAnimation_->setEndValue(_center.y() - (_onTop ? 0 : height()));
+        moveAnimation_->setStartValue(_center.y() + padding());
+        moveAnimation_->setEndValue(_center.y() - height());
         moveAnimation_->start();
     }
 
@@ -970,9 +972,11 @@ void Utils::showToastOverMainWindow(const QString &_text, int _bottomOffset, int
 
 void Utils::showToastOverVideoWindow(const QString& _text, int _maxLineCount)
 {
+#ifndef STRIP_VOIP
     if (auto mainPage = Utils::InterConnector::instance().getMainPage())
         if (auto videoWindow = mainPage->getVideoWindow())
             videoWindow->showToast(_text);
+#endif
 }
 
 void Utils::showToastOverContactDialog(ToastBase* _toast)
@@ -1007,7 +1011,7 @@ void Utils::showDownloadToast(const Data::FileSharingDownloadResult& _result)
     else
         toast = new Ui::Toast(QT_TRANSLATE_NOOP("previewer", "Error file downloading"), mainWindow);
 
-    Testing::setAccessibleName(toast, qsl("AS General fileToast_%1").arg(success ? qsl("success") : qsl("fail")));
+    Testing::setAccessibleName(toast, ql1s("AS General fileToast_%1").arg(success ? ql1s("success") : ql1s("fail")));
     showToastOverContactDialog(toast);
 }
 

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.14)
+cmake_minimum_required(VERSION 3.17)
 
 
 project(corelib)
@@ -74,7 +74,7 @@ elseif(APPLE)
         ${MAC_AV_FOUNDATION}
         ${MAC_FOUNDATION})
 elseif(LINUX)
-    set(SYSTEM_LIBRARIES "${ICQ_EXTERNAL}/minizip/lib/${ICQ_PLATFORM}/${ICQ_ARCH}/libminizip.a")
+    # set(SYSTEM_LIBRARIES "${ICQ_MINIZIP}/lib/libminizip.a")
 endif()
 
 
@@ -114,7 +114,6 @@ if(ICQ_CORELIB_STATIC_LINKING)
         libomicron
         ${Boost_LIBRARIES}
         ${OPENSSL_LIBRARIES}
-        ${LIBCRYPTO_LIBRARIES}
         ${NGHTTP2_LIBRARIES}
         ${CURL_LIBRARIES}
         ${ZSTD_LIBRARIES}
@@ -126,7 +125,6 @@ else()
         core
         libomicron
         ${OPENSSL_LIBRARIES}
-        ${LIBCRYPTO_LIBRARIES}
         ${NGHTTP2_LIBRARIES}
         ${CURL_LIBRARIES}
         ${VOIP_LIBRARIES}

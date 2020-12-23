@@ -9,6 +9,7 @@
 #include "../../utils/utils.h"
 #include "../../utils/InterConnector.h"
 #include "../../utils/gui_coll_helper.h"
+#include "../../utils/features.h"
 #include "../../controls/CustomButton.h"
 #include "../../controls/LabelEx.h"
 #include "../../controls/TransparentScrollBar.h"
@@ -30,6 +31,12 @@ namespace
         return
             _type != Utils::CommonSettingsType::CommonSettingsType_Updater &&
             _type != Utils::CommonSettingsType::CommonSettingsType_None;
+    }
+
+    auto getContactUsText()
+    {
+        static const auto contactUs = Features::isContactUsViaBackend() ? QT_TRANSLATE_NOOP("main_page", "Report a problem") : QT_TRANSLATE_NOOP("main_page", "Contact Us");
+        return contactUs;
     }
 }
 
@@ -94,7 +101,7 @@ namespace Ui
             addSimpleRow(qsl(":/settings/language"), Styling::StyleVariable::SECONDARY_RAINBOW_PINK, QT_TRANSLATE_NOOP("settings", "Language"), Utils::CommonSettingsType::CommonSettingsType_Language, u"language");
             addSpacer();
 
-            addSimpleRow(qsl(":/settings/report"), Styling::StyleVariable::SECONDARY_RAINBOW_BLUE, QT_TRANSLATE_NOOP("settings", "Contact Us"), Utils::CommonSettingsType::CommonSettingsType_ContactUs, u"contactUs");
+            addSimpleRow(qsl(":/settings/report"), Styling::StyleVariable::SECONDARY_RAINBOW_BLUE, getContactUsText(), Utils::CommonSettingsType::CommonSettingsType_ContactUs, u"contactUs");
             addSimpleRow(qsl(":/settings/product"), Styling::StyleVariable::SECONDARY_RAINBOW_GREEN, QT_TRANSLATE_NOOP("settings", "About app"), Utils::CommonSettingsType::CommonSettingsType_About, u"aboutApp");
 
             addSimpleRow(qsl(":/settings/alert_icon"), Styling::StyleVariable::SECONDARY_ATTENTION, QT_TRANSLATE_NOOP("settings", "Advanced Settings"), Utils::CommonSettingsType::CommonSettingsType_Debug, u"advancedSettings");
@@ -289,7 +296,7 @@ namespace Ui
     {
         setCurrentItem(Utils::CommonSettingsType::CommonSettingsType_ContactUs);
 
-        Q_EMIT Utils::InterConnector::instance().showSettingsHeader(QT_TRANSLATE_NOOP("main_page", "Contact Us"));
+        Q_EMIT Utils::InterConnector::instance().showSettingsHeader(getContactUsText());
         Q_EMIT Utils::InterConnector::instance().generalSettingsShow((int)Utils::CommonSettingsType::CommonSettingsType_ContactUs);
         GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::settingsscr_writeus_action);
     }

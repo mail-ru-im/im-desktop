@@ -98,9 +98,9 @@ namespace Styling
         NEWPLATE_TEXT,
     };
 
-    using StyleVariableStrings = std::vector<std::pair<StyleVariable, QString>>;
+    using StyleVariableStrings = std::vector<std::pair<StyleVariable, QStringView>>;
     const StyleVariableStrings& getVariableStrings();
 
-    QString variableToString(const StyleVariable _var);
-    StyleVariable stringToVariable(const QString& _name);
+    QStringView variableToString(StyleVariable _var);
+    StyleVariable stringToVariable(QStringView _name);
 }

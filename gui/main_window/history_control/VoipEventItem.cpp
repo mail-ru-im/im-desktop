@@ -132,7 +132,7 @@ namespace
     QPixmap getAvatar(const QString& _aimId, const QString& _friendly, const int _size)
     {
         auto def = false;
-        return *Logic::GetAvatarStorage()->GetRounded(
+        return Logic::GetAvatarStorage()->GetRounded(
             _aimId,
             _friendly,
             _size,
@@ -282,9 +282,6 @@ namespace Ui
 
     VoipEventItem::~VoipEventItem()
     {
-        if (callButton_->isPressed() || !pressPoint_.isNull())
-            Q_EMIT pressedDestroyed();
-
         Utils::InterConnector::instance().detachFromMultiselect(callButton_);
     }
 
@@ -295,8 +292,7 @@ namespace Ui
 
     QString VoipEventItem::formatCopyText() const
     {
-        const auto header = qsl("%1 (%2):\n").arg(friendlyName_, QDateTime::fromSecsSinceEpoch(getTime()).toString(u"dd.MM.yyyy hh:mm"));
-        return header % formatRecentsText();
+        return ql1s("%1 (%2):\n").arg(friendlyName_, QDateTime::fromSecsSinceEpoch(getTime()).toString(u"dd.MM.yyyy hh:mm")) % formatRecentsText();
     }
 
     MediaType VoipEventItem::getMediaType(MediaRequestMode) const
@@ -985,9 +981,11 @@ namespace Ui
 
     void VoipEventItem::onCallButtonClicked()
     {
+#ifndef STRIP_VOIP
         const auto &contactAimid = getContact();
         assert(!contactAimid.isEmpty());
-        Ui::GetDispatcher()->getVoipController().setStartCall({ contactAimid }, EventInfo_->isVideoCall(), false, "ChatVideo");
+        Ui::GetDispatcher()->getVoipController().setStartCall({ contactAimid }, EventInfo_->isVideoCall(), false, true, "ChatVideo");
+#endif
     }
 
     void VoipEventItem::menu(QAction* _action)

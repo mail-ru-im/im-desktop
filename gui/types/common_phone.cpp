@@ -1,5 +1,5 @@
 #include "stdafx.h"
-#include "../../corelib/collection_helper.h"
+#include "utils/gui_coll_helper.h"
 #include "common_phone.h"
 
 namespace Data
@@ -22,13 +22,7 @@ namespace Data
             info_phone_ = c->get_value_as_string("phone", "");
             info_iso_country_ = c->get_value_as_string("iso_country", "");
             if (c->is_value_exist("printable"))
-            {
-                auto printable = c->get_value_as_array("printable");
-                for (int i = 0; printable && i < printable->size(); ++i)
-                {
-                    printable_.push_back(printable->get_at(i)->get_as_string());
-                }
-            }
+                printable_ = Utils::toContainerOfString<decltype(printable_)>(c->get_value_as_array("printable"));
             status_ = c->get_value_as_string("status", "");
             trunk_code_ = c->get_value_as_string("trunk_code", "");
             modified_phone_number_ = c->get_value_as_string("modified_phone_number", "");
@@ -41,13 +35,7 @@ namespace Data
                 }
             }
             if (c->is_value_exist("prefix_state"))
-            {
-                auto prefix_state = c->get_value_as_array("prefix_state");
-                for (int i = 0; prefix_state && i < prefix_state->size(); ++i)
-                {
-                    prefix_state_.push_back(prefix_state->get_at(i)->get_as_string());
-                }
-            }
+                prefix_state_ = Utils::toContainerOfString<decltype(prefix_state_)>(c->get_value_as_array("prefix_state"));
             modified_prefix_ = c->get_value_as_string("modified_prefix", "");
             is_phone_valid_ = c->get_value_as_bool("is_phone_valid", false);
         }

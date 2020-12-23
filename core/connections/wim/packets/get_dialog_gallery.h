@@ -29,6 +29,7 @@ namespace core::wim
     private:
         virtual int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
         virtual int32_t parse_results(const rapidjson::Value& _node_results) override;
+        virtual std::string_view get_method() const override;
 
         core::archive::gallery_storage gallery_;
 

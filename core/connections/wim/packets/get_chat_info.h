@@ -43,6 +43,8 @@ namespace core
 
             virtual priority_t get_priority() const override { return priority_protocol(); }
 
+            virtual std::string_view get_method() const override;
+
         private:
             get_chat_info_params params_;
             chat_info result_;

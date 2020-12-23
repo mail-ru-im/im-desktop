@@ -89,6 +89,8 @@ namespace Ui
         bool hasAttention_;
         bool isCreator_;
 
+        QDateTime canRemoveTill_;
+
     private:
         QString Status_;
     };
@@ -226,7 +228,7 @@ namespace Ui
             assert(_fontWeight < Fonts::FontWeight::Max);
 
             const auto fontQss = Fonts::appFontFullQss(contactNameFontSize(), Fonts::defaultAppFontFamily(), _fontWeight);
-            return qsl("%1; color: %2; background-color: transparent;").arg(fontQss, _fontColor);
+            return ql1s("%1; color: %2; background-color: transparent;").arg(fontQss, _fontColor);
         }
 
         QFont getContactNameFont(const Fonts::FontWeight _fontWeight) const

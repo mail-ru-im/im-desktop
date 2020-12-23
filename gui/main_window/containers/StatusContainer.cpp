@@ -3,6 +3,7 @@
 #include "StatusContainer.h"
 #include "core_dispatcher.h"
 #include "utils/InterConnector.h"
+#include "my_info.h"
 
 namespace
 {
@@ -48,12 +49,19 @@ namespace Logic
         if (_aimid.isEmpty())
             return;
 
-        statuses_[_aimid] = _status;
+        const auto endTime = _status.getEndTime();
+        if (endTime.isValid() && endTime < QDateTime::currentDateTime())
+            statuses_[_aimid] = Statuses::Status();
+        else
+            statuses_[_aimid] = _status;
+
         Q_EMIT statusChanged(_aimid, QPrivateSignal());
     }
 
     void StatusContainer::onUpdateTimer()
     {
+        discardMyStatusIfTimeIsOver();
+
         const auto now = QDateTime::currentDateTime();
         std::vector<QString> toUnsub;
         toUnsub.reserve(subscriptions_.size());
@@ -94,6 +102,30 @@ namespace Logic
 
         if (!updateTimer_->isActive())
             updateTimer_->start();
+    }
+
+    void StatusContainer::discardMyStatusIfTimeIsOver()
+    {
+        const auto myAimId = Ui::MyInfo()->aimId();
+
+        const auto discardMyStatus = [this, myAimId]()
+        {
+            if (const auto myStatusIt = statuses_.find(myAimId); myStatusIt != std::end(statuses_))
+            {
+                const auto& status = myStatusIt->second;
+                if (!status.isEmpty() && QDateTime::currentDateTime() >= status.getEndTime())
+                    setStatus(myAimId, {});
+            }
+        };
+
+        if (const auto myStatusIt = statuses_.find(myAimId); myStatusIt != std::end(statuses_))
+        {
+            if (myStatusIt->second.getEndTime().isValid())
+            {
+                const auto msecsLeft = std::chrono::milliseconds{ QDateTime::currentDateTime().msecsTo(myStatusIt->second.getEndTime()) };
+                QTimer::singleShot(std::max(std::chrono::milliseconds(0), msecsLeft), this, discardMyStatus);
+            }
+        }
     }
 
     void StatusContainer::setAvatarVisible(const QString& _aimid, bool _visible)

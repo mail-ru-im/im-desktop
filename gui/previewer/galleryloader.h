@@ -7,7 +7,7 @@
 namespace Utils {
 
 class MediaLoader;
-
+struct GalleryData;
 }
 
 namespace Ui
@@ -24,7 +24,7 @@ class GalleryLoader : public ContentLoader
 {
     Q_OBJECT
 public:
-    GalleryLoader(const QString& _aimId, const QString& _link, int64_t _msgId, Ui::DialogPlayer* _attachedPlayer = nullptr);
+    GalleryLoader(const Utils::GalleryData& _data);
 
     void next() override;
     void prev() override ;
@@ -69,7 +69,7 @@ private:
 
     size_t loadDistance() { return 10; }
 
-    std::unique_ptr<GalleryItem> createItem(const QString& _link, qint64 _msg, qint64 _seq, time_t _time, const QString& _sender, const QString& _caption, Ui::DialogPlayer* _attachedPlayer = nullptr);
+    std::unique_ptr<GalleryItem> createItem(const QString& _link, qint64 _msg, qint64 _seq, time_t _time, const QString& _sender, const QString& _caption, Ui::DialogPlayer* _attachedPlayer = nullptr, QPixmap _preview = QPixmap(), QSize _originalPreviewSize = QSize());
 
     bool indexValid();
 
@@ -113,6 +113,7 @@ public:
 
     QString fileName() const override;
 
+    void setPreview(QPixmap _preview, QSize _originalPreviewSize);
     QPixmap preview() const override { return preview_; }
     QSize originSize() const override { return originSize_; }
 
@@ -124,7 +125,7 @@ public:
     void showMedia(ImageViewerWidget* _viewer) override;
     void showPreview(ImageViewerWidget* _viewer) override;
 
-    void save(const QString& _path) override;
+    void save(const QString& _path, bool _exportAsPng) override;
 
     void copyToClipboard() override;
 
@@ -144,7 +145,9 @@ private Q_SLOTS:
     void onItemError();
 
 private:
+    QString formatFileName(const QString& fileName) const;
 
+private:
     QString link_;
     QPixmap preview_;
     QString path_;
@@ -154,7 +157,9 @@ private:
     qint64 seq_;
     time_t time_;
     QString sender_;
+#ifndef STRIP_AV_MEDIA
     QPointer<Ui::DialogPlayer> attachedPlayer_;
+#endif // !STRIP_AV_MEDIA
     bool attachedPlayerShown_;
     QString aimid_;
     QString caption_;

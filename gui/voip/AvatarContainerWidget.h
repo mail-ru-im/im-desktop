@@ -26,7 +26,7 @@ namespace Ui
         void avatarChanged(const QString&);
 
     private:
-        std::map<std::string, Logic::QPixmapSCptr> avatars_;
+        std::map<std::string, QPixmap> avatars_;
         std::vector<QRect> avatarRects_;
         float overlapPer01_;
 
@@ -34,7 +34,7 @@ namespace Ui
         int xOffset_;
         int yOffset_;
 
-        void addAvatarTo(const std::string& _userId, std::map<std::string, Logic::QPixmapSCptr>& _avatars);
+        void addAvatarTo(const std::string& _userId, std::map<std::string, QPixmap>& _avatars);
         std::vector<QRect> calculateAvatarPositions(const QRect& _rcParent, QSize& _avatarsSize);
         QSize calculateAvatarSize();
     };

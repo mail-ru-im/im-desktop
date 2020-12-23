@@ -164,8 +164,9 @@ namespace Ui
         , nickPressed_(false)
         , avatar_(new ContactAvatarWidget(this, MyInfo()->aimId(), MyInfo()->friendly(), avatarHeight(), true))
     {
-        avatar_->setAttribute(Qt::WA_TransparentForMouseEvents);
+        avatar_->setIgnoreClicks(true);
         avatar_->setFixedHeight(avatarHeight() + Utils::scale_value(4));
+        avatar_->setStatusTooltipEnabled(true);
 
         friendlyTextUnit_ = TextRendering::MakeTextUnit(MyInfo()->friendly(), {}, TextRendering::LinksVisible::DONT_SHOW_LINKS, TextRendering::ProcessLineFeeds::REMOVE_LINE_FEEDS);
         friendlyTextUnit_->init(friendlyTextFont(), normalFriendlyTextColor(), QColor(), QColor(), QColor(), TextRendering::HorAligment::LEFT, 1);

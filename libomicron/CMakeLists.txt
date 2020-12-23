@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.14)
+cmake_minimum_required(VERSION 3.17)
 
 ### integrate to icq
 #set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMake;${CMAKE_MODULE_PATH}")
@@ -30,6 +30,8 @@ project(libomicron
     VERSION ${LIB_VERSION_STRING}
     LANGUAGES CXX)
 
+message(STATUS "SUBPROJECT is ${CMAKE_PROJECT_NAME}")
+
 option(OMICRON_USE_LIBCURL "Use libcurl for downloading." ON)
 option(OMICRON_BUILD_TESTS "Build libomicron tests." OFF)
 
@@ -59,6 +61,7 @@ include_directories(${SUBPROJECT_ROOT}/src)
 add_definitions(-DRAPIDJSON_HAS_STDSTRING=1)
 # set(RAPID_JSON_DIR "${ICQ_EXTERNAL}/rapidjson-master")
 # include_directories(${RAPID_JSON_DIR}/include)
+message(STATUS "[include] include_directories(${ICQ_RAPID_JSON}/include)")
 include_directories(${ICQ_RAPID_JSON}/include)
 
 if(OMICRON_USE_LIBCURL)

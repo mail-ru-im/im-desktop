@@ -3,16 +3,12 @@
 #ifdef __APPLE__
 class MacSupport;
 #endif
-#include "../voip/secureCallWnd.h"
+#include "controls/TextEmojiWidget.h"
+#include "controls/MainStackedWidget.h"
 #include "sidebar/Sidebar.h"
 
 class QApplication;
 class QDockWidget;
-
-namespace Data
-{
-    struct Image;
-}
 
 namespace Previewer
 {
@@ -24,6 +20,7 @@ namespace Utils
     struct ProxySettings;
     struct CloseWindowInfo;
     struct SidebarVisibilityParams;
+    struct GalleryData;
 
     namespace AddContactDialogs
     {
@@ -38,7 +35,6 @@ namespace Ui
     class TermsPrivacyWidget;
     class TrayIcon;
     class HistoryControlPage;
-    class MainStackedWidget;
     class DialogPlayer;
     class MainWindow;
     class CustomButton;
@@ -118,6 +114,7 @@ namespace Ui
         void enterKeyPressed(QPrivateSignal);
         void mouseReleased(QPrivateSignal);
         void mousePressed(QPrivateSignal);
+        void mouseMoved(const QPoint&, QPrivateSignal);
 
         void windowHide(QPrivateSignal);
         void windowClose(QPrivateSignal);
@@ -183,7 +180,7 @@ namespace Ui
 
         void init(bool _needToShow);
 
-        void openGallery(const QString &_aimId, const QString &_link, int64_t _msgId, DialogPlayer* _attachedPlayer = nullptr);
+        void openGallery(const Utils::GalleryData& _data);
         void showHideGallery();
         void openAvatar(const QString &_aimId);
         void closeGallery();
@@ -201,9 +198,10 @@ namespace Ui
         QRect screenAvailableGeometry() const;
         QRect availableVirtualGeometry() const;
 
-        int getMinWindowWidth();
-        int getMinWindowHeight();
-        QRect getDefaultWindowSize();
+        int getMinWindowWidth() const;
+        int getMinWindowHeight() const;
+        QRect getDefaultWindowSize() const;
+        QRect getDefaultWindowGeometry() const;
 
         void skipRead(); //skip next sending last read by window activation
 
@@ -231,13 +229,18 @@ namespace Ui
 
         QWidget* getWidget() const;
 
+        QWidget* getPreviousFocusedWidget() const { return previousFocusedWidget_? previousFocusedWidget_.data() : nullptr; }
+
         void lock();
 
         void updateWindowTitle();
 
+        void setCurrentWidget(QWidget* _widget, ForceLocked _forceLocked = ForceLocked::No);
+
     private:
-        void initSizes();
-        void initSettings(const bool _do_not_show);
+        void placeRectOnDesktopEntirely(QRect& _rect, QMargins _margin = QMargins());
+        void initSizes(bool _needShow);
+        void initSettings(bool _needShow);
         void initStats();
         void showMaximized();
         void showNormal();
@@ -252,12 +255,11 @@ namespace Ui
 
         void saveWindowGeometryAndState(QSize size);
 
-        void sendStatus() const;
         void onEscPressed(const QString& _aimId, const bool _autorepeat);
 
     protected:
         bool nativeEventFilter(const QByteArray&, void* _message, long* _result) override;
-        bool eventFilter(QObject *, QEvent *) override;
+        bool eventFilter(QObject* _obj, QEvent* _event) override;
 
         void enterEvent(QEvent* _event) override;
         void resizeEvent(QResizeEvent* _event) override;
@@ -302,6 +304,7 @@ namespace Ui
         DialogPlayer* ffplayer_;
         CallQualityStatsMgr* callStatsMgr_;
         ConnectionStateWatcher* connStateWatcher_;
+        QPointer<QWidget> previousFocusedWidget_;
 
         bool SkipRead_;
         bool TaskBarIconHidden_;
@@ -316,6 +319,7 @@ namespace Ui
 #ifdef _WIN32
         HWND fake_parent_window_;
         bool isAeroEnabled_;
+        HMENU menu_;
 #endif //_WIN32
 #ifdef __APPLE__
         MacSupport* getMacSupport();

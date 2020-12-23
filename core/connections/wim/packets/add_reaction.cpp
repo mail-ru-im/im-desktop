@@ -24,6 +24,11 @@ const archive::reactions_data& add_reaction::get_result() const
     return reactions_;
 }
 
+std::string_view add_reaction::get_method() const
+{
+    return "reaction/add";
+}
+
 int32_t add_reaction::init_request(const std::shared_ptr<http_request_simple>& _request)
 {
     rapidjson::Document doc(rapidjson::Type::kObjectType);
@@ -38,16 +43,12 @@ int32_t add_reaction::init_request(const std::shared_ptr<http_request_simple>& _
     rapidjson::Value reactions(rapidjson::Type::kArrayType);
     reactions.Reserve(reactions_list_.size(), a);
     for (const auto& reaction : reactions_list_)
-    {
-        rapidjson::Value node_reaction(rapidjson::Type::kStringType);
-        node_reaction.SetString(reaction.c_str(), reaction.size());
-        reactions.PushBack(std::move(node_reaction), a);
-    }
+        reactions.PushBack(tools::make_string_ref(reaction), a);
     node_params.AddMember("reactions", std::move(reactions), a);
 
     doc.AddMember("params", std::move(node_params), a);
 
-    setup_common_and_sign(doc, a, _request, "reaction/add");
+    setup_common_and_sign(doc, a, _request, get_method());
 
     if (!robusto_packet::params_.full_log_)
     {

@@ -64,7 +64,7 @@ namespace Ui
         Q_OBJECT
 
     Q_SIGNALS :
-        void itemSelected(const QString&, qint64 _message_id, const highlightsV& _highlights);
+        void itemSelected(const QString&, qint64 _message_id, const highlightsV& _highlights, bool _ignoreScroll = false);
         void groupClicked(int);
         void tabChanged(int);
         void createGroupChatClicked();
@@ -157,6 +157,7 @@ namespace Ui
 
         void highlightContact(const QString& _aimId);
         void setNextSelectWithOffset();
+        QRect getAvatarRect(const QModelIndex& _index) const;
 
     protected:
         virtual void resizeEvent(QResizeEvent* _event) override;
@@ -168,7 +169,6 @@ namespace Ui
         void searchUpOrDownPressed(const bool _isUpPressed);
         void setKeyboardFocused(const bool _isFocused);
         void onMouseMoved(const QPoint& _pos, const QModelIndex& _index);
-        void showTooltip();
 
     private:
         RCLEventFilter* listEventFilter_;
@@ -203,9 +203,5 @@ namespace Ui
         bool tapAndHold_;
         bool pictureOnlyView_;
         bool nextSelectWithOffset_;
-
-        QTimer* tooltipTimer_;
-        QString tooltipAimId_;
-        QRect tooltipRect_;
     };
 }

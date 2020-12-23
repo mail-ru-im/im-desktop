@@ -22,6 +22,11 @@ const std::shared_ptr<core::archive::persons_map>& core::wim::get_id_info::get_p
     return persons_;
 }
 
+std::string_view get_id_info::get_method() const
+{
+    return "getIdInfo";
+}
+
 int32_t get_id_info::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     rapidjson::Document doc(rapidjson::Type::kObjectType);
@@ -32,7 +37,7 @@ int32_t get_id_info::init_request(const std::shared_ptr<core::http_request_simpl
 
     doc.AddMember("params", std::move(node_params), a);
 
-    setup_common_and_sign(doc, a, _request, "getIdInfo");
+    setup_common_and_sign(doc, a, _request, get_method());
 
     if (!params_.full_log_)
     {

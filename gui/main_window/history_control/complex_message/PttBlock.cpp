@@ -4,19 +4,24 @@
 #include "../../../../corelib/enumerations.h"
 
 #include "../../../controls/TextUnit.h"
+#include "../../../controls/TooltipWidget.h"
 
 #include "../../../core_dispatcher.h"
 #include "../../../fonts.h"
 #include "../../../gui_settings.h"
 #include "../../../utils/PainterPath.h"
 #include "../../../utils/utils.h"
+#include "../../../utils/features.h"
 #include "../../../styles/ThemeParameters.h"
 #include "../../../cache/ColoredCache.h"
 #include "../../contact_list/ContactListModel.h"
 
 #include "../../input_widget/InputWidgetUtils.h"
 
+#ifndef STRIP_AV_MEDIA
+#include "../../../media/ptt/AudioUtils.h"
 #include "../../sounds/SoundsManager.h"
+#endif // !STRIP_AV_MEDIA
 
 #include "../ActionButtonWidget.h"
 #include "../MessageStyle.h"
@@ -33,17 +38,13 @@
 
 namespace
 {
-    QString formatDuration(const int32_t _seconds)
+    QString formatDuration(const int32_t _mSeconds)
     {
-        if (_seconds < 0)
-            return qsl("00:00");
-
-        const auto minutes = (_seconds / 60);
-        const auto seconds = (_seconds % 60);
-
-        return qsl("%1:%2")
-            .arg(minutes, 2, 10, ql1c('0'))
-            .arg(seconds, 2, 10, ql1c('0'));
+#ifndef STRIP_AV_MEDIA
+        return ptt::formatDuration(std::chrono::milliseconds(_mSeconds));
+#else
+        return qsl("00:00");
+#endif
     }
 
     QSize getButtonSize()
@@ -56,9 +57,28 @@ namespace
         return QSize(18, 18);
     }
 
-    constexpr std::chrono::milliseconds maxPttLength = std::chrono::minutes(5);
+    int getBulletClickableRadius()
+    {
+        return Utils::scale_value(32);
+    }
+
+    int getBulletSize(bool _hovered)
+    {
+        return _hovered ? Utils::scale_value(10) : Utils::scale_value(8);
+    }
+
+    constexpr std::chrono::milliseconds getMaxPttLength() noexcept
+    {
+#ifndef STRIP_AV_MEDIA
+        return ptt::maxDuration();
+#else
+        return std::chrono::seconds::zero();
+#endif
+    }
+
     constexpr std::chrono::milliseconds animDuration = std::chrono::seconds(2);
     constexpr std::chrono::milliseconds animDownloadDelay = std::chrono::milliseconds(300);
+    constexpr std::chrono::milliseconds tooltipShowDelay() noexcept { return std::chrono::milliseconds(400); }
     constexpr auto QT_ANGLE_MULT = 16;
     constexpr double idleProgressValue = 0.75;
 }
@@ -147,7 +167,7 @@ namespace PttDetails
         }
 
         QPainter p(this);
-        p.setRenderHint(QPainter::Antialiasing);
+        p.setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
         p.setPen(Qt::NoPen);
         p.setBrush(bgColor);
         p.drawEllipse(rect());
@@ -192,7 +212,7 @@ namespace PttDetails
             }
 
             QPainter p(this);
-            p.setRenderHint(QPainter::Antialiasing);
+            p.setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
             p.setPen(Qt::NoPen);
             p.setBrush(Styling::getParameters(aimId_).getColor(bgVar));
             p.drawEllipse(rect());
@@ -263,7 +283,7 @@ namespace PttDetails
         }
 
         QPainter p(this);
-        p.setRenderHint(QPainter::Antialiasing);
+        p.setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
         p.setPen(Qt::NoPen);
         p.setBrush(bgColor);
         p.drawEllipse(rect());
@@ -289,7 +309,7 @@ PttBlock::PttBlock(
     int64_t _prevId)
     : FileSharingBlockBase(_parent, _link, core::file_sharing_content_type(core::file_sharing_base_content_type::ptt))
     , durationMSec_(_durationSec * 1000)
-    , durationText_(formatDuration(_durationSec))
+    , durationText_(formatDuration(durationMSec_))
     , isDecodedTextCollapsed_(true)
     , isPlayed_(false)
     , isPlaybackScheduled_(false)
@@ -314,6 +334,7 @@ PttBlock::PttBlock(
     if (!getParentComplexMessage()->isHeadless())
     {
         buttonPlay_ = new PttDetails::PlayButton(this, getChatAimid());
+        Testing::setAccessibleName(buttonPlay_, qsl("AS PttBlock buttonPlay"));
         Utils::InterConnector::instance().disableInMultiselect(buttonPlay_);
     }
 
@@ -330,7 +351,7 @@ PttBlock::PttBlock(ComplexMessageItem *_parent,
     int64_t _prevId)
     : FileSharingBlockBase(_parent, _fsInfo->GetUri(), core::file_sharing_content_type(core::file_sharing_base_content_type::ptt))
     , durationMSec_(_durationSec * 1000)
-    , durationText_(formatDuration(_durationSec))
+    , durationText_(formatDuration(durationMSec_))
     , isDecodedTextCollapsed_(true)
     , isPlayed_(false)
     , isPlaybackScheduled_(false)
@@ -355,6 +376,7 @@ PttBlock::PttBlock(ComplexMessageItem *_parent,
     if (!getParentComplexMessage()->isHeadless())
     {
         buttonPlay_ = new PttDetails::PlayButton(this, getChatAimid());
+        Testing::setAccessibleName(buttonPlay_, qsl("AS PttBlock buttonPlay"));
         Utils::InterConnector::instance().disableInMultiselect(buttonPlay_);
     }
 
@@ -524,6 +546,104 @@ void PttBlock::onMenuOpenFolder()
     showFileInDir(Utils::OpenAt::Folder);
 }
 
+void PttBlock::mouseMoveEvent(QMouseEvent* _e)
+{
+    if (Utils::InterConnector::instance().isMultiselect())
+    {
+        Tooltip::forceShow(false);
+        bulletPressed_ = false;
+        bulletHovered_ = false;
+        GenericBlock::mouseMoveEvent(_e);
+        return;
+    }
+    const auto curPos = _e->pos();
+    if (const auto needHover = getBulletRect().contains(curPos) && !checkButtonsHovered(); needHover != bulletHovered_)
+    {
+        bulletHovered_ = needHover;
+        update();
+    }
+    continuePlaying_ &= bulletPressed_;
+    if (bulletPressed_)
+        updatePlaybackProgress(curPos);
+
+    const auto needShowTooltip = getPlaybackRect().contains(curPos) || bulletPressed_;
+    Tooltip::forceShow(needShowTooltip);
+    if (needShowTooltip)
+        showBulletTooltip(curPos);
+    else
+        Tooltip::hide();
+    setCursor((bulletHovered_ || needShowTooltip) ? Qt::PointingHandCursor : Qt::ArrowCursor);
+
+    GenericBlock::mouseMoveEvent(_e);
+}
+
+void PttBlock::mousePressEvent(QMouseEvent* _e)
+{
+    if (Utils::InterConnector::instance().isMultiselect())
+    {
+        Tooltip::forceShow(false);
+        bulletPressed_ = false;
+        bulletHovered_ = false;
+        GenericBlock::mousePressEvent(_e);
+        return;
+    }
+    if (_e->button() == Qt::LeftButton)
+    {
+        const auto pos = _e->pos();
+        bulletPressed_ = (getBulletRect().contains(pos) || getPlaybackRect().contains(pos)) && !buttonPlay_->rect().contains(pos);
+        bulletHovered_ = bulletPressed_;
+        continuePlaying_ = bulletPressed_ && playbackProgressAnimation_ && isPlaying();
+        updatePlaybackProgress(pos);
+    }
+    if (!bulletPressed_)
+        GenericBlock::mousePressEvent(_e);
+}
+
+void PttBlock::mouseReleaseEvent(QMouseEvent* _e)
+{
+    if (Utils::InterConnector::instance().isMultiselect())
+    {
+        Tooltip::forceShow(false);
+        bulletPressed_ = false;
+        bulletHovered_ = false;
+        GenericBlock::mouseReleaseEvent(_e);
+        return;
+    }
+    bulletPressed_ = false;
+    const auto curPos = _e->pos();
+    bulletHovered_ = getBulletRect().contains(curPos) && !buttonPlay_->rect().contains(curPos);
+    if (continuePlaying_)
+    {
+        const auto progress = getPlaybackPercentProgress(curPos);
+        if (progress < 1.0)
+            startPlayback();
+        else
+            continuePlaying_ = false;
+    }
+    updateButtonsStates();
+    GenericBlock::mouseReleaseEvent(_e);
+}
+
+void PttBlock::leaveEvent(QEvent* _e)
+{
+    bulletHovered_ = false;
+    Tooltip::forceShow(false);
+    update();
+}
+
+void PttBlock::enterEvent(QEvent* _e)
+{
+    const auto curPos = mapFromGlobal(QCursor::pos());
+    const auto needShowTootip = getPlaybackRect().contains(curPos) || bulletPressed_;
+    Tooltip::forceShow(needShowTootip);
+    if (needShowTootip)
+        showBulletTooltip(curPos);
+    else
+        Tooltip::hide();
+    setCursor(bulletHovered_ || needShowTootip ? Qt::PointingHandCursor : Qt::ArrowCursor);
+    GenericBlock::enterEvent(_e);
+}
+
 void PttBlock::drawBlock(QPainter &_p, const QRect& _rect, const QColor& quote_color)
 {
     if (!isStandalone() && FileSharingBlockBase::isSelected())
@@ -675,11 +795,13 @@ void PttBlock::connectSignals()
     assert(!getParentComplexMessage()->isHeadless());
 
     connect(buttonPlay_, &PttDetails::PlayButton::clicked, this, &PttBlock::onPlayButtonClicked);
+    connect(buttonPlay_, &PttDetails::PlayButton::hoverChanged, this, &PttBlock::updateBulletHoveredState);
 
     connect(GetDispatcher(), &core_dispatcher::speechToText, this, &PttBlock::onPttText);
-
-    connect(GetSoundsManager(), &SoundsManager::pttPaused,   this, &PttBlock::onPttPaused);
+#ifndef STRIP_AV_MEDIA
+    connect(GetSoundsManager(), &SoundsManager::pttPaused, this, &PttBlock::onPttPaused);
     connect(GetSoundsManager(), &SoundsManager::pttFinished, this, &PttBlock::onPttFinished);
+#endif // !STRIP_AV_MEDIA
 }
 
 void PttBlock::drawBubble(QPainter &_p, const QRect &_bubbleRect)
@@ -688,7 +810,7 @@ void PttBlock::drawBubble(QPainter &_p, const QRect &_bubbleRect)
     assert(!isStandalone());
 
     Utils::PainterSaver ps(_p);
-    _p.setRenderHint(QPainter::Antialiasing);
+    _p.setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
 
     const auto &bodyBrush = MessageStyle::getBodyBrush(isOutgoing(), getChatAimid());
     _p.setBrush(bodyBrush);
@@ -714,7 +836,7 @@ void PttBlock::drawDuration(QPainter &_p)
     _p.setPen(Styling::getParameters(getChatAimid()).getColor(Styling::StyleVariable::TEXT_PRIMARY));
 
     const auto secondsLeft = (durationMSec_ - playbackProgressMsec_);
-    const QString text = (isPlaying() || isPaused()) ? formatDuration(secondsLeft / 1000) : (isPlayed_ ? durationText_ : durationText_ % ql1c(' ') % QChar(0x2022));
+    const QString text = (isPlaying() || isPaused()) ? formatDuration(secondsLeft) : (isPlayed_ ? durationText_ : durationText_ % ql1c(' ') % QChar(0x2022));
 
     assert(!text.isEmpty());
     _p.drawText(textX, textY, text);
@@ -735,12 +857,12 @@ void PttBlock::drawPlaybackProgress(QPainter &_p, const int32_t _progressMsec, c
 
     const auto x = leftMargin;
     const auto y = Utils::scale_value(17) + (isStandalone() ? pttLayout_->getTopMargin() : MessageStyle::getBubbleVerPadding());
+    const auto halfPen = MessageStyle::Ptt::getPttProgressWidth();
 
-    const auto drawLine = [&_p, x, y](const auto& _color, const auto& _width)
+    const auto drawLine = [&_p, x, y, halfPen](const auto& _color, const auto& _width)
     {
         _p.setPen(QPen(_color, MessageStyle::Ptt::getPttProgressWidth(), Qt::SolidLine, Qt::RoundCap));
 
-        const auto halfPen = MessageStyle::Ptt::getPttProgressWidth();
         const auto top = y + halfPen;
         const auto retinaShift = Utils::is_mac_retina() ? 1 : 0;
         const auto left = x + halfPen - retinaShift;
@@ -760,12 +882,21 @@ void PttBlock::drawPlaybackProgress(QPainter &_p, const int32_t _progressMsec, c
         if (playedWidth > 0)
             drawLine(getPlaybackColor(), playedWidth);
     }
+
+    const auto bulletR = getBulletSize(bulletHovered_ || bulletPressed_);
+    bulletPos_.setX(x + playedWidth);
+    bulletPos_.setY(y - halfPen + getBulletSize(false) / 2);
+
+    QRect bullet(bulletPos_, QSize(bulletR, bulletR));
+    _p.setPen(Qt::NoPen);
+    _p.setBrush(Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY));
+    _p.drawEllipse(bullet.translated(-bulletR / 2, -bulletR / 2));
 }
 
 int32_t PttBlock::getPlaybackProgress() const
 {
     assert(playbackProgressMsec_ >= 0);
-    assert(playbackProgressMsec_ < maxPttLength.count());
+    assert(playbackProgressMsec_ < getMaxPttLength().count());
 
     return playbackProgressMsec_;
 }
@@ -773,9 +904,11 @@ int32_t PttBlock::getPlaybackProgress() const
 void PttBlock::setPlaybackProgress(const int32_t _value)
 {
     assert(_value >= 0);
-    assert(_value < maxPttLength.count());
+    assert(_value < getMaxPttLength().count());
 
     playbackProgressMsec_ = _value;
+
+    Q_EMIT Utils::InterConnector::instance().pttProgressChanged(getId(), getFileSharingId(), playbackProgressMsec_ == durationMSec_ ? 0 : playbackProgressMsec_);
 
     update();
 }
@@ -878,6 +1011,7 @@ void PttBlock::stopTextRequestProgressAnimation()
 
 void PttBlock::startPlayback()
 {
+#ifndef STRIP_AV_MEDIA
     isPlayed_ = true;
 
     assert(!isPlaying());
@@ -886,30 +1020,32 @@ void PttBlock::startPlayback()
 
     playbackState_ = PlaybackState::Playing;
 
-    int duration = 0;
-    playingId_ = GetSoundsManager()->playPtt(getFileLocalPath(), playingId_, duration);
+    initPlaybackAnimation(AnimationState::Play);
 
-    Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::chatscr_playptt_action, { { "from_gallery", "no" },  { "chat_type", Ui::getStatsChatType() } });
+    playbackProgressAnimation_->stop();
+    playingId_ = GetSoundsManager()->playPtt(getFileLocalPath(), playingId_, durationMSec_);
 
-    if (!playbackProgressAnimation_)
+    auto updateProgress = [this]()
     {
-        durationMSec_ = duration;
-        assert(duration > 0);
+        const auto progress = playbackProgressMsec_ == durationMSec_ ? 0 : getPlaybackPercentProgress(bulletPos_);
+        GetSoundsManager()->setProgressOffset(playingId_, progress);
+        updatePlaybackAnimation(progress);
+        playbackProgressAnimation_->start();
+        updateButtonsStates();
+    };
 
-        playbackProgressAnimation_ = new QPropertyAnimation(this, QByteArrayLiteral("PlaybackProgress"), this);
-        playbackProgressAnimation_->setDuration(duration);
-        playbackProgressAnimation_->setLoopCount(1);
-        playbackProgressAnimation_->setStartValue(0);
-        playbackProgressAnimation_->setEndValue(duration);
-    }
+#ifdef USE_SYSTEM_OPENAL
+    QTimer::singleShot(20, this, updateProgress);
+#else
+    updateProgress();
+#endif
 
-    playbackProgressAnimation_->start();
-
-    updateButtonsStates();
+#endif // !STRIP_AV_MEDIA
 }
 
 void PttBlock::pausePlayback()
 {
+#ifndef STRIP_AV_MEDIA
     if (!isPlaying())
         return;
 
@@ -918,9 +1054,44 @@ void PttBlock::pausePlayback()
     assert(playingId_ > 0);
     GetSoundsManager()->pausePtt(playingId_);
 
-    playbackProgressAnimation_->pause();
+    if (playbackProgressAnimation_)
+        playbackProgressAnimation_->pause();
 
-    updateButtonsStates();
+    if (!continuePlaying_)
+        updateButtonsStates();
+#endif // !STRIP_AV_MEDIA
+}
+
+void PttBlock::initPlaybackAnimation(AnimationState _state)
+{
+#ifndef STRIP_AV_MEDIA
+    playingId_ = GetSoundsManager()->playPtt(getFileLocalPath(), playingId_, durationMSec_, getPlaybackPercentProgress(bulletPos_));
+    GetSoundsManager()->pausePtt(playingId_);
+
+    assert(durationMSec_ > 0);
+
+    if (!playbackProgressAnimation_)
+    {
+        playbackProgressAnimation_ = new QPropertyAnimation(this, QByteArrayLiteral("PlaybackProgress"), this);
+        playbackProgressAnimation_->setLoopCount(1);
+    }
+
+    playbackProgressAnimation_->stop();
+    playbackProgressAnimation_->setEndValue(durationMSec_);
+
+    if (_state == AnimationState::Play)
+        Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::chatscr_playptt_action, { { "from_gallery", "no" },  { "chat_type", Ui::getStatsChatType() } });
+
+#endif // !STRIP_AV_MEDIA
+}
+
+void PttBlock::updatePlaybackAnimation(float _progress)
+{
+    const auto currentTime = _progress * durationMSec_;
+    setPlaybackProgress(currentTime);
+    playbackProgressAnimation_->setStartValue(currentTime);
+    playbackProgressAnimation_->setDuration(durationMSec_ - currentTime);
+    durationText_ = formatDuration(durationMSec_ - currentTime);
 }
 
 void PttBlock::updateButtonsStates()
@@ -954,6 +1125,15 @@ void PttBlock::updateCollapseState()
     buttonText_->setVisible(isDecodedTextCollapsed_);
 
     notifyBlockContentsChanged();
+}
+
+void PttBlock::updateBulletHoveredState()
+{
+    if (buttonPlay_->isHovered() && bulletHovered_)
+    {
+        bulletHovered_ = false;
+        update();
+    }
 }
 
 void PttBlock::updateStyle()
@@ -1017,6 +1197,73 @@ bool PttBlock::canShowButtonText() const
     return recognize_ && config::get().is_on(config::features::ptt_recognition);
 }
 
+bool PttBlock::checkButtonsHovered() const
+{
+    // only buttonText_ & buttonCollapse_ ignore mouse move events & propagate moseMoveEvent to parent (PttBlock)
+    return (buttonText_ && buttonText_->isHovered()) || (buttonCollapse_ && buttonCollapse_->isHovered());
+}
+
+QRect PttBlock::getBulletRect() const
+{
+    const auto r = getBulletClickableRadius();
+    QRect bulletRect(bulletPos_, QSize(r, r));
+    bulletRect.translate(-r / 2, -r / 2);
+    return bulletRect;
+}
+
+QRect PttBlock::getPlaybackRect() const
+{
+    const auto leftMargin = buttonPlay_->pos().x() + getButtonSize().width() + MessageStyle::getBubbleHorPadding();
+    const auto rightMargin = (canShowButtonText() ? width() - pttLayout_->getTextButtonRect().left() : 0) + MessageStyle::getBubbleHorPadding();
+    const auto totalWidth = width() - leftMargin - rightMargin;
+
+    QRect playbackRect(leftMargin, getBulletRect().top(), totalWidth, getBulletRect().height());
+    return playbackRect;
+}
+
+void PttBlock::updatePlaybackProgress(const QPoint& _curPos)
+{
+#ifndef STRIP_AV_MEDIA
+    if (bulletPressed_)
+    {
+        initPlaybackAnimation(AnimationState::Pause);
+        const auto progress = getPlaybackPercentProgress(_curPos);
+        updatePlaybackAnimation(progress);
+    }
+    update();
+#endif
+}
+
+double PttBlock::getPlaybackPercentProgress(const QPoint& _curPos) const
+{
+    const auto playbackRect = getPlaybackRect();
+    const auto leftMargin = playbackRect.left();
+    const auto pos = _curPos.x() - leftMargin;
+    const auto totalWidth = playbackRect.width();
+    const auto progress = std::clamp(double(pos) / totalWidth, 0.0, 1.0);
+
+    return progress;
+}
+
+void PttBlock::showBulletTooltip(QPoint _curPos) const
+{
+    const auto playbackRect = getPlaybackRect();
+    const auto left = playbackRect.x();
+    const auto right = playbackRect.right();
+    const auto progress = getPlaybackPercentProgress(_curPos);
+    const int32_t currentTime = progress * durationMSec_;
+    _curPos.setX(std::clamp(_curPos.x(), left, right));
+
+    auto pos = mapToGlobal(_curPos);
+    auto bulletPos = mapToGlobal(bulletPos_);
+    const auto r = getBulletClickableRadius();
+    pos.setY(bulletPos.y());
+
+    QRect targetRect(pos, QSize(r, r));
+    targetRect.translate(-r / 2, -r / 2);
+    Tooltip::show(Utils::getFormattedTime(std::chrono::milliseconds(currentTime)), targetRect);
+}
+
 void PttBlock::onPlayButtonClicked()
 {
     if (Utils::InterConnector::instance().isMultiselect())
@@ -1064,10 +1311,10 @@ void PttBlock::onPttFinished(int _id, bool _byPlay)
     playingId_ = -1;
 
     if (playbackProgressAnimation_)
-    {
         playbackProgressAnimation_->stop();
-        playbackProgressMsec_ = durationMSec_;
-    }
+
+    playbackProgressMsec_ = 0;
+    durationText_ = formatDuration(durationMSec_);
 
     playbackState_ = PlaybackState::Stopped;
 
@@ -1135,7 +1382,7 @@ void PttBlock::onPttText(qint64 _seq, int _error, QString _text, int _comeback)
 
 void PttBlock::pttPlayed(qint64 id)
 {
-    if (id != prevId_ || getChatAimid() != Logic::getContactListModel()->selectedContact())
+    if (prevId_ == -1 || id != prevId_ || getChatAimid() != Logic::getContactListModel()->selectedContact())
         return;
 
     if (!isPlayed_ && !isPlaying())
@@ -1246,10 +1493,11 @@ void PttBlock::releaseSelection()
     update();
 }
 
-void PttBlock::onVisibilityChanged(const bool isVisible)
+void PttBlock::onVisibleRectChanged(const QRect& _visibleRect)
 {
-    if (!isVisible)
-        pausePlayback();
+    if (_visibleRect.isEmpty())
+        if (!Features::isBackgroundPttPlayEnabled())
+            pausePlayback();
 }
 
 IItemBlock::MenuFlags PttBlock::getMenuFlags(QPoint p) const
@@ -1257,6 +1505,16 @@ IItemBlock::MenuFlags PttBlock::getMenuFlags(QPoint p) const
     if (isSelected())
         return MenuFlags::MenuFlagCopyable;
     return FileSharingBlockBase::getMenuFlags(p);
+}
+
+bool PttBlock::setProgress(const QString& _fsId, const int32_t _value)
+{
+    if (_fsId == getFileSharingId())
+    {
+        setPlaybackProgress(_value);
+        return true;
+    }
+    return false;
 }
 
 UI_COMPLEX_MESSAGE_NS_END

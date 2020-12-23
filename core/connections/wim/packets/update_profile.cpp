@@ -20,6 +20,11 @@ update_profile::~update_profile()
 {
 }
 
+std::string_view update_profile::get_method() const
+{
+    return "updateMemberDir";
+}
+
 int32_t update_profile::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     assert(!fields_.empty());
@@ -35,7 +40,7 @@ int32_t update_profile::init_request(const std::shared_ptr<core::http_request_si
 
     std::for_each(fields_.begin(), fields_.end(), [&ss_url](const std::pair<std::string, std::string>& item){ ss_url << "&set=" << escape_symbols(item.first + '=' + item.second); });
     _request->set_url(ss_url.str());
-    _request->set_normalized_url("updateMemberDir");
+    _request->set_normalized_url(get_method());
     _request->set_keep_alive();
 
     if (!params_.full_log_)

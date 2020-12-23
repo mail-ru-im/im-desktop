@@ -1,7 +1,6 @@
 #pragma once
 
 #include "GalleryList.h"
-#include "types/images.h"
 #include "types/link_metadata.h"
 #include "previewer/Drawable.h"
 #include "utils/medialoader.h"

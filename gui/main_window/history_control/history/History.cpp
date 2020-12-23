@@ -909,7 +909,7 @@ namespace hist
             req.ids = std::move(inBounds);
             req.seq = requestMessagesByIds(aimId_, IdsMessages::New, req.ids);
 
-            qCDebug(history) << _aimId << req.seq << "request by ids" << QVector<qint64>::fromStdVector(req.ids);
+            qCDebug(history) << _aimId << req.seq << "request by ids" << QVector<qint64>(req.ids.begin(), req.ids.end());
 
             executedRequests.byIds.push_back(std::move(req));
         }
@@ -940,7 +940,7 @@ namespace hist
             ExecutedByIdRequestParams req;
             req.seq = requestMessagesByIds(aimId_, IdsMessages::Updated, inBounds);
             req.ids = std::move(inBounds);
-            qCDebug(history) << _aimId << req.seq << "messageIdsUpdated req" << QVector<qint64>::fromStdVector(req.ids);
+            qCDebug(history) << _aimId << req.seq << "messageIdsUpdated req" << QVector<qint64>(req.ids.begin(), req.ids.end());
             executedRequests.byIds.push_back(std::move(req));
         }
     }

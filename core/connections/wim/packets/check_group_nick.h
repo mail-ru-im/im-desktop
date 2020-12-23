@@ -20,6 +20,7 @@ namespace core
 
         public:
             check_group_nick(wim_packet_params _params, const std::string& _nick);
+            virtual std::string_view get_method() const override;
         };
     }
 }

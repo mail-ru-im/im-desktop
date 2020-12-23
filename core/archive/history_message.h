@@ -167,6 +167,7 @@ namespace core
             void merge_with(const message_header &rhs);
 
             bool is_deleted() const noexcept;
+            bool is_restored_patch() const noexcept;
             bool is_modified() const noexcept;
             bool is_updated() const noexcept;
             bool is_patch() const noexcept;
@@ -326,18 +327,20 @@ namespace core
             std::optional<file_sharing_base_content_type> base_content_type_;
         };
 
-        using chat_event_data_uptr = std::unique_ptr<class chat_event_data>;
+        using chat_event_data_sptr = std::shared_ptr<class chat_event_data>;
 
         class chat_event_data
         {
         public:
-            static chat_event_data_uptr make_added_to_buddy_list(const std::string &_sender_aimid);
-            static chat_event_data_uptr make_mchat_event(const rapidjson::Value& _node);
-            static chat_event_data_uptr make_modified_event(const rapidjson::Value& _node);
-            static chat_event_data_uptr make_from_tlv(const tools::tlvpack& _pack);
-            static chat_event_data_uptr make_simple_event(const chat_event_type _type);
-            static chat_event_data_uptr make_generic_event(const rapidjson::Value& _text_node);
-            static chat_event_data_uptr make_generic_event(std::string _text);
+            static chat_event_data_sptr make_added_to_buddy_list(const std::string &_sender_aimid);
+            static chat_event_data_sptr make_mchat_event(const rapidjson::Value& _node);
+            static chat_event_data_sptr make_modified_event(const rapidjson::Value& _node);
+            static chat_event_data_sptr make_from_tlv(const tools::tlvpack& _pack);
+            static chat_event_data_sptr make_simple_event(const chat_event_type _type);
+            static chat_event_data_sptr make_generic_event(const rapidjson::Value& _text_node);
+            static chat_event_data_sptr make_generic_event(std::string _text);
+            static chat_event_data_sptr make_status_reply_event(const rapidjson::Value& _node);
+            static chat_event_data_sptr make_custom_status_reply_event(const rapidjson::Value& _node);
 
             void apply_persons(const archive::persons_map &_persons);
             bool contents_equal(const chat_event_data& _rhs) const;
@@ -357,6 +360,7 @@ namespace core
             void deserialize_chat_modifications(const tools::tlvpack &_pack);
             void deserialize_mchat_members(const tools::tlvpack &_pack);
             void deserialize_mchat_members_aimids(const tools::tlvpack &_pack);
+            void deserialize_status_reply(const tools::tlvpack& _pack);
 
             chat_event_type get_type() const;
             bool has_generic_text() const;
@@ -370,6 +374,8 @@ namespace core
             void serialize_mchat_members_aimids(Out coll_helper &_coll) const;
             void serialize_mchat_members(Out tools::tlvpack &_pack) const;
             void serialize_mchat_members_aimids(Out tools::tlvpack &_pack) const;
+            void serialize_status_reply(Out coll_helper& _coll) const;
+            void serialize_status_reply(Out tools::tlvpack& _pack) const;
 
             chat_event_type type_;
             bool is_captcha_present_;
@@ -395,6 +401,14 @@ namespace core
                 bool new_public_;
             } chat_;
 
+            struct
+            {
+                std::string sender_status_;
+                std::string sender_status_description_;
+                std::string owner_status_;
+                std::string owner_status_descriprion_;
+            } status_reply_;
+
             std::string generic_;
         };
 
@@ -418,7 +432,7 @@ namespace core
             voip_data_uptr voip_;
             std::unique_ptr<chat_data> chat_;
             file_sharing_data_uptr file_sharing_;
-            chat_event_data_uptr chat_event_;
+            chat_event_data_sptr chat_event_;
             quotes_vec quotes_;
             mentions_map mentions_;
             snippets_vec snippets_;
@@ -443,6 +457,8 @@ namespace core
 
             void set_deleted(const bool _deleted);
 
+            void set_restored_patch(const bool _restored);
+
             void set_modified(const bool _modified);
 
             void set_updated(const bool _updated);
@@ -456,7 +472,7 @@ namespace core
             void merge(const history_message& _message);
 
             static history_message_sptr make_deleted_patch(const int64_t _archive_id, std::string_view _internal_id);
-            static history_message_sptr make_modified_patch(const int64_t _archive_id, std::string_view _internal_id);
+            static history_message_sptr make_modified_patch(const int64_t _archive_id, std::string_view _internal_id, chat_event_data_sptr _chat_event = chat_event_data_sptr());
             static history_message_sptr make_updated_patch(const int64_t _archive_id, std::string_view _internal_id);
             static history_message_sptr make_updated(const int64_t _archive_id, std::string_view _internal_id);
             static history_message_sptr make_clear_patch(const int64_t _archive_id, std::string_view _internal_id);
@@ -537,6 +553,7 @@ namespace core
             bool is_clear() const;
             bool is_patch() const;
             bool is_chat_event_deleted() const;
+            bool is_restored_patch() const;
 
             void apply_header_flags(const message_header &_header);
             void apply_modifications(const history_block &_modifications);
@@ -563,7 +580,7 @@ namespace core
             void init_sticker_from_text(std::string _text);
             const file_sharing_data_uptr& get_file_sharing_data() const;
 
-            const chat_event_data_uptr& get_chat_event_data() const;
+            const chat_event_data_sptr& get_chat_event_data() const;
             voip_data_uptr& get_voip_data();
 
             message_type get_type() const noexcept;

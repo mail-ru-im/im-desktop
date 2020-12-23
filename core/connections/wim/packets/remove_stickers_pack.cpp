@@ -51,7 +51,7 @@ int32_t remove_stickers_pack_packet::init_request(const std::shared_ptr<core::ht
     ss_url_signed << ss_url.str() << '?' << format_get_params(params);
 
     _request->set_url(ss_url_signed.str());
-    _request->set_normalized_url("stickersStoreDeletePurchase");
+    _request->set_normalized_url(get_method());
     _request->set_keep_alive();
 
     if (!params_.full_log_)
@@ -93,4 +93,9 @@ int32_t remove_stickers_pack_packet::parse_response(const std::shared_ptr<core::
 priority_t remove_stickers_pack_packet::get_priority() const
 {
     return packets_priority_high();
+}
+
+std::string_view remove_stickers_pack_packet::get_method() const
+{
+    return "stickersStoreDeletePurchase";
 }

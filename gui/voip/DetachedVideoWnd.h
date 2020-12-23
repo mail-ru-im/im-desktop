@@ -1,5 +1,6 @@
 #pragma once
 #include "VideoFrame.h"
+#include "VideoPanel.h"
 #include "CommonUI.h"
 #include "VoipProxy.h"
 #include "media/permissions/MediaCapturePermissions.h"
@@ -10,24 +11,39 @@ namespace voip_manager
     struct FrameSize;
 }
 
+namespace Utils
+{
+    class OpacityEffect;
+}
+
 class MiniWindowVideoPanel;
 
 namespace Ui
 {
     class ResizeEventFilter;
     class ShadowWindowParent;
+    class PanelButton;
+    class TransparentPanelButton;
 
     class MiniWindowVideoPanel : public Ui::BaseBottomVideoPanel
     {
         Q_OBJECT
 
-        Q_SIGNALS :
-            void onMouseEnter();
-            void onMouseLeave();
-            void needShowScreenPermissionsPopup(media::permissions::DeviceType type);
+     Q_SIGNALS:
+        void onMouseEnter();
+        void onMouseLeave();
+        void needShowScreenPermissionsPopup(media::permissions::DeviceType _type);
+        void onMicrophoneClick();
+        void mousePressed(const QMouseEvent& _e);
+        void mouseMoved(const QMouseEvent& _e);
+        void mouseDoubleClicked();
+        void onOpenCallClicked();
+        void onResizeClicked();
+        void onHangClicked();
 
-
-        private Q_SLOTS:
+    private Q_SLOTS:
+        void onResizeButtonClicked();
+        void onOpenCallButtonClicked();
         void onHangUpButtonClicked();
         void onAudioOnOffClicked();
         void onVideoOnOffClicked();
@@ -39,17 +55,16 @@ namespace Ui
 
     public:
         MiniWindowVideoPanel(QWidget* _parent);
-        ~MiniWindowVideoPanel() = default;
+        ~MiniWindowVideoPanel();
 
-        void fadeIn(unsigned int _kAnimationDefDuration) override;
-        void fadeOut(unsigned int _kAnimationDefDuration) override;
-        bool isFadedIn() override;
         bool isUnderMouse();
 
         void updatePosition(const QWidget& _parent) override;
 
+        void showScreenBorder(std::string_view _uid);
+        void hideScreenBorder();
+
     private:
-        void resetHangupText();
         void updateVideoDeviceButtonsState();
 
     protected:
@@ -57,24 +72,29 @@ namespace Ui
         void enterEvent(QEvent* _e) override;
         void leaveEvent(QEvent* _e) override;
         void resizeEvent(QResizeEvent* _e) override;
+        void mousePressEvent(QMouseEvent* _e) override;
+        void mouseMoveEvent(QMouseEvent* _e) override;
+        void mouseDoubleClickEvent(QMouseEvent* _e) override;
+        void paintEvent(QPaintEvent* _e) override;
 
     private:
-
-        bool mouseUnderPanel_;
+        std::vector<voip_manager::Contact> activeContact_;
 
         QWidget* parent_;
         QWidget* rootWidget_;
 
-        std::vector<voip_manager::Contact> activeContact_;
-        QPushButton* micButton_;
-        QPushButton* stopCallButton_;
-        QPushButton* videoButton_;
-        QPushButton* shareScreenButton_;
+        TransparentPanelButton* resizeButton_;
+        TransparentPanelButton* openCallButton_;
+        PanelButton* micButton_;
+        PanelButton* stopCallButton_;
+        PanelButton* videoButton_;
+        PanelButton* shareScreenButton_;
+        QPointer<Ui::VideoPanelParts::ShareScreenFrame> shareScreenFrame_;
 
-        bool isFadedVisible_;
-        bool localVideoEnabled_;
-        bool isScreenSharingEnabled_;
-        bool isCameraEnabled_;
+        bool localVideoEnabled_ : 1;
+        bool isScreenSharingEnabled_ : 1;
+        bool isCameraEnabled_ : 1;
+        bool mouseUnderPanel_ : 1;
     };
 
     class DetachedVideoWindow : public QWidget
@@ -88,25 +108,46 @@ namespace Ui
         void enterEvent(QEvent* _e) override;
         void leaveEvent(QEvent* _e) override;
         void paintEvent(QPaintEvent* _e) override;
+        void mousePressEvent(QMouseEvent* _e) override;
+        void mouseReleaseEvent(QMouseEvent* _e) override;
+        void mouseMoveEvent(QMouseEvent* _e) override;
+        void mouseDoubleClickEvent(QMouseEvent* _e) override;
 
     Q_SIGNALS:
-
         void windowWillDeminiaturize();
         void windowDidDeminiaturize();
         void needShowScreenPermissionsPopup(media::permissions::DeviceType type);
+        void onMicrophoneClick();
 
     private Q_SLOTS:
-        void checkPanelsVis();
         void onPanelMouseEnter();
         void onPanelMouseLeave();
 
         void onPanelClickedClose();
-        void onPanelClickedMinimize();
-        void onPanelClickedMaximize();
+        void onPanelClickedResize();
 
         void onVoipCallDestroyed(const voip_manager::ContactEx& _contactEx);
         void onVoipWindowRemoveComplete(quintptr _winId);
         void onVoipWindowAddComplete(quintptr _winId);
+
+    private:
+        void onMousePress(const QMouseEvent& _e);
+        void onMouseMove(const QMouseEvent& _e);
+
+        quintptr getContentWinId();
+        void updatePanels() const;
+
+        void activateMainVideoWindow();
+
+        enum class ResizeDirection
+        {
+            Minimize,
+            Maximize,
+        };
+        void resizeAnimated(ResizeDirection _dir);
+
+        void startTooltipTimer();
+        void onTooltipTimer();
 
     public:
         DetachedVideoWindow(QWidget* _parent);
@@ -121,22 +162,20 @@ namespace Ui
         bool isMinimized() const;
 
     private:
-        QTimer showPanelTimer_;
         ResizeEventFilter* eventFilter_;
         QWidget* parent_;
         QPoint posDragBegin_;
+        QPoint pressPos_;
         bool closedManualy_;
         MiniWindowVideoPanel* videoPanel_;
 
         std::unique_ptr<ShadowWindowParent> shadow_;
         platform_specific::GraphicsPanel* rootWidget_;
 
-        void mousePressEvent(QMouseEvent* _e) override;
-        void mouseMoveEvent(QMouseEvent* _e) override;
-        void mouseDoubleClickEvent(QMouseEvent* _e) override;
-        quintptr getContentWinId();
-        void updatePanels() const;
+        QVariantAnimation* opacityAnimation_;
+        QVariantAnimation* resizeAnimation_;
 
-        void activateMainVideoWindow();
+        QPoint tooltipPos_;
+        QTimer* tooltipTimer_;
     };
 }

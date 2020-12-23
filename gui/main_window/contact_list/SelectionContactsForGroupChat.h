@@ -1,5 +1,7 @@
 #pragma once
 
+#include "statuses/Status.h"
+
 namespace Logic
 {
     class CustomAbstractListModel;
@@ -15,6 +17,7 @@ namespace Ui
     class DialogButton;
     class TextEditEx;
     class ContactAvatarWidget;
+    class TextWidget;
 
     struct AvatarData
     {
@@ -120,6 +123,16 @@ namespace Ui
         std::unique_ptr<AuthorWidget_p> d;
     };
 
+    struct SelectContactsWidgetOptions
+    {
+        bool handleKeyPressEvents_ = true;
+        Logic::AbstractSearchModel* searchModel_ = nullptr;
+        bool enableAuthorWidget_ = false;
+        bool chatCreation_ = false;
+        bool isChannel_ = false;
+        bool withSemiwindow_ = true;
+    };
+
     class SelectContactsWidget : public QDialog
     {
         Q_OBJECT
@@ -137,26 +150,22 @@ namespace Ui
 
     public Q_SLOTS:
         void UpdateMembers();
-        void UpdateViewForIgnoreList(bool _isEmptyIgnoreList);
+        void setEmptyLabelVisible(bool _isEmptyIgnoreList);
         void UpdateContactList();
         void reject() override;
-        void updateSelected();
 
         void updateSize();
 
     public:
         SelectContactsWidget(const QString& _labelText, QWidget* _parent);
 
-        SelectContactsWidget(Logic::CustomAbstractListModel* _chatMembersModel,
+        SelectContactsWidget(
+            Logic::CustomAbstractListModel* _chatMembersModel,
             int _regim,
             const QString& _labelText,
             const QString& _buttonText,
             QWidget* _parent,
-            bool _handleKeyPressEvents = true,
-            Logic::AbstractSearchModel* searchModel = nullptr,
-            bool _enableAuthorWidget = false,
-            bool _chatCreation = false,
-            bool _isChannel = false);
+            SelectContactsWidgetOptions _options = SelectContactsWidgetOptions());
 
         ~SelectContactsWidget();
 
@@ -178,8 +187,6 @@ namespace Ui
         void rewindToTop();
     protected:
         bool eventFilter(QObject* _obj, QEvent* _event) override;
-
-        void init(const QString& _labelText, const QString& _buttonText = QString());
 
         int calcListHeight() const;
         bool isCheckboxesVisible() const;
@@ -222,25 +229,21 @@ namespace Ui
         int regim_;
         Logic::CustomAbstractListModel* chatMembersModel_;
         QWidget* mainWidget_;
-        bool sortCL_;
-        bool handleKeyPressEvents_;
-        bool enableAuthorWidget_;
-        bool chatCreation_;
-        bool isChannel_;
-        int maximumSelectedCount_;
-        QString chatAimId_;
-        Logic::AbstractSearchModel* searchModel_;
-        AvatarsArea* avatarsArea_;
-        QPointer<AuthorWidget> authorWidget_;
-        DialogButton* cancelButton_;
-        DialogButton* acceptButton_;
 
-        TextEditEx *chatName_;
-        ContactAvatarWidget *photo_;
+        bool chatCreation_ = false;
+        int maximumSelectedCount_ = -1;
+        QString chatAimId_;
+        Logic::AbstractSearchModel* searchModel_ = nullptr;
+        AvatarsArea* avatarsArea_ = nullptr;
+        QPointer<AuthorWidget> authorWidget_;
+        DialogButton* cancelButton_ = nullptr;
+        DialogButton* acceptButton_ = nullptr;
+
+        TextEditEx* chatName_ = nullptr;
+        ContactAvatarWidget* photo_ = nullptr;
         QPixmap lastCroppedImage_;
 
         std::map<QWidget*, FocusPosition> focusWidget_;
-        ContactAvatarWidget* statusAvatar_;
 
     private:
         int bottomSpacerHeight() const;

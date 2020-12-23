@@ -10,7 +10,9 @@ namespace Ui
         Q_OBJECT
 
     public:
-        PageOpenerWidget(QWidget* _parent, const QString& _caption);
+        PageOpenerWidget(QWidget* _parent, const QString& _caption, const QString& _text = QString());
+
+        void setCaption(const QString& _text);
         void setText(const QString& _text);
 
     protected:
@@ -18,5 +20,6 @@ namespace Ui
 
     private:
         TextRendering::TextUnitPtr caption_;
+        TextRendering::TextUnitPtr text_;
     };
 }

@@ -39,7 +39,7 @@ namespace Ui
         Q_OBJECT
 
     public Q_SLOTS:
-        void onContactSelected(const QString& _aimId, qint64 _messageId, const highlightsV& _highlights);
+        void onContactSelected(const QString& _aimId, qint64 _messageId, const highlightsV& _highlights, bool _ignoreScroll = false);
         void onContactSelectedToLastMessage(const QString& _aimId, qint64 _messageId);
 
         void onSmilesMenu(const bool _fromKeyboard = false);
@@ -61,7 +61,7 @@ namespace Ui
         void onMultiselectChanged();
 
     Q_SIGNALS:
-        void contactSelected(const QString& _aimId, qint64 _messageId, const highlightsV& _highlights) const;
+        void contactSelected(const QString& _aimId, qint64 _messageId, const highlightsV& _highlights, bool _ignoreScroll = false) const;
         void contactSelectedToLastMessage(const QString& _aimId, qint64 _messageId) const;
 
         void sendMessage(const QString&) const;

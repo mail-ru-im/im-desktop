@@ -9,6 +9,8 @@
 #include "input_widget/InputWidget.h"
 #include "contact_list/ContactListModel.h"
 #include "utils/utils.h"
+#include "utils/async/AsyncTask.h"
+#include "utils/features.h"
 #include "utils/stat_utils.h"
 #include "utils/InterConnector.h"
 #include "styles/ThemeParameters.h"
@@ -226,24 +228,32 @@ namespace Ui
                     }
 
                     auto sendQuotesOnce = !mayQuotesSent;
+                    bool alreadySentWebp = false;
                     for (const auto& f : _files)
                     {
-                        if (f.isFile())
-                        {
-                            const auto& fi = f.getFileInfo();
-                            if (fi.size() == 0)
-                                continue;
+                        if (f.getSize() == 0)
+                            continue;
 
-                            Ui::GetDispatcher()->uploadSharedFile(contact, fi.absoluteFilePath(), sendQuotesOnce ? quotes : Data::QuotesVec(), descriptionInside ? desc : QString(), descriptionInside ? descMentions : Data::MentionMap());
+                        const auto isWebpScreenshot = Features::isWebpScreenshotEnabled() && f.canConvertToWebp();
+                        if (f.isFile() && (alreadySentWebp || !isWebpScreenshot))
+                        {
+                            Ui::GetDispatcher()->uploadSharedFile(contact, f.getFileInfo().absoluteFilePath(), sendQuotesOnce ? quotes : Data::QuotesVec(), descriptionInside ? desc : QString(), descriptionInside ? descMentions : Data::MentionMap());
                         }
                         else
                         {
-                            QByteArray array;
-                            QBuffer b(&array);
-                            b.open(QIODevice::WriteOnly);
-                            f.getPixmap().save(&b, "png");
+                            if (isWebpScreenshot)
+                                alreadySentWebp = true;
+                            Async::runAsync([f, contact, quotes, desc, descMentions, isWebpScreenshot]() mutable
+                            {
+                                auto array = FileToSend::loadImageData(f, isWebpScreenshot ? FileToSend::Format::webp : FileToSend::Format::png);
+                                if (array.isEmpty())
+                                    return;
 
-                            Ui::GetDispatcher()->uploadSharedFile(contact, array, u".png", quotes, desc, descMentions);
+                                Async::runInMain([array = std::move(array), contact = std::move(contact), quotes = std::move(quotes), desc = std::move(desc), descMentions = std::move(descMentions), isWebpScreenshot]()
+                                {
+                                    Ui::GetDispatcher()->uploadSharedFile(contact, array, isWebpScreenshot ? u".webp" : u".png", quotes, desc, descMentions);
+                                });
+                            });
                         }
 
                         Parent_->onSendMessage(contact);

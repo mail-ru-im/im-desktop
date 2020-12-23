@@ -11,6 +11,7 @@
 #include "../../tools/event.h"
 #include "../../friendly/friendly.h"
 #include "../corelib/enumerations.h"
+#include "async_loader/async_loader.h"
 
 namespace voip_manager{
     struct VoipProtoMsg;
@@ -48,6 +49,11 @@ namespace core
     namespace tools
     {
         class binary_stream;
+    }
+
+    namespace stickers
+    {
+        class download_task;
     }
 
     namespace smartreply
@@ -166,6 +172,7 @@ namespace core
         class fetch_event_reactions;
         class fetch_event_status;
         class fetch_event_call_room_info;
+        class fetch_event_suggest_to_notify_user;
 
         struct auth_parameters;
         struct fetch_parameters;
@@ -179,7 +186,8 @@ namespace core
         struct get_history_batch_params;
         struct set_dlg_state_params;
         class active_dialogs;
-        class pinned;
+        class contacts_cache;
+        class contacts_multicache;
         class my_info_cache;
         class loader;
         class async_loader;
@@ -307,7 +315,7 @@ namespace core
             void clear();
 
             void lock();
-            void unlock();
+            void unlock_and_execute_queued();
 
             wim_send_thread();
             virtual ~wim_send_thread();
@@ -367,11 +375,13 @@ namespace core
             std::shared_ptr<wim::contactlist> contact_list_;
             std::shared_ptr<wim::active_dialogs> active_dialogs_;
             std::shared_ptr<wim::my_info_cache> my_info_cache_;
-            std::shared_ptr<wim::pinned> pinned_;
-            std::shared_ptr<wim::pinned> unimportant_;
+            std::shared_ptr<wim::contacts_cache> pinned_;
+            std::shared_ptr<wim::contacts_cache> unimportant_;
             std::shared_ptr<wim::mailbox_storage> mailbox_storage_;
             std::shared_ptr<core::archive::call_log_cache> call_log_;
             std::shared_ptr<smartreply::suggest_storage> smartreply_suggests_;
+            std::shared_ptr<wim::contacts_cache> inviters_blacklist_;
+            std::unordered_map<std::string, std::shared_ptr<wim::contacts_multicache>> group_members_caches_;
 
             std::shared_ptr<subscriptions::manager> subscr_manager_;
 
@@ -412,6 +422,7 @@ namespace core
 
             bool im_created_;
             bool logout_;
+            bool start_session_is_running_;
 
             // archive
             std::shared_ptr<archive::face> archive_;
@@ -437,6 +448,8 @@ namespace core
             std::set<std::string> failed_poll_ids_;
 
             std::unordered_map<std::string, std::set<int64_t>> failed_get_reactions_;
+
+            std::vector<std::pair<std::shared_ptr<robusto_packet>, std::shared_ptr<async_task_handlers>>> failed_robusto_packets_;
 
             bool sent_pending_messages_active_;
             bool sent_pending_delete_messages_active_;
@@ -499,6 +512,9 @@ namespace core
             bool external_config_failed_;
             int32_t external_config_timer_id_;
 
+            std::vector<std::string> support_screenshot_file_list_;
+            std::vector<std::string> support_screenshot_id_list_;
+
             std::shared_ptr<async_task_handlers> post_wim_packet(std::shared_ptr<wim_packet> _packet);
             std::shared_ptr<async_task_handlers> post_robusto_packet(std::shared_ptr<robusto_packet> packet);
 
@@ -515,6 +531,8 @@ namespace core
             void remove_postponed_for_update_dialog(const std::string& _contact);
             void process_postponed_for_update_dialog(const std::string& _contact);
 
+            std::wstring get_group_members_cache_filename(std::string_view _aimid);
+
             void save_my_info();
             void save_contact_list(force_save _force);
             void save_active_dialogs();
@@ -523,12 +541,16 @@ namespace core
             void save_mailboxes();
             void save_search_history();
             void save_smartreply_suggests();
+            void save_inviters_blacklist();
+            void save_group_members_caches();
 
             std::shared_ptr<async_task_handlers> load_active_dialogs();
             std::shared_ptr<async_task_handlers> load_contact_list();
             std::shared_ptr<async_task_handlers> load_my_info();
             std::shared_ptr<async_task_handlers> load_pinned();
             std::shared_ptr<async_task_handlers> load_unimportant();
+            std::shared_ptr<async_task_handlers> load_inviters_blacklist();
+            std::shared_ptr<async_task_handlers> load_group_members_cache(std::string_view _aimid, std::string_view _role);
 
             enum class pinned_type
             {
@@ -542,16 +564,17 @@ namespace core
             std::shared_ptr<async_task_handlers> load_call_log();
             // stickers
             void load_stickers_data(int64_t _seq, const std::string& _size);
-            void download_stickers_metadata(int64_t _seq, const std::string& _size);
 
-
+            file_info_handler_t make_sticker_handler(const stickers::download_task& _task);
+            file_info_handler_t make_set_icon_handler(const stickers::download_task& _task);
             void download_stickers_metafile(int64_t _seq, const std::string& _size, const std::string& _md5);
-            void download_stickers(const bool _recursive = false);
+            void download_stickers_and_icons();
             void post_stickers_suggests_2_gui();
 
 
             void get_stickers_meta(int64_t _seq, const std::string& _size) override;
             void get_sticker(const int64_t _seq, const int32_t _set_id, const int32_t _sticker_id, std::string_view _fs_id, const core::sticker_size _size) override;
+            void get_sticker_cancel(std::vector<std::string> _fs_ids, core::sticker_size _size) override;
             void get_stickers_pack_info(const int64_t _seq, const int32_t _set_id, const std::string& _store_id, const std::string& _file_id) override;
             void add_stickers_pack(const int64_t _seq, const int32_t _set_id, std::string _store_id) override;
             void remove_stickers_pack(const int64_t _seq, const int32_t _set_id, std::string _store_id) override;
@@ -588,11 +611,6 @@ namespace core
             void mod_chat_name(int64_t _seq, const std::string& _aimid, const std::string& _name) override;
             void mod_chat_about(int64_t _seq, const std::string& _aimid, const std::string& _about) override;
             void mod_chat_rules(int64_t _seq, const std::string& _aimid, const std::string& _rules) override;
-            void mod_chat_public(int64_t _seq, const std::string& _aimid, bool _public) override;
-            void mod_chat_join(int64_t _seq, const std::string& _aimid, bool _approved) override;
-            void mod_chat_link(int64_t _seq, const std::string& _aimid, bool _link) override;
-            void mod_chat_ro(int64_t _seq, const std::string& _aimid, bool _ro) override;
-            void mod_chat_stamp(int64_t _seq, const std::string& _aimid, const std::string& _stamp) override;
 
             void set_attention_attribute(int64_t _seq, std::string _aimid, bool _value, const bool _resume) override;
 
@@ -720,6 +738,8 @@ namespace core
 
             void connect() override;
 
+            void load_auth_and_fetch_parameters();
+
             // login functions
             void login(int64_t _seq, const login_info& _info) override;
             void login_get_sms_code(int64_t seq, const phone_info& _info, bool _is_login) override;
@@ -803,6 +823,7 @@ namespace core
             void get_ignore_list(int64_t _seq) override;
             void pin_chat(const std::string& _contact) override;
             void unpin_chat(const std::string& _contact) override;
+            void send_notify_sms(std::string_view _contact) override;
             void mark_unimportant(const std::string& _contact) override;
             void remove_from_unimportant(const std::string& _contact) override;
             void update_outgoing_msg_count(const std::string& _aimid, int _count) override;
@@ -852,7 +873,9 @@ namespace core
                 const core::archive::quotes_vec& _quotes,
                 const std::string& _description,
                 const core::archive::mentions_map& _mentions,
-                const std::optional<int64_t>& _duration) override;
+                const std::optional<int64_t>& _duration,
+                const bool _strip_exif,
+                const int _orientation_tag) override;
 
             void get_file_sharing_preview_size(
                 const int64_t _seq,
@@ -879,8 +902,7 @@ namespace core
                 const int32_t _preview_width,
                 const int32_t _preview_height,
                 const bool _ext_resource,
-                const bool _raise_priority,
-                const bool _with_data) override;
+                const bool _raise_priority) override;
 
             void download_link_metainfo(const int64_t _seq,
                 const std::string& _url,
@@ -941,11 +963,12 @@ namespace core
             void resume_failed_poll_requests();
             void resume_failed_group_subscriptions();
             void resume_failed_get_reactions();
+            void resume_failed_robusto_packets();
             // ------------------------------------------------------------------------------
 
             // group chat
-            void add_members(int64_t _seq, const std::string& _aimid, const std::string& _m_chat_members_to_add) override;
-            void add_chat(int64_t _seq, const std::string& _m_chat_name, std::vector<std::string> _m_chat_members) override;
+            void remove_members(std::string _aimid, std::vector<std::string> _members_to_delete) override;
+            void add_members(std::string _aimid, std::vector<std::string> _m_chat_members_to_add, bool _unblock) override;
 
             // mrim
             void get_mrim_key(int64_t _seq, const std::string& _email) override;
@@ -988,7 +1011,7 @@ namespace core
             void download_gallery_holes_impl(const std::string& _aimid, int _depth);
 
             void check_ui_activity();
-            void delete_archive_message(const int64_t _seq, const std::string &_contact_aimid, const archive::delete_message_info& _message);
+            void delete_archive_message(const int64_t _seq, const std::string &_contact_aimid, const archive::delete_message_info& _message, std::function<void(int64_t, std::string_view)> _on_result);
 
             void update_call_log(const std::string& _contact, std::shared_ptr<archive::headers_list> _messages, int64_t _del_up_to);
             void remove_from_call_log(const std::string& _contact);
@@ -1004,13 +1027,32 @@ namespace core
             void load_external_config();
             void erase_local_pin_if_needed();
 
-        public:
+            void send_cached_inviters_blacklist_to_gui() const;
+            void send_cached_group_members_to_gui(const std::string& _aimid, std::string_view _role) const;
+            void remove_from_cached_group_members(const std::string& _contact_aimid, const std::string& _chat_aimid, std::string_view _role);
 
+            void misc_support_impl(int64_t _seq, std::string_view _aimid, std::string_view _message, std::string_view _attachment_file_id, std::vector<std::string> _screenshot_file_id_list);
+            struct upload_screenshots_handler
+            {
+                std::function<void(int32_t, std::vector<std::string>)> on_result;
+            };
+            void upload_next_screenshot(const std::string& _aimid, const std::shared_ptr<upload_screenshots_handler>& _main_handler);
+            std::shared_ptr<upload_screenshots_handler> upload_screenshots(const std::string& _aimid, const std::vector<std::string>& _screenshot_file_name_list);
+
+        public:
+#ifndef STRIP_VOIP
             void post_voip_msg_to_server(const voip_manager::VoipProtoMsg& msg) override;
             void post_voip_alloc_to_server(const std::string& data) override;
 
             std::shared_ptr<wim::wim_packet> prepare_voip_msg(const std::string& data) override;
             std::shared_ptr<wim::wim_packet> prepare_voip_pac(const voip_manager::VoipProtoMsg& data) override;
+
+            void get_mask_id_list(int64_t _seq) override;
+            void get_mask_preview(int64_t _seq, const std::string& mask_id) override;
+            void get_mask_model(int64_t _seq) override;
+            void get_mask(int64_t _seq, const std::string& mask_id) override;
+            void get_existent_masks(int64_t _seq) override;
+#endif
 
             void login_normalize_phone(int64_t _seq, const std::string& _country, const std::string& _raw_phone, const std::string& _locale, bool _is_login) override;
             std::string get_contact_friendly_name(const std::string& contact_login) override;
@@ -1081,6 +1123,7 @@ namespace core
             void on_event_reactions(fetch_event_reactions* _event, const std::shared_ptr<auto_callback>& _on_complete);
             void on_event_status(fetch_event_status* _event, const std::shared_ptr<auto_callback>& _on_complete);
             void on_event_call_room_info(fetch_event_call_room_info* _event, const std::shared_ptr<auto_callback>& _on_complete);
+            void on_event_suggest_to_notify_user(fetch_event_suggest_to_notify_user* _event, const std::shared_ptr<auto_callback>& _on_complete);
 
             void insert_friendly(const std::string& _uin, const std::string& _friendly_name, const std::string& _nick, bool _official, friendly_source _type, friendly_add_mode _mode = friendly_add_mode::insert_or_update);
             void insert_friendly(const std::string& _uin, const std::string& _friendly_name, const std::string& _nick, std::optional<bool> _official, friendly_source _type, friendly_add_mode _mode = friendly_add_mode::insert_or_update);
@@ -1108,12 +1151,6 @@ namespace core
             void init_failed_requests();
 
             void set_avatar(const int64_t _seq, tools::binary_stream image, const std::string& _aimId, const bool _chat) override;
-
-            void get_mask_id_list(int64_t _seq) override;
-            void get_mask_preview(int64_t _seq, const std::string& mask_id) override;
-            void get_mask_model(int64_t _seq) override;
-            void get_mask(int64_t _seq, const std::string& mask_id) override;
-            void get_existent_masks(int64_t _seq) override;
 
             bool has_valid_login() const override;
 
@@ -1201,6 +1238,7 @@ namespace core
             void reset_session(std::string_view _session_hash) override;
 
             void cancel_pending_join(std::string _sn) override;
+            void cancel_pending_invitation(std::string _contact, std::string _chat) override;
 
             void get_reactions(const std::string& _chat_id, std::shared_ptr<archive::msgids_list> _msg_ids, bool _first_load) override;
             void add_reaction(const int64_t _seq, int64_t _msg_id, const std::string& _chat_id, const std::string& _reaction, const std::vector<std::string>& _reactions_list) override;
@@ -1215,13 +1253,20 @@ namespace core
 
             void set_status(std::string_view _status, std::chrono::seconds _duration) override;
 
-            void subscribe_status(const std::vector<std::string>& _contacts) override;
-            void unsubscribe_status(const std::vector<std::string>& _contacts) override;
+            void subscribe_status(std::vector<std::string> _contacts) override;
+            void unsubscribe_status(std::vector<std::string> _contacts) override;
 
             void subscribe_call_room_info(const std::string& _room_id) override;
             void unsubscribe_call_room_info(const std::string& _room_id) override;
 
             void get_emoji(int64_t _seq, std::string_view _code, int _size) override;
+
+            void add_to_inviters_blacklist(std::vector<std::string> _contacts) override;
+            void remove_from_inviters_blacklist(std::vector<std::string> _contacts, bool _delete_all) override;
+            void search_inviters_blacklist(int64_t _seq, std::string_view _keyword, std::string_view _cursor, uint32_t _page_size) override;
+            void get_blacklisted_cl_inviters(std::string_view _cursor, uint32_t _page_size) override;
+
+            void misc_support(int64_t _seq, std::string_view _aimid, std::string_view _message, std::string_view _attachment_file_name, std::vector<std::string> _screenshot_file_name_list) override;
         };
     }
 }

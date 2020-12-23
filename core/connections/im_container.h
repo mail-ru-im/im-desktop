@@ -104,6 +104,7 @@ namespace core
         void on_remove_user_wallpaper(int64_t _seq, coll_helper& _params);
 
         void on_get_sticker(int64_t _seq, coll_helper& _params);
+        void on_get_sticker_cancel(int64_t _seq, coll_helper& _params);
         void on_get_fs_stickers_by_ids(int64_t _seq, coll_helper& _params);
         void on_get_stickers_pack_info(int64_t _seq, coll_helper& _params);
         void on_add_stickers_pack(int64_t _seq, coll_helper& _params);
@@ -151,11 +152,6 @@ namespace core
         void on_mod_chat_name(int64_t _seq, coll_helper& _params);
         void on_mod_chat_about(int64_t _seq, coll_helper& _params);
         void on_mod_chat_rules(int64_t _seq, coll_helper& _params);
-        void on_mod_chat_public(int64_t _seq, coll_helper& _params);
-        void on_mod_chat_join(int64_t _seq, coll_helper& _params);
-        void on_mod_chat_link(int64_t _seq, coll_helper& _params);
-        void on_mod_chat_ro(int64_t _seq, coll_helper& _params);
-        void on_mod_chat_stamp(int64_t _seq, coll_helper& _params);
 
         void on_block_chat_member(int64_t _seq, coll_helper& _params);
         void on_set_chat_member_role(int64_t _seq, coll_helper& _params);
@@ -164,16 +160,29 @@ namespace core
         void on_set_user_proxy(int64_t _seq, coll_helper& _params);
         void on_join_livechat(int64_t _seq, coll_helper& _params);
         void on_cancel_join_livechat(int64_t _seq, coll_helper& _params);
+        void on_cancel_chat_invitation(int64_t _seq, coll_helper& _params);
         void on_set_locale(int64_t _seq, coll_helper& _params);
         void on_set_avatar(int64_t _seq, coll_helper& _params);
 
+#ifndef STRIP_VOIP
         void on_voip_call_message(int64_t _seq, coll_helper& _params);
         void on_voip_avatar_msg(std::shared_ptr<base_im> im, coll_helper& _params);
         void on_voip_background_msg(std::shared_ptr<base_im> im, coll_helper& _params);
+        void fromInternalProxySettings2Voip(const core::proxy_settings& proxySettings, voip_manager::VoipProxySettings& voipProxySettings);
+        void on_get_voip_calls_quality_popup_conf(const int64_t _seq, coll_helper& _params);
+        void on_send_voip_calls_quality_report(const int64_t _seq, coll_helper& _params);
+
+        // masks
+        void on_get_mask_id_list(int64_t _seq, coll_helper& _params);
+        void on_get_mask_preview(int64_t _seq, coll_helper& _params);
+        void on_get_mask_model(int64_t _seq, coll_helper& _params);
+        void on_get_mask(int64_t _seq, coll_helper& _params);
+        void on_get_existent_masks(int64_t _seq, coll_helper& _params);
+#endif
 
         // group chat
         void on_add_members(int64_t _seq, coll_helper& _params);
-        void on_add_chat(int64_t _seq, coll_helper& _params);
+        void on_remove_members(int64_t _seq, coll_helper& _params);
 
         //mrim
         void on_mrim_get_key(int64_t _seq, coll_helper& _params);
@@ -186,15 +195,6 @@ namespace core
         std::shared_ptr<base_im> get_default_im() const;
 
         void on_update_profile(int64_t _seq, coll_helper& _params);
-
-        void fromInternalProxySettings2Voip(const core::proxy_settings& proxySettings, voip_manager::VoipProxySettings& voipProxySettings);
-
-        // masks
-        void on_get_mask_id_list(int64_t _seq, coll_helper& _params);
-        void on_get_mask_preview(int64_t _seq, coll_helper& _params);
-        void on_get_mask_model(int64_t _seq, coll_helper& _params);
-        void on_get_mask(int64_t _seq, coll_helper& _params);
-        void on_get_existent_masks(int64_t _seq, coll_helper& _params);
 
         void on_get_mentions_suggests(int64_t _seq, coll_helper& _params);
 
@@ -216,8 +216,6 @@ namespace core
 
         void set_user_has_been_logged_in_ever(bool _hasEverLoggedIn);
 
-        void on_get_voip_calls_quality_popup_conf(const int64_t _seq, coll_helper& _params);
-        void on_send_voip_calls_quality_report(const int64_t _seq, coll_helper& _params);
         void on_get_dialog_gallery(const int64_t _seq, coll_helper& _params);
         void on_get_dialog_gallery_by_msg(const int64_t _seq, coll_helper& _params);
         void on_request_gallery_state(const int64_t _seq, coll_helper& _params);
@@ -268,6 +266,11 @@ namespace core
 
         void on_group_subscribe(const int64_t _seq, coll_helper& _params);
         void on_group_cancel_subscription(const int64_t _seq, coll_helper& _params);
+        void on_group_inviteblacklist_add(const int64_t _seq, coll_helper& _params);
+        void on_group_inviteblacklist_remove(const int64_t _seq, coll_helper& _params);
+        void on_group_inviteblacklist_search(const int64_t _seq, coll_helper& _params);
+        void group_blacklisted_cl_inviters(const int64_t _seq, coll_helper& _params);
+
         void on_suggest_group_nick(const int64_t _seq, coll_helper& _params);
         void on_get_bot_callback_answer(const int64_t _seq, coll_helper& _params);
 
@@ -293,6 +296,8 @@ namespace core
         void on_unsubscribe_call_room_info(const int64_t _seq, coll_helper& _params);
 
         void on_get_emoji(const int64_t _seq, coll_helper& _params);
+
+        void on_send_notify_sms(const int64_t _seq, coll_helper& _params);
 
     public:
 

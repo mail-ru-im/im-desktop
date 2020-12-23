@@ -4,8 +4,6 @@
 
 namespace Logic
 {
-    typedef std::shared_ptr<const QPixmap> QPixmapSCptr;
-
     class AvatarStorage : public QObject
     {
         friend AvatarStorage* GetAvatarStorage();
@@ -26,9 +24,9 @@ namespace Logic
     public:
         ~AvatarStorage();
 
-        const QPixmapSCptr& Get(const QString& _aimId, const QString& _displayName, const int _sizePx, bool& _isDefault, bool _regenerate);
+        QPixmap Get(const QString& _aimId, const QString& _displayName, const int _sizePx, bool& _isDefault, bool _regenerate);
 
-        const QPixmapSCptr& GetRounded(const QString& _aimId, const QString& _displayName, const int _sizePx, bool& _isDefault, bool _regenerate, bool mini_icons);
+        QPixmap GetRounded(const QString& _aimId, const QString& _displayName, const int _sizePx, bool& _isDefault, bool _regenerate, bool mini_icons);
 
         QString GetLocal(const QString& _aimId, const QString& _displayName, const int _sizePx);
 
@@ -37,7 +35,7 @@ namespace Logic
 
         void SetAvatar(const QString& _aimId, const QPixmap& _pixmap);
 
-        typedef std::map<QString, QPixmapSCptr> CacheMap;
+        using CacheMap = std::map<QString, QPixmap>;
         const CacheMap& GetByAimIdAndSize() const;
         const CacheMap& GetByAimId() const;
         const CacheMap& GetRoundedByAimId() const;
@@ -47,9 +45,9 @@ namespace Logic
     private:
         AvatarStorage();
 
-        void CleanupSecondaryCaches(const QString& _aimId, bool _isRoundedAvatarsClean = true);
+        void CleanupSecondaryCaches(QStringView _aimId, bool _isRoundedAvatarsClean = true);
 
-        const QPixmapSCptr& GetRounded(const QPixmap& _avatar, const QString& _aimId, bool mini_icons, bool _isDefault);
+        QPixmap GetRounded(const QPixmap& _avatar, const QString& _aimId, bool mini_icons, bool _isDefault);
 
         CacheMap AvatarsByAimIdAndSize_;
 

@@ -21,7 +21,9 @@ namespace config
             mail_auth,
             mail_redirect,
             mail_win,
-            mail_read
+            mail_read,
+
+            app_update
         };
 
         [[nodiscard]] std::string get_host_url(host_url_type _type);
@@ -30,6 +32,7 @@ namespace config
 
         bool is_valid();
         bool load_config();
+        void load_dns_cache();
         void clear_external_config();
 
         void resolve_hosts(bool _load = false);

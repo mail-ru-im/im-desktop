@@ -218,13 +218,20 @@ void core::wim::apply_patches(const std::vector<std::pair<int64_t, archive::hist
 
     for (const auto& [message_id, patch] : _patches)
     {
-        switch (patch->get_type())
+        const auto patch_type = patch->get_type();
+
+        chat_event_data_sptr chat_event;
+        if (const auto message = std::find_if(_block.begin(), _block.end(), [id = message_id](const auto& iter) { return iter->get_msgid() == id; }); message != _block.end())
+            chat_event = (*message)->get_chat_event_data();
+
+
+        switch (patch_type)
         {
         case history_patch::type::deleted:
             _block.emplace_back(history_message::make_deleted_patch(message_id, {}));
             break;
         case history_patch::type::modified:
-            _block.emplace_back(history_message::make_modified_patch(message_id, {}));
+            _block.emplace_back(history_message::make_modified_patch(message_id, {}, chat_event));
             break;
         case history_patch::type::updated:
             _block.emplace_back(history_message::make_updated_patch(message_id, {}));

@@ -219,8 +219,6 @@ namespace Logic
 
         auto processDlgState = [this, &curSelected, &updatedItems, mainPageOpened](const auto& dlgState)
         {
-            const auto contactItem = Logic::getContactListModel()->getContactItem(dlgState.AimId_);
-
             if (dlgState.noRecentsUpdate_)
             {
                 auto iter = std::find_if(HiddenDialogs_.begin(), HiddenDialogs_.end(), isEqualDlgState(dlgState.AimId_));
@@ -244,9 +242,6 @@ namespace Logic
                 return;
             }
 
-            if (!contactItem)
-                Logic::getContactListModel()->add(dlgState.AimId_, dlgState.Friendly_);
-
             auto iter = std::find_if(Dialogs_.begin(), Dialogs_.end(), isEqualDlgState(dlgState.AimId_));
 
             if (!dlgState.Chat_)
@@ -266,6 +261,7 @@ namespace Logic
                 }
             }
 
+
             Logic::getContactListModel()->setContactVisible(dlgState.AimId_, !dlgState.isStranger_);
 
             if (iter != Dialogs_.end())
@@ -284,6 +280,7 @@ namespace Logic
                 const auto prevMediaType = curDlgState.mediaType_;
 
                 const auto prevLastId = curDlgState.LastMsgId_;
+                const auto prevYoursLastRead = curDlgState.YoursLastRead_;
                 const auto prevTime = curDlgState.Time_;
 
                 bool fChanged = curDlgState.PinnedTime_ != dlgState.PinnedTime_;
@@ -303,6 +300,7 @@ namespace Logic
                     else
                         --UnimportantCount_;
                 }
+                const bool keepZeroUnread = curDlgState.YoursLastRead_ >= dlgState.YoursLastRead_ && curDlgState.UnreadCount_ == 0 && curDlgState.YoursLastRead_ == dlgState.LastMsgId_;
 #ifdef DEBUG
                 const auto prevState = curDlgState;
 #endif // DEBUG
@@ -314,6 +312,13 @@ namespace Logic
                 if (uChanged)
                     Q_EMIT unimportantChanged(dlgState.AimId_);
 
+                if (keepZeroUnread)
+                {
+                    curDlgState.UnreadCount_ = 0;
+                    curDlgState.YoursLastRead_ = prevYoursLastRead;
+                }
+
+                auto keepPrevTime = false;
                 if (curDlgState.HasLastMsgId())
                 {
                     if (!curDlgState.HasText() && curDlgState.DelUpTo_ != curDlgState.LastMsgId_)
@@ -335,16 +340,20 @@ namespace Logic
                         }
                     }
 
-                    const auto keepPrevTime =
+                    keepPrevTime =
                         curDlgState.PinnedTime_ == dlgState.PinnedTime_ &&
                         curDlgState.UnimportantTime_ == dlgState.UnimportantTime_ &&
                         curDlgState.LastMsgId_ == prevLastId &&
                         curDlgState.UnreadCount_ == 0 &&
                         curDlgState.GetText() == prevText;
-
-                        if (keepPrevTime)
-                            curDlgState.Time_ = prevTime;
                 }
+                else
+                {
+                    keepPrevTime = true;
+                }
+
+                if (keepPrevTime)
+                    curDlgState.Time_ = prevTime;
             }
             else if (!dlgState.GetText().isEmpty() || dlgState.PinnedTime_ != -1 || dlgState.UnimportantTime_ != -1)
             {

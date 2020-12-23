@@ -229,6 +229,9 @@ int zstd_helper::compress(const char* _data_in, size_t _data_in_size, char* _dat
 
 int zstd_helper::decompress(const char* _data_in, size_t _data_in_size, char* _data_out, size_t _data_out_size, size_t* _data_size_written, std::string_view _dict_name) const
 {
+    if (_dict_name.empty())
+        return ZSTDW_Decode(_data_in, _data_in_size, _data_out, _data_out_size, _data_size_written, nullptr);
+
     if (auto dict = get_dict_info(_dict_name); dict.has_value())
     {
         if (dict->location_ == dict_location::internal)
@@ -397,7 +400,7 @@ std::string zstd_helper::get_dicts_list() const
 {
     std::string ss;
     ss += "dicts: ";
-    for (const auto dicts: { get_request_dicts(), get_response_dicts() })
+    for (const auto& dicts: { get_request_dicts(), get_response_dicts() })
     {
         for (const auto& dict : *dicts)
         {

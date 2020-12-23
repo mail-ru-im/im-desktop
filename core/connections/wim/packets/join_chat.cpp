@@ -15,6 +15,11 @@ join_chat::join_chat(wim_packet_params _params, const std::string& _stamp)
 
 join_chat::~join_chat() = default;
 
+std::string_view join_chat::get_method() const
+{
+    return "joinChat";
+}
+
 int32_t join_chat::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     rapidjson::Document doc(rapidjson::Type::kObjectType);
@@ -24,7 +29,7 @@ int32_t join_chat::init_request(const std::shared_ptr<core::http_request_simple>
     node_params.AddMember("stamp", stamp_, a);
     doc.AddMember("params", std::move(node_params), a);
 
-    setup_common_and_sign(doc, a, _request, "joinChat");
+    setup_common_and_sign(doc, a, _request, get_method());
 
     if (!params_.full_log_)
     {

@@ -69,6 +69,11 @@ namespace Ui
         return State_.mentionMsgId_;
     }
 
+    qint64 MessageAlertWidget::messageId() const
+    {
+        return State_.LastMsgId_;
+    }
+
     void MessageAlertWidget::paintEvent(QPaintEvent*)
     {
         QPainter painter(this);

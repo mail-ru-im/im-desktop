@@ -145,6 +145,7 @@ corelib/corelib/libcore.a
 # External folder
 downloads
 external_v*
+external_deps
 
 # Voip
 core/Voip/libvoip_*

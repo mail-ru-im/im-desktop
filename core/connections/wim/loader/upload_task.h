@@ -26,6 +26,7 @@ namespace core
             core::tools::binary_stream out_buffer_;
 
             std::string file_url_;
+            std::string file_id_;
 
             std::shared_ptr<upload_progress_handler> handler_;
 
@@ -50,6 +51,7 @@ namespace core
             loader_errors send_next_range();
 
             const std::string& get_file_url() const;
+            const std::string& get_file_id() const;
 
             void set_handler(std::shared_ptr<upload_progress_handler> _handler);
             const std::shared_ptr<upload_progress_handler>& get_handler() const;

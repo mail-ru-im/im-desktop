@@ -150,12 +150,27 @@ namespace Ui
         set_value_simple(_name, _value);
     }
 
+    template<> void qt_gui_settings::set_value<int64_t>(const QString& _name, const int64_t& _value)
+    {
+        set_value_simple(_name, _value);
+    }
+
     template <> int qt_gui_settings::get_value<int>(QStringView _name, const int& _defaultValue) const
     {
         return get_value_simple(_name, _defaultValue);
     }
 
     template <> int qt_gui_settings::get_value<int>(const char* _name, const int& _defaultValue) const
+    {
+        return get_value_simple(_name, _defaultValue);
+    }
+
+    template <> int64_t qt_gui_settings::get_value<int64_t>(QStringView _name, const int64_t& _defaultValue) const
+    {
+        return get_value_simple(_name, _defaultValue);
+    }
+
+    template <> int64_t qt_gui_settings::get_value<int64_t>(const char* _name, const int64_t& _defaultValue) const
     {
         return get_value_simple(_name, _defaultValue);
     }

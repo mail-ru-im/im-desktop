@@ -19,6 +19,11 @@ phoneinfo::~phoneinfo()
 {
 }
 
+std::string_view phoneinfo::get_method() const
+{
+    return "phoneNumberValidate";
+}
+
 int32_t phoneinfo::init_request(const std::shared_ptr<core::http_request_simple>& request)
 {
     std::stringstream get_request;
@@ -30,7 +35,7 @@ int32_t phoneinfo::init_request(const std::shared_ptr<core::http_request_simple>
         "&id=" << core::tools::system::generate_guid();
 
     request->set_url(get_request.str());
-    request->set_normalized_url("phoneNumberValidate");
+    request->set_normalized_url(get_method());
     request->set_keep_alive();
 
 

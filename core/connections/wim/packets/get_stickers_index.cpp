@@ -48,7 +48,7 @@ int32_t get_stickers_index::init_request(const std::shared_ptr<core::http_reques
     ss_url << ss_host.str() << '?' << format_get_params(params);
 
     _request->set_url(ss_url.str());
-    _request->set_normalized_url("stikersStoreContentlist");
+    _request->set_normalized_url(get_method());
     _request->set_keep_alive();
 
     if (!params_.full_log_)
@@ -79,4 +79,9 @@ const std::shared_ptr<core::tools::binary_stream>& get_stickers_index::get_respo
 priority_t get_stickers_index::get_priority() const
 {
     return packets_priority_high();
+}
+
+std::string_view get_stickers_index::get_method() const
+{
+    return "stikersStoreContentlist";
 }

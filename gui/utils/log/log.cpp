@@ -58,6 +58,7 @@ QTextStream& operator <<(QTextStream &oss, const core::file_sharing_content_type
         case file_sharing_base_content_type::ptt: return (oss << ql1s("type = ptt"));
         case file_sharing_base_content_type::undefined: return (oss << ql1s("type = undefined"));
         case file_sharing_base_content_type::video: return (oss << ql1s("type = video"));
+        case file_sharing_base_content_type::lottie: return (oss << ql1s("type = lottie"));
         default:
             assert(!"unexpected file sharing content type");
     }

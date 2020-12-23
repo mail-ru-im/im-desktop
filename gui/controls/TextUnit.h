@@ -166,6 +166,10 @@ namespace Ui
 
             [[nodiscard]] bool hasEmoji() const;
 
+            void setShadow(const int _offsetX, const int _offsetY, const QColor& _color);
+
+            std::vector<QRect> getLinkRects() const;
+
         private:
             QString originText_;
             std::vector<BaseDrawingBlockPtr> blocks_;
@@ -215,6 +219,5 @@ namespace Ui
         bool InsertDebugMsgIdBlockIntoUnit(TextUnitPtr& _textUnit, qint64 _id, size_t _atPosition = 0);
         bool UpdateDebugMsgIdBlock(TextUnitPtr& _textUnit, qint64 _newId);
         bool RemoveDebugMsgIdBlocks(TextUnitPtr& _textUnit);
-        //
     }
 }

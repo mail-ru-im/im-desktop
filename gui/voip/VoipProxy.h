@@ -13,6 +13,7 @@ namespace Ui
 {
     class core_dispatcher;
     class gui_coll_helper;
+    enum class MicroIssue;
 }
 
 namespace voip_manager
@@ -123,7 +124,6 @@ namespace voip_proxy
         //void onVoipUpdateCipherState(const voip_manager::CipherState& _state);
         //void onVoipMinimalBandwidthChanged(bool _enable);
         void onVoipMaskEngineEnable(bool _enable);
-        void onVoipLoadMaskResult(const std::string& path, bool result);
         void onVoipChangeWindowLayout(intptr_t hwnd, bool bTray, const std::string& layout);
         void onVoipMainVideoLayoutChanged(const voip_manager::MainVideoLayout&);
         void onVoipVideoDeviceSelected(const voip_proxy::device_desc& device);
@@ -195,9 +195,6 @@ namespace voip_proxy
         void onStartCall(bool _bOutgoing); // This method is called, when you start or recive call.
         void onEndCall(); // This method is called on end of call.
 
-        // Set window background.
-        void setWindowBackground(quintptr _hwnd, unsigned char r, unsigned char g, unsigned char b, unsigned char a);
-
         void updateScreenList(const std::vector<voip_proxy::device_desc>& _devices);
         void _setSwitchVCaptureMute();
 
@@ -220,21 +217,23 @@ namespace voip_proxy
         void setWindowRemove(quintptr _hwnd);
         void setWindowOffsets(quintptr _hwnd, int _lpx, int _tpx, int _rpx, int _bpx);
         void setAvatars(int _size, const char* _contact, bool forPreview = false);
+        void setWindowBackground(quintptr _hwnd);
 
         bool checkPermissions(bool audio, bool video, bool *show_popup = nullptr);
-        bool setStartCall(const std::vector<QString>& _contacts, bool video, bool _attach, const char* _where = nullptr);
-        bool setStartChatRoomCall(const QStringView chatId, const std::vector<QString>& _contacts, bool video);
-        bool setStartChatRoomCall(const QStringView chatId, bool video = false);
+        bool setStartCall(const std::vector<QString>& _contacts, bool _video, bool _attach, bool _checkPermissions = true, const char* _where = nullptr);
+        bool setStartChatRoomCall(const QStringView _chatId, const std::vector<QString>& _contacts, bool _video);
+        bool setStartChatRoomCall(const QStringView _chatId, bool _video = false);
         void setStartVCS(const char* _urlConference);
         void setHangup();
         void setAcceptCall(const char* call_id, bool video);
         void setDecline(const char* call_id, const char* _contact, bool _busy, bool conference = false);
+        void updateMicrophoneButtonState(Ui::MicroIssue _issue);
 
         void setSwitchAPlaybackMute();
         void setSwitchACaptureMute();
         void setSwitchVCaptureMute();
         void setRequestSettings();
-        void setActiveDevice(const device_desc& _description);
+        void setActiveDevice(const device_desc& _description, bool _force_reset = false);
         void setMuteSounds(bool _mute);
 
         void setAPlaybackMute(bool _mute);

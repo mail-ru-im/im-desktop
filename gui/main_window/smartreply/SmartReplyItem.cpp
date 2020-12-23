@@ -14,6 +14,8 @@
 #include "app_config.h"
 #include "main_window/smiles_menu/SmilesMenu.h"
 
+#include "controls/LottiePlayer.h"
+
 #include "../common.shared/smartreply/smartreply_types.h"
 
 namespace
@@ -114,7 +116,7 @@ namespace Ui
         connect(this, &ClickableWidget::hoverChanged, this, qOverload<>(&SmartReplySticker::update));
         connect(this, &ClickableWidget::pressChanged, this, qOverload<>(&SmartReplySticker::update));
 
-        connect(Ui::GetDispatcher(), &core_dispatcher::onSticker, this, [this](qint32, qint32, qint32, const QString& _stickerId)
+        connect(&Stickers::getCache(), &Stickers::Cache::stickerUpdated, this, [this](qint32, const QString& _stickerId)
         {
             if (_stickerId == getId())
             {
@@ -126,6 +128,10 @@ namespace Ui
             }
         });
 
+        const auto sticker = Stickers::getSticker(getId());
+        if (sticker && sticker->isLottie())
+            connect(&Stickers::getCache(), &Stickers::Cache::stickerUpdated, this, &SmartReplySticker::onStickerLoaded);
+
         prepareImage();
 
         longtapTimer_.setSingleShot(true);
@@ -133,10 +139,17 @@ namespace Ui
         connect(&longtapTimer_, &QTimer::timeout, this, [this]() { Q_EMIT showPreview(getId()); });
     }
 
+    void SmartReplySticker::onVisibilityChanged(bool _visible)
+    {
+        if (lottie_)
+            lottie_->onVisibilityChanged(_visible);
+    }
+
     void SmartReplySticker::paintEvent(QPaintEvent*)
     {
         QPainter p(this);
         p.setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
+        auto drawDebug = qScopeGuard([&p, this](){ paintDebugInfo(p, rect(), getSuggest()); });
 
         if (const auto bgColor = getUnderlayColor(); bgColor.isValid())
         {
@@ -147,11 +160,14 @@ namespace Ui
             p.drawRoundedRect(rect(), radius, radius);
         }
 
+        if (lottie_)
+            return;
+
         if (prepareImage())
         {
             const auto x = (width() - image_.width() / Utils::scale_bitmap_ratio()) / 2;
             const auto y = (height() - image_.height() / Utils::scale_bitmap_ratio()) / 2;
-            p.drawImage(x, y, image_);
+            p.drawPixmap(x, y, image_);
         }
 
         const auto sticker = Stickers::getSticker(getId());
@@ -165,8 +181,6 @@ namespace Ui
             static const QPixmap icon = Utils::renderSvg(qsl(":/smiles_menu/gif_label_small"), gifLabelSize());
             p.drawPixmap(x, y, icon);
         }
-
-        paintDebugInfo(p, rect(), getSuggest());
     }
 
     QColor SmartReplySticker::getUnderlayColor()
@@ -194,17 +208,34 @@ namespace Ui
 
     bool SmartReplySticker::prepareImage()
     {
-        if (!image_.isNull())
-            return true;
-
-        if (auto img = Stickers::getStickerImage(getId(), core::sticker_size::small); !img.isNull())
+        const auto& data = Stickers::getStickerData(getId(), core::sticker_size::small);
+        if (data.isPixmap())
         {
-            const QSize imageSize(Utils::scale_bitmap(QSize(stickerSize(), stickerSize())));
+            if (!image_.isNull())
+                return true;
 
-            image_ = img.scaled(imageSize.width(), imageSize.height(), Qt::KeepAspectRatio, Qt::SmoothTransformation);
-            Utils::check_pixel_ratio(image_);
+            const auto& pm = data.getPixmap();
+            if (!pm.isNull())
+            {
+                const QSize imageSize(Utils::scale_bitmap(QSize(stickerSize(), stickerSize())));
+                image_ = data.getPixmap().scaled(imageSize.width(), imageSize.height(), Qt::KeepAspectRatio, Qt::SmoothTransformation);
+                Utils::check_pixel_ratio(image_);
 
-            return true;
+                return true;
+            }
+        }
+        else if (data.isLottie())
+        {
+            if (lottie_)
+                return true;
+
+            if (const auto& path = data.getLottiePath(); !path.isEmpty())
+            {
+                QRect playerRect(0, 0, stickerSize(), stickerSize());
+                playerRect.moveCenter(rect().center());
+                lottie_ = new LottiePlayer(this, path, playerRect);
+                return true;
+            }
         }
         return false;
     }
@@ -212,6 +243,12 @@ namespace Ui
     const QString& SmartReplySticker::getId() const
     {
         return suggest_.getData();
+    }
+
+    void SmartReplySticker::onStickerLoaded(int _error, const QString& _id)
+    {
+        if (_error == 0 || _id == getId())
+            prepareImage();
     }
 
     void SmartReplySticker::mousePressEvent(QMouseEvent* _e)

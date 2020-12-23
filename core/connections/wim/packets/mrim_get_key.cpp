@@ -21,6 +21,11 @@ mrim_get_key::~mrim_get_key()
 {
 }
 
+std::string_view mrim_get_key::get_method() const
+{
+    return "mrimGetKey";
+}
+
 int32_t mrim_get_key::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     std::stringstream ss_url;
@@ -31,7 +36,7 @@ int32_t mrim_get_key::init_request(const std::shared_ptr<core::http_request_simp
         "&email="<< escape_symbols(email_);
 
     _request->set_url(ss_url.str());
-    _request->set_normalized_url("mrimGetKey");
+    _request->set_normalized_url(get_method());
     _request->set_keep_alive();
 
     if (!params_.full_log_)

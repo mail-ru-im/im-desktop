@@ -22,6 +22,11 @@ const archive::poll_data& get_poll::get_result() const
     return poll_;
 }
 
+std::string_view get_poll::get_method() const
+{
+    return "poll/get";
+}
+
 int32_t get_poll::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     rapidjson::Document doc(rapidjson::Type::kObjectType);
@@ -34,7 +39,7 @@ int32_t get_poll::init_request(const std::shared_ptr<core::http_request_simple>&
 
     doc.AddMember("params", std::move(node_params), a);
 
-    setup_common_and_sign(doc, a, _request, "poll/get");
+    setup_common_and_sign(doc, a, _request, get_method());
 
     if (!robusto_packet::params_.full_log_)
     {

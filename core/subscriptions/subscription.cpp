@@ -4,6 +4,7 @@
 
 #include "../common.shared/omicron_keys.h"
 #include "../libomicron/include/omicron/omicron.h"
+#include "../tools/json_helper.h"
 
 namespace core::wim::subscriptions
 {
@@ -40,16 +41,21 @@ namespace core::wim::subscriptions
         return equal(_other);
     }
 
-    antivirus_subscription::antivirus_subscription(std::string_view _file_hash)
+    antivirus_subscription::antivirus_subscription(std::vector<std::string> _file_hashes)
         : subscription_base(subscriptions::type::antivirus)
-        , hash_(_file_hash)
+        , hashes_(std::move(_file_hashes))
     {
-        assert(!hash_.empty());
+        assert(!hashes_.empty());
     }
 
     void antivirus_subscription::serialize(rapidjson::Value& _node, rapidjson_allocator& _a) const
     {
-        _node.AddMember("fileHash", hash_, _a);
+        rapidjson::Value hashes_array(rapidjson::Type::kArrayType);
+        hashes_array.Reserve(hashes_.size(), _a);
+        for (auto& id : hashes_)
+            hashes_array.PushBack(tools::make_string_ref(id), _a);
+
+        _node.AddMember("fileHashes", std::move(hashes_array), _a);
     }
 
     subscr_clock_t::duration antivirus_subscription::renew_interval() const
@@ -60,25 +66,30 @@ namespace core::wim::subscriptions
 
     std::vector<std::string> antivirus_subscription::get_log_markers() const
     {
-        return { "fileHash" };
+        return { "fileHashes" };
     }
 
     bool antivirus_subscription::equal(const subscription_base& _other) const
     {
         auto av_other = static_cast<const antivirus_subscription&>(_other);
-        return hash_ == av_other.hash_;
+        return hashes_ == av_other.hashes_;
     }
 
-    status_subscription::status_subscription(std::string_view _contact)
+    status_subscription::status_subscription(std::vector<std::string> _contacts)
         : subscription_base(subscriptions::type::status)
-        , contact_(_contact)
+        , contacts_(std::move(_contacts))
     {
-        assert(!contact_.empty());
+        assert(!contacts_.empty());
     }
 
     void status_subscription::serialize(rapidjson::Value& _node, rapidjson_allocator& _a) const
     {
-        _node.AddMember("sn", contact_, _a);
+        rapidjson::Value contacts_array(rapidjson::Type::kArrayType);
+        contacts_array.Reserve(contacts_.size(), _a);
+        for (auto& sn : contacts_)
+            contacts_array.PushBack(tools::make_string_ref(sn), _a);
+
+        _node.AddMember("contacts", std::move(contacts_array), _a);
     }
 
     subscr_clock_t::duration status_subscription::renew_interval() const
@@ -90,19 +101,24 @@ namespace core::wim::subscriptions
     bool status_subscription::equal(const subscription_base& _other) const
     {
         auto st_other = static_cast<const status_subscription&>(_other);
-        return contact_ == st_other.contact_;
+        return contacts_ == st_other.contacts_;
     }
 
-    call_room_info_subscription::call_room_info_subscription(std::string_view _room_id)
-        : subscription_base(subscriptions::type::call_room_info),
-          room_id_(_room_id)
+    call_room_info_subscription::call_room_info_subscription(std::vector<std::string> _room_ids)
+        : subscription_base(subscriptions::type::call_room_info)
+        , room_ids_(std::move(_room_ids))
     {
 
     }
 
     void call_room_info_subscription::serialize(rapidjson::Value& _node, rapidjson_allocator& _a) const
     {
-        _node.AddMember("roomId", room_id_, _a);
+        rapidjson::Value ids_array(rapidjson::Type::kArrayType);
+        ids_array.Reserve(room_ids_.size(), _a);
+        for (auto& id : room_ids_)
+            ids_array.PushBack(tools::make_string_ref(id), _a);
+
+        _node.AddMember("roomIds", std::move(ids_array), _a);
     }
 
     subscr_clock_t::duration call_room_info_subscription::renew_interval() const
@@ -114,6 +130,6 @@ namespace core::wim::subscriptions
     bool call_room_info_subscription::equal(const subscription_base& _other) const
     {
         auto call_room_info_other = static_cast<const call_room_info_subscription&>(_other);
-        return room_id_ == call_room_info_other.room_id_;
+        return room_ids_ == call_room_info_other.room_ids_;
     }
 }

@@ -96,7 +96,7 @@ namespace Ui
             void split(const QString& _text, const int _from, const int _to, const QColor& _textColor, const QColor& _fillColor, SpellError _e = SpellError::No);
             void fill(const QString& _text, const int _from, const int _to, const QColor& _fillColor, SpellError _e = SpellError::No);
 
-            std::pair<QVarLengthArray<int>, int> prepareEngine(const QString& _text, const QFont& _font);
+            void prepareEngine(const QString& _text, const QFont& _font, Out QVarLengthArray<int>& _visualOrder);
 
         private:
             QPainter* painter_;

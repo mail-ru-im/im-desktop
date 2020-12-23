@@ -29,6 +29,8 @@ namespace core
                 const std::vector<std::pair<std::string, std::string>>& _fields);
 
             virtual ~update_profile();
+
+            virtual std::string_view get_method() const override;
         };
 
     }

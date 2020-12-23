@@ -226,11 +226,6 @@ namespace Logic
             if (_dlgState.Chat_)
                 continue;
 
-            const auto contactItem = Logic::getContactListModel()->getContactItem(_dlgState.AimId_);
-
-            if (!contactItem)
-                Logic::getContactListModel()->add(_dlgState.AimId_, _dlgState.Friendly_);
-
             auto iter = std::find(dialogs_.begin(), dialogs_.end(), _dlgState);
 
             if (!_dlgState.isSuspicious_ || !config::get().is_on(config::features::unknown_contacts))

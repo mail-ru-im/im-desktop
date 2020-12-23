@@ -49,10 +49,7 @@ int32_t get_stickers_store_packet::init_request(const std::shared_ptr<core::http
 
     _request->set_url(ss_url.str());
 
-    if (!search_term_.empty())
-        _request->set_normalized_url("stickersStoreShowcaseSearch");
-    else
-        _request->set_normalized_url("stickersStoreShowcase");
+    _request->set_normalized_url(get_method());
 
     _request->set_keep_alive();
 
@@ -84,4 +81,9 @@ const std::shared_ptr<core::tools::binary_stream>& get_stickers_store_packet::ge
 priority_t get_stickers_store_packet::get_priority() const
 {
     return packets_priority_high();
+}
+
+std::string_view get_stickers_store_packet::get_method() const
+{
+    return !search_term_.empty() ? "stickersStoreShowcaseSearch" : "stickersStoreShowcase";
 }

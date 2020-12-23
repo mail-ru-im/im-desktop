@@ -34,6 +34,8 @@ namespace core
                 const std::string& _friendly);
 
             virtual ~set_buddy_attribute();
+
+            virtual std::string_view get_method() const override;
         };
 
     }

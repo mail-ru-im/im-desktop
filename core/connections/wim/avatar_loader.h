@@ -3,7 +3,6 @@
 
 #pragma once
 
-
 #include "wim_packet.h"
 
 namespace coretools
@@ -30,13 +29,13 @@ namespace core
             bool force_;
 
             avatar_context(int32_t _avatar_size, std::string _contact, std::wstring _avatars_data_path)
-                :
-                avatar_size_(_avatar_size),
-                contact_(std::move(_contact)),
-                write_time_(0),
-                avatars_data_path_(std::move(_avatars_data_path)),
-                avatar_exist_(false),
-                force_(false){}
+                : avatar_size_(_avatar_size)
+                , contact_(std::move(_contact))
+                , write_time_(0)
+                , avatars_data_path_(std::move(_avatars_data_path))
+                , avatar_exist_(false)
+                , force_(false)
+            {}
         };
 
         struct avatar_load_handlers
@@ -54,7 +53,6 @@ namespace core
             int64_t task_id_;
 
         public:
-
             std::shared_ptr<avatar_context> get_context() const;
             std::shared_ptr<avatar_load_handlers> get_handlers() const;
 
@@ -91,11 +89,9 @@ namespace core
             std::wstring get_avatar_path(const std::wstring& _avatars_data_path, std::string_view _contact, std::string_view _avatar_type = {}) const;
             std::string_view get_avatar_type_by_size(int32_t _size) const;
 
-
             void load_avatar_from_server(const std::shared_ptr<avatar_context>& _context, const std::shared_ptr<avatar_load_handlers>& _handlers);
 
         public:
-
             avatar_loader();
             virtual ~avatar_loader();
 
@@ -109,9 +105,7 @@ namespace core
 
             void show_contact_avatar(const std::string& _contact, const int32_t _avatar_size);
         };
-
     }
 }
-
 
 #endif //__AVATAR_LOADER_H_

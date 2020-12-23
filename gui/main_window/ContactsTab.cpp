@@ -37,6 +37,7 @@ namespace Ui
 
         QObject::connect(contactListWidget_, &ContactListWidget::searchEnd, header_->getSearchWidget(), &SearchWidget::searchCompleted);
         contactListWidget_->connectSearchWidget(header_->getSearchWidget());
+        Testing::setAccessibleName(contactListWidget_, qsl("AS ContactsTab contactListWidget"));
         QObject::connect(&Utils::InterConnector::instance(), &Utils::InterConnector::setContactSearchFocus, this, [this]() {
             header_->getSearchWidget()->setFocus();
             Q_EMIT Utils::InterConnector::instance().hideContactListPlaceholder();

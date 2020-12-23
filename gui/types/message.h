@@ -87,32 +87,6 @@ namespace Data
         style getStyle() const;
     };
 
-    struct StickerId
-    {
-        std::optional<QString> fsId_;
-        struct StoreId
-        {
-            int32_t setId_ = -1;
-            int32_t id_ = -1;
-        };
-        std::optional<StoreId> obsoleteId_; // for old clients
-
-        StickerId() = default;
-        explicit StickerId(const QString& _fsId) : fsId_(_fsId) {}
-        StickerId(int32_t _setId, int32_t _id) : obsoleteId_(StoreId{ _setId , _id }) {}
-
-        bool isEmpty() const noexcept { return !fsId_ && !obsoleteId_; }
-
-        QString toString() const
-        {
-            if (fsId_)
-                return *fsId_;
-            if (obsoleteId_)
-                return u"ext:" % QString::number(obsoleteId_->setId_) % u":sticker:" % QString::number(obsoleteId_->id_);
-            return {};
-        }
-    };
-
     using MentionMap = std::map<QString, QString, Utils::StringComparator>; // uin - friendly
     using FilesPlaceholderMap = std::map<QString, QString, Utils::StringComparator>; // link - placeholder
 
@@ -152,6 +126,8 @@ namespace Data
         bool IsChatEvent() const;
 
         bool IsDeleted() const;
+
+        bool IsRestoredPatch() const;
 
         bool IsDeliveredToClient() const;
 
@@ -224,6 +200,8 @@ namespace Data
         void SetDate(const QDate &date);
 
         void SetDeleted(const bool isDeleted);
+
+        void SetRestoredPatch(const bool isRestoredPatch);
 
         void SetFileSharing(const HistoryControl::FileSharingInfoSptr& fileSharing);
 
@@ -311,6 +289,8 @@ namespace Data
         QString Url_;
 
         bool Deleted_;
+
+        bool RestoredPatch_;
 
         bool DeliveredToClient_;
 
@@ -414,7 +394,7 @@ namespace Data
 
         std::vector<DlgStateHead> heads_;
 
-        std::list<Logic::TypingFires> typings_;
+        std::vector<Logic::TypingFires> typings_;
 
         Ui::MediaType mediaType_;
 
@@ -599,6 +579,14 @@ namespace Data
 
     CallInfo UnserializeCallInfo(core::coll_helper* helper);
     CallInfoVec UnserializeCallLog(core::coll_helper* helper);
+
+    struct PatchedMessage
+    {
+        QString aimId_;
+        std::vector<qint64> msgIds_;
+
+        void unserialize(core::coll_helper& helper);
+    };
 }
 
 Q_DECLARE_METATYPE(Data::MessageBuddy);
@@ -606,3 +594,4 @@ Q_DECLARE_METATYPE(Data::MessageBuddy*);
 Q_DECLARE_METATYPE(Data::DlgState);
 Q_DECLARE_METATYPE(Data::CallInfo);
 Q_DECLARE_METATYPE(Data::CallInfoPtr);
+Q_DECLARE_METATYPE(Data::PatchedMessage);

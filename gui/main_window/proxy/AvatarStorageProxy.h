@@ -2,8 +2,6 @@
 
 namespace Logic
 {
-    using QPixmapSCptr = std::shared_ptr<const QPixmap>;
-
     class AvatarStorageProxy
     {
     public:
@@ -15,8 +13,8 @@ namespace Logic
 
         AvatarStorageProxy(int32_t _flags) : flags_(_flags) {}
 
-        const QPixmapSCptr& Get(const QString& _aimId, const QString& _displayName, const int _sizePx, bool& _isDefault, bool _regenerate);
-        const QPixmapSCptr& GetRounded(const QString& _aimId, const QString& _displayName, const int _sizePx, bool& _isDefault, bool _regenerate, bool _mini_icons);
+        QPixmap Get(const QString& _aimId, const QString& _displayName, const int _sizePx, bool& _isDefault, bool _regenerate);
+        QPixmap GetRounded(const QString& _aimId, const QString& _displayName, const int _sizePx, bool& _isDefault, bool _regenerate, bool _mini_icons);
 
     private:
         int32_t flags_;

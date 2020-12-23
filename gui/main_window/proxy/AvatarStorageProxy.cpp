@@ -8,25 +8,22 @@
 
 namespace
 {
-    using PixmapCache = std::unordered_map<int, Logic::QPixmapSCptr>;
-    std::unordered_map<int, Logic::QPixmapSCptr> g_favoritesAvatarsCache;
+    using PixmapCache = std::unordered_map<int, QPixmap>;
+    std::unordered_map<int, QPixmap> g_favoritesAvatarsCache;
 
-    const Logic::QPixmapSCptr& getFavoritesAvatarFromCache(int _sizePx)
+    QPixmap getFavoritesAvatarFromCache(int _sizePx)
     {
-        if (auto it = g_favoritesAvatarsCache.find(_sizePx); it != g_favoritesAvatarsCache.end())
-            return it->second;
-
-        auto pixmap = Favorites::avatar(_sizePx);
-        g_favoritesAvatarsCache[_sizePx] = std::make_shared<QPixmap>(std::move(pixmap));
-
-        return g_favoritesAvatarsCache[_sizePx];
+        auto& cached = g_favoritesAvatarsCache[_sizePx];
+        if (cached.isNull())
+            cached = Favorites::avatar(_sizePx);
+        return cached;
     }
 }
 
 namespace Logic
 {
 
-const QPixmapSCptr& AvatarStorageProxy::Get(const QString& _aimId, const QString& _displayName, const int _sizePx, bool& _isDefault, bool _regenerate)
+QPixmap AvatarStorageProxy::Get(const QString& _aimId, const QString& _displayName, const int _sizePx, bool& _isDefault, bool _regenerate)
 {
     if (flags_ & ReplaceFavorites && Favorites::isFavorites(_aimId))
         return getFavoritesAvatarFromCache(_sizePx);
@@ -34,7 +31,7 @@ const QPixmapSCptr& AvatarStorageProxy::Get(const QString& _aimId, const QString
     return GetAvatarStorage()->Get(_aimId, _displayName, _sizePx, _isDefault, _regenerate);
 }
 
-const QPixmapSCptr& AvatarStorageProxy::GetRounded(const QString& _aimId, const QString& _displayName, const int _sizePx, bool& _isDefault, bool _regenerate, bool _mini_icons)
+QPixmap AvatarStorageProxy::GetRounded(const QString& _aimId, const QString& _displayName, const int _sizePx, bool& _isDefault, bool _regenerate, bool _mini_icons)
 {
     if (flags_ & ReplaceFavorites && Favorites::isFavorites(_aimId))
         return getFavoritesAvatarFromCache(_sizePx);

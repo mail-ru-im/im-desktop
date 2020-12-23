@@ -36,6 +36,7 @@ namespace core
             bool init_;
             bool from_editing_;
             bool from_search_;
+            bool from_delete_;
 
             get_history_params(
                 const std::string &_aimid,
@@ -44,7 +45,7 @@ namespace core
                 const int32_t _count,
                 const std::string &_patch_version,
                 bool _init = false,
-                bool _from_deleted = false, // unused
+                bool _from_deleted = false,
                 bool _from_editing = false,
                 bool _from_search = false,
                 int64_t _seq = 0
@@ -81,6 +82,7 @@ namespace core
 
             const std::shared_ptr<archive::history_block>& get_messages() const { return messages_; }
             const std::shared_ptr<archive::dlg_state>& get_dlg_state() const { return dlg_state_; }
+            const std::vector<std::pair<int64_t, archive::history_patch_uptr>>& get_patches() const { return history_patches_; }
             bool get_unpinned() const noexcept { return unpinned_; }
             const get_history_params& get_hist_params() const { return hist_params_; }
             bool has_older_msgid() const noexcept { return older_msgid_ != -1; }
@@ -88,6 +90,7 @@ namespace core
             const std::shared_ptr<core::archive::persons_map>& get_persons() const override { return persons_; }
 
             virtual priority_t get_priority() const override;
+            virtual std::string_view get_method() const override;
         };
     }
 }

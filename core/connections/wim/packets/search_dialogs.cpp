@@ -28,6 +28,11 @@ namespace core::wim
         return persons_;
     }
 
+    std::string_view search_dialogs::get_method() const
+    {
+        return is_searching_all_dialogs() ? "searchAllDialogs" : "searchOneDialog";
+    }
+
     void search_dialogs::set_dates_range(const std::string_view _start_date, const std::string_view _end_date)
     {
         start_date_ = _start_date;
@@ -83,7 +88,7 @@ namespace core::wim
 
         doc.AddMember("params", std::move(node_params), a);
 
-        setup_common_and_sign(doc, a, _request, is_searching_all_dialogs() ? "searchAllDialogs" : "searchOneDialog");
+        setup_common_and_sign(doc, a, _request, get_method());
 
         if (!robusto_packet::params_.full_log_)
         {

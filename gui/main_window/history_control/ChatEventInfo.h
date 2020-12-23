@@ -24,6 +24,7 @@ namespace HistoryControl
             const QString& _aimid);
 
         const QString& formatEventText() const;
+        QString formatRecentsEventText() const;
         core::chat_event_type eventType() const;
         QString senderFriendly() const;
 
@@ -70,6 +71,8 @@ namespace HistoryControl
         QString formatMessageDeletedText() const;
         QString formatWarnAboutStranger() const;
         QString formatNoLongerStranger() const;
+        QString formatStatusReply() const;
+        QString formatStatusReplyRecents() const;
 
         bool isMyAimid(const QString& _aimId) const;
         bool hasMultipleMembers() const;
@@ -84,6 +87,8 @@ namespace HistoryControl
         void setMchatMembersAimIds(const core::iarray& _membersAimids);
         void setMchatRequestedBy(const QString& _requestedBy);
         QString senderOrAdmin() const;
+        void setSenderStatus(const QString& _status, const QString& _description);
+        void setOwnerStatus(const QString& _status, const QString& _description);
 
         const core::chat_event_type type_;
         const bool isCaptchaPresent_;
@@ -111,6 +116,14 @@ namespace HistoryControl
             bool newJoinModeration_ = false;
             bool newPublic_ = false;
         } chat_;
+
+        struct
+        {
+            QString senderStatus_;
+            QString senderStatusDescription_;
+            QString ownerStatus_;
+            QString ownerStatusDescription_;
+        } statusReply_;
     };
 
 }

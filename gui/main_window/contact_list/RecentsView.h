@@ -4,8 +4,6 @@
 
 namespace Ui
 {
-
-
     class RecentsView : public ListViewWithTrScrollBar
     {
         Q_OBJECT
@@ -13,9 +11,8 @@ namespace Ui
         void init();
 
     public:
-        RecentsView(QWidget* _parent);
+        RecentsView(QWidget* _parent = nullptr);
         ~RecentsView();
 
-        static RecentsView* create(QWidget* _parent);
     };
 }

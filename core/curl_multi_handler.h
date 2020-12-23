@@ -16,6 +16,8 @@ namespace core
         void cleanup() override;
         void reset() override;
 
+        void reset_sockets();
+
         void process_stopped_tasks() override;
         bool is_stopped() const override;
 
@@ -27,6 +29,8 @@ namespace core
 
         void cancel_tasks();
         void process_stopped_tasks_internal();
+
+        void reset_sockets_internal();
 
         void notify();
 

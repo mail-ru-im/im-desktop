@@ -562,14 +562,6 @@ You can leave your feedback or report an error here:</source>
         <translation>%1表示一个新的组名- &quot;%2&quot;</translation>
     </message>
     <message>
-        <source>%1 You have joined channel</source>
-        <translation>%1您已加入频道</translation>
-    </message>
-    <message>
-        <source>%1 %2 has joined channel</source>
-        <translation>%1 %2加入了频道</translation>
-    </message>
-    <message>
         <source>%1 You have joined group</source>
         <translation>%1您已加入群组</translation>
     </message>
@@ -967,29 +959,45 @@ You can leave your feedback or report an error here:</source>
         <source>%1 %2 has canceled join request</source>
         <translation>%1 %2取消了会员资格请求</translation>
     </message>
+    <message>
+        <source>%1 You have subscribed the channel</source>
+        <translation>%1您订阅了该频道</translation>
+    </message>
+    <message>
+        <source>%1 %2 has subscribed the channel</source>
+        <translation>%1 %2订阅了该频道</translation>
+    </message>
+    <message>
+        <source>%1 replied to status
+%2 %3
+%4
+%5 %6</source>
+        <translation>%1回复了状态
+%2 %3
+%4
+%5 %6</translation>
+    </message>
+    <message>
+        <source>Replied to status: %1 %2</source>
+        <translation>回答状态： %1 %2</translation>
+    </message>
+    <message>
+        <source>You replied to status
+%2 %3
+%4
+%5 %6</source>
+        <translation>您回复了状态
+%2 %3
+%4
+%5 %6</translation>
+    </message>
+    <message>
+        <source>You replied to status: %1 %2</source>
+        <translation>您回答的状态： %1 %2</translation>
+    </message>
 </context>
 <context>
     <name>chat_page</name>
-    <message>
-        <source>member</source>
-        <comment>1</comment>
-        <translation>名成员</translation>
-    </message>
-    <message>
-        <source>members</source>
-        <comment>2</comment>
-        <translation>名成员</translation>
-    </message>
-    <message>
-        <source>members</source>
-        <comment>5</comment>
-        <translation>名成员</translation>
-    </message>
-    <message>
-        <source>members</source>
-        <comment>21</comment>
-        <translation>名成员</translation>
-    </message>
     <message>
         <source>Today</source>
         <translation>今天</translation>
@@ -1049,6 +1057,10 @@ You can leave your feedback or report an error here:</source>
         <source>Messages added to </source>
         <comment>21</comment>
         <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Message sent</source>
+        <translation>讯息已发送</translation>
     </message>
 </context>
 <context>
@@ -2786,26 +2798,6 @@ You can leave your feedback or report an error here:</source>
         <translation>聊天昵称</translation>
     </message>
     <message>
-        <source>member</source>
-        <comment>1</comment>
-        <translation>名成员</translation>
-    </message>
-    <message>
-        <source>members</source>
-        <comment>2</comment>
-        <translation>名成员</translation>
-    </message>
-    <message>
-        <source>members</source>
-        <comment>5</comment>
-        <translation>名成员</translation>
-    </message>
-    <message>
-        <source>members</source>
-        <comment>21</comment>
-        <translation>名成员</translation>
-    </message>
-    <message>
         <source>Channel name</source>
         <translation>频道名称</translation>
     </message>
@@ -2860,6 +2852,14 @@ You can leave your feedback or report an error here:</source>
     <message>
         <source>Chat does not exist or it is hidden by privacy settings</source>
         <translation>聊天不存在或在隐私设置下被隐藏</translation>
+    </message>
+    <message>
+        <source>New subscribers are waiting for admin approval</source>
+        <translation>新订阅者正在等待管理员许可才能加入</translation>
+    </message>
+    <message>
+        <source>You are not a subscriber of this channel</source>
+        <translation>您不是该频道的订阅者</translation>
     </message>
 </context>
 <context>
@@ -3453,6 +3453,10 @@ You can leave your feedback or report an error here:</source>
         <source>Privacy</source>
         <translation>私密</translation>
     </message>
+    <message>
+        <source>Report a problem</source>
+        <translation>报告一个问题</translation>
+    </message>
 </context>
 <context>
     <name>mentions</name>
@@ -3910,6 +3914,21 @@ You can leave your feedback or report an error here:</source>
     </message>
 </context>
 <context>
+    <name>popup_widget</name>
+    <message>
+        <source>Disallow</source>
+        <translation>禁止</translation>
+    </message>
+    <message>
+        <source>Manage who can add me</source>
+        <translation>配置谁可以添加</translation>
+    </message>
+    <message>
+        <source>Disallow %1 to add you to add me to groups?</source>
+        <translation>阻止%1将您添加到群组？</translation>
+    </message>
+</context>
+<context>
     <name>popup_window</name>
     <message>
         <source>Clear all data from this device</source>
@@ -4196,23 +4215,11 @@ You can leave your feedback or report an error here:</source>
         <translation>停止投票吗？</translation>
     </message>
     <message>
-        <source>Are you sure you want to leave channel?</source>
-        <translation>您确定要离开频道吗？</translation>
-    </message>
-    <message>
-        <source>If you change group type to a private link to the group will be changed, and the old one will stop working</source>
-        <translation>如果您将群组类型更改为私人，则群组链接将更改，旧的链接将停止工作</translation>
-    </message>
-    <message>
         <source>Make private</source>
         <translation>设为私人</translation>
     </message>
     <message>
         <source>Are you sure you want to clear the chat history?</source>
-        <translation>您确定要删除聊天记录吗？</translation>
-    </message>
-    <message>
-        <source>Are you sure you want to clear the channel history?</source>
         <translation>您确定要删除聊天记录吗？</translation>
     </message>
     <message>
@@ -4340,10 +4347,6 @@ You can leave your feedback or report an error here:</source>
         <translation>抱歉，出了点问题。请稍后再试</translation>
     </message>
     <message>
-        <source>My status</source>
-        <translation>我的状态</translation>
-    </message>
-    <message>
         <source>You cannot call these users because of privacy settings:</source>
         <translation>由于他们的隐私设置，您无法致电他们。联系人：</translation>
     </message>
@@ -4396,6 +4399,98 @@ You can leave your feedback or report an error here:</source>
         <translation>发送链接</translation>
     </message>
     <message>
+        <source>Are you sure you want to erase history and leave channel?</source>
+        <translation>您确定要删除历史记录并退出频道吗？</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to erase history and leave chat?</source>
+        <translation>您确定要删除故事并离开论坛吗？</translation>
+    </message>
+    <message>
+        <source>Leave</source>
+        <translation>注销</translation>
+    </message>
+    <message>
+        <source>Cannot add %1</source>
+        <translation>添加 %1 失败</translation>
+    </message>
+    <message>
+        <source>Please wait until admins approve %1&apos;s request</source>
+        <translation>等待管理员确认添加%1的请求</translation>
+    </message>
+    <message>
+        <source>Request for %1 was sent</source>
+        <translation>发送了添加%1请求</translation>
+    </message>
+    <message>
+        <source>You cannot add %1 to channel. Send them subscription link %2</source>
+        <translation>您无法将%1添加到通道。向用户发送链接以订阅%2</translation>
+    </message>
+    <message>
+        <source>You cannot add %1 to chat. Send them join link %2</source>
+        <translation>您不能将%1添加到组中。向用户发送指向简介%2的链接</translation>
+    </message>
+    <message>
+        <source>Subscribe the channel %1</source>
+        <translation>订阅频道 %1</translation>
+    </message>
+    <message>
+        <source>Join the group %1</source>
+        <translation>加入群组 %1</translation>
+    </message>
+    <message>
+        <source>Add %1?</source>
+        <translation>加%1吗？</translation>
+    </message>
+    <message>
+        <source>Previously this contact was removed from channel. Probably, %1 violated the rules. Add anyway?</source>
+        <translation>管理员先前已从渠道中删除了此联系人。 %1违反了规则。还是要添加吗？</translation>
+    </message>
+    <message>
+        <source>Previously this contact was removed from chat. Probably, %1 violated the rules. Add anyway?</source>
+        <translation>管理员先前已将该联系人从组中删除。 %1违反了规则。还是要添加吗？</translation>
+    </message>
+    <message>
+        <source>You cannot add this contact to channel, please ask admin to do that</source>
+        <translation>您无法将此联系人添加到频道，请询问管理员</translation>
+    </message>
+    <message>
+        <source>You cannot add this contact to chat, please ask admin to do that</source>
+        <translation>您无法将此联系人添加到组中，请询问管理员</translation>
+    </message>
+    <message>
+        <source>Bot can be added only by admin and if bot joining the groups was allowed by its creator</source>
+        <translation>如果漫游器创建者允许添加漫游器，则只有管理员可以添加漫游器</translation>
+    </message>
+    <message>
+        <source>Wait until admins approve join requests</source>
+        <translation>等待管理员确认添加请求</translation>
+    </message>
+    <message>
+        <source>Send them invite link</source>
+        <translation>向他们发送介绍链接</translation>
+    </message>
+    <message>
+        <source>Ask admins to invite</source>
+        <translation>要求添加管理员</translation>
+    </message>
+    <message>
+        <source>Bot joining the groups was forbidden by its creator</source>
+        <translation>机器人创建者禁止添加组</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to delete user from list?</source>
+        <translation>您确定要从列表中删除用户吗？</translation>
+    </message>
+    <message>
+        <source>Add to list</source>
+        <translation>添加到列表</translation>
+    </message>
+    <message>
+        <source>Select</source>
+        <translation>选择</translation>
+    </message>
+    <message>
         <source>You can not join the call. It already has</source>
         <translation>您无法连接到呼叫。在它里面</translation>
     </message>
@@ -4412,16 +4507,84 @@ You can leave your feedback or report an error here:</source>
         <translation>发起新通话？当前通话将结束</translation>
     </message>
     <message>
-        <source>Use internal DNS cache</source>
-        <translation>使用内部DNS缓存</translation>
-    </message>
-    <message>
-        <source>To change this option you must restart the application. Continue?</source>
-        <translation>要更改设置，必须重新启动应用程序。继续？</translation>
-    </message>
-    <message>
         <source>Global people search</source>
         <translation>全球人员搜寻</translation>
+    </message>
+    <message>
+        <source>Log Memory Report</source>
+        <translation>日志内存报告</translation>
+    </message>
+    <message>
+        <source>Track internal cache</source>
+        <translation>跟踪内部缓存</translation>
+    </message>
+    <message>
+        <source>Allow microphone access, so that interlocutor could hear you</source>
+        <translation>允许使用麦克风，以便其他人可以听到您的声音？</translation>
+    </message>
+    <message>
+        <source>Don&apos;t allow</source>
+        <translation>不允许</translation>
+    </message>
+    <message>
+        <source>Settings</source>
+        <translation>设定值</translation>
+    </message>
+    <message>
+        <source>Don&apos;t show again</source>
+        <translation>不再显示</translation>
+    </message>
+    <message>
+        <source>Contact is banned in %1</source>
+        <translation>用户在%1处被屏蔽</translation>
+    </message>
+    <message>
+        <source>Contact is already added</source>
+        <translation>早已添加了该用户</translation>
+    </message>
+    <message>
+        <source>Contacts are banned in %1</source>
+        <translation>用户被封锁在%1</translation>
+    </message>
+    <message>
+        <source>Contacts were already added</source>
+        <translation>早已添加了该用户</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to delete user?</source>
+        <translation>您确定要删除该用户吗？</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to clear history?</source>
+        <translation>您确定要删除聊天记录吗？</translation>
+    </message>
+    <message>
+        <source>If you change the channel type to private, the channel link will change and the old one will stop working</source>
+        <translation>如果您将频道类型更改为私有，则频道链接将更改，旧的链接将停止工作</translation>
+    </message>
+    <message>
+        <source>If you change the group type to private, the group link will change and the old one will stop working</source>
+        <translation>如果您将群组类型更改为私人，则群组链接将更改，旧的链接将停止工作。</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to ban user to write in this channel?</source>
+        <translation>您确定要阻止用户写入此频道吗？</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to allow user to write in this channel?</source>
+        <translation>您确定要允许用户写入此频道吗？</translation>
+    </message>
+    <message>
+        <source>Make private channel</source>
+        <translation>设为私人</translation>
+    </message>
+    <message>
+        <source>%1 hasn&apos;t been online for a long time and won&apos;t read the message likely. Send free sms to suggest to come back to ICQ?</source>
+        <translation>%1很久没有上线了，很可能不会阅读该消息。发送免费短信并提供返回ICQ的报价？</translation>
+    </message>
+    <message>
+        <source>Send Statistic</source>
+        <translation>发送统计信息</translation>
     </message>
 </context>
 <context>
@@ -4500,26 +4663,6 @@ You can leave your feedback or report an error here:</source>
     <message>
         <source>Contact</source>
         <translation>联系人</translation>
-    </message>
-    <message>
-        <source>member</source>
-        <comment>1</comment>
-        <translation>名成员</translation>
-    </message>
-    <message>
-        <source>members</source>
-        <comment>2</comment>
-        <translation>名成员</translation>
-    </message>
-    <message>
-        <source>members</source>
-        <comment>5</comment>
-        <translation>名成员</translation>
-    </message>
-    <message>
-        <source>members</source>
-        <comment>21</comment>
-        <translation>名成员</translation>
     </message>
     <message>
         <source>VIEW</source>
@@ -4968,10 +5111,6 @@ You can leave your feedback or report an error here:</source>
         <translation>语言</translation>
     </message>
     <message>
-        <source>Contact Us</source>
-        <translation>联系我们</translation>
-    </message>
-    <message>
         <source>About app</source>
         <translation>关于应用</translation>
     </message>
@@ -5251,6 +5390,26 @@ You can leave your feedback or report an error here:</source>
         <source>Show unreads counter in window title</source>
         <translation>在窗口标题中显示未读的数目</translation>
     </message>
+    <message>
+        <source>Exceptions list</source>
+        <translation>排除清单</translation>
+    </message>
+    <message>
+        <source>Forbid to add me to groups</source>
+        <translation>拒绝加入群组</translation>
+    </message>
+    <message>
+        <source>Add to list</source>
+        <translation>添加到列表</translation>
+    </message>
+    <message>
+        <source>Specify who should be prohibited from adding you to groups</source>
+        <translation>指定不应被允许将您添加到群组的人</translation>
+    </message>
+    <message>
+        <source>Disable SMS notifications</source>
+        <translation>禁用短信提醒</translation>
+    </message>
 </context>
 <context>
     <name>settings_connection</name>
@@ -5461,8 +5620,8 @@ You can leave your feedback or report an error here:</source>
         <translation>通知</translation>
     </message>
     <message>
-        <source>Wallpaper</source>
-        <translation>壁纸</translation>
+        <source>Wallpapers</source>
+        <translation>背景</translation>
     </message>
     <message>
         <source>Nickname</source>
@@ -5591,26 +5750,6 @@ Please edit phone number and try again.</source>
         <translation>添加到通路</translation>
     </message>
     <message>
-        <source>member</source>
-        <comment>1</comment>
-        <translation>名成员</translation>
-    </message>
-    <message>
-        <source>members</source>
-        <comment>2</comment>
-        <translation>名成员</translation>
-    </message>
-    <message>
-        <source>members</source>
-        <comment>5</comment>
-        <translation>名成员</translation>
-    </message>
-    <message>
-        <source>members</source>
-        <comment>21</comment>
-        <translation>名成员</translation>
-    </message>
-    <message>
         <source>Add name</source>
         <translation>添加名字</translation>
     </message>
@@ -5669,26 +5808,6 @@ Please edit phone number and try again.</source>
     <message>
         <source>Message</source>
         <translation>讯息</translation>
-    </message>
-    <message>
-        <source>MEMBER</source>
-        <comment>1</comment>
-        <translation>名成员</translation>
-    </message>
-    <message>
-        <source>MEMBERS</source>
-        <comment>2</comment>
-        <translation>成员</translation>
-    </message>
-    <message>
-        <source>MEMBERS</source>
-        <comment>5</comment>
-        <translation>成员</translation>
-    </message>
-    <message>
-        <source>MEMBERS</source>
-        <comment>21</comment>
-        <translation>名成员</translation>
     </message>
     <message>
         <source>Common groups</source>
@@ -5826,6 +5945,22 @@ Please edit phone number and try again.</source>
         <source>Call</source>
         <translation>打电话</translation>
     </message>
+    <message>
+        <source>Your invites</source>
+        <translation>您的邀请</translation>
+    </message>
+    <message>
+        <source>List empty</source>
+        <translation>列表为空</translation>
+    </message>
+    <message>
+        <source>Subscribers</source>
+        <translation>追随者</translation>
+    </message>
+    <message>
+        <source>All subscribers</source>
+        <translation>所有订阅者</translation>
+    </message>
 </context>
 <context>
     <name>siderbar</name>
@@ -5918,14 +6053,6 @@ Please edit phone number and try again.</source>
         <translation>用户状态</translation>
     </message>
     <message>
-        <source>Status timing</source>
-        <translation>身份条款</translation>
-    </message>
-    <message>
-        <source>No status</source>
-        <translation>无状态</translation>
-    </message>
-    <message>
         <source>Show always</source>
         <translation>总是显示</translation>
     </message>
@@ -5962,6 +6089,22 @@ Please edit phone number and try again.</source>
     <message>
         <source>Cancel</source>
         <translation>消除</translation>
+    </message>
+    <message>
+        <source>My status</source>
+        <translation>我的状态</translation>
+    </message>
+    <message>
+        <source>No status</source>
+        <translation>无状态</translation>
+    </message>
+    <message>
+        <source>Status timing</source>
+        <translation>身份条款</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation>关</translation>
     </message>
 </context>
 <context>
@@ -6246,18 +6389,6 @@ Please edit phone number and try again.</source>
         <translation>设置</translation>
     </message>
     <message>
-        <source>Call is secured</source>
-        <translation>致电已受安全保护</translation>
-    </message>
-    <message>
-        <source>For security check, you can verify your images with your partner</source>
-        <translation>为了安全检查，你可与合作伙伴验证你的图片</translation>
-    </message>
-    <message>
-        <source>How it works</source>
-        <translation>如何运作</translation>
-    </message>
-    <message>
         <source>Add to call</source>
         <translation>加入通话</translation>
     </message>
@@ -6268,10 +6399,6 @@ Please edit phone number and try again.</source>
     <message>
         <source>Screen</source>
         <translation>屏幕</translation>
-    </message>
-    <message>
-        <source>OK</source>
-        <translation>行</translation>
     </message>
     <message>
         <source>DECLINE</source>
@@ -6298,14 +6425,6 @@ Please edit phone number and try again.</source>
         <translation>VCS 电话</translation>
     </message>
     <message>
-        <source>To use microphone you need to allow access to the microphone in the system settings</source>
-        <translation>要使用麦克风，请在系统设置中允许访问麦克风</translation>
-    </message>
-    <message>
-        <source>Microphone permissions</source>
-        <translation>麦克风访问</translation>
-    </message>
-    <message>
         <source>To use camera you need to allow access to the camera in the system settings</source>
         <translation>要使用相机，请在系统设置中允许访问相机</translation>
     </message>
@@ -6325,20 +6444,36 @@ Please edit phone number and try again.</source>
         <source>CALL MEMBERS</source>
         <translation>通话参与者</translation>
     </message>
+    <message>
+        <source>Minimize</source>
+        <translation>降低</translation>
+    </message>
+    <message>
+        <source>Maximize</source>
+        <translation>放大</translation>
+    </message>
+    <message>
+        <source>Raise call window</source>
+        <translation>展开通话窗口</translation>
+    </message>
+    <message>
+        <source>Move the window
+or open call
+with click</source>
+        <translation>移动视窗
+或打开通话
+通过点击</translation>
+    </message>
 </context>
 <context>
     <name>voip_video_panel</name>
-    <message>
-        <source>Video</source>
-        <translation>录影带</translation>
-    </message>
     <message>
         <source>Screen</source>
         <translation>萤幕</translation>
     </message>
     <message>
         <source>More</source>
-        <translation>更多</translation>
+        <translation>然而</translation>
     </message>
     <message>
         <source>Go to chat</source>
@@ -6355,10 +6490,6 @@ Please edit phone number and try again.</source>
     <message>
         <source>Settings</source>
         <translation>设定值</translation>
-    </message>
-    <message>
-        <source>End</source>
-        <translation>完成</translation>
     </message>
     <message>
         <source>Show all</source>
@@ -6385,10 +6516,6 @@ Please edit phone number and try again.</source>
         <translation>参加人数超过%1通话中，无法使用口罩</translation>
     </message>
     <message>
-        <source>Mic</source>
-        <translation>麦克风</translation>
-    </message>
-    <message>
         <source>Only the creator of the webinar can show the video</source>
         <translation>只有网络研讨会的创建者可以显示视频</translation>
     </message>
@@ -6406,19 +6533,121 @@ Please edit phone number and try again.</source>
     </message>
     <message>
         <source>Invite</source>
-        <translation>邀请</translation>
+        <translation>添加</translation>
     </message>
     <message>
         <source>Link copied</source>
         <translation>链接已复制</translation>
     </message>
     <message>
-        <source>Sound</source>
-        <translation>音效</translation>
-    </message>
-    <message>
         <source>Wait for connection</source>
         <translation>期望连接</translation>
+    </message>
+    <message>
+        <source>Mute</source>
+        <translation>关掉
+麦克风</translation>
+    </message>
+    <message>
+        <source>Unmute</source>
+        <translation>启用
+麦克风</translation>
+    </message>
+    <message>
+        <source>Stop
+Video</source>
+        <translation>关掉
+视频</translation>
+    </message>
+    <message>
+        <source>Start
+Video</source>
+        <translation>启用
+视频</translation>
+    </message>
+    <message>
+        <source>Disable
+Sound</source>
+        <translation>关掉
+声音</translation>
+    </message>
+    <message>
+        <source>Enable
+Sound</source>
+        <translation>启用
+声音</translation>
+    </message>
+    <message>
+        <source>Stop
+Share</source>
+        <translation>停止
+显示</translation>
+    </message>
+    <message>
+        <source>Share
+Screen</source>
+        <translation>分享这个
+屏幕</translation>
+    </message>
+    <message>
+        <source>Microphone not found. Check that it is connected and working.</source>
+        <translation>未检测到麦克风。检查它是否连接正常</translation>
+    </message>
+    <message>
+        <source>Allow access to microphone. Click &quot;Settings&quot; and allow application access to microphone</source>
+        <translation>允许使用麦克风。点击“设置”，并允许应用访问麦克风</translation>
+    </message>
+    <message>
+        <source>No devices found</source>
+        <translation>找不到设备</translation>
+    </message>
+    <message>
+        <source>End
+Meeting</source>
+        <translation>去完成</translation>
+    </message>
+    <message>
+        <source>SHOW ALL</source>
+        <translation>显示所有</translation>
+    </message>
+</context>
+<context>
+    <name>voip_video_panel_mini</name>
+    <message>
+        <source>End meeting</source>
+        <translation>去完成</translation>
+    </message>
+    <message>
+        <source>Mute</source>
+        <translation>麦克风静音</translation>
+    </message>
+    <message>
+        <source>Unmute</source>
+        <translation>打开麦克风</translation>
+    </message>
+    <message>
+        <source>Stop video</source>
+        <translation>关闭视频</translation>
+    </message>
+    <message>
+        <source>Start video</source>
+        <translation>播放视频</translation>
+    </message>
+    <message>
+        <source>Disable sound</source>
+        <translation>关掉声音</translation>
+    </message>
+    <message>
+        <source>Enable sound</source>
+        <translation>打开声音</translation>
+    </message>
+    <message>
+        <source>Stop share</source>
+        <translation>停止显示</translation>
+    </message>
+    <message>
+        <source>Start share</source>
+        <translation>分享画面</translation>
     </message>
 </context>
 <context>

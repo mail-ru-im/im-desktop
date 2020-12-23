@@ -143,6 +143,7 @@ loader_errors upload_task::send_data_to_server()
     if (packet.get_status_code() == 200)
     {
         file_url_ = packet.get_file_url();
+        file_id_ = packet.get_file_id();
         assert(bytes_sent_ == file_size_);
     }
     else
@@ -174,6 +175,11 @@ const std::string& upload_task::get_file_url() const
     return file_url_;
 }
 
+const std::string& upload_task::get_file_id() const
+{
+    return file_id_;
+}
+
 void upload_task::set_handler(std::shared_ptr<upload_progress_handler> _handler)
 {
     handler_ = std::move(_handler);
@@ -200,6 +206,7 @@ std::shared_ptr<web_file_info> upload_task::make_info() const
     info->set_bytes_transfer(bytes_sent_);
     info->set_file_size(file_size_);
     info->set_file_url(file_url_);
+    info->set_file_id(file_id_);
 
     return info;
 }

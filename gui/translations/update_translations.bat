@@ -1,5 +1,5 @@
 @ECHO OFF
-SET InFile=..\..\CMakeLists.txt
+SET InFile=..\..\requirements\common.cmake
 
 FOR /F "tokens=*" %%A IN ('FINDSTR /N "set(EXT_LIBS_VERSION " "%InFile%"') DO (
     set EXT_VERSION=%%A

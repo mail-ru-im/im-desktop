@@ -35,6 +35,7 @@
 #include "utils/PhoneFormatter.h"
 #include "IntroduceYourself.h"
 #include "settings/ContactUs.h"
+#include "url_config.h"
 
 namespace
 {
@@ -179,6 +180,16 @@ namespace
     int topButtonWidgetHeight()
     {
         return Utils::scale_value(44);
+    }
+
+    QString loginMailLink()
+    {
+        if (const auto mail_win = Ui::getUrlConfig().getUrlMailWin();
+                !mail_win.isEmpty() &&
+                config::get().is_on(config::features::otp_login_open_mail_link))
+            return u"https://" % mail_win;
+
+        return {};
     }
 }
 
@@ -521,11 +532,7 @@ namespace Ui
             mainStakedWidget_->layout()->setAlignment(gdprWidget, Qt::AlignHCenter);
         }
 
-        connect(keepLogged_, &QCheckBox::toggled, [](bool v)
-        {
-            if (get_gui_settings()->get_value(settings_keep_logged_in, settings_keep_logged_in_default()) != v)
-                get_gui_settings()->set_value(settings_keep_logged_in, v);
-        });
+        connect(keepLogged_, &QCheckBox::toggled, &LoginPage::updateKeedLoggedInSetting);
 
         init();
         setFocus();
@@ -685,7 +692,7 @@ namespace Ui
         loginStakedWidget_->setEnabled(true);
         changePageButton_->setVisible((config::get().is_on(config::features::login_by_phone_allowed) && _index != LoginSubpage::SUBPAGE_PHONE_CONF_INDEX) || _index == LoginSubpage::SUBPAGE_REPORT);
         proxySettingsButton_->setVisible(_index == LoginSubpage::SUBPAGE_PHONE_LOGIN_INDEX || _index == LoginSubpage::SUBPAGE_UIN_LOGIN_INDEX);
-        reportButton_->setVisible(_index == LoginSubpage::SUBPAGE_PHONE_LOGIN_INDEX || _index == LoginSubpage::SUBPAGE_UIN_LOGIN_INDEX);
+        reportButton_->setVisible(!Features::isContactUsViaBackend() && (_index == LoginSubpage::SUBPAGE_PHONE_LOGIN_INDEX || _index == LoginSubpage::SUBPAGE_UIN_LOGIN_INDEX));
         titleLabel_->setVisible(true);
         entryHint_->setVisible(true);
         buttonsWidget_->setVisible(true);
@@ -717,7 +724,7 @@ namespace Ui
             titleLabel_->setText(getTitleText(isCallCheck(checks_) ? HintType::LoginByPhoneCall : HintType::EnterSMSCode));
             entryHint_->setText(hintLabelText(isCallCheck(checks_) ? HintType::LoginByPhoneCall : HintType::EnterSMSCode));
             entryHint_->appendPhone(PhoneFormatter::formatted(phone_->getPhoneCode() % phone_->getPhone()));
-            entryHint_->appendLink(QT_TRANSLATE_NOOP("login_page", "Change"));
+            entryHint_->appendLink(QT_TRANSLATE_NOOP("login_page", "Change"), ql1s("#"));
             codeInput_->setCodeLength(codeLength_);
             if (isCallCheck(checks_))
                 GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::reg_page_callui);
@@ -864,6 +871,9 @@ namespace Ui
         static const auto checkServerResponseEachNthMsec = 50;
         static const auto maxTriesOfCheckingForServerResponse = (waitServerResponseForPhoneNumberCheckInMsec / checkServerResponseEachNthMsec);
         static int triesPhoneAuth = 0;
+
+        updateKeedLoggedInSetting(keepLogged_->isChecked());
+
         if (currentPage() == LoginSubpage::SUBPAGE_PHONE_LOGIN_INDEX)
         {
             if (isEnabled())
@@ -894,14 +904,14 @@ namespace Ui
             bool isMobile = false;
             for (const auto& status : receivedPhoneInfo_.prefix_state_)
             {
-                if (QString::fromStdString(status).toLower() == u"mobile")
+                if (status.toLower() == u"mobile")
                 {
                     isMobile = true;
                     break;
                 }
             }
             const auto isOk = QString::fromStdString(receivedPhoneInfo_.status_).toLower() == u"ok";
-            const auto message = !receivedPhoneInfo_.printable_.empty() ? QString::fromStdString(receivedPhoneInfo_.printable_[0]) : QString();
+            const auto message = !receivedPhoneInfo_.printable_.empty() ? receivedPhoneInfo_.printable_.front() : QString();
             if ((!isMobile || !isOk) && !message.isEmpty())
             {
                 errorLabel_->setVisible(true);
@@ -1070,7 +1080,7 @@ namespace Ui
             titleLabel_->setMaxWidthAndResize(controlsWidth());
             entryHint_->setText(hintLabelText(hintType));
             entryHint_->appendPhone(PhoneFormatter::formatted(phone_->getPhoneCode() % phone_->getPhone()));
-            entryHint_->appendLink(QT_TRANSLATE_NOOP("login_page", "Change"));
+            entryHint_->appendLink(QT_TRANSLATE_NOOP("login_page", "Change"), ql1s("#"));
             updatePage();
         }
 
@@ -1096,7 +1106,7 @@ namespace Ui
         titleLabel_->setMaxWidthAndResize(controlsWidth());
         entryHint_->setText(hintLabelText(HintType::EnterPhoneCode));
         entryHint_->appendPhone(PhoneFormatter::formatted(phone_->getPhoneCode() % phone_->getPhone()));
-        entryHint_->appendLink(QT_TRANSLATE_NOOP("login_page", "Change"));
+        entryHint_->appendLink(QT_TRANSLATE_NOOP("login_page", "Change"), ql1s("#"));
         updatePage();
 
         Ui::GetDispatcher()->getCodeByPhoneCall(ivrUrl_);
@@ -1147,6 +1157,12 @@ namespace Ui
         {
             codeInput_->setFocus();
         }
+    }
+
+    void Ui::LoginPage::updateKeedLoggedInSetting(bool _keep_logged_in)
+    {
+        if (get_gui_settings()->get_value(settings_keep_logged_in, settings_keep_logged_in_default()) != _keep_logged_in)
+            get_gui_settings()->set_value(settings_keep_logged_in, _keep_logged_in);
     }
 
     void LoginPage::prepareLoginByPhone()
@@ -1270,7 +1286,7 @@ namespace Ui
         if (!isPassPage && config::get().is_on(config::features::explained_forgot_password))
             entryHint_->appendLink(QT_TRANSLATE_NOOP("login_page", "Mail.ru for business"), getPasswordLink());
         else if (isPassPage)
-            entryHint_->appendLink(uinInput_->text(), {});
+            entryHint_->appendLink(uinInput_->text(), loginMailLink(), true);
 
         if (!isPassPage)
             uinInput_->setFocus();
@@ -1393,7 +1409,7 @@ namespace Ui
         if (const auto suggested = config::get().string(config::values::external_config_preset_url); !suggested.empty())
             edit->setText(QString::fromUtf8(suggested.data(), suggested.size()));
 
-        Utils::ApplyStyle(edit, Styling::getParameters().getLineEditCommonQss() % qsl("QLineEdit{background-color:%1;}").arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_BRIGHT, 0.5)));
+        Utils::ApplyStyle(edit, Styling::getParameters().getLineEditCommonQss() % ql1s("QLineEdit{background-color:%1;}").arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_BRIGHT, 0.5)));
 
         auto layout = Utils::emptyVLayout(host);
         layout->setContentsMargins(Utils::scale_value(8), Utils::scale_value(16), Utils::scale_value(8), 0);
@@ -1411,10 +1427,10 @@ namespace Ui
             if (const auto host = edit->text().trimmed(); !host.isEmpty())
             {
                 auto loginText = uinInput_->text().trimmed();
-                if (const auto idx = loginText.indexOf(ql1c('#')); idx != -1)
+                if (const auto idx = loginText.indexOf(u'#'); idx != -1)
                     loginText = std::move(loginText).left(idx);
 
-                uinInput_->setText(loginText % ql1c('#') % host);
+                uinInput_->setText(loginText % u'#' % host);
                 nextButton_->click();
             }
         }
@@ -1535,9 +1551,15 @@ namespace Ui
                                      : isCallCheck(checks_) ? "call_number" : "sms" });
 
             GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::reg_error_login, props);
-            GetDispatcher()->post_im_stats_to_core(page == LoginSubpage::SUBPAGE_UIN_LOGIN_INDEX
-                ? core::stats::im_stat_event_names::reg_error_uin
-                : core::stats::im_stat_event_names::reg_error_code);
+            if (page == LoginSubpage::SUBPAGE_UIN_LOGIN_INDEX)
+            {
+                GetDispatcher()->post_im_stats_to_core(core::stats::im_stat_event_names::reg_error_uin);
+            }
+            else
+            {
+                GetDispatcher()->post_im_stats_to_core(core::stats::im_stat_event_names::reg_error_code);
+                GetDispatcher()->post_im_stats_to_core(core::stats::im_stat_event_names::reg_error_code_sms);
+            }
             break;
         case core::le_wrong_login_2x_factor:
             errorLabel_->setText(page == LoginSubpage::SUBPAGE_UIN_LOGIN_INDEX ?
@@ -1546,9 +1568,15 @@ namespace Ui
             errorLabel_->setMinimumHeight(errorLabelMinHeight(page == LoginSubpage::SUBPAGE_UIN_LOGIN_INDEX ? 4 : 2));
 
             GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::reg_error_login, props);
-            GetDispatcher()->post_im_stats_to_core(page == LoginSubpage::SUBPAGE_UIN_LOGIN_INDEX
-                ? core::stats::im_stat_event_names::reg_error_uin
-                : core::stats::im_stat_event_names::reg_error_code);
+            if (page == LoginSubpage::SUBPAGE_UIN_LOGIN_INDEX)
+            {
+                GetDispatcher()->post_im_stats_to_core(core::stats::im_stat_event_names::reg_error_uin);
+            }
+            else
+            {
+                GetDispatcher()->post_im_stats_to_core(core::stats::im_stat_event_names::reg_error_code);
+                GetDispatcher()->post_im_stats_to_core(core::stats::im_stat_event_names::reg_error_code_2fa);
+            }
             break;
         case core::le_error_validate_phone:
             errorLabel_->setText(QT_TRANSLATE_NOOP("login_page", "Invalid phone number"));
@@ -1655,8 +1683,8 @@ namespace Ui
     }
 
     EntryHintWidget::EntryHintWidget(QWidget * _parent, const QString& _initialText)
-        : QWidget(_parent),
-        explained_(config::get().is_on(config::features::explained_forgot_password))
+        : LinkAccessibleWidget(_parent)
+        , explained_(config::get().is_on(config::features::explained_forgot_password))
     {
         const auto text = explained_
             ? QT_TRANSLATE_NOOP("login_page", "To login use you corporative account created at")
@@ -1671,7 +1699,7 @@ namespace Ui
         textUnit_->setLineSpacing(Utils::scale_value(7));
 
         if (explained_)
-            appendLink(getPasswordLink());
+            appendLink(getPasswordLink(), getPasswordLink());
 
         setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
         setMouseTracking(true);
@@ -1685,24 +1713,30 @@ namespace Ui
 
     void Ui::EntryHintWidget::appendPhone(const QString & _text)
     {
-        const auto delim = (textUnit_->getLineCount() > 1) ? ql1c(' ') : ql1c('\n');
+        const auto delim = (textUnit_->getLineCount() > 1) ? u' ' : u'\n';
         textUnit_->setText(textUnit_->getText() % delim % _text);
         updateSize();
     }
 
-    void EntryHintWidget::appendLink(const QString& _text, const QString& _link)
+    void EntryHintWidget::appendLink(const QString& _text, const QString& _link, bool _forceShowLink)
     {
-        const QString text = ql1c(' ') % _text;
-        TextRendering::TextUnitPtr link = TextRendering::MakeTextUnit(text);
+        const QString text = u' ' % _text;
+        const auto showLinks = _link.isEmpty()
+            ? TextRendering::LinksVisible::DONT_SHOW_LINKS
+            : TextRendering::LinksVisible::SHOW_LINKS;
+
+        TextRendering::TextUnitPtr link = TextRendering::MakeTextUnit(text, {}, showLinks);
+
         link->init(getHintFont(),
-            Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID),
+            _forceShowLink ? Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY) : Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID),
             Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY),
             QColor(), QColor(),
             TextRendering::HorAligment::CENTER);
         textUnit_->setLineSpacing(getLineSpacing());
 
         textUnit_->append(std::move(link));
-        textUnit_->applyLinks({ {_text, _link} });
+        if (!_link.isEmpty())
+            textUnit_->applyLinks({ {_text, _link} });
 
         updateSize();
     }
@@ -1710,7 +1744,7 @@ namespace Ui
     void EntryHintWidget::updateSize()
     {
         const auto desiredWidth = std::min(parentWidget()->width(), controlsWidth());
-        setFixedHeight(textUnit_->getHeight(desiredWidth));
+        setFixedHeight(textUnit_->getHeight(desiredWidth, TextRendering::CallType::FORCE));
 
         update();
     }
@@ -1726,16 +1760,18 @@ namespace Ui
 
     void EntryHintWidget::mouseReleaseEvent(QMouseEvent * _event)
     {
-        if (textUnit_->isOverLink(_event->pos()))
+        if (const auto link = textUnit_->getLink(_event->pos()); !link.isEmpty())
         {
-            if (explained_)
+            if (u"#" == link)
             {
-                QDesktopServices::openUrl(QUrl(getPasswordLink()));
-                GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::login_forgot_password);
+                Q_EMIT changeClicked();
             }
             else
             {
-                Q_EMIT changeClicked();
+                if (link == getPasswordLink())
+                    GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::login_forgot_password);
+
+                QDesktopServices::openUrl(QUrl(link));
             }
         }
 

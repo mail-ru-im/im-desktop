@@ -39,13 +39,15 @@ namespace
 
 UI_COMPLEX_MESSAGE_NS_BEGIN
 
-StickerBlock::StickerBlock(ComplexMessageItem *parent,  const HistoryControl::StickerInfoSptr& _info)
-    : GenericBlock(parent, QT_TRANSLATE_NOOP("contact_list", "Sticker"), MenuFlagNone, false)
+StickerBlock::StickerBlock(ComplexMessageItem *_parent,  const HistoryControl::StickerInfoSptr& _info)
+    : GenericBlock(_parent, QT_TRANSLATE_NOOP("contact_list", "Sticker"), MenuFlagNone, false)
     , Info_(_info)
     , Layout_(nullptr)
     , LastSize_(getGhostSize())
 {
     assert(Info_);
+
+    Testing::setAccessibleName(this, u"AS HistoryPage messageSticker " % QString::number(_parent->getId()));
 
     Layout_ = new StickerBlockLayout();
     setLayout(Layout_);
@@ -104,21 +106,15 @@ QRect StickerBlock::setBlockGeometry(const QRect &ltr)
 void StickerBlock::requestPinPreview()
 {
     auto conn = std::make_shared<QMetaObject::Connection>();
-    *conn = connect(GetDispatcher(), &core_dispatcher::onSticker, this,
-        [conn, this](const qint32 _error, const qint32 _setId, const qint32 _stickerId)
+    *conn = connect(&Stickers::getCache(), &Stickers::Cache::stickerUpdated, this,
+        [conn, this](qint32 _error, const QString&, qint32 _setId, qint32 _stickerId)
     {
         if (int(Info_->SetId_) == _setId && int(Info_->StickerId_) == _stickerId)
         {
             if (_error == 0 && getParentComplexMessage())
             {
-                const auto sticker = getSticker(Info_->SetId_, Info_->StickerId_);
-                if (sticker)
-                {
-                    auto unused = false;
-                    auto image = sticker->getImage(getStickerSize(), false, unused);
-
-                    Q_EMIT getParentComplexMessage()->pinPreview(QPixmap::fromImage(image));
-                }
+                if (const auto sticker = getSticker(Info_->SetId_, Info_->StickerId_))
+                    Q_EMIT getParentComplexMessage()->pinPreview(sticker->getData(getStickerSize()).getPixmap());
             }
             disconnect(*conn);
         }
@@ -151,7 +147,7 @@ void StickerBlock::drawBlock(QPainter &p, const QRect& _rect, const QColor& _quo
         if (_quoteColor.isValid())
         {
             p.setBrush(QBrush(_quoteColor));
-            p.drawRoundRect(rect, Utils::scale_value(8), Utils::scale_value(8));
+            p.drawRoundedRect(rect, Utils::scale_value(8), Utils::scale_value(8), Qt::RelativeSize);
         }
     }
 }
@@ -173,7 +169,7 @@ void StickerBlock::connectStickerSignal(const bool _isConnected)
     if (_isConnected)
     {
         connections_.assign({
-            connect(GetDispatcher(), &core_dispatcher::onSticker,  this, &StickerBlock::onSticker),
+            connect(&Stickers::getCache(), &Stickers::Cache::stickerUpdated,  this, &StickerBlock::onSticker),
             connect(GetDispatcher(), &core_dispatcher::onStickers, this, &StickerBlock::onStickers)
         });
     }
@@ -187,8 +183,7 @@ void StickerBlock::loadSticker()
     if (!sticker)
         return;
 
-    bool scaled = false;
-    Sticker_ = sticker->getImage(getStickerSize(), false, scaled);
+    Sticker_ = sticker->getData(getStickerSize()).getPixmap().toImage();
 
     if (sticker->isFailed())
         initPlaceholder();
@@ -242,7 +237,7 @@ void StickerBlock::updateFonts()
 {
 }
 
-void StickerBlock::onSticker(const qint32 _error, const qint32 _setId, const qint32 _stickerId)
+void StickerBlock::onSticker(const qint32 _error, const QString&, const qint32 _setId, const qint32 _stickerId)
 {
     if (_stickerId <= 0)
         return;

@@ -26,6 +26,13 @@
 #include "macos/MetalRenderer.h"
 #endif
 
+namespace
+{
+    constexpr std::chrono::milliseconds hideTimeout() noexcept { return std::chrono::seconds(2); }
+    constexpr std::chrono::milliseconds hideTimeoutShort() noexcept { return std::chrono::milliseconds(100); }
+    constexpr std::chrono::milliseconds unloadTimeout() noexcept { return std::chrono::seconds(20); }
+    constexpr std::chrono::milliseconds unloadTimeoutLottie() noexcept { return std::chrono::seconds(5); }
+}
 
 namespace Ui
 {
@@ -158,7 +165,6 @@ namespace Ui
             player_(_player),
             lastSoundMode_(_copyFrom ? _copyFrom->lastSoundMode_ : SoundMode::ActiveOff),
             gotAudio_(_copyFrom ? _copyFrom->gotAudio_ : false),
-            positionSliderTimer_(new QTimer(this)),
             fullscreen_(_mode == u"full_screen"),
             soundOnByUser_(false)
     {
@@ -501,7 +507,7 @@ namespace Ui
 
     void VideoPlayerControlPanel::videoDurationChanged(const qint64 _duration)
     {
-        duration_ = _duration;;
+        duration_ = _duration;
 
         progressSlider_->setMinimum(0);
         progressSlider_->setMaximum((int) _duration);
@@ -534,8 +540,6 @@ namespace Ui
         connect(progressSlider_, &QSlider::sliderMoved, this, [this](int /*_value*/)
         {
             player_->setPosition(progressSlider_->value());
-
-            positionSliderTimer_->stop();
         });
 
 
@@ -755,20 +759,18 @@ namespace Ui
         soundButton_->setHoverColor(Qt::white);
     }
 
-    static constexpr auto unloadTimeout = std::chrono::seconds(20);
-
     //////////////////////////////////////////////////////////////////////////
     // DialogPlayer
     //////////////////////////////////////////////////////////////////////////
     DialogPlayer::DialogPlayer(QWidget* _parent, const uint32_t _flags, const QPixmap& _preview)
         : QWidget(_parent)
         , attachedPlayer_(nullptr)
+        , isLottie_(_flags & DialogPlayer::Flags::lottie)
+        , isLottieInstantPreview_(_flags & DialogPlayer::Flags::lottie_instant_preview)
         , showControlPanel_(_flags & DialogPlayer::Flags::enable_control_panel)
         , isGalleryView_(false)
         , preview_(_preview)
     {
-        const QString mode = ((_flags & DialogPlayer::Flags::as_window) ? qsl("window") : qsl("dialog"));
-
         if (DialogPlayer::Flags::as_window & _flags)
         {
             if constexpr (platform::is_linux())
@@ -783,9 +785,6 @@ namespace Ui
 
             setCursor(Qt::PointingHandCursor);
         }
-
-        if (_flags & DialogPlayer::Flags::gpu_renderer && useMetalRenderer())
-            setParent(nullptr);
 
         renderer_ = createRenderer(this, _flags & DialogPlayer::Flags::gpu_renderer, _flags & DialogPlayer::Flags::dialog_mode);
         renderer_->updateFrame(_preview.toImage());
@@ -803,30 +802,25 @@ namespace Ui
         if (GetAppConfig().WatchGuiMemoryEnabled())
             FFmpegPlayerMemMonitor::instance().watchFFmpegPlayer(ffplayer_);
 
-        init(_parent, (_flags &DialogPlayer::Flags::is_gif),(_flags &DialogPlayer::Flags::is_sticker));
+        init(_parent, (_flags &DialogPlayer::Flags::is_gif), (_flags &DialogPlayer::Flags::is_sticker));
 
         isFullScreen_ = DialogPlayer::Flags::as_window & _flags;
 
         rootLayout_->addWidget(renderer_->getWidget());
 
-        controlPanel_ = std::make_unique<Ui::VideoPlayerControlPanel>(nullptr, this, ffplayer_, mode);
-        controlPanel_->installEventFilter(this);
-        controlPanel_->hide();
+        const auto isDialogMode = _flags & DialogPlayer::Flags::dialog_mode;
 
-        if (_flags & DialogPlayer::Flags::gpu_renderer && useMetalRenderer())
-            controlPanel_->setSeparateWindowMode();
+        if (showControlPanel_ || isDialogMode)
+        {
+            initControlPanel(nullptr, (_flags & DialogPlayer::Flags::as_window) ? qsl("window") : qsl("dialog"));
+            controlPanel_->hide();
+            if (_flags & DialogPlayer::Flags::gpu_renderer && useMetalRenderer())
+                controlPanel_->setSeparateWindowMode();
+        }
 
-        connect(controlPanel_.get(), &VideoPlayerControlPanel::signalFullscreen, this, &DialogPlayer::fullScreen);
-        connect(controlPanel_.get(), &VideoPlayerControlPanel::playClicked, this, &DialogPlayer::playClicked);
-        connect(controlPanel_.get(), &VideoPlayerControlPanel::mouseRightClicked, this, &DialogPlayer::timerHide);
-        connect(controlPanel_.get(), &VideoPlayerControlPanel::mouseRightClicked, this, &DialogPlayer::mouseRightClicked);
-
-        if (_flags & DialogPlayer::Flags::dialog_mode)
+        if (isDialogMode)
             dialogControls_ = createControls(_flags);
 
-        unloadTimer_.setSingleShot(true);
-        unloadTimer_.setInterval(unloadTimeout);
-        connect(&unloadTimer_, &QTimer::timeout, this, &DialogPlayer::unloadMedia);
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::applicationLocked, this, [this]()
         {
             setPaused(true, false);
@@ -839,6 +833,8 @@ namespace Ui
         , attachedPlayer_(_attached)
         , mediaPath_(_attached->mediaPath_)
         , isGif_(_attached->isGif_)
+        , isLottie_(_attached->isLottie_)
+        , isLottieInstantPreview_(_attached->isLottieInstantPreview_)
         , isSticker_(_attached->isSticker_)
         , showControlPanel_(true)
     {
@@ -847,9 +843,6 @@ namespace Ui
             setWindowFlags(Qt::Tool | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint | Qt::BypassWindowManagerHint);
         else
             setWindowFlags(Qt::Tool | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint);
-
-        if (useMetalRenderer())
-            setParent(nullptr);
 
         init(_parent, isGif_, isSticker_);
 
@@ -865,13 +858,7 @@ namespace Ui
         QWindowsWindowFunctions::setHasBorderInFullScreen(windowHandle(), true);
 #endif // WIN
 
-        controlPanel_ = std::make_unique<Ui::VideoPlayerControlPanel>(_attached->controlPanel_.get(), this, ffplayer_, qsl("window"));
-        controlPanel_->installEventFilter(this);
-        connect(controlPanel_.get(), &VideoPlayerControlPanel::signalFullscreen, this, &DialogPlayer::fullScreen);
-        connect(controlPanel_.get(), &VideoPlayerControlPanel::playClicked, this, &DialogPlayer::playClicked);
-        connect(controlPanel_.get(), &VideoPlayerControlPanel::mouseRightClicked, this, &DialogPlayer::timerHide);
-        connect(controlPanel_.get(), &VideoPlayerControlPanel::mouseRightClicked, this, &DialogPlayer::mouseRightClicked);
-
+        initControlPanel(_attached->controlPanel_.get(), qsl("window"));
         if (useMetalRenderer())
             controlPanel_->setSeparateWindowMode();
 
@@ -898,9 +885,6 @@ namespace Ui
     {
         controlsShowed_ = false;
 
-        timerHide_ = new QTimer(this);
-        timerMousePress_ = new QTimer(this);
-
         parent_ = _parent;
         isLoad_ = false;
         isGif_ = _isGif;
@@ -909,8 +893,6 @@ namespace Ui
 
         rootLayout_ = Utils::emptyVLayout(this);
 
-        connect(timerHide_, &QTimer::timeout, this, &DialogPlayer::timerHide);
-        connect(timerMousePress_, &QTimer::timeout, this, &DialogPlayer::timerMousePress);
         connect(ffplayer_, &FFMpegPlayer::mouseMoved, this, &DialogPlayer::playerMouseMoved);
         connect(ffplayer_, &FFMpegPlayer::mouseLeaveEvent, this, &DialogPlayer::playerMouseLeaved);
         connect(ffplayer_, &FFMpegPlayer::fileLoaded, this, &DialogPlayer::onLoaded);
@@ -945,49 +927,48 @@ namespace Ui
 
     bool DialogPlayer::eventFilter(QObject* _obj, QEvent* _event)
     {
+        auto updateVolume = [this](bool _hovered)
+        {
+            if (controlPanel_ && !isGalleryView_ && !isFullScreen_ && !soundOnByUser_ && !isGif_ && !isLottie_)
+            {
+                controlPanel_->updateVolume(_hovered);
+                if (state() == QMovie::MovieState::Running)
+                    setMute(controlPanel_->getVolume() == 0);
+            }
+        };
+
+        const auto objIsPanel = _obj && _obj == qobject_cast<QObject*>(controlPanel_.get());
+
         switch (_event->type())
         {
             case QEvent::Enter:
             {
-                QObject* objectcontrolPanel = qobject_cast<QObject*>(controlPanel_.get());
-                if (!isGalleryView_ && !isFullScreen_ && !soundOnByUser_ && !isGif_)
-                {
-                    controlPanel_->updateVolume(true);
-                    if (state() == QMovie::MovieState::Running)
-                        setMute(controlPanel_->getVolume() == 0);
-                }
-                if (_obj == objectcontrolPanel)
-                {
+                updateVolume(true);
+                if (objIsPanel && timerHide_)
                     timerHide_->stop();
-                }
                 break;
             }
             case QEvent::Leave:
             {
-                QObject* objectcontrolPanel = qobject_cast<QObject*>(controlPanel_.get());
-                if (!isGalleryView_ && !isFullScreen_ && !soundOnByUser_ && !isGif_)
-                {
-                    controlPanel_->updateVolume(false);
-                    if (state() == QMovie::MovieState::Running)
-                        setMute(controlPanel_->getVolume() == 0);
-                }
-
-                if (_obj == objectcontrolPanel)
-                {
-                    timerHide_->start(hideTimeoutShort);
-                }
+                updateVolume(false);
+                if (objIsPanel)
+                    startTimerHide(hideTimeoutShort());
                 break;
             }
             case QEvent::MouseMove:
             {
-                QObject* objectcontrolPanel = qobject_cast<QObject*>(controlPanel_.get());
-                if (_obj == objectcontrolPanel && controlPanel_->isSeparateWindowMode())
+                if (objIsPanel && controlPanel_ && controlPanel_->isSeparateWindowMode())
                 {
                     QMouseEvent* me = static_cast<QMouseEvent*>(_event);
                     if (controlPanel_->isOverControls(me->pos()))
-                        timerHide_->stop();
+                    {
+                        if (timerHide_)
+                            timerHide_->stop();
+                    }
                     else
-                        timerHide_->start(hideTimeout);
+                    {
+                        startTimerHide(hideTimeout());
+                    }
                 }
                 break;
             }
@@ -1013,7 +994,6 @@ namespace Ui
     void DialogPlayer::timerHide()
     {
         showControlPanel(false);
-        timerHide_->stop();
         controlsShowed_ = false;
     }
 
@@ -1021,6 +1001,8 @@ namespace Ui
     {
         if (!showControlPanel_)
             return;
+
+        assert(controlPanel_);
 
         QRect panelGeom;
 
@@ -1059,16 +1041,13 @@ namespace Ui
 
     void DialogPlayer::showControlPanel()
     {
-        if (isGif_)
-        {
+        if (isGif_ || isLottie_)
             return;
-        }
 
         if (controlsShowed_)
             return;
 
-        timerHide_->stop();
-        timerHide_->start(hideTimeout);
+        startTimerHide(hideTimeout());
 
         controlsShowed_ = true;
         showControlPanel(true);
@@ -1076,8 +1055,7 @@ namespace Ui
 
     void DialogPlayer::playerMouseLeaved()
     {
-        timerHide_->stop();
-        timerHide_->start(hideTimeoutShort);
+        startTimerHide(hideTimeoutShort());
     }
 
     bool DialogPlayer::openMedia(const QString& _mediaPath)
@@ -1085,7 +1063,7 @@ namespace Ui
         isLoad_ = true;
         mediaPath_ = _mediaPath;
 
-        return ffplayer_->openMedia(_mediaPath);
+        return ffplayer_->openMedia(_mediaPath, isLottie_, isLottieInstantPreview_);
     }
 
     void DialogPlayer::setMedia(const QString &_mediaPath)
@@ -1110,7 +1088,9 @@ namespace Ui
         else
         {
             ffplayer_->pause();
-            controlPanel_->setPause(_paused);
+
+            if (controlPanel_)
+                controlPanel_->setPause(_paused);
 
             if (ffplayer_->getStarted())
                 showControlPanel();
@@ -1141,20 +1121,24 @@ namespace Ui
 
     void DialogPlayer::setVolume(const int32_t _volume, bool _toRestore)
     {
-        controlPanel_->setVolume((double) _volume, _toRestore);
+        if (controlPanel_)
+            controlPanel_->setVolume(_volume, _toRestore);
     }
 
     int32_t DialogPlayer::getVolume() const
     {
-        return (int32_t) controlPanel_->getVolume();
+        return controlPanel_ ? controlPanel_->getVolume() : 0;
     }
 
     void DialogPlayer::setMute(bool _mute)
     {
-        if (_mute)
-            controlPanel_->setVolume(0, false);
-        else
-            controlPanel_->restoreVolume();
+        if (controlPanel_)
+        {
+            if (_mute)
+                controlPanel_->setVolume(0, false);
+            else
+                controlPanel_->restoreVolume();
+        }
 
         if (dialogControls_)
             dialogControls_->setMute(_mute);
@@ -1190,15 +1174,58 @@ namespace Ui
 
     void DialogPlayer::changeFullScreen()
     {
-        bool isFullScreen = controlPanel_->isFullscreen();
-
+        bool isFullScreen = controlPanel_ && controlPanel_->isFullscreen();
         fullScreen(!isFullScreen);
+    }
 
+    void DialogPlayer::initControlPanel(VideoPlayerControlPanel* _copyFrom, const QString& _mode)
+    {
+        controlPanel_ = std::make_unique<Ui::VideoPlayerControlPanel>(_copyFrom, this, ffplayer_, _mode);
+        controlPanel_->installEventFilter(this);
+
+        connect(controlPanel_.get(), &VideoPlayerControlPanel::signalFullscreen, this, &DialogPlayer::fullScreen);
+        connect(controlPanel_.get(), &VideoPlayerControlPanel::playClicked, this, &DialogPlayer::playClicked);
+        connect(controlPanel_.get(), &VideoPlayerControlPanel::mouseRightClicked, this, &DialogPlayer::timerHide);
+        connect(controlPanel_.get(), &VideoPlayerControlPanel::mouseRightClicked, this, &DialogPlayer::mouseRightClicked);
+    }
+
+    void DialogPlayer::initTimerHide()
+    {
+        if (timerHide_)
+            return;
+
+        timerHide_ = new QTimer(this);
+        timerHide_->setSingleShot(true);
+        connect(timerHide_, &QTimer::timeout, this, &DialogPlayer::timerHide);
+    }
+
+    void DialogPlayer::startTimerHide(std::chrono::milliseconds _timeout)
+    {
+        initTimerHide();
+        timerHide_->start(_timeout);
+    }
+
+    void DialogPlayer::startUnloadTimer()
+    {
+        if (!unloadTimer_)
+        {
+            unloadTimer_ = new QTimer(this);
+            unloadTimer_->setSingleShot(true);
+            unloadTimer_->setInterval(isLottie_ ? unloadTimeoutLottie() : unloadTimeout());
+            connect(unloadTimer_, &QTimer::timeout, this, &DialogPlayer::unloadMedia);
+        }
+        unloadTimer_->start();
+    }
+
+    void DialogPlayer::stopUnloadTimer()
+    {
+        if (unloadTimer_)
+            unloadTimer_->stop();
     }
 
     bool DialogPlayer::isAutoPlay()
     {
-        if (isSticker_)
+        if (isSticker_ || isLottie_)
             return true;
         else if (isGif_)
             return get_gui_settings()->get_value(settings_autoplay_gif, true);
@@ -1253,15 +1280,6 @@ namespace Ui
         return dialogControls;
     }
 
-    void DialogPlayer::timerMousePress()
-    {
-        moveToTop();
-
-        setPaused(!controlPanel_->isPause(), true);
-
-        timerMousePress_->stop();
-    }
-
     void DialogPlayer::mouseReleaseEvent(QMouseEvent* _event)
     {
         if (_event->button() == Qt::LeftButton)
@@ -1270,11 +1288,12 @@ namespace Ui
             {
                 if (isFullScreen())
                 {
-                    setPaused(!controlPanel_->isPause(), true);
-                    Q_EMIT playClicked(controlPanel_->isPause());
+                    const auto paused = controlPanel_ ? controlPanel_->isPause() : false;
+                    setPaused(!paused, true);
+                    Q_EMIT playClicked(!paused);
                 }
 
-                if (!isGif())
+                if (!isGif_ && !isLottie_)
                     Q_EMIT mouseClicked();
             }
 
@@ -1348,7 +1367,8 @@ namespace Ui
     void DialogPlayer::moveToTop()
     {
         raise();
-        controlPanel_->raise();
+        if (controlPanel_)
+            controlPanel_->raise();
     }
 
     bool DialogPlayer::isFullScreen() const
@@ -1370,6 +1390,18 @@ namespace Ui
     {
         ffplayer_->setPreview(_preview);
         preview_ = _preview;
+    }
+
+    void DialogPlayer::setPreview(QImage _preview)
+    {
+        preview_ = QPixmap::fromImage(_preview);
+        ffplayer_->setPreview(preview_);
+    }
+
+    void DialogPlayer::setPreviewFromFirstFrame()
+    {
+        if (auto frame = getFirstFrame(); !frame.isNull())
+            setPreview(std::move(frame));
     }
 
     QPixmap DialogPlayer::getActiveImage() const
@@ -1447,7 +1479,7 @@ namespace Ui
         }
         else
         {
-            unloadTimer_.stop();
+            stopUnloadTimer();
         }
     }
 
@@ -1477,7 +1509,7 @@ namespace Ui
         renderer_->setFillClient(_fill);
     }
 
-    const QString& DialogPlayer::mediaPath() const
+    const QString& DialogPlayer::mediaPath() const noexcept
     {
         return mediaPath_;
     }
@@ -1493,7 +1525,8 @@ namespace Ui
         if (dialogControls_)
             dialogControls_->setGotAudio(_gotAudio);
 
-        controlPanel_->setGotAudio(_gotAudio);
+        if (controlPanel_)
+            controlPanel_->setGotAudio(_gotAudio);
     }
 
     void DialogPlayer::setSiteName(const QString& _siteName)
@@ -1515,10 +1548,10 @@ namespace Ui
         if (attachedPlayer_ || mediaPath_.isEmpty() || (ffplayer_->state() == QMovie::NotRunning && !visible_))
             return;
 
-        unloadTimer_.stop();
+        stopUnloadTimer();
 
         if (!_visible)
-            unloadTimer_.start();
+            startUnloadTimer();
 
         auto play = _visible && isAutoPlay() && !isPausedByUser();
         auto byUser = !play && isPausedByUser();
@@ -1534,6 +1567,11 @@ namespace Ui
     int DialogPlayer::bottomLeftControlsWidth() const
     {
         return dialogControls_ ? dialogControls_->bottomLeftControlsWidth() : 0;
+    }
+
+    QImage DialogPlayer::getFirstFrame() const
+    {
+        return ffplayer_->getFirstFrame();
     }
 
     void DialogPlayer::wheelEvent(QWheelEvent* _event)
@@ -1572,9 +1610,23 @@ namespace Ui
             else
 #endif
                 if constexpr (platform::is_apple())
+                {
                     renderer = std::make_unique<MacOpenGLRenderer>(_parent);
+                }
                 else
-                    renderer = std::make_unique<OpenGLRenderer>(_parent);
+                {
+                    auto checkOpenGL = []()
+                    {
+                        QOpenGLContext context;
+                        return context.create();
+                    };
+                    static bool openGLSupported = checkOpenGL();
+
+                    if (openGLSupported)
+                        renderer = std::make_unique<OpenGLRenderer>(_parent);
+                    else
+                        renderer = std::make_unique<GDIRenderer>(_parent);
+                }
         }
         else
         {

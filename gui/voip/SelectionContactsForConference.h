@@ -28,10 +28,14 @@ namespace Ui
     protected:
         void resizeEvent(QResizeEvent*) override;
 
+    private Q_SLOTS:
+        void onMouseMoved(const QPoint& _pos, const QModelIndex& _index);
+
     private:
         void onMembersLabelClicked();
         void itemClicked(const QModelIndex& _current);
         QString getLabelCaption() const;
+        QRect getAvatarRect(const QModelIndex& _index);
 
     private:
         ClickableWidget* membersLabelHost_;
@@ -48,8 +52,12 @@ namespace Ui
         Q_OBJECT
 
     public:
-        SelectionContactsForConference(Logic::ChatMembersModel* _conferenceMembersModel, const QString& _labelText, QWidget* _parent,
-                                       ConferenceSearchModel* _usersSearchModel, bool _chatRoomCall, bool _handleKeyPressEvents = true);
+        SelectionContactsForConference(
+            Logic::ChatMembersModel* _conferenceMembersModel,
+            const QString& _labelText,
+            QWidget* _parent,
+            bool _chatRoomCall,
+            SelectContactsWidgetOptions options);
 
         void onVoipCallDestroyed(const voip_manager::ContactEx& _contactEx);
 

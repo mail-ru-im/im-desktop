@@ -32,6 +32,8 @@ namespace core
             virtual ~mrim_get_key();
 
             const std::string& get_mrim_key() const { return mrim_key_; }
+
+            virtual std::string_view get_method() const override;
         };
 
     }

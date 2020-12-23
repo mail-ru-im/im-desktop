@@ -15,6 +15,7 @@ public:
     user_info get_info() const;
     const std::shared_ptr<core::archive::persons_map>& get_persons() const override;
     virtual priority_t get_priority() const override { return top_priority(); }
+    virtual std::string_view get_method() const override;
 
 private:
     virtual int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;

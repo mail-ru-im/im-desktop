@@ -14,12 +14,12 @@ using namespace archive;
 namespace
 {
     template<typename T>
-    T skip_patches_forward(T first, T last)
+    T skip_patches_and_deleted_forward(T first, T last)
     {
         while (first != last)
         {
             const auto &header = first->second;
-            if (!header.is_patch())
+            if (!header.is_patch() && !header.is_deleted())
                 return first;
             ++first;
         }
@@ -150,7 +150,7 @@ void archive_index::insert_header(archive::message_header& header, const std::ch
     const auto msg_id = header.get_id();
     assert(msg_id > 0);
 
-    const auto existing_iter = headers_index_.find(msg_id);
+    auto existing_iter = headers_index_.find(msg_id);
 
     if (existing_iter == headers_index_.end())
     {
@@ -166,6 +166,19 @@ void archive_index::insert_header(archive::message_header& header, const std::ch
     }
 
     auto &existing_header = existing_iter->second;
+    if (header.is_deleted())
+    {
+        auto next = std::next(existing_iter);
+        if (next != headers_index_.end() && next->second.get_prev_msgid() == existing_header.get_id())
+            next->second.set_prev_msgid(existing_header.get_prev_msgid());
+    }
+    else if (existing_header.is_deleted())
+    {
+        auto next = std::next(existing_iter);
+        if (next != headers_index_.end() && next->second.get_prev_msgid() == existing_header.get_prev_msgid())
+            next->second.set_prev_msgid(existing_header.get_id());
+    }
+
 
     existing_header.merge_with(header);
     if (!existing_header.is_deleted() && !existing_header.is_modified())
@@ -528,7 +541,7 @@ bool archive_index::get_next_hole(int64_t _from, archive_hole& _hole, int64_t _d
         iter_cursor = std::make_reverse_iterator(++from_iter);
     }
 
-    iter_cursor = skip_patches_forward(iter_cursor, headers_index_.crend());
+    iter_cursor = skip_patches_and_deleted_forward(iter_cursor, headers_index_.crend());
 
     const auto only_patches_in_index = (iter_cursor == headers_index_.crend());
     if (only_patches_in_index)
@@ -543,7 +556,7 @@ bool archive_index::get_next_hole(int64_t _from, archive_hole& _hole, int64_t _d
         const auto &current_header = iter_cursor->second;
         assert(!current_header.is_patch() || current_header.is_updated_message());
 
-        const auto iter_next = skip_patches_forward(std::next(iter_cursor), headers_index_.crend());
+        const auto iter_next = skip_patches_and_deleted_forward(std::next(iter_cursor), headers_index_.crend());
 
         const auto reached_last_header = (iter_next == headers_index_.crend());
         if (reached_last_header)
@@ -573,7 +586,7 @@ bool archive_index::get_next_hole(int64_t _from, archive_hole& _hole, int64_t _d
             return false;
 
         ++iter_cursor;
-        iter_cursor = skip_patches_forward(iter_cursor, headers_index_.crend());
+        iter_cursor = skip_patches_and_deleted_forward(iter_cursor, headers_index_.crend());
     }
 
     return false;
@@ -605,7 +618,7 @@ int64_t archive_index::validate_hole_request(const archive_hole& _hole, const in
         if (iter_cursor->second.is_patch())
             break;
 
-        const auto iter_prev = skip_patches_forward(std::next(iter_cursor), headers_index_.rend());
+        const auto iter_prev = skip_patches_and_deleted_forward(std::next(iter_cursor), headers_index_.rend());
 
         if (iter_prev == headers_index_.rend())
             break;

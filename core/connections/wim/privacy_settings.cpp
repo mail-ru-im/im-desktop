@@ -2,13 +2,33 @@
 
 #include "privacy_settings.h"
 #include "../../tools/json_helper.h"
+#include "../../tools/features.h"
 
 namespace core::wim
 {
+    static std::vector<privacy_group> get_groups()
+    {
+        return
+        {
+            privacy_group("lastseen"),
+            privacy_group("calls"),
+            privacy_group("groups", "inviteBlacklistSize"),
+        };
+    }
+
+    privacy_group::privacy_group(std::string_view _group_name, std::string_view _blacklist_field)
+        : group_name_(_group_name)
+        , blacklist_field_(_blacklist_field)
+    {
+    }
+
     void privacy_group::unserialize(const rapidjson::Value& _node)
     {
         if (std::string_view allow; tools::unserialize_value(_node, "allowTo", allow))
             access_ = from_string(allow);
+
+        if (!blacklist_field_.empty())
+            tools::unserialize_value(_node, blacklist_field_, blacklist_size_);
     }
 
     void privacy_group::serialize(rapidjson::Value& _rootNode, rapidjson_allocator& _a) const
@@ -27,6 +47,7 @@ namespace core::wim
         {
             _root_coll.set_value_as_string("name", group_name_);
             _root_coll.set_value_as_enum("allowTo", access_);
+            _root_coll.set_value_as_int("blacklistSize", blacklist_size_);
         }
     }
 
@@ -36,8 +57,10 @@ namespace core::wim
     }
 
     privacy_settings::privacy_settings()
-        : groups_({ privacy_group("lastseen"), privacy_group("calls"), privacy_group("groups") })
+        : groups_(get_groups())
     {
+        if (features::should_show_sms_notify_setting())
+            groups_.emplace_back(privacy_group("smsNotify"));
     }
 
     void privacy_settings::set_access_value(const std::string_view _group, const privacy_access_right _value)

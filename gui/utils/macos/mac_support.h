@@ -13,6 +13,11 @@ namespace Ui
     class MainWindow;
 }
 
+namespace Utils
+{
+    void disableCloseButton(QWidget* _w);
+}
+
 class MacTitlebar;
 class MacMenuBlocker;
 
@@ -93,7 +98,7 @@ public:
 
     static void showEmojiPanel();
 
-    static void saveFileName(const QString &caption, const QString &dir, const QString &filter, std::function<void (const QString& _filename, const QString& _directory)> _callback, QString _ext, std::function<void ()> _cancel_callback = std::function<void ()>());
+    static void saveFileName(const QString &caption, const QString &dir, const QString &filter, std::function<void (const QString& _filename, const QString& _directory, bool _exportAsPng)> _callback, QString _ext, std::function<void ()> _cancel_callback = std::function<void ()>());
 
     static bool isDoNotDisturbOn();
 
@@ -132,4 +137,5 @@ private:
     std::unique_ptr<QObject> receiver_;
     bool isBlocked_;
 };
+
 

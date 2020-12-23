@@ -19,6 +19,8 @@ LoadMediaPreviewFromFileTask::~LoadMediaPreviewFromFileTask()
 
 void LoadMediaPreviewFromFileTask::run()
 {
+    if (Q_UNLIKELY(!QCoreApplication::instance()))
+        return;
     if (!QFile::exists(path_))
     {
         Q_EMIT loaded(QPixmap(), QSize());
@@ -40,7 +42,8 @@ void LoadMediaPreviewFromFileTask::run()
 
     Utils::loadPixmapScaled(path_, maxSize, preview, originalSize, Utils::PanoramicCheck::no);
 
-    Q_EMIT loaded(preview, originalSize);
+    if (Q_LIKELY(QCoreApplication::instance()))
+        Q_EMIT loaded(preview, originalSize);
 }
 
 }

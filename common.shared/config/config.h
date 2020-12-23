@@ -75,8 +75,17 @@ namespace config
         call_room_info_enabled,
         external_config_use_preset_url,
         store_version,
+        otp_login_open_mail_link,
         dns_workaround,
         external_emoji,
+        show_your_invites_to_group_enabled,
+        group_invite_blacklist_enabled,
+        contact_us_via_backend,
+        update_from_backend,
+        invite_by_sms,
+        show_sms_notify_setting,
+        silent_message_delete,
+        remove_deleted_from_notifications,
 
         max_size
     };

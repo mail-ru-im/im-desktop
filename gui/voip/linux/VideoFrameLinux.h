@@ -3,6 +3,7 @@
 
 #include <QWidget>
 #include "../VideoFrame.h"
+#include "glad.h"
 #include "glfw3.h"
 #include <mutex>
 
@@ -13,6 +14,7 @@ namespace Ui
 
 namespace platform_linux
 {
+    void showOnCurrentDesktop(platform_specific::ShowCallback _callback);
 
 class GraphicsPanelLinux : public platform_specific::GraphicsPanel
 {
@@ -22,16 +24,20 @@ public:
     virtual ~GraphicsPanelLinux();
 
     WId frameId() const override;
-    void createdTalk(bool is_vcs) override;
     void resizeEvent(QResizeEvent * event) override;
+    void initNative(platform_specific::ViewResize _mode) override;
+    void freeNative() override;
+    void setOpacity(double _opacity) override;
 
 private:
     static QWidget *parent_;
 
     static void keyCallback(GLFWwindow* _window, int _key, int _scancode, int _actions, int _mods);
 
+    bool isOpacityAvailable() const;
+
 private:
-    GLFWwindow *videoWindow_;
+    GLFWwindow *videoWindow_ = nullptr;
 };
 
 }

@@ -46,6 +46,7 @@ namespace core
             const int64_t	get_time_offset() const { return time_offset_; }
             const bool get_need_fill_profile() const { return need_fill_profile_; }
             bool is_valid() const override { return true; }
+            virtual std::string_view get_method() const override;
         };
     }
 }

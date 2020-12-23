@@ -196,10 +196,11 @@ namespace Ui
         setLayout(topLayout);
         topLayout->addWidget(topWidget);
 
-        topWidget->setStyleSheet(qsl("QWidget{background: %1;}").arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE)));
+        topWidget->setStyleSheet(ql1s("QWidget{background: %1;}").arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE)));
         topWidget->setObjectName(qsl("topWidget"));
         topWidget->setStyle(QApplication::style());
         topWidget->setLayout(layout_);
+        Testing::setAccessibleName(topWidget, qsl("AS Notification"));
 
         layout_->setSpacing(0);
         layout_->setMargin(0);
@@ -221,8 +222,10 @@ namespace Ui
 
         connect(closeButton_, &QPushButton::clicked, this, &RecentMessagesAlert::closeAlert);
         connect(closeButton_, &QPushButton::clicked, this, &RecentMessagesAlert::statsCloseAlert);
+        Testing::setAccessibleName(closeButton_, qsl("AS Notification closeButton"));
 
         connect(viewAllWidget_, &ViewAllWidget::clicked, this, &RecentMessagesAlert::viewAll);
+        Testing::setAccessibleName(viewAllWidget_, qsl("AS Notification viewAll"));
 
         Utils::addShadowToWindow(this);
 
@@ -329,6 +332,7 @@ namespace Ui
         }
 
         MessageAlertWidget* widget = new MessageAlertWidget(state, this);
+        Testing::setAccessibleName(widget, u"AS Notification alert " % state.AimId_ % u' ' % QString::number(state.LastMsgId_));
         connect(widget, &MessageAlertWidget::clicked, this, &RecentMessagesAlert::messageAlertClicked, Qt::DirectConnection);
         connect(widget, &MessageAlertWidget::closed, this, &RecentMessagesAlert::messageAlertClosed, Qt::DirectConnection);
         height_ += getAlertItemHeight();
@@ -362,6 +366,31 @@ namespace Ui
         closeButton_->raise();
 
         Q_EMIT changed();
+    }
+
+    void RecentMessagesAlert::removeAlert(const QString& _aimId, qint64 _messageId)
+    {
+        int i = 0;
+
+        while (QLayoutItem* item = layout_->itemAt(i))
+        {
+            auto alert = qobject_cast<Ui::MessageAlertWidget*>(item->widget());
+            if (alert && alert->id() == _aimId && (alert->messageId() == _messageId || alert->mentionId() == _messageId))
+            {
+                height_ -= getAlertItemHeight();
+                alert->setWindowOpacity(0.0);
+                layout_->removeWidget(alert);
+                alert->deleteLater();
+                --alertsCount_;
+            }
+
+            ++i;
+        }
+
+        if (i == 1)
+            closeAlert();
+        else
+            setFixedHeight(height_);
     }
 
     void RecentMessagesAlert::markShowed()

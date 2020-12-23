@@ -3,6 +3,7 @@
 #include "ContactListModel.h"
 #include "../containers/FriendlyContainer.h"
 #include "../containers/StatusContainer.h"
+#include "../containers/LastseenContainer.h"
 #include "../../cache/avatars/AvatarStorage.h"
 #include "utils/utils.h"
 
@@ -10,6 +11,9 @@ namespace Logic
 {
     void IgnoreMembersModel::avatarLoaded(const QString& _aimId)
     {
+        if (_aimId.isEmpty())
+            return;
+
         int i = 0;
         for (const auto& item : std::as_const(results_))
         {
@@ -27,10 +31,9 @@ namespace Logic
         : AbstractSearchModel(_parent)
     {
         connect(GetAvatarStorage(), &Logic::AvatarStorage::avatarChanged, this, &IgnoreMembersModel::avatarLoaded);
-        connect(Logic::GetStatusContainer(), &Logic::StatusContainer::statusChanged, this, [this](const QString& _aimid)
-        {
-            avatarLoaded(_aimid);
-        });
+        connect(Logic::GetStatusContainer(), &Logic::StatusContainer::statusChanged, this, &IgnoreMembersModel::avatarLoaded);
+        connect(Logic::GetLastseenContainer(), &Logic::LastseenContainer::lastseenChanged, this, &IgnoreMembersModel::avatarLoaded);
+        connect(Logic::GetFriendlyContainer(), &Logic::FriendlyContainer::friendlyChanged, this, &IgnoreMembersModel::avatarLoaded);
     }
 
     int IgnoreMembersModel::rowCount(const QModelIndex &) const

@@ -18,6 +18,9 @@ namespace voip_masks
     class MaskManager : public QObject
     {
         Q_OBJECT
+    Q_SIGNALS:
+        void masksListLoaded(QPrivateSignal) const;
+
     public:
         explicit MaskManager(Ui::core_dispatcher& _dispatcher, QObject* _parent);
 

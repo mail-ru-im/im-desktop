@@ -65,7 +65,7 @@ int32_t send_file::init_request(const std::shared_ptr<core::http_request_simple>
     ss_url_signed << ss_url.str() << '?' << format_get_params(params);
 
     _request->set_url(ss_url_signed.str());
-    _request->set_normalized_url("filesUploadRange");
+    _request->set_normalized_url(get_method());
 
     if (!params_.full_log_)
     {
@@ -110,6 +110,9 @@ int32_t send_file::parse_response(const std::shared_ptr<core::tools::binary_stre
 
         if (!tools::unserialize_value(iter_data->value, "static_url", file_url_))
             return wpie_http_parse_response;
+
+        if (!tools::unserialize_value(iter_data->value, "fileid", file_id_))
+            return wpie_http_parse_response;
     }
 
     return 0;
@@ -125,13 +128,27 @@ int32_t send_file::execute_request(const std::shared_ptr<core::http_request_simp
     http_code_ = (uint32_t)_request->get_response_code();
 
     if (http_code_ != 200 && http_code_ != 206 && http_code_ != 201)
+    {
+        if (http_code_ >= 400 && http_code_ < 500)
+            return wpie_client_http_error;
+
         return wpie_http_error;
+    }
 
     return 0;
 }
 
-
 const std::string& send_file::get_file_url() const
 {
     return file_url_;
+}
+
+const std::string& send_file::get_file_id() const
+{
+    return file_id_;
+}
+
+std::string_view send_file::get_method() const
+{
+    return "filesUploadRange";
 }

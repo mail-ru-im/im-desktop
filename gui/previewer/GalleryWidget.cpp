@@ -8,7 +8,6 @@
 #include "../main_window/containers/FriendlyContainer.h"
 #include "../main_window/history_control/complex_message/FileSharingUtils.h"
 #include "../main_window/history_control/ActionButtonWidget.h"
-#include "../types/images.h"
 #include "../utils/InterConnector.h"
 #include "../utils/gui_coll_helper.h"
 #include "../utils/stat_utils.h"
@@ -74,8 +73,14 @@ GalleryWidget::GalleryWidget(QWidget* _parent)
     setMouseTracking(true);
 
     controlsWidget_ = new GalleryFrame(this);
-    connect(controlsWidget_, &GalleryFrame::needHeight, this, &GalleryWidget::updateControlsHeight);
 
+    controlsWidget_->setSaveEnabled(false);
+    controlsWidget_->setMenuEnabled(false);
+    controlsWidget_->setPrevEnabled(false);
+    controlsWidget_->setNextEnabled(false);
+    controlsWidget_->setZoomVisible(false);
+
+    connect(controlsWidget_, &GalleryFrame::needHeight, this, &GalleryWidget::updateControlsHeight);
     connect(controlsWidget_, &GalleryFrame::prev, this, &GalleryWidget::onPrevClicked);
     connect(controlsWidget_, &GalleryFrame::next, this, &GalleryWidget::onNextClicked);
     connect(controlsWidget_, &GalleryFrame::zoomIn, this, &GalleryWidget::onZoomIn);
@@ -186,15 +191,19 @@ GalleryWidget::~GalleryWidget()
         qApp->removeEventFilter(this);
 }
 
-void GalleryWidget::openGallery(const QString &_aimId, const QString &_link, int64_t _msgId, Ui::DialogPlayer* _attachedPlayer)
+void GalleryWidget::openGallery(const Utils::GalleryData& _data)
 {
-    aimId_ = _aimId;
-    contentLoader_.reset(createGalleryLoader(_aimId, _link, _msgId, _attachedPlayer));
+    aimId_ = _data.aimId_;
+    const auto hasPlayer = _data.attachedPlayer_ != nullptr;
+    const auto hasPreview = !_data.preview_.isNull();
+    contentLoader_.reset(createGalleryLoader(_data));
 
     init();
 
-    if (_attachedPlayer)
+    if (hasPlayer)
         onMediaLoaded();
+    else if (hasPreview)
+        onPreviewLoaded();
 }
 
 void GalleryWidget::openAvatar(const QString &_aimId)
@@ -561,7 +570,7 @@ void GalleryWidget::onSaveAs()
 
     const auto guard = QPointer(this);
 
-    Utils::saveAs(item->fileName(), [this, item, guard, &savePath](const QString& name, const QString& dir)
+    Utils::saveAs(item->fileName(), [this, item, guard, &savePath](const QString& name, const QString& dir, bool exportAsPng)
     {
         if (!guard)
             return;
@@ -571,7 +580,7 @@ void GalleryWidget::onSaveAs()
 
         const auto destinationFile = QFileInfo(dir, name).absoluteFilePath();
 
-        item->save(destinationFile);
+        item->save(destinationFile, exportAsPng);
 
         savePath = destinationFile;
 
@@ -732,7 +741,15 @@ void GalleryWidget::onSave()
     if (!downloadDir.exists())
         downloadDir.mkpath(qsl("."));
 
-    item->save(downloadDir.filePath(item->fileName()));
+    auto fileName = item->fileName();
+    bool exportAsPng = false;
+    if (constexpr QStringView webpExt = u".webp"; fileName.endsWith(webpExt, Qt::CaseInsensitive))
+    {
+        fileName = QStringView(fileName).chopped(webpExt.size()) % u".png";
+        exportAsPng = true;
+    }
+
+    item->save(downloadDir.filePath(fileName), exportAsPng);
 
     Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::fullmediascr_tap_action, { { "chat_type", Utils::chatTypeByAimId(aimId_) },{ "do", "save" } });
 }
@@ -945,9 +962,9 @@ QPoint GalleryWidget::getToastPos()
     return mapToGlobal(localPos);
 }
 
-ContentLoader* GalleryWidget::createGalleryLoader(const QString& _aimId, const QString& _link, int64_t _msgId, Ui::DialogPlayer* _attachedPlayer)
+ContentLoader* GalleryWidget::createGalleryLoader(const Utils::GalleryData& _data)
 {
-    auto galleryLoader = new GalleryLoader(_aimId, _link, _msgId, _attachedPlayer);
+    auto galleryLoader = new GalleryLoader(_data);
 
     connect(galleryLoader, &GalleryLoader::previewLoaded, this, &GalleryWidget::onPreviewLoaded);
     connect(galleryLoader, &GalleryLoader::mediaLoaded, this, &GalleryWidget::onMediaLoaded);

@@ -51,7 +51,6 @@ namespace Ui
             item->setMultiselectEnabled(false);
 
             item->onActivityChanged(true);
-            item->onVisibilityChanged(true);
 
             item->setAttribute(Qt::WA_TransparentForMouseEvents);
 

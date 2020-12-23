@@ -16,6 +16,7 @@
 #include "fonts.h"
 
 #include "ReactionsList.h"
+#include "ReactionsListItem.h"
 
 namespace
 {
@@ -367,6 +368,7 @@ public:
             {
                 auto item = new ReactionsListHeaderItem(scrollArea_);
                 item->setTextAndReaction(QString::number(reaction.count_), reaction.reaction_);
+                Testing::setAccessibleName(item, u"AS ReactionPopup category " % reaction.reaction_);
 
                 buttons_[reaction.reaction_] = item;
                 buttonsLayout_->addSpacing(Utils::scale_value(8));
@@ -385,6 +387,7 @@ public:
     {
         auto item = new ReactionsListHeaderItem(q);
         item->setText(QT_TRANSLATE_NOOP("reactions", "All"));
+        Testing::setAccessibleName(item, qsl("AS ReactionPopup category all"));
 
         buttons_[QString()] = item; // empty key for All button
         addItem(item);
@@ -413,6 +416,7 @@ ReactionsListHeader::ReactionsListHeader(QWidget* _parent)
     d->scrollArea_->setStyleSheet(qsl("background-color: transparent; border: none"));
 
     auto contentWidget = new QWidget(d->scrollArea_);
+    Testing::setAccessibleName(contentWidget, qsl("AS ReactionPopup categories"));
     d->scrollArea_->setWidget(contentWidget);
     d->scrollArea_->setWidgetResizable(true);
     d->scrollArea_->setFocusPolicy(Qt::NoFocus);
@@ -782,32 +786,12 @@ class ReactionsListContent_p
 {
 public:
 
-    struct ReactionsListItem
-    {
-        QRect rect_;
-        TextRendering::TextUnitPtr nameUnit_;
-        Logic::QPixmapSCptr avatar_;
-        QRect avatarRect_;
-        QRect emojiRect_;
-        QRect buttonRect_;
-        QString contact_;
-        QString reaction_;
-        double opacity_ = 1;
-        bool buttonHovered_ = false;
-        bool buttonPressed_ = false;
-        bool hovered_ = false;
-        bool pressed_ = false;
-        bool myReaction_ = false;
-    };
-
-    using ReactionsListItemPtr = std::shared_ptr<ReactionsListItem>;
-    using ReactionsListItemWPtr = std::weak_ptr<ReactionsListItem>;
-    using Items = std::deque<ReactionsListItemPtr>;
+    using Items = std::deque<ReactionsListItem*>;
     using ItemIterator = Items::iterator;
 
     ReactionsListContent_p(QWidget* _q) : q(_q) {}
 
-    void drawItem(QPainter& _p, const ReactionsListItemPtr& _item)
+    void drawItem(QPainter& _p, const ReactionsListItem* _item)
     {
         Utils::PainterSaver saver(_p);
 
@@ -819,8 +803,8 @@ public:
         if (_item->myReaction_)
             _p.drawPixmap(_item->buttonRect_, removeButtonIcon(_item->buttonHovered_));
 
-        if (_item->avatar_)
-            _p.drawPixmap(_item->avatarRect_, *_item->avatar_);
+        if (!_item->avatar_.isNull())
+            _p.drawPixmap(_item->avatarRect_, _item->avatar_);
 
         _p.drawImage(_item->emojiRect_, emojiImage(_item->reaction_));
 
@@ -887,7 +871,7 @@ public:
         return items_.size() * itemSize().height();
     }
 
-    ReactionsListItemPtr itemAt(int _yPos)
+    ReactionsListItem* itemAt(int _yPos)
     {
         auto it = itemIteratorAt(_yPos);
         if (it != items_.end())
@@ -906,9 +890,9 @@ public:
     }
 
     Items items_;
-    std::unordered_map<QString, ReactionsListItemWPtr, Utils::QStringHasher> itemsIndexByContact_;
-    ReactionsListItemWPtr hoveredItem_;
-    ReactionsListItemWPtr pressedItem_;
+    std::unordered_map<QString, QPointer<ReactionsListItem>, Utils::QStringHasher> itemsIndexByContact_;
+    QPointer<ReactionsListItem> hoveredItem_;
+    QPointer<ReactionsListItem> pressedItem_;
     bool firstLoad_ = true;
     QTimer leaveTimer_;
     QPoint pressPos_;
@@ -943,7 +927,7 @@ void ReactionsListContent::addReactions(const Data::ReactionsPage& _page)
         if (d->itemsIndexByContact_.find(reaction.contact_) != d->itemsIndexByContact_.end())
             continue;
 
-        auto item = std::make_shared<ReactionsListContent_p::ReactionsListItem>();
+        auto item = new ReactionsListItem(this);
         item->contact_ = reaction.contact_;
         item->reaction_ = reaction.reaction_;
 
@@ -967,7 +951,7 @@ void ReactionsListContent::removeItem(const QString& _contact)
     auto it = d->itemsIndexByContact_.find(_contact);
     if (it != d->itemsIndexByContact_.end())
     {
-        if (auto item = d->itemsIndexByContact_[_contact].lock())
+        if (auto item = d->itemsIndexByContact_[_contact])
             d->items_.erase(d->itemIteratorAt(item->rect_.center().y()));
 
         d->itemsIndexByContact_.erase(_contact);
@@ -984,7 +968,7 @@ void ReactionsListContent::paintEvent(QPaintEvent* _event)
 
 void ReactionsListContent::mouseMoveEvent(QMouseEvent* _event)
 {
-    auto lastHoveredItem = d->hoveredItem_.lock();
+    auto lastHoveredItem = d->hoveredItem_;
 
     auto handCursor = false;
 
@@ -1040,16 +1024,16 @@ void ReactionsListContent::mousePressEvent(QMouseEvent* _event)
 
 void ReactionsListContent::mouseReleaseEvent(QMouseEvent* _event)
 {
-    if (auto pressedItem = d->pressedItem_.lock())
+    if (d->pressedItem_)
     {
-        if (pressedItem->buttonRect_.contains(_event->pos()) && pressedItem->buttonRect_.contains(d->pressPos_))
+        if (d->pressedItem_->buttonRect_.contains(_event->pos()) && d->pressedItem_->buttonRect_.contains(d->pressPos_))
             Q_EMIT removeMyReactionClicked();
-        else if (pressedItem->rect_.contains(_event->pos()) && pressedItem->rect_.contains(d->pressPos_) && !pressedItem->myReaction_)
-            Q_EMIT itemClicked(pressedItem->contact_);
+        else if (d->pressedItem_->rect_.contains(_event->pos()) && d->pressedItem_->rect_.contains(d->pressPos_) && !d->pressedItem_->myReaction_)
+            Q_EMIT itemClicked(d->pressedItem_->contact_);
     }
 
     d->pressPos_ = QPoint();
-    d->pressedItem_.reset();
+    d->pressedItem_.clear();
 
     QWidget::mouseReleaseEvent(_event);
 }
@@ -1071,7 +1055,7 @@ void ReactionsListContent::onAvatarChanged(const QString& _contact)
     auto it = d->itemsIndexByContact_.find(_contact);
     if (it != d->itemsIndexByContact_.end())
     {
-        if (auto item = it->second.lock())
+        if (auto item = it->second)
         {
             bool isDefault;
             const auto friendly = Logic::GetFriendlyContainer()->getFriendly(item->contact_);
@@ -1085,20 +1069,47 @@ void ReactionsListContent::onLeaveTimer()
 {
     const auto pos = QCursor::pos();
     auto parent = parentWidget();
-    const auto insideParent = parent && !parent->rect().contains(parent->mapFromGlobal(pos));
+    const auto insideParent = parent && parent->rect().contains(parent->mapFromGlobal(pos));
     const auto insideRect = rect().contains(mapFromGlobal(pos));
     if (!insideParent || !insideRect)
     {
-        if (auto hoveredItem = d->hoveredItem_.lock())
+        if (d->hoveredItem_)
         {
-            hoveredItem->hovered_ = false;
-            hoveredItem->buttonHovered_ = false;
-            update(hoveredItem->rect_);
+            d->hoveredItem_->hovered_ = false;
+            d->hoveredItem_->buttonHovered_ = false;
+            update(d->hoveredItem_->rect_);
         }
 
-        d->hoveredItem_.reset();
+        d->hoveredItem_.clear();
         d->leaveTimer_.stop();
     }
+}
+
+int AccessibleReactionsListContent::childCount() const
+{
+    return list_ ? list_->d->items_.size() : 0;
+}
+
+QAccessibleInterface* AccessibleReactionsListContent::child(int _index) const
+{
+    if (!list_ || _index < 0 || _index >= childCount())
+        return nullptr;
+
+    return QAccessible::queryAccessibleInterface(list_->d->items_[_index]);
+}
+
+int AccessibleReactionsListContent::indexOfChild(const QAccessibleInterface* _child) const
+{
+    if (!list_ || !_child)
+        return -1;
+
+    const auto item = qobject_cast<ReactionsListItem*>(_child->object());
+    return Utils::indexOf(list_->d->items_.cbegin(), list_->d->items_.cend(), item);
+}
+
+QString AccessibleReactionsListContent::text(QAccessible::Text _type) const
+{
+    return list_ && _type == QAccessible::Text::Name ? qsl("AS ReactionPopup members") : QString();
 }
 
 }

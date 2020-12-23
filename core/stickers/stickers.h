@@ -62,25 +62,31 @@ namespace core
         {
             invalid = 0,
 
+            scalable = 1,
+            big = 2,
+
             _20	= 20,
             _32 = 32,
             _48 = 48,
-            _64 = 64
+            _64 = 64,
         };
 
         class set_icon
         {
-            set_icon_size size_;
+            set_icon_size size_ = set_icon_size::invalid;
             std::string url_;
 
         public:
-            set_icon();
-            set_icon(set_icon_size _size, std::string _url);
+            set_icon() = default;
+            set_icon(set_icon_size _size, std::string _url)
+                : size_(_size)
+                , url_(std::move(_url))
+            {}
 
-            set_icon_size get_size() const;
-            const std::string& get_url() const;
+            set_icon_size get_size() const noexcept { return size_; }
+            const std::string& get_url() const noexcept { return url_; }
+            bool is_valid() const noexcept { return size_ != set_icon_size::invalid; }
         };
-
 
         using icons_map = std::map<stickers::set_icon_size, set_icon>;
         using stickers_vector = std::vector<std::shared_ptr<sticker>>;
@@ -110,7 +116,7 @@ namespace core
 
             stickers_vector stickers_;
 
-            std::string large_icon_url_;
+            set_icon big_icon_;
 
         public:
 
@@ -144,14 +150,16 @@ namespace core
             const icons_map& get_icons() const;
             const stickers_vector& get_stickers() const;
 
-            const std::string& get_large_icon_url() const;
-            void set_large_icon_url(std::string&& _url);
+            const set_icon& get_big_icon() const;
+            void set_big_icon(set_icon&& _icon);
 
             bool unserialize(const rapidjson::Value& _node, const emoji_map& _emojis);
             bool unserialize(const rapidjson::Value& _node);
+
+            bool is_lottie_pack() const;
         };
 
-        typedef std::list<std::shared_ptr<stickers::set>>	sets_list;
+        using sets_list = std::list<std::shared_ptr<stickers::set>>;
 
         template<class t0_, class t1_ = void, class t2_ = void>
         class result_handler
@@ -209,17 +217,7 @@ namespace core
         //////////////////////////////////////////////////////////////////////////
         class download_task
         {
-            std::string source_url_;
-            std::string endpoint_;
-            std::wstring dest_file_;
-
-            int32_t set_id_;
-            int32_t sticker_id_;
-            sticker_size size_;
-            std::string fs_id_;
-
         public:
-
             download_task(
                 std::string _source_url,
                 std::string _endpoint,
@@ -236,10 +234,33 @@ namespace core
             int32_t get_sticker_id() const;
             const std::string& get_fs_id() const;
             sticker_size get_size() const;
+
+            void set_need_decompress(bool _decompress) noexcept { decompress_ = _decompress; }
+            bool need_decompress() const noexcept { return decompress_; }
+
+            enum class type
+            {
+                sticker,
+                icon,
+            };
+            void set_type(type _type) noexcept { type_ = _type; }
+            type get_type() const noexcept { return type_; }
+            bool is_icon_task() const noexcept { return type_ == type::icon; }
+
+        private:
+            std::string source_url_;
+            std::string endpoint_;
+            std::wstring dest_file_;
+
+            int32_t set_id_;
+            int32_t sticker_id_;
+            sticker_size size_;
+            std::string fs_id_;
+            bool decompress_ = false;
+            type type_ = type::sticker;
         };
 
-        typedef std::list<download_task> download_tasks;
-        typedef std::list<int64_t> requests_list;
+        using download_tasks = std::list<download_task>;
 
         //////////////////////////////////////////////////////////////////////////
         // class cache
@@ -254,28 +275,23 @@ namespace core
             std::string template_url_original_;
             std::string template_url_send_;
 
-            download_tasks meta_tasks_;
-            download_tasks stickers_tasks_;
-
-            typedef std::map<int32_t, requests_list> stickers_ids_list;
-            typedef std::map<int32_t, stickers_ids_list> stickers_sets_ids_list;
-
-            using stickers_fs_ids_list = std::unordered_map<std::string, requests_list>;
-
-            stickers_sets_ids_list gui_requests_;
-            stickers_fs_ids_list gui_fs_requests_;
+            download_tasks pending_tasks_;
+            download_tasks active_tasks_;
 
             std::unique_ptr<suggests> suggests_;
 
-            requests_list get_sticker_gui_requests(int32_t _set_id, int32_t _sticker_id, const std::string& _fs_id) const;
-            void clear_sticker_gui_requests(int32_t _set_id, int32_t _sticker_id, const std::string& _fs_id);
-            bool has_gui_request(int32_t _set_id, int32_t _sticker_id, const std::string& _fs_id) const;
+            int32_t stat_dl_tasks_count_ = 0;
+            std::chrono::steady_clock::time_point stat_dl_start_time_;
 
             std::string make_sticker_url(const int32_t _set_id, const int32_t _sticker_id, std::string_view _fs_id, const core::sticker_size _size) const;
             std::string make_sticker_url(const int32_t _set_id, const int32_t _sticker_id, std::string_view _fs_id, const std::string& _size) const;
 
+            const std::shared_ptr<stickers::set>& get_set(int32_t _set_id) const;
+
+            void on_download_tasks_added(int _tasks_count);
+
         public:
-            std::vector<std::string> make_download_tasks(const std::string& _size);
+            int make_set_icons_tasks(const std::string& _size);
 
             cache(const std::wstring& _stickers_path);
             virtual ~cache();
@@ -288,21 +304,22 @@ namespace core
             void serialize_meta_sync(coll_helper _coll, const std::string& _size);
             void serialize_store_sync(coll_helper _coll);
 
-            static std::wstring get_set_icon_path(const set& _set, const set_icon& _icon);
-            static std::wstring get_set_big_icon_path(const int32_t _set_id);
+            static std::wstring get_set_icon_path(int32_t _set_id, const set_icon& _icon);
+            std::pair<std::wstring, set_icon_size> get_set_big_icon_path(int32_t _set_id);
             static std::wstring get_sticker_path(const set& _set, const sticker& _sticker, sticker_size _size);
             static std::wstring get_sticker_path(int32_t _set_id, int32_t _sticker_id, std::string_view _fs_id, sticker_size _size);
 
             std::string make_big_icon_url(const int32_t _set_id);
 
-            bool get_next_meta_task(download_task& _task);
-            bool get_next_sticker_task(download_task& _task);
-            void get_sticker(int64_t _seq, int32_t _set_id, int32_t _sticker_id, std::string _fs_id, const sticker_size _size, tools::binary_stream& _data);
-            void get_set_icon_big(const int64_t _seq, const int32_t _set_id, tools::binary_stream& _data);
+            download_tasks take_download_tasks();
+            bool have_tasks_to_download() const noexcept;
+            int32_t on_task_loaded(const download_task& _task);
+            int cancel_download_tasks(std::vector<std::string> _fs_ids, sticker_size _size);
+
+            void get_sticker(int64_t _seq, int32_t _set_id, int32_t _sticker_id, std::string _fs_id, const sticker_size _size, std::wstring& _path);
+            void get_set_icon_big(const int64_t _seq, const int32_t _set_id, std::wstring& _path);
             void clean_set_icon_big(const int32_t _set_id);
             const std::string& get_md5() const;
-            bool sticker_loaded(const download_task& _task, /*out*/ requests_list&);
-            bool meta_loaded(const download_task& _task);
 
             void serialize_suggests(coll_helper _coll);
 
@@ -326,17 +343,12 @@ namespace core
             std::shared_ptr<cache> cache_;
             std::shared_ptr<async_executer> thread_;
 
-            bool meta_requested_;
-
-            bool up_to_date_;
-
-            bool download_meta_in_progress_;
-            bool download_meta_error_;
-
-            bool download_stickers_in_progess_;
-            bool download_stickers_error_;
-
-            bool flag_meta_need_reload_;
+            bool meta_requested_ = false;
+            bool up_to_date_ = false;
+            bool download_meta_in_progress_ = false;
+            bool download_meta_error_ = false;
+            bool download_stickers_error_ = false;
+            bool flag_meta_need_reload_ = false;
 
             gui_request_params gui_request_params_;
 
@@ -352,25 +364,25 @@ namespace core
 
             std::shared_ptr<result_handler<const load_result&>> load_meta_from_local();
             std::shared_ptr<result_handler<bool>> save(std::shared_ptr<core::tools::binary_stream> _data);
-            std::shared_ptr<result_handler<const std::vector<std::string>&>> make_download_tasks(const std::string& _size);
+            std::shared_ptr<result_handler<int>> make_set_icons_tasks(const std::string& _size);
             std::shared_ptr<result_handler<coll_helper>> serialize_meta(coll_helper _coll, const std::string& _size);
             std::shared_ptr<result_handler<coll_helper>> serialize_store(coll_helper _coll);
-            std::shared_ptr<result_handler<tools::binary_stream&>> get_sticker(
+            std::shared_ptr<result_handler<std::wstring_view>> get_sticker(
                 int64_t _seq,
                 int32_t _set_id,
                 int32_t _sticker_id,
                 std::string _fs_id,
                 const core::sticker_size _size);
 
-            std::shared_ptr<result_handler<tools::binary_stream&>> get_set_icon_big(const int64_t _seq, const int32_t _set_id);
+            std::shared_ptr<result_handler<int>> cancel_download_tasks(std::vector<std::string> _fs_ids, core::sticker_size _size);
+
+            std::shared_ptr<result_handler<std::wstring_view>> get_set_icon_big(const int64_t _seq, const int32_t _set_id);
             void clean_set_icon_big(const int64_t _seq, const int32_t _set_id);
 
-            std::shared_ptr<result_handler<bool, const download_task&>> get_next_meta_task();
-            std::shared_ptr<result_handler<bool, const download_task&>> get_next_sticker_task();
-            std::shared_ptr<result_handler<bool, const requests_list&>> on_sticker_loaded(const download_task& _task);
-            std::shared_ptr<result_handler<bool>> on_metadata_loaded(const download_task& _task);
-            std::shared_ptr<result_handler<const std::string&>> get_md5();
+            std::shared_ptr<result_handler<const download_tasks&>> take_download_tasks();
+            std::shared_ptr<result_handler<int>> on_task_loaded(const download_task& _task);
 
+            std::shared_ptr<result_handler<const std::string&>> get_md5();
 
             void set_gui_request_params(const gui_request_params& _params);
             const gui_request_params& get_gui_request_params();
@@ -387,20 +399,16 @@ namespace core
             void set_flag_meta_need_reload(const bool _need_reload);
             bool is_flag_meta_need_reload() const;
 
-
             void set_download_stickers_error(const bool _is_error);
             bool is_download_stickers_error() const;
-
-            bool is_download_stickers_in_progress() const;
-            void set_download_stickers_in_progress(const bool _in_progress);
 
             std::shared_ptr<result_handler<const bool>> serialize_suggests(coll_helper _coll);
 
             void update_template_urls(const rapidjson::Value& _value);
         };
 
-        void post_sticker_2_gui(int64_t _seq, int32_t _set_id, int32_t _sticker_id, std::string_view _fs_id, core::sticker_size _size, const tools::binary_stream& _data);
+        void post_sticker_2_gui(int64_t _seq, int32_t _set_id, int32_t _sticker_id, std::string_view _fs_id, core::sticker_size _size, std::wstring_view _data);
         void post_sticker_fail_2_gui(int64_t _seq, int32_t _set_id, int32_t _sticker_id, std::string_view _fs_id, loader_errors _error);
-        void post_set_icon_2_gui(int32_t _set_id, std::string_view _message, const tools::binary_stream& _data);
+        void post_set_icon_2_gui(int32_t _set_id, std::string_view _message, std::wstring_view _path, int32_t _error = 0);
     }
 }

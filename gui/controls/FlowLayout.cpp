@@ -17,9 +17,7 @@ namespace Ui
 
     FlowLayout::~FlowLayout()
     {
-        QLayoutItem *item;
-        while ((item = takeAt(0)))
-            delete item;
+        clearItems();
     }
 
     void FlowLayout::addItem(QLayoutItem *_item)
@@ -65,8 +63,19 @@ namespace Ui
     {
         if (_index >= 0 && _index < itemList_.size())
             return itemList_.takeAt(_index);
-        else
-            return nullptr;
+        return nullptr;
+    }
+
+    void FlowLayout::clearItems()
+    {
+        while (count() > 0)
+        {
+            auto i = takeAt(0);
+            if (auto w = i->widget())
+                delete w;
+
+            delete i;
+        }
     }
 
     Qt::Orientations FlowLayout::expandingDirections() const
@@ -81,8 +90,7 @@ namespace Ui
 
     int FlowLayout::heightForWidth(int _width) const
     {
-        int height = doLayout(QRect(0, 0, _width, 0), FlowLayout::Target::test);
-        return height;
+        return doLayout(QRect(0, 0, _width, 0), FlowLayout::Target::test);
     }
 
     void FlowLayout::setGeometry(const QRect& _rect)
@@ -121,7 +129,7 @@ namespace Ui
         using ItemsGeoVector = std::vector<ItemGeo>;
         std::vector<ItemsGeoVector> rows;
         if (arranging && !itemList_.isEmpty())
-            rows.push_back(ItemsGeoVector());
+            rows.push_back({});
 
         for (auto item : itemList_)
         {
@@ -136,7 +144,7 @@ namespace Ui
                 spaceY = wid->style()->layoutSpacing(QSizePolicy::PushButton, QSizePolicy::PushButton, Qt::Vertical);
 
             int nextX = x + itemSizeHint.width() + spaceX;
-            if (nextX - spaceX > effectiveRect.right() && lineHeight > 0)
+            if (nextX - spaceX > (effectiveRect.right() + 1) && lineHeight > 0)
             {
                 x = effectiveRect.x();
                 y = y + lineHeight + spaceY;
@@ -144,7 +152,7 @@ namespace Ui
                 lineHeight = 0;
 
                 if (arranging)
-                    rows.push_back(ItemsGeoVector());
+                    rows.push_back({});
             }
 
             if (arranging)
@@ -156,25 +164,33 @@ namespace Ui
 
         if (arranging)
         {
-            auto prevShift = -1;
-            for (const auto& r : rows)
+            auto calcRowWidth = [](auto& r)
             {
                 const auto xLeft = r.front().second.left();
                 const auto xRight = r.back().second.right() + 1;
-                const auto rowWidth = xRight - xLeft;
+                return xRight - xLeft;
+            };
 
-                int shift = (effectiveRect.width() - rowWidth) / 2;
+            auto maxRowWidth = 0;
+            for (const auto& r : rows)
+                if (const auto w = calcRowWidth(r); w > maxRowWidth)
+                    maxRowWidth = w;
 
-                if (!(alignment() & Qt::AlignHCenter))
-                {
-                    if (prevShift == -1)
-                        prevShift = shift;
-                    else
-                        shift = prevShift;
-                }
+            int rowShift = 0;
+            if (alignment() & Qt::AlignRight)
+                rowShift = effectiveRect.width() - maxRowWidth;
+            else if (alignment() & Qt::AlignHCenter)
+                rowShift = (effectiveRect.width() - maxRowWidth) / 2;
 
-                if (alignment() & Qt::AlignRight)
-                    shift = effectiveRect.width() - rowWidth - shift;
+            for (const auto& r : rows)
+            {
+                const auto rowWidth = calcRowWidth(r);
+
+                int shift = rowShift;
+                if (innerAlignment() & Qt::AlignRight)
+                    shift += maxRowWidth - rowWidth;
+                else if (innerAlignment() & Qt::AlignHCenter)
+                    shift += (maxRowWidth - rowWidth) / 2;
 
                 for (const auto& [item, geom] : r)
                     item->setGeometry(geom.translated(shift, 0));

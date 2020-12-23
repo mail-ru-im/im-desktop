@@ -1,5 +1,10 @@
 #pragma once
 
+namespace Data
+{
+    struct PatchedMessage;
+}
+
 namespace Ui
 {
     enum class AlertType;
@@ -18,12 +23,13 @@ namespace Ui
         void avatarTimer();
         void displayTimer();
     private:
-        void HideQueuedNotifications(const QString& _aimId);
+        void HideQueuedNotifications(const QString& _aimId, qint64 _msgId = -1);
 
         std::set<QString> changedAvatars_;
         QTimer* avatarTimer_;
         QTimer* displayTimer_;
         bool isScreenLocked_;
+        std::set<qint64> lastDeletedNotifications_;
 
     public:
         NotificationCenterManager();
@@ -39,6 +45,9 @@ namespace Ui
             const QString& messageId);
 
         void HideNotifications(const QString& aimId);
+
+        void deleteMessage(const Data::PatchedMessage& _msgBuddies);
+        void HideNotifications(const QString& _aimId, qint64 _messageId);
 
         void Activated(
             const QString& alertType,

@@ -111,6 +111,15 @@ namespace build
 #endif
     }
 
+    constexpr bool is_pkg_msi() noexcept
+    {
+#if defined(BUILD_PKG_MSI)
+        return true;
+#else
+        return false;
+#endif
+    }
+
 }
 
 namespace environment

@@ -2,6 +2,7 @@
 
 #include "../../../namespaces.h"
 #include "../../../types/message.h"
+#include "../../../types/StickerId.h"
 #include "../../../types/link_metadata.h"
 #include "../../../controls/TextUnit.h"
 #include "SnippetBlock.h"
@@ -33,8 +34,6 @@ class ComplexMessageItemLayout;
 class IItemBlock;
 class GenericBlock;
 enum class PinPlaceholderType;
-
-typedef std::shared_ptr<const QPixmap> QPixmapSCptr;
 
 typedef std::vector<IItemBlock*> IItemBlocksVec;
 
@@ -169,6 +168,7 @@ public:
 
     bool isSimple() const;
     bool isSingleSticker() const;
+    bool isSingleFilesharing() const;
 
     void onHoveredBlockChanged(IItemBlock *newHoveredBlock);
     void onSharingBlockHoverChanged(IItemBlock *newHoveredBlock);
@@ -180,7 +180,7 @@ public:
 
     virtual void onActivityChanged(const bool isActive) override;
 
-    virtual void onVisibilityChanged(const bool isVisible) override;
+    void onVisibleRectChanged(const QRect& _visibleRect) override;
 
     virtual void onDistanceToViewportChanged(const QRect& _widgetAbsGeometry, const QRect& _viewportVisibilityAbsRect) override;
 
@@ -321,6 +321,10 @@ public:
 
     void setSpellErrorsVisible(bool _visible) override;
 
+    void setProgress(const QString& _fsId, const int32_t _value);
+
+    QRect avatarRect() const override;
+
 protected:
 
     void leaveEvent(QEvent *event) override;
@@ -430,11 +434,11 @@ private:
     Data::Quote getQuoteFromBlock(IItemBlock* _block, const bool _selectedTextOnly) const;
 
     void setTimeWidgetVisible(const bool _visible);
-    bool isNeedAvatar() const;
+    bool needsAvatar() const override;
 
     void loadSnippetsMetaInfo();
 
-    QPixmapSCptr Avatar_;
+    QPixmap Avatar_;
 
     IItemBlocksVec Blocks_;
 

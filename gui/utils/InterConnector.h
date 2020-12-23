@@ -4,6 +4,11 @@
 #include "../utils/keyboard.h"
 #include "../utils/utils.h"
 
+namespace core
+{
+    enum class add_member_failure;
+}
+
 namespace Ui
 {
     class MainWindow;
@@ -79,6 +84,26 @@ namespace Utils
         Requested,
         LoadError,
         NotFound
+    };
+
+    struct GalleryData
+    {
+        GalleryData(const QString& _aimid, const QString& _link, int64_t _msgId, Ui::DialogPlayer* _attachedPlayer = nullptr, QPixmap _preview = QPixmap(), QSize _originalSize = QSize())
+            : aimId_(_aimid)
+            , link_(_link)
+            , msgId_(_msgId)
+            , attachedPlayer_(_attachedPlayer)
+            , preview_(std::move(_preview))
+            , originalSize_(_originalSize)
+        {
+        }
+
+        QString aimId_;
+        QString link_;
+        int64_t msgId_;
+        Ui::DialogPlayer* attachedPlayer_;
+        QPixmap preview_;
+        QSize originalSize_;
     };
 
     class InterConnector : public QObject
@@ -272,6 +297,10 @@ Q_SIGNALS:
 
         void addReactionPlateActivityChanged(const QString& _contact, bool _active);
 
+        void showAddToDisallowedInvitersDialog();
+
+        void pttProgressChanged(qint64, const QString&, int);
+
     public:
         static InterConnector& instance();
         ~InterConnector();
@@ -327,9 +356,10 @@ Q_SIGNALS:
 
         void clearPartialSelection(const QString& _aimid);
 
-        void openGallery(const QString &_aimId, const QString &_link, int64_t _msgId, Ui::DialogPlayer* _attachedPlayer = nullptr);
+        void openGallery(const GalleryData& _data);
 
         bool isRecordingPtt() const;
+        void showAddMembersFailuresPopup(QString _chatAimId, std::map<core::add_member_failure, std::vector<QString>> _failures);
 
     private:
         InterConnector();

@@ -127,7 +127,7 @@ void ActionButtonWidget::ensureAnimationInitialized()
 {
     if (animation_)
         return;
-    
+
     animation_ = new QVariantAnimation(this);
     animation_->setStartValue(0.0);
     animation_->setEndValue(360.0);
@@ -176,11 +176,11 @@ void ActionButtonWidget::drawProgress(QPainter &p)
     p.drawArc(Layout_->getProgressRect(), -baseAngle, -progressAngle);
 }
 
-void ActionButtonWidget::drawProgressText(QPainter &p)
+void ActionButtonWidget::drawProgressText(QPainter &_p)
 {
     const auto &textRect = Layout_->getProgressTextRect();
 
-    p.save();
+    Utils::PainterSaver p(_p);
 
     auto backgroundRect = textRect.adjusted(-MessageStyle::getProgressTextRectHMargin(), -MessageStyle::getProgressTextRectVMargin(),
                                              MessageStyle::getProgressTextRectHMargin(), MessageStyle::getProgressTextRectVMargin());
@@ -190,13 +190,11 @@ void ActionButtonWidget::drawProgressText(QPainter &p)
     QPainterPath path;
     path.addRoundedRect(backgroundRect, backgroundRectRadius, backgroundRectRadius);
 
-    p.fillPath(path, QColor(0, 0, 0, 255 * 0.5));
+    _p.fillPath(path, QColor(0, 0, 0, 255 * 0.5));
 
-    p.setFont(ProgressTextFont_);
-    p.setPen(MessageStyle::getRotatingProgressBarTextPen());
-    p.drawText(textRect, Qt::AlignHCenter, IsAnimating_ ? ProgressText_ : DefaultProgressText_);
-
-    p.restore();
+    _p.setFont(ProgressTextFont_);
+    _p.setPen(MessageStyle::getRotatingProgressBarTextPen());
+    _p.drawText(textRect, Qt::AlignHCenter, IsAnimating_ ? ProgressText_ : DefaultProgressText_);
 }
 
 int ActionButtonWidget::getProgressBarBaseAngle() const
@@ -459,7 +457,7 @@ void ActionButtonWidget::mouseMoveEvent(QMouseEvent *e)
     if (IsPressed_)
     {
 #ifdef __APPLE__
-        if (!(QSysInfo().macVersion() > QSysInfo().MV_10_11 && (QCursor::pos() - mousePressStartPoint).manhattanLength() <= 2))
+        if (!((QCursor::pos() - mousePressStartPoint).manhattanLength() <= 2))
 #endif
         {
             Q_EMIT dragSignal();

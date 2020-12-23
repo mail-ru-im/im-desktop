@@ -13,6 +13,7 @@
 #include "controls/TransparentScrollBar.h"
 #include "controls/RadioTextRow.h"
 #include "controls/TextEmojiWidget.h"
+#include "controls/textrendering/TextRenderingUtils.h"
 #include "utils/utils.h"
 #include "utils/InterConnector.h"
 #include "gui_settings.h"
@@ -153,7 +154,7 @@ void GeneralSettingsWidget::Creator::initAppearance(QWidget* _parent)
         if (fabs(get_gui_settings()->get_value<double>(settings_scale_coefficient, Utils::getBasicScaleCoefficient()) - r) >= 0.25f)
             get_gui_settings()->set_value<double>(settings_scale_coefficient, r);
 
-        w->setText(qsl("%1 %2%").arg(QT_TRANSLATE_NOOP("settings", "Interface scale:"), sc[i]), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
+        w->setText(ql1s("%1 %2%").arg(QT_TRANSLATE_NOOP("settings", "Interface scale:"), sc[i]), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
 
         if (fabs(su - r) >= 0.25f)
         {
@@ -186,7 +187,7 @@ void GeneralSettingsWidget::Creator::initAppearance(QWidget* _parent)
         }
         else
         {
-            aw->setText(qsl(" "), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
+            aw->setText(TextRendering::spaceAsString(), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
         }
     };
 
@@ -220,7 +221,7 @@ void GeneralSettingsWidget::Creator::initAppearance(QWidget* _parent)
         for (const auto& [id, name] : themesList)
         {
             auto row = new RadioTextRow(name);
-            Testing::setAccessibleName(row, qsl("AS AppearancePage ") % id);
+            Testing::setAccessibleName(row, u"AS AppearancePage " % id);
             list->addItem(row);
         }
 

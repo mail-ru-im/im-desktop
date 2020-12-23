@@ -29,6 +29,8 @@ namespace core
             end_session(wim_packet_params _params);
             bool is_valid() const override { return true; }
             virtual ~end_session();
+            virtual std::string_view get_method() const override;
+            virtual bool support_self_resending() const override { return true; }
         };
 
     }

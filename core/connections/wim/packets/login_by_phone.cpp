@@ -22,6 +22,11 @@ phone_login::phone_login(wim_packet_params params, phone_info _info)
 
 phone_login::~phone_login() = default;
 
+std::string_view phone_login::get_method() const
+{
+    return "loginWithPhoneNumber";
+}
+
 int32_t phone_login::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     std::stringstream ss_url;
@@ -35,7 +40,7 @@ int32_t phone_login::init_request(const std::shared_ptr<core::http_request_simpl
         "&create_account=1";
 
     _request->set_url(ss_url.str());
-    _request->set_normalized_url("loginWithPhoneNumber");
+    _request->set_normalized_url(get_method());
     _request->set_keep_alive();
 
     if (!params_.full_log_)

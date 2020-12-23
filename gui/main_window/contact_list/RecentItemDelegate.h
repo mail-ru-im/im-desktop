@@ -114,12 +114,6 @@ namespace Ui
         virtual ~RecentItemUnknowns();
     };
 
-
-
-    typedef std::shared_ptr<const QPixmap> QPixmapSCptr;
-
-
-
     //////////////////////////////////////////////////////////////////////////
     // RecentItemRecent
     //////////////////////////////////////////////////////////////////////////
@@ -309,9 +303,6 @@ namespace Ui
         QSize sizeHint(const QStyleOptionViewItem &_option, const QModelIndex &_index) const override;
         QSize sizeHintForAlert() const;
 
-        void addTyping(const Logic::TypingFires& _typing);
-        void removeTyping(const Logic::TypingFires& _typing);
-
         void setPictOnlyView(bool _pictOnlyView);
         bool getPictOnlyView() const;
 
@@ -328,9 +319,6 @@ namespace Ui
         void removeItem(const QString& _aimId);
 
     private:
-
-        std::list<Logic::TypingFires> typings_;
-
         struct ItemKey
         {
             const bool IsSelected;

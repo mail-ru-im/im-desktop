@@ -322,7 +322,7 @@ namespace TextRendering
             if (parser.hasUrl())
             {
                 if (const auto& url = parser.getUrl(); url.is_email())
-                    Utils::openUrl(u"mailto:" % QString::fromStdString(url.url_));
+                    Utils::openUrl(QString(u"mailto:" % QString::fromStdString(url.url_)));
                 else
                     Utils::openUrl(QString::fromStdString(url.url_));
             }
@@ -658,6 +658,13 @@ namespace TextRendering
                 return w;
 
         return {};
+    }
+
+    void TextWord::setShadow(const int _offsetX, const int _offsetY, const QColor& _color)
+    {
+        shadow_.offsetX = _offsetX;
+        shadow_.offsetY = _offsetY;
+        shadow_.color = _color;
     }
 
     std::vector<WordBoundary> TextWord::parseForSyntaxWords(const QStringRef& text)
@@ -1364,14 +1371,7 @@ namespace TextRendering
 
                 if (align_ != Ui::TextRendering::HorAligment::LEFT)
                 {
-                    auto lineWidth = 0;
-                    for (const auto& w : l)
-                    {
-                        lineWidth += w.cachedWidth();
-                        if (w.isSpaceAfter())
-                            lineWidth += w.spaceWidth();
-                    }
-
+                    const auto lineWidth = getLineWidth(l);
                     if (lineWidth < cachedSize_.width())
                         x -= (align_ == Ui::TextRendering::HorAligment::CENTER) ? ((cachedSize_.width() - lineWidth) / 2) : (cachedSize_.width() - lineWidth);
                 }
@@ -1442,43 +1442,14 @@ namespace TextRendering
 
     bool TextDrawingBlock::isOverLink(const QPoint& _p) const
     {
-        int x = 0;
-        if (align_ != Ui::TextRendering::HorAligment::LEFT)
-        {
-            int i = 0;
-            for (const auto& l : lines_)
-            {
-                ++i;
-                auto y1 = (i - 1) * lineHeight_;
-                auto y2 = i * lineHeight_;
-
-                if (_p.y() >= y1 && _p.y() < y2)
-                {
-                    auto lineWidth = 0;
-                    for (const auto& w : l)
-                    {
-                        lineWidth += w.cachedWidth();
-                        if (w.isSpaceAfter())
-                            lineWidth += w.spaceWidth();
-                    }
-
-                    if (lineWidth < cachedSize_.width())
-                        x += (align_ == Ui::TextRendering::HorAligment::CENTER) ? ((cachedSize_.width() - lineWidth) / 2) : (cachedSize_.width() - lineWidth);
-
-                    break;
-                }
-            }
-        }
-
-        auto p = _p;
-        p.setX(_p.x() - x);
-        return std::any_of(linkRects_.begin(), linkRects_.end(), [p](auto r) { return r.contains(p); });
+        const auto rects = getLinkRects();
+        return std::any_of(rects.cbegin(), rects.cend(), [_p](auto r) { return r.contains(_p); });
     }
 
     QString TextDrawingBlock::getLink(const QPoint& _p) const
     {
         int i = 0;
-        for (auto r : linkRects_)
+        for (auto r : getLinkRects())
         {
             if (r.contains(_p))
             {
@@ -1489,7 +1460,7 @@ namespace TextRendering
             ++i;
         }
 
-        return QString();
+        return {};
     }
 
     void TextDrawingBlock::applyMentions(const Data::MentionMap& _mentions)
@@ -1669,6 +1640,18 @@ namespace TextRendering
         return false;
     }
 
+    void TextDrawingBlock::setShadow(const int _offsetX, const int _offsetY, const QColor& _color)
+    {
+        const auto addShadow = [_offsetX, _offsetY, _color](auto& _words)
+        {
+            for (auto& w : _words)
+                w.setShadow(_offsetX, _offsetY, _color);
+        };
+        addShadow(words_);
+        for (auto& l : lines_)
+            addShadow(l);
+    }
+
     std::optional<TextDrawingBlock::TextWordWithBoundaryInternal> TextDrawingBlock::getWordAtImpl(QPoint _p, WithBoundary _mode)
     {
         if (_p.x() < 0)
@@ -1688,14 +1671,7 @@ namespace TextRendering
 
                 if (align_ != Ui::TextRendering::HorAligment::LEFT)
                 {
-                    auto lineWidth = 0;
-                    for (const auto& w : l)
-                    {
-                        lineWidth += w.cachedWidth();
-                        if (w.isSpaceAfter())
-                            lineWidth += w.spaceWidth();
-                    }
-
+                    const auto lineWidth = getLineWidth(l);
                     if (lineWidth < cachedSize_.width())
                         x -= (align_ == Ui::TextRendering::HorAligment::CENTER) ? ((cachedSize_.width() - lineWidth) / 2) : (cachedSize_.width() - lineWidth);
                 }
@@ -2592,6 +2568,36 @@ namespace TextRendering
         return cachedMaxLineWidth_;
     }
 
+    std::vector<QRect> TextDrawingBlock::getLinkRects() const
+    {
+        auto res = linkRects_;
+        if (!res.empty() && align_ != Ui::TextRendering::HorAligment::LEFT)
+        {
+            int i = 0;
+            for (const auto& l : lines_)
+            {
+                ++i;
+                const auto y1 = (i - 1) * lineHeight_;
+                const auto y2 = i * lineHeight_;
+
+                auto shift = 0;
+                if (const auto lineWidth = getLineWidth(l); lineWidth < cachedSize_.width())
+                {
+                    if (align_ == HorAligment::CENTER)
+                        shift = (cachedSize_.width() - lineWidth) / 2;
+                    else
+                        shift = cachedSize_.width() - lineWidth;
+                }
+
+                for (auto& r : res)
+                {
+                    if (const auto c = r.center(); c.y() > y1 && c.y() < y2)
+                        r.translate(shift, 0);
+                }
+            }
+        }
+        return res;
+    }
 
     NewLineBlock::NewLineBlock()
         : BaseDrawingBlock(BlockType::TYPE_NEW_LINE)
@@ -3267,6 +3273,12 @@ namespace TextRendering
     {
         for (auto& b : _blocks)
             b->disableCommands();
+    }
+
+    void setShadowForBlocks(std::vector<BaseDrawingBlockPtr>& _blocks, const int _offsetX, const int _offsetY, const QColor& _color)
+    {
+        for (auto& b : _blocks)
+            b->setShadow(_offsetX, _offsetY, _color);
     }
 
     std::optional<TextWordWithBoundary> BaseDrawingBlock::getWordAt(QPoint, WithBoundary) const

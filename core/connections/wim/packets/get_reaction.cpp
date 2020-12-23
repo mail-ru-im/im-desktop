@@ -22,6 +22,11 @@ reactions_vector_sptr get_reaction::get_result() const
     return reactions_;
 }
 
+std::string_view get_reaction::get_method() const
+{
+    return "reaction/get";
+}
+
 int32_t get_reaction::init_request(const std::shared_ptr<http_request_simple>& _request)
 {
     rapidjson::Document doc(rapidjson::Type::kObjectType);
@@ -43,7 +48,7 @@ int32_t get_reaction::init_request(const std::shared_ptr<http_request_simple>& _
 
     doc.AddMember("params", std::move(node_params), a);
 
-    setup_common_and_sign(doc, a, _request, "reaction/get");
+    setup_common_and_sign(doc, a, _request, get_method());
 
     if (!robusto_packet::params_.full_log_)
     {

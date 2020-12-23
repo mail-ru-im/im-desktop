@@ -28,6 +28,10 @@ private:
 
     virtual int32_t on_response_error_code() override;
 
+    virtual std::string_view get_method() const override;
+
+    virtual bool support_self_resending() const override { return true; }
+
 };
 
 CORE_WIM_NS_END

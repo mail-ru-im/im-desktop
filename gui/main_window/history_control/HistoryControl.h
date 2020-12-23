@@ -55,7 +55,7 @@ namespace Ui
         void setTopWidget(const QString, QWidget*, QPrivateSignal) const;
 
     public Q_SLOTS:
-        void contactSelected(const QString& _aimId, qint64 _messageId, const highlightsV& _highlights = {});
+        void contactSelected(const QString& _aimId, qint64 _messageId, const highlightsV& _highlights = {}, bool _ignoreScroll = false);
         void switchToEmpty();
 
         void addPageToDialogHistory(const QString& _aimId);
@@ -103,6 +103,9 @@ namespace Ui
         void updateEmptyPageWallpaper() const;
 
         void rememberCurrentDialogTime();
+        void suggestNotifyUser(const QString& _contact, const QString& _smsContext);
+
+        void suspendBackgroundPages();
 
         QMap<QString, HistoryControlPage*> pages_;
         QMap<QString, QTime> times_;

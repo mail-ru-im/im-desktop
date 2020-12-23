@@ -67,19 +67,19 @@ namespace
         return pixIncoming;
     }
 
-    QPixmap getButtonIcon(const QString& _aimid)
+    QPixmap getButtonIcon(QStringView _aimid)
     {
         static QPixmap pixCall = Utils::renderSvgScaled(qsl(":/header/call"), QSize(BUTTON_ICON_SIZE, BUTTON_ICON_SIZE), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY));
         static QPixmap pixCallByLink = Utils::renderSvgScaled(qsl(":/link_icon"), QSize(BUTTON_ICON_SIZE, BUTTON_ICON_SIZE), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY));
         static QPixmap pixWebinar = Utils::renderSvgScaled(qsl(":/webinar"), QSize(BUTTON_ICON_SIZE, BUTTON_ICON_SIZE), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY));
 
-        if (_aimid == qsl("~group_call~"))
+        if (_aimid == u"~group_call~")
             return pixCall;
 
-        if (_aimid == qsl("~call_by_link~"))
+        if (_aimid == u"~call_by_link~")
             return pixCallByLink;
 
-        if (_aimid == qsl("~webinar~"))
+        if (_aimid == u"~webinar~")
             return pixWebinar;
 
         return QPixmap();
@@ -140,7 +140,7 @@ namespace Logic
         if (!item->isSingleItem())
             Logic::GetAvatarStorage()->UpdateDefaultAvatarIfNeed(Utils::getDefaultCallAvatarId());
 
-        const auto avatar = *Logic::GetAvatarStorage()->GetRounded(item->isSingleItem() ? item->getAimId() : Utils::getDefaultCallAvatarId(), item->getFriendly(), Utils::scale_bitmap(Utils::scale_value(AVATAR_SIZE)), isDefault, false, false);
+        const auto avatar = Logic::GetAvatarStorage()->GetRounded(item->isSingleItem() ? item->getAimId() : Utils::getDefaultCallAvatarId(), item->getFriendly(), Utils::scale_bitmap(Utils::scale_value(AVATAR_SIZE)), isDefault, false, false);
 
         const auto x = pictureOnly_ ? (_option.rect.width() / 2 - avatar.width() / ratio / 2) : Utils::scale_value(HOR_OFFSET);
         const auto y = (_option.rect.height() - avatar.height() / ratio) / 2;

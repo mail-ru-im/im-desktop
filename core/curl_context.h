@@ -1,6 +1,6 @@
 #pragma once
 
-#include "curl/include/curl.h"
+#include "curl.h"
 
 #include "http_request.h"
 
@@ -22,6 +22,7 @@ namespace core
         void set_need_log_original_url(bool _value);
 
         bool is_stopped() const;
+        bool is_resolve_failed() const;
 
         bool is_write_data_log() const;
         void set_write_data_log(bool _enable);
@@ -154,5 +155,6 @@ namespace core
         std::string zstd_request_dict_;
         std::string zstd_response_dict_;
         bool use_curl_decompression_;
+        bool resolve_failed_;
     };
 }

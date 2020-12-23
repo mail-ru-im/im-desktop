@@ -20,6 +20,9 @@ namespace Data
             member.Role_ = QString::fromUtf8(value.get_value_as_string("role", ""));
             member.Lastseen_ = LastSeen(value);
             member.IsCreator_ = _creator.isEmpty() ? member.Role_ == u"admin" : member.AimId_ == _creator;
+            if (value.is_value_exist("canRemoveTill") && member.Role_ != u"admin" && member.Role_ != u"moder")
+                member.canRemoveTill_ = QDateTime::fromSecsSinceEpoch(value.get_value_as_int64("canRemoveTill"));
+
             members.push_back(std::move(member));
         }
         return members;
@@ -38,6 +41,7 @@ namespace Data
         info.Owner_ = QString::fromUtf8(helper->get_value_as_string("owner"));
         info.Creator_ = QString::fromUtf8(helper->get_value_as_string("creator"));
         info.DefaultRole_ = QString::fromUtf8(helper->get_value_as_string("default_role"));
+        info.Inviter_ = QString::fromUtf8(helper->get_value_as_string("inviter"));
         info.MembersVersion_ = QString::fromUtf8(helper->get_value_as_string("members_version"));
         info.InfoVersion_ = QString::fromUtf8(helper->get_value_as_string("info_version"));
         info.CreateTime_ =  helper->get_value_as_int("create_time");
@@ -46,6 +50,7 @@ namespace Data
         info.FriendsCount =  helper->get_value_as_int("friend_count");
         info.BlockedCount_ =  helper->get_value_as_int("blocked_count");
         info.PendingCount_ =  helper->get_value_as_int("pending_count");
+        info.YourInvitesCount_ =  helper->get_value_as_int("your_invites_count");
         info.YouBlocked_ = helper->get_value_as_bool("you_blocked");
         info.YouPending_ = helper->get_value_as_bool("you_pending");
         info.YouMember_ = helper->get_value_as_bool("you_member");
@@ -61,7 +66,8 @@ namespace Data
     {
         ChatMembersPage info;
         info.AimId_ = QString::fromUtf8(_helper->get_value_as_string("aimid"));
-        info.Cursor_ = QString::fromUtf8(_helper->get_value_as_string("cursor"));
+        if (_helper->is_value_exist("cursor"))
+            info.Cursor_ = QString::fromUtf8(_helper->get_value_as_string("cursor"));
         info.Members_ = UnserializeChatMembers(_helper);
         return info;
     }

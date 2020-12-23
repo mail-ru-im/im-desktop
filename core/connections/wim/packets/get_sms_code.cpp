@@ -32,6 +32,10 @@ validate_phone::~validate_phone()
 {
 }
 
+std::string_view validate_phone::get_method() const
+{
+    return "phoneValidation";
+}
 
 int32_t validate_phone::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
@@ -94,4 +98,9 @@ int32_t get_code_by_phone_call::init_request(const std::shared_ptr<core::http_re
     _request->set_url(ivr_url_);
     _request->set_keep_alive();
     return 0;
+}
+
+std::string_view get_code_by_phone_call::get_method() const
+{
+    return "get_code_by_phone_call";
 }

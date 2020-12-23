@@ -31,6 +31,8 @@ namespace core
             reg_sms_resend = 2002,
             reg_error_code = 2003,
             reg_error_uin = 2004,
+            reg_error_code_sms = 2005,
+            reg_error_code_2fa = 2006,
 
             messages_from_created_to_sent = 3000,
             messages_from_created_to_delivered = 3001,
@@ -49,6 +51,8 @@ namespace core
             stickers_suggested_sticker_sent = 5007,
 
             smartreply_settings_swtich = 5008,
+
+            stickers_download_per_second = 5009,
 
             installer_ok = 6000,
             installer_open_files_archive = 6001,
@@ -115,6 +119,8 @@ namespace core
             case im_stat_event_names::reg_sms_resend: return std::string_view("im_reg_sms_resend");
             case im_stat_event_names::reg_error_code: return std::string_view("im_reg_error_code");
             case im_stat_event_names::reg_error_uin: return std::string_view("im_reg_error_uin");
+            case im_stat_event_names::reg_error_code_sms: return std::string_view("im_reg_error_code_sms");
+            case im_stat_event_names::reg_error_code_2fa: return std::string_view("im_reg_error_code_2fa");
 
             case im_stat_event_names::messages_from_created_to_sent: return std::string_view("messages_from_created_to_sent");
             case im_stat_event_names::messages_from_created_to_delivered: return std::string_view("messages_from_created_to_delivered");
@@ -133,6 +139,7 @@ namespace core
             case im_stat_event_names::stickers_suggested_sticker_sent: return std::string_view("stickers_suggested_sticker_sent");
 
             case im_stat_event_names::smartreply_settings_swtich: return std::string_view("settingsscr_smartreply_action");
+            case im_stat_event_names::stickers_download_per_second: return std::string_view("stickers_download_per_second");
 
             case im_stat_event_names::installer_ok: return std::string_view("im_installer_ok");
             case im_stat_event_names::installer_open_files_archive: return std::string_view("im_installer_open_files_archive");

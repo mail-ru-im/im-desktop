@@ -31,8 +31,7 @@ namespace Statuses
     class Status
     {
     public:
-        Status(const QString& _code = QString(), const QString& _description = QString(), std::chrono::seconds _duration = std::chrono::seconds::zero());
-        Status(const Status& _other) = default;
+        Status(const QString& _code = QString(), const QString& _description = QString());
         ~Status() = default;
 
         bool operator== (const Status& _other) const;
@@ -42,35 +41,26 @@ namespace Statuses
         QString toString() const;
         const QString& getDescription() const noexcept;
 
-        void setDuration(const std::chrono::seconds _time);
-        const std::chrono::seconds getDefaultDuration() const noexcept;
         QString getTimeString() const;
-        QString getDurationString() const;
+        const QDateTime& getEndTime() const { return endTime_; }
 
         bool isEmpty() const;
 
-        void setSelected(bool _selected);
-        bool isSelected() const { return selected_; }
-
-        void setExpirationTime();
-        void resetTime();
-        bool statusExpired() const;
+        void setStartTime(const QDateTime& _time);
+        void setEndTime(const QDateTime& _time);
 
         void unserialize(core::coll_helper& _coll);
         void unserialize(const rapidjson::Value& _node);
-        void serialize(Ui::gui_coll_helper& _coll) const;
 
         void update(const Status& _other);
+
+        static QString emptyDescription();
 
     private:
         Emoji::EmojiCode code_;
         mutable QString description_;
-        std::chrono::seconds defaultDuration_;
-        std::chrono::seconds duration_;
         QDateTime startTime_;
         QDateTime endTime_;
-        bool selected_;
-        TimeMode timeMode_;
     };
 }
 

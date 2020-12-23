@@ -23,8 +23,8 @@ namespace Ui
         void setStep(int _val) { Step_ = _val; update(); }
         int getStep() const { return Step_; }
 
-        void Show();
-        void Hide();
+        void showAnimated();
+        void hideAnimated();
         void forceHide();
         bool isSemiWindowVisible() const;
 

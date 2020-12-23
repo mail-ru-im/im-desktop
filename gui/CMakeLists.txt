@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.14)
+cmake_minimum_required(VERSION 3.17)
 
 project(${APP_PROJECT_NAME})
 
@@ -117,7 +117,6 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG ${ICQ_BIN_DIR})
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${ICQ_BIN_DIR})
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${ICQ_BIN_DIR})
 
-
 # -------------------------- definitions -------------------------
 message(STATUS "CMAKE_BUILD_TYPE is ${CMAKE_BUILD_TYPE}")
 if(${CMAKE_BUILD_TYPE} STREQUAL "Release")
@@ -130,10 +129,11 @@ add_definitions(-DQT_NO_CAST_FROM_BYTEARRAY)
 add_definitions(-DQT_STRICT_ITERATORS)
 add_definitions(-DQT_NO_KEYWORDS)
 
-if(BUILD_FOR_STORE)
-    message(STATUS "... cmake: This build for Store -> BUILD_FOR_STORE")
-    message(STATUS "add_definitions(-DBUILD_FOR_STORE=1)")
-    add_definitions(-DBUILD_FOR_STORE=1)
+add_definitions(-DRLOTTIE_BUILD)
+
+option(LOTTIE_FRAME_CACHE "Enable lottie frame cache in player" ON)
+if (LOTTIE_FRAME_CACHE)
+    add_definitions(-DLOTTIE_FRAME_CACHE)
 endif()
 
 if(IM_AUTO_TESTING)
@@ -260,16 +260,18 @@ elseif(APPLE)
 elseif(LINUX)
     # add_definitions(-include "stdafx.h")
     message("Linux: Set SYSTEM_LIBRARIES")
+
+    set_lib_var(DBUS_LIBRARYDIR libdbus_${deps_lib_version_libdbus})
+
     set(SYSTEM_LIBRARIES
         corelib
         core
         ${CURL_LIBRARIES}
         ${OPENSSL_LIBRARIES}
-        ${LIBCRYPTO_LIBRARIES}
         ${ICQ_PLATFORM_SPECIFIC}/libXi.a
         ${ICQ_PLATFORM_SPECIFIC}/libxkbcommon-x11.a
         ${ICQ_PLATFORM_SPECIFIC}/libxkbcommon.a
-        ${ICQ_PLATFORM_SPECIFIC}/libdbus-1.a
+        ${DBUS_LIBRARYDIR}/libdbus-1.a
         ${ICQ_PLATFORM_SPECIFIC}/libxcb-util.a
         ${ICQ_PLATFORM_SPECIFIC}/libXext.a
         ${ICQ_PLATFORM_SPECIFIC}/libXau.a
@@ -280,10 +282,6 @@ elseif(LINUX)
     if(ICQ_DEBUG)
         message(STATUS "ICQ_DEBUG = ${ICQ_DEBUG}")
         set(SYSTEM_LIBRARIES ${SYSTEM_LIBRARIES} -ludev)
-    endif()
-
-    if(LINUX32)
-        set(SYSTEM_LIBRARIES ${SYSTEM_LIBRARIES} ${ICQ_PLATFORM_SPECIFIC}/libp11-kit.a)
     endif()
 
     if(IM_AUTO_TESTING)
@@ -354,6 +352,38 @@ else()
     list(REMOVE_ITEM SUBPROJECT_SOURCES "${ICQ_ROOT}/gui/webserver/webserver.cpp")
 endif()
 
+if (STRIP_VOIP)
+    list(FILTER SUBPROJECT_HEADERS EXCLUDE REGEX  "${ICQ_ROOT}/gui/voip/*")
+    list(FILTER SUBPROJECT_MM_SOURCES EXCLUDE REGEX  "${ICQ_ROOT}/gui/voip/*")
+    list(FILTER SUBPROJECT_SOURCES EXCLUDE REGEX  "${ICQ_ROOT}/gui/voip/*")
+    list(REMOVE_ITEM SUBPROJECT_HEADERS "${ICQ_ROOT}/gui/main_window/settings/SettingsVoip.h")
+    list(REMOVE_ITEM SUBPROJECT_SOURCES "${ICQ_ROOT}/gui/main_window/settings/SettingsVoip.cpp")
+endif()
+
+if (STRIP_AV_MEDIA)
+    list(FILTER SUBPROJECT_HEADERS EXCLUDE REGEX  "${ICQ_ROOT}/gui/main_window/mplayer/*")
+    list(FILTER SUBPROJECT_MM_SOURCES EXCLUDE REGEX  "${ICQ_ROOT}/gui/main_window/mplayer/*")
+    list(FILTER SUBPROJECT_SOURCES EXCLUDE REGEX  "${ICQ_ROOT}/gui/main_window/mplayer/*")
+
+    list(REMOVE_ITEM SUBPROJECT_HEADERS "${ICQ_ROOT}/gui/memory_stats/FFmpegPlayerMemMonitor.h")
+    list(REMOVE_ITEM SUBPROJECT_SOURCES "${ICQ_ROOT}/gui/memory_stats/FFmpegPlayerMemMonitor.cpp")
+
+    list(REMOVE_ITEM SUBPROJECT_HEADERS "${ICQ_ROOT}/gui/previewer/FfmpegViewerImpl.h")
+    list(REMOVE_ITEM SUBPROJECT_SOURCES "${ICQ_ROOT}/gui/previewer/FfmpegViewerImpl.cpp")
+
+    list(FILTER SUBPROJECT_HEADERS EXCLUDE REGEX  "${ICQ_ROOT}/gui/media/ptt/*")
+    list(FILTER SUBPROJECT_MM_SOURCES EXCLUDE REGEX  "${ICQ_ROOT}/gui/media/ptt/*")
+    list(FILTER SUBPROJECT_SOURCES EXCLUDE REGEX  "${ICQ_ROOT}/gui/media/ptt/*")
+
+    list(FILTER SUBPROJECT_HEADERS EXCLUDE REGEX  "${ICQ_ROOT}/gui/main_window/input_widget/panels/PanelPtt*")
+    list(FILTER SUBPROJECT_MM_SOURCES EXCLUDE REGEX  "${ICQ_ROOT}/gui/main_window/input_widget/panels/PanelPtt*")
+    list(FILTER SUBPROJECT_SOURCES EXCLUDE REGEX  "${ICQ_ROOT}/gui/main_window/input_widget/panels/PanelPtt*")
+
+    list(FILTER SUBPROJECT_HEADERS EXCLUDE REGEX  "${ICQ_ROOT}/gui/main_window/sounds/*")
+    list(FILTER SUBPROJECT_MM_SOURCES EXCLUDE REGEX  "${ICQ_ROOT}/gui/main_window/sounds/*")
+    list(FILTER SUBPROJECT_SOURCES EXCLUDE REGEX  "${ICQ_ROOT}/gui/main_window/sounds/*")
+endif()
+
 set_source_group("sources" "${SUBPROJECT_ROOT}" ${SUBPROJECT_SOURCES} ${SUBPROJECT_MM_SOURCES} ${SUBPROJECT_HEADERS})
 
 
@@ -363,8 +393,14 @@ if (NOT LINUX)
 else()
     set(COMMON_ROOT "${ICQ_ROOT}/common.shared/message_processing")
 endif()
+
 find_sources(COMMON_SOURCES "${COMMON_ROOT}" "cpp")
 find_sources(COMMON_HEADERS "${COMMON_ROOT}" "h")
+
+if (STRIP_CRASH_HANDLER)
+    list(FILTER COMMON_HEADERS EXCLUDE REGEX  "${ICQ_ROOT}/common.shared/crash_report/*")
+    list(FILTER COMMON_SOURCES EXCLUDE REGEX  "${ICQ_ROOT}/common.shared/crash_report/*")
+endif()
 
 set_source_group("sources" "${COMMON_ROOT}" ${COMMON_SOURCES} ${COMMON_HEADERS})
 
@@ -505,7 +541,7 @@ message(STATUS "PRODUCT_RESOURCES = ${PRODUCT_RESOURCES}")
 
 get_filename_component(ICQ_RCC_EXE "${ICQ_QT_BIN_DIR}/rcc" ABSOLUTE)
 if(MSVC)
-    message(STATUS "Making BIG resources from ${ICQ_RESOURCES}, ${PRODUCT_RESOURCES}")
+    message(STATUS "Making BIG resources from ${ICQ_RESOURCES} and ${PRODUCT_RESOURCES}")
     icq_add_big_resources(RCC_FILES ${ICQ_RESOURCES} ${PRODUCT_RESOURCES})
 
     set(RC_FILE "${SUBPROJECT_ROOT}/Resource.rc")
@@ -558,7 +594,8 @@ add_executable(${PROJECT_NAME} MACOSX_BUNDLE WIN32
     ${PCH_BIN}
     ${ICQ_RESOURCE_FILES}
     ${RCC_FILES}
-    ${MACOSX_BUNDLE_ICON_FILE})
+    ${MACOSX_BUNDLE_ICON_FILE}
+    ${MACOSX_BUNDLE_INFO_PLIST})
 
 add_dependencies(${PROJECT_NAME} check_themes_meta)
 
@@ -578,6 +615,7 @@ if(ICQ_CORELIB_STATIC_LINKING)
         target_link_libraries(${PROJECT_NAME}
             ${OPEN_AL_LIBRARIES}
             ${FFMPEG_LIBRARIES}
+            ${RLOTTIE_LIBRARIES}
             ${QT_LIBRARIES}
             ${SYSTEM_LIBRARIES}
             ${VOIP_LIBRARIES}
@@ -594,11 +632,14 @@ if(ICQ_CORELIB_STATIC_LINKING)
         if(IM_AUTO_TESTING)
             message(STATUS "... LINUX_TESTING: target_link_libraries with Qt5::Test STATIC_LINKING")
         endif()
+        message(STATUS "ICU_LIBRARIES -> ${ICU_LIBRARIES}")
         target_link_libraries(${PROJECT_NAME}
         ${OPEN_AL_LIBRARIES}
         ${FFMPEG_LIBRARIES}
+        ${RLOTTIE_LIBRARIES}
         ${QT_LIBRARIES}
         ${PHONENUMBER_LIBRARIES}
+        ${ICU_LIBRARIES}
         ${SYSTEM_LIBRARIES}
         ${BREAKPAD_LIBRARIES}
         ${CRASHPAD_LIBRARIES}
@@ -610,6 +651,7 @@ else()
         target_link_libraries(${PROJECT_NAME}
             ${OPEN_AL_LIBRARIES}
             ${FFMPEG_LIBRARIES}
+            ${RLOTTIE_LIBRARIES}
             ${QT_LIBRARIES}
             ${ZLIB_LIBRARIES}
             Iphlpapi.lib
@@ -623,6 +665,7 @@ else()
             target_link_libraries(${PROJECT_NAME}
                 ${OPEN_AL_LIBRARIES}
                 ${FFMPEG_LIBRARIES}
+                ${RLOTTIE_LIBRARIES}
                 ${QT_LIBRARIES}
                 ${ZLIB_LIBRARIES}
                 ${SYSTEM_LIBRARIES}
@@ -633,6 +676,7 @@ else()
             target_link_libraries(${PROJECT_NAME}
                 ${OPEN_AL_LIBRARIES}
                 ${FFMPEG_LIBRARIES}
+                ${RLOTTIE_LIBRARIES}
                 ${QT_LIBRARIES}
                 ${ZLIB_LIBRARIES}
                 ${SYSTEM_LIBRARIES}
@@ -649,19 +693,32 @@ if(MSVC)
         set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /NODEFAULTLIB:\"libcmt.lib\"")
     endif()
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /SUBSYSTEM:WINDOWS")
+
+
+    # Rename icq.exe to product.exe
+    if(NOT APP_OUT_EXE_NAME)
+        # icq.exe, magent.exe, myteam.exe etc
+        set(APP_OUT_EXE_NAME "icq")
+    endif()
+    set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "${APP_OUT_EXE_NAME}")
+
 endif()
 
 
 # ---------------------------   bundle   -------------------------
 if(APPLE)
+
     set(ICQ_BUNDLE "${ICQ_BIN_DIR}/${PROJECT_NAME}.app")
 
     set(ICQ_BUNDLE_DIR "${ICQ_BUNDLE}/Contents")
 
     set(ICQ_PLIST "${ICQ_BUNDLE_DIR}/Info.plist")
     set(PLIST_BUDDY "/usr/libexec/PlistBuddy")
+    
+    set(MACOSX_BUNDLE_INFO_PLIST "${PRODUCT_MAC}/Info.plist")
+    SET_TARGET_PROPERTIES(${PROJECT_NAME} PROPERTIES MACOSX_BUNDLE_INFO_PLIST "${PRODUCT_MAC}/Info.plist")
 
-    message(STATUS "DIR ICQ_BIN_DIR = ${ICQ_BIN_DIR}")
+    message(STATUS "DIR ICQ_BIN_DIR    = ${ICQ_BIN_DIR}")
     message(STATUS "DIR ICQ_BUNDLE     = ${ICQ_BUNDLE}")
     message(STATUS "DIR ICQ_BUNDLE_DIR = ${ICQ_BUNDLE_DIR}")
     message(STATUS "DIR ICQ_PLIST      = ${ICQ_PLIST}")
@@ -688,7 +745,7 @@ if(APPLE)
         add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E make_directory ${ICQ_PLUGINS_BUNDLE_DIR})
 
-    if (NOT BUILD_FOR_STORE)
+    if ((NOT BUILD_FOR_STORE) AND (NOT STRIP_CRASH_HANDLER))
         message(STATUS "make_directory ${ICQ_HELPERS_BUNDLE_DIR}")
         set(ICQ_HELPERS_BUNDLE_DIR "${ICQ_BUNDLE_DIR}/Helpers")
             add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
@@ -737,8 +794,20 @@ if(APPLE)
 
             if(IM_AUTO_TESTING)
             add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-                # COMMAND install_name_tool -add_rpath @loader_path/../Frameworks/XCTest.framework/XCTest ${ICQ_BUNDLE_DIR}/MacOS/${PROJECT_NAME})
                 COMMAND install_name_tool -change "@rpath/XCTest.framework/Versions/A/XCTest" "@executable_path/../Frameworks/XCTest.framework/XCTest" ${ICQ_BUNDLE_DIR}/MacOS/${PROJECT_NAME})
             endif()
     endif()
+
+    # rename bundle
+    if(NOT "${PROJECT_NAME}" STREQUAL "${APP_OUTPUT_NAME}")
+        message(STATUS "[rename] Bundle will be renamed from [${PROJECT_NAME}] to [${APP_OUTPUT_NAME}.app]")
+
+        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E rename "${ICQ_BUNDLE}/Contents/MacOS/${PROJECT_NAME}" "${ICQ_BUNDLE}/Contents/MacOS/${APP_OUTPUT_NAME}"
+            COMMAND ${CMAKE_COMMAND} -E rename "${ICQ_BUNDLE}" "${ICQ_BIN_DIR}/${APP_OUTPUT_NAME}.app"
+        )
+
+    endif()
+
+
 endif()

@@ -282,8 +282,8 @@ namespace Logic
 
     void SearchItemDelegate::dropCache()
     {
-        contactCache.clear();
-        messageCache.clear();
+        contactCache_.clear();
+        messageCache_.clear();
     }
 
     void SearchItemDelegate::drawContactOrChatItem(QPainter& _painter, const QStyleOptionViewItem& _option, const Data::AbstractSearchResultSptr& _item, const bool _isSelected) const
@@ -369,7 +369,7 @@ namespace Logic
         {
             const auto msg = std::static_pointer_cast<Data::SearchResultMessage>(_item);
 
-            auto& ci = messageCache[msg->getMessageId()];
+            auto& ci = messageCache_[msg->getMessageId()];
             bool needUpdateMessage = false;
             bool needUpdateWidth = false;
 
@@ -405,7 +405,7 @@ namespace Logic
         }
         else if (_item->isContact() || _item->isChat())
         {
-            auto& ci = contactCache[_item->getAimId()];
+            auto& ci = contactCache_[_item->getAimId()];
             bool needUpdate = false;
 
             if (ci)
@@ -466,15 +466,7 @@ namespace Logic
                 const auto& chatItem = std::static_pointer_cast<Data::SearchResultChat>(ci.searchResult_);
                 if (chatItem->chatInfo_.MembersCount_ > 0)
                 {
-                    const QString text = QString::number(chatItem->chatInfo_.MembersCount_) % ql1c(' ') %
-                        Utils::GetTranslator()->getNumberString(
-                            chatItem->chatInfo_.MembersCount_,
-                            QT_TRANSLATE_NOOP3("groupchats", "member", "1"),
-                            QT_TRANSLATE_NOOP3("groupchats", "members", "2"),
-                            QT_TRANSLATE_NOOP3("groupchats", "members", "5"),
-                            QT_TRANSLATE_NOOP3("groupchats", "members", "21")
-                        );
-
+                    const QString text = Utils::getMembersString(chatItem->chatInfo_.MembersCount_, chatItem->chatInfo_.isChannel());
                     ci.text_ = MakeTextUnit(text, {}, LinksVisible::DONT_SHOW_LINKS, ProcessLineFeeds::REMOVE_LINE_FEEDS);
                     ci.text_->init(Fonts::appFontScaled(13, Fonts::FontWeight::Normal), getMessageTextColor(ci.isSelected_), QColor(), QColor(), QColor(), Ui::TextRendering::HorAligment::LEFT, 1);
                     ci.text_->evaluateDesiredSize();
@@ -610,7 +602,7 @@ namespace Logic
         const auto avatarSize = _params.getAvatarSize();
 
         bool isDefault = false;
-        const auto avatar = *Logic::getAvatarStorageProxy(avatarProxyFlags()).GetRounded(
+        const auto avatar = Logic::getAvatarStorageProxy(avatarProxyFlags()).GetRounded(
             _aimid,
             QString(),
             Utils::scale_bitmap(avatarSize),

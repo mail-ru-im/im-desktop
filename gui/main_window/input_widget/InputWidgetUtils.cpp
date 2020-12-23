@@ -398,11 +398,11 @@ namespace Ui
     void sendShareStat(bool _sent)
     {
         Ui::GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::sharecontactscr_contact_action,
-                {
+        {
             {"chat_type", Ui::getStatsChatType() },
             { "type", std::string("internal") },
             { "status", std::string( _sent ? "sent" : "not_sent") }
-                });
+        });
     }
 
     BubbleWidget::BubbleWidget(QWidget* _parent, const int _topMargin, const int _botMargin, const Styling::StyleVariable _bgColor)

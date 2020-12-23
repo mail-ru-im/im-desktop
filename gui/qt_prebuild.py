@@ -10,11 +10,8 @@ import subprocess
 from pathlib import Path
 
 
-qt_path = os.path.dirname(os.path.abspath(__file__ + "/..")).replace("\\", "/")
-
-
 def parse_external_version():
-    walk_dir = Path("..", "CMakeLists.txt")
+    walk_dir = Path("..", "requirements", "common.cmake")
     data = None
     with open(walk_dir, "r") as cmake_data:
         data = cmake_data.readlines()
@@ -28,7 +25,12 @@ def parse_external_version():
 
 
 external_version = parse_external_version()
+if not external_version:
+    print("ERROR: Can't extract external_version parse_external_version()")
+    sys.exit(1)
+qt_path = os.path.dirname(os.path.abspath(__file__ + "/..")).replace("\\", "/")
 qt_path += f"/external_{external_version}/windows/qt/bin/"
+print(f"-> qt_path = {qt_path}")
 
 
 def file_contains_regex(path, regexes):

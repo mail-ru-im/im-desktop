@@ -233,34 +233,23 @@ PackWidget::PackWidget(Stickers::StatContext _context, QWidget* _parent)
     loadingText_->setWordWrap(true);
 
     rootVerticalLayout_->addWidget(loadingText_);
-
-    errorWidget_ = new PackErrorWidget(this);
-    errorWidget_->setVisible(false);
-
-    rootVerticalLayout_->addWidget(errorWidget_);
-
-    setLayout(rootVerticalLayout_);
 }
 
 PackWidget::~PackWidget() = default;
 
 void PackWidget::setError(const QString& _text)
 {
-    loadingText_->setVisible(false);
+    loadingText_->hide();
 
+    if (!errorWidget_)
+    {
+        errorWidget_ = new PackErrorWidget(this);
+        rootVerticalLayout_->addWidget(errorWidget_);
+    }
     errorWidget_->setErrorText(_text);
-    errorWidget_->setVisible(true);
+    errorWidget_->show();
 
     dialog_->addCancelButton(QT_TRANSLATE_NOOP("popup_window", "Close"), true);
-
-}
-
-void PackWidget::onStickerEvent(const qint32 _error, const qint32 _setId, const QString& _stickerId)
-{
-    if (stickers_)
-    {
-        stickers_->onStickerUpdated(_setId, _stickerId);
-    }
 }
 
 void PackWidget::setParentDialog(GeneralDialog* _dialog)
@@ -270,20 +259,20 @@ void PackWidget::setParentDialog(GeneralDialog* _dialog)
 
 void PackWidget::onStickersPackInfo(std::shared_ptr<Ui::Stickers::Set> _set, const bool _result, const bool _purchased)
 {
-    if (viewArea_)
+    if (!_result || !_set)
         return;
 
-    if (_result)
+    setId_ = _set->getId();
+    storeId_ = _set->getStoreId();
+    subtitle_ = _set->getSubtitle();
+    purchased_ = _purchased;
+    name_ = _set->getName();
+
+    loadingText_->setVisible(false);
+
+    if (!subtitle_.isEmpty())
     {
-        loadingText_->setVisible(false);
-
-        setId_ = _set->getId();
-        storeId_ = _set->getStoreId();
-        subtitle_ = _set->getSubtitle();
-        purchased_ = _purchased;
-        name_ = _set->getName();
-
-        if (!subtitle_.isEmpty())
+        if (!subtitleControl_)
         {
             QHBoxLayout* textLayout = new QHBoxLayout(nullptr);
             textLayout->setContentsMargins(getTextMargin(), 0, getButtonMargin(), 0);
@@ -304,9 +293,15 @@ void PackWidget::onStickersPackInfo(std::shared_ptr<Ui::Stickers::Set> _set, con
             textLayout->addWidget(subtitleControl_);
 
             rootVerticalLayout_->addLayout(textLayout);
-
         }
+        else
+        {
+            subtitleControl_->setPlainText(subtitle_, false);
+        }
+    }
 
+    if (!viewArea_)
+    {
         viewArea_ = CreateScrollAreaAndSetTrScrollBarV(this);
         viewArea_->setFocusPolicy(Qt::NoFocus);
         viewArea_->setStyleSheet(qsl("background: transparent; border: none;"));
@@ -314,6 +309,9 @@ void PackWidget::onStickersPackInfo(std::shared_ptr<Ui::Stickers::Set> _set, con
         connect(QScroller::scroller(viewArea_->viewport()), &QScroller::stateChanged, this, &PackWidget::touchScrollStateChanged, Qt::QueuedConnection);
 
         stickers_ = new Smiles::StickersTable(this, setId_, getStickerSize(), getStickerItemSize());
+        connect(viewArea_->verticalScrollBar(), &QScrollBar::valueChanged, stickers_, &Smiles::StickersTable::onVisibilityChanged);
+        connect(viewArea_->verticalScrollBar(), &QScrollBar::rangeChanged, stickers_, &Smiles::StickersTable::onVisibilityChanged);
+        connect(&Stickers::getCache(), &Stickers::Cache::stickerUpdated, stickers_, &Smiles::StickersTable::onStickerUpdated);
 
         stickersView_ = new StickersView(this, stickers_);
         stickersView_->setObjectName(qsl("scroll_area_widget"));
@@ -330,7 +328,15 @@ void PackWidget::onStickersPackInfo(std::shared_ptr<Ui::Stickers::Set> _set, con
 
         stickersLayout_->addWidget(stickers_);
 
-        // init buttons
+        connect(stickersView_, &StickersView::stickerPreviewClose, this, &PackWidget::onStickerPreviewClose);
+        connect(stickersView_, &StickersView::stickerPreview, this, &PackWidget::onStickerPreview);
+        connect(stickersView_, &StickersView::stickerHovered, this, &PackWidget::onStickerHovered);
+    }
+    stickers_->onStickerAdded();
+
+    // init buttons
+    if (!addButton_ || !removeButton_)
+    {
         QHBoxLayout* buttonsLayout = new QHBoxLayout(nullptr);
 
         buttonsLayout->setContentsMargins(getButtonMargin(), getButtonMargin(), getButtonMargin(), getButtonMargin());
@@ -350,34 +356,35 @@ void PackWidget::onStickersPackInfo(std::shared_ptr<Ui::Stickers::Set> _set, con
 
         buttonsLayout->addSpacerItem(new QSpacerItem(getButtonMargin(), 0));
 
-        if (!_purchased)
-        {
-            addButton_ = new DialogButton(this, QT_TRANSLATE_NOOP("popup_window", "Add"), DialogButtonRole::CONFIRM);
+        addButton_ = new DialogButton(this, QT_TRANSLATE_NOOP("popup_window", "Add"), DialogButtonRole::CONFIRM);
 
-            addButton_->setCursor(QCursor(Qt::PointingHandCursor));
-            addButton_->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-            addButton_->adjustSize();
-            Testing::setAccessibleName(addButton_, qsl("AS StickerPack addButton"));
-            buttonsLayout->addWidget(addButton_);
+        addButton_->setCursor(QCursor(Qt::PointingHandCursor));
+        addButton_->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+        addButton_->adjustSize();
+        Testing::setAccessibleName(addButton_, qsl("AS StickerPack addButton"));
+        buttonsLayout->addWidget(addButton_);
 
-            QObject::connect(addButton_, &QPushButton::clicked, this, &PackWidget::onAddButton);
-        }
-        else
-        {
-            removeButton_ = new DialogButton(this, QT_TRANSLATE_NOOP("popup_window", "Remove"), DialogButtonRole::CONFIRM_DELETE);
+        QObject::connect(addButton_, &QPushButton::clicked, this, &PackWidget::onAddButton);
 
-            removeButton_->setCursor(QCursor(Qt::PointingHandCursor));
-            removeButton_->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-            removeButton_->adjustSize();
+        removeButton_ = new DialogButton(this, QT_TRANSLATE_NOOP("popup_window", "Remove"), DialogButtonRole::CONFIRM_DELETE);
 
-            QObject::connect(removeButton_, &QPushButton::clicked, this, &PackWidget::onRemoveButton);
+        removeButton_->setCursor(QCursor(Qt::PointingHandCursor));
+        removeButton_->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+        removeButton_->adjustSize();
 
-            Testing::setAccessibleName(removeButton_, qsl("AS StickerPack removeButton"));
-            buttonsLayout->addWidget(removeButton_);
+        QObject::connect(removeButton_, &QPushButton::clicked, this, &PackWidget::onRemoveButton);
 
-        }
+        Testing::setAccessibleName(removeButton_, qsl("AS StickerPack removeButton"));
+        buttonsLayout->addWidget(removeButton_);
+
         rootVerticalLayout_->addLayout(buttonsLayout);
+    }
 
+    addButton_->setVisible(!_purchased);
+    removeButton_->setVisible(_purchased);
+
+    if (!moreButton_)
+    {
         moreButton_ = new CustomButton(parentWidget(), qsl(":/controls/more_icon"), Utils::unscale_value(getMoreButtonSizeScaled()), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY));
 
         moreButton_->setFixedSize(getMoreButtonSizeScaled());
@@ -398,10 +405,6 @@ void PackWidget::onStickersPackInfo(std::shared_ptr<Ui::Stickers::Set> _set, con
         connect(&menu, &ContextMenu::triggered, this, &PackWidget::contextMenuAction, Qt::QueuedConnection);
 
         connect(moreButton_, &QPushButton::clicked, this, []() { menu.popup(QCursor::pos()); });
-
-        QObject::connect(stickersView_, &StickersView::stickerPreviewClose, this, &PackWidget::onStickerPreviewClose);
-        QObject::connect(stickersView_, &StickersView::stickerPreview, this, &PackWidget::onStickerPreview);
-        QObject::connect(stickersView_, &StickersView::stickerHovered, this, &PackWidget::onStickerHovered);
     }
 }
 
@@ -450,6 +453,9 @@ void PackWidget::onStickerPreview(const int32_t _setId, const QString& _stickerI
     if (!stickerPreview_)
     {
         auto mainWindow = Utils::InterConnector::instance().getMainWindow();
+        if (!mainWindow)
+            return;
+
         stickerPreview_ = std::make_unique<Smiles::StickerPreview>(mainWindow, _setId, _stickerId, Smiles::StickerPreview::Context::Popup);
 
         auto previewRect = dialog_->getMainHost()->rect();
@@ -461,21 +467,21 @@ void PackWidget::onStickerPreview(const int32_t _setId, const QString& _stickerI
 
         GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::stickers_longtap_preview);
 
-        QObject::connect(stickerPreview_.get(), &Smiles::StickerPreview::needClose, this, [this]()
+        connect(stickerPreview_.get(), &Smiles::StickerPreview::needClose, this, [this]()
         {
             stickersView_->stickersPreviewClosed();
 
             onStickerPreviewClose();
         }, Qt::QueuedConnection); // !!! must be Qt::QueuedConnection
+
+        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::mainWindowResized, this, &PackWidget::onWindowResized);
     }
 }
 
 void PackWidget::onStickerHovered(const int32_t _setId, const QString& _stickerId)
 {
     if (stickerPreview_)
-    {
-        stickerPreview_->showSticker(_setId, _stickerId);
-    }
+        stickerPreview_->showSticker(_stickerId);
 }
 
 void PackWidget::contextMenuAction(QAction* _action)
@@ -486,6 +492,19 @@ void PackWidget::contextMenuAction(QAction* _action)
         Q_EMIT forward();
     else if (command == u"report")
         Q_EMIT report();
+}
+
+void PackWidget::onWindowResized()
+{
+    if (stickerPreview_)
+    {
+        if (auto mainWindow = Utils::InterConnector::instance().getMainWindow())
+        {
+            auto previewRect = dialog_->getMainHost()->rect();
+            previewRect.moveTo(dialog_->getMainHost()->mapTo(mainWindow, previewRect.topLeft()));
+            stickerPreview_->setGeometry(previewRect);
+        }
+    }
 }
 
 void PackWidget::paintEvent(QPaintEvent* _e)
@@ -547,28 +566,41 @@ StickerPackInfo::StickerPackInfo(QWidget* _parent, const int32_t _set_id, const 
     , context_(_context)
 {
     setStyleSheet(Styling::getParameters().getStickersQss());
+
     pack_ = new PackWidget(_context, this);
-
-
     parentDialog_ = std::make_unique<GeneralDialog>(pack_, Utils::InterConnector::instance().getMainWindow());
-
     pack_->setParentDialog(parentDialog_.get());
 
-    Ui::GetDispatcher()->getStickersPackInfo(set_id_, _store_id, _file_id);
-
-    connect(Ui::GetDispatcher(), &core_dispatcher::onStickerpackInfo, this, &StickerPackInfo::onStickerpackInfo);
-    connect(Ui::GetDispatcher(), &core_dispatcher::onSticker, this, [this](qint32 _error, qint32 _setId, qint32, const QString& _fsId) { stickerEvent(_error, _setId, _fsId); });
-
     connect(pack_, &PackWidget::buttonClicked, parentDialog_.get(), &GeneralDialog::close);
-
     connect(pack_, &PackWidget::forward, this, &StickerPackInfo::onShareClicked);
     connect(pack_, &PackWidget::report, this, &StickerPackInfo::onReportClicked);
     connect(parentDialog_.get(), &GeneralDialog::accepted, pack_, &PackWidget::onDialogAccepted);
+
+
+    Stickers::setSptr stickerSet;
+    if (set_id_ != -1)
+    {
+        stickerSet = Stickers::getSet(set_id_);
+        if (!stickerSet)
+            stickerSet = Stickers::getStoreSet(set_id_);
+    }
+    else if (!file_id_.isEmpty())
+    {
+        stickerSet = Stickers::findSetByFsId(file_id_);
+    }
+
+    if (stickerSet)
+    {
+        pack_->onStickersPackInfo(stickerSet, true, stickerSet->isPurchased());
+        if (const auto& name = stickerSet->getName(); !name.isEmpty())
+            parentDialog_->addLabel(name);
+    }
+
+    Ui::GetDispatcher()->getStickersPackInfo(set_id_, _store_id, _file_id);
+    connect(Ui::GetDispatcher(), &core_dispatcher::onStickerpackInfo, this, &StickerPackInfo::onStickerpackInfo);
 }
 
-StickerPackInfo::~StickerPackInfo()
-{
-}
+StickerPackInfo::~StickerPackInfo() = default;
 
 void StickerPackInfo::onShareClicked()
 {
@@ -591,12 +623,6 @@ void StickerPackInfo::onReportClicked()
     else
         parentDialog_->setFixedHeight(h);
 }
-
-void StickerPackInfo::stickerEvent(const qint32 _error, const qint32 _setId, const QString& _stickerId)
-{
-    pack_->onStickerEvent(_error, _setId, _stickerId);
-}
-
 
 void StickerPackInfo::show()
 {
@@ -628,9 +654,7 @@ void StickerPackInfo::onStickerpackInfo(const bool _result, const bool _exist, s
     pack_->onStickersPackInfo(_set, _result, _set->isPurchased());
 
     if (_result)
-    {
         parentDialog_->addLabel(_set->getName());
-    }
 }
 
 void StickerPackInfo::paintEvent(QPaintEvent* _e)

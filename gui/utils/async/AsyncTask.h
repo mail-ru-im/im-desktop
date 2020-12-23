@@ -4,8 +4,18 @@ namespace Async
 {
     inline namespace impl
     {
+        template<typename T>
+        struct hasBoolOp
+        {
+            template<typename U, bool(U::*)() const> struct SFINAE {};
+            template<typename U> static char TestMethod(SFINAE<U, &U::operator bool>*);
+            template<typename U> static int TestMethod(...);
+            static const bool value = sizeof(TestMethod<T>(0)) == sizeof(char);
+        };
+
         template <typename Callable>
-        class Runnable : public QRunnable {
+        class Runnable : public QRunnable
+        {
         public:
             Runnable(Callable&& callable) : _callable(std::forward<Callable>(callable))
             {
@@ -13,8 +23,15 @@ namespace Async
 
             void run() override
             {
-                if (_callable)
+                if constexpr (hasBoolOp<decltype(_callable)>::value)
+                {
+                    if (_callable)
+                        _callable();
+                }
+                else
+                {
                     _callable();
+                }
             }
 
         private:

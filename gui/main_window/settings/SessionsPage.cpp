@@ -143,7 +143,7 @@ namespace Ui
         , activeSessionsWidget_(new QWidget(this))
     {
         auto scrollArea = CreateScrollAreaAndSetTrScrollBarV(this);
-        scrollArea->setStyleSheet(qsl("QWidget{border: none; background-color: %1;}").arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE)));
+        scrollArea->setStyleSheet(ql1s("QWidget{border: none; background-color: %1;}").arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE)));
         scrollArea->setWidgetResizable(true);
         Utils::grabTouchWidget(scrollArea->viewport(), true);
 

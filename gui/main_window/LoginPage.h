@@ -2,6 +2,7 @@
 
 #include "../types/common_phone.h"
 #include "../controls/TextUnit.h"
+#include "accessibility/LinkAccessibleWidget.h"
 
 namespace core
 {
@@ -28,7 +29,7 @@ namespace Ui
     class ContextMenu;
     class ContactUsWidget;
 
-    class EntryHintWidget : public QWidget
+    class EntryHintWidget : public LinkAccessibleWidget
     {
         Q_OBJECT
     Q_SIGNALS:
@@ -46,7 +47,8 @@ namespace Ui
             explicit EntryHintWidget(QWidget* _parent, const QString& _initialText);
             void setText(const QString& _text);
             void appendPhone(const QString& _text);
-            void appendLink(const QString& _text, const QString& _link = QString());
+            void appendLink(const QString& _text, const QString& _link, bool _forceShowLink = false);
+            const TextRendering::TextUnitPtr& getTextUnit() const override { return textUnit_; }
     };
 
     class LoginPage : public QWidget
@@ -114,6 +116,7 @@ namespace Ui
         void setErrorText(int _result);
         void setErrorText(const QString& _customError);
         void updateErrors(int _result);
+        static void updateKeedLoggedInSetting(bool _keep_logged_in);
 
         void prepareLoginByPhone();
 

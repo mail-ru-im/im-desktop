@@ -3,7 +3,7 @@
 
 
 #include "../../../controls/TextUnit.h"
-
+#include "../../../types/message.h"
 #include "../../../core_dispatcher.h"
 #include "../../../gui_settings.h"
 #include "../../../my_info.h"
@@ -39,7 +39,7 @@ namespace Logic
             _id,
             -1,
             _internal_id,
-            -1,
+            Data::MessageBuddy::makePendingId(_internal_id),
             -1,
             core::message_type::base,
             false,

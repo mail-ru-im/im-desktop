@@ -71,7 +71,7 @@ CallLinkWidget::CallLinkWidget(QWidget* _parent, Utils::CallLinkFrom _from, cons
     mainDialog_->addLabel(getCaption(_type), Qt::AlignVCenter | Qt::AlignLeft);
     mainDialog_->addText(getDescription(_type, _from, _aimId), Utils::scale_value(12), Fonts::appFontScaled(15), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
     mainDialog_->addButtonsPair(QT_TRANSLATE_NOOP("popup_window", "Cancel"), QT_TRANSLATE_NOOP("popup_window", "Send"), true);
-    Testing::setAccessibleName(mainDialog_.get(), qsl("AS CallLinkWidget %1").arg((_type == ConferenceType::Call) ? qsl("call") : qsl("webinar")));
+    Testing::setAccessibleName(mainDialog_.get(), ql1s("AS CallLinkWidget %1").arg((_type == ConferenceType::Call) ? ql1s("call") : ql1s("webinar")));
 }
 
 CallLinkWidget::~CallLinkWidget() = default;

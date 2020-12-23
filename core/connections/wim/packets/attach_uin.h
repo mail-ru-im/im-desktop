@@ -32,6 +32,7 @@ namespace core
             bool is_valid() const override { return true; }
             virtual bool is_post() const override { return true; }
             virtual ~attach_uin();
+            virtual std::string_view get_method() const override;
         };
 
     }

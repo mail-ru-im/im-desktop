@@ -77,55 +77,45 @@ bool get_content_type_from_file_sharing_id(std::string_view _file_id, Out core::
 
 std::optional<core::file_sharing_content_type> get_content_type_from_file_sharing_id(std::string_view _file_id)
 {
-    assert(!_file_id.empty());
+    if (_file_id.empty())
+        return {};
+
+    const auto id0 = _file_id.front();
     core::file_sharing_content_type type;
 
-    const auto id0 = _file_id[0];
+    const auto is_one_of = [id0](std::string_view _values)
+    {
+        return _values.find(id0) != std::string_view::npos;
+    };
 
-    const auto is_gif = ((id0 >= '4') && (id0 <= '5'));
-    if (is_gif)
+    if (is_one_of("45")) // gif
     {
         type.type_ = core::file_sharing_base_content_type::gif;
-
         if (id0 == '5')
             type.subtype_ = core::file_sharing_sub_content_type::sticker;
-
-        return type;
     }
-
-    const auto is_image = ((id0 >= '0') && (id0 <= '7'));
-    if (is_image)
-    {
-        type.type_ = core::file_sharing_base_content_type::image;
-
-        if (id0 == '2')
-            type.subtype_ = core::file_sharing_sub_content_type::sticker;
-
-        return type;
-    }
-
-    const auto is_video = (
-        ((id0 >= '8') && (id0 <= '9')) ||
-        ((id0 >= 'A') && (id0 <= 'F')));
-    if (is_video)
-    {
-        type.type_ = core::file_sharing_base_content_type::video;
-
-        if (id0 == 'D')
-            type.subtype_ = core::file_sharing_sub_content_type::sticker;
-
-        return type;
-    }
-
-    const auto is_ptt = (
-        ((id0 >= 'I') && (id0 <= 'J')));
-    if (is_ptt)
+    else if (is_one_of("IJ")) // ptt
     {
         type.type_ = core::file_sharing_base_content_type::ptt;
-        return type;
     }
-
-    return std::nullopt;
+    else if (is_one_of("L")) // lottie sticker
+    {
+        type.type_ = core::file_sharing_base_content_type::lottie;
+        type.subtype_ = core::file_sharing_sub_content_type::sticker;
+    }
+    else if (is_one_of("01234567")) // image
+    {
+        type.type_ = core::file_sharing_base_content_type::image;
+        if (id0 == '2')
+            type.subtype_ = core::file_sharing_sub_content_type::sticker;
+    }
+    else if (is_one_of("89ABCDEF")) // video
+    {
+        type.type_ = core::file_sharing_base_content_type::video;
+        if (id0 == 'D')
+            type.subtype_ = core::file_sharing_sub_content_type::sticker;
+    }
+    return type;
 }
 
 std::optional<std::string_view> parse_new_file_sharing_uri(std::string_view _uri)

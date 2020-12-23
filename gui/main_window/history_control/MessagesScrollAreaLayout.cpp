@@ -23,7 +23,6 @@
 #include "../../utils/InterConnector.h"
 #include "../MainWindow.h"
 #include "../../gui_settings.h"
-#include "complex_message/ComplexMessageItem.h"
 #include "main_window/smartreply/SmartReplyWidget.h"
 
 #include <boost/range/adaptor/reversed.hpp>
@@ -97,7 +96,6 @@ namespace Ui
         , IsGeometrySet_(false)
         , IsHovered_(false)
         , IsActive_(false)
-        , isVisibleEnoughForPlay_(false)
         , isVisibleEnoughForRead_(false)
     {
         assert(Widget_);
@@ -940,16 +938,16 @@ namespace Ui
 
             if (_checkVisibility)
             {
-                const auto isVisibleForPlay = isVisibleEnoughForPlay(item->Widget_, widgetAbsGeometry, viewportVisibilityAbsRect) && isWindowActive;
+                const auto visRect = isWindowActive ? getItemVisibleRect(widgetAbsGeometry, viewportVisibilityAbsRect) : QRect();
                 const auto isVisibleForRead = isVisibleEnoughForRead(item->Widget_, widgetAbsGeometry, viewportVisibilityAbsRect) && (isUIActiveMainWindow || isPartialReadEnabled);
 
-                auto isVisibilityChanged = (item->isVisibleEnoughForPlay_ != isVisibleForPlay);
+                auto isVisibilityChanged = (item->visibleRect_ != visRect);
 
                 if (isVisibilityChanged)
                 {
-                    item->isVisibleEnoughForPlay_ = isVisibleForPlay;
+                    item->visibleRect_ = visRect;
 
-                    onItemVisibilityChanged(item->Widget_, isVisibleForPlay);
+                    onItemVisibleRectChanged(item->Widget_, item->visibleRect_);
                 }
 
                 isVisibilityChanged = (item->isVisibleEnoughForRead_ != isVisibleForRead);
@@ -1757,16 +1755,16 @@ namespace Ui
                 const QMargins visibilityMargins(0, visibilityMargin, 0, visibilityMargin);
                 const auto viewportVisibilityAbsRect = viewportAbsRect.marginsAdded(visibilityMargins);
 
-                const auto isVisibleForPlay = isVisibleEnoughForPlay(item->Widget_, widgetAbsGeometry, viewportVisibilityAbsRect) && isWindowActive;
+                const auto visRect = isWindowActive ? getItemVisibleRect(widgetAbsGeometry, viewportVisibilityAbsRect) : QRect();
                 const auto isVisibleForRead = isVisibleEnoughForRead(item->Widget_, widgetAbsGeometry, viewportVisibilityAbsRect) && (isWindowActive || isPartialReadEnabled);
 
-                auto isVisibilityChanged = (item->isVisibleEnoughForPlay_ != isVisibleForPlay);
+                auto isVisibilityChanged = (item->visibleRect_ != visRect);
 
                 if (isVisibilityChanged)
                 {
-                    item->isVisibleEnoughForPlay_ = isVisibleForPlay;
+                    item->visibleRect_ = visRect;
 
-                    onItemVisibilityChanged(item->Widget_, isVisibleForPlay);
+                    onItemVisibleRectChanged(item->Widget_, item->visibleRect_);
                 }
 
                 isVisibilityChanged = (item->isVisibleEnoughForRead_ != isVisibleForRead);
@@ -1849,13 +1847,10 @@ namespace Ui
         }
     }
 
-    void MessagesScrollAreaLayout::onItemVisibilityChanged(QWidget *widget, const bool isVisible)
+    void MessagesScrollAreaLayout::onItemVisibleRectChanged(QWidget* widget, const QRect& _visibleRect)
     {
-        if (auto item = qobject_cast<HistoryControlPageItem*>(widget); item)
-        {
-            item->onVisibilityChanged(isVisible);
-            return;
-        }
+        if (auto item = qobject_cast<HistoryControlPageItem*>(widget))
+            item->onVisibleRectChanged(_visibleRect);
     }
 
     void MessagesScrollAreaLayout::onItemRead(QWidget *widget, const bool _isVisible)
@@ -1947,7 +1942,7 @@ namespace Ui
         if (receiver)
         {
             const auto widgetMousePos = receiver->mapFromGlobal(globalMousePos);
-            QMouseEvent moveEvent(QEvent::MouseMove, widgetMousePos, Qt::NoButton, Qt::NoButton, Qt::NoModifier);
+            QMouseEvent moveEvent(QEvent::MouseMove, widgetMousePos, Qt::NoButton, QApplication::mouseButtons(), Qt::NoModifier);
             QApplication::sendEvent(receiver, &moveEvent);
         }
     }
@@ -2437,11 +2432,10 @@ namespace Ui
         }
     }
 
-    bool MessagesScrollAreaLayout::isVisibleEnoughForPlay(const QWidget*, const QRect& _widgetAbsGeometry, const QRect& _viewportVisibilityAbsRect) const
+    QRect MessagesScrollAreaLayout::getItemVisibleRect(const QRect& _widgetAbsGeometry, const QRect& _viewportVisibilityAbsRect) const
     {
-        constexpr auto enough_percent = 0.7;
-        const auto intersected = _viewportVisibilityAbsRect.intersected(_widgetAbsGeometry);
-        return 1.0 * intersected.height() / _widgetAbsGeometry.height() > enough_percent;
+        const auto relVisRect = _viewportVisibilityAbsRect.translated(0, -_widgetAbsGeometry.top());
+        return QRect(relVisRect.left(), 0, relVisRect.width(), _widgetAbsGeometry.height()).intersected(relVisRect);
     }
 
     static double getEnoughPercentForMedia(const QRect& _widgetAbsGeometry, const QRect& _viewportVisibilityAbsRect) noexcept
@@ -2464,8 +2458,8 @@ namespace Ui
     {
         if (_item)
         {
-            _item->isVisibleEnoughForPlay_ = false;
-            onItemVisibilityChanged(_item->Widget_, false);
+            _item->visibleRect_ = QRect();
+            onItemVisibleRectChanged(_item->Widget_, QRect());
 
             if (_item->isVisibleEnoughForRead_)
             {

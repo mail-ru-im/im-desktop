@@ -22,6 +22,11 @@ mute_buddy::~mute_buddy()
 {
 }
 
+std::string_view mute_buddy::get_method() const
+{
+    return "mute";
+}
+
 int32_t mute_buddy::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     std::stringstream ss_url;
@@ -34,7 +39,7 @@ int32_t mute_buddy::init_request(const std::shared_ptr<core::http_request_simple
         "&eternal=" << (mute_ ? '1' : '0');
 
     _request->set_url(ss_url.str());
-    _request->set_normalized_url("mute");
+    _request->set_normalized_url(get_method());
     _request->set_keep_alive();
 
     if (!params_.full_log_)

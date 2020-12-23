@@ -400,20 +400,27 @@ namespace Ui
 
     void createGroupVideoCall()
     {
-        SelectContactsWidget select_members_dialog(nullptr, Logic::MembersWidgetRegim::SELECT_MEMBERS, QT_TRANSLATE_NOOP("popup_window", "Start group video call"), QT_TRANSLATE_NOOP("popup_window", "Start"), Ui::MainPage::instance(), true, nullptr, false, false, false);
+#ifndef STRIP_VOIP
+        SelectContactsWidget dialog(
+            nullptr,
+            Logic::MembersWidgetRegim::SELECT_MEMBERS,
+            QT_TRANSLATE_NOOP("popup_window", "Start group video call"),
+            QT_TRANSLATE_NOOP("popup_window", "Start"),
+            Ui::MainPage::instance());
 
-        const auto action = select_members_dialog.show();
+        const auto confirmed = dialog.show();
         const auto selectedContacts = Logic::getContactListModel()->getCheckedContacts();
         Logic::getContactListModel()->clearCheckedItems();
         Logic::getContactListModel()->removeTemporaryContactsFromModel();
 
-        if (action == QDialog::Accepted && !selectedContacts.empty())
+        if (confirmed && !selectedContacts.empty())
         {
             const auto started = Ui::GetDispatcher()->getVoipController().setStartCall(selectedContacts, true, false);
             auto mainPage = MainPage::instance();
             if (mainPage && started)
                 mainPage->raiseVideoWindow(voip_call_type::video_call);
         }
+#endif
     }
 
     void createGroupChat(const std::vector<QString>& _members_aimIds, const CreateChatSource _source)
@@ -421,12 +428,20 @@ namespace Ui
         if (_source != CreateChatSource::profile)
             GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::chats_create_open, {{ "from", _source == CreateChatSource::dots ? "dots" : "pencil" }});
 
-        SelectContactsWidget select_members_dialog(nullptr, Logic::MembersWidgetRegim::SELECT_MEMBERS, QT_TRANSLATE_NOOP("contact_list", "Create group"), QT_TRANSLATE_NOOP("popup_window", "Create"), Ui::MainPage::instance(), true, nullptr, false, true, false);
+        SelectContactsWidgetOptions options;
+        options.chatCreation_ = true;
+        SelectContactsWidget dialog(
+            nullptr,
+            Logic::MembersWidgetRegim::SELECT_MEMBERS,
+            QT_TRANSLATE_NOOP("contact_list", "Create group"),
+            QT_TRANSLATE_NOOP("popup_window", "Create"),
+            Ui::MainPage::instance(),
+            options);
 
         for (const auto& member_aimId : _members_aimIds)
             Logic::getContactListModel()->setCheckedItem(member_aimId, true /* is_checked */);
 
-        if (select_members_dialog.show() == QDialog::Accepted)
+        if (dialog.show())
         {
             const auto selectedContacts = Logic::getContactListModel()->getCheckedContacts();
             if (selectedContacts.empty())
@@ -443,8 +458,8 @@ namespace Ui
                     return;
             }
             GroupChatOperations::ChatData chatData;
-            const auto& cropped = select_members_dialog.lastCroppedImage();
-            chatData.name = select_members_dialog.getName();
+            const auto& cropped = dialog.lastCroppedImage();
+            chatData.name = dialog.getName();
             if (chatData.name.isEmpty())
             {
                 chatData.name = MyInfo()->friendly();
@@ -475,7 +490,7 @@ namespace Ui
                     QObject::disconnect(*connection);
                 });
 
-                select_members_dialog.photo()->applyAvatar(cropped);
+                dialog.photo()->applyAvatar(cropped);
             }
             else
             {
@@ -575,25 +590,32 @@ namespace Ui
         Ui::GetDispatcher()->post_message_to_core("chats/create", collection.get());
     }
 
-    void postAddChatMembersFromCLModelToCore(const QString& _aimId)
+    qint64 postAddChatMembersFromCLModelToCore(const QString& _aimId)
     {
-        const auto selectedContacts = Logic::getContactListModel()->getCheckedContacts();
+        auto selectedContacts = Logic::getContactListModel()->getCheckedContacts();
+        const auto confirm = selectedContacts.size() > 1;
         Logic::getContactListModel()->clearCheckedItems();
         Logic::getContactListModel()->removeTemporaryContactsFromModel();
 
-        Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
-
-        QStringList chat_members;
-        chat_members.reserve(static_cast<int>(selectedContacts.size()));
-        for (const auto& contact : selectedContacts)
-            chat_members.push_back(contact);
-
-        collection.set_value_as_qstring("aimid", _aimId);
-        collection.set_value_as_qstring("m_chat_members_to_add", chat_members.join(ql1c(';')));
-        Ui::GetDispatcher()->post_message_to_core("add_members", collection.get());
+        return postAddChatMembersToCore(_aimId, std::move(selectedContacts), confirm);
     }
 
-    void deleteMemberDialog(Logic::CustomAbstractListModel* _model, const QString& _chatAimId, const QString& _memberAimId, int _regim, QWidget* _parent)
+    qint64 postAddChatMembersToCore(const QString& _chatAimId, std::vector<QString> _contacts, bool _unblockConfirmed)
+    {
+        Ui::gui_coll_helper collection(Ui::GetDispatcher()->create_collection(), true);
+        collection.set_value_as_qstring("aimid", _chatAimId);
+
+        core::ifptr<core::iarray> arr(collection->create_array());
+        arr->reserve(_contacts.size());
+        for (const auto& c : _contacts)
+            arr->push_back(collection.create_qstring_value(c).get());
+        collection.set_value_as_array("members", arr.get());
+        collection.set_value_as_bool("unblock", _unblockConfirmed);
+
+        return Ui::GetDispatcher()->post_message_to_core("add_members", collection.get());
+    }
+
+    bool deleteMemberDialog(Logic::CustomAbstractListModel* _model, const QString& _chatAimId, const QString& _memberAimId, int _regim, QWidget* _parent)
     {
         if (_model)
         {
@@ -601,27 +623,37 @@ namespace Ui
             if (!member)
             {
                 assert(!"member not found in model, probably it need to refresh");
-                return;
+                return false;
             }
         }
 
         QString text;
 
-        const bool isVideoConference = _regim == Logic::MembersWidgetRegim::VIDEO_CONFERENCE;
+        const auto isVideoConference = _regim == Logic::MembersWidgetRegim::VIDEO_CONFERENCE;
+        const auto isInvitersList = _regim == Logic::MembersWidgetRegim::DISALLOWED_INVITERS;
 
         if (_regim == Logic::MembersWidgetRegim::MEMBERS_LIST || _regim == Logic::MembersWidgetRegim::SELECT_MEMBERS)
             text = QT_TRANSLATE_NOOP("popup_window", "Are you sure you want to delete user from this chat?");
         else if (_regim == Logic::MembersWidgetRegim::IGNORE_LIST)
             text = QT_TRANSLATE_NOOP("popup_window", "Are you sure you want to delete user from ignore list?");
+        else if (isInvitersList)
+            text = QT_TRANSLATE_NOOP("popup_window", "Are you sure you want to delete user from list?");
         else if (isVideoConference)
             text = QT_TRANSLATE_NOOP("popup_window", "Are you sure you want to delete user from this call?");
 
-        auto left_button_text = QT_TRANSLATE_NOOP("popup_window", "Cancel");
-        auto right_button_text = QT_TRANSLATE_NOOP("popup_window", "Delete");
+        const auto leftButtonText = QT_TRANSLATE_NOOP("popup_window", "Cancel");
+        const auto rightButtonText = isInvitersList ? QT_TRANSLATE_NOOP("popup_window", "Yes") : QT_TRANSLATE_NOOP("popup_window", "Delete");
 
         auto userName = Logic::GetFriendlyContainer()->getFriendly(_memberAimId);
 
-        if (Utils::GetConfirmationWithTwoButtons(left_button_text, right_button_text, text, userName, isVideoConference ? _parent->parentWidget() : Utils::InterConnector::instance().getMainWindow()))
+        const auto confirmed = Utils::GetConfirmationWithTwoButtons(
+            leftButtonText,
+            rightButtonText,
+            text,
+            userName,
+            isVideoConference ? _parent->parentWidget() : Utils::InterConnector::instance().getMainWindow());
+
+        if (confirmed)
         {
             if (_regim == Logic::MembersWidgetRegim::MEMBERS_LIST || _regim == Logic::MembersWidgetRegim::SELECT_MEMBERS)
             {
@@ -638,14 +670,20 @@ namespace Ui
                 GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::ignorelist_remove);
                 // NOTE : when delete from ignore list, we don't need add contact to CL
             }
+            else if (isInvitersList)
+            {
+                Ui::GetDispatcher()->removeFromInvitersBlacklist({ _memberAimId });
+            }
+#ifndef STRIP_VOIP
             else if (isVideoConference)
             {
                 Ui::GetDispatcher()->getVoipController().setDecline("" , _memberAimId.toStdString().c_str(), false, true);
             }
+#endif
         }
+
+        return confirmed;
     }
-
-
 
     int forwardMessage(const Data::QuotesVec& quotes, bool fromMenu, const QString& _labelText, const QString& _buttonText, bool _enableAuthorSetting)
     {
@@ -659,8 +697,15 @@ namespace Ui
         if (buttonText.isEmpty())
             buttonText = QT_TRANSLATE_NOOP("popup_window", "Forward");
 
-        auto shareDialog = std::make_unique<SelectContactsWidget>(nullptr, Logic::MembersWidgetRegim::SHARE,
-                                             labelText, buttonText, Ui::MainPage::instance(), true, nullptr, _enableAuthorSetting);
+        SelectContactsWidgetOptions options;
+        options.enableAuthorWidget_ = _enableAuthorSetting;
+        auto shareDialog = std::make_unique<SelectContactsWidget>(
+            nullptr,
+            Logic::MembersWidgetRegim::SHARE,
+            labelText,
+            buttonText,
+            Ui::MainPage::instance(),
+            options);
 
         if (_enableAuthorSetting)
         {
@@ -771,14 +816,18 @@ namespace Ui
 
     void sharePhone(const QString& _name, const QString& _phone, const QString& _aimid)
     {
-        auto shareDialog = std::make_unique<SelectContactsWidget>(nullptr, Logic::MembersWidgetRegim::SHARE,
-                                                                  QT_TRANSLATE_NOOP("popup_window", "Share"), QT_TRANSLATE_NOOP("popup_window", "Send"), Ui::MainPage::instance(), true, nullptr);
+        auto shareDialog = std::make_unique<SelectContactsWidget>(
+            nullptr,
+            Logic::MembersWidgetRegim::SHARE,
+            QT_TRANSLATE_NOOP("popup_window", "Share"),
+            QT_TRANSLATE_NOOP("popup_window", "Send"),
+            Ui::MainPage::instance());
 
-        const auto action = shareDialog->show();
+        const auto confirmed = shareDialog->show();
         const auto selectedContacts = Logic::getContactListModel()->getCheckedContacts();
         Logic::getContactListModel()->removeTemporaryContactsFromModel();
 
-        if (action == QDialog::Accepted)
+        if (confirmed)
         {
             const auto onlyOne = selectedContacts.size() == 1;
             const auto first = onlyOne ? selectedContacts.front() : QString();
@@ -976,8 +1025,12 @@ namespace Ui
         if (_mode == ChatMembersShowMode::WithoutMe)
             membersModel->addIgnoredMember(Ui::MyInfo()->aimId());
 
+#ifndef STRIP_VOIP
         const auto maxMembersToAdd = Ui::GetDispatcher()->getVoipController().maxVideoConferenceMembers() - 1
             - Ui::GetDispatcher()->getVoipController().currentCallContacts().size();
+#else
+        const auto maxMembersToAdd = 1;
+#endif
         assert(maxMembersToAdd >= 0);
 
         membersModel->setCheckedFirstMembers(maxMembersToAdd);
@@ -1015,8 +1068,8 @@ namespace Ui
         const auto placeStr = std::string(callPlaceToString(_place));
         const auto whereStr = su::concat(placeStr, typeStr);
 
+#ifndef STRIP_VOIP
         auto callStarted = false;
-
         if (isChat && Features::callRoomInfoEnabled())
         {
             if (!joinChatRoom)
@@ -1032,6 +1085,7 @@ namespace Ui
         auto mainPage = MainPage::instance();
         if (mainPage && callStarted)
             mainPage->raiseVideoWindow(isVideoCall ? voip_call_type::video_call : voip_call_type::audio_call);
+#endif
 
         const auto eventCallType = isVideoCall ? core::stats::stats_event_names::call_video : core::stats::stats_event_names::call_audio;
         GetDispatcher()->post_stats_to_core(eventCallType, { { "From", placeStr } });

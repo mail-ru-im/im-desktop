@@ -28,6 +28,10 @@ namespace core
 
             resolve_pending(wim_packet_params _params, const std::string& _aimId, const std::vector<std::string>& _contacts, bool _approve);
             virtual ~resolve_pending();
+
+            const std::string& get_chat() const noexcept { return aimid_; }
+            const std::vector<std::string>& get_contacts() const noexcept { return contacts_; }
+            virtual std::string_view get_method() const override;
         };
 
     }

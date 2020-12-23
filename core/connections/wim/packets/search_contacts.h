@@ -32,6 +32,8 @@ namespace core
             search_contacts(wim_packet_params _packet_params, const std::string_view _keyword, const std::string_view _phone, const bool _hide_keyword);
 
             const std::shared_ptr<core::archive::persons_map>& get_persons() const override;
+
+            virtual std::string_view get_method() const override;
         };
     }
 }

@@ -23,6 +23,11 @@ mod_chat_member::~mod_chat_member()
 {
 }
 
+std::string_view mod_chat_member::get_method() const
+{
+    return "modChatMember";
+}
+
 int32_t mod_chat_member::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     rapidjson::Document doc(rapidjson::Type::kObjectType);
@@ -34,7 +39,7 @@ int32_t mod_chat_member::init_request(const std::shared_ptr<core::http_request_s
     node_params.AddMember("role", role_, a);
     doc.AddMember("params", std::move(node_params), a);
 
-    setup_common_and_sign(doc, a, _request, "modChatMember");
+    setup_common_and_sign(doc, a, _request, get_method());
 
     if (!params_.full_log_)
     {

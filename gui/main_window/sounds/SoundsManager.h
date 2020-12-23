@@ -29,6 +29,7 @@ namespace Ui
         std::chrono::milliseconds calcDuration();
         openal::ALenum state() const;
 
+        size_t totalLengthInSamples() const;
         size_t currentSampleOffset() const;
         void setCurrentSampleOffset(size_t _offset);
 
@@ -68,7 +69,7 @@ Q_SIGNALS:
 
         std::chrono::milliseconds playSound(Sound _type);
 
-        int playPtt(const QString& file, int id, int& duration);
+        int playPtt(const QString& file, int id, int& duration, double progress = 0);
         int playPtt(const char* data, size_t size, qint64 freq, qint64 fmt, int id, int& duration, size_t sampleOffset = 0);
         void stopPtt(int id);
         void pausePtt(int id);
@@ -77,6 +78,7 @@ Q_SIGNALS:
 
         size_t sampleOffset(int id) const;
         bool setSampleOffset(int id, size_t _offset);
+        void setProgressOffset(int id, double percent);
 
         void delayDeviceTimer();
         void sourcePlay(unsigned source);

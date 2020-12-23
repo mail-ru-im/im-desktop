@@ -5,6 +5,9 @@
 #include "main_window/mplayer/VideoPlayer.h"
 
 #include "ImageViewerImpl.h"
+#ifndef STRIP_AV_MEDIA
+#include "FfmpegViewerImpl.h"
+#endif // !STRIP_AV_MEDIA
 
 #include "ImageViewerWidget.h"
 
@@ -43,9 +46,7 @@ Previewer::ImageViewerWidget::ImageViewerWidget(QWidget* _parent)
     connect(&viewerLoadTimer_, &QTimer::timeout, this, &ImageViewerWidget::onViewerLoadTimeout);
 }
 
-Previewer::ImageViewerWidget::~ImageViewerWidget()
-{
-}
+Previewer::ImageViewerWidget::~ImageViewerWidget() = default;
 
 void Previewer::ImageViewerWidget::showMedia(const MediaData& _mediaData)
 {
@@ -69,6 +70,7 @@ void Previewer::ImageViewerWidget::showMedia(const MediaData& _mediaData)
         if (firstOpen_)
             statistic::getGuiMetrics().eventGalleryPhotoLoaded();
     }
+#ifndef STRIP_AV_MEDIA
     else if (_mediaData.attachedPlayer)
     {
         viewer_ = FFMpegViewer::create(_mediaData, maxVideoSize(viewSize_), this, firstOpen_);
@@ -77,6 +79,7 @@ void Previewer::ImageViewerWidget::showMedia(const MediaData& _mediaData)
         connect(viewer_.get(), &FFMpegViewer::playClicked, this, &ImageViewerWidget::playClicked);
         connect(viewer_.get(), &FFMpegViewer::rightClicked, this, &ImageViewerWidget::rightClicked);
     }
+#endif // !STRIP_AV_MEDIA
     else
     {
         // video viewer is created after delay of 'viewerLoadDelay' ms, to avoid freezing in case of fast scrolling,
@@ -324,6 +327,7 @@ void Previewer::ImageViewerWidget::paintEvent(QPaintEvent* _event)
 
 void Previewer::ImageViewerWidget::onViewerLoadTimeout()
 {
+#ifndef STRIP_AV_MEDIA
     // delay viewer resetting to avoid flickering
     tmpViewer_ = FFMpegViewer::create(currentData_, maxVideoSize(viewSize_), this, firstOpen_);
     connect(tmpViewer_.get(), &FFMpegViewer::doubleClicked, this, &ImageViewerWidget::closeRequested);
@@ -334,6 +338,7 @@ void Previewer::ImageViewerWidget::onViewerLoadTimeout()
     {
         viewer_ = std::move(tmpViewer_);
     });
+#endif // !STRIP_AV_MEDIA
 }
 
 void Previewer::ImageViewerWidget::zoomIn(const QPoint& _anchor)

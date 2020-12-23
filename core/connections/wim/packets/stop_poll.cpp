@@ -15,6 +15,11 @@ stop_poll::stop_poll(wim_packet_params _params, const std::string &_poll_id)
 
 }
 
+std::string_view stop_poll::get_method() const
+{
+    return "poll/stop";
+}
+
 int32_t stop_poll::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     rapidjson::Document doc(rapidjson::Type::kObjectType);

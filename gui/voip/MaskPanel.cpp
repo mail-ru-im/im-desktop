@@ -616,6 +616,11 @@ QWidget* Ui::MaskPanel::createMaskListWidget()
     connect(maskList_->horizontalScrollBar(), &QScrollBar::valueChanged, this, &MaskPanel::updateUpDownButtons);
     connect(maskList_->horizontalScrollBar(), &QScrollBar::rangeChanged, this, &MaskPanel::updateUpDownButtons);
 
+    connect(Ui::GetDispatcher()->getVoipController().getMaskManager(), &voip_masks::MaskManager::masksListLoaded, this, [this]()
+    {
+        setMaskList(Ui::GetDispatcher()->getVoipController().getMaskManager()->getAvailableMasks());
+    });
+
     return res;
 }
 

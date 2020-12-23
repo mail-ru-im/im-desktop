@@ -76,6 +76,7 @@ namespace core
         gif,
         video,
         ptt,
+        lottie,
 
         max
     };
@@ -92,21 +93,22 @@ namespace core
 
     struct file_sharing_content_type
     {
-        file_sharing_base_content_type type_;
-        file_sharing_sub_content_type subtype_;
+        file_sharing_base_content_type type_ = file_sharing_base_content_type::undefined;
+        file_sharing_sub_content_type subtype_ = file_sharing_sub_content_type::undefined;
 
         constexpr bool is_image() const noexcept {return type_ == file_sharing_base_content_type::image;}
         constexpr bool is_gif() const noexcept { return type_ == file_sharing_base_content_type::gif; }
         constexpr bool is_video() const noexcept { return type_ == file_sharing_base_content_type::video; }
         constexpr bool is_ptt() const noexcept { return type_ == file_sharing_base_content_type::ptt; }
+        constexpr bool is_lottie() const noexcept { return type_ == file_sharing_base_content_type::lottie; }
         constexpr bool is_sticker() const noexcept { return subtype_ == file_sharing_sub_content_type::sticker; }
         constexpr bool is_undefined() const noexcept { return type_ == file_sharing_base_content_type::undefined; }
-        constexpr file_sharing_content_type() noexcept
-            : type_(file_sharing_base_content_type::undefined)
-            , subtype_(file_sharing_sub_content_type::undefined) {}
-        constexpr file_sharing_content_type(
-            file_sharing_base_content_type _type,
-            file_sharing_sub_content_type _subtype = file_sharing_sub_content_type::undefined) noexcept : type_(_type), subtype_(_subtype) {};
+
+        constexpr file_sharing_content_type() noexcept = default;
+        constexpr file_sharing_content_type(file_sharing_base_content_type _type, file_sharing_sub_content_type _subtype = file_sharing_sub_content_type::undefined) noexcept
+            : type_(_type)
+            , subtype_(_subtype)
+        {}
     };
 
     enum class typing_status
@@ -133,6 +135,28 @@ namespace core
 
         max
     };
+
+    inline constexpr std::string_view to_string(sticker_size _size)
+    {
+        switch (_size)
+        {
+        case core::sticker_size::small:
+            return "path/small";
+        case core::sticker_size::medium:
+            return "path/medium";
+        case core::sticker_size::large:
+            return "path/large";
+        case core::sticker_size::xlarge:
+            return "path/xlarge";
+        case core::sticker_size::xxlarge:
+            return "path/xxlarge";
+
+        default:
+            break;
+        }
+
+        return {};
+    }
 
     enum class chat_event_type
     {
@@ -177,6 +201,9 @@ namespace core
 
         warn_about_stranger,
         no_longer_stranger,
+
+        status_reply,
+        custom_status_reply,
 
         max
     };
@@ -720,6 +747,8 @@ namespace core
             chatscr_recognptt_action = 65015,
             chatscr_callbylink_action = 65016,
             chatscr_webinar_action = 65017,
+            chatscr_invite_by_sms = 65018,
+            chatscr_block_sms_invite = 65019,
 
             sharecontactscr_contact_action = 66000,
 
@@ -742,6 +771,8 @@ namespace core
             network_dns_resolve_err_during_manual_resolving = 80001,
             network_dns_resolve_err_during_auto_resolving = 80002,
             network_dns_resolve_err_during_workaround = 80003,
+
+            dev_statistic_event = 90000,
 
             max,
         };
@@ -1143,6 +1174,8 @@ namespace core
             case stats_event_names::chatscr_recognptt_action: return std::string_view("ChatScr_PTTRecogn_Action");
             case stats_event_names::chatscr_callbylink_action: return std::string_view("ChatScr_CallByLink_Action");
             case stats_event_names::chatscr_webinar_action: return std::string_view("ChatScr_Webinar_Action");
+            case stats_event_names::chatscr_invite_by_sms: return std::string_view("ChatScr_InviteBySMS_ICQP377");
+            case stats_event_names::chatscr_block_sms_invite: return std::string_view("ChatScr_BlockSMSInvite_ICQP377");
 
             case stats_event_names::sharecontactscr_contact_action: return std::string_view("ShareContactScr_Contact_Action");
 
@@ -1168,6 +1201,8 @@ namespace core
             case stats_event_names::network_dns_resolve_err_during_manual_resolving: return std::string_view("network_dns_resolve_err_during_manual_resolving");
             case stats_event_names::network_dns_resolve_err_during_auto_resolving: return std::string_view("network_dns_resolve_err_during_auto_resolving");
             case stats_event_names::network_dns_resolve_err_during_workaround: return std::string_view("network_dns_resolve_err_during_workaround");
+
+            case stats_event_names::dev_statistic_event: return std::string_view("dev_statistic_event");
 
             default:
                 return std::string_view();
@@ -1202,6 +1237,7 @@ namespace core
             case file_sharing_base_content_type::ptt: return (oss << "type = ptt");
             case file_sharing_base_content_type::undefined: return (oss << "type = undefined");
             case file_sharing_base_content_type::video: return (oss << "type = video");
+            case file_sharing_base_content_type::lottie: return (oss << "type = lottie");
             default:
                 assert(!"unexpected file sharing content type");
         }
@@ -1282,5 +1318,18 @@ namespace core
         answer_not_enough_fields,
         answer_parse_error,
         empty_response,
+    };
+
+    enum class add_member_failure
+    {
+        invalid,
+
+        user_waiting_for_approve,
+        user_must_join_by_link,
+        user_blocked_confirmation_required,
+        user_must_be_added_by_admin,
+        user_captcha,
+        user_already_added,
+        bot_setjoingroups_false,
     };
 }

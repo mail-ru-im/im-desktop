@@ -39,7 +39,7 @@ namespace core
             std::chrono::steady_clock::time_point time_stamp_;
         };
 
-        typedef std::function<void(const std::chrono::milliseconds, const core_stacktrace&)> finish_action;
+        typedef std::function<void(const std::chrono::milliseconds, const core_stacktrace&, std::string_view _name)> finish_action;
 
         class threadpool : boost::noncopyable
         {

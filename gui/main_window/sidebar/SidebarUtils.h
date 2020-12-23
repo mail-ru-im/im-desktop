@@ -21,6 +21,11 @@ namespace Ui
     class ContactAvatarWidget;
     class TextWidget;
 
+    enum class Fading
+    {
+        On, Off
+    };
+
     enum class ButtonState
     {
         NORMAL = 0,
@@ -33,12 +38,16 @@ namespace Ui
     {
         Q_OBJECT
     Q_SIGNALS:
-        void clicked();
+        void clicked(QPrivateSignal);
 
     public:
         SidebarButton(QWidget* _parent);
 
-        virtual void setMargins(int _left, int _top, int _right, int _bottom);
+        virtual void setMargins(const QMargins& _margins);
+        inline void setMargins(int _left, int _top, int _right, int _bottom)
+        {
+            setMargins(QMargins(_left, _top, _right, _bottom));
+        }
 
         void setTextOffset(int _textOffset);
 
@@ -67,7 +76,6 @@ namespace Ui
         virtual bool isActive() const;
 
     private:
-        QMargins margins_;
         int textOffset_;
 
         QPixmap icon_;
@@ -86,6 +94,7 @@ namespace Ui
         bool isActive_;
 
     protected:
+        QMargins margins_;
         bool isEnabled_;
     };
 
@@ -93,12 +102,10 @@ namespace Ui
     {
         Q_OBJECT
     Q_SIGNALS:
-        void checked(bool);
+        void checked(bool, QPrivateSignal);
 
     public:
         SidebarCheckboxButton(QWidget* _parent);
-
-        virtual void setMargins(int _left, int _top, int _right, int _bottom) override;
 
         void setChecked(bool _checked);
         bool isChecked() const;
@@ -114,7 +121,6 @@ namespace Ui
     private:
         QPoint clickedPoint_;
         SwitcherCheckbox* checkbox_;
-        QMargins margins_;
     };
 
     class StatusPlate;
@@ -123,14 +129,19 @@ namespace Ui
     {
         Q_OBJECT
     Q_SIGNALS:
-        void avatarClicked();
-        void badgeClicked();
-        void clicked();
+        void avatarClicked(QPrivateSignal);
+        void badgeClicked(QPrivateSignal);
+        void clicked(QPrivateSignal);
 
     public:
         AvatarNameInfo(QWidget* _parent);
 
-        void setMargins(int _left, int _top, int _right, int _bottom);
+        void setMargins(const QMargins& _margins);
+        inline void setMargins(int _left, int _top, int _right, int _bottom)
+        {
+            setMargins(QMargins(_left, _top, _right, _bottom));
+        }
+
         void setTextOffset(int _textOffset);
 
         void initName(const QFont& _font, const QColor& _color);
@@ -144,7 +155,12 @@ namespace Ui
         void makeClickable();
         void nameOnly();
 
+        QSize sizeHint() const override;
+        QSize minimumSizeHint() const override;
+
     protected:
+        void timerEvent(QTimerEvent* _event) override;
+        void changeEvent(QEvent* _event) override;
         void paintEvent(QPaintEvent* _event) override;
         void resizeEvent(QResizeEvent* _event) override;
         void mousePressEvent(QMouseEvent* _event) override;
@@ -157,16 +173,21 @@ namespace Ui
         void avatarChanged(const QString& aimId);
         void friendlyChanged(const QString& _aimId, const QString& _friendlyName);
         void statusChanged(const QString& _aimid);
-
+        void stateChanged();
     private:
         void loadAvatar();
         void setBadgeRect();
         void updateSize();
         QPoint statusPos() const;
+        void paintEnabled(QPainter& painter);
+        void paintDisabled(QPainter& painter);
+        QPoint avatarTopLeft() const;
 
     private:
+        QBasicTimer timer_;
         QMargins margins_;
         int textOffset_;
+        int animStep_;
 
         QString aimId_;
         QString friendlyName_;
@@ -243,34 +264,28 @@ namespace Ui
         TextWidget* text_ = nullptr;
         TextWidget* duration_ = nullptr;
         QScrollArea* scrollArea_ = nullptr;
-    };    
-
-    class AvatarNamePlaceholder : public QWidget
-    {
-        Q_OBJECT
-    public:
-        AvatarNamePlaceholder(QWidget* _parent);
-
-    protected:
-        void paintEvent(QPaintEvent*) override;
     };
 
     class TextLabel : public QWidget
     {
         Q_OBJECT
     Q_SIGNALS:
-        void textClicked();
-        void copyClicked(const QString&);
-        void shareClicked();
-        void selectionChanged();
+        void textClicked(QPrivateSignal);
+        void copyClicked(const QString&, QPrivateSignal);
+        void shareClicked(QPrivateSignal);
+        void selectionChanged(QPrivateSignal);
 
         void menuAction(QAction*);
 
     public:
         TextLabel(QWidget* _parent, int _maxLinesCount = -1);
 
-        void setMargins(int _left, int _top, int _right, int _bottom);
-        void setMargins(QMargins _m) { setMargins(_m.left(), _m.top(), _m.right(), _m.bottom()); }
+        void setMargins(const QMargins& _margins);
+        inline void setMargins(int _left, int _top, int _right, int _bottom)
+        {
+            setMargins(QMargins(_left, _top, _right, _bottom));
+        }
+
         QMargins getMargins() const noexcept { return margins_; }
 
         void init(const QFont& _font, const QColor& _color, const QColor& _linkColor = QColor());
@@ -380,7 +395,11 @@ namespace Ui
         Q_OBJECT
     public:
         GalleryPreviewWidget(QWidget* _parent, int _previewSize, int _previewCount);
-        void setMargins(int _left, int _top, int _right, int _bottom);
+        void setMargins(const QMargins& _margins);
+        inline void setMargins(int _left, int _top, int _right, int _bottom)
+        {
+            setMargins(QMargins(_left, _top, _right, _bottom));
+        }
         void setSpacing(int _spacing);
         void setAimId(const QString& _aimid);
 
@@ -407,13 +426,17 @@ namespace Ui
     {
         Q_OBJECT
     Q_SIGNALS:
-        void searchClicked();
+        void searchClicked(QPrivateSignal);
 
     public:
         MembersPlate(QWidget* _parent);
 
-        void setMargins(int _left, int _top, int _right, int _bottom);
-        void setMembersCount(int _count);
+        void setMargins(const QMargins& _margins);
+        inline void setMargins(int _left, int _top, int _right, int _bottom)
+        {
+            setMargins(QMargins(_left, _top, _right, _bottom));
+        }
+        void setMembersCount(int _count, bool _isChannel);
 
         void initMembersLabel(const QFont& _font, const QColor& _color);
         void initSearchLabel(const QFont& _font, const QColor& _color);
@@ -437,9 +460,9 @@ namespace Ui
     {
         Q_OBJECT
     Q_SIGNALS:
-        void selected(const QString&);
-        void removeClicked(const QString&);
-        void moreClicked(const QString&);
+        void selected(const QString&, QPrivateSignal);
+        void removeClicked(const QString&, QPrivateSignal);
+        void moreClicked(const QString&, QPrivateSignal);
 
     public:
         MembersWidget(QWidget* _parent, Logic::ChatMembersModel* _model, Logic::ContactListItemDelegate* _delegate, int _maxMembersCount);
@@ -474,11 +497,15 @@ namespace Ui
     {
         Q_OBJECT
     Q_SIGNALS:
-        void clicked();
+        void clicked(QPrivateSignal);
     public:
         ColoredButton(QWidget* _parent);
 
-        void setMargins(int _left, int _top, int _right, int _bottom);
+        void setMargins(const QMargins& _margins);
+        inline void setMargins(int _left, int _top, int _right, int _bottom)
+        {
+            setMargins(QMargins(_left, _top, _right, _bottom));
+        }
         void setTextOffset(int _offset);
         void updateTextOffset();
 
@@ -490,6 +517,9 @@ namespace Ui
 
         void makeRounded();
         QMargins getMargins() const;
+
+        QSize sizeHint() const override;
+        QSize minimumSizeHint() const override;
 
     protected:
         virtual void paintEvent(QPaintEvent* _event) override;
@@ -551,11 +581,11 @@ namespace Ui
     {
         Q_OBJECT
     Q_SIGNALS:
-        void galleryPhotoCLicked();
-        void galleryVideoCLicked();
-        void galleryFilesCLicked();
-        void galleryLinksCLicked();
-        void galleryPttCLicked();
+        void galleryPhotoClicked(QPrivateSignal);
+        void galleryVideoClicked(QPrivateSignal);
+        void galleryFilesClicked(QPrivateSignal);
+        void galleryLinksClicked(QPrivateSignal);
+        void galleryPttClicked(QPrivateSignal);
 
     public:
         GalleryPopup();
@@ -579,16 +609,16 @@ namespace Ui
     QString formatTimeStr(const QDateTime& _dt);
 
     AvatarNameInfo* addAvatarInfo(QWidget* _parent, QLayout* _layout);
-    TextLabel* addLabel(const QString& _text, QWidget* _parent, QLayout* _layout, int _addLeftOffset = 0, TextRendering::HorAligment _align = TextRendering::HorAligment::LEFT);
-    TextLabel* addText(const QString& _text, QWidget* _parent, QLayout* _layout, int _addLeftOffset = 0, int _maxLineNumbers = 0);
-    std::unique_ptr<InfoBlock> addInfoBlock(const QString& _header, const QString& _text, QWidget* _parent, QLayout* _layout, int _addLeftOffset = 0);
+    TextLabel* addLabel(const QString& _text, QWidget* _parent, QLayout* _layout, int _addLeftOffset = 0, TextRendering::HorAligment _align = TextRendering::HorAligment::LEFT, Fading _faded = Fading::Off);
+    TextLabel* addText(const QString& _text, QWidget* _parent, QLayout* _layout, int _addLeftOffset = 0, int _maxLineNumbers = 0, Fading _faded = Fading::Off);
+    std::unique_ptr<InfoBlock> addInfoBlock(const QString& _header, const QString& _text, QWidget* _parent, QLayout* _layout, int _addLeftOffset = 0, Fading _faded = Fading::Off);
     QWidget* addSpacer(QWidget* _parent, QLayout* _layout, int height = -1);
-    SidebarButton* addButton(const QString& _icon, const QString& _text, QWidget* _parent, QLayout* _layout);
-    SidebarCheckboxButton* addCheckbox(const QString& _icon, const QString& _text, QWidget* _parent, QLayout* _layout);
+    SidebarButton* addButton(const QString& _icon, const QString& _text, QWidget* _parent, QLayout* _layout, const QString& _accName = QString());
+    SidebarCheckboxButton* addCheckbox(const QString& _icon, const QString& _text, QWidget* _parent, QLayout* _layout, Fading _faded = Fading::Off);
     GalleryPreviewWidget* addGalleryPrevieWidget(QWidget* _parent, QLayout* _layout);
     MembersPlate* addMembersPlate(QWidget* _parent, QLayout* _layout);
     MembersWidget* addMembersWidget(Logic::ChatMembersModel* _model, Logic::ContactListItemDelegate* _delegate, int _membersCount, QWidget* _parent, QLayout* _layout);
-    ColoredButton* addColoredButton(const QString& _icon, const QString& _text, QWidget* _parent, QLayout* _layout, const QSize& _iconSize = QSize());
+    ColoredButton* addColoredButton(const QString& _icon, const QString& _text, QWidget* _parent, QLayout* _layout, const QSize& _iconSize = QSize(), Fading _faded = Fading::Off);
 
     class BlockAndDeleteWidget : public QWidget
     {
@@ -605,5 +635,189 @@ namespace Ui
         Ui::CheckBox* checkbox_;
         std::unique_ptr<Ui::TextRendering::TextUnit> label_;
         bool removeMessages_;
+    };
+
+
+    class WidgetUpdateBlocker
+    {
+        Q_DISABLE_COPY(WidgetUpdateBlocker)
+    public:
+        explicit WidgetUpdateBlocker(QWidget* _widget)
+            : widget_(_widget)
+        {
+            if (widget_)
+                widget_->setUpdatesEnabled(false);
+        }
+
+        ~WidgetUpdateBlocker()
+        {
+            if (widget_)
+                widget_->setUpdatesEnabled(true);
+        }
+    private:
+        QPointer<QWidget> widget_;
+    };
+
+
+    class SlideController :
+        public QObject
+    {
+        Q_OBJECT
+        Q_DISABLE_COPY(SlideController)
+        Q_PROPERTY(QEasingCurve easingCurve READ easingCurve WRITE setEasingCurve)
+        Q_PROPERTY(SlideEffects effects READ effects WRITE setEffects)
+        Q_PROPERTY(SlideDirection slideDirection READ slideDirection WRITE setSlideDirection)
+        Q_PROPERTY(QColor fillColor READ fillColor WRITE setFillColor)
+        Q_PROPERTY(int duration READ duration WRITE setDuration)
+        Q_PROPERTY(Fading fading READ fading WRITE setFading)
+        Q_PROPERTY(bool faded READ isFaded)
+        Q_PROPERTY(bool inverse READ isInverse WRITE setInverse)
+        Q_PROPERTY(bool enabled READ isEnabled WRITE setEnabled)
+
+    public:
+        enum class CachingPolicy
+        {
+            CacheNone,
+            CacheCurrent,
+            CacheAll
+        };
+        Q_ENUM(CachingPolicy)
+
+        enum class SlideDirection
+        {
+            SlideUp,
+            SlideDown,
+            SlideLeft,
+            SlideRight,
+            NoSliding
+        };
+        Q_ENUM(SlideDirection)
+
+        enum SlideEffect
+        {
+            NoEffect = 0x00,
+            ZoomEffect = 0x01,
+            RotateEffect = 0x02,
+            ShearEffect = 0x04,
+            SwapEffect = 0x08,
+            RollEffect = 0x10
+        };
+        Q_DECLARE_FLAGS(SlideEffects, SlideEffect)
+
+        enum class Fading
+        {
+            NoFade,
+            FadeIn,
+            FadeOut,
+            FadeInOut
+        };
+        Q_ENUM(Fading)
+
+        explicit SlideController(QObject* _parent = nullptr);
+        ~SlideController();
+
+        void setCachingPolicy(CachingPolicy _policy);
+        CachingPolicy cachingPolicy() const;
+
+        void setWidget(QStackedWidget* _widget);
+        QWidget* widget() const;
+
+        QPixmap activePixmap() const;
+
+        void setEasingCurve(const QEasingCurve& easing);
+        QEasingCurve easingCurve() const;
+
+        SlideEffects effects() const;
+        SlideDirection slideDirection() const;
+        QColor fillColor() const;
+
+        int duration() const;
+
+        inline void setDuration(std::chrono::milliseconds _msecs)
+        {
+            setDuration(int(_msecs.count()));
+        }
+
+        inline std::chrono::milliseconds durationAs() const
+        {
+            return std::chrono::milliseconds(this->duration());
+        }
+
+        bool isFaded() const;
+        bool isInverse() const;
+        bool isEnabled() const;
+
+        Fading fading() const;
+
+    public Q_SLOTS:
+        void setDuration(int _ms);
+        void setEffects(SlideEffects _flags);
+        void setSlideDirection(SlideDirection _dir);
+        void setFillColor(const QColor& _color);
+        void setFading(Fading _fading);
+        void setInverse(bool _on = true);
+        void setEnabled(bool _on = true);
+        void updateCache();
+
+    Q_SIGNALS:
+        void currentIndexChanged(int, QPrivateSignal);
+
+    protected:
+        bool eventFilter(QObject* _object, QEvent* _event) override;
+
+        QWidget* currentWidget() const;
+        QWidget* widget(int id) const;
+        int currentIndex() const;
+        int count() const;
+
+    private Q_SLOTS:
+        void onCurrentChange(int _index);
+        void onAnimationFinished();
+        void render(double _value);
+
+    private:
+        std::unique_ptr<class SlideControllerPrivate> d;
+    };
+
+    Q_DECLARE_OPERATORS_FOR_FLAGS(Ui::SlideController::SlideEffects)
+
+    class WidgetFader :
+        public QGraphicsOpacityEffect
+    {
+        Q_OBJECT
+        Q_PROPERTY(int duration READ duration WRITE setDuration)
+        Q_PROPERTY(bool enabled READ isEnabled WRITE setEnabled)
+
+    public:
+        explicit WidgetFader(QWidget* _widget, double _lower = 0.0, double _upper = 1.0);
+
+        ~WidgetFader();
+
+        void setEventDirection(QEvent::Type _type, QPropertyAnimation::Direction _dir);
+        QPropertyAnimation::Direction eventDirection(QEvent::Type _type) const;
+
+        inline void setDuration(std::chrono::milliseconds _msecs)
+        {
+            setDuration(int(_msecs.count()));
+        }
+
+        inline std::chrono::milliseconds durationAs() const
+        {
+            return std::chrono::milliseconds(this->duration());
+        }
+
+        void setDuration(int msecs);
+        int duration() const;
+
+        void setEnabled(bool _on);
+        bool isEnabled() const;
+
+        static void setEffectEnabled(QWidget* _root, bool _on);
+
+    protected:
+        bool eventFilter(QObject* _object, QEvent* _event) override;
+
+    private:
+        std::unique_ptr<class WidgetFaderPrivate> d;
     };
 }

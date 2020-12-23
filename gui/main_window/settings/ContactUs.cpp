@@ -19,6 +19,7 @@
 #include "../../utils/InterConnector.h"
 #include "../../omicron/omicron_helper.h"
 #include "../../utils/utils.h"
+#include "../../utils/features.h"
 #include "../../my_info.h"
 #include "../../../common.shared/version_info_constants.h"
 #include "../../../common.shared/config/config.h"
@@ -170,8 +171,6 @@ namespace
     {
         return getShadowWidth() + getHorMargin();
     }
-
-    constexpr auto feedbackTimeout = std::chrono::seconds(10);
 }
 
 ContactUsWidget::ContactUsWidget(QWidget *_parent, bool _isPlain)
@@ -183,11 +182,9 @@ ContactUsWidget::ContactUsWidget(QWidget *_parent, bool _isPlain)
     , debugInfoWidget_(nullptr)
     , hasProblemDropper_(false)
     , isPlain_(_isPlain)
-    , timeoutTimer_(new QTimer(this))
 {
     setMinimumWidth(getMinWidth() + 2 * getFullHorMargins());
     hasProblemDropper_ = config::get().is_on(config::features::feedback_selected) && (get_gui_settings()->get_value(settings_language, QString()) == u"ru") && !isPlain_;
-    timeoutTimer_->setInterval(feedbackTimeout);
 
     init();
     setState(State::Feedback);
@@ -197,7 +194,6 @@ ContactUsWidget::ContactUsWidget(QWidget *_parent, bool _isPlain)
     connect(GetDispatcher(), &core_dispatcher::feedbackSent, this, [this](bool succeeded)
     {
         resetState();
-        timeoutTimer_->stop();
 
         if (!succeeded)
         {
@@ -209,13 +205,6 @@ ContactUsWidget::ContactUsWidget(QWidget *_parent, bool _isPlain)
             suggestioner_->clear();
             setState(State::Success);
         }
-    });
-
-    connect(timeoutTimer_, &QTimer::timeout, this, [this]()
-    {
-        timeoutTimer_->stop();
-        resetState(ClearData::No);
-        showError(ErrorReason::Feedback);
     });
 }
 
@@ -302,7 +291,7 @@ void ContactUsWidget::initSuccess()
         thanksLayout->addSpacing(Utils::scale_value(16));
         {
             auto thanksLabel = new QLabel(thanksWidget);
-            thanksLabel->setStyleSheet(qsl("color: %1;").arg(Styling::getParameters().getColorHex(Styling::StyleVariable::TEXT_SOLID)));
+            thanksLabel->setStyleSheet(ql1s("color: %1;").arg(Styling::getParameters().getColorHex(Styling::StyleVariable::TEXT_SOLID)));
             thanksLabel->setFont(labelFont());
             thanksLabel->setWordWrap(true);
             thanksLabel->setText(QT_TRANSLATE_NOOP("contactus_page", "Thank you for contacting us! We will reply as soon as possible."));
@@ -404,6 +393,7 @@ void ContactUsWidget::initFeedback()
     email_->setMaximumWidth(getMaxWidth());
     email_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
     email_->setPlaceholderText(QT_TRANSLATE_NOOP("contactus_page", "Your Email"));
+    email_->setVisible(!Features::isContactUsViaBackend());
 
     QString communication_email = get_gui_settings()->get_value(settings_feedback_email, QString());
     QString aimid = MyInfo()->aimId();
@@ -524,61 +514,66 @@ void ContactUsWidget::sendFeedback()
 
         Ui::gui_coll_helper col(GetDispatcher()->create_collection(), true);
 
-        col.set_value_as_string("url", get_feedback_url());
-
-        // fb.screen_resolution
-        col.set_value_as_qstring("screen_resolution", (qsl("%1x%2").arg(qApp->desktop()->screenGeometry().width()).arg(qApp->desktop()->screenGeometry().height())));
-        // fb.referrer
-        const auto shortName = config::get().string(config::values::product_name_short);
-        col.set_value_as_string("referrer", shortName);
+        if (!Features::isContactUsViaBackend())
         {
-            const auto appName = config::get().string(config::values::product_name);
-            const QString icqVer = QString::fromUtf8(appName.data(), appName.size()) + QString::fromUtf8(VERSION_INFO_STR);
-            auto osv = QSysInfo::prettyProductName();
-            if (osv.isEmpty() || osv == u"unknown")
-                osv = qsl("%1 %2 (%3 %4)").arg(QSysInfo::productType(), QSysInfo::productVersion(), QSysInfo::kernelType(), QSysInfo::kernelVersion());
+            col.set_value_as_string("url", get_feedback_url());
 
-            const auto concat = qsl("%1 %2 %3:%4").arg(osv, icqVer, QString::fromUtf8(shortName.data(), shortName.size()), myInfo->aimId());
-            // fb.question.3004
-            col.set_value_as_qstring("version", concat);
-            // fb.question.159
-            col.set_value_as_qstring("os_version", osv);
-            // fb.question.178
-            col.set_value_as_string("build_type", build::is_debug() ? "beta" : "live");
-            // fb.question.3005
-            if constexpr (platform::is_apple())
-                col.set_value_as_string("platform", "macOS");
-            else if constexpr (platform::is_windows())
-                col.set_value_as_string("platform", "Windows");
-            else if constexpr (platform::is_linux())
-                col.set_value_as_string("platform", "Linux");
-            else
-                col.set_value_as_string("platform", "Unknown");
+            // fb.screen_resolution
+            col.set_value_as_qstring("screen_resolution", (qsl("%1x%2").arg(qApp->desktop()->screenGeometry().width()).arg(qApp->desktop()->screenGeometry().height())));
+            // fb.referrer
+            const auto shortName = config::get().string(config::values::product_name_short);
+            col.set_value_as_string("referrer", shortName);
+            {
+                const auto appName = config::get().string(config::values::product_name);
+                const QString icqVer = QString::fromUtf8(appName.data(), appName.size()) + QString::fromUtf8(VERSION_INFO_STR);
+                auto osv = QSysInfo::prettyProductName();
+                if (osv.isEmpty() || osv == u"unknown")
+                    osv = QStringView(u"%1 %2 (%3 %4)").arg(QSysInfo::productType(), QSysInfo::productVersion(), QSysInfo::kernelType(), QSysInfo::kernelVersion());
+
+                const auto concat = ql1s("%1 %2 %3:%4").arg(osv, icqVer, QString::fromUtf8(shortName.data(), shortName.size()), myInfo->aimId());
+                // fb.question.3004
+                col.set_value_as_qstring("version", concat);
+                // fb.question.159
+                col.set_value_as_qstring("os_version", osv);
+                // fb.question.178
+                col.set_value_as_string("build_type", build::is_debug() ? "beta" : "live");
+                // fb.question.3005
+                if constexpr (platform::is_apple())
+                    col.set_value_as_string("platform", "macOS");
+                else if constexpr (platform::is_windows())
+                    col.set_value_as_string("platform", "Windows");
+                else if constexpr (platform::is_linux())
+                    col.set_value_as_string("platform", "Linux");
+                else
+                    col.set_value_as_string("platform", "Unknown");
+            }
+
+            auto username = myInfo->friendly();
+            if (username.isEmpty())
+                username = myInfo->nick();
+            if (username.isEmpty())
+                username = myInfo->aimId();
+
+            // fb.user_name
+            col.set_value_as_qstring("user_name", username);
         }
-
-        auto username = myInfo->friendly();
-        if (username.isEmpty())
-            username = myInfo->nick();
-        if (username.isEmpty())
-            username = myInfo->aimId();
-
-        // fb.user_name
-        col.set_value_as_qstring("user_name", username);
-
         col.set_value_as_qstring("aimid", myInfo->aimId());
 
         // fb.message
         col.set_value_as_qstring("message", suggestioner_->getPlainText());
 
-        // communication_email
-        col.set_value_as_qstring("communication_email", email_->text());
-        // Lang
-        col.set_value_as_qstring("language", QLocale::system().name());
-
-        if (hasProblemDropper_)
+        if (!Features::isContactUsViaBackend())
         {
-            const auto problem = config::get().string(config::values::feedback_selected_id);
-            col.set_value_as_qstring(problem, selectedProblem_);
+            // communication_email
+            col.set_value_as_qstring("communication_email", email_->text());
+            // Lang
+            col.set_value_as_qstring("language", QLocale::system().name());
+
+            if (hasProblemDropper_)
+            {
+                const auto problem = config::get().string(config::values::feedback_selected_id);
+                col.set_value_as_qstring(problem, selectedProblem_);
+            }
         }
         // attachements_count
         const auto& filesToSend = attachWidget_->getFiles();
@@ -594,7 +589,6 @@ void ContactUsWidget::sendFeedback()
             col.set_value_as_array("attachement", farray.get());
         }
         GetDispatcher()->post_message_to_core("feedback/send", col.get());
-        timeoutTimer_->start();
     }
 }
 

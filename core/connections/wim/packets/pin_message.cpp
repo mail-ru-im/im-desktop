@@ -15,6 +15,11 @@ pin_message::pin_message(wim_packet_params _params, const std::string& _aimId, c
 {
 }
 
+std::string_view pin_message::get_method() const
+{
+    return "pinMessage";
+}
+
 int32_t pin_message::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     rapidjson::Document doc(rapidjson::Type::kObjectType);
@@ -29,7 +34,7 @@ int32_t pin_message::init_request(const std::shared_ptr<core::http_request_simpl
 
     doc.AddMember("params", std::move(node_params), a);
 
-    setup_common_and_sign(doc, a, _request, "pinMessage");
+    setup_common_and_sign(doc, a, _request, get_method());
 
     if (!params_.full_log_)
     {

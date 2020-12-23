@@ -12,6 +12,11 @@ namespace voip_manager
     struct ContactEx;
 }
 
+namespace core
+{
+    enum class add_member_failure;
+}
+
 namespace Utils
 {
     enum class CommonSettingsType;
@@ -47,6 +52,7 @@ namespace Ui
     enum class Tabs;
     enum class CreateChatSource;
     enum class ConferenceType;
+    enum class MicroIssue;
 
     namespace Stickers
     {
@@ -103,7 +109,7 @@ namespace Ui
         void settingsClicked();
         void openRecents();
 
-    private Q_SLOTS:
+    private:
         void searchBegin();
         void searchEnd();
         void searchCancelled();
@@ -120,11 +126,13 @@ namespace Ui
         void onSharedProfileShow(const QString& _uin);
         void onGeneralSettingsShow(int _type);
 
+#ifndef STRIP_VOIP
         //voip
         void onVoipShowVideoWindow(bool);
         void onVoipCallIncoming(const std::string&, const std::string&, const std::string&);
         void onVoipCallIncomingAccepted(const std::string& call_id);
         void onVoipCallDestroyed(const voip_manager::ContactEx& _contactEx);
+#endif
 
         void post_stats_with_settings();
         void popPagesToRoot();
@@ -213,7 +221,9 @@ namespace Ui
         void insertSidebarToSplitter();
         void takeSidebarFromSplitter();
 
+#ifndef STRIP_VOIP
         void raiseVideoWindow(const voip_call_type _call_type);
+#endif
 
         void nextChat();
         void prevChat();
@@ -244,7 +254,6 @@ namespace Ui
         void showVideoWindow();
         void minimizeVideoWindow();
         void maximizeVideoWindow();
-        void closeVideoWindow();
 
         void notifyApplicationWindowActive(const bool isActive);
         void notifyUIActive(const bool _isActive);
@@ -278,6 +287,12 @@ namespace Ui
         FrameCountMode getFrameCount() const;
 
         void closeAndHighlightDialog();
+        void showAddMembersFailuresPopup(QString _chatAimId, std::map<core::add_member_failure, std::vector<QString>> _failures);
+
+#ifndef STRIP_VOIP
+        void setMicroIssue(MicroIssue _issue);
+        MicroIssue getMicroIssue() const noexcept { return microIssue_; }
+#endif
 
     protected:
         void resizeEvent(QResizeEvent* _event) override;
@@ -334,7 +349,7 @@ namespace Ui
         QTimer* settingsTimer_;
         QPropertyAnimation* animCLWidth_;
         QWidget* clSpacer_;
-        QVBoxLayout* contactsLayout;
+        QVBoxLayout* contactsLayout_;
         QWidget* contactsWidget_;
         QVBoxLayout* clHostLayout_;
         LeftPanelState leftPanelState_;
@@ -360,6 +375,7 @@ namespace Ui
         bool isManualRecentsMiniMode_;
         FrameCountMode frameCountMode_;
         OneFrameMode oneFrameMode_;
+        OneFrameMode prevOneFrameMode_;
 
         ContextMenu* moreMenu_;
         QWidget* callsTabButton_;
@@ -400,6 +416,18 @@ namespace Ui
         QString prevSearchInput_;
 
         std::vector<std::pair<int, Tabs>> indexToTabs_;
+
+#ifndef STRIP_VOIP
+        MicroIssue microIssue_;
+#endif
+
+        enum class VideoWindowState
+        {
+            BlockedByCall,
+            CanRaise
+        };
+
+        VideoWindowState videoWindowState_ = VideoWindowState::CanRaise;
 
         Tabs getTabByIndex(int _index) const;
         int getIndexByTab(Tabs _tab) const;

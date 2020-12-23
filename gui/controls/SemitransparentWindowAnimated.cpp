@@ -32,7 +32,7 @@ namespace Ui
     {
     }
 
-    void SemitransparentWindowAnimated::Show()
+    void SemitransparentWindowAnimated::showAnimated()
     {
         main_ = true; // allow many SemitransparentWindowAnimated
         incSemiwindowsCount();
@@ -46,7 +46,7 @@ namespace Ui
         Animation_->start();
     }
 
-    void SemitransparentWindowAnimated::Hide()
+    void SemitransparentWindowAnimated::hideAnimated()
     {
         Animation_->stop();
         Animation_->setCurrentTime(0);

@@ -20,17 +20,19 @@ namespace Utils
         const auto key = source_.cacheKey();
         if (radius_ < minRadius() || radius_ > maxRadius() || source_.isNull())
         {
-            Q_EMIT blurred(source_, key, QPrivateSignal());
+            if (Q_LIKELY(QCoreApplication::instance()))
+                Q_EMIT blurred(source_, key, QPrivateSignal());
             return;
         }
-
-        Q_EMIT blurred(blurPixmap(), key, QPrivateSignal());
+        auto blurredImage = blurImage();
+        if (Q_LIKELY(QCoreApplication::instance()))
+            Q_EMIT blurred(QPixmap::fromImage(std::move(blurredImage)), key, QPrivateSignal());
     }
 
-    QPixmap BlurPixmapTask::blurPixmap() const
+    QImage BlurPixmapTask::blurImage() const
     {
         auto img = source_.toImage().convertToFormat(QImage::Format_ARGB32);
         stackblur(img.bits(), source_.width(), source_.height(), radius_, coreCount_);
-        return QPixmap::fromImage(std::move(img));
+        return img;
     }
 }

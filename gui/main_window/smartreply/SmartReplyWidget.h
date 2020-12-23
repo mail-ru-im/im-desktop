@@ -78,6 +78,8 @@ namespace Ui
         void deleteItemBySuggest(const Data::SmartreplySuggest& _suggest);
         bool isItemVisible(QWidget* _item) const;
 
+        void updateItemsVisibility();
+
     private:
         enum class Direction
         {

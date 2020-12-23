@@ -18,9 +18,11 @@ namespace core
             account_operations_host,
             smsapi_host,
             webrtc_host,
+            mytracker,
             files_info,
             avatars,
             url_content,
+            sticker,
         };
 
         enum class with_https
@@ -33,7 +35,6 @@ namespace core
 
         bool is_one_domain_url(std::string_view _url) noexcept;
 
-        uint32_t get_api_version();
         std::string api_version_prefix();
     }
 }

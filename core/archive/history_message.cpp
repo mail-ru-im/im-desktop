@@ -38,6 +38,8 @@ namespace
         generic,
         warn_about_stranger,
         no_longer_stranger,
+        status_reply,
+        custom_status_reply,
 
         max,
     };
@@ -79,6 +81,7 @@ namespace
     const std::string_view c_callback_data = "callbackData";
     const std::string_view c_style = "style";
     const std::string_view c_reactions = "reactions";
+    const std::string_view c_has_animated_sticker = "hasAnimatedSticker";
 
     std::string parse_sender_aimid(const rapidjson::Value &_node);
 
@@ -109,6 +112,9 @@ namespace
 
     message_fields_set set_from_json_array(const std::string& _json)
     {
+        if (_json.empty())
+            return {};
+
         message_fields_set result;
         rapidjson::Document doc;
         if (!doc.Parse(_json).HasParseError() && doc.IsArray())
@@ -376,10 +382,11 @@ void message_header::merge_with(const message_header &rhs)
     if (updatePrevId || !rhs.is_patch())
         prev_id_ = rhs.prev_id_;
 
-    const auto reset_patch_flag = (!is_patch() || !rhs.is_patch());
-    const auto set_deleted_flag = (bool)flags_.flags_.deleted_;
+    const auto reset_patch_flag = ((!is_patch() || !rhs.is_patch()) || (is_deleted() && !rhs.is_deleted()));
+    const auto set_deleted_flag = (bool)flags_.flags_.deleted_ && rhs.is_deleted();
     const auto set_modified_flag = (bool)flags_.flags_.modified_;
     const auto set_updated_flag = (bool)flags_.flags_.updated_;
+    const auto set_restored_patch_flag = (is_deleted() && !rhs.is_deleted()) || (bool)flags_.flags_.restored_patch_;
 
     flags_ = rhs.flags_;
 
@@ -397,11 +404,19 @@ void message_header::merge_with(const message_header &rhs)
 
     if (set_updated_flag && rhs.is_patch())
         flags_.flags_.updated_ = 1;
+
+    if (set_restored_patch_flag)
+        flags_.flags_.restored_patch_ = 1;
 }
 
 bool message_header::is_deleted() const noexcept
 {
     return flags_.flags_.deleted_;
+}
+
+bool message_header::is_restored_patch() const noexcept
+{
+    return flags_.flags_.restored_patch_;
 }
 
 bool message_header::is_modified() const noexcept
@@ -573,7 +588,11 @@ enum message_fields : uint32_t
     mf_call_aimid = 92,
     mf_voip_sid = 93,
     mf_reactions = 94,
-    mf_reactions_exist = 95
+    mf_reactions_exist = 95,
+    mf_chat_event_sender_status = 96,
+    mf_chat_event_owner_status = 97,
+    mf_chat_event_sender_status_desctiprion = 98,
+    mf_chat_event_owner_status_description = 99,
 };
 
 void shared_contact_data::serialize(icollection *_collection) const
@@ -1377,11 +1396,11 @@ const std::optional<file_sharing_base_content_type>& file_sharing_data::get_base
     return base_content_type_;
 }
 
-chat_event_data_uptr chat_event_data::make_added_to_buddy_list(const std::string &_sender_aimid)
+chat_event_data_sptr chat_event_data::make_added_to_buddy_list(const std::string &_sender_aimid)
 {
     assert(!_sender_aimid.empty());
 
-    chat_event_data_uptr result(
+    chat_event_data_sptr result(
         new chat_event_data(
         core::chat_event_type::added_to_buddy_list
         )
@@ -1394,7 +1413,7 @@ chat_event_data_uptr chat_event_data::make_added_to_buddy_list(const std::string
     return result;
 }
 
-chat_event_data_uptr chat_event_data::make_mchat_event(const rapidjson::Value& _node)
+chat_event_data_sptr chat_event_data::make_mchat_event(const rapidjson::Value& _node)
 {
     assert(_node.IsObject());
 
@@ -1441,7 +1460,7 @@ chat_event_data_uptr chat_event_data::make_mchat_event(const rapidjson::Value& _
 
     auto members = read_members(event_iter->value);
 
-    chat_event_data_uptr result(
+    chat_event_data_sptr result(
         new chat_event_data(type)
         );
 
@@ -1454,7 +1473,7 @@ chat_event_data_uptr chat_event_data::make_mchat_event(const rapidjson::Value& _
     return result;
 }
 
-chat_event_data_uptr chat_event_data::make_modified_event(const rapidjson::Value& _node)
+chat_event_data_sptr chat_event_data::make_modified_event(const rapidjson::Value& _node)
 {
     assert(_node.IsObject());
 
@@ -1482,7 +1501,7 @@ chat_event_data_uptr chat_event_data::make_modified_event(const rapidjson::Value
     if (!modified_event.IsObject())
         return nullptr;
 
-    chat_event_data_uptr result;
+    chat_event_data_sptr result;
 
     const auto new_name_iter = modified_event.FindMember("name");
     const auto is_name_modified = (new_name_iter != modified_event.MemberEnd() && new_name_iter->value.IsString());
@@ -1553,36 +1572,77 @@ chat_event_data_uptr chat_event_data::make_modified_event(const rapidjson::Value
     return result;
 }
 
-chat_event_data_uptr chat_event_data::make_from_tlv(const tools::tlvpack& _pack)
+chat_event_data_sptr chat_event_data::make_from_tlv(const tools::tlvpack& _pack)
 {
-    return chat_event_data_uptr(
+    return chat_event_data_sptr(
         new chat_event_data(_pack)
     );
 }
 
-chat_event_data_uptr chat_event_data::make_simple_event(const chat_event_type _type)
+chat_event_data_sptr chat_event_data::make_simple_event(const chat_event_type _type)
 {
     assert(_type > chat_event_type::min);
     assert(_type < chat_event_type::max);
 
-    return chat_event_data_uptr(
+    return chat_event_data_sptr(
         new chat_event_data(_type)
     );
 }
 
-chat_event_data_uptr chat_event_data::make_generic_event(const rapidjson::Value& _text_node)
+chat_event_data_sptr chat_event_data::make_generic_event(const rapidjson::Value& _text_node)
 {
     assert(_text_node.IsString());
 
     return make_generic_event(rapidjson_get_string(_text_node));
 }
 
-chat_event_data_uptr chat_event_data::make_generic_event(std::string _text)
+chat_event_data_sptr chat_event_data::make_generic_event(std::string _text)
 {
-    chat_event_data_uptr result(
+    chat_event_data_sptr result(
         new chat_event_data(chat_event_type::generic));
 
     result->generic_ = std::move(_text);
+
+    return result;
+}
+
+chat_event_data_sptr chat_event_data::make_status_reply_event(const rapidjson::Value& _node)
+{
+    chat_event_data_sptr result(new chat_event_data(chat_event_type::status_reply));
+    auto statusReply = _node.FindMember("statusReply");
+    if (statusReply != _node.MemberEnd())
+    {
+        result->sender_aimid_ = parse_sender_aimid(statusReply->value);
+        tools::unserialize_value(statusReply->value, "senderStatus", result->status_reply_.sender_status_);
+        tools::unserialize_value(statusReply->value, "ownerStatus", result->status_reply_.owner_status_);
+    }
+
+    return result;
+}
+
+chat_event_data_sptr chat_event_data::make_custom_status_reply_event(const rapidjson::Value& _node)
+{
+    chat_event_data_sptr result(new chat_event_data(chat_event_type::custom_status_reply));
+    auto customStatusReply = _node.FindMember("customStatusReply");
+    if (customStatusReply != _node.MemberEnd())
+    {
+        result->sender_aimid_ = parse_sender_aimid(customStatusReply->value);
+
+        auto senderStatus = customStatusReply->value.FindMember("senderStatus");
+        if (senderStatus != customStatusReply->value.MemberEnd())
+        {
+            tools::unserialize_value(senderStatus->value, "media", result->status_reply_.sender_status_);
+            tools::unserialize_value(senderStatus->value, "text", result->status_reply_.sender_status_description_);
+
+        }
+
+        auto ownerStatus = customStatusReply->value.FindMember("ownerStatus");
+        if (ownerStatus != customStatusReply->value.MemberEnd())
+        {
+            tools::unserialize_value(ownerStatus->value, "media", result->status_reply_.owner_status_);
+            tools::unserialize_value(ownerStatus->value, "text", result->status_reply_.owner_status_descriprion_);
+        }
+    }
 
     return result;
 }
@@ -1658,6 +1718,9 @@ chat_event_data::chat_event_data(const tools::tlvpack& _pack)
         if (auto item = _pack.get_item(message_fields::mf_chat_event_generic_text))
             generic_ = item->get_value<std::string>();
     }
+
+    if (type_ == chat_event_type::status_reply || type_ == chat_event_type::custom_status_reply)
+        deserialize_status_reply(_pack);
 }
 
 void chat_event_data::apply_persons(const archive::persons_map &_persons)
@@ -1725,6 +1788,9 @@ void chat_event_data::serialize(Out icollection* _collection) const
         serialize_chat_modifications(Out coll);
     }
 
+    if (type_ == chat_event_type::status_reply || type_ == chat_event_type::custom_status_reply)
+        serialize_status_reply(Out coll);
+
     if (has_generic_text())
     {
         assert(!generic_.empty());
@@ -1768,6 +1834,9 @@ void chat_event_data::serialize(Out tools::tlvpack &_pack) const
         assert(!generic_.empty());
         _pack.push_child(core::tools::tlv(message_fields::mf_chat_event_generic_text, generic_));
     }
+
+    if (type_ == chat_event_type::status_reply || type_ == chat_event_type::custom_status_reply)
+        serialize_status_reply(Out _pack);
 }
 
 void chat_event_data::deserialize_chat_modifications(const tools::tlvpack &_pack)
@@ -1840,6 +1909,21 @@ void chat_event_data::deserialize_mchat_members_aimids(const tools::tlvpack &_pa
 
         mchat_.members_.push_back(std::move(member));
     }
+}
+
+void chat_event_data::chat_event_data::deserialize_status_reply(const tools::tlvpack& _pack)
+{
+    if (auto sender_status_item = _pack.get_item(mf_chat_event_sender_status))
+        status_reply_.sender_status_ = sender_status_item->get_value<std::string>();
+
+    if (auto owner_status_item = _pack.get_item(mf_chat_event_owner_status))
+        status_reply_.owner_status_ = owner_status_item->get_value<std::string>();
+
+    if (auto sender_status_description_item = _pack.get_item(mf_chat_event_sender_status_desctiprion))
+        status_reply_.sender_status_description_ = sender_status_description_item->get_value<std::string>();
+
+    if (auto owner_status_description_item = _pack.get_item(mf_chat_event_owner_status_description))
+        status_reply_.owner_status_descriprion_ = owner_status_description_item->get_value<std::string>();
 }
 
 chat_event_type chat_event_data::get_type() const
@@ -2043,6 +2127,22 @@ void chat_event_data::serialize_mchat_members_aimids(Out tools::tlvpack &_pack) 
     _pack.push_child(tools::tlv(message_fields::mf_chat_event_mchat_members_aimids, members_pack));
 }
 
+void chat_event_data::serialize_status_reply(Out coll_helper& _coll) const
+{
+    _coll.set_value_as_string("stats_reply/sender_status", status_reply_.sender_status_);
+    _coll.set_value_as_string("stats_reply/owner_status", status_reply_.owner_status_);
+    _coll.set_value_as_string("stats_reply/sender_status_description", status_reply_.sender_status_description_);
+    _coll.set_value_as_string("stats_reply/owner_status_description", status_reply_.owner_status_descriprion_);
+}
+
+void chat_event_data::serialize_status_reply(Out tools::tlvpack& _pack) const
+{
+    _pack.push_child(tools::tlv(mf_chat_event_sender_status, status_reply_.sender_status_));
+    _pack.push_child(tools::tlv(mf_chat_event_owner_status, status_reply_.owner_status_));
+    _pack.push_child(tools::tlv(mf_chat_event_sender_status_desctiprion, status_reply_.sender_status_description_));
+    _pack.push_child(tools::tlv(mf_chat_event_owner_status_description, status_reply_.owner_status_descriprion_));
+}
+
 bool chat_event_data::is_type_deleted() const noexcept
 {
     return type_ == chat_event_type::message_deleted;
@@ -2100,13 +2200,13 @@ history_message_sptr history_message::make_deleted_patch(const int64_t _archive_
     return result;
 }
 
-history_message_sptr history_message::make_modified_patch(const int64_t _archive_id, std::string_view _internal_id)
+history_message_sptr history_message::make_modified_patch(const int64_t _archive_id, std::string_view _internal_id, chat_event_data_sptr _chat_event)
 {
     assert(_archive_id > 0 || !_internal_id.empty());
 
     auto result = make_updated_patch(_archive_id, _internal_id);
 
-    result->chat_event_ = chat_event_data::make_simple_event(chat_event_type::message_deleted);
+    result->chat_event_ = _chat_event ? _chat_event : chat_event_data::make_simple_event(chat_event_type::message_deleted);
 
     return result;
 }
@@ -2250,7 +2350,7 @@ const file_sharing_data_uptr& history_message::get_file_sharing_data() const
     return file_sharing_;
 }
 
-const chat_event_data_uptr& history_message::get_chat_event_data() const
+const chat_event_data_sptr& history_message::get_chat_event_data() const
 {
     return chat_event_;
 }
@@ -2412,6 +2512,7 @@ void history_message::serialize(icollection* _collection, const time_t _offset, 
     coll.set_value_as_int("flags", flags_.value_);
     coll.set<bool>("outgoing", is_outgoing());
     coll.set<bool>("deleted", is_deleted());
+    coll.set<bool>("restored_patch", is_restored_patch());
     coll.set_value_as_int("time", (int32_t) (time_ > 0 ? time_ + _offset : time_));
     if (_serialize_message)
         coll.set_value_as_string("text", text_);
@@ -2885,16 +2986,17 @@ int32_t history_message::unserialize(const rapidjson::Value& _node, const std::s
 {
     assert(!_sender_aimid.empty());
 
-    static auto new_message_fields_str = omicronlib::_o(omicron::keys::new_message_fields, feature::default_new_message_fields());
-    static message_fields_set new_message_fields_set;
-    if (!new_message_fields_str.empty() && new_message_fields_set.empty())
-        new_message_fields_set = set_from_json_array(new_message_fields_str);
+    static const message_fields_set new_message_fields_set = []()
+    {
+        const auto str = omicronlib::_o(omicron::keys::new_message_fields, feature::default_new_message_fields());
+        return set_from_json_array(str);
+    }();
 
-    static auto new_message_parts_str = omicronlib::_o(omicron::keys::new_message_parts, feature::default_new_message_parts());
-    static message_fields_set new_message_parts_set;
-    if (!new_message_parts_str.empty() && new_message_parts_set.empty())
-        new_message_parts_set = set_from_json_array(new_message_parts_str);
-
+    static const message_fields_set new_message_parts_set = []()
+    {
+        const auto str = omicronlib::_o(omicron::keys::new_message_parts, feature::default_new_message_parts());
+        return set_from_json_array(str);
+    }();
 
     // load basic fields
 
@@ -2978,15 +3080,6 @@ int32_t history_message::unserialize(const rapidjson::Value& _node, const std::s
         {
             hide_edit_ = field.value.GetBool();
         }
-        else if (new_message_fields_set.find(name) != new_message_fields_set.end())
-        {
-            unsupported_ = true;
-            rapidjson::StringBuffer buffer;
-            rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
-            _node.Accept(writer);
-            json_ = rapidjson_get_string_view(buffer);
-            sender_aimid_ = _sender_aimid;
-        }
         else if (name == c_reactions)
         {
             message_reactions reactions;
@@ -2995,6 +3088,20 @@ int32_t history_message::unserialize(const rapidjson::Value& _node, const std::s
                 reactions.data_->msg_id_ = msgid_;
 
             reactions_ = std::move(reactions);
+        }
+        else if (name == c_has_animated_sticker)
+        {
+            // check only for field existence
+            continue;
+        }
+        else if (new_message_fields_set.find(name) != new_message_fields_set.end()) // ! must be the last check
+        {
+            unsupported_ = true;
+            rapidjson::StringBuffer buffer;
+            rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+            _node.Accept(writer);
+            json_ = rapidjson_get_string_view(buffer);
+            sender_aimid_ = _sender_aimid;
         }
     }
 
@@ -3048,7 +3155,7 @@ int32_t history_message::unserialize(const rapidjson::Value& _node, const std::s
                             if (poll.unserialize(field.value))
                                 poll_ = std::move(poll);
                         }
-                        else if (new_message_parts_set.find(name) != new_message_parts_set.end())
+                        else if (new_message_parts_set.find(name) != new_message_parts_set.end()) // ! must be the last check
                         {
                             unsupported_ = true;
                             rapidjson::StringBuffer buffer;
@@ -3085,7 +3192,7 @@ int32_t history_message::unserialize(const rapidjson::Value& _node, const std::s
                     quotes_.push_back(std::move(q));
                     continue;
                 }
-                else if (new_message_parts_set.find(type) != new_message_parts_set.end())
+                else if (new_message_parts_set.find(type) != new_message_parts_set.end()) // ! must be the last check
                 {
                     unsupported_ = true;
                     rapidjson::StringBuffer buffer;
@@ -3164,6 +3271,14 @@ int32_t history_message::unserialize(const rapidjson::Value& _node, const std::s
 
     case chat_event_type_class::no_longer_stranger:
         chat_event_ = chat_event_data::make_simple_event(chat_event_type::no_longer_stranger);
+        break;
+
+    case chat_event_type_class::status_reply:
+        chat_event_ = chat_event_data::make_status_reply_event(_node.FindMember("event")->value);
+        break;
+
+    case chat_event_type_class::custom_status_reply:
+        chat_event_ = chat_event_data::make_custom_status_reply_event(_node.FindMember("event")->value);
         break;
 
     case chat_event_type_class::generic:
@@ -3287,6 +3402,11 @@ bool history_message::is_chat_event_deleted() const
     return chat_event_ && chat_event_->is_type_deleted();
 }
 
+bool history_message::is_restored_patch() const
+{
+    return flags_.flags_.restored_patch_;
+}
+
 bool history_message::is_modified() const
 {
     return flags_.flags_.modified_;
@@ -3316,6 +3436,11 @@ void history_message::set_deleted(const bool _deleted)
     flags_.flags_.deleted_ = uint32_t(_deleted);
 }
 
+void history_message::set_restored_patch(const bool _restored)
+{
+    flags_.flags_.restored_patch_ = uint32_t(_restored);
+}
+
 void history_message::set_modified(const bool _modified)
 {
     flags_.flags_.modified_ = uint32_t(_modified);
@@ -3336,6 +3461,7 @@ void history_message::apply_header_flags(const message_header &_header)
     assert(!_header.is_patch() || _header.is_updated_message());
 
     set_deleted(_header.is_deleted());
+    set_restored_patch(_header.is_restored_patch());
 }
 
 void history_message::apply_modifications(const history_block &_modifications)
@@ -3796,7 +3922,12 @@ bool quote::unserialize(const rapidjson::Value& _node, bool _is_forward, const m
             if (poll.unserialize(field.value))
                 poll_ = std::move(poll);
         }
-        else if (_new_fields.find(name) != _new_fields.end())
+        else if (c_has_animated_sticker == name)
+        {
+            // only check for field existence
+            continue;
+        }
+        else if (_new_fields.find(name) != _new_fields.end()) // ! must be the last check
         {
             return false;
         }
@@ -4127,6 +4258,12 @@ namespace
 
                 if (*type == "noLongerStranger")
                     return chat_event_type_class::no_longer_stranger;
+
+                if (*type == "statusReply")
+                    return chat_event_type_class::status_reply;
+
+                if (*type == "customStatusReply")
+                    return chat_event_type_class::custom_status_reply;
             }
         }
 

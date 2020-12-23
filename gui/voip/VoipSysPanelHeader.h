@@ -1,5 +1,5 @@
 #pragma once
-#include "VideoPanelHeader.h"
+#include "CommonUI.h"
 #include "AvatarContainerWidget.h"
 #include "NameAndStatusWidget.h"
 

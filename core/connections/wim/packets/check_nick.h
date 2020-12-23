@@ -21,6 +21,7 @@ namespace core
 
         public:
             check_nick(wim_packet_params _params, const std::string& _nick, bool _set_nick);
+            virtual std::string_view get_method() const override;
         };
     }
 }

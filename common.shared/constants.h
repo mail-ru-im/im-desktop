@@ -68,7 +68,7 @@
 
 constexpr bool settings_allow_big_emoji_default() noexcept { return true; }
 constexpr bool settings_autoreplace_emoji_default() noexcept { return true; }
-constexpr bool settings_hoversound_video_default() noexcept { return true; }
+constexpr bool settings_hoversound_video_default() noexcept { return false; }
 constexpr bool settings_show_smartreply_default() noexcept { return true; }
 constexpr bool settings_spell_check_default() noexcept { return true; }
 constexpr bool settings_fast_drop_search_default() noexcept { return false; }
@@ -76,6 +76,7 @@ constexpr bool settings_exec_files_without_warning_default() noexcept { return f
 constexpr bool settings_keep_logged_in_default() noexcept { return true; }
 constexpr bool settings_show_reactions_default() noexcept { return true; }
 constexpr bool settings_allow_statuses_default() noexcept { return true; }
+constexpr bool show_microphone_request_default() noexcept { return true; }
 
 #define settings_microphone "microphone"
 #define settings_microphone_gain "microphone_gain"
@@ -122,6 +123,9 @@ constexpr bool settings_allow_statuses_default() noexcept { return true; }
 #define favorites_pinned_on_start "favorites_pinned_on_start"
 
 #define statuses_user_statuses "statuses_user_statuses"
+#define status_duration "status_duration"
+
+#define show_microphone_request "show_microphone_request"
 
 constexpr const char* get_global_wp_id_setting_field() noexcept
 {

@@ -24,6 +24,7 @@ namespace Data
         QString AimId_;
         QString Role_;
         LastSeen Lastseen_;
+        QDateTime canRemoveTill_;
 
         bool IsCreator_ = false;
     };
@@ -43,6 +44,7 @@ namespace Data
         QString Stamp_;
         QString Creator_;
         QString DefaultRole_;
+        QString Inviter_;
 
         int32_t CreateTime_ = -1;
         int32_t AdminsCount_ = -1;
@@ -50,6 +52,7 @@ namespace Data
         int32_t FriendsCount = -1;
         int32_t BlockedCount_ = -1;
         int32_t PendingCount_ = -1;
+        int32_t YourInvitesCount_ = -1;
 
         bool YouBlocked_ = false;
         bool YouPending_ = false;

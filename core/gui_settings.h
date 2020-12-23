@@ -18,6 +18,7 @@ namespace core
         uint32_t timer_;
 
         bool load_exported();
+        void clear_all_status_duration();
 
     public:
 

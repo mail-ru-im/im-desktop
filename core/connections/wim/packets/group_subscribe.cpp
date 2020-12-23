@@ -20,6 +20,11 @@ int32_t group_subscribe::get_resubscribe_in() const
     return resubscribe_in_;
 }
 
+std::string_view group_subscribe::get_method() const
+{
+    return "group/subscribe";
+}
+
 int32_t group_subscribe::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     rapidjson::Document doc(rapidjson::Type::kObjectType);
@@ -30,7 +35,7 @@ int32_t group_subscribe::init_request(const std::shared_ptr<core::http_request_s
 
     doc.AddMember("params", std::move(node_params), a);
 
-    setup_common_and_sign(doc, a, _request, "group/subscribe");
+    setup_common_and_sign(doc, a, _request, get_method());
 
     if (!params_.full_log_)
     {

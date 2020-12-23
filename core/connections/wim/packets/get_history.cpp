@@ -29,7 +29,7 @@ get_history_params::get_history_params(
     const int32_t _count,
     const std::string &_patch_version,
     bool _init,
-    bool /*_from_deleted*/,
+    bool _from_delete,
     bool _from_editing,
     bool _from_search,
     int64_t _seq
@@ -43,6 +43,7 @@ get_history_params::get_history_params(
     , init_(_init)
     , from_editing_(_from_editing)
     , from_search_(_from_search)
+    , from_delete_(_from_delete)
 {
     assert(!aimid_.empty());
     assert(!patch_version_.empty());
@@ -86,7 +87,7 @@ int32_t get_history::init_request(const std::shared_ptr<core::http_request_simpl
 
     doc.AddMember("params", std::move(node_params), a);
 
-    setup_common_and_sign(doc, a, _request, "getHistory");
+    setup_common_and_sign(doc, a, _request, get_method());
 
     __INFO(
         "delete_history",
@@ -195,4 +196,9 @@ int32_t get_history::parse_results(const rapidjson::Value& _node_results)
 priority_t get_history::get_priority() const
 {
     return priority_protocol();
+}
+
+std::string_view get_history::get_method() const
+{
+    return "getHistory";
 }

@@ -23,7 +23,7 @@ namespace Ui
     using highlightsV = std::vector<QString>;
 
     HighlightFindResult findNextHighlight(
-        const QString& _text,
+        QStringView _text,
         const highlightsV& _highlights,
         const int _posStart = 0,
         const HighlightPosition _hlPos = HighlightPosition::anywhere);

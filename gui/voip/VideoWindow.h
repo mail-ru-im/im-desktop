@@ -23,6 +23,10 @@ namespace Ui
     class VideoWindowHeader;
     class TextEmojiWidget;
 
+    class GridControlPanel;
+    class MicroAlert;
+    enum class MicroIssue;
+
     class VideoWindowHeader : public Ui::MoveablePanel
     {
         Q_OBJECT
@@ -39,7 +43,6 @@ namespace Ui
 
         void onMinimized();
         void onFullscreen();
-        void onClose();
 
     protected:
 
@@ -127,6 +130,10 @@ namespace Ui
         void createdNewCall();
         void sendStatistic();
 
+        void updateMicroAlertState();
+        void checkMicroPermission();
+        void showPermissionPanel();
+
     private Q_SLOTS:
         void checkOverlap();
         void checkPanelsVis();
@@ -145,7 +152,6 @@ namespace Ui
 
         void onEscPressed();
 
-        void onPanelClickedClose();
         void onPanelClickedMinimize();
         void onPanelClickedMaximize();
 
@@ -191,6 +197,8 @@ namespace Ui
 
         void onInviteVCSUrl(const QString& _url);
 
+        void showMicroPermissionPopup();
+
     public:
         VideoWindow();
         ~VideoWindow();
@@ -202,10 +210,14 @@ namespace Ui
         bool isMinimized() const;
         VideoPanel* getVideoPanel() const;
         void showToast(const QString& _text, int _maxLineCount = 1);
+        void setMicrophoneAlert(MicroIssue _issue);
+        void updateHangUpState();
+        void raiseWindow();
 
     Q_SIGNALS:
 
         void finished();
+        void aboutToHide();
 
     private:
         FrameControl_t* rootWidget_;
@@ -220,8 +232,10 @@ namespace Ui
 #endif
 
         //std::unique_ptr<VoipSysPanelHeader> topPanelOutgoing_;
-        std::unique_ptr<VideoPanel>          videoPanel_;
-        std::unique_ptr<MaskPanel>           maskPanel_;
+        std::unique_ptr<GridControlPanel>   gridButtonPanel_;
+        std::unique_ptr<MicroAlert>         microAlert_;
+        std::unique_ptr<MaskPanel>          maskPanel_;
+        std::unique_ptr<VideoPanel>         videoPanel_;
         std::unique_ptr<TransparentPanel>   transparentPanelOutgoingWidget_;
 
         std::unique_ptr<DetachedVideoWindow> detachedWnd_;
@@ -286,5 +300,8 @@ namespace Ui
 #ifdef _WIN32
         VideoWindowHeader* header_;
 #endif
+
+        MicroIssue microIssue_;
+        QPointer<media::permissions::PermissonsChangeNotifier> permissonsChangeNotifier_;
     };
 }

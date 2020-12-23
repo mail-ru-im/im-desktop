@@ -16,6 +16,11 @@ revoke_vote::revoke_vote(wim_packet_params _params, const std::string &_poll_id)
 
 }
 
+std::string_view revoke_vote::get_method() const
+{
+    return "poll/revoke";
+}
+
 int32_t revoke_vote::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     rapidjson::Document doc(rapidjson::Type::kObjectType);
@@ -27,7 +32,7 @@ int32_t revoke_vote::init_request(const std::shared_ptr<core::http_request_simpl
 
     doc.AddMember("params", std::move(node_params), a);
 
-    setup_common_and_sign(doc, a, _request, "poll/revoke");
+    setup_common_and_sign(doc, a, _request, get_method());
 
     if (!robusto_packet::params_.full_log_)
     {

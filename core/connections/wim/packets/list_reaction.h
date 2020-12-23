@@ -45,6 +45,7 @@ public:
                   int64_t _limit);
 
     const auto& get_result() const { return result_; }
+    virtual std::string_view get_method() const override;
 
 private:
     int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;

@@ -19,10 +19,9 @@ namespace core
     {
         class get_bot_callback_answer : public robusto_packet
         {
-
-            virtual int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
-            virtual int32_t parse_response(const std::shared_ptr<core::tools::binary_stream>& _response) override;
-            virtual int32_t parse_results(const rapidjson::Value& _node_results) override;
+            int32_t init_request(const std::shared_ptr<core::http_request_simple>& _request) override;
+            int32_t parse_results(const rapidjson::Value& _node_results) override;
+            bool is_status_code_ok() const override;
 
             std::string chat_id_;
             std::string callback_data_;
@@ -39,6 +38,7 @@ namespace core
 
             const std::string& get_bot_req_id() const noexcept;
             const bot_payload& get_payload() const noexcept;
+            virtual std::string_view get_method() const override;
         };
 
     }

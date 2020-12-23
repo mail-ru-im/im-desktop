@@ -31,7 +31,7 @@ namespace Ui
         void onVisibilityChanged(const bool _isVisible);
 
     protected:
-        void paintEvent(QPaintEvent* event) override;
+        void paintEvent(QPaintEvent*) override;
 
     private:
         bool isFileDownloading() const;

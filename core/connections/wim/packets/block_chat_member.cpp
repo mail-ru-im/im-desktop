@@ -24,6 +24,11 @@ block_chat_member::block_chat_member(
 
 block_chat_member::~block_chat_member() = default;
 
+std::string_view block_chat_member::get_method() const
+{
+    return block_ ? "blockChatMembers" : "unblockChatMembers";
+}
+
 int32_t block_chat_member::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     rapidjson::Document doc(rapidjson::Type::kObjectType);
@@ -44,7 +49,7 @@ int32_t block_chat_member::init_request(const std::shared_ptr<core::http_request
     node_params.AddMember("members", std::move(node_members), a);
     doc.AddMember("params", std::move(node_params), a);
 
-    setup_common_and_sign(doc, a, _request, block_ ? "blockChatMembers" : "unblockChatMembers");
+    setup_common_and_sign(doc, a, _request, get_method());
 
     if (!params_.full_log_)
     {

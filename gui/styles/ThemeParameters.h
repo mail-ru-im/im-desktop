@@ -47,7 +47,6 @@ namespace Styling
 
         [[nodiscard]] QString getStickersQss() const;
         [[nodiscard]] QString getSmilesQss() const;
-        [[nodiscard]] QString getStoreQss() const;
 
         [[nodiscard]] QString getGeneralSettingsQss() const;
         [[nodiscard]] QString getContactUsQss() const;

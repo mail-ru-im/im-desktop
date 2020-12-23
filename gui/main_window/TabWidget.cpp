@@ -4,9 +4,15 @@
 #include "TabBar.h"
 
 #include "../utils/utils.h"
-#include "../controls/LineLayoutSeparator.h"
 
 #include "styles/ThemeParameters.h"
+
+#include "main_window/sidebar/SidebarUtils.h"
+
+namespace
+{
+    constexpr std::chrono::milliseconds kFadeDuration = std::chrono::milliseconds(85);
+}
 
 namespace Ui
 {
@@ -18,10 +24,18 @@ namespace Ui
         Utils::setDefaultBackground(this);
 
         auto layout = Utils::emptyVLayout(this);
-        tabbar_ = new TabBar(this);
+        tabbar_ = new TabBar();
 
-        pages_ = new QStackedWidget(this);
-        pages_->setStyleSheet(qsl("background: transparent; border: none; color: %1").arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_PRIMARY)));
+        pages_ = new QStackedWidget();
+        pages_->setStyleSheet(ql1s("background: transparent; border: none; color: %1").arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_PRIMARY)));
+
+        SlideController* slideController = new SlideController(pages_);
+        slideController->setWidget(pages_);
+        slideController->setDuration(kFadeDuration);
+        slideController->setFading(SlideController::Fading::FadeInOut);
+        slideController->setEffects(SlideController::SlideEffect::NoEffect);
+        slideController->setSlideDirection(SlideController::SlideDirection::NoSliding);
+        slideController->setInverse(true);
 
         Testing::setAccessibleName(pages_, qsl("AS Tab page"));
         layout->addWidget(pages_);
@@ -76,8 +90,10 @@ namespace Ui
         {
             setUpdatesEnabled(false);
             tabbar_->setCurrentIndex(_index);
-            pages_->setCurrentIndex(_index);
             setUpdatesEnabled(true);
+
+            pages_->setCurrentIndex(_index);
+
             Q_EMIT currentChanged(_index, QPrivateSignal());
         }
     }

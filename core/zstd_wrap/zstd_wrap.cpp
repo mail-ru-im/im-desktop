@@ -93,6 +93,8 @@ ZSTDW_STATUS ZSTDW_Encode_buf(const char *data_in,
     bool needPreprocessJSON)
 {
     *data_out_written = 0;
+    const char *cur_data_in = data_in;
+    size_t cur_data_in_size = data_in_size;
 
     //preprocess json string if needed
     //if error in parse occurred then get source data and work with it (do encoding but return special error key)
@@ -100,6 +102,8 @@ ZSTDW_STATUS ZSTDW_Encode_buf(const char *data_in,
     int res_parse = 0;
     if (needPreprocessJSON) {
         res_parse = preprocessJSON(data_in, data_in_size, s_data_in_preproc);
+        cur_data_in = s_data_in_preproc.c_str();
+        cur_data_in_size = s_data_in_preproc.size();
     }
 
     ZSTDW_STATUS res;
@@ -109,10 +113,10 @@ ZSTDW_STATUS ZSTDW_Encode_buf(const char *data_in,
         if (context.checkCtxEncode(dict_file_path, dictBuffer, dictSize, compressionLevel) == 0) {
             //encode
             size_t res_zstd;
-            if (needPreprocessJSON)
-                res_zstd = ZSTD_compress_usingCDict(context.cctx, data_out, data_out_size, s_data_in_preproc.c_str(), s_data_in_preproc.size(), context.c_dict);
+            if ((!dict_file_path || std::char_traits<char>::length(dict_file_path) == 0) && !dictBuffer) //compress without dictionary
+                res_zstd = ZSTD_compressCCtx(context.cctx, data_out, data_out_size, cur_data_in, cur_data_in_size, compressionLevel);
             else
-                res_zstd = ZSTD_compress_usingCDict(context.cctx, data_out, data_out_size, data_in, data_in_size, context.c_dict);
+                res_zstd = ZSTD_compress_usingCDict(context.cctx, data_out, data_out_size, cur_data_in, cur_data_in_size, context.c_dict);
             ZSTD_ErrorCode er_code = ZSTD_getErrorCode(res_zstd);
 
             if (er_code == ZSTD_ErrorCode::ZSTD_error_no_error) {
@@ -120,7 +124,7 @@ ZSTDW_STATUS ZSTDW_Encode_buf(const char *data_in,
                 res = ZSTDW_STATUS::ZSTDW_OK;
             }
             else {
-                *data_out_written = ZSTD_compressBound(data_in_size);
+                *data_out_written = ZSTD_compressBound(cur_data_in_size);
                 if (er_code == ZSTD_ErrorCode::ZSTD_error_dstSize_tooSmall)
                     res = ZSTDW_STATUS::ZSTDW_OUTPUT_BUFFER_TOO_SMALL;
                 else
@@ -167,7 +171,11 @@ ZSTDW_STATUS ZSTDW_Decode_buf(const char *data_in,
         //check dict
         if (context.checkCtxDecode(dict_file_path, dictBuffer, dictSize) == 0) {
             //decode
-            size_t res_zstd = ZSTD_decompress_usingDDict(context.dctx, data_out, data_out_size, data_in, data_in_size, context.d_dict);
+            size_t res_zstd;
+            if ((!dict_file_path || std::char_traits<char>::length(dict_file_path) == 0) && !dictBuffer) //decompress without dictionary
+                res_zstd = ZSTD_decompressDCtx(context.dctx, data_out, data_out_size, data_in, data_in_size);
+            else
+                res_zstd = ZSTD_decompress_usingDDict(context.dctx, data_out, data_out_size, data_in, data_in_size, context.d_dict);
             ZSTD_ErrorCode er_code = ZSTD_getErrorCode(res_zstd);
 
             if (er_code == ZSTD_ErrorCode::ZSTD_error_no_error) {

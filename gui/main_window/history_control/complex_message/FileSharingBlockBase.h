@@ -59,7 +59,7 @@ public:
 
     virtual ContentType getContentType() const override { return ContentType::FileSharing; }
 
-    IItemBlock::MenuFlags getMenuFlags(QPoint p) const override;
+    IItemBlock::MenuFlags getMenuFlags(QPoint _p) const override;
 
     PinPlaceholderType getPinPlaceholder() const override;
 
@@ -84,6 +84,8 @@ public:
 
     bool isGifImage() const;
 
+    bool isLottie() const;
+
     bool isImage() const;
 
     bool isPtt() const;
@@ -91,6 +93,8 @@ public:
     bool isPlainFile() const;
 
     bool isPreviewable() const override;
+
+    bool isPlayable() const;
 
     bool isVideo() const;
 
@@ -117,11 +121,11 @@ protected:
 
     virtual void onDownloadedAction() = 0;
 
-    virtual void onDataTransfer(const int64_t bytesTransferred, const int64_t bytesTotal) = 0;
+    virtual void onDataTransfer(const int64_t _bytesTransferred, const int64_t _bytesTotal) = 0;
 
-    virtual void onDownloadingFailed(const int64_t requestId) = 0;
+    virtual void onDownloadingFailed(const int64_t _requestId) = 0;
 
-    virtual void onLocalCopyInfoReady(const bool isCopyExists) = 0;
+    virtual void onLocalCopyInfoReady(const bool _isCopyExists) = 0;
 
     virtual void onMenuCopyLink() final override;
 
@@ -135,11 +139,11 @@ protected:
 
     virtual void onMetainfoDownloaded() = 0;
 
-    virtual void onPreviewMetainfoDownloaded(const QString &miniPreviewUri, const QString &fullPreviewUri) = 0;
+    virtual void onPreviewMetainfoDownloaded(const QString& _miniPreviewUri, const QString& _fullPreviewUri) = 0;
 
-    void requestMetainfo(const bool isPreview);
+    void requestMetainfo(const bool _isPreview);
 
-    void setBlockLayout(IFileSharingBlockLayout *_layout);
+    void setBlockLayout(IFileSharingBlockLayout* _layout);
 
     void setSelected(const bool _isSelected) override;
 
@@ -170,6 +174,9 @@ private:
     bool isDownload(const Data::FileSharingDownloadResult& _result) const;
 
     QString getPlaceholderFormatText() const;
+
+    void startDataTransferTimeoutTimer();
+    void stopDataTransferTimeoutTimer();
 
     int64_t BytesTransferred_;
 
@@ -209,6 +216,8 @@ private:
 
     QString uploadId_;
 
+    QTimer* dataTransferTimeout_;
+
 protected:
     bool savedByUser_;
     bool recognize_;
@@ -216,19 +225,19 @@ protected:
     int32_t duration_;
 
 private Q_SLOTS:
-    void onFileDownloaded(qint64 seq, const Data::FileSharingDownloadResult& _result);
+    void onFileDownloaded(qint64 _seq, const Data::FileSharingDownloadResult& _result);
 
-    void onFileDownloading(qint64 seq, QString rawUri, qint64 bytesTransferred, qint64 bytesTotal);
+    void onFileDownloading(qint64 _seq, QString _rawUri, qint64 _bytesTransferred, qint64 _bytesTotal);
 
-    void onFileMetainfoDownloaded(qint64 seq, const Data::FileSharingMeta& _meta);
+    void onFileMetainfoDownloaded(qint64 _seq, const Data::FileSharingMeta& _meta);
 
-    void onFileSharingError(qint64 seq, QString rawUri, qint32 errorCode);
+    void onFileSharingError(qint64 _seq, QString _rawUri, qint32 _errorCode);
 
-    void onPreviewMetainfoDownloadedSlot(qint64 seq, QString miniPreviewUri, QString fullPreviewUri);
+    void onPreviewMetainfoDownloadedSlot(qint64 _seq, QString _miniPreviewUri, QString _fullPreviewUri);
 
     void fileSharingUploadingProgress(const QString& _uploadingId, qint64 _bytesTransferred);
 
-    void fileSharingUploadingResult(const QString& _seq, bool _success, const QString& localPath, const QString& _uri, int _contentType, qint64 _size, qint64 _lastModified, bool _isFileTooBig);
+    void fileSharingUploadingResult(const QString& _seq, bool _success, const QString& _localPath, const QString& _uri, int _contentType, qint64 _size, qint64 _lastModified, bool _isFileTooBig);
 };
 
 UI_COMPLEX_MESSAGE_NS_END

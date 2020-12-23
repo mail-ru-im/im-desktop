@@ -27,6 +27,7 @@ namespace core
         coll_helper coll_st(_coll->create_collection(), true);
 
         coll_st.set_value_as_string("status", status_);
+        coll_st.set_value_as_string("description", description_);
         coll_st.set_value_as_int64("startTime", to_seconds(start_time_));
 
         if (end_time_)
@@ -40,6 +41,7 @@ namespace core
         rapidjson::Value status_node(rapidjson::Type::kObjectType);
 
         status_node.AddMember("status", status_, _a);
+        status_node.AddMember("text", description_, _a);
         status_node.AddMember("startTime", to_seconds(start_time_), _a);
 
         if (end_time_)
@@ -52,6 +54,7 @@ namespace core
     bool status::unserialize(const core::coll_helper& _coll)
     {
         status_ = _coll.get_value_as_string("status");
+        description_ = _coll.get_value_as_string("description", "");
         start_time_ = from_seconds(_coll.get_value_as_int64("startTime"));
         if (_coll.is_value_exist("endTime"))
             end_time_ = from_seconds(_coll.get_value_as_int64("endTime"));
@@ -60,8 +63,10 @@ namespace core
 
     bool status::unserialize(const rapidjson::Value& _node)
     {
-        if (!tools::unserialize_value(_node, "status", status_))
+        if (!tools::unserialize_value(_node, "status", status_) && !tools::unserialize_value(_node, "media", status_))
             return false;
+
+        tools::unserialize_value(_node, "text", description_);
 
         if (int64_t secs = 0; tools::unserialize_value(_node, "startTime", secs))
             start_time_ = from_seconds(secs);

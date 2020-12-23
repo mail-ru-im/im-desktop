@@ -7,13 +7,9 @@
 #include "CustomButton.h"
 #include "../core_dispatcher.h"
 #include "../utils/utils.h"
+#include "textrendering/TextRenderingUtils.h"
 #include "../styles/ThemeParameters.h"
 #include "main_window/sidebar/SidebarUtils.h"
-
-static QString spaceString()
-{
-    return qsl(" ");
-}
 
 class SliderProxyStyle : public QProxyStyle
 {
@@ -187,7 +183,7 @@ namespace Ui
             aw1 = new TextEmojiWidget(titleWidget, Fonts::appFontScaled(15), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
             Utils::grabTouchWidget(aw1);
             aw1->setSizePolicy(QSizePolicy::Policy::Preferred, aw1->sizePolicy().verticalPolicy());
-            aw1->setText(spaceString());
+            aw1->setText(TextRendering::spaceAsString());
             Testing::setAccessibleName(aw1, qsl("AS GeneralCreator something"));
             titleLayout->addWidget(aw1);
         }
@@ -217,7 +213,7 @@ namespace Ui
                 auto selectedItem = new TextEmojiWidget(selectedItemButton, Fonts::appFontScaled(15), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY), Utils::scale_value(24));
                 Utils::grabTouchWidget(selectedItem);
 
-                auto selectedItemText = _selected < int(_values.size()) ? _values[_selected] : spaceString();
+                auto selectedItemText = _selected < int(_values.size()) ? _values[_selected] : TextRendering::spaceAsString();
                 selectedItem->setText(selectedItemText);
                 selectedItem->setFading(true);
                 Testing::setAccessibleName(selectedItem, u"AS GeneralCreator selectedItem " % selectedItemText);
@@ -233,7 +229,7 @@ namespace Ui
                     Utils::grabTouchWidget(ln);
                     ln->setSizePolicy(QSizePolicy::Policy::Expanding, QSizePolicy::Policy::Expanding);
                     ln->setFrameShape(QFrame::StyledPanel);
-                    Utils::ApplyStyle(ln, qsl("border-width: 1dip; border-bottom-style: solid; border-color: %1; ").arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_SECONDARY)));//DROPDOWN_STYLE);
+                    Utils::ApplyStyle(ln, ql1s("border-width: 1dip; border-bottom-style: solid; border-color: %1; ").arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_SECONDARY)));//DROPDOWN_STYLE);
                     Testing::setAccessibleName(ln, qsl("AS GeneralCreator ln"));
                     lpl->addWidget(ln);
                 }
@@ -301,14 +297,14 @@ namespace Ui
             w = new TextEmojiWidget(mainWidget, Fonts::appFontScaled(15), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
             Utils::grabTouchWidget(w);
             w->setSizePolicy(QSizePolicy::Policy::Preferred, w->sizePolicy().verticalPolicy());
-            w->setText(spaceString());
+            w->setText(TextRendering::spaceAsString());
             Testing::setAccessibleName(w, qsl("AS GeneralCreator w"));
             mainLayout->addWidget(w);
 
             aw = new TextEmojiWidget(mainWidget, Fonts::appFontScaled(15), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
             Utils::grabTouchWidget(aw);
             aw->setSizePolicy(QSizePolicy::Policy::Preferred, aw->sizePolicy().verticalPolicy());
-            aw->setText(spaceString());
+            aw->setText(TextRendering::spaceAsString());
             Testing::setAccessibleName(aw, qsl("AS GeneralCreator aw"));
             mainLayout->addWidget(aw);
 
@@ -417,6 +413,7 @@ namespace Ui
         cmbBox->setCursor(Qt::PointingHandCursor);
         cmbBox->setFixedWidth(Utils::scale_value(280));
         Testing::setAccessibleName(cmbBox, qsl("AS GeneralCreator cmbBoxProblems"));
+        Testing::setAccessibleName(cmbBox->view(), qsl("AS GeneralCreator flatMenu"));
 
         QPixmap pixmap(1, Utils::scale_value(50));
         pixmap.fill(Qt::transparent);

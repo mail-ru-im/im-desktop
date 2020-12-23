@@ -7,7 +7,7 @@
 #include "tools/strings.h"
 #include "tools/system.h"
 #include "tools/tlv.h"
-#include "curl/include/curl.h"
+#include "curl.h"
 #include "http_request.h"
 #include "tools/hmac_sha_base64.h"
 #include "async_task.h"
@@ -19,6 +19,7 @@
 #include "connections/wim/wim_packet.h"
 #include "connections/wim/robusto_packet.h"
 #include "configuration/app_config.h"
+#include "connections/urls_cache.h"
 
 using namespace core::stats;
 using namespace core;
@@ -50,9 +51,7 @@ namespace
     static std::unordered_map<stats_event_names, AccumulationTime> Stat_Accumulated_Events = { { stats_event_names::send_used_traffic_size_event, traffic_send_time } };
 
     constexpr std::string_view flurry_url = "https://data.flurry.com/aah.do";
-    constexpr std::string_view mytracker_url = "https://tracker-s2s.my.com/v1";
     constexpr std::string_view mytracker_s2s_api_key = "SPaTOUt9cR0EpARsjJEjhgnQQ7vPP4G9Xu0KgujlyUFsb85zPg6rnmxdQ3kvzN11";
-    constexpr std::string_view mytracker_app_id = "https://tracker-s2s.my.com/v1";
     constexpr auto send_flurry_interval = build::is_debug() ? std::chrono::minutes(1) : std::chrono::hours(1);
     constexpr auto send_mytracker_interval = build::is_debug() ? std::chrono::minutes(1) : std::chrono::minutes(10);
     constexpr auto fetch_ram_usage_interval = build::is_debug() ? std::chrono::seconds(30) : std::chrono::hours(1);
@@ -77,7 +76,7 @@ namespace
 
     std::string get_mytracker_custom_event_url()
     {
-        return su::concat(mytracker_url, "/customEvent/?idApp=", get_mytracker_app_id());
+        return su::concat(core::urls::get_url(core::urls::url_type::mytracker, core::urls::with_https::yes), "/customEvent/?idApp=", get_mytracker_app_id());
     }
 
     void write_to_txt_debug_log(std::wstring_view base_stg_file, std::string_view message)
@@ -620,8 +619,8 @@ void statistics::send_flurry_async()
 void core::stats::statistics::send_mytracker_async(const std::shared_ptr<stats_event>& event)
 {
     stats_thread_->run_async_function([post_data = get_mytracker_post_data(*event), user_proxy = g_core->get_proxy_settings(), event_name = event->get_name(), debug_filename = file_name_mytracker_]
-        {
-            return static_cast<int32_t>(statistics::send_mytracker(user_proxy, post_data, event_name, debug_filename));
+    {
+        return static_cast<int32_t>(statistics::send_mytracker(user_proxy, post_data, event_name, debug_filename));
 
     })->on_result_ = [wr_this = weak_from_this(), event](int32_t _http_code_or_zero_if_send_error)
     {
@@ -779,13 +778,16 @@ std::string core::stats::statistics::get_mytracker_post_data(const stats_event& 
         stream << ",\"customEventParams\":" << event.dump_params_to_json();
     stream << ",\"eventTimestamp\":" << "\"" << std::chrono::duration_cast<std::chrono::seconds>(event.get_time().time_since_epoch()).count() << "\"";
     const auto guidNoDashes = g_core->get_uniq_device_id();
-    stream << ",\"instanceId\":" << "\""
-        << guidNoDashes.substr(0, 8) << "-"
-        << guidNoDashes.substr(8, 4) << "-"
-        << guidNoDashes.substr(12, 4) << "-"
-        << guidNoDashes.substr(16, 4) << "-"
-        << guidNoDashes.substr(20, 12)
-        << "\"";
+    if (guidNoDashes.length() >= 32)
+    {
+        stream << ",\"instanceId\":" << "\""
+            << guidNoDashes.substr(0, 8) << "-"
+            << guidNoDashes.substr(8, 4) << "-"
+            << guidNoDashes.substr(12, 4) << "-"
+            << guidNoDashes.substr(16, 4) << "-"
+            << guidNoDashes.substr(20, 12)
+            << "\"";
+    }
     stream << "}";
     return stream.str();
 }
@@ -906,6 +908,7 @@ long core::stats::statistics::send_mytracker(const proxy_settings& _user_proxy, 
     request.set_connect_timeout(std::chrono::seconds(5));
     request.set_timeout(std::chrono::seconds(5));
     request.set_keep_alive();
+    request.set_compression_auto();
     request.set_url(get_mytracker_custom_event_url());
     request.set_custom_header_param(su::concat("Authorization: ", mytracker_s2s_api_key));
     request.set_send_im_stats(false);

@@ -72,9 +72,10 @@ int32_t robusto_packet::parse_response(const std::shared_ptr<core::tools::binary
         if (!tools::unserialize_value(iter_status->value, "code", status_code_))
             return wpie_error_parse_response;
 
-        if (status_code_ == 20000)
+        if (is_status_code_ok())
         {
-            if (const auto iter_result = doc.FindMember("results"); iter_result != doc.MemberEnd())
+            const auto iter_result = doc.FindMember("results");
+            if (iter_result != doc.MemberEnd() && iter_result->value.IsObject())
                 return parse_results(iter_result->value);
         }
         else
@@ -170,9 +171,11 @@ void robusto_packet::execute_request_async(const std::shared_ptr<http_request_si
     });
 }
 
-void robusto_packet::setup_common_and_sign(rapidjson::Value& _node, rapidjson_allocator& _a, const std::shared_ptr<core::http_request_simple>& _request, std::string_view _method)
+void robusto_packet::setup_common_and_sign(rapidjson::Value& _node, rapidjson_allocator& _a, const std::shared_ptr<core::http_request_simple>& _request, std::string_view _method, use_aimsid _use_aimsid)
 {
-    _node.AddMember("aimsid", params_.aimsid_, _a);
+    if (_use_aimsid == use_aimsid::yes)
+        _node.AddMember("aimsid", params_.aimsid_, _a);
+
     _node.AddMember("reqId", get_req_id(), _a);
 
     // for the best zstd-compression, json data should be sorted lexicographically

@@ -32,6 +32,8 @@ namespace core
             get_chat_home(wim_packet_params _params, const std::string& _new_tag = std::string());
 
             virtual ~get_chat_home();
+
+            virtual std::string_view get_method() const override;
         };
 
     }

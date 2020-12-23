@@ -39,7 +39,7 @@ int32_t stickers_migration::init_request(const std::shared_ptr<core::http_reques
     std::pair<std::string_view, std::string> p[] = { { std::string_view("stickers"), escape_symbols(stickers) } };
 
     _request->set_url(su::concat(urls::get_url(urls::url_type::stickers_store_host), "/openstore/matchtofiles?", format_get_params(p)));
-    _request->set_normalized_url("stickersMatchToFile");
+    _request->set_normalized_url(get_method());
     _request->set_keep_alive();
 
     if (!params_.full_log_)
@@ -65,4 +65,9 @@ int32_t stickers_migration::parse_response(const std::shared_ptr<core::tools::bi
 priority_t stickers_migration::get_priority() const
 {
     return packets_priority_high();
+}
+
+std::string_view stickers_migration::get_method() const
+{
+    return "stickersMatchToFile";
 }

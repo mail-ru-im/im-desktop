@@ -22,6 +22,11 @@ send_message_typing::~send_message_typing()
 {
 }
 
+std::string_view send_message_typing::get_method() const
+{
+    return "setTyping";
+}
+
 int32_t send_message_typing::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     std::string_view status;
@@ -53,7 +58,7 @@ int32_t send_message_typing::init_request(const std::shared_ptr<core::http_reque
         ss_url << "&chatHeadsSubscriptionId=" << id_;
 
     _request->set_url(ss_url.str());
-    _request->set_normalized_url("setTyping");
+    _request->set_normalized_url(get_method());
     _request->set_keep_alive();
     _request->set_connect_timeout(std::chrono::seconds(5));
 

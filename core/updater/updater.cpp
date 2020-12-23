@@ -11,20 +11,27 @@
 #include "../../common.shared/omicron_keys.h"
 #include "openssl/md5.h"
 #include "../configuration/app_config.h"
+#include "../configuration/host_config.h"
 #include "../tools/json_helper.h"
+#include "../tools/features.h"
 #include "../libomicron/include/omicron/omicron.h"
 
 #if defined _WIN32 || defined __linux__  // xcode 10 fix
 #include "../../../corelib/core_face.h"
 #include "../../../corelib/collection_helper.h"
 #endif
+namespace
+{
+    std::chrono::seconds check_period()
+    {
+        return std::chrono::seconds(core::configuration::get_app_config().app_update_interval_secs());
+    }
+}
 
 namespace core
 {
     namespace update
     {
-        constexpr auto check_period = std::chrono::hours(24); // one day
-
         struct update_params
         {
             std::string login_;
@@ -42,21 +49,28 @@ namespace core
 
         std::string get_update_server(const update_params& _params)
         {
-            const core::tools::version_info infoCurrent;
-            const std::string current_build_version = infoCurrent.get_version();
-            std::string updateble_build_version;
-            //updateble_build_version = /10.0.1234/
-            if constexpr (environment::is_alpha())
-                updateble_build_version = su::concat('/', omicronlib::_o(omicron::keys::update_alpha_version, current_build_version), '/');
-            else if (g_core->get_install_beta_updates())
-                updateble_build_version = su::concat('/', omicronlib::_o(omicron::keys::update_beta_version, current_build_version), '/');
+            if (!features::is_update_from_backend_enabled())
+            {
+                const core::tools::version_info infoCurrent;
+                const std::string current_build_version = infoCurrent.get_version();
+                std::string updateble_build_version;
+                //updateble_build_version = /10.0.1234/
+                if constexpr (environment::is_alpha())
+                    updateble_build_version = su::concat('/', omicronlib::_o(omicron::keys::update_alpha_version, current_build_version), '/');
+                else if (g_core->get_install_beta_updates())
+                    updateble_build_version = su::concat('/', omicronlib::_o(omicron::keys::update_beta_version, current_build_version), '/');
+                else
+                    updateble_build_version = su::concat('/', omicronlib::_o(omicron::keys::update_release_version, current_build_version), '/');
+
+                if (!_params.custom_url_.empty())
+                    return _params.custom_url_;
+
+                return core::configuration::get_app_config().get_update_url(updateble_build_version);
+            }
             else
-                updateble_build_version = su::concat('/', omicronlib::_o(omicron::keys::update_release_version, current_build_version), '/');
-
-            if (!_params.custom_url_.empty())
-                return _params.custom_url_;
-
-            return core::configuration::get_app_config().get_update_url(updateble_build_version);
+            {
+                return su::concat(config::hosts::get_host_url(config::hosts::host_url_type::app_update), '/');
+            }
         }
 
         std::string get_update_version_url(const update_params& _params)
@@ -74,7 +88,7 @@ namespace core
 
             }, (build::is_debug() ? std::chrono::seconds(10) : std::chrono::minutes(10)));
 
-            last_check_time_ = std::chrono::steady_clock::now() - check_period;
+            last_check_time_ = std::chrono::steady_clock::now() - check_period();
         }
 
 
@@ -104,10 +118,13 @@ namespace core
             if constexpr (build::is_store())
                 return;
 
+            if constexpr (build::is_pkg_msi())
+                return;
+
             if (!core::configuration::get_app_config().is_updateble())
                 return;
 
-            if ((std::chrono::steady_clock::now() - last_check_time_) > check_period)
+            if ((std::chrono::steady_clock::now() - last_check_time_) > check_period())
                 check({}, {});
         }
 
@@ -126,8 +143,11 @@ namespace core
                 return params;
             };
 
-            thread_->run_async_function(
-                [params = make_params(std::move(_custom_url)), proxy = g_core->get_proxy_settings(), _seq = std::move(_seq)]
+            const auto update_from_backend = features::is_update_from_backend_enabled();
+            const auto app_update_url = update_from_backend ? config::hosts::get_host_url(config::hosts::host_url_type::app_update) : std::string();
+            if (!update_from_backend || (update_from_backend && !app_update_url.empty()))
+            {
+                thread_->run_async_function([params = make_params(std::move(_custom_url)), proxy = g_core->get_proxy_settings(), _seq = std::move(_seq)]
                 {
                     const auto ret = run(params, proxy);
                     if (ret == error::update_ready)
@@ -148,6 +168,7 @@ namespace core
 
                     return int(ret);
                 });
+            }
 
             last_check_time_ = std::chrono::steady_clock::now();
         }

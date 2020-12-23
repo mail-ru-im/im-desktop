@@ -63,14 +63,14 @@ namespace Ui
     public:
         DateFileItem(time_t _time, qint64 _msg, qint64 _seq);
 
-        virtual void draw(QPainter& _p, const QRect& _rect, double _progress) override;
-        virtual int getHeight() const override;
+        void draw(QPainter& _p, const QRect& _rect, double _progress) override;
+        int getHeight() const override;
 
-        virtual qint64 getMsg() const override;
-        virtual qint64 getSeq() const override;
-        virtual time_t time() const override;
+        qint64 getMsg() const override;
+        qint64 getSeq() const override;
+        time_t time() const override;
 
-        virtual bool isDateItem() const override { return true; }
+        bool isDateItem() const override { return true; }
 
     private:
         std::unique_ptr<Ui::TextRendering::TextUnit> date_;
@@ -84,43 +84,43 @@ namespace Ui
     public:
         FileItem(const QString& _link, const QString& _date, qint64 _msg, qint64 _seq, bool _outgoing, const QString& _sender, time_t _time, int _width);
 
-        virtual void draw(QPainter& _p, const QRect& _rect, double _progress) override;
-        virtual int getHeight() const override;
-        virtual void setWidth(int _width) override;
-        virtual void setReqId(qint64 _id) override;
-        virtual qint64 reqId() const override;
+        void draw(QPainter& _p, const QRect& _rect, double _progress) override;
+        int getHeight() const override;
+        void setWidth(int _width) override;
+        void setReqId(qint64 _id) override;
+        qint64 reqId() const override;
 
-        virtual qint64 getMsg() const override;
-        virtual qint64 getSeq() const override;
-        virtual QString getLink() const override;
-        virtual QString sender() const override;
-        virtual time_t time() const override;
-        virtual qint64 size() const override;
-        virtual qint64 lastModified() const override;
+        qint64 getMsg() const override;
+        qint64 getSeq() const override;
+        QString getLink() const override;
+        QString sender() const override;
+        time_t time() const override;
+        qint64 size() const override;
+        qint64 lastModified() const override;
 
-        virtual void setFilename(const QString& _name) override;
-        virtual void setFilesize(qint64 _size) override;
-        virtual void setLastModified(qint64 _lastModified) override;
+        void setFilename(const QString& _name) override;
+        void setFilesize(qint64 _size) override;
+        void setLastModified(qint64 _lastModified) override;
 
-        virtual bool isOverControl(const QPoint& _pos) override;
-        virtual bool isOverLink(const QPoint& _pos, const QPoint& _pos2) override;
-        virtual bool isOverIcon(const QPoint & _pos) override;
+        bool isOverControl(const QPoint& _pos) override;
+        bool isOverLink(const QPoint& _pos, const QPoint& _pos2) override;
+        bool isOverIcon(const QPoint & _pos) override;
 
-        virtual void setDownloading(bool _downloading) override;
-        virtual bool isDownloading() const override;
-        virtual void setProgress(qint64 _transferred, qint64 _total) override;
-        virtual void setLocalPath(const QString& _path) override;
-        virtual QString getLocalPath() const override;
+        void setDownloading(bool _downloading) override;
+        bool isDownloading() const override;
+        void setProgress(qint64 _transferred, qint64 _total) override;
+        void setLocalPath(const QString& _path) override;
+        QString getLocalPath() const override;
 
-        virtual bool isOverDate(const QPoint&) const override;
-        virtual void setDateState(bool _hover, bool _active) override;
+        bool isOverDate(const QPoint&) const override;
+        void setDateState(bool _hover, bool _active) override;
 
-        virtual bool isOutgoing() const override;
-        virtual void setMoreButtonState(const ButtonState& _state) override;
-        virtual bool isOverMoreButton(const QPoint& _pos, int _h) const override;
-        virtual ButtonState moreButtonState() const override;
+        bool isOutgoing() const override;
+        void setMoreButtonState(const ButtonState& _state) override;
+        bool isOverMoreButton(const QPoint& _pos, int _h) const override;
+        ButtonState moreButtonState() const override;
 
-        virtual bool isDateItem() const override { return false; }
+        bool isDateItem() const override { return false; }
 
     private:
         QString link_;
@@ -157,18 +157,18 @@ namespace Ui
     public:
         FilesList(QWidget* _parent);
 
-        virtual void initFor(const QString& _aimId) override;
-        virtual void processItems(const QVector<Data::DialogGalleryEntry>& _entries) override;
-        virtual void processUpdates(const QVector<Data::DialogGalleryEntry>& _entries) override;
+        void initFor(const QString& _aimId) override;
+        void processItems(const QVector<Data::DialogGalleryEntry>& _entries) override;
+        void processUpdates(const QVector<Data::DialogGalleryEntry>& _entries) override;
 
     protected:
-        virtual void paintEvent(QPaintEvent*) override;
-        virtual void resizeEvent(QResizeEvent*) override;
-        virtual void mousePressEvent(QMouseEvent* _event) override;
-        virtual void mouseReleaseEvent(QMouseEvent* _event) override;
-        virtual void mouseMoveEvent(QMouseEvent* _event) override;
-        virtual void leaveEvent(QEvent* _event) override;
-        virtual ItemData itemAt(const QPoint& _pos) override;
+        void paintEvent(QPaintEvent*) override;
+        void resizeEvent(QResizeEvent*) override;
+        void mousePressEvent(QMouseEvent* _event) override;
+        void mouseReleaseEvent(QMouseEvent* _event) override;
+        void mouseMoveEvent(QMouseEvent* _event) override;
+        void leaveEvent(QEvent* _event) override;
+        ItemData itemAt(const QPoint& _pos) override;
 
     private Q_SLOTS:
         void fileSharingFileMetainfoDownloaded(qint64, const Data::FileSharingMeta& _meta);
@@ -179,10 +179,14 @@ namespace Ui
     private:
         void validateDates();
 
+        void startDataTransferTimeoutTimer(qint64 _seq);
+        void stopDataTransferTimeoutTimer(qint64 _seq);
+
     private:
         std::vector<std::unique_ptr<BaseFileItem>> Items_;
         std::vector<qint64> RequestIds_;
         std::vector<qint64> Downloading_;
         QVariantAnimation* anim_;
+        std::vector<std::pair<qint64, QTimer*>> dataTransferTimeoutList_;
     };
 }

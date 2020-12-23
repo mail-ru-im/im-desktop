@@ -25,7 +25,7 @@ namespace
     QString firstMessageImageLink()
     {
         const auto id = Utils::GetTranslator()->getLang() == u"ru" ? Features::favoritesImageIdRussian() : Features::favoritesImageIdEnglish();
-        return Utils::replaceFilesPlaceholders(qsl("[Photo: %1]").arg(id), Data::FilesPlaceholderMap());
+        return Utils::replaceFilesPlaceholders(ql1s("[Photo: %1]").arg(id), Data::FilesPlaceholderMap());
     }
 
     QString translateWithDefault(QTranslator& _translator, const char* _context, const char* _sourceText)

@@ -39,6 +39,8 @@ namespace core
 
             const std::string& get_text() const;
             int32_t get_comeback() const;
+
+            virtual std::string_view get_method() const override;
         };
     }
 }

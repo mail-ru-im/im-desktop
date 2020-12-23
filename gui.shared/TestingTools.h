@@ -17,4 +17,8 @@ namespace Testing
     void setAccessibleName(QWidget* target, const QString& name);
 
     bool isAccessibleRole(const int _role);
+
+    bool isAutoTestsMode();
+
+    QSize getComboboxItemSize();
 }

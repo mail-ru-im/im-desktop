@@ -104,8 +104,6 @@ namespace core
 
             wpie_error_resend = 39,
 
-            wpie_error_cannot_add_member = 40,
-
             wpie_error_robusto_target_not_found = 41,
 
             wpie_error_invalid_session_hash = 42,
@@ -113,6 +111,8 @@ namespace core
             wpie_error_user_blocked = 43,
 
             wpie_couldnt_resolve_host = 44,
+            wpie_error_add_member_no_rights = 45,
+            wpie_error_add_member_group_not_found = 46,
 
             wpie_client_http_error = 400,
             wpie_robusto_timeout = 500,
@@ -280,9 +280,13 @@ namespace core
 
             virtual bool is_valid() const { return has_valid_token(); };
             virtual bool support_async_execution() const;
+            virtual bool support_self_resending() const;
+            virtual std::string_view get_method() const = 0;
 
             int32_t execute() override final;
             void execute_async(handler_t _handler);
+
+            void update_params(wim_packet_params _params);
 
             virtual priority_t get_priority() const { return packets_priority(); }
             virtual bool is_post() const { return false; }
@@ -324,7 +328,8 @@ namespace core
             uint32_t get_http_code() const { return http_code_; }
             void set_http_code(uint32_t _code) { http_code_ = _code; }
             uint32_t get_repeat_count() const;
-            void set_repeat_count(const uint32_t _count);
+            void set_repeat_count(uint32_t _count);
+            void increment_repeat_count();
             bool is_stopped() const;
 
             static bool needs_to_repeat_failed(int32_t _error) noexcept;

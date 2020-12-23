@@ -2,6 +2,7 @@
 #include "wim_im.h"
 #include "wim_packet.h"
 #include "../contact_profile.h"
+#include "../../archive/history_patch.h"
 
 // packets
 #include "packets/packets.h"
@@ -21,7 +22,7 @@
 // cached contactlist objects
 #include "wim_contactlist_cache.h"
 #include "active_dialogs.h"
-#include "pinned.h"
+#include "contacts_cache.h"
 #include "mailboxes.h"
 #include "call_log_cache.h"
 
@@ -76,6 +77,8 @@
 #include "../../tools/file_sharing.h"
 #include "../../tools/json_helper.h"
 #include "../../tools/features.h"
+#include "../../tools/url.h"
+#include "../../tools/exif.h"
 #include "tools/device_id.h"
 
 // config
@@ -130,6 +133,9 @@ namespace
     constexpr int64_t initial_request_avatar_seq = -1;
     constexpr size_t search_threads_count = 3;
     constexpr auto sending_search_results_interval = std::chrono::milliseconds(500);
+    constexpr size_t max_support_screenshots_count = 32;
+
+    constexpr std::string_view pinned_cache_name() { return "favorites"; }
 
     void stop_timer(int32_t& _timer_id)
     {
@@ -212,6 +218,48 @@ namespace
         }
         coll.set_value_as_array("friendly_list", array.get());
         g_core->post_message_to_gui("friendly/update", 0, coll.get());
+    }
+
+    void misc_support_result_to_gui(int64_t _seq, bool _success)
+    {
+        if (!g_core)
+            return;
+
+        coll_helper coll(g_core->create_collection(), true);
+        coll.set_value_as_bool("succeeded", _success);
+        g_core->post_message_to_gui("feedback/sent", _seq, coll.get());
+
+        if (_success)
+            g_core->insert_event(stats::stats_event_names::feedback_sent);
+        else
+            g_core->insert_event(stats::stats_event_names::feedback_error);
+
+    }
+
+    loader_errors decompress_sticker(const std::wstring& _packed_path, const std::wstring& _out_path)
+    {
+        if (_packed_path.empty())
+            return loader_errors::open_file_error;
+
+        if (_out_path.empty())
+            return loader_errors::create_file;
+
+#ifndef STRIP_ZSTD
+        tools::binary_stream bstream_in;
+        if (!bstream_in.load_from_file(_packed_path))
+            return loader_errors::read_from_file;
+
+        tools::binary_stream bstream_out;
+        if (!tools::decompress_zstd(bstream_in, {}, bstream_out))
+            return loader_errors::decompress;
+
+        if (!bstream_out.save_2_file(_out_path))
+            return loader_errors::save_2_file;
+
+        return loader_errors::success;
+#else
+        return loader_errors::internal_logic_error;
+#endif
     }
 }
 
@@ -392,9 +440,10 @@ void core::wim::wim_send_thread::lock()
     is_sending_locked_ = true;
 }
 
-void core::wim::wim_send_thread::unlock()
+void core::wim::wim_send_thread::unlock_and_execute_queued()
 {
     is_sending_locked_ = false;
+    execute_packet_from_queue();
 }
 //////////////////////////////////////////////////////////////////////////
 // end send_thread class
@@ -424,8 +473,8 @@ im::im(const im_login_id& _login,
     contact_list_(std::make_shared<contactlist>()),
     active_dialogs_(std::make_shared<active_dialogs>()),
     my_info_cache_(std::make_shared<my_info_cache>()),
-    pinned_(std::make_shared<pinned>()),
-    unimportant_(std::make_shared<pinned>()),
+    pinned_(std::make_shared<contacts_cache>(pinned_cache_name())),
+    unimportant_(std::make_shared<contacts_cache>(pinned_cache_name())),
     mailbox_storage_(std::make_shared<mailbox_storage>()),
     smartreply_suggests_(std::make_shared<smartreply::suggest_storage>()),
     auth_params_(std::make_shared<auth_parameters>()),
@@ -446,6 +495,7 @@ im::im(const im_login_id& _login,
     subscr_aggregate_timer_id_(empty_timer_id),
     im_created_(false),
     logout_(false),
+    start_session_is_running_(false),
     failed_holes_requests_(std::make_shared<holes::failed_requests>()),
     sent_pending_messages_active_(false),
     sent_pending_delete_messages_active_(false),
@@ -478,6 +528,7 @@ im::im(const im_login_id& _login,
 
 im::~im()
 {
+    g_core->write_string_to_network_log(su::concat("im ", std::to_string(static_cast<int>(get_id())), " start dtor\n"));
     erase_local_pin_if_needed();
     stop_subscriptions_timer();
     stop_store_timer();
@@ -490,6 +541,7 @@ im::~im()
     stop_ui_activity_timer();
     stop_external_config_timer();
     stop_resolve_hosts_timer();
+    g_core->write_string_to_network_log("im end dtor\n");
 }
 
 void im::init_failed_requests()
@@ -553,71 +605,107 @@ void im::stop_waiters()
 
 void im::connect()
 {
-    const bool is_locked = g_core->get_local_pin_enabled();
-    const bool flag_auth = load_auth();
-
+    const auto is_locked = g_core->get_local_pin_enabled();
     config::hosts::load_config();
 
-    if (is_locked)
+    if (!is_locked)
+    {
+        load_auth_and_fetch_parameters();
+    }
+    else
+    {
         waiting_for_local_pin_ = true;
+        load_my_info();
+    }
+}
 
+
+static std::string migration_config_location(const std::string_view _location, const std::string_view _login_domain)
+{
+    // migrating requests from host (domain) to full url
+
+    //to check the location it's a domain
+    if (core::tools::extract_protocol_prefix(_location).empty())
+    {
+        if (_location == _login_domain)
+        {
+            return config::hosts::external_url_config::make_url_auto_preset(_login_domain, _login_domain);
+        }
+        else
+        {
+            //a location is #domain from user login (user@login_domain#domain)
+            return config::hosts::external_url_config::make_url_auto_preset(_login_domain, _location);
+        }
+    }
+    return std::string(_location);
+}
+
+void im::load_auth_and_fetch_parameters()
+{
+    const bool flag_auth = load_auth();
     auto try_load_session = [wr_this = weak_from_this()](bool _up_session = true)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
             return;
 
-        if (g_core->get_local_pin_enabled())
-        {
-            const auto my_info = ptr_this->my_info_cache_->get_info();
-            ptr_this->insert_friendly(my_info->get_aimid(), my_info->get_friendly(), my_info->get_nick(), my_info->official(), core::friendly_source::local);
-            ptr_this->post_my_info_to_gui();
-        }
-        else
-        {
-            if (_up_session)
-                ptr_this->do_fetch_parameters();
-            else
-                g_core->unlogin(false);
-        }
+       if (_up_session)
+           ptr_this->do_fetch_parameters();
+       else
+           g_core->unlogin(false, false, "!up_session");
     };
-
-    my_info_cache_->load(get_my_info_file_name());
-
-    if (const auto my_info = my_info_cache_->get_info())
+    if (flag_auth)
     {
-        std::string url;
-        const auto login = my_info->get_aimid();
-
-        if (const auto at_idx = login.find('@'); at_idx != std::string::npos)
+        if (config::get().is_on(config::features::external_url_config))
         {
-            auto login_domain = login.substr(at_idx + 1);
-            url = config::hosts::external_url_config::make_url_preset(login_domain);
-        }
-
-        //TODO delete version check after full update for all users. TASK: IMDESKTOP-14256
-        tools::version_info info_this;
-        bool is_new_version = true;
-
-        if (const auto version = auth_params_->version_; !version.empty())
-            is_new_version = (tools::version_info(version) != info_this);
-
-        if (!url.empty() && is_new_version)
-        {
-            config::hosts::load_external_config_from_url(url,
-                [flag_auth, try_load_session](ext_url_config_error _err, std::string _url)
+            std::string config_location = g_core->get_external_config_url();
+            if (!config_location.empty())
             {
-                try_load_session(_err == ext_url_config_error::ok && flag_auth);
-            });
+                //TODO delete version check after full update for all users. TASK: IMDESKTOP-14256
+                bool is_new_version = true;
+                if (const auto& version = auth_params_->version_; !version.empty())
+                    is_new_version = tools::version_info(version) < tools::version_info();
+
+                if (is_new_version)
+                {
+                    std::string login_domain;
+                    if (const auto login = get_login(); !login.empty())
+                    {
+                        if (const auto at_idx = login.find('@'); at_idx != std::string::npos)
+                            login_domain = login.substr(at_idx + 1);
+                    }
+                    else
+                    {
+                        g_core->unlogin(false, false, "login is empty");
+                    }
+                    //change API from {get|set}_external_config_host() to {get|set}_external_config_url()
+                    std::string url = migration_config_location(config_location, login_domain);
+                    if (url != config_location)
+                    {
+                        g_core->set_external_config_url(url);
+                        config_location = url;
+                    }
+
+                }
+                config::hosts::load_external_config_from_url(config_location, [try_load_session]
+                (ext_url_config_error _err, std::string _url)
+                {
+                    try_load_session(_err == ext_url_config_error::ok || config::hosts::is_valid());
+                });
+            }
+            else
+            {
+                g_core->unlogin(false, false, "config_location is empty");
+            }
         }
         else
         {
-            try_load_session(flag_auth);
+            try_load_session();
         }
     }
     else
     {
-        try_load_session(flag_auth);
+        g_core->unlogin(false, false, "!flag_auth");
     }
 }
 
@@ -825,11 +913,21 @@ void im::process_postponed_for_update_dialog(const std::string& _contact)
     }
 }
 
+std::wstring im::get_group_members_cache_filename(std::string_view _aimid)
+{
+    assert(!_aimid.empty());
+    return su::wconcat(get_im_data_path(), L"/archive/", tools::from_utf8(_aimid), L"/group_members.cache");
+}
+
 void im::erase_auth_data()
 {
     auth_params_->clear();
 
-    store_auth_parameters();
+    g_core->write_string_to_network_log(su::concat("im ", std::to_string(static_cast<int>(get_id())), " erase auth\n"));
+    async_tasks_->run_async_function([file_name = get_auth_parameters_filename()]
+    {
+        return tools::system::delete_file(file_name) ? 0 : -1;
+    });
 }
 
 void im::store_auth_parameters()
@@ -852,48 +950,10 @@ void im::store_auth_parameters()
     });
 }
 
-void im::get_mask_id_list(int64_t _seq)
-{
-    if (!masks_)
-        create_masks(weak_from_this());
-
-    masks_->get_mask_id_list(_seq);
-}
-
-void im::get_mask_preview(int64_t _seq, const std::string& mask_id)
-{
-    assert(masks_ && "call get_mask_id_list first");
-
-    if (masks_)
-        masks_->get_mask_preview(_seq, mask_id);
-}
-
-void im::get_mask_model(int64_t _seq)
-{
-    assert(masks_ && "call get_mask_id_list first");
-
-    if (masks_)
-        masks_->get_mask_model(_seq);
-}
-
-void im::get_mask(int64_t _seq, const std::string& mask_id)
-{
-    assert(masks_ && "call get_mask_id_list first");
-
-    if (masks_)
-        masks_->get_mask(_seq, mask_id);
-}
-
-void im::get_existent_masks(int64_t _seq)
-{
-    assert(masks_ && "call get_mask_id_list first");
-
-    if (masks_)
-        masks_->get_existent_masks(_seq);
-}
-
 bool im::load_auth()
 {
+    g_core->write_string_to_network_log(su::concat("get im ", std::to_string(static_cast<int>(get_id())), " auth\r\n"));
+
     const std::wstring file_name = get_auth_parameters_filename();
     const std::wstring file_name_fetch = get_fetch_parameters_filename();
 
@@ -912,22 +972,47 @@ bool im::load_auth()
         if (g_core->get_local_pin_enabled())
             auth_params_loaded &= bs_auth.decrypt_aes256(local_pin_hash_);
 
-        if (auth_params_loaded && auth_params->unserialize(bs_auth))
-            break;
+        if (auth_params_loaded)
+        {
+            const auto was_unserialized = auth_params->unserialize(bs_auth);
+            if (was_unserialized)
+            {
+                break;
+            }
+            else
+            {
+                g_core->write_string_to_network_log(su::concat(
+                    "failed to unserialize ",
+                    tools::from_utf16(tools::system::get_file_name(file_name)), "\r\n"));
+            }
+        }
+        else
+        {
+            g_core->write_string_to_network_log(su::concat(
+                "failed to load ",
+                tools::from_utf16(tools::system::get_file_name(file_name)), "\r\n"));
+        }
 
         init_result = false;
     }
     while (false);
 
-    if (init_result && auth_params->is_valid())
+    if (init_result)
     {
-        core::tools::binary_stream bs_fetch;
-        if (bs_fetch.load_from_file(file_name_fetch))
-            fetch_params->unserialize(bs_fetch, auth_params->aimsid_);
+        if (auth_params->is_valid())
+        {
+            core::tools::binary_stream bs_fetch;
+            if (bs_fetch.load_from_file(file_name_fetch))
+                fetch_params->unserialize(bs_fetch, auth_params->aimsid_);
 
-        auth_params_ = auth_params;
-        fetch_params_ = fetch_params;
-        return true;
+            auth_params_ = auth_params;
+            fetch_params_ = fetch_params;
+            return true;
+        }
+        else
+        {
+            g_core->write_string_to_network_log("loaded invalid auth data\r\n");
+        }
     }
     return false;
 }
@@ -1014,14 +1099,8 @@ std::shared_ptr<async_task_handlers> im::load_contact_list()
     {
         core::tools::binary_stream bstream;
 
-        g_core->write_string_to_network_log(su::concat("contact-list-debug",
-            " load_contact_list before load_from_file\r\n"));
-
         if (!bstream.load_from_file(contact_list_file))
             return -1;
-
-        g_core->write_string_to_network_log(su::concat("contact-list-debug",
-            " load_contact_list after load_from_file\r\n"));
 
         bstream.write<char>('\0');
 
@@ -1063,10 +1142,89 @@ std::shared_ptr<async_task_handlers> im::load_unimportant()
     return load_pinned_impl(pinned_type::unimportant);
 }
 
+std::shared_ptr<async_task_handlers> core::wim::im::load_inviters_blacklist()
+{
+    auto handler = std::make_shared<async_task_handlers>();
+    auto result = std::make_shared<contacts_cache>("bl");
+
+    async_tasks_->run_async_function([file_name = get_inviters_blacklist_file_name(), result]
+    {
+        core::tools::binary_stream bstream;
+        if (!bstream.load_from_file(file_name))
+            return -1;
+
+        bstream.write<char>('\0');
+
+        rapidjson::Document doc;
+        if (doc.ParseInsitu(bstream.read(bstream.available())).HasParseError())
+            return -1;
+
+        return result->unserialize(doc);
+
+    })->on_result_ = [wr_this = weak_from_this(), result, handler](int32_t _error) mutable
+    {
+        auto ptr_this = wr_this.lock();
+        if (!ptr_this)
+            return;
+
+        ptr_this->inviters_blacklist_ = std::move(result);
+
+        if (_error == 0)
+        {
+            ptr_this->insert_friendly(ptr_this->inviters_blacklist_->get_persons(), friendly_source::local, friendly_add_mode::insert);
+            ptr_this->send_cached_inviters_blacklist_to_gui();
+        }
+
+        if (handler->on_result_)
+            handler->on_result_(_error);
+    };
+
+    return handler;
+}
+
+std::shared_ptr<async_task_handlers> im::load_group_members_cache(std::string_view _aimid, std::string_view _role)
+{
+    auto handler = std::make_shared<async_task_handlers>();
+    auto result = std::make_shared<contacts_multicache>();
+
+    async_tasks_->run_async_function([file_name = get_group_members_cache_filename(_aimid), result]
+    {
+        core::tools::binary_stream bstream;
+        if (!bstream.load_from_file(file_name))
+            return -1;
+
+        bstream.write<char>('\0');
+
+        rapidjson::Document doc;
+        if (doc.ParseInsitu(bstream.read(bstream.available())).HasParseError())
+            return -1;
+
+        return result->unserialize(doc);
+
+    })->on_result_ = [wr_this = weak_from_this(), result, handler, aimid = std::string(_aimid), role = std::string(_role)](int32_t _error) mutable
+    {
+        auto ptr_this = wr_this.lock();
+        if (!ptr_this)
+            return;
+
+        if (_error == 0)
+        {
+            ptr_this->insert_friendly(result->get_persons(), friendly_source::local, friendly_add_mode::insert);
+            ptr_this->group_members_caches_[aimid] = std::move(result);
+            ptr_this->send_cached_group_members_to_gui(aimid, role);
+        }
+
+        if (handler->on_result_)
+            handler->on_result_(_error);
+    };
+
+    return handler;
+}
+
 std::shared_ptr<async_task_handlers> im::load_pinned_impl(pinned_type _type)
 {
     auto handler = std::make_shared<async_task_handlers>();
-    auto result = std::make_shared<pinned>();
+    auto result = std::make_shared<contacts_cache>(pinned_cache_name());
 
     auto get_file_name = [this](pinned_type _type)
     {
@@ -1106,21 +1264,10 @@ std::shared_ptr<async_task_handlers> im::load_pinned_impl(pinned_type _type)
                 const auto stat_name = _type == pinned_type::pinned ? core::stats::stats_event_names::pinned_load : core::stats::stats_event_names::unimportant_load;
                 g_core->insert_event(stat_name, std::move(props));
 
-                archive::persons_map persons;
+                ptr_this->insert_friendly(dest->get_persons(), friendly_source::local, friendly_add_mode::insert);
 
                 for (const auto& contact : dest->contacts())
-                {
-                    const auto& aimid = contact.get_aimid();
-                    core::archive::person p;
-                    p.friendly_ = contact.get_friendly().name_;
-                    p.nick_ = contact.get_friendly().nick_;
-                    p.official_ = contact.get_friendly().official_;
-                    persons.emplace(aimid, std::move(p));
-
-                    ptr_this->post_dlg_state_to_gui(aimid, true, true, true);
-                }
-
-                ptr_this->insert_friendly(persons, friendly_source::local, friendly_add_mode::insert);
+                    ptr_this->post_dlg_state_to_gui(contact.get_aimid(), true, true, true);
             }
 
             if (handler->on_result_)
@@ -1229,7 +1376,7 @@ void im::resume_download_stickers()
     {
         get_stickers()->set_download_stickers_error(false);
 
-        download_stickers(false);
+        download_stickers_and_icons();
     }
 
     if (get_stickers()->is_download_meta_error())
@@ -1249,10 +1396,12 @@ void im::resume_download_stickers()
 
 void im::resume_download_masks()
 {
+#ifndef STRIP_VOIP
     if (!masks_)
         create_masks(weak_from_this());
 
     masks_->on_connection_restored();
+#endif
 }
 
 void im::post_stickers_meta_to_gui(int64_t _seq, const std::string& _size)
@@ -1299,83 +1448,15 @@ void im::post_stickers_search_result_to_gui(int64_t _seq)
     };
 }
 
-void im::download_stickers_metadata(int64_t _seq, const std::string& _size)
-{
-    get_stickers()->get_next_meta_task()->on_result_ = [wr_this = weak_from_this(), _size, _seq](bool _res, const stickers::download_task& _task)
-    {
-        auto ptr_this = wr_this.lock();
-        if (!ptr_this)
-            return;
-
-        if (!_res)
-        {
-            ptr_this->download_stickers();
-
-            ptr_this->get_stickers()->set_download_meta_in_progress(false);
-
-            if (ptr_this->get_stickers()->is_flag_meta_need_reload())
-            {
-                ptr_this->get_stickers()->set_flag_meta_need_reload(false);
-
-                ptr_this->get_stickers()->get_md5()->on_result_ = [wr_this, _size](const std::string& _md5)
-                {
-                    auto ptr_this = wr_this.lock();
-                    if (!ptr_this)
-                        return;
-
-                    ptr_this->download_stickers_metafile(0, _size, _md5);
-                };
-            }
-
-            return;
-        }
-
-        ptr_this->get_async_loader().download_file(top_priority(), _task.get_source_url(), _task.get_source_url(), _task.get_dest_file(), ptr_this->make_wim_params(), file_info_handler_t(
-            [wr_this, _seq, _size, _task](loader_errors _error, const file_info_data_t& _data)
-            {
-                auto ptr_this = wr_this.lock();
-                if (!ptr_this)
-                    return;
-
-                if (loader_errors::network_error == _error)
-                {
-                    ptr_this->get_stickers()->set_download_meta_error(true);
-                    ptr_this->get_stickers()->set_download_meta_in_progress(false);
-                }
-                else
-                {
-                    ptr_this->async_tasks_->run_async_function([set_id = _task.get_set_id(), path = _task.get_dest_file()]
-                    {
-                        core::tools::binary_stream bstream;
-                        if (bstream.load_from_file(path))
-                            stickers::post_set_icon_2_gui(set_id, "stickers/set_icon", bstream);
-
-                        return 0;
-                    });
-
-                    ptr_this->get_stickers()->on_metadata_loaded(_task)->on_result_ = [wr_this, _size, _seq](bool)
-                    {
-                        auto ptr_this = wr_this.lock();
-                        if (!ptr_this)
-                            return;
-
-                        ptr_this->download_stickers_metadata(_seq, _size);
-                    };
-                }
-
-        }), 0, -1, true, _task.get_endpoint(), {}, true);
-    };
-}
-
 void im::load_stickers_data(int64_t _seq, const std::string& _size)
 {
-    get_stickers()->make_download_tasks(_size)->on_result_ = [wr_this = weak_from_this(), _seq, _size](const std::vector<std::string>& _fs_ids)
+    get_stickers()->make_set_icons_tasks(_size)->on_result_ = [wr_this = weak_from_this(), _size](int _task_count)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
             return;
 
-        ptr_this->download_stickers_metadata(_seq, _size);
+        ptr_this->download_stickers_and_icons();
     };
 }
 
@@ -1390,10 +1471,7 @@ void im::on_im_created()
     schedule_ui_activity_timer();
 
     if (config::get().is_on(config::features::external_url_config))
-    {
-        load_external_config();
         schedule_external_config_timer();
-    }
 
     schedule_resolve_hosts_timer();
 }
@@ -1615,6 +1693,20 @@ void im::download_stickers_metafile(int64_t _seq, const std::string& _size, cons
                     }
                 }
             };
+
+            ptr_this->get_stickers()->set_download_meta_in_progress(false);
+            if (ptr_this->get_stickers()->is_flag_meta_need_reload())
+            {
+                ptr_this->get_stickers()->set_flag_meta_need_reload(false);
+                ptr_this->get_stickers()->get_md5()->on_result_ = [wr_this, _size, _seq](const std::string& _md5)
+                {
+                    auto ptr_this = wr_this.lock();
+                    if (!ptr_this)
+                        return;
+
+                    ptr_this->download_stickers_metafile(_seq, _size, _md5);
+                };
+            }
         }
         else
         {
@@ -1727,10 +1819,6 @@ void im::get_stickers_pack_info(const int64_t _seq, const int32_t _set_id, const
             coll_result.set_value_as_bool("result", true);
 
             coll_result.set_value_as_collection("info", coll_set.get());
-        }
-        else
-        {
-
         }
     };
 }
@@ -1922,19 +2010,16 @@ void im::get_fs_stickers_by_ids(const int64_t _seq, std::vector<std::pair<int32_
 void im::get_set_icon_big(const int64_t _seq, const int32_t _set_id)
 {
     get_stickers()->get_set_icon_big(_seq, _set_id)->on_result_ =
-        [_set_id, wr_this = weak_from_this()](tools::binary_stream& _icon_data)
+        [_set_id, wr_this = weak_from_this()](std::wstring_view _icon_path)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
             return;
 
-        if (_icon_data.available())
-        {
-            stickers::post_set_icon_2_gui(_set_id, "stickers/set_icon_big", _icon_data);
-            return;
-        }
-
-        ptr_this->download_stickers();
+        if (tools::system::is_exist(_icon_path))
+            stickers::post_set_icon_2_gui(_set_id, "stickers/set_icon_big", _icon_path);
+        else
+            ptr_this->download_stickers_and_icons();
     };
 }
 
@@ -1943,97 +2028,175 @@ void im::clean_set_icon_big(const int64_t _seq, const int32_t _set_id)
     get_stickers()->clean_set_icon_big(_seq, _set_id);
 }
 
-
-void im::download_stickers(const bool _recursive)
+file_info_handler_t im::make_sticker_handler(const stickers::download_task& _task)
 {
-    if (get_stickers()->is_download_stickers_error())
-        return;
-
-    if (get_stickers()->is_download_stickers_in_progress() && !_recursive)
-        return;
-
-    get_stickers()->set_download_stickers_in_progress(true);
-
-    get_stickers()->get_next_sticker_task()->on_result_ = [wr_this = weak_from_this()](bool _res, const stickers::download_task& _task)
+    auto on_sticker_loaded = [wr_this = weak_from_this(), _task](loader_errors _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
             return;
 
-        if (!_res)
+        int32_t set_id = _task.get_set_id();
+        int32_t sticker_id = _task.get_sticker_id();
+        sticker_size sz = _task.get_size();
+        auto fs_id = _task.get_fs_id();
+
+        if (_error == loader_errors::success)
         {
-            ptr_this->get_stickers()->set_download_stickers_in_progress(false);
-            return;
-        }
-
-        //ATLTRACE("download sticker %s\r\n", _task.get_source_url().c_str());
-
-        ptr_this->get_async_loader().download_file(high_priority(), _task.get_source_url(), _task.get_source_url(), _task.get_dest_file(), ptr_this->make_wim_params(),
-            file_info_handler_t([wr_this, _task](loader_errors _error, const file_info_data_t& _data)
-        {
-            auto ptr_this = wr_this.lock();
-            if (!ptr_this)
-                return;
-
-            // if network error
-            if (_error == loader_errors::network_error)
+            // big icon
+            if (sticker_id == -1 && fs_id.empty())
             {
-                ptr_this->get_stickers()->set_download_stickers_error(true);
-                ptr_this->get_stickers()->set_download_stickers_in_progress(false);
-
-                return;
+                ptr_this->get_stickers()->get_set_icon_big(0, set_id)->on_result_ = [set_id](std::wstring_view _path)
+                {
+                    stickers::post_set_icon_2_gui(set_id, "stickers/set_icon_big", _path);
+                };
             }
+            else
+            {
+                ptr_this->get_stickers()->get_sticker(
+                    0,
+                    set_id,
+                    sticker_id,
+                    fs_id,
+                    sz)->on_result_ = [set_id, sticker_id, fs_id, sz](std::wstring_view _path)
+                {
+                    stickers::post_sticker_2_gui(0, set_id, sticker_id, fs_id, sz, _path);
+                };
+            }
+        }
+        else
+        {
+            stickers::post_sticker_fail_2_gui(0, set_id, sticker_id, fs_id, _error);
+        }
+    };
 
-            int32_t set_id = _task.get_set_id();
-            int32_t sticker_id = _task.get_sticker_id();
-            sticker_size sz = _task.get_size();
-            auto fs_id = _task.get_fs_id();
+    auto handler = file_info_handler_t(
+        [wr_this = weak_from_this(), decompress = _task.need_decompress(), target_path = _task.get_dest_file(), on_sticker_loaded = std::move(on_sticker_loaded)]
+        (loader_errors _error, const file_info_data_t& _data)
+    {
+        auto ptr_this = wr_this.lock();
+        if (!ptr_this)
+            return;
 
-            ptr_this->get_stickers()->on_sticker_loaded(_task)->on_result_ = [wr_this, set_id, sticker_id, sz, _error, fs_id = std::move(fs_id)](bool _res, const std::list<int64_t>& _requests)
+        if (_error == loader_errors::network_error)
+        {
+            ptr_this->get_stickers()->set_download_stickers_error(true);
+        }
+        else if (decompress)
+        {
+            const auto& packed_path = _data.additional_data_->local_path_;
+            ptr_this->async_tasks_->run_async_function([packed_path, target_path = std::move(target_path)]()
+            {
+                return (int)decompress_sticker(packed_path, target_path);
+            })->on_result_ = [on_sticker_loaded, err = _error, packed_path](int32_t _decompress_result)
+            {
+                on_sticker_loaded(_decompress_result != 0 ? (loader_errors)_decompress_result : err);
+                tools::system::delete_file(packed_path);
+            };
+        }
+        else
+        {
+            on_sticker_loaded(_error);
+        }
+    });
+
+    return handler;
+}
+
+file_info_handler_t im::make_set_icon_handler(const stickers::download_task& _task)
+{
+    auto on_downloaded = [wr_this = weak_from_this(), _task](int32_t _error = 0)
+    {
+        auto ptr_this = wr_this.lock();
+        if (!ptr_this)
+            return;
+
+        ptr_this->async_tasks_->run_async_function([set_id = _task.get_set_id(), path = _task.get_dest_file(), _error]
+        {
+            const auto error = (_error != 0 || core::tools::system::is_exist(path)) ? _error : (int32_t)loader_errors::file_not_exits;
+            stickers::post_set_icon_2_gui(set_id, "stickers/set_icon", path, _error);
+            return 0;
+        });
+    };
+
+    auto handler = file_info_handler_t(
+        [wr_this = weak_from_this(), decompress = _task.need_decompress(), target_path = _task.get_dest_file(), on_downloaded = std::move(on_downloaded)]
+        (loader_errors _error, const file_info_data_t& _data)
+    {
+        auto ptr_this = wr_this.lock();
+        if (!ptr_this)
+            return;
+
+        if (loader_errors::network_error == _error)
+        {
+            ptr_this->get_stickers()->set_download_meta_error(true);
+            on_downloaded(int32_t(_error));
+        }
+        else if (decompress)
+        {
+            const auto& packed_path = _data.additional_data_->local_path_;
+            ptr_this->async_tasks_->run_async_function([packed_path, target_path = std::move(target_path)]()
+            {
+                return (int)decompress_sticker(packed_path, target_path);
+            })->on_result_ = [on_downloaded, packed_path](int32_t _decompress_result)
+            {
+                assert(_decompress_result == 0);
+
+                on_downloaded(_decompress_result);
+                tools::system::delete_file(packed_path);
+            };
+        }
+        else
+        {
+            on_downloaded();
+        }
+    });
+
+    return handler;
+}
+
+void im::download_stickers_and_icons()
+{
+    get_stickers()->take_download_tasks()->on_result_ = [wr_this = weak_from_this()](const stickers::download_tasks& _tasks)
+    {
+        auto ptr_this = wr_this.lock();
+        if (!ptr_this)
+            return;
+
+        for (const auto& task : _tasks)
+        {
+            auto task_handler = task.is_icon_task() ? ptr_this->make_set_icon_handler(task) : ptr_this->make_sticker_handler(task);
+            auto handler = file_info_handler_t([wr_this, task, task_handler = std::move(task_handler)](loader_errors _error, const file_info_data_t& _data)
             {
                 auto ptr_this = wr_this.lock();
                 if (!ptr_this)
                     return;
 
-                if (_res && !_requests.empty())
+                ptr_this->get_stickers()->on_task_loaded(task)->on_result_ = [wr_this](int32_t _count)
                 {
-                    if (_error == loader_errors::success)
-                    {
-                        // big icon
-                        if (sticker_id == -1 && fs_id.empty())
-                        {
-                            ptr_this->get_stickers()->get_set_icon_big(0, set_id)->on_result_ = [_requests, set_id](tools::binary_stream& _data)
-                            {
-                                stickers::post_set_icon_2_gui(set_id, "stickers/set_icon_big", _data);
-                            };
-                        }
-                        else
-                        {
-                            ptr_this->get_stickers()->get_sticker(
-                                0,
-                                set_id,
-                                sticker_id,
-                                fs_id,
-                                sz)->on_result_ = [_requests, set_id, sticker_id, fs_id, sz](tools::binary_stream& _data)
-                            {
-                                for (auto seq : _requests)
-                                    stickers::post_sticker_2_gui(seq, set_id, sticker_id, fs_id, sz, _data);
-                            };
-                        }
-                    }
-                    else
-                    {
-                        for (auto seq : _requests)
-                            stickers::post_sticker_fail_2_gui(seq, set_id, sticker_id, fs_id, _error);
-                    }
-                }
+                    auto ptr_this = wr_this.lock();
+                    if (!ptr_this)
+                        return;
 
-                ptr_this->download_stickers(true);
-            };
-        }), 0, -1, true, _task.get_endpoint(), async_loader::make_filesharing_log_params(_task.get_fs_id()), true);
+                    ptr_this->download_stickers_and_icons();
+                };
+
+                task_handler.completion_callback_(_error, _data);
+            });
+
+            download_params_with_info_handler params(ptr_this->make_wim_params());
+            params.priority_ = high_priority();
+            params.url_ = task.get_source_url();
+            params.base_url_ = task.get_source_url();
+            params.file_name_ = task.need_decompress() ? su::wconcat(task.get_dest_file(), L"_packed") : task.get_dest_file();
+            params.normalized_url_ = task.get_endpoint();
+            params.handler_ = handler;
+            params.log_params_ = async_loader::make_filesharing_log_params(task.get_fs_id());
+            params.is_binary_data_ = true;
+            ptr_this->get_async_loader().download_file(std::move(params));
+        }
     };
 }
-
 
 void im::get_sticker(const int64_t _seq, const int32_t _set_id, const int32_t _sticker_id, std::string_view _fs_id, const core::sticker_size _size)
 {
@@ -2041,21 +2204,25 @@ void im::get_sticker(const int64_t _seq, const int32_t _set_id, const int32_t _s
     assert(_size < sticker_size::max);
 
     get_stickers()->get_sticker(_seq, _set_id, _sticker_id, std::string(_fs_id), _size)->on_result_ =
-        [_seq, _set_id, _sticker_id, fs_id = std::string(_fs_id), _size, wr_this = weak_from_this()](tools::binary_stream& _sticker_data)
+        [_seq, _set_id, _sticker_id, fs_id = std::string(_fs_id), _size, wr_this = weak_from_this()](std::wstring_view _sticker_path)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
             return;
 
-        if (_sticker_data.available())
-        {
-            stickers::post_sticker_2_gui(_seq, _set_id, _sticker_id, fs_id, _size, _sticker_data);
-
-            return;
-        }
-
-        ptr_this->download_stickers();
+        if (tools::system::is_exist(_sticker_path))
+            stickers::post_sticker_2_gui(_seq, _set_id, _sticker_id, fs_id, _size, _sticker_path);
+        else
+            ptr_this->download_stickers_and_icons();
     };
+}
+
+void im::get_sticker_cancel(std::vector<std::string> _fs_ids, core::sticker_size _size)
+{
+    assert(_size > sticker_size::min);
+    assert(_size < sticker_size::max);
+
+    get_stickers()->cancel_download_tasks(std::move(_fs_ids), _size);
 }
 
 void im::post_stickers_suggests_2_gui()
@@ -2127,8 +2294,18 @@ void im::get_chat_info(int64_t _seq, const std::string& _aimid, const std::strin
 void im::resolve_pending(int64_t _seq, const std::string& _aimid, const std::vector<std::string>& _contacts, bool _approve)
 {
     auto packet = std::make_shared<core::wim::resolve_pending>(make_wim_params(), _aimid, _contacts, _approve);
-    post_robusto_packet(packet)->on_result_ = [_seq, packet](int32_t _error)
+    post_robusto_packet(packet)->on_result_ = [wr_this = weak_from_this(), _seq, packet](int32_t _error)
     {
+        auto ptr_this = wr_this.lock();
+        if (!ptr_this)
+            return;
+
+        if (_error == 0)
+        {
+            for (const auto& c : packet->get_contacts())
+                ptr_this->remove_from_cached_group_members(c, packet->get_chat(), "pending");
+        }
+
         coll_helper coll(g_core->create_collection(), true);
         coll.set_value_as_int("error", _error);
         g_core->post_message_to_gui("chats/pending/resolve/result", _seq, coll.get());
@@ -2158,16 +2335,44 @@ void core::wim::im::get_chat_member_info(int64_t _seq, const std::string & _aimi
 
 void im::get_chat_members_page(int64_t _seq, std::string_view _aimid, std::string_view _role, uint32_t _page_size)
 {
-    auto packet = std::make_shared<core::wim::get_chat_members>(make_wim_params(), _aimid, _role, _page_size);
-
-    post_robusto_packet(packet)->on_result_ = [wr_this = weak_from_this(), _seq, packet, _page_size](int32_t _error)
+    auto contact = std::string(_aimid);
+    auto do_request = [wr_this = weak_from_this(), _seq, _page_size, contact, role = std::string(_role)](int32_t _error = 0)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
             return;
 
-        ptr_this->on_get_chat_members_result(_seq, packet, _page_size, _error);
+        auto packet = std::make_shared<core::wim::get_chat_members>(ptr_this->make_wim_params(), contact, role, _page_size);
+        ptr_this->post_robusto_packet(packet)->on_result_ = [wr_this, _seq, packet, _page_size](int32_t _error)
+        {
+            auto ptr_this = wr_this.lock();
+            if (!ptr_this)
+                return;
+
+            auto& cache = ptr_this->group_members_caches_[packet->get_aimid()];
+            if (!cache)
+                cache = std::make_shared<contacts_multicache>();
+
+            const auto& result = packet->get_result().get_members();
+            std::vector<core::wim::cached_contact> cached_contacts;
+            cached_contacts.reserve(result.size());
+            for (const auto& c : result)
+                cached_contacts.emplace_back(c.aimid_, ptr_this->friendly_container_.get_friendly(c.aimid_));
+            cache->set_contacts(packet->get_role(), std::move(cached_contacts));
+
+            ptr_this->on_get_chat_members_result(_seq, packet, _page_size, _error);
+        };
     };
+
+    if (group_members_caches_.count(contact) == 0)
+    {
+        load_group_members_cache(contact, _role)->on_result_ = do_request;
+    }
+    else
+    {
+        send_cached_group_members_to_gui(contact, _role);
+        do_request();
+    }
 }
 
 void im::get_chat_members_next_page(int64_t _seq, std::string_view _aimid, std::string_view _cursor, uint32_t _page_size)
@@ -2343,66 +2548,6 @@ void im::mod_chat_rules(int64_t _seq, const std::string& _aimid, const std::stri
     };
 }
 
-void im::mod_chat_public(int64_t _seq, const std::string& _aimid, bool _public)
-{
-    auto packet = std::make_shared<core::wim::mod_chat>(make_wim_params(), _aimid);
-    packet->get_chat_params().set_public(_public);
-    post_robusto_packet(packet)->on_result_ = [_seq, packet](int32_t _error)
-    {
-        coll_helper coll(g_core->create_collection(), true);
-        coll.set_value_as_int("error", _error);
-        g_core->post_message_to_gui("chats/mod/public/result", _seq, coll.get());
-    };
-}
-
-void im::mod_chat_join(int64_t _seq, const std::string& _aimid, bool _approved)
-{
-    auto packet = std::make_shared<core::wim::mod_chat>(make_wim_params(), _aimid);
-    packet->get_chat_params().set_join(_approved);
-    post_robusto_packet(packet)->on_result_ = [_seq, packet](int32_t _error)
-    {
-        coll_helper coll(g_core->create_collection(), true);
-        coll.set_value_as_int("error", _error);
-        g_core->post_message_to_gui("chats/mod/public/result", _seq, coll.get());
-    };
-}
-
-void im::mod_chat_link(int64_t _seq, const std::string& _aimid, bool _link)
-{
-    auto packet = std::make_shared<core::wim::mod_chat>(make_wim_params(), _aimid);
-    packet->get_chat_params().set_joiningByLink(_link);
-    post_robusto_packet(packet)->on_result_ = [_seq, packet](int32_t _error)
-    {
-        coll_helper coll(g_core->create_collection(), true);
-        coll.set_value_as_int("error", _error);
-        g_core->post_message_to_gui("chats/mod/link/result", _seq, coll.get());
-    };
-}
-
-void im::mod_chat_ro(int64_t _seq, const std::string& _aimid, bool _ro)
-{
-    auto packet = std::make_shared<core::wim::mod_chat>(make_wim_params(), _aimid);
-    packet->get_chat_params().set_readOnly(_ro);
-    post_robusto_packet(packet)->on_result_ = [_seq, packet](int32_t _error)
-    {
-        coll_helper coll(g_core->create_collection(), true);
-        coll.set_value_as_int("error", _error);
-        g_core->post_message_to_gui("chats/mod/ro/result", _seq, coll.get());
-    };
-}
-
-void im::mod_chat_stamp(int64_t _seq, const std::string& _aimid, const std::string& _stamp)
-{
-    auto packet = std::make_shared<core::wim::mod_chat>(make_wim_params(), _aimid);
-    packet->get_chat_params().set_stamp(_stamp);
-    post_robusto_packet(packet)->on_result_ = [_seq, packet](int32_t _error)
-    {
-        coll_helper coll(g_core->create_collection(), true);
-        coll.set_value_as_int("error", _error);
-        g_core->post_message_to_gui("chats/mod/stamp/result", _seq, coll.get());
-    };
-}
-
 void im::set_attention_attribute(int64_t _seq, std::string _aimid, const bool _value, const bool _resume)
 {
     if (!_resume)
@@ -2421,6 +2566,11 @@ void im::set_attention_attribute(int64_t _seq, std::string _aimid, const bool _v
             ptr_this->failed_set_attention_.insert(_aimid);
         }
     };
+}
+
+void im::send_notify_sms(std::string_view _contact)
+{
+    post_robusto_packet(std::make_shared<core::wim::send_notify_sms>(make_wim_params(), _contact));
 }
 
 void core::wim::im::pin_chat_message(int64_t _seq, const std::string & _aimid, int64_t _message, bool _is_unpin)
@@ -2474,8 +2624,15 @@ void core::wim::im::get_mentions_suggests(int64_t _seq, const std::string& _aimi
 void im::block_chat_member(int64_t _seq, const std::string& _aimid, const std::string& _contact, bool _block, bool _remove_messages)
 {
     auto packet = std::make_shared<core::wim::block_chat_member>(make_wim_params(), _aimid, _contact, _block, _remove_messages);
-    post_robusto_packet(packet)->on_result_ = [_seq, packet](int32_t _error)
+    post_robusto_packet(packet)->on_result_ = [wr_this = weak_from_this(), _seq, packet, _block](int32_t _error)
     {
+        auto ptr_this = wr_this.lock();
+        if (!ptr_this)
+            return;
+
+        if (_error == 0 && !_block)
+            ptr_this->remove_from_cached_group_members(packet->get_contact(), packet->get_chat(), "blocked");
+
         coll_helper coll(g_core->create_collection(), true);
         coll.set_value_as_int("error", _error);
         g_core->post_message_to_gui("chats/block/result", _seq, coll.get());
@@ -2557,6 +2714,8 @@ void im::save_contact_list(force_save _force)
     auto json_string = serialize_to_json(contact_list_);
     if (json_string.empty())
     {
+        g_core->write_string_to_network_log(
+            "contact-list-debug save_contact_list() saved nothing due to empty json string\r\n");
         assert(false);
         return;
     }
@@ -2597,6 +2756,9 @@ void im::save_search_history()
 
 void im::save_cached_objects(force_save _force)
 {
+    g_core->write_string_to_network_log(su::concat("contact-list-debug",
+        " save_cached_objects force=", (_force == force_save::yes ? "yes" : "no"), "\r\n"));
+
     save_my_info();
     save_contact_list(_force);
     save_active_dialogs();
@@ -2605,16 +2767,28 @@ void im::save_cached_objects(force_save _force)
     save_mailboxes();
     save_search_history();
     save_smartreply_suggests();
+    save_inviters_blacklist();
+    save_group_members_caches();
 }
 
 void im::start_session(is_ping _is_ping, is_login _is_login)
 {
+    if (start_session_is_running_)
+    {
+        g_core->write_string_to_network_log("CORE: parallel startSession's call has been skipped\r\n");
+        return;
+    }
+
+    start_session_is_running_ = true;
+
     if (_is_ping != is_ping::yes)
     {
         wim_send_thread_->clear();
         wim_send_thread_->lock();
         cancel_requests();
     }
+
+    g_core->write_string_to_network_log(su::concat("CORE: startSession's been called, ping=", std::to_string((int)_is_ping), " login=", std::to_string((int)_is_login), "\r\n"));
 
     std::string locale = g_core->get_locale();
 
@@ -2640,7 +2814,10 @@ void im::start_session(is_ping _is_ping, is_login _is_login)
         if (!ptr_this)
             return;
 
-        ptr_this->wim_send_thread_->unlock();
+        g_core->write_string_to_network_log(su::concat("CORE: startSession's result is ", std::to_string((int)_error), "\r\n"));
+
+        ptr_this->start_session_is_running_ = false;
+        ptr_this->wim_send_thread_->unlock_and_execute_queued();
 
         if (_error == 0)
         {
@@ -2703,7 +2880,7 @@ void im::start_session(is_ping _is_ping, is_login _is_login)
         {
             if ((_error == wpie_error_request_canceled_wait_timeout || _error == wpie_error_too_fast_sending) && _is_login == is_login::yes)
             {
-                g_core->unlogin(true);
+                g_core->unlogin(true, false, "net error and is_login == yes");
             }
             else if (_error != wim_protocol_internal_error::wpie_error_task_canceled)
             {
@@ -2721,7 +2898,7 @@ void im::start_session(is_ping _is_ping, is_login _is_login)
                     if (_is_ping == is_ping::yes)
                         ptr_this->start_session(is_ping::no, _is_login);
                     else
-                        g_core->unlogin(true);
+                        g_core->unlogin(true, false, "packet need relogin");
                 }
                 else if (packet->need_correct_ts())
                 {
@@ -2737,7 +2914,7 @@ void im::start_session(is_ping _is_ping, is_login _is_login)
                     }
                     else
                     {
-                        g_core->unlogin(false);
+                        g_core->unlogin(false, false, "packet need correct ts");
                     }
                 }
                 else
@@ -2905,13 +3082,13 @@ void im::post_pending_delete_messages(const bool _recurcive)
 
                 case archive::delete_operation::del_for_me:
                 {
-                    packet = std::make_shared<core::wim::del_message_batch>(ptr_this->make_wim_params(), make_ids(_messages), _contact, false);
+                    packet = std::make_shared<core::wim::del_message_batch>(ptr_this->make_wim_params(), make_ids(_messages), _contact, false, features::is_silent_delete_enabled());
                     break;
                 }
 
                 case archive::delete_operation::del_for_all:
                 {
-                    packet = std::make_shared<core::wim::del_message_batch>(ptr_this->make_wim_params(), make_ids(_messages), _contact, true);
+                    packet = std::make_shared<core::wim::del_message_batch>(ptr_this->make_wim_params(), make_ids(_messages), _contact, true, features::is_silent_delete_enabled());
                     break;
                 }
 
@@ -3018,7 +3195,7 @@ void im::poll(
                 {
                     if (const auto r = packet->need_relogin(); r != relogin::none)
                     {
-                        g_core->unlogin(r == relogin::relogin_with_error, r == relogin::relogin_with_cleanup);
+                        g_core->unlogin(r == relogin::relogin_with_error, r == relogin::relogin_with_cleanup, "dispatch_events");
                         return;
                     }
                 }
@@ -3760,6 +3937,9 @@ void im::on_event_diff(fetch_event_diff* _event, const std::shared_ptr<auto_call
             g_core->post_message_to_gui("contactlist/diff", 0, cl_coll.get());
         }
 
+        if (contactlist::changed_status::full == ptr_this->contact_list_->get_changed_status())
+            ptr_this->save_contact_list(force_save::yes);
+
         on_created_groupchat(diff);
 
         _on_complete->callback(_error);
@@ -3897,7 +4077,20 @@ void im::on_event_presence(fetch_event_presence* _event, const std::shared_ptr<a
 
 std::shared_ptr<async_task_handlers> im::post_robusto_packet(std::shared_ptr<robusto_packet> _packet)
 {
-    return post_wim_packet(std::move(_packet));
+    auto handler = std::make_shared<async_task_handlers>();
+    post_wim_packet(_packet)->on_result_ = [wr_this = weak_from_this(), handler, _packet](int32_t _error)
+    {
+        auto ptr_this = wr_this.lock();
+        if (!ptr_this)
+            return;
+
+        if (_packet->auto_resend_on_fail() && wim_packet::needs_to_repeat_failed(_error))
+            ptr_this->failed_robusto_packets_.emplace_back(_packet, handler);
+        else if (handler->on_result_)
+            handler->on_result_(_error);
+    };
+
+    return handler;
 }
 
 void im::init_call_log()
@@ -4005,6 +4198,26 @@ void serialize_messages_4_gui(std::string_view _value_name, const std::shared_pt
 void serialize_message_ids_4_gui(std::string_view _value_name, const std::shared_ptr<archive::history_block>& _messages, icollection* _collection, time_t _offset)
 {
     serialize_messages_4_gui(_value_name, _messages->cbegin(), _messages->cend(), _collection, _offset, serialize_messages_mode::id_only);
+}
+
+void serialize_patches_4_gui(const std::vector<std::pair<int64_t, archive::history_patch_uptr>>& _patches, coll_helper& _collection)
+{
+    ifptr<iarray> msg_ids(_collection->create_array());
+
+    if (!_patches.empty())
+    {
+        msg_ids->reserve(_patches.size());
+        for (const auto &patch : _patches)
+        {
+            if (patch.second->get_type() == archive::history_patch::type::deleted || patch.second->get_type() == archive::history_patch::type::modified)
+            {
+                ifptr<ivalue> val(_collection->create_value());
+                val->set_as_int64(patch.second->get_message_id());
+                msg_ids->push_back(val.get());
+            }
+        }
+    }
+    _collection.set_value_as_array("msg_ids", msg_ids.get());
 }
 
 void im::get_archive_messages(int64_t _seq, const std::string& _contact, int64_t _from, int64_t _count_early, int64_t _count_later, bool _need_prefetch, bool _first_request, bool _after_search)
@@ -4388,9 +4601,10 @@ std::shared_ptr<async_task_handlers> im::get_history_from_server(const get_histo
     const auto init = _params.init_;
     const auto from_editing = _params.from_editing_;
     const auto from_search = _params.from_search_;
+    const auto from_delete = _params.from_delete_;
     const auto seq = _params.seq_;
 
-    post_robusto_packet(packet)->on_result_ = [wr_this = weak_from_this(), packet, contact = _params.aimid_, init, from_editing, from_search, on_result, from_msgid, seq](int32_t _error)
+    post_robusto_packet(packet)->on_result_ = [wr_this = weak_from_this(), packet, contact = _params.aimid_, init, from_editing, from_delete, from_search, on_result, from_msgid, seq](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -4417,6 +4631,15 @@ std::shared_ptr<async_task_handlers> im::get_history_from_server(const get_histo
         const auto has_older_msgid = packet->has_older_msgid();
 
         ptr_this->insert_friendly(packet->get_persons(), friendly_source::remote);
+
+        if (from_delete)
+        {
+            auto& patches = packet->get_patches();
+            coll_helper collPatch(g_core->create_collection(), true);
+            collPatch.set<std::string>("contact", contact);
+            serialize_patches_4_gui(patches, collPatch);
+            g_core->post_message_to_gui("messages/received/patched/modified", seq, collPatch.get());
+        }
 
         __INFO(
             "delete_history",
@@ -5158,7 +5381,7 @@ std::shared_ptr<async_task_handlers> im::post_dlg_state_to_gui(
             if (!ptr_this)
                 return;
 
-            if (_state.get_hidden_msg_id() >= _state.get_last_msgid() && !_force)
+            if (_state.get_hidden_msg_id() >= _state.get_last_msgid() && _state.has_last_msgid() && !_force)
                 return;
 
             coll_helper cl_coll(g_core->create_collection(), true);
@@ -5176,12 +5399,12 @@ std::shared_ptr<async_task_handlers> im::post_dlg_state_to_gui(
             };
             if (ptr_this->pinned_->contains(_contact))
             {
-                cl_coll.set_value_as_int64("pinned_time", ptr_this->pinned_->get_time(_contact));
+                cl_coll.set_value_as_int64("pinned_time", ptr_this->pinned_->get_time(_contact).value_or(-1));
                 add_to_active();
             }
             else if (ptr_this->unimportant_->contains(_contact))
             {
-                cl_coll.set_value_as_int64("unimportant_time", ptr_this->unimportant_->get_time(_contact));
+                cl_coll.set_value_as_int64("unimportant_time", ptr_this->unimportant_->get_time(_contact).value_or(-1));
                 add_to_active();
             }
 
@@ -6347,9 +6570,9 @@ void im::search_contacts_local(const std::vector<std::vector<std::string>>& _sea
         cl_coll.set_value_as_int("priority", contact_list_->get_search_priority(contact));
 
         if (pinned_->contains(contact))
-            cl_coll.set<int64_t>("pinned_time", pinned_->get_time(contact));
+            cl_coll.set<int64_t>("pinned_time", pinned_->get_time(contact).value_or(-1));
         if (unimportant_->contains(contact))
-            cl_coll.set<int64_t>("unimportant_time", unimportant_->get_time(contact));
+            cl_coll.set<int64_t>("unimportant_time", unimportant_->get_time(contact).value_or(-1));
 
         if (!res.highlights_.empty())
         {
@@ -6444,13 +6667,13 @@ void im::login_by_phone(int64_t _seq, const phone_info& _info)
 {
     if (!phone_registration_data_)
     {
-        assert(!"im->phone_registration_data_ empty");
+        g_core->write_string_to_network_log("phone registration data is empty");
         return;
     }
 
     if (_info.get_sms_code().empty())
     {
-        assert(!"_sms_code empty, validate it");
+        g_core->write_string_to_network_log("sms code is empty");
         return;
     }
 
@@ -6534,6 +6757,7 @@ void im::resume_failed_network_requests()
         ptr_this->resume_failed_poll_requests();
         ptr_this->resume_failed_group_subscriptions();
         ptr_this->resume_failed_get_reactions();
+        ptr_this->resume_failed_robusto_packets();
 
         ptr_this->get_async_loader().resume_suspended_tasks(ptr_this->make_wim_params());
 
@@ -6711,6 +6935,12 @@ void im::resume_failed_get_reactions()
     failed_get_reactions_.clear();
 }
 
+void im::resume_failed_robusto_packets()
+{
+    for (auto&& [packet, handler] : std::exchange(failed_robusto_packets_, {}))
+        post_robusto_packet(std::move(packet))->on_result_ = std::move(handler->on_result_);
+}
+
 
 void im::get_contact_avatar(int64_t _seq, const std::string& _contact, int32_t _avatar_size, bool _force)
 {
@@ -6736,8 +6966,11 @@ void im::get_contact_avatar(int64_t _seq, const std::string& _contact, int32_t _
         coll.set_value_as_int("size", _context->avatar_size_);
 
         _context->avatar_data_.reset();
-
+#ifndef STRIP_VOIP
         const bool avatar_need_to_convert = ptr_this->on_voip_avatar_actual_for_voip(_context->contact_, _context->avatar_size_);
+#else
+        const bool avatar_need_to_convert = false;
+#endif
 
         coll.set_value_as_bool("avatar_need_to_convert", avatar_need_to_convert);
 
@@ -7035,9 +7268,7 @@ void im::send_message_typing(int64_t _seq, const std::string& _contact, const co
 
 void im::set_state(const int64_t _seq, const core::profile_state _state)
 {
-    auto packet = std::make_shared<core::wim::set_state>(make_wim_params(), _state);
-
-    post_wim_packet(packet);
+    post_wim_packet(std::make_shared<core::wim::set_state>(make_wim_params(), _state));
 }
 
 void im::phoneinfo(int64_t seq, const std::string &phone, const std::string &gui_locale)
@@ -7097,21 +7328,50 @@ void im::phoneinfo(int64_t seq, const std::string &phone, const std::string &gui
     };
 }
 
-void im::add_members(int64_t _seq, const std::string& _aimid, const std::string& _m_chat_members_to_add)
+void im::remove_members(std::string _aimid, std::vector<std::string> _members_to_delete)
 {
-    auto packet = std::make_shared<core::wim::add_members>(make_wim_params(), _aimid, _m_chat_members_to_add);
-
-    //active_dialogs_->remove(_aimid);
-
-    //if (contact_list_->exist(_aimid))
-    post_wim_packet(packet);
+    post_robusto_packet(std::make_shared<core::wim::remove_members>(make_wim_params(), std::move(_aimid), std::move(_members_to_delete)));
 }
 
-
-void im::add_chat(int64_t _seq, const std::string& _m_chat_name, std::vector<std::string> _m_chat_members)
+void im::add_members(std::string _aimid, std::vector<std::string> _m_chat_members_to_add, bool _unblock)
 {
-    auto packet = std::make_shared<core::wim::add_chat>(make_wim_params(), _m_chat_name, std::move(_m_chat_members));
-    post_wim_packet(packet);
+    auto packet = std::make_shared<core::wim::add_members>(make_wim_params(), std::move(_aimid), std::move(_m_chat_members_to_add), _unblock);
+    post_robusto_packet(packet)->on_result_ = [packet, wr_this = weak_from_this()](int32_t _error)
+    {
+        auto ptr_this = wr_this.lock();
+        if (!ptr_this)
+            return;
+
+        coll_helper coll(g_core->create_collection(), true);
+        coll.set_value_as_int("error", _error);
+        coll.set_value_as_string("contact", packet->get_aimid());
+
+        if (const auto& failures = packet->get_failures(); !failures.empty())
+        {
+            ifptr<iarray> array(coll->create_array());
+            array->reserve((int32_t)failures.size());
+            for (const auto& [type, contacts] : failures)
+            {
+                coll_helper coll_failure(coll->create_collection(), true);
+                coll_failure.set_value_as_int("type", (int)type);
+                ifptr<iarray> sn_array(coll->create_array());
+                sn_array->reserve(contacts.size());
+                for (const auto& c : contacts)
+                {
+                    ifptr<ivalue> val(coll->create_value());
+                    val->set_as_string(c.c_str(), (int32_t)c.size());
+                    sn_array->push_back(val.get());
+                }
+                coll_failure.set_value_as_array("contacts", sn_array.get());
+
+                ifptr<ivalue> val(coll->create_value());
+                val->set_as_collection(coll_failure.get());
+                array->push_back(val.get());
+            }
+            coll.set_value_as_array("failures", array.get());
+        }
+        g_core->post_message_to_gui("add_members/result", 0, coll.get());
+    };
 }
 
 void im::get_mrim_key(int64_t _seq, const std::string& _email)
@@ -7489,6 +7749,9 @@ void im::set_last_read_partial(const std::string& _contact, int64_t _message)
                 if (!ptr_this)
                     return;
 
+                if (_local_dlg_state.get_unread_count() == 0)
+                    ptr_this->post_dlg_state_to_gui(_contact);
+
                 set_dlg_state_params params;
                 params.aimid_ = _contact;
                 params.last_read_ = _local_dlg_state.get_yours_last_read();
@@ -7556,14 +7819,10 @@ void im::delete_archive_message_local(const int64_t _seq, const std::string &_co
 {
     auto messages = std::make_shared<archive::history_block>();
 
-    if (_for_all)
-    {
+    if (_for_all && !features::is_silent_delete_enabled())
         messages->emplace_back(archive::history_message::make_modified_patch(_message_id, _internal_id));
-    }
     else
-    {
         messages->emplace_back(archive::history_message::make_deleted_patch(_message_id, _internal_id));
-    }
 
     coll_helper coll(g_core->create_collection(), true);
     coll.set<bool>("result", true);
@@ -7591,11 +7850,11 @@ void im::delete_archive_message_local(const int64_t _seq, const std::string &_co
     }
 }
 
-void im::delete_archive_message(const int64_t _seq, const std::string &_contact_aimid, const archive::delete_message_info& _message_to_delete)
+void im::delete_archive_message(const int64_t _seq, const std::string &_contact_aimid, const archive::delete_message_info& _message_to_delete, std::function<void(int64_t, std::string_view)> _on_result)
 {
     assert(_seq > 0);
 
-    get_archive()->get_not_sent_message_by_iid(_message_to_delete.internal_id_)->on_result = [wr_this = weak_from_this(), _seq, _contact_aimid, _message_to_delete](archive::not_sent_message_sptr _message)
+    get_archive()->get_not_sent_message_by_iid(_message_to_delete.internal_id_)->on_result = [wr_this = weak_from_this(), _seq, _contact_aimid, _message_to_delete, _on_result](archive::not_sent_message_sptr _message)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -7628,7 +7887,11 @@ void im::delete_archive_message(const int64_t _seq, const std::string &_contact_
                 _contact_aimid,
                 _message_to_delete.id_,
                 _message_to_delete.internal_id_,
-                _message_to_delete.for_all_ ? archive::delete_operation::del_for_all : archive::delete_operation::del_for_me));
+                _message_to_delete.for_all_ ? archive::delete_operation::del_for_all : archive::delete_operation::del_for_me))->on_result = [_on_result](int64_t _id, std::string_view _internal_id)
+        {
+            if (_on_result)
+                _on_result(_id, _internal_id);
+        };
     };
 }
 
@@ -7723,38 +7986,16 @@ void im::stop_resolve_hosts_timer()
 
 void im::load_external_config()
 {
-    std::string domain;
-
-    if (auto login = get_login(); !login.empty())
-    {
-        if (const auto at_idx = login.find('@'); at_idx != std::string::npos)
-        {
-           domain = login.substr(at_idx + 1);
-        }
-    }
-
-    auto config_url = g_core->get_external_config_host();
-    const auto settings_config_url_empty = config_url.empty();
-
-    if (auto external_config = config::hosts::external_url_config::make_url_preset(domain); !external_config.empty())
-    {
-        config_url = external_config;
-    }
-    else if (settings_config_url_empty && !domain.empty())
-    {
-        config_url = config::hosts::external_url_config::make_url(domain);
-    }
-
-    if (!config_url.empty())
+    if (const auto url = g_core->get_external_config_url(); !url.empty())
     {
         external_config_failed_ = false;
-        config::hosts::load_external_config_from_url(config_url, [wr_this = weak_from_this(), settings_config_url_empty](ext_url_config_error _err, std::string)
+        config::hosts::load_external_config_from_url(url, [wr_this = weak_from_this()](ext_url_config_error _err, std::string)
         {
             auto ptr_this = wr_this.lock();
             if (!ptr_this)
                 return;
 
-            ptr_this->external_config_failed_ = !settings_config_url_empty && _err == ext_url_config_error::config_host_invalid;
+            ptr_this->external_config_failed_ = _err == ext_url_config_error::config_host_invalid;
         });
     }
 }
@@ -7765,18 +8006,103 @@ void im::erase_local_pin_if_needed()
         g_core->set_local_pin_enabled(false);
 }
 
+void im::send_cached_inviters_blacklist_to_gui() const
+{
+    if (!inviters_blacklist_)
+        return;
+
+    coll_helper coll(g_core->create_collection(), true);
+
+    const auto& contacts = inviters_blacklist_->contacts();
+    ifptr<iarray> array(coll->create_array());
+    array->reserve(contacts.size());
+    for (const auto& c : contacts)
+    {
+        const auto& aimid = c.get_aimid();
+        ifptr<ivalue> val(coll->create_value());
+        val->set_as_string(aimid.data(), int32_t(aimid.size()));
+        array->push_back(val.get());
+    }
+    coll.set_value_as_array("contacts", array.get());
+    coll.set_value_as_string("cursor", std::string_view());
+    coll.set_value_as_bool("reset_pages", false);
+    coll.set_value_as_bool("cached", true);
+
+    g_core->post_message_to_gui("group/invitebl/search/result", 0, coll.get());
+}
+
+void im::send_cached_group_members_to_gui(const std::string& _aimid, std::string_view _role) const
+{
+    const auto it = group_members_caches_.find(_aimid);
+    if (it == group_members_caches_.end())
+        return;
+
+    const auto& cache = it->second;
+    if (!cache || !cache->has_cache(_role))
+        return;
+
+    const auto& contacts = cache->get_contacts(_role);
+    if (contacts.empty())
+        return;
+
+    coll_helper coll(g_core->create_collection(), true);
+    ifptr<iarray> array(coll->create_array());
+    array->reserve(contacts.size());
+    for (const auto& c : contacts)
+    {
+        coll_helper coll_cont(coll->create_collection(), true);
+        coll_cont.set_value_as_string("aimid", c.get_aimid());
+
+        ifptr<ivalue> val(coll->create_value());
+        val->set_as_collection(coll_cont.get());
+        array->push_back(val.get());
+    }
+    coll.set_value_as_array("members", array.get());
+    coll.set_value_as_string("role", _role);
+    coll.set_value_as_string("aimid", _aimid);
+
+    g_core->post_message_to_gui("chats/members/get/cached", 0, coll.get());
+}
+
+void im::remove_from_cached_group_members(const std::string& _contact_aimid, const std::string& _chat_aimid, std::string_view _role)
+{
+    const auto it = group_members_caches_.find(_chat_aimid);
+    if (it == group_members_caches_.end())
+        return;
+
+    const auto& cache = it->second;
+    if (!cache || !cache->has_cache(_role))
+        return;
+
+    cache->remove(_contact_aimid, _role);
+}
+
 void im::delete_archive_messages(const int64_t _seq, const std::string &_contact_aimid, const std::vector<archive::delete_message_info>& _messages)
 {
     assert(_seq > 0);
     assert(!_contact_aimid.empty());
 
+    auto ids = std::make_shared<std::vector<std::pair<int64_t, std::string>>>();
+    ids->reserve(_messages.size());
     for (const auto& msg : _messages)
-        delete_archive_message(_seq, _contact_aimid, msg);
+        ids->push_back(std::make_pair(msg.id_, msg.internal_id_));
 
-    post_pending_delete_messages();
+    auto func = [wr_this = weak_from_this(), ids](int64_t _id, std::string_view _internal_id)
+    {
+        auto ptr_this = wr_this.lock();
+        if (!ptr_this)
+            return;
+
+        ids->erase(std::remove_if(ids->begin(), ids->end(), [_id, _internal_id](auto iter) { return _id == -1 ? iter.second ==_internal_id : iter.first == _id; }), ids->end());
+        if (ids->empty())
+            ptr_this->post_pending_delete_messages();
+    };
+
+    for (const auto& msg : _messages)
+        delete_archive_message(_seq, _contact_aimid, msg, func);
 }
 
-void im::delete_archive_messages_from(const int64_t _seq, const std::string &_contact_aimid, const int64_t _from_id)
+void im::delete_archive_messages_from(const int64_t _seq, const std::string& _contact_aimid, const int64_t _from_id)
 {
     assert(_seq > 0);
     assert(!_contact_aimid.empty());
@@ -7788,11 +8114,16 @@ void im::delete_archive_messages_from(const int64_t _seq, const std::string &_co
         "    from-id=<%1%>\n"
         "    contact=<%2%>",
         _from_id % _contact_aimid
-        );
+    );
 
-    get_archive()->insert_pending_delete_message(_contact_aimid, archive::delete_message(_contact_aimid, _from_id, std::string(), archive::delete_operation::del_up_to));
+    get_archive()->insert_pending_delete_message(_contact_aimid, archive::delete_message(_contact_aimid, _from_id, std::string(), archive::delete_operation::del_up_to))->on_result = [wr_this = weak_from_this()](int64_t, std::string_view)
+    {
+        auto ptr_this = wr_this.lock();
+        if (!ptr_this)
+            return;
 
-    post_pending_delete_messages();
+        ptr_this->post_pending_delete_messages();
+    };
 
     on_del_up_to_changed(
         _contact_aimid,
@@ -7816,6 +8147,8 @@ void im::delete_archive_all_messages(const int64_t _seq, std::string_view _conta
 std::string im::_get_protocol_uid() {
     return auth_params_->aimid_;
 }
+
+#ifndef STRIP_VOIP
 
 void im::post_voip_msg_to_server(const voip_manager::VoipProtoMsg& msg) {
     auto packet = std::make_shared<core::wim::wim_webrtc>(make_wim_params(), msg);
@@ -7864,6 +8197,47 @@ void im::post_voip_alloc_to_server(const std::string& data)
     };
 }
 
+void im::get_mask_id_list(int64_t _seq)
+{
+    if (!masks_)
+        create_masks(weak_from_this());
+
+    masks_->get_mask_id_list(_seq);
+}
+
+void im::get_mask_preview(int64_t _seq, const std::string& mask_id)
+{
+    assert(masks_ && "call get_mask_id_list first");
+
+    if (masks_)
+        masks_->get_mask_preview(_seq, mask_id);
+}
+
+void im::get_mask_model(int64_t _seq)
+{
+    assert(masks_ && "call get_mask_id_list first");
+
+    if (masks_)
+        masks_->get_mask_model(_seq);
+}
+
+void im::get_mask(int64_t _seq, const std::string& mask_id)
+{
+    assert(masks_ && "call get_mask_id_list first");
+
+    if (masks_)
+        masks_->get_mask(_seq, mask_id);
+}
+
+void im::get_existent_masks(int64_t _seq)
+{
+    assert(masks_ && "call get_mask_id_list first");
+
+    if (masks_)
+        masks_->get_existent_masks(_seq);
+}
+
+#endif
 
 void im::hide_chat_async(const std::string& _contact,  const int64_t _last_msg_id, std::function<void(int32_t)> _on_result)
 {
@@ -7929,9 +8303,7 @@ void im::mute_chats(std::shared_ptr<std::list<std::string>> _chats)
 
 std::shared_ptr<async_task_handlers> im::mute_chat_async(const std::string& _contact, bool _mute)
 {
-    auto packet = std::make_shared<core::wim::mute_buddy>(make_wim_params(), _contact, _mute);
-
-    return post_wim_packet(packet);
+    return post_wim_packet(std::make_shared<core::wim::mute_buddy>(make_wim_params(), _contact, _mute));
 }
 
 void im::mute_chat(const std::string& _contact, bool _mute)
@@ -8165,7 +8537,9 @@ void im::upload_file_sharing(
     const core::archive::quotes_vec& _quotes,
     const std::string& _description,
     const core::archive::mentions_map& _mentions,
-    const std::optional<int64_t>& _duration)
+    const std::optional<int64_t>& _duration,
+    const bool _strip_exif,
+    const int _orientation_tag)
 {
     std::string file_name = _file_name;
     if (_data->available() > 0)
@@ -8174,6 +8548,9 @@ void im::upload_file_sharing(
         if (_data->save_2_file(path))
             file_name = tools::from_utf16(path);
     }
+
+    if (_strip_exif)
+        file_name = tools::from_utf16(core::tools::strip_exif(tools::from_utf8(file_name), _orientation_tag));
 
     __INFO(
         "fs",
@@ -8422,8 +8799,7 @@ void im::download_image(
     const int32_t _preview_width,
     const int32_t _preview_height,
     const bool _ext_resource,
-    const bool _raise_priority,
-    const bool _with_data)
+    const bool _raise_priority)
 {
     assert(_seq > 0);
     assert(!_image_url.empty());
@@ -8458,6 +8834,7 @@ void im::download_image(
         const auto& uri = meta->get_download_uri();
         const auto size = meta->get_file_size();
         const auto& content_type = meta->get_content_type();
+        const auto& fileformat = meta->get_fileformat();
 
         coll_helper cl_coll(g_core->create_collection(), true);
 
@@ -8468,6 +8845,7 @@ void im::download_image(
         cl_coll.set<std::string>("download_uri", uri);
         cl_coll.set<int64_t>("file_size", size);
         cl_coll.set<std::string>("content_type", content_type);
+        cl_coll.set<std::string>("fileformat", fileformat);
 
         g_core->post_message_to_gui("image/download/result/meta", _seq, cl_coll.get());
     });
@@ -8483,7 +8861,7 @@ void im::download_image(
         g_core->post_message_to_gui("image/download/progress", _seq, coll.get());
     });
 
-    auto completion_callback = file_info_handler_t::completion_callback_t([_seq, _image_url, _with_data](loader_errors _error, const file_info_data_t& _data)
+    auto completion_callback = file_info_handler_t::completion_callback_t([_seq, _image_url, _download_preview](loader_errors _error, const file_info_data_t& _data)
     {
         __INFO("async_loader",
             "image_handler\n"
@@ -8499,16 +8877,12 @@ void im::download_image(
 
         const auto& url = file_info->url_;
         cl_coll.set<std::string>("url", url);
+        cl_coll.set<bool>("preview", _download_preview);
 
         if (_error == loader_errors::success)
         {
-            auto image = _data.get_content_as_core_istream(cl_coll);
-            cl_coll.set_value_as_stream("data", image.get());
-
             const auto& local_path = file_info->local_path_;
             cl_coll.set<std::string>("local", tools::from_utf16(local_path));
-
-            cl_coll.set<bool>("with_data", _with_data);
         }
 
         g_core->post_message_to_gui("image/download/result", _seq, cl_coll.get());
@@ -8524,7 +8898,7 @@ void im::download_image(
     {
         get_async_loader().download_image(_raise_priority ? high_priority() : default_priority(),
                                           _image_url, _forced_path, make_wim_params(), _ext_resource, _ext_resource,
-                                          file_info_handler_t(completion_callback, progress_callback), _seq, _with_data);
+                                          file_info_handler_t(completion_callback, progress_callback), _seq);
     }
 }
 
@@ -8543,10 +8917,15 @@ void im::download_link_metainfo(const int64_t _seq,
     assert(_preview_height < 1000);
 
     get_async_loader().download_image_metainfo(_url, make_wim_params(), link_meta_handler_t(
-        [_seq, _preview_width, _preview_height, _load_preview, wr_this = weak_from_this()](loader_errors _error, const link_meta_data_t _data)
+        [_seq, _url, _preview_width, _preview_height, _load_preview, wr_this = weak_from_this()](loader_errors _error, const link_meta_data_t _data)
         {
             auto ptr_this = wr_this.lock();
             if (!ptr_this)
+            {
+                return;
+            }
+
+            if (_error == loader_errors::come_back_later)
             {
                 return;
             }
@@ -8572,6 +8951,7 @@ void im::download_link_metainfo(const int64_t _seq,
                 cl_coll.set<std::string>("preview_uri", meta->get_preview_uri());
                 cl_coll.set<std::string>("favicon_uri", meta->get_favicon_uri());
                 cl_coll.set<std::string>("filename", meta->get_filename());
+                cl_coll.set<std::string>("fileformat", meta->get_fileformat());
                 cl_coll.set<int32_t>("preview_width", std::get<0>(preview_size));
                 cl_coll.set<int32_t>("preview_height", std::get<1>(preview_size));
                 cl_coll.set<int32_t>("origin_width", std::get<0>(o_size));
@@ -8621,13 +9001,21 @@ void im::raise_download_priority(const int64_t _task_id)
 
 void im::download_file(priority_t _priority, const std::string& _file_url, const std::string& _destination, std::string_view _normalized_url, bool _is_binary_data, std::function<void(bool)> _on_result)
 {
-    get_async_loader().download_file(_priority, _file_url, _file_url, _destination, make_wim_params(), wim::file_info_handler_t(
-        [on_result = std::move(_on_result)](loader_errors _error, const wim::file_info_data_t& _data)
-        {
-            if (on_result)
-                on_result(_error == loader_errors::success);
+    auto file_info_handler = wim::file_info_handler_t([on_result = std::move(_on_result)](loader_errors _error, const wim::file_info_data_t& _data)
+    {
+        if (on_result)
+            on_result(_error == loader_errors::success);
+    });
 
-    }), 0, -1, true, _normalized_url, {}, _is_binary_data);
+    download_params_with_info_handler params(make_wim_params());
+    params.priority_ = _priority;
+    params.url_ = _file_url;
+    params.base_url_ = _file_url;
+    params.file_name_ = tools::from_utf8(_destination);
+    params.handler_ = std::move(file_info_handler);
+    params.normalized_url_ = _normalized_url;
+    params.is_binary_data_ = _is_binary_data;
+    get_async_loader().download_file(std::move(params));
 }
 
 void im::get_external_file_path(const int64_t _seq, const std::string& _url)
@@ -8701,8 +9089,8 @@ void im::download_link_preview_image(
 
             if (success)
             {
-                auto image = _data.get_content_as_core_istream(cl_coll);
-                cl_coll.set_value_as_stream("data", image.get());
+                const auto& local_path = _data.additional_data_->local_path_;
+                cl_coll.set<std::string>("local", tools::from_utf16(local_path));
             }
 
             g_core->post_message_to_gui("link_metainfo/download/result/image", _seq, cl_coll.get());
@@ -8736,8 +9124,8 @@ void im::download_link_preview_favicon(const int64_t _seq,
 
         if (success)
         {
-            ifptr<istream> data = _data.get_content_as_core_istream(cl_coll);
-            cl_coll.set_value_as_stream("data", data.get());
+            const auto& local_path = _data.additional_data_->local_path_;
+            cl_coll.set<std::string>("local", tools::from_utf16(local_path));
         }
 
         g_core->post_message_to_gui("link_metainfo/download/result/favicon", _seq, cl_coll.get());
@@ -9038,8 +9426,6 @@ void im::ignore_contact(int64_t _seq, const std::string& _aimid, bool _ignore)
     };
 }
 
-
-
 void im::get_ignore_list(int64_t _seq)
 {
     auto packet = std::make_shared<core::wim::get_permit_deny>(make_wim_params());
@@ -9072,9 +9458,8 @@ void im::get_ignore_list(int64_t _seq)
 
 void im::pin_chat(const std::string& _contact)
 {
-    auto friendly = friendly_container_.get_friendly(_contact).value_or(core::friendly());
-    core::wim::pinned_chat fvrt(_contact, std::move(friendly), std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()) - auth_params_->time_offset_);
-    pinned_->update(fvrt);
+    core::wim::cached_contact cc(_contact, friendly_container_.get_friendly(_contact), std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()) - auth_params_->time_offset_);
+    pinned_->update(std::move(cc));
 
     if (active_dialogs_->contains(_contact))
     {
@@ -9114,9 +9499,8 @@ void im::unpin_chat(const std::string& _contact)
 
 void im::mark_unimportant(const std::string& _contact)
 {
-    auto friendly = friendly_container_.get_friendly(_contact).value_or(core::friendly());
-    core::wim::pinned_chat unimportant(_contact, std::move(friendly), std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()) - auth_params_->time_offset_);
-    unimportant_->update(unimportant);
+    core::wim::cached_contact cc(_contact, friendly_container_.get_friendly(_contact), std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()) - auth_params_->time_offset_);
+    unimportant_->update(std::move(cc));
 
     post_dlg_state_to_gui(_contact, true, true, true);
 
@@ -9636,6 +10020,16 @@ void im::on_event_call_room_info(fetch_event_call_room_info* _event, const std::
     _on_complete->callback(0);
 }
 
+void im::on_event_suggest_to_notify_user(fetch_event_suggest_to_notify_user* _event, const std::shared_ptr<auto_callback>& _on_complete)
+{
+    coll_helper coll(g_core->create_collection(), true);
+    _event->get_info().serialize(coll);
+    g_core->post_message_to_gui("suggest_to_notify_user", 0, coll.get());
+
+    _on_complete->callback(0);
+}
+
+
 void im::insert_friendly(const std::string& _uin, const std::string& _friendly_name, const std::string& _nick, bool _official, friendly_source _type, friendly_add_mode _mode)
 {
     update_friendly(friendly_container_.insert_friendly(_uin, _friendly_name, _nick, _official, _type, _mode));
@@ -9766,17 +10160,14 @@ void im::download_wallpapers_recursively()
             ptr_this->download_wallpapers_recursively();
         });
 
-        ptr_this->get_async_loader().download_file(
-            default_priority(),
-            _task->get_source_url(),
-            _task->get_source_url(),
-            _task->get_dest_file(),
-            ptr_this->make_wim_params(),
-            file_info_handler,
-            _task->get_last_modified_time(),
-            -1,
-            true,
-            _task->get_endpoint());
+        download_params_with_info_handler params(ptr_this->make_wim_params());
+        params.url_ = _task->get_source_url();
+        params.base_url_ = _task->get_source_url();
+        params.file_name_ = _task->get_dest_file();
+        params.handler_ = std::move(file_info_handler);
+        params.last_modified_time_ = _task->get_last_modified_time();
+        params.normalized_url_ = _task->get_endpoint();
+        ptr_this->get_async_loader().download_file(std::move(params));
     };
 }
 
@@ -10482,8 +10873,7 @@ void im::on_local_pin_entered(const int64_t _seq, const std::string& _password)
     if (correct && std::exchange(waiting_for_local_pin_, false))
     {
         local_pin_hash_ = utils::calc_local_pin_hash(_password, g_core->get_uniq_device_id());
-        if (load_auth())
-            do_fetch_parameters();
+        load_auth_and_fetch_parameters();
     }
 }
 
@@ -10523,7 +10913,7 @@ void im::get_user_info(const int64_t _seq, const std::string& _aimid)
 {
     auto packet = std::make_shared<core::wim::get_user_info>(make_wim_params(), _aimid);
 
-    post_wim_packet(packet)->on_result_ = [wr_this = weak_from_this(), packet, _seq, _aimid](int32_t _error)
+    post_robusto_packet(packet)->on_result_ = [wr_this = weak_from_this(), packet, _seq, _aimid](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -10548,7 +10938,7 @@ void im::set_privacy_settings(const int64_t _seq, privacy_settings _settings)
 {
     auto packet = std::make_shared<core::wim::set_privacy_settings>(make_wim_params(), std::move(_settings));
 
-    post_wim_packet(packet)->on_result_ = [wr_this = weak_from_this(), packet, _seq](int32_t _error)
+    post_robusto_packet(packet)->on_result_ = [wr_this = weak_from_this(), packet, _seq](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -10565,7 +10955,7 @@ void im::get_privacy_settings(const int64_t _seq)
 {
     auto packet = std::make_shared<core::wim::get_privacy_settings>(make_wim_params());
 
-    post_wim_packet(packet)->on_result_ = [wr_this = weak_from_this(), packet, _seq](int32_t _error)
+    post_robusto_packet(packet)->on_result_ = [wr_this = weak_from_this(), packet, _seq](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -10585,7 +10975,7 @@ void im::get_user_last_seen(const int64_t _seq, std::vector<std::string> _ids)
 {
     auto packet = std::make_shared<core::wim::get_user_last_seen>(make_wim_params(), std::move(_ids));
 
-    post_wim_packet(packet)->on_result_ = [wr_this = weak_from_this(), packet, _seq](int32_t _error)
+    post_robusto_packet(packet)->on_result_ = [wr_this = weak_from_this(), packet, _seq](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -10623,7 +11013,7 @@ void im::on_nickname_check(const int64_t _seq, const std::string& _nick, bool _s
 {
     auto packet = std::make_shared<core::wim::check_nick>(make_wim_params(), _nick, _set_nick);
 
-    post_wim_packet(packet)->on_result_ = [wr_this = weak_from_this(), _seq, packet](int32_t _error)
+    post_robusto_packet(packet)->on_result_ = [wr_this = weak_from_this(), _seq, packet](int32_t _error)
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -10803,6 +11193,17 @@ void im::save_smartreply_suggests()
     save_to_disk(smartreply_suggests_, get_last_suggest_file_name(), async_tasks_);
 }
 
+void im::save_inviters_blacklist()
+{
+    save_to_disk(inviters_blacklist_, get_inviters_blacklist_file_name(), async_tasks_);
+}
+
+void im::save_group_members_caches()
+{
+    for (auto& [aimid, cache] : group_members_caches_)
+        save_to_disk(cache, get_group_members_cache_filename(aimid), async_tasks_);
+}
+
 std::shared_ptr<async_task_handlers> im::load_smartreply_suggests()
 {
     auto handler = std::make_shared<async_task_handlers>();
@@ -10876,7 +11277,7 @@ void im::get_poll(const int64_t _seq, const std::string& _poll_id)
 
             g_core->post_message_to_gui("poll/get/result", _seq, coll.get());
         }
-        else if (_error == wim_protocol_internal_error::wpie_network_error)
+        else if (wim_packet::needs_to_repeat_failed(_error))
         {
             ptr_this->failed_poll_ids_.insert(_poll_id);
         }
@@ -11085,6 +11486,24 @@ void im::cancel_pending_join(std::string _sn)
     post_wim_packet(std::make_shared<core::wim::group_pending_cancel>(make_wim_params(), std::move(_sn)));
 }
 
+void im::cancel_pending_invitation(std::string _contact, std::string _chat)
+{
+    auto packet = std::make_shared<core::wim::group_invitations_cancel>(make_wim_params(), std::move(_contact), std::move(_chat));
+    post_robusto_packet(packet)->on_result_ = [wr_this = weak_from_this(), packet](int32_t _error)
+    {
+        auto ptr_this = wr_this.lock();
+        if (!ptr_this)
+            return;
+
+        if (_error == 0)
+            ptr_this->remove_from_cached_group_members(packet->get_contact(), packet->get_chat(), "invitations");
+
+        coll_helper coll(g_core->create_collection(), true);
+        coll.set_value_as_int("error", _error);
+        g_core->post_message_to_gui("livechat/invite/cancel/result", 0, coll.get());
+    };
+}
+
 void im::get_reactions(const std::string& _chat_id, std::shared_ptr<archive::msgids_list> _msg_ids, bool _first_load)
 {
     if (_first_load)
@@ -11247,47 +11666,184 @@ void im::update_subscriptions()
         post_wim_packet(std::make_shared<core::wim::event_subscribe>(make_wim_params(), std::move(to_update)));
 }
 
-void im::subscribe_status(const std::vector<std::string>& _contacts)
+void im::subscribe_status(std::vector<std::string> _contacts)
 {
-    for (const auto& c : _contacts)
-        subscribe_event(subscriptions::make_subscription(subscriptions::type::status, c));
+    subscribe_event(subscriptions::make_subscription(subscriptions::type::status, std::move(_contacts)));
 }
 
-void im::unsubscribe_status(const std::vector<std::string>& _contacts)
+void im::unsubscribe_status(std::vector<std::string> _contacts)
 {
-    for (const auto& c : _contacts)
-        unsubscribe_event(subscriptions::make_subscription(subscriptions::type::status, c));
+    unsubscribe_event(subscriptions::make_subscription(subscriptions::type::status, std::move(_contacts)));
 }
 
 void im::subscribe_call_room_info(const std::string& _room_id)
 {
-    subscribe_event(subscriptions::make_subscription(subscriptions::type::call_room_info, _room_id));
+    std::vector<std::string> ids = { _room_id };
+    subscribe_event(subscriptions::make_subscription(subscriptions::type::call_room_info, std::move(ids)));
 }
 
 void im::unsubscribe_call_room_info(const std::string& _room_id)
 {
-    unsubscribe_event(subscriptions::make_subscription(subscriptions::type::call_room_info, _room_id));
+    std::vector<std::string> ids = { _room_id };
+    unsubscribe_event(subscriptions::make_subscription(subscriptions::type::call_room_info, std::move(ids)));
 }
 
 void im::get_emoji(int64_t _seq, std::string_view _code, int _size)
 {
     const auto host_url = omicronlib::_o(omicron::keys::external_emoji_url, config::get().url(config::urls::external_emoji).data());
-    const auto url = su::concat("https://", host_url, '/', _code, '/', std::to_string(_size), ".png");
+    auto url = su::concat("https://", host_url, '/', _code, '/', std::to_string(_size), ".png");
     const auto path = get_async_loader().path_in_cache(url);
 
-    get_async_loader().download_file(default_priority(), url, url, path, make_wim_params(), wim::file_info_handler_t(
-    [_seq](loader_errors _error, const wim::file_info_data_t& _data)
+    auto file_info_handler = wim::file_info_handler_t([_seq](loader_errors _error, const wim::file_info_data_t& _data)
     {
         coll_helper cl_coll(g_core->create_collection(), true);
-        auto image = _data.get_content_as_core_istream(cl_coll);
 
-        if (_error == loader_errors::success)
-            cl_coll.set_value_as_stream("data", image.get());
-        else
+        if (_error != loader_errors::success)
+        {
             cl_coll.set_value_as_bool("network_error", _error == loader_errors::network_error);
-        g_core->post_message_to_gui("emoji/get/result", _seq, cl_coll.get());
+        }
+        else
+        {
+            const auto& local_path = _data.additional_data_->local_path_;
+            cl_coll.set<std::string>("local", tools::from_utf16(local_path));
+        }
 
-    }), 0, _seq, true, {}, {}, true);
+        g_core->post_message_to_gui("emoji/get/result", _seq, cl_coll.get());
+    });
+
+    download_params_with_info_handler params(make_wim_params());
+    params.url_ = std::move(url);
+    params.base_url_ = params.url_;
+    params.file_name_ = tools::from_utf8(path);
+    params.handler_ = std::move(file_info_handler);
+    params.id_ = _seq;
+    params.is_binary_data_ = true;
+    get_async_loader().download_file(std::move(params));
+}
+
+void im::misc_support_impl(int64_t _seq, std::string_view _aimid, std::string_view _message, std::string_view _attachment_file_id, std::vector<std::string> _screenshot_file_id_list)
+{
+    auto packet = std::make_shared<core::wim::misc_support>(make_wim_params(), _aimid, _message, _attachment_file_id, std::move(_screenshot_file_id_list));
+    post_robusto_packet(std::move(packet))->on_result_ = [_seq](int32_t _error)
+    {
+        misc_support_result_to_gui(_seq, _error == 0);
+    };
+}
+
+void im::upload_next_screenshot(const std::string& _aimid, const std::shared_ptr<upload_screenshots_handler>& _main_handler)
+{
+    if (support_screenshot_file_list_.empty())
+        return;
+
+    auto file_name = std::move(support_screenshot_file_list_.back());
+    support_screenshot_file_list_.pop_back();
+
+    // use orientation 1 (ExifOrientation::Normal) as most likely for desktop screenshots
+    // todo: if in the future there are problems with this it's necessary to send the orientation from ContactUsWidget
+    file_name = tools::from_utf16(core::tools::strip_exif(tools::from_utf8(file_name), 1));
+
+    auto time = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+    time -= auth_params_->time_offset_;
+
+    auto not_sent = archive::not_sent_message::make_outgoing_file_sharing(_aimid, time, file_name, {}, {}, {}, std::nullopt);
+
+    upload_file_params screenshot_params;
+    screenshot_params.file_name = core::tools::from_utf8(not_sent->get_file_sharing_local_path());
+    screenshot_params.duration = not_sent->get_duration();
+    screenshot_params.base_content_type = not_sent->get_base_content_type();
+    screenshot_params.locale = g_core->get_locale();
+
+    auto upload_handler = get_loader().upload_file_sharing(not_sent->get_internal_id(), std::move(screenshot_params), make_wim_params());
+    upload_handler->on_result = [wr_this = weak_from_this(), _aimid, _main_handler](int32_t _error, const web_file_info& _info)
+    {
+        auto ptr_this = wr_this.lock();
+        if (!ptr_this)
+            return;
+
+        if (_error == static_cast<int32_t>(loader_errors::success))
+            ptr_this->support_screenshot_id_list_.emplace_back(_info.get_file_id());
+
+        if (!ptr_this->support_screenshot_file_list_.empty())
+            ptr_this->upload_next_screenshot(_aimid, _main_handler);
+        else if (_main_handler)
+            _main_handler->on_result(_error, std::move(ptr_this->support_screenshot_id_list_));
+    };
+}
+
+std::shared_ptr<im::upload_screenshots_handler> im::upload_screenshots(const std::string& _aimid, const std::vector<std::string>& _screenshot_file_name_list)
+{
+    auto handler = std::make_shared<im::upload_screenshots_handler>();
+
+    if (!_screenshot_file_name_list.empty())
+    {
+        // limite screenshot counts for sending
+        support_screenshot_file_list_.assign(_screenshot_file_name_list.cbegin(), _screenshot_file_name_list.cbegin() + std::min(_screenshot_file_name_list.size(), max_support_screenshots_count));
+        support_screenshot_id_list_.clear();
+
+        upload_next_screenshot(_aimid, handler);
+    }
+
+    return handler;
+}
+
+void im::misc_support(int64_t _seq, std::string_view _aimid, std::string_view _message, std::string_view _attachment_file_name, std::vector<std::string> _screenshot_file_name_list)
+{
+    auto time = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+    time -= auth_params_->time_offset_;
+
+    auto aimid = std::string(_aimid);
+    auto not_sent = archive::not_sent_message::make_outgoing_file_sharing(aimid, time, std::string(_attachment_file_name), {}, {}, {}, std::nullopt);
+
+    upload_file_params attachment_params;
+    attachment_params.file_name = core::tools::from_utf8(not_sent->get_file_sharing_local_path());
+    attachment_params.duration = not_sent->get_duration();
+    attachment_params.base_content_type = not_sent->get_base_content_type();
+    attachment_params.locale = g_core->get_locale();
+
+    auto handler = get_loader().upload_file_sharing(not_sent->get_internal_id(), std::move(attachment_params), make_wim_params());
+    handler->on_result = [wr_this = weak_from_this(), not_sent, _seq, aimid = std::move(aimid), message = std::string(_message), screenshots_list = std::move(_screenshot_file_name_list)](int32_t _error, const web_file_info& _info) mutable
+    {
+        auto ptr_this = wr_this.lock();
+        if (!ptr_this)
+            return;
+
+        if (_error == static_cast<int32_t>(loader_errors::success))
+        {
+            auto attachment_id = _info.get_file_id();
+            if (screenshots_list.empty())
+            {
+                ptr_this->misc_support_impl(_seq, aimid, message, attachment_id, {});
+            }
+            else
+            {
+                auto screenshots_handler = ptr_this->upload_screenshots(aimid, screenshots_list);
+                screenshots_handler->on_result = [wr_this, _seq, aimid = std::move(aimid), message = std::move(message), attachment_id = std::move(attachment_id)](int32_t _error, std::vector<std::string> _screenshot_id_list)
+                {
+                    auto ptr_this = wr_this.lock();
+                    if (!ptr_this)
+                        return;
+
+                    ptr_this->misc_support_impl(_seq, aimid, message, attachment_id, std::move(_screenshot_id_list));
+                };
+            }
+        }
+        else
+        {
+            misc_support_result_to_gui(_seq, false);
+        }
+
+        // remove the local attachment file after uploading
+        if (g_core)
+        {
+            g_core->run_async([attachment_file_name = _info.get_file_name()]()
+            {
+                if (tools::system::is_exist(attachment_file_name))
+                    tools::system::delete_file(attachment_file_name);
+
+                return 0;
+            });
+        }
+    };
 }
 
 void im::schedule_subscriptions_timer()
@@ -11312,4 +11868,170 @@ void im::schedule_subscriptions_timer()
 void im::stop_subscriptions_timer()
 {
     stop_timer(subscr_timer_id_);
+}
+
+void im::add_to_inviters_blacklist(std::vector<std::string> _contacts)
+{
+    auto packet = std::make_shared<core::wim::group_inviteblacklist_add>(make_wim_params(), std::move(_contacts));
+    post_robusto_packet(packet)->on_result_ = [wr_this = weak_from_this(), packet](int32_t _error)
+    {
+        auto ptr_this = wr_this.lock();
+        if (!ptr_this)
+            return;
+
+        const auto& contacts = packet->get_contacts();
+
+        if (_error == 0 && ptr_this->inviters_blacklist_)
+        {
+            for (const auto& aimid : contacts)
+                ptr_this->inviters_blacklist_->update(core::wim::cached_contact(aimid, ptr_this->friendly_container_.get_friendly(aimid)));
+        }
+
+        coll_helper coll(g_core->create_collection(), true);
+        coll.set_value_as_int("error", _error);
+
+        ifptr<iarray> array(coll->create_array());
+        array->reserve(contacts.size());
+        for (const auto& c : contacts)
+        {
+            ifptr<ivalue> val(coll->create_value());
+            val->set_as_string(c.c_str(), int32_t(c.length()));
+            array->push_back(val.get());
+        }
+        coll.set_value_as_array("contacts", array.get());
+
+        g_core->post_message_to_gui("group/invitebl/add/result", 0, coll.get());
+    };
+}
+
+void im::remove_from_inviters_blacklist(std::vector<std::string> _contacts, bool _delete_all)
+{
+    auto packet = std::make_shared<core::wim::group_inviteblacklist_del>(make_wim_params(), std::move(_contacts), _delete_all);
+    post_robusto_packet(packet)->on_result_ = [wr_this = weak_from_this(), packet](int32_t _error)
+    {
+        auto ptr_this = wr_this.lock();
+        if (!ptr_this)
+            return;
+
+        const auto& contacts = packet->get_contacts();
+
+        if (_error == 0 && ptr_this->inviters_blacklist_)
+        {
+            for (const auto& c : contacts)
+                ptr_this->inviters_blacklist_->remove(c);
+        }
+
+        coll_helper coll(g_core->create_collection(), true);
+        coll.set_value_as_int("error", _error);
+
+        ifptr<iarray> array(coll->create_array());
+        array->reserve(contacts.size());
+        for (const auto& c : contacts)
+        {
+            ifptr<ivalue> val(coll->create_value());
+            val->set_as_string(c.c_str(), int32_t(c.length()));
+            array->push_back(val.get());
+        }
+        coll.set_value_as_array("contacts", array.get());
+
+        g_core->post_message_to_gui("group/invitebl/remove/result", 0, coll.get());
+    };
+}
+
+void im::search_inviters_blacklist(int64_t _seq, std::string_view _keyword, std::string_view _cursor, uint32_t _page_size)
+{
+    auto do_request = [wr_this = weak_from_this(), keyword = std::string(_keyword), cursor = std::string(_cursor), _seq, _page_size](int32_t _error = 0)
+    {
+        auto ptr_this = wr_this.lock();
+        if (!ptr_this)
+            return;
+
+        auto packet = std::make_shared<core::wim::group_inviteblacklist_search>(ptr_this->make_wim_params(), keyword, cursor, _page_size);
+        ptr_this->post_robusto_packet(packet)->on_result_ = [wr_this, _seq, packet, _page_size, first_page = cursor.empty()](int32_t _error)
+        {
+            auto ptr_this = wr_this.lock();
+            if (!ptr_this)
+                return;
+
+            ptr_this->insert_friendly(packet->get_persons(), friendly_source::remote);
+
+            coll_helper coll(g_core->create_collection(), true);
+
+            if (_error == 0)
+            {
+                const auto& contacts = packet->get_contacts();
+
+                if (packet->get_keyword().empty() && (packet->is_reset_pages() || first_page))
+                {
+                    std::vector<core::wim::cached_contact> cached_contacts;
+                    cached_contacts.reserve(contacts.size());
+                    for (const auto& aimid : contacts)
+                        cached_contacts.emplace_back(aimid, ptr_this->friendly_container_.get_friendly(aimid));
+                    ptr_this->inviters_blacklist_->set_contacts(std::move(cached_contacts));
+                }
+
+                ifptr<iarray> array(coll->create_array());
+                array->reserve(contacts.size());
+                for (const auto& c : contacts)
+                {
+                    ifptr<ivalue> val(coll->create_value());
+                    val->set_as_string(c.c_str(), int32_t(c.length()));
+                    array->push_back(val.get());
+                }
+                coll.set_value_as_array("contacts", array.get());
+
+                coll.set_value_as_int("page_size", _page_size);
+                coll.set_value_as_bool("reset_pages", packet->is_reset_pages());
+                coll.set_value_as_string("cursor", packet->get_cursor());
+            }
+            else
+            {
+                coll.set_value_as_int("error", _error);
+            }
+
+            g_core->post_message_to_gui("group/invitebl/search/result", _seq, coll.get());
+        };
+    };
+
+    if (!inviters_blacklist_)
+    {
+        load_inviters_blacklist()->on_result_ = do_request;
+    }
+    else
+    {
+        if (_keyword.empty() && _cursor.empty())
+            send_cached_inviters_blacklist_to_gui();
+        do_request();
+    }
+}
+
+void im::get_blacklisted_cl_inviters(std::string_view _cursor, uint32_t _page_size)
+{
+    auto packet = std::make_shared<core::wim::group_inviteblacklist_in_cl>(make_wim_params(), _cursor, _page_size);
+
+    post_robusto_packet(packet)->on_result_ = [wr_this = weak_from_this(), packet](int32_t _error)
+    {
+        auto ptr_this = wr_this.lock();
+        if (!ptr_this)
+            return;
+
+        ptr_this->insert_friendly(packet->get_persons(), friendly_source::remote);
+
+        coll_helper coll(g_core->create_collection(), true);
+        coll.set_value_as_int("error", _error);
+
+        const auto& contacts = packet->get_contacts();
+        ifptr<iarray> array(coll->create_array());
+        array->reserve(contacts.size());
+        for (const auto& c : contacts)
+        {
+            ifptr<ivalue> val(coll->create_value());
+            val->set_as_string(c.c_str(), int32_t(c.length()));
+            array->push_back(val.get());
+        }
+        coll.set_value_as_array("contacts", array.get());
+        coll.set_value_as_string("cursor", packet->get_cursor());
+
+        g_core->post_message_to_gui("group/invitebl/cl/result", 0, coll.get());
+    };
 }

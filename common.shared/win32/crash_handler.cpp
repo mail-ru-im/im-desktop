@@ -488,6 +488,11 @@ namespace core
             if (is_sys_handler_enabled_)
                 return EXCEPTION_CONTINUE_SEARCH;
 
+            constexpr DWORD MAGIC_DBG_EXCEPTION = 0x406D1388;
+            const auto code = pExceptionPtrs->ExceptionRecord->ExceptionCode;
+            if (code == DBG_PRINTEXCEPTION_C || code == DBG_PRINTEXCEPTION_WIDE_C || code == MAGIC_DBG_EXCEPTION)
+                return EXCEPTION_CONTINUE_EXECUTION;
+
             process_exception_pointers(pExceptionPtrs);
 
             // Unreacheable code

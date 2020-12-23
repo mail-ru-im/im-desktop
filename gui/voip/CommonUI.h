@@ -148,6 +148,11 @@ namespace Ui
         BaseTopVideoPanel(QWidget* parent, Qt::WindowFlags f = Qt::Window | Qt::FramelessWindowHint | Qt::NoDropShadowWindowHint);
 #endif
         void updatePosition(const QWidget& parent) override;
+
+        void setVerticalShift(int _shift);
+
+    private:
+        int verShift_ = 0;
     };
 
     // Inherit from this class to create panel on bottom in voip window.
@@ -182,6 +187,7 @@ namespace Ui
     Q_SIGNALS:
 
         void onResize();
+        void aboutToHide();
 
     protected:
 

@@ -58,7 +58,7 @@ int32_t start_session::init_request_full_start_session(const std::shared_ptr<cor
 {
     request->set_compression_auto();
     request->set_url(get_start_session_host());
-    request->set_normalized_url("startSession");
+    request->set_normalized_url(get_method());
     request->set_keep_alive();
 
     request->push_post_parameter("f", "json");
@@ -136,7 +136,7 @@ int32_t start_session::init_request_short_start_session(const std::shared_ptr<co
         "&k=" << escape_symbols(params_.dev_id_);
 
     _request->set_url(ss_url.str());
-    _request->set_normalized_url("pingSession");
+    _request->set_normalized_url(get_method());
     _request->set_keep_alive();
 
     return 0;
@@ -257,4 +257,9 @@ void start_session::parse_response_data_on_error(const rapidjson::Value& _data)
 priority_t start_session::get_priority() const
 {
     return priority_protocol();
+}
+
+std::string_view start_session::get_method() const
+{
+    return is_ping_ ? "pingSession" : "startSession";
 }

@@ -126,10 +126,13 @@ int Context::initCtxDecode(string dict_file_path, const char* dictBuffer, int di
 
 
 //Check by dict_file_path if dict changes or if context not initialize and create context for encoder.
+//If dict_file_path is nullptr or empty and dictBuffer is nullptr - do nothing and return 0 (for compression without dictionary)
 //If dictSize is 0 then load dictionary from file else from buffer.
 //Return -1 if file dict read error or 0 if success.
 int Context::checkCtxEncode(const char *dict_file_path, const char* dictBuffer, int dictSize, int new_compressionLevel) {
     int res = 0;
+    if ((!dict_file_path || std::char_traits<char>::length(dict_file_path) == 0) && !dictBuffer)
+        return res;
     string new_dict(dict_file_path);
     if (new_dict != encode_dict_file_path || initEncode == false || new_compressionLevel!=cur_compressionLevel) {
         res = initCtxEncode(new_dict, dictBuffer, dictSize, new_compressionLevel);
@@ -139,10 +142,13 @@ int Context::checkCtxEncode(const char *dict_file_path, const char* dictBuffer, 
 
 
 //Check by dict_file_path if dict changes or if context not initialize and create context for decoder.
+//If dict_file_path is nullptr or empty and dictBuffer is nullptr - do nothing and return 0 (for decompression without dictionary)
 //If dictSize is 0 then load dictionary from file else from buffer.
 //Return -1 if file dict read error or 0 if success.
 int Context::checkCtxDecode(const char *dict_file_path, const char* dictBuffer, int dictSize) {
     int res = 0;
+    if ((!dict_file_path || std::char_traits<char>::length(dict_file_path) == 0) && !dictBuffer)
+        return res;
     string new_dict(dict_file_path);
     if (new_dict != decode_dict_file_path || initDecode == false) {
         res = initCtxDecode(new_dict, dictBuffer, dictSize);

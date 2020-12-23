@@ -20,6 +20,11 @@ remove_buddy::~remove_buddy()
 {
 }
 
+std::string_view remove_buddy::get_method() const
+{
+    return "removeBuddy";
+}
+
 int32_t remove_buddy::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     std::stringstream ss_url;
@@ -32,7 +37,7 @@ int32_t remove_buddy::init_request(const std::shared_ptr<core::http_request_simp
         "&allGroups=1";
 
     _request->set_url(ss_url.str());
-    _request->set_normalized_url("removeBuddy");
+    _request->set_normalized_url(get_method());
     _request->set_keep_alive();
 
     if (!params_.full_log_)

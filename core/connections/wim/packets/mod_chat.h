@@ -27,6 +27,7 @@ namespace core
 
             chat_params& get_chat_params();
             void set_chat_params(chat_params _chat_params);
+            virtual std::string_view get_method() const override;
         };
 
     }

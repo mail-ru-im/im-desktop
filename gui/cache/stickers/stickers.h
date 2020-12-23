@@ -1,6 +1,8 @@
 #pragma once
 
-#include "../../../corelib/collection_helper.h"
+#include "StickerData.h"
+#include "types/StickerId.h"
+#include "utils/utils.h"
 
 #define UI_STICKERS_NS_BEGIN namespace Ui { namespace Stickers {
 #define UI_STICKERS_NS_END } }
@@ -8,88 +10,120 @@
 namespace core
 {
     enum class sticker_size;
-}
-
-
-namespace Data
-{
-    struct  StickerId;
+    class coll_helper;
 }
 
 UI_STICKERS_NS_BEGIN
+
+enum class Type
+{
+    image,
+    gif,
+    lottie,
+};
+
 class Sticker
 {
 public:
-    typedef std::tuple<QImage, bool> image_data;
+    Sticker() = default;
+    Sticker(Data::StickerId _id, Type _type);
+    virtual ~Sticker() = default;
+
+    const Data::StickerId& getId() const noexcept { return id_; }
+    Type getType() const noexcept { return type_; }
+
+    virtual const StickerData& getData(core::sticker_size _size) const = 0;
+    virtual void setData(core::sticker_size _size, StickerData _data) = 0;
+    virtual bool hasData(core::sticker_size _size) const = 0;
+
+    void setEmojis(std::vector<QString> _emojis) { emojis_ = std::move(_emojis); }
+    const std::vector<QString>& getEmojis() const noexcept { return emojis_; }
+
+    bool isFailed() const noexcept { return failed_; }
+    void setFailed(bool _failed) { failed_ = _failed; }
+
+    void clearCache();
+    void lockCache(bool _lock);
+
+    bool isGif() const noexcept { return type_ == Type::gif; }
+    bool isLottie() const noexcept { return type_ == Type::lottie; }
+    bool isAnimated() const noexcept { return isGif() || isLottie(); }
+
+    virtual void setRequested(core::sticker_size _size, bool _requested) {}
+    virtual bool isRequested(core::sticker_size _size) const { return false; }
+
+protected:
+    virtual void clearCacheImpl() {}
 
 private:
-    uint32_t id_ = 0;
-
-    int32_t setId_ = -1;
-
-    QString fsId_;
-
+    Data::StickerId id_;
     std::vector<QString> emojis_;
 
-    std::map<core::sticker_size, image_data> images_;
-
     bool failed_ = false;
-
-    bool isGif_ = false;
-
     bool cacheLocked_ = false;
-
-public:
-    Sticker();
-    Sticker(const int32_t _id);
-    Sticker(const QString& _fsId);
-
-    int32_t getId() const;
-
-    int32_t getSetId() const;
-
-    const QString& getFsId() const;
-
-    QImage getImage(const core::sticker_size _size, bool _scaleIfNeed, bool& _scaled) const;
-    void setImage(const core::sticker_size _size, QImage _image);
-
-    void setFailed(const bool _failed);
-    bool isFailed() const;
-
-    bool isImageRequested(const core::sticker_size _size) const;
-    void setImageRequested(const core::sticker_size _size, const bool _val);
-
-    const std::vector<QString>& getEmojis();
-
-    void unserialize(core::coll_helper _coll);
-    void clearCache();
-
-    const std::map<core::sticker_size, image_data>& getImages() const;
-
-    bool isGif() const;
-
-    void lockCache(bool _lock);
+    Type type_ = Type::image;
 };
 
-typedef std::shared_ptr<Sticker> stickerSptr;
+class ImageSticker : public Sticker
+{
+public:
+    ImageSticker(Data::StickerId _id, Type _type = Type::image);
 
-typedef std::map<int32_t, stickerSptr> stickersMap;
+    const StickerData& getData(core::sticker_size _size) const override;
+    void setData(core::sticker_size _size, StickerData _data) override;
+    bool hasData(core::sticker_size _size) const override;
 
+    void setRequested(core::sticker_size _size, bool _requested) override;
+    bool isRequested(core::sticker_size _size) const override;
+
+    using StickerDataMap = std::map<core::sticker_size, StickerData>;
+    const StickerDataMap& getImages() const noexcept { return images_; }
+
+protected:
+    void clearCacheImpl() override;
+
+private:
+    StickerDataMap images_;
+    std::vector<core::sticker_size> requested_;
+};
+
+class LottieSticker : public Sticker
+{
+public:
+    LottieSticker(Data::StickerId _id);
+
+    const StickerData& getData(core::sticker_size) const override { return data_; }
+    void setData(core::sticker_size, StickerData _data) override;
+    bool hasData(core::sticker_size) const override { return data_.isValid(); }
+
+    void setRequested(core::sticker_size, bool _requested) override { requested_ = _requested; }
+    bool isRequested(core::sticker_size) const override { return requested_; }
+
+protected:
+    void clearCacheImpl() override;
+
+private:
+    StickerData data_;
+    bool requested_ = false;
+};
+
+using stickerSptr = std::shared_ptr<Sticker>;
+using stickersMap = std::unordered_map<int32_t, stickerSptr>;
 using stickersArray = std::vector<QString>;
-
-using FsStickersMap = std::map<QString, stickerSptr>;
+using FsStickersMap = std::unordered_map<QString, stickerSptr, Utils::QStringHasher>;
 
 class Set
 {
-    int32_t id_;
+    int32_t id_ = -1;
     QString name_;
-    QPixmap icon_;
-    QPixmap bigIcon_;
+    StickerData icon_;
+    StickerData bigIcon_;
     QString storeId_;
     QString description_;
     QString subtitle_;
-    bool purchased_;
-    bool user_;
+    bool purchased_ = true;
+    bool user_ = true;
+    bool lottie_ = false;
 
     stickersArray stickers_;
 
@@ -97,73 +131,64 @@ class Set
 
     stickersMap stickersTree_;
 
-    int32_t maxSize_;
-
-    bool containsGifSticker_ = false;
-
 public:
+    Set(int _id = -1) : id_(_id) {}
 
-    typedef std::shared_ptr<Set> sptr;
+    void setId(int32_t _id) { id_ = _id; }
+    int32_t getId() const noexcept { return id_; }
 
-    Set(int32_t _maxSize = -1);
+    void setName(const QString& _name) { name_ = _name; }
+    const QString& getName() const noexcept { return name_; }
 
-    void setId(int32_t _id);
-    int32_t getId() const;
+    void setStoreId(const QString& _storeId) { storeId_ = _storeId; }
+    const QString& getStoreId() const noexcept { return storeId_; }
 
-    void setName(const QString& _name);
-    QString getName() const;
+    void setDescription(const QString& _description) { description_ = _description; }
+    const QString& getDescription() const noexcept { return description_; }
 
-    void setStoreId(const QString& _storeId);
-    QString getStoreId() const;
+    void setSubtitle(const QString& _subtitle) { subtitle_ = _subtitle; }
+    const QString& getSubtitle() const noexcept { return subtitle_; }
 
-    void setDescription(const QString& _description);
-    QString getDescription() const;
+    void setPurchased(const bool _purchased) { purchased_ = _purchased; }
+    bool isPurchased() const noexcept { return purchased_; }
 
-    void setSubtitle(const QString& _subtitle);
-    QString getSubtitle() const;
+    void setUser(const bool _user) { user_ = _user; }
+    bool isUser() const noexcept { return user_; }
 
-    void setPurchased(const bool _purchased);
-    bool isPurchased() const;
+    void setIcon(StickerData _data);
+    const StickerData& getIcon() const;
 
-    void setUser(const bool _user);
-    bool isUser() const;
-
-    void loadIcon(const char* _data, int32_t _size);
-    QPixmap getIcon() const;
-
-    QPixmap getBigIcon() const;
-    void loadBigIcon(const char* _data, int32_t _size);
+    void setBigIcon(StickerData _data);
+    const StickerData& getBigIcon() const;
 
     int32_t getCount() const;
     int32_t getStickerPos(const QString& _fsId) const;
 
-    const stickersArray& getStickers() const;
+    bool isEmpty() const { return stickers_.empty(); }
 
-    bool empty() const;
+    const StickerData& getStickerData(const int32_t _stickerId, const core::sticker_size _size);
+    void setStickerData(const int32_t _stickerId, const core::sticker_size _size, StickerData _data);
 
-    QImage getStickerImage(const int32_t _stickerId, const core::sticker_size _size, const bool _scaleIfNeed);
-    void setStickerImage(const int32_t _stickerId, const core::sticker_size _size, QImage _image);
-    void setBigIcon(QImage _image);
     void setStickerFailed(const int32_t _stickerId);
     void resetFlagRequested(const int32_t _stickerId, const core::sticker_size _size);
 
-    stickerSptr getSticker(int32_t _stickerId) const;
-    void unserialize(core::coll_helper _coll);
+    stickerSptr getSticker(int32_t _stickerId) const; // returns nullptr if not found
+    const stickerSptr& getOrCreateSticker(int32_t _stickerId); // creates if not found
+    void unserialize(const core::coll_helper& _coll);
 
     void clearCache();
 
-    const stickersMap& getStickersTree() const;
-    const FsStickersMap& getFsStickersTree() const;
+    const stickersArray& getStickers() const noexcept { return  stickers_; }
+    const stickersMap& getStickersTree() const noexcept { return stickersTree_; }
+    const FsStickersMap& getFsStickersTree() const noexcept { return fsStickersTree_; }
 
     bool containsGifSticker() const;
+    bool containsLottieSticker() const noexcept { return lottie_; }
 };
 
-typedef std::shared_ptr<Set> setSptr;
-
-typedef std::vector<int32_t> setsIdsArray;
-
-typedef std::map<int32_t, setSptr> setsMap;
-
+using setSptr = std::shared_ptr<Set>;
+using setsIdsArray = std::vector<int32_t>;
+using setsMap = std::unordered_map<int32_t, setSptr>;
 
 enum class StatContext
 {
@@ -207,11 +232,31 @@ typedef std::vector<QString> EmojiList;
 
 typedef std::map<QString, EmojiList> SuggestsAliases;
 
-class Cache
+struct StickerLoadData
 {
-public:
+    StickerData data_;
+    stickerSptr sticker_;
+    setSptr set_;
+    QString fsId_;
+    QString path_;
+    core::sticker_size size_;
+    int id_;
+    int setId_;
+};
+using StickerLoadDataV = std::vector<StickerLoadData>;
 
-    Cache();
+
+class Cache : public QObject
+{
+    Q_OBJECT
+
+Q_SIGNALS:
+    void setIconUpdated(int _setId, QPrivateSignal) const;
+    void setBigIconUpdated(int _setId, QPrivateSignal) const;
+    void stickerUpdated(int _error, const QString& _fsId, int _setId, int _stickerId, QPrivateSignal) const;
+
+public:
+    Cache(QObject* _parent);
 
     void unserialize(const core::coll_helper &_coll);
     void unserialize_store(const core::coll_helper &_coll);
@@ -233,14 +278,16 @@ public:
 
     setSptr getSet(int32_t _setId) const;
     setSptr getStoreSet(int32_t _setId) const;
+    setSptr findSetByFsId(const QString& _fsId) const;
 
-    void addSet(std::shared_ptr<Set> _set);
+    void addSet(setSptr _set);
     void addStickerByFsId(const std::vector<QString> &_fsIds, const QString &_keyword, const SuggestType _type);
 
     setSptr insertSet(int32_t _setId);
     stickerSptr insertSticker(const QString& _fsId);
 
     void clearCache();
+    void clearSetCache(int _setId);
 
     bool getSuggest(const QString& _keyword, Suggest& _suggest, const std::set<SuggestType>& _types) const;
 
@@ -253,6 +300,11 @@ public:
     const QString& getTemplateOriginalBaseUrl() const;
 
     QString getTemplateSendBaseUrl() const;
+
+private:
+    void startBatchLoadTimer();
+    void loadStickerDataBatch();
+    void onStickersBatchLoaded(StickerLoadDataV _loadedV);
 
 private:
 
@@ -273,24 +325,26 @@ private:
     QString templatePreviewBaseUrl_;
     QString templateOriginalBaseUrl_;
     QString templateSendBaseUrl_;
+
+    StickerLoadDataV batchloadData_;
+    QTimer* batchLoadTimer_ = nullptr;
 };
 
-void unserialize(core::coll_helper _coll);
-void unserialize_store(core::coll_helper _coll);
-bool unserialize_store_search(int64_t _seq, core::coll_helper _coll);
-void unserialize_suggests(core::coll_helper _coll);
-std::vector<Sticker> getFsByIds(core::coll_helper _coll);
+void unserialize(const core::coll_helper& _coll);
+void unserialize_store(const core::coll_helper& _coll);
+bool unserialize_store_search(int64_t _seq, const core::coll_helper& _coll);
+void unserialize_suggests(const core::coll_helper& _coll);
+std::vector<stickerSptr> getFsByIds(const core::coll_helper& _coll);
 
 void clean_search_cache();
 
-void setStickerData(core::coll_helper _coll);
+void setStickerData(const core::coll_helper& _coll);
 
-void setSetIcon(core::coll_helper _coll);
-void setSetBigIcon(core::coll_helper _coll);
+void setSetIcon(const core::coll_helper& _coll);
+void setSetBigIcon(const core::coll_helper& _coll);
 
-std::shared_ptr<Sticker> getSticker(uint32_t _setId, uint32_t _stickerId);
-std::shared_ptr<Sticker> getSticker(uint32_t _setId, const QString& _fsId);
-std::shared_ptr<Sticker> getSticker(const QString& _fsId);
+stickerSptr getSticker(uint32_t _setId, uint32_t _stickerId);
+stickerSptr getSticker(const QString& _fsId);
 
 QString getPreviewBaseUrl();
 QString getOriginalBaseUrl();
@@ -308,13 +362,12 @@ int32_t getSetStickersCount(int32_t _setId);
 
 int32_t getStickerPosInSet(int32_t _setId, const QString& _fsId);
 
-QImage getStickerImage(int32_t _setId, int32_t _stickerId, const core::sticker_size _size, const bool _scaleIfNeed = false);
+const StickerData& getStickerData(const QString& _fsId, core::sticker_size _size);
 
-QImage getStickerImage(int32_t _setId, const QString& _fsId, const core::sticker_size _size, const bool _scaleIfNeed = false);
+const StickerData& getSetIcon(int32_t _setId);
+const StickerData& getSetBigIcon(int32_t _setId);
 
-QImage getStickerImage(const QString& _fsId, const core::sticker_size _size, const bool _scaleIfNeed = false);
-
-QPixmap getSetIcon(int32_t _setId);
+void cancelDataRequest(std::vector<QString> _fsIds, core::sticker_size _size);
 
 QString getSetName(int32_t _setId);
 
@@ -322,16 +375,14 @@ void lockStickerCache(const QString& _fsId);
 
 void unlockStickerCache(const QString& _fsId);
 
-bool isConfigHasSticker(int32_t _setId, int32_t _stickerId);
-
 void showStickersPack(const int32_t _set_id, StatContext context);
 void showStickersPackByStoreId(const QString& _store_id, StatContext context);
 void showStickersPackByFileId(const QString& _file_id, StatContext context);
 void showStickersPackByStickerId(const Data::StickerId& _sticker_id, StatContext context);
 
-std::shared_ptr<Set> parseSet(core::coll_helper _coll_set);
+setSptr parseSet(const core::coll_helper& _coll_set);
 
-void addSet(std::shared_ptr<Set> _set);
+void addSet(setSptr _set);
 void addStickers(const std::vector<QString> &_fsIds, const QString &_text, const Stickers::SuggestType _type);
 
 bool isUserSet(const int32_t _setId);
@@ -339,11 +390,15 @@ bool isPurchasedSet(const int32_t _setId);
 
 setSptr getSet(const int32_t _setId);
 setSptr getStoreSet(const int32_t _setId);
+setSptr findSetByFsId(const QString& _fsId);
 
 void requestSearch(const QString& _term);
 
 void clearCache();
+void clearSetCache(int _setId);
+
 void resetCache();
+Cache& getCache();
 
 bool getSuggest(const QString& _keyword, Suggest& _suggest, const std::set<SuggestType>& _types);
 bool getSuggestWithSettings(const QString& _keyword, Suggest& _suggest);

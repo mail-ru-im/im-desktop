@@ -561,6 +561,26 @@ namespace TextRendering
         });;
     }
 
+    void TextUnit::setShadow(const int _offsetX, const int _offsetY, const QColor& _color)
+    {
+        return setShadowForBlocks(blocks_, _offsetX, _offsetY, _color);
+    }
+
+    std::vector<QRect> TextUnit::getLinkRects() const
+    {
+        std::vector<QRect> res;
+        int blockOffset = 0;
+        for (const auto& b : blocks_)
+        {
+            for (auto r : b->getLinkRects())
+                res.emplace_back(r.translated(horOffset_, verOffset_ + blockOffset));
+
+            blockOffset += b->getCachedHeight();
+        }
+
+        return res;
+    }
+
     QPoint TextUnit::mapPoint(QPoint _p) const
     {
         return QPoint(_p.x() - horOffset_, _p.y() - verOffset_);

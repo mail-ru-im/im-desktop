@@ -115,9 +115,14 @@ namespace Data
         return info_.Lastseen_;
     }
 
-    bool SearchResultChatMember::isCreator() const
+    bool SearchResultChatMember::isCreator() const noexcept
     {
         return info_.IsCreator_;
+    }
+
+    const QDateTime& SearchResultChatMember::canRemoveTill() const noexcept
+    {
+        return info_.canRemoveTill_;
     }
 
     QString SearchResultCommonChat::getAimId() const

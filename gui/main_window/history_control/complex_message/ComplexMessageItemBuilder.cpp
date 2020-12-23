@@ -56,6 +56,9 @@ core::file_sharing_content_type getFileSharingContentType(const TextChunk::Type 
     case TextChunk::Type::FileSharingVideoSticker:
         return core::file_sharing_content_type(core::file_sharing_base_content_type::video, core::file_sharing_sub_content_type::sticker);
 
+    case TextChunk::Type::FileSharingLottieSticker:
+        return core::file_sharing_content_type(core::file_sharing_base_content_type::lottie, core::file_sharing_sub_content_type::sticker);
+
     default:
         break;
     }
@@ -127,6 +130,7 @@ QString convertPollQuoteText(const QString& _text) // replace media with placeho
             case TextChunk::Type::FileSharingGifSticker:
             case TextChunk::Type::FileSharingImageSticker:
             case TextChunk::Type::FileSharingVideoSticker:
+            case TextChunk::Type::FileSharingLottieSticker:
                 result += QT_TRANSLATE_NOOP("poll_block", "Sticker");
                 break;
             case TextChunk::Type::FileSharingVideo:
@@ -221,19 +225,23 @@ parseResult parseText(const QString& _text, const bool _allowSnippet, const bool
     const auto sl = Ui::TextRendering::singleBackTick();
     const auto ml = Ui::TextRendering::tripleBackTick();
 
-    std::vector<QStringRef> toSkipLinks;
+    std::vector<QStringView> toSkipLinks;
     const auto mcount = _text.count(ml);
     const auto scount = _text.count(sl);
+    const QStringView textView = _text;
     if (mcount > 1)
     {
-        auto idxBeg = 0;
-        while (idxBeg < _text.size())
+        qsizetype idxBeg = 0;
+        while (idxBeg < textView.size())
         {
-            const auto openingMD = idxBeg + _text.midRef(idxBeg).indexOf(ml) + ml.size();
-            const auto closingMD = openingMD + _text.midRef(openingMD).indexOf(ml);
-            if (openingMD != -1 && closingMD != -1)
+            const auto openingMD = idxBeg + textView.mid(idxBeg).indexOf(ml) + ml.size();
+            if (openingMD >= textView.size())
+                break;
+
+            const auto closingMD = openingMD + textView.mid(openingMD).indexOf(ml);
+            if (openingMD != -1 && closingMD != -1 && closingMD > openingMD)
             {
-                toSkipLinks.push_back(_text.midRef(openingMD, closingMD - openingMD + idxBeg));
+                toSkipLinks.push_back(textView.mid(openingMD, closingMD - openingMD));
                 idxBeg += closingMD + ml.size() + 1;
             }
             else
@@ -418,6 +426,7 @@ std::vector<GenericBlock*> createBlocks(const parseResult& _parseRes, ComplexMes
             case TextChunk::Type::FileSharingGifSticker:
             case TextChunk::Type::FileSharingVideo:
             case TextChunk::Type::FileSharingVideoSticker:
+            case TextChunk::Type::FileSharingLottieSticker:
             case TextChunk::Type::FileSharingGeneral:
                 blocks.push_back(chunk.FsInfo_ ? new FileSharingBlock(_parent, chunk.FsInfo_, getFileSharingContentType(chunk.Type_))
                     : new FileSharingBlock(_parent, chunk.text_, getFileSharingContentType(chunk.Type_)));
@@ -555,6 +564,9 @@ namespace ComplexMessageItemBuilder
                     break;
                 case core::file_sharing_base_content_type::video:
                     type = filesharing->getContentType().is_sticker() ? TextChunk::Type::FileSharingVideoSticker : TextChunk::Type::FileSharingVideo;
+                    break;
+                case core::file_sharing_base_content_type::lottie:
+                    type = TextChunk::Type::FileSharingLottieSticker;
                     break;
                 case core::file_sharing_base_content_type::ptt:
                     type = TextChunk::Type::FileSharingPtt;

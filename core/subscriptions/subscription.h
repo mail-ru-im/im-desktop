@@ -38,7 +38,7 @@ namespace core::wim::subscriptions
     class antivirus_subscription : public subscription_base
     {
     public:
-        antivirus_subscription(std::string_view _file_hash);
+        antivirus_subscription(std::vector<std::string> _file_hashes);
 
         void serialize(rapidjson::Value& _node, rapidjson_allocator& _a) const override;
         subscr_clock_t::duration renew_interval() const override;
@@ -48,13 +48,13 @@ namespace core::wim::subscriptions
         bool equal(const subscription_base& _other) const override;
 
     private:
-        std::string hash_;
+        std::vector<std::string> hashes_;
     };
 
     class status_subscription : public subscription_base
     {
     public:
-        status_subscription(std::string_view _contact);
+        status_subscription(std::vector<std::string> _contacts);
 
         void serialize(rapidjson::Value& _node, rapidjson_allocator& _a) const override;
         subscr_clock_t::duration renew_interval() const override;
@@ -63,13 +63,13 @@ namespace core::wim::subscriptions
         bool equal(const subscription_base& _other) const override;
 
     private:
-        std::string contact_;
+        std::vector<std::string> contacts_;
     };
 
     class call_room_info_subscription : public subscription_base
     {
     public:
-        call_room_info_subscription(std::string_view _room_id);
+        call_room_info_subscription(std::vector<std::string> _room_ids);
 
         void serialize(rapidjson::Value& _node, rapidjson_allocator& _a) const override;
         subscr_clock_t::duration renew_interval() const override;
@@ -78,7 +78,7 @@ namespace core::wim::subscriptions
         bool equal(const subscription_base& _other) const override;
 
     private:
-        std::string room_id_;
+        std::vector<std::string> room_ids_;
     };
 
     using subscr_ptr = std::shared_ptr<subscription_base>;

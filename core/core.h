@@ -38,6 +38,7 @@ namespace core
     class proxy_settings_manager;
     class hosts_config;
     class zstd_helper;
+    class network_change_notifier;
 
     namespace update
     {
@@ -87,13 +88,17 @@ namespace core
         std::shared_ptr<core::stats::im_stats> im_stats_;
         std::shared_ptr<core::proxy_settings_manager> proxy_settings_manager_;
 
+        std::shared_ptr<core::network_change_notifier> network_change_notifier_;
+
         std::shared_ptr<dump::report_sender> report_sender_;
 
         // memory usage stats
         std::shared_ptr<memory_stats::memory_stats_collector> memory_stats_collector_;
 
+#ifndef STRIP_ZSTD
         // zstd compress/decompress helper
         std::shared_ptr<zstd_helper> zstd_helper_;
+#endif // !STRIP_ZSTD
 
         // gui interfaces
         iconnector* gui_connector_;
@@ -129,6 +134,7 @@ namespace core
         void on_message_set_default_wallpaper_id(int64_t _seq, coll_helper _params);
         void on_message_set_wallpaper_urls(int64_t _seq, coll_helper _params);
         void on_feedback(int64_t _seq, coll_helper& _params);
+        void on_misc_support(int64_t _seq, coll_helper& _params);
         void on_create_logs_archive(int64_t _seq, coll_helper& _params);
 
         void load_statistics();
@@ -180,7 +186,7 @@ namespace core
         void begin_cl_search();
         unsigned end_cl_search();
 
-        void unlogin(const bool _is_auth_error, const bool _force_clean_local_data = false);
+        void unlogin(const bool _is_auth_error, const bool _force_clean_local_data = false, std::string_view _reason_to_log = {});
 
         std::string get_root_login();
         std::string get_login_after_start() const;
@@ -190,8 +196,10 @@ namespace core
         void update_login(im_login_id& _login);
         void replace_uin_in_login(im_login_id& old_login, im_login_id& new_login);
 
+#ifndef STRIP_VOIP
         void post_voip_message(unsigned _id, const voip_manager::VoipProtoMsg& msg);
         void post_voip_alloc(unsigned _id, const char* _data, size_t _len);
+#endif
 
         void insert_event(core::stats::stats_event_names _event);
         void insert_event(core::stats::stats_event_names _event, core::stats::event_props_type&& _props);
@@ -247,8 +255,8 @@ namespace core
         std::string get_local_pin_salt() const;
         bool verify_local_pin(const std::string& _password) const;
 
-        void set_external_config_host(std::string_view _host);
-        std::string get_external_config_host() const;
+        void set_external_config_url(std::string_view _url);
+        std::string get_external_config_url() const;
 
         int64_t get_voip_init_memory_usage() const;
 
@@ -264,7 +272,12 @@ namespace core
 
         void reset_connection();
 
+        void check_if_network_change_notifier_available();
+        bool is_network_change_notifier_valid() const;
+
+#ifndef STRIP_ZSTD
         const std::shared_ptr<zstd_helper>& get_zstd_helper() const;
+#endif // !STRIP_ZSTD
     };
 
     extern std::unique_ptr<core::core_dispatcher>		g_core;

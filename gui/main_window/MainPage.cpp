@@ -32,6 +32,7 @@
 #include "sidebar/Sidebar.h"
 #include "containers/FriendlyContainer.h"
 #include "containers/LastseenContainer.h"
+#include "containers/InputTextContainer.h"
 #include "../core_dispatcher.h"
 #include "../gui_settings.h"
 #include "../my_info.h"
@@ -50,14 +51,18 @@
 #include "../utils/utils.h"
 #include "../utils/log/log.h"
 #include "../utils/gui_metrics.h"
+#ifndef STRIP_VOIP
 #include "../voip/IncomingCallWindow.h"
 #include "../voip/VideoWindow.h"
+#include "../voip/MicroAlert.h"
+#endif
 #include "../main_window/settings/SettingsForTesters.h"
 #include "MainWindow.h"
 #include "smiles_menu/Store.h"
 #include "smiles_menu/suggests_widget.h"
 #include "../main_window/sidebar/MyProfilePage.h"
 #include "../main_window/input_widget/AttachFilePopup.h"
+#include "../main_window/input_widget/InputWidget.h"
 #include "../main_window/history_control/HistoryControlPage.h"
 
 #include "styles/ThemeParameters.h"
@@ -194,7 +199,8 @@ namespace Ui
 
     void MainPage::reset()
     {
-        _instance.reset();
+        if (auto page = _instance.release())
+            page->deleteLater();
     }
 
     MainPage::MainPage(QWidget* _parent)
@@ -229,9 +235,13 @@ namespace Ui
         , isManualRecentsMiniMode_(get_gui_settings()->get_value(settings_recents_mini_mode, false))
         , frameCountMode_(FrameCountMode::_1)
         , oneFrameMode_(OneFrameMode::Tab)
+        , prevOneFrameMode_(OneFrameMode::Tab)
         , moreMenu_(nullptr)
         , callsTabButton_(nullptr)
         , callLinkCreator_(nullptr)
+#ifndef STRIP_VOIP
+        , microIssue_(MicroIssue::None)
+#endif
     {
         if (isManualRecentsMiniMode_)
             leftPanelState_ = LeftPanelState::picture_only;
@@ -253,7 +263,7 @@ namespace Ui
         if (isManualRecentsMiniMode_)
             contactsWidget_->resize(getRecentMiniModeWidth(), contactsWidget_->height());
 
-        contactsLayout = Utils::emptyVLayout(contactsWidget_);
+        contactsLayout_ = Utils::emptyVLayout(contactsWidget_);
 
         topWidget_ = new TopPanelWidget(this);
 
@@ -297,9 +307,9 @@ namespace Ui
         recentsHeaderButtons_.newEmails_->setVisibility(false);
         connect(MyInfo(), &my_info::received, this, &MainPage::updateNewMailButton);
 
-        contactsLayout->addWidget(topWidget_);
+        contactsLayout_->addWidget(topWidget_);
         spacerBetweenHeaderAndRecents_->setFixedHeight(Utils::scale_value(8));
-        contactsLayout->addWidget(spacerBetweenHeaderAndRecents_);
+        contactsLayout_->addWidget(spacerBetweenHeaderAndRecents_);
 
         if (isManualRecentsMiniMode_)
             spacerBetweenHeaderAndRecents_->hide();
@@ -329,7 +339,7 @@ namespace Ui
         }
 
         Testing::setAccessibleName(recentsTab_, qsl("AS RecentsTab chatListWidget"));
-        contactsLayout->addWidget(recentsTab_);
+        contactsLayout_->addWidget(recentsTab_);
 
         connect(topWidget_, &TopPanelWidget::back, this, &MainPage::recentsTopPanelBack);
         connect(topWidget_, &TopPanelWidget::needSwitchToRecents, this, &MainPage::openRecents);
@@ -338,7 +348,7 @@ namespace Ui
         connect(Logic::getContactListModel(), &Logic::ContactListModel::needSwitchToRecents, this, &MainPage::openRecents);
         connect(Logic::getContactListModel(), &Logic::ContactListModel::contact_removed, this, &MainPage::onContactRemoved);
 
-        contactsLayout->addSpacerItem(new QSpacerItem(0, 0, QSizePolicy::Minimum));
+        contactsLayout_->addSpacerItem(new QSpacerItem(0, 0, QSizePolicy::Minimum));
 
         pagesLayout_ = Utils::emptyVLayout();
         Testing::setAccessibleName(settingsHeader_, qsl("AS SettingsTab headerWidget"));
@@ -479,8 +489,6 @@ namespace Ui
         connect(contactsTab_->getContactListWidget(), &ContactListWidget::itemSelected, this, &MainPage::onContactSelected);
         connect(contactsTab_->getContactListWidget(), &ContactListWidget::itemSelected, contactDialog_, &ContactDialog::onContactSelected);
 
-        connect(sidebar_, &Sidebar::backButtonClicked, this, &MainPage::sidebarBackClicked);
-
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::showSettingsHeader, this, &MainPage::showSettingsHeader);
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::hideSettingsHeader, this, &MainPage::hideSettingsHeader);
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::myProfileBack, this, &MainPage::settingsHeaderBack);
@@ -516,10 +524,13 @@ namespace Ui
 
         recentsTab_->connectSearchWidget(topWidget_->getSearchWidget());
 
+#ifndef STRIP_VOIP
+        Ui::GetDispatcher()->getVoipController().loadSettings([](voip_proxy::device_desc& desc){});
         connect(&Ui::GetDispatcher()->getVoipController(), &voip_proxy::VoipController::onVoipShowVideoWindow, this, &MainPage::onVoipShowVideoWindow, Qt::DirectConnection);
         connect(&Ui::GetDispatcher()->getVoipController(), &voip_proxy::VoipController::onVoipCallIncoming, this, &MainPage::onVoipCallIncoming, Qt::DirectConnection);
         connect(&Ui::GetDispatcher()->getVoipController(), &voip_proxy::VoipController::onVoipCallIncomingAccepted, this, &MainPage::onVoipCallIncomingAccepted, Qt::DirectConnection);
         connect(&Ui::GetDispatcher()->getVoipController(), &voip_proxy::VoipController::onVoipCallDestroyed, this, &MainPage::onVoipCallDestroyed, Qt::DirectConnection);
+#endif
 
         connect(Ui::GetDispatcher(), &core_dispatcher::chatJoinResultBlocked, this, &MainPage::onJoinChatResultBlocked);
 
@@ -557,7 +568,7 @@ namespace Ui
         connect(get_gui_settings(), &Ui::qt_gui_settings::changed, this, [this](const QString& _key) {
             if (_key == ql1s(settings_notify_new_mail_messages))
                 updateNewMailButton();
-            if (_key == ql1s(settings_show_calls_tab))
+            else if (_key == ql1s(settings_show_calls_tab))
                 updateCallsTabButton();
         });
 
@@ -573,14 +584,15 @@ namespace Ui
         loggedIn();
     }
 
-
     MainPage::~MainPage()
     {
+#ifndef STRIP_VOIP
         if (videoWindow_)
         {
             delete videoWindow_;
             videoWindow_ = nullptr;
         }
+#endif
     }
 
     bool MainPage::isUnknownsOpen() const
@@ -604,7 +616,9 @@ namespace Ui
 
     void MainPage::setOneFrameMode(OneFrameMode _mode)
     {
-        oneFrameMode_ = _mode;
+        if (_mode == oneFrameMode_)
+            return;
+        prevOneFrameMode_ = std::exchange(oneFrameMode_, _mode);
     }
 
     void MainPage::updateSettingHeader()
@@ -865,6 +879,169 @@ namespace Ui
         }
     }
 
+    void MainPage::showAddMembersFailuresPopup(QString _chatAimId, std::map<core::add_member_failure, std::vector<QString>> _failures)
+    {
+        if (_failures.empty())
+            return;
+
+        const auto isChannel = Logic::getContactListModel()->isChannel(_chatAimId);
+        if (_failures.size() == 1 && _failures.begin()->second.size() == 1)
+        {
+            const auto& [type, contacts] = *_failures.begin();
+            const auto friendly = Logic::GetFriendlyContainer()->getFriendly(contacts.front());
+            const auto cannotAdd = QT_TRANSLATE_NOOP("popup_window", "Cannot add %1").arg(friendly);
+
+            if (type == core::add_member_failure::user_waiting_for_approve)
+            {
+                Utils::GetConfirmationWithOneButton(
+                    QT_TRANSLATE_NOOP("popup_window", "OK"),
+                    QT_TRANSLATE_NOOP("popup_window", "Please wait until admins approve %1's request").arg(friendly),
+                    QT_TRANSLATE_NOOP("popup_window", "Request for %1 was sent").arg(friendly),
+                    nullptr);
+            }
+            else if (type == core::add_member_failure::user_must_join_by_link)
+            {
+                const auto stamp = Logic::getContactListModel()->getChatStamp(_chatAimId);
+                assert(!stamp.isEmpty());
+
+                const auto link = stamp.isEmpty() ? QString() : QString(u"https://" % Utils::getDomainUrl() % u'/' % stamp);
+                const auto text = isChannel
+                    ? QT_TRANSLATE_NOOP("popup_window", "You cannot add %1 to channel. Send them subscription link %2").arg(friendly, link)
+                    : QT_TRANSLATE_NOOP("popup_window", "You cannot add %1 to chat. Send them join link %2").arg(friendly, link);
+
+                const auto confirmed = Utils::GetConfirmationWithTwoButtons(
+                    QT_TRANSLATE_NOOP("popup_window", "Cancel"),
+                    QT_TRANSLATE_NOOP("popup_window", "Send"),
+                    text,
+                    cannotAdd,
+                    nullptr);
+
+                if (confirmed)
+                {
+                    auto text = isChannel
+                        ? QT_TRANSLATE_NOOP("popup_window", "Subscribe the channel %1").arg(link)
+                        : QT_TRANSLATE_NOOP("popup_window", "Join the group %1").arg(link);
+                    Logic::InputTextContainer::instance().setText(contacts.front(), std::move(text));
+                    Utils::openDialogWithContact(contacts.front());
+                }
+            }
+            else if (type == core::add_member_failure::user_blocked_confirmation_required)
+            {
+                const auto title = QT_TRANSLATE_NOOP("popup_window", "Add %1?").arg(friendly);
+                const auto text = isChannel
+                    ? QT_TRANSLATE_NOOP("popup_window", "Previously this contact was removed from channel. Probably, %1 violated the rules. Add anyway?").arg(friendly)
+                    : QT_TRANSLATE_NOOP("popup_window", "Previously this contact was removed from chat. Probably, %1 violated the rules. Add anyway?").arg(friendly);
+
+                const auto confirmed = Utils::GetConfirmationWithTwoButtons(
+                    QT_TRANSLATE_NOOP("popup_window", "Cancel"),
+                    QT_TRANSLATE_NOOP("popup_window", "Add"),
+                    text,
+                    title,
+                    nullptr);
+
+                if (confirmed)
+                    postAddChatMembersToCore(_chatAimId, contacts, true);
+            }
+            else if (type == core::add_member_failure::user_must_be_added_by_admin)
+            {
+                const auto text = isChannel
+                    ? QT_TRANSLATE_NOOP("popup_window", "You cannot add this contact to channel, please ask admin to do that")
+                    : QT_TRANSLATE_NOOP("popup_window", "You cannot add this contact to chat, please ask admin to do that");
+
+                Utils::GetConfirmationWithOneButton(
+                    QT_TRANSLATE_NOOP("popup_window", "OK"),
+                    text,
+                    cannotAdd,
+                    nullptr);
+            }
+            else if (type == core::add_member_failure::user_captcha)
+            {
+                Utils::GetConfirmationWithOneButton(
+                    QT_TRANSLATE_NOOP("popup_window", "OK"),
+                    QT_TRANSLATE_NOOP("popup_window", "Contact is banned in %1").arg(Utils::getAppTitle()),
+                    cannotAdd,
+                    nullptr);
+            }
+            else if (type == core::add_member_failure::user_already_added)
+            {
+                Utils::GetConfirmationWithOneButton(
+                    QT_TRANSLATE_NOOP("popup_window", "OK"),
+                    QT_TRANSLATE_NOOP("popup_window", "Contact is already added"),
+                    cannotAdd,
+                    nullptr);
+            }
+            else if (type == core::add_member_failure::bot_setjoingroups_false)
+            {
+                Utils::GetConfirmationWithOneButton(
+                    QT_TRANSLATE_NOOP("popup_window", "OK"),
+                    QT_TRANSLATE_NOOP("popup_window", "Bot can be added only by admin and if bot joining the groups was allowed by its creator"),
+                    cannotAdd,
+                    nullptr);
+            }
+        }
+        else
+        {
+            auto makeText = [](auto _code, const auto& _text) -> QString
+            {
+                return Emoji::EmojiCode::toQString(Emoji::EmojiCode(_code)) % u' ' % _text;
+            };
+
+            QString message;
+            int totalCount = 0;
+            for (const auto& [type, contacts] : _failures)
+            {
+                if (contacts.empty())
+                    continue;
+
+                if (type == core::add_member_failure::user_waiting_for_approve)
+                    message += makeText(0x23f0, QT_TRANSLATE_NOOP("popup_window", "Wait until admins approve join requests"));
+                else if (type == core::add_member_failure::user_must_join_by_link)
+                    message += makeText(0x274c, QT_TRANSLATE_NOOP("popup_window", "Send them invite link"));
+                else if (type == core::add_member_failure::user_must_be_added_by_admin)
+                    message += makeText(0x1f44b, QT_TRANSLATE_NOOP("popup_window", "Ask admins to invite"));
+                else if (type == core::add_member_failure::user_captcha)
+                    message += makeText(0x1f6ab, QT_TRANSLATE_NOOP("popup_window", "Contacts are banned in %1").arg(Utils::getAppTitle()));
+                else if (type == core::add_member_failure::user_already_added)
+                    message += makeText(0x1f914, QT_TRANSLATE_NOOP("popup_window", "Contacts were already added"));
+                else if (type == core::add_member_failure::bot_setjoingroups_false)
+                    message += makeText(0x1f916, QT_TRANSLATE_NOOP("popup_window", "Bot joining the groups was forbidden by its creator"));
+                else
+                    continue;
+
+                totalCount += contacts.size();
+
+                message += qsl(": ");
+                for (const auto& c : contacts)
+                    message += Logic::GetFriendlyContainer()->getFriendly(c) % u", ";
+
+                if (!message.isEmpty())
+                    message.chop(2);
+
+                message += QChar::LineFeed % QChar::LineFeed;
+            }
+
+            if (!message.isEmpty())
+                message.chop(2);
+
+            if (!message.isEmpty())
+            {
+                const auto title = Utils::GetTranslator()->getNumberString(
+                    totalCount,
+                    QT_TRANSLATE_NOOP3("popup_window", "Cannot add %1 contact", "1"),
+                    QT_TRANSLATE_NOOP3("popup_window", "Cannot add %1 contacts", "2"),
+                    QT_TRANSLATE_NOOP3("popup_window", "Cannot add %1 contacts", "5"),
+                    QT_TRANSLATE_NOOP3("popup_window", "Cannot add %1 contacts", "21")
+                ).arg(totalCount);
+
+                Utils::GetConfirmationWithOneButton(
+                    QT_TRANSLATE_NOOP("popup_window", "OK"),
+                    message,
+                    title,
+                    nullptr);
+            }
+        }
+    }
+
     void MainPage::resizeEvent(QResizeEvent* _event)
     {
         if (const int newWidth = width(); width() != _event->oldSize().width())
@@ -976,7 +1153,7 @@ namespace Ui
     {
         semiWindow_->setFixedSize(size());
         semiWindow_->raise();
-        semiWindow_->Show();
+        semiWindow_->showAnimated();
     }
 
     void MainPage::hideSemiWindow()
@@ -1051,6 +1228,7 @@ namespace Ui
         showSidebar(_uin);
     }
 
+#ifndef STRIP_VOIP
     void MainPage::raiseVideoWindow(const voip_call_type _call_type)
     {
         bool create_new_window = !videoWindow_;
@@ -1081,6 +1259,7 @@ namespace Ui
         }
         Utils::InterConnector::instance().getMainWindow()->updateMainMenu();
     }
+#endif
 
     void MainPage::nextChat()
     {
@@ -1173,7 +1352,7 @@ namespace Ui
     {
         if (frameCountMode_ == FrameCountMode::_1)
         {
-            if (Logic::getContactListModel()->selectedContact() == sidebar_->currentAimId())
+            if (oneFrameMode_ == OneFrameMode::Content)
                 switchToContentFrame();
             else
                 switchToTabFrame();
@@ -1214,7 +1393,7 @@ namespace Ui
 
     void MainPage::showSidebar(const QString& _aimId, bool _selectionChanged)
     {
-        showSidebarWithParams(_aimId, {}, _selectionChanged);
+        showSidebarWithParams(_aimId, { true, frameCountMode_ }, _selectionChanged);
     }
 
     void MainPage::showSidebarWithParams(const QString& _aimId, SidebarParams _params, bool _selectionChanged)
@@ -1234,8 +1413,17 @@ namespace Ui
 
     void MainPage::showMembersInSidebar(const QString& _aimId)
     {
-        showSidebar(_aimId);
-        sidebar_->showMembers();
+        updateSidebarPos(width());
+        sidebar_->showMembers(_aimId);
+        if (frameCountMode_ == FrameCountMode::_1)
+        {
+            clContainer_->hide();
+            pagesContainer_->hide();
+        }
+        setOneFrameMode(OneFrameMode::Sidebar);
+        Q_EMIT Utils::InterConnector::instance().currentPageChanged();
+        Q_EMIT Utils::InterConnector::instance().stopPttRecord();
+
     }
 
     bool MainPage::isSidebarVisible() const
@@ -1252,7 +1440,7 @@ namespace Ui
     {
         if (!_params.show_ && oneFrameMode_ == OneFrameMode::Sidebar)
         {
-            setOneFrameMode(OneFrameMode::Content);
+            setOneFrameMode(prevOneFrameMode_);
             sidebarBackClicked();
         }
 
@@ -1563,11 +1751,13 @@ namespace Ui
         }
     }
 
+#ifndef STRIP_VOIP
     void MainPage::onVoipCallIncoming(const std::string& call_id, const std::string& _contact, const std::string& call_type)
     {
         assert(!call_id.empty() && !_contact.empty());
         if (!call_id.empty() && !_contact.empty())
         {
+            videoWindowState_ = VideoWindowState::BlockedByCall;
             auto it = incomingCallWindows_.find(call_id);
             if (incomingCallWindows_.end() == it || !it->second)
             {
@@ -1578,11 +1768,14 @@ namespace Ui
                     window->showFrame();
                     incomingCallWindows_[call_id] = window;
                 }
-            } else
+            }
+            else
             {
                 std::shared_ptr<IncomingCallWindow> wnd = it->second;
                 wnd->showFrame();
             }
+
+            setMicroIssue(MicroIssue::Incoming);
         }
         Utils::InterConnector::instance().getMainWindow()->updateMainMenu();
     }
@@ -1609,15 +1802,83 @@ namespace Ui
         //destroy exactly when accept button pressed
         //destroyIncomingCallWindow(_contactEx.contact.call_id, _contactEx.contact.contact);
         Utils::InterConnector::instance().getMainWindow()->closeGallery();
+        videoWindowState_ = VideoWindowState::CanRaise;
+        if (media::permissions::checkPermission(media::permissions::DeviceType::Microphone) == media::permissions::Permission::Allowed)
+            setMicroIssue(MicroIssue::None);
     }
 
     void MainPage::onVoipCallDestroyed(const voip_manager::ContactEx& _contactEx)
     {
         destroyIncomingCallWindow(_contactEx.contact.call_id, _contactEx.contact.contact);
+        videoWindowState_ = VideoWindowState::CanRaise;
     }
+
+    void MainPage::onVoipShowVideoWindow(bool _enabled)
+    {
+        if (!videoWindow_)
+        {
+            videoWindow_ = new(std::nothrow) VideoWindow();
+            connect(videoWindow_, &VideoWindow::finished, Utils::InterConnector::instance().getMainWindow(), &MainWindow::exit);
+            Ui::GetDispatcher()->getVoipController().updateActivePeerList();
+        }
+
+        auto startCallBack = [pThis = QPointer(this)](MicroIssue _issue)
+        {
+            if (!pThis || !pThis->videoWindow_)
+                return;
+
+            pThis->setMicroIssue(_issue);
+            pThis->videoWindow_->setMicrophoneAlert(_issue);
+            pThis->videoWindow_->showFrame();
+        };
+
+        if (_enabled)
+        {
+            if (videoWindowState_ == VideoWindowState::CanRaise)
+            {
+                if (microIssue_ == MicroIssue::NoPermission || microIssue_ == MicroIssue::Incoming)
+                    startCallBack(microIssue_);
+                else
+                    Utils::checkMicroPermission(Utils::InterConnector::instance().getMainWindow(), startCallBack);
+            }
+        }
+        else
+        {
+            if (videoWindow_)
+                videoWindow_->hideFrame();
+
+            bool wndMinimized = false;
+            bool wndHiden = false;
+            if (QWidget* parentWnd = window())
+            {
+                wndHiden = !parentWnd->isVisible();
+                wndMinimized = parentWnd->isMinimized();
+            }
+
+            if (!Utils::foregroundWndIsFullscreened() && !wndMinimized && !wndHiden)
+                raise();
+
+            if (microIssue_ != MicroIssue::Incoming)
+            {
+                setMicroIssue(MicroIssue::NoPermission);
+                videoWindowState_ = VideoWindowState::CanRaise;
+                if (videoWindow_)
+                    videoWindow_->updateHangUpState();
+            }
+            else if (videoWindow_)
+            {
+                videoWindow_->setMicrophoneAlert(MicroIssue::Incoming);
+            }
+
+        }
+
+        Utils::InterConnector::instance().getMainWindow()->updateMainMenu();
+    }
+#endif
 
     void MainPage::showVideoWindow()
     {
+#ifndef STRIP_VOIP
         if (!videoWindow_)
             return;
 
@@ -1632,26 +1893,19 @@ namespace Ui
         {
             videoWindow_->raise();
         }
-
+#endif
         Utils::InterConnector::instance().getMainWindow()->updateMainMenu();
     }
 
+
     void MainPage::minimizeVideoWindow()
     {
+#ifndef STRIP_VOIP
         if (!videoWindow_)
             return;
 
         videoWindow_->showMinimized();
-    }
-
-    void MainPage::closeVideoWindow()
-    {
-        if (!videoWindow_)
-            return;
-
-        videoWindow_->close();
-
-        Utils::InterConnector::instance().getMainWindow()->updateMainMenu();
+#endif
     }
 
     void MainPage::notifyApplicationWindowActive(const bool isActive)
@@ -1706,43 +1960,6 @@ namespace Ui
 
         if (frameCountMode_ == FrameCountMode::_1)
             switchToContentFrame();
-    }
-
-    void MainPage::onVoipShowVideoWindow(bool _enabled)
-    {
-        if (!videoWindow_)
-        {
-            videoWindow_ = new(std::nothrow) VideoWindow();
-            connect(videoWindow_, &VideoWindow::finished, Utils::InterConnector::instance().getMainWindow(), &MainWindow::exit);
-            Ui::GetDispatcher()->getVoipController().updateActivePeerList();
-        }
-
-        if (!!videoWindow_)
-        {
-            if (_enabled)
-            {
-                videoWindow_->showFrame();
-            }
-            else
-            {
-                videoWindow_->hideFrame();
-
-                bool wndMinimized = false;
-                bool wndHiden = false;
-                if (QWidget* parentWnd = window())
-                {
-                    wndHiden = !parentWnd->isVisible();
-                    wndMinimized = parentWnd->isMinimized();
-                }
-
-                if (!Utils::foregroundWndIsFullscreened() && !wndMinimized && !wndHiden)
-                {
-                    raise();
-                }
-            }
-        }
-
-        Utils::InterConnector::instance().getMainWindow()->updateMainMenu();
     }
 
     void MainPage::hideInput()
@@ -1908,7 +2125,7 @@ namespace Ui
             splitter_->replaceWidget(0, clSpacer_);
             //clHostLayout_->removeWidget(contactsWidget_);
 
-            //contactsLayout->setParent(contactsWidget_);
+            //contactsLayout_->setParent(contactsWidget_);
             newPanelWidth = Utils::scale_value(360);
 
             showSemiWindow();
@@ -1957,12 +2174,20 @@ namespace Ui
 
     bool MainPage::isVideoWindowActive() const
     {
+#ifndef STRIP_VOIP
         return videoWindow_ && videoWindow_->isActiveWindow();
+#else
+        return false;
+#endif
     }
 
     bool MainPage::isVideoWindowMinimized() const
     {
+#ifndef STRIP_VOIP
         return videoWindow_ && videoWindow_->isMinimized();
+#else
+        return false;
+#endif
     }
 
     void MainPage::setFocusOnInput()
@@ -2086,7 +2311,10 @@ namespace Ui
 
     void MainPage::callContact(const std::vector<QString>& _aimids, const QString& _friendly, bool _video)
     {
-        auto w = new Ui::TwoOptionsWidget(nullptr, qsl(":/phone_icon"), QT_TRANSLATE_NOOP("tooltips", "Audio call"), qsl(":/video_icon"), QT_TRANSLATE_NOOP("tooltips", "Video call"));
+#ifndef STRIP_VOIP
+        auto w = new Ui::MultipleOptionsWidget(nullptr,
+            {{qsl(":/phone_icon"), QT_TRANSLATE_NOOP("tooltips", "Audio call")},
+             {qsl(":/video_icon"), QT_TRANSLATE_NOOP("tooltips", "Video call")}});
         Ui::GeneralDialog generalDialog(w, Utils::InterConnector::instance().getMainWindow());
         generalDialog.addLabel(_friendly, Qt::AlignTop | Qt::AlignLeft, 2);
         generalDialog.addCancelButton(QT_TRANSLATE_NOOP("report_widget", "Cancel"), true);
@@ -2094,15 +2322,12 @@ namespace Ui
         if (!generalDialog.showInCenter())
             return;
 
-        if (w->isFirstSelected())
-            _video = false;
-        else if (w->isSecondSelected())
-            _video = true;
-
+        _video = w->selectedIndex() == 1;
         const auto started = Ui::GetDispatcher()->getVoipController().setStartCall(_aimids, _video, false);
         auto mainPage = MainPage::instance();
         if (mainPage && started)
             mainPage->raiseVideoWindow(voip_call_type::video_call);
+#endif
     }
 
     void MainPage::openRecents()
@@ -2301,25 +2526,39 @@ namespace Ui
 
     bool MainPage::isVideoWindowOn() const
     {
+#ifndef STRIP_VOIP
         return videoWindow_ && !videoWindow_->isHidden();
+#else
+        return false;
+#endif
     }
 
     void MainPage::maximizeVideoWindow()
     {
+#ifndef STRIP_VOIP
         if (!videoWindow_)
             return;
 
         videoWindow_->showMaximized();
+#endif
     }
 
     bool MainPage::isVideoWindowMaximized() const
     {
+#ifndef STRIP_VOIP
         return videoWindow_ && videoWindow_->isMaximized();
+#else
+        return false;
+#endif
     }
 
     bool MainPage::isVideoWindowFullscreen() const
     {
+#ifndef STRIP_VOIP
         return videoWindow_ && videoWindow_->isInFullscreen();
+#else
+        return false;
+#endif
     }
 
     void MainPage::initUpdateButton()
@@ -2348,4 +2587,13 @@ namespace Ui
         }
         QWidget::keyPressEvent(_e);
     }
+
+#ifndef STRIP_VOIP
+    void MainPage::setMicroIssue(MicroIssue _issue)
+    {
+        microIssue_ = _issue;
+        if (videoWindow_)
+            videoWindow_->setMicrophoneAlert(_issue);
+    }
+#endif
 }

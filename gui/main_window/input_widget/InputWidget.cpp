@@ -13,8 +13,10 @@
 #include "panels/PanelMain.h"
 #include "panels/PanelDisabled.h"
 #include "panels/PanelReadonly.h"
-#include "panels/PanelPtt.h"
 #include "panels/PanelMultiselect.h"
+#ifndef STRIP_AV_MEDIA
+#include "panels/PanelPtt.h"
+#endif // !STRIP_AV_MEDIA
 
 #include "../ContactDialog.h"
 #include "../history_control/MentionCompleter.h"
@@ -42,14 +44,16 @@
 #include "../../main_window/contact_list/ContactListModel.h"
 #include "../../main_window/contact_list/ContactListUtils.h"
 #include "../../main_window/contact_list/SelectionContactsForGroupChat.h"
-#include "../../main_window/sounds/SoundsManager.h"
 #include "../../main_window/smiles_menu/suggests_widget.h"
-
 #include "../../main_window/containers/FriendlyContainer.h"
 #include "../../main_window/containers/LastseenContainer.h"
+#include "../../main_window/containers/InputTextContainer.h"
 
 #include "../../utils/gui_coll_helper.h"
+#include "../../utils/exif.h"
 #include "../../utils/utils.h"
+#include "../../utils/async/AsyncTask.h"
+#include "../../utils/log/log.h"
 #include "../../utils/UrlParser.h"
 #include "../../utils/features.h"
 #include "../../utils/stat_utils.h"
@@ -60,12 +64,18 @@
 
 #include "../../previewer/toast.h"
 
+#ifndef STRIP_AV_MEDIA
+#include "../../main_window/sounds/SoundsManager.h"
 #include "media/ptt/AudioRecorder2.h"
 #include "media/ptt/AudioUtils.h"
+#endif // !STRIP_AV_MEDIA
+
 #include "media/permissions/MediaCapturePermissions.h"
 
 #include "../../../common.shared/smartreply/smartreply_types.h"
 #include "../../../common.shared/config/config.h"
+#include "../../../common.shared/string_utils.h"
+#include "../../../common.shared/im_statistics.h"
 
 namespace
 {
@@ -115,7 +125,9 @@ namespace Ui
         , panelMain_(nullptr)
         , panelDisabled_(nullptr)
         , panelReadonly_(nullptr)
+#ifndef STRIP_AV_MEDIA
         , panelPtt_(nullptr)
+#endif // !STRIP_AV_MEDIA
         , panelMultiselect_(nullptr)
         , pttLock_(nullptr)
         , textEdit_(nullptr)
@@ -208,12 +220,20 @@ namespace Ui
 
     bool InputWidget::tryPlayPttRecord()
     {
+#ifndef STRIP_AV_MEDIA
         return panelPtt_ && isRecordingPtt() && panelPtt_->tryPlay(contact_);
+#else
+        return false;
+#endif // !STRIP_AV_MEDIA
     }
 
     bool InputWidget::tryPausePttRecord()
     {
+#ifndef STRIP_AV_MEDIA
         return panelPtt_ && isRecordingPtt() && panelPtt_->tryPause(contact_);
+#else
+        return false;
+#endif // !STRIP_AV_MEDIA
     }
 
     bool InputWidget::isPttHold() const
@@ -245,57 +265,93 @@ namespace Ui
 
     void InputWidget::pasteFromClipboard()
     {
-        auto mimedata = QApplication::clipboard()->mimeData();
-        if (!mimedata || Utils::haveText(mimedata))
+        auto mimeData = QApplication::clipboard()->mimeData();
+
+        if (!mimeData)
+            return;
+
+        if (Utils::haveText(mimeData)) // try text
         {
-            auto& inputMentions = isEditing() ? currentState().edit_.message_->Mentions_ : currentState().mentions_;
-            const auto& textEditMentions = textEdit_->getMentions();
-            inputMentions.insert(textEditMentions.begin(), textEditMentions.end());
+            QString text = mimeData->text();
+            if (text.isEmpty())
+                return;
 
-            auto& inputFiles = isEditing() ? currentState().edit_.message_->Files_ : currentState().files_;
-            const auto& textEditFiles = textEdit_->getFiles();
-            inputFiles.insert(textEditFiles.begin(), textEditFiles.end());
-
+            if (Utils::isBase64EncodedImage(text))
+            {
+                pasteClipboardBase64Image(text);
+                showFileDialog(FileSource::CopyPaste);
+            }
+            updateInputData();
             return;
         }
 
-        bool hasUrls = false;
-        if (mimedata->hasUrls())
+        currentState().filesToSend_.clear();
+        currentState().sendAsFile_ = false;
+        if (mimeData->hasUrls()) // try URLs
         {
-            currentState().filesToSend_.clear();
+            bool hadImage = mimeData->hasImage();
             currentState().description_.clear();
-            const QList<QUrl> urlList = mimedata->urls();
+            const QList<QUrl> urlList = mimeData->urls();
             for (const auto& url : urlList)
-            {
-                if (url.isLocalFile())
-                {
-                    const auto path = url.toLocalFile();
-                    if (const auto fi = QFileInfo(path); fi.exists() && !fi.isBundle() && !fi.isDir())
-                        currentState().filesToSend_.emplace_back(path);
-                    hasUrls = true;
-                }
-            }
+                pasteClipboardUrl(url, hadImage, mimeData);
         }
 
-        if (!hasUrls && mimedata->hasImage())
-        {
-            currentState().filesToSend_.clear();
-            QPixmap pixmap;
-#ifdef _WIN32
-            if (OpenClipboard(nullptr))
-            {
-                HBITMAP hBitmap = (HBITMAP)GetClipboardData(CF_BITMAP);
-                pixmap = qt_pixmapFromWinHBITMAP(hBitmap);
-                CloseClipboard();
-            }
-#else
-            pixmap = qvariant_cast<QPixmap>(mimedata->imageData());
-#endif
-            if (!pixmap.isNull())
-                currentState().filesToSend_.emplace_back(std::move(pixmap));
-        }
+        // if no local URLs found, try images
+        if (currentState().filesToSend_.empty() && mimeData->hasImage())
+            pasteClipboardImage(mimeData->imageData().value<QImage>());
 
         showFileDialog(FileSource::CopyPaste);
+    }
+
+    void InputWidget::updateInputData()
+    {
+        auto& inputMentions = isEditing() ? currentState().edit_.message_->Mentions_ : currentState().mentions_;
+        const auto& textEditMentions = textEdit_->getMentions();
+        inputMentions.insert(textEditMentions.begin(), textEditMentions.end());
+
+        auto& inputFiles = isEditing() ? currentState().edit_.message_->Files_ : currentState().files_;
+        const auto& textEditFiles = textEdit_->getFiles();
+        inputFiles.insert(textEditFiles.begin(), textEditFiles.end());
+    }
+
+    void InputWidget::pasteClipboardUrl(const QUrl& _url, bool _hadImage, const QMimeData* _mimeData)
+    {
+        if (!_url.isValid())
+            return;
+
+        if (_url.isLocalFile())
+        {
+            auto path = _url.toLocalFile();
+            const bool isGif = _mimeData->hasFormat(qsl("image/gif")) && _mimeData->data(qsl("image/gif")) == path.toUtf8();
+            if (const auto fi = QFileInfo(path); fi.exists() && !fi.isBundle() && !fi.isDir())
+                currentState().filesToSend_.emplace_back(std::move(path), isGif);
+        }
+        else
+        {
+            if (_hadImage)
+                return;
+
+            const QString text = _url.toString();
+            if (Utils::isBase64EncodedImage(text))
+                pasteClipboardBase64Image(text);
+        }
+    }
+
+    void InputWidget::pasteClipboardImage(const QImage& _image)
+    {
+        QPixmap pixmap = QPixmap::fromImage(_image);
+        if (!pixmap.isNull())
+            currentState().filesToSend_.emplace_back(std::move(pixmap));
+    }
+
+    void InputWidget::pasteClipboardBase64Image(const QString& _text)
+    {
+        QImage image;
+        QSize size;
+
+        clearInputText(); // it's important to clear text to avoid doubling Base64 data in input field
+        if (Utils::loadBase64Image(_text.toLatin1(), QSize(), image, size))
+            pasteClipboardImage(image);
     }
 
     void InputWidget::keyPressEvent(QKeyEvent* _e)
@@ -374,7 +430,8 @@ namespace Ui
         if (contact_.isEmpty())
             return;
 
-        const auto inputText = getInputText();
+        auto inputText = getInputText();
+        const auto textIsEmpty = QStringView(inputText).trimmed().isEmpty();
         const auto isEdit = isEditing();
 
         if (isEdit)
@@ -382,12 +439,12 @@ namespace Ui
             if (currentState().edit_.message_ && currentState().edit_.message_->GetType() == core::message_type::file_sharing)
                 currentState().edit_.buffer_ = currentState().edit_.message_->GetText() % ql1c('\n') % inputText;
             else
-                currentState().edit_.buffer_ = inputText;
+                currentState().edit_.buffer_ = std::move(inputText);
         }
         else
-            inputTexts_[contact_] = InputText(inputText, textEdit_->textCursor().position());
-
-        const auto textIsEmpty = QStringView(inputText).trimmed().isEmpty();
+        {
+            Logic::InputTextContainer::instance().setInputText(contact_, std::move(inputText), textEdit_->textCursor().position());
+        }
 
         if (textIsEmpty && textEdit_->getUndoRedoStack().isEmpty())
         {
@@ -727,10 +784,10 @@ namespace Ui
 
     void InputWidget::inputPositionChanged()
     {
-        if (currentView() == InputView::Edit)
+        if (currentView() == InputView::Edit || contact_.isEmpty())
             return;
 
-        inputTexts_[contact_] = InputText(getInputText(), textEdit_->textCursor().position());
+        Logic::InputTextContainer::instance().setCursorPos(contact_, textEdit_->textCursor().position());
     }
 
     void InputWidget::enterPressed()
@@ -846,7 +903,10 @@ namespace Ui
 
         if (!isEdit)
         {
+#ifndef STRIP_AV_MEDIA
             GetSoundsManager()->playSound(SoundsManager::Sound::OutgoingMessage);
+#endif // !STRIP_AV_MEDIA
+
             Q_EMIT sendMessage(contact_);
         }
 
@@ -1027,6 +1087,8 @@ namespace Ui
         for (const auto& f : selectedFiles)
             files.emplace_back(f);
 
+        currentState().sendAsFile_ = _filter == FileSelectionFilter::AllFiles;
+
         showFileDialog(FileSource::Clip);
     }
 
@@ -1091,11 +1153,14 @@ namespace Ui
 
     void InputWidget::startPttRecord()
     {
+#ifndef STRIP_AV_MEDIA
         panelPtt_->record(contact_);
+#endif // !STRIP_AV_MEDIA
     }
 
     void InputWidget::stopPttRecording()
     {
+#ifndef STRIP_AV_MEDIA
         if (contact_.isEmpty())
         {
             panelPtt_->stopAll();
@@ -1107,6 +1172,7 @@ namespace Ui
         }
         if (pttLock_)
             pttLock_->hideForce();
+#endif // !STRIP_AV_MEDIA
         buttonSubmit_->enableCircleHover(false);
     }
 
@@ -1117,6 +1183,7 @@ namespace Ui
 
     void InputWidget::sendPtt()
     {
+#ifndef STRIP_AV_MEDIA
         ptt::StatInfo stat;
 
         if (const auto mode = getPttMode(); mode)
@@ -1126,27 +1193,35 @@ namespace Ui
         stopPttRecording();
         sendPttImpl(std::move(stat));
         switchToPreviousView();
+#endif // !STRIP_AV_MEDIA
     }
 
     void InputWidget::sendPttImpl(ptt::StatInfo&& _statInfo)
     {
+#ifndef STRIP_AV_MEDIA
         panelPtt_->send(contact_, std::move(_statInfo));
+#endif // !STRIP_AV_MEDIA
     }
 
     void InputWidget::needToStopPtt()
     {
+#ifndef STRIP_AV_MEDIA
         if (panelPtt_)
             stopPttRecording();
+#endif // !STRIP_AV_MEDIA
     }
 
     void InputWidget::removePttRecord()
     {
+#ifndef STRIP_AV_MEDIA
         if (panelPtt_)
             panelPtt_->remove(contact_);
+#endif // !STRIP_AV_MEDIA
     }
 
     void InputWidget::onPttReady(const QString& _contact, const QString& _file, std::chrono::seconds _duration, const ptt::StatInfo& _statInfo)
     {
+#ifndef STRIP_AV_MEDIA
         const auto& quotes = getInputQuotes();
 
         GetDispatcher()->uploadSharedFile(_contact, _file, quotes, std::make_optional(_duration));
@@ -1169,6 +1244,7 @@ namespace Ui
         }
 
         notifyDialogAboutSend(_contact);
+#endif // !STRIP_AV_MEDIA
     }
 
     void InputWidget::onPttRemoved(const QString& _contact)
@@ -1182,18 +1258,22 @@ namespace Ui
 
     void InputWidget::onPttStateChanged(const QString& _contact, ptt::State2 _state)
     {
+#ifndef STRIP_AV_MEDIA
         if (contact_ != _contact)
             return;
 
         if (_state == ptt::State2::Stopped)
             disablePttCircleHover();
+#endif // !STRIP_AV_MEDIA
     }
 
     void InputWidget::disablePttCircleHover()
     {
+#ifndef STRIP_AV_MEDIA
         buttonSubmit_->enableCircleHover(false);
         if (panelPtt_)
             panelPtt_->enableCircleHover(contact_, false);
+#endif // !STRIP_AV_MEDIA
     }
 
     void InputWidget::showQuotes()
@@ -1233,9 +1313,10 @@ namespace Ui
 
             if (panelMain_)
                 panelMain_->setUnderQuote(_isVisible);
-
+#ifndef STRIP_AV_MEDIA
             if (panelPtt_)
                 panelPtt_->setUnderQuote(_isVisible);
+#endif // !STRIP_AV_MEDIA
 
             updateInputHeight();
             updateSubmitButtonState(UpdateMode::IfChanged);
@@ -1251,7 +1332,11 @@ namespace Ui
             return panelMain_;
 
         case InputView::Ptt:
+#ifndef STRIP_AV_MEDIA
             return panelPtt_;
+#else
+            return nullptr;
+#endif // !STRIP_AV_MEDIA
 
         case InputView::Readonly:
             return panelReadonly_;
@@ -1413,8 +1498,10 @@ namespace Ui
             panelMain_->setFocusOnAttach();
         else if (panel == panelReadonly_)
             panelReadonly_->setFocusOnButton();
+#ifndef STRIP_AV_MEDIA
         else if (panel == panelPtt_)
             panelPtt_->setFocusOnDelete();
+#endif // !STRIP_AV_MEDIA
     }
 
     void InputWidget::setFocusOnInput()
@@ -1617,7 +1704,8 @@ namespace Ui
             return true;
 
         const auto lastChar = text.at(0);
-        if (lastChar.isSpace() || qsl(".,:;_-+=!?\"\'#").contains(lastChar)) // use QStringView since 5.14
+        static constexpr auto delims = QStringView(u".,:;_-+=!?\"\'#");
+        if (lastChar.isSpace() || delims.contains(lastChar))
             return true;
 
         return false;
@@ -1757,6 +1845,7 @@ namespace Ui
 
     void InputWidget::switchToPttPanel(const StateTransition _transition)
     {
+#ifndef STRIP_AV_MEDIA
         initSubmitButton();
         if (!panelPtt_)
         {
@@ -1784,6 +1873,7 @@ namespace Ui
         setFocusToSubmit_ = false;
 
         setCurrentWidget(panelPtt_);
+#endif // !STRIP_AV_MEDIA
     }
 
     void InputWidget::switchToMultiselectPanel()
@@ -1822,7 +1912,14 @@ namespace Ui
         if (buttonSubmit_)
         {
             buttonSubmit_->setGraphicsEffect(nullptr);
-            buttonSubmit_->setVisible(_widget == panelMain_ || _widget == panelPtt_);
+
+            const bool visible =
+#ifndef STRIP_AV_MEDIA
+                _widget == panelPtt_ ||
+#endif // !STRIP_AV_MEDIA
+                _widget == panelMain_;
+
+            buttonSubmit_->setVisible(visible);
             buttonSubmit_->raise();
         }
     }
@@ -1837,7 +1934,7 @@ namespace Ui
         buttonSubmit_->updateStyle(currentStyleMode());
         buttonSubmit_->setState(SubmitButton::State::Ptt, StateTransition::Force);
         Testing::setAccessibleName(buttonSubmit_, qsl("AS ChatInput buttonSubmit"));
-        connect(buttonSubmit_, &SubmitButton::clicked, this, &InputWidget::onSubmitClicked);
+        connect(buttonSubmit_, &SubmitButton::clickedWithButton, this, &InputWidget::onSubmitClicked);
         connect(buttonSubmit_, &SubmitButton::pressed, this, &InputWidget::onSubmitPressed);
         connect(buttonSubmit_, &SubmitButton::released, this, &InputWidget::onSubmitReleased);
         connect(buttonSubmit_, &SubmitButton::longTapped, this, &InputWidget::onSubmitLongTapped);
@@ -1884,6 +1981,7 @@ namespace Ui
 
     void InputWidget::onSubmitReleased()
     {
+#ifndef STRIP_AV_MEDIA
         const auto scoped = Utils::ScopeExitT([this]()
         {
             disablePttCircleHover();
@@ -1911,6 +2009,7 @@ namespace Ui
             if (const auto pos = QCursor::pos(); rect().contains(mapFromGlobal(pos)))
                 stopPttRecording();
         }
+#endif // !STRIP_AV_MEDIA
     }
 
     void InputWidget::onSubmitLongTapped()
@@ -1938,6 +2037,7 @@ namespace Ui
 
     void InputWidget::onSubmitMovePressed()
     {
+#ifndef STRIP_AV_MEDIA
         if (panelPtt_ && !contact_.isEmpty() && currentView() == InputView::Ptt)
         {
             if (pttMode_ != PttMode::HoldByMouse)
@@ -1965,6 +2065,7 @@ namespace Ui
                 canLockPtt_ = newCanLocked;
             }
         }
+#endif // !STRIP_AV_MEDIA
     }
 
     void InputWidget::startPtt(PttMode _mode)
@@ -1982,6 +2083,7 @@ namespace Ui
             if (contact != pThis->contact_)
                 return;
 
+#ifndef STRIP_AV_MEDIA
             if (ptt::AudioRecorder2::hasDevice())
             {
                 pThis->setView(InputView::Ptt);
@@ -2006,6 +2108,9 @@ namespace Ui
                     }*/
                 }
             }
+#else
+            Q_UNUSED(_mode)
+#endif // !STRIP_AV_MEDIA
         };
         static bool isShow = false;
         const auto p = media::permissions::checkPermission(media::permissions::DeviceType::Microphone);
@@ -2050,6 +2155,7 @@ namespace Ui
 
     void InputWidget::setPttMode(const std::optional<PttMode>& _mode)
     {
+#ifndef STRIP_AV_MEDIA
         pttMode_ = _mode;
 
         const auto isHoldByKeyboard = pttMode_ == PttMode::HoldByKeyboard;
@@ -2062,6 +2168,7 @@ namespace Ui
             panelPtt_->setUnderLongPress(contact_, isHoldByKeyboard);
             panelPtt_->enableCircleHover(contact_, isHoldMode);
         }
+#endif // !STRIP_AV_MEDIA
     }
 
     std::optional<InputWidget::PttMode> InputWidget::getPttMode() const noexcept
@@ -2131,13 +2238,18 @@ namespace Ui
         }
 
         currentState().view_ = _view;
+        const auto role = Logic::getContactListModel()->getYourRole(contact_);
+        const auto hasInContactList = Logic::getContactListModel()->hasContact(contact_);
+        const auto isRoleKnownAndMember = role == u"member" || role == u"readonly";
+        if (isRoleKnownAndMember && !hasInContactList)
+            Log::write_network_log(su::concat("contact-list-debug role is known and ", role.toStdString(), " and hasContact() is false\r\n"));
 
         if (Logic::getIgnoreModel()->contains(contact_))
         {
             currentState().clear(InputView::Readonly);
             switchToReadonlyPanel(ReadonlyPanelState::Unblock);
         }
-        else if (_view != InputView::Multiselect && Utils::isChat(contact_) && !Logic::getContactListModel()->hasContact(contact_))
+        else if (_view != InputView::Multiselect && Utils::isChat(contact_) && !hasInContactList && !isRoleKnownAndMember)
         {
             currentState().clear(InputView::Readonly);
             switchToReadonlyPanel(ReadonlyPanelState::AddToContactList);
@@ -2159,7 +2271,6 @@ namespace Ui
             }
             else
             {
-                const auto role = Logic::getContactListModel()->getYourRole(contact_);
                 if (role == u"notamember")
                 {
                     switchToReadonlyPanel(ReadonlyPanelState::DeleteAndLeave);
@@ -2369,6 +2480,7 @@ namespace Ui
         }
 
         auto sendQuotesOnce = !mayQuotesSent;
+        bool alreadySentWebp = false;
         for (const auto& f : files)
         {
             if (f.getSize() == 0)
@@ -2377,19 +2489,33 @@ namespace Ui
             const auto& quotesToSend = sendQuotesOnce ? quotes : Data::QuotesVec();
             const auto& descToSend = descriptionInside ? currentState().description_ : QString();
             const auto& mentionsToSend = descriptionInside ? getInputMentions() : Data::MentionMap();
+            const auto isWebpScreenshot = Features::isWebpScreenshotEnabled() && f.canConvertToWebp();
 
-            if (f.isFile())
+            if (f.isGifFile())
             {
-                GetDispatcher()->uploadSharedFile(contact_, f.getFileInfo().absoluteFilePath(), quotesToSend, descToSend, mentionsToSend);
+                QFile file(f.getFileInfo().absoluteFilePath());
+                if (file.open(QIODevice::ReadOnly))
+                    GetDispatcher()->uploadSharedFile(contact_, file.readAll(), u".gif", quotesToSend, descToSend, mentionsToSend);
+            }
+            else if (f.isFile() && (currentState().sendAsFile_ || alreadySentWebp || !isWebpScreenshot))
+            {
+                GetDispatcher()->uploadSharedFile(contact_, f.getFileInfo().absoluteFilePath(), quotesToSend, descToSend, mentionsToSend, currentState().sendAsFile_);
             }
             else
             {
-                QByteArray array;
-                QBuffer b(&array);
-                b.open(QIODevice::WriteOnly);
-                f.getPixmap().save(&b, "png");
+                if (isWebpScreenshot)
+                    alreadySentWebp = true;
+                Async::runAsync([f, contact_ = contact_, quotesToSend, descToSend, mentionsToSend, isWebpScreenshot]() mutable
+                {
+                    auto array = FileToSend::loadImageData(f, isWebpScreenshot ? FileToSend::Format::webp : FileToSend::Format::png);
+                    if (array.isEmpty())
+                        return;
 
-                GetDispatcher()->uploadSharedFile(contact_, array, u".png", quotesToSend, descToSend, mentionsToSend);
+                    Async::runInMain([array = std::move(array), contact_ = std::move(contact_), quotesToSend = std::move(quotesToSend), descToSend = std::move(descToSend), mentionsToSend = std::move(mentionsToSend), isWebpScreenshot]()
+                    {
+                        GetDispatcher()->uploadSharedFile(contact_, array, isWebpScreenshot ? u".webp" : u".png", quotesToSend, descToSend, mentionsToSend);
+                    });
+                });
             }
 
             notifyDialogAboutSend(contact_);
@@ -2484,6 +2610,7 @@ namespace Ui
     {
         currentState().description_.clear();
         currentState().filesToSend_.clear();
+        currentState().sendAsFile_ = false;
     }
 
     void InputWidget::clearMentions()
@@ -2508,7 +2635,11 @@ namespace Ui
 
     void InputWidget::loadInputText()
     {
-        const auto& input = inputTexts_[contact_];
+        assert(!contact_.isEmpty());
+        if (contact_.isEmpty())
+            return;
+
+        const auto& input = Logic::InputTextContainer::instance().getInputText(contact_);
         setInputText(input.text_, input.cursorPos_);
     }
 
@@ -2665,7 +2796,9 @@ namespace Ui
             quotesWidget_,
             panelMain_,
             panelReadonly_,
+#ifndef STRIP_AV_MEDIA
             panelPtt_,
+#endif // !STRIP_AV_MEDIA
             panelDisabled_,
             buttonSubmit_,
             panelMultiselect_
@@ -2944,8 +3077,10 @@ namespace Ui
 
     void InputWidget::hideAndRemoveDialog(const QString& _contact)
     {
+#ifndef STRIP_AV_MEDIA
         if (panelPtt_)
             panelPtt_->close(_contact);
+#endif // !STRIP_AV_MEDIA
         const auto it = states_.find(_contact);
         if (it == states_.end())
             return;

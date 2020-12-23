@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../common.shared/spin_lock.h"
+#include "../common.shared/config/config.h"
 
 namespace core
 {
@@ -15,13 +16,15 @@ namespace config
     {
         enum class host_url_type;
 
+        using host_cache = std::vector<std::pair<host_url_type, std::string>>;
+
         using load_callback_t = std::function<void(core::ext_url_config_error _error, std::string _host)>;
 
         class external_url_config
         {
         public:
-            static std::string make_url(std::string_view _domain, std::string_view _query = std::string_view());
             static std::string make_url_preset(std::string_view _login_domain);
+            static std::string make_url_auto_preset(std::string_view _login_domain, std::string_view _host = {});
             static std::string_view extract_host(std::string_view _host);
 
             static external_url_config& instance();
@@ -34,24 +37,25 @@ namespace config
 
             void clear();
 
-            [[nodiscard]] std::map<host_url_type, std::string> get_cache() const;
+            [[nodiscard]] host_cache get_cache() const;
             [[nodiscard]] bool is_valid() const;
 
-            using config_features = std::map<config::features, bool>;
-
         private:
+            static std::string make_url(std::string_view _domain, std::string_view _query = {});
             external_url_config();
+            ~external_url_config();
             bool unserialize(const rapidjson::Value& _node);
-            void override_features(const config_features& _values);
+            void override_features(const features_vector& _values);
             void reset_to_defaults();
 
         private:
             struct config_p
             {
-                std::map<host_url_type, std::string> cache_;
+                host_cache cache_;
                 std::vector<std::string> vcs_rooms_;
-                config_features override_values_;
+                features_vector override_values_;
 
+                std::string_view get_host(host_url_type _type) const;
                 bool unserialize(const rapidjson::Value& _node);
             };
 

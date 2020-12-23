@@ -31,6 +31,8 @@ namespace core
             virtual ~set_state();
 
             virtual priority_t get_priority() const override;
+
+            virtual std::string_view get_method() const override;
         };
 
     }

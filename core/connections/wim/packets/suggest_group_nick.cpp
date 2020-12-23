@@ -19,6 +19,11 @@ suggest_group_nick::suggest_group_nick(
 
 suggest_group_nick::~suggest_group_nick() = default;
 
+std::string_view suggest_group_nick::get_method() const
+{
+    return public_ ? "suggestPublicGroupStamp" : "suggestPrivateGroupStamp";
+}
+
 int32_t suggest_group_nick::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     rapidjson::Document doc(rapidjson::Type::kObjectType);
@@ -29,7 +34,7 @@ int32_t suggest_group_nick::init_request(const std::shared_ptr<core::http_reques
 
     doc.AddMember("params", std::move(node_params), a);
 
-    setup_common_and_sign(doc, a, _request, public_ ? "suggestPublicGroupStamp" : "suggestPrivateGroupStamp");
+    setup_common_and_sign(doc, a, _request, get_method());
 
     if (!params_.full_log_)
     {

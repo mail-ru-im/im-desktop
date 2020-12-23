@@ -19,6 +19,11 @@ const std::shared_ptr<core::archive::persons_map>& search_contacts::get_persons(
     return response_.get_persons();
 }
 
+std::string_view search_contacts::get_method() const
+{
+    return "search";
+}
+
 int32_t search_contacts::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     if (keyword_.empty() && phone_.empty())
@@ -36,7 +41,7 @@ int32_t search_contacts::init_request(const std::shared_ptr<core::http_request_s
 
     doc.AddMember("params", std::move(node_params), a);
 
-    setup_common_and_sign(doc, a, _request, "search");
+    setup_common_and_sign(doc, a, _request, get_method());
 
     if (!robusto_packet::params_.full_log_)
     {

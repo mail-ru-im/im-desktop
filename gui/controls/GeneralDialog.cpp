@@ -190,7 +190,7 @@ namespace Ui
             return;
 
         if (withSemiwindow_)
-            semiWindow_->Hide();
+            semiWindow_->hideAnimated();
 
         QDialog::reject();
     }
@@ -198,7 +198,7 @@ namespace Ui
     void GeneralDialog::acceptDialog()
     {
         if (withSemiwindow_)
-            semiWindow_->Hide();
+            semiWindow_->hideAnimated();
 
         QDialog::accept();
     }
@@ -211,6 +211,16 @@ namespace Ui
 
     void GeneralDialog::addLabel(const QString& _text, Qt::Alignment _alignment, int _maxLinesNumber)
     {
+        if (headerLabelHost_->layout())
+        {
+            auto label = headerLabelHost_->findChild<TextUnitLabel*>();
+            if (label)
+            {
+                label->setText(_text);
+                return;
+            }
+        }
+
         headerLabelHost_->setVisible(true);
         auto hostLayout = Utils::emptyHLayout(headerLabelHost_);
 
@@ -370,8 +380,16 @@ namespace Ui
             Utils::addShadowToWindow(shadowHost_, true);
         }
 
-        if (!semiWindow_->isVisible() && withSemiwindow_)
-            semiWindow_->Show();
+        if (withSemiwindow_)
+        {
+            if (!semiWindow_->isVisible())
+                semiWindow_->showAnimated();
+        }
+        else
+        {
+            semiWindow_->setStep(0);
+            semiWindow_->show();
+        }
 
         show();
         inExec_ = true;
@@ -385,7 +403,7 @@ namespace Ui
         if constexpr (platform::is_apple())
             semiWindow_->parentWidget()->activateWindow();
         if (semiWindow_->isVisible())
-            semiWindow_->Hide();
+            semiWindow_->hideAnimated();
         return result;
     }
 
@@ -464,7 +482,7 @@ namespace Ui
             }
         }
 
-        return false;
+        return QDialog::eventFilter(_obj, _event);
     }
 
     void GeneralDialog::showEvent(QShowEvent *event)
@@ -598,103 +616,68 @@ namespace Ui
             Utils::setDefaultBackground(mainHost_);
     }
 
-    TwoOptionsWidget::TwoOptionsWidget(QWidget* _parent, const QString& _firstOptionIcon, const QString& _firstOption, const QString& _secondOptionIcon, const QString& _secondOption)
-        : QWidget(_parent)
-        , firstHovered_(false)
-        , firstSelected_(false)
-        , secondHovered_(false)
-        , secondSelected_(false)
+    OptionWidget::OptionWidget(QWidget* _parent, const QString& _icon, const QString& _caption)
+        : SimpleListItem(_parent)
+        , icon_(Utils::renderSvg(_icon, QSize(getIconSize(), getIconSize()), Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY)))
+        , caption_(TextRendering::MakeTextUnit(_caption, {}, TextRendering::LinksVisible::DONT_SHOW_LINKS))
     {
-        firstOption_ = TextRendering::MakeTextUnit(_firstOption, Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS);
-        firstOption_->init(Fonts::appFontScaled(16), Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY));
-        firstOptionIcon_ = Utils::renderSvg(_firstOptionIcon, QSize(getIconSize(), getIconSize()), Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY));
+        setFixedHeight(getOptionHeight());
 
-        secondOption_ = TextRendering::MakeTextUnit(_secondOption, Data::MentionMap(), TextRendering::LinksVisible::DONT_SHOW_LINKS);
-        secondOption_->init(Fonts::appFontScaled(16), Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY));
-        secondOptionIcon_ = Utils::renderSvg(_secondOptionIcon, QSize(getIconSize(), getIconSize()), Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY));
-
-        setFixedHeight(getOptionHeight() * 2 + getMargin());
-        setMouseTracking(true);
+        caption_->init(Fonts::appFontScaled(16), Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY));
+        caption_->setOffsets(getMargin() * 2 + getIconSize(), height() / 2);
     }
 
-    bool TwoOptionsWidget::isFirstSelected() const
-    {
-        return firstSelected_;
-    }
+    OptionWidget::~OptionWidget() = default;
 
-    bool TwoOptionsWidget::isSecondSelected() const
-    {
-        return secondSelected_;
-    }
-
-    void TwoOptionsWidget::paintEvent(QPaintEvent* _event)
+    void OptionWidget::paintEvent(QPaintEvent*)
     {
         QPainter p(this);
 
-        if (firstHovered_)
-            p.fillRect(0, getMargin(), width(), getOptionHeight(), Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT_INVERSE));
-        if (secondHovered_)
-            p.fillRect(0, getOptionHeight() + getMargin(), width(), getOptionHeight(), Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT_INVERSE));
+        if (isHovered())
+            p.fillRect(rect(), Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT_INVERSE));
 
-        p.drawPixmap(getMargin(), getOptionHeight() / 2 - getIconSize() / 2 + getMargin(), firstOptionIcon_);
-        firstOption_->setOffsets(getMargin() * 2 + getIconSize(), getOptionHeight() / 2 + getMargin());
-        firstOption_->draw(p, TextRendering::VerPosition::MIDDLE);
-
-        p.drawPixmap(getMargin(), (getOptionHeight() / 2) * 3 - getIconSize() / 2 + getMargin(), secondOptionIcon_);
-        secondOption_->setOffsets(getMargin() * 2 + getIconSize(), (getOptionHeight() / 2) * 3 + getMargin());
-        secondOption_->draw(p, TextRendering::VerPosition::MIDDLE);
+        p.drawPixmap(getMargin(), getOptionHeight() / 2 - getIconSize() / 2, icon_);
+        caption_->draw(p, TextRendering::VerPosition::MIDDLE);
     }
 
-    void TwoOptionsWidget::resizeEvent(QResizeEvent* _event)
+    void OptionWidget::resizeEvent(QResizeEvent* _e)
     {
-        firstOption_->elide(width() - getMargin() * 3 - getIconSize());
-        secondOption_->elide(width() - getMargin() * 3 - getIconSize());
-
-        QWidget::resizeEvent(_event);
-    }
-
-    void TwoOptionsWidget::mouseMoveEvent(QMouseEvent* _event)
-    {
-        firstHovered_ = false;
-        secondHovered_ = false;
-
-        if (QRect(0, getMargin(), width(), getOptionHeight()).contains(_event->pos()))
-            firstHovered_ = true;
-        else if (QRect(0, getOptionHeight() + getMargin(), width(), getOptionHeight()).contains(_event->pos()))
-            secondHovered_ = true;
-
-        setCursor((firstHovered_ || secondHovered_) ? Qt::PointingHandCursor : Qt::ArrowCursor);
-
-        update();
-        QWidget::mouseMoveEvent(_event);
-    }
-
-    void TwoOptionsWidget::mousePressEvent(QMouseEvent* _event)
-    {
-        pos_ = _event->pos();
-        QWidget::mousePressEvent(_event);
-    }
-
-    void TwoOptionsWidget::mouseReleaseEvent(QMouseEvent* _event)
-    {
-        if (Utils::clicked(pos_, _event->pos()))
+        if (width() != _e->oldSize().width())
         {
-            if (QRect(0, getMargin(), width(), getOptionHeight()).contains(_event->pos()))
-                firstSelected_ = true;
-            else if (QRect(0, getOptionHeight() + getMargin(), width(), getOptionHeight()).contains(_event->pos()))
-                secondSelected_ = true;
-
-            Q_EMIT Utils::InterConnector::instance().acceptGeneralDialog();
+            caption_->elide(width() - getMargin() * 3 - getIconSize());
+            update();
         }
-        QWidget::mouseReleaseEvent(_event);
     }
 
-    void TwoOptionsWidget::leaveEvent(QEvent* _event)
+    MultipleOptionsWidget::MultipleOptionsWidget(QWidget* _parent, const optionsVector& _options)
+        : QWidget(_parent)
+        , listWidget_(new SimpleListWidget(Qt::Vertical, this))
     {
-        firstHovered_ = false;
-        secondHovered_ = false;
-        setCursor(Qt::ArrowCursor);
-        update();
-        QWidget::leaveEvent(_event);
+        assert(!_options.empty());
+
+        int i = 1;
+        for (const auto& [icon, caption] : _options)
+        {
+            auto opt = new OptionWidget(this, icon, caption);
+            Testing::setAccessibleName(opt, qsl("AS optionsWidget option") % QString::number(i++));
+
+            listWidget_->addItem(opt);
+        }
+
+        connect(listWidget_, &SimpleListWidget::clicked, this, [this](int idx)
+        {
+            if (!listWidget_->isValidIndex(idx))
+                return;
+
+            selectedIndex_ = idx;
+            Q_EMIT Utils::InterConnector::instance().acceptGeneralDialog();
+        });
+
+        auto layout = Utils::emptyVLayout(this);
+        layout->addSpacing(getMargin());
+        layout->addWidget(listWidget_);
+
+        setFixedHeight(getOptionHeight() * _options.size() + getMargin());
+        Testing::setAccessibleName(this, qsl("AS optionsWidget"));
     }
 }

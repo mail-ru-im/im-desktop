@@ -46,7 +46,7 @@ namespace Logic
 
     protected:
         virtual void refreshList();
-        void Q_EMITChanged(const int _first, const int _last);
+        void emitChanged(const int _first, const int _last);
 
     private:
         int flags_;

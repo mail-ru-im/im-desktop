@@ -464,7 +464,6 @@ inline void operator>>(const voip_manager::eNotificationTypes& _type, core::coll
 
     //case kNotificationType_MinimalBandwidthChanged: _coll.set_value_as_string(name, "voip_minimal_bandwidth_state_changed"); return;
     case kNotificationType_MaskEngineEnable: _coll.set_value_as_string(name, "voip_mask_engine_enable"); return;
-    case kNotificationType_LoadMask: _coll.set_value_as_string(name, "voip_load_mask"); return;
 
     //case kNotificationType_ConnectionDestroyed: /* Nothing to do for now */ return;
 

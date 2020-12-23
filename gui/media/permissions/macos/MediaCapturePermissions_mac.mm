@@ -1,7 +1,6 @@
 #include "stdafx.h"
 
 #include "../MediaCapturePermissions.h"
-#include <libproc.h>
 
 #import <AVFoundation/AVFoundation.h>
 #import <AppKit/AppKit.h>
@@ -41,53 +40,47 @@ namespace
         return media::permissions::Permission::Allowed;
     }
 
+    void checkWindowScreenRecordPermission(const void* inputDictionary, void* context)
+    {
+        if (!inputDictionary || !context)
+            return;
+
+        auto permission = false;
+        if (const auto entry = (__bridge NSDictionary*)inputDictionary)
+        {
+            NSString* windowName = entry[(id) kCGWindowName];
+            auto sharingState = [entry[(id) kCGWindowSharingState] intValue];
+            if (windowName || sharingState != kCGWindowSharingNone)
+                permission = true;
+        }
+
+        auto cumulativePermisson = static_cast<bool*>(context);
+        *cumulativePermisson &= permission;
+    }
+
     // Hack from https://stackoverflow.com/questions/56597221/detecting-screen-recording-settings-on-macos-catalina
     media::permissions::Permission isScreenCaptureAllowed()
     {
         if (@available(macos 10.15, *))
         {
-            bool bRet = false;
-            CFArrayRef list = CGWindowListCopyWindowInfo(kCGWindowListOptionAll, kCGNullWindowID);
-            if (list)
-            {
-                int n = (int)(CFArrayGetCount(list));
-                for (int i = 0; i < n; i++)
-                {
-                    NSDictionary* info = (NSDictionary*)(CFArrayGetValueAtIndex(list, (CFIndex)i));
-                    NSString* name = info[(id)kCGWindowName];
-                    NSNumber* pid = info[(id)kCGWindowOwnerPID];
-                    if (pid != nil && name != nil)
-                    {
-                        int nPid = [pid intValue];
-                        char path[PROC_PIDPATHINFO_MAXSIZE+1];
-                        int lenPath = proc_pidpath(nPid, path, PROC_PIDPATHINFO_MAXSIZE);
-                        if (lenPath > 0)
-                        {
-                            path[lenPath] = 0;
-                            if (strcmp(path, "/System/Library/CoreServices/SystemUIServer.app/Contents/MacOS/SystemUIServer") == 0)
-                            {
-                                bRet = true;
-                                break;
-                            }
-                        }
-                    }
-                }
-                CFRelease(list);
-            }
+            bool bRet = true;
+            if (const auto windowList = CGWindowListCopyWindowInfo(kCGWindowListOptionOnScreenOnly, kCGNullWindowID))
+                CFArrayApplyFunction(windowList, CFRangeMake(0, CFArrayGetCount(windowList)), &checkWindowScreenRecordPermission, static_cast<void*>(&bRet));
+
             return bRet ? media::permissions::Permission::Allowed : media::permissions::Permission::Denied;
         } else {
             return media::permissions::Permission::Allowed;
         }
     }
-}
 
-constexpr auto getMediaType(media::permissions::DeviceType type) noexcept
-{
-    if (type == media::permissions::DeviceType::Microphone)
-        return AVMediaTypeAudio;
-    else if (type == media::permissions::DeviceType::Camera)
-        return AVMediaTypeVideo;
-    return AVMediaTypeAudio; // default
+    constexpr auto getMediaType(media::permissions::DeviceType type) noexcept
+    {
+        if (type == media::permissions::DeviceType::Microphone)
+            return AVMediaTypeAudio;
+        else if (type == media::permissions::DeviceType::Camera)
+            return AVMediaTypeVideo;
+        return AVMediaTypeAudio; // default
+    }
 }
 
 namespace media::permissions
@@ -154,5 +147,13 @@ namespace media::permissions
             [[NSWorkspace sharedWorkspace] openURL:[NSURL URLWithString:@"x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture"]];
             break;
         }
+    }
+
+    void PermissonsChangeNotifier::start()
+    {
+    }
+
+    void PermissonsChangeNotifier::stop()
+    {
     }
 }

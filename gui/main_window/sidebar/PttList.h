@@ -21,6 +21,8 @@ namespace Ui
         virtual void setWidth(int _width) {}
         virtual void setReqId(qint64 _reqId) {}
         virtual qint64 reqId() const { return -1; }
+        virtual void setPending(bool) {};
+        virtual bool isPending() const { return false; };
 
         virtual qint64 getMsg() const { return 0; }
         virtual qint64 getSeq() const { return 0; }
@@ -43,10 +45,13 @@ namespace Ui
         virtual bool textClicked(const QPoint&) const { return false; }
 
         virtual void setPlayState(const ButtonState& _state) {}
+        virtual ButtonState playState() const { return ButtonState::NORMAL; }
         virtual void setTextState(const ButtonState& _state) {}
+        virtual ButtonState textState() const { return ButtonState::NORMAL; }
 
         virtual bool isOverDate(const QPoint&) const { return false; }
         virtual void setDateState(bool _hover, bool _active) {}
+        virtual bool isDatePressed() const { return false; }
 
         virtual bool isOutgoing() const { return false; }
 
@@ -55,6 +60,16 @@ namespace Ui
         virtual ButtonState moreButtonState() const { return ButtonState::NORMAL; }
 
         virtual bool isDateItem() const { return false; }
+
+        virtual bool isOverProgressBar(const QPoint&) const { return false; }
+        virtual bool isOverBullet(const QPoint& _pos) const { return false; }
+        virtual void updateBulletHoverState(const QPoint&) { }
+        virtual void changeProgressPressed(bool) {}
+        virtual bool isProgressPressed() const { return false; };
+        virtual int getProgress(const QPoint& _pos = QPoint()) { return 0; }
+
+        virtual QString getTimeString(const QPoint& _pos) const { return QString(); };
+        virtual QPoint getTooltipPos(const QPoint& _cursorPos) const { return QPoint(); }
     };
 
     class DatePttItem : public BasePttItem
@@ -87,6 +102,8 @@ namespace Ui
         virtual void setWidth(int _width) override;
         virtual void setReqId(qint64 _reqId) override;
         virtual qint64 reqId() const override;
+        virtual void setPending(bool _flag) override;
+        virtual bool isPending() const override;
 
         virtual qint64 getMsg() const override;
         virtual qint64 getSeq() const override;
@@ -109,10 +126,13 @@ namespace Ui
         virtual bool textClicked(const QPoint&) const override;
 
         virtual void setPlayState(const ButtonState& _state) override;
+        virtual ButtonState playState() const override;
         virtual void setTextState(const ButtonState& _state) override;
+        virtual ButtonState textState() const override;
 
         virtual bool isOverDate(const QPoint&) const override;
         virtual void setDateState(bool _hover, bool _active) override;
+        virtual bool isDatePressed() const override;
 
         virtual bool isOutgoing() const override;
 
@@ -121,6 +141,21 @@ namespace Ui
         virtual ButtonState moreButtonState() const override;
 
         virtual bool isDateItem() const override { return false; }
+
+        virtual bool isOverProgressBar(const QPoint& _pos) const override;
+        virtual bool isOverBullet(const QPoint& _pos) const override;
+        virtual void updateBulletHoverState(const QPoint&) override;
+        virtual void changeProgressPressed(bool _pressed) override;
+        virtual bool isProgressPressed() const override;
+        virtual int getProgress(const QPoint& _pos = QPoint()) override;
+        double evaluateProgress(const QPoint& _pos) const;
+
+        virtual QString getTimeString(const QPoint& _pos) const override;
+        virtual QPoint getTooltipPos(const QPoint& _cursorPos) const override;
+
+    private:
+        QRect getPlaybackRect() const;
+        QRect getBulletRect() const;
 
     private:
         QString link_;
@@ -133,11 +168,13 @@ namespace Ui
         qint64 msg_;
         qint64 seq_;
         int progress_;
+        int durationSec_ = 0;
         bool playing_;
         bool pause_;
         bool textVisible_;
         ButtonState playState_;
         ButtonState textState_;
+        bool datePressed_;
 
         QString localPath_;
         QString text_;
@@ -150,6 +187,10 @@ namespace Ui
 
         QPixmap more_;
         ButtonState moreState_;
+
+        bool progressPressed_ = false;
+        bool progressHovered_ = false;
+        bool isPending_ = false;
     };
 
     class PttList : public MediaContentWidget
@@ -173,18 +214,39 @@ namespace Ui
 
         virtual ItemData itemAt(const QPoint& _pos) override;
 
+    private:
+        enum class PttFinish
+        {
+            KeepProgress,
+            DropProgress,
+        };
+
     private Q_SLOTS:
         void onFileDownloaded(qint64, const Data::FileSharingDownloadResult& _result);
         void onPttText(qint64 _seq, int _error, QString _text, int _comeback);
-        void finishPtt(int);
+        void finishPtt(int _id, const PttFinish _state = PttFinish::DropProgress);
 
     private:
-        void play(std::unique_ptr<BasePttItem>& _item);
+        void play(const std::unique_ptr<BasePttItem>& _item);
         void invalidateHeight();
         void validateDates();
 
         void onPttFinished(int _id, bool _byPlay);
         void onPttPaused(int _id);
+
+        void updateTooltipState(const std::unique_ptr<BasePttItem>& _item, const QPoint& _p, int _dH);
+        bool isItemPlaying(const std::unique_ptr<BasePttItem>& _item) const;
+
+        enum class AnimationState
+        {
+            Play,
+            Pause
+        };
+
+        int initAnimation(const std::unique_ptr<BasePttItem>& _item, AnimationState _state = AnimationState::Pause);
+        void updateAnimation(std::unique_ptr<BasePttItem>& _item);
+        void updateItemProgress(std::unique_ptr<BasePttItem>& _item, const QPoint& _pos);
+        void showTooltip() const;
 
     private:
         std::vector<std::unique_ptr<BasePttItem>> Items_;
@@ -194,5 +256,8 @@ namespace Ui
         std::pair<qint64, qint64> playingIndex_;
         int lastProgress_;
         QVariantAnimation* animation_;
+        QPoint tooltipPos_;
+        QString tooltipText_;
+        bool continuePlaying_ = false;
     };
 }

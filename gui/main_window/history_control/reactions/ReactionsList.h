@@ -120,6 +120,7 @@ namespace Ui
     };
 
     class ReactionsListContent_p;
+    class AccessibleReactionsListContent;
 
     //////////////////////////////////////////////////////////////////////////
     // ReactionsListContent
@@ -128,6 +129,9 @@ namespace Ui
     class ReactionsListContent : public QWidget
     {
         Q_OBJECT
+        friend class ReactionsListContent_p;
+        friend class AccessibleReactionsListContent;
+
     public:
         ReactionsListContent(QWidget* _parent);
         ~ReactionsListContent();
@@ -154,4 +158,19 @@ namespace Ui
     private:
         std::unique_ptr<ReactionsListContent_p> d;
     };
+
+    class AccessibleReactionsListContent : public QAccessibleWidget
+    {
+    public:
+        AccessibleReactionsListContent(ReactionsListContent* _list) : QAccessibleWidget(_list), list_(_list) {}
+
+        int childCount() const override;
+        QAccessibleInterface* child(int _index) const override;
+        int indexOfChild(const QAccessibleInterface* _child) const override;
+        QString	text(QAccessible::Text _type) const override;
+
+    private:
+        ReactionsListContent* list_ = nullptr;
+    };
+
 }

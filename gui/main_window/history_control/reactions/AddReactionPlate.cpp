@@ -245,7 +245,7 @@ public:
         if (currentAnimationType_ == AnimationType::Hide)
             return;
 
-        Q_EMIT q->plateClosed();
+        Q_EMIT q->plateCloseStarted();
         Q_EMIT Utils::InterConnector::instance().addReactionPlateActivityChanged(chatId_, false);
 
         currentAnimationType_ = AnimationType::Hide;
@@ -322,6 +322,8 @@ public:
 AddReactionPlate::AddReactionPlate(const Data::Reactions& _messageReactions)
     : d(std::make_unique<AddReactionPlate_p>(this))
 {
+    Testing::setAccessibleName(this, qsl("AS Reaction tooltip"));
+
     setParent(Utils::InterConnector::instance().getMainWindow());
     setFixedSize(plateAreaSize());
     setMouseTracking(true);
@@ -335,8 +337,8 @@ AddReactionPlate::AddReactionPlate(const Data::Reactions& _messageReactions)
     d->createItems();
     d->setItemsStartPositions();
 
-    connect(d->plate_, &PlateWithShadow::hideFinished, this, [this](){ hide(); deleteLater(); });
-    connect(d->plate_, &PlateWithShadow::plateClosed, this, &AddReactionPlate::plateClosed);
+    connect(d->plate_, &PlateWithShadow::hideFinished, this, [this](){ Q_EMIT plateCloseFinished(); hide(); deleteLater(); });
+    connect(d->plate_, &PlateWithShadow::plateClosed, this, &AddReactionPlate::plateCloseStarted);
 
     connect(&d->animationTimer_, &QTimer::timeout, this, &AddReactionPlate::onAnimationTimer);
     connect(&Utils::InterConnector::instance(), &Utils::InterConnector::multiselectChanged, this, &AddReactionPlate::onMultiselectChanged);
@@ -714,6 +716,7 @@ ReactionEmojiWidget::ReactionEmojiWidget(const QString& _reaction, const QString
     : QWidget(_parent),
       d(std::make_unique<EmojiWidget_p>(this))
 {
+    Testing::setAccessibleName(this, u"AS Reaction tooltip " % _reaction);
     setMouseTracking(true);
     setGeometry(0, 0, emojiWidgetSize().width(), emojiWidgetSize().height());
     setVisible(false);

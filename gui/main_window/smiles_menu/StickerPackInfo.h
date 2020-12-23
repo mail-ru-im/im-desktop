@@ -136,6 +136,7 @@ namespace Ui
         void onStickerPreview(const int32_t _setId, const QString& _stickerId);
         void onStickerHovered(const int32_t _setId, const QString& _stickerId);
         void contextMenuAction(QAction* _action);
+        void onWindowResized();
 
     Q_SIGNALS:
 
@@ -149,7 +150,6 @@ namespace Ui
         ~PackWidget();
 
         void onStickersPackInfo(std::shared_ptr<Ui::Stickers::Set> _set, const bool _result, const bool _purchased);
-        void onStickerEvent(const qint32 _error, const qint32 _setId, const QString& _stickerId);
 
         void setParentDialog(GeneralDialog* _dialog);
         QString getName() const { return name_; }
@@ -187,7 +187,6 @@ namespace Ui
     private Q_SLOTS:
 
         void onStickerpackInfo(const bool _result, const bool _exist, std::shared_ptr<Ui::Stickers::Set> _set);
-        void stickerEvent(const qint32 _error, const qint32 _setId, const QString& _stickerId);
         void onShareClicked();
         void onReportClicked();
 

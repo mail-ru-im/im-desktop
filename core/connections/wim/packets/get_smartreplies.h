@@ -34,6 +34,7 @@ namespace core
             const std::vector<smartreply::suggest>& get_suggests() const noexcept { return suggests_; }
             const std::string& get_contact() const noexcept { return aimid_; }
             int64_t get_msgid() const noexcept { return msgid_; }
+            virtual std::string_view get_method() const override;
         };
     }
 }

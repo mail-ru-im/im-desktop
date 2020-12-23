@@ -17,7 +17,7 @@ namespace Data
 
         BASE = MIN,
         GROUP,
-        EMPTY_IGNORE_LIST,
+        EMPTY_LIST,
 
         SERVICE_HEADER,
         DROPDOWN_BUTTON,

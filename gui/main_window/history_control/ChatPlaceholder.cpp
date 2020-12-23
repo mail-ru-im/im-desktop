@@ -105,7 +105,7 @@ namespace Ui
         {
             auto isDefault = false;
 
-            pixmap_ = *Logic::GetAvatarStorage()->GetRounded(
+            pixmap_ = Logic::GetAvatarStorage()->GetRounded(
                 contact_,
                 Logic::GetFriendlyContainer()->getFriendly(contact_),
                 Utils::scale_bitmap(avatarSize().width()),
@@ -311,7 +311,7 @@ namespace Ui
             const QString pre = Logic::GetLastseenContainer()->isBot(contact)
                                 ? QT_TRANSLATE_NOOP("placeholders", "Start working with")
                                 : QT_TRANSLATE_NOOP("placeholders", "Start chatting with");
-            setCaptions({ { pre % qsl("\n`%1`").arg(name), qsl("start") } });
+            setCaptions({ { pre % ql1s("\n`%1`").arg(name), qsl("start") } });
 
             return;
         }
@@ -320,7 +320,7 @@ namespace Ui
         if (about.size() > maxAboutLength())
         {
             about.truncate(maxAboutLength());
-            about += ql1s("...");
+            about += getEllipsis();
         }
 
         if (Logic::GetLastseenContainer()->isBot(contact))

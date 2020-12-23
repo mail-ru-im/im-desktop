@@ -6,7 +6,9 @@
 #include "../core.h"
 #include "../network_log.h"
 
+#ifndef STRIP_CRASH_HANDLER
 #include "../common.shared/crash_report/crash_reporter.h"
+#endif // !STRIP_CRASH_HANDLER
 
 using namespace core;
 using namespace tools;
@@ -65,7 +67,7 @@ threadpool::threadpool(
     std::function<void()> _on_thread_exit,
     bool _task_trace)
 
-    : on_task_finish_([](const std::chrono::milliseconds, const core_stacktrace&) {})
+    : on_task_finish_([](const std::chrono::milliseconds, const core_stacktrace&, std::string_view) {})
     , stop_(false)
     , task_trace_(_task_trace)
 {
@@ -77,9 +79,11 @@ threadpool::threadpool(
     const auto worker = [this, _on_thread_exit, name = std::string(_name)]
     {
         utils::set_this_thread_name(name);
+#ifndef STRIP_CRASH_HANDLER
 #ifdef _WIN32
-        crash_system::reporter::instance().set_thread_exception_handlers();
+    crash_system::reporter::instance().set_thread_exception_handlers();
 #endif
+#endif // !STRIP_CRASH_HANDLER
 
         for(;;)
         {
@@ -137,7 +141,7 @@ bool threadpool::run_task_impl()
 
         on_task_finish_(
             std::chrono::duration_cast<std::chrono::milliseconds>(finish_time - start_time),
-            next_task.get_stack_trace());
+            next_task.get_stack_trace(), next_task.get_name());
 
         if (task_trace_)
         {
@@ -159,20 +163,20 @@ bool threadpool::run_task()
 {
     if constexpr (!core::dump::is_crash_handle_enabled() || !platform::is_windows())
         return run_task_impl();
-
+#ifndef STRIP_CRASH_HANDLER
 #ifdef _WIN32
-     __try
-#endif // _WIN32
+    __try
     {
-         return run_task_impl();
+        return run_task_impl();
     }
-
-#ifdef _WIN32
-    __except(crash_system::reporter::seh_handler(GetExceptionInformation()))
+    __except (crash_system::reporter::seh_handler(GetExceptionInformation()))
     {
     }
 #endif // _WIN32
     return true;
+#else
+    return run_task_impl();
+#endif // !STRIP_CRASH_HANDLER
 }
 
 threadpool::~threadpool()

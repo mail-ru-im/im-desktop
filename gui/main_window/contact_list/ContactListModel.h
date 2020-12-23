@@ -55,7 +55,7 @@ namespace Logic
         void currentDlgStateChanged() const;
         void selectedContactChanged(const QString& _new, const QString& _prev);
         void contactChanged(const QString&, QPrivateSignal) const;
-        void select(const QString&, qint64, Logic::UpdateChatSelection mode = Logic::UpdateChatSelection::No) const;
+        void select(const QString&, qint64, Logic::UpdateChatSelection mode = Logic::UpdateChatSelection::No, bool _ignoreScroll = false) const;
         void profile_loaded(profile_ptr _profile) const;
         void contact_added(const QString& _contact, bool _result);
         void contact_removed(const QString& _contact);
@@ -100,7 +100,7 @@ namespace Logic
         QString getAimidByABName(const QString& _name);
         void setCurrentCallbackHappened(Ui::HistoryControlPage* _page);
 
-        void setCurrent(const QString& _aimId, qint64 id, bool _select = false, std::function<void(Ui::HistoryControlPage*)> _getPageCallback = {});
+        void setCurrent(const QString& _aimId, qint64 id, bool _select = false, std::function<void(Ui::HistoryControlPage*)> _getPageCallback = {}, bool _ignoreScroll = false);
 
         const ContactItem* getContactItem(const QString& _aimId) const;
 

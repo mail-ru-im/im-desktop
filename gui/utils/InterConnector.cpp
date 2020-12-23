@@ -364,16 +364,16 @@ namespace Utils
             page->clearPartialSelection();
     }
 
-    void InterConnector::openGallery(const QString &_aimId, const QString &_link, int64_t _msgId, Ui::DialogPlayer* _attachedPlayer)
+    void InterConnector::openGallery(const Utils::GalleryData& _data)
     {
         auto mainWindow = getMainWindow();
         if (!mainWindow)
             return;
 
 #ifdef __APPLE__
-        QTimer::singleShot(50, [mainWindow, _aimId, _link, _msgId, _attachedPlayer](){
+        QTimer::singleShot(50, [mainWindow, _data](){
 #endif //__APPLE__
-            mainWindow->openGallery(_aimId, _link, _msgId, _attachedPlayer);
+            mainWindow->openGallery(_data);
 #ifdef __APPLE__
         });
 #endif //__APPLE
@@ -384,5 +384,11 @@ namespace Utils
         if (auto contactDialog = getContactDialog())
             return contactDialog->isRecordingPtt();
         return false;
+    }
+
+    void InterConnector::showAddMembersFailuresPopup(QString _chatAimId, std::map<core::add_member_failure, std::vector<QString>> _failures)
+    {
+        if (auto mp = getMainPage())
+            mp->showAddMembersFailuresPopup(std::move(_chatAimId), std::move(_failures));
     }
 }

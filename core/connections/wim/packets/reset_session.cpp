@@ -12,6 +12,11 @@ reset_session::reset_session(wim_packet_params _params, std::string_view _hash)
 {
 }
 
+std::string_view reset_session::get_method() const
+{
+    return is_reset_all() ? "session/resetAll" : "session/reset";
+}
+
 int32_t reset_session::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     rapidjson::Document doc(rapidjson::Type::kObjectType);
@@ -24,7 +29,7 @@ int32_t reset_session::init_request(const std::shared_ptr<core::http_request_sim
         doc.AddMember("params", std::move(node_params), a);
     }
 
-    setup_common_and_sign(doc, a, _request, is_reset_all() ? "session/resetAll" : "session/reset");
+    setup_common_and_sign(doc, a, _request, get_method());
 
     if (!params_.full_log_)
     {

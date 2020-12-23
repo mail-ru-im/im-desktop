@@ -33,6 +33,11 @@ void create_chat::set_chat_params(chat_params _chat_params)
     chat_params_ = std::move(_chat_params);
 }
 
+std::string_view create_chat::get_method() const
+{
+    return "createChat";
+}
+
 int32_t create_chat::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     rapidjson::Document doc(rapidjson::Type::kObjectType);
@@ -70,7 +75,7 @@ int32_t create_chat::init_request(const std::shared_ptr<core::http_request_simpl
     }
     doc.AddMember("params", std::move(node_params), a);
 
-    setup_common_and_sign(doc, a, _request, "createChat");
+    setup_common_and_sign(doc, a, _request, get_method());
 
     if (!params_.full_log_)
     {

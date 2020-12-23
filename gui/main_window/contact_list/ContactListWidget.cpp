@@ -11,8 +11,7 @@
 #include "CommonChatsModel.h"
 #include "CountryListModel.h"
 #include "CallsModel.h"
-#include "StatusListModel.h"
-#include "StatusSearchModel.h"
+#include "DisallowedInvitersModel.h"
 
 #include "ContactListItemDelegate.h"
 #include "ContactListWithHeaders.h"
@@ -20,7 +19,6 @@
 #include "CountryListItemDelegate.h"
 #include "CallsSearchModel.h"
 #include "CallItemDelegate.h"
-#include "StatusListItemDelegate.h"
 
 #include "ContactListUtils.h"
 #include "FavoritesUtils.h"
@@ -32,10 +30,13 @@
 #include "../../utils/InterConnector.h"
 #include "../../utils/SearchPatternHistory.h"
 #include "../../utils/features.h"
+#include "../../gui_settings.h"
 #include "../Placeholders.h"
 #include "../containers/FriendlyContainer.h"
 #include "../proxy/FriendlyContaInerProxy.h"
 #include "../history_control/VoipEventInfo.h"
+#include "main_window/containers/StatusContainer.h"
+#include "statuses/StatusTooltip.h"
 
 #include "styles/ThemeParameters.h"
 
@@ -60,11 +61,17 @@ namespace
         );
     }
 
-    QRect getMoreBtnRect(const QRect& _itemRect)
+    bool isRegimWithFavorites(Logic::MembersWidgetRegim _regim)
     {
-        return QRect(_itemRect.left() + _itemRect.width() - getMoreButtonWidth(),
-                _itemRect.top(),
-                getMoreButtonWidth(), getMoreButtonWidth());
+        static const auto regimsWithFavorites =
+        {
+            Logic::MembersWidgetRegim::SHARE,
+            Logic::MembersWidgetRegim::SHARE_VIDEO_CONFERENCE,
+            Logic::MembersWidgetRegim::CONTACT_LIST,
+            Logic::MembersWidgetRegim::CONTACT_LIST_POPUP,
+        };
+
+        return std::any_of(regimsWithFavorites.begin(), regimsWithFavorites.end(), [_regim](const auto _r) { return _r == _regim;});
     }
 
     Logic::AbstractItemDelegateWithRegim* delegateFromRegim(QObject* parent, Logic::MembersWidgetRegim _regim, Logic::CustomAbstractListModel* _membersModel)
@@ -73,8 +80,6 @@ namespace
 
         if (_regim == Logic::MembersWidgetRegim::COUNTRY_LIST)
             delegate = new Logic::CountryListItemDelegate(parent);
-        else if (_regim == Logic::MembersWidgetRegim::STATUS_LIST)
-            delegate = new Logic::StatusListItemDelegate(parent);
         else if (_regim == Logic::MembersWidgetRegim::CONTACT_LIST)
             delegate = new Logic::SearchItemDelegate(parent);
         else if (_regim == Logic::MembersWidgetRegim::CALLS_LIST)
@@ -82,16 +87,7 @@ namespace
         else
             delegate = new Logic::ContactListItemDelegate(parent, _regim, _membersModel);
 
-        static const auto regimsRequireReaplceFavorites =
-        {
-            Logic::MembersWidgetRegim::SHARE,
-            Logic::MembersWidgetRegim::SHARE_VIDEO_CONFERENCE,
-            Logic::MembersWidgetRegim::CONTACT_LIST,
-            Logic::MembersWidgetRegim::CONTACT_LIST_POPUP,
-        };
-        const auto replaceFavorites = std::any_of(regimsRequireReaplceFavorites.begin(), regimsRequireReaplceFavorites.end(), [_regim](const auto _r) { return _r == _regim;});
-
-        delegate->setReplaceFavorites(replaceFavorites);
+        delegate->setReplaceFavorites(isRegimWithFavorites(_regim));
         return delegate;
     }
 
@@ -113,9 +109,6 @@ namespace
         if (_regim == Logic::MembersWidgetRegim::COUNTRY_LIST)
             return Logic::getCountryModel();
 
-        if (_regim == Logic::MembersWidgetRegim::STATUS_LIST)
-            return Logic::getStatusProxyModel();
-
         static const auto needSearhModel =
         {
             Logic::MembersWidgetRegim::SELECT_MEMBERS,
@@ -125,6 +118,7 @@ namespace
             Logic::MembersWidgetRegim::VIDEO_CONFERENCE,
             Logic::MembersWidgetRegim::CONTACT_LIST,
             Logic::MembersWidgetRegim::UNKNOWN,
+            Logic::MembersWidgetRegim::DISALLOWED_INVITERS_ADD,
         };
         if (std::any_of(needSearhModel.begin(), needSearhModel.end(), [_regim](const auto _r) { return _r == _regim;}))
             return _searchModel;
@@ -152,9 +146,6 @@ namespace
         if (_regim == Logic::MembersWidgetRegim::COUNTRY_LIST)
             return Logic::getCountryModel();
 
-        if (_regim == Logic::MembersWidgetRegim::STATUS_LIST)
-            return Logic::getStatusSearchModel();
-
         if (_regim == Logic::MembersWidgetRegim::IGNORE_LIST)
             return Logic::getIgnoreModel();
 
@@ -164,9 +155,9 @@ namespace
         if (!Logic::is_members_regim(_regim) && !Logic::is_select_chat_members_regim(_regim))
         {
             const auto contactsOnly =
-                _regim == Logic::MembersWidgetRegim::SHARE_CONTACT
-                || (!Logic::is_share_regims(_regim)
-                    && _regim != Logic::MembersWidgetRegim::CONTACT_LIST_POPUP);
+                _regim == Logic::MembersWidgetRegim::SHARE_CONTACT ||
+                _regim == Logic::MembersWidgetRegim::DISALLOWED_INVITERS_ADD ||
+                (_regim != Logic::MembersWidgetRegim::CONTACT_LIST_POPUP && !Logic::is_share_regims(_regim));
 
             const auto excludeChats =
                 contactsOnly ? Logic::SearchDataSource::localAndServer
@@ -194,7 +185,7 @@ namespace Ui
     ContactListWidget::ContactListWidget(QWidget* _parent, const Logic::MembersWidgetRegim& _regim, Logic::CustomAbstractListModel* _chatMembersModel,
                                          Logic::AbstractSearchModel* _searchModel, Logic::CommonChatsModel* _commonChatsModel)
         : QWidget(_parent)
-        , emptyIgnoreListLabel_(nullptr)
+        , EmptyListLabel_(nullptr)
         , dialogSearchViewHeader_(nullptr)
         , globalSearchViewHeader_(nullptr)
         , scrollToItemAnim_(nullptr)
@@ -252,14 +243,6 @@ namespace Ui
         Testing::setAccessibleName(viewContainer_, qsl("AS Search viewContainer"));
         layout_->addWidget(viewContainer_);
 
-        emptyIgnoreListLabel_ = new EmptyIgnoreListLabel(this);
-        emptyIgnoreListLabel_->setContentsMargins(0, 0, 0, 0);
-        emptyIgnoreListLabel_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
-        emptyIgnoreListLabel_->setFixedHeight(::Ui::GetContactListParams().itemHeight());
-        Testing::setAccessibleName(emptyIgnoreListLabel_, qsl("AS Search emptyIgnoreListLabel_"));
-        layout_->addWidget(emptyIgnoreListLabel_);
-        emptyIgnoreListLabel_->setVisible(false);
-
         switchToInitial(true);
 
         scrollStatsTimer_->setSingleShot(true);
@@ -284,7 +267,7 @@ namespace Ui
         {
             connect(this, &ContactListWidget::itemSelected, this, [this](const QString& /*_aimid*/, qint64 _msgid)
             {
-                Q_EMIT forceSearchClear(!getSearchInDialog() && _msgid == -1);
+                Q_EMIT forceSearchClear(!getSearchInDialog() && _msgid == -1 && Ui::get_gui_settings()->get_value<bool>(settings_fast_drop_search_results, settings_fast_drop_search_default()));
             });
         }
     }
@@ -357,9 +340,16 @@ namespace Ui
             contactsPlaceholder_->setPictureOnlyView(_value);
     }
 
-    void ContactListWidget::setEmptyIgnoreLabelVisible(bool _isVisible)
+    void ContactListWidget::setEmptyLabelVisible(bool _isVisible)
     {
-        emptyIgnoreListLabel_->setVisible(_isVisible);
+        if (_isVisible && !EmptyListLabel_)
+        {
+            EmptyListLabel_ = new EmptyListLabel(this, regim_);
+            Testing::setAccessibleName(EmptyListLabel_, qsl("AS Search emptyListLabel"));
+            layout_->addWidget(EmptyListLabel_);
+        }
+        if (EmptyListLabel_)
+            EmptyListLabel_->setVisible(_isVisible);
         viewContainer_->setVisible(!_isVisible);
     }
 
@@ -490,15 +480,6 @@ namespace Ui
             scrollToItem(item->getAimId());
     }
 
-    void ContactListWidget::updateSelectedItem()
-    {
-        auto model = qobject_cast<Logic::StatusListModel*>(view_->model());
-        if (!model || !model->rowCount())
-            return;
-
-        model->updateSelected();
-    }
-
     void ContactListWidget::searchResult()
     {
         if (isVisible())
@@ -553,17 +534,17 @@ namespace Ui
         select(_aimId, -1, {}, Logic::UpdateChatSelection::No);
     }
 
-    void ContactListWidget::select(const QString& _aimId, const qint64 _messageId, const highlightsV& _highlights, Logic::UpdateChatSelection _mode)
+    void ContactListWidget::select(const QString& _aimId, const qint64 _messageId, const highlightsV& _highlights, Logic::UpdateChatSelection _mode, bool _ignoreScroll)
     {
         const auto isSelectMembers = isSelectMembersRegim();
 
-        if (!isSelectMembers && regim_ != Logic::MembersWidgetRegim::IGNORE_LIST && regim_ != Logic::MembersWidgetRegim::COUNTRY_LIST && regim_ != Logic::MembersWidgetRegim::STATUS_LIST)
+        if (!isSelectMembers && regim_ != Logic::MembersWidgetRegim::IGNORE_LIST && regim_ != Logic::MembersWidgetRegim::COUNTRY_LIST)
             Logic::getContactListModel()->setCurrent(_aimId, _messageId, regim_ == Logic::MembersWidgetRegim::CONTACT_LIST_POPUP);
 
         if (_messageId == -1 || _mode == Logic::UpdateChatSelection::Yes)
             Q_EMIT changeSelected(_aimId);
 
-        Q_EMIT itemSelected(_aimId, _messageId, _highlights);
+        Q_EMIT itemSelected(_aimId, _messageId, _highlights, _ignoreScroll);
 
         if (regim_ != Logic::MembersWidgetRegim::UNKNOWN && !isSelectMembers && _messageId == -1)
             Q_EMIT searchEnd();
@@ -658,13 +639,13 @@ namespace Ui
             {
                 if (item->isService())
                 {
-                    if (item->getServiceAimid() == qsl("~group_call~"))
+                    if (item->getServiceAimid() == u"~group_call~")
                         Q_EMIT Utils::InterConnector::instance().createGroupCall();
 
-                    if (item->getServiceAimid() == qsl("~call_by_link~"))
+                    if (item->getServiceAimid() == u"~call_by_link~")
                         Q_EMIT Utils::InterConnector::instance().createCallByLink();
 
-                    if (item->getServiceAimid() == qsl("~webinar~"))
+                    if (item->getServiceAimid() == u"~webinar~")
                         Q_EMIT Utils::InterConnector::instance().createWebinar();
                 }
                 else
@@ -673,15 +654,13 @@ namespace Ui
                 }
             }
         }
-        else if (regim_ == Logic::MembersWidgetRegim::STATUS_LIST)
+        else if (regim_ == Logic::MembersWidgetRegim::DISALLOWED_INVITERS)
         {
-            const auto searchRes = _current.data().value<Statuses::Status>();
-            const auto status = searchRes.toString();
-
-            if (getMoreBtnRect(view_->visualRect(_current)).contains(view_->mapFromGlobal(QCursor::pos())))
-                Q_EMIT moreClicked(status);
+            const auto aimid = Logic::aimIdFromIndex(_current);
+            if (aimid.isEmpty())
+                Q_EMIT Utils::InterConnector::instance().showAddToDisallowedInvitersDialog();
             else
-                Q_EMIT itemSelected(status, -1, {});
+                selectionChanged(_current);
         }
         else if (changeSelection)
         {
@@ -737,23 +716,42 @@ namespace Ui
                 }
                 else
                 {
-                    const auto removeX = width() - Utils::scale_value(32);
-                    const auto approveX = width() - Utils::scale_value(64);
+                    const auto rigthX = width() - Utils::scale_value(8);
+                    const auto removeX = rigthX - Utils::scale_value(32);
+                    const auto approveX = removeX - Utils::scale_value(32);
 
                     if (auto dlgt = qobject_cast<Logic::ContactListItemDelegate*>(clDelegate_))
                     {
                         const auto cursorPos = view_->mapFromGlobal(QCursor::pos());
                         const auto regim = dlgt->regim();
-                        if (cursorPos.x() > removeX && cursorPos.x() <= width())
+                        if (cursorPos.x() > removeX && cursorPos.x() <= rigthX)
                         {
                             if (regim == Logic::MembersWidgetRegim::ADMIN_MEMBERS)
+                            {
                                 Q_EMIT moreClicked(aimId);
-                            else if (regim == Logic::MembersWidgetRegim::MEMBERS_LIST)
-                                Q_EMIT removeClicked(aimId);
+                            }
                             else if (regim == Logic::MembersWidgetRegim::PENDING_MEMBERS)
+                            {
                                 Q_EMIT approve(aimId, false);
+                            }
+                            else if (regim == Logic::MembersWidgetRegim::MEMBERS_LIST || regim == Logic::MembersWidgetRegim::YOUR_INVITES_LIST)
+                            {
+                                Q_EMIT removeClicked(aimId);
+                            }
                             else
-                                Q_EMIT selected(aimId);
+                            {
+                                const auto searchRes = _current.data().value<Data::AbstractSearchResultSptr>();
+                                if (searchRes && qobject_cast<const Logic::ChatMembersModel*>(_current.model()))
+                                {
+                                    const auto& memberRes = std::static_pointer_cast<Data::SearchResultChatMember>(searchRes);
+                                    if (memberRes->canRemoveTill().isValid() && QDateTime::currentDateTime() < memberRes->canRemoveTill())
+                                        Q_EMIT removeClicked(aimId);
+                                    else
+                                        Q_EMIT selected(aimId);
+                                }
+                                else
+                                    Q_EMIT selected(aimId);
+                            }
                         }
                         else if (regim == Logic::MembersWidgetRegim::PENDING_MEMBERS && cursorPos.x() >= approveX && cursorPos.x() <= removeX)
                         {
@@ -763,13 +761,6 @@ namespace Ui
                         {
                             Q_EMIT selected(aimId);
                         }
-                    }
-                    else if (qobject_cast<Logic::StatusListItemDelegate*>(clDelegate_))
-                    {
-                        if (getMoreBtnRect(view_->visualRect(_current)).contains(view_->mapFromGlobal(QCursor::pos())))
-                            Q_EMIT moreClicked(aimId);
-                        else
-                            Q_EMIT selected(aimId);
                     }
                 }
             }
@@ -806,14 +797,25 @@ namespace Ui
                     view_->update();
             }
         }
-        else if (auto dlgt = qobject_cast<Logic::StatusListItemDelegate*>(clDelegate_))
-        {
-            if (getMoreBtnRect(view_->visualRect(_index)).contains(view_->mapFromGlobal(QCursor::pos())))
-                 dlgt->setHoveredModeIndex(_index);
-            else
-                dlgt->setHoveredModeIndex(QModelIndex());
 
-            view_->update();
+        if (Statuses::isStatusEnabled())
+        {
+            const auto aimId = Logic::senderAimIdFromIndex(_index);
+            const auto tooltipRect = getAvatarRect(_index);
+            const auto muted = Logic::getContactListModel()->isMuted(aimId);
+
+            if (!muted && (!Favorites::isFavorites(aimId) || !isRegimWithFavorites(regim_)) && tooltipRect.contains(view_->mapFromGlobal(QCursor::pos())))
+            {
+                StatusTooltip::instance()->objectHovered([this, aimId]()
+                {
+                    auto index = view_->indexAt(view_->mapFromGlobal(QCursor::pos()));
+                    if (aimId != Logic::senderAimIdFromIndex(index))
+                        return QRect();
+
+                    const auto tooltipRect = getAvatarRect(index);
+                    return QRect(view_->mapToGlobal(tooltipRect.topLeft()), tooltipRect.size());
+                }, aimId, view_->viewport(), view_);
+            }
         }
     }
 
@@ -973,6 +975,7 @@ namespace Ui
         if (!popupMenu_)
         {
             popupMenu_ = new ContextMenu(this);
+            Testing::setAccessibleName(popupMenu_, qsl("AS Search view popupMenu"));
             connect(popupMenu_, &ContextMenu::triggered, this, &ContactListWidget::showPopupMenu);
         }
         else
@@ -1150,7 +1153,14 @@ namespace Ui
 
     void ContactListWidget::showPlaceholder()
     {
-        if (isSearchMode() || regim_ == Logic::MembersWidgetRegim::IGNORE_LIST || regim_ == Logic::MembersWidgetRegim::COUNTRY_LIST || regim_ == Logic::MembersWidgetRegim::STATUS_LIST)
+        constexpr Logic::MembersWidgetRegim noNeedPlaceholder[] =
+        {
+            Logic::MembersWidgetRegim::IGNORE_LIST,
+            Logic::MembersWidgetRegim::COUNTRY_LIST,
+            Logic::MembersWidgetRegim::DISALLOWED_INVITERS_ADD,
+        };
+
+        if (isSearchMode() || std::any_of(std::begin(noNeedPlaceholder), std::end(noNeedPlaceholder), [regim = regim_](auto r) { return r == regim; }))
             return;
 
         if (!contactsPlaceholder_)
@@ -1256,9 +1266,6 @@ namespace Ui
 
     void ContactListWidget::showSearchSpinner()
     {
-        if (!isVisible())
-            return;
-
         viewContainer_->hide();
 
         if (!searchSpinner_)
@@ -1542,33 +1549,59 @@ namespace Ui
         return headers;
     }
 
+    QRect ContactListWidget::getAvatarRect(const QModelIndex& _index) const
+    {
+        auto clDelegate = qobject_cast<Logic::ContactListItemDelegate*>(clDelegate_);
+        auto isMessageItem = false;
+
+        if (auto item = _index.data().value<Data::AbstractSearchResultSptr>())
+            isMessageItem = item->isMessage();
+
+        const auto itemRect = view_->visualRect(_index);
+        const auto& params = isMessageItem ? GetRecentsParams() : GetContactListParams();
+        const auto isPictureOnly = clDelegate ? clDelegate->isPictOnlyView() : false;
+        const auto avatarX = isPictureOnly ? (itemRect.width() - params.getAvatarSize()) / 2 : params.getAvatarX();
+
+        return QRect(itemRect.topLeft() + QPoint(avatarX, params.getAvatarY()), QSize(params.getAvatarSize(), params.getAvatarSize()));
+    }
+
     void ContactListWidget::scrolled(const int _value)
     {
-        if (regim_ != Logic::MembersWidgetRegim::CONTACT_LIST && regim_ != Logic::MembersWidgetRegim::CONTACT_LIST_POPUP
-            && regim_ != Logic::MembersWidgetRegim::MEMBERS_LIST && regim_ != Logic::MembersWidgetRegim::SELECT_CHAT_MEMBERS)
+        constexpr Logic::MembersWidgetRegim regims[] =
+        {
+            Logic::MembersWidgetRegim::CONTACT_LIST,
+            Logic::MembersWidgetRegim::CONTACT_LIST_POPUP,
+            Logic::MembersWidgetRegim::MEMBERS_LIST,
+            Logic::MembersWidgetRegim::SELECT_CHAT_MEMBERS,
+            Logic::MembersWidgetRegim::DISALLOWED_INVITERS,
+        };
+        if (std::none_of(std::begin(regims), std::end(regims), [regim = regim_](auto r){ return regim == r; }))
             return;
 
         selectCurrentSearchCategory();
 
+        if (_value < view_->verticalScrollBar()->maximum() * searchPreloadDistance)
+            return;
+
         if (regim_ == Logic::MembersWidgetRegim::CONTACT_LIST)
         {
             if (auto searchModel = qobject_cast<Logic::SearchModel*>(searchModel_))
-            {
-                if (_value < view_->verticalScrollBar()->maximum() * searchPreloadDistance)
-                    return;
-
                 searchModel->requestMore();
-            }
         }
         else if (regim_ == Logic::MembersWidgetRegim::MEMBERS_LIST || regim_ == Logic::MembersWidgetRegim::SELECT_CHAT_MEMBERS)
         {
             if (auto chatMembersModel = qobject_cast<Logic::ChatMembersModel*>(chatMembersModel_))
             {
-                if (chatMembersModel->isFullMembersListLoaded() || _value < view_->verticalScrollBar()->maximum() * searchPreloadDistance)
+                if (chatMembersModel->isFullMembersListLoaded())
                     return;
 
                 chatMembersModel->requestNextPage();
             }
+        }
+        else if (regim_ == Logic::MembersWidgetRegim::DISALLOWED_INVITERS)
+        {
+            if (auto model = qobject_cast<Logic::DisallowedInvitersModel*>(searchModel_))
+                model->requestMore();
         }
     }
 }

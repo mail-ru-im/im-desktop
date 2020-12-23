@@ -86,6 +86,8 @@ void voip_masks::MaskManager::onMaskListLoaded(qint64 _seq, const QVector<QStrin
         needPreviews_ = false;
         loadPreviews();
     }
+
+    Q_EMIT masksListLoaded(QPrivateSignal());
 }
 
 void voip_masks::MaskManager::onPreviewLoaded(qint64 _seq, const QString& _localPath)

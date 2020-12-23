@@ -370,7 +370,7 @@ namespace Ui
 
             if (withMentions)
             {
-                static const auto mentionMarker = ql1s("@[");
+                static constexpr auto mentionMarker = QStringView(u"@[");
                 auto ndxStart = text.indexOf(mentionMarker);
                 auto ndxEnd = -1;
 
@@ -378,7 +378,7 @@ namespace Ui
                 {
                     while (ndxStart != -1)
                     {
-                        ndxEnd = text.indexOf(ql1c(']'), ndxStart + 2);
+                        ndxEnd = text.indexOf(u']', ndxStart + 2);
                         if (ndxEnd != -1)
                         {
                             if (ndxEnd < maxLen)

@@ -22,14 +22,16 @@ int32_t set_status::init_request(const std::shared_ptr<core::http_request_simple
     auto& a = doc.GetAllocator();
 
     rapidjson::Value node_params(rapidjson::Type::kObjectType);
-    node_params.AddMember("status", status_, a);
+    node_params.AddMember("type", tools::make_string_ref(status_.empty() ? "empty" : "predefined"), a);
+    if (!status_.empty())
+        node_params.AddMember("media", status_, a);
 
     if (duration_.count() > 0)
         node_params.AddMember("duration", duration_.count(), a);
 
     doc.AddMember("params", std::move(node_params), a);
 
-    setup_common_and_sign(doc, a, _request, "setStatus");
+    setup_common_and_sign(doc, a, _request, get_method());
 
     if (!params_.full_log_)
     {
@@ -39,4 +41,9 @@ int32_t set_status::init_request(const std::shared_ptr<core::http_request_simple
     }
 
     return 0;
+}
+
+std::string_view set_status::get_method() const
+{
+    return "setStatus";
 }

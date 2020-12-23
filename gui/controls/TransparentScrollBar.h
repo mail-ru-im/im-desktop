@@ -336,10 +336,18 @@ namespace Ui
         bool selectByMouseHoverEnabled_;
         QTimer* rescheduleLayoutTimer_;
 
+    private Q_SLOTS:
+        void scrollAnimationValueChanged();
+
     private:
         void updateSelectionUnderCursor(const QPoint& _pos);
         void selectItem(const QModelIndex& _index);
         void updateCursor(const QModelIndex& _index);
+        static void updateSmoothScrollAvailability();
+
+        QVariantAnimation* scrollAnimation_;
+
+        static bool smoothAnimationEnabled_;
     };
 
 

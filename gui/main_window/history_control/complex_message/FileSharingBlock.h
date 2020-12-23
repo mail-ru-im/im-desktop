@@ -2,10 +2,10 @@
 
 #include "../../../namespaces.h"
 #include "../../../types/link_metadata.h"
+#include "../../../types/StickerId.h"
 #include "../../../controls/TextUnit.h"
 
 #include "FileSharingBlockBase.h"
-#include "../../mplayer/VideoPlayer.h"
 
 #include "../../../utils/LoadMovieFromFileTask.h"
 
@@ -63,7 +63,7 @@ public:
 
     bool isSharingEnabled() const override;
 
-    void onVisibilityChanged(const bool isVisible) override;
+    void onVisibleRectChanged(const QRect& _visibleRect) override;
 
     void onSelectionStateChanged(const bool isSelected) override;
 
@@ -198,7 +198,9 @@ private:
 
     bool isInPreloadRange(const QRect& _widgetAbsGeometry, const QRect& _viewportVisibilityAbsRect);
 
-    Ui::DialogPlayer* createPlayer();
+#ifndef STRIP_AV_MEDIA
+    std::unique_ptr<Ui::DialogPlayer> createPlayer();
+#endif // !STRIP_AV_MEDIA
 
     bool loadPreviewFromLocalFile();
 
@@ -219,7 +221,11 @@ private:
 
     bool isProgressVisible() const;
 
+    void onSticker(qint32 _error, const QString& _fsId);
+
+#ifndef STRIP_AV_MEDIA
     std::unique_ptr<Ui::DialogPlayer> videoplayer_;
+#endif // !STRIP_AV_MEDIA
 
     QString Id_;
 
@@ -252,7 +258,7 @@ private:
 private Q_SLOTS:
     void onImageDownloadError(qint64 seq, QString rawUri);
 
-    void onImageDownloaded(int64_t seq, QString uri, QPixmap image, QString localPath);
+    void onImageDownloaded(int64_t seq, QString uri, QPixmap image);
 
     void onImageDownloadingProgress(qint64 seq, int64_t bytesTotal, int64_t bytesTransferred, int32_t pctTransferred);
 

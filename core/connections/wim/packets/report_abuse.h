@@ -18,6 +18,7 @@ class report_abuse : public robusto_packet
 {
 public:
     report_abuse(wim_packet_params _params);
+    virtual std::string_view get_method() const override;
 
 protected:
     virtual int32_t parse_response_data(const rapidjson::Value& _data) override;

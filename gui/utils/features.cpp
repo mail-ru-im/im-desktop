@@ -63,7 +63,7 @@ namespace Features
     bool phoneAllowed()
     {
         const auto defaultValue = config::get().is_on(config::features::phone_allowed);
-        const auto omicronValue =  Omicron::_o(omicron::keys::phone_allowed, defaultValue);
+        const auto omicronValue = Omicron::_o(omicron::keys::phone_allowed, defaultValue);
         if (config::get().is_on(config::features::store_version))
             return defaultValue && omicronValue;
         return omicronValue;
@@ -241,7 +241,7 @@ namespace Features
 
     bool updateAllowed()
     {
-        return !build::is_store();
+        return !build::is_store() && !build::is_pkg_msi();
     }
 
     bool avatarChangeAllowed()
@@ -357,9 +357,9 @@ namespace Features
         return Omicron::_o(omicron::keys::show_reactions, config::get().is_on(config::features::show_reactions));
     }
 
-    QString getStatusJson()
+    std::string getStatusJson()
     {
-        return Omicron::_o_json(omicron::keys::statuses_json, QString());
+        return Omicron::_o_json(omicron::keys::statuses_json, std::string());
     }
 
     bool isStatusEnabled()
@@ -382,6 +382,16 @@ namespace Features
         return Omicron::_o(omicron::keys::call_room_info_enabled, config::get().is_on(config::features::call_room_info_enabled));
     }
 
+    bool isYourInvitesButtonVisible()
+    {
+        return Omicron::_o(omicron::keys::show_your_invites_to_group_enabled, config::get().is_on(config::features::show_your_invites_to_group_enabled));
+    }
+
+    bool isGroupInvitesBlacklistEnabled()
+    {
+        return Omicron::_o(omicron::keys::group_invite_blacklist_enabled, config::get().is_on(config::features::group_invite_blacklist_enabled));
+    }
+
     bool IvrLoginEnabled()
     {
         return Omicron::_o(omicron::keys::ivr_login_enabled, false);
@@ -390,5 +400,62 @@ namespace Features
     int IvrResendCountToShow()
     {
         return Omicron::_o(omicron::keys::ivr_resend_count_to_show, 2);
+    }
+
+    bool isContactUsViaBackend()
+    {
+        return config::get().is_on(config::features::contact_us_via_backend);
+    }
+
+    bool isUpdateFromBackendEnabled()
+    {
+        return config::get().is_on(config::features::update_from_backend);
+    }
+
+    bool isWebpScreenshotEnabled()
+    {
+        return Omicron::_o(omicron::keys::webp_screenshot_enabled, false);
+    }
+
+    qint64 maxFileSizeForWebpConvert()
+    {
+        return Omicron::_o(omicron::keys::webp_max_file_size_to_convert, int64_t(1.5 * 1024 * 1024));
+    }
+
+    bool isInviteBySmsEnabled()
+    {
+        return Omicron::_o(omicron::keys::invite_by_sms, config::get().is_on(config::features::invite_by_sms));
+    }
+
+    bool shouldShowSmsNotifySetting()
+    {
+        return Omicron::_o(omicron::keys::show_sms_notify_setting, config::get().is_on(config::features::show_sms_notify_setting));
+    }
+
+    bool isAnimatedStickersInPickerAllowed()
+    {
+        const auto disabled = Omicron::_o(omicron::keys::animated_stickers_in_picker_disabled, false);
+        return !disabled;
+    }
+
+    bool isAnimatedStickersInChatAllowed()
+    {
+        const auto disabled = Omicron::_o(omicron::keys::animated_stickers_in_chat_disabled, false);
+        return !disabled;
+    }
+
+    bool isContactListSmoothScrollingEnabled()
+    {
+        return Omicron::_o(omicron::keys::contact_list_smooth_scrolling_enabled, true);
+    }
+
+    bool isBackgroundPttPlayEnabled()
+    {
+        return Omicron::_o(omicron::keys::background_ptt_play_enabled, true);
+    }
+
+    bool removeDeletedFromNotifications()
+    {
+        return Omicron::_o(omicron::keys::remove_deleted_from_notifications, config::get().is_on(config::features::remove_deleted_from_notifications));
     }
 }

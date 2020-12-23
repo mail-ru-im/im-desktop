@@ -7,8 +7,10 @@
 #include "../../controls/TransparentScrollBar.h"
 #include "../../utils/utils.h"
 #include "../../utils/features.h"
+#include "../../utils/InterConnector.h"
 #include "../../styles/ThemeParameters.h"
 #include "../../core_dispatcher.h"
+#include "../../url_config.h"
 #include "CheckForUpdateButton.h"
 
 namespace
@@ -25,7 +27,7 @@ void GeneralSettingsWidget::Creator::initAbout(QWidget* _parent)
 {
     auto scrollArea = CreateScrollAreaAndSetTrScrollBarV(_parent);
     scrollArea->setWidgetResizable(true);
-    scrollArea->setStyleSheet(qsl("QWidget{border: none; background-color: %1;}").arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE)));
+    scrollArea->setStyleSheet(ql1s("QWidget{border: none; background-color: %1;}").arg(Styling::getParameters().getColorHex(Styling::StyleVariable::BASE_GLOBALWHITE)));
     Utils::grabTouchWidget(scrollArea->viewport(), true);
 
     auto scrollAreaWidget = new QWidget(scrollArea);
@@ -195,6 +197,16 @@ void GeneralSettingsWidget::Creator::initAbout(QWidget* _parent)
                 l->setContentsMargins(Utils::scale_value(12), 0, 0, 0);
                 l->addWidget(new CheckForUpdateButton(mainWidget));
                 mainLayout->addWidget(widget);
+
+                const auto updateCheckButtonVisible = [widget = QPointer(widget)]()
+                {
+                    if (widget)
+                        widget->setVisible(!Features::isUpdateFromBackendEnabled() || (Features::isUpdateFromBackendEnabled() && !Ui::getUrlConfig().getUrlAppUpdate().isEmpty()));
+                };
+                connect(&Utils::InterConnector::instance(), &Utils::InterConnector::omicronUpdated, widget, updateCheckButtonVisible);
+                connect(Ui::GetDispatcher(), &Ui::core_dispatcher::externalUrlConfigUpdated, widget, updateCheckButtonVisible);
+
+                updateCheckButtonVisible();
             }
         }
         Testing::setAccessibleName(generalWidget, qsl("AS AboutUsPage"));

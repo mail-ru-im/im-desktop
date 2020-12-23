@@ -29,6 +29,9 @@ namespace Ui
         void setNew();
         bool isNew() const;
 
+        bool isDate() const;
+        bool isOverlay() const;
+
         bool isFloating() const;
 
         void updateStyle() override;

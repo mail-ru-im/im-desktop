@@ -14,6 +14,11 @@ check_nick::check_nick(wim_packet_params _params, const std::string& _nick, bool
 {
 }
 
+std::string_view check_nick::get_method() const
+{
+    return set_nick_ ? "setNick" : "checkNick";
+}
+
 int32_t check_nick::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     rapidjson::Document doc(rapidjson::Type::kObjectType);
@@ -24,7 +29,7 @@ int32_t check_nick::init_request(const std::shared_ptr<core::http_request_simple
 
     doc.AddMember("params", std::move(node_params), a);
 
-    setup_common_and_sign(doc, a, _request, set_nick_ ? "setNick" : "checkNick");
+    setup_common_and_sign(doc, a, _request, get_method());
 
     if (!params_.full_log_)
     {

@@ -99,7 +99,9 @@ struct VoipDesc
     float volume = 1.0f;
 
     std::string aPlaybackDevice;
+    std::string aRecordingDevice;
     std::string vCaptureDevice;
+    std::string vCurrentMask;
 };
 
 namespace voip_manager
@@ -138,7 +140,6 @@ namespace voip_manager
 
         //kNotificationType_MinimalBandwidthChanged,
         kNotificationType_MaskEngineEnable,
-        kNotificationType_LoadMask,
 
         //kNotificationType_ConnectionDestroyed,
         kNotificationType_MainVideoLayoutChanged,
@@ -507,7 +508,7 @@ namespace voip_manager
         virtual bool get_device_list (DeviceType device_type, std::vector<device_description>& dev_list) = 0;
 
         virtual bool get_device (DeviceType device_type, unsigned index, std::string& device_name, std::string& device_guid) = 0;
-        virtual void set_device (DeviceType device_type, const std::string& device_guid) = 0;
+        virtual void set_device (DeviceType device_type, const std::string& device_guid, bool force_reset) = 0;
 
         virtual void set_device_mute (DeviceType deviceType, bool mute) = 0;
         virtual bool get_device_mute (DeviceType deviceType) = 0;
@@ -544,7 +545,7 @@ namespace voip_manager
         // MaskManager
         virtual void load_mask(const std::string& path) = 0;
         virtual unsigned version() = 0;
-        virtual void set_model_path(const std::string& path) = 0;
+        virtual void set_model_path(const std::string& path, bool force_reload) = 0;
         virtual void init_mask_engine() = 0;
         virtual void unload_mask_engine() = 0;
 

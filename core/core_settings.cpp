@@ -1,9 +1,11 @@
 #include "stdafx.h"
 #include "core_settings.h"
+#include "core.h"
 
 #include "tools/system.h"
 #include "tools/device_id.h"
 #include "proxy_settings.h"
+#include "../common.shared/string_utils.h"
 
 using namespace core;
 
@@ -56,7 +58,16 @@ bool core_settings::load()
 {
     core::tools::binary_stream bstream;
     if (bstream.load_from_file(file_name_))
-        return core::tools::settings::unserialize(bstream);
+    {
+        const auto was_unserialized = core::tools::settings::unserialize(bstream);
+        if (!was_unserialized)
+        {
+            g_core->write_string_to_network_log(su::concat(
+                "failed to unserialize ",
+                tools::from_utf16(tools::system::get_file_name(file_name_)), "\r\n"));
+        }
+        return was_unserialized;
+    }
 
     return load_exported();
 }

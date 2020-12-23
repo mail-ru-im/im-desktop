@@ -36,6 +36,8 @@ namespace core
                 const std::string& _auth_message);
 
             virtual ~add_buddy();
+
+            virtual std::string_view get_method() const override;
         };
 
     }

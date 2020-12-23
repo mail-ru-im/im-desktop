@@ -36,6 +36,11 @@ attach_uin::~attach_uin()
 {
 }
 
+std::string_view attach_uin::get_method() const
+{
+    return "replaceAccount";
+}
+
 int32_t attach_uin::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     if (from_params_.a_token_.empty())
@@ -59,7 +64,7 @@ int32_t attach_uin::init_request(const std::shared_ptr<core::http_request_simple
     {
         const std::string host = get_attach_uin_host();
         _request->set_url(host);
-        _request->set_normalized_url("replaceAccount");
+        _request->set_normalized_url(get_method());
 
         _request->push_post_parameter("a", escape_symbols(params_.a_token_));
         _request->push_post_parameter("k", escape_symbols(params_.dev_id_));

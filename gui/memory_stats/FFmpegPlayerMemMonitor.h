@@ -31,6 +31,7 @@ public:
 
     bool watchFFmpegPlayer(Ui::FFMpegPlayer* _player);
     FFMpegStats getCurrentStats();
+    int64_t getLottieStats() const;
 
 private:
     FFmpegPlayerMemMonitor(QObject *_parent);

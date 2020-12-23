@@ -40,6 +40,11 @@ send_stat::~send_stat()
 {
 }
 
+std::string_view send_stat::get_method() const
+{
+    return "dauStatistics";
+}
+
 int32_t send_stat::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     time_t server_time = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()) - params_.time_offset_;
@@ -68,7 +73,7 @@ int32_t send_stat::init_request(const std::shared_ptr<core::http_request_simple>
               "&voip_microphone=" << escape_symbols(make_devices_str(audio_devices_));
 
     _request->set_url(ss_url.str());
-    _request->set_normalized_url("dauStatistics");
+    _request->set_normalized_url(get_method());
     _request->set_keep_alive();
 
     return 0;

@@ -42,14 +42,17 @@ namespace Ui
     class GroupProfile : public SidebarPage
     {
         Q_OBJECT
+
     public:
         explicit GroupProfile(QWidget* parent);
         virtual ~GroupProfile();
-        void initFor(const QString& aimId, SidebarParams _params = {}) override;
+        void initFor(const QString& _aimId, SidebarParams _params = {}) override;
         void setFrameCountMode(FrameCountMode _mode) override;
         void close() override;
-        void toggleMembersList() override;
+        void setMembersVisible(bool _on) override;
+        bool isMembersVisible() const override;
         QString getSelectedText() const override;
+        void scrollToTop() override;
 
     protected:
         void resizeEvent(QResizeEvent* _event) override;
@@ -62,6 +65,8 @@ namespace Ui
         QWidget* initContactList(QWidget* _parent);
         QWidget* initGallery(QWidget* _parent);
         void initTexts();
+        QString pageTitle(int _pageIndex) const;
+        QString galleryTitle(int _pageIndex) const;
 
         void updateCloseIcon();
         void updatePinButton();
@@ -78,6 +83,8 @@ namespace Ui
         void blockUser(const QString& aimId, ActionType _action);
         void readOnly(const QString& aimId, ActionType _action);
         void changeRole(const QString& aimId, ActionType _action);
+        void removeInvite(const QString& aimId);
+        void deleteUser(const QString& aimId);
 
         void requestNickSuggest();
 
@@ -85,6 +92,9 @@ namespace Ui
         void updateGalleryVisibility();
 
     private Q_SLOTS:
+        void refresh();
+        void enableFading();
+        void disableFading();
         void chatInfo(qint64, const std::shared_ptr<Data::ChatInfo>&, const int _requestMembersLimit);
         void chatInfoFailed(qint64 _seq, core::group_chat_info_errors _errorCode, const QString& _aimId);
         void dialogGalleryState(const QString& _aimId, const Data::DialogGalleryState& _state);
@@ -100,14 +110,15 @@ namespace Ui
         void notificationsChecked(bool _checked);
         void settingsClicked();
 
-        void galleryPhotoCLicked();
-        void galleryVideoCLicked();
-        void galleryFilesCLicked();
-        void galleryLinksCLicked();
-        void galleryPttCLicked();
+        void galleryPhotoClicked();
+        void galleryVideoClicked();
+        void galleryFilesClicked();
+        void galleryLinksClicked();
+        void galleryPttClicked();
         void searchMembersClicked();
         void addToChatClicked();
         void pendingsClicked();
+        void yourInvitesClicked();
         void allMembersClicked();
         void adminsClicked();
         void blockedMembersClicked();
@@ -135,7 +146,7 @@ namespace Ui
         void approveAllClicked();
         void memberMenu(QAction*);
         void menuAction(QAction*);
-        void memberActionResult(int);
+        void memberActionResult();
         void chatEvents(const QString&);
         void onContactChanged(const QString& _aimid);
         void updateMuteState();
@@ -149,6 +160,7 @@ namespace Ui
         void updateActiveChatMembersModel(const QString& _aimId);
 
     private:
+        QElapsedTimer elapsedTimer_;
         QStackedWidget* stackedWidget_;
 
         HeaderTitleBar* titleBar_;
@@ -162,7 +174,6 @@ namespace Ui
         QWidget* fifthSpacer_;
 
         AvatarNameInfo* info_;
-        AvatarNamePlaceholder* infoPlaceholder_;
         QWidget* infoSpacer_;
         TextLabel* groupStatus_;
         ColoredButton* mainActionButton_;
@@ -184,6 +195,7 @@ namespace Ui
         MembersPlate* members_;
         SidebarButton* addToChat_;
         SidebarButton* pendings_;
+        SidebarButton* yourInvites_;
         MembersWidget* shortMembersList_;
         SidebarButton* allMembers_;
         SidebarButton* admins_;
@@ -199,6 +211,7 @@ namespace Ui
 
         SidebarCheckboxButton* public_;
         SidebarCheckboxButton* joinModeration_;
+        TextLabel* approvalLabel_;
         TextLabel* publicLabel_;
 
         std::unique_ptr<InfoBlock> aboutLinkToChat_;
@@ -224,7 +237,6 @@ namespace Ui
         int mainAction_;
 
         bool galleryIsEmpty_;
-        bool forceMembersRefresh_;
         bool invalidNick_;
         bool infoPlaceholderVisible_;
     };

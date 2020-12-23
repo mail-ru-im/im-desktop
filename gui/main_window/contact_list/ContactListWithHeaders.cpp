@@ -69,11 +69,11 @@ namespace Logic
             return Utils::renderSvg(_icon, Utils::scale_value(QSize(24, 24)), Styling::getParameters().getColor(_var));
         };
 
-        const auto dropDownBtn = [&makeIcon](const QString& _aimId, const QString& _friendly, const QString& _icon)
+        const auto dropDownBtn = [&makeIcon](QString _aimId, QString _friendly, const QString& _icon)
         {
             Data::Contact hdr;
-            hdr.AimId_ = _aimId;
-            hdr.Friendly_ = _friendly;
+            hdr.AimId_ = std::move(_aimId);
+            hdr.Friendly_ = std::move(_friendly);
 
             hdr.iconPixmap_ = makeIcon(_icon, Styling::StyleVariable::BASE_SECONDARY);
             hdr.iconHoverPixmap_ = makeIcon(_icon, Styling::StyleVariable::BASE_SECONDARY_HOVER);
@@ -82,11 +82,11 @@ namespace Logic
             return hdr;
         };
 
-        const auto serviceHdr = [](const QString& _aimId, const QString& _friendly)
+        const auto serviceHdr = [](QString _aimId, QString _friendly)
         {
             Data::Contact hdr;
-            hdr.AimId_ = _aimId;
-            hdr.Friendly_ = _friendly;
+            hdr.AimId_ = std::move(_aimId);
+            hdr.Friendly_ = std::move(_friendly);
             hdr.setType(Data::ContactType::SERVICE_HEADER);
             return hdr;
         };

@@ -562,14 +562,6 @@ You can leave your feedback or report an error here:</source>
         <translation>أشار %1 إلى اسم مجموعة جديد - &quot;%2&quot;</translation>
     </message>
     <message>
-        <source>%1 You have joined channel</source>
-        <translation>%1 لقد انضممت إلى القناة</translation>
-    </message>
-    <message>
-        <source>%1 %2 has joined channel</source>
-        <translation>انضم %1 %2 إلى القناة</translation>
-    </message>
-    <message>
         <source>%1 You have joined group</source>
         <translation>%1 لقد انضممت إلى المجموعة</translation>
     </message>
@@ -967,29 +959,45 @@ You can leave your feedback or report an error here:</source>
         <source>%1 %2 has canceled join request</source>
         <translation>تم إلغاء طلب العضوية%1 %2</translation>
     </message>
+    <message>
+        <source>%1 You have subscribed the channel</source>
+        <translation>%1 لقد قمت بالاشتراك في القناة</translation>
+    </message>
+    <message>
+        <source>%1 %2 has subscribed the channel</source>
+        <translation>%1 %2 مشترك في القناة</translation>
+    </message>
+    <message>
+        <source>%1 replied to status
+%2 %3
+%4
+%5 %6</source>
+        <translation>رد%1 على الحالة
+%2 %3
+%4
+%5 %6</translation>
+    </message>
+    <message>
+        <source>Replied to status: %1 %2</source>
+        <translation>الرد على الحالة: %1 %2</translation>
+    </message>
+    <message>
+        <source>You replied to status
+%2 %3
+%4
+%5 %6</source>
+        <translation>لقد ردت على الحالة
+%2 %3
+%4
+%5 %6</translation>
+    </message>
+    <message>
+        <source>You replied to status: %1 %2</source>
+        <translation>لقد أجبت عن الحالة: %1 %2</translation>
+    </message>
 </context>
 <context>
     <name>chat_page</name>
-    <message>
-        <source>member</source>
-        <comment>1</comment>
-        <translation>عضو</translation>
-    </message>
-    <message>
-        <source>members</source>
-        <comment>2</comment>
-        <translation>أعضاء</translation>
-    </message>
-    <message>
-        <source>members</source>
-        <comment>5</comment>
-        <translation>أعضاء</translation>
-    </message>
-    <message>
-        <source>members</source>
-        <comment>21</comment>
-        <translation>أعضاء</translation>
-    </message>
     <message>
         <source>Today</source>
         <translation>اليوم</translation>
@@ -1049,6 +1057,10 @@ You can leave your feedback or report an error here:</source>
         <source>Messages added to </source>
         <comment>21</comment>
         <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Message sent</source>
+        <translation>تم الارسال</translation>
     </message>
 </context>
 <context>
@@ -2782,26 +2794,6 @@ You can leave your feedback or report an error here:</source>
         <translation>اسم الدردشة</translation>
     </message>
     <message>
-        <source>member</source>
-        <comment>1</comment>
-        <translation>عضو</translation>
-    </message>
-    <message>
-        <source>members</source>
-        <comment>2</comment>
-        <translation>أعضاء</translation>
-    </message>
-    <message>
-        <source>members</source>
-        <comment>5</comment>
-        <translation>أعضاء</translation>
-    </message>
-    <message>
-        <source>members</source>
-        <comment>21</comment>
-        <translation>أعضاء</translation>
-    </message>
-    <message>
         <source>Channel name</source>
         <translation>اسم القناة</translation>
     </message>
@@ -2856,6 +2848,14 @@ You can leave your feedback or report an error here:</source>
     <message>
         <source>Chat does not exist or it is hidden by privacy settings</source>
         <translation>الدردشة غير موجودة أو مخفية من خلال إعدادات الخصوصية</translation>
+    </message>
+    <message>
+        <source>New subscribers are waiting for admin approval</source>
+        <translation>المشتركون الجدد ينتظرون إذن المسؤول للانضمام</translation>
+    </message>
+    <message>
+        <source>You are not a subscriber of this channel</source>
+        <translation>أنت لست مشترك في هذه القناة</translation>
     </message>
 </context>
 <context>
@@ -3449,6 +3449,10 @@ You can leave your feedback or report an error here:</source>
         <source>Privacy</source>
         <translation>خصوصية</translation>
     </message>
+    <message>
+        <source>Report a problem</source>
+        <translation>الإبلاغ عن مشكلة</translation>
+    </message>
 </context>
 <context>
     <name>mentions</name>
@@ -3906,6 +3910,21 @@ You can leave your feedback or report an error here:</source>
     </message>
 </context>
 <context>
+    <name>popup_widget</name>
+    <message>
+        <source>Disallow</source>
+        <translation>يحظر</translation>
+    </message>
+    <message>
+        <source>Manage who can add me</source>
+        <translation>تكوين من يمكنه الإضافة</translation>
+    </message>
+    <message>
+        <source>Disallow %1 to add you to add me to groups?</source>
+        <translation>هل تريد منع %1 إضافتك إلى المجموعات؟</translation>
+    </message>
+</context>
+<context>
     <name>popup_window</name>
     <message>
         <source>Clear all data from this device</source>
@@ -4192,23 +4211,11 @@ You can leave your feedback or report an error here:</source>
         <translation>وقف هذا الاستطلاع؟</translation>
     </message>
     <message>
-        <source>Are you sure you want to leave channel?</source>
-        <translation>هل أنت متأكد أنك تريد مغادرة القناة؟</translation>
-    </message>
-    <message>
-        <source>If you change group type to a private link to the group will be changed, and the old one will stop working</source>
-        <translation>إذا قمت بتغيير نوع المجموعة إلى خاص ، فإن رابط المجموعة سوف يتغير وسوف يتوقف النوع القديم عن العمل</translation>
-    </message>
-    <message>
         <source>Make private</source>
         <translation>جعل القطاع الخاص</translation>
     </message>
     <message>
         <source>Are you sure you want to clear the chat history?</source>
-        <translation>هل أنت متأكد من أنك تريد حذف محفوظات الدردشة؟</translation>
-    </message>
-    <message>
-        <source>Are you sure you want to clear the channel history?</source>
         <translation>هل أنت متأكد من أنك تريد حذف محفوظات الدردشة؟</translation>
     </message>
     <message>
@@ -4336,10 +4343,6 @@ You can leave your feedback or report an error here:</source>
         <translation>عذرا ، حدث خطأ ما. حاول مرة أخرى لاحقًا</translation>
     </message>
     <message>
-        <source>My status</source>
-        <translation>وضعي</translation>
-    </message>
-    <message>
         <source>You cannot call these users because of privacy settings:</source>
         <translation>لا يمكنك الاتصال بجهات الاتصال هذه بسبب إعدادات الخصوصية الخاصة بها. جهات الاتصال:</translation>
     </message>
@@ -4392,6 +4395,98 @@ You can leave your feedback or report an error here:</source>
         <translation>أرسل الرابط</translation>
     </message>
     <message>
+        <source>Are you sure you want to erase history and leave channel?</source>
+        <translation>هل أنت متأكد أنك تريد حذف السجل الخاص بك ومغادرة القناة؟</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to erase history and leave chat?</source>
+        <translation>هل أنت متأكد أنك تريد حذف القصة ومغادرة المجموعة؟</translation>
+    </message>
+    <message>
+        <source>Leave</source>
+        <translation>إطفاء</translation>
+    </message>
+    <message>
+        <source>Cannot add %1</source>
+        <translation>فشل إضافة %1</translation>
+    </message>
+    <message>
+        <source>Please wait until admins approve %1&apos;s request</source>
+        <translation>انتظر حتى يقوم المسؤول بتأكيد طلب إضافة %1</translation>
+    </message>
+    <message>
+        <source>Request for %1 was sent</source>
+        <translation>تم إرسال طلب لإضافة %1</translation>
+    </message>
+    <message>
+        <source>You cannot add %1 to channel. Send them subscription link %2</source>
+        <translation>لا يمكنك إضافة %1 إلى القناة. أرسل ارتباطًا للمستخدم للاشتراك %2</translation>
+    </message>
+    <message>
+        <source>You cannot add %1 to chat. Send them join link %2</source>
+        <translation>لا يمكنك إضافة %1 إلى المجموعة. أرسل ارتباطًا إلى المستخدم إلى المقدمة %2</translation>
+    </message>
+    <message>
+        <source>Subscribe the channel %1</source>
+        <translation>اشترك في القناة %1</translation>
+    </message>
+    <message>
+        <source>Join the group %1</source>
+        <translation>انضم إلى المجموعة %1</translation>
+    </message>
+    <message>
+        <source>Add %1?</source>
+        <translation>هل تريد إضافة %1؟</translation>
+    </message>
+    <message>
+        <source>Previously this contact was removed from channel. Probably, %1 violated the rules. Add anyway?</source>
+        <translation>سبق للمسؤول إزالة جهة الاتصال هذه من القناة. %1 انتهك  القواعد. إضافة على أي حال؟</translation>
+    </message>
+    <message>
+        <source>Previously this contact was removed from chat. Probably, %1 violated the rules. Add anyway?</source>
+        <translation>قام المسؤول سابقًا بإزالة جهة الاتصال هذه من المجموعة. %1 انتهك  القواعد. إضافة على أي حال؟</translation>
+    </message>
+    <message>
+        <source>You cannot add this contact to channel, please ask admin to do that</source>
+        <translation>لا يمكنك إضافة جهة الاتصال هذه إلى القناة ، اسأل المسؤول</translation>
+    </message>
+    <message>
+        <source>You cannot add this contact to chat, please ask admin to do that</source>
+        <translation>لا يمكنك إضافة جهة الاتصال هذه إلى المجموعة ، اسأل المسؤول</translation>
+    </message>
+    <message>
+        <source>Bot can be added only by admin and if bot joining the groups was allowed by its creator</source>
+        <translation>يمكن للمسؤول فقط إضافة روبوت إذا سمح منشئ الروبوت بإضافته</translation>
+    </message>
+    <message>
+        <source>Wait until admins approve join requests</source>
+        <translation>انتظر المشرفين لتأكيد طلب الإضافة</translation>
+    </message>
+    <message>
+        <source>Send them invite link</source>
+        <translation>أرسل لهم رابط المقدمة</translation>
+    </message>
+    <message>
+        <source>Ask admins to invite</source>
+        <translation>اطلب إضافة مسؤول</translation>
+    </message>
+    <message>
+        <source>Bot joining the groups was forbidden by its creator</source>
+        <translation>منع منشئ الروبوت الإضافة إلى المجموعات</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to delete user from list?</source>
+        <translation>هل أنت متأكد أنك تريد إزالة المستخدم من القائمة؟</translation>
+    </message>
+    <message>
+        <source>Add to list</source>
+        <translation>أضف إلى القائمة</translation>
+    </message>
+    <message>
+        <source>Select</source>
+        <translation>أختر</translation>
+    </message>
+    <message>
         <source>You can not join the call. It already has</source>
         <translation>لا يمكنك الاتصال بالمكالمة. فيه بالفعل</translation>
     </message>
@@ -4408,16 +4503,84 @@ You can leave your feedback or report an error here:</source>
         <translation>بدء مكالمة جديدة؟ ستنتهي المكالمة الحالية</translation>
     </message>
     <message>
-        <source>Use internal DNS cache</source>
-        <translation>استخدم ذاكرة التخزين المؤقت DNS الداخلية</translation>
-    </message>
-    <message>
-        <source>To change this option you must restart the application. Continue?</source>
-        <translation>لتغيير الإعداد ، يجب إعادة تشغيل التطبيق. تقدم؟</translation>
-    </message>
-    <message>
         <source>Global people search</source>
         <translation>بحث الناس العالمي</translation>
+    </message>
+    <message>
+        <source>Log Memory Report</source>
+        <translation>سجل تقرير الذاكرة</translation>
+    </message>
+    <message>
+        <source>Track internal cache</source>
+        <translation>تتبع ذاكرة التخزين المؤقت الداخلية</translation>
+    </message>
+    <message>
+        <source>Allow microphone access, so that interlocutor could hear you</source>
+        <translation>السماح بالوصول إلى الميكروفون حتى يتمكن الشخص الآخر من سماعك؟</translation>
+    </message>
+    <message>
+        <source>Don&apos;t allow</source>
+        <translation>لا تسمح</translation>
+    </message>
+    <message>
+        <source>Settings</source>
+        <translation>الإعدادات</translation>
+    </message>
+    <message>
+        <source>Don&apos;t show again</source>
+        <translation>لا تظهر مرة أخرى</translation>
+    </message>
+    <message>
+        <source>Contact is banned in %1</source>
+        <translation>تم حظر المستخدم عند %1</translation>
+    </message>
+    <message>
+        <source>Contact is already added</source>
+        <translation>تم بالفعل إضافة المستخدم في وقت سابق</translation>
+    </message>
+    <message>
+        <source>Contacts are banned in %1</source>
+        <translation>حظر المستخدمون عند %1</translation>
+    </message>
+    <message>
+        <source>Contacts were already added</source>
+        <translation>تم بالفعل إضافة المستخدم في وقت سابق</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to delete user?</source>
+        <translation>هل أنت متأكد أنك تريد حذف المستخدم؟</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to clear history?</source>
+        <translation>هل أنت متأكد أنك تريد حذف محفوظات الدردشة الخاصة بك؟</translation>
+    </message>
+    <message>
+        <source>If you change the channel type to private, the channel link will change and the old one will stop working</source>
+        <translation>إذا قمت بتغيير نوع القناة إلى خاص ، فسيتغير رابط القناة وسيتوقف القديم عن العمل</translation>
+    </message>
+    <message>
+        <source>If you change the group type to private, the group link will change and the old one will stop working</source>
+        <translation>إذا قمت بتغيير نوع المجموعة إلى خاص ، فسيتغير رابط المجموعة وسيتوقف القديم عن العمل</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to ban user to write in this channel?</source>
+        <translation>هل أنت متأكد أنك تريد منع المستخدم من الكتابة إلى هذه القناة؟</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to allow user to write in this channel?</source>
+        <translation>هل أنت متأكد أنك تريد السماح للمستخدم بالكتابة إلى هذه القناة؟</translation>
+    </message>
+    <message>
+        <source>Make private channel</source>
+        <translation>اجعلها شخصيه</translation>
+    </message>
+    <message>
+        <source>%1 hasn&apos;t been online for a long time and won&apos;t read the message likely. Send free sms to suggest to come back to ICQ?</source>
+        <translation>لم يكن%1 متصلاً بالإنترنت لفترة طويلة ومن المحتمل ألا يقرأ الرسالة. إرسال رسالة نصية مجانية وعرض العودة إلى ICQ؟</translation>
+    </message>
+    <message>
+        <source>Send Statistic</source>
+        <translation>أرسل الإحصائيات</translation>
     </message>
 </context>
 <context>
@@ -4496,26 +4659,6 @@ You can leave your feedback or report an error here:</source>
     <message>
         <source>Contact</source>
         <translation>جهة اتصال</translation>
-    </message>
-    <message>
-        <source>member</source>
-        <comment>1</comment>
-        <translation>عضو</translation>
-    </message>
-    <message>
-        <source>members</source>
-        <comment>2</comment>
-        <translation>أعضاء</translation>
-    </message>
-    <message>
-        <source>members</source>
-        <comment>5</comment>
-        <translation>أعضاء</translation>
-    </message>
-    <message>
-        <source>members</source>
-        <comment>21</comment>
-        <translation>أعضاء</translation>
     </message>
     <message>
         <source>VIEW</source>
@@ -4964,10 +5107,6 @@ You can leave your feedback or report an error here:</source>
         <translation>لغة</translation>
     </message>
     <message>
-        <source>Contact Us</source>
-        <translation>اتصل بنا</translation>
-    </message>
-    <message>
         <source>About app</source>
         <translation>معلومات عن التطبيق</translation>
     </message>
@@ -5247,6 +5386,26 @@ You can leave your feedback or report an error here:</source>
         <source>Show unreads counter in window title</source>
         <translation>إظهار عدد غير المقروء في عنوان النافذة</translation>
     </message>
+    <message>
+        <source>Exceptions list</source>
+        <translation>قائمة الاستثناءات</translation>
+    </message>
+    <message>
+        <source>Forbid to add me to groups</source>
+        <translation>رفض الإضافة إلى المجموعات</translation>
+    </message>
+    <message>
+        <source>Add to list</source>
+        <translation>أضف إلى القائمة</translation>
+    </message>
+    <message>
+        <source>Specify who should be prohibited from adding you to groups</source>
+        <translation>حدد من يجب منعه من إضافتك إلى المجموعات</translation>
+    </message>
+    <message>
+        <source>Disable SMS notifications</source>
+        <translation>تعطيل إشعارات الرسائل القصيرة</translation>
+    </message>
 </context>
 <context>
     <name>settings_connection</name>
@@ -5457,8 +5616,8 @@ You can leave your feedback or report an error here:</source>
         <translation>إخطارات</translation>
     </message>
     <message>
-        <source>Wallpaper</source>
-        <translation>صورة خلفية</translation>
+        <source>Wallpapers</source>
+        <translation>خلفية</translation>
     </message>
     <message>
         <source>Nickname</source>
@@ -5587,26 +5746,6 @@ Please edit phone number and try again.</source>
         <translation>اضافة قناة</translation>
     </message>
     <message>
-        <source>member</source>
-        <comment>1</comment>
-        <translation>عضو</translation>
-    </message>
-    <message>
-        <source>members</source>
-        <comment>2</comment>
-        <translation>أعضاء</translation>
-    </message>
-    <message>
-        <source>members</source>
-        <comment>5</comment>
-        <translation>أعضاء</translation>
-    </message>
-    <message>
-        <source>members</source>
-        <comment>21</comment>
-        <translation>أعضاء</translation>
-    </message>
-    <message>
         <source>Add name</source>
         <translation>اضافة اسم</translation>
     </message>
@@ -5665,26 +5804,6 @@ Please edit phone number and try again.</source>
     <message>
         <source>Message</source>
         <translation>رسالة</translation>
-    </message>
-    <message>
-        <source>MEMBER</source>
-        <comment>1</comment>
-        <translation>عضو</translation>
-    </message>
-    <message>
-        <source>MEMBERS</source>
-        <comment>2</comment>
-        <translation>المشاركين</translation>
-    </message>
-    <message>
-        <source>MEMBERS</source>
-        <comment>5</comment>
-        <translation>المشاركين</translation>
-    </message>
-    <message>
-        <source>MEMBERS</source>
-        <comment>21</comment>
-        <translation>المشاركين</translation>
     </message>
     <message>
         <source>Common groups</source>
@@ -5822,6 +5941,22 @@ Please edit phone number and try again.</source>
         <source>Call</source>
         <translation>للاتصال</translation>
     </message>
+    <message>
+        <source>Your invites</source>
+        <translation>دعواتك</translation>
+    </message>
+    <message>
+        <source>List empty</source>
+        <translation>القائمة فارغة</translation>
+    </message>
+    <message>
+        <source>Subscribers</source>
+        <translation>متابعون</translation>
+    </message>
+    <message>
+        <source>All subscribers</source>
+        <translation>كل المشتركين</translation>
+    </message>
 </context>
 <context>
     <name>siderbar</name>
@@ -5914,14 +6049,6 @@ Please edit phone number and try again.</source>
         <translation>حالة المستخدم</translation>
     </message>
     <message>
-        <source>Status timing</source>
-        <translation>مصطلح الحالة</translation>
-    </message>
-    <message>
-        <source>No status</source>
-        <translation>بدون مركز</translation>
-    </message>
-    <message>
         <source>Show always</source>
         <translation>اعرض دائما</translation>
     </message>
@@ -5958,6 +6085,22 @@ Please edit phone number and try again.</source>
     <message>
         <source>Cancel</source>
         <translation>إلغاء</translation>
+    </message>
+    <message>
+        <source>My status</source>
+        <translation>حالتي</translation>
+    </message>
+    <message>
+        <source>No status</source>
+        <translation>بدون مكانة</translation>
+    </message>
+    <message>
+        <source>Status timing</source>
+        <translation>مصطلح الحالة</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation>قريب</translation>
     </message>
 </context>
 <context>
@@ -6242,18 +6385,6 @@ Please edit phone number and try again.</source>
         <translation>إعدادات</translation>
     </message>
     <message>
-        <source>Call is secured</source>
-        <translation>المكالمة آمنة</translation>
-    </message>
-    <message>
-        <source>For security check, you can verify your images with your partner</source>
-        <translation>لفحص الأمان، يمكنك التحقق من صورك مع شريكك</translation>
-    </message>
-    <message>
-        <source>How it works</source>
-        <translation>كيف يعمل</translation>
-    </message>
-    <message>
         <source>Add to call</source>
         <translation>أضف إلى المكالمة</translation>
     </message>
@@ -6264,10 +6395,6 @@ Please edit phone number and try again.</source>
     <message>
         <source>Screen</source>
         <translation>الشاشة</translation>
-    </message>
-    <message>
-        <source>OK</source>
-        <translation>حسنا</translation>
     </message>
     <message>
         <source>DECLINE</source>
@@ -6294,14 +6421,6 @@ Please edit phone number and try again.</source>
         <translation>فكس الدعوة</translation>
     </message>
     <message>
-        <source>To use microphone you need to allow access to the microphone in the system settings</source>
-        <translation>لاستخدام الميكروفون ، اسمح بالوصول إلى الميكروفون في إعدادات النظام</translation>
-    </message>
-    <message>
-        <source>Microphone permissions</source>
-        <translation>الوصول إلى الميكروفون</translation>
-    </message>
-    <message>
         <source>To use camera you need to allow access to the camera in the system settings</source>
         <translation>لاستخدام الكاميرا ، اسمح بالوصول إلى الكاميرا في إعدادات النظام</translation>
     </message>
@@ -6321,20 +6440,36 @@ Please edit phone number and try again.</source>
         <source>CALL MEMBERS</source>
         <translation>اتصل بالمشاركين</translation>
     </message>
+    <message>
+        <source>Minimize</source>
+        <translation>خفض</translation>
+    </message>
+    <message>
+        <source>Maximize</source>
+        <translation>تكبير</translation>
+    </message>
+    <message>
+        <source>Raise call window</source>
+        <translation>قم بتوسيع نافذة الاتصال</translation>
+    </message>
+    <message>
+        <source>Move the window
+or open call
+with click</source>
+        <translation>حرك النافذة
+أو افتح المكالمة
+عن طريق النقر</translation>
+    </message>
 </context>
 <context>
     <name>voip_video_panel</name>
-    <message>
-        <source>Video</source>
-        <translation>فيديو</translation>
-    </message>
     <message>
         <source>Screen</source>
         <translation>عرض</translation>
     </message>
     <message>
         <source>More</source>
-        <translation>آخر</translation>
+        <translation>بعد</translation>
     </message>
     <message>
         <source>Go to chat</source>
@@ -6351,10 +6486,6 @@ Please edit phone number and try again.</source>
     <message>
         <source>Settings</source>
         <translation>إعدادات</translation>
-    </message>
-    <message>
-        <source>End</source>
-        <translation>لإكمال</translation>
     </message>
     <message>
         <source>Show all</source>
@@ -6381,10 +6512,6 @@ Please edit phone number and try again.</source>
         <translation>في المكالمات التي تضم أكثر من %1 مشارك ، لا تتوفر الأقنعة</translation>
     </message>
     <message>
-        <source>Mic</source>
-        <translation>ميكروفون</translation>
-    </message>
-    <message>
         <source>Only the creator of the webinar can show the video</source>
         <translation>لا يمكن عرض الفيديو إلا منشئ البرنامج التعليمي على الويب</translation>
     </message>
@@ -6402,19 +6529,121 @@ Please edit phone number and try again.</source>
     </message>
     <message>
         <source>Invite</source>
-        <translation>دعوة</translation>
+        <translation>اضف إليه</translation>
     </message>
     <message>
         <source>Link copied</source>
         <translation>تم نسخ الرابط</translation>
     </message>
     <message>
-        <source>Sound</source>
-        <translation>الصوت</translation>
-    </message>
-    <message>
         <source>Wait for connection</source>
         <translation>توقع اتصال</translation>
+    </message>
+    <message>
+        <source>Mute</source>
+        <translation>اطفيء
+ميكروفون</translation>
+    </message>
+    <message>
+        <source>Unmute</source>
+        <translation>ممكن
+ميكروفون</translation>
+    </message>
+    <message>
+        <source>Stop
+Video</source>
+        <translation>اطفيء
+فيديو</translation>
+    </message>
+    <message>
+        <source>Start
+Video</source>
+        <translation>ممكن
+فيديو</translation>
+    </message>
+    <message>
+        <source>Disable
+Sound</source>
+        <translation>اطفيء
+صوت</translation>
+    </message>
+    <message>
+        <source>Enable
+Sound</source>
+        <translation>ممكن
+صوت</translation>
+    </message>
+    <message>
+        <source>Stop
+Share</source>
+        <translation>قف
+عرض</translation>
+    </message>
+    <message>
+        <source>Share
+Screen</source>
+        <translation>شارك هذا
+شاشة</translation>
+    </message>
+    <message>
+        <source>Microphone not found. Check that it is connected and working.</source>
+        <translation>لم يتم الكشف عن الميكروفون. تحقق من أنه متصل ويعمل</translation>
+    </message>
+    <message>
+        <source>Allow access to microphone. Click &quot;Settings&quot; and allow application access to microphone</source>
+        <translation>اسمح بالوصول إلى الميكروفون. انقر على &quot;إعدادات&quot; واسمح للتطبيق بالوصول إلى الميكروفون</translation>
+    </message>
+    <message>
+        <source>No devices found</source>
+        <translation>لم تجد الأجهزة</translation>
+    </message>
+    <message>
+        <source>End
+Meeting</source>
+        <translation>لإكمال</translation>
+    </message>
+    <message>
+        <source>SHOW ALL</source>
+        <translation>عرض الكل</translation>
+    </message>
+</context>
+<context>
+    <name>voip_video_panel_mini</name>
+    <message>
+        <source>End meeting</source>
+        <translation>لإكمال</translation>
+    </message>
+    <message>
+        <source>Mute</source>
+        <translation>كتم صوت الميكروفون</translation>
+    </message>
+    <message>
+        <source>Unmute</source>
+        <translation>قم بتشغيل الميكروفون</translation>
+    </message>
+    <message>
+        <source>Stop video</source>
+        <translation>قم بإيقاف تشغيل الفيديو</translation>
+    </message>
+    <message>
+        <source>Start video</source>
+        <translation>شغل الفيديو</translation>
+    </message>
+    <message>
+        <source>Disable sound</source>
+        <translation>قم بإيقاف تشغيل الصوت</translation>
+    </message>
+    <message>
+        <source>Enable sound</source>
+        <translation>قم بتشغيل الصوت</translation>
+    </message>
+    <message>
+        <source>Stop share</source>
+        <translation>توقف عن الظهور</translation>
+    </message>
+    <message>
+        <source>Start share</source>
+        <translation>شاشة المشاركة</translation>
     </message>
 </context>
 <context>

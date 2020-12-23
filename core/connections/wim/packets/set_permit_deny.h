@@ -48,6 +48,8 @@ namespace core
                 const set_permit_deny::operation _op);
 
             virtual ~set_permit_deny();
+
+            virtual std::string_view get_method() const override;
         };
 
     }

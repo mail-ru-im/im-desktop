@@ -5,6 +5,11 @@ QWidget#incomingCallControls
     background: rgb(38, 38, 38);
 }
 
+QPushButton
+{
+    outline: none;
+}
+
 QPushButton#incomingCall_hangup
 {
     min-width: 36dip;

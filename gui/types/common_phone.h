@@ -13,12 +13,12 @@ namespace Data
         std::string info_operator_;
         std::string info_phone_;
         std::string info_iso_country_;
-        std::vector<std::string> printable_;
+        std::vector<QString> printable_;
         std::string status_;
         std::string trunk_code_;
         std::string modified_phone_number_;
         std::vector<int32_t> remaining_lengths_;
-        std::vector<std::string> prefix_state_;
+        std::vector<QString> prefix_state_;
         std::string modified_prefix_;
         bool is_phone_valid_;
 

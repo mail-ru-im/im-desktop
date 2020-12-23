@@ -915,6 +915,7 @@ namespace Ui
         {
             const auto avatarSize = Utils::scale_value(32);
             avatar_ = new ContactAvatarWidget(mainTopWidget, aimId_, Logic::GetFriendlyContainer()->getFriendly(aimId_), avatarSize, true);
+            avatar_->setStatusTooltipEnabled(!Favorites::isFavorites(aimId_));
             avatar_->SetOffset(Utils::scale_value(1));
             avatar_->SetSmallBadge(true);
             avatar_->setCursor(Qt::PointingHandCursor);
@@ -1072,7 +1073,11 @@ namespace Ui
     {
         if (const auto nextMention = reader_->getNextUnreadMention())
         {
-            Q_EMIT Logic::getContactListModel()->select(aimId_, nextMention->Id_);
+            const auto key = nextMention->ToKey();
+            if (messagesArea_->getItemByKey(key) != nullptr)
+                scrollTo(key, hist::scroll_mode_type::search);
+            else
+                Q_EMIT Logic::getContactListModel()->select(aimId_, nextMention->Id_);
         }
         else
         {
@@ -1084,13 +1089,8 @@ namespace Ui
     void HistoryControlPage::updateMentionsButton()
     {
         const int32_t mentionsCount = reader_->getMentionsCount();
-
         buttonMentions_->setCounter(mentionsCount);
-
-        const bool buttonMentionsVisible = !!mentionsCount;
-
-        if (buttonMentions_->isVisible() != buttonMentionsVisible)
-            buttonMentions_->setVisible(buttonMentionsVisible);
+        buttonMentions_->setVisible(!!mentionsCount);
     }
 
     void HistoryControlPage::updateMentionsButtonDelayed()
@@ -1204,13 +1204,15 @@ namespace Ui
         if (!config::get().is_on((config::features::stranger_contacts)) || !Utils::isChat(aimId_))
             return;
 
-        if (Logic::getRecentsModel()->isStranger(aimId_) && !pinnedWidget_->isStrangerVisible())
+        const auto isStranger = Logic::getRecentsModel()->isStranger(aimId_);
+        const auto visible = pinnedWidget_->isStrangerVisible();
+        if (isStranger && !visible)
         {
             connect(pinnedWidget_, &PinnedMessageWidget::strangerBlockClicked, this, &HistoryControlPage::strangerBlock, Qt::UniqueConnection);
             connect(pinnedWidget_, &PinnedMessageWidget::strangerCloseClicked, this, &HistoryControlPage::strangerClose, Qt::UniqueConnection);
             pinnedWidget_->showStranger();
         }
-        else if (!Logic::getRecentsModel()->isStranger(aimId_) && pinnedWidget_->isStrangerVisible())
+        else if (!isStranger && visible)
         {
             pinnedWidget_->hide();
         }
@@ -1312,12 +1314,56 @@ namespace Ui
 
     void HistoryControlPage::strangerBlock()
     {
-        auto result = Ui::BlockAndReport(aimId_, Logic::GetFriendlyContainer()->getFriendly(aimId_));
-        if (result != BlockAndReportResult::CANCELED)
+        if (Features::isGroupInvitesBlacklistEnabled() && Utils::isChat(aimId_))
         {
-            Logic::getContactListModel()->ignoreContact(aimId_, true);
-            GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::chatscr_blockbar_action, { { "type", result == BlockAndReportResult::BLOCK ? "block" : "spam" },{ "chat_type", Utils::chatTypeByAimId(aimId_) } });
+            const auto text = Logic::getContactListModel()->isChannel(aimId_)
+                              ? QT_TRANSLATE_NOOP("popup_window", "Are you sure you want to erase history and leave channel?")
+                              : QT_TRANSLATE_NOOP("popup_window", "Are you sure you want to erase history and leave chat?");
+
+            const auto confirmed = Utils::GetConfirmationWithTwoButtons(
+                QT_TRANSLATE_NOOP("popup_window", "Cancel"),
+                QT_TRANSLATE_NOOP("popup_window", "Leave"),
+                text,
+                QT_TRANSLATE_NOOP("sidebar", "Leave and delete"),
+                nullptr);
+
+            if (!confirmed)
+                return;
+
             chatscrBlockbarActionTracked_ = true;
+
+            Logic::getContactListModel()->removeContactFromCL(aimId_);
+
+            if (!chatInviter_.isEmpty())
+            {
+                QTimer::singleShot(0, [inviter = chatInviter_]()
+                {
+                    auto w = new MultipleOptionsWidget(nullptr,
+                        { {qsl(":/ignore_icon"), QT_TRANSLATE_NOOP("popup_widget", "Disallow")},
+                            {qsl(":/settings/general"), QT_TRANSLATE_NOOP("popup_widget", "Manage who can add me")} });
+                    Ui::GeneralDialog generalDialog(w, Utils::InterConnector::instance().getMainWindow());
+                    generalDialog.addLabel(QT_TRANSLATE_NOOP("popup_widget", "Disallow %1 to add you to add me to groups?").arg(Logic::GetFriendlyContainer()->getFriendly(inviter)));
+                    generalDialog.addCancelButton(QT_TRANSLATE_NOOP("report_widget", "Cancel"), true);
+
+                    if (generalDialog.showInCenter())
+                    {
+                        if (w->selectedIndex() == 0)
+                            GetDispatcher()->addToInvitersBlacklist({ inviter });
+                        else if (auto mainPage = MainPage::instance())
+                            mainPage->settingsTabActivate(Utils::CommonSettingsType::CommonSettingsType_Security);
+                    }
+                });
+            }
+        }
+        else
+        {
+            const auto result = Ui::BlockAndReport(aimId_, Logic::GetFriendlyContainer()->getFriendly(aimId_));
+            if (result != BlockAndReportResult::CANCELED)
+            {
+                Logic::getContactListModel()->ignoreContact(aimId_, true);
+                GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::chatscr_blockbar_action, { { "type", result == BlockAndReportResult::BLOCK ? "block" : "spam" },{ "chat_type", Utils::chatTypeByAimId(aimId_) } });
+                chatscrBlockbarActionTracked_ = true;
+            }
         }
     }
 
@@ -1530,11 +1576,6 @@ namespace Ui
         }
     }
 
-    void HistoryControlPage::pressedDestroyed()
-    {
-        messagesArea_->pressedDestroyed();
-    }
-
     void HistoryControlPage::onItemLayoutChanged()
     {
         updateItems();
@@ -1625,7 +1666,7 @@ namespace Ui
         params.isBackgroundMode = isInBackground();
         params.widgets = makeWidgets(aimId_, _buddies, width(), heads_, newPlateId_, messagesArea_);
         params.newPlateId = newPlateId_;
-        params.updateExistingOnly = true;
+        params.updateExistingOnly = std::none_of(_buddies.begin(), _buddies.end(), [](const auto& _buddy) { return _buddy->IsRestoredPatch(); });
         params.scrollOnInsert = std::make_optional(addReactionPlateActive_ ? ScrollOnInsert::None : ScrollOnInsert::ScrollToBottomIfNeeded);
 
         insertMessages(std::move(params));
@@ -1704,8 +1745,7 @@ namespace Ui
             connect(_item, &VoipEventItem::copy, this, &HistoryControlPage::copy),
             connect(_item, &VoipEventItem::quote, this, &HistoryControlPage::quoteText),
             connect(_item, &VoipEventItem::forward, this, &HistoryControlPage::forwardText),
-            connect(_item, &VoipEventItem::addToFavorites, this, &HistoryControlPage::addToFavorites),
-            connect(_item, &VoipEventItem::pressedDestroyed, this, &HistoryControlPage::pressedDestroyed)
+            connect(_item, &VoipEventItem::addToFavorites, this, &HistoryControlPage::addToFavorites)
         };
         return std::all_of(list.begin(), list.end(), [](const auto& x) { return x; });
     }
@@ -1726,7 +1766,6 @@ namespace Ui
             connect(complexMessageItem, &ComplexMessage::ComplexMessageItem::edit, this, &HistoryControlPage::edit),
             connect(complexMessageItem, &ComplexMessage::ComplexMessageItem::editWithCaption, this, &HistoryControlPage::editWithCaption),
             connect(complexMessageItem, &ComplexMessage::ComplexMessageItem::needUpdateRecentsText, this, &HistoryControlPage::onNeedUpdateRecentsText),
-            connect(complexMessageItem, &ComplexMessage::ComplexMessageItem::pressedDestroyed, this, &HistoryControlPage::pressedDestroyed),
             connect(complexMessageItem, &ComplexMessage::ComplexMessageItem::layoutChanged, this, &HistoryControlPage::onItemLayoutChanged),
             connect(complexMessageItem, &ComplexMessage::ComplexMessageItem::addToFavorites, this, &HistoryControlPage::addToFavorites),
             connect(complexMessageItem, &ComplexMessage::ComplexMessageItem::readOnlyUser, this, &HistoryControlPage::onReadOnlyUser),
@@ -1819,6 +1858,7 @@ namespace Ui
                         if (complexMessageItem->canBeUpdatedWith(*newComplexMessageItem))
                         {
                             complexMessageItem->updateWith(*newComplexMessageItem);
+                            messagesArea_->updateItemKey(itemData.first);
                         }
                         else
                         {
@@ -2077,7 +2117,10 @@ namespace Ui
 
         if (_errorCode == core::group_chat_info_errors::not_in_chat || _errorCode == core::group_chat_info_errors::blocked)
         {
-            contactStatus_->setText(QT_TRANSLATE_NOOP("groupchats", "You are not a member of this chat"));
+            const auto text = Logic::getContactListModel()->isChannel(_aimId)
+                              ? QT_TRANSLATE_NOOP("groupchats", "You are not a subscriber of this channel")
+                              : QT_TRANSLATE_NOOP("groupchats", "You are not a member of this chat");
+            contactStatus_->setText(text);
             Logic::getContactListModel()->setYourRole(aimId_, qsl("notamember"));
             setContactStatusClickable(false);
             addMemberButton_->hide();
@@ -2108,30 +2151,15 @@ namespace Ui
 
         isMember_ = youMember;
 
-        QString stateText;
-        if (youMember)
-        {
-            chatMembersCount_ = _info->MembersCount_;
-            stateText = QString::number(_info->MembersCount_) % ql1c(' ')
-                % Utils::GetTranslator()->getNumberString(
-                    _info->MembersCount_,
-                    QT_TRANSLATE_NOOP3("chat_page", "member", "1"),
-                    QT_TRANSLATE_NOOP3("chat_page", "members", "2"),
-                    QT_TRANSLATE_NOOP3("chat_page", "members", "5"),
-                    QT_TRANSLATE_NOOP3("chat_page", "members", "21")
-                );
-        }
-        else
-        {
-            stateText = QT_TRANSLATE_NOOP("groupchats", "You are not a member of this chat");
-            chatMembersCount_ = 0;
-        }
-        contactStatus_->setText(stateText);
+        contactStatus_->setText(Utils::getMembersString(_info->MembersCount_, _info->isChannel()));
         contactStatus_->show();
+        chatMembersCount_ = youMember ? _info->MembersCount_ : 0;
 
         isPublicChat_ = _info->Public_;
 
         isChatCreator_ = isYouAdmin(_info);
+
+        chatInviter_ = _info->Inviter_;
 
         bool isAdmin = isYouAdminOrModer(_info);
         if (!isAdminRole_ && isAdmin)
@@ -2169,7 +2197,9 @@ namespace Ui
             updatePendingButtonPosition();
 
         if (youMember)
+        {
             Q_EMIT updateMembers();
+        }
     }
 
     void HistoryControlPage::contactChanged(const QString& _aimId)
@@ -2307,6 +2337,8 @@ namespace Ui
 
             if (messagesArea_->getLayout()->removeItemAtEnd(Logic::control_type::ct_new_messages))
                 newPlateId_ = std::nullopt;
+
+            reader_->deleted(_messages);
 
             // update dates: updatedBuddies with empty list
             updatedBuddies({});
@@ -3304,10 +3336,11 @@ namespace Ui
 
     bool HistoryControlPage::readonly(const QString& _aimId, bool _readonly)
     {
+        const auto action = _readonly ? Utils::ROAction::Ban : Utils::ROAction::Allow;
         const auto confirmed = Utils::GetConfirmationWithTwoButtons(
             QT_TRANSLATE_NOOP("popup_window", "Cancel"),
             QT_TRANSLATE_NOOP("popup_window", "Yes"),
-            _readonly ? QT_TRANSLATE_NOOP("popup_window", "Are you sure you want to ban user to write in this chat?") : QT_TRANSLATE_NOOP("popup_window", "Are you sure you want to allow user to write in this chat?"),
+            Utils::getReadOnlyString(action, Logic::getContactListModel()->isChannel(_aimId)),
             Logic::GetFriendlyContainer()->getFriendly(_aimId),
             nullptr);
 
@@ -3756,6 +3789,7 @@ namespace Ui
         newPlateShowed();
 
         clearSelection();
+        clearPttProgress();
         Utils::InterConnector::instance().setMultiselect(false, aimId_);
 
         if (hasMessages() && botParams_)
@@ -3998,14 +4032,24 @@ namespace Ui
         fontsHaveChanged_ = false;
     }
 
-    QWidget* Ui::HistoryControlPage::getTopWidget() const
+    QWidget* HistoryControlPage::getTopWidget() const
     {
         return topWidget_;
     }
 
-    int Ui::HistoryControlPage::chatRoomCallParticipantsCount() const
+    int HistoryControlPage::chatRoomCallParticipantsCount() const
     {
         return activeCallPlate_ ? activeCallPlate_->participantsCount() : 0;
+    }
+
+    void Ui::HistoryControlPage::clearPttProgress()
+    {
+        messagesArea_->clearPttProgress();
+    }
+
+    Ui::MessagesScrollArea* Ui::HistoryControlPage::scrollArea() const
+    {
+        return messagesArea_;
     }
 
     bool HistoryControlPage::hasMessageUnderCursor() const

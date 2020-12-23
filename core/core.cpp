@@ -3,8 +3,11 @@
 #include "async_task.h"
 #include "main_thread.h"
 #include "network_log.h"
+#ifndef STRIP_ZSTD
 #include "zstd_helper.h"
+#endif // !STRIP_ZSTD
 #include "configuration/app_config.h"
+#include "configuration/host_config.h"
 #include "../common.shared/config/config.h"
 #include "../common.shared/omicron_keys.h"
 
@@ -14,8 +17,10 @@
 #include "connections/im_login.h"
 #include "connections/send_feedback.h"
 
+#ifndef STRIP_VOIP
 #include "Voip/VoipManager.h"
 #include "voip/voip3.h"
+#endif
 
 #include "../corelib/collection_helper.h"
 #include "core_settings.h"
@@ -48,6 +53,9 @@
 #include "../../../common.shared/version_info.h"
 #include "connections/urls_cache.h"
 #include "connections/wim/wim_packet.h"
+
+#include "network/network_change_notifier.h"
+#include "network/network_change_observer.h"
 
 
 #ifdef _WIN32
@@ -160,8 +168,11 @@ namespace
                     }
                 }
             }
-            bs.write<std::string_view>("\r\nfor: ");
-            bs.write<std::string_view>(s.str());
+            if (const auto str = s.str(); !str.empty())
+            {
+                bs.write<std::string_view>("\r\nfor: ");
+                bs.write<std::string_view>(str);
+            }
         }
     }
 
@@ -362,7 +373,9 @@ void core::core_dispatcher::start(const common::core_gui_settings& _settings)
 {
     __LOG(log::init(utils::get_logs_path(), false);)
 
+#ifndef STRIP_ZSTD
     zstd_helper_ = std::make_shared<zstd_helper>(utils::get_product_data_path() + L"/zdicts");
+#endif // !STRIP_ZSTD
 
     http_request_simple::init_global();
 
@@ -400,27 +413,31 @@ void core::core_dispatcher::start(const common::core_gui_settings& _settings)
 
     memory_stats_collector_ = std::make_unique<memory_stats::memory_stats_collector>();
 
+#ifndef STRIP_VOIP
     memory_stats::memory_stats_collector::reporter_ptr voip_memory_reporter
             = std::make_unique<memory_stats::voip_memory_consumption_reporter>(voip_manager_);
 
     memory_stats_collector_->register_consumption_reporter(std::move(voip_memory_reporter));
+#endif
 
     im_container_ = std::make_shared<im_container>(voip_manager_,
                                                    memory_stats_collector_);
 
     post_app_config();
 
+    im_container_->create();
     if (config::get().is_on(config::features::omicron_enabled))
         start_omicron_service();
 
-    im_container_->create();
+    config::hosts::load_dns_cache();
 
     if (config::get().is_debug())
         get_network_log().write_string("debug config is used\n");
 
     load_im_stats();
-
+#ifndef STRIP_ZSTD
     zstd_helper_->start_auto_updater(im_container_);
+#endif // !STRIP_ZSTD
 
 #ifdef _WIN32
     core::dump::set_os_version(core::tools::system::get_os_version_string());
@@ -487,7 +504,9 @@ void core::core_dispatcher::unlink_gui()
         network_log_.reset();
         proxy_settings_manager_.reset();
         theme_settings_.reset();
+#ifndef STRIP_ZSTD
         zstd_helper_.reset();
+#endif // !STRIP_ZSTD
 
         if (!keep_local_data)
             remove_local_data(true);
@@ -705,6 +724,17 @@ void core::core_dispatcher::post_message_to_gui(std::string_view _message, int64
         bs.write<std::string_view>("locked: ");
         bs.write<std::string_view>(logutils::yn(locked));
         bs.write<std::string_view>(";\r\n");
+    }
+    else if (_message_data && _message == "need_login")
+    {
+        if (_message_data->is_value_exist("is_auth_error"))
+        {
+            const auto is_auth_error = _message_data->get_value("is_auth_error")->get_as_bool();
+            bs.write<std::string_view>("is_auth_error: ");
+            bs.write<std::string_view>(logutils::yn(is_auth_error));
+            bs.write<std::string_view>(";\r\n");
+        }
+
     }
 
 //     if (_message_data)
@@ -1038,7 +1068,7 @@ void core::core_dispatcher::on_feedback(int64_t _seq, coll_helper& _params)
 
     auto request = std::make_shared<core::send_feedback>(_params.get_value_as_string("aimid"), _params.get_value_as_string("url"), std::move(fields), to_string_vector(_params, "attachement"));
     request->send([_seq, request](bool _success)
-     {
+    {
         coll_helper coll(g_core->create_collection(), true);
         coll.set_value_as_bool("succeeded", _success);
         g_core->post_message_to_gui("feedback/sent", _seq, coll.get());
@@ -1047,7 +1077,26 @@ void core::core_dispatcher::on_feedback(int64_t _seq, coll_helper& _params)
             g_core->insert_event(stats::stats_event_names::feedback_sent);
         else
             g_core->insert_event(stats::stats_event_names::feedback_error);
-     });
+    });
+}
+
+void core::core_dispatcher::on_misc_support(int64_t _seq, coll_helper& _params)
+{
+    // first prepare an archive with client logs
+    run_async([_seq, aimid = std::string(_params.get_value_as_string("aimid")), message = std::string(_params.get_value_as_string("message")), screenshots_list = to_string_vector(_params, "attachement")]() mutable
+    {
+        if (g_core)
+        {
+            g_core->execute_core_context([_seq, aimid = std::move(aimid), message = std::move(message), attachment = tools::from_utf16(utils::create_feedback_logs_archive({}).wstring()), screenshots_list = std::move(screenshots_list)]()
+            {
+                // then send the ready data to the support
+                if (auto im = g_core->find_im_by_id(0))
+                    im->misc_support(_seq, aimid, message, attachment, std::move(screenshots_list));
+            });
+        }
+
+        return 0;
+    });
 }
 
 void core::core_dispatcher::on_create_logs_archive(int64_t _seq, coll_helper& _params)
@@ -1055,7 +1104,7 @@ void core::core_dispatcher::on_create_logs_archive(int64_t _seq, coll_helper& _p
     g_core->run_async([_seq, path = boost::filesystem::wpath(tools::from_utf8(_params.get_value_as_string("path")))]()
     {
         coll_helper cl_coll(g_core->create_collection(), true);
-        cl_coll.set_value_as_string("archive", tools::from_utf16(utils::create_logs_archive(path).wstring()));
+        cl_coll.set_value_as_string("archive", tools::from_utf16(utils::create_logs_dir_archive(path).wstring()));
 
         g_core->post_message_to_gui("logs_archive", _seq, cl_coll.get());
 
@@ -1212,6 +1261,7 @@ void core::core_dispatcher::receive_message_from_gui(std::string_view _message, 
             // Added type of voip call to log.
             else if (message_string == "voip_call")
             {
+#ifndef STRIP_VOIP
                 std::stringstream s;
                 s << "type: ";
                 s << params.get_value_as_string("type");
@@ -1220,6 +1270,7 @@ void core::core_dispatcher::receive_message_from_gui(std::string_view _message, 
 
                 bs.write<std::string_view>(s.str());
                 bs.write<std::string_view>("\r\n");
+#endif
             }
 
             write_data_to_network_log(std::move(bs));
@@ -1263,7 +1314,10 @@ void core::core_dispatcher::receive_message_from_gui(std::string_view _message, 
         }
         else if (message_string == "feedback/send")
         {
-            on_feedback(_seq, params);
+            if (config::get().is_on(config::features::contact_us_via_backend))
+                on_misc_support(_seq, params);
+            else
+                on_feedback(_seq, params);
         }
         else if (message_string == "create_logs_archive")
         {
@@ -1349,6 +1403,7 @@ void core::core_dispatcher::replace_uin_in_login(im_login_id& old_login, im_logi
     im_container_->replace_uin_in_login(old_login, new_login);
 }
 
+#ifndef STRIP_VOIP
 void core::core_dispatcher::post_voip_message(unsigned _id, const voip_manager::VoipProtoMsg& msg) {
     execute_core_context([this, _id, msg] {
         auto im = find_im_by_id(_id);
@@ -1371,24 +1426,37 @@ void core::core_dispatcher::post_voip_alloc(unsigned _id, const char* _data, siz
         }
     });
 }
+#endif
 
 void core::core_dispatcher::on_thread_finish()
 {
 }
 
-void core::core_dispatcher::unlogin(const bool _is_auth_error, const bool _force_clean_local_data)
+void core::core_dispatcher::unlogin(const bool _is_auth_error, const bool _force_clean_local_data, std::string_view _reason_to_log)
 {
-    if (_force_clean_local_data)
-    {
-        auto stream_val = tools::binary_stream();
-        stream_val.write(false);
-        gui_settings_->set_value(settings_keep_logged_in, std::move(stream_val));
-    }
+    tools::binary_stream bs;
+    bs.write<std::string_view>("unlogin: ");
+    bs.write<std::string_view>(_reason_to_log);
+    bs.write<std::string_view>("\r\n");
+
+    write_data_to_network_log(std::move(bs));
 
     execute_core_context([this, _is_auth_error]()
     {
         im_container_->logout(_is_auth_error);
     });
+
+    if (_force_clean_local_data)
+    {
+        auto stream_val = tools::binary_stream();
+        stream_val.write(false);
+        gui_settings_->set_value(settings_keep_logged_in, std::move(stream_val));
+
+        execute_core_context([this]()
+        {
+            remove_local_data(false);
+        });
+    }
 }
 
 bool core::core_dispatcher::is_network_log_valid() const
@@ -1535,9 +1603,14 @@ static void omicron_update_helper(const std::string& _data)
 {
     if (g_core)
     {
-        coll_helper cl_coll(g_core->create_collection(), true);
-        cl_coll.set_value_as_string("data", _data);
-        g_core->post_message_to_gui("omicron/update/data", 0, cl_coll.get());
+        g_core->execute_core_context([_data]
+        {
+            coll_helper cl_coll(g_core->create_collection(), true);
+            cl_coll.set_value_as_string("data", _data);
+            g_core->post_message_to_gui("omicron/update/data", 0, cl_coll.get());
+
+            g_core->check_if_network_change_notifier_available();
+        });
     }
 }
 
@@ -1708,15 +1781,18 @@ bool core_dispatcher::verify_local_pin(const std::string& _password) const
     return utils::calc_local_pin_hash(_password, salt) == settings_->get_value(local_pin_hash, std::string());
 }
 
-void core_dispatcher::set_external_config_host(std::string_view _host)
+void core_dispatcher::set_external_config_url(std::string_view _url)
 {
-    settings_->set_value(external_config_host, _host);
+    settings_->set_value(external_config_host, _url);
     settings_->save();
 }
 
-std::string core_dispatcher::get_external_config_host() const
+std::string core_dispatcher::get_external_config_url() const
 {
-    return settings_->get_value(external_config_host, std::string());
+    auto result = settings_->get_value(external_config_host, std::string());
+    if (result.empty())
+        result = config::get().string(config::values::external_config_preset_url);
+    return result;
 }
 
 int64_t core_dispatcher::get_voip_init_memory_usage() const
@@ -1764,6 +1840,24 @@ void core_dispatcher::reset_connection()
     curl_handler::instance().reset();
 }
 
+void core::core_dispatcher::check_if_network_change_notifier_available()
+{    
+    if (!network_change_notifier_ && network_change_notifier::is_enabled())
+    {
+        auto network_observer = std::make_unique<network_change_observer>();
+        network_change_notifier_ = network_change_notifier::create(std::move(network_observer));
+    }
+    else if (network_change_notifier_ && !network_change_notifier::is_enabled())
+    {
+        network_change_notifier_.reset();
+    }
+}
+
+bool core::core_dispatcher::is_network_change_notifier_valid() const
+{
+    return !!network_change_notifier_;
+}
+
 bool core_dispatcher::is_smartreply_available() const
 {
     return get_gui_settings_bool_value(settings_show_smartreply, true);
@@ -1774,7 +1868,9 @@ bool core_dispatcher::is_suggests_available() const
     return get_gui_settings_bool_value(settings_show_suggests_words, true);
 }
 
+#ifndef STRIP_ZSTD
 const std::shared_ptr<zstd_helper>& core_dispatcher::get_zstd_helper() const
 {
     return zstd_helper_;
 }
+#endif // !STRIP_ZSTD

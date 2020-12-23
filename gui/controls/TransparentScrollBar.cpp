@@ -4,6 +4,7 @@
 #include "../utils/utils.h"
 #include "../utils/graphicsEffects.h"
 #include "../utils/InterConnector.h"
+#include "../utils/features.h"
 #include "../styles/ThemeParameters.h"
 
 #include "../main_window/contact_list/CustomAbstractListModel.h"
@@ -17,6 +18,10 @@ namespace
     constexpr std::chrono::milliseconds thinTime = std::chrono::milliseconds(250);
     constexpr std::chrono::milliseconds fadeInTime = std::chrono::milliseconds(250);
     constexpr std::chrono::milliseconds fadeOutTime = std::chrono::milliseconds(250);
+
+    constexpr std::chrono::milliseconds scrollAnimationDuration() noexcept { return std::chrono::milliseconds(250); }
+
+    constexpr int defaultMouseWheelDelta() noexcept { return 120; }
 
     constexpr auto minOpacity = 0.0;
     constexpr auto maxOpacity = 1.0;
@@ -1040,16 +1045,25 @@ namespace Ui
 
     // ListViewWithTrScrollBar
 
+    bool FocusableListView::smoothAnimationEnabled_;
+
     FocusableListView::FocusableListView(QWidget *_parent)
         : QListView(_parent)
         , selectByMouseHoverEnabled_(false)
         , rescheduleLayoutTimer_(new QTimer(this))
+        , scrollAnimation_(new QVariantAnimation(this))
     {
         rescheduleLayoutTimer_->setSingleShot(true);
         rescheduleLayoutTimer_->setInterval(layoutReschedInterval);
 
         connect(rescheduleLayoutTimer_, &QTimer::timeout, this, &FocusableListView::scheduleDelayedItemsLayout);
         connect(this, &QListView::pressed, this, qOverload<const QModelIndex&>(&QListView::update));
+
+        scrollAnimation_->setDuration(scrollAnimationDuration().count());
+        scrollAnimation_->setEasingCurve(QEasingCurve(QEasingCurve::OutQuad));
+        connect(scrollAnimation_, &QVariantAnimation::valueChanged, this, &FocusableListView::scrollAnimationValueChanged);
+
+        updateSmoothScrollAvailability();
     }
 
     void FocusableListView::setSelectByMouseHover(const bool _enabled)
@@ -1104,7 +1118,26 @@ namespace Ui
 
     void FocusableListView::wheelEvent(QWheelEvent * _e)
     {
-        QListView::wheelEvent(_e);
+        const auto scrollDelta = _e->angleDelta().y();
+        if ((scrollDelta % defaultMouseWheelDelta() != 0) || !smoothAnimationEnabled_)
+        {
+            // flick by touchpad or smooth scrolling disabled
+            scrollAnimation_->stop();
+            QListView::wheelEvent(_e);
+        }
+        else
+        {
+            // scroll by mouse wheel
+            const auto start = verticalScrollBar()->value();
+            const auto animationRunning = scrollAnimation_->state() == QAbstractAnimation::Running;
+            const auto equalDirections = (scrollAnimation_->endValue().toInt() > start) == (scrollDelta < 0);
+            auto end = (animationRunning && equalDirections) ? scrollAnimation_->endValue().toInt() : start;
+            end -= scrollDelta;
+            scrollAnimation_->stop();
+            scrollAnimation_->setStartValue(start);
+            scrollAnimation_->setEndValue(end);
+            scrollAnimation_->start();
+        }
 
         updateSelectionUnderCursor(_e->pos());
 
@@ -1125,6 +1158,14 @@ namespace Ui
             flags = QItemSelectionModel::NoUpdate;
 
         return flags;
+    }
+
+    void FocusableListView::scrollAnimationValueChanged()
+    {
+        auto value = scrollAnimation_->currentValue().toInt();
+        verticalScrollBar()->setValue(value);
+
+        updateSelectionUnderCursor(mapFromGlobal(QCursor::pos()));
     }
 
     void FocusableListView::updateSelectionUnderCursor(const QPoint& _pos)
@@ -1175,5 +1216,20 @@ namespace Ui
 
         if (cursor().shape() != cur)
             setCursor(cur);
+    }
+
+    void FocusableListView::updateSmoothScrollAvailability()
+    {
+        static bool connected = false;
+        if (!connected)
+        {
+            auto setSmoothScrollingAvailability = []
+            {
+                smoothAnimationEnabled_ = Features::isContactListSmoothScrollingEnabled();
+            };
+            connect(&Utils::InterConnector::instance(), &Utils::InterConnector::omicronUpdated, setSmoothScrollingAvailability);
+            setSmoothScrollingAvailability();
+            connected = true;
+        }
     }
 }

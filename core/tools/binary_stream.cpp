@@ -13,6 +13,17 @@
 using namespace core;
 using namespace tools;
 
+namespace
+{
+    void zero_terminate(binary_stream& _stream, size_t _data_size)
+    {
+        _stream.set_input(_data_size);
+        _stream.resize(_data_size + 1);
+        if (auto data = _stream.get_data())
+            data[_data_size] = 0;
+    }
+}
+
 bool binary_stream::save_2_file(const std::wstring& _file_name) const
 {
     if (const auto size = available(); size > 0)
@@ -229,6 +240,8 @@ bool core::tools::decompress_gzip(const char* _data, size_t _size, binary_stream
     if (inflateInit2(&inflate_s, window_bits) != Z_OK)
         return false;
 
+    auto_scope end_scope_call([&inflate_s] { inflateEnd(&inflate_s); });
+
     inflate_s.next_in = reinterpret_cast<Bytef*>((char*)_data);
     inflate_s.avail_in = static_cast<unsigned int>(_size);
 
@@ -239,28 +252,20 @@ bool core::tools::decompress_gzip(const char* _data, size_t _size, binary_stream
     {
         size_t resize_to = size_uncompressed + 2 * _size;
         if (resize_to > max_decompress_bytes())
-        {
-            inflateEnd(&inflate_s);
             return false;
-        }
+
         _uncompressed_bs.resize(resize_to);
+
         inflate_s.avail_out = static_cast<unsigned int>(2 * _size);
         inflate_s.next_out = reinterpret_cast<Bytef*>(_uncompressed_bs.get_data() + size_uncompressed);
         auto ret = inflate(&inflate_s, Z_FINISH);
         if (ret != Z_STREAM_END && ret != Z_OK && ret != Z_BUF_ERROR)
-        {
-            // std::string error_msg = inflate_s.msg;
-            inflateEnd(&inflate_s);
             return false;
-        }
 
         size_uncompressed += (2 * _size - inflate_s.avail_out);
     } while (inflate_s.avail_out == 0);
 
-    inflateEnd(&inflate_s);
-    _uncompressed_bs.resize(size_uncompressed + 1, '\0'); // +1 for zero-terminating
-    _uncompressed_bs.set_input(size_uncompressed);
-
+    zero_terminate(_uncompressed_bs, size_uncompressed);
     return true;
 }
 
@@ -269,6 +274,7 @@ bool core::tools::decompress_gzip(const stream& _bs, binary_stream& _uncompresse
     return decompress_gzip(_bs.get_data(), _bs.available(), _uncompressed_bs);
 }
 
+#ifndef STRIP_ZSTD
 bool core::tools::compress_zstd(const char* _data, size_t _size, std::string_view _dict, binary_stream& _compressed_bs)
 {
     if (!_data || _size == 0 || _dict.empty())
@@ -321,7 +327,7 @@ bool core::tools::compress_zstd(const stream& _bs, std::string_view _dict, binar
 
 bool core::tools::decompress_zstd(const char* _data, size_t _size, std::string_view _dict, binary_stream& _uncompressed_bs)
 {
-    if (!_data || _size == 0 || _dict.empty())
+    if (!_data || _size == 0)
         return false;
 
     const auto zstd_helper = g_core->get_zstd_helper();
@@ -358,9 +364,7 @@ bool core::tools::decompress_zstd(const char* _data, size_t _size, std::string_v
 
     } while (zstd_status != ZSTDW_OK);
 
-    _uncompressed_bs.resize(data_out_written + 1, '\0'); // +1 for zero-terminating
-    _uncompressed_bs.set_input(data_out_written);
-
+    zero_terminate(_uncompressed_bs, data_out_written);
     return true;
 }
 
@@ -368,3 +372,4 @@ bool core::tools::decompress_zstd(const stream& _bs, std::string_view _dict, bin
 {
     return decompress_zstd(_bs.get_data(), _bs.available(), _dict, _uncompressed_bs);
 }
+#endif // !STRIP_ZSTD

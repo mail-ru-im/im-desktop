@@ -516,7 +516,7 @@ public:
 };
 
 FooterWidget::FooterWidget(QWidget* _parent)
-    : QWidget(_parent)
+    : LinkAccessibleWidget(_parent)
     , d(std::make_unique<FooterWidget_p>())
 {
 
@@ -538,15 +538,17 @@ FooterWidget::FooterWidget(QWidget* _parent)
     setMouseTracking(true);
 }
 
-FooterWidget::~FooterWidget()
-{
-
-}
+FooterWidget::~FooterWidget() = default;
 
 QSize FooterWidget::sizeHint() const
 {
     const auto height = d->textUnit_->getHeight(width());
     return QSize(width(), height);
+}
+
+const TextRendering::TextUnitPtr& FooterWidget::getTextUnit() const
+{
+    return d->textUnit_;
 }
 
 void FooterWidget::paintEvent(QPaintEvent* _event)

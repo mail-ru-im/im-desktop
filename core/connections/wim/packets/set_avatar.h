@@ -37,6 +37,7 @@ namespace core
             inline const std::string &get_id() const { return id_; }
             virtual bool is_post() const override { return true; }
             virtual bool support_async_execution() const override { return false; }
+            virtual std::string_view get_method() const override;
         };
     }
 }

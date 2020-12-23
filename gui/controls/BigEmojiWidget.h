@@ -17,6 +17,8 @@ namespace Ui
         BigEmojiWidget(const QString& _code, int _size, QWidget* _parent);
         ~BigEmojiWidget();
 
+        void setOpacity(double _opacity);
+
     protected:
         void paintEvent(QPaintEvent* _event) override;
 

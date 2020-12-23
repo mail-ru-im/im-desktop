@@ -93,14 +93,15 @@ namespace Ui
 
     ContactDialog::~ContactDialog() = default;
 
-    void ContactDialog::onContactSelected(const QString& _aimId, qint64 _messageId, const highlightsV& _highlights)
+    void ContactDialog::onContactSelected(const QString& _aimId, qint64 _messageId, const highlightsV& _highlights, bool _ignoreScroll)
     {
         initInputWidget();
         hideSmartrepliesForQuoteForce();
 
-        Q_EMIT contactSelected(_aimId, _messageId, _highlights);
+        Q_EMIT contactSelected(_aimId, _messageId, _highlights, _ignoreScroll);
 
-        setFocusOnInputWidget();
+        // defer setting focus to ensure page is already opened
+        QMetaObject::invokeMethod(this, &ContactDialog::setFocusOnInputWidget, Qt::QueuedConnection);
     }
 
     void ContactDialog::onContactSelectedToLastMessage(const QString& _aimId, qint64 _messageId)
@@ -110,7 +111,8 @@ namespace Ui
 
         Q_EMIT contactSelectedToLastMessage(_aimId, _messageId);
 
-        setFocusOnInputWidget();
+        // defer setting focus to ensure page is already opened
+        QMetaObject::invokeMethod(this, &ContactDialog::setFocusOnInputWidget, Qt::QueuedConnection);
     }
 
     void ContactDialog::initTopWidget()
@@ -132,7 +134,7 @@ namespace Ui
             return;
 
         smilesMenu_ = new Smiles::SmilesMenu(this);
-        smilesMenu_->setFixedHeight(0);
+        smilesMenu_->setCurrentHeight(0);
         Testing::setAccessibleName(smilesMenu_, qsl("AS EmojiAndStickerPicker"));
 
         if (auto vLayout = qobject_cast<QVBoxLayout*>(layout()))
@@ -181,8 +183,6 @@ namespace Ui
 
         if (auto vLayout = qobject_cast<QVBoxLayout*>(layout()))
             vLayout->addWidget(inputWidget_);
-
-        initSmilesMenu();
     }
 
     void ContactDialog::updateDragOverlayGeometry()
@@ -390,7 +390,6 @@ namespace Ui
 
     Smiles::SmilesMenu* ContactDialog::getSmilesMenu() const
     {
-        assert(smilesMenu_);
         return smilesMenu_;
     }
 
@@ -461,15 +460,15 @@ namespace Ui
     void ContactDialog::suggestedStickerSelected(const QString& _stickerId)
     {
         assert(inputWidget_);
-        assert(smilesMenu_);
         if (!inputWidget_)
             return;
 
         if (suggestsWidget_)
             suggestsWidget_->hide();
 
-        if (smilesMenu_)
-            smilesMenu_->addStickerToRecents(-1, _stickerId);
+        if (!smilesMenu_)
+            initSmilesMenu();
+        smilesMenu_->addStickerToRecents(-1, _stickerId);
 
         inputWidget_->sendSticker(_stickerId);
 

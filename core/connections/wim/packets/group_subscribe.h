@@ -22,6 +22,7 @@ namespace core
         public:
             group_subscribe(wim_packet_params _params, const std::string& _stamp);
             int32_t get_resubscribe_in() const;
+            virtual std::string_view get_method() const override;
         };
     }
 }

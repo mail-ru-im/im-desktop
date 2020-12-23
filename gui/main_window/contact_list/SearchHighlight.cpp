@@ -16,7 +16,7 @@ namespace Ui
         return Styling::getParameters().getColor(Styling::StyleVariable::GHOST_PRIMARY);
     }
 
-    HighlightFindResult findNextHighlight(const QString & _text, const highlightsV& _highlights, const int _posStart, const HighlightPosition _hlPos)
+    HighlightFindResult findNextHighlight(QStringView _text, const highlightsV& _highlights, const int _posStart, const HighlightPosition _hlPos)
     {
         static const auto delimeters = qsl("!\"#$%&\'()*+,-./[\\]^_`{|}~:;<=>?@ \n\r\t");
 

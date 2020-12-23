@@ -50,7 +50,7 @@ int32_t add_stickers_pack_packet::init_request(const std::shared_ptr<core::http_
     ss_url_signed << ss_url.str() << '?' << format_get_params(params);
 
     _request->set_url(ss_url_signed.str());
-    _request->set_normalized_url("stickersStoreBuy");
+    _request->set_normalized_url(get_method());
     _request->set_keep_alive();
 
     if (!params_.full_log_)
@@ -78,6 +78,10 @@ int32_t add_stickers_pack_packet::execute_request(const std::shared_ptr<core::ht
     return 0;
 }
 
+std::string_view add_stickers_pack_packet::get_method() const
+{
+    return "stickersStoreBuy";
+}
 
 int32_t add_stickers_pack_packet::parse_response(const std::shared_ptr<core::tools::binary_stream>& _response)
 {

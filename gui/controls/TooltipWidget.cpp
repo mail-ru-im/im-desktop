@@ -11,10 +11,10 @@
 #include "../main_window/containers/FriendlyContainer.h"
 #include "../main_window/containers/LastseenContainer.h"
 #include "../main_window/containers/StatusContainer.h"
-#include "../main_window/contact_list/StatusListModel.h"
 #include "../main_window/history_control/MessageStyle.h"
 #include "../statuses/Status.h"
 #include "../statuses/StatusUtils.h"
+#include "statuses/LocalStatuses.h"
 #include "../my_info.h"
 
 
@@ -78,6 +78,11 @@ namespace
     int getMinWidth()
     {
         return Utils::scale_value(36);
+    }
+
+    constexpr int tooltipOffset() noexcept 
+    { 
+        return platform::is_apple() ? -1 : 0; 
     }
 
     constexpr std::chrono::milliseconds getDurationAppear() noexcept { return std::chrono::milliseconds(200); }
@@ -237,35 +242,6 @@ namespace Tooltip
         }
     }
 
-    void drawStatusTooltip(const QString &_aimid, const QRect _objectRect)
-    {
-        if (!Statuses::isStatusEnabled())
-            return;
-
-        const auto status = Logic::GetStatusContainer()->getStatus(_aimid);
-        QString text;
-        if (status.isEmpty() && MyInfo()->aimId() == _aimid)
-        {
-            text = QT_TRANSLATE_NOOP("status", "Add status");
-        }
-        else if (Logic::GetLastseenContainer()->isBot(_aimid))
-        {
-            text = Data::LastSeen::bot().getStatusString();
-        }
-        else if (!status.isEmpty())
-        {
-            const auto stat = Logic::getStatusModel()->getStatus(status.toString());
-            if (stat)
-                text = stat->getDescription();
-
-            if (text.isEmpty())
-                text = QT_TRANSLATE_NOOP("status", "Custom status");
-        }
-
-        if (!text.isEmpty())
-            Tooltip::show(text, _objectRect, {0, 0}, Tooltip::ArrowDirection::Down);
-    }
-
     std::unique_ptr<TextTooltip> g_tooltip;
 
     TextTooltip* getDefaultTooltip()
@@ -281,13 +257,19 @@ namespace Tooltip
         g_tooltip.reset();
     }
 
-    void show(const QString& _text, const QRect& _objectRect, const QSize& _maxSize, ArrowDirection _direction, Tooltip::ArrowPointPos _arrowPos)
+    void show(const QString& _text, const QRect& _objectRect, const QSize& _maxSize, ArrowDirection _direction, Tooltip::ArrowPointPos _arrowPos, const QRect& _boundingRect)
     {
         auto t = getDefaultTooltip();
         t->setPointWidth(_objectRect.width());
         QRect r;
         if (auto w = Utils::InterConnector::instance().getMainWindow())
-            r = QRect(w->mapToGlobal(w->rect().topLeft()), w->mapToGlobal(w->rect().bottomRight()));
+        {
+            auto mwRect = QRect(w->mapToGlobal(w->rect().topLeft()), w->mapToGlobal(w->rect().bottomRight()));
+            if (mwRect.contains(_objectRect))
+                r = mwRect;
+            else
+                r = _boundingRect;
+        }
 
         t->showTooltip(_text, _objectRect, !_maxSize.isNull() ? _maxSize : QSize(-1, getMaxTextTooltipHeight()), r, _direction, _arrowPos);
     }
@@ -344,12 +326,15 @@ namespace Ui
         , margins_(_margins)
         , isArrowVisible_(true)
     {
+        Testing::setAccessibleName(this, qsl("AS GeneralTooltip"));
+
         scrollArea_ = new QScrollArea(this);
         scrollArea_->setStyleSheet(qsl("background: transparent;"));
         scrollArea_->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
         scrollArea_->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 
         contentWidget_->setParent(scrollArea_);
+        Testing::setAccessibleName(contentWidget_, qsl("AS GeneralTooltip content"));
         scrollArea_->setWidget(contentWidget_);
         scrollArea_->setFocusPolicy(Qt::NoFocus);
         scrollArea_->setFrameShape(QFrame::NoFrame);
@@ -562,7 +547,7 @@ namespace Ui
         if (_rect.isValid())
             xPos = std::max(xPos, _rect.left());
 
-        int yOffset = 0;
+        int yOffset = tooltipOffset();
         arrowInverted_ = false;
         if (_rect.isValid())
         {
@@ -573,7 +558,7 @@ namespace Ui
 
             if (_direction == Tooltip::ArrowDirection::Up || (_direction == Tooltip::ArrowDirection::Auto && (_pos.y() - height() < topR.y())))
             {
-                yOffset = height() + pointWidth_ + Tooltip::getArrowHeight();
+                yOffset = height() + pointWidth_ + Tooltip::getArrowHeight() - tooltipOffset();
                 arrowInverted_ = true;
             }
         }
@@ -609,6 +594,12 @@ namespace Ui
     void TooltipWidget::showUsual(const QPoint _pos, const QSize& _maxSize, const QRect& _rect, Tooltip::ArrowDirection _direction)
     {
         const auto desired = updateTooltip(_pos, _maxSize, _rect, _direction);
+
+        // when navigate pointing hand cursor with pressed mouse button on tooltip (like rewinding ptt) on macos
+        // it change cursor from hand to arrow, so for disabling this behavior
+        // make tooltip window transparent for mouse events when scroll hidden
+        if (platform::is_apple())
+            setWindowFlag(Qt::WindowTransparentForInput, !isScrollVisible()); // crutch for mac
 
         show();
 
@@ -739,7 +730,14 @@ namespace Ui
     void TextWidget::mouseReleaseEvent(QMouseEvent* _e)
     {
         if (const auto pos = _e->pos(); text_->isOverLink(pos))
+        {
+            _e->accept();
             Q_EMIT linkActivated(text_->getLink(pos), QPrivateSignal());
+        }
+        else
+        {
+            _e->ignore();
+        }
     }
 
     TextTooltip::TextTooltip(QWidget* _parent, bool _general)
@@ -755,7 +753,8 @@ namespace Ui
         tooltip_ = new TooltipWidget(_parent, text_, 0, QMargins(Utils::scale_value(8), Utils::scale_value(4), Utils::scale_value(8), Utils::scale_value(4)), false, false);
         if (_general)
         {
-            tooltip_->setWindowFlags(Qt::ToolTip | Qt::FramelessWindowHint | Qt::NoDropShadowWindowHint);
+            auto flag = platform::is_apple() ? Qt::SplashScreen : Qt::ToolTip;
+            tooltip_->setWindowFlags(flag | Qt::FramelessWindowHint | Qt::NoDropShadowWindowHint);
             tooltip_->setAttribute(Qt::WA_TranslucentBackground);
             tooltip_->setAttribute(Qt::WA_NoSystemBackground);
         }

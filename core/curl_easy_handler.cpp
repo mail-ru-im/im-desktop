@@ -5,7 +5,9 @@
 #include "utils.h"
 #include "core.h"
 
+#ifndef STRIP_CRASH_HANDLER
 #include "../common.shared/crash_report/crash_reporter.h"
+#endif // !STRIP_CRASH_HANDLER
 
 namespace
 {
@@ -159,7 +161,7 @@ namespace core
     {
         if constexpr (!core::dump::is_crash_handle_enabled() || !platform::is_windows())
             return _task();
-
+#ifndef STRIP_CRASH_HANDLER
 #ifdef _WIN32
         __try
         {
@@ -169,6 +171,9 @@ namespace core
         {
         }
 #endif // _WIN32
+#else
+        return _task();
+#endif // !STRIP_CRASH_HANDLER
     }
 
     curl_easy_handler::curl_easy_handler()
@@ -181,9 +186,11 @@ namespace core
         fetch_thread_ = std::thread([this]()
         {
             utils::set_this_thread_name("curl easy fetch");
+#ifndef STRIP_CRASH_HANDLER
 #ifdef _WIN32
             crash_system::reporter::instance().set_thread_exception_handlers();
 #endif
+#endif // !STRIP_CRASH_HANDLER
             for (;;)
             {
                 task nextTask;
@@ -206,9 +213,11 @@ namespace core
         protocol_thread_ = std::thread([this]()
         {
             utils::set_this_thread_name("curl easy proto");
+#ifndef STRIP_CRASH_HANDLER
 #ifdef _WIN32
             crash_system::reporter::instance().set_thread_exception_handlers();
 #endif
+#endif // !STRIP_CRASH_HANDLER
             for (;;)
             {
                 task nextTask;

@@ -46,7 +46,7 @@ namespace Ui
             case 18: Testing::setAccessibleName(this, qsl("AS AppearancePage mediumFont"));  break;
             case 22: Testing::setAccessibleName(this, qsl("AS AppearancePage largeFont"));  break;
             default: Testing::setAccessibleName(this, qsl("AS AppearancePage unknownFont"));
-            }   
+            }
         }
     }
 
@@ -99,7 +99,7 @@ namespace Ui
 
         variantList_ = new SimpleListWidget(Qt::Horizontal);
         variantList_->setSpacing(Utils::scale_value(8));
-        for (const auto [size, _] : _fontSizes)
+        for (auto [size, _] : _fontSizes)
             variantList_->addItem(new FontSizeVariant(this, size));
 
         auto layout = Utils::emptyHLayout(this);

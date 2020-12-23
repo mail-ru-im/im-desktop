@@ -29,6 +29,11 @@ void mod_chat::set_chat_params(chat_params _chat_params)
     chat_params_ = std::move(_chat_params);
 }
 
+std::string_view mod_chat::get_method() const
+{
+    return "modChat";
+}
+
 int32_t mod_chat::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     rapidjson::Document doc(rapidjson::Type::kObjectType);
@@ -46,16 +51,12 @@ int32_t mod_chat::init_request(const std::shared_ptr<core::http_request_simple>&
         node_params.AddMember("public", *chat_params_.get_public(), a);
     if (chat_params_.get_join())
         node_params.AddMember("joinModeration", *chat_params_.get_join(), a);
-    if (chat_params_.get_joiningByLink())
-        node_params.AddMember("live", *chat_params_.get_joiningByLink(), a);
-    if (chat_params_.get_readOnly())
-        node_params.AddMember("defaultRole", tools::make_string_ref(*chat_params_.get_readOnly() ? "readonly" : "member"), a);
     if (chat_params_.get_stamp())
         node_params.AddMember("stamp", *chat_params_.get_stamp(), a);
 
     doc.AddMember("params", std::move(node_params), a);
 
-    setup_common_and_sign(doc, a, _request, "modChat");
+    setup_common_and_sign(doc, a, _request, get_method());
 
     if (!params_.full_log_)
     {

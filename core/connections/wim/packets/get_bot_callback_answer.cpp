@@ -27,51 +27,13 @@ int32_t get_bot_callback_answer::init_request(const std::shared_ptr<core::http_r
     node_params.AddMember("callbackData", callback_data_, a);
     doc.AddMember("params", std::move(node_params), a);
 
-    setup_common_and_sign(doc, a, _request, "getBotCallbackAnswer");
+    setup_common_and_sign(doc, a, _request, get_method());
 
     if (!params_.full_log_)
     {
         log_replace_functor f;
         f.add_json_marker("aimsid", aimsid_range_evaluator());
         _request->set_replace_log_function(f);
-    }
-
-    return 0;
-}
-
-int32_t get_bot_callback_answer::parse_response(const std::shared_ptr<core::tools::binary_stream>& _response)
-{
-    if (!_response->available())
-        return wpie_http_empty_response;
-
-    auto size = _response->available();
-    load_response_str((const char*)_response->read(size), size);
-    try
-    {
-        rapidjson::Document doc;
-        if (doc.Parse(response_str().c_str()).HasParseError())
-            return wpie_error_parse_response;
-
-        auto iter_status = doc.FindMember("status");
-        if (iter_status == doc.MemberEnd())
-            return wpie_error_parse_response;
-
-        if (!tools::unserialize_value(iter_status->value, "code", status_code_))
-            return wpie_error_parse_response;
-
-        if (status_code_ == 20000 || status_code_ == 20080)
-        {
-            if (const auto iter_result = doc.FindMember("results"); iter_result != doc.MemberEnd())
-                return parse_results(iter_result->value);
-        }
-        else
-        {
-            return on_response_error_code();
-        }
-    }
-    catch (...)
-    {
-        return 0;
     }
 
     return 0;
@@ -85,6 +47,11 @@ int32_t get_bot_callback_answer::parse_results(const rapidjson::Value& _node_res
     return 0;
 }
 
+bool get_bot_callback_answer::is_status_code_ok() const
+{
+    return get_status_code() == 20080 || robusto_packet::is_status_code_ok();
+}
+
 const std::string& get_bot_callback_answer::get_bot_req_id() const noexcept
 {
     return req_id_;
@@ -93,4 +60,9 @@ const std::string& get_bot_callback_answer::get_bot_req_id() const noexcept
 const bot_payload& get_bot_callback_answer::get_payload() const noexcept
 {
     return payload_;
+}
+
+std::string_view get_bot_callback_answer::get_method() const
+{
+    return "getBotCallbackAnswer";
 }

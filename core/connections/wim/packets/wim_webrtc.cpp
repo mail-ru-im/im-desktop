@@ -18,6 +18,11 @@ namespace core {
 
         }
 
+        std::string_view wim_allocate::get_method() const
+        {
+            return "webrtcAlloc";
+        }
+
         int32_t wim_allocate::init_request(const std::shared_ptr<core::http_request_simple>& _request) {
             if (!_request) { assert(false); return 1; }
             if (params_.a_token_.empty()) { assert(false); return 1; }
@@ -71,7 +76,7 @@ namespace core {
             _request->set_connect_timeout(std::chrono::seconds(10));
             _request->set_timeout(std::chrono::seconds(15));
             _request->set_url(ss_url.str());
-            _request->set_normalized_url("webrtcAlloc");
+            _request->set_normalized_url(get_method());
 
             if (!params_.full_log_)
             {
@@ -108,6 +113,10 @@ namespace core {
 
         }
 
+        std::string_view wim_webrtc::get_method() const
+        {
+            return "webrtcMsg";
+        }
 
         int32_t wim_webrtc::init_request(const std::shared_ptr<core::http_request_simple>& _request) {
             if (!_request) { assert(false); return 1; }
@@ -123,7 +132,7 @@ namespace core {
             _request->push_post_parameter("f", ss_params.str());
 
             _request->set_url(ss_host.str());
-            _request->set_normalized_url("webrtcMsg");
+            _request->set_normalized_url(get_method());
 
             if (!params_.full_log_)
             {

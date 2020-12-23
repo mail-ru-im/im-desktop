@@ -19,6 +19,11 @@ set_avatar::set_avatar(wim_packet_params _params, tools::binary_stream _image, c
 
 set_avatar::~set_avatar() = default;
 
+std::string_view set_avatar::get_method() const
+{
+    return "avatarSet";
+}
+
 int32_t set_avatar::init_request(const std::shared_ptr<core::http_request_simple>& _request)
 {
     std::stringstream ss_url;
@@ -30,14 +35,15 @@ int32_t set_avatar::init_request(const std::shared_ptr<core::http_request_simple
     else if (chat_)
         ss_url << "&beforehandUpload=1";
 
-    _request->set_normalized_url("avatarSet");
+    _request->set_normalized_url(get_method());
     _request->set_custom_header_param("Content-Type: multipart/form-data");
     _request->set_post_form(true);
     _request->push_post_form_filedata("image", image_);
 
     image_.reset_out();
 
-    _request->set_need_log(params_.full_log_);
+    _request->set_need_log(true);
+    _request->set_write_data_log(params_.full_log_);
     _request->set_url(ss_url.str());
     _request->set_keep_alive();
 

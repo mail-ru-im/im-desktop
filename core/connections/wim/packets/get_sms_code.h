@@ -47,6 +47,7 @@ namespace core
             const std::string& get_ivr_url() const { return ivr_url_; }
             const std::string& get_checks() const { return checks_; }
             bool is_valid() const override { return true; }
+            virtual std::string_view get_method() const override;
         };
 
         class get_code_by_phone_call : public wim_packet
@@ -58,6 +59,7 @@ namespace core
             get_code_by_phone_call(wim_packet_params params, const std::string& _ivr_url);
             virtual ~get_code_by_phone_call();
             bool is_valid() const override { return true; }
+            virtual std::string_view get_method() const override;
         };
     }
 }

@@ -36,6 +36,8 @@ namespace platform_macos
     void fadeIn(QWidget* wnd);
     void fadeOut(QWidget* wnd);
 
+    void showInWorkspace(QWidget* _w, platform_specific::ShowCallback _showCallback);
+
     class GraphicsPanelMacos
     {
     public:
@@ -56,6 +58,7 @@ namespace platform_macos
         void fullscreenAnimationStart();
         void fullscreenAnimationFinish();
         void activeSpaceDidChange();
+        void changeFullscreenState(bool _isFull);
     protected:
 
         // Cocoa delegate

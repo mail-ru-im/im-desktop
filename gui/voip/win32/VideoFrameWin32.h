@@ -11,12 +11,15 @@ namespace Ui
 
 namespace platform_win32
 {
+    void showOnCurrentDesktop(QWidget* _w, QWidget* _initiator, platform_specific::ShowCallback _callback);
+
     class GraphicsPanelWin32 : public platform_specific::GraphicsPanel
     {
         Q_OBJECT
     public:
         GraphicsPanelWin32(QWidget* _parent, std::vector<QPointer<Ui::BaseVideoPanel>>& _panels, bool primaryVideo);
         virtual ~GraphicsPanelWin32();
+        void setOpacity(double _opacity) override;
     };
 }
 

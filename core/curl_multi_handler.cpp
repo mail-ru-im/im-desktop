@@ -205,6 +205,7 @@ namespace
     std::atomic_bool tasks_process = false;
     std::atomic_bool tasks_cancel = false;
     std::atomic_bool reset_multi = false;
+    std::atomic_bool clear_sockets = false;
 
     constexpr size_t max_easy_count = 10;
     constexpr int max_timeouts = 3;
@@ -383,11 +384,9 @@ namespace
         {
             item = results;
             void* addr;
-            char* ipver;
 
             struct sockaddr_in* ipv4 = (struct sockaddr_in*)item->ai_addr;
             addr = &(ipv4->sin_addr);
-            ipver = "IPv4";
 
             inet_ntop(item->ai_family, addr, ipstr, sizeof ipstr);
             _result = ipstr;
@@ -492,6 +491,12 @@ namespace core
                     reset_multi = false;
                 }
 
+                if (clear_sockets.load())
+                {
+                    reset_sockets_internal();
+                    clear_sockets = false;
+                }
+
                 check_multi_info(&global);
                 add_task();
 
@@ -534,14 +539,9 @@ namespace core
                         break;
 
                     if (maxfd == -1)
-                    {
                         rc = perform_sleep(std::chrono::milliseconds(100));
-                    }
                     else
-                    {
                         rc = perform_select(maxfd, fdread, fdwrite, fdexcep, timeout);
-
-                    }
 
                     if (rc != -1)
                         curl_multi_perform(global.multi, &global.still_running);
@@ -580,6 +580,13 @@ namespace core
     {
         tasks_cancel = true;
         reset_multi = true;
+
+        notify();
+    }
+
+    void curl_multi_handler::reset_sockets()
+    {
+        clear_sockets = true;
 
         notify();
     }
@@ -630,8 +637,9 @@ namespace core
                     curl_easy_setopt(easy.handler, CURLOPT_OPENSOCKETFUNCTION, opensocket);
                     curl_easy_setopt(easy.handler, CURLOPT_CLOSESOCKETFUNCTION, close_socket);
 
-                    tasks[easy.handler] = task;
-                    if (const auto code = task->execute_multi(global.multi, easy.handler); code != CURLE_OK)
+                    if (const auto code = task->execute_multi(global.multi, easy.handler); code == CURLE_OK)
+                        tasks[easy.handler] = task;
+                    else
                         write_log(su::concat("add_task: execute_multi fail: ", curl_easy_strerror(code)));
                 }
                 else
@@ -707,6 +715,31 @@ namespace core
                 ++it;
             }
         }
+    }
+
+    void curl_multi_handler::reset_sockets_internal()
+    {
+        for (auto iter = tasks.begin(); iter != tasks.end();)
+        {
+            auto easy = iter->first;
+            auto task = iter->second;
+            if (task)
+            {
+                curl_socket_t sockfd;
+                curl_easy_getinfo(easy, CURLINFO_ACTIVESOCKET, &sockfd);
+
+                auto count = socket_map.count(sockfd);
+                if (count != 0)
+                {
+                    task->finish_multi(&global, easy, CURLE_ABORTED_BY_CALLBACK);
+                    iter = tasks.erase(iter);
+                    continue;
+                }
+            }
+            ++iter;
+        }
+        for (auto [s, _] : std::exchange(socket_map, {}))
+            close_socket_internal(s);
     }
 
     void curl_multi_handler::notify()

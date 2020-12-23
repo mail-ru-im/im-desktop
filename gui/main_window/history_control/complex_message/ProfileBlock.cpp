@@ -21,6 +21,7 @@
 #include "previewer/toast.h"
 #include "utils/PhoneFormatter.h"
 #include "utils/gui_coll_helper.h"
+#include "../../contact_list/ContactListModel.h"
 
 namespace
 {
@@ -225,6 +226,8 @@ ProfileBlockBase::ProfileBlockBase(ComplexMessageItem* _parent, const QString& _
     : GenericBlock(_parent, _link, MenuFlags::MenuFlagCopyable, false)
     , Layout_(new ProfileBlockLayout())
 {
+    Testing::setAccessibleName(this, u"AS HistoryPage messageProfile " % QString::number(_parent->getId()));
+
     setLayout(Layout_);
     setMouseTracking(true);
 
@@ -363,8 +366,8 @@ void ProfileBlockBase::drawBlock(QPainter& p, const QRect& _rect, const QColor& 
         auto pixmapSize = getArrowButtonPixmapSize();
         p.drawPixmap(contentSize.width() - pixmapSize.width(), getNamePos().y() + (getAvatarSize() - pixmapSize.height()) / 2, getArrowButtonPixmap(clickAreaHovered_, clickAreaPressed_, isOutgoing()));
 
-        if (avatar_)
-            p.drawPixmap(getAvatarPos().x(), getAvatarPos().y(), *avatar_);
+        if (!avatar_.isNull())
+            p.drawPixmap(getAvatarPos().x(), getAvatarPos().y(), avatar_);
         else
             p.drawPixmap(getAvatarPos().x(), getAvatarPos().y(),
                          Utils::roundImage(Utils::getDefaultAvatar(QString(), name_.isEmpty() ? underNameText_ : name_, Utils::scale_bitmap(getAvatarSize())), false, false));
@@ -583,15 +586,8 @@ QString ProfileBlock::getUnderNameText()
     }
     else if (info_.type_ == Data::IdInfo::IdType::Chat)
     {
-        const QString text = QString::number(info_.memberCount_) % u' '
-            % Utils::GetTranslator()->getNumberString(
-                  info_.memberCount_,
-                  QT_TRANSLATE_NOOP3("profile_block", "member", "1"),
-                  QT_TRANSLATE_NOOP3("profile_block", "members", "2"),
-                  QT_TRANSLATE_NOOP3("profile_block", "members", "5"),
-                  QT_TRANSLATE_NOOP3("profile_block", "members", "21")
-                                  );
-        return text;
+        const auto isChannel = Logic::getContactListModel()->isChannel(info_.sn_) || (chatInfo_ && chatInfo_->isChannel());
+        return Utils::getMembersString(info_.memberCount_, isChannel);
     }
 
     return QString();
@@ -651,6 +647,8 @@ void ProfileBlock::chatInfo(qint64 _seq, const std::shared_ptr<Data::ChatInfo>& 
         return;
 
     chatInfo_ = _chatInfo;
+    init(info_.name_, getUnderNameText(), info_.description_);
+    update();
 }
 
 void ProfileBlock::openChat() const

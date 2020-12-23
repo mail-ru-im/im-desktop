@@ -9,7 +9,9 @@
 #include "../contact_list/RecentItemDelegate.h"
 #include "../contact_list/RecentsModel.h"
 #include "../contact_list/UnknownsModel.h"
+#ifndef STRIP_AV_MEDIA
 #include "../sounds/SoundsManager.h"
+#endif // !STRIP_AV_MEDIA
 #include "../../core_dispatcher.h"
 #include "../../gui_settings.h"
 #include "../../url_config.h"
@@ -21,6 +23,7 @@
 #include "../../utils/features.h"
 #include "../../utils/log/log.h"
 #include "../history_control/history/MessageBuilder.h"
+#include "../history_control/ChatEventInfo.h"
 #include "utils/gui_metrics.h"
 #include "main_window/LocalPIN.h"
 #include "styles/ThemeParameters.h"
@@ -83,6 +86,14 @@ namespace
         return hash;
     }
 #endif
+
+    bool containsStrangerEvent(const Data::DlgState& _state)
+    {
+        if (auto pChatEvt = _state.lastMessage_->GetChatEvent())
+            return pChatEvt->eventType() == core::chat_event_type::warn_about_stranger ||
+                pChatEvt->eventType() == core::chat_event_type::no_longer_stranger;
+        return false;
+    }
 }
 
 namespace Ui
@@ -120,6 +131,10 @@ namespace Ui
 
         for (auto& icon : winIcons_)
             icon = nullptr;
+#elif defined(__APPLE__)
+        NotificationCenterManager_ = std::make_unique<NotificationCenterManager>();
+        connect(NotificationCenterManager_.get(), &NotificationCenterManager::messageClicked, this, &TrayIcon::messageClicked, Qt::QueuedConnection);
+        connect(NotificationCenterManager_.get(), &NotificationCenterManager::osxThemeChanged, this, &TrayIcon::setMacIcon, Qt::QueuedConnection);
 #endif //_WIN32
         init();
 
@@ -142,6 +157,7 @@ namespace Ui
         connect(Ui::GetDispatcher(), &core_dispatcher::mailStatus, this, &TrayIcon::mailStatus, Qt::QueuedConnection);
         connect(Ui::GetDispatcher(), &core_dispatcher::newMail, this, &TrayIcon::newMail, Qt::QueuedConnection);
         connect(Ui::GetDispatcher(), &core_dispatcher::mentionMe, this, &TrayIcon::mentionMe, Qt::QueuedConnection);
+        connect(Ui::GetDispatcher(), &core_dispatcher::messagesPatched, this, &TrayIcon::deleteMessage, Qt::QueuedConnection);
 
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::historyControlPageFocusIn, this, &TrayIcon::clearNotifications, Qt::QueuedConnection);
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::mailBoxOpened, this, &TrayIcon::mailBoxOpened, Qt::QueuedConnection);
@@ -238,13 +254,15 @@ namespace Ui
             state = qsl("online");
 
         const auto curTheme = MacSupport::currentTheme();
-        QString iconResource(qsl(":/menubar/%1_%2%3_100").
-            arg(state, curTheme, UnreadsCount_ > 0 ? qsl("_unread") : QString())
+        QString iconResource(ql1s(":/menubar/%1_%2%3_100").
+            arg(state, curTheme, UnreadsCount_ > 0 ? ql1s("_unread") : QLatin1String())
         );
         QIcon icon(Utils::parse_image_name(iconResource));
         systemTrayIcon_->setIcon(icon);
 
-        emailIcon_ = QIcon(Utils::parse_image_name(qsl(":/menubar/mail_%1_100")).arg(curTheme));
+        auto eIcon = Utils::renderSvg(ql1s(":/menubar/mail_%1").arg(curTheme));
+        Utils::check_pixel_ratio(eIcon);
+        emailIcon_ = QIcon(eIcon);
         if (emailSystemTrayIcon_)
             emailSystemTrayIcon_->setIcon(emailIcon_);
 #endif
@@ -427,8 +445,7 @@ namespace Ui
         if (canAnimate)
         {
 #if defined(__APPLE__)
-            if (ncSupported())
-                NotificationCenterManager_->animateDockIcon();
+            NotificationCenterManager_->animateDockIcon();
 #elif defined(_WIN32)
             UINT timeOutMs = GetCaretBlinkTime();
             if (!timeOutMs || timeOutMs == INFINITE)
@@ -458,8 +475,7 @@ namespace Ui
 //        if (toastSupported())
 //          ToastManager_->HideNotifications(aimId);
 #elif defined (__APPLE__)
-        if (ncSupported())
-            NotificationCenterManager_->HideNotifications(aimId);
+        NotificationCenterManager_->HideNotifications(aimId);
 #endif //_WIN32
 
         updateIconIfNeeded();
@@ -478,8 +494,7 @@ namespace Ui
 
         Notifications_.clear();
 #if defined (__APPLE__)
-        if (ncSupported())
-            NotificationCenterManager_->removeAllNotifications();
+        NotificationCenterManager_->removeAllNotifications();
 #endif //__APPLE__
 
         updateIconIfNeeded();
@@ -493,15 +508,16 @@ namespace Ui
         for (const auto& _state : _states)
         {
             const bool canNotify =
-                _state.Visible_ &&
-                !_state.Outgoing_ &&
-                _state.UnreadCount_ != 0 &&
-                !_state.hasMentionMe_ &&
-                !_state.isSuspicious_ &&
-                (!ShowedMessages_.contains(_state.AimId_) || (_state.LastMsgId_ != -1 && ShowedMessages_[_state.AimId_] < _state.LastMsgId_)) &&
-                !_state.GetText().isEmpty() &&
-                !Logic::getUnknownsModel()->contains(_state.AimId_) &&
-                !Logic::getContactListModel()->isMuted(_state.AimId_);
+                    !containsStrangerEvent(_state) &&
+                    _state.Visible_ &&
+                    !_state.Outgoing_ &&
+                    _state.UnreadCount_ != 0 &&
+                    !_state.hasMentionMe_ &&
+                    !_state.isSuspicious_ &&
+                    (!ShowedMessages_.contains(_state.AimId_) || (_state.LastMsgId_ != -1 && ShowedMessages_[_state.AimId_] < _state.LastMsgId_)) &&
+                    _state.HasText() &&
+                    !Logic::getUnknownsModel()->contains(_state.AimId_) &&
+                    !Logic::getContactListModel()->isMuted(_state.AimId_);
 
             if (canNotify)
             {
@@ -520,12 +536,14 @@ namespace Ui
 
         if (playNotification)
         {
+#ifndef STRIP_AV_MEDIA
 #ifdef __APPLE__
             if (!MainWindow_->isUIActive() || MacSupport::previewIsShown())
 #else
             if (!MainWindow_->isUIActive())
 #endif //__APPLE__
                 GetSoundsManager()->playSound(SoundsManager::Sound::IncomingMessage);
+#endif // !STRIP_AV_MEDIA
         }
 
         if (!showedArray.empty())
@@ -551,8 +569,26 @@ namespace Ui
 
             state.SetText(hist::MessageBuilder::formatRecentsText(*_mention).text_);
             showMessage(state, AlertType::alertTypeMentionMe);
-
+#ifndef STRIP_AV_MEDIA
             GetSoundsManager()->playSound(SoundsManager::Sound::IncomingMessage);
+#endif // !STRIP_AV_MEDIA
+        }
+    }
+
+    void TrayIcon::deleteMessage(const Data::PatchedMessage& _messages)
+    {
+        if (!Features::removeDeletedFromNotifications())
+            return;
+
+        if constexpr (!platform::is_apple())
+        {
+            for (const auto message : _messages.msgIds_)
+            {
+                MessageAlert_->removeAlert(_messages.aimId_, message);
+                MentionAlert_->removeAlert(_messages.aimId_, message);
+            }
+
+            updateAlertsPosition();
         }
     }
 
@@ -589,7 +625,9 @@ namespace Ui
                 clearNotifications(qsl("mail"));
 
             showMessage(state, AlertType::alertTypeEmail);
+#ifndef STRIP_AV_MEDIA
             GetSoundsManager()->playSound(SoundsManager::Sound::IncomingMail);
+#endif // !STRIP_AV_MEDIA
         }
 
         showEmailIcon();
@@ -653,7 +691,7 @@ namespace Ui
 #if defined (_WIN32)
             if (!toastSupported())
 #elif defined (__APPLE__)
-            notificationCenterSupported = ncSupported();
+            notificationCenterSupported = true;
 #endif //_WIN32
             {
                 switch (_alertType)
@@ -755,36 +793,28 @@ namespace Ui
         Notifications_.push_back(state.AimId_);
 
         const auto isMail = (_alertType == AlertType::alertTypeEmail);
-#if defined (_WIN32)
-//        if (toastSupported())
-//        {
-//          ToastManager_->DisplayToastMessage(state.AimId_, state.GetText());
-//          return;
-//        }
-#elif defined (__APPLE__)
-        if (ncSupported())
+
+#if defined (__APPLE__)
+        auto displayName = isMail ? state.Friendly_ : Logic::GetFriendlyContainer()->getFriendly(state.AimId_);
+
+        if (_alertType == AlertType::alertTypeMentionMe)
         {
-            auto displayName = isMail ? state.Friendly_ : Logic::GetFriendlyContainer()->getFriendly(state.AimId_);
-
-            if (_alertType == AlertType::alertTypeMentionMe)
-            {
-                displayName = QChar(0xD83D) % QChar(0xDC4B) % ql1c(' ') % QT_TRANSLATE_NOOP("notifications", "You have been mentioned in %1").arg(displayName);
-            }
-
-            const bool isShowMessage = Features::showNotificationsText() && !Ui::LocalPIN::instance()->locked();
-            const QString messageText = isShowMessage ? state.GetText() : QT_TRANSLATE_NOOP("notifications", "New message");
-
-            NotificationCenterManager_->DisplayNotification(
-                alertType2String(_alertType),
-                state.AimId_,
-                Logic::getContactListModel()->isChannel(state.AimId_) ? QString() : state.senderNick_,
-                messageText,
-                state.MailId_,
-                displayName,
-                QString::number(state.mentionMsgId_));
-            return;
+            displayName = QChar(0xD83D) % QChar(0xDC4B) % ql1c(' ') % QT_TRANSLATE_NOOP("notifications", "You have been mentioned in %1").arg(displayName);
         }
-#endif //_WIN32
+
+        const bool isShowMessage = Features::showNotificationsText() && !Ui::LocalPIN::instance()->locked();
+        const QString messageText = isShowMessage ? state.GetText() : QT_TRANSLATE_NOOP("notifications", "New message");
+
+        NotificationCenterManager_->DisplayNotification(
+            alertType2String(_alertType),
+            state.AimId_,
+            Logic::getContactListModel()->isChannel(state.AimId_) ? QString() : state.senderNick_,
+            messageText,
+            state.MailId_,
+            displayName,
+            QString::number(state.mentionMsgId_));
+        return;
+#endif //__APPLE__
 
         RecentMessagesAlert* alert = nullptr;
         switch (_alertType)
@@ -875,7 +905,7 @@ namespace Ui
     void TrayIcon::initEMailIcon()
     {
 #ifdef __APPLE__
-        emailIcon_ = QIcon(Utils::parse_image_name(qsl(":/menubar/mail_%1_100")).arg(MacSupport::currentTheme()));
+        emailIcon_ = QIcon(Utils::parse_image_name(ql1s(":/menubar/mail_%1_100")).arg(MacSupport::currentTheme()));
 #else
         emailIcon_ = QIcon(qsl(":/resources/main_window/tray_email.ico"));
 #endif //__APPLE__
@@ -892,8 +922,7 @@ namespace Ui
         connect(emailSystemTrayIcon_, &QSystemTrayIcon::activated, this, &TrayIcon::onEmailIconClick, Qt::QueuedConnection);
 
 #ifdef __APPLE__
-        if (ncSupported())
-            NotificationCenterManager_->reinstallDelegate();
+        NotificationCenterManager_->reinstallDelegate();
 #endif //__APPLE__
     }
 
@@ -907,8 +936,7 @@ namespace Ui
         emailSystemTrayIcon_ = nullptr;
 
 #ifdef __APPLE__
-        if (ncSupported())
-            NotificationCenterManager_->reinstallDelegate();
+        NotificationCenterManager_->reinstallDelegate();
 #endif //__APPLE__
     }
 
@@ -1072,21 +1100,6 @@ namespace Ui
         }
         return false;
         */
-    }
-#elif defined (__APPLE__)
-    bool TrayIcon::ncSupported()
-    {
-        if (QSysInfo().macVersion() > QSysInfo::MV_10_7)
-        {
-            if (!NotificationCenterManager_)
-            {
-                NotificationCenterManager_ = std::make_unique<NotificationCenterManager>();
-                connect(NotificationCenterManager_.get(), &NotificationCenterManager::messageClicked, this, &TrayIcon::messageClicked, Qt::QueuedConnection);
-                connect(NotificationCenterManager_.get(), &NotificationCenterManager::osxThemeChanged, this, &TrayIcon::setMacIcon, Qt::QueuedConnection);
-            }
-            return true;
-        }
-        return false;
     }
 #endif //_WIN32
 }

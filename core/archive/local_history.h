@@ -168,6 +168,12 @@ namespace core
             on_result_type on_result;
         };
 
+        struct insert_pending_delete_message_handler
+        {
+            using on_result_type = std::function<void(int64_t _id, std::string_view _internal_id)>;
+            on_result_type on_result;
+        };
+
         struct not_sent_messages_handler
         {
             using on_result_type = std::function<void(not_sent_message_sptr _message)>;
@@ -513,7 +519,7 @@ namespace core
 
             void get_pending_delete_message(std::function<void(const bool _empty, const std::string& _contact, const delete_message& _message)> _callback);
             void get_pending_delete_messages(std::function<void(const bool _empty, const std::string& _contact, const std::vector<delete_message>& _messages)> _callback);
-            void insert_pending_delete_message(const std::string& _contact, delete_message _message);
+            std::shared_ptr<insert_pending_delete_message_handler> insert_pending_delete_message(const std::string& _contact, delete_message _message);
             void remove_pending_delete_message(const std::string& _contact, const delete_message& _message);
 
             [[nodiscard]] std::shared_ptr<get_locale_handler> get_locale(std::string_view _contact);

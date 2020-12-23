@@ -24,8 +24,11 @@
 
 #include "../accessibility/AccessibilityFactory.h"
 
+#ifndef STRIP_AV_MEDIA
 #include "../main_window/mplayer/FFMpegPlayer.h"
 #include "../main_window/sounds/SoundsManager.h"
+#endif // !STRIP_AV_MEDIA
+
 #include "NativeEventFilter.h"
 #include "service/ServiceUrlsManager.h"
 #include "main_window/LocalPIN.h"
@@ -76,6 +79,7 @@ namespace Utils
 
         virtual bool nativeEventFilter(const QByteArray& eventType, void* message, long* result) override
         {
+#ifndef STRIP_VOIP
             MSG* msg = reinterpret_cast<MSG*>(message);
             if (msg->message == WM_QUERYENDSESSION || msg->message == WM_ENDSESSION)
             {
@@ -89,6 +93,7 @@ namespace Utils
                     return true;
                 }
             }
+#endif
 
             return false;
         }
@@ -166,7 +171,9 @@ namespace Utils
 
         Emoji::Cleanup();
 
+#ifndef STRIP_AV_MEDIA
         Ui::ResetMediaContainer();
+#endif // !STRIP_AV_MEDIA
 
         Logic::ResetRecentsModel();
         Logic::ResetUnknownsModel();
@@ -175,7 +182,9 @@ namespace Utils
         Logic::ResetLastseenContainer();
         Logic::ResetStatusContainer();
         Ui::ResetMyInfo();
+#ifndef STRIP_AV_MEDIA
         Ui::ResetSoundsManager();
+#endif
     }
 
     int Application::exec()
@@ -227,7 +236,7 @@ namespace Utils
         int fd;
         struct flock fl;
         const auto lockName = config::get().string(config::values::main_instance_mutex_linux);
-        fd = open(qsl("/tmp/%1.pid").arg(QString::fromUtf8(lockName.data(), lockName.size())).toStdString().c_str(), O_CREAT | O_RDWR, 0666);
+        fd = open(ql1s("/tmp/%1.pid").arg(QString::fromUtf8(lockName.data(), lockName.size())).toStdString().c_str(), O_CREAT | O_RDWR, 0666);
         if (fd == -1)
             return true;
 
@@ -453,7 +462,7 @@ namespace Utils
         if (ERROR_ALREADY_EXISTS == ::GetLastError())
             return true;
 
-        QSettings s(qsl("HKEY_CURRENT_USER\\Software\\") % getProductName(), QSettings::NativeFormat);
+        QSettings s(u"HKEY_CURRENT_USER\\Software\\" % getProductName(), QSettings::NativeFormat);
         const auto versionUpdate = s.value(qsl("update_version")).toString();
         if (versionUpdate.isEmpty())
             return false;

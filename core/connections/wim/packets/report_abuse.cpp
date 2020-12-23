@@ -31,8 +31,6 @@ namespace
 
         return result;
     }
-
-    constexpr std::string_view method() noexcept { return "reportAbuse"; }
 }
 
 CORE_WIM_NS_BEGIN
@@ -40,6 +38,11 @@ CORE_WIM_NS_BEGIN
 report_abuse::report_abuse(wim_packet_params _params)
     : robusto_packet(std::move(_params))
 {
+}
+
+std::string_view report_abuse::get_method() const
+{
+    return "reportAbuse";
 }
 
 int32_t report_abuse::parse_response_data(const rapidjson::Value& _data)
@@ -71,7 +74,7 @@ int32_t report_contact::init_request(const std::shared_ptr<core::http_request_si
 
     doc.AddMember("params", std::move(node_params), a);
 
-    setup_common_and_sign(doc, a, _request, method());
+    setup_common_and_sign(doc, a, _request, get_method());
 
     if (!params_.full_log_)
     {
@@ -102,7 +105,7 @@ int32_t report_stickerpack::init_request(const std::shared_ptr<core::http_reques
 
     doc.AddMember("params", std::move(node_params), a);
 
-    setup_common_and_sign(doc, a, _request, method());
+    setup_common_and_sign(doc, a, _request, get_method());
 
     if (!params_.full_log_)
     {
@@ -138,7 +141,7 @@ int32_t report_sticker::init_request(const std::shared_ptr<core::http_request_si
 
     doc.AddMember("params", std::move(node_params), a);
 
-    setup_common_and_sign(doc, a, _request, method());
+    setup_common_and_sign(doc, a, _request, get_method());
 
     if (!params_.full_log_)
     {
@@ -177,7 +180,7 @@ int32_t report_message::init_request(const std::shared_ptr<core::http_request_si
 
     doc.AddMember("params", std::move(node_params), a);
 
-    setup_common_and_sign(doc, a, _request, method());
+    setup_common_and_sign(doc, a, _request, get_method());
 
     if (!params_.full_log_)
     {

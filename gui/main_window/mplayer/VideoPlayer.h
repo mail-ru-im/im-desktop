@@ -75,8 +75,6 @@ namespace Ui
         QPushButton* fullscreenButton_;
         QPushButton* normalscreenButton_;
 
-        QTimer* positionSliderTimer_;
-
         QWidget* volumeContainer_;
         QVBoxLayout* fullScreenLayout_;
         QHBoxLayout* baseLayout_;
@@ -158,19 +156,17 @@ namespace Ui
         QString mediaPath_;
         QWidget* rootWidget_;
 
-        QTimer* timerHide_;
-        QTimer* timerMousePress_;
+        QTimer* timerHide_ = nullptr;
         bool controlsShowed_;
         QWidget* parent_;
         QVBoxLayout* rootLayout_;
         std::shared_ptr<FrameRenderer> renderer_;
 
-        static const uint32_t hideTimeout = 2000;
-        static const uint32_t hideTimeoutShort = 100;
-
         bool isFullScreen_;
         bool isLoad_;
         bool isGif_;
+        bool isLottie_ = false;
+        bool isLottieInstantPreview_ = false;
         bool isSticker_;
         const bool showControlPanel_;
         bool replay_ = false;
@@ -178,7 +174,7 @@ namespace Ui
         bool isGalleryView_;
         bool soundOnByUser_;
 
-        QTimer unloadTimer_;
+        QTimer* unloadTimer_ = nullptr;
 
         QRect normalModePosition_;
 
@@ -201,6 +197,8 @@ namespace Ui
             dialog_mode             = 1 << 5,
             compact_mode            = 1 << 6,
             short_no_sound          = 1 << 7,
+            lottie                  = 1 << 8,
+            lottie_instant_preview  = 1 << 9,
         };
 
         void showAs();
@@ -240,6 +238,8 @@ namespace Ui
         bool inited();
 
         void setPreview(QPixmap _preview);
+        void setPreview(QImage _preview);
+        void setPreviewFromFirstFrame();
         QPixmap getActiveImage() const;
 
         void setLoadingState(bool _isLoad);
@@ -259,7 +259,7 @@ namespace Ui
 
         void setFillClient(const bool _fill);
 
-        const QString& mediaPath() const;
+        const QString& mediaPath() const noexcept;
 
         void setDuration(int32_t _duration);
 
@@ -275,12 +275,14 @@ namespace Ui
 
         int bottomLeftControlsWidth() const;
 
+        QImage getFirstFrame() const;
+        const QPixmap& getPreview() const noexcept { return preview_; }
+
     public Q_SLOTS:
 
         void fullScreen(const bool _checked);
 
         void timerHide();
-        void timerMousePress();
         void showControlPanel(const bool _isShow);
         void playerMouseMoved();
         void playerMouseLeaved();
@@ -313,6 +315,13 @@ namespace Ui
     private:
         void showControlPanel();
         void changeFullScreen();
+
+        void initControlPanel(VideoPlayerControlPanel* _copyFrom, const QString& _mode);
+        void initTimerHide();
+        void startTimerHide(std::chrono::milliseconds _timeout);
+
+        void startUnloadTimer();
+        void stopUnloadTimer();
 
         bool isAutoPlay();
 

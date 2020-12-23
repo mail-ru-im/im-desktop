@@ -65,18 +65,7 @@ namespace HistoryControl
             isVideoCall_ = _coll.get<bool>("is_video", false);
 
         if (_coll.is_value_exist("conf_members"))
-        {
-            const auto mArray = _coll.get_value_as_array("conf_members");
-            const auto mSize = mArray->size();
-            confMembers_.reserve(mSize);
-
-            for (int m = 0; m < mSize; ++m)
-            {
-                auto member = QString::fromUtf8(mArray->get_at(m)->get_as_string());
-                if (!member.isEmpty())
-                    confMembers_.push_back(std::move(member));
-            }
-        }
+            confMembers_ = Utils::toContainerOfString<decltype(confMembers_)>(_coll.get_value_as_array("conf_members"));
 
         return true;
     }

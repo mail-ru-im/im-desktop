@@ -14,8 +14,8 @@
 #include "../../../common.shared/string_utils.h"
 
 
-namespace core 
-{    
+namespace core
+{
     // static
     network_change_notifier::network_change_calculator_params network_change_notifier_win::network_change_calculator_params_win()
     {
@@ -28,7 +28,7 @@ namespace core
         params.connection_type_online_delay_ = std::chrono::milliseconds(1000);
         return params;
     }
-    
+
     network_change_notifier_win::network_change_notifier_win(std::unique_ptr<network_change_observer> _observer)
         : network_change_notifier(network_change_calculator_params_win(), std::move(_observer)),
         timer_(0),
@@ -57,7 +57,7 @@ namespace core
 
         }
         WSACloseEvent(addr_overlapped_.hEvent);
-        if (timer_ > 0)
+        if (timer_ > 0 && g_core)
             g_core->stop_timer(timer_);
     }
 
@@ -117,6 +117,8 @@ namespace core
 
     void CALLBACK network_change_notifier_win::wait_done(void* param, BOOLEAN timed_out)
     {
+        if (!g_core)
+            return;
         assert(!g_core->is_core_thread());
         g_core->execute_core_context([param]
         {
@@ -247,7 +249,7 @@ namespace core
         // case we appear to go online within 20 seconds.  UMA histogram data shows
         // we may not detect the transition to online state after 1 second but within
         // 20 seconds we generally do.
-        if (last_announced_offline_ && current_offline && offline_polls_ <= 20) 
+        if (last_announced_offline_ && current_offline && offline_polls_ <= 20)
         {
             delay_notify_parent_of_connection_type_change();
             return;

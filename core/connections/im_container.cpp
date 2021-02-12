@@ -597,10 +597,6 @@ void core::im_container::on_voip_call_message(int64_t _seq, coll_helper& _params
         const std::string mode = _params.get_value_as_string("mute");
         im->on_voip_set_mute(mode == "on");
     }
-    else if (type == "voip_minimal_bandwidth_switch")
-    {
-        im->on_voip_minimal_bandwidth_switch();
-    }
     else if (type == "voip_load_mask")
     {
         const std::string maskPath = _params.get_value_as_string("path");
@@ -3095,7 +3091,7 @@ void im_container::on_reset_session(const int64_t _seq, coll_helper& _params)
 void im_container::on_status_set(const int64_t _seq, coll_helper &_params)
 {
     if (auto im = get_im(_params))
-        im->set_status(_params.get_value_as_string("status"), std::chrono::seconds(_params.get_value_as_int64("duration")));
+        im->set_status(_params.get_value_as_string("status"), std::chrono::seconds(_params.get_value_as_int64("duration")), _params.get_value_as_string("description", ""));
 }
 
 void im_container::on_subscribe_status(const int64_t _seq, coll_helper &_params)

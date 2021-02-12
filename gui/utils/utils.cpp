@@ -3292,7 +3292,7 @@ namespace Utils
             QDesktopServices::openUrl(url);
     }
 
-    void openFileOrFolder(const QStringRef& _path, OpenAt _openAt, OpenWithWarning _withWarning)
+    void openFileOrFolder(QStringView _path, OpenAt _openAt, OpenWithWarning _withWarning)
     {
         const auto dialog = Utils::InterConnector::instance().getContactDialog();
         const auto chatAimId = dialog ? dialog->currentAimId() : QString();
@@ -4637,7 +4637,7 @@ QString Utils::replaceFilesPlaceholders(QString _text, const Data::FilesPlacehol
 
         auto isMarkdown = [_text](const int idxPl)
         {
-            const auto M_MARK = Ui::TextRendering::tripleBackTick();
+            const auto M_MARK = Ui::TextRendering::tripleBackTick().toString();
             const auto S_MARK = Ui::TextRendering::singleBackTick();
 
             const auto partBefore = _text.leftRef(idxPl);

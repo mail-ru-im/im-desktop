@@ -454,8 +454,8 @@ public:
 };
 
 StatusTooltipWidget::StatusTooltipWidget(const Statuses::Status& _status, QWidget* _object, QWidget* _parent, Qt::CursorShape _objectCursorShape)
-    : QWidget(Utils::InterConnector::instance().getMainWindow()),
-      d(std::make_unique<StatusTooltipWidget_p>(this))
+    : QWidget(Utils::InterConnector::instance().getMainWindow())
+    , d(std::make_unique<StatusTooltipWidget_p>(this))
 {
     setWindowFlags(Qt::FramelessWindowHint | Qt::ToolTip | Qt::NoDropShadowWindowHint);
     setAttribute(Qt::WA_TranslucentBackground);

@@ -649,7 +649,7 @@ namespace Ui
             }
 
             Utils::UrlParser parser;
-            parser.process(QStringRef(&e.url_));
+            parser.process(e.url_);
 
             const auto isFilesharing = parser.hasUrl() && parser.getUrl().is_filesharing();
             if (!isFilesharing || e.type_ != u"ptt")
@@ -759,7 +759,7 @@ namespace Ui
                     i->setTextState(ButtonState::NORMAL);
                 }
             }
-            
+
             i->setDateState(false, i->isOverDate(_event->pos()) && leftButton);
 
             if (i->isOverMoreButton(_event->pos(), h) && leftButton)
@@ -794,7 +794,7 @@ namespace Ui
             cont.happened();
             return MediaContentWidget::mouseReleaseEvent(_event);
         }
-        
+
         auto h = 0;
         for (auto& i : Items_)
         {
@@ -906,7 +906,7 @@ namespace Ui
 
             h += i->getHeight();
         }
-        
+
 
         update();
     }
@@ -976,7 +976,7 @@ namespace Ui
 
             if (!leftButtonPressed && !rightButtonPressed)
                 i->updateBulletHoverState(p);
-            
+
             if ((progressHovered || dragProgress) && !oneOfButtonsPressed && !rightButtonPressed)
             {
                 point = true;
@@ -1125,7 +1125,7 @@ namespace Ui
         int duration = initAnimation(_item, AnimationState::Play);
         lastProgress_ = lastProgress_ == 100 ? 0 : lastProgress_;
         animation_->stop();
-        
+
 
         auto updateProgress = [this, &_item, duration]()
         {

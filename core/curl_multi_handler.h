@@ -16,7 +16,7 @@ namespace core
         void cleanup() override;
         void reset() override;
 
-        void reset_sockets();
+        void reset_sockets(bool _network_is_down);
 
         void process_stopped_tasks() override;
         bool is_stopped() const override;

@@ -3,7 +3,7 @@ set(DOWNLOADS_PATH "${ICQ_ROOT}/downloads")
 
 # Inform QA team if the variable is deleted, moved or the name will be changed
 set(VOIP_LIBS_VERSION "3.5.8.1957")
-set(EXT_LIBS_VERSION "v16")
+set(EXT_LIBS_VERSION "v19")
 
 set(DOWNLOADS_URL "http://icq-artifactory.mail.msk/artifactory/im-desktop")
 

@@ -1483,13 +1483,11 @@ void core_dispatcher::onAppConfig(const int64_t _seq, core::coll_helper _params)
     Q_EMIT appConfig();
 
 #if defined(IM_AUTO_TESTING)
-    //enable_testing in app.ini
-    AppConfig appConfig = GetAppConfig();
-    if (appConfig.IsTestingEnable())
+    if (GetAppConfig().IsTestingEnable())
     {
-        qDebug() << "### Ui::GetAppConfig().isTestingEnable()";
-        //WEBSERVER
-        auto server = new WebServer();
+        if (server)
+            return;
+        server = std::make_unique<WebServer>();
         server->startWebserver();
     }
 #endif
@@ -3289,14 +3287,17 @@ int64_t core_dispatcher::getEmojiImage(const QString& _code, ServerEmojiSize _si
     return post_message_to_core("emoji/get", collection.get());
 }
 
-int64_t core_dispatcher::setStatus(const QString& _emojiCode, int64_t _duration)
+int64_t core_dispatcher::setStatus(const QString& _emojiCode, int64_t _duration, const QString& _description)
 {
     Ui::gui_coll_helper collection(create_collection(), true);
 
     collection.set_value_as_qstring("status", _emojiCode);
     collection.set_value_as_int64("duration", _duration);
 
-    auto status = Statuses::Status(_emojiCode);
+    if (!_description.isEmpty())
+        collection.set_value_as_qstring("description", _description);
+
+    auto status = Statuses::Status(_emojiCode, _description);
     auto currentTime = QDateTime::currentDateTime();
     status.setStartTime(currentTime);
     if (_duration != 0)

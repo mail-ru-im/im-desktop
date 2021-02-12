@@ -14,7 +14,6 @@
 #include "../containers/FriendlyContainer.h"
 #include "../containers/PrivacySettingsContainer.h"
 #include "statuses/LocalStatuses.h"
-#include "statuses/Status.h"
 
 using namespace core;
 
@@ -980,9 +979,9 @@ namespace HistoryControl
         if (isOutgoing())
         {
             return QT_TRANSLATE_NOOP("chat_event", "You replied to status\n"
-                                                                     "%2 %3\n"
-                                                                     "%4\n"
-                                                                     "%5 %6").arg(statusReply_.ownerStatus_, ownerStatusDescription,
+                                                                     "%1 %2\n"
+                                                                     "%3\n"
+                                                                     "%4 %5").arg(statusReply_.ownerStatus_, ownerStatusDescription,
                                                                                   pointingDownEmojiStr,
                                                                                   statusReply_.senderStatus_, senderStatusDescription);
         }

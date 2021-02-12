@@ -39,7 +39,7 @@ namespace
 
 UI_COMPLEX_MESSAGE_NS_BEGIN
 
-StickerBlock::StickerBlock(ComplexMessageItem *_parent,  const HistoryControl::StickerInfoSptr& _info)
+StickerBlock::StickerBlock(ComplexMessageItem* _parent,  const HistoryControl::StickerInfoSptr& _info)
     : GenericBlock(_parent, QT_TRANSLATE_NOOP("contact_list", "Sticker"), MenuFlagNone, false)
     , Info_(_info)
     , Layout_(nullptr)

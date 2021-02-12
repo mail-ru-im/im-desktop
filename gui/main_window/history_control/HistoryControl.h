@@ -81,6 +81,8 @@ namespace Ui
         const QString& currentAimId() const;
         void setFrameCountMode(FrameCountMode _mode);
 
+        const QStringList& getStatusBannerEmoji() const noexcept { return statusBannerEmoji_; }
+
     protected:
         void mouseReleaseEvent(QMouseEvent *) override;
 
@@ -106,6 +108,7 @@ namespace Ui
         void suggestNotifyUser(const QString& _contact, const QString& _smsContext);
 
         void suspendBackgroundPages();
+        void updateStatusBannerEmoji();
 
         QMap<QString, HistoryControlPage*> pages_;
         QMap<QString, QTime> times_;
@@ -116,5 +119,6 @@ namespace Ui
         std::deque<QString> dialogHistory_;
         FrameCountMode frameCountMode_;
         QString unreadText_;
+        QStringList statusBannerEmoji_;
     };
 }

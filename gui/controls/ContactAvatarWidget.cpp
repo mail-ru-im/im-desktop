@@ -891,4 +891,43 @@ namespace Ui
     {
         return rect().adjusted(-(width() - size_) / 2, -(height() - size_) / 2, 0, 0);
     }
+
+    QRect AccessibleAvatarBadge::rect() const
+    {
+        return QRect(avatarWidget_->mapToGlobal(avatarWidget_->badgeRect_.topLeft()), avatarWidget_->badgeRect_.size());
+    }
+
+    QString AccessibleAvatarBadge::text(QAccessible::Text type) const
+    {
+        return type == QAccessible::Text::Name ? qsl("AS ContactAvatarWidget badge") : QString();
+    }
+
+    AccessibleAvatarWidget::AccessibleAvatarWidget(ContactAvatarWidget* _avatarWidget)
+        : QAccessibleWidget(_avatarWidget)
+    {
+        badgeInterface_ = new AccessibleAvatarBadge(_avatarWidget);
+    }
+
+    QAccessibleInterface* AccessibleAvatarWidget::child(int index) const
+    {
+        if (index == 0)
+            return badgeInterface_;
+
+        return nullptr;
+    }
+
+    int AccessibleAvatarWidget::indexOfChild(const QAccessibleInterface* child) const
+    {
+        if (child == badgeInterface_)
+            return 0;
+
+        return -1;
+    }
+
+    QString AccessibleAvatarWidget::text(QAccessible::Text type) const
+    {
+        return type == QAccessible::Text::Name ? qsl("AS AccessibleAvatarWidget") : QString();
+    }
+
+
 }

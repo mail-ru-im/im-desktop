@@ -37,6 +37,7 @@
 #include "../contact_list/FavoritesUtils.h"
 #include "../containers/FriendlyContainer.h"
 #include "../containers/LastseenContainer.h"
+#include "../containers/StatusContainer.h"
 #include "../sidebar/Sidebar.h"
 #include "../sidebar/SidebarUtils.h"
 #include "../input_widget/InputWidget.h"
@@ -846,6 +847,14 @@ namespace Ui
         connect(Ui::GetDispatcher(), &Ui::core_dispatcher::subscribeResult, this, &HistoryControlPage::groupSubscribeResult);
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::addReactionPlateActivityChanged, this, &HistoryControlPage::onAddReactionPlateActivityChanged);
         connect(GetDispatcher(), &core_dispatcher::callRoomInfo, this, &HistoryControlPage::onCallRoomInfo);
+
+        connect(Ui::GetDispatcher(), &Ui::core_dispatcher::externalUrlConfigUpdated, this, &HistoryControlPage::showStatusBannerIfNeeded);
+        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::omicronUpdated, this, &HistoryControlPage::showStatusBannerIfNeeded);
+        connect(Logic::GetStatusContainer(), &Logic::StatusContainer::statusChanged, this, [this](const QString& _aimid)
+        {
+            if (_aimid == aimId_)
+                showStatusBannerIfNeeded();
+        });
     }
 
     void HistoryControlPage::initButtonDown()
@@ -1197,6 +1206,20 @@ namespace Ui
     void HistoryControlPage::setHighlights(const highlightsV& _highlights)
     {
         highlights_ = _highlights;
+    }
+
+    void HistoryControlPage::showStatusBannerIfNeeded()
+    {
+        if (Utils::isChat(aimId_) || aimId() == MyInfo()->aimId())
+            return;
+
+        const auto status = Logic::GetStatusContainer()->getStatus(aimId());
+        const auto needBanner = !status.isEmpty() && control_ && control_->getStatusBannerEmoji().contains(status.toString());
+        const auto visible = pinnedWidget_->isBannerVisible();
+        if (needBanner && !visible)
+            pinnedWidget_->showStatusBanner();
+        else if (!needBanner && visible)
+            pinnedWidget_->hide();
     }
 
     void HistoryControlPage::showStrangerIfNeeded()
@@ -2335,7 +2358,7 @@ namespace Ui
             for (const auto& msg : _messages)
                 removeExistingWidgetByKey(msg->ToKey());
 
-            if (messagesArea_->getLayout()->removeItemAtEnd(Logic::control_type::ct_new_messages))
+            if (messagesArea_->getLayout()->removeItemAtEnd(Logic::control_type::ct_new_messages) || !messagesArea_->getLayout()->hasItemsOfType(Logic::control_type::ct_new_messages))
                 newPlateId_ = std::nullopt;
 
             reader_->deleted(_messages);
@@ -2919,7 +2942,11 @@ namespace Ui
 
     void HistoryControlPage::showEvent(QShowEvent* _event)
     {
-        showStrangerIfNeeded();
+        if (Utils::isChat(aimId()))
+            showStrangerIfNeeded();
+        else
+            showStatusBannerIfNeeded();
+
         updateFooterButtonsPositions();
         updateCallButtonsVisibility();
 
@@ -3030,7 +3057,7 @@ namespace Ui
 
         if (!messagesArea_->isScrollAtBottom() && !newPlateId_)
         {
-            if (_dlgState.LastMsgId_ != _dlgState.YoursLastRead_)
+            if (_dlgState.LastMsgId_ > _dlgState.YoursLastRead_)
                 newPlateId_ = _dlgState.YoursLastRead_;
         }
 
@@ -3829,14 +3856,14 @@ namespace Ui
     {
         if (!_msg)
         {
-            if (!pinnedWidget_->isStrangerVisible())
+            if (!pinnedWidget_->isStrangerVisible() && !pinnedWidget_->isBannerVisible())
                 pinnedWidget_->hide();
 
             pinnedWidget_->clear();
         }
         else
         {
-            if (pinnedWidget_->setMessage(_msg))
+            if (pinnedWidget_->setMessage(std::move(_msg)))
                 pinnedWidget_->showExpanded();
         }
     }

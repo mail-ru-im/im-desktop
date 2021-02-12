@@ -32,6 +32,10 @@
 
 #include "statuses/Status.h"
 
+#if defined(IM_AUTO_TESTING)
+    class WebServer;
+#endif
+
 namespace core
 {
     enum class sticker_size;
@@ -569,7 +573,7 @@ Q_SIGNALS:
 
         int64_t getEmojiImage(const QString& _code, ServerEmojiSize _size);
 
-        int64_t setStatus(const QString& _emojiCode, int64_t _duration);
+        int64_t setStatus(const QString& _emojiCode, int64_t _duration, const QString& _description = QString());
 
         // messages
         void onNeedLogin(const int64_t _seq, core::coll_helper _params);
@@ -789,6 +793,10 @@ Q_SIGNALS:
         void onGetEmojiResult(const int64_t _seq, core::coll_helper _params);
 
         void onSuggestToNotifyUser(const int64_t _seq, core::coll_helper _params);
+
+#ifdef IM_AUTO_TESTING
+        std::unique_ptr<WebServer> server;
+#endif
 
     private:
 

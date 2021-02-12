@@ -519,7 +519,10 @@ namespace Ui
         ShowHideButton* smartreplyButton_;
 
         void initStatus();
+
+        void showStatusBannerIfNeeded();
         void showStrangerIfNeeded();
+
         bool isScrolling() const;
         QWidget* getWidgetByKey(const Logic::MessageKey& _key) const;
         QWidget* extractWidgetByKey(const Logic::MessageKey& _key);

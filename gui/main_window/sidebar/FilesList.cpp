@@ -436,7 +436,7 @@ namespace Ui
         for (const auto& e : _entries)
         {
             Utils::UrlParser parser;
-            parser.process(QStringRef(&e.url_));
+            parser.process(e.url_);
 
             const auto isFilesharing = parser.hasUrl() && parser.getUrl().is_filesharing();
             if (!isFilesharing)
@@ -473,7 +473,7 @@ namespace Ui
             }
 
             Utils::UrlParser parser;
-            parser.process(QStringRef(&e.url_));
+            parser.process(e.url_);
 
             const auto isFilesharing = parser.hasUrl() && parser.getUrl().is_filesharing();
             if (!isFilesharing || (e.type_ != u"file" && e.type_ != u"audio"))
@@ -625,7 +625,7 @@ namespace Ui
 #endif //_WIN32
                         const auto path = i->getLocalPath();
                         const auto openAt = i->isOverIcon(p) ? Utils::OpenAt::Launcher : Utils::OpenAt::Folder;
-                        Utils::openFileOrFolder(QStringRef(&path), openAt);
+                        Utils::openFileOrFolder(path, openAt);
                     }
                 }
                 if (i->isOverDate(_event->pos()))

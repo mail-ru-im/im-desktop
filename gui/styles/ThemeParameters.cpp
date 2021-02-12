@@ -418,29 +418,7 @@ namespace Styling
             "Ui--Smiles--TabButton{"
             "padding : 0;"
             "margin : 0;"
-            "border: none;"
-            "background-color: %1;"
-            "background-repeat: no-repeat;"
-            "background-position: center center;}"
-            "Ui--Smiles--TabButton::hover{"
-            "background-color: %2;"
-            "background-repeat: no-repeat;"
-            "background-position: center center;}"
-            "Ui--Smiles--TabButton::checked{"
-            "background-color: %3;"
-            "border-bottom-color: %4;"
-            "border-bottom-width: 2dip;"
-            "border-bottom-style: solid;"
-            "background-repeat: no-repeat;"
-            "background-position: center center;}"
-            "Ui--Smiles--TabButton[underline=\"false\"]{"
-            "background: %1;}"
-            "Ui--Smiles--TabButton::hover[underline=\"false\"]{"
-            "border-bottom: none;"
-            "background-color: %2;}"
-            "Ui--Smiles--TabButton::checked[underline=\"false\"]{"
-            "border-bottom: none;"
-            "background-color: %2;}"
+            "border: none;}"
             "Ui--Smiles--Toolbar{"
             "padding : 0;"
             "margin : 0;"
@@ -462,13 +440,8 @@ namespace Styling
             "border: none;"
             "background-color: %1;}"
             "Ui--Smiles--SmilesMenu{"
-            "border-top-color: %3;"
-            "border-top-width: 1dip;"
-            "border-top-style: solid;"
             "background-color: %1;}"
-        )
-            .arg(getColorHex(StyleVariable::BASE_GLOBALWHITE), getColorHex(StyleVariable::BASE_BRIGHT_INVERSE),
-                getColorHex(StyleVariable::BASE_BRIGHT), getColorHex(StyleVariable::PRIMARY));
+        ).arg(getColorHex(StyleVariable::BASE_GLOBALWHITE), getColorHex(StyleVariable::BASE_BRIGHT_INVERSE));
         return qss;
     }
 

@@ -3,20 +3,29 @@
 
 #include "../device_monitoring_impl.h"
 
-namespace device {
+struct IMMDeviceEnumerator;
 
-class DeviceMonitoringWindows : public DeviceMonitoringImpl {
-    HANDLE _workingThread;
-    DWORD _id;
+namespace device
+{
 
-    static DWORD WINAPI _worker_thread_proc(_In_ LPVOID lpParameter);
+struct DeviceListMonitorContext;
 
+class DeviceMonitoringWindows : public DeviceMonitoringImpl, QAbstractNativeEventFilter
+{
+    Q_OBJECT
+
+    void stopImpl();
+    std::unique_ptr<DeviceListMonitorContext> context_;
+    IMMDeviceEnumerator* enumerator_ = nullptr;
+    bool comInit = false;
 public:
     DeviceMonitoringWindows();
     virtual ~DeviceMonitoringWindows();
 
     bool Start() override;
     void Stop() override;
+
+    bool nativeEventFilter(const QByteArray& _eventType, void* _message, long* _result);
 };
 
 }

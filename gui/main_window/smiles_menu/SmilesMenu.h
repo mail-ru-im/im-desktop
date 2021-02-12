@@ -217,6 +217,9 @@ namespace Ui
 
             bool isKeyboardActive() const;
 
+        protected:
+            void resizeEvent(QResizeEvent* _event) override;
+
         private:
             void updateToolbar(const QRect& _viewRect);
             void placeToolbar(const QRect& _viewRect);
@@ -568,11 +571,19 @@ namespace Ui
             void clearSelection();
             bool hasSelection() const;
 
+            void setToolBarVisible(bool _visible);
+            void setRecentsVisible(bool _visible);
+            void setStickersVisible(bool _visible);
+            void setHorizontalMargins(int _margin);
+            void setDrawTopBorder(bool _draw);
+            void setTopSpacing(int _spacing);
+
         private:
             Toolbar* topToolbar_;
             Toolbar* bottomToolbar_;
 
             QScrollArea* viewArea_;
+            QBoxLayout* viewAreaLayout_;
 
             RecentsWidget* recentsView_;
             EmojisWidget* emojiView_;
@@ -581,12 +592,14 @@ namespace Ui
             QVBoxLayout* rootVerticalLayout_;
             QPropertyAnimation* animHeight_;
             QPropertyAnimation* animScroll_;
+            QSpacerItem* topSpacer_;
 
             bool isVisible_;
             bool blockToolbarSwitch_;
             int currentHeight_;
             bool setFocusToButton_;
             bool lottieAllowed_;
+            bool drawTopBorder_;
 
         private:
             void InitSelector();

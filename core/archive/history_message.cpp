@@ -44,44 +44,44 @@ namespace
         max,
     };
 
-    const std::string_view c_msgid = "msgId";
-    const std::string_view c_outgoing = "outgoing";
-    const std::string_view c_time = "time";
-    const std::string_view c_text = "text";
-    const std::string_view c_update_patch_version = "updatePatchVersion";
-    const std::string_view c_sticker = "sticker";
-    const std::string_view c_sticker_id = "stickerId";
-    const std::string_view c_mult = "mult";
-    const std::string_view c_voip = "voip";
-    const std::string_view c_chat = "chat";
-    const std::string_view c_reqid = "reqId";
-    const std::string_view c_event_class = "event";
-    const std::string_view c_parts = "parts";
-    const std::string_view c_mentions = "mentions";
-    const std::string_view c_media_type = "mediaType";
-    const std::string_view c_sn = "sn";
-    const std::string_view c_stiker_id = "stickerId";
-    const std::string_view c_type_quote = "quote";
-    const std::string_view c_type_forward = "forward";
-    const std::string_view c_type_text = "text";
-    const std::string_view c_type_sticker = "sticker";
-    const std::string_view c_chat_stamp = "stamp";
-    const std::string_view c_chat_name = "name";
-    const std::string_view c_snippets = "snippets";
-    const std::string_view c_captcha = "captchaChallenge";
-    const std::string_view c_captioned_content = "captionedContent";
-    const std::string_view c_url = "url";
-    const std::string_view c_caption = "caption";
-    const std::string_view c_contact = "contact";
-    const std::string_view c_geo = "geo";
-    const std::string_view c_poll = "poll";
-    const std::string_view c_poll_id = "pollId";
-    const std::string_view c_buttons = "inlineKeyboardMarkup";
-    const std::string_view c_hideedit = "hideEdit";
-    const std::string_view c_callback_data = "callbackData";
-    const std::string_view c_style = "style";
-    const std::string_view c_reactions = "reactions";
-    const std::string_view c_has_animated_sticker = "hasAnimatedSticker";
+    constexpr std::string_view c_msgid = "msgId";
+    constexpr std::string_view c_outgoing = "outgoing";
+    constexpr std::string_view c_time = "time";
+    constexpr std::string_view c_text = "text";
+    constexpr std::string_view c_update_patch_version = "updatePatchVersion";
+    constexpr std::string_view c_sticker = "sticker";
+    constexpr std::string_view c_sticker_id = "stickerId";
+    constexpr std::string_view c_mult = "mult";
+    constexpr std::string_view c_voip = "voip";
+    constexpr std::string_view c_chat = "chat";
+    constexpr std::string_view c_reqid = "reqId";
+    constexpr std::string_view c_event_class = "event";
+    constexpr std::string_view c_parts = "parts";
+    constexpr std::string_view c_mentions = "mentions";
+    constexpr std::string_view c_media_type = "mediaType";
+    constexpr std::string_view c_sn = "sn";
+    constexpr std::string_view c_stiker_id = "stickerId";
+    constexpr std::string_view c_type_quote = "quote";
+    constexpr std::string_view c_type_forward = "forward";
+    constexpr std::string_view c_type_text = "text";
+    constexpr std::string_view c_type_sticker = "sticker";
+    constexpr std::string_view c_chat_stamp = "stamp";
+    constexpr std::string_view c_chat_name = "name";
+    constexpr std::string_view c_snippets = "snippets";
+    constexpr std::string_view c_captcha = "captchaChallenge";
+    constexpr std::string_view c_captioned_content = "captionedContent";
+    constexpr std::string_view c_url = "url";
+    constexpr std::string_view c_caption = "caption";
+    constexpr std::string_view c_contact = "contact";
+    constexpr std::string_view c_geo = "geo";
+    constexpr std::string_view c_poll = "poll";
+    constexpr std::string_view c_poll_id = "pollId";
+    constexpr std::string_view c_buttons = "inlineKeyboardMarkup";
+    constexpr std::string_view c_hideedit = "hideEdit";
+    constexpr std::string_view c_callback_data = "callbackData";
+    constexpr std::string_view c_style = "style";
+    constexpr std::string_view c_reactions = "reactions";
+    constexpr std::string_view c_has_animated_sticker = "hasAnimatedSticker";
 
     std::string parse_sender_aimid(const rapidjson::Value &_node);
 
@@ -1662,12 +1662,10 @@ chat_event_data::chat_event_data(const tools::tlvpack& _pack)
     assert(type_ > chat_event_type::min);
     assert(type_ < chat_event_type::max);
 
-    auto channel_item = _pack.get_item(message_fields::mf_chat_is_channel);
-    if (channel_item)
+    if (auto channel_item = _pack.get_item(message_fields::mf_chat_is_channel))
         is_channel_ = channel_item->get_value<bool>();
 
-    auto captcha_item = _pack.get_item(message_fields::mf_chat_event_is_captcha_present);
-    if (captcha_item)
+    if (auto captcha_item = _pack.get_item(message_fields::mf_chat_event_is_captcha_present))
         is_captcha_present_ = captcha_item->get_value<bool>();
     else
         is_captcha_present_ = false;
@@ -1677,8 +1675,7 @@ chat_event_data::chat_event_data(const tools::tlvpack& _pack)
         if (auto item = _pack.get_item(message_fields::mf_chat_event_sender_friendly))
             sender_friendly_ = item->get_value<std::string>();
 
-        auto item = _pack.get_item(message_fields::mf_chat_event_sender_aimid);
-        if (item)
+        if (auto item = _pack.get_item(message_fields::mf_chat_event_sender_aimid))
         {
             sender_aimid_ = item->get_value<std::string>(std::string());
             assert(!sender_aimid_.empty());
@@ -2094,14 +2091,7 @@ void chat_event_data::serialize_mchat_members(Out tools::tlvpack &_pack) const
 
     auto member_index = 0;
     for (const auto &member : friendly_members)
-    {
-        members_pack.push_child(
-            tools::tlv(
-            member_index++,
-            member
-            )
-            );
-    }
+        members_pack.push_child(tools::tlv(member_index++, member));
 
     _pack.push_child(tools::tlv(message_fields::mf_chat_event_mchat_members, members_pack));
 }
@@ -2115,14 +2105,7 @@ void chat_event_data::serialize_mchat_members_aimids(Out tools::tlvpack &_pack) 
 
     auto member_index = 0;
     for (const auto &member : members)
-    {
-        members_pack.push_child(
-            tools::tlv(
-                member_index++,
-                member
-            )
-        );
-    }
+        members_pack.push_child(tools::tlv(member_index++, member));
 
     _pack.push_child(tools::tlv(message_fields::mf_chat_event_mchat_members_aimids, members_pack));
 }
@@ -2513,7 +2496,8 @@ void history_message::serialize(icollection* _collection, const time_t _offset, 
     coll.set<bool>("outgoing", is_outgoing());
     coll.set<bool>("deleted", is_deleted());
     coll.set<bool>("restored_patch", is_restored_patch());
-    coll.set_value_as_int("time", (int32_t) (time_ > 0 ? time_ + _offset : time_));
+    coll.set_value_as_int("time", static_cast<int32_t>(time_ > 0 ? time_ + _offset : time_));
+
     if (_serialize_message)
         coll.set_value_as_string("text", text_);
     coll.set_value_as_string("internal_id", internal_id_);
@@ -2785,7 +2769,7 @@ int32_t history_message::unserialize_call(core::tools::binary_stream& _data, std
 
     for (auto tlv_field = msg_pack.get_first(); tlv_field; tlv_field = msg_pack.get_next())
     {
-        switch ((message_fields) tlv_field->get_type())
+        switch (static_cast<message_fields>(tlv_field->get_type()))
         {
         case message_fields::mf_msg_id:
             msgid_ = tlv_field->get_value<int64_t>(msgid_);
@@ -3154,6 +3138,11 @@ int32_t history_message::unserialize(const rapidjson::Value& _node, const std::s
                             poll_data poll;
                             if (poll.unserialize(field.value))
                                 poll_ = std::move(poll);
+                        }
+                        else if (name == c_has_animated_sticker)
+                        {
+                            // check only for field existence
+                            continue;
                         }
                         else if (new_message_parts_set.find(name) != new_message_parts_set.end()) // ! must be the last check
                         {
@@ -3944,8 +3933,7 @@ void quote::unserialize(const core::tools::tlvpack &_pack)
 {
     auto get_value = [&_pack](auto _field, auto _def_value, Out auto _out_ptr)
     {
-        const auto item = _pack.get_item(_field);
-        if (item)
+        if (const auto item = _pack.get_item(_field))
             *_out_ptr = item->template get_value<std::remove_pointer_t<decltype(_out_ptr)>>(_def_value);
     };
     get_value(message_fields::mf_quote_text,    std::string(),  &text_);
@@ -3962,8 +3950,7 @@ void quote::unserialize(const core::tools::tlvpack &_pack)
     get_value(message_fields::mf_quote_url, std::string(), &url_);
     get_value(message_fields::mf_quote_description, std::string(), &description_);
 
-    auto contact_item = _pack.get_item(message_fields::mf_shared_contact);
-    if (contact_item)
+    if (auto contact_item = _pack.get_item(message_fields::mf_shared_contact))
     {
         const auto pack = contact_item->get_value<core::tools::tlvpack>();
         shared_contact_data contact;
@@ -3971,8 +3958,7 @@ void quote::unserialize(const core::tools::tlvpack &_pack)
             shared_contact_ = std::move(contact);
     }
 
-    auto geo_item = _pack.get_item(message_fields::mf_geo);
-    if (geo_item)
+    if (auto geo_item = _pack.get_item(message_fields::mf_geo))
     {
         const auto pack = geo_item->get_value<core::tools::tlvpack>();
         geo_data geo;
@@ -3980,8 +3966,7 @@ void quote::unserialize(const core::tools::tlvpack &_pack)
             geo_ = std::move(geo);
     }
 
-    auto poll_item = _pack.get_item(message_fields::mf_poll);
-    if (poll_item)
+    if (auto poll_item = _pack.get_item(message_fields::mf_poll))
     {
         auto pack = poll_item->get_value<core::tools::tlvpack>();
         poll_ = unserializePoll(pack);

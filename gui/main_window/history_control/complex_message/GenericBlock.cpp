@@ -285,12 +285,8 @@ QRect GenericBlock::setBlockGeometry(const QRect &ltr)
 
 QSize GenericBlock::sizeHint() const
 {
-    const auto blockLayout = getBlockLayout();
-
-    if (blockLayout)
-    {
+    if (const auto blockLayout = getBlockLayout())
         return blockLayout->blockSizeHint();
-    }
 
     return QSize(-1, 0);
 }

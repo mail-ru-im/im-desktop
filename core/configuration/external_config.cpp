@@ -237,21 +237,22 @@ bool external_url_config::unserialize(const rapidjson::Value& _node)
 
     std::scoped_lock lock(spin_lock_);
     config_ = std::move(c);
-    override_features(config_->override_values_);
+    override_config(config_->override_features_, config_->override_values_);
 
     return true;
 }
 
-void external_url_config::override_features(const features_vector& _values)
+void external_url_config::override_config(const features_vector& _features, const values_vector& _values)
 {
-    if (_values.empty())
+    if (_values.empty() && _features.empty())
     {
         reset_to_defaults();
     }
     else
     {
         external_configuration conf;
-        conf.features = _values;
+        conf.features = _features;
+        conf.values = _values;
         config::set_external(std::make_shared<external_configuration>(std::move(conf)));
     }
 }
@@ -352,8 +353,14 @@ bool external_url_config::config_p::unserialize(const rapidjson::Value& _node)
     const auto unserialize_feature = [this, &_node](auto feature, auto name)
     {
         if (auto enabled = common::json::get_value<bool>(_node, name); enabled)
-            override_values_.emplace_back(feature, *enabled);
+            override_features_.emplace_back(feature, *enabled);
     };
+    const auto unserialize_value = [this, &_node](auto value, auto name)
+    {
+        if (auto val = common::json::get_value<std::string>(_node, name); val)
+            override_values_.emplace_back(value, *val);
+    };
+
     unserialize_feature(config::features::avatar_change_allowed, "allow-self-avatar-change");
     unserialize_feature(config::features::changeable_name, "allow-self-name-change");
     unserialize_feature(config::features::info_change_allowed, "allow-self-info-change");
@@ -362,6 +369,7 @@ bool external_url_config::config_p::unserialize(const rapidjson::Value& _node)
     unserialize_feature(config::features::vcs_webinar_enabled, "allow-vcs-webinar-creation");
     unserialize_feature(config::features::phone_allowed, "attach-phone-enabled");
     unserialize_feature(config::features::silent_message_delete, "silent-message-delete");
+    unserialize_value(config::values::status_banner_emoji_csv, "status-banner-emoji");
 
     return true;
 }

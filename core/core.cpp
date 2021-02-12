@@ -483,10 +483,11 @@ void core::core_dispatcher::unlink_gui()
         voip_manager_.reset();
         im_container_.reset();
 
-
         if (omicron_update_timer_id_ > 0)
             stop_timer(omicron_update_timer_id_);
         omicronlib::omicron_cleanup();
+
+        network_change_notifier_.reset();
 
         const auto keep_local_data = is_keep_local_data();
         if (!keep_local_data)
@@ -793,8 +794,7 @@ void core_dispatcher::load_statistics()
     if (!is_stats_enabled())
         return;
 
-    statistics_ = std::make_shared<core::stats::statistics>(
-        utils::get_product_data_path() + L"/stats/stats.stg", utils::get_product_data_path() + L"/stats/stats_mt.stg");
+    statistics_ = std::make_shared<core::stats::statistics>(utils::get_product_data_path() + L"/stats/stats_mt.stg");
 
     execute_core_context([this]
     {
@@ -1841,7 +1841,7 @@ void core_dispatcher::reset_connection()
 }
 
 void core::core_dispatcher::check_if_network_change_notifier_available()
-{    
+{
     if (!network_change_notifier_ && network_change_notifier::is_enabled())
     {
         auto network_observer = std::make_unique<network_change_observer>();

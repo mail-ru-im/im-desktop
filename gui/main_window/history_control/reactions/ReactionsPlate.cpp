@@ -157,10 +157,10 @@ namespace
             return qsl("99+");
     }
 
-    bool allowedToViewReactionsList(const QString& _chatId)
+    bool allowedToViewReactionsList(const QString& _aimId)
     {
-        const auto role = Logic::getContactListModel()->getYourRole(_chatId);
-        const auto notAllowed = role == u"notamember" || Logic::getContactListModel()->isChannel(_chatId) && !Logic::getContactListModel()->isYouAdmin(_chatId);
+        const auto role = Logic::getContactListModel()->getYourRole(_aimId);
+        const auto notAllowed = (role.isEmpty() && Utils::isChat(_aimId)) || role == u"notamember" || Logic::getContactListModel()->isChannel(_aimId) && !Logic::getContactListModel()->isYouAdmin(_aimId);
 
         return !notAllowed;
     }
@@ -619,7 +619,7 @@ public:
 // ReactionsPlate
 //////////////////////////////////////////////////////////////////////////
 
-ReactionsPlate:: ReactionsPlate(HistoryControlPageItem* _item)
+ReactionsPlate::ReactionsPlate(HistoryControlPageItem* _item)
     : QWidget(_item),
       d(std::make_unique<ReactionsPlate_p>(this))
 {
@@ -628,17 +628,13 @@ ReactionsPlate:: ReactionsPlate(HistoryControlPageItem* _item)
     d->item_ = _item;
     setVisible(false);
     setMouseTracking(true);
-    setCursor(allowedToViewReactionsList(_item->getContact()) ? Qt::PointingHandCursor : Qt::ArrowCursor);
     connect(&Utils::InterConnector::instance(), &Utils::InterConnector::multiselectChanged, this, &ReactionsPlate::onMultiselectChanged);
     connect(GetDispatcher(), &core_dispatcher::reactionsListResult, this, &ReactionsPlate::onReactionsPage);
 
     d->initShadow();
 }
 
-ReactionsPlate::~ReactionsPlate()
-{
-
-}
+ReactionsPlate::~ReactionsPlate() = default;
 
 void ReactionsPlate::setReactions(const Data::Reactions& _reactions)
 {
@@ -703,6 +699,7 @@ void ReactionsPlate::showEvent(QShowEvent* _event)
 
 void ReactionsPlate::mouseMoveEvent(QMouseEvent* _event)
 {
+    setCursor(allowedToViewReactionsList(d->item_->getContact()) ? Qt::PointingHandCursor : Qt::ArrowCursor);
     for (auto& item : d->items_)
     {
         if (item->rect_.contains(_event->pos()))

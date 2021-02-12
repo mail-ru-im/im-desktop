@@ -28,6 +28,9 @@ namespace
 
     int getTopMargin()
     {
+        if constexpr (platform::is_apple())
+            return Utils::scale_value(12);
+
         return Utils::scale_value(8);
     }
 
@@ -117,11 +120,7 @@ namespace Ui
         globalLayout->addWidget(textHost_);
 
         if (mainWidget_)
-        {
-            if constexpr (platform::is_apple())
-                globalLayout->addSpacing(Utils::scale_value(5));
             globalLayout->addWidget(mainWidget_);
-        }
 
         areaWidget_ = new QWidget(mainHost_);
         areaWidget_->setVisible(false);

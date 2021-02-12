@@ -24,6 +24,8 @@ namespace
     {
         return Utils::scale_bitmap(4. / 3. * preferredItemSize());
     }
+
+    constexpr std::chrono::milliseconds kImageVideoItemRefreshDelay(100);
 }
 
 using namespace Ui;
@@ -383,8 +385,9 @@ int ImageVideoBlock::getHeight(int _width, bool _force)
 {
     if (!heightValid_ || _force)
     {
-        auto rowSize = calcRowSize(_width);
-        auto nRows = (items_.size() / rowSize + (items_.size() % rowSize == 0 ? 0 : 1));
+        const auto rowSize = calcRowSize(_width);
+        const auto offset = (items_.size() % rowSize == 0 ? 0 : 1);
+        const auto nRows = (rowSize != 0) ? (items_.size() / rowSize + offset) : 0;
 
         cachedHeight_ = nRows * (calcItemSize(_width) + spacing()) + 2 * vMargin() + Utils::scale_value(20);
         heightValid_ = true;
@@ -557,14 +560,14 @@ QRect ImageVideoBlock::itemRect(int _index)
 {
     itemSize_ = calcItemSize(rect_.width());
 
-    auto rowSize = calcRowSize(rect_.width());
+    const auto rowSize = calcRowSize(rect_.width());
 
-    auto row = _index / rowSize;
-    auto column = _index % rowSize;
+    const auto row = (rowSize != 0 ? (_index / rowSize) : 0);
+    const auto column = _index % rowSize;
 
-    auto topMargin = dateRect().height() + vMargin();
+    const auto topMargin = dateRect().height() + vMargin();
 
-    auto topleft = QPoint(column * itemSize_ + column * spacing() + hMargin(), row * itemSize_ + row * spacing() + topMargin);
+    const auto topleft = QPoint(column * itemSize_ + column * spacing() + hMargin(), row * itemSize_ + row * spacing() + topMargin);
 
     return QRect(topleft + rect_.topLeft(), QSize(itemSize_, itemSize_));
 }
@@ -592,7 +595,6 @@ int ImageVideoBlock::calcItemSize(int _width)
 
     // avoid divizion by zero
     return (n != 0 ? ((_width - 2 * hMargin() - spacing() * (n - 1)) / n) : 0);
-
 }
 
 int ImageVideoBlock::calcRowSize(int _width)
@@ -602,7 +604,8 @@ int ImageVideoBlock::calcRowSize(int _width)
 
 int ImageVideoBlock::calcRowSizeHelper(int _width, int _itemSize)
 {
-    return (_width - 2 * hMargin() + spacing())/ (_itemSize + spacing());
+    const auto n = (_itemSize + spacing());
+    return (_width - 2 * hMargin() + spacing()) / (n == 0 ? 1 : n);
 }
 
 int ImageVideoBlock::calcHeight()
@@ -639,7 +642,7 @@ ImageVideoItem::ImageVideoItem(QObject* _parent, const QString& _link, qint64 _m
     , time_(_time)
 {
     Utils::UrlParser parser;
-    parser.process(QStringRef(&_link));
+    parser.process(_link);
 
     filesharing_ = parser.hasUrl() && parser.getUrl().is_filesharing();
 
@@ -659,7 +662,6 @@ ImageVideoItem::ImageVideoItem(QObject* _parent, const QString& _link, qint64 _m
 
 ImageVideoItem::~ImageVideoItem()
 {
-
 }
 
 void ImageVideoItem::load(LoadType _loadType)
@@ -684,14 +686,18 @@ void ImageVideoItem::unload()
     previewPtr_ = nullptr;               // without async reset it takes up to 0.3ms
 }
 
+void ImageVideoItem::setRect(const QRect& _rect)
+{
+    if (rect_ == _rect)
+        return;
+    rect_ = _rect;
+    updateDurationLabel();
+    updatePreview(Qt::FastTransformation);
+    QTimer::singleShot(kImageVideoItemRefreshDelay, this, &ImageVideoItem::refresh);
+}
+
 void ImageVideoItem::draw(QPainter &_p)
 {
-    if (rect_.size() != cachedSize_)
-    {
-        updatePreview();
-        updateDurationLabel();
-    }
-
     Utils::PainterSaver ps(_p);
     _p.translate(rect_.topLeft());
     _p.setRenderHint(QPainter::Antialiasing);
@@ -742,7 +748,7 @@ void ImageVideoItem::onPreviewLoaded(const QPixmap& _preview)
     previewPtr_ = std::make_unique<Preview>();
     previewPtr_->source_ = cropPreview(_preview, maxPreviewSize());
 
-    updatePreview();
+    updatePreview(Qt::SmoothTransformation);
 
     if (loader_ && (loader_->isVideo() || loader_->isGif()))
     {
@@ -773,6 +779,12 @@ void ImageVideoItem::onPreviewLoaded(const QPixmap& _preview)
     Q_EMIT needUpdate(rect_);
 }
 
+void Ui::ImageVideoItem::refresh()
+{
+    updatePreview(Qt::SmoothTransformation);
+    Q_EMIT needUpdate(rect_);
+}
+
 QPixmap ImageVideoItem::cropPreview(const QPixmap &_source, const int _toSize)
 {
     auto ret = _source;
@@ -790,12 +802,12 @@ QPixmap ImageVideoItem::cropPreview(const QPixmap &_source, const int _toSize)
     return ret;
 }
 
-void ImageVideoItem::updatePreview()
+void ImageVideoItem::updatePreview(Qt::TransformationMode _mode)
 {
     if (!previewPtr_)
         return;
 
-    previewPtr_->scaled_ = previewPtr_->source_.scaledToHeight(Utils::scale_bitmap(rect_.height()), Qt::SmoothTransformation);
+    previewPtr_->scaled_ = previewPtr_->source_.scaledToHeight(Utils::scale_bitmap(rect_.height()), _mode);
     cachedSize_ = rect_.size();
 }
 
@@ -855,7 +867,7 @@ void ImageVideoItemVisitor::visit(ImageVideoList* _list)
                 break;
 
             (*it)->accept(this);
-            it++;
+            ++it;
         }
     }
 

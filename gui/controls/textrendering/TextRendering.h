@@ -24,11 +24,12 @@ namespace Ui
 
         enum class BlockType
         {
-            TYPE_TEXT = 0,
-            TYPE_EMOJI = 1,
-            TYPE_NEW_LINE = 2,
-            TYPE_SKIP = 3,
-            TYPE_DEBUG_TEXT = 4
+            Text,
+            Emoji,
+            NewLine,
+            Skip,
+            Paragraph,
+            DebugText,
         };
 
         enum class Space
@@ -112,7 +113,7 @@ namespace Ui
             TILL = 2,
         };
 
-        enum class ELideType
+        enum class ElideType
         {
             ACCURATE = 0,
             FAST = 1,
@@ -137,8 +138,8 @@ namespace Ui
             return platform::is_apple() ? 21 : 22;
         }
 
-        [[nodiscard]] constexpr QChar singleBackTick() noexcept { return u'`'; }
-        [[nodiscard]] QString tripleBackTick();
+        [[nodiscard]] inline constexpr QChar singleBackTick() noexcept { return u'`'; }
+        [[nodiscard]] inline constexpr QStringView tripleBackTick() noexcept { return u"```"; }
 
         class WordBoundary
         {
@@ -186,7 +187,7 @@ namespace Ui
             QString getText(TextType _text_type = TextType::VISIBLE) const;
             void setText(QString _text); // set text without visible changes. it's needed to edit spell errors.
 
-            bool equalTo(const QString& _sl) const;
+            bool equalTo(QStringView _sl) const;
             bool equalTo(QChar _c) const;
 
             QString getLink() const;
@@ -270,18 +271,13 @@ namespace Ui
 
             const QFont& getFont() const { return font_; }
 
-            void setColor(const QColor& _color)
-            {
-                color_ = _color;
-                for (auto& w : subwords_)
-                    w.setColor(_color);
-            }
+            void setColor(QColor _color);
 
             const QColor& getColor() const { return color_; }
 
             void applyFontColor(const TextWord& _other);
 
-            void setSubwords(std::vector<TextWord> _subwords) { subwords_ = std::move(_subwords); cachedWidth_ = 0; }
+            void setSubwords(std::vector<TextWord> _subwords);
 
             const std::vector<TextWord>& getSubwords() const { return subwords_; }
 
@@ -319,7 +315,7 @@ namespace Ui
 
         private:
             void checkSetClickable();
-            [[nodiscard]] static std::vector<WordBoundary> parseForSyntaxWords(const QStringRef& text);
+            [[nodiscard]] static std::vector<WordBoundary> parseForSyntaxWords(QStringView text);
 
             Emoji::EmojiCode code_;
             Space space_;
@@ -414,7 +410,7 @@ namespace Ui
 
             virtual int desiredWidth() const = 0;
 
-            virtual void elide(int _width, ELideType _type, bool _prevElided) = 0;
+            virtual void elide(int _width, ElideType _type, bool _prevElided) = 0;
 
             virtual bool isElided() const = 0;
 
@@ -482,7 +478,7 @@ namespace Ui
         class TextDrawingBlock final : public BaseDrawingBlock
         {
         public:
-            TextDrawingBlock(QStringView _text, LinksVisible _showLinks = LinksVisible::SHOW_LINKS, BlockType _blockType = BlockType::TYPE_TEXT);
+            TextDrawingBlock(QStringView _text, LinksVisible _showLinks = LinksVisible::SHOW_LINKS, BlockType _blockType = BlockType::Text);
 
             TextDrawingBlock(const std::vector<TextWord>& _words, BaseDrawingBlock* _other);
 
@@ -534,7 +530,7 @@ namespace Ui
 
             int desiredWidth() const override;
 
-            void elide(int _width, ELideType _type, bool _prevElided) override;
+            void elide(int _width, ElideType _type, bool _prevElided) override;
 
             bool isElided() const  override { return elided_ && !words_.empty(); }
 
@@ -608,7 +604,7 @@ namespace Ui
 
             void correctCommandWord(TextWord _word, std::vector<TextWord>& _words);
 
-            std::vector<TextWord> elideWords(const std::vector<TextWord>& _original, int _width, int _desiredWidth, bool _forceElide = false, const ELideType& _type = ELideType::ACCURATE);
+            std::vector<TextWord> elideWords(const std::vector<TextWord>& _original, int _width, int _desiredWidth, bool _forceElide = false, ElideType _type = ElideType::ACCURATE);
 
         private:
             std::vector<TextWord> words_;
@@ -689,7 +685,7 @@ namespace Ui
 
             int desiredWidth() const override;
 
-            void elide(int _width, ELideType _type, bool _prevElided) override;
+            void elide(int _width, ElideType _type, bool _prevElided) override;
 
             bool isElided() const override { return false; }
 
@@ -792,7 +788,7 @@ namespace Ui
 
         int getBlocksDesiredWidth(const std::vector<BaseDrawingBlockPtr>& _blocks);
 
-        void elideBlocks(const std::vector<BaseDrawingBlockPtr>& _blocks, int _width, ELideType _type);
+        void elideBlocks(const std::vector<BaseDrawingBlockPtr>& _blocks, int _width, ElideType _type);
 
         bool isBlocksElided(const std::vector<BaseDrawingBlockPtr>& _blocks);
 

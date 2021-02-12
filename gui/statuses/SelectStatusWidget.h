@@ -13,14 +13,24 @@ namespace Statuses
 
     class SelectStatusWidget : public QWidget
     {
+        friend class SelectStatusWidget_p;
+
         Q_OBJECT
     public:
         SelectStatusWidget(QWidget* _parent = nullptr);
         ~SelectStatusWidget();
 
     protected:
-        void showEvent(QShowEvent* _event) override;
         void keyPressEvent(QKeyEvent* _event) override;
+
+    private Q_SLOTS:
+        void onStatusChanged(const QString& _contactId);
+        void onSeachLabelClicked();
+        void onCancelSeachLabelClicked();
+        void onAvatarClicked();
+        void showMainDialog();
+        void showCustomStatusDialog();
+        void showCustomDurationDialog(const QString& _status, const QString& _description = QString());
 
     private:
         std::unique_ptr<SelectStatusWidget_p> d;
@@ -46,6 +56,10 @@ namespace Statuses
         void filter(const QString& _searchPattern);
         void updateUserStatus(const Status& _status);
         int itemsCount() const;
+
+    Q_SIGNALS:
+        void customStatusClicked(QPrivateSignal);
+        void customTimeClicked(const QString& _status, QPrivateSignal);
 
     protected:
         void paintEvent(QPaintEvent* _event) override;

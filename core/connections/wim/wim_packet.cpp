@@ -34,6 +34,11 @@ bool wim_packet::support_async_execution() const
     return get_priority() > priority_protocol();
 }
 
+bool wim_packet::support_partially_async_execution() const
+{
+    return false;
+}
+
 bool wim_packet::support_self_resending() const
 {
     return false;
@@ -74,7 +79,7 @@ int32_t wim_packet::execute()
 
 void wim_packet::execute_async(handler_t _handler)
 {
-    assert(support_async_execution());
+    assert(support_async_execution() || support_partially_async_execution());
 
     auto request = std::make_shared<core::http_request_simple>(params_.proxy_, utils::get_user_agent(params_.aimid_), get_priority(), params_.stop_handler_);
 

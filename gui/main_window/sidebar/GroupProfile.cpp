@@ -8,7 +8,6 @@
 #include "PttList.h"
 #include "EditNicknameWidget.h"
 #include "../MainWindow.h"
-#include "../history_control/HistoryControlPage.h"
 #include "../GroupChatOperations.h"
 #include "../MainPage.h"
 #include "../ReportWidget.h"
@@ -25,6 +24,7 @@
 #include "../contact_list/SearchWidget.h"
 #include "../contact_list/ChatContactsModel.h"
 #include "../history_control/ChatEventInfo.h"
+#include "../history_control/HistoryControlPage.h"
 #include "../settings/themes/WallpaperDialog.h"
 #include "../../previewer/toast.h"
 #include "../../styles/ThemeParameters.h"
@@ -38,6 +38,7 @@
 #include "../../utils/InterConnector.h"
 #include "../../utils/features.h"
 #include "../../utils/utils.h"
+#include "../../utils/animations/WidgetAnimations.h"
 #include "../../../common.shared/config/config.h"
 #include "../../controls/StartCallButton.h"
 
@@ -414,7 +415,7 @@ namespace Ui
 
         {
             galleryWidget_ = new QWidget(widget);
-            auto galleryFader = new WidgetFader(galleryWidget_);
+            auto galleryFader = new Utils::WidgetFader(galleryWidget_);
             galleryFader->setEventDirection(QEvent::Show, QPropertyAnimation::Forward);
             auto galleryLayout = Utils::emptyVLayout(galleryWidget_);
 
@@ -442,7 +443,7 @@ namespace Ui
 
         {
             membersWidget_ = new QWidget(widget);
-            auto membersFader = new WidgetFader(membersWidget_);
+            auto membersFader = new Utils::WidgetFader(membersWidget_);
             membersFader->setEventDirection(QEvent::Show, QPropertyAnimation::Forward);
             auto membersLayout = Utils::emptyVLayout(membersWidget_);
 
@@ -864,7 +865,7 @@ namespace Ui
         if (!chatInfo_)
             return;
 
-        setUpdatesEnabled(false);
+        Utils::ScopedPropertyRollback blocker(this, "updatesEnabled", false);
 
         const auto chatInCL = Logic::getContactListModel()->hasContact(currentAimId_);
         const auto isIgnored = Logic::getIgnoreModel()->contains(currentAimId_);
@@ -995,7 +996,7 @@ namespace Ui
         editButton_->setVisibility(stackedWidget_->currentIndex() == main && canEdit);
         titleBar_->setTitle(pageTitle(stackedWidget_->currentIndex()));
 
-        setUpdatesEnabled(true);
+        blocker.rollback();
 
         emitContentsChanged();
     }
@@ -1226,12 +1227,12 @@ namespace Ui
 
     void GroupProfile::enableFading()
     {
-        WidgetFader::setEffectEnabled(this, true);
+        Utils::WidgetFader::setEffectEnabled(this, true);
     }
 
     void GroupProfile::disableFading()
     {
-        WidgetFader::setEffectEnabled(this, false);
+        Utils::WidgetFader::setEffectEnabled(this, false);
     }
 
     void GroupProfile::scrollToTop()

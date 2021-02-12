@@ -982,18 +982,18 @@ Puede dejar sus comentarios o informar un error aquí:</translation>
         <translation>Respondido al estado: %1 %2</translation>
     </message>
     <message>
-        <source>You replied to status
-%2 %3
-%4
-%5 %6</source>
-        <translation>Respondiste al estado
-%2 %3
-%4
-%5 %6</translation>
-    </message>
-    <message>
         <source>You replied to status: %1 %2</source>
         <translation>Respondiste estado: %1 %2</translation>
+    </message>
+    <message>
+        <source>You replied to status
+%1 %2
+%3
+%4 %5</source>
+        <translation>Respondiste al estado
+%1 %2
+%3
+%4 %5</translation>
     </message>
 </context>
 <context>
@@ -3699,6 +3699,12 @@ Puede dejar sus comentarios o informar un error aquí:</translation>
         <source>Block</source>
         <translation>Bloquear</translation>
     </message>
+    <message>
+        <source>Pay attention
+to contact status</source>
+        <translation>Presta atención al estado
+contacto</translation>
+    </message>
 </context>
 <context>
     <name>placeholders</name>
@@ -6061,10 +6067,6 @@ Edita tu número de teléfono e inténtalo de nuevo.</translation>
         <translation>Una semana</translation>
     </message>
     <message>
-        <source>undefined time</source>
-        <translation>tiempo indefinido</translation>
-    </message>
-    <message>
         <source>%1 left</source>
         <translation>Queda %1</translation>
     </message>
@@ -6095,16 +6097,80 @@ Edita tu número de teléfono e inténtalo de nuevo.</translation>
         <translation>Mi estado</translation>
     </message>
     <message>
-        <source>No status</source>
-        <translation>Sin estatus</translation>
-    </message>
-    <message>
         <source>Status timing</source>
         <translation>Término de estado</translation>
     </message>
     <message>
         <source>Close</source>
         <translation>Cerca</translation>
+    </message>
+    <message>
+        <source>Choose unique status</source>
+        <translation>Elija un estado único</translation>
+    </message>
+    <message>
+        <source>Back</source>
+        <translation>Atrás</translation>
+    </message>
+    <message>
+        <source>Done</source>
+        <translation>Hecho</translation>
+    </message>
+    <message>
+        <source>Maximum length - %1 symbols</source>
+        <translation>Longitud máxima: %1 símbolos</translation>
+    </message>
+    <message>
+        <source>Status search</source>
+        <translation>Búsqueda de estado</translation>
+    </message>
+    <message>
+        <source>SELECT STATUS</source>
+        <translation>SELECCIONAR ESTADO</translation>
+    </message>
+    <message>
+        <source>Select custom status</source>
+        <translation>Seleccionar estado personalizado</translation>
+    </message>
+    <message>
+        <source>Select custom time</source>
+        <translation>Seleccionar hora personalizada</translation>
+    </message>
+    <message>
+        <source>Status is set for %1</source>
+        <translation>El estado está configurado para %1</translation>
+    </message>
+    <message>
+        <source>Status is set</source>
+        <translation>Estado establecido</translation>
+    </message>
+    <message>
+        <source>Enter status text</source>
+        <translation>Ingrese el texto de estado</translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation>Buscar</translation>
+    </message>
+    <message>
+        <source>Status duration</source>
+        <translation>Duración del estado</translation>
+    </message>
+    <message>
+        <source>Date</source>
+        <translation>Fecha</translation>
+    </message>
+    <message>
+        <source>dd.mm.yyyy</source>
+        <translation>dd.mm.aaaa</translation>
+    </message>
+    <message>
+        <source>Time</source>
+        <translation>Hora</translation>
+    </message>
+    <message>
+        <source>hh:mm</source>
+        <translation>hh:mm</translation>
     </message>
 </context>
 <context>
@@ -6385,10 +6451,6 @@ Edita tu número de teléfono e inténtalo de nuevo.</translation>
         <translation>Llamada entrante</translation>
     </message>
     <message>
-        <source>Settings</source>
-        <translation>Ajustes</translation>
-    </message>
-    <message>
         <source>Add to call</source>
         <translation>Agregar a la llamada</translation>
     </message>
@@ -6464,6 +6526,22 @@ with click</source>
 o abre la llamada
 por clic</translation>
     </message>
+    <message>
+        <source>VOICE</source>
+        <translation>VOZ</translation>
+    </message>
+    <message>
+        <source>Connecting...</source>
+        <translation>Conexión...</translation>
+    </message>
+    <message>
+        <source>Calling</source>
+        <translation>Llamada</translation>
+    </message>
+    <message>
+        <source>Busy</source>
+        <translation>Ocupado</translation>
+    </message>
 </context>
 <context>
     <name>voip_video_panel</name>
@@ -6490,14 +6568,6 @@ por clic</translation>
     <message>
         <source>Settings</source>
         <translation>Configuraciones</translation>
-    </message>
-    <message>
-        <source>Show all</source>
-        <translation>Mostrar todo</translation>
-    </message>
-    <message>
-        <source>Show one</source>
-        <translation>Muestra uno</translation>
     </message>
     <message>
         <source>Stop screen sharing</source>

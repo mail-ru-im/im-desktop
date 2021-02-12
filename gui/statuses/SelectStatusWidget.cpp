@@ -10,14 +10,21 @@
 #include "LocalStatuses.h"
 #include "StatusUtils.h"
 #include "StatusListItem.h"
+#include "CustomStatusWidget.h"
+#include "StatusDurationWidget.h"
+#include "StatusDurationMenu.h"
+#include "StatusCommonUi.h"
+#include "Status.h"
 #include "utils/utils.h"
+#include "utils/features.h"
 #include "utils/InterConnector.h"
 #include "cache/emoji/Emoji.h"
 #include "controls/TextUnit.h"
-#include "controls/FlatMenu.h"
-#include "controls/ContactAvatarWidget.h"
 #include "controls/TooltipWidget.h"
+#include "controls/CustomButton.h"
+#include "controls/GeneralDialog.h"
 #include "styles/ThemeParameters.h"
+#include "SelectedStatusWidget.h"
 #include "core_dispatcher.h"
 #include "my_info.h"
 #include "fonts.h"
@@ -26,35 +33,26 @@ namespace
 {
     constexpr auto leaveTimerInterval() noexcept { return std::chrono::milliseconds(50); }
     constexpr auto statusTimeUpdateTimeInterval() noexcept { return std::chrono::milliseconds(1000); }
+    constexpr auto heightAnimationDuration() noexcept { return std::chrono::milliseconds(150); }
 
-    int windowWidth()
+    int listWidth()
     {
         return Utils::scale_value(360);
     }
 
-    int32_t leftRightStatusContentMargin()
+    int32_t statusContentSideMargin()
     {
         return Utils::scale_value(16);
     }
 
-    int32_t statusContentWidth()
-    {
-        return windowWidth() - 2 * leftRightStatusContentMargin();
-    }
-
-    int maxListHeight()
-    {
-        return Utils::scale_value(614);
-    }
-
     double listHeightWindowHeightRatio()
     {
-        return 0.7;
+        return 0.8;
     }
 
     QSize itemSize()
     {
-        return QSize(windowWidth(), Utils::scale_value(44));
+        return QSize(listWidth(), Utils::scale_value(44));
     }
 
     int emojiLeftMargin()
@@ -79,7 +77,10 @@ namespace
 
     int32_t descriptionTopMargin()
     {
-        return Utils::scale_value(12);
+        if constexpr (platform::is_apple())
+            return Utils::scale_value(12);
+
+        return Utils::scale_value(10);
     }
 
     QColor descriptionFontColor()
@@ -102,20 +103,50 @@ namespace
         return Fonts::appFontScaled(15);
     }
 
+    QFont selectStatusFont()
+    {
+        return Fonts::appFontScaled(13, Fonts::FontWeight::SemiBold);
+    }
+
+    QColor selectStatusFontColor()
+    {
+        return Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY);
+    }
+
+    QFont searchLabelFont()
+    {
+        return Fonts::appFontScaled(15);
+    }
+
+    QColor searchLabelFontColor()
+    {
+        return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY);
+    }
+
+    QColor searchLabelFontColorHovered()
+    {
+        return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY_HOVER);
+    }
+
+    QColor searchLabelFontColorPressed()
+    {
+        return Styling::getParameters().getColor(Styling::StyleVariable::TEXT_PRIMARY_ACTIVE);
+    }
+
     int twoLineTextTopMargin()
     {
         if constexpr (platform::is_apple())
             return Utils::scale_value(6);
-        else
-            return Utils::scale_value(4);
+
+        return Utils::scale_value(4);
     }
 
     int twoLineTextBottomMargin()
     {
         if constexpr (platform::is_apple())
             return Utils::scale_value(2);
-        else
-            return Utils::scale_value(4);
+
+        return Utils::scale_value(4);
     }
 
     const QColor& itemHoveredBackground()
@@ -158,9 +189,9 @@ namespace
         return Utils::scale_value(8);
     }
 
-    QImage emptyStatusIcon()
+    QImage customStatusIcon()
     {
-        return Utils::renderSvg(qsl(":/statuses/empty_status_icon"), Utils::scale_value(QSize(34, 34)), Styling::getParameters().getColor(Styling::StyleVariable::BASE_TERTIARY)).toImage();
+        return Utils::renderSvg(qsl(":/smile"), Utils::scale_value(QSize(34, 34)), Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY)).toImage();
     }
 
     QSize placeholderSize()
@@ -173,35 +204,25 @@ namespace
         return Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY);
     }
 
-    constexpr int maxDescriptionLength() noexcept
-    {
-        return 120;
-    }
-
-    void elideDescription(QString& text)
-    {
-        if (text.size() > maxDescriptionLength())
-        {
-            const auto ellipsis = Ui::getEllipsis();
-            text.truncate(maxDescriptionLength() - ellipsis.size());
-            text += ellipsis;
-        }
-    }
-
     QFont headerLabelFont()
     {
         if constexpr (platform::is_apple())
             return Fonts::appFontScaled(22, Fonts::FontWeight::Medium);
-        else
-            return Fonts::appFontScaled(22);
+
+        return Fonts::appFontScaled(22);
     }
 
-    QFont statusDescriptionFont()
+    int avatarTopMargin()
     {
         if constexpr (platform::is_apple())
-            return Fonts::appFontScaled(17, Fonts::FontWeight::Medium);
-        else
-            return Fonts::appFontScaled(17);
+            return Utils::scale_value(6);
+
+        return Utils::scale_value(12);
+    }
+
+    int labelsWidgetMaximumHeight()
+    {
+        return Utils::scale_value(40);
     }
 }
 
@@ -217,15 +238,145 @@ using namespace Ui;
 class SelectStatusWidget_p
 {
 public:
-    ContactAvatarWidget* avatar_ = nullptr;
-    TextWidget* description_ = nullptr;
-    TextWidget* duration_ = nullptr;
+    SelectStatusWidget_p(SelectStatusWidget* _q) : q(_q) {}
+
+    void startAnimation(QPropertyAnimation::Direction _direction)
+    {
+        auto isForward = _direction == QPropertyAnimation::Forward;
+
+        const auto topWidgetStartHeight = isForward ? topWidget_->height() : 0;
+        const auto topWidgetEndHeight = isForward ? 0 : topWidget_->sizeHint().height();
+
+        auto heightEasing = QEasingCurve::InOutSine;
+
+        topWidget_->setMaximumHeight(topWidgetStartHeight);
+        auto topWidgetHeightAnimation = new QPropertyAnimation(topWidget_, QByteArrayLiteral("maximumHeight"));
+        topWidgetHeightAnimation->setStartValue(topWidgetStartHeight);
+        topWidgetHeightAnimation->setEndValue(topWidgetEndHeight);
+        topWidgetHeightAnimation->setEasingCurve(heightEasing);
+        topWidgetHeightAnimation->setDuration(heightAnimationDuration().count());
+        topWidgetHeightAnimation->start(QAbstractAnimation::DeleteWhenStopped);
+
+        auto opacityEasing = QEasingCurve::InQuint;
+
+        auto topWidgetOpacityAnimation = new QPropertyAnimation(topWidgetOpacity_, QByteArrayLiteral("opacity"));
+        topWidgetOpacityAnimation->setStartValue(0);
+        topWidgetOpacityAnimation->setEndValue(1);
+        topWidgetOpacityAnimation->setEasingCurve(opacityEasing);
+        topWidgetOpacityAnimation->setDirection(isForward ? QPropertyAnimation::Backward : QPropertyAnimation::Forward);
+
+        topWidgetOpacityAnimation->setDuration(heightAnimationDuration().count());
+        topWidgetOpacityAnimation->start(QAbstractAnimation::DeleteWhenStopped);
+
+        searchContent_->setVisible(true);
+
+        const auto searchContentStartHeight = isForward ? 0 : searchContent_->maximumHeight();
+        const auto searchContentEndHeight = isForward ? topWidget_->sizeHint().height() : 0;
+
+        searchContent_->setMaximumHeight(searchContentStartHeight);
+        auto searchContentHeightAnimation = new QPropertyAnimation(searchContent_, QByteArrayLiteral("maximumHeight"));
+        searchContentHeightAnimation->setStartValue(searchContentStartHeight);
+        searchContentHeightAnimation->setEndValue(searchContentEndHeight);
+        searchContentHeightAnimation->setEasingCurve(heightEasing);
+        searchContentHeightAnimation->setDuration(heightAnimationDuration().count());
+        searchContentHeightAnimation->start(QAbstractAnimation::DeleteWhenStopped);
+
+        QObject::connect(searchContentHeightAnimation, &QPropertyAnimation::finished, q, [this, _direction]()
+        {
+            if (_direction == QPropertyAnimation::Backward)
+                searchContent_->setVisible(false);
+        });
+
+        auto searchContentOpacityAnimation = new QPropertyAnimation(searchContentOpacity_, QByteArrayLiteral("opacity"));
+        searchContentOpacityAnimation->setStartValue(0);
+        searchContentOpacityAnimation->setEndValue(1);
+        searchContentOpacityAnimation->setEasingCurve(opacityEasing);
+        searchContentOpacityAnimation->setDirection(isForward ? QPropertyAnimation::Forward : QPropertyAnimation::Backward);
+        searchContentOpacityAnimation->setDuration(heightAnimationDuration().count());
+        searchContentOpacityAnimation->start(QAbstractAnimation::DeleteWhenStopped);
+
+        const auto labelsWidgetStartHeight = isForward ? labelsWidget_->height() : 0;
+        const auto labelsWidgetEndHeight = isForward ? 0 : labelsWidgetMaximumHeight();
+
+        auto labelsWidgetHeightAnimation = new QPropertyAnimation(labelsWidget_, QByteArrayLiteral("maximumHeight"));
+        labelsWidgetHeightAnimation->setStartValue(labelsWidgetStartHeight);
+        labelsWidgetHeightAnimation->setEndValue(labelsWidgetEndHeight);
+        labelsWidgetHeightAnimation->setEasingCurve(heightEasing);
+        labelsWidgetHeightAnimation->setDuration(heightAnimationDuration().count());
+        labelsWidgetHeightAnimation->start(QAbstractAnimation::DeleteWhenStopped);
+
+        auto labelsWidgetOpacityAnimation = new QPropertyAnimation(labelsWidgetOpacity_, QByteArrayLiteral("opacity"));
+        labelsWidgetOpacityAnimation->setStartValue(0);
+        labelsWidgetOpacityAnimation->setEndValue(1);
+        labelsWidgetOpacityAnimation->setEasingCurve(opacityEasing);
+        labelsWidgetOpacityAnimation->setDirection(isForward ? QPropertyAnimation::Backward : QPropertyAnimation::Forward);
+        labelsWidgetOpacityAnimation->setDuration(heightAnimationDuration().count());
+        labelsWidgetOpacityAnimation->start(QAbstractAnimation::DeleteWhenStopped);
+    }
+
+    void animateSearchMode()
+    {
+        startAnimation(QPropertyAnimation::Forward);
+    }
+    void animateCancelSearchMode()
+    {
+        startAnimation(QPropertyAnimation::Backward);
+    }
+
+    void showDurationMenuAt(QPoint _pos)
+    {
+        auto menu = createMenu(status_);
+
+        auto mainWindow = Utils::InterConnector::instance().getMainWindow();
+        const auto menuHeight = menu->sizeHint().height();
+        if (mainWindow && _pos.y() + menuHeight > mainWindow->geometry().bottom())
+            _pos.ry() -= menuHeight;
+        _pos.rx() -= menu->width();
+        menu->move(_pos);
+        menu->show();
+    }
+
+    QMenu* createMenu(const Status& _status)
+    {
+        auto menu = new StatusDurationMenu(q);
+        menu->setAttribute(Qt::WA_DeleteOnClose);
+        Testing::setAccessibleName(menu, qsl("AS SelectStatusWidget popupMenu"));
+
+        QObject::connect(menu, &StatusDurationMenu::durationClicked, q, [_status](std::chrono::seconds _duration)
+        {
+            GetDispatcher()->setStatus(_status.toString(), _duration.count(), _status.isCustom() ? _status.getDescription() : QString());
+            if (!_status.isCustom())
+                LocalStatuses::instance()->setDuration(_status.toString(), _duration);
+        });
+
+        QObject::connect(menu, &StatusDurationMenu::customTimeClicked, q, [this, _status]()
+        {
+            q->showCustomDurationDialog(_status.toString(), _status.isCustom() ? _status.getDescription() : QString());
+        });
+
+        return menu;
+    }
+
+    QWidget* statusSelectionContent_ = nullptr;
+    CustomStatusWidget* customStatusWidget_ = nullptr;
+    StatusDurationWidget* statusDurationWidget_ = nullptr;
     StatusesList* list_ = nullptr;
     QScrollArea* scrollArea_ = nullptr;
     SearchWidget* searchWidget_ = nullptr;
+    CustomButton* searchLabel_ = nullptr;
+    CustomButton* cancelSearchLabel_ = nullptr;
+    CustomButton* selectStatusLabel_ = nullptr;
     QTimer* statusTimeTimer_ = nullptr;
     QWidget* placeholder_ = nullptr;
+    QWidget* labelsWidget_ = nullptr;
+    QWidget* searchContent_ = nullptr;
+    QWidget* topWidget_ = nullptr;
+    SelectedStatusWidget* statusWidget_ = nullptr;
+    QGraphicsOpacityEffect* searchContentOpacity_ = nullptr;
+    QGraphicsOpacityEffect* labelsWidgetOpacity_ = nullptr;
+    QGraphicsOpacityEffect* topWidgetOpacity_ = nullptr;
     Status status_;
+    SelectStatusWidget* q;
 };
 
 //////////////////////////////////////////////////////////////////////////
@@ -233,58 +384,74 @@ public:
 //////////////////////////////////////////////////////////////////////////
 
 SelectStatusWidget::SelectStatusWidget(QWidget* _parent)
-    : QWidget(_parent),
-      d(std::make_unique<SelectStatusWidget_p>())
+    : QWidget(_parent)
+    , d(std::make_unique<SelectStatusWidget_p>(this))
 {
     auto layout = Utils::emptyVLayout(this);
 
+    d->statusSelectionContent_ = new QWidget(this);
+    auto statusSelectionContentHContent = Utils::emptyHLayout(d->statusSelectionContent_);
+    const auto maxHeight = Ui::ItemLength(false, listHeightWindowHeightRatio(), 0, Utils::InterConnector::instance().getMainWindow());
+    auto statusSelectionContentVLayout = Utils::emptyVLayout();
+    statusSelectionContentHContent->addLayout(statusSelectionContentVLayout);
+    statusSelectionContentHContent->addSpacerItem(new QSpacerItem(0, maxHeight));
+
     auto label = new TextWidget(this, QT_TRANSLATE_NOOP("status_popup", "My status"));
     label->init(headerLabelFont(), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID), QColor(), QColor(), QColor(), TextRendering::HorAligment::CENTER);
-    label->setMaxWidthAndResize(windowWidth());
-
-    d->avatar_ = new ContactAvatarWidget(this, MyInfo()->aimId(), QString(), Utils::scale_value(56), true, true);
-    d->avatar_->SetMode(ContactAvatarWidget::Mode::StatusPicker);
-    d->avatar_->setFixedSize(Utils::scale_value(60), Utils::scale_value(60));
+    label->setMaxWidthAndResize(listWidth());
 
     d->status_ = Logic::GetStatusContainer()->getStatus(MyInfo()->aimId());
 
-    auto statusContent = new QWidget(this);
-    auto statusContentVLayout = Utils::emptyVLayout(statusContent);
-    auto description = !d->status_.isEmpty() ? d->status_.getDescription() : QString();
-    elideDescription(description);
+    d->topWidget_ = new QWidget(this);
+    auto topWidgetLayout = Utils::emptyVLayout(d->topWidget_);
 
-    d->description_ = new TextWidget(this, description);
-    Testing::setAccessibleName(d->description_, qsl("AS SelectStatusWidget statusDescription"));
-    d->description_->init(statusDescriptionFont(), descriptionFontColor(), QColor(), QColor(), QColor(), TextRendering::HorAligment::CENTER);
-    d->description_->setMaxWidthAndResize(statusContentWidth());
-    d->duration_ = new TextWidget(this, !d->status_.isEmpty() ? d->status_.getTimeString() : QString());
-    Testing::setAccessibleName(d->duration_, qsl("AS SelectStatusWidget statusDuration"));
-    d->duration_->init(Fonts::appFontScaled(13), durationFontColor(), QColor(), QColor(), QColor(), TextRendering::HorAligment::CENTER);
-    d->duration_->setMaxWidthAndResize(statusContentWidth());
-    statusContent->setVisible(!d->status_.isEmpty());
+    d->topWidgetOpacity_ = new QGraphicsOpacityEffect(d->topWidget_);
+    d->topWidgetOpacity_->setOpacity(1.);
+    d->topWidget_->setGraphicsEffect(d->topWidgetOpacity_);
 
-    statusContentVLayout->addSpacing(Utils::scale_value(12));
-    statusContentVLayout->addWidget(d->description_);
-    statusContentVLayout->addSpacing(Utils::scale_value(2));
-    statusContentVLayout->addWidget(d->duration_);
+    d->statusWidget_ = new SelectedStatusWidget(this);
+    Testing::setAccessibleName(d->statusWidget_, qsl("AS SelectStatusWidget SelectedStatusWidget"));
 
-    auto statusContentOuterParent = new QWidget(this);
-    auto statusContentHLayout = Utils::emptyHLayout(statusContentOuterParent);
-    statusContentHLayout->addSpacing(leftRightStatusContentMargin());
-    statusContentHLayout->addWidget(statusContent);
-    statusContentHLayout->addSpacing(leftRightStatusContentMargin());
+    topWidgetLayout->addSpacing(Utils::scale_value(14));
+    topWidgetLayout->addWidget(label);
+    topWidgetLayout->addSpacing(avatarTopMargin());
+    topWidgetLayout->addWidget(d->statusWidget_);
 
-    layout->addSpacing(Utils::scale_value(20));
-    layout->addWidget(label);
-    layout->addSpacing(Utils::scale_value(20));
-    layout->addWidget(d->avatar_, 0, Qt::AlignHCenter);
-    layout->addWidget(statusContentOuterParent);
+    statusSelectionContentVLayout->addWidget(d->topWidget_);
 
+    d->searchContent_ = new QWidget(this);
+    auto searchContentWidgetVLayout = Utils::emptyVLayout(d->searchContent_);
+    auto searchContentWidgetHLayout = Utils::emptyHLayout();
+
+    d->searchContentOpacity_ = new QGraphicsOpacityEffect(d->searchContent_);
+    d->searchContentOpacity_->setOpacity(1.);
+    d->searchContent_->setGraphicsEffect(d->searchContentOpacity_);
+
+    auto searchLabel = new TextWidget(this, QT_TRANSLATE_NOOP("status_popup", "Status search"));
+    searchLabel->init(headerLabelFont(), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID), QColor(), QColor(), QColor(), TextRendering::HorAligment::CENTER);
+    searchLabel->setMaxWidthAndResize(listWidth());
+
+    searchContentWidgetVLayout->addSpacing(Utils::scale_value(16));
+    searchContentWidgetVLayout->addWidget(searchLabel);
+    searchContentWidgetVLayout->addSpacing(Utils::scale_value(20));
+    searchContentWidgetVLayout->addLayout(searchContentWidgetHLayout);
+
+    d->cancelSearchLabel_ = new CustomButton(d->searchContent_);
+    d->cancelSearchLabel_->setFont(searchLabelFont());
+    d->cancelSearchLabel_->setNormalTextColor(searchLabelFontColor());
+    d->cancelSearchLabel_->setHoveredTextColor(searchLabelFontColorHovered());
+    d->cancelSearchLabel_->setPressedTextColor(searchLabelFontColorPressed());
+    d->cancelSearchLabel_->setText(QT_TRANSLATE_NOOP("status_popup", "Cancel"));
     d->searchWidget_ = new SearchWidget(this, Utils::scale_value(4));
-    Testing::setAccessibleName(d->searchWidget_, qsl("AS SelectStatusWidget search"));
-    layout->addSpacing(Utils::scale_value(12));
-    layout->addWidget(d->searchWidget_);
-    layout->addSpacing(Utils::scale_value(8));
+    d->searchWidget_->setPlaceholderText(QString());
+    Testing::setAccessibleName(d->searchWidget_, qsl("AS SelectStatusWidget searchWidget"));
+
+    searchContentWidgetHLayout->addWidget(d->searchWidget_);
+    searchContentWidgetHLayout->addWidget(d->cancelSearchLabel_);
+    searchContentWidgetHLayout->addSpacing(statusContentSideMargin());
+    d->searchContent_->setVisible(false);
+
+    statusSelectionContentVLayout->addWidget(d->searchContent_);
 
     connect(d->searchWidget_, &SearchWidget::search, this, [this](const QString& _pattern)
     {
@@ -293,10 +460,50 @@ SelectStatusWidget::SelectStatusWidget(QWidget* _parent)
         d->scrollArea_->setVisible(!noResults);
         d->placeholder_->setVisible(noResults);
     });
-    connect(d->searchWidget_, &SearchWidget::escapePressed, this, [this]() { setFocus(); });
+    connect(d->searchWidget_, &SearchWidget::escapePressed, this, &SelectStatusWidget::onCancelSeachLabelClicked);
 
-    auto contentWidget = new QWidget(this);
-    auto contentLayout = Utils::emptyVLayout(contentWidget);
+    d->labelsWidget_ = new QWidget(this);
+    d->labelsWidget_->setMaximumHeight(labelsWidgetMaximumHeight());
+    d->labelsWidget_->setSizePolicy(QSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding));
+    auto labelsWidgetVLayout = Utils::emptyVLayout(d->labelsWidget_);
+    auto labelsWidgetHLayout = Utils::emptyHLayout();
+
+    labelsWidgetVLayout->addLayout(labelsWidgetHLayout);
+
+    d->labelsWidgetOpacity_ = new QGraphicsOpacityEffect(d->labelsWidget_);
+    d->labelsWidgetOpacity_->setOpacity(1.);
+    d->labelsWidget_->setGraphicsEffect(d->labelsWidgetOpacity_);
+
+    d->selectStatusLabel_ = new CustomButton(d->labelsWidget_);
+    d->selectStatusLabel_->setFont(selectStatusFont());
+    d->selectStatusLabel_->setNormalTextColor(selectStatusFontColor());
+    d->selectStatusLabel_->setText(QT_TRANSLATE_NOOP("status_popup", "SELECT STATUS"));
+    d->selectStatusLabel_->setFixedWidth(QFontMetrics(selectStatusFont()).width(d->selectStatusLabel_->text()));
+    d->selectStatusLabel_->setEnabled(false);
+
+    d->searchLabel_ = new CustomButton(d->labelsWidget_);
+    d->searchLabel_->setFont(searchLabelFont());
+    d->searchLabel_->setNormalTextColor(searchLabelFontColor());
+    d->searchLabel_->setHoveredTextColor(searchLabelFontColorHovered());
+    d->searchLabel_->setPressedTextColor(searchLabelFontColorPressed());
+    d->searchLabel_->setText(QT_TRANSLATE_NOOP("status_popup", "Search"));
+    d->searchLabel_->setFixedWidth(QFontMetrics(searchLabelFont()).width(d->searchLabel_->text()));
+    Testing::setAccessibleName(d->searchLabel_, qsl("AS SelectStatusWidget searchButton"));
+
+    connect(d->searchLabel_, &CustomButton::clicked, this, &SelectStatusWidget::onSeachLabelClicked);
+    connect(d->cancelSearchLabel_, &CustomButton::clicked, this, &SelectStatusWidget::onCancelSeachLabelClicked);
+    labelsWidgetHLayout->addSpacing(statusContentSideMargin());
+    labelsWidgetHLayout->addWidget(d->selectStatusLabel_, Qt::AlignVCenter);
+    labelsWidgetHLayout->addStretch();
+    labelsWidgetHLayout->addWidget(d->searchLabel_, Qt::AlignVCenter);
+    labelsWidgetHLayout->addSpacing(statusContentSideMargin());
+
+    statusSelectionContentVLayout->addSpacing(Utils::scale_value(8));
+    statusSelectionContentVLayout->addWidget(d->labelsWidget_);
+    statusSelectionContentVLayout->addSpacing(Utils::scale_value(4));
+
+    auto listContentWidget = new QWidget(this);
+    auto listContentLayout = Utils::emptyVLayout(listContentWidget);
 
     d->scrollArea_ = Ui::CreateScrollAreaAndSetTrScrollBarV(this);
     d->scrollArea_->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
@@ -309,31 +516,11 @@ SelectStatusWidget::SelectStatusWidget(QWidget* _parent)
 
     d->statusTimeTimer_ = new QTimer(this);
     d->statusTimeTimer_->setInterval(statusTimeUpdateTimeInterval());
-    connect(d->statusTimeTimer_, &QTimer::timeout, this, [this]()
-    {
-        d->list_->updateUserStatus(d->status_);
-        if (!d->status_.isEmpty())
-            d->duration_->setText(!d->status_.isEmpty() ? d->status_.getTimeString() : QString());
-
-    });
-
-    connect(Logic::GetStatusContainer(), &Logic::StatusContainer::statusChanged, this, [this, statusContent](const QString& _contactId)
-    {
-        if (_contactId != MyInfo()->aimId())
-            return;
-
-        d->status_ = Logic::GetStatusContainer()->getStatus(MyInfo()->aimId());
-        d->list_->updateUserStatus(d->status_);
-
-        auto description = !d->status_.isEmpty() ? d->status_.getDescription() : QString();
-        elideDescription(description);
-        d->description_->setText(description);
-
-        d->duration_->setText(!d->status_.isEmpty() ? d->status_.getTimeString() : QString());
-        statusContent->setVisible(!d->status_.isEmpty());
-    });
+    connect(d->statusTimeTimer_, &QTimer::timeout, this, [this]() { d->statusWidget_->setStatus(d->status_); });
+    connect(Logic::GetStatusContainer(), &Logic::StatusContainer::statusChanged, this, &SelectStatusWidget::onStatusChanged);
 
     d->list_->updateUserStatus(d->status_);
+    d->statusWidget_->setStatus(d->status_);
     d->statusTimeTimer_->start();
 
     d->placeholder_ = new QWidget(this);
@@ -343,7 +530,7 @@ SelectStatusWidget::SelectStatusWidget(QWidget* _parent)
     noResultsIcon->setPixmap(Utils::renderSvg(qsl(":/placeholders/empty_search"), placeholderSize(), placeholderColor()));
     auto noResultsText = new TextWidget(this, QT_TRANSLATE_NOOP("placeholders", "Nothing found"));
     noResultsText->init(Fonts::appFontScaled(14, Fonts::FontWeight::SemiBold), Styling::getParameters().getColor(Styling::StyleVariable::BASE_PRIMARY), QColor(), QColor(), QColor(), TextRendering::HorAligment::CENTER);
-    noResultsText->setMaxWidthAndResize(windowWidth());
+    noResultsText->setMaxWidthAndResize(listWidth());
     placeholderLayout->addStretch();
     placeholderLayout->addWidget(noResultsIcon, 0, Qt::AlignCenter);
     placeholderLayout->addSpacing(Utils::scale_value(24));
@@ -351,31 +538,60 @@ SelectStatusWidget::SelectStatusWidget(QWidget* _parent)
     placeholderLayout->addStretch();
     d->placeholder_->setVisible(false);
 
-    contentLayout->addWidget(d->placeholder_);
-    contentLayout->addWidget(d->scrollArea_);
-    layout->addWidget(contentWidget);
+    listContentLayout->addWidget(d->placeholder_);
+    listContentLayout->addWidget(d->scrollArea_);
+    statusSelectionContentVLayout->addWidget(listContentWidget);
 
-    connect(d->avatar_, &ContactAvatarWidget::badgeClicked, this, []()
+    auto closeButton = createButton(this, QT_TRANSLATE_NOOP("status_popup", "Close"), DialogButtonRole::CANCEL);
+    Testing::setAccessibleName(closeButton, qsl("AS SelectStatusWidget closeButton"));
+    connect(closeButton, &DialogButton::clicked, this, [this]()
     {
-        if (auto mainPage = MainPage::instance())
-        {
-            Q_EMIT Utils::InterConnector::instance().closeAnyPopupMenu();
-            Q_EMIT Utils::InterConnector::instance().closeAnyPopupWindow({});
-            mainPage->settingsTabActivate(Utils::CommonSettingsType::CommonSettingsType_Profile);
-        }
+        Q_EMIT Utils::InterConnector::instance().closeAnyPopupWindow({});
+        close();
     });
 
-    const auto maxHeight = Ui::ItemLength(false, listHeightWindowHeightRatio(), 0, Utils::InterConnector::instance().getMainWindow());
-    setFixedSize(windowWidth(), std::min(maxHeight, maxListHeight()));
+    statusSelectionContentVLayout->addSpacing(Utils::scale_value(20));
+    statusSelectionContentVLayout->addWidget(closeButton, 0, Qt::AlignHCenter);
+    statusSelectionContentVLayout->addSpacing(Utils::scale_value(16));
+
+    connect(d->statusWidget_, &SelectedStatusWidget::avatarClicked, this, &SelectStatusWidget::onAvatarClicked);
+    connect(d->statusWidget_, &SelectedStatusWidget::statusClicked, this, [this]()
+    {
+        if (!d->status_.isEmpty())
+            d->customStatusWidget_->setStatus(d->status_);
+        showCustomStatusDialog();
+    });
+    connect(d->list_, &StatusesList::customStatusClicked, this, [this]()
+    {
+        d->customStatusWidget_->setStatus({});
+        showCustomStatusDialog();
+    });
+
+    layout->addWidget(d->statusSelectionContent_);
+
+    d->customStatusWidget_ = new CustomStatusWidget(this);
+    d->customStatusWidget_->setVisible(false);
+    Testing::setAccessibleName(d->customStatusWidget_, qsl("AS Statuses CustomStatusWidget"));
+    d->statusDurationWidget_ = new StatusDurationWidget(this);
+    d->statusDurationWidget_->setVisible(false);
+    Testing::setAccessibleName(d->statusDurationWidget_, qsl("AS Statuses StatusDurationWidget"));
+
+    connect(d->customStatusWidget_, &CustomStatusWidget::backClicked, this, &SelectStatusWidget::showMainDialog);
+    connect(d->statusDurationWidget_, &StatusDurationWidget::backClicked, this, &SelectStatusWidget::showMainDialog);
+    connect(d->list_, &StatusesList::customTimeClicked, this, [this](const QString& _status)
+    {
+        showCustomDurationDialog(_status);
+    });
+    connect(d->statusWidget_, &SelectedStatusWidget::durationClicked, this, [this]()
+    {
+        d->showDurationMenuAt(QCursor::pos());
+    });
+
+    layout->addWidget(d->customStatusWidget_);
+    layout->addWidget(d->statusDurationWidget_);
 }
 
 SelectStatusWidget::~SelectStatusWidget() = default;
-
-void SelectStatusWidget::showEvent(QShowEvent* _event)
-{
-    d->searchWidget_->setFocus();
-    QWidget::showEvent(_event);
-}
 
 void SelectStatusWidget::keyPressEvent(QKeyEvent* _event)
 {
@@ -383,6 +599,62 @@ void SelectStatusWidget::keyPressEvent(QKeyEvent* _event)
         Q_EMIT Utils::InterConnector::instance().closeAnyPopupWindow(Utils::CloseWindowInfo());
 
     QWidget::keyPressEvent(_event);
+}
+
+void SelectStatusWidget::onStatusChanged(const QString& _contactId)
+{
+    if (_contactId != MyInfo()->aimId())
+        return;
+
+    d->status_ = Logic::GetStatusContainer()->getStatus(MyInfo()->aimId());
+    d->list_->updateUserStatus(d->status_);
+    d->statusWidget_->setStatus(d->status_);
+
+    if (d->topWidget_->maximumHeight() > 0)
+        d->topWidget_->setMaximumHeight(d->topWidget_->sizeHint().height());
+}
+
+void SelectStatusWidget::onSeachLabelClicked()
+{
+    d->animateSearchMode();
+    d->searchWidget_->setFocus();
+}
+
+void SelectStatusWidget::onCancelSeachLabelClicked()
+{
+    d->searchWidget_->clearInput();
+    d->animateCancelSearchMode();
+    setFocus();
+}
+
+void SelectStatusWidget::onAvatarClicked()
+{
+    if (auto mainPage = MainPage::instance())
+    {
+        Q_EMIT Utils::InterConnector::instance().closeAnyPopupMenu();
+        Q_EMIT Utils::InterConnector::instance().closeAnyPopupWindow({});
+        mainPage->settingsTabActivate(Utils::CommonSettingsType::CommonSettingsType_Profile);
+    }
+}
+
+void SelectStatusWidget::showMainDialog()
+{
+    d->statusSelectionContent_->setVisible(true);
+    d->statusDurationWidget_->setVisible(false);
+    d->customStatusWidget_->setVisible(false);
+}
+
+void SelectStatusWidget::showCustomStatusDialog()
+{
+    d->statusSelectionContent_->setVisible(false);
+    d->customStatusWidget_->setVisible(true);
+}
+
+void SelectStatusWidget::showCustomDurationDialog(const QString& _status, const QString& _description)
+{
+    d->statusDurationWidget_->setStatus(_status, _description);
+    d->statusSelectionContent_->setVisible(false);
+    d->statusDurationWidget_->setVisible(true);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -499,7 +771,7 @@ public:
         if (!item->statusCode_.isEmpty())
             item->emoji_ = Emoji::GetEmoji(Emoji::EmojiCode::fromQString(item->statusCode_), Utils::scale_bitmap(emojiSize()));
         else
-            item->emoji_ = emptyStatusIcon();
+            item->emoji_ = customStatusIcon();
 
         item->description_ = _description;
         item->descriptionUnit_ = Ui::TextRendering::MakeTextUnit(item->description_, Data::MentionMap(), Ui::TextRendering::LinksVisible::DONT_SHOW_LINKS);
@@ -514,9 +786,9 @@ public:
 
     void createItems()
     {
-        auto noStatus = createItem(QString(), QT_TRANSLATE_NOOP("status_popup", "No status"), std::chrono::seconds::zero());
-        noStatusIndex_ = items_.size();
-        items_.push_back(noStatus);
+        auto customStatus = createItem(QString(), QT_TRANSLATE_NOOP("status_popup", "Select custom status"), std::chrono::seconds::zero());
+        customStatusIndex_ = items_.size();
+        items_.push_back(customStatus);
 
         const auto& localStatuses = LocalStatuses::instance()->statuses();
         for (auto& localStatus : localStatuses)
@@ -532,29 +804,26 @@ public:
 
     void setDefaultIndexes()
     {
-        currentIndexes_.resize(items_.size() - 1);
-        std::iota(currentIndexes_.begin(), currentIndexes_.end(), 1);
+        currentIndexes_.resize(items_.size());
+        std::iota(currentIndexes_.begin(), currentIndexes_.end(), 0);
 
-        if (!userStatus_.isEmpty())
-            currentIndexes_.insert(currentIndexes_.begin(), noStatusIndex_);
+        if (!Features::isCustomStatusEnabled())
+            hideItem(customStatusIndex_);
+
+        if (hiddenIndex_)
+            hideItem(*hiddenIndex_);
     }
 
-    void removeNoStatus()
+    void hideItem(int _index)
     {
-        if (!currentIndexes_.empty() && currentIndexes_.front() == noStatusIndex_)
-        {
-            currentIndexes_.erase(currentIndexes_.begin());
-            updateItemsPositions(currentIndexes_.begin(), currentIndexes_.end());
-        }
+        auto it = std::lower_bound(currentIndexes_.begin(), currentIndexes_.end(), _index);
+        if (it != currentIndexes_.end() && *it == _index)
+            currentIndexes_.erase(it);
     }
 
-    void addNoStatus()
+    void resetMouseState()
     {
-        if (!currentIndexes_.empty() && currentIndexes_.front() != noStatusIndex_)
-        {
-            currentIndexes_.insert(currentIndexes_.begin(), noStatusIndex_);
-            updateItemsPositions(currentIndexes_.begin(), currentIndexes_.end());
-        }
+        mouseState_ = MouseState();
     }
 
     int32_t calcHeight()
@@ -591,33 +860,19 @@ public:
 
     QMenu* createMenu(const QString& _status)
     {
-        auto menu = new FlatMenu(q, BorderStyle::SHADOW);
+        auto menu = new StatusDurationMenu(q);
         menu->setAttribute(Qt::WA_DeleteOnClose);
 
-        QObject::connect(menu, &FlatMenu::triggered, q, [_status](QAction* _action)
+        QObject::connect(menu, &StatusDurationMenu::durationClicked, q, [_status](std::chrono::seconds _duration)
         {
-            auto actionDuration = _action->data().toLongLong();
-            GetDispatcher()->setStatus(_status, actionDuration);
-            LocalStatuses::instance()->setDuration(_status, std::chrono::seconds(actionDuration));
+            GetDispatcher()->setStatus(_status, _duration.count());
+            LocalStatuses::instance()->setDuration(_status, _duration);
         });
 
-        menu->setFixedWidth(Utils::scale_value(201));
-
-        auto* label = new QLabel(QT_TRANSLATE_NOOP("status_popup", "Status timing"));
-        label->setFont(Fonts::appFontScaled(15, Fonts::FontWeight::SemiBold));
-        Utils::ApplyStyle(label,
-                          ql1s("background: transparent; height: 52dip; padding-right: 64dip; padding-top: 20dip; padding-left: 16dip; padding-bottom: 20dip; color: %1;")
-                                  .arg(Styling::getParameters().getColorHex(Styling::StyleVariable::TEXT_SOLID)));
-
-        auto separator = new QWidgetAction(nullptr);
-        separator->setDefaultWidget(label);
-        menu->addAction(separator);
-
-        for (const auto& time : Statuses::getTimeList())
+        QObject::connect(menu, &StatusDurationMenu::customTimeClicked, q, [this, _status]()
         {
-            auto action = menu->addAction(Statuses::getTimeString(time, Statuses::TimeMode::AlwaysOn));
-            action->setData(QVariant::fromValue(std::chrono::duration_cast<std::chrono::seconds>(time).count()));
-        }
+            Q_EMIT q->customTimeClicked(_status, StatusesList::QPrivateSignal());
+        });
 
         return menu;
     }
@@ -627,10 +882,11 @@ public:
     std::unordered_map<QString, int, Utils::QStringHasher> itemsEmojiIndex_;
     MouseState mouseState_;
     QTimer* leaveTimer_ = nullptr;
-    QString userStatus_;
-    int noStatusIndex_ = 0;
-    bool filtered_ = false;
+    std::optional<int> hiddenIndex_;
     StatusesList* q;
+    int customStatusIndex_ = 0;
+    bool filtered_ = false;
+    bool customStatus_ = false;
 };
 
 //////////////////////////////////////////////////////////////////////////
@@ -638,13 +894,13 @@ public:
 //////////////////////////////////////////////////////////////////////////
 
 StatusesList::StatusesList(QWidget* _parent)
-    : QWidget(_parent),
-      d(std::make_unique<StatusesList_p>(this))
+    : QWidget(_parent)
+    , d(std::make_unique<StatusesList_p>(this))
 {
     setMouseTracking(true);
 
     d->createItems();
-    setFixedSize(windowWidth(), d->calcHeight());
+    setFixedSize(listWidth(), d->calcHeight());
 
     d->leaveTimer_ = new QTimer(this);
     d->leaveTimer_->setInterval(leaveTimerInterval());
@@ -679,9 +935,10 @@ void StatusesList::filter(const QString& _searchPattern)
                 pattern = std::move(pattern).trimmed();
             }
 
-            for (auto j = 0u; j < d->items_.size(); ++j)
+            const int size = int(d->items_.size());
+            for (auto j = 0; j < size; ++j)
             {
-                if (matchedIndexes.count(j))
+                if (matchedIndexes.count(j) || d->hiddenIndex_ && j == *d->hiddenIndex_)
                     continue;
 
                 if (!d->items_[j]->statusCode_.isEmpty() && (d->items_[j]->description_.contains(pattern, Qt::CaseInsensitive) || d->items_[j]->statusCode_.contains(pattern, Qt::CaseInsensitive)))
@@ -705,42 +962,30 @@ void StatusesList::filter(const QString& _searchPattern)
 
 void StatusesList::updateUserStatus(const Status& _status)
 {
-    QRect updateRect;
-
     // update new item
+    d->hiddenIndex_.reset();
     if (!_status.isEmpty())
     {
-        auto it = d->itemsEmojiIndex_.find(_status.toString());
-        if (it != d->itemsEmojiIndex_.end())
+        if (_status.isCustom())
         {
-            auto item = d->items_[it->second];
-            d->updateItemDuration(item, _status.getTimeString(), true);
-            updateRect |= item->rect_;
+            d->hiddenIndex_ = d->customStatusIndex_;
         }
-
-        if (!d->filtered_)
-            d->addNoStatus();
-    }
-    else
-    {
-        d->removeNoStatus();
-    }
-
-    // update previous item
-    if (_status.toString() != d->userStatus_ && !d->userStatus_.isEmpty())
-    {
-        auto it = d->itemsEmojiIndex_.find(d->userStatus_);
-        if (it != d->itemsEmojiIndex_.end())
+        else
         {
-            auto item = d->items_[it->second];
-            d->updateItemDuration(item, getTimeString(LocalStatuses::instance()->statusDuration(item->statusCode_)), false);
-            updateRect |= item->rect_;
+            auto it = d->itemsEmojiIndex_.find(_status.toString());
+            if (it != d->itemsEmojiIndex_.end())
+                d->hiddenIndex_ = it->second;
         }
     }
 
-    d->userStatus_ = _status.toString();
+    if (!d->filtered_)
+    {
+        d->setDefaultIndexes();
+        d->updateItemsPositions(d->currentIndexes_.begin(), d->currentIndexes_.end());
+        setFixedHeight(d->calcHeight());
+    }
 
-    update(updateRect);
+    update();
 }
 
 int StatusesList::itemsCount() const
@@ -817,14 +1062,21 @@ void StatusesList::mouseReleaseEvent(QMouseEvent* _event)
         const auto itemIndex = *indexIt;
         auto item = d->items_[itemIndex];
 
-        if (itemIndex == d->mouseState_.buttonPressedIndex_ && item->buttonPressRect_.contains(_event->pos()))
+        if (itemIndex == d->customStatusIndex_)
+        {
+            Q_EMIT customStatusClicked(QPrivateSignal());
+        }
+        else if (itemIndex == d->mouseState_.buttonPressedIndex_ && item->buttonPressRect_.contains(_event->pos()))
         {
             d->showMenuAt(mapToGlobal(_event->pos()), item->statusCode_);
         }
         else if (itemIndex == d->mouseState_.pressedIndex_ && item->rect_.contains(_event->pos()))
         {
-            GetDispatcher()->setStatus(item->statusCode_, LocalStatuses::instance()->statusDuration(item->statusCode_).count());
+            auto seconds = LocalStatuses::instance()->statusDuration(item->statusCode_);
+            GetDispatcher()->setStatus(item->statusCode_, seconds.count());
             Q_EMIT Utils::InterConnector::instance().closeAnyPopupWindow(Utils::CloseWindowInfo());
+
+            Statuses::showToastWithDuration(seconds);
         }
 
         updateRect = item->rect_;

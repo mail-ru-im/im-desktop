@@ -223,7 +223,7 @@ parseResult parseText(const QString& _text, const bool _allowSnippet, const bool
     parseResult result;
 
     const auto sl = Ui::TextRendering::singleBackTick();
-    const auto ml = Ui::TextRendering::tripleBackTick();
+    const auto ml = Ui::TextRendering::tripleBackTick().toString();
 
     std::vector<QStringView> toSkipLinks;
     const auto mcount = _text.count(ml);

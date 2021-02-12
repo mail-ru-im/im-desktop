@@ -170,7 +170,7 @@ namespace
         }
 #else
         FD_SET(get_signal(), &fdread);
-        rc = select(maxfd + 1, &fdread, &fdwrite, &fdexcep, &timeout);
+        rc = select(maxfd + 2, &fdread, &fdwrite, &fdexcep, &timeout);
         if (rc)
         {
             if (FD_ISSET(get_signal(), &fdread))
@@ -206,6 +206,7 @@ namespace
     std::atomic_bool tasks_cancel = false;
     std::atomic_bool reset_multi = false;
     std::atomic_bool clear_sockets = false;
+    std::atomic_bool network_is_down = false;
 
     constexpr size_t max_easy_count = 10;
     constexpr int max_timeouts = 3;
@@ -497,7 +498,6 @@ namespace core
                     clear_sockets = false;
                 }
 
-                check_multi_info(&global);
                 add_task();
 
                 return !stop.load();
@@ -505,26 +505,15 @@ namespace core
 
             while (1)
             {
-                int rc = -1, maxfd = -1;
-                CURLMcode mc;
-                long curl_timeo = -1;
-
-                fd_set fdread, fdwrite, fdexcep;
-                FD_ZERO(&fdread);
-                FD_ZERO(&fdwrite);
-                FD_ZERO(&fdexcep);
-
-                struct timeval timeout;
-                timeout.tv_sec = 1;
-                timeout.tv_usec = 0;
-
-                while (global.still_running)
+                while (!tasks.empty())
                 {
-                    if (!tasks_stuff())
-                        break;
+                    struct timeval timeout;
+                    timeout.tv_sec = 1;
+                    timeout.tv_usec = 0;
 
+                    long curl_timeo = -1;
                     curl_multi_timeout(global.multi, &curl_timeo);
-                    if (curl_timeo >= 0)
+                    if (curl_timeo > 0)
                     {
                         timeout.tv_sec = curl_timeo / 1000;
                         if (timeout.tv_sec > 1)
@@ -532,19 +521,30 @@ namespace core
                         else
                             timeout.tv_usec = (curl_timeo % 1000) * 1000;
                     }
+                    else if (curl_timeo == 0)
+                    {
+                        curl_multi_perform(global.multi, &global.still_running);
+                        check_multi_info(&global);
+                        continue;
+                    }
 
-                    mc = curl_multi_fdset(global.multi, &fdread, &fdwrite, &fdexcep, &maxfd);
+                    fd_set fdread, fdwrite, fdexcep;
+                    FD_ZERO(&fdread);
+                    FD_ZERO(&fdwrite);
+                    FD_ZERO(&fdexcep);
+                    int maxfd = -1;
+                    CURLMcode mc = curl_multi_fdset(global.multi, &fdread, &fdwrite, &fdexcep, &maxfd);
 
                     if (mc != CURLM_OK)
                         break;
 
                     if (maxfd == -1)
-                        rc = perform_sleep(std::chrono::milliseconds(100));
+                        perform_sleep(std::chrono::milliseconds(100));
                     else
-                        rc = perform_select(maxfd, fdread, fdwrite, fdexcep, timeout);
+                        perform_select(maxfd, fdread, fdwrite, fdexcep, timeout);
 
-                    if (rc != -1)
-                        curl_multi_perform(global.multi, &global.still_running);
+                    curl_multi_perform(global.multi, &global.still_running);
+                    check_multi_info(&global);
 
                     if (!tasks_stuff())
                         break;
@@ -553,7 +553,7 @@ namespace core
                 if (!tasks_stuff())
                     break;
 
-                if (!global.still_running)
+                if (tasks.empty())
                 {
                     std::unique_lock<std::mutex> lock(tasks_queue_mutex);
                     condition.wait(lock);
@@ -584,10 +584,10 @@ namespace core
         notify();
     }
 
-    void curl_multi_handler::reset_sockets()
+    void curl_multi_handler::reset_sockets(bool _network_is_down)
     {
         clear_sockets = true;
-
+        network_is_down = _network_is_down;
         notify();
     }
 
@@ -649,7 +649,6 @@ namespace core
             }
         }
 
-        curl_multi_perform(global.multi, &global.still_running);
         check_multi_info(&global);
     }
 
@@ -731,7 +730,7 @@ namespace core
                 auto count = socket_map.count(sockfd);
                 if (count != 0)
                 {
-                    task->finish_multi(&global, easy, CURLE_ABORTED_BY_CALLBACK);
+                    task->finish_multi(&global, easy, network_is_down.load() ? CURLE_COULDNT_CONNECT : CURLE_ABORTED_BY_CALLBACK);
                     iter = tasks.erase(iter);
                     continue;
                 }

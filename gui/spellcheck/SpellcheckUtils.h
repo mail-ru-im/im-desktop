@@ -7,7 +7,7 @@ namespace spellcheck
 namespace utils
 {
     QChar::Script wordScript(QStringView word) noexcept;
-    QChar::Script localeToScriptCode(const QStringRef& locale) noexcept;
+    QChar::Script localeToScriptCode(QStringView locale) noexcept;
 
     bool isWordSkippable(QStringView word);
 

@@ -238,8 +238,12 @@ namespace core
                 if (load_from_local())
                     return;
 
-                auto local_handler = default_handler_t([_url, _signed_url, _parser, _handler, meta_path, _id, load_from_local, _log_params, full_log = _wim_params.full_log_, this](loader_errors _error, const default_data_t& _data)
+                auto local_handler = default_handler_t([_url, _signed_url, _parser, _handler, meta_path, _id, load_from_local, _log_params, full_log = _wim_params.full_log_, wr_this = weak_from_this()](loader_errors _error, const default_data_t& _data)
                 {
+                    auto ptr_this = wr_this.lock();
+                    if (!ptr_this)
+                        return;
+
                     __INFO("async_loader",
                         "download_metainfo\n"
                         "url      = <%1%>\n"
@@ -250,9 +254,13 @@ namespace core
                     if (_error == loader_errors::network_error)
                     {
                         log_error("download_metainfo", _url, load_error_type::network_error, full_log);
-                        suspended_tasks_.push([_url, _signed_url, _parser, _handler, _id, _log_params, this](const wim_packet_params& wim_params)
+                        ptr_this->suspended_tasks_.push([_url, _signed_url, _parser, _handler, _id, _log_params, wr_this](const wim_packet_params& wim_params)
                         {
-                            download_metainfo(_url, _signed_url, _parser, wim_params, _handler, _id, {}, _log_params);
+                            auto ptr_this = wr_this.lock();
+                            if (!ptr_this)
+                                return;
+
+                            ptr_this->download_metainfo(_url, _signed_url, _parser, wim_params, _handler, _id, {}, _log_params);
                         });
                         return;
                     }

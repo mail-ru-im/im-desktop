@@ -982,18 +982,18 @@ You can leave your feedback or report an error here:</source>
         <translation>回答状态： %1 %2</translation>
     </message>
     <message>
-        <source>You replied to status
-%2 %3
-%4
-%5 %6</source>
-        <translation>您回复了状态
-%2 %3
-%4
-%5 %6</translation>
-    </message>
-    <message>
         <source>You replied to status: %1 %2</source>
         <translation>您回答的状态： %1 %2</translation>
+    </message>
+    <message>
+        <source>You replied to status
+%1 %2
+%3
+%4 %5</source>
+        <translation>您回复了状态
+%1 %2
+%3
+%4 %5</translation>
     </message>
 </context>
 <context>
@@ -3699,6 +3699,12 @@ You can leave your feedback or report an error here:</source>
         <source>Block</source>
         <translation>屏蔽</translation>
     </message>
+    <message>
+        <source>Pay attention
+to contact status</source>
+        <translation>注意状态
+联系</translation>
+    </message>
 </context>
 <context>
     <name>placeholders</name>
@@ -6061,10 +6067,6 @@ Please edit phone number and try again.</source>
         <translation>一周</translation>
     </message>
     <message>
-        <source>undefined time</source>
-        <translation>不确定的时间</translation>
-    </message>
-    <message>
         <source>%1 left</source>
         <translation>还剩 %1</translation>
     </message>
@@ -6095,16 +6097,80 @@ Please edit phone number and try again.</source>
         <translation>我的状态</translation>
     </message>
     <message>
-        <source>No status</source>
-        <translation>无状态</translation>
-    </message>
-    <message>
         <source>Status timing</source>
         <translation>身份条款</translation>
     </message>
     <message>
         <source>Close</source>
         <translation>关</translation>
+    </message>
+    <message>
+        <source>Choose unique status</source>
+        <translation>选择一个独特的状态</translation>
+    </message>
+    <message>
+        <source>Back</source>
+        <translation>回到</translation>
+    </message>
+    <message>
+        <source>Done</source>
+        <translation>完成了</translation>
+    </message>
+    <message>
+        <source>Maximum length - %1 symbols</source>
+        <translation>最大长度- %1字符</translation>
+    </message>
+    <message>
+        <source>Status search</source>
+        <translation>状态搜寻</translation>
+    </message>
+    <message>
+        <source>SELECT STATUS</source>
+        <translation>选择状态</translation>
+    </message>
+    <message>
+        <source>Select custom status</source>
+        <translation>选择自定义状态</translation>
+    </message>
+    <message>
+        <source>Select custom time</source>
+        <translation>选择自定义时间</translation>
+    </message>
+    <message>
+        <source>Status is set for %1</source>
+        <translation>状态已设置为 %1</translation>
+    </message>
+    <message>
+        <source>Status is set</source>
+        <translation>状态集</translation>
+    </message>
+    <message>
+        <source>Enter status text</source>
+        <translation>输入状态文字</translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation>搜索</translation>
+    </message>
+    <message>
+        <source>Status duration</source>
+        <translation>状态持续时间</translation>
+    </message>
+    <message>
+        <source>Date</source>
+        <translation>日期</translation>
+    </message>
+    <message>
+        <source>dd.mm.yyyy</source>
+        <translation>dd.mm.yyyy</translation>
+    </message>
+    <message>
+        <source>Time</source>
+        <translation>时间</translation>
+    </message>
+    <message>
+        <source>hh:mm</source>
+        <translation>hh:mm</translation>
     </message>
 </context>
 <context>
@@ -6385,10 +6451,6 @@ Please edit phone number and try again.</source>
         <translation>来电</translation>
     </message>
     <message>
-        <source>Settings</source>
-        <translation>设置</translation>
-    </message>
-    <message>
         <source>Add to call</source>
         <translation>加入通话</translation>
     </message>
@@ -6464,6 +6526,22 @@ with click</source>
 或打开通话
 通过点击</translation>
     </message>
+    <message>
+        <source>VOICE</source>
+        <translation>语音</translation>
+    </message>
+    <message>
+        <source>Connecting...</source>
+        <translation>连接...</translation>
+    </message>
+    <message>
+        <source>Calling</source>
+        <translation>呼叫</translation>
+    </message>
+    <message>
+        <source>Busy</source>
+        <translation>忙</translation>
+    </message>
 </context>
 <context>
     <name>voip_video_panel</name>
@@ -6490,14 +6568,6 @@ with click</source>
     <message>
         <source>Settings</source>
         <translation>设定值</translation>
-    </message>
-    <message>
-        <source>Show all</source>
-        <translation>全部显示</translation>
-    </message>
-    <message>
-        <source>Show one</source>
-        <translation>显示一个</translation>
     </message>
     <message>
         <source>Stop screen sharing</source>

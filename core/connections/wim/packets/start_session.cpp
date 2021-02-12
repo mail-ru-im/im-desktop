@@ -21,7 +21,7 @@ std::string get_start_session_host()
 #define WIM_EVENTS "myInfo,presence,buddylist,typing,dataIM,userAddedToBuddyList,webrtcMsg,mchat,hist,hiddenChat,diff,permitDeny,imState,notification,apps"
 #define WIM_PRESENCEFIELDS "aimId,iconId,bigIconId,largeIconId,displayId,friendly,offlineMsg,state,statusMsg,userType,phoneNumber,cellNumber,smsNumber,workNumber,otherNumber,capabilities,ssl,abPhoneNumber,moodIcon,lastName,abPhones,abContactName,lastseen,mute,livechat,official,public,autoAddition,readonly,nick,bot"
 #define WIM_INTERESTCAPS "8eec67ce70d041009409a7c1602a5c84," WIM_CAP_VOIP_VOICE "," WIM_CAP_VOIP_VIDEO "," WIM_CAP_VOIP_RINGING "," WIM_CAP_FOCUS_GROUP_CALLS
-#define WIM_ASSERTCAPS WIM_CAP_VOIP_VOICE "," WIM_CAP_VOIP_VIDEO "," WIM_CAP_VOIP_RINGING "," WIM_CAP_FOCUS_GROUP_CALLS "," WIM_CAP_UNIQ_REQ_ID "," WIM_CAP_EMOJI "," WIM_CAP_MAIL_NOTIFICATIONS "," WIM_CAP_MENTIONS "," WIM_CAP_INTRO_DLG_STATE "," WIM_CAP_CHAT_HEADS "," WIM_CAP_GALLERY_NOTIFY "," WIM_CAP_GROUP_SUBSCRIPTION "," WIM_CAP_RECENT_CALLS "," WIM_CAP_REACTIONS
+#define WIM_ASSERTCAPS WIM_CAP_VOIP_VOICE "," WIM_CAP_VOIP_VIDEO "," WIM_CAP_VOIP_RINGING "," WIM_CAP_FOCUS_GROUP_CALLS "," WIM_CAP_UNIQ_REQ_ID "," WIM_CAP_EMOJI "," WIM_CAP_MAIL_NOTIFICATIONS "," WIM_CAP_MENTIONS "," WIM_CAP_INTRO_DLG_STATE "," WIM_CAP_CHAT_HEADS "," WIM_CAP_GALLERY_NOTIFY "," WIM_CAP_GROUP_SUBSCRIPTION "," WIM_CAP_RECENT_CALLS "," WIM_CAP_REACTIONS "," WIM_CAP_CUSTOM_STATUSES
 #define WIM_INVISIBLE "false"
 
 

@@ -982,18 +982,18 @@ Zde můžete zanechat svůj názor nebo nahlásit chybu:</translation>
         <translation>Odpovědi na stav: %1 %2</translation>
     </message>
     <message>
-        <source>You replied to status
-%2 %3
-%4
-%5 %6</source>
-        <translation>Odpověděli jste na stav
-%2 %3
-%4
-%5 %6</translation>
-    </message>
-    <message>
         <source>You replied to status: %1 %2</source>
         <translation>Odpověděli jste na stav: %1 %2</translation>
+    </message>
+    <message>
+        <source>You replied to status
+%1 %2
+%3
+%4 %5</source>
+        <translation>Odpověděli jste na stav
+%1 %2
+%3
+%4 %5</translation>
     </message>
 </context>
 <context>
@@ -3699,6 +3699,12 @@ Zde můžete zanechat svůj názor nebo nahlásit chybu:</translation>
         <source>Block</source>
         <translation>Blokovat</translation>
     </message>
+    <message>
+        <source>Pay attention
+to contact status</source>
+        <translation>Věnujte pozornost stavu
+Kontakt</translation>
+    </message>
 </context>
 <context>
     <name>placeholders</name>
@@ -6061,10 +6067,6 @@ Uprav telefonní číslo a opakuj akci.</translation>
         <translation>Týden</translation>
     </message>
     <message>
-        <source>undefined time</source>
-        <translation>neurčitý čas</translation>
-    </message>
-    <message>
         <source>%1 left</source>
         <translation>%1 zbyl</translation>
     </message>
@@ -6095,16 +6097,80 @@ Uprav telefonní číslo a opakuj akci.</translation>
         <translation>Můj status</translation>
     </message>
     <message>
-        <source>No status</source>
-        <translation>Bez statusu</translation>
-    </message>
-    <message>
         <source>Status timing</source>
         <translation>Stavový termín</translation>
     </message>
     <message>
         <source>Close</source>
         <translation>Zavřít</translation>
+    </message>
+    <message>
+        <source>Choose unique status</source>
+        <translation>Vyberte jedinečný stav</translation>
+    </message>
+    <message>
+        <source>Back</source>
+        <translation>Zadní</translation>
+    </message>
+    <message>
+        <source>Done</source>
+        <translation>Hotovo</translation>
+    </message>
+    <message>
+        <source>Maximum length - %1 symbols</source>
+        <translation>Maximální délka -%1 symbolů</translation>
+    </message>
+    <message>
+        <source>Status search</source>
+        <translation>Hledání stavu</translation>
+    </message>
+    <message>
+        <source>SELECT STATUS</source>
+        <translation>VYBERTE STAV</translation>
+    </message>
+    <message>
+        <source>Select custom status</source>
+        <translation>Vyberte vlastní stav</translation>
+    </message>
+    <message>
+        <source>Select custom time</source>
+        <translation>Vyberte vlastní čas</translation>
+    </message>
+    <message>
+        <source>Status is set for %1</source>
+        <translation>Stav je nastaven na %1</translation>
+    </message>
+    <message>
+        <source>Status is set</source>
+        <translation>Stav nastaven</translation>
+    </message>
+    <message>
+        <source>Enter status text</source>
+        <translation>Zadejte text stavu</translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation>Vyhledávání</translation>
+    </message>
+    <message>
+        <source>Status duration</source>
+        <translation>Doba trvání</translation>
+    </message>
+    <message>
+        <source>Date</source>
+        <translation>Datum</translation>
+    </message>
+    <message>
+        <source>dd.mm.yyyy</source>
+        <translation>dd.mm.rrrr</translation>
+    </message>
+    <message>
+        <source>Time</source>
+        <translation>Čas</translation>
+    </message>
+    <message>
+        <source>hh:mm</source>
+        <translation>hh:mm</translation>
     </message>
 </context>
 <context>
@@ -6385,10 +6451,6 @@ Uprav telefonní číslo a opakuj akci.</translation>
         <translation>Příchozí hovor</translation>
     </message>
     <message>
-        <source>Settings</source>
-        <translation>Nastavení</translation>
-    </message>
-    <message>
         <source>Add to call</source>
         <translation>Přidat do hovoru</translation>
     </message>
@@ -6464,6 +6526,22 @@ with click</source>
 nebo otevřete hovor
 kliknutím</translation>
     </message>
+    <message>
+        <source>VOICE</source>
+        <translation>HLAS</translation>
+    </message>
+    <message>
+        <source>Connecting...</source>
+        <translation>Připojení...</translation>
+    </message>
+    <message>
+        <source>Calling</source>
+        <translation>Volání</translation>
+    </message>
+    <message>
+        <source>Busy</source>
+        <translation>Zaneprázdněný</translation>
+    </message>
 </context>
 <context>
     <name>voip_video_panel</name>
@@ -6490,14 +6568,6 @@ kliknutím</translation>
     <message>
         <source>Settings</source>
         <translation>Nastavení</translation>
-    </message>
-    <message>
-        <source>Show all</source>
-        <translation>Zobrazit vše</translation>
-    </message>
-    <message>
-        <source>Show one</source>
-        <translation>Ukaž jeden</translation>
     </message>
     <message>
         <source>Stop screen sharing</source>

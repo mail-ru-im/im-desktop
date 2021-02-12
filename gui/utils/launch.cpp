@@ -90,16 +90,16 @@ namespace
 #ifdef __APPLE__
         rlimit r;
         getrlimit(RLIMIT_NOFILE, &r);
-        qInfo() << qsl("initial limit for file descriptors: ") << r.rlim_cur;
-        qInfo() << qsl("max limit for file descriptors: ") << r.rlim_max;
+        qInfo() << ql1s("initial limit for file descriptors: ") << r.rlim_cur;
+        qInfo() << ql1s("max limit for file descriptors: ") << r.rlim_max;
 
         r.rlim_cur = std::min((rlim_t)10240, r.rlim_max);
         auto result = setrlimit(RLIMIT_NOFILE, &r);
-        qInfo() << ((result == 0) ? qsl("limit for file descriptors was succesfully updated") : qsl("failed to update limit for file descriptors"));
+        qInfo() << ((result == 0) ? ql1s("limit for file descriptors was succesfully updated") : ql1s("failed to update limit for file descriptors"));
 
         r.rlim_cur = 0;
         getrlimit(RLIMIT_NOFILE, &r);
-        qInfo() << qsl("new limit for file descriptors: ") << r.rlim_cur;
+        qInfo() << ql1s("new limit for file descriptors: ") << r.rlim_cur;
 #endif //__APPLE__
     }
 }

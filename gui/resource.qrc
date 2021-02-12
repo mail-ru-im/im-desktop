@@ -124,6 +124,9 @@
         <file alias="groupcall">resources/groupcall.svg</file>
         <file alias="reaction_icon">resources/reaction_icon.svg</file>
         <file alias="arrow_small">resources/arrow_small.svg</file>
+        <file alias="add_emoji_icon">resources/add_emoji_icon.svg</file>
+        <file alias="edit_icon">resources/edit_icon.svg</file>
+        <file alias="edit_icon_filled">resources/edit_icon_filled.svg</file>
     </qresource>
     <qresource prefix="/input">
         <file alias="add">resources/input/add_member.svg</file>

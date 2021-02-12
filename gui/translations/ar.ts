@@ -982,18 +982,18 @@ You can leave your feedback or report an error here:</source>
         <translation>الرد على الحالة: %1 %2</translation>
     </message>
     <message>
-        <source>You replied to status
-%2 %3
-%4
-%5 %6</source>
-        <translation>لقد ردت على الحالة
-%2 %3
-%4
-%5 %6</translation>
-    </message>
-    <message>
         <source>You replied to status: %1 %2</source>
         <translation>لقد أجبت عن الحالة: %1 %2</translation>
+    </message>
+    <message>
+        <source>You replied to status
+%1 %2
+%3
+%4 %5</source>
+        <translation>لقد ردت على الحالة
+%1 %2
+%3
+%4 %5</translation>
     </message>
 </context>
 <context>
@@ -3695,6 +3695,12 @@ You can leave your feedback or report an error here:</source>
         <source>Block</source>
         <translation>حظر</translation>
     </message>
+    <message>
+        <source>Pay attention
+to contact status</source>
+        <translation>انتبه إلى الحالة
+اتصل</translation>
+    </message>
 </context>
 <context>
     <name>placeholders</name>
@@ -6057,10 +6063,6 @@ Please edit phone number and try again.</source>
         <translation>أسبوع</translation>
     </message>
     <message>
-        <source>undefined time</source>
-        <translation>الوقت لأجل غير مسمى</translation>
-    </message>
-    <message>
         <source>%1 left</source>
         <translation>%1</translation>
     </message>
@@ -6091,16 +6093,80 @@ Please edit phone number and try again.</source>
         <translation>حالتي</translation>
     </message>
     <message>
-        <source>No status</source>
-        <translation>بدون مكانة</translation>
-    </message>
-    <message>
         <source>Status timing</source>
         <translation>مصطلح الحالة</translation>
     </message>
     <message>
         <source>Close</source>
         <translation>قريب</translation>
+    </message>
+    <message>
+        <source>Choose unique status</source>
+        <translation>اختر حالة فريدة</translation>
+    </message>
+    <message>
+        <source>Back</source>
+        <translation>ارجع الى</translation>
+    </message>
+    <message>
+        <source>Done</source>
+        <translation>منجز</translation>
+    </message>
+    <message>
+        <source>Maximum length - %1 symbols</source>
+        <translation>أقصى طول - %1 حرفًا</translation>
+    </message>
+    <message>
+        <source>Status search</source>
+        <translation>حالة البحث</translation>
+    </message>
+    <message>
+        <source>SELECT STATUS</source>
+        <translation>اختر الحالة</translation>
+    </message>
+    <message>
+        <source>Select custom status</source>
+        <translation>اختر حالة فريدة</translation>
+    </message>
+    <message>
+        <source>Select custom time</source>
+        <translation>حدد وقتك</translation>
+    </message>
+    <message>
+        <source>Status is set for %1</source>
+        <translation>تم تعيين الحالة إلى %1</translation>
+    </message>
+    <message>
+        <source>Status is set</source>
+        <translation>مجموعة الحالة</translation>
+    </message>
+    <message>
+        <source>Enter status text</source>
+        <translation>أدخل نص الحالة</translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation>بحث</translation>
+    </message>
+    <message>
+        <source>Status duration</source>
+        <translation>فترة صلاحية الحالة</translation>
+    </message>
+    <message>
+        <source>Date</source>
+        <translation>تاريخ</translation>
+    </message>
+    <message>
+        <source>dd.mm.yyyy</source>
+        <translation>dd.mm.yyyy</translation>
+    </message>
+    <message>
+        <source>Time</source>
+        <translation>زمن</translation>
+    </message>
+    <message>
+        <source>hh:mm</source>
+        <translation>hh:mm</translation>
     </message>
 </context>
 <context>
@@ -6381,10 +6447,6 @@ Please edit phone number and try again.</source>
         <translation>مكالمة واردة</translation>
     </message>
     <message>
-        <source>Settings</source>
-        <translation>إعدادات</translation>
-    </message>
-    <message>
         <source>Add to call</source>
         <translation>أضف إلى المكالمة</translation>
     </message>
@@ -6460,6 +6522,22 @@ with click</source>
 أو افتح المكالمة
 عن طريق النقر</translation>
     </message>
+    <message>
+        <source>VOICE</source>
+        <translation>تصويت</translation>
+    </message>
+    <message>
+        <source>Connecting...</source>
+        <translation>الإتصال ...</translation>
+    </message>
+    <message>
+        <source>Calling</source>
+        <translation>مكالمة</translation>
+    </message>
+    <message>
+        <source>Busy</source>
+        <translation>مشغول</translation>
+    </message>
 </context>
 <context>
     <name>voip_video_panel</name>
@@ -6486,14 +6564,6 @@ with click</source>
     <message>
         <source>Settings</source>
         <translation>إعدادات</translation>
-    </message>
-    <message>
-        <source>Show all</source>
-        <translation>إظهار الكل</translation>
-    </message>
-    <message>
-        <source>Show one</source>
-        <translation>تكبير إلى نافذة كاملة</translation>
     </message>
     <message>
         <source>Stop screen sharing</source>

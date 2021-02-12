@@ -469,7 +469,7 @@ GalleryItem::GalleryItem(const QString &_link, qint64 _msg, qint64 _seq, time_t 
     , caption_(_caption)
 {
     Utils::UrlParser parser;
-    parser.process(QStringRef(&_link));
+    parser.process(_link);
 
     const auto loadMetaType =
 #ifndef STRIP_AV_MEDIA
@@ -583,7 +583,7 @@ void GalleryItem::save(const QString &_path, bool _exportAsPng)
 
     const auto dot = suffix.isEmpty() ? QStringView() : u".";
 
-    const auto name = QStringRef(&_path).left(_path.size() - suffix.size() - (suffix.isEmpty() ? 0 : 1));
+    const auto name = QStringView(_path).left(_path.size() - suffix.size() - (suffix.isEmpty() ? 0 : 1));
 
     auto resultPath = _path;
 

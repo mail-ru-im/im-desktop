@@ -6,6 +6,10 @@
 #include "LinkList.h"
 #include "FilesList.h"
 #include "PttList.h"
+#include "../MainPage.h"
+#include "../MainWindow.h"
+#include "../GroupChatOperations.h"
+#include "../ReportWidget.h"
 #include "../contact_list/TopPanel.h"
 #include "../contact_list/RecentsModel.h"
 #include "../contact_list/ContactListModel.h"
@@ -15,10 +19,6 @@
 #include "../contact_list/ContactListWidget.h"
 #include "../contact_list/SearchWidget.h"
 #include "../settings/themes/WallpaperDialog.h"
-#include "../MainPage.h"
-#include "../MainWindow.h"
-#include "../GroupChatOperations.h"
-#include "../ReportWidget.h"
 #include "../containers/FriendlyContainer.h"
 #include "../containers/LastseenContainer.h"
 #include "../../previewer/toast.h"
@@ -30,6 +30,7 @@
 #include "../../utils/gui_coll_helper.h"
 #include "../../utils/UrlParser.h"
 #include "../../utils/features.h"
+#include "../../utils/animations/WidgetAnimations.h"
 #include "../../core_dispatcher.h"
 #include "utils/PhoneFormatter.h"
 
@@ -144,7 +145,7 @@ namespace Ui
 
     void UserProfile::initFor(const QString& _aimId, SidebarParams _params)
     {
-        WidgetUpdateBlocker blocker(this);
+        Utils::ScopedPropertyRollback blocker(this, "updatesEnabled", false);
 
         const auto newContact = currentAimId_ != _aimId;
         if (newContact)
@@ -447,7 +448,7 @@ namespace Ui
 
         {
             galleryWidget_ = new QWidget(widget);
-            auto galleryFader = new WidgetFader(galleryWidget_);
+            auto galleryFader = new Utils::WidgetFader(galleryWidget_);
             galleryFader->setEventDirection(QEvent::Show, QPropertyAnimation::Forward);
             auto galleryLayout = Utils::emptyVLayout(galleryWidget_);
 
@@ -1086,12 +1087,12 @@ namespace Ui
 
     void UserProfile::enableFading()
     {
-        WidgetFader::setEffectEnabled(this, true);
+        Utils::WidgetFader::setEffectEnabled(this, true);
     }
 
     void UserProfile::disableFading()
     {
-        WidgetFader::setEffectEnabled(this, false);
+        Utils::WidgetFader::setEffectEnabled(this, false);
     }
 
     void UserProfile::scrollToTop()

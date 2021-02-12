@@ -27,7 +27,7 @@ Q_SIGNALS:
     void selectionChanged();
 
 public:
-    TextBlock(ComplexMessageItem *parent, const QString &text, const Ui::TextRendering::EmojiSizeType _emojiSizeType = Ui::TextRendering::EmojiSizeType::ALLOW_BIG);
+    TextBlock(ComplexMessageItem *_parent, const QString& _text, const Ui::TextRendering::EmojiSizeType _emojiSizeType = Ui::TextRendering::EmojiSizeType::ALLOW_BIG);
 
     virtual ~TextBlock() override;
 

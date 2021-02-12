@@ -3160,8 +3160,8 @@ namespace Ui
     void MainWindow::openStatusPicker()
     {
         auto w = new Statuses::SelectStatusWidget();
+        Testing::setAccessibleName(w, qsl("AS SelectStatusWidget"));
         Ui::GeneralDialog dialog(w, this, false, false);
-        dialog.addCancelButton(QT_TRANSLATE_NOOP("status_popup", "Close"), true);
         dialog.showInCenter();
     }
 }

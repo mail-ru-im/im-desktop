@@ -194,13 +194,14 @@ namespace Ui
         if constexpr (environment::is_develop())
         {
 
-            if constexpr (build::is_pkg_msi())
+            if constexpr (!build::is_pkg_msi())
             {
                 updatebleCheckbox_ = GeneralCreator::addSwitcher(this, mainLayout_,
                                                                  QT_TRANSLATE_NOOP("popup_window", "Updatable"),
                                                                  appConfig.IsUpdateble(),
                                                                  {},
                                                                  Utils::scale_value(36), qsl("AS AdditionalSettingsPage updatableSetting"));
+                connect(updatebleCheckbox_, &Ui::SidebarCheckboxButton::checked, this, &SettingsForTesters::onToggleUpdateble);
             }
 
             devSaveCallRTPdumpsCheckbox_ = GeneralCreator::addSwitcher(this, mainLayout_,
@@ -219,16 +220,15 @@ namespace Ui
                                                                {},
                                                                Utils::scale_value(36), qsl("AS AdditionalSettingsPage setDevIdSetting"));
 
-            connect(updatebleCheckbox_, &Ui::SidebarCheckboxButton::checked, this, &SettingsForTesters::onToggleUpdateble);
             connect(devSaveCallRTPdumpsCheckbox_, &Ui::SidebarCheckboxButton::checked, this, &SettingsForTesters::onToggleSaveRTPDumps);
             connect(devServerSearchCheckbox_, &Ui::SidebarCheckboxButton::checked, this, &SettingsForTesters::onToggleServerSearch);
             connect(devCustomIdCheckbox_, &Ui::SidebarCheckboxButton::checked, this, &SettingsForTesters::onToggleDevId);
-            connect(sendDevStatistic_, &QPushButton::clicked, this, []() 
+            connect(sendDevStatistic_, &QPushButton::clicked, this, []()
             {
                 GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::dev_statistic_event, { { "app_version", Utils::getVersionPrintable().toStdString()} });
             });
 
-            if constexpr (build::is_pkg_msi())
+            if constexpr (!build::is_pkg_msi())
             {
                 auto updateUrlLayout = Utils::emptyHLayout();
                 updateUrlLayout->setContentsMargins(getMargin(), 0, getMargin(), 0);

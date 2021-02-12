@@ -981,18 +981,18 @@ You can leave your feedback or report an error here:</source>
         <translation>Відповів (-а) на статус: %1 %2</translation>
     </message>
     <message>
-        <source>You replied to status
-%2 %3
-%4
-%5 %6</source>
-        <translation>Ви відповіли на статус
-%2 %3
-%4
-%5 %6</translation>
-    </message>
-    <message>
         <source>You replied to status: %1 %2</source>
         <translation>Ви відповіли на статус: %1 %2</translation>
+    </message>
+    <message>
+        <source>You replied to status
+%1 %2
+%3
+%4 %5</source>
+        <translation>Ви відповіли на статус
+%1 %2
+%3
+%4 %5</translation>
     </message>
 </context>
 <context>
@@ -3698,6 +3698,12 @@ You can leave your feedback or report an error here:</source>
         <source>Block</source>
         <translation>Заблокувати</translation>
     </message>
+    <message>
+        <source>Pay attention
+to contact status</source>
+        <translation>Зверніть увагу на статус
+контакту</translation>
+    </message>
 </context>
 <context>
     <name>placeholders</name>
@@ -6060,10 +6066,6 @@ Please edit phone number and try again.</source>
         <translation>Тиждень</translation>
     </message>
     <message>
-        <source>undefined time</source>
-        <translation>невизначений час</translation>
-    </message>
-    <message>
         <source>%1 left</source>
         <translation>Ще %1</translation>
     </message>
@@ -6094,16 +6096,80 @@ Please edit phone number and try again.</source>
         <translation>Мій статус</translation>
     </message>
     <message>
-        <source>No status</source>
-        <translation>Без статусу</translation>
-    </message>
-    <message>
         <source>Status timing</source>
         <translation>Термін статусу</translation>
     </message>
     <message>
         <source>Close</source>
         <translation>Закрити</translation>
+    </message>
+    <message>
+        <source>Choose unique status</source>
+        <translation>Вибрати унікальний статус</translation>
+    </message>
+    <message>
+        <source>Back</source>
+        <translation>Назад</translation>
+    </message>
+    <message>
+        <source>Done</source>
+        <translation>Готово</translation>
+    </message>
+    <message>
+        <source>Maximum length - %1 symbols</source>
+        <translation>Максимальна довжина - %1 символів</translation>
+    </message>
+    <message>
+        <source>Status search</source>
+        <translation>Пошук статусу</translation>
+    </message>
+    <message>
+        <source>SELECT STATUS</source>
+        <translation>ВИБЕРІТЬ СТАТУС</translation>
+    </message>
+    <message>
+        <source>Select custom status</source>
+        <translation>Вибрати унікальний статус</translation>
+    </message>
+    <message>
+        <source>Select custom time</source>
+        <translation>Встановити свого часу</translation>
+    </message>
+    <message>
+        <source>Status is set for %1</source>
+        <translation>Статус встановлений на %1</translation>
+    </message>
+    <message>
+        <source>Status is set</source>
+        <translation>статус встановлений</translation>
+    </message>
+    <message>
+        <source>Enter status text</source>
+        <translation>Введіть текст статусу</translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation>Пошук</translation>
+    </message>
+    <message>
+        <source>Status duration</source>
+        <translation>Термін дії статусу</translation>
+    </message>
+    <message>
+        <source>Date</source>
+        <translation>Дата</translation>
+    </message>
+    <message>
+        <source>dd.mm.yyyy</source>
+        <translation>дд.мм.рррр</translation>
+    </message>
+    <message>
+        <source>Time</source>
+        <translation>час</translation>
+    </message>
+    <message>
+        <source>hh:mm</source>
+        <translation>чч:мм</translation>
     </message>
 </context>
 <context>
@@ -6384,10 +6450,6 @@ Please edit phone number and try again.</source>
         <translation>Вхідний дзвінок</translation>
     </message>
     <message>
-        <source>Settings</source>
-        <translation>Налаштування</translation>
-    </message>
-    <message>
         <source>Add to call</source>
         <translation>Додати в дзвінок</translation>
     </message>
@@ -6463,6 +6525,22 @@ with click</source>
 або відкрийте дзвінок
 кліком</translation>
     </message>
+    <message>
+        <source>VOICE</source>
+        <translation>ГОЛОС</translation>
+    </message>
+    <message>
+        <source>Connecting...</source>
+        <translation>Підключення...</translation>
+    </message>
+    <message>
+        <source>Calling</source>
+        <translation>Виклик</translation>
+    </message>
+    <message>
+        <source>Busy</source>
+        <translation>зайнято</translation>
+    </message>
 </context>
 <context>
     <name>voip_video_panel</name>
@@ -6489,14 +6567,6 @@ with click</source>
     <message>
         <source>Settings</source>
         <translation>налаштування</translation>
-    </message>
-    <message>
-        <source>Show all</source>
-        <translation>Показати всіх</translation>
-    </message>
-    <message>
-        <source>Show one</source>
-        <translation>Збільшити на все вікно</translation>
     </message>
     <message>
         <source>Stop screen sharing</source>

@@ -2,15 +2,12 @@
 #include "device_monitoring_windows.h"
 
 #include <Dshow.h>
-#include <vector>
 #include <Dbt.h>
-#include <memory>
 #include <MMDeviceAPI.h>
 
 namespace device
 {
-
-struct DeviceListMonitorContext: public IMMNotificationClient
+struct DeviceListMonitorContext : public IMMNotificationClient
 {
     DeviceMonitoringWindows* deviceChangedCallback_;
 private:
@@ -72,161 +69,67 @@ STDMETHODIMP DeviceListMonitorContext::OnDefaultDeviceChanged(EDataFlow flow, ER
     return S_OK;
 }
 
-class DeviceListMonitorWnd
-{
-    DeviceMonitoringWindows& _deviceChangedCallback;
-    uint32_t                _devicesNumber;
-    constexpr wchar_t* className() noexcept { return L"deviceListMonitorWnd"; };
 
-    HWND hwnd;
-
-public:
-    DeviceListMonitorWnd(DeviceMonitoringWindows& deviceChangedCallback)
-    : _deviceChangedCallback(deviceChangedCallback)
-    , _devicesNumber(0)
-    , hwnd(nullptr)
-    {
-
-    }
-
-    static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
-    {
-        if (msg == WM_DEVICECHANGE/* || msg == WM_TIMER*/)
-        {
-            DeviceListMonitorWnd *pThis = (DeviceListMonitorWnd *)GetWindowLongPtr(hwnd, GWLP_USERDATA);
-            if (pThis)
-            {
-                pThis->_deviceChangedCallback.DeviceMonitoringVideoListChanged();
-                pThis->_deviceChangedCallback.DeviceMonitoringAudioListChanged();
-            }
-        }
-        else if (msg == WM_CREATE)
-        {
-            DeviceListMonitorWnd* pThis = (DeviceListMonitorWnd *)(((CREATESTRUCT *)lParam)->lpCreateParams);
-            SetWindowLongPtr(hwnd, GWLP_USERDATA, (LONG_PTR)pThis);
-            //SetTimer(hwnd, 1, 2000, NULL);
-        }
-        return DefWindowProc(hwnd, msg, wParam, lParam);
-    }
-
-    bool Create()
-    {
-        WNDCLASS wc = { };
-
-        wc.lpfnWndProc = WndProc;
-        wc.hInstance = GetModuleHandle(nullptr);
-        wc.lpszClassName = className();
-
-        if (!RegisterClass(&wc))
-            return false;
-
-        hwnd = CreateWindowEx(
-            WS_EX_CLIENTEDGE,
-            className(),
-            nullptr,
-            WS_OVERLAPPEDWINDOW,
-            CW_USEDEFAULT, CW_USEDEFAULT, 240, 120,
-            nullptr, nullptr, nullptr, this);
-
-        return hwnd != nullptr;
-    }
-
-    void Destroy()
-    {
-        if (hwnd)
-            DestroyWindow(hwnd);
-    }
-};
-
-DWORD DeviceMonitoringWindows::_worker_thread_proc(_In_ LPVOID lpParameter)
-{
-    if (!lpParameter)
-    {
-        assert(false);
-        return 1;
-    }
-    std::unique_ptr<DeviceListMonitorContext> dlmc((DeviceListMonitorContext*)lpParameter);
-    if (!dlmc->deviceChangedCallback_)
-    {
-        assert(false);
-        return 1;
-    }
-
-    CoInitializeEx(NULL, COINIT_MULTITHREADED);
-    IMMDeviceEnumerator* device_enumerator = nullptr;
-    HRESULT hr = ::CoCreateInstance(__uuidof(MMDeviceEnumerator), NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&device_enumerator));
-    if (SUCCEEDED(hr))
-    {
-        hr = device_enumerator->RegisterEndpointNotificationCallback(dlmc.get());
-    }
-
-    DeviceListMonitorWnd deviceListMonitorWnd(*dlmc->deviceChangedCallback_);
-    if (!deviceListMonitorWnd.Create())
-    {
-        CoUninitialize();
-        assert(false);
-        return 1;
-    }
-
-    MSG msg;
-    BOOL fGotMessage;
-    while ((fGotMessage = GetMessage(&msg, (HWND) nullptr, 0, 0)) != 0 && fGotMessage != -1)
-    {
-        TranslateMessage(&msg);
-        DispatchMessage(&msg);
-    }
-
-    deviceListMonitorWnd.Destroy();
-    if (device_enumerator)
-    {
-        device_enumerator->UnregisterEndpointNotificationCallback(dlmc.get());
-        device_enumerator->Release();
-    }
-    CoUninitialize();
-    return 0;
-}
-
-DeviceMonitoringWindows::DeviceMonitoringWindows()
-: _workingThread(nullptr)
-, _id(0)
-{
-
-}
+DeviceMonitoringWindows::DeviceMonitoringWindows() = default;
 
 DeviceMonitoringWindows::~DeviceMonitoringWindows()
 {
-    assert(_workingThread == nullptr);
+    stopImpl();
 }
 
 bool DeviceMonitoringWindows::Start()
 {
-    if (_workingThread)
-        return false;
-
-    DeviceListMonitorContext* dlmc = new(std::nothrow) DeviceListMonitorContext();
-    if (!dlmc)
+    if (qApp)
     {
-        assert(false);
-        return false;
+        auto hr = CoInitialize(nullptr);
+        if (FAILED(hr))
+        {
+            comInit = false;
+            return false;
+        }
+        comInit = true;
+        context_ = std::make_unique<DeviceListMonitorContext>();
+        context_->deviceChangedCallback_ = this;
+        enumerator_ = nullptr;
+        hr = ::CoCreateInstance(__uuidof(MMDeviceEnumerator), NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&enumerator_));
+        if (SUCCEEDED(hr))
+            hr = enumerator_->RegisterEndpointNotificationCallback(context_.get());
+
+        qApp->installNativeEventFilter(this);
+        return true;
     }
-
-    dlmc->deviceChangedCallback_ = this;
-    _workingThread = ::CreateThread(nullptr, 0, (LPTHREAD_START_ROUTINE)&DeviceMonitoringWindows::_worker_thread_proc, dlmc, 0, &_id);
-
-    return _workingThread != nullptr;
+    return false;
 }
 
 void DeviceMonitoringWindows::Stop()
 {
-    if (_workingThread)
-    {
-        ::PostThreadMessage(_id, WM_QUIT, 0, 0);
-        constexpr auto timeout = std::chrono::seconds(3);
-        ::WaitForSingleObject(_workingThread, std::chrono::milliseconds(timeout).count());
-    }
+    stopImpl();
+}
 
-    _workingThread = nullptr;
-    _id = 0;
+void DeviceMonitoringWindows::stopImpl()
+{
+    if (qApp)
+    {
+        qApp->removeNativeEventFilter(this);
+        if (enumerator_)
+        {
+            enumerator_->UnregisterEndpointNotificationCallback(context_.get());
+            enumerator_->Release();
+            enumerator_ = nullptr;
+        }
+        if (std::exchange(comInit, false))
+            CoUninitialize();
+    }
+}
+
+bool DeviceMonitoringWindows::nativeEventFilter(const QByteArray& _eventType, void* _message, long* _result)
+{
+    if (const auto msg = static_cast<MSG*>(_message); msg->message == WM_DEVICECHANGE)
+    {
+        DeviceMonitoringVideoListChanged();
+        DeviceMonitoringAudioListChanged();
+    }
+    return false;
 }
 
 }

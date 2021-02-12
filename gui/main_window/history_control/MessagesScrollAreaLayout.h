@@ -130,6 +130,8 @@ namespace Ui
 
         void removeAllExcluded(const InsertHistMessagesParams& _params);
 
+        bool hasItemsOfType(Logic::control_type _type) const;
+
         void removeItemsByType(Logic::control_type _type);
 
         bool removeItemAtEnd(Logic::control_type _type);

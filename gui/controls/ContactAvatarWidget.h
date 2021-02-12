@@ -7,6 +7,7 @@ namespace Ui
     class ContactAvatarWidget : public QWidget
     {
         Q_OBJECT
+        friend class AccessibleAvatarBadge;
 
     protected:
         const int size_;
@@ -145,5 +146,38 @@ namespace Ui
         bool ignoreClicks_ = false;
         bool statusTooltipEnabled_ = false;
         QTimer* addStatusTooltipTimer_ = nullptr;
+    };
+
+    class AccessibleAvatarBadge : public QAccessibleObject
+    {
+    public:
+        AccessibleAvatarBadge(ContactAvatarWidget* _avatar) : QAccessibleObject(_avatar), avatarWidget_(_avatar) {}
+        bool isValid() const override { return true; }
+        QObject* object() const override { return nullptr; }
+        QAccessibleInterface* parent() const override { return QAccessible::queryAccessibleInterface(avatarWidget_); }
+        int childCount() const override { return 0; }
+        QAccessibleInterface* child(int index) const override { return nullptr; }
+        int indexOfChild(const QAccessibleInterface* child) const override { return -1; }
+        QRect rect() const override;
+        QString text(QAccessible::Text type) const override;
+        QAccessible::Role role() const override { return QAccessible::Role::Button; }
+        QAccessible::State state() const override { return {}; }
+
+    private:
+        ContactAvatarWidget* avatarWidget_;
+    };
+
+    class AccessibleAvatarWidget : public QAccessibleWidget
+    {
+    public:
+        AccessibleAvatarWidget(ContactAvatarWidget* _avatarWidget);
+
+        int childCount() const override { return 1; }
+        QAccessibleInterface* child(int index) const override;
+        int indexOfChild(const QAccessibleInterface* child) const override;
+        QString	text(QAccessible::Text type) const override;
+
+    private:
+        QAccessibleInterface* badgeInterface_ = nullptr;
     };
 }

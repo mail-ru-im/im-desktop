@@ -103,6 +103,7 @@ namespace core
             virtual std::string_view get_method() const override;
 
             virtual bool support_self_resending() const override { return true; }
+            virtual bool support_partially_async_execution() const override { return true; }
         };
 
     }

@@ -33,7 +33,7 @@ namespace core
             class stats_event
             {
             public:
-                std::string to_flurry_string(time_t _start_time) const;
+                std::string to_log_string(time_t _start_time) const;
                 std::string dump_params_to_json() const;
                 stats_event(stats_event_names _name, std::chrono::system_clock::time_point _event_time, int32_t _event_id, event_props_type&& props);
                 stats_event_names get_name() const;
@@ -77,17 +77,14 @@ namespace core
 
             static std::shared_ptr<stop_objects> stop_objects_;
             std::map<std::string, tools::binary_stream> values_;
-            std::wstring file_name_flurry_;
             std::wstring file_name_mytracker_;
 
             disk_stats disk_stats_;
 
-            bool changed_flurry_;
             bool changed_mytracker_;
             uint32_t save_timer_;
             uint32_t disk_stats_timer_;
             uint32_t ram_stats_timer_;
-            uint32_t send_flurry_timer_;
             uint32_t send_mytracker_timer_;
             uint32_t start_send_timer_;
             std::unique_ptr<async_executer> stats_thread_;
@@ -97,23 +94,16 @@ namespace core
             std::set<std::shared_ptr<stats_event>> events_for_mytracker_;
 
             std::vector<stats_event> accumulated_events_;
-            std::string dump_events_to_flurry_json(events_ci begin, events_ci end, time_t _start_time) const;
             std::string dump_events_to_mytracker_json(events_ci begin, events_ci end, time_t _start_time) const;
             std::chrono::system_clock::time_point last_sent_time_;
-            std::vector<std::string> get_post_data() const;
 
             static std::string get_mytracker_post_data(const stats_event& event);
-            static bool send_flurry(const proxy_settings& _user_proxy, std::string_view post_data, std::wstring_view _file_name);
             static long send_mytracker(const proxy_settings& _user_proxy, std::string_view post_data, stats_event_names event_name, std::wstring_view _file_name);
 
-            void serialize_flurry(tools::binary_stream& _bs) const;
             void serialize_mytracker(tools::binary_stream& _bs) const;
-            bool unserialize_flurry(tools::binary_stream& _bs);
             bool unserialize_mytracker(tools::binary_stream& _bs);
             void save_if_needed();
-            void save_flurry();
             void save_mytracker();
-            void send_flurry_async();
             void send_mytracker_async(const std::shared_ptr<stats_event>& event);
             void resend_failed_mytracker_async();
             void set_disk_stats(const disk_stats &_stats);
@@ -121,19 +111,16 @@ namespace core
             bool load();
             void start_save();
             void start_send();
-            void insert_event_flurry(stats_event_names _event_name, event_props_type&& _props,
-                std::chrono::system_clock::time_point _event_time, int32_t _event_id);
             void insert_event_mytracker(stats_event_names _event_name, event_props_type&& _props,
                 std::chrono::system_clock::time_point _event_time, int32_t _event_id);
             void insert_accumulated_event(stats_event_names _event_name, core::stats::event_props_type _props);
-            void clear_flurry();
             void delayed_start_send();
             void start_disk_operations();
             void start_ram_usage_monitoring();
             void check_ram_usage();
 
         public:
-            statistics(std::wstring _file_name_flurry, std::wstring _file_name_mytracker);
+            statistics(std::wstring _file_name_mytracker);
             virtual ~statistics();
 
             void init();

@@ -164,7 +164,7 @@ public:
     void load(LoadType _loadType = LoadType::Postponed);
     void unload();
 
-    void setRect(const QRect& _rect) override { rect_ = _rect; }
+    void setRect(const QRect& _rect) override;
 
     void draw(QPainter &_p) override;
 
@@ -185,10 +185,11 @@ Q_SIGNALS:
 
 private Q_SLOTS:
     void onPreviewLoaded(const QPixmap& _preview);
+    void refresh();
 
 private:
     static QPixmap cropPreview(const QPixmap& _source, const int _toSize);
-    void updatePreview();
+    void updatePreview(Qt::TransformationMode _mode);
     void updateDurationLabel();
 
     std::unique_ptr<Utils::MediaLoader> loader_;

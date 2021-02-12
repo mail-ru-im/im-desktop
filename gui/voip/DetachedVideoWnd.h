@@ -61,9 +61,6 @@ namespace Ui
 
         void updatePosition(const QWidget& _parent) override;
 
-        void showScreenBorder(std::string_view _uid);
-        void hideScreenBorder();
-
     private:
         void updateVideoDeviceButtonsState();
 
@@ -89,7 +86,6 @@ namespace Ui
         PanelButton* stopCallButton_;
         PanelButton* videoButton_;
         PanelButton* shareScreenButton_;
-        QPointer<Ui::VideoPanelParts::ShareScreenFrame> shareScreenFrame_;
 
         bool localVideoEnabled_ : 1;
         bool isScreenSharingEnabled_ : 1;
@@ -160,6 +156,7 @@ namespace Ui
         void hideFrame();
 
         bool isMinimized() const;
+        bool isMousePressed() const { return mousePressed_; };
 
     private:
         ResizeEventFilter* eventFilter_;
@@ -167,6 +164,7 @@ namespace Ui
         QPoint posDragBegin_;
         QPoint pressPos_;
         bool closedManualy_;
+        bool mousePressed_ = false;
         MiniWindowVideoPanel* videoPanel_;
 
         std::unique_ptr<ShadowWindowParent> shadow_;

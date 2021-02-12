@@ -6,12 +6,26 @@
 #include "../../../tools/system.h"
 #include "../../../tools/json_helper.h"
 
+namespace
+{
+    std::string_view statusType(std::string_view _status, std::string_view _description)
+    {
+        if (_status.empty())
+            return "empty";
+        else if (!_description.empty())
+            return "emoji";
+        else
+            return "predefined";
+    }
+}
+
 using namespace core;
 using namespace wim;
 
-wim::set_status::set_status(wim_packet_params _params, std::string_view _status, std::chrono::seconds _duration)
+wim::set_status::set_status(wim_packet_params _params, std::string_view _status, std::chrono::seconds _duration, std::string_view _description)
     : robusto_packet(std::move(_params))
     , status_(std::move(_status))
+    , description_(_description)
     , duration_(_duration)
 {
 }
@@ -22,9 +36,13 @@ int32_t set_status::init_request(const std::shared_ptr<core::http_request_simple
     auto& a = doc.GetAllocator();
 
     rapidjson::Value node_params(rapidjson::Type::kObjectType);
-    node_params.AddMember("type", tools::make_string_ref(status_.empty() ? "empty" : "predefined"), a);
+
+    node_params.AddMember("type", tools::make_string_ref(statusType(status_, description_)), a);
     if (!status_.empty())
         node_params.AddMember("media", status_, a);
+
+    if (!description_.empty())
+        node_params.AddMember("text", description_, a);
 
     if (duration_.count() > 0)
         node_params.AddMember("duration", duration_.count(), a);

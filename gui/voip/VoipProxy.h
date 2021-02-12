@@ -238,8 +238,6 @@ namespace voip_proxy
 
         void setAPlaybackMute(bool _mute);
 
-        void switchMinimalBandwithMode();
-
         void handlePacket(core::coll_helper& _collParams);
         static std::string formatCallName(const std::vector<std::string>& _names, const char* _clip);
 

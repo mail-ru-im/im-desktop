@@ -173,6 +173,26 @@ namespace Ui
     };
 
     //----------------------------------------------------------------------
+    class StatusBannerWidget: public QWidget
+    {
+        Q_OBJECT
+
+    Q_SIGNALS:
+        void closeClicked() const;
+
+    public:
+        StatusBannerWidget(QWidget* _parent);
+
+    protected:
+        void paintEvent(QPaintEvent* _event) override;
+        void resizeEvent(QResizeEvent* _event) override;
+
+    private:
+        CustomButton* close_;
+        TextRendering::TextUnitPtr text_;
+    };
+
+    //----------------------------------------------------------------------
     class PinnedMessageWidget : public QWidget
     {
         Q_OBJECT
@@ -185,6 +205,7 @@ namespace Ui
         void showExpanded();
         void showCollapsed();
         void showStranger();
+        void showStatusBanner();
         void updateStyle();
 
     public:
@@ -194,16 +215,21 @@ namespace Ui
         void clear();
 
         bool isStrangerVisible() const;
+        bool isBannerVisible() const;
 
     private:
         void createStranger();
         void createFull();
         void createCollapsed();
+        void createStatusBanner();
+
+        void hideAll();
         void hideWidget(QWidget* _widget);
 
     private:
-        FullPinnedMessage* full_;
-        CollapsedPinnedMessage* collapsed_;
-        StrangerPinnedWidget* stranger_;
+        FullPinnedMessage* full_ = nullptr;
+        CollapsedPinnedMessage* collapsed_ = nullptr;
+        StrangerPinnedWidget* stranger_ = nullptr;
+        StatusBannerWidget* banner_ = nullptr;
     };
 }

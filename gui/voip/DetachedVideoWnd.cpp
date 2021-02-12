@@ -203,10 +203,6 @@ void Ui::MiniWindowVideoPanel::onVoipVideoDeviceSelected(const voip_proxy::devic
     isScreenSharingEnabled_ = (_desc.dev_type == voip_proxy::kvoipDevTypeVideoCapture && _desc.video_dev_type == voip_proxy::kvoipDeviceDesktop);
     isCameraEnabled_ = (_desc.dev_type == voip_proxy::kvoipDevTypeVideoCapture && _desc.video_dev_type == voip_proxy::kvoipDeviceCamera);
 
-    if (isScreenSharingEnabled_)
-        showScreenBorder(_desc.uid);
-    else
-        hideScreenBorder();
     updateVideoDeviceButtonsState();
 }
 
@@ -283,10 +279,7 @@ Ui::MiniWindowVideoPanel::MiniWindowVideoPanel(QWidget* _parent)
 }
 
 
-Ui::MiniWindowVideoPanel::~MiniWindowVideoPanel()
-{
-    hideScreenBorder();
-}
+Ui::MiniWindowVideoPanel::~MiniWindowVideoPanel() = default;
 
 bool Ui::MiniWindowVideoPanel::isUnderMouse()
 {
@@ -306,23 +299,6 @@ void Ui::MiniWindowVideoPanel::updateVideoDeviceButtonsState()
 
     shareScreenButton_->updateStyle(shareStyle, shareIcon);
     shareScreenButton_->setTooltipText(getScreensharingButtonText(shareStyle, PanelButton::ButtonSize::Small));
-}
-
-void Ui::MiniWindowVideoPanel::showScreenBorder(std::string_view _uid)
-{
-    if (GetDispatcher()->getVoipController().isWebinar())
-        return;
-
-    hideScreenBorder();
-
-    shareScreenFrame_ = new VideoPanelParts::ShareScreenFrame(_uid, getFrameBorderColor());
-    connect(shareScreenFrame_, &VideoPanelParts::ShareScreenFrame::stopScreenSharing, this, &MiniWindowVideoPanel::onShareScreen);
-}
-
-void Ui::MiniWindowVideoPanel::hideScreenBorder()
-{
-    if (shareScreenFrame_)
-        shareScreenFrame_->deleteLater();
 }
 
 void Ui::MiniWindowVideoPanel::changeEvent(QEvent* _e)
@@ -387,16 +363,10 @@ void Ui::MiniWindowVideoPanel::updatePosition(const QWidget& _parent)
 {
     const auto& rc = _parent.geometry();
 
-    if (platform::is_linux())
-    {
+    if constexpr (platform::is_linux())
         move(0, rc.height() - rect().height());
-    }
     else
-    {
-        // temporary hack (further redesign in next task)
-        const auto dY = platform::is_windows() ? rc.y() : std::max(rc.y(), Utils::scale_value(23));
-        move(rc.x(),  dY + rc.height() - rect().height());
-    }
+        move(rc.x(), rc.y() + rc.height() - rect().height());
 
     setFixedWidth(rc.width());
     resizeButton_->setTooltipBoundingRect(rc);
@@ -455,7 +425,7 @@ Ui::DetachedVideoWindow::DetachedVideoWindow(QWidget* _parent)
         // If video window is showing with this flags, we cannot activate main ICQ window.
         // UPDATED: Looks like for mini video window it works ok with  Qt::WindowDoesNotAcceptFocus
         // and Qt::WA_ShowWithoutActivating.
-        setWindowFlags(Qt::WindowStaysOnTopHint | Qt::Window | Qt::WindowDoesNotAcceptFocus);
+        setWindowFlags(Qt::WindowStaysOnTopHint | Qt::Window/* | Qt::WindowDoesNotAcceptFocus*/);
         //setAttribute(Qt::WA_ShowWithoutActivating);
         setAttribute(Qt::WA_X11DoNotAcceptFocus);
         if constexpr (platform::is_linux())
@@ -605,6 +575,7 @@ void Ui::DetachedVideoWindow::onPanelMouseLeave()
 void Ui::DetachedVideoWindow::mousePressEvent(QMouseEvent* _e)
 {
     pressPos_ = QCursor::pos();
+    mousePressed_ = true;
     onMousePress(*_e);
 }
 
@@ -613,6 +584,7 @@ void Ui::DetachedVideoWindow::mouseReleaseEvent(QMouseEvent *_e)
     if (Utils::clicked(pressPos_, QCursor::pos()))
         activateMainVideoWindow();
     pressPos_ = QPoint();
+    mousePressed_ = false;
 }
 
 void Ui::DetachedVideoWindow::mouseMoveEvent(QMouseEvent* _e)
@@ -631,9 +603,14 @@ void Ui::DetachedVideoWindow::onMouseMove(const QMouseEvent& _e)
 {
     if (_e.buttons() & Qt::LeftButton)
     {
+#ifdef __APPLE__
+        if (auto handle = windowHandle())
+            handle->startSystemMove();
+#else
         const auto diff = _e.pos() - posDragBegin_;
         const auto newpos = pos() + diff;
         move(newpos);
+#endif
     }
 }
 

@@ -18,6 +18,7 @@
 #include "PollWidget.h"
 #include "omicron/omicron_helper.h"
 #include "../common.shared/omicron_keys.h"
+#include "../main_window/MainWindow.h"
 
 namespace
 {
@@ -122,7 +123,13 @@ PollWidget::PollWidget(const QString& _contact, QWidget* _parent)
     , d(std::make_unique<PollWidget_p>())
 {
     d->contact_ = _contact;
-    setMinimumHeight(Utils::scale_value(533));
+    auto defaultMinHeight = Utils::scale_value(533);
+    if (auto mainWindow = Utils::InterConnector::instance().getMainWindow())
+    {
+        const auto margin = Utils::scale_value(80);
+        defaultMinHeight = std::max(mainWindow->minimumHeight() - margin, margin);
+    }
+    setMinimumHeight(defaultMinHeight);
 
     auto layout = Utils::emptyVLayout(this);
     layout->setContentsMargins(commonPollsMargin(), commonPollsMargin(), 0, bottomPollsMargin());

@@ -291,7 +291,7 @@ namespace core
                     callback_handlers_(std::move(_callback_handlers)) {}
             };
 
-            bool is_packet_execute_;
+            std::set<std::string_view> executed_packets_;
             bool is_sending_locked_;
             std::list<task_and_params> packets_queue_;
 
@@ -1251,7 +1251,7 @@ namespace core
                                 const std::string& _older_than,
                                 int64_t _limit) override;
 
-            void set_status(std::string_view _status, std::chrono::seconds _duration) override;
+            void set_status(std::string_view _status, std::chrono::seconds _duration, std::string_view _description = std::string_view()) override;
 
             void subscribe_status(std::vector<std::string> _contacts) override;
             void unsubscribe_status(std::vector<std::string> _contacts) override;

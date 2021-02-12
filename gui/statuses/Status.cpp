@@ -5,18 +5,23 @@
 #include "LocalStatuses.h"
 #include "utils/JsonUtils.h"
 #include "utils/gui_coll_helper.h"
+#include "utils/features.h"
+#include "utils/InterConnector.h"
+#include "main_window/containers/StatusContainer.h"
 #include "../styles/ThemeParameters.h"
 #include "../styles/ThemesContainer.h"
+#include "my_info.h"
+#include "../core_dispatcher.h"
 
 using namespace Statuses;
 
 Status::Status(const QString& _code, const QString& _description)
-    : code_(Emoji::EmojiCode::fromQString(_code)),
-      description_(_description)
+    : code_(Emoji::EmojiCode::fromQString(_code))
+    , description_(_description)
 {
 }
 
-bool Status::operator==(const Status &_other) const
+bool Status::operator==(const Status& _other) const
 {
     return code_ == _other.code_;
 }
@@ -98,15 +103,9 @@ void Status::unserialize(const rapidjson::Value& _node)
     JsonUtils::unserialize_value(_node, "text", description_);
 }
 
-void Status::update(const Status& _other)
+bool Status::isCustom() const
 {
-    if (_other.startTime_.isValid())
-        startTime_ = _other.startTime_;
-
-    endTime_ = _other.endTime_;
-
-    if (!_other.description_.isEmpty())
-        description_ = _other.description_;
+    return !description_.isEmpty();
 }
 
 QString Status::emptyDescription()

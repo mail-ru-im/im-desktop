@@ -20,12 +20,12 @@
 
 UI_COMPLEX_MESSAGE_NS_BEGIN
 
-TextBlock::TextBlock(ComplexMessageItem* _parent, const QString &text, const Ui::TextRendering::EmojiSizeType _emojiSizeType)
-    : GenericBlock(_parent, text, MenuFlags(MenuFlagCopyable), false)
+TextBlock::TextBlock(ComplexMessageItem* _parent, const QString& _text, const Ui::TextRendering::EmojiSizeType _emojiSizeType)
+    : GenericBlock(_parent, _text, MenuFlags(MenuFlagCopyable), false)
     , Layout_(new TextBlockLayout())
     , emojiSizeType_(_emojiSizeType)
 {
-    assert(!text.isEmpty());
+    assert(!_text.isEmpty());
 
     Testing::setAccessibleName(this, u"AS HistoryPage messageText " % QString::number(_parent->getId()));
 
@@ -235,7 +235,7 @@ void TextBlock::initTextUnit()
                   , linkStyle);
 
     textUnit_->setHighlightedTextColor(MessageStyle::getHighlightTextColor());
-    textUnit_->markdown(MessageStyle::getMarkdownFont(), MessageStyle::getTextColor());
+    textUnit_->markdown(MessageStyle::getTextMonospaceFont(), MessageStyle::getTextColor());
     textUnit_->setLineSpacing(MessageStyle::getTextLineSpacing());
 
     const auto& contact = getChatAimid();
@@ -312,7 +312,7 @@ void TextBlock::doubleClicked(const QPoint& _p, std::function<void(bool)> _callb
     {
         if (!textUnit_->isAllSelected())
         {
-            const auto tripleClick = [this, callback = std::move(_callback)](bool result)
+            auto tripleClick = [this, callback = std::move(_callback)](bool result)
             {
                 if (callback)
                     callback(result);

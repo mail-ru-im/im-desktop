@@ -13,49 +13,54 @@
 
 const Ui::ComplexMessage::TextChunk Ui::ComplexMessage::TextChunk::Empty(Ui::ComplexMessage::TextChunk::Type::Undefined, QString(), QString(), -1);
 
+
+namespace
+{
+    bool arePreviewsEnabled()
+    {
+        return Ui::get_gui_settings()->get_value<bool>(settings_show_video_and_images, true);
+    }
+
+    bool isSnippetUrl(QStringView _url)
+    {
+        static constexpr QStringView urls[] = { u"https://jira.mail.ru", u"jira.mail.ru", u"https://confluence.mail.ru", u"confluence.mail.ru", u"https://sys.mail.ru", u"sys.mail.ru" };
+        return std::none_of(std::begin(urls), std::end(urls), [&_url](const auto& x) { return _url.startsWith(x); });
+    }
+
+    bool shouldForceSnippetUrl(QStringView _url)
+    {
+        static constexpr QStringView urls[] = { u"cloud.mail.ru", u"https://cloud.mail.ru" };
+        return std::any_of(std::begin(urls), std::end(urls), [&_url](const auto& x) { return _url.startsWith(x); });
+    }
+
+    bool isAlwaysWithPreview(const common::tools::url& _url)
+    {
+        const auto isSticker =
+            _url.type_ == common::tools::url::type::filesharing &&
+            Ui::ComplexMessage::getFileSharingContentType(QString::fromStdString(_url.original_)).is_sticker();
+        const auto isProfile = _url.type_ == common::tools::url::type::profile;
+        const auto isMedia = _url.type_ == common::tools::url::type::image || _url.type_ == common::tools::url::type::video;
+        return isSticker || isProfile || isMedia;
+    }
+}
+
+
+
 Ui::ComplexMessage::ChunkIterator::ChunkIterator(const QString &_text)
     : ChunkIterator(_text, FixedUrls())
 {
 }
 
 Ui::ComplexMessage::ChunkIterator::ChunkIterator(const QString& _text, FixedUrls&& _urls)
-    : tokenizer_(_text.toStdString(), Ui::getUrlConfig().getUrlFilesParser().toStdString(), std::move(_urls))
+    : tokenizer_(_text.toStdString()
+               , Ui::getUrlConfig().getUrlFilesParser().toStdString()
+               , std::move(_urls))
 {
 }
 
 bool Ui::ComplexMessage::ChunkIterator::hasNext() const
 {
     return tokenizer_.has_token();
-}
-
-static inline bool isPreviewsEnabled()
-{
-    return Ui::get_gui_settings()->get_value<bool>(settings_show_video_and_images, true);
-}
-
-static bool isSnippetUrl(QStringView _url)
-{
-    static constexpr QStringView urls[] = { u"https://jira.mail.ru", u"jira.mail.ru", u"https://confluence.mail.ru", u"confluence.mail.ru", u"https://sys.mail.ru", u"sys.mail.ru" };
-    return std::none_of(std::begin(urls), std::end(urls), [&_url](const auto& x) { return _url.startsWith(x); });
-}
-
-static bool isForceSnippetUrl(QStringView _url)
-{
-    static constexpr QStringView urls[] = { u"cloud.mail.ru", u"https://cloud.mail.ru" };
-    return std::any_of(std::begin(urls), std::end(urls), [&_url](const auto& x) { return _url.startsWith(x); });
-}
-
-static bool isAlwaysWithPreview(const common::tools::url& _url)
-{
-    bool isSticker =
-            _url.type_ == common::tools::url::type::filesharing &&
-            Ui::ComplexMessage::getFileSharingContentType(QString::fromStdString(_url.original_)).is_sticker();
-
-    bool isProfile = _url.type_ == common::tools::url::type::profile;
-
-    bool isMedia = _url.type_ == common::tools::url::type::image || _url.type_ == common::tools::url::type::video;
-
-    return isSticker || isProfile || isMedia;
 }
 
 Ui::ComplexMessage::TextChunk Ui::ComplexMessage::ChunkIterator::current(bool _allowSnipet, bool _forcePreview) const
@@ -74,7 +79,7 @@ Ui::ComplexMessage::TextChunk Ui::ComplexMessage::ChunkIterator::current(bool _a
 
     auto text = QString::fromStdString(url.original_);
 
-    const auto forbidPreview = url.type_ == common::tools::url::type::site && !isPreviewsEnabled();
+    const auto forbidPreview = url.type_ == common::tools::url::type::site && !arePreviewsEnabled();
 
     if (url.type_ != common::tools::url::type::filesharing &&
         url.type_ != common::tools::url::type::image &&
@@ -91,8 +96,8 @@ Ui::ComplexMessage::TextChunk Ui::ComplexMessage::ChunkIterator::current(bool _a
     case common::tools::url::type::image:
     case common::tools::url::type::video:
     {
-        // spyke for cloud.mail.ru, (temporary code)
-        if (isForceSnippetUrl(text))
+        // spike for cloud.mail.ru, (temporary code)
+        if (shouldForceSnippetUrl(text))
             return TextChunk(TextChunk::Type::GenericLink, std::move(text), QString(), -1);
 
         return TextChunk(TextChunk::Type::ImageLink, std::move(text), QString::fromLatin1(to_string(url.extension_)), -1);
@@ -119,6 +124,7 @@ Ui::ComplexMessage::TextChunk Ui::ComplexMessage::ChunkIterator::current(bool _a
             break;
         case core::file_sharing_base_content_type::lottie:
             Type = TextChunk::Type::FileSharingLottieSticker;
+            break;
         default:
             break;
         }
@@ -160,11 +166,11 @@ Ui::ComplexMessage::TextChunk::TextChunk()
 {
 }
 
-Ui::ComplexMessage::TextChunk::TextChunk(const Type type, QString _text, QString imageType, const int32_t durationSec)
-    : Type_(type)
+Ui::ComplexMessage::TextChunk::TextChunk(Type _type, QString _text, QString _imageType, int32_t _durationSec)
+    : Type_(_type)
     , text_(std::move(_text))
-    , ImageType_(std::move(imageType))
-    , DurationSec_(durationSec)
+    , ImageType_(std::move(_imageType))
+    , DurationSec_(_durationSec)
 {
     assert(Type_ > Type::Min);
     assert(Type_ < Type::Max);

@@ -33,13 +33,6 @@
     </message>
 </context>
 <context>
-    <name>QObject</name>
-    <message>
-        <source>Unable to start the server: %1.</source>
-        <translation>Ошибка запуска сервера: %1.</translation>
-    </message>
-</context>
-<context>
     <name>QWidgetTextControl</name>
     <message>
         <source>&amp;Undo</source>
@@ -1014,18 +1007,18 @@ You can leave your feedback or report an error here:</source>
         <translation>Ответил(-а) на статус: %1 %2</translation>
     </message>
     <message>
-        <source>You replied to status
-%2 %3
-%4
-%5 %6</source>
-        <translation>Вы ответили на статус
-%2 %3
-%4
-%5 %6</translation>
-    </message>
-    <message>
         <source>You replied to status: %1 %2</source>
         <translation>Вы ответили на статус: %1 %2</translation>
+    </message>
+    <message>
+        <source>You replied to status
+%1 %2
+%3
+%4 %5</source>
+        <translation>Вы ответили на статус
+%1 %2
+%3
+%4 %5</translation>
     </message>
 </context>
 <context>
@@ -3756,6 +3749,12 @@ You can leave your feedback or report an error here:</source>
         <source>Block</source>
         <translation>Заблокировать</translation>
     </message>
+    <message>
+        <source>Pay attention
+to contact status</source>
+        <translation>Обратите внимание на статус
+контакта</translation>
+    </message>
 </context>
 <context>
     <name>placeholders</name>
@@ -4978,10 +4977,10 @@ You can leave your feedback or report an error here:</source>
         <translation>OK</translation>
     </message>
     <message>
-        <source> ﻿ ﻿— Voice messages no longer stop playing when the application is minimized
+        <source> ﻿ ﻿— Custom statuses
   ﻿— Bugfix and improvements </source>
-        <translation> ﻿ ﻿— Голосовые сообщения больше не перестают проигрывать при сворачивании приложения
-  ﻿— Другие исправления и улучшения </translation>
+        <translation> ﻿ ﻿— Пользовательские статусы
+  ﻿— Исправления и улучшения </translation>
     </message>
 </context>
 <context>
@@ -6298,36 +6297,12 @@ Please edit phone number and try again.</source>
         <translation>день</translation>
     </message>
     <message>
-        <source>week</source>
-        <comment>1</comment>
-        <translation>неделю</translation>
-    </message>
-    <message>
-        <source>weeks</source>
-        <comment>2</comment>
-        <translation>недели</translation>
-    </message>
-    <message>
-        <source>weeks</source>
-        <comment>5</comment>
-        <translation>недель</translation>
-    </message>
-    <message>
-        <source>weeks</source>
-        <comment>21</comment>
-        <translation>неделю</translation>
-    </message>
-    <message>
         <source>Show always</source>
         <translation>Показывать всегда</translation>
     </message>
     <message>
         <source>Week</source>
         <translation>Неделя</translation>
-    </message>
-    <message>
-        <source>undefined time</source>
-        <translation>неопределенное время</translation>
     </message>
     <message>
         <source>%1 left</source>
@@ -6360,16 +6335,80 @@ Please edit phone number and try again.</source>
         <translation>Мой статус</translation>
     </message>
     <message>
-        <source>No status</source>
-        <translation>Без статуса</translation>
-    </message>
-    <message>
         <source>Status timing</source>
         <translation>Срок статуса</translation>
     </message>
     <message>
         <source>Close</source>
         <translation>Закрыть</translation>
+    </message>
+    <message>
+        <source>Choose unique status</source>
+        <translation>Выбрать уникальный статус</translation>
+    </message>
+    <message>
+        <source>Back</source>
+        <translation>Назад</translation>
+    </message>
+    <message>
+        <source>Done</source>
+        <translation>Готово</translation>
+    </message>
+    <message>
+        <source>Maximum length - %1 symbols</source>
+        <translation>Максимальная длина — %1 символов</translation>
+    </message>
+    <message>
+        <source>Status search</source>
+        <translation>Поиск статуса</translation>
+    </message>
+    <message>
+        <source>SELECT STATUS</source>
+        <translation>ВЫБЕРИТЕ СТАТУС</translation>
+    </message>
+    <message>
+        <source>Select custom status</source>
+        <translation>Выбрать уникальный статус</translation>
+    </message>
+    <message>
+        <source>Select custom time</source>
+        <translation>Установить своё время</translation>
+    </message>
+    <message>
+        <source>Status is set for %1</source>
+        <translation>Статус установлен на %1</translation>
+    </message>
+    <message>
+        <source>Status is set</source>
+        <translation>Статус установлен</translation>
+    </message>
+    <message>
+        <source>Enter status text</source>
+        <translation>Введите текст статуса</translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation>Поиск</translation>
+    </message>
+    <message>
+        <source>Status duration</source>
+        <translation>Срок действия статуса</translation>
+    </message>
+    <message>
+        <source>Date</source>
+        <translation>Дата</translation>
+    </message>
+    <message>
+        <source>dd.mm.yyyy</source>
+        <translation>дд.мм.гггг</translation>
+    </message>
+    <message>
+        <source>Time</source>
+        <translation>Время</translation>
+    </message>
+    <message>
+        <source>hh:mm</source>
+        <translation>чч:мм</translation>
     </message>
 </context>
 <context>
@@ -6724,6 +6763,22 @@ with click</source>
         <translation>Перемещайте окно
 или откройте звонок
 кликом</translation>
+    </message>
+    <message>
+        <source>VOICE</source>
+        <translation>ГОЛОС</translation>
+    </message>
+    <message>
+        <source>Connecting...</source>
+        <translation>Подключение...</translation>
+    </message>
+    <message>
+        <source>Calling</source>
+        <translation>Вызов</translation>
+    </message>
+    <message>
+        <source>Busy</source>
+        <translation>Занято</translation>
     </message>
 </context>
 <context>

@@ -45,7 +45,7 @@ namespace config
             external_url_config();
             ~external_url_config();
             bool unserialize(const rapidjson::Value& _node);
-            void override_features(const features_vector& _values);
+            void override_config(const features_vector& _features, const values_vector& _values);
             void reset_to_defaults();
 
         private:
@@ -53,7 +53,8 @@ namespace config
             {
                 host_cache cache_;
                 std::vector<std::string> vcs_rooms_;
-                features_vector override_values_;
+                features_vector override_features_;
+                values_vector override_values_;
 
                 std::string_view get_host(host_url_type _type) const;
                 bool unserialize(const rapidjson::Value& _node);

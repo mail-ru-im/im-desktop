@@ -60,7 +60,6 @@
     "updater_main_instance_mutex_win": "{D7364340-9348-4397-9F56-73CE62AAAEA8}",
     "company_name": "Mail.ru LLC",
     "app_user_model_win": "ICQ.Client",
-    "flurry_key": "7VP9F5BSNJ4NKZYZS753",
     "feedback_version_id": "fb.question.3004",
     "feedback_platform_id": "fb.question.3005",
     "feedback_aimid_id": "fb.question.3003",
@@ -85,7 +84,8 @@
     "support_uin": "744904635",
     "mytracker_app_id_win": "53239",
     "mytracker_app_id_mac": "53240",
-    "mytracker_app_id_linux": "53241"
+    "mytracker_app_id_linux": "53241",
+    "status_banner_emoji_csv": ""
   },
   "features": {
     "feedback_selected": true,
@@ -139,7 +139,7 @@
     "show_reactions": true,
     "open_icqcom_link": true,
     "statistics": true,
-    "statistics_mytracker": true,
+    "statistics_mytracker": true,    
     "force_update_check_allowed": false,
     "call_room_info_enabled": true,
     "external_config_use_preset_url": false,

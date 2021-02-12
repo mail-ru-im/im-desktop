@@ -24,8 +24,7 @@ namespace Statuses
     {
         Common = 0,
         Left,
-        Passed,
-        AlwaysOn
+        Passed
     };
 
     class Status
@@ -34,7 +33,7 @@ namespace Statuses
         Status(const QString& _code = QString(), const QString& _description = QString());
         ~Status() = default;
 
-        bool operator== (const Status& _other) const;
+        bool operator==(const Status& _other) const;
 
         QImage getImage(int _size = -1) const;
 
@@ -52,7 +51,7 @@ namespace Statuses
         void unserialize(core::coll_helper& _coll);
         void unserialize(const rapidjson::Value& _node);
 
-        void update(const Status& _other);
+        bool isCustom() const;
 
         static QString emptyDescription();
 

@@ -135,6 +135,7 @@ namespace Ui
 
         smilesMenu_ = new Smiles::SmilesMenu(this);
         smilesMenu_->setCurrentHeight(0);
+        smilesMenu_->setHorizontalMargins(Utils::scale_value(16));
         Testing::setAccessibleName(smilesMenu_, qsl("AS EmojiAndStickerPicker"));
 
         if (auto vLayout = qobject_cast<QVBoxLayout*>(layout()))

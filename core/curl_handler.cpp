@@ -263,9 +263,9 @@ namespace core
         multi_handler_->reset();
     }
 
-    void curl_handler::reset_sockets()
+    void curl_handler::reset_sockets(bool _network_is_down)
     {
-        multi_handler_->reset_sockets();
+        multi_handler_->reset_sockets(_network_is_down);
     }
 
     void curl_handler::process_stopped_tasks()

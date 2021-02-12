@@ -551,7 +551,8 @@ namespace Ui
     void VideoPanel::setContacts(std::vector<voip_manager::Contact> _contacts, bool _activeCall)
     {
         activeContact_ = std::move(_contacts);
-        addButton_->setVisible(_activeCall && (int32_t)_contacts.size() < (Ui::GetDispatcher()->getVoipController().maxVideoConferenceMembers() - 1));
+        isAddButtonEnabled_ = _activeCall && (int32_t)_contacts.size() < (Ui::GetDispatcher()->getVoipController().maxVideoConferenceMembers() - 1);
+        addButton_->setEnabled(isAddButtonEnabled_);
     }
 
     void VideoPanel::enterEvent(QEvent* _e)
@@ -956,6 +957,7 @@ namespace Ui
             button->setHovered(false);
             button->setPressed(false);
         }
+        addButton_->setEnabled(isAddButtonEnabled_ && _enable);
     }
 
     void VideoPanel::showScreenBorder(std::string_view _uid)

@@ -197,6 +197,13 @@ namespace Ui
                 setInputHeight(targetHeight + val * (currentHeight - targetHeight));
         });
 
+        connect(GetDispatcher(), &core_dispatcher::userInfo, this, [this](const int64_t, const QString& _aimId, const Data::UserInfo& _info)
+        {
+            if (_info.lastseen_.isBot() && _aimId == contact_)
+                if (const auto needButton = needStartButton(); needButton && *needButton)
+                    setView(currentView(), UpdateMode::Force, SetHistoryPolicy::DontAddToHistory);
+        });
+
         bgWidget_->lower();
         bgWidget_->forceUpdate();
     }
@@ -278,7 +285,7 @@ namespace Ui
 
             if (Utils::isBase64EncodedImage(text))
             {
-                pasteClipboardBase64Image(text);
+                pasteClipboardBase64Image(std::move(text));
                 showFileDialog(FileSource::CopyPaste);
             }
             updateInputData();
@@ -322,36 +329,37 @@ namespace Ui
         if (_url.isLocalFile())
         {
             auto path = _url.toLocalFile();
-            const bool isGif = _mimeData->hasFormat(qsl("image/gif")) && _mimeData->data(qsl("image/gif")) == path.toUtf8();
             if (const auto fi = QFileInfo(path); fi.exists() && !fi.isBundle() && !fi.isDir())
+            {
+                const auto imageGif = qsl("image/gif");
+                const bool isGif = _mimeData->hasFormat(imageGif) && _mimeData->data(imageGif) == path.toUtf8();
                 currentState().filesToSend_.emplace_back(std::move(path), isGif);
+            }
         }
         else
         {
             if (_hadImage)
                 return;
 
-            const QString text = _url.toString();
-            if (Utils::isBase64EncodedImage(text))
-                pasteClipboardBase64Image(text);
+            if (QString text = _url.toString(); Utils::isBase64EncodedImage(text))
+                pasteClipboardBase64Image(std::move(text));
         }
     }
 
-    void InputWidget::pasteClipboardImage(const QImage& _image)
+    void InputWidget::pasteClipboardImage(QImage&& _image)
     {
-        QPixmap pixmap = QPixmap::fromImage(_image);
-        if (!pixmap.isNull())
+        if (QPixmap pixmap = QPixmap::fromImage(std::move(_image)); !pixmap.isNull())
             currentState().filesToSend_.emplace_back(std::move(pixmap));
     }
 
-    void InputWidget::pasteClipboardBase64Image(const QString& _text)
+    void InputWidget::pasteClipboardBase64Image(QString&& _text)
     {
         QImage image;
         QSize size;
 
         clearInputText(); // it's important to clear text to avoid doubling Base64 data in input field
-        if (Utils::loadBase64Image(_text.toLatin1(), QSize(), image, size))
-            pasteClipboardImage(image);
+        if (Utils::loadBase64Image(std::move(_text).toLatin1(), QSize(), image, size))
+            pasteClipboardImage(std::move(image));
     }
 
     void InputWidget::keyPressEvent(QKeyEvent* _e)
@@ -561,7 +569,7 @@ namespace Ui
         Q_EMIT quotesAdded(QPrivateSignal());
 
         auto quotes = _quotes;
-        auto isQuote = [](const auto& _quote) { return _quote.type_ == Data::Quote::quote && _quote.hasReply_; };
+        auto isQuote = [](const auto& _quote) { return _quote.type_ == Data::Quote::Type::quote && _quote.hasReply_; };
         const auto allQuotes = std::all_of(quotes.begin(), quotes.end(), isQuote);
 
         if (!allQuotes)
@@ -2224,9 +2232,9 @@ namespace Ui
 
         if (_view != InputView::Multiselect && isBot())
         {
-            if (const auto page = Utils::InterConnector::instance().getHistoryPage(contact_))
+            if (const auto needButton = needStartButton())
             {
-                if (page->needStartButton() || !page->hasMessages())
+                if (*needButton)
                     _view = InputView::Readonly;
                 else if (!currentState().msgHistoryReady_)
                     _view = InputView::Disabled;
@@ -2769,6 +2777,14 @@ namespace Ui
 
         if (Logic::getRecentsModel()->isSuspicious(contact_))
             GetDispatcher()->post_stats_to_core(core::stats::stats_event_names::chat_unknown_message);
+    }
+
+    std::optional<bool> InputWidget::needStartButton() const
+    {
+        if (!contact_.isEmpty())
+            if (const auto page = Utils::InterConnector::instance().getHistoryPage(contact_))
+                return page->needStartButton() || !page->hasMessages();
+        return std::nullopt;
     }
 
     bool InputWidget::shouldOfferCompleter(const CheckOffer _check) const

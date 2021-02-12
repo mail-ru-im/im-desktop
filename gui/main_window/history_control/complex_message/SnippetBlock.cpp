@@ -1149,7 +1149,7 @@ void MediaContent::onMenuSaveFileAs()
     {
         fileName += u'.';
         if (isGif())
-            fileName += qsl("gif");
+            fileName += ql1s("gif");
         else
             fileName += meta_.getFileFormat();
     }

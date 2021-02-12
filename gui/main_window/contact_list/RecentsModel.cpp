@@ -131,7 +131,7 @@ namespace Logic
         const Data::DlgState& cont = Dialogs_[cur];
 
         if (Testing::isAccessibleRole(r))
-            return cont.AimId_;
+            return QString(u"AS Recents " % cont.AimId_);
 
         return QVariant::fromValue(cont);
     }
@@ -684,7 +684,7 @@ namespace Logic
 
     bool RecentsModel::getAttention(const QString& _aimId) const
     {
-        if (const auto iter = std::find_if(Dialogs_.begin(), Dialogs_.end(), isEqualDlgState(_aimId)); iter != Dialogs_.end())
+        if (const auto iter = std::find_if(Dialogs_.cbegin(), Dialogs_.cend(), isEqualDlgState(_aimId)); iter != Dialogs_.cend())
             return iter->Attention_;
 
         return false;
@@ -1021,6 +1021,14 @@ namespace Logic
     {
         if (const auto it = std::find_if(Dialogs_.begin(), Dialogs_.end(), isEqualDlgState(_aimId)); it != Dialogs_.end())
             return it->UnreadCount_;
+
+        return 0;
+    }
+
+    int RecentsModel::getUnreadMentionsCount(const QString& _aimId) const
+    {
+        if (const auto it = std::find_if(Dialogs_.begin(), Dialogs_.end(), isEqualDlgState(_aimId)); it != Dialogs_.end())
+            return it->unreadMentionsCount_;
 
         return 0;
     }

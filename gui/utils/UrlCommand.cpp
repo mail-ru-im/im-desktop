@@ -50,18 +50,18 @@ std::unique_ptr<UrlCommand> UrlCommandBuilder::makeCommand(QString _url, Context
 
     if (!currentScheme.isEmpty()) // [icq|magent|myteam-messenger|itd-messenger]://uin
     {
-        static const auto startMarker = ql1s("?start=");
-        QStringRef cmd = _url.midRef(currentScheme.size());
+        constexpr auto startMarker = QStringView(u"?start=");
+        auto cmd = QStringView(_url).mid(currentScheme.size());
         const auto startIdx = cmd.indexOf(startMarker);
 
-        if (_url.contains(ql1s("attach_phone_result")))
+        if (_url.contains(u"attach_phone_result"))
         {
-            command = std::make_unique<PhoneAttachedCommand>(_url.contains(ql1s("success=1")), _url.contains(ql1s("cancel=1")));
+            command = std::make_unique<PhoneAttachedCommand>(_url.contains(u"success=1"), _url.contains(u"cancel=1"));
             return command;
         }
         else if (noAdditionalSlashes || startIdx != -1)
         {
-            QStringRef params;
+            QStringView params;
             if (startIdx != -1)
             {
                 params = cmd.mid(startIdx + startMarker.size());

@@ -19,7 +19,7 @@
 #include "macos/network_change_notifier_mac.h"
 #endif
 
-namespace core 
+namespace core
 {
     network_change_notifier::network_change_observer::network_change_observer() = default;
     network_change_notifier::network_change_observer::~network_change_observer() = default;
@@ -39,9 +39,9 @@ namespace core
 
         }
 
-        ~network_change_calculator() 
+        ~network_change_calculator()
         {
-            if (timer_ != -1)
+            if (timer_ != -1 && g_core)
                 g_core->stop_timer(timer_);
         }
 
@@ -53,7 +53,7 @@ namespace core
             notifier_ = _notifier;
         }
 
-        void on_ip_address_changed(connection_type type) 
+        void on_ip_address_changed(connection_type type)
         {
             assert(g_core->is_core_thread());
             pending_connection_type_ = type;
@@ -62,7 +62,7 @@ namespace core
             notify_after_delay(delay);
         }
 
-        void on_connection_type_changed(connection_type type) 
+        void on_connection_type_changed(connection_type type)
         {
             assert(g_core->is_core_thread());
             pending_connection_type_ = type;
@@ -78,7 +78,7 @@ namespace core
                 auto ptr_this = wr_this.lock();
                 if (!ptr_this)
                     return;
-                
+
                 g_core->stop_timer(ptr_this->timer_);
                 ptr_this->timer_ = -1;
                 ptr_this->notify();
@@ -90,10 +90,10 @@ namespace core
         }
 
     private:
-        void notify() 
+        void notify()
         {
             // Don't bother signaling about dead connections.
-            if (have_announced_ && (last_announced_connection_type_ == CONNECTION_NONE) && (pending_connection_type_ == CONNECTION_NONE)) 
+            if (have_announced_ && (last_announced_connection_type_ == CONNECTION_NONE) && (pending_connection_type_ == CONNECTION_NONE))
                 return;
 
             auto notifier = notifier_.lock();
@@ -102,7 +102,7 @@ namespace core
                 auto network_change_log = su::concat(connection_type_to_string(last_announced_connection_type_), " -> ", connection_type_to_string(pending_connection_type_));
                 if (pending_connection_type_ == CONNECTION_NONE && last_announced_connection_type_ != CONNECTION_NONE)
                 {
-                    notifier->notify_network_down(); 
+                    notifier->notify_network_down();
                     log_text(su::concat("Notify about network down: ", network_change_log));
                 }
                 else if (pending_connection_type_ != CONNECTION_NONE && last_announced_connection_type_ == CONNECTION_NONE)
@@ -119,7 +119,6 @@ namespace core
 
             have_announced_ = true;
             last_announced_connection_type_ = pending_connection_type_;
-            
         }
 
         const network_change_calculator_params params_;
@@ -145,7 +144,7 @@ namespace core
     }
 
     std::string_view network_change_notifier::connection_type_to_string(connection_type _type)
-    {        
+    {
         switch (_type)
         {
         case CONNECTION_UNKNOWN:
@@ -158,7 +157,7 @@ namespace core
             return "CONNECTION_NONE";
         default:
             return "[Error when detect connection type]";
-        }        
+        }
     }
 
     network_change_notifier::~network_change_notifier()
@@ -236,7 +235,7 @@ namespace core
         assert(g_core->is_core_thread());
         return get_current_connection_type() == CONNECTION_NONE;
     }
-    
+
 #if !defined(__linux__)
     network_change_notifier::connection_type network_change_notifier::connection_type_from_interfaces()
     {

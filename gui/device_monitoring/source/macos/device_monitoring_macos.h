@@ -9,6 +9,7 @@ namespace device {
 
 class DeviceMonitoringMacos : public DeviceMonitoringImpl
 {
+    Q_OBJECT
     void *_objcInstance;
 
 public:

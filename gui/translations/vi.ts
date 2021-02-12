@@ -982,18 +982,18 @@ Bạn có thể để lại phản hồi hoặc báo cáo lỗi tại đây:</tr
         <translation>Đã trả lời trạng thái: %1 %2</translation>
     </message>
     <message>
-        <source>You replied to status
-%2 %3
-%4
-%5 %6</source>
-        <translation>Bạn đã trả lời trạng thái
-%2 %3
-%4
-%5 %6</translation>
-    </message>
-    <message>
         <source>You replied to status: %1 %2</source>
         <translation>Trạng thái bạn đã trả lời: %1 %2</translation>
+    </message>
+    <message>
+        <source>You replied to status
+%1 %2
+%3
+%4 %5</source>
+        <translation>Bạn đã trả lời trạng thái
+%1 %2
+%3
+%4 %5</translation>
     </message>
 </context>
 <context>
@@ -3699,6 +3699,12 @@ Bạn có thể để lại phản hồi hoặc báo cáo lỗi tại đây:</tr
         <source>Block</source>
         <translation>Khóa</translation>
     </message>
+    <message>
+        <source>Pay attention
+to contact status</source>
+        <translation>Chú ý đến tình trạng
+tiếp xúc</translation>
+    </message>
 </context>
 <context>
     <name>placeholders</name>
@@ -6061,10 +6067,6 @@ Hãy chỉnh sửa số điện thoại và thử lại.</translation>
         <translation>Một tuần</translation>
     </message>
     <message>
-        <source>undefined time</source>
-        <translation>thời gian không xác định</translation>
-    </message>
-    <message>
         <source>%1 left</source>
         <translation>Chỉ còn %1</translation>
     </message>
@@ -6095,16 +6097,80 @@ Hãy chỉnh sửa số điện thoại và thử lại.</translation>
         <translation>Trạng thái của tôi</translation>
     </message>
     <message>
-        <source>No status</source>
-        <translation>Không có trạng thái</translation>
-    </message>
-    <message>
         <source>Status timing</source>
         <translation>Thời hạn trạng thái</translation>
     </message>
     <message>
         <source>Close</source>
         <translation>Đóng</translation>
+    </message>
+    <message>
+        <source>Choose unique status</source>
+        <translation>Chọn một trạng thái duy nhất</translation>
+    </message>
+    <message>
+        <source>Back</source>
+        <translation>Trở lại</translation>
+    </message>
+    <message>
+        <source>Done</source>
+        <translation>Làm xong</translation>
+    </message>
+    <message>
+        <source>Maximum length - %1 symbols</source>
+        <translation>Độ dài tối đa -%1 ký hiệu</translation>
+    </message>
+    <message>
+        <source>Status search</source>
+        <translation>Tìm kiếm trạng thái</translation>
+    </message>
+    <message>
+        <source>SELECT STATUS</source>
+        <translation>CHỌN TRẠNG THÁI</translation>
+    </message>
+    <message>
+        <source>Select custom status</source>
+        <translation>Chọn trạng thái tùy chỉnh</translation>
+    </message>
+    <message>
+        <source>Select custom time</source>
+        <translation>Chọn thời gian tùy chỉnh</translation>
+    </message>
+    <message>
+        <source>Status is set for %1</source>
+        <translation>Trạng thái được đặt cho %1</translation>
+    </message>
+    <message>
+        <source>Status is set</source>
+        <translation>Bộ trạng thái</translation>
+    </message>
+    <message>
+        <source>Enter status text</source>
+        <translation>Nhập văn bản trạng thái</translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation>Tìm kiếm</translation>
+    </message>
+    <message>
+        <source>Status duration</source>
+        <translation>Thời hạn trạng thái</translation>
+    </message>
+    <message>
+        <source>Date</source>
+        <translation>ngày</translation>
+    </message>
+    <message>
+        <source>dd.mm.yyyy</source>
+        <translation>đ.mm.yyyy</translation>
+    </message>
+    <message>
+        <source>Time</source>
+        <translation>Thời gian</translation>
+    </message>
+    <message>
+        <source>hh:mm</source>
+        <translation>hh:mm</translation>
     </message>
 </context>
 <context>
@@ -6385,10 +6451,6 @@ Hãy chỉnh sửa số điện thoại và thử lại.</translation>
         <translation>Cuộc gọi đến</translation>
     </message>
     <message>
-        <source>Settings</source>
-        <translation>Cài đặt</translation>
-    </message>
-    <message>
         <source>Add to call</source>
         <translation>Thêm vào cuộc gọi</translation>
     </message>
@@ -6464,6 +6526,22 @@ with click</source>
 hoặc mở cuộc gọi
 bằng cách nhấp chuột</translation>
     </message>
+    <message>
+        <source>VOICE</source>
+        <translation>TIẾNG NÓI</translation>
+    </message>
+    <message>
+        <source>Connecting...</source>
+        <translation>Kết nối...</translation>
+    </message>
+    <message>
+        <source>Calling</source>
+        <translation>Gọi</translation>
+    </message>
+    <message>
+        <source>Busy</source>
+        <translation>Bận</translation>
+    </message>
 </context>
 <context>
     <name>voip_video_panel</name>
@@ -6490,14 +6568,6 @@ bằng cách nhấp chuột</translation>
     <message>
         <source>Settings</source>
         <translation>Cài đặt</translation>
-    </message>
-    <message>
-        <source>Show all</source>
-        <translation>Hiển thị tất cả</translation>
-    </message>
-    <message>
-        <source>Show one</source>
-        <translation>Hiển thị một</translation>
     </message>
     <message>
         <source>Stop screen sharing</source>

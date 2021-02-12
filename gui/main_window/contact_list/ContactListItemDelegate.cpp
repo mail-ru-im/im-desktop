@@ -458,7 +458,7 @@ namespace Ui
 
             if (drawStatus)
             {
-                contactStatus_->elide(maxWidth, TextRendering::ELideType::FAST);
+                contactStatus_->elide(maxWidth, TextRendering::ElideType::FAST);
                 contactStatus_->setOffsets(contactList.getContactNameX(params_.leftMargin_), _y + contactName_->cachedSize().height() + Utils::scale_value(8));
                 contactStatus_->draw(_painter, TextRendering::VerPosition::MIDDLE);
             }

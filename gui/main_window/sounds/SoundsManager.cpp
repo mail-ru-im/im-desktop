@@ -219,7 +219,8 @@ namespace Ui
 
         connect(&Utils::InterConnector::instance(), &Utils::InterConnector::historyControlReady, this, &SoundsManager::contactChanged);
 
-        connect(this, &SoundsManager::deviceListChangedInternal, this, &SoundsManager::onDeviceListChanged);
+        // since deviceListChangedInternal is in main thread now, postpone reinit openal
+        connect(this, &SoundsManager::deviceListChangedInternal, this, &SoundsManager::onDeviceListChanged, Qt::QueuedConnection);
 
         deviceMonitoring_ = device::DeviceMonitoringModule::CreateDeviceMonitoring();
         if (deviceMonitoring_)

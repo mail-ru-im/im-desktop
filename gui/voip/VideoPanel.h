@@ -259,6 +259,7 @@ namespace Ui
         bool isParentMinimizedFromHere_;
         bool isBigConference_;
         bool isMasksAllowed_;
+        bool isAddButtonEnabled_ = false;
 
         Qt::WindowStates prevParentState_ = Qt::WindowNoState;
     };

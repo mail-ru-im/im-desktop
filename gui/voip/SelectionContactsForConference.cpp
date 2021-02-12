@@ -47,7 +47,7 @@ namespace Ui
 
         memberLabel_ = new QLabel(getLabelCaption(), membersLabelHost_);
         memberLabel_->setContentsMargins(0, 0, 0, 0);
-        memberLabel_->setStyleSheet(qsl("color:") %Styling::getParameters().getColorHex(Styling::StyleVariable::TEXT_SOLID));
+        memberLabel_->setStyleSheet(u"color:" % Styling::getParameters().getColorHex(Styling::StyleVariable::TEXT_SOLID));
         memberLabel_->setFont(Fonts::appFontScaled(12, Fonts::FontWeight::SemiBold));
         Testing::setAccessibleName(memberLabel_, qsl("AS SelectionContactsForConference memberLabel"));
 
@@ -95,7 +95,7 @@ namespace Ui
         othersLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
         othersLabel->setContentsMargins(Utils::scale_value(16), Utils::scale_value(12), Utils::scale_value(20), Utils::scale_value(4));
         othersLabel->setMinimumHeight(2 * Utils::scale_value(12) + Utils::scale_value(4)); //Qt ignores our Margins if zoom is 200%. This line fix this problem.
-        othersLabel->setStyleSheet(qsl("color:") %Styling::getParameters().getColorHex(Styling::StyleVariable::TEXT_SOLID));
+        othersLabel->setStyleSheet(u"color:" % Styling::getParameters().getColorHex(Styling::StyleVariable::TEXT_SOLID));
         othersLabel->setFont(Fonts::appFontScaled(12, Fonts::FontWeight::SemiBold));
         Testing::setAccessibleName(othersLabel, qsl("AS SelectionContactsForConference othersLabel"));
 

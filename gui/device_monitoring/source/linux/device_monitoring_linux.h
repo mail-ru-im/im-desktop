@@ -7,6 +7,7 @@ namespace device {
 
 class DeviceMonitoringLinux : public DeviceMonitoringImpl
 {
+    Q_OBJECT
 public:
     DeviceMonitoringLinux();
     virtual ~DeviceMonitoringLinux();

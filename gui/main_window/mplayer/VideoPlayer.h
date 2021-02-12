@@ -304,15 +304,17 @@ namespace Ui
         void copyLink();
 
     protected:
+        bool eventFilter(QObject* _obj, QEvent* _event) override;
+        void mouseReleaseEvent(QMouseEvent* _event) override;
+        void mouseDoubleClickEvent(QMouseEvent* _event) override;
+        void paintEvent(QPaintEvent* _event) override;
+        void wheelEvent(QWheelEvent* _event) override;
+        void keyPressEvent(QKeyEvent* _event) override;
+        void mouseMoveEvent(QMouseEvent* _event) override;
+        void resizeEvent(QResizeEvent* _event) override;
 
-        virtual bool eventFilter(QObject* _obj, QEvent* _event) override;
-        virtual void mouseReleaseEvent(QMouseEvent* _event) override;
-        virtual void mouseDoubleClickEvent(QMouseEvent* _event) override;
-        virtual void paintEvent(QPaintEvent* _event) override;
-        virtual void wheelEvent(QWheelEvent* _event) override;
-        virtual void keyPressEvent(QKeyEvent* _event) override;
-        virtual void mouseMoveEvent(QMouseEvent* _event) override;
     private:
+        void updateControlsGeometry();
         void showControlPanel();
         void changeFullScreen();
 

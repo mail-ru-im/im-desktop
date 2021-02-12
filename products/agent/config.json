@@ -60,7 +60,6 @@
     "updater_main_instance_mutex_win": "{E9B7BB24-D200-401E-B797-E9A85796D506}",
     "company_name": "Mail.ru LLC",
     "app_user_model_win": "MailRu.Agent.Client",
-    "flurry_key": "VY9H4S95R8C888V7ZXKG",
     "feedback_version_id": "fb.question.7768",
     "feedback_platform_id": "fb.question.7769",
     "feedback_aimid_id": "fb.question.7767",
@@ -85,7 +84,8 @@
     "support_uin": "",
     "mytracker_app_id_win": "53242",
     "mytracker_app_id_mac": "53243",
-    "mytracker_app_id_linux": "53244"
+    "mytracker_app_id_linux": "53244",
+    "status_banner_emoji_csv": ""
   },
   "features": {
     "feedback_selected": true,

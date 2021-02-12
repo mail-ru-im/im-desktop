@@ -40,11 +40,12 @@ namespace Ui
             static const TextChunk Empty;
 
             TextChunk();
-            TextChunk(const Type type, QString _text, QString imageType, const int32_t durationSec);
+            TextChunk(Type _type, QString _text, QString _imageType = {}, int32_t _durationSec = -1);
 
             int32_t length() const;
 
-            TextChunk mergeWith(const TextChunk &chunk) const;
+            TextChunk mergeWith(const TextChunk& chunk) const;
+
 
             Type Type_;
 

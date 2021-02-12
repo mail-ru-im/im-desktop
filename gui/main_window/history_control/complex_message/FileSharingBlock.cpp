@@ -862,7 +862,7 @@ void FileSharingBlock::drawPreview(QPainter &p, const QRect &previewRect, const 
                 bRect.setHeight(r.height());
             }
 
-            if ((getParentComplexMessage() && getParentComplexMessage()->maxEffectiveBLockWidth() > effectiveBlockWidth()) || MediaUtils::isNarrowMedia(originSizeScaled()) || MediaUtils::isWideMedia(originSizeScaled()))
+            if ((getParentComplexMessage() && getParentComplexMessage()->maxEffectiveBlockWidth() > effectiveBlockWidth()) || MediaUtils::isNarrowMedia(originSizeScaled()) || MediaUtils::isWideMedia(originSizeScaled()))
                 p.drawPixmap(r, Background_, bRect);
         }
 

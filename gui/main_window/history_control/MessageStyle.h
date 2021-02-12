@@ -4,7 +4,7 @@ namespace Ui::MessageStyle
 {
     QFont getTextFont();
     int getTextLineSpacing();
-    QFont getMarkdownFont();
+    QFont getTextMonospaceFont();
     QFont getImagePreviewLinkFont();
 
     QColor getTextColor();

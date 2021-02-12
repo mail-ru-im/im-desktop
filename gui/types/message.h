@@ -404,7 +404,7 @@ namespace Data
 
     struct Quote
     {
-        enum Type
+        enum class Type
         {
             text = 1,
             link = 0,
@@ -497,20 +497,20 @@ namespace Data
     MessagesResult UnserializeMessageBuddies(core::coll_helper* helper, const QString &myAimid);
 
     void unserializeMessages(
-        core::iarray* msgArray,
-        const QString &aimId,
-        const QString &myAimid,
-        const qint64 theirs_last_delivered,
-        const qint64 theirs_last_read,
-        Out Data::MessageBuddies &messages);
+        core::iarray* _msgArray,
+        const QString& _aimId,
+        const QString& _myAimid,
+        const qint64 _theirs_last_delivered,
+        const qint64 _theirs_last_read,
+        Out Data::MessageBuddies& _messages);
 
 
     Data::MessageBuddySptr unserializeMessage(
-        core::coll_helper &msgColl,
-        const QString &aimId,
-        const QString &myAimid,
-        const qint64 theirs_last_delivered,
-        const qint64 theirs_last_read);
+        core::coll_helper& _msgColl,
+        const QString& _aimId,
+        const QString& _myAimid,
+        const qint64 _theirs_last_delivered,
+        const qint64 _theirs_last_read);
 
     struct ServerMessagesIds
     {

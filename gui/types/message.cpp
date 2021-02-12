@@ -29,7 +29,7 @@ namespace
     constexpr std::chrono::seconds timeDiffForIndent = std::chrono::minutes(10);
     bool isTimeGapBetween(const Data::MessageBuddy& _first, const Data::MessageBuddy& _second)
     {
-        return  std::abs(_first.GetTime() - _second.GetTime()) >= timeDiffForIndent.count();
+        return std::abs(_first.GetTime() - _second.GetTime()) >= timeDiffForIndent.count();
     }
 }
 
@@ -192,16 +192,12 @@ namespace Data
         if (Outgoing_)
         {
             if (!HasId() && InternalId_.isEmpty())
-            {
                 return false;
-            }
         }
         else
         {
             if (!InternalId_.isEmpty())
-            {
                 return false;
-            }
         }
 
         return true;
@@ -213,10 +209,7 @@ namespace Data
         assert(Type_ < core::message_type::max);
 
         if (FileSharing_)
-        {
-            const auto isGif = FileSharing_->getContentType().is_gif();
-            return isGif;
-        }
+            return FileSharing_->getContentType().is_gif();
 
         return false;
     }
@@ -227,10 +220,7 @@ namespace Data
         assert(Type_ < core::message_type::max);
 
         if (FileSharing_)
-        {
-            const auto isImage = FileSharing_->getContentType().is_image();
-            return isImage;
-        }
+            return FileSharing_->getContentType().is_image();
 
         return false;
     }
@@ -241,10 +231,7 @@ namespace Data
         assert(Type_ < core::message_type::max);
 
         if (FileSharing_)
-        {
-            const auto isVideo = FileSharing_->getContentType().is_video();
-            return isVideo;
-        }
+            return FileSharing_->getContentType().is_video();
 
         return false;
     }
@@ -395,9 +382,7 @@ namespace Data
     bool MessageBuddy::IsOutgoingVoip() const
     {
         if (!VoipEvent_)
-        {
             return IsOutgoing();
-        }
 
         return !VoipEvent_->isIncomingCall();
     }
@@ -894,68 +879,68 @@ namespace Data
     }
 
     Data::MessageBuddySptr unserializeMessage(
-        core::coll_helper &msgColl,
-        const QString &aimId,
-        const QString &myAimid,
-        const qint64 theirs_last_delivered,
-        const qint64 theirs_last_read)
+        core::coll_helper& _msgColl,
+        const QString& _aimId,
+        const QString& _myAimid,
+        const qint64 _theirs_last_delivered,
+        const qint64 _theirs_last_read)
     {
         auto message = std::make_shared<Data::MessageBuddy>();
 
-        message->Id_ = msgColl.get_value_as_int64("id");
-        message->InternalId_ = QString::fromUtf8(msgColl.get_value_as_string("internal_id"));
-        message->Prev_ = msgColl.get_value_as_int64("prev_id");
-        message->AimId_ = aimId;
-        message->SetOutgoing(msgColl.get<bool>("outgoing"));
-        message->SetDeleted(msgColl.get<bool>("deleted"));
-        message->SetRestoredPatch(msgColl.get<bool>("restored_patch"));
+        message->Id_ = _msgColl.get_value_as_int64("id");
+        message->InternalId_ = QString::fromUtf8(_msgColl.get_value_as_string("internal_id"));
+        message->Prev_ = _msgColl.get_value_as_int64("prev_id");
+        message->AimId_ = _aimId;
+        message->SetOutgoing(_msgColl.get<bool>("outgoing"));
+        message->SetDeleted(_msgColl.get<bool>("deleted"));
+        message->SetRestoredPatch(_msgColl.get<bool>("restored_patch"));
         common::tools::patch_version patch_version;
-        patch_version.set_version(std::string_view(msgColl.get_value_as_string("update_patch_version", "")));
-        patch_version.set_offline_version(msgColl.get_value_as_int("offline_version"));
+        patch_version.set_version(std::string_view(_msgColl.get_value_as_string("update_patch_version", "")));
+        patch_version.set_offline_version(_msgColl.get_value_as_int("offline_version"));
         message->SetUpdatePatchVersion(patch_version);
 
         if (message->IsOutgoing() && (message->Id_ != -1))
-            message->Unread_ = (message->Id_ > theirs_last_read);
+            message->Unread_ = (message->Id_ > _theirs_last_read);
 
         if (message->Id_ == -1 && !message->InternalId_.isEmpty())
             message->PendingId_ = Data::MessageBuddy::makePendingId(message->InternalId_);
 
-        const auto timestamp = msgColl.get<int32_t>("time");
+        const auto timestamp = _msgColl.get<int32_t>("time");
 
         message->SetTime(timestamp);
-        if (msgColl->is_value_exist("text"))
-            message->SetText(QString::fromUtf8(msgColl.get_value_as_string("text")));
+        if (_msgColl->is_value_exist("text"))
+            message->SetText(QString::fromUtf8(_msgColl.get_value_as_string("text")));
         message->SetDate(QDateTime::fromSecsSinceEpoch(message->GetTime()).date());
-        if (msgColl->is_value_exist("description"))
-            message->SetDescription(QString::fromUtf8(msgColl.get_value_as_string("description")));
-        if (msgColl->is_value_exist("url"))
-            message->SetUrl(QString::fromUtf8(msgColl.get_value_as_string("url")));
+        if (_msgColl->is_value_exist("description"))
+            message->SetDescription(QString::fromUtf8(_msgColl.get_value_as_string("description")));
+        if (_msgColl->is_value_exist("url"))
+            message->SetUrl(QString::fromUtf8(_msgColl.get_value_as_string("url")));
 
         __TRACE(
             "delivery",
             "unserialized message\n" <<
             "    id=                    <" << message->Id_ << ">\n" <<
-            "    last_delivered=        <" << theirs_last_delivered << ">\n" <<
+            "    last_delivered=        <" << _theirs_last_delivered << ">\n" <<
             "    outgoing=<" << logutils::yn(message->IsOutgoing()) << ">\n" <<
             "    notification_key=<" << message->InternalId_ << ">\n" <<
             "    delivered_to_client=<" << logutils::yn(message->IsDeliveredToClient()) << ">\n" <<
             "    delivered_to_server=<" << logutils::yn(message->Id_ != -1) << ">");
 
-        if (msgColl.is_value_exist("chat"))
+        if (_msgColl.is_value_exist("chat"))
         {
-            core::coll_helper chat(msgColl.get_value_as_collection("chat"), false);
+            core::coll_helper chat(_msgColl.get_value_as_collection("chat"), false);
             if (!chat->empty())
             {
                 message->Chat_ = true;
                 const QString sender = QString::fromUtf8(chat.get_value_as_string("sender"));
                 message->SetChatSender(sender);
                 message->ChatFriendly_ = QString::fromUtf8(chat.get_value_as_string("friendly"));
-                if (message->ChatFriendly_.isEmpty() && sender != myAimid)
+                if (message->ChatFriendly_.isEmpty() && sender != _myAimid)
                     message->ChatFriendly_ = sender;
             }
         }
 
-        if (msgColl->is_value_exist("unsupported") && msgColl.get_value_as_bool("unsupported"))
+        if (_msgColl->is_value_exist("unsupported") && _msgColl.get_value_as_bool("unsupported"))
         {
             const auto url = Features::updateAppUrl();
             auto text = QT_TRANSLATE_NOOP("message", "The message is not supported on your version of ICQ. Update the app to see the message");
@@ -966,25 +951,25 @@ namespace Data
             return message;
         }
 
-        if (msgColl.is_value_exist("file_sharing"))
+        if (_msgColl.is_value_exist("file_sharing"))
         {
-            core::coll_helper file_sharing(msgColl.get_value_as_collection("file_sharing"), false);
+            core::coll_helper file_sharing(_msgColl.get_value_as_collection("file_sharing"), false);
 
             message->SetType(core::message_type::file_sharing);
             message->SetFileSharing(std::make_shared<HistoryControl::FileSharingInfo>(file_sharing));
         }
 
-        if (msgColl.is_value_exist("sticker"))
+        if (_msgColl.is_value_exist("sticker"))
         {
-            core::coll_helper sticker(msgColl.get_value_as_collection("sticker"), false);
+            core::coll_helper sticker(_msgColl.get_value_as_collection("sticker"), false);
 
             message->SetType(core::message_type::sticker);
             message->SetSticker(HistoryControl::StickerInfo::Make(sticker));
         }
 
-        if (msgColl.is_value_exist("voip"))
+        if (_msgColl.is_value_exist("voip"))
         {
-            core::coll_helper voip(msgColl.get_value_as_collection("voip"), false);
+            core::coll_helper voip(_msgColl.get_value_as_collection("voip"), false);
 
             message->SetType(core::message_type::voip_event);
             message->SetVoipEvent(
@@ -992,11 +977,11 @@ namespace Data
             );
         }
 
-        if (msgColl.is_value_exist("chat_event"))
+        if (_msgColl.is_value_exist("chat_event"))
         {
             assert(!message->IsChatEvent());
 
-            core::coll_helper chat_event(msgColl.get_value_as_collection("chat_event"), false);
+            core::coll_helper chat_event(_msgColl.get_value_as_collection("chat_event"), false);
 
             message->SetType(core::message_type::chat_event);
 
@@ -1004,15 +989,15 @@ namespace Data
                 HistoryControl::ChatEventInfo::make(
                     chat_event,
                     message->IsOutgoing(),
-                    myAimid,
+                    _myAimid,
                     message->AimId_
                 )
             );
         }
 
-        if (msgColl->is_value_exist("quotes"))
+        if (_msgColl->is_value_exist("quotes"))
         {
-            core::iarray* quotes = msgColl.get_value_as_array("quotes");
+            core::iarray* quotes = _msgColl.get_value_as_array("quotes");
             const auto size = quotes->size();
             message->Quotes_.reserve(size);
             for (auto i = 0; i < size; ++i)
@@ -1024,9 +1009,9 @@ namespace Data
             }
         }
 
-        if (msgColl->is_value_exist("mentions"))
+        if (_msgColl->is_value_exist("mentions"))
         {
-            core::iarray* ment = msgColl.get_value_as_array("mentions");
+            core::iarray* ment = _msgColl.get_value_as_array("mentions");
             for (auto i = 0; i < ment->size(); ++i)
             {
                 const auto coll = ment->get_at(i)->get_as_collection();
@@ -1041,9 +1026,9 @@ namespace Data
             }
         }
 
-        if (msgColl->is_value_exist("snippets"))
+        if (_msgColl->is_value_exist("snippets"))
         {
-            core::iarray* snippets = msgColl.get_value_as_array("snippets");
+            core::iarray* snippets = _msgColl.get_value_as_array("snippets");
             const auto size = snippets->size();
             message->snippets_.reserve(size);
             for (auto i = 0; i < size; ++i)
@@ -1054,41 +1039,41 @@ namespace Data
             }
         }
 
-        if (msgColl->is_value_exist("shared_contact"))
+        if (_msgColl->is_value_exist("shared_contact"))
         {
-            auto contact_coll = msgColl.get_value_as_collection("shared_contact");
+            auto contact_coll = _msgColl.get_value_as_collection("shared_contact");
             SharedContactData contact;
             contact.unserialize(contact_coll);
             message->sharedContact_ = std::move(contact);
         }
 
-        if (msgColl->is_value_exist("geo"))
+        if (_msgColl->is_value_exist("geo"))
         {
-            auto geo_coll = msgColl.get_value_as_collection("geo");
+            auto geo_coll = _msgColl.get_value_as_collection("geo");
             GeoData geo;
             geo.unserialize(geo_coll);
             message->geo_ = std::move(geo);
         }
 
-        if (msgColl->is_value_exist("poll"))
+        if (_msgColl->is_value_exist("poll"))
         {
-            auto poll_coll = msgColl.get_value_as_collection("poll");
+            auto poll_coll = _msgColl.get_value_as_collection("poll");
             PollData poll;
             poll.unserialize(poll_coll);
             message->poll_ = std::move(poll);
         }
 
-        if (msgColl->is_value_exist("reactions"))
+        if (_msgColl->is_value_exist("reactions"))
         {
-            auto reactions_coll = msgColl.get_value_as_collection("reactions");
+            auto reactions_coll = _msgColl.get_value_as_collection("reactions");
             MessageReactionsData reactions;
             reactions.unserialize(reactions_coll);
             message->reactions_ = std::move(reactions);
         }
 
-        if (msgColl->is_value_exist("buttons"))
+        if (_msgColl->is_value_exist("buttons"))
         {
-            core::iarray* buttons = msgColl.get_value_as_array("buttons");
+            core::iarray* buttons = _msgColl.get_value_as_array("buttons");
             const auto size = buttons->size();
             message->buttons_.reserve(size);
             for (auto i = 0; i < size; ++i)
@@ -1105,10 +1090,8 @@ namespace Data
             }
         }
 
-        if (msgColl->is_value_exist("hide_edit"))
-        {
-            message->setHideEdit(msgColl.get_value_as_bool("hide_edit"));
-        }
+        if (_msgColl->is_value_exist("hide_edit"))
+            message->setHideEdit(_msgColl.get_value_as_bool("hide_edit"));
 
         return message;
     }
@@ -1383,33 +1366,33 @@ namespace Data
 namespace Data
 {
     void unserializeMessages(
-        core::iarray* msgArray,
-        const QString &aimId,
-        const QString &myAimid,
-        const qint64 theirs_last_delivered,
-        const qint64 theirs_last_read,
+        core::iarray* _msgArray,
+        const QString& _aimId,
+        const QString& _myAimid,
+        const qint64 _theirs_last_delivered,
+        const qint64 _theirs_last_read,
         Out Data::MessageBuddies &messages)
     {
-        assert(!aimId.isEmpty());
-        assert(!myAimid.isEmpty());
-        assert(msgArray);
+        assert(!_aimId.isEmpty());
+        assert(!_myAimid.isEmpty());
+        assert(_msgArray);
 
         __TRACE(
             "delivery",
             "unserializing messages collection\n" <<
-            "    size=<" << msgArray->size() << ">\n" <<
-            "    last_delivered=<" << theirs_last_delivered << ">");
+            "    size=<" << _msgArray->size() << ">\n" <<
+            "    last_delivered=<" << _theirs_last_delivered << ">");
 
-        const auto size = msgArray->size();
+        const auto size = _msgArray->size();
         messages.reserve(messages.size() + size);
         for (int32_t i = 0; i < size; ++i)
         {
             core::coll_helper value(
-                msgArray->get_at(i)->get_as_collection(),
+                _msgArray->get_at(i)->get_as_collection(),
                 false
             );
 
-            messages.push_back(Data::unserializeMessage(value, aimId, myAimid, theirs_last_delivered, theirs_last_read));
+            messages.push_back(Data::unserializeMessage(value, _aimId, _myAimid, _theirs_last_delivered, _theirs_last_read));
         }
     }
 

@@ -7,6 +7,7 @@
 #include "../../controls/SemitransparentWindowAnimated.h"
 #include "../../utils/InterConnector.h"
 #include "../../utils/utils.h"
+#include "../../utils/animations/SlideController.h"
 #include "../../styles/ThemeParameters.h"
 #include "../MainPage.h"
 
@@ -98,7 +99,7 @@ namespace Ui
         Sidebar* qptr_;
         SemitransparentWindowAnimated* semiWindow_;
         QVariantAnimation* animSidebar_;
-        SlideController* slideController_;
+        Utils::SlideController* slideController_;
         FrameCountMode frameCountMode_;
         bool needShadow_;
 
@@ -108,7 +109,7 @@ namespace Ui
             : qptr_(_q)
             , semiWindow_(new SemitransparentWindowAnimated(_parent, 0))
             , animSidebar_(new QVariantAnimation(_q))
-            , slideController_(new SlideController(_q))
+            , slideController_(new Utils::SlideController(_q))
             , frameCountMode_(FrameCountMode::_1)
             , needShadow_(true)
         {
@@ -222,6 +223,7 @@ namespace Ui
 
         void initializeSlideController()
         {
+            using Utils::SlideController;
             slideController_->setWidget(qptr_);
             slideController_->setDuration(kFadeDuration);
             slideController_->setCachingPolicy(SlideController::CachingPolicy::CacheNone);

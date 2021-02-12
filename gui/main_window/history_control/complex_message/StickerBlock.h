@@ -18,7 +18,7 @@ class StickerBlock final : public GenericBlock
     Q_OBJECT
 
 public:
-    StickerBlock(ComplexMessageItem *_parent, const HistoryControl::StickerInfoSptr& _info);
+    StickerBlock(ComplexMessageItem* _parent, const HistoryControl::StickerInfoSptr& _info);
 
     virtual ~StickerBlock() override;
 

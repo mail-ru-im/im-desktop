@@ -56,6 +56,11 @@ namespace Ui
             int getSetId() const noexcept { return setId_; }
 
             void setPixmap(QPixmap _pixmap);
+            void setHoveredPixmap(QPixmap _pixmap);
+            void setCheckedPixmap(QPixmap _pixmap);
+            void setHoveredBackgroundColor(const QColor& _color);
+            void setCheckedBackgroundColor(const QColor& _color);
+            void setCheckedBorderColor(const QColor& _color);
             void setLottie(const QString& _path);
 
             void onVisibilityChanged(bool _visible);
@@ -68,13 +73,19 @@ namespace Ui
 
         private:
             QRect iconRect() const;
+            const QPixmap& currentPixmap() const;
 
         private:
             AttachedView attachedView_ = nullptr;
             bool fixed_ = false;
             int32_t setId_ = -1;
             QPixmap pixmap_;
+            QPixmap hoveredPixmap_;
+            QPixmap checkedPixmap_;
             LottiePlayer* lottie_ = nullptr;
+            QColor hoveredBackgroundColor_;
+            QColor checkedBackgroundColor_;
+            QColor checkedBorderColor_;
         };
 
         //////////////////////////////////////////////////////////////////////////

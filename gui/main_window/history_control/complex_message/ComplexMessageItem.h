@@ -243,7 +243,7 @@ public:
 
     int desiredWidth() const;
 
-    int maxEffectiveBLockWidth() const;
+    int maxEffectiveBlockWidth() const;
 
     int buttonsDesiredWidth() const;
 

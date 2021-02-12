@@ -39,6 +39,7 @@ namespace core
 #define WIM_CAP_GROUP_SUBSCRIPTION "1f99494e76cbc880215d6aeab8e42268"
 #define WIM_CAP_RECENT_CALLS       "0946135d4c7f11d18222444553540000"
 #define WIM_CAP_REACTIONS          "a20c362cd4944b6ea3d1e77642201fd8"
+#define WIM_CAP_CUSTOM_STATUSES    "2381B328-7AA4-4979-A9A2-573EA646B5DE"
 
 #define SAAB_SESSION_OLDER_THAN_AUTH_UPDATE          1010
 
@@ -280,6 +281,7 @@ namespace core
 
             virtual bool is_valid() const { return has_valid_token(); };
             virtual bool support_async_execution() const;
+            virtual bool support_partially_async_execution() const;
             virtual bool support_self_resending() const;
             virtual std::string_view get_method() const = 0;
 

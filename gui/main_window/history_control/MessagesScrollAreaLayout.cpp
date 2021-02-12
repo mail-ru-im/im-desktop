@@ -652,6 +652,11 @@ namespace Ui
         std::for_each(toRemove.begin(), toRemove.end(), [](auto x) { x->deleteLater(); });
     }
 
+    bool MessagesScrollAreaLayout::hasItemsOfType(Logic::control_type _type) const
+    {
+        return std::any_of(LayoutItems_.begin(), LayoutItems_.end(), [_type](const auto& x) { return x->Key_.getControlType() == _type; });
+    }
+
     bool MessagesScrollAreaLayout::removeItemAtEnd(Logic::control_type _type)
     {
         const auto it = std::find_if(LayoutItems_.begin(), LayoutItems_.end(), [](const auto& x) { return x->Key_.getControlType() != Logic::control_type::ct_date; }); // find first non-date item

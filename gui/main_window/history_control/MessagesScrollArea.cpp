@@ -804,7 +804,7 @@ namespace Ui
     {
         Data::QuotesVec result;
 
-        auto isQuote = [](const Data::Quote& _quote) { return _quote.type_ == Data::Quote::quote && _quote.hasReply_; };
+        auto isQuote = [](const Data::Quote& _quote) { return _quote.type_ == Data::Quote::Type::quote && _quote.hasReply_; };
 
         for (const auto&[_, info] : selected_)
         {

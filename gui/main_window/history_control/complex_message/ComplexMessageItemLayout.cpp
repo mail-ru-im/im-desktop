@@ -63,23 +63,16 @@ QRect ComplexMessageItemLayout::evaluateBlocksBubbleGeometry(const bool isMargin
 
 QRect ComplexMessageItemLayout::evaluateBlocksContainerLtr(const QRect& _avatarRect, const QRect& _widgetContentLtr) const
 {
-    auto left = 0;
-
-    if (isOutgoingPosition() || !_avatarRect.isValid())
-        left = _widgetContentLtr.left();
-    else
-        left = _avatarRect.right() + 1 + MessageStyle::getAvatarRightMargin();
-
+    auto left = isOutgoingPosition() || !_avatarRect.isValid()
+        ? _widgetContentLtr.left()
+        : _avatarRect.right() + 1 + MessageStyle::getAvatarRightMargin();
     auto right = _widgetContentLtr.right();
-
     assert(right > left);
 
-    auto desired = Item_->desiredWidth();
-    if (desired != 0)
+    if (auto desired = Item_->desiredWidth(); desired != 0)
     {
-        auto cur = right - left;
-        auto diff = cur - desired;
-        if (diff > 0)
+        const auto cur = right - left;
+        if (auto diff = cur - desired; diff > 0)
         {
             if (isOutgoingPosition())
                 left += diff;
@@ -94,6 +87,8 @@ QRect ComplexMessageItemLayout::evaluateBlocksContainerLtr(const QRect& _avatarR
     blocksContainerLtr.setRight(right);
     blocksContainerLtr.setTop(_widgetContentLtr.top());
     blocksContainerLtr.setHeight(_widgetContentLtr.height());
+
+    assert(blocksContainerLtr.width() != 0);
 
     return blocksContainerLtr;
 }
@@ -438,7 +433,7 @@ QRect ComplexMessageItemLayout::setBlocksGeometry(
             }
             else
             {
-                QRect lastBlockGeometry = lastBlock->getBlockGeometry();
+                const auto lastBlockGeometry = lastBlock->getBlockGeometry();
                 if (blocks.size() > 1)
                 {
                     const bool enoughWidth = blocksWidth - lastBlockGeometry.width() > tw;

@@ -1004,19 +1004,7 @@ namespace Ui
 
         assert(controlPanel_);
 
-        QRect panelGeom;
-
-        if (controlPanel_->isSeparateWindowMode())
-        {
-            panelGeom = geometry();
-        }
-        else
-        {
-            panelGeom = rect();
-            panelGeom.setTop(panelGeom.bottom() - getControlPanelMaxHeight(controlPanel_->isFullscreen()));
-        }
-
-        controlPanel_->setGeometry(panelGeom);
+        updateControlsGeometry();
 
         if (_isShow)
         {
@@ -1037,6 +1025,25 @@ namespace Ui
     void DialogPlayer::playerMouseMoved()
     {
         showControlPanel();
+    }
+
+    void DialogPlayer::updateControlsGeometry()
+    {
+        if (!controlPanel_)
+            return;
+
+        QRect panelGeom;
+        if (controlPanel_->isSeparateWindowMode())
+        {
+            panelGeom = geometry();
+        }
+        else
+        {
+            panelGeom = rect();
+            panelGeom.setTop(panelGeom.bottom() - getControlPanelMaxHeight(controlPanel_->isFullscreen()));
+        }
+
+        controlPanel_->setGeometry(panelGeom);
     }
 
     void DialogPlayer::showControlPanel()
@@ -1590,6 +1597,12 @@ namespace Ui
     {
         playerMouseMoved();
         QWidget::mouseMoveEvent(_event);
+    }
+
+    void DialogPlayer::resizeEvent(QResizeEvent* _event)
+    {
+        updateControlsGeometry();
+        QWidget::resizeEvent(_event);
     }
 
     std::unique_ptr<FrameRenderer> DialogPlayer::createRenderer(QWidget* _parent, bool _useGPU, bool _dialogMode)

@@ -206,6 +206,10 @@ namespace Ui
         connect(Logic::getContactListModel(), &Logic::ContactListModel::contactChanged, this, &HistoryControl::updateUnreads);
 
         connect(Ui::GetDispatcher(), &Ui::core_dispatcher::suggestNotifyUser, this, &HistoryControl::suggestNotifyUser);
+
+        connect(Ui::GetDispatcher(), &Ui::core_dispatcher::externalUrlConfigUpdated, this, &HistoryControl::updateStatusBannerEmoji);
+        connect(&Utils::InterConnector::instance(), &Utils::InterConnector::omicronUpdated, this, &HistoryControl::updateStatusBannerEmoji);
+        updateStatusBannerEmoji();
     }
 
     HistoryControl::~HistoryControl() = default;
@@ -646,6 +650,13 @@ namespace Ui
             if (current_.isEmpty() || p->aimId() != current_)
                 p->suspendVisisbleItems();
         }
+    }
+
+    void HistoryControl::updateStatusBannerEmoji()
+    {
+        statusBannerEmoji_ = Features::statusBannerEmojis().split(ql1c(','), Qt::SkipEmptyParts);
+        for (auto& e : statusBannerEmoji_)
+            e = std::move(e).trimmed();
     }
 
     void HistoryControl::inputTyped()

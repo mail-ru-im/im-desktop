@@ -982,18 +982,18 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
         <translation>Durum yanıtlandı: %1 %2</translation>
     </message>
     <message>
-        <source>You replied to status
-%2 %3
-%4
-%5 %6</source>
-        <translation>Durumu yanıtladın
-%2 %3
-%4
-%5 %6</translation>
-    </message>
-    <message>
         <source>You replied to status: %1 %2</source>
         <translation>Durum yanıtladınız: %1 %2</translation>
+    </message>
+    <message>
+        <source>You replied to status
+%1 %2
+%3
+%4 %5</source>
+        <translation>Durumu yanıtladın
+%1 %2
+%3
+%4 %5</translation>
     </message>
 </context>
 <context>
@@ -3699,6 +3699,12 @@ Geri bildiriminizi bırakabilir veya burada bir hata bildirebilirsiniz:</transla
         <source>Block</source>
         <translation>Bloke et</translation>
     </message>
+    <message>
+        <source>Pay attention
+to contact status</source>
+        <translation>Duruma dikkat edin
+İletişim</translation>
+    </message>
 </context>
 <context>
     <name>placeholders</name>
@@ -6061,10 +6067,6 @@ Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
         <translation>Bir hafta</translation>
     </message>
     <message>
-        <source>undefined time</source>
-        <translation>Belirsiz zaman</translation>
-    </message>
-    <message>
         <source>%1 left</source>
         <translation>%1 kaldı</translation>
     </message>
@@ -6095,16 +6097,80 @@ Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
         <translation>Durumum</translation>
     </message>
     <message>
-        <source>No status</source>
-        <translation>Statü olmadan</translation>
-    </message>
-    <message>
         <source>Status timing</source>
         <translation>Durum terimi</translation>
     </message>
     <message>
         <source>Close</source>
         <translation>Kapat</translation>
+    </message>
+    <message>
+        <source>Choose unique status</source>
+        <translation>Benzersiz bir durum seçin</translation>
+    </message>
+    <message>
+        <source>Back</source>
+        <translation>Geri</translation>
+    </message>
+    <message>
+        <source>Done</source>
+        <translation>Bitti</translation>
+    </message>
+    <message>
+        <source>Maximum length - %1 symbols</source>
+        <translation>Maksimum uzunluk - %1 sembol</translation>
+    </message>
+    <message>
+        <source>Status search</source>
+        <translation>Durum araması</translation>
+    </message>
+    <message>
+        <source>SELECT STATUS</source>
+        <translation>DURUM SEÇ</translation>
+    </message>
+    <message>
+        <source>Select custom status</source>
+        <translation>Özel durumu seçin</translation>
+    </message>
+    <message>
+        <source>Select custom time</source>
+        <translation>Özel zaman seçin</translation>
+    </message>
+    <message>
+        <source>Status is set for %1</source>
+        <translation>Durum %1 olarak ayarlandı</translation>
+    </message>
+    <message>
+        <source>Status is set</source>
+        <translation>Durum seti</translation>
+    </message>
+    <message>
+        <source>Enter status text</source>
+        <translation>Durum metnini girin</translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation>Arama</translation>
+    </message>
+    <message>
+        <source>Status duration</source>
+        <translation>Durum süresi</translation>
+    </message>
+    <message>
+        <source>Date</source>
+        <translation>tarih</translation>
+    </message>
+    <message>
+        <source>dd.mm.yyyy</source>
+        <translation>gg.aa.yyyy</translation>
+    </message>
+    <message>
+        <source>Time</source>
+        <translation>Zaman</translation>
+    </message>
+    <message>
+        <source>hh:mm</source>
+        <translation>hh:mm</translation>
     </message>
 </context>
 <context>
@@ -6385,10 +6451,6 @@ Lütfen telefon numarasını düzenleyip tekrar deneyin.</translation>
         <translation>Gelen çağrı</translation>
     </message>
     <message>
-        <source>Settings</source>
-        <translation>Ayarlar</translation>
-    </message>
-    <message>
         <source>Add to call</source>
         <translation>Aramaya ekle</translation>
     </message>
@@ -6464,6 +6526,22 @@ with click</source>
 veya aramayı aç
 tıklama ile</translation>
     </message>
+    <message>
+        <source>VOICE</source>
+        <translation>SES</translation>
+    </message>
+    <message>
+        <source>Connecting...</source>
+        <translation>Bağ...</translation>
+    </message>
+    <message>
+        <source>Calling</source>
+        <translation>Aramak</translation>
+    </message>
+    <message>
+        <source>Busy</source>
+        <translation>Meşgul</translation>
+    </message>
 </context>
 <context>
     <name>voip_video_panel</name>
@@ -6490,14 +6568,6 @@ tıklama ile</translation>
     <message>
         <source>Settings</source>
         <translation>ayarlar</translation>
-    </message>
-    <message>
-        <source>Show all</source>
-        <translation>Tümünü göster</translation>
-    </message>
-    <message>
-        <source>Show one</source>
-        <translation>Birini göster</translation>
     </message>
     <message>
         <source>Stop screen sharing</source>

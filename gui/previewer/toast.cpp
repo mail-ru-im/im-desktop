@@ -941,7 +941,7 @@ void DownloadFinishedToast::mouseReleaseEvent(QMouseEvent * _event)
     if (clickPath || clickFile)
     {
         handleMouseLeave();
-        Utils::openFileOrFolder(QStringRef(&d->path_), clickPath ? Utils::OpenAt::Folder : Utils::OpenAt::Launcher);
+        Utils::openFileOrFolder(d->path_, clickPath ? Utils::OpenAt::Folder : Utils::OpenAt::Launcher);
         Utils::InterConnector::instance().getMainWindow()->closeGallery();
         return;
     }

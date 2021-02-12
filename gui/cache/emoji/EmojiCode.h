@@ -157,7 +157,7 @@ namespace Emoji
             return QString::fromUcs4(code.code.data(), code.size());
         }
 
-        QString toHexString(QChar _delimiter = ql1c('-')) const
+        QString toHexString(QChar _delimiter = u'-') const
         {
             QString result;
             const auto s = size();
@@ -165,7 +165,7 @@ namespace Emoji
             {
                 auto codePointStr = QString::number(codepointAt(i), 16);
                 while (codePointStr.size() < 4)
-                    codePointStr.prepend(ql1c('0'));
+                    codePointStr.prepend(u'0');
 
                 result += codePointStr;
                 if (i < s - 1)
@@ -174,12 +174,12 @@ namespace Emoji
             return result;
         }
 
-        static EmojiCode unserialize2(const QStringRef& str) noexcept
+        static EmojiCode unserialize2(QStringView str) noexcept
         {
             return fromQString(str);
         }
 
-        static EmojiCode fromQString(const QStringRef& str)
+        static EmojiCode fromQString(QStringView str)
         {
             EmojiCode code;
             const auto ucs = str.toUcs4();
@@ -192,11 +192,6 @@ namespace Emoji
                 code = addCodePoint(code, character);
 
             return code;
-        }
-
-        static EmojiCode fromQString(const QString& str)
-        {
-            return fromQString(QStringRef(&str));
         }
 
         friend constexpr inline bool operator==(const EmojiCode& lhs, const EmojiCode& rhs) noexcept;

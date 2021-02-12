@@ -10,6 +10,7 @@ namespace device {
 class DeviceMonitoringImpl
 : public DeviceMonitoring
 {
+    Q_OBJECT
     DeviceMonitoringCallback* _captureDeviceCallback;
     boost::shared_mutex  _callbackLock;
 

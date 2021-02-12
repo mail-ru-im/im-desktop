@@ -450,11 +450,6 @@ void core::base_im::on_voip_update()
     voip_manager_->update();
 }
 
-void core::base_im::on_voip_minimal_bandwidth_switch()
-{
-    voip_manager_->minimal_bandwidth_switch();
-}
-
 void core::base_im::on_voip_load_mask(const std::string& path)
 {
     voip_manager_->load_mask(path);

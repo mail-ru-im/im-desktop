@@ -264,6 +264,7 @@ namespace Ui
     void PanelButton::paintEvent(QPaintEvent* _event)
     {
         QColor circleColor;
+        QColor textColor = textColor_;
 
         if (isEnabled() && isPressed())
             circleColor = circlePressed_;
@@ -276,6 +277,13 @@ namespace Ui
         p.setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
         p.setPen(Qt::NoPen);
         p.fillRect(rect(), Qt::transparent);
+
+        if (!isEnabled())
+        {
+            circleColor.setAlphaF(circleColor.alphaF() * 0.5f);
+            textColor.setAlphaF(textColor.alphaF() * 0.5f);
+            p.setOpacity(0.5f);
+        }
 
         const auto circleSize = getButtonCircleSize(size_);
         const auto circlePlace = QRect((width() - circleSize) / 2, getButtonCircleVerOffset(size_), circleSize, circleSize);
@@ -314,7 +322,10 @@ namespace Ui
                      icon_);
 
         if (textUnit_)
+        {
+            textUnit_->setColor(textColor);
             textUnit_->draw(p, TextRendering::VerPosition::TOP);
+        }
 
         if (more_)
             more_->move(circlePlace.left() + getMoreButtonMarginLeft(), circlePlace.top() + getMoreButtonMarginTop());

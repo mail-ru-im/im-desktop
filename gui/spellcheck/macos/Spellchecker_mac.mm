@@ -138,7 +138,12 @@ namespace spellcheck
     }
 
 
-    SpellCheckerImpl::SpellCheckerImpl() = default;
+    SpellCheckerImpl::SpellCheckerImpl()
+    {
+        const auto checker = platform::SharedSpellChecker();
+        Q_UNUSED(checker);
+    }
+
     SpellCheckerImpl::~SpellCheckerImpl() = default;
 
     void SpellCheckerImpl::init()

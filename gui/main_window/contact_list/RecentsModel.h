@@ -123,6 +123,7 @@ namespace Logic
         QString nextAimId(const QString& aimId) const;
         QString prevAimId(const QString& aimId) const;
         int getUnreadCount(const QString& _aimId) const;
+        int getUnreadMentionsCount(const QString& _aimId) const;
 
         int32_t getTime(const QString& _aimId) const;
 

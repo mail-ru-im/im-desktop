@@ -130,6 +130,12 @@ bool DeviceMonitoringMacos::Start()
 
     _isStarted = true;
 
+    if (qApp)
+    {
+        QObject::connect(qApp, &QGuiApplication::screenAdded, this, &DeviceMonitoringMacos::DeviceMonitoringVideoListChanged, Qt::UniqueConnection);
+        QObject::connect(qApp, &QGuiApplication::screenRemoved, this, &DeviceMonitoringMacos::DeviceMonitoringVideoListChanged, Qt::UniqueConnection);
+        QObject::connect(qApp, &QGuiApplication::primaryScreenChanged, this, &DeviceMonitoringMacos::DeviceMonitoringVideoListChanged, Qt::UniqueConnection);
+    }
     return true;
 }
 
@@ -143,6 +149,8 @@ void DeviceMonitoringMacos::Stop()
         _objcInstance = nullptr;
     }
     _isStarted = false;
+    if (qApp)
+        QObject::disconnect(qApp, nullptr, this, nullptr);
 }
 
 typedef OSStatus AudioObjectChanePropertyListenerFuction(AudioObjectID,

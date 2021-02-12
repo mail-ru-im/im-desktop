@@ -162,7 +162,6 @@ namespace config
         updater_main_instance_mutex_win,
         company_name,
         app_user_model_win,
-        flurry_key,
         feedback_version_id,
         feedback_platform_id,
         feedback_aimid_id,
@@ -188,6 +187,7 @@ namespace config
         mytracker_app_id_win,
         mytracker_app_id_mac,
         mytracker_app_id_linux,
+        status_banner_emoji_csv,
 
         max_size
     };
@@ -212,10 +212,12 @@ namespace config
     using translations_array = std::array<std::pair<translations, std::string>, static_cast<size_t>(translations::max_size)>;
 
     using features_vector = std::vector<std::pair<features, bool>>;
+    using values_vector = std::vector<std::pair<values, value_type>>;
 
     struct external_configuration
     {
         features_vector features;
+        values_vector values;
     };
 
     void set_external(std::shared_ptr<external_configuration> _f);
@@ -250,6 +252,7 @@ namespace config
         bool is_on(features) const noexcept;
 
         bool is_overridden(features) const noexcept;
+        bool is_overridden(values) const noexcept;
 
         bool is_debug() const noexcept;
 
@@ -270,8 +273,9 @@ namespace config
         std::shared_ptr<external_configuration> e_;
 
     private:
-        std::shared_ptr<external_configuration> get_external() const;
+        bool is_external_config_enabled() const noexcept;
 
+        std::shared_ptr<external_configuration> get_external() const;
         void set_external(std::shared_ptr<external_configuration>);
 
         friend void config::set_external(std::shared_ptr<external_configuration> _f);
@@ -282,5 +286,6 @@ namespace config
 {
     const configuration& get();
     bool is_overridden(features _v);
+    bool is_overridden(values _v);
     void reset_external();
 }

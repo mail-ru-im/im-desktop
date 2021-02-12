@@ -494,11 +494,7 @@ namespace Utils
         Yes,
     };
 
-    void openFileOrFolder(const QStringRef& _path, OpenAt _openAt, OpenWithWarning _withWarning = OpenWithWarning::Yes);
-    inline void openFileOrFolder(const QString& _path, OpenAt _openAt, OpenWithWarning _withWarning = OpenWithWarning::Yes)
-    {
-        openFileOrFolder(QStringRef(&_path), _openAt, _withWarning);
-    }
+    void openFileOrFolder(QStringView _path, OpenAt _openAt, OpenWithWarning _withWarning = OpenWithWarning::Yes);
 
     QString convertMentions(const QString& _source, const Data::MentionMap& _mentions);
     QString convertFilesPlaceholders(const QStringRef& _source, const Data::FilesPlaceholderMap& _files);

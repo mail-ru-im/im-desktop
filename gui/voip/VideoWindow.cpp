@@ -620,7 +620,7 @@ void Ui::VideoWindow::checkOverlap()
     // We do not change normal video window to small video window, if
     // there is active modal window, because it can lost focus and
     // close automatically.
-    if (detachedWnd_ && QApplication::activeModalWidget() == nullptr)
+    if (detachedWnd_ && !detachedWnd_->isMousePressed() && QApplication::activeModalWidget() == nullptr)
     {
         bool platformState = false;
 #ifdef __APPLE__
@@ -730,6 +730,7 @@ void Ui::VideoWindow::onVoipWindowRemoveComplete(quintptr _winId)
         // breaks mousePressEvent/mouseReleaseEvent events in VideoFrameMacos.mm on 2nd call
         rootWidget_->freeNative();
 #endif
+        Ui::GetDispatcher()->getVoipController().setRequestSettings(); // Trigger pending call accepts if any
         callMethodProxy(qsl("showNormal"));
         callMethodProxy(qsl("hide"));
     }

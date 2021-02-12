@@ -37,7 +37,7 @@ namespace Ui::MessageStyle
             return 0;
     }
 
-    QFont getMarkdownFont()
+    QFont getTextMonospaceFont()
     {
         constexpr int size = platform::is_apple() ? 16 : 15;
         return Fonts::adjustedAppFont(size, Fonts::FontFamily::ROBOTO_MONO);

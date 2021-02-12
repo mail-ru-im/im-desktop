@@ -1365,7 +1365,7 @@ void ComplexMessageItem::mouseReleaseEvent(QMouseEvent *event)
             if (!link.isEmpty())
             {
                 Utils::UrlParser parser;
-                parser.process(QStringRef(&link));
+                parser.process(link);
                 if (parser.hasUrl())
                 {
                     auto menu = new ContextMenu(this);
@@ -2542,7 +2542,7 @@ int ComplexMessageItem::desiredWidth() const
     return result;
 }
 
-int ComplexMessageItem::maxEffectiveBLockWidth() const
+int ComplexMessageItem::maxEffectiveBlockWidth() const
 {
     auto result = 0;
     for (const auto b : Blocks_)
@@ -2585,7 +2585,7 @@ int ComplexMessageItem::calcButtonsWidth(int availableWidth)
         for (auto& btn : line)
         {
             buttonLabel_->setText(btn.originalText_);
-            buttonLabel_->elide(available - MessageStyle::getButtonHorOffset() * 2, TextRendering::ELideType::FAST);
+            buttonLabel_->elide(available - MessageStyle::getButtonHorOffset() * 2, TextRendering::ElideType::FAST);
             if (buttonLabel_->isElided())
                 btn.data_.text_ = buttonLabel_->getText();
             else
@@ -2872,9 +2872,9 @@ void ComplexMessageItem::loadAvatar()
 
 void ComplexMessageItem::onCopyMenuItem(ComplexMessageItem::MenuItemType type)
 {
-    bool isCopy = (type == ComplexMessageItem::MenuItemType::Copy);
-    bool isQuote = (type == ComplexMessageItem::MenuItemType::Quote);
-    bool isForward = (type == ComplexMessageItem::MenuItemType::Forward);
+    const bool isCopy = (type == ComplexMessageItem::MenuItemType::Copy);
+    const bool isQuote = (type == ComplexMessageItem::MenuItemType::Quote);
+    const bool isForward = (type == ComplexMessageItem::MenuItemType::Forward);
 
     if (isCopy)
     {
@@ -3058,7 +3058,7 @@ void ComplexMessageItem::trackMenu(const QPoint &globalPos)
 
                 link.remove(re);
                 Utils::UrlParser parser;
-                parser.process(QStringRef(&link));
+                parser.process(link);
                 if (parser.hasUrl())
                 {
                     if (parser.getUrl().is_email())

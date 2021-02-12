@@ -196,15 +196,18 @@ namespace Logic
 
             if (!hasFavorites && searchPattern_.isEmpty() || favoritesMatch)
             {
-                auto favorites = std::make_shared<Data::SearchResultContactChatLocal>();
-                favorites->aimId_ = Favorites::aimId();
+                if (auto aimId = Favorites::aimId(); !aimId.isEmpty())
+                {
+                    auto favorites = std::make_shared<Data::SearchResultContactChatLocal>();
+                    favorites->aimId_ = std::move(aimId);
 
-                auto nameResult = compareWithPatterns(Favorites::name(), searchPatterns);
+                    auto nameResult = compareWithPatterns(Favorites::name(), searchPatterns);
 
-                if (favoritesMatch && nameResult.match_)
-                    favorites->highlights_.push_back(Favorites::name().mid(nameResult.from_, searchPattern_.size()));
+                    if (favoritesMatch && nameResult.match_)
+                        favorites->highlights_.push_back(Favorites::name().mid(nameResult.from_, searchPattern_.size()));
 
-                localResults_.push_back(favorites);
+                    localResults_.push_back(favorites);
+                }
             }
         }
 

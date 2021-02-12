@@ -115,7 +115,7 @@ namespace Ui
 
         bool isMD = false;
 
-        const auto M_MARK = Ui::TextRendering::tripleBackTick();
+        const auto M_MARK = Ui::TextRendering::tripleBackTick().toString();
         const auto mmCount = leftPart.count(M_MARK);
 
         if (mmCount % 2 != 0)

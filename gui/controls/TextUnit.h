@@ -10,7 +10,7 @@ namespace Ui
 {
     using highlightsV = std::vector<QString>;
 
-    QString getEllipsis();
+    [[nodiscard]] QString getEllipsis();
 
     namespace TextRendering
     {
@@ -26,7 +26,7 @@ namespace Ui
 
             void setTextAndMentions(const QString& _text, const Data::MentionMap& _mentions);//setText() + setMentions()
 
-            void elide(int _width, ELideType _type = ELideType::ACCURATE);//elide text by specified width;
+            void elide(int _width, ElideType _type = ElideType::ACCURATE); //elide text by specified width;
             [[nodiscard]] bool isElided() const;//check if TextUnit's elided
 
             //some stuff for replacing blocks in debug mode
@@ -54,7 +54,7 @@ namespace Ui
             void drawSmart(QPainter& _painter, int _center);//for history messages; draw with VerPosition::TOP if text has multiple lines, otherwise draw with VerPosition::MIDDLE and _center as vertical offset
 
             //size calculation; TEXT CAN"T BE PAINTED WITHOUT IT
-            int getHeight(int width, CallType _calltype = CallType::USUAL); //get height of the text for specified width
+            int getHeight(int _width, CallType _calltype = CallType::USUAL); //get height of the text for specified width
 
             void evaluateDesiredSize(); //calc height by text's desired width
 
@@ -208,11 +208,11 @@ namespace Ui
         using TextUnitPtr = std::unique_ptr<TextUnit>;
 
         TextUnitPtr MakeTextUnit(
-            const QString& _text,//text
-            const Data::MentionMap& _mentions = Data::MentionMap(),//mentions
-            LinksVisible _showLinks = LinksVisible::SHOW_LINKS,//show links or not
-            ProcessLineFeeds _processLineFeeds = ProcessLineFeeds::KEEP_LINE_FEEDS,//keep line feeds or cut
-            EmojiSizeType _emojiSizeType = EmojiSizeType::REGULAR);//emoji size
+            const QString& _text,
+            const Data::MentionMap& _mentions = Data::MentionMap(),
+            LinksVisible _showLinks = LinksVisible::SHOW_LINKS,
+            ProcessLineFeeds _processLineFeeds = ProcessLineFeeds::KEEP_LINE_FEEDS,
+            EmojiSizeType _emojiSizeType = EmojiSizeType::REGULAR);
 
         //some stuff for replacing blocks in debug mode
         bool InsertOrUpdateDebugMsgIdBlockIntoUnit(TextUnitPtr& _textUnit, qint64 _id, size_t _atPosition = 0);

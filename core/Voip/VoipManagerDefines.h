@@ -498,7 +498,6 @@ namespace voip_manager
 
         virtual void mute_incoming_call_sounds(bool mute) = 0;
 
-        virtual void minimal_bandwidth_switch() = 0;
         virtual bool has_created_call() = 0;
 
         virtual void call_report_user_rating(const UserRatingReport &_ratingReport) = 0;

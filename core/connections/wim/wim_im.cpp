@@ -274,7 +274,6 @@ void search::search_data::reset_post_timer()
 //////////////////////////////////////////////////////////////////////////
 core::wim::wim_send_thread::wim_send_thread()
     : async_executer("wim_send")
-    , is_packet_execute_(false)
     , is_sending_locked_(false)
 {
 }
@@ -288,19 +287,22 @@ std::shared_ptr<async_task_handlers> core::wim::wim_send_thread::post_packet(
 {
     std::shared_ptr<async_task_handlers> callback_handlers = _handlers ? _handlers : std::make_shared<async_task_handlers>();
 
+    const auto method = _packet->get_method();
     const auto can_run_async = _packet->support_async_execution();
+    const auto can_run_partially_async = _packet->support_partially_async_execution();
+    const auto is_packet_execute = can_run_partially_async ? executed_packets_.find(method) != executed_packets_.end() : !executed_packets_.empty();
 
     if (!_packet->is_valid())
         return callback_handlers;
 
-    if (is_sending_locked_ ||  (is_packet_execute_ && !can_run_async))
+    if (is_sending_locked_ ||  (is_packet_execute && !can_run_async))
     {
         insert_packet_in_queue(std::move(_packet), std::move(_error_handler), callback_handlers);
         return callback_handlers;
     }
 
     if (!can_run_async)
-        is_packet_execute_ = true;
+        executed_packets_.insert(method);
 
     // need wait for timeout (ratelimts)
     if (const auto current_time = std::chrono::steady_clock::now(); current_time < cancel_packets_time_)
@@ -309,7 +311,7 @@ std::shared_ptr<async_task_handlers> core::wim::wim_send_thread::post_packet(
         {
             return 0;
 
-        })->on_result_ = [wr_this = weak_from_this(), callback_handlers](int32_t /*_error*/)
+        })->on_result_ = [wr_this = weak_from_this(), callback_handlers, method](int32_t /*_error*/)
         {
             auto ptr_this = wr_this.lock();
             if (!ptr_this)
@@ -318,22 +320,24 @@ std::shared_ptr<async_task_handlers> core::wim::wim_send_thread::post_packet(
             if (callback_handlers->on_result_)
                 callback_handlers->on_result_(wpie_error_request_canceled_wait_timeout);
 
-            ptr_this->is_packet_execute_ = false;
+            ptr_this->executed_packets_.erase(method);
             ptr_this->execute_packet_from_queue();
         };
 
         return callback_handlers;
     }
 
-    if (can_run_async)
+    if (can_run_async || can_run_partially_async)
     {
         _packet->execute_async([wr_this = weak_from_this(), _error_handler = std::move(_error_handler), callback_handlers, _packet](int32_t _error)
         {
-            g_core->execute_core_context([wr_this, callback_handlers, _error_handler = std::move(_error_handler), _error]()
+            g_core->execute_core_context([wr_this, callback_handlers, _error_handler = std::move(_error_handler), _error, method = _packet->get_method()]()
             {
                 auto ptr_this = wr_this.lock();
                 if (!ptr_this)
                     return;
+
+                ptr_this->executed_packets_.erase(method);
 
                 if (callback_handlers->on_result_)
                     callback_handlers->on_result_(_error);
@@ -351,7 +355,7 @@ std::shared_ptr<async_task_handlers> core::wim::wim_send_thread::post_packet(
         return _packet->execute();
     });
 
-    internal_handlers->on_result_ = [wr_this = weak_from_this(), _packet = std::move(_packet), _error_handler = std::move(_error_handler), callback_handlers](int32_t _error) mutable
+    internal_handlers->on_result_ = [wr_this = weak_from_this(), _packet = std::move(_packet), _error_handler = std::move(_error_handler), callback_handlers, method](int32_t _error) mutable
     {
         auto ptr_this = wr_this.lock();
         if (!ptr_this)
@@ -362,7 +366,7 @@ std::shared_ptr<async_task_handlers> core::wim::wim_send_thread::post_packet(
             if ((_packet->get_repeat_count() < sent_repeat_count) && (!_packet->is_stopped()))
             {
                 ptr_this->insert_packet_in_queue(std::move(_packet), std::move(_error_handler), callback_handlers);
-                ptr_this->is_packet_execute_ = false;
+                ptr_this->executed_packets_.erase(method);
                 ptr_this->execute_packet_from_queue();
                 return;
             }
@@ -380,7 +384,7 @@ std::shared_ptr<async_task_handlers> core::wim::wim_send_thread::post_packet(
         if (callback_handlers->on_result_)
             callback_handlers->on_result_(_error);
 
-        ptr_this->is_packet_execute_ = false;
+        ptr_this->executed_packets_.erase(method);
 
         if (_error_handler)
             _error_handler(_error);
@@ -4627,7 +4631,6 @@ std::shared_ptr<async_task_handlers> im::get_history_from_server(const get_histo
 
         const auto& new_dlg_state = packet->get_dlg_state();
 
-        const auto unpin = packet->get_unpinned();
         const auto has_older_msgid = packet->has_older_msgid();
 
         ptr_this->insert_friendly(packet->get_persons(), friendly_source::remote);
@@ -4651,7 +4654,7 @@ std::shared_ptr<async_task_handlers> im::get_history_from_server(const get_histo
 
 
         ptr_this->get_archive()->get_dlg_state(contact)->on_result =
-            [wr_this, contact, messages, init, from_editing, from_search, new_dlg_state, on_result, unpin, from_msgid, has_older_msgid, seq](const archive::dlg_state& _local_state)
+            [wr_this, contact, messages, init, from_editing, from_search, new_dlg_state, on_result, from_msgid, has_older_msgid, seq, packet](const archive::dlg_state& _local_state)
         {
             auto ptr_this = wr_this.lock();
             if (!ptr_this)
@@ -4678,8 +4681,18 @@ std::shared_ptr<async_task_handlers> im::get_history_from_server(const get_histo
                 }
             }
 
-            if (!new_dlg_state->has_pinned_message() && !unpin)
-                new_dlg_state->set_pinned_message(_local_state.get_pinned_message());
+            if (!new_dlg_state->has_pinned_message())
+            {
+                auto unpin = packet->get_unpinned();
+                const auto& patches = packet->get_patches();
+                unpin |= std::any_of(patches.begin(), patches.end(), [id = _local_state.get_pinned_message().get_msgid()](const auto& _patch)
+                { return (_patch.second->get_type() == archive::history_patch::type::deleted ||
+                          _patch.second->get_type() == archive::history_patch::type::modified) && 
+                          _patch.second->get_message_id() == id;
+                });
+                if (!unpin)
+                    new_dlg_state->set_pinned_message(_local_state.get_pinned_message());
+            }
 
             const auto pin_changed =
                 (new_dlg_state->has_pinned_message() && !_local_state.has_pinned_message()) ||
@@ -11592,10 +11605,11 @@ void core::wim::im::list_reactions(const int64_t _seq,
     };
 }
 
-void im::set_status(std::string_view _status, std::chrono::seconds _duration)
+void im::set_status(std::string_view _status, std::chrono::seconds _duration, std::string_view _description)
 {
     status s;
     s.set_status(_status);
+    s.set_description(_description);
     s.set_start_time(status::clock_t::now() - std::chrono::seconds(auth_params_->time_offset_));
 
     if (_duration.count())
@@ -11604,7 +11618,7 @@ void im::set_status(std::string_view _status, std::chrono::seconds _duration)
     s.set_sending(true);
     my_info_cache_->set_status(s);
 
-    auto packet = std::make_shared<core::wim::set_status>(make_wim_params(), _status, _duration);
+    auto packet = std::make_shared<core::wim::set_status>(make_wim_params(), _status, _duration, _description);
     post_wim_packet(packet)->on_result_ = [wr_this = weak_from_this(), _duration](int32_t _error)
     {
         auto ptr_this = wr_this.lock();

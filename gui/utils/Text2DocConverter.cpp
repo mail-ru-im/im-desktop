@@ -71,7 +71,7 @@ namespace
 
         void SaveAsHtml(const QString& _text, const common::tools::url& _url, bool isWordWrapEnabled);
 
-        void ConvertMention(const QStringRef& _sn, const QString & _friendly);
+        void ConvertMention(QStringView _sn, const QString& _friendly);
 
         QTextStream Input_;
 
@@ -624,15 +624,15 @@ namespace
             return false;
         }
 
-        const auto ref = buf.leftRef(buf.length() - 1);
-        const auto it = mentions_.find(ref);
+        const auto view = QStringView(buf).left(buf.length() - 1);
+        const auto it = mentions_.find(view);
         if (it == mentions_.end())
         {
             PopInputCursor();
             return false;
         }
 
-        ConvertMention(ref, it->second);
+        ConvertMention(view, it->second);
         return true;
     }
 
@@ -924,7 +924,7 @@ namespace
         }
     }
 
-    void Text2DocConverter::ConvertMention(const QStringRef & _sn, const QString & _friendly)
+    void Text2DocConverter::ConvertMention(QStringView _sn, const QString& _friendly)
     {
         Buffer_ += u"<a href=\"@[" % _sn % u"]\">" % _friendly.toHtmlEscaped() % u"</a>";
     }

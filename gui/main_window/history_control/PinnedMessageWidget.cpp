@@ -50,6 +50,8 @@ namespace
 
     constexpr auto fullSenderVar = Styling::StyleVariable::PRIMARY;
 
+    constexpr auto emojiSize = 32;
+
     void drawBackground(QPainter& _painter, const QRect& _rect, const bool _isHovered)
     {
         const auto bg = Styling::getParameters().getColor(_isHovered ? Styling::StyleVariable::BASE_BRIGHT_INVERSE : Styling::StyleVariable::BASE_GLOBALWHITE);
@@ -832,11 +834,53 @@ namespace Ui
     }
 
     //----------------------------------------------------------------------
+    StatusBannerWidget::StatusBannerWidget(QWidget* _parent)
+        : QWidget(_parent)
+    {
+        setFixedHeight(Utils::scale_value(fullHeight));
+
+        const auto iconSize = QSize(close_button_size, close_button_size);
+        close_ = new CustomButton(this, qsl(":/controls/close_icon"), iconSize, Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY));
+        close_->setHoverColor(Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY_HOVER));
+        close_->setActiveColor(Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY_ACTIVE));
+        close_->setFixedSize(Utils::scale_value(iconSize));
+        Testing::setAccessibleName(close_, qsl("AS Banner closeButton"));
+
+        connect(close_, &CustomButton::clicked, this, &StatusBannerWidget::closeClicked);
+
+        text_ = TextRendering::MakeTextUnit(QT_TRANSLATE_NOOP("pin", "Pay attention\nto contact status"));
+        text_->init(Fonts::appFontScaled(14, Fonts::FontWeight::Medium), Styling::getParameters().getColor(Styling::StyleVariable::TEXT_SOLID));
+        text_->evaluateDesiredSize();
+    }
+
+    void StatusBannerWidget::paintEvent(QPaintEvent* _event)
+    {
+        QPainter p(this);
+        drawBackground(p, rect(), false);
+
+        static const auto emoji = []()
+        {
+            constexpr auto emojiId = 0x261d;
+            auto img = Emoji::GetEmoji(Emoji::EmojiCode(emojiId), Utils::scale_bitmap_with_value(emojiSize));
+            Utils::check_pixel_ratio(img);
+            return img;
+        }();
+        p.drawImage(Utils::scale_value(20), Utils::scale_value(8), emoji);
+
+        text_->draw(p);
+    }
+
+    void StatusBannerWidget::resizeEvent(QResizeEvent* _event)
+    {
+        close_->move(width() - Utils::scale_value(close_button_offset + close_button_size), height() / 2 - Utils::scale_value(close_button_size) / 2);
+
+        const auto textSize = text_->cachedSize();
+        text_->setOffsets(Utils::scale_value(56), (height() - textSize.height()) / 2);
+    }
+
+    //----------------------------------------------------------------------
     PinnedMessageWidget::PinnedMessageWidget(QWidget* _parent)
         : QWidget(_parent)
-        , full_(nullptr)
-        , collapsed_(nullptr)
-        , stranger_(nullptr)
     {
         setLayout(Utils::emptyVLayout());
     }
@@ -858,37 +902,44 @@ namespace Ui
         return isVisible() && stranger_ && stranger_->isVisible();
     }
 
+    bool PinnedMessageWidget::isBannerVisible() const
+    {
+        return isVisible() && banner_ && banner_->isVisible();
+    }
+
     void PinnedMessageWidget::showExpanded()
     {
-        hideWidget(stranger_);
-        hideWidget(collapsed_);
+        hideAll();
 
         createFull();
-        full_->update();
         full_->show();
-
         show();
     }
 
     void PinnedMessageWidget::showCollapsed()
     {
-        hideWidget(stranger_);
-        hideWidget(full_);
+        hideAll();
 
         createCollapsed();
-        collapsed_->update();
         collapsed_->show();
-
         show();
     }
 
     void PinnedMessageWidget::showStranger()
     {
-        hideWidget(full_);
-        hideWidget(collapsed_);
+        hideAll();
 
         createStranger();
         stranger_->show();
+        show();
+    }
+
+    void PinnedMessageWidget::showStatusBanner()
+    {
+        hideAll();
+
+        createStatusBanner();
+        banner_->show();
         show();
     }
 
@@ -939,6 +990,25 @@ namespace Ui
 
             connect(collapsed_, &CollapsedPinnedMessage::clicked, this, &PinnedMessageWidget::showExpanded);
         }
+    }
+
+    void PinnedMessageWidget::createStatusBanner()
+    {
+        if (!banner_)
+        {
+            banner_ = new StatusBannerWidget(this);
+            Testing::setAccessibleName(banner_, qsl("AS Pin Banner"));
+            layout()->addWidget(banner_);
+
+            connect(banner_, &StatusBannerWidget::closeClicked, this, &PinnedMessageWidget::hide);
+        }
+    }
+
+    void PinnedMessageWidget::hideAll()
+    {
+        const auto widgets = findChildren<QWidget*>(QString(), Qt::FindDirectChildrenOnly);
+        for (auto w : widgets)
+            hideWidget(w);
     }
 
     void PinnedMessageWidget::hideWidget(QWidget* _widget)

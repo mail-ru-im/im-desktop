@@ -24,8 +24,8 @@ namespace
     constexpr const char* LEFT_DOUBLE_QUOTE = "«";
     constexpr const char* RIGHT_DOUBLE_QUOTE = "»";
 
-    constexpr char NBSP_FIRST = 0xc2;
-    constexpr char NBSP_SECOND = 0xa0;
+    constexpr const char NBSP_FIRST = static_cast<char>(0xc2);
+    constexpr const char NBSP_SECOND = static_cast<char>(0xa0);
 
     constexpr const char* LEFT_QUOTE = "‘";
     constexpr const char* RIGHT_QUOTE = "’";
@@ -35,14 +35,14 @@ const char* to_string(common::tools::url::type _value)
 {
     switch (_value)
     {
-        case common::tools::url::type::undefined:   return "undefined";
-        case common::tools::url::type::image:       return "image";
-        case common::tools::url::type::video:       return "video";
-        case common::tools::url::type::filesharing: return "filesharing";
-        case common::tools::url::type::site:        return "site";
-        case common::tools::url::type::email:       return "email";
-        case common::tools::url::type::ftp:         return "ftp";
-        default:                                    return "#unknown";
+    case common::tools::url::type::undefined:   return "undefined";
+    case common::tools::url::type::image:       return "image";
+    case common::tools::url::type::video:       return "video";
+    case common::tools::url::type::filesharing: return "filesharing";
+    case common::tools::url::type::site:        return "site";
+    case common::tools::url::type::email:       return "email";
+    case common::tools::url::type::ftp:         return "ftp";
+    default:                                    return "#unknown";
     }
 }
 
@@ -50,20 +50,20 @@ const char* to_string(common::tools::url::protocol _value)
 {
     switch (_value)
     {
-        case common::tools::url::protocol::undefined:   return "undefined";
-        case common::tools::url::protocol::http:        return "http";
-        case common::tools::url::protocol::ftp:         return "ftp";
-        case common::tools::url::protocol::https:       return "https";
-        case common::tools::url::protocol::ftps:        return "ftps";
-        case common::tools::url::protocol::sftp:        return "sftp";
-        case common::tools::url::protocol::rdp:         return "rdp";
-        case common::tools::url::protocol::vnc:         return "vnc";
-        case common::tools::url::protocol::ssh:         return "ssh";
-        case common::tools::url::protocol::icq:         return "icq";
-        case common::tools::url::protocol::agent:       return "magent";
-        case common::tools::url::protocol::biz:         return "myteam-messenger";
-        case common::tools::url::protocol::dit:         return "itd-messenger";
-        default:                                        return "#unknown";
+    case common::tools::url::protocol::undefined:   return "undefined";
+    case common::tools::url::protocol::http:        return "http";
+    case common::tools::url::protocol::ftp:         return "ftp";
+    case common::tools::url::protocol::https:       return "https";
+    case common::tools::url::protocol::ftps:        return "ftps";
+    case common::tools::url::protocol::sftp:        return "sftp";
+    case common::tools::url::protocol::rdp:         return "rdp";
+    case common::tools::url::protocol::vnc:         return "vnc";
+    case common::tools::url::protocol::ssh:         return "ssh";
+    case common::tools::url::protocol::icq:         return "icq";
+    case common::tools::url::protocol::agent:       return "magent";
+    case common::tools::url::protocol::biz:         return "myteam-messenger";
+    case common::tools::url::protocol::dit:         return "itd-messenger";
+    default:                                        return "#unknown";
     }
 }
 
@@ -71,23 +71,23 @@ const char* to_string(common::tools::url::extension _value)
 {
     switch (_value)
     {
-        case common::tools::url::extension::undefined:  return "undefined";
-        case common::tools::url::extension::avi:        return "avi";
-        case common::tools::url::extension::bmp:        return "bmp";
-        case common::tools::url::extension::flv:        return "flv";
-        case common::tools::url::extension::gif:        return "gif";
-        case common::tools::url::extension::jpeg:       return "jpeg";
-        case common::tools::url::extension::jpg:        return "jpg";
-        case common::tools::url::extension::mkv:        return "mkv";
-        case common::tools::url::extension::mov:        return "mov";
-        case common::tools::url::extension::mpeg4:      return "mpeg4";
-        case common::tools::url::extension::png:        return "png";
-        case common::tools::url::extension::tiff:       return "tiff";
-        case common::tools::url::extension::webm:       return "webm";
-        case common::tools::url::extension::wmv:        return "wmv";
-        case common::tools::url::extension::_3gp:       return "3gp";
-        case common::tools::url::extension::svg:        return "svg";
-        default:                                        return "#unknown";
+    case common::tools::url::extension::undefined:  return "undefined";
+    case common::tools::url::extension::avi:        return "avi";
+    case common::tools::url::extension::bmp:        return "bmp";
+    case common::tools::url::extension::flv:        return "flv";
+    case common::tools::url::extension::gif:        return "gif";
+    case common::tools::url::extension::jpeg:       return "jpeg";
+    case common::tools::url::extension::jpg:        return "jpg";
+    case common::tools::url::extension::mkv:        return "mkv";
+    case common::tools::url::extension::mov:        return "mov";
+    case common::tools::url::extension::mpeg4:      return "mpeg4";
+    case common::tools::url::extension::png:        return "png";
+    case common::tools::url::extension::tiff:       return "tiff";
+    case common::tools::url::extension::webm:       return "webm";
+    case common::tools::url::extension::wmv:        return "wmv";
+    case common::tools::url::extension::_3gp:       return "3gp";
+    case common::tools::url::extension::svg:        return "svg";
+    default:                                        return "#unknown";
     }
 }
 
@@ -149,8 +149,7 @@ bool common::tools::url::has_prtocol() const
 
     const auto prefix = std::string_view(original_.data(), http.size());
 
-    return std::equal(prefix.begin(), prefix.end(), http.begin(), http.end(),
-        [](unsigned char a, unsigned char b)
+    return std::equal(prefix.begin(), prefix.end(), http.begin(), http.end(), [](unsigned char a, unsigned char b)
     {
         return std::tolower(a) == std::tolower(b);
     });
@@ -159,7 +158,7 @@ bool common::tools::url::has_prtocol() const
 bool common::tools::url::operator==(const url& _right) const
 {
     return type_ == _right.type_
-        && protocol_== _right.protocol_
+        && protocol_ == _right.protocol_
         && extension_ == _right.extension_
         && url_ == _right.url_;
 }
@@ -281,14 +280,12 @@ common::tools::url_vector_t common::tools::url_parser::parse_urls(const std::str
 
     parser.finish();
     if (parser.has_url())
-    {
         urls.push_back(parser.get_url());
-    }
 
     return urls;
 }
 
-void common::tools::url_parser::add_fixed_urls(std::vector<compare_item> &&_items)
+void common::tools::url_parser::add_fixed_urls(std::vector<compare_item>&& _items)
 {
     for (auto&& item : _items)
     {
@@ -348,7 +345,7 @@ void common::tools::url_parser::process()
         else if (c == 'v' || c == 'V') { protocol_ = url::protocol::vnc; state_ = states::protocol_t1; break; }
         else if (c == 'r' || c == 'R') { protocol_ = url::protocol::rdp; state_ = states::protocol_t1; break; }
         else if (c == 'i' || c == 'I') { protocol_ = url::protocol::icq; state_ = states::protocol_t1; break; }
-        else if (c == 'm' || c == 'M') { protocol_ = url::protocol::agent; state_ = states::protocol_t1; break;}
+        else if (c == 'm' || c == 'M') { protocol_ = url::protocol::agent; state_ = states::protocol_t1; break; }
         else if (c == LEFT_DOUBLE_QUOTE[0] && char_size_ == 2 && char_buf_[1] == LEFT_DOUBLE_QUOTE[1]) return;
         else if (c == LEFT_QUOTE[0] && char_size_ == 3 && char_buf_[1] == LEFT_QUOTE[1] && char_buf_[2] == LEFT_QUOTE[2]) return;
         else if (is_letter_or_digit(c, is_utf8_)) { save_char_buf(domain_); state_ = states::host; break; }
@@ -393,14 +390,14 @@ void common::tools::url_parser::process()
         else if (c == 'e' || c == 'E') state_ = states::protocol_e;
         else if (is_allowable_char(c, is_utf8_)) { protocol_ = url::protocol::undefined; URL_PARSER_SET_STATE_AND_REPROCESS(states::host) }
         else URL_PARSER_RESET_PARSER
-        break;
+            break;
     case states::protocol_s:
         if (c == 's' || c == 'S') { if (protocol_ == url::protocol::http) protocol_ = url::protocol::https; else protocol_ = url::protocol::ftps; state_ = states::delimeter_colon; }
         else if (c == '.') { protocol_ = url::protocol::undefined; state_ = states::host_dot; }
         else if (c == ':') state_ = states::delimeter_slash1;
         else if (is_allowable_char(c, is_utf8_)) { protocol_ = url::protocol::undefined; URL_PARSER_SET_STATE_AND_REPROCESS(states::host) }
         else URL_PARSER_RESET_PARSER
-        break;
+            break;
     case states::protocol_a:
         if (c == 'g' || c == 'G') state_ = states::protocol_g;
         else if (c == 'm' || c == 'M') state_ = states::protocol_m;
@@ -470,22 +467,22 @@ void common::tools::url_parser::process()
         else if (compare_set_.count(c)) { start_fixed_urls_compare(); return; }
         else if (is_allowable_char(c, is_utf8_)) { save_char_buf(domain_); state_ = states::host; }
         else URL_PARSER_RESET_PARSER
-        break;
+            break;
     case states::www_2:
         if (c == 'w' || c == 'W') state_ = states::www_3;
         else if (is_allowable_char(c, is_utf8_)) state_ = states::host;
         else URL_PARSER_RESET_PARSER
-        break;
+            break;
     case states::www_3:
         if (c == 'w' || c == 'W') state_ = states::www_4;
         else if (is_allowable_char(c, is_utf8_)) state_ = states::host;
         else URL_PARSER_RESET_PARSER
-        break;
+            break;
     case states::www_4:
         if (c == '.') state_ = states::check_filesharing;
         else if (is_allowable_char(c, is_utf8_)) state_ = states::host;
         else URL_PARSER_RESET_PARSER
-        break;
+            break;
     case states::compare:
         if (safe_position_ && compare_pos_ >= safe_position_) state_ = states::compare_safe;
         [[fallthrough]];
@@ -501,30 +498,30 @@ void common::tools::url_parser::process()
         else if (c == '.') { protocol_ = url::protocol::undefined; state_ = states::host_dot; }
         else if (is_allowable_char(c, is_utf8_)) { protocol_ = url::protocol::undefined; state_ = states::host; }
         else URL_PARSER_SET_STATE_AND_REPROCESS(states::host)
-        break;
+            break;
     case states::delimeter_slash1:
         if (c == '/') state_ = states::delimeter_slash2;
         else URL_PARSER_RESET_PARSER
-        break;
+            break;
     case states::delimeter_slash2:
         if (c == '/') { has_protocol_prefix_ = true; state_ = states::check_www; }
         else URL_PARSER_RESET_PARSER
-        break;
+            break;
     case states::filesharing_id:
     case states::profile_id:
         ++id_length_;
         if (is_space(c, is_utf8_)) { if (id_length_ >= min_profile_id_length) URL_PARSER_URI_FOUND else { state_ = states::host; need_to_check_domain_ = false; URL_PARSER_URI_FOUND } }
         else if (!is_allowed_profile_id_char(c, is_utf8_)) URL_PARSER_RESET_PARSER
-        break;
+            break;
     case states::check_filesharing:
         if (compare_set_.count(c)) { start_fixed_urls_compare(); return; }
         else if (is_allowable_char(c, is_utf8_)) { save_char_buf(domain_); state_ = states::host; }
         else URL_PARSER_RESET_PARSER
-        break;
+            break;
     case states::password:
         if (c == '@') state_ = states::host;
         else if (!is_allowable_char(c, is_utf8_)) URL_PARSER_RESET_PARSER
-        break;
+            break;
     case states::host:
         if (c == '.') state_ = states::host_dot;
         else if (c == ':') state_ = states::host_colon;
@@ -562,34 +559,34 @@ void common::tools::url_parser::process()
         if (is_letter_or_digit(c, is_utf8_)) { domain_.clear(); save_char_buf(domain_); state_ = states::host_n; }
         else if (is_space(c, is_utf8_)) { --domain_segments_; URL_PARSER_URI_FOUND }
         else URL_PARSER_RESET_PARSER
-        break;
+            break;
     case states::host_colon:
         if (is_digit(c, is_utf8_)) state_ = states::port;
         else if (is_allowable_char(c, is_utf8_)) state_ = states::password;
         else URL_PARSER_RESET_PARSER
-        break;
+            break;
     case states::host_slash:
         if (c == '/') break;
         else if (is_allowable_char(c, is_utf8_)) state_ = states::path;
         else if (is_space(c, is_utf8_)) URL_PARSER_URI_FOUND
         else URL_PARSER_RESET_PARSER
-        break;
+            break;
     case states::port:
         if (c == '/') { if (is_valid_top_level_domain(domain_)) state_ = states::port_slash; else URL_PARSER_RESET_PARSER }
         else if (is_digit(c, is_utf8_)) break;
         else if (c == '@') state_ = states::host;
         else if (is_allowable_char(c, is_utf8_)) state_ = states::password;
         else URL_PARSER_RESET_PARSER
-        break;
+            break;
     case states::port_dot:
         if (is_digit(c, is_utf8_)) state_ = states::port;
         else URL_PARSER_RESET_PARSER
-        break;
+            break;
     case states::port_slash:
         if (is_letter_or_digit(c, is_utf8_)) state_ = states::path;
         else if (is_space(c, is_utf8_)) URL_PARSER_URI_FOUND
         else URL_PARSER_RESET_PARSER
-        break;
+            break;
     case states::path:
         if (c == '.') state_ = states::path_dot;
         else if (c == '/') state_ = states::path_slash;
@@ -615,117 +612,117 @@ void common::tools::url_parser::process()
         else if (is_allowable_char(c, is_utf8_)) state_ = states::path;
         else if (is_space(c, is_utf8_)) URL_PARSER_URI_FOUND
         else URL_PARSER_RESET_PARSER
-        break;
+            break;
     case states::path_slash:
         if (is_space(c, is_utf8_)) URL_PARSER_URI_FOUND
         else if (c == '?') state_ = states::query;
         else if (is_allowable_char(c, is_utf8_)) state_ = states::path;
         else URL_PARSER_RESET_PARSER
-        break;
+            break;
     case states::jpg_p:
         if (c == 'p' || c == 'P') state_ = states::jpg_g;
         else if (is_allowable_char(c, is_utf8_)) state_ = states::path;
         else URL_PARSER_RESET_PARSER
-        break;
+            break;
     case states::jpg_g:
         if (c == 'g' || c == 'G') { extension_ = url::extension::jpg; state_ = states::query_or_end; }
         else if (c == 'e' || c == 'E') state_ = states::jpg_e;
         else if (is_allowable_char(c, is_utf8_)) state_ = states::path;
         else URL_PARSER_RESET_PARSER
-        break;
+            break;
     case states::jpg_e:
         if (c == 'g' || c == 'G') { extension_ = url::extension::jpeg; state_ = states::query_or_end; }
         else if (is_allowable_char(c, is_utf8_)) state_ = states::path;
         else URL_PARSER_RESET_PARSER
-        break;
+            break;
     case states::png_n:
         if (c == 'n' || c == 'N') state_ = states::png_g;
         else if (is_allowable_char(c, is_utf8_)) state_ = states::path;
         else URL_PARSER_RESET_PARSER
-        break;
+            break;
     case states::png_g:
         if (c == 'g' || c == 'G') { extension_ = url::extension::png; state_ = states::query_or_end; }
         else if (is_allowable_char(c, is_utf8_)) state_ = states::path;
         else URL_PARSER_RESET_PARSER
-        break;
+            break;
     case states::gif_i:
         if (c == 'i' || c == 'I') state_ = states::gif_f;
         else if (is_allowable_char(c, is_utf8_)) state_ = states::path;
         else URL_PARSER_RESET_PARSER
-        break;
+            break;
     case states::gif_f:
         if (c == 'f' || c == 'F') { extension_ = url::extension::gif; state_ = states::query_or_end; }
         else if (is_allowable_char(c, is_utf8_)) state_ = states::path;
         else URL_PARSER_RESET_PARSER
-        break;
+            break;
     case states::bmp_m:
         if (c == 'm' || c == 'M') state_ = states::bmp_p;
         else if (is_allowable_char(c, is_utf8_)) state_ = states::path;
         else URL_PARSER_RESET_PARSER
-        break;
+            break;
     case states::bmp_p:
         if (c == 'p' || c == 'P') { extension_ = url::extension::bmp; state_ = states::query_or_end; }
         else if (is_allowable_char(c, is_utf8_)) state_ = states::path;
         else URL_PARSER_RESET_PARSER
-        break;
+            break;
     case states::tiff_i:
         if (c == 'i' || c == 'I') state_ = states::tiff_f1;
         else if (is_allowable_char(c, is_utf8_)) state_ = states::path;
         else URL_PARSER_RESET_PARSER
-        break;
+            break;
     case states::tiff_f1:
         if (c == 'f' || c == 'F') state_ = states::tiff_f2;
         else if (is_allowable_char(c, is_utf8_)) state_ = states::path;
         else URL_PARSER_RESET_PARSER
-        break;
+            break;
     case states::tiff_f2:
         if (c == 'f' || c == 'F') { extension_ = url::extension::tiff; state_ = states::query_or_end; }
         else if (is_allowable_char(c, is_utf8_)) state_ = states::path;
         else URL_PARSER_RESET_PARSER
-        break;
+            break;
     case states::avi_v:
         if (c == 'v' || c == 'V') state_ = states::avi_i;
         else if (is_allowable_char(c, is_utf8_)) state_ = states::path;
         else URL_PARSER_RESET_PARSER
-        break;
+            break;
     case states::avi_i:
         if (c == 'i' || c == 'I') { extension_ = url::extension::avi; state_ = states::query_or_end; }
         else if (is_allowable_char(c, is_utf8_)) state_ = states::path;
         else URL_PARSER_RESET_PARSER
-        break;
+            break;
     case states::mkv_k:
         if (c == 'k' || c == 'K') state_ = states::mkv_v;
         else if (c == 'o' || c == 'O') state_ = states::mov_v;
         else if (c == 'p' || c == 'P') state_ = states::mpeg4_e;
         else if (is_allowable_char(c, is_utf8_)) state_ = states::path;
         else URL_PARSER_RESET_PARSER
-        break;
+            break;
     case states::mkv_v:
         if (c == 'v' || c == 'V') { extension_ = url::extension::mkv; state_ = states::query_or_end; }
         else if (is_allowable_char(c, is_utf8_)) state_ = states::path;
         else URL_PARSER_RESET_PARSER
-        break;
+            break;
     case states::mov_v:
         if (c == 'v' || c == 'V') { extension_ = url::extension::mov; state_ = states::query_or_end; }
         else if (is_allowable_char(c, is_utf8_)) state_ = states::path;
         else URL_PARSER_RESET_PARSER
-        break;
+            break;
     case states::mpeg4_e:
         if (c == 'e' || c == 'E') state_ = states::mpeg4_g;
         else if (c == '4') { extension_ = url::extension::mpeg4; state_ = states::query_or_end; }
         else if (is_allowable_char(c, is_utf8_)) state_ = states::path;
         else URL_PARSER_RESET_PARSER
-        break;
+            break;
     case states::mpeg4_g:
         if (c == 'g' || c == 'G') state_ = states::mpeg4_4;
         else if (is_allowable_char(c, is_utf8_)) state_ = states::path;
         else URL_PARSER_RESET_PARSER
-        break;
+            break;
     case states::mpeg4_4:
         if (c == '4') { extension_ = url::extension::mpeg4; state_ = states::query_or_end; }
         else if (is_allowable_char(c, is_utf8_)) state_ = states::path;
         else URL_PARSER_RESET_PARSER
-        break;
+            break;
     case states::svg_v:
         if (c == 'v' || c == 'V') state_ = states::svg_g;
         else if (is_allowable_char(c, is_utf8_)) state_ = states::path;
@@ -740,43 +737,43 @@ void common::tools::url_parser::process()
         if (c == 'l' || c == 'L') state_ = states::flv_v;
         else if (is_allowable_char(c, is_utf8_)) state_ = states::path;
         else URL_PARSER_RESET_PARSER
-        break;
+            break;
     case states::flv_v:
         if (c == 'v' || c == 'V') { extension_ = url::extension::flv; state_ = states::query_or_end; }
         else if (is_allowable_char(c, is_utf8_)) state_ = states::path;
         else URL_PARSER_RESET_PARSER
-        break;
+            break;
     case states::_3gp_g:
         if (c == 'g' || c == 'G') state_ = states::_3gp_p;
         else if (is_allowable_char(c, is_utf8_)) state_ = states::path;
         else URL_PARSER_RESET_PARSER
-        break;
+            break;
     case states::_3gp_p:
         if (c == 'p' || c == 'P') { extension_ = url::extension::_3gp; state_ = states::query_or_end; }
         else if (is_allowable_char(c, is_utf8_)) state_ = states::path;
         else URL_PARSER_RESET_PARSER
-        break;
+            break;
     case states::webm_e:
         if (c == 'e' || c == 'E') state_ = states::webm_b;
         else if (c == 'm' || c == 'M') state_ = states::wmv_v;
         else if (is_allowable_char(c, is_utf8_)) state_ = states::path;
         else URL_PARSER_RESET_PARSER
-        break;
+            break;
     case states::webm_b:
         if (c == 'b' || c == 'B') state_ = states::webm_m;
         else if (is_allowable_char(c, is_utf8_)) state_ = states::path;
         else URL_PARSER_RESET_PARSER
-        break;
+            break;
     case states::webm_m:
         if (c == 'm' || c == 'M') { extension_ = url::extension::webm; state_ = states::query_or_end; }
         else if (is_allowable_char(c, is_utf8_)) state_ = states::path;
         else URL_PARSER_RESET_PARSER
-        break;
+            break;
     case states::wmv_v:
         if (c == 'v' || c == 'V') { extension_ = url::extension::wmv; state_ = states::query_or_end; }
         else if (is_allowable_char(c, is_utf8_)) state_ = states::path;
         else URL_PARSER_RESET_PARSER
-        break;
+            break;
     case states::query_or_end:
         if (is_space(c, is_utf8_)) URL_PARSER_URI_FOUND
         else if (c == '>') URL_PARSER_URI_FOUND
@@ -784,11 +781,11 @@ void common::tools::url_parser::process()
         else if (c == '_') state_ = states::path;
         else if (is_letter_or_digit(c, is_utf8_)) { extension_ = url::extension::undefined; state_ = states::query; }
         else URL_PARSER_RESET_PARSER
-        break;
+            break;
     case states::query:
         if (is_space(c, is_utf8_)) URL_PARSER_URI_FOUND
         else if (!is_allowable_query_char(c, is_utf8_)) URL_PARSER_RESET_PARSER
-        break;
+            break;
     default:
         assert(!"invalid state_!");
     };
@@ -1142,7 +1139,7 @@ bool common::tools::url_parser::is_digit(char _c) const
 
 bool common::tools::url_parser::is_digit(char _c, bool _is_utf8) const
 {
-     return !_is_utf8 && is_digit(_c);
+    return !_is_utf8 && is_digit(_c);
 }
 
 bool common::tools::url_parser::is_letter(char _c, bool _is_utf8) const
@@ -1283,7 +1280,7 @@ common::tools::url_parser::fixed_urls_compare_state common::tools::url_parser::c
 
     auto min_safe_pos = -1;
 
-    for (auto & item : fixed_urls_)
+    for (auto& item : fixed_urls_)
     {
         if (_pos && !item.match || item.str.size() - 1 < static_cast<unsigned int>(_pos))
             continue;
@@ -1323,7 +1320,7 @@ void common::tools::url_parser::start_fixed_urls_compare(states _fallback_state)
     compare_buf_.clear();
     fallback_state_ = _fallback_state;
 
-    for (auto & item : fixed_urls_)
+    for (auto& item : fixed_urls_)
         item.match = false;
 
     auto compare_result = compare_fixed_urls(compare_pos_);

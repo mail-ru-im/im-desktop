@@ -40,7 +40,7 @@ namespace
     constexpr int kAvatarVideoSize = 160;
     constexpr int kAvatarLargeSize = 360;
     constexpr QSize kVCSAvatarImageSize(1280, 720);
-    
+
     const QColor kBackgroundColor(40, 40, 40, 255);
     constexpr QImage::Format kImageFormat = QImage::Format_RGBA8888;
 
@@ -82,10 +82,8 @@ namespace
         }
     }
 
-    void addTextToCollection(Ui::gui_coll_helper& collection, const std::string& name, const std::string& textString, const QColor& penColor, const QFont& font)
+    void addTextToCollection(Ui::gui_coll_helper& collection, const std::string& name, const QString& text, const QColor& penColor, const QFont& font)
     {
-        const QString text = QT_TRANSLATE_NOOP("voip_pages", textString.c_str());
-
         QFontMetrics fm(font);
         const QSize textSz = fm.size(Qt::TextSingleLine, text);
 
@@ -833,10 +831,12 @@ void voip_proxy::VoipController::updateDisconnectedPeers()
             text += QChar::LineFeed;
         }
 
-        text += reasonHeader(reason) % QChar::Space;
+        text += reasonHeader(reason);
+        text += QChar::Space;
         for (const auto& p : peers)
         {
-            text += Logic::GetFriendlyContainer()->getFriendly(QString::fromStdString(p)) % qsl(", ");
+            text += Logic::GetFriendlyContainer()->getFriendly(QString::fromStdString(p));
+            text += ql1s(", ");
             ++counter;
         }
 
@@ -1185,13 +1185,10 @@ void voip_proxy::VoipController::setWindowAdd(quintptr _hwnd, const char *call_i
     {
         QColor penColor = QColor(255, 255, 255, (255 * 90) / 100);
         QFont font = Fonts::appFont(Utils::scale_bitmap_with_value(12), Fonts::FontWeight::SemiBold);
-        //QFont font = Fonts::appFontScaled(12, Fonts::FontWeight::Medium);//? Have problem in the mac
-       // font.setStyleStrategy(QFont::PreferAntialias);
-        addTextToCollection(collection, "camera_status", "VOICE", penColor, font);
-        addTextToCollection(collection, "connecting_status", "Connecting...", penColor, font);
-        addTextToCollection(collection, "calling", "Calling", penColor, font);
-        addTextToCollection(collection, "closedByBusy", "Busy", penColor, font);
-
+        addTextToCollection(collection, "camera_status", QT_TRANSLATE_NOOP("voip_pages", "VOICE"), penColor, font);
+        addTextToCollection(collection, "connecting_status", QT_TRANSLATE_NOOP("voip_pages", "Connecting..."), penColor, font);
+        addTextToCollection(collection, "calling", QT_TRANSLATE_NOOP("voip_pages", "Calling"), penColor, font);
+        addTextToCollection(collection, "closedByBusy", QT_TRANSLATE_NOOP("voip_pages", "Busy"), penColor, font);
     }
 
     if (kIncludeWatermark && _primaryWnd)
@@ -1206,9 +1203,9 @@ void voip_proxy::VoipController::setWindowAdd(quintptr _hwnd, const char *call_i
         QFont font = Fonts::appFont(Utils::scale_bitmap_with_value(12), Fonts::FontWeight::SemiBold);
        // font.setStyleStrategy(QFont::PreferAntialias);
 
-        addTextToCollection(collection, "camera_status", "VOICE", color, font);
-        addTextToCollection(collection, "connecting_status", "Connecting...", color, font);
-        addTextToCollection(collection, "calling", "Calling", color, font);
+        addTextToCollection(collection, "camera_status", QT_TRANSLATE_NOOP("voip_pages", "VOICE"), color, font);
+        addTextToCollection(collection, "connecting_status", QT_TRANSLATE_NOOP("voip_pages", "Connecting..."), color, font);
+        addTextToCollection(collection, "calling", QT_TRANSLATE_NOOP("voip_pages", "Calling"), color, font);
     }
 
     dispatcher_.post_message_to_core("voip_call", collection.get());
@@ -1307,13 +1304,6 @@ void voip_proxy::VoipController::onEndCall()
 #endif
     disconnect(Logic::getContactListModel(), &Logic::ContactListModel::ignore_contact, this, &voip_proxy::VoipController::_checkIgnoreContact);
     disconnect(Logic::GetAvatarStorage(), &Logic::AvatarStorage::avatarChanged, this, &voip_proxy::VoipController::avatarChanged);
-}
-
-void voip_proxy::VoipController::switchMinimalBandwithMode()
-{
-    Ui::gui_coll_helper collection(dispatcher_.create_collection(), true);
-    collection.set_value_as_string("type", "voip_minimal_bandwidth_switch");
-    dispatcher_.post_message_to_core("voip_call", collection.get());
 }
 
 void voip_proxy::VoipController::setWindowBackground(quintptr _hwnd)

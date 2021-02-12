@@ -11,8 +11,9 @@ public:
     virtual void DeviceMonitoringListChanged() = 0; // audio devices only if possible
 };
 
-class DeviceMonitoring
+class DeviceMonitoring : public QObject
 {
+    Q_OBJECT
 public:
     virtual void RegisterCaptureDeviceInfoObserver(DeviceMonitoringCallback& viECaptureDeviceInfoCallback) = 0;
     virtual void DeregisterCaptureDeviceInfoObserver() = 0;

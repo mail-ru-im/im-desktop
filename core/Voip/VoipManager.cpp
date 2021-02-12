@@ -526,7 +526,6 @@ namespace voip_manager
         void call_stop_smart              (const std::function<void()>&) override;
 
         void mute_incoming_call_sounds    (bool mute) override;
-        void minimal_bandwidth_switch() override;
         bool has_created_call() override;
 
         void call_report_user_rating(const UserRatingReport& _ratingReport) override;
@@ -798,6 +797,7 @@ namespace voip_manager
         engine->RegisterSoundEvent(voip::Hold, true, v_call_hold_data, vibroPatternMs, 0);
         engine->RegisterSoundEvent(voip::IncomingInvite, true, v_call_incoming_data, vibroPatternMs, 0);
         engine->RegisterSoundEvent(voip::WaitingForAccept, true, v_call_start_data, vibroPatternMs, 0);
+        engine->RegisterSoundEvent(voip::HangupRejectRemote, false, v_call_end_data, vibroPatternMs, 0);
         return true;
     }
 
@@ -1583,10 +1583,6 @@ namespace voip_manager
         }
     }
 
-    void VoipManagerImpl::minimal_bandwidth_switch()
-    {
-    }
-
     bool VoipManagerImpl::has_created_call()
     {
         return !_calls.empty();
@@ -1936,6 +1932,11 @@ namespace voip_manager
     {
         auto engine = _get_engine();
         VOIP_ASSERT_RETURN(!!engine);
+        if (!_to_accept_call.empty())
+        {
+            call_accept(_to_accept_call, _lastAccount, _to_start_video);
+            _to_accept_call = {};
+        }
     }
 
     int64_t VoipManagerImpl::get_voip_initialization_memory() const
@@ -2417,13 +2418,8 @@ namespace voip_manager
             contact_ex.incoming        = !desc->outgoing;
             contact_ex.windows         = _get_call_windows(call_id);
             contact_ex.terminate_reason = (int)reason;
-            // close all windows of call with call_id
-            std::for_each(contact_ex.windows.begin(), contact_ex.windows.end(), [this](void* _hwnd)
-            {
-                window_remove(_hwnd);
-            });
-
             SIGNAL_NOTIFICATION(kNotificationType_CallDestroyed, &contact_ex);
+
             _call_destroy(desc, reason);
             desc = nullptr;
 
@@ -2462,11 +2458,6 @@ namespace voip_manager
                     callback_();
                 callback_ = {};
                 return;
-            }
-            if (!_to_accept_call.empty())
-            {
-                call_accept(_to_accept_call, _lastAccount, _to_start_video);
-                _to_accept_call = {};
             }
         });
     }

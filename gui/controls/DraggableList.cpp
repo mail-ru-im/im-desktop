@@ -72,16 +72,16 @@ QVariantList DraggableList::orderedData() const
 {
     const auto itemsCount = d->layout_->count();
 
-    QVariantList data;
-    data.reserve(itemsCount);
+    QVariantList result;
+    result.reserve(itemsCount);
 
     for (auto i = 0; i < itemsCount; ++i)
     {
         if (auto item = qobject_cast<DraggableItem*>(d->layout_->itemAt(i)->widget()))
-            data.push_back(item->data());
+            result.push_back(item->data());
     }
 
-    return data;
+    return result;
 }
 
 void DraggableList::onDragStarted()

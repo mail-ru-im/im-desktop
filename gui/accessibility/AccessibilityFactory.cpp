@@ -16,6 +16,8 @@
 #include "../main_window/history_control/reactions/ReactionsListItem.h"
 #include "../main_window/history_control/HistoryControlPageItem.h"
 
+#include "controls/ContactAvatarWidget.h"
+
 
 namespace Ui::Accessibility
 {
@@ -79,6 +81,10 @@ namespace Ui::Accessibility
         else if (u"Ui::HistoryControlPageItem" == classname)
         {
             result = new Ui::AccessibleHistoryControlPageItem(static_cast<Ui::HistoryControlPageItem*>(object));
+        }
+        else if (u"Ui::ContactAvatarWidget" == classname)
+        {
+            result = new Ui::AccessibleAvatarWidget(static_cast<Ui::ContactAvatarWidget*>(object));
         }
 
         return result;

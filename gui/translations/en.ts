@@ -982,18 +982,18 @@ You can leave your feedback or report an error here:</translation>
         <translation>Replied to status: %1 %2</translation>
     </message>
     <message>
-        <source>You replied to status
-%2 %3
-%4
-%5 %6</source>
-        <translation>You replied to status
-%2 %3
-%4
-%5 %6</translation>
-    </message>
-    <message>
         <source>You replied to status: %1 %2</source>
         <translation>You replied to status: %1 %2</translation>
+    </message>
+    <message>
+        <source>You replied to status
+%1 %2
+%3
+%4 %5</source>
+        <translation>You replied to status
+%1 %2
+%3
+%4 %5</translation>
     </message>
 </context>
 <context>
@@ -3699,6 +3699,12 @@ You can leave your feedback or report an error here:</translation>
         <source>Block</source>
         <translation>Block</translation>
     </message>
+    <message>
+        <source>Pay attention
+to contact status</source>
+        <translation>Pay attention to the status
+contact</translation>
+    </message>
 </context>
 <context>
     <name>placeholders</name>
@@ -6061,10 +6067,6 @@ Please edit phone number and try again.</translation>
         <translation>Week</translation>
     </message>
     <message>
-        <source>undefined time</source>
-        <translation>undefined time</translation>
-    </message>
-    <message>
         <source>%1 left</source>
         <translation>%1 left</translation>
     </message>
@@ -6095,16 +6097,80 @@ Please edit phone number and try again.</translation>
         <translation>My status</translation>
     </message>
     <message>
-        <source>No status</source>
-        <translation>No status</translation>
-    </message>
-    <message>
         <source>Status timing</source>
         <translation>Status timing</translation>
     </message>
     <message>
         <source>Close</source>
         <translation>Close</translation>
+    </message>
+    <message>
+        <source>Choose unique status</source>
+        <translation>Select custom status</translation>
+    </message>
+    <message>
+        <source>Back</source>
+        <translation>Back</translation>
+    </message>
+    <message>
+        <source>Done</source>
+        <translation>Done</translation>
+    </message>
+    <message>
+        <source>Maximum length - %1 symbols</source>
+        <translation>Maximum length - %1 symbols</translation>
+    </message>
+    <message>
+        <source>Status search</source>
+        <translation>Status search</translation>
+    </message>
+    <message>
+        <source>SELECT STATUS</source>
+        <translation>SELECT STATUS</translation>
+    </message>
+    <message>
+        <source>Select custom status</source>
+        <translation>Select custom status</translation>
+    </message>
+    <message>
+        <source>Select custom time</source>
+        <translation>Select custom time</translation>
+    </message>
+    <message>
+        <source>Status is set for %1</source>
+        <translation>Status is set for %1</translation>
+    </message>
+    <message>
+        <source>Status is set</source>
+        <translation>Status is set</translation>
+    </message>
+    <message>
+        <source>Enter status text</source>
+        <translation>Enter status text</translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation>Search</translation>
+    </message>
+    <message>
+        <source>Status duration</source>
+        <translation>Status duration</translation>
+    </message>
+    <message>
+        <source>Date</source>
+        <translation>Date</translation>
+    </message>
+    <message>
+        <source>dd.mm.yyyy</source>
+        <translation>dd.mm.yyyy</translation>
+    </message>
+    <message>
+        <source>Time</source>
+        <translation>Time</translation>
+    </message>
+    <message>
+        <source>hh:mm</source>
+        <translation>hh:mm</translation>
     </message>
 </context>
 <context>
@@ -6385,10 +6451,6 @@ Please edit phone number and try again.</translation>
         <translation>Incoming call</translation>
     </message>
     <message>
-        <source>Settings</source>
-        <translation>Settings</translation>
-    </message>
-    <message>
         <source>Add to call</source>
         <translation>Add to call</translation>
     </message>
@@ -6464,6 +6526,22 @@ with click</source>
 or open the call
 with click</translation>
     </message>
+    <message>
+        <source>VOICE</source>
+        <translation>ГОЛОС</translation>
+    </message>
+    <message>
+        <source>Connecting...</source>
+        <translation>Connecting...</translation>
+    </message>
+    <message>
+        <source>Calling</source>
+        <translation>Calling</translation>
+    </message>
+    <message>
+        <source>Busy</source>
+        <translation>Busy</translation>
+    </message>
 </context>
 <context>
     <name>voip_video_panel</name>
@@ -6490,14 +6568,6 @@ with click</translation>
     <message>
         <source>Settings</source>
         <translation>Settings</translation>
-    </message>
-    <message>
-        <source>Show all</source>
-        <translation>Show all</translation>
-    </message>
-    <message>
-        <source>Show one</source>
-        <translation>Show one</translation>
     </message>
     <message>
         <source>Stop screen sharing</source>

@@ -90,7 +90,7 @@ namespace TextRendering
         setText(_text);
     }
 
-    void TextUnit::elide(int _width, ELideType _type)
+    void TextUnit::elide(int _width, ElideType _type)
     {
         return elideBlocks(blocks_, _width, _type);
     }
@@ -191,9 +191,9 @@ namespace TextRendering
         return drawBlocksSmart(blocks_, _painter, QPoint(horOffset_, verOffset_), _center);
     }
 
-    int TextUnit::getHeight(int width, CallType _calltype)
+    int TextUnit::getHeight(int _width, CallType _calltype)
     {
-        cachedSize_ = QSize(width, getBlocksHeight(blocks_, width, lineSpacing_, _calltype));
+        cachedSize_ = QSize(_width, getBlocksHeight(blocks_, _width, lineSpacing_, _calltype));
 
         if (blocks_.size() == 1 && blocks_.front()->needsEmojiMargin())
             needsEmojiMargin_ = true;

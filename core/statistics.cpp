@@ -50,9 +50,7 @@ namespace
     constexpr AccumulationTime traffic_send_time = build::is_debug() ? std::chrono::minutes(3) : std::chrono::hours(24);
     static std::unordered_map<stats_event_names, AccumulationTime> Stat_Accumulated_Events = { { stats_event_names::send_used_traffic_size_event, traffic_send_time } };
 
-    constexpr std::string_view flurry_url = "https://data.flurry.com/aah.do";
     constexpr std::string_view mytracker_s2s_api_key = "SPaTOUt9cR0EpARsjJEjhgnQQ7vPP4G9Xu0KgujlyUFsb85zPg6rnmxdQ3kvzN11";
-    constexpr auto send_flurry_interval = build::is_debug() ? std::chrono::minutes(1) : std::chrono::hours(1);
     constexpr auto send_mytracker_interval = build::is_debug() ? std::chrono::minutes(1) : std::chrono::minutes(10);
     constexpr auto fetch_ram_usage_interval = build::is_debug() ? std::chrono::seconds(30) : std::chrono::hours(1);
     constexpr auto save_to_file_interval = std::chrono::seconds(10);
@@ -96,12 +94,9 @@ namespace
 long long statistics::stats_event::session_event_id_ = 0;
 std::shared_ptr<statistics::stop_objects> statistics::stop_objects_;
 
-statistics::statistics(std::wstring _file_name_flurry, std::wstring _file_name_mytracker)
-    : file_name_flurry_(std::move(_file_name_flurry))
-    , file_name_mytracker_(std::move(_file_name_mytracker))
-    , changed_flurry_(false)
+statistics::statistics(std::wstring _file_name_mytracker)
+    : file_name_mytracker_(std::move(_file_name_mytracker))
     , changed_mytracker_(false)
-    , send_flurry_timer_(0)
     , send_mytracker_timer_(0)
     , stats_thread_(std::make_unique<async_executer>("stats"))
     , last_sent_time_(std::chrono::system_clock::now())
@@ -123,9 +118,6 @@ statistics::~statistics()
     stop_objects_->is_stop_ = true;
     if (save_timer_ > 0 && g_core)
         g_core->stop_timer(save_timer_);
-
-    if (send_flurry_timer_ > 0 && g_core)
-        g_core->stop_timer(send_flurry_timer_);
 
     if (send_mytracker_timer_ > 0 && g_core)
         g_core->stop_timer(send_mytracker_timer_);
@@ -218,19 +210,6 @@ void statistics::check_ram_usage()
 
 void statistics::start_send()
 {
-    auto current_time = std::chrono::system_clock::now();
-    if (current_time - last_sent_time_ >= send_flurry_interval)
-        send_flurry_async();
-
-    send_flurry_timer_ = g_core->add_timer([wr_this = weak_from_this()]
-    {
-        auto ptr_this = wr_this.lock();
-        if (!ptr_this)
-            return;
-
-        ptr_this->send_flurry_async();
-    }, send_flurry_interval);
-
     send_mytracker_timer_ = g_core->add_timer([wr_this = weak_from_this()]
     {
         auto ptr_this = wr_this.lock();
@@ -243,76 +222,8 @@ void statistics::start_send()
 
 bool statistics::load()
 {
-    auto is_flurry_loaded = false;
-    auto is_mytracker_loaded = false;
-    {
-        core::tools::binary_stream bstream;
-        if (bstream.load_from_file(file_name_flurry_))
-            is_flurry_loaded = unserialize_flurry(bstream);
-    }
-    {
-        core::tools::binary_stream bstream;
-        if (bstream.load_from_file(file_name_mytracker_))
-            is_mytracker_loaded = unserialize_mytracker(bstream);
-    }
-    return is_flurry_loaded && is_mytracker_loaded;
-}
-
-void statistics::serialize_flurry(tools::binary_stream& _bs) const
-{
-    tools::tlvpack pack;
-    pack.reserve(events_.size() + accumulated_events_.size() + 1);
-    int32_t counter = 0;
-
-    // push stats info
-    {
-        tools::tlvpack value_tlv;
-        value_tlv.push_child(tools::tlv(statistics_info_types::last_sent_time, (int64_t)std::chrono::system_clock::to_time_t(last_sent_time_)));
-
-        tools::binary_stream bs_value;
-        value_tlv.serialize(bs_value);
-        pack.push_child(tools::tlv(++counter, bs_value));
-    }
-
-    auto serialize_events = [&pack, &counter](const decltype(events_)& events)
-    {
-        for (const auto& stat_event : events)
-        {
-            tools::tlvpack value_tlv;
-            value_tlv.reserve(4);
-
-            // TODO : push id, time, ..
-            value_tlv.push_child(tools::tlv(statistics_info_types::event_name, stat_event.get_name()));
-            value_tlv.push_child(tools::tlv(statistics_info_types::event_time, (int64_t)std::chrono::system_clock::to_time_t(stat_event.get_time())));
-            value_tlv.push_child(tools::tlv(statistics_info_types::event_id, (int64_t)stat_event.get_id()));
-
-            tools::tlvpack props_pack;
-            int32_t prop_counter = 0;
-
-            for (const auto& prop : stat_event.get_props())
-            {
-                tools::tlvpack value_tlv_prop;
-                value_tlv_prop.reserve(2);
-                value_tlv_prop.push_child(tools::tlv(statistics_info_types::event_prop_name, prop.first));
-                value_tlv_prop.push_child(tools::tlv(statistics_info_types::event_prop_value, prop.second));
-
-                tools::binary_stream bs_value;
-                value_tlv_prop.serialize(bs_value);
-                props_pack.push_child(tools::tlv(++prop_counter, bs_value));
-            }
-
-            value_tlv.push_child(tools::tlv(statistics_info_types::event_props, props_pack));
-
-            tools::binary_stream bs_value;
-            value_tlv.serialize(bs_value);
-            pack.push_child(tools::tlv(++counter, bs_value));
-        }
-    };
-
-    serialize_events(events_);
-    serialize_events(accumulated_events_);
-
-    pack.serialize(_bs);
+    core::tools::binary_stream bstream;
+    return bstream.load_from_file(file_name_mytracker_) && unserialize_mytracker(bstream);
 }
 
 void statistics::serialize_mytracker(tools::binary_stream& _bs) const
@@ -391,81 +302,6 @@ bool unserialize_props(tools::tlvpack& prop_pack, event_props_type* props)
     return true;
 }
 
-bool statistics::unserialize_flurry(tools::binary_stream& _bs)
-{
-    if (!_bs.available())
-    {
-        assert(false);
-        return false;
-    }
-
-    tools::tlvpack pack;
-    if (!pack.unserialize(_bs))
-        return false;
-
-    int32_t counter = 0;
-    for (auto tlv_val = pack.get_first(); tlv_val; tlv_val = pack.get_next())
-    {
-        tools::binary_stream val_data = tlv_val->get_value<tools::binary_stream>();
-
-        tools::tlvpack pack_val;
-        if (!pack_val.unserialize(val_data))
-            return false;
-
-        if (counter++ == 0)
-        {
-            auto tlv_last_sent_time = pack_val.get_item(statistics_info_types::last_sent_time);
-
-            if (!tlv_last_sent_time)
-            {
-                assert(false);
-                return false;
-            }
-
-            time_t last_time = tlv_last_sent_time->get_value<int64_t>();
-            last_sent_time_ = std::chrono::system_clock::from_time_t(last_time);
-        }
-        else
-        {
-            auto curr_event_name = pack_val.get_item(statistics_info_types::event_name);
-
-            if (!curr_event_name)
-            {
-                assert(false);
-                return false;
-            }
-            stats_event_names name = curr_event_name->get_value<stats_event_names>();
-
-            auto tlv_event_time = pack_val.get_item(statistics_info_types::event_time);
-            auto tlv_event_id = pack_val.get_item(statistics_info_types::event_id);
-            if (!tlv_event_time || !tlv_event_id)
-            {
-                assert(false);
-                return false;
-            }
-
-            event_props_type props;
-            const auto tlv_prop_pack = pack_val.get_item(statistics_info_types::event_props);
-            assert(tlv_prop_pack);
-            if (tlv_prop_pack)
-            {
-                auto prop_pack = tlv_prop_pack->get_value<tools::tlvpack>();
-                if (!unserialize_props(prop_pack, &props))
-                {
-                    assert(false);
-                    return false;
-                }
-            }
-
-            auto read_event_time = std::chrono::system_clock::from_time_t(tlv_event_time->get_value<int64_t>());
-            auto read_event_id = tlv_event_id->get_value<int64_t>();
-            insert_event_flurry(name, std::move(props), read_event_time, read_event_id);
-        }
-    }
-
-    return true;
-}
-
 bool statistics::unserialize_mytracker(tools::binary_stream& _bs)
 {
     if (!_bs.available())
@@ -528,23 +364,8 @@ bool statistics::unserialize_mytracker(tools::binary_stream& _bs)
 
 void statistics::save_if_needed()
 {
-    if (g_core && changed_flurry_)
-        save_flurry();
     if (g_core && changed_mytracker_)
         save_mytracker();
-}
-
-void core::stats::statistics::save_flurry()
-{
-    changed_flurry_ = false;
-    auto bs_data = std::make_shared<tools::binary_stream>();
-    serialize_flurry(*bs_data);
-
-    g_core->run_async([bs_data, file_name = file_name_flurry_]
-        {
-            bs_data->save_2_file(file_name);
-            return 0;
-        });
 }
 
 void core::stats::statistics::save_mytracker()
@@ -561,59 +382,6 @@ void core::stats::statistics::save_mytracker()
             bs_data->save_2_file(file_name);
             return 0;
         });
-}
-
-void statistics::clear_flurry()
-{
-    last_sent_time_ = std::chrono::system_clock::now();
-
-    if (!events_.empty())
-    {
-        auto last_service_event_ptr = events_.end();
-        while (last_service_event_ptr != events_.begin())
-        {
-            --last_service_event_ptr;
-            if (last_service_event_ptr->get_name() == stats_event_names::service_session_start)
-                break;
-        }
-
-        auto last_service_event = *last_service_event_ptr;
-        events_.clear();
-        events_.push_back(last_service_event);
-    }
-
-    changed_flurry_ = true;
-
-    // reset_session_event_id();
-    // TODO : mb need save map with counts here?
-}
-
-void statistics::send_flurry_async()
-{
-    if (events_.empty())
-        return;
-
-    auto post_data_vector = get_post_data();
-
-    if (post_data_vector.empty())
-        return;
-
-    auto user_proxy = g_core->get_proxy_settings();
-
-    stats_thread_->run_async_function([post_data_vector = std::move(post_data_vector), user_proxy, file_name = file_name_flurry_]
-    {
-        for (const auto& post_data : post_data_vector)
-            statistics::send_flurry(user_proxy, post_data, file_name);
-        return 0;
-
-    })->on_result_ = [wr_this = weak_from_this()](int32_t _error)
-    {
-        auto ptr_this = wr_this.lock();
-        if (!ptr_this)
-            return;
-        ptr_this->clear_flurry();
-        ptr_this->save_if_needed();
-    };
 }
 
 void core::stats::statistics::send_mytracker_async(const std::shared_ptr<stats_event>& event)
@@ -703,69 +471,22 @@ void statistics::query_disk_size_async()
     });
 }
 
-std::string statistics::dump_events_to_flurry_json(events_ci begin, events_ci end, time_t _start_time) const
-{
-    std::stringstream data_stream;
-    std::map<stats_event_names, int32_t> events_and_count;
-
-    bool is_first = true;
-
-    for (auto stat_event  = begin; stat_event != end; ++stat_event)
-    {
-        const auto event_string = stat_event->to_flurry_string(_start_time);
-        if (event_string.empty())
-            continue;
-
-        if (!is_first)
-            data_stream << ",";
-
-        is_first = false;
-
-        data_stream << stat_event->to_flurry_string(_start_time);
-
-        ++events_and_count[stat_event->get_name()];
-    }
-
-    data_stream << "],\"bm\":false,\"bn\":{";
-
-    is_first = true;
-
-    for (auto stat_event  = events_and_count.begin(); stat_event != events_and_count.end(); ++stat_event)
-    {
-        const auto event_name = stat_event_to_string(stat_event->first);
-        if (event_name.empty())
-            continue;
-
-        if (!is_first)
-            data_stream << ",";
-
-        is_first = false;
-
-        data_stream << "\"" << event_name << "\":" << stat_event->second;
-    }
-    return data_stream.str();
-}
-
 std::string core::stats::statistics::dump_events_to_mytracker_json(events_ci begin, events_ci end, time_t _start_time) const
 {
-    std::stringstream data_stream;
-    auto is_first = true;
-
-    for (auto stat_event = begin; stat_event != end; ++stat_event)
+    std::string str;
+    while (begin != end)
     {
-        const auto event_string = stat_event->to_flurry_string(_start_time);
-        if (event_string.empty())
-            continue;
-
-        if (!is_first)
-            data_stream << ",";
-
-        is_first = false;
-        data_stream << stat_event->to_flurry_string(_start_time);
+        if (auto event_string = begin->to_log_string(_start_time); !event_string.empty())
+        {
+            str += std::move(event_string);
+            str += ',';
+        }
+        ++begin;
     }
 
-    is_first = true;
-    return data_stream.str();
+    if (!str.empty())
+        str.pop_back();
+    return str;
 }
 
 std::string core::stats::statistics::get_mytracker_post_data(const stats_event& event)
@@ -790,104 +511,6 @@ std::string core::stats::statistics::get_mytracker_post_data(const stats_event& 
     }
     stream << "}";
     return stream.str();
-}
-
-std::vector<std::string> statistics::get_post_data() const
-{
-    std::vector<std::string> result;
-
-    events_ci begin = events_.begin();
-    while (begin != events_.end())
-    {
-        events_ci end = std::next(begin);
-        while (end != events_.end()
-            && end->get_name() != stats_event_names::service_session_start)
-            ++end;
-
-        assert(begin->get_name() == stats_event_names::service_session_start);
-
-        const long long time_now = std::chrono::system_clock::to_time_t(begin->get_time()) * 1000; // milliseconds
-
-        std::string user_key = "";
-        auto props = begin->get_props();
-
-        if (props.size() > 0 && props.begin()->first == "hashed_user_key")
-        {
-            user_key = props.begin()->second;
-        }
-        else
-        {
-            assert(false);
-        }
-
-        ++begin;
-
-        if (begin == end)
-            continue;
-
-        const auto time = time_now;
-        const auto time1 = time + 4;
-        const auto time3 = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()) * 1000;
-        const auto delta = time3 - time;
-
-        const auto version = core::utils::get_user_agent();
-        const auto flurryKey = config::get().string(config::values::flurry_key);
-        std::stringstream data_stream;
-
-        data_stream << "{\"a\":{\"af\":" << time3
-            <<",\"aa\":1,\"ab\":10,\"ac\":9,\"ae\":\""<< version
-            << "\",\"ad\":\"" << flurryKey
-            << "\",\"ag\":" << time
-            << ",\"ah\":" << time1
-            << ",\"ak\":1,"
-            << "\"cg\":\"" << user_key
-            << "\"},\"b\":[{\"bd\":\"\",\"be\":\"\",\"bk\":-1,\"bl\":0,\"bj\":\"ru\",\"bo\":[";
-
-        data_stream << dump_events_to_flurry_json(begin, end, time);
-
-        data_stream << "}"
-            <<",\"bv\":[],\"bt\":false,\"bu\":{},\"by\":[],\"cd\":0,"
-            << "\"ba\":" << time1
-            << ",\"bb\":" << delta
-            << ",\"bc\":-1,\"ch\":\"Etc/GMT-3\"}]}";
-        result.push_back(data_stream.str());
-
-        if (end != events_.end())
-        {
-            begin = end;
-        }
-        else
-            break;
-    }
-
-    return result;
-}
-
-bool statistics::send_flurry(const proxy_settings& _user_proxy, std::string_view post_data, std::wstring_view _file_name)
-{
-    const std::weak_ptr<stop_objects> wr_stop(stop_objects_);
-
-    const auto stop_handler =
-        [wr_stop]
-        {
-            auto ptr_stop = wr_stop.lock();
-            if (!ptr_stop)
-                return true;
-
-            return ptr_stop->is_stop_.load();
-        };
-
-    core::http_request_simple post_request(_user_proxy, utils::get_user_agent(), default_priority(), stop_handler);
-    post_request.set_connect_timeout(std::chrono::seconds(5));
-    post_request.set_timeout(std::chrono::seconds(5));
-    post_request.set_keep_alive();
-
-    write_to_txt_debug_log(_file_name, post_data);
-
-    post_request.set_url(su::concat(flurry_url, "?d=", core::tools::base64::encode64(post_data), "&c=", core::tools::adler32(post_data)));
-    post_request.set_normalized_url("flurry");
-    post_request.set_send_im_stats(false);
-    return post_request.get() == curl_easy::completion_code::success;
 }
 
 long core::stats::statistics::send_mytracker(const proxy_settings& _user_proxy, std::string_view post_data, stats_event_names event_name, std::wstring_view _debug_log_file_name)
@@ -949,25 +572,6 @@ long core::stats::statistics::send_mytracker(const proxy_settings& _user_proxy, 
     return is_sent_ok ? response_code : 0;
 }
 
-void statistics::insert_event_flurry(stats_event_names _event_name, event_props_type&& _props,
-                                     std::chrono::system_clock::time_point _event_time, int32_t _event_id)
-{
-    event_props_type props = std::move(_props);
-
-    if (is_accumulated_event(_event_name))
-    {
-        auto it = get_property(props, AccumulateFinishedProp);
-        if (it == props.cend())
-        {
-            accumulated_events_.emplace_back(_event_name, _event_time, _event_id, std::move(props));
-            return;
-        }
-    }
-
-    events_.emplace_back(_event_name, _event_time, _event_id, std::move(props));
-    changed_flurry_ = true;
-}
-
 void statistics::insert_event_mytracker(stats_event_names _event_name, event_props_type&& _props,
     std::chrono::system_clock::time_point _event_time, int32_t _event_id)
 {
@@ -1013,9 +617,7 @@ void statistics::insert_event(stats_event_names _event_name, event_props_type _p
         stats_event::reset_session_event_id();
         insert_event(core::stats::stats_event_names::service_session_start, _props);
     }
-    const auto event_time = std::chrono::system_clock::now();
-    insert_event_flurry(_event_name, event_props_type(_props), event_time, -1);
-    insert_event_mytracker(_event_name, event_props_type(_props), event_time, -1);
+    insert_event_mytracker(_event_name, event_props_type(_props), std::chrono::system_clock::now(), -1);
 }
 
 void statistics::insert_event(stats_event_names _event_name)
@@ -1041,7 +643,7 @@ statistics::stats_event::stats_event(stats_event_names _name,
         event_id_ = _event_id;
 }
 
-std::string statistics::stats_event::to_flurry_string(time_t _start_time) const
+std::string statistics::stats_event::to_log_string(time_t _start_time) const
 {
     std::stringstream result;
 
@@ -1223,8 +825,6 @@ void statistics::increment_event_prop(stats_event_names _event_name,
 
         insert_event(_event_name, props);
     }
-
-    changed_flurry_ = true;
 }
 
 template void statistics::increment_event_prop<int32_t>(stats_event_names _event_name,

@@ -230,7 +230,7 @@ namespace Ui
             item->updateSize();
             h += item->sizeHint().height();
 
-            Testing::setAccessibleName(item, qsl("AS ChatPlaceholder caption") % c.accessibleName_);
+            Testing::setAccessibleName(item, u"AS ChatPlaceholder caption" % c.accessibleName_);
 
             layout()->addWidget(item);
         }

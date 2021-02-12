@@ -231,7 +231,6 @@ namespace config
                 std::pair(values::updater_main_instance_mutex_win, get_string(it->value, "updater_main_instance_mutex_win")),
                 std::pair(values::company_name, get_string(it->value, "company_name")),
                 std::pair(values::app_user_model_win, get_string(it->value, "app_user_model_win")),
-                std::pair(values::flurry_key, get_string(it->value, "flurry_key")),
                 std::pair(values::feedback_version_id, get_string(it->value, "feedback_version_id")),
                 std::pair(values::feedback_platform_id, get_string(it->value, "feedback_platform_id")),
                 std::pair(values::feedback_aimid_id, get_string(it->value, "feedback_aimid_id")),
@@ -257,6 +256,7 @@ namespace config
                 std::pair(values::mytracker_app_id_win, get_string(it->value, "mytracker_app_id_win")),
                 std::pair(values::mytracker_app_id_mac, get_string(it->value, "mytracker_app_id_mac")),
                 std::pair(values::mytracker_app_id_linux, get_string(it->value, "mytracker_app_id_linux")),
+                std::pair(values::status_banner_emoji_csv, get_string(it->value, "status_banner_emoji_csv")),
             };
 
             if (std::is_sorted(std::cbegin(res), std::cend(res), is_less_by_first))
@@ -301,6 +301,11 @@ namespace config
 
     configuration::configuration() = default;
 
+    bool configuration::is_external_config_enabled() const noexcept
+    {
+        return c_.features[static_cast<size_t>(config::features::external_url_config)].second;
+    }
+
     std::shared_ptr<external_configuration> configuration::get_external() const
     {
         std::scoped_lock lock(*spin_lock_);
@@ -322,6 +327,17 @@ namespace config
 
     const value_type& configuration::value(values _v) const noexcept
     {
+        if (is_external_config_enabled())
+        {
+            if (const auto external = get_external(); external)
+            {
+                const auto& values = external->values;
+                const auto it = std::find_if(values.begin(), values.end(), [_v](auto x) { return x.first == _v; });
+                if (it != values.end())
+                    return it->second;
+            }
+        }
+
         return c_.values[static_cast<size_t>(_v)].second;
     }
 
@@ -329,6 +345,7 @@ namespace config
     {
         if (const auto& v = value(_v); auto ptr = std::get_if<std::string>(&v))
             return std::string_view(*ptr);
+
         return {};
     }
 
@@ -345,7 +362,7 @@ namespace config
     bool configuration::is_on(features _v) const noexcept
     {
         auto default_value = c_.features[static_cast<size_t>(_v)].second;
-        if (!c_.features[static_cast<size_t>(config::features::external_url_config)].second || config::features::external_url_config == _v)
+        if (!is_external_config_enabled() || config::features::external_url_config == _v)
             return default_value;
 
         if (const auto external = get_external(); external)
@@ -366,7 +383,7 @@ namespace config
 
     bool configuration::is_overridden(features _v) const noexcept
     {
-        if (!c_.features[static_cast<size_t>(config::features::external_url_config)].second || config::features::external_url_config == _v)
+        if (!is_external_config_enabled() || config::features::external_url_config == _v)
             return false;
 
         if (const auto external = get_external(); external)
@@ -375,6 +392,19 @@ namespace config
             return std::any_of(features.begin(), features.end(), [_v](auto x) { return x.first == _v; });
         }
 
+        return false;
+    }
+
+    bool configuration::is_overridden(values _v) const noexcept
+    {
+        if (!is_external_config_enabled())
+            return false;
+
+        if (const auto external = get_external(); external)
+        {
+            const auto& values = external->values;
+            return std::any_of(values.begin(), values.end(), [_v](auto x) { return x.first == _v; });
+        }
         return false;
     }
 
@@ -418,6 +448,11 @@ const config::configuration& config::get()
 }
 
 bool config::is_overridden(features _v)
+{
+    return config::get().is_overridden(_v);
+}
+
+bool config::is_overridden(values _v)
 {
     return config::get().is_overridden(_v);
 }

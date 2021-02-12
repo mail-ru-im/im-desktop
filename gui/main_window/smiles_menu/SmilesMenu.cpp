@@ -38,6 +38,11 @@ namespace
         return Utils::scale_value(36);
     }
 
+    int emojiToolbarTopMargin()
+    {
+        return Utils::scale_value(4);
+    }
+
     qint32 getEmojiItemSize() noexcept
     {
         constexpr auto EMOJI_ITEM_SIZE = 44;
@@ -88,7 +93,7 @@ namespace
 
     int getToolBarButtonEmojiWidth() noexcept
     {
-        return Utils::scale_value(40);
+        return Utils::scale_value(36);
     }
 
     int getToolBarButtonEmojiHeight() noexcept
@@ -149,6 +154,80 @@ namespace
             QThreadPool::globalInstance()->start(task);
         }
     }
+
+    QColor toolbarButtonHoveredBackground()
+    {
+        return Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT_INVERSE);
+    }
+
+    QColor toolbarButtonCheckedBackground()
+    {
+        return Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT);
+    }
+
+    QColor toolbarButtonCheckedBorder()
+    {
+        return Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY);
+    }
+
+    QSize categoryButtonSize()
+    {
+        return Utils::scale_value(QSize(36, 36));
+    }
+
+    QSize categoryIconSize()
+    {
+        return Utils::scale_value(QSize(32, 32));
+    }
+
+    QPixmap categoryButtonIconColored(const QString& _category, const QColor& _color)
+    {
+        const QString resourceString = u":/smiles_menu/cat_" % _category;
+        const auto icon = Utils::renderSvg(resourceString, categoryIconSize(), _color);
+        auto pixmap = QPixmap(Utils::scale_bitmap(categoryButtonSize()));
+        Utils::check_pixel_ratio(pixmap);
+        pixmap.fill(Qt::transparent);
+        QPainter p(&pixmap);
+        const auto offset = Utils::unscale_bitmap((pixmap.size() - icon.size()) / 2);
+        p.drawPixmap(offset.width(), offset.height(), icon);
+        return pixmap;
+    }
+
+    QPixmap categoryButtonIcon(const QString& _category)
+    {
+        auto color = Styling::getParameters().getColor(Styling::StyleVariable::BASE_TERTIARY);
+        color.setAlphaF(.6);
+        return categoryButtonIconColored(_category, color);
+    }
+
+    QPixmap categoryButtonHoveredIcon(const QString& _category)
+    {
+        auto color = Styling::getParameters().getColor(Styling::StyleVariable::BASE_TERTIARY);
+        color.setAlphaF(.8);
+        return categoryButtonIconColored(_category, color);
+    }
+
+    QPixmap categoryButtonCheckedIcon(const QString& _category)
+    {
+        auto hoveredColor = Styling::getParameters().getColor(Styling::StyleVariable::PRIMARY);
+        auto pixmap = categoryButtonIconColored(_category, hoveredColor);
+        QPainter p(&pixmap);
+        QPainterPath path;
+        path.addEllipse(QRect({0, 0}, categoryButtonSize()));
+        hoveredColor.setAlphaF(.09);
+        p.fillPath(path, hoveredColor);
+        return pixmap;
+    }
+
+    int pickerTopBorderWidth()
+    {
+        return Utils::scale_value(1);
+    }
+
+    int categoryOffset()
+    {
+        return Utils::scale_value(4);
+    }
 }
 
 namespace Ui
@@ -208,18 +287,22 @@ namespace Ui
 
     QVariant EmojiViewItemModel::data(const QModelIndex& _idx, int _role) const
     {
-        if (_role == Qt::DecorationRole)
+        if (const auto idx = getLinearIndex(_idx.row(), _idx.column()); idx < getEmojisCount())
         {
-            if (const auto idx = getLinearIndex(_idx.row(), _idx.column()); idx < getEmojisCount())
+            const auto& emoji = getEmoji(_idx.column(), _idx.row());
+            if (emoji.isValid())
             {
-                const auto& emoji = getEmoji(_idx.column(), _idx.row());
-                if (emoji.isValid())
+                if (_role == Qt::DecorationRole)
                 {
                     QImage emojiPixmap = Emoji::GetEmoji(emoji.fullCodePoints, int(Emoji::getEmojiSize()));
                     Utils::check_pixel_ratio(emojiPixmap);
 
                     assert(!emojiPixmap.isNull());
                     return emojiPixmap;
+                }
+                else if (Testing::isAccessibleRole(_role))
+                {
+                    return qsl("AS EmojiViewItemModel emoji_%1").arg(Emoji::EmojiCode::toQString(emoji.fullCodePoints));
                 }
             }
         }
@@ -646,9 +729,10 @@ namespace Ui
         Utils::grabTouchWidget(view_);
 
         toolbar_ = new Toolbar(this, Toolbar::buttonsAlign::center);
-        toolbar_->setFixedHeight(emojiToolbarHeight());
+        toolbar_->setFixedHeight(emojiToolbarHeight() + emojiToolbarTopMargin());
         toolbar_->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
         toolbar_->setObjectName(qsl("smiles_cat_selector"));
+        toolbar_->setContentsMargins(0, emojiToolbarTopMargin(), 0, 0);
 
         TabButton* firstButton = nullptr;
 
@@ -661,11 +745,12 @@ namespace Ui
             if (category == u"regional" || category == u"modifier") // skip these categories
                 continue;
 
-            const QString resourceString = u":/smiles_menu/cat_" % category;
-            TabButton* button = toolbar_->addButton(Utils::renderSvgScaled(resourceString, QSize(24, 24), Styling::getParameters().getColor(Styling::StyleVariable::BASE_SECONDARY)));
+            TabButton* button = toolbar_->addButton(categoryButtonIcon(category));
             Testing::setAccessibleName(button, qsl("AS EmojiAndStickerPicker category") % category);
-            button->setFixedSize(getToolBarButtonEmojiWidth(), getToolBarButtonEmojiHeight());
+            button->setFixedSize(categoryButtonSize());
             button->setProperty("underline", false);
+            button->setHoveredPixmap(categoryButtonHoveredIcon(category));
+            button->setCheckedPixmap(categoryButtonCheckedIcon(category));
             buttons_.push_back(button);
 
             const int categoryIndex = view_->addCategory(category);
@@ -718,7 +803,7 @@ namespace Ui
         for (uint32_t i = 0; i < categories.size(); i++)
         {
             const int pos = view_->getCategoryPos(i);
-            if (_viewRect.top() < pos && pos < (_viewRect.top() + _viewRect.width() / 2))
+            if (_viewRect.top() - categoryOffset() < pos && pos < (_viewRect.top() + _viewRect.width() / 2))
             {
                 buttons_[i]->setChecked(true);
                 break;
@@ -779,6 +864,12 @@ namespace Ui
     bool EmojisWidget::isKeyboardActive() const
     {
         return view_->isKeyboardActive();
+    }
+
+    void EmojisWidget::resizeEvent(QResizeEvent* _event)
+    {
+        placeToolbar(visibleRegion().boundingRect());
+        QWidget::resizeEvent(_event);
     }
 
     void EmojisWidget::sendEmoji(const QModelIndex& _index, const EmojiSendSource _src) const
@@ -1552,6 +1643,9 @@ namespace Ui
         Testing::setAccessibleName(button, qsl("AS EmojiAndStickerPicker headerButton") + Stickers::getSetName(_setId));
         button->setFixedSize(getToolBarButtonSize(), getToolBarButtonSize());
         button->AttachView(AttachedView(stickersView, this));
+        button->setHoveredBackgroundColor(toolbarButtonHoveredBackground());
+        button->setCheckedBackgroundColor(toolbarButtonCheckedBackground());
+        button->setCheckedBorderColor(toolbarButtonCheckedBorder());
 
         connect(button, &TabButton::clicked, this, [this, _setId]()
         {
@@ -2310,18 +2404,22 @@ namespace Ui
         , topToolbar_(nullptr)
         , bottomToolbar_(nullptr)
         , viewArea_(nullptr)
+        , viewAreaLayout_(nullptr)
         , recentsView_(nullptr)
         , emojiView_(nullptr)
         , stickersView_(nullptr)
         , stickerPreview_(nullptr)
         , animHeight_(nullptr)
         , animScroll_(nullptr)
+        , topSpacer_(nullptr)
         , isVisible_(false)
         , blockToolbarSwitch_(false)
         , currentHeight_(0)
         , setFocusToButton_(false)
         , lottieAllowed_(Features::isAnimatedStickersInPickerAllowed())
+        , drawTopBorder_(true)
     {
+        setContentsMargins(0, pickerTopBorderWidth(), 0, 0);
         rootVerticalLayout_ = Utils::emptyVLayout(this);
 
         Utils::ApplyStyle(this, Styling::getParameters().getSmilesQss());
@@ -2360,6 +2458,12 @@ namespace Ui
         QPainter p(this);
 
         p.fillRect(rect(), Styling::getParameters().getColor(Styling::StyleVariable::BASE_GLOBALWHITE, 0.1));
+
+        if (drawTopBorder_)
+        {
+            p.setPen(QPen(Styling::getParameters().getColor(Styling::StyleVariable::BASE_BRIGHT), pickerTopBorderWidth()));
+            p.drawLine(QPoint(0, 0), QPoint(width(), 0));
+        }
     }
 
     void SmilesMenu::focusOutEvent(QFocusEvent* _event)
@@ -2638,6 +2742,44 @@ namespace Ui
         return recentsView_->hasSelection() || emojiView_->getView()->hasSelection();
     }
 
+    void SmilesMenu::setToolBarVisible(bool _visible)
+    {
+        topToolbar_->setVisible(false);
+    }
+
+    void SmilesMenu::setRecentsVisible(bool _visible)
+    {
+        recentsView_->setVisible(_visible);
+    }
+
+    void SmilesMenu::setStickersVisible(bool _visible)
+    {
+        stickersView_->setVisible(_visible);
+    }
+
+    void SmilesMenu::setHorizontalMargins(int _margin)
+    {
+        viewAreaLayout_->setContentsMargins(_margin, 0, _margin, 0);
+    }
+
+    void SmilesMenu::setDrawTopBorder(bool _draw)
+    {
+        if (drawTopBorder_ != _draw)
+        {
+            auto margins = contentsMargins();
+            margins.setTop(margins.top() + pickerTopBorderWidth() * (_draw ? 1 : -1));
+            setContentsMargins(margins);
+        }
+
+        drawTopBorder_ = _draw;
+    }
+
+    void SmilesMenu::setTopSpacing(int _spacing)
+    {
+        topSpacer_->changeSize(0, _spacing);
+        viewAreaLayout_->invalidate();
+    }
+
     bool SmilesMenu::sendSelectedItem()
     {
         if (hasSelection())
@@ -2792,6 +2934,10 @@ namespace Ui
         recentsButton->setFixedSize(getToolBarButtonSize(), getToolBarButtonSize());
         recentsButton->AttachView(recentsView_);
         recentsButton->setFixed(true);
+        recentsButton->setHoveredBackgroundColor(toolbarButtonHoveredBackground());
+        recentsButton->setCheckedBackgroundColor(toolbarButtonCheckedBackground());
+        recentsButton->setCheckedBorderColor(toolbarButtonCheckedBorder());
+
         connect(recentsButton, &TabButton::clicked, this, &SmilesMenu::showRecents);
 
         auto makeEmojiImage = []()
@@ -2806,6 +2952,10 @@ namespace Ui
         emojiButton->setFixedSize(getToolBarButtonSize(), getToolBarButtonSize());
         emojiButton->AttachView(AttachedView(emojiView_));
         emojiButton->setFixed(true);
+        emojiButton->setHoveredBackgroundColor(toolbarButtonHoveredBackground());
+        emojiButton->setCheckedBackgroundColor(toolbarButtonCheckedBackground());
+        emojiButton->setCheckedBorderColor(toolbarButtonCheckedBorder());
+
         connect(emojiButton, &TabButton::clicked, this, [this]()
         {
             ScrollTo(emojiView_->geometry().top());
@@ -2830,25 +2980,24 @@ namespace Ui
         Testing::setAccessibleName(viewArea_, qsl("AS EmojiAndStickerPicker viewArea"));
         rootVerticalLayout_->addWidget(viewArea_);
 
+        viewAreaLayout_ = Utils::emptyVLayout(scroll_area_widget);
 
-        QVBoxLayout* sa_widgetLayout = new QVBoxLayout();
-        sa_widgetLayout->setContentsMargins(Utils::scale_value(16), 0, Utils::scale_value(16), 0);
-        scroll_area_widget->setLayout(sa_widgetLayout);
-
+        topSpacer_ = new QSpacerItem(0, 0);
+        viewAreaLayout_->addSpacerItem(topSpacer_);
         recentsView_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
         Testing::setAccessibleName(recentsView_, qsl("AS EmojiAndStickerPicker recentsView"));
-        sa_widgetLayout->addWidget(recentsView_);
+        viewAreaLayout_->addWidget(recentsView_);
         Utils::grabTouchWidget(recentsView_);
 
         emojiView_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
         Testing::setAccessibleName(emojiView_, qsl("AS EmojiAndStickerPicker emojiView"));
-        sa_widgetLayout->addWidget(emojiView_);
+        viewAreaLayout_->addWidget(emojiView_);
         Utils::grabTouchWidget(emojiView_);
 
         stickersView_ = new StickersWidget(this, topToolbar_);
         stickersView_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
         Testing::setAccessibleName(stickersView_, qsl("AS EmojiAndStickerPicker stickersView"));
-        sa_widgetLayout->addWidget(stickersView_);
+        viewAreaLayout_->addWidget(stickersView_);
         Utils::grabTouchWidget(stickersView_);
 
         emojiButton->toggle();

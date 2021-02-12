@@ -89,10 +89,10 @@ int bottomOffsetFromMessage(Ui::ReactionsPlateType _type)
         return 0;
 }
 
-bool reactionButtonAllowed(const QString& _chatId)
+bool reactionButtonAllowed(const QString& _aimId)
 {
-    const auto role = Logic::getContactListModel()->getYourRole(_chatId);
-    const auto notAllowed = role == ql1s("notamember") || (role == ql1s("readonly") && !Logic::getContactListModel()->isChannel(_chatId));
+    const auto role = Logic::getContactListModel()->getYourRole(_aimId);
+    const auto notAllowed = (role.isEmpty() && Utils::isChat(_aimId)) || role == u"notamember" || (role == u"readonly" && !Logic::getContactListModel()->isChannel(_aimId));
 
     return !notAllowed;
 }
@@ -184,7 +184,7 @@ public:
         queuedAnimationType_ = QueuedAnimation::None;
     }
 
-    QPoint calcPosition()
+    QPoint calcPosition() const
     {
         const auto messageRect = item_->messageRect();
         QRect geometry;
@@ -205,17 +205,17 @@ public:
         return geometry.topLeft();
     }
 
-    bool pressed()
+    bool pressed() const
     {
         return pressed_ || forcePressed_;
     }
 
-    bool visible()
+    bool visible() const
     {
         return q->isVisible() || forceVisible_;
     }
 
-    QRect pressRect()
+    QRect pressRect() const
     {
         return QRect(q->geometry().center() - QPoint(pressRectSize().width() / 2, pressRectSize().height() / 2), pressRectSize());
     }
@@ -230,7 +230,7 @@ public:
         return QRect(calcPosition(), buttonSize());
     }
 
-    QColor shadowColorWithAlpha()
+    QColor shadowColorWithAlpha() const
     {
         auto color = shadowColor();
         color.setAlphaF(shadowColorAlpha() * opacity_);
@@ -301,10 +301,7 @@ AddReactionButton::AddReactionButton(HistoryControlPageItem* _item)
     connect(&d->hoverTimer_, &QTimer::timeout, this, &AddReactionButton::onHoverTimer);
 }
 
-AddReactionButton::~AddReactionButton()
-{
-
-}
+AddReactionButton::~AddReactionButton() = default;
 
 void AddReactionButton::setOutgoingPosition(bool _outgoingPosition)
 {
@@ -427,7 +424,7 @@ void AddReactionButton::showEvent(QShowEvent* _event)
 void AddReactionButton::updateCursorShape(const QPoint& _pos)
 {
     const auto mouseOverPressRect = d->pressRect().contains(_pos);
-    if (mouseOverPressRect)
+    if (mouseOverPressRect && reactionButtonAllowed(d->item_->getContact()))
         d->item_->setCursor(Qt::PointingHandCursor);
     if (mouseOverPressRect != d->mouseOverPressArea_)
     {

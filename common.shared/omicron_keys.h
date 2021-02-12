@@ -105,6 +105,7 @@ namespace omicron
 
         constexpr auto statuses_json = "statuses_json";
         constexpr auto statuses_enabled = "statuses_enabled";
+        constexpr auto custom_statuses_enabled = "custom_statuses_enabled";
 
         constexpr auto global_contact_search_allowed = "global_contact_search_allowed";
 
@@ -141,9 +142,11 @@ namespace omicron
         constexpr auto max_parallel_sticker_downloads = "max_parallel_sticker_downloads";
 
         constexpr auto silent_message_delete = "silent_message_delete";
-        
+
         constexpr auto background_ptt_play_enabled = "background_ptt_play_enabled";
 
         constexpr auto remove_deleted_from_notifications = "remove_deleted_from_notifications";
+
+        constexpr auto status_banner_emoji_csv = "status_banner_emoji_csv";
     }
 }

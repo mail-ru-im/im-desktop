@@ -336,8 +336,8 @@ namespace Ui
         void pasteFromClipboard();
         void updateInputData();
         void pasteClipboardUrl(const QUrl& _url, bool _hadImage, const QMimeData* _mimeData);
-        void pasteClipboardImage(const QImage& _image);
-        void pasteClipboardBase64Image(const QString& _text);
+        void pasteClipboardImage(QImage&& _image);
+        void pasteClipboardBase64Image(QString&& _text);
 
         InputWidgetState& currentState();
         const InputWidgetState& currentState() const;
@@ -379,6 +379,8 @@ namespace Ui
         void notifyDialogAboutSend(const QString& _contact);
 
         void sendStatsIfNeeded() const;
+
+        std::optional<bool> needStartButton() const;
 
         enum class CheckOffer
         {

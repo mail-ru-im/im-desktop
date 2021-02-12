@@ -1334,7 +1334,19 @@ namespace hist
                     viewBounds_.bottom = std::max(backId, viewBounds_.bottom.value_or(backId));
                 };
 
-                if (viewBounds_.isEmpty() || (*viewBounds_.bottom == _buddiesResult.inserted.front()->Prev_))
+                auto getTopPrev = [this]() -> std::optional<qint64>
+                {
+                    if (viewBounds_.top)
+                    {
+                        if (const auto it = messages_.find(*viewBounds_.top); it != messages_.end())
+                            return std::make_optional(it->second->Prev_);
+                    }
+                    return std::nullopt;
+                };
+
+                if (viewBounds_.isEmpty()
+                    || (*viewBounds_.bottom == _buddiesResult.inserted.front()->Prev_)
+                    || (getTopPrev() == _buddiesResult.inserted.back()->Id_))
                 {
                     needToInsert += _buddiesResult.inserted;
                     updateViewBound();

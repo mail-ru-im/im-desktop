@@ -118,7 +118,6 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${ICQ_BIN_DIR})
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${ICQ_BIN_DIR})
 
 # -------------------------- definitions -------------------------
-message(STATUS "CMAKE_BUILD_TYPE is ${CMAKE_BUILD_TYPE}")
 if(${CMAKE_BUILD_TYPE} STREQUAL "Release")
     add_definitions(-DQT_NO_DEBUG_OUTPUT)
 endif()

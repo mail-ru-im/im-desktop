@@ -81,6 +81,7 @@ namespace Features
 
     std::string getStatusJson();
     bool isStatusEnabled();
+    bool isCustomStatusEnabled();
 
     bool isGlobalContactSearchAllowed();
 
@@ -110,4 +111,6 @@ namespace Features
     bool isBackgroundPttPlayEnabled();
 
     bool removeDeletedFromNotifications();
+
+    QString statusBannerEmojis();
 }

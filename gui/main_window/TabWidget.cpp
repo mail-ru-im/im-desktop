@@ -4,10 +4,8 @@
 #include "TabBar.h"
 
 #include "../utils/utils.h"
-
+#include "../utils/animations/SlideController.h"
 #include "styles/ThemeParameters.h"
-
-#include "main_window/sidebar/SidebarUtils.h"
 
 namespace
 {
@@ -19,6 +17,8 @@ namespace Ui
     TabWidget::TabWidget(QWidget* _parent)
         : QWidget(_parent)
     {
+        using Utils::SlideController;
+
         setContentsMargins(0, 0, 0, 0);
 
         Utils::setDefaultBackground(this);

@@ -367,6 +367,11 @@ namespace Features
         return Omicron::_o(omicron::keys::statuses_enabled, config::get().is_on(config::features::statuses_enabled));
     }
 
+    bool isCustomStatusEnabled()
+    {
+        return Omicron::_o(omicron::keys::custom_statuses_enabled, false);
+    }
+
     bool isGlobalContactSearchAllowed()
     {
         return config::get().is_on(config::features::global_contact_search_allowed);
@@ -457,5 +462,12 @@ namespace Features
     bool removeDeletedFromNotifications()
     {
         return Omicron::_o(omicron::keys::remove_deleted_from_notifications, config::get().is_on(config::features::remove_deleted_from_notifications));
+    }
+
+    QString statusBannerEmojis()
+    {
+        std::string csv(config::get().string(config::values::status_banner_emoji_csv));
+        csv = config::is_overridden(config::values::status_banner_emoji_csv) ? csv : Omicron::_o(omicron::keys::status_banner_emoji_csv, csv);
+        return QString::fromUtf8(csv.data(), csv.size());
     }
 }

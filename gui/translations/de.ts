@@ -982,18 +982,18 @@ Hier können Sie Ihr Feedback hinterlassen oder einen Fehler melden:</translatio
         <translation>Beantwortet auf Status: %1 %2</translation>
     </message>
     <message>
-        <source>You replied to status
-%2 %3
-%4
-%5 %6</source>
-        <translation>Sie haben auf den Status geantwortet
-%2 %3
-%4
-%5 %6</translation>
-    </message>
-    <message>
         <source>You replied to status: %1 %2</source>
         <translation>Sie haben den Status beantwortet: %1 %2</translation>
+    </message>
+    <message>
+        <source>You replied to status
+%1 %2
+%3
+%4 %5</source>
+        <translation>Sie haben auf den Status geantwortet
+%1 %2
+%3
+%4 %5</translation>
     </message>
 </context>
 <context>
@@ -3699,6 +3699,12 @@ Hier können Sie Ihr Feedback hinterlassen oder einen Fehler melden:</translatio
         <source>Block</source>
         <translation>Sperren</translation>
     </message>
+    <message>
+        <source>Pay attention
+to contact status</source>
+        <translation>Achten Sie auf den Status
+Kontakt</translation>
+    </message>
 </context>
 <context>
     <name>placeholders</name>
@@ -6061,10 +6067,6 @@ Bitte bearbeite sie und versuche es erneut.</translation>
         <translation>Woche</translation>
     </message>
     <message>
-        <source>undefined time</source>
-        <translation>unbestimmte Zeit</translation>
-    </message>
-    <message>
         <source>%1 left</source>
         <translation>%1 links</translation>
     </message>
@@ -6095,16 +6097,80 @@ Bitte bearbeite sie und versuche es erneut.</translation>
         <translation>Mein Status</translation>
     </message>
     <message>
-        <source>No status</source>
-        <translation>Ohne Status</translation>
-    </message>
-    <message>
         <source>Status timing</source>
         <translation>Statusbegriff</translation>
     </message>
     <message>
         <source>Close</source>
         <translation>Schließen</translation>
+    </message>
+    <message>
+        <source>Choose unique status</source>
+        <translation>Wählen Sie einen eindeutigen Status</translation>
+    </message>
+    <message>
+        <source>Back</source>
+        <translation>Zurück</translation>
+    </message>
+    <message>
+        <source>Done</source>
+        <translation>Getan</translation>
+    </message>
+    <message>
+        <source>Maximum length - %1 symbols</source>
+        <translation>Maximale Länge -%1 Symbole</translation>
+    </message>
+    <message>
+        <source>Status search</source>
+        <translation>Statussuche</translation>
+    </message>
+    <message>
+        <source>SELECT STATUS</source>
+        <translation>STATUS AUSWÄHLEN</translation>
+    </message>
+    <message>
+        <source>Select custom status</source>
+        <translation>Wählen Sie den benutzerdefinierten Status</translation>
+    </message>
+    <message>
+        <source>Select custom time</source>
+        <translation>Wählen Sie eine benutzerdefinierte Zeit</translation>
+    </message>
+    <message>
+        <source>Status is set for %1</source>
+        <translation>Der Status ist auf %1 gesetzt</translation>
+    </message>
+    <message>
+        <source>Status is set</source>
+        <translation>Status gesetzt</translation>
+    </message>
+    <message>
+        <source>Enter status text</source>
+        <translation>Geben Sie den Statustext ein</translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation>Suche</translation>
+    </message>
+    <message>
+        <source>Status duration</source>
+        <translation>Statusdauer</translation>
+    </message>
+    <message>
+        <source>Date</source>
+        <translation>Datum</translation>
+    </message>
+    <message>
+        <source>dd.mm.yyyy</source>
+        <translation>DD / MM / JJJJ</translation>
+    </message>
+    <message>
+        <source>Time</source>
+        <translation>Zeit</translation>
+    </message>
+    <message>
+        <source>hh:mm</source>
+        <translation>hh:mm</translation>
     </message>
 </context>
 <context>
@@ -6385,10 +6451,6 @@ Bitte bearbeite sie und versuche es erneut.</translation>
         <translation>Eingehender Anruf</translation>
     </message>
     <message>
-        <source>Settings</source>
-        <translation>Einstellungen</translation>
-    </message>
-    <message>
         <source>Add to call</source>
         <translation>Zum Anruf hinzufügen</translation>
     </message>
@@ -6464,6 +6526,22 @@ with click</source>
 oder öffnen Sie den Anruf
 per Klick</translation>
     </message>
+    <message>
+        <source>VOICE</source>
+        <translation>STIMME</translation>
+    </message>
+    <message>
+        <source>Connecting...</source>
+        <translation>Verbindung...</translation>
+    </message>
+    <message>
+        <source>Calling</source>
+        <translation>Anruf</translation>
+    </message>
+    <message>
+        <source>Busy</source>
+        <translation>Beschäftigt</translation>
+    </message>
 </context>
 <context>
     <name>voip_video_panel</name>
@@ -6490,14 +6568,6 @@ per Klick</translation>
     <message>
         <source>Settings</source>
         <translation>Einstellungen</translation>
-    </message>
-    <message>
-        <source>Show all</source>
-        <translation>Alle anzeigen</translation>
-    </message>
-    <message>
-        <source>Show one</source>
-        <translation>Zeig eins</translation>
     </message>
     <message>
         <source>Stop screen sharing</source>

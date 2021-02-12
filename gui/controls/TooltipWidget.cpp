@@ -12,9 +12,6 @@
 #include "../main_window/containers/LastseenContainer.h"
 #include "../main_window/containers/StatusContainer.h"
 #include "../main_window/history_control/MessageStyle.h"
-#include "../statuses/Status.h"
-#include "../statuses/StatusUtils.h"
-#include "statuses/LocalStatuses.h"
 #include "../my_info.h"
 
 
@@ -542,7 +539,8 @@ namespace Ui
             xPos = margin_left;
 
         if (_maxSize.width() != -1 && w > _maxSize.width() - (2 * margin_right) - 1 && xPos + w > _maxSize.width() - margin_right)
-            xPos = std::abs(parentWidget()->width() - w) / 2;
+            if (auto parent = parentWidget())
+                xPos = std::abs(parent->width() - w) / 2;
 
         if (_rect.isValid())
             xPos = std::max(xPos, _rect.left());

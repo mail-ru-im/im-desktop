@@ -123,6 +123,31 @@ namespace Ui
         update();
     }
 
+    void TabButton::setHoveredPixmap(QPixmap _pixmap)
+    {
+        hoveredPixmap_ = std::move(_pixmap);
+    }
+
+    void TabButton::setCheckedPixmap(QPixmap _pixmap)
+    {
+        checkedPixmap_ = std::move(_pixmap);
+    }
+
+    void TabButton::setHoveredBackgroundColor(const QColor& _color)
+    {
+        hoveredBackgroundColor_ = _color;
+    }
+
+    void TabButton::setCheckedBackgroundColor(const QColor& _color)
+    {
+        checkedBackgroundColor_ = _color;
+    }
+
+    void TabButton::setCheckedBorderColor(const QColor& _color)
+    {
+        checkedBorderColor_ = _color;
+    }
+
     void TabButton::setLottie(const QString& _path)
     {
         if (_path.isEmpty())
@@ -142,10 +167,21 @@ namespace Ui
 
     void TabButton::paintEvent(QPaintEvent* _e)
     {
-        QPushButton::paintEvent(_e);
 
         QPainter p(this);
         p.setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
+
+        if (isChecked())
+        {
+            if (checkedBackgroundColor_.isValid())
+                p.fillRect(rect(), checkedBackgroundColor_);
+            if (checkedBorderColor_.isValid())
+                p.fillRect(QRect({0, height() - Utils::scale_value(2)}, rect().bottomRight()), checkedBorderColor_);
+        }
+        else if (hoveredBackgroundColor_.isValid() && underMouse())
+        {
+            p.fillRect(rect(), hoveredBackgroundColor_);
+        }
 
         if (!lottie_ && pixmap_.isNull())
         {
@@ -161,7 +197,7 @@ namespace Ui
             const double ratio = Utils::scale_bitmap_ratio();
             const auto x = (rect().width() - pixmap_.width() / ratio) / 2;
             const auto y = (rect().height() - pixmap_.height() / ratio) / 2;
-            p.drawPixmap(x, y, pixmap_);
+            p.drawPixmap(x, y, currentPixmap());
         }
 
         if (Q_UNLIKELY(Ui::GetAppConfig().IsShowMsgIdsEnabled()))
@@ -172,7 +208,9 @@ namespace Ui
             const auto x = width();
             const auto y = height();
             Utils::drawText(p, QPointF(x, y), Qt::AlignRight | Qt::AlignBottom, QString::number(getSetId()));
-        }
+        }        
+
+        QPushButton::paintEvent(_e);
     }
 
     void TabButton::onVisibilityChanged(bool _visible)
@@ -186,6 +224,16 @@ namespace Ui
         QRect playerRect({}, iconSize());
         playerRect.moveCenter(rect().center());
         return playerRect;
+    }
+
+    const QPixmap& TabButton::currentPixmap() const
+    {
+        if (isChecked() && !checkedPixmap_.isNull())
+            return checkedPixmap_;
+        else if (underMouse() && !hoveredPixmap_.isNull())
+            return hoveredPixmap_;
+
+        return pixmap_;
     }
 
     void TabButton::resizeEvent(QResizeEvent* event)

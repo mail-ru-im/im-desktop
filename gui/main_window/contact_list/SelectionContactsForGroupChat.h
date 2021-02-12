@@ -1,7 +1,5 @@
 #pragma once
 
-#include "statuses/Status.h"
-
 namespace Logic
 {
     class CustomAbstractListModel;

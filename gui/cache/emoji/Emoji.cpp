@@ -245,6 +245,7 @@ namespace Emoji
 #else
         auto image = getEmojiImage(info.FileName_, _sizePx);
 #endif
+        assert(!image.isNull());
 
 #if defined(DEBUG_EMOJI)
         QImage filled(image.width(), image.height(), QImage::Format_ARGB32_Premultiplied);

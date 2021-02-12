@@ -360,7 +360,6 @@ namespace core
         virtual void on_voip_mute_switch();
         virtual void on_voip_set_mute(bool mute);
         virtual void on_voip_mute_incoming_call_sounds(bool mute);
-        virtual void on_voip_minimal_bandwidth_switch();
 
         virtual void on_voip_load_mask(const std::string& path);
         virtual void on_voip_init_mask_engine();
@@ -568,7 +567,7 @@ namespace core
                                     const std::string& _older_than,
                                     int64_t _limit) = 0;
 
-        virtual void set_status(std::string_view _status, std::chrono::seconds _duration) = 0;
+        virtual void set_status(std::string_view _status, std::chrono::seconds _duration, std::string_view _description = std::string_view()) = 0;
 
         virtual void subscribe_status(std::vector<std::string> _contacts) = 0;
         virtual void unsubscribe_status(std::vector<std::string> _contacts) = 0;

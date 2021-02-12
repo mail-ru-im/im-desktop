@@ -11,7 +11,7 @@
 
 namespace
 {
-    void drawLine(Ui::TextRendering::TextWordRenderer& _renderer, const QPoint& _point, const std::vector<Ui::TextRendering::TextWord>& _line, const Ui::TextRendering::HorAligment _align, const int _width)
+    void drawLine(Ui::TextRendering::TextWordRenderer& _renderer, QPoint _point, const std::vector<Ui::TextRendering::TextWord>& _line, const Ui::TextRendering::HorAligment _align, const int _width)
     {
         if (_line.empty())
             return;
@@ -136,7 +136,7 @@ namespace TextRendering
         subwords_ = {};
     }
 
-    bool TextWord::equalTo(const QString& _sl) const
+    bool TextWord::equalTo(QStringView _sl) const
     {
         return text_ == _sl;
     }
@@ -377,7 +377,7 @@ namespace TextRendering
         return ceilToInt(spaceWidth_);
     }
 
-    static bool isValidMention(const QStringRef& _text, const QString& _mention)
+    static bool isValidMention(QStringView _text, const QString& _mention)
     {
         if (!Utils::isMentionLink(_text))
             return false;
@@ -388,7 +388,7 @@ namespace TextRendering
 
     bool TextWord::applyMention(const std::pair<QString, QString>& _mention)
     {
-        if (!isValidMention(QStringRef(&text_), _mention.first))
+        if (!isValidMention(text_, _mention.first))
             return false;
 
         originalMention_ = std::exchange(text_, _mention.second);
@@ -398,7 +398,7 @@ namespace TextRendering
 
     bool TextWord::applyMention(const QString& _mention, const std::vector<TextWord>& _mentionWords)
     {
-        if (!isValidMention(QStringRef(&text_), _mention))
+        if (!isValidMention(text_, _mention))
             return false;
 
         originalMention_ = std::exchange(text_, {});
@@ -450,12 +450,26 @@ namespace TextRendering
         cachedWidth_ = 0;
     }
 
+    void TextWord::setColor(QColor _color)
+    {
+        color_ = _color;
+        for (auto& w : subwords_)
+            w.setColor(_color);
+    }
+
     void TextWord::applyFontColor(const TextWord& _other)
     {
         setFont(_other.getFont());
         setColor(_other.getColor());
         setUnderline(_other.underline());
         setSpellError(_other.hasSpellError());
+    }
+
+    void TextWord::setSubwords(std::vector<TextWord> _subwords)
+    {
+        assert(subwords_.empty());
+        subwords_ = std::move(_subwords);
+        cachedWidth_ = 0;
     }
 
     std::vector<TextWord> TextWord::splitByWidth(int _width)
@@ -623,10 +637,7 @@ namespace TextRendering
     std::vector<WordBoundary>& TextWord::getSyntaxWords()
     {
         if (syntaxWords_.empty())
-        {
-            const auto text = getText();
-            syntaxWords_ = parseForSyntaxWords(QStringRef(&text));
-        }
+            syntaxWords_ = parseForSyntaxWords(getText());
         return syntaxWords_;
     }
 
@@ -667,9 +678,9 @@ namespace TextRendering
         shadow_.color = _color;
     }
 
-    std::vector<WordBoundary> TextWord::parseForSyntaxWords(const QStringRef& text)
+    std::vector<WordBoundary> TextWord::parseForSyntaxWords(QStringView text)
     {
-        const auto textSize = text.size();
+        const auto textSize = int(text.size());
         auto finder = QTextBoundaryFinder(QTextBoundaryFinder::Word, text.data(), textSize);
 
         auto atEnd = [&finder]
@@ -721,7 +732,7 @@ namespace TextRendering
     }
 
     TextDrawingBlock::TextDrawingBlock(const std::vector<TextWord>& _words, BaseDrawingBlock* _other)
-        : BaseDrawingBlock(BlockType::TYPE_TEXT)
+        : BaseDrawingBlock(BlockType::Text)
         , words_(_words)
         , lineHeight_(0)
         , desiredWidth_(0)
@@ -768,7 +779,6 @@ namespace TextRendering
                     w.setUnderline(true);
             }
         }
-
 
         linkColor_ = _linkColor;
         selectionColor_ = _selectionColor;
@@ -855,21 +865,21 @@ namespace TextRendering
         _point.ry() += lineHeight_ + margins_.bottom();
     }
 
-    int TextDrawingBlock::getHeight(int width, int lineSpacing, CallType type, bool _isMultiline)
+    int TextDrawingBlock::getHeight(int _width, int _lineSpacing, CallType _type, bool _isMultiline)
     {
-        if (width == 0 || words_.empty())
+        if (_width == 0 || words_.empty())
             return 0;
 
-        if (cachedSize_.width() == width && type == CallType::USUAL)
+        if (cachedSize_.width() == _width && _type == CallType::USUAL)
             return cachedSize_.height();
 
-        lineSpacing_ = lineSpacing;
+        lineSpacing_ = _lineSpacing;
 
         lines_.clear();
         linkRects_.clear();
         links_.clear();
         std::vector<TextWord> curLine;
-        width -= (margins_.left() + margins_.right());
+        _width -= (margins_.left() + margins_.right());
         double curWidth = 0;
         lineHeight_ = 0;
 
@@ -879,7 +889,7 @@ namespace TextRendering
             needsEmojiMargin_ = true;
 
         const auto& last = *(words_.rbegin());
-        auto fillLines = [width, &curLine, &curWidth, emojiCount, last, this]()
+        auto fillLines = [_width, &curLine, &curWidth, emojiCount, last, this]()
         {
             for (auto& w : words_)
             {
@@ -893,7 +903,7 @@ namespace TextRendering
                     wordWidth += w.spaceWidth();
 
                 auto curWord = w;
-                double cmpWidth = width;
+                double cmpWidth = _width;
                 if (limited && !curLine.empty())
                     cmpWidth -= curWidth;
 
@@ -923,7 +933,7 @@ namespace TextRendering
                             if (lines_.size() == maxLinesCount_)
                                 return true;
 
-                            cmpWidth = width;
+                            cmpWidth = _width;
                             curWidth = 0;
                             continue;
                         }
@@ -962,7 +972,7 @@ namespace TextRendering
 
                         curLine.clear();
                         curWidth = 0;
-                        cmpWidth = width;
+                        cmpWidth = _width;
                     }
 
                     if (lines_.size() == maxLinesCount_)
@@ -988,7 +998,7 @@ namespace TextRendering
                     wordWidth = curWord.cachedWidth();
                 }
 
-                if (curWidth + wordWidth <= width)
+                if (curWidth + wordWidth <= _width)
                 {
                     if (curWord.isLink())
                     {
@@ -1030,7 +1040,7 @@ namespace TextRendering
         {
             if (lines_ [maxLinesCount_ - 1].rbegin()->isTruncated() || (elided && !words_.empty()))
             {
-                lines_[maxLinesCount_ - 1] = elideWords(lines_[maxLinesCount_ - 1], lastLineWidth_ == -1 ? width : lastLineWidth_, QWIDGETSIZE_MAX, true);
+                lines_[maxLinesCount_ - 1] = elideWords(lines_[maxLinesCount_ - 1], lastLineWidth_ == -1 ? _width : lastLineWidth_, QWIDGETSIZE_MAX, true);
                 elided_ = true;
             }
         }
@@ -1053,7 +1063,7 @@ namespace TextRendering
                 cachedHeight += underlineOffset;
         }
 
-        cachedSize_ = QSize(width, cachedHeight);
+        cachedSize_ = QSize(_width, cachedHeight);
         cachedMaxLineWidth_ = -1;
 
         return cachedSize_.height();
@@ -1076,7 +1086,7 @@ namespace TextRendering
 
         auto lineSelected = [this](int i)
         {
-            if (i < 0 || i >= int(lines_.size()))
+            if (i < 0 || i >= static_cast<int>(lines_.size()))
                 return false;
 
             for (auto& w : lines_[i])
@@ -1482,9 +1492,9 @@ namespace TextRendering
                     continue;
                 }
 
-                auto space = iter->getSpace();
-                auto type = iter->getType();
-                auto links = iter->getShowLinks();
+                const auto space = iter->getSpace();
+                const auto type = iter->getType();
+                const auto links = iter->getShowLinks();
 
                 auto func = [space, type, &iter, links, this](QString _left, QString _right)
                 {
@@ -1536,8 +1546,7 @@ namespace TextRendering
         std::vector<TextWord> mentionWords;
         for (const auto& m : _mentions)
         {
-            QStringRef ref(&m.second);
-            parseForWords(ref, LinksVisible::SHOW_LINKS, mentionWords, WordType::MENTION);
+            parseForWords(m.second, LinksVisible::SHOW_LINKS, mentionWords, WordType::MENTION);
             if (mentionWords.size() == 1 && !mentionWords.front().isEmoji())
             {
                 for (auto& w : words_)
@@ -1557,7 +1566,7 @@ namespace TextRendering
         return ceilToInt(desiredWidth_);
     }
 
-    void TextDrawingBlock::elide(int _width, ELideType _type, bool _prevElided)
+    void TextDrawingBlock::elide(int _width, ElideType _type, bool _prevElided)
     {
         if (_prevElided)
         {
@@ -1832,7 +1841,7 @@ namespace TextRendering
         return true;
     }
 
-    static int getNickStartIndex(const QStringRef& _text)
+    static int getNickStartIndex(QStringView _text)
     {
         int index = 0;
         while (1)
@@ -1906,7 +1915,7 @@ namespace TextRendering
         }
     }
 
-    std::vector<TextWord> TextDrawingBlock::elideWords(const std::vector<TextWord>& _original, int _width, int _desiredWidth, bool _forceElide, const ELideType& _type)
+    std::vector<TextWord> TextDrawingBlock::elideWords(const std::vector<TextWord>& _original, int _width, int _desiredWidth, bool _forceElide, ElideType _type)
     {
         if (_original.empty())
             return _original;
@@ -1949,12 +1958,12 @@ namespace TextRendering
             auto tmp = w.getText();
             const auto wordTextSize = tmp.size();
 
-            if (_type == ELideType::ACCURATE)
+            if (_type == ElideType::ACCURATE)
             {
                 while (!tmp.isEmpty() && textWidth(f, tmp) > (_width - curWidth))
                     tmp.chop(1);
             }
-            else if (_type == ELideType::FAST)
+            else if (_type == ElideType::FAST)
             {
                 auto left = 0, right = tmp.size();
                 const auto chWidth = averageCharWidth(f);
@@ -1966,7 +1975,7 @@ namespace TextRendering
 
                     auto t = tmp.left(mid);
                     const auto width = textWidth(f, t);
-                    const auto cmp = (_width - curWidth) - width;
+                    const auto cmp = _width - curWidth - width;
                     const auto cmpCh = chWidth - abs(cmp);
 
                     if (cmpCh >= 0 && cmpCh <= chWidth)
@@ -2600,7 +2609,7 @@ namespace TextRendering
     }
 
     NewLineBlock::NewLineBlock()
-        : BaseDrawingBlock(BlockType::TYPE_NEW_LINE)
+        : BaseDrawingBlock(BlockType::NewLine)
         , cachedHeight_(0)
     {
     }
@@ -2722,7 +2731,7 @@ namespace TextRendering
         return 0;
     }
 
-    void NewLineBlock::elide(int, ELideType, bool)
+    void NewLineBlock::elide(int, ElideType, bool)
     {
 
     }
@@ -2738,10 +2747,6 @@ namespace TextRendering
         return empty;
     }
 
-    QString tripleBackTick()
-    {
-        return qsl("```");
-    }
 
     std::vector<BaseDrawingBlockPtr> parseForBlocks(const QString& _text, const Data::MentionMap& _mentions, LinksVisible _showLinks, ProcessLineFeeds _processLineFeeds)
     {
@@ -2749,32 +2754,32 @@ namespace TextRendering
         if (_text.isEmpty())
             return blocks;
         QString text;
-        QStringRef textRef(&_text);
+        QStringView textView(_text);
         if (_processLineFeeds == ProcessLineFeeds::REMOVE_LINE_FEEDS)
         {
             text = _text;
             text.replace(QChar::LineFeed, QChar::Space);
-            textRef = QStringRef(&text);
+            textView = text;
         }
 
-        int i = textRef.indexOf(QChar::LineFeed);
+        auto i = textView.indexOf(QChar::LineFeed);
         bool skipNewLine = true;
-        while (i != -1 && !textRef.isEmpty())
+        while (i != -1 && !textView.isEmpty())
         {
-            const auto t = textRef.left(i);
+            const auto t = textView.left(i);
             if (!t.isEmpty())
                 blocks.push_back(std::make_unique<TextDrawingBlock>(t, _showLinks));
 
             if (!skipNewLine)
                 blocks.push_back(std::make_unique<NewLineBlock>());
 
-            textRef = textRef.mid(i + 1, textRef.size() - i - 1);
-            i = textRef.indexOf(QChar::LineFeed);
+            textView = textView.mid(i + 1, textView.size() - i - 1);
+            i = textView.indexOf(QChar::LineFeed);
             skipNewLine = (i != 0);
         }
 
-        if (!textRef.isEmpty())
-            blocks.push_back(std::make_unique<TextDrawingBlock>(textRef, _showLinks));
+        if (!textView.isEmpty())
+            blocks.push_back(std::make_unique<TextDrawingBlock>(textView, _showLinks));
 
         if (!_mentions.empty())
         {
@@ -2785,15 +2790,16 @@ namespace TextRendering
         return blocks;
     }
 
-    int getBlocksHeight(const std::vector<BaseDrawingBlockPtr>& _blocks, int width, int lineSpacing, CallType _calltype)
+
+    int getBlocksHeight(const std::vector<BaseDrawingBlockPtr>& _blocks, int _width, int _lineSpacing, CallType _calltype)
     {
-        if (width <= 0)
+        if (_width <= 0)
             return 0;
 
         int h = 0;
         const bool isMultiline = _blocks.size() > 1;
         for (auto& b : _blocks)
-            h += b->getHeight(width, lineSpacing, _calltype, isMultiline);
+            h += b->getHeight(_width, _lineSpacing, _calltype, isMultiline);
 
         return h;
     }
@@ -2991,7 +2997,7 @@ namespace TextRendering
         QString result;
         for (auto& b : _blocks)
         {
-            if (b->getType() == BlockType::TYPE_DEBUG_TEXT)
+            if (b->getType() == BlockType::DebugText)
                 continue;
             result += b->textForInstantEdit();
         }
@@ -3017,7 +3023,7 @@ namespace TextRendering
         QString result;
         for (auto& b : _blocks)
         {
-            if (b->getType() == BlockType::TYPE_DEBUG_TEXT)
+            if (b->getType() == BlockType::DebugText)
                 continue;
             result += b->getSourceText();
         }
@@ -3041,7 +3047,7 @@ namespace TextRendering
         return result;
     }
 
-    void elideBlocks(const std::vector<BaseDrawingBlockPtr>& _blocks, int _width, ELideType _type)
+    void elideBlocks(const std::vector<BaseDrawingBlockPtr>& _blocks, int _width, ElideType _type)
     {
         bool prevElided = false;
         for (auto& b : _blocks)

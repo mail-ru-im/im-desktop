@@ -206,9 +206,10 @@ namespace utils
         return QChar::Script_Common;
     }
 
-    QChar::Script localeToScriptCode(const QStringRef& locale) noexcept
+    QChar::Script localeToScriptCode(QStringView locale) noexcept
     {
-        const auto subtag = locale.left(std::max(locale.indexOf(u'_'), locale.indexOf(u'-')));
+        const auto idx = std::max(locale.indexOf(u'_'), locale.indexOf(u'-'));
+        const auto subtag = idx >= 0 ? locale.left(idx) : locale;
         for (auto x : localeScriptList)
             if (subtag == x.subtag)
                 return x.script;
@@ -242,7 +243,7 @@ namespace utils
             res.reserve(languages.size());
             for (const auto& l : languages)
             {
-                const auto s = utils::localeToScriptCode(QStringRef(&l));
+                const auto s = utils::localeToScriptCode(l);
                 if (s == QChar::Script_Common || isBlackListed(s))
                     continue;
                 res.push_back(s);
